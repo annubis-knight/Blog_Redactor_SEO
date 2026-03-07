@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Projet Tailwind Minimal</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=DM+Serif+Text&family=Red+Hat+Text:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Petrona:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
+        rel="stylesheet">
+
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <link href="/css/tailwindOut.css" rel="stylesheet">
+    <link href="/css/globals.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">
+
+
+</head>
+
+<body>
+    <div w3-include-html="/components/navbar.html"></div>
+    <main class="mx-auto">
+        <!-- Section Hero -->
+        <section id="sectionHeroRealisation" class="pad-y-large">
+            <div class="absoluteIcon2">
+                <img src="/assets/svg/NomIcone=outStr_Arrow.svg" alt="Image absolute" class="w-full">
+            </div>
+            <div class="containerMax mx-auto px-5">
+                <div class="grid-tailwind py-20">
+                    <div class="col-span-full flex flex-col">
+
+                        <h1>Titre de l'article</h1>
+                        <p class="text-large">Résumé de l'article + hook</p>
+                    </div>
+                </div>
+
+        </section>
+
+
+        <article>
+            <section class="pad-y-small">
+                <div class="containerMax">
+                    <div class="grid-tailwind">
+
+                        <!-- SOMMAIRE -->
+                        <div id="section-sommaire" class="col-span-8 pad-y-small">
+                            <p class="text-small">Propulsite / Blog / Articles / Titre</p>
+                            <h2>Sommaire</h2>
+
+                            <ul>
+                                <li><a href="#introduction">Introduction</a></li>
+                                <li><a href="#sous-titre-1">1. Performance du site : Les KPI techniques et UX qui
+                                        comptent</a></li>
+                                <li><a href="#sous-titre-2">2. Centré sur le client : Ciblage, positionnement et
+                                        expérience utilisateur</a></li>
+                                <li><a href="#sous-titre-3">3. Résultats et ROI : Comment la refonte booste votre
+                                        croissance</a></li>
+                                <li><a href="#conclusion">Conclusion : Ce que votre entreprise peut mettre en place dès
+                                        maintenant</a></li>
+                            </ul>
+
+                        </div>
+
+                        <!-- ARTICLES LIÈS -->
+                        <div
+                            class="col-span-full max-lg:order-last max-lg:static lg:col-span-4 lg:col-start-9 pad-y-small content-article-cards">
+                            <h4>Articles liés</h4>
+                            <div class="linkedArticle">
+                                <div> <img src="/assets/images/thumbnails/thumb-SEO-1.jpeg" alt="Parcours client">
+                                </div>
+                                <p class="text-small">Article lié</p>
+                            </div>
+                        </div>
+
+                        <!-- INTRODUCTION -->
+                        <div class="col-span-8 pad-y-small">
+                            <h2>Introduction</h2>
+                            <p>Votre site web est-il un investissement rentable ou une source de dépenses inutiles ?
+                                Dans le monde numérique actuel, un site performant est crucial pour attirer, engager et
+                                convertir les visiteurs en clients fidèles. Mais comment savoir si votre site est à la
+                                hauteur de vos attentes, ou s'il est temps d'envisager une refonte ?
+
+                                Dans cet article, nous allons explorer les indicateurs clés de performance (KPI) à
+                                surveiller, l'importance d'une approche centrée sur le client, et les stratégies pour
+                                maximiser le retour sur investissement de votre refonte.</p>
+
+                            <div class="pad-y-small"><img class="w-full"
+                                    src="/assets/images/thumbnails/thumb-airbnb.webp" alt=""></div>
+                        </div>
+
+                        <!-- CHAPITER 1 -->
+                        <div class="col-span-8 pad-y-small">
+                            <h2>1. Performance du site : Les KPI techniques et UX qui comptent</h2>
+                            <p>La performance de votre site web est un facteur déterminant pour le succès de votre
+                                entreprise en ligne. Un site rapide, fiable et facile à utiliser offre une expérience
+                                utilisateur optimale et favorise l'engagement des visiteurs.</p>
+
+                            <div class="content-valeur">
+                                <h3>Indicateurs clés de performance</h3>
+                                <ul class="list-disc">
+                                    <li>Temps de chargement des pages : Un site rapide améliore l'expérience utilisateur
+                                        et le référencement Google.</li>
+                                    <li>Taux de rebond : Un taux élevé indique que les visiteurs ne trouvent pas ce
+                                        qu'ils cherchent.</li>
+                                    <li>Compatibilité mobile : Un site responsive s'adapte à tous les appareils et offre
+                                        une expérience utilisateur
+                                        optimale sur mobile.</li>
+                                    <li>Taux de conversion : Mesurez le pourcentage de visiteurs qui réalisent une
+                                        action souhaitée (achat, inscription,
+                                        demande de devis).</li>
+                                    <li>Pages par session : Un nombre élevé indique que les visiteurs sont intéressés
+                                        par votre contenu.</li>
+                                    <li>Durée moyenne des sessions : Un temps long indique que les visiteurs sont
+                                        engagés par votre site.</li>
+                                    <li>Taux de sortie : Identifiez les pages où les visiteurs quittent votre site et
+                                        optimisez-les</li>
+                                </ul>
+
+                            </div>
+
+                            <div class="content-bullet">
+                                <h3>Comment une PME peut-elle s’en inspirer ?</h3>
+                                <ul class="check-list">
+                                    <li>Utilisez Google PageSpeed Insights pour identifier les points faibles de votre
+                                        site en termes de performance.
+                                    </li>
+                                    <li>Optimisez vos images et votre code pour réduire le temps de chargement des
+                                        pages.</li>
+                                    <li>Testez votre site sur différents appareils pour vous assurer qu'il est
+                                        responsive et compatible avec tous les
+                                        navigateurs.</li>
+                                    <li>Mettez en place des outils de tracking pour suivre le comportement des visiteurs
+                                        et identifier les points
+                                        d'amélioration.</li>
+                                    <li>Utilisez des outils d'analyse de l'expérience utilisateur (comme Hotjar ou Crazy
+                                        Egg) pour comprendre comment
+                                        les visiteurs interagissent avec votre site web.</li>
+                                    <li>Simplifiez la navigation et l'architecture de votre site web pour faciliter
+                                        l'accès à l'information.</li>
+                                    <li>Optimisez vos formulaires pour faciliter la prise de contact et la conversion.
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="pad-y-small"><img class="w-full"
+                                    src="/assets/images/thumbnails/thumb-airbnb.webp" alt=""></div>
+                        </div>
+
+
+                        <!-- CHAPITER 2 -->
+                        <div class="col-span-8 pad-y-small">
+                            <h2>2. Centré sur le client : Ciblage, positionnement et expérience utilisateur</h2>
+                            <p>Un site web performant est avant tout un site qui répond aux besoins et aux attentes de
+                                vos clients. Il est donc essentiel de bien connaître votre cible, de définir un
+                                positionnement clair et d'offrir une expérience utilisateur irréprochable.</p>
+
+                            <div class="content-valeur">
+                                <h3>Ciblage et positionnement</h3>
+                                <ul class="list-disc">
+                                    <li>Définissez votre public cible : Identifiez les caractéristiques démographiques,
+                                        les centres d'intérêt et les
+                                        comportements de vos clients idéaux.</li>
+                                    <li>Analysez la concurrence : Identifiez les forces et les faiblesses de vos
+                                        concurrents et différenciez-vous.</li>
+                                    <li>Définissez votre positionnement : Déterminez le message que vous souhaitez
+                                        véhiculer et les valeurs que vous
+                                        souhaitez transmettre.</li>
+                                    <li>Créez des personas pour mieux visualiser vos clients idéaux et adapter votre
+                                        message à leurs besoins
+                                        spécifiques.</li>
+                                    <li>Utilisez les réseaux sociaux pour interagir avec votre audience et recueillir
+                                        des informations précieuses sur
+                                        leurs préférences.</li>
+                                    <li>Mettez en place un système de feedback client pour recueillir des avis et des
+                                        suggestions d'amélioration.</li>
+                                    <li>Réalisez des enquêtes et des interviews auprès de vos clients pour recueillir
+                                        leurs feedback et leurs attentes.
+                                    </li>
+                                    <li>Analysez les données de votre CRM et de vos outils d'analyse pour mieux
+                                        comprendre votre audience.</li>
+                                </ul>
+
+                            </div>
+
+                            <div class="content-bullet">
+                                <h3>Comment une PME peut s'en inspirer</h3>
+                                <ul class="check-list">
+                                    <li>Utilisez des outils gratuits comme Google Analytics et Google Search Console
+                                        pour mieux connaître votre audience.
+                                    </li>
+                                    <li>Participez à des événements locaux et à des salons professionnels pour
+                                        rencontrer vos clients et prospects en
+                                        personne.</li>
+                                    <li>Créez une communauté en ligne sur les réseaux sociaux pour fidéliser votre
+                                        audience et recueillir des feedback.</li>
+                                    <li>Mettez en place un système de newsletter pour communiquer régulièrement avec vos
+                                        clients et leur proposer des offres
+                                        personnalisées.</li>
+                                    <li>Utilisez le marketing automation pour personnaliser votre communication et
+                                        automatiser vos tâches marketing.</li>
+                                    <li>Proposez un service client de qualité pour fidéliser vos clients et les inciter
+                                        à recommander votre entreprise.</li>
+                                    <li>Mettez en place un programme de fidélité pour récompenser vos clients les plus
+                                        fidèles.</li>
+
+                                </ul>
+                            </div>
+
+                            <div class="pad-y-small"><img class="w-full"
+                                    src="/assets/images/thumbnails/thumb-airbnb.webp" alt=""></div>
+                        </div>
+
+
+                        <!-- CHAPITER 3 -->
+                        <div class="col-span-8 pad-y-small">
+                            <h2>3. Résultats et ROI : Comment la refonte booste votre croissance</h2>
+                            <p>Une refonte de site web est un investissement qui doit générer un retour sur
+                                investissement mesurable. Il est donc important de définir des objectifs clairs et de
+                                suivre les résultats obtenus grâce à des indicateurs clés de performance.</p>
+
+                            <div class="content-valeur">
+                                <h3>Suivi des résultats et ROI</h3>
+                                <ul class="list-disc">
+                                    <li>Taux de conversion : Mesurez le pourcentage de visiteurs qui réalisent une
+                                        action souhaitée (achat, inscription,
+                                        demande de devis). Le taux de conversion se calcule en divisant le nombre de
+                                        conversions par le nombre total de
+                                        visiteurs, puis en multipliant par 100.</li>
+                                    <li>Chiffre d'affaires : Suivez l'évolution de votre chiffre d'affaires après la
+                                        refonte de votre site web.</li>
+                                    <li>Coût par acquisition : Calculez le coût d'acquisition d'un nouveau client grâce
+                                        à votre site web.</li>
+                                    <li>Valeur vie client : Estimez le revenu total que vous pouvez espérer générer
+                                        grâce à un client tout au long de sa
+                                        relation avec votre entreprise.</li>
+                                    <li>Retour sur investissement (ROI) : Calculez le ratio entre le coût de votre
+                                        refonte et les revenus générés grâce
+                                        à votre site web.</li>
+                                    <li>Taux de satisfaction client : Mesurez le niveau de satisfaction de vos clients
+                                        grâce à des enquêtes et des
+                                        sondages.</li>
+                                    <li>Notoriété de la marque : Suivez l'évolution de votre notoriété grâce à des
+                                        outils de veille et d'analyse des
+                                        réseaux sociaux.</li>
+                                </ul>
+
+                            </div>
+
+                            <div class="content-bullet">
+                                <h3>Comment une PME peut s'en inspirer</h3>
+                                <ul class="check-list">
+                                    <li>Mettez en place des outils de tracking pour suivre le comportement des visiteurs et mesurer les résultats de
+                                        votre refonte.</li>
+                                    <li>Analysez les données collectées pour identifier les points forts et les points faibles de votre stratégie.
+                                    </li>
+                                    <li>Ajustez votre stratégie en fonction des résultats obtenus et des retours de vos clients.</li>
+                                    <li>Utilisez des outils de reporting pour visualiser vos données et suivre l'évolution de vos indicateurs clés
+                                        de performance.</li>
+                                    <li>Communiquez régulièrement sur les résultats de votre refonte auprès de vos équipes et de vos partenaires.
+                                    </li>
+                                    <li>Célébrez vos succès et tirez les leçons de vos échecs pour améliorer.</li>
+                            
+                                </ul>
+                            </div>
+
+                            <div class="pad-y-small"><img class="w-full"
+                                    src="/assets/images/thumbnails/thumb-airbnb.webp" alt=""></div>
+                        </div>
+
+
+                        <!-- CONCLUSION -->
+                        <div class="col-span-8 pad-y-small">
+                            <h2>Conclusion : Ce que votre entreprise peut mettre en place dès maintenant</h2>
+                            <p></p>
+
+                            <div class="content-valeur">
+                                <h3>3 actions immédiates pour votre business</h3>
+                                <ul class="list-disc">
+                                    <li>Mettez en place des outils de tracking pour suivre le comportement des visiteurs
+                                        et mesurer les résultats de votre refonte. Des outils comme Google Analytics,
+                                        Hotjar ou Smartlook vous permettront d'analyser le parcours utilisateur, les
+                                        zones de clic et les interactions sur votre site.</li>
+                                    <li>Analysez les données collectées pour identifier les points forts et les points
+                                        faibles de votre stratégie. Examinez des métriques telles que le taux de rebond,
+                                        le temps passé sur le site, les pages les plus visitées et le taux de
+                                        conversion.</li>
+                                    <li>Ajustez votre stratégie en fonction des résultats obtenus et des retours de vos
+                                        clients. Utilisez les informations recueillies pour optimiser l'expérience
+                                        utilisateur, améliorer le contenu et affiner votre stratégie marketing.</li>
+                                    <li>Utilisez des outils de reporting pour visualiser vos données et suivre
+                                        l'évolution de vos indicateurs clés de performance. Des outils comme Google Data
+                                        Studio ou Tableau peuvent vous aider à créer des tableaux de bord intuitifs.
+                                    </li>
+                                    <li>Communiquez régulièrement sur les résultats de votre refonte auprès de vos
+                                        équipes et de vos partenaires. Partagez les succès et les points d'amélioration
+                                        pour maintenir l'engagement et la motivation de tous les acteurs impliqués.
+                                    </li>
+                                    <li>Célébrez vos succès et tirez les leçons de vos échecs pour améliorer
+                                        continuellement votre site web et votre stratégie digitale. Utilisez ces
+                                        enseignements pour planifier les futures optimisations et rester compétitif dans
+                                        votre secteur.</li>
+                                </ul>
+
+                                <p class="text-large mt-6">Besoin d’un coup de main pour optimiser votre site et booster
+                                    votre croissance web ? PropulSite vous
+                                    accompagne dans la mise en place d’une stratégie efficace. Contactez-nous dès
+                                    aujourd’hui !</p>
+
+                            </div>
+
+                        </div>
+
+
+
+
+                    </div>
+            </section>
+        </article>
+
+        <section id="sectionHeroRealisation" class="pad-y-large">
+            <div class="absoluteIcon2">
+                <img src="/assets/svg/NomIcone=outStr_Arrow.svg" alt="Image absolute" class="w-full">
+            </div>
+            <div class="containerMax mx-auto px-5">
+                <div class="grid-tailwind py-20">
+                    <div class="col-span-full flex flex-col">
+
+                        <h1>Titre de l'article</h1>
+                        <p class="text-large">Résumé de l'article + hook</p>
+                    </div>
+                </div>
+
+        </section>
+
+    </main>
+    <div w3-include-html="/components/footer.html"></div>
+
+    <script>
+        function includeHTML() {
+            let elements = document.querySelectorAll("[w3-include-html]");
+            elements.forEach(el => {
+                let file = el.getAttribute("w3-include-html");
+                fetch(file)
+                    .then(response => response.text())
+                    .then(data => el.innerHTML = data);
+            });
+        }
+        includeHTML();
+    </script>
+
+
+</body>
+
+</html>

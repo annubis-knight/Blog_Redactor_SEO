@@ -1,0 +1,18 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900;
+  }
+  h1 {
+    @apply text-4xl font-bold text-primary;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply bg-primary text-white px-4 py-2 rounded-lg shadow-md hover:bg-primary-dark;
+  }
+}

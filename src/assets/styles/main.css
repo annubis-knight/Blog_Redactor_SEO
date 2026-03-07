@@ -1,0 +1,19 @@
+/* Blog Redactor SEO — Main styles */
+@import './variables.css';
+@import './editor.css';
+@import '../base.css';
+
+body {
+  font-family: var(--font-sans);
+  color: var(--color-text);
+  background: var(--color-background);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}

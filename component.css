@@ -1,0 +1,119 @@
+@import './variables.css';
+
+
+div.buttonPrimary {
+    border: 1px solid var(--border-primary);
+    background-color: var(--background-accent);
+    font-size: 1rem;
+    color: var(--text-primary);
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    min-width: 200px;
+    max-width: 250px;
+    padding: .75rem 1.5rem;
+    text-decoration: none;
+    box-shadow: -2px 2px 0 0 var(--shadow-primary);
+    transition: all .4s cubic-bezier(.175, .885, .32, 1.275);
+    overflow: clip;
+}
+
+div.buttonPrimary:hover{
+    box-shadow: -4px 4px 0 0 var(--shadow-primary);
+    transform: translate(4px, -4px);
+}
+  
+
+
+/* ############################## */
+/* ### NAV BAR ### */
+/* ############################## */
+
+.navbar li{
+    height: 40px;
+    overflow: hidden;
+}
+
+.navlinkItem{
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+}
+
+.navlinkItem:hover{
+    transform: translate(0, -50%);
+}
+
+a.navlink{
+    display: block;
+}
+
+div.navlinkItem a:nth-child(2){
+    color: var(--yellow);
+    text-decoration: none;
+}
+
+
+
+/*Hamburger Menu*/
+.hamburger .line {
+    width: 24px;
+    height: 2px;
+    background-color: black;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#menuToggle:checked + .hamburger .line:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+#menuToggle:checked + .hamburger .line:nth-child(2) {
+    opacity: 0;
+}
+#menuToggle:checked + .hamburger .line:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+#menuToggle:checked ~ .navMobile{
+    height: auto;
+}
+
+.navMobile{
+    left: 0;
+    right: 0;
+    top: 0;
+    background: white;
+    position: absolute;
+    margin-top: 70px;
+    overflow: hidden;
+    height: 0px;
+    interpolate-size: allow-keywords;
+    transition: all .5s ease;
+    border-bottom: 1px solid #fbbb21;
+    z-index: -1;
+}
+
+.navMobile div{
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    justify-content: center;
+    align-items: center;
+    margin: 32px auto;
+    padding: 16px;
+}
+
+
+/* ############################## */
+/* ### FOOTER ### */
+/* ############################## */
+
+
+footer{
+    background: var(--yellow);
+}
+
+footer .logo{
+    display: inline-block;
+    filter: brightness(0);
+    max-width: 300px;
+
+}

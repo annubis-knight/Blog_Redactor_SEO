@@ -1,0 +1,23 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.grid-tailwind {
+    @apply grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-8;
+    margin: auto;
+  }
+
+body, main{
+  position: relative;
+  z-index:-20;
+}
+
+main{
+  /* overflow: hidden; */
+}
+
+.containerMax {
+  @apply mx-4 md:mx-8 lg:mx-auto lg:w-[90%];
+  max-width: 1300px;
+  height: 100%;
+}

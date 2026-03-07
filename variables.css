@@ -1,0 +1,37 @@
+:root {
+    /* Couleurs primitives */
+    --white: #FFFFFF;
+    --black: #000000;
+    --yellow: #FBBB21;
+    --yellow-light: #FDE09B;
+    --yellow-medium: #FCCD5F;
+    --yellow-white: #FEF9EB;
+    --dark: #1E2122;
+    --dark-alternative: #011A22;
+    --grey: #f8f8f8;
+    --grey-dark : #6e7481;
+  
+    /* Couleurs sémantiques */
+    --background-primary: var(--white);
+    --background-secondary: var(--yellow-medium);
+    --background-accent: var(--yellow);
+  
+    --text-primary: var(--dark);
+    --text-secondary: var(--white);
+    --text-alternate-primary: var(--dark-alternative);
+    --text-alternate-secondary: var(--yellow-white);
+    --text-tertiary: var(--yellow);
+  
+    --border-primary: var(--yellow);
+    --border-secondary: var(--dark);
+    --border-alternate-primary: var(--dark-alternative);
+    --border-alternate-secondary: var(--yellow-white);
+    --border-tertiary: var(--white);
+  
+    --link-primary: var(--yellow);
+    --link-secondary: var(--black);
+    --link-alternate: var(--yellow-light);
+
+    --shadow-primary: var(--black);
+  }
+  

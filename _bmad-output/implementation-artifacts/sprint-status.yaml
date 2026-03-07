@@ -1,0 +1,95 @@
+# generated: 2026-03-06
+# project: BMAD
+# project_key: NOKEY
+# tracking_system: file-system
+# story_location: _bmad-output/implementation-artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic not yet started
+#   - in-progress: Epic actively being worked on
+#   - done: All stories in epic completed
+#
+# Epic Status Transitions:
+#   - backlog → in-progress: Automatically when first story is created (via create-story)
+#   - in-progress → done: Manually when all stories reach 'done' status
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - ready-for-dev: Story file created in stories folder
+#   - in-progress: Developer actively working on implementation
+#   - review: Ready for code review (via Dev's code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - done: Retrospective has been completed
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epic transitions to 'in-progress' automatically when first story is created
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically creates next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+
+generated: 2026-03-06
+project: BMAD
+project_key: NOKEY
+tracking_system: file-system
+story_location: _bmad-output/implementation-artifacts
+
+development_status:
+  # Epic 1: Fondation du Projet & Dashboard Editorial
+  epic-1: done
+  1-1-initialisation-du-projet-et-structure-monorepo: done
+  1-2-types-partages-schemas-et-chargement-des-donnees-json: done
+  1-3-dashboard-des-cocons-semantiques: done
+  1-4-vue-detaillee-dun-cocon-articles-et-mots-cles: done
+  epic-1-retrospective: optional
+
+  # Epic 2: Brief SEO & Generation de Sommaire
+  epic-2: done
+  2-1-integration-dataforseo-avec-cache: done
+  2-2-affichage-du-brief-seo-enrichi: done
+  2-3-generation-automatique-du-sommaire: done
+  2-4-edition-et-validation-du-sommaire: done
+  epic-2-retrospective: optional
+
+  # Epic 3: Generation d'Article & Editeur Riche
+  epic-3: done
+  3-1-service-claude-api-avec-streaming-sse: done
+  3-2-generation-automatique-de-larticle-complet: done
+  3-3-editeur-tiptap-avec-template-propulsite-et-extensions-custom: done
+  3-4-sauvegarde-automatique-et-gestion-des-brouillons: done
+  epic-3-retrospective: optional
+
+  # Epic 4: Actions Contextuelles de Raffinement
+  epic-4: in-progress
+  4-1-infrastructure-du-bubble-menu-et-endpoint-dactions: done
+  4-2-actions-de-reecriture-reformuler-simplifier-convertir-en-liste: done
+  4-3-actions-denrichissement-seo-geo-exemple-pme-mot-cle-statistique-answer-capsule: done
+  4-4-actions-structurelles-question-et-lien-interne: backlog
+  epic-4-retrospective: optional
+
+  # Epic 5: Optimisation SEO & GEO en Temps Reel
+  epic-5: backlog
+  5-1-moteur-de-scoring-seo-et-panel-principal: backlog
+  5-2-checklist-seo-et-nlp-terms-dataforseo: backlog
+  5-3-moteur-de-scoring-geo-et-panel-principal: backlog
+  5-4-alertes-geo-paragraphes-longs-et-detection-de-jargon: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Maillage Interne & Sante des Cocons
+  epic-6: backlog
+  6-1-service-backend-de-maillage-et-persistance: backlog
+  6-2-detection-dancres-et-suggestion-de-liens-internes: backlog
+  6-3-matrice-de-maillage-globale-et-detection-dorphelins: backlog
+  6-4-diversite-dancres-et-liens-cross-cocon: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Export HTML & Publication
+  epic-7: backlog
+  7-1-export-html-conforme-au-template-propulsite: backlog
+  7-2-schema-markup-json-ld-et-mise-a-jour-du-statut: backlog
+  epic-7-retrospective: optional

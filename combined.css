@@ -1,0 +1,273 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+.grid-tailwind {
+    @apply grid grid-cols-4 md:grid-cols-8 lg:grid-cols-12 gap-8;
+    margin: auto;
+  }
+
+body, main{
+  position: relative;
+  z-index:-20;
+}
+
+main{
+  /* overflow: hidden; */
+}
+
+.containerMax {
+  @apply mx-4 md:mx-8 lg:mx-auto lg:w-[90%];
+  max-width: 1300px;
+  height: 100%;
+}:root {
+    /* Couleurs primitives */
+    --white: #FFFFFF;
+    --black: #000000;
+    --yellow: #FBBB21;
+    --yellow-light: #FDE09B;
+    --yellow-medium: #FCCD5F;
+    --yellow-white: #FEF9EB;
+    --dark: #1E2122;
+    --dark-alternative: #011A22;
+    --grey: #f8f8f8;
+    --grey-dark : #6e7481;
+  
+    /* Couleurs sémantiques */
+    --background-primary: var(--white);
+    --background-secondary: var(--yellow-medium);
+    --background-accent: var(--yellow);
+  
+    --text-primary: var(--dark);
+    --text-secondary: var(--white);
+    --text-alternate-primary: var(--dark-alternative);
+    --text-alternate-secondary: var(--yellow-white);
+    --text-tertiary: var(--yellow);
+  
+    --border-primary: var(--yellow);
+    --border-secondary: var(--dark);
+    --border-alternate-primary: var(--dark-alternative);
+    --border-alternate-secondary: var(--yellow-white);
+    --border-tertiary: var(--white);
+  
+    --link-primary: var(--yellow);
+    --link-secondary: var(--black);
+    --link-alternate: var(--yellow-light);
+
+    --shadow-primary: var(--black);
+  }
+  @layer base {
+    /* Définition des styles typographiques globaux */
+    
+    /* Utilisation des polices définies dans tailwind.config.js */
+    body {
+        font-family: var(--text-font, 'Outfit', sans-serif);
+        font-size: 1.25rem;
+        font-weight: 300;
+        line-height: 1.6;
+        color: var(--dark);
+    }
+
+    body h1, body h2, body h3 {
+        font-family: var(--header-font, 'Playfair Display', serif);
+    }
+
+    body h1 {
+        @apply text-[2.75rem] md:text-6xl font-bold;
+        line-height: 1.2;
+        margin-bottom: 1.5rem;
+    }
+
+    body h2 {
+        @apply text-3xl md:text-5xl font-bold;
+        line-height: 1.2;
+        margin-bottom: 1.5rem;
+    }
+
+    body h3 {
+        @apply text-2xl md:text-4xl font-semibold;
+        line-height: 1.2;
+        margin-bottom: 1.5rem;
+    }
+
+    body h4 {
+        @apply text-xl md:text-2xl;
+        font-weight: 300;
+        margin-bottom: .25rem;
+    }
+
+    body p {
+        @apply text-lg;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+    }
+
+    body li {
+        @apply text-base;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+    }
+
+    body p.text-small{
+        @apply text-base;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+        /* line-height: 1.6; */
+    }
+
+    body p.text-large{
+        @apply text-xl;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+        /* line-height: 1.6; */
+    }
+
+    body a {
+        font-size: 1.25rem;
+        font-weight: 300;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    footer p {
+        @apply text-base;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+    }
+
+    footer a {
+        font-size: 14px;
+        font-weight: 300;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    /* Permet de modifier facilement les polices */
+    :root {
+        --header-font: 'Playfair Display', serif;
+        --text-font: 'Outfit', sans-serif;
+    }
+}
+@import './variables.css';
+
+
+div.buttonPrimary {
+    border: 1px solid var(--border-primary);
+    background-color: var(--background-accent);
+    font-size: 1rem;
+    color: var(--text-primary);
+    text-align: center;
+    cursor: pointer;
+    border-radius: 8px;
+    min-width: 200px;
+    max-width: 250px;
+    padding: .75rem 1.5rem;
+    text-decoration: none;
+    box-shadow: -2px 2px 0 0 var(--shadow-primary);
+    transition: all .4s cubic-bezier(.175, .885, .32, 1.275);
+    overflow: clip;
+}
+
+div.buttonPrimary:hover{
+    box-shadow: -4px 4px 0 0 var(--shadow-primary);
+    transform: translate(4px, -4px);
+}
+  
+
+
+/* ############################## */
+/* ### NAV BAR ### */
+/* ############################## */
+
+.navbar li{
+    height: 40px;
+    overflow: hidden;
+}
+
+.navlinkItem{
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    text-decoration: none;
+}
+
+.navlinkItem:hover{
+    transform: translate(0, -50%);
+}
+
+a.navlink{
+    display: block;
+}
+
+div.navlinkItem a:nth-child(2){
+    color: var(--yellow);
+    text-decoration: none;
+}
+
+
+
+/*Hamburger Menu*/
+.hamburger .line {
+    width: 24px;
+    height: 2px;
+    background-color: black;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+}
+
+#menuToggle:checked + .hamburger .line:nth-child(1) {
+    transform: translateY(8px) rotate(45deg);
+}
+#menuToggle:checked + .hamburger .line:nth-child(2) {
+    opacity: 0;
+}
+#menuToggle:checked + .hamburger .line:nth-child(3) {
+    transform: translateY(-8px) rotate(-45deg);
+}
+
+#menuToggle:checked ~ .navMobile{
+    height: auto;
+}
+
+.navMobile{
+    left: 0;
+    right: 0;
+    top: 0;
+    background: white;
+    position: absolute;
+    margin-top: 70px;
+    overflow: hidden;
+    height: 0px;
+    interpolate-size: allow-keywords;
+    transition: all .5s ease;
+    border-bottom: 1px solid #fbbb21;
+    z-index: -1;
+}
+
+.navMobile div{
+    display: flex;
+    flex-direction: column;
+    gap: 32px;
+    justify-content: center;
+    align-items: center;
+    margin: 32px auto;
+    padding: 16px;
+}
+
+
+/* ############################## */
+/* ### FOOTER ### */
+/* ############################## */
+
+
+footer{
+    background: var(--yellow);
+}
+
+footer .logo{
+    display: inline-block;
+    filter: brightness(0);
+    max-width: 300px;
+
+}

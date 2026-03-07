@@ -1,0 +1,107 @@
+@layer base {
+    /* Définition des styles typographiques globaux */
+    
+    /* Utilisation des polices définies dans tailwind.config.js */
+    body {
+        font-family: var(--text-font, 'Outfit', sans-serif);
+        font-size: 1.25rem;
+        font-weight: 300;
+        line-height: 1.6;
+        color: var(--dark);
+    }
+
+    body h1, body h2, body h3 {
+        font-family: var(--header-font, 'Playfair Display', serif);
+    }
+
+    body h1 {
+        @apply text-[2.75rem] md:text-6xl font-bold;
+        line-height: 1.2;
+        margin-bottom: 1.5rem;
+    }
+
+    body h2 {
+        @apply text-3xl md:text-5xl font-bold;
+        line-height: 1.2;
+        margin-bottom: 1.5rem;
+    }
+
+    body h3 {
+        @apply text-2xl md:text-4xl font-semibold;
+        line-height: 1.2;
+        margin-bottom: 1.5rem;
+    }
+
+    body h4 {
+        @apply text-xl md:text-2xl;
+        font-weight: 300;
+        margin-bottom: .25rem;
+    }
+
+    body p {
+        @apply text-lg;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+    }
+
+    body li {
+        @apply text-base;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+    }
+
+    body p.text-small{
+        @apply text-base;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+        /* line-height: 1.6; */
+    }
+
+    body p.text-large{
+        @apply text-xl;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+        /* line-height: 1.6; */
+    }
+
+    body a {
+        font-size: 1.25rem;
+        font-weight: 300;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    a:hover {
+        text-decoration: underline;
+    }
+
+    quote{
+        border-radius: 36px;
+        margin: 24px 0px;
+        padding: 24px;
+        display: block;
+        background-color: var(--yellow-white);
+        line-height: 1.3rem;
+        font-size: 1rem;
+        font-weight: 300;
+    }
+
+    footer p {
+        @apply text-base;
+        /* font-size: 1.5rem; */
+        font-weight: 300;
+    }
+
+    footer a {
+        font-size: 14px;
+        font-weight: 300;
+        text-decoration: none;
+        cursor: pointer;
+    }
+
+    /* Permet de modifier facilement les polices */
+    :root {
+        --header-font: 'Playfair Display', serif;
+        --text-font: 'Outfit', sans-serif;
+    }
+}

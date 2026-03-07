@@ -1,0 +1,364 @@
+{
+  "cocons_semantiques": [
+    {
+      "nom": "Refonte de site web pour PME",
+      "articles": [
+        {
+          "titre": "Pourquoi la refonte de votre site web est essentielle à la croissance de votre PME",
+          "type": "Pilier",
+          "slug": "https://blog.propulsitetoulouse.website/pages/pourquoi-la-refonte-de-votre-site-web-est-essentielle-a-la-croissance-de-votre-pme",
+          "theme": null
+        },
+        {
+          "titre": "Les 7 signes que votre site freine la croissance de votre PME",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-7-signes-que-votre-site-freine-la-croissance-de-votre-pme",
+          "theme": "Audit site web"
+        },
+        {
+          "titre": "Checklist technique pour une refonte de site réussie",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/checklist-technique-pour-une-refonte-de-site-reussie",
+          "theme": "Audit site web"
+        },
+        {
+          "titre": "Refonte ou simple mise à jour : comment choisir pour votre PME ?",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/refonte-ou-simple-mise-a-jour-comment-choisir-pour-votre-pme",
+          "theme": "Audit site web"
+        },
+        {
+          "titre": "Comment préparer la refonte de votre site sans perturber votre activité",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-preparer-la-refonte-de-votre-site-sans-perturber-votre-activite",
+          "theme": "Planification refonte"
+        },
+        {
+          "titre": "Budgetiser la refonte de son site : les postes à ne pas négliger",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/budgetiser-la-refonte-de-son-site-les-postes-a-ne-pas-negliger",
+          "theme": "Planification refonte"
+        },
+        {
+          "titre": "Comment impliquer vos équipes dans la refonte du site",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-impliquer-vos-equipes-dans-la-refonte-du-site",
+          "theme": "Planification refonte"
+        },
+        {
+          "titre": "Refonte de site : erreurs courantes des PME et comment les éviter",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/refonte-de-site-erreurs-courantes-des-pme-et-comment-les-eviter",
+          "theme": "Risques refonte"
+        },
+        {
+          "titre": "Les impacts SEO d’une refonte de site web",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-impacts-seo-dune-refonte-de-site-web",
+          "theme": "Risques refonte"
+        }
+      ]
+    },
+    {
+      "nom": "Croissance digitale Toulouse",
+      "articles": [
+        {
+          "titre": "Booster la croissance digitale de votre PME à Toulouse : les leviers clés",
+          "type": "Pilier",
+          "slug": "https://blog.propulsitetoulouse.website/pages/booster-la-croissance-digitale-de-votre-pme-a-toulouse-les-leviers-cles",
+          "theme": null
+        },
+        {
+          "titre": "Panorama des outils digitaux pour PME toulousaines",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/panorama-des-outils-digitaux-pour-pme-toulousaines",
+          "theme": "Outils digitaux"
+        },
+        {
+          "titre": "Témoignages de PME toulousaines en pleine croissance digitale",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/temoignages-de-pme-toulousaines-en-pleine-croissance-digitale",
+          "theme": "Outils digitaux"
+        },
+        {
+          "titre": "Optimiser son budget digital quand on est une PME locale",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-son-budget-digital-quand-on-est-une-pme-locale",
+          "theme": "Outils digitaux"
+        },
+        {
+          "titre": "Stratégies gagnantes pour la croissance digitale locale",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/strategies-gagnantes-pour-la-croissance-digitale-locale",
+          "theme": "Stratégie digitale"
+        },
+        {
+          "titre": "Les erreurs à éviter pour digitaliser sa PME à Toulouse",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-erreurs-a-eviter-pour-digitaliser-sa-pme-a-toulouse",
+          "theme": "Stratégie digitale"
+        },
+        {
+          "titre": "Travailler avec une agence digitale à Toulouse : mode d’emploi",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/travailler-avec-une-agence-digitale-a-toulouse-mode-demploi",
+          "theme": "Stratégie digitale"
+        },
+        {
+          "titre": "Comment mesurer la croissance digitale de votre entreprise",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-mesurer-la-croissance-digitale-de-votre-entreprise",
+          "theme": "Pilotage digital"
+        },
+        {
+          "titre": "Les spécificités du marché digital toulousain pour les PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-specificites-du-marche-digital-toulousain-pour-les-pme",
+          "theme": "Pilotage digital"
+        }
+      ]
+    },
+    {
+      "nom": "Copywriting de croissance & Rédaction web",
+      "articles": [
+        {
+          "titre": "Le copywriting de croissance : comment transformer votre site en machine à clients",
+          "type": "Pilier",
+          "slug": "https://blog.propulsitetoulouse.website/pages/le-copywriting-de-croissance-comment-transformer-votre-site-en-machine-a-clients",
+          "theme": null
+        },
+        {
+          "titre": "Comprendre l’état de conscience de vos prospects selon Eugene Schwartz",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comprendre-letat-de-conscience-de-vos-prospects-selon-eugene-schwartz",
+          "theme": "Psychologie client"
+        },
+        {
+          "titre": "Exemples de titres percutants pour PME toulousaines",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/exemples-de-titres-percutants-pour-pme-toulousaines",
+          "theme": "Psychologie client"
+        },
+        {
+          "titre": "Structurer une page de vente efficace pour une PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/structurer-une-page-de-vente-efficace-pour-une-pme",
+          "theme": "Psychologie client"
+        },
+        {
+          "titre": "Optimiser vos pages web pour convertir plus de visiteurs",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-vos-pages-web-pour-convertir-plus-de-visiteurs",
+          "theme": "Conversion web"
+        },
+        {
+          "titre": "Rédiger pour le SEO sans sacrifier l’expérience utilisateur",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/rediger-pour-le-seo-sans-sacrifier-lexperience-utilisateur",
+          "theme": "Conversion web"
+        },
+        {
+          "titre": "Utiliser l’IA pour booster votre rédaction web",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/utiliser-lia-pour-booster-votre-redaction-web",
+          "theme": "Conversion web"
+        },
+        {
+          "titre": "Comment adapter votre ton de communication à votre marché cible",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-adapter-votre-ton-de-communication-a-votre-marche-cible",
+          "theme": "Positionnement éditorial"
+        },
+        {
+          "titre": "Les erreurs fréquentes en copywriting pour PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-erreurs-frequentes-en-copywriting-pour-pme",
+          "theme": "Positionnement éditorial"
+        }
+      ]
+    },
+    {
+      "nom": "Visibilité web locale à Toulouse",
+      "articles": [
+        {
+          "titre": "Augmenter la visibilité web de votre PME à Toulouse : les bonnes pratiques",
+          "type": "Pilier",
+          "slug": "https://blog.propulsitetoulouse.website/pages/augmenter-la-visibilite-web-de-votre-pme-a-toulouse-les-bonnes-pratiques",
+          "theme": null
+        },
+        {
+          "titre": "Référencement local : comment apparaître en tête sur Google à Toulouse",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/referencement-local-comment-apparaitre-en-tete-sur-google-a-toulouse",
+          "theme": "SEO local"
+        },
+        {
+          "titre": "Les annuaires locaux utiles pour les PME toulousaines",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-annuaires-locaux-utiles-pour-les-pme-toulousaines",
+          "theme": "SEO local"
+        },
+        {
+          "titre": "Analyse de la concurrence locale sur le web",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/analyse-de-la-concurrence-locale-sur-le-web",
+          "theme": "SEO local"
+        },
+        {
+          "titre": "Optimiser votre fiche Google Business Profile pour attirer des clients locaux",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-votre-fiche-google-business-profile-pour-attirer-des-clients-locaux",
+          "theme": "Google Business"
+        },
+        {
+          "titre": "Le rôle des avis clients dans la visibilité locale",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/le-role-des-avis-clients-dans-la-visibilite-locale",
+          "theme": "Avis clients"
+        },
+        {
+          "titre": "Créer des partenariats locaux pour booster votre présence en ligne",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/creer-des-partenariats-locaux-pour-booster-votre-presence-en-ligne",
+          "theme": "Avis clients"
+        },
+        {
+          "titre": "Gérer sa e-réputation à l’échelle locale",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/gerer-sa-e-reputation-a-lechelle-locale",
+          "theme": "Avis clients"
+        },
+        {
+          "titre": "Organiser des événements pour gagner en visibilité locale",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/organiser-des-evenements-pour-gagner-en-visibilite-locale",
+          "theme": "Avis clients"
+        }
+      ]
+    },
+    {
+      "nom": "Design web et expérience utilisateur adapté au PME",
+      "articles": [
+        {
+          "titre": "Créer un design web efficace pour les PME : l’expérience utilisateur au service de la croissance",
+          "type": "Pilier",
+          "slug": "https://blog.propulsitetoulouse.website/pages/creer-un-design-web-efficace-pour-les-pme-lexperience-utilisateur-au-service-de-la-croissance",
+          "theme": null
+        },
+        {
+          "titre": "Les fondamentaux du design web pour PME",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-fondamentaux-du-design-web-pour-pme",
+          "theme": "UI design"
+        },
+        {
+          "titre": "Charte graphique : pourquoi et comment la définir pour une PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/charte-graphique-pourquoi-et-comment-la-definir-pour-une-pme",
+          "theme": "UI design"
+        },
+        {
+          "titre": "Les meilleurs call-to-action pour sites PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-meilleurs-call-to-action-pour-sites-pme",
+          "theme": "UI design"
+        },
+        {
+          "titre": "Comment améliorer l’expérience utilisateur sur un site PME",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-ameliorer-lexperience-utilisateur-sur-un-site-pme",
+          "theme": "UX design"
+        },
+        {
+          "titre": "Optimiser la navigation pour convertir plus de visiteurs",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-la-navigation-pour-convertir-plus-de-visiteurs",
+          "theme": "UX design"
+        },
+        {
+          "titre": "Accessibilité web : les bases pour PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/accessibilite-web-les-bases-pour-pme",
+          "theme": "UX design"
+        },
+        {
+          "titre": "Responsive design : un impératif pour les PME en 2025",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/responsive-design-un-imperatif-pour-les-pme-en-2025",
+          "theme": "Responsive design"
+        },
+        {
+          "titre": "Exemples de sites PME au design réussi",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/exemples-de-sites-pme-au-design-reussi",
+          "theme": "Responsive design"
+        }
+      ]
+    },
+    {
+      "nom": "Création de site web sur mesure",
+      "articles": [
+        {
+          "titre": "Pourquoi choisir un site web sur mesure pour votre PME ?",
+          "type": "Pilier",
+          "slug": "https://blog.propulsitetoulouse.website/pages/pourquoi-choisir-un-site-web-sur-mesure-pour-votre-pme",
+          "theme": null
+        },
+        {
+          "titre": "Les étapes clés d’un projet web sur mesure",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-etapes-cles-dun-projet-web-sur-mesure",
+          "theme": "Gestion de projet"
+        },
+        {
+          "titre": "Bien choisir son prestataire pour un site sur mesure",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/bien-choisir-son-prestataire-pour-un-site-sur-mesure",
+          "theme": "Choix prestataire"
+        },
+        {
+          "titre": "Fonctionnalités essentielles d’un site PME sur mesure",
+          "type": "Intermédiaire",
+          "slug": "https://blog.propulsitetoulouse.website/pages/fonctionnalites-essentielles-dun-site-pme-sur-mesure",
+          "theme": "Fonctionnalités"
+        },
+        {
+          "titre": "Cahier des charges : comment bien cadrer son projet web",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/cahier-des-charges-comment-bien-cadrer-son-projet-web",
+          "theme": "Gestion de projet"
+        },
+        {
+          "titre": "Les erreurs à éviter lors de la création d’un site sur mesure",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/les-erreurs-a-eviter-lors-de-la-creation-dun-site-sur-mesure",
+          "theme": "Gestion de projet"
+        },
+        {
+          "titre": "Comment évaluer la qualité d’un développeur web",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-evaluer-la-qualite-dun-developpeur-web",
+          "theme": "Choix prestataire"
+        },
+        {
+          "titre": "Freelance, agence ou internalisation : quel modèle pour votre projet ?",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/freelance-agence-ou-internalisation-quel-modele-pour-votre-projet",
+          "theme": "Choix prestataire"
+        },
+        {
+          "titre": "Exemples de fonctionnalités sur mesure pour PME",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/exemples-de-fonctionnalites-sur-mesure-pour-pme",
+          "theme": "Fonctionnalités"
+        },
+        {
+          "titre": "Comment anticiper l’évolutivité de son site web sur mesure",
+          "type": "Spécialisé",
+          "slug": "https://blog.propulsitetoulouse.website/pages/comment-anticiper-levolutivite-de-son-site-web-sur-mesure",
+          "theme": "Fonctionnalités"
+        }
+      ]
+    }
+  ]
+}

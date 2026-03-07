@@ -1,0 +1,112 @@
+/* Blog Redactor SEO — TipTap Editor styles */
+
+/* ProseMirror base */
+.ProseMirror {
+  font-family: Georgia, 'Times New Roman', serif;
+  font-size: 1rem;
+  line-height: 1.8;
+  color: var(--color-text);
+  padding: 1.5rem 2rem;
+  min-height: 400px;
+}
+
+.ProseMirror:focus {
+  outline: none;
+}
+
+/* Placeholder */
+.ProseMirror p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-text-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+/* Headings */
+.ProseMirror h2 {
+  font-size: 1.375rem;
+  font-weight: 700;
+  margin: 1.5rem 0 0.75rem;
+  color: var(--color-text);
+}
+
+.ProseMirror h3 {
+  font-size: 1.125rem;
+  font-weight: 600;
+  margin: 1.25rem 0 0.5rem;
+  color: var(--color-text);
+}
+
+/* Paragraphs */
+.ProseMirror p {
+  margin: 0.5rem 0;
+}
+
+/* Lists */
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror li {
+  margin: 0.25rem 0;
+}
+
+/* Blockquote */
+.ProseMirror blockquote {
+  border-left: 3px solid var(--color-primary);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+/* Links */
+.ProseMirror a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+/* Custom Propulsite blocks — content-valeur */
+.content-valeur {
+  background: #eff6ff;
+  border-left: 4px solid var(--color-primary);
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+}
+
+/* Custom Propulsite blocks — content-reminder */
+.content-reminder {
+  background: #fef3c7;
+  border-left: 4px solid var(--color-warning);
+  border-radius: 0 8px 8px 0;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+}
+
+/* Custom Propulsite blocks — answer-capsule */
+.answer-capsule {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  margin: 0.75rem 0;
+  font-weight: 500;
+  font-size: 0.9375rem;
+}
+
+/* Custom Propulsite marks — internal-link */
+.internal-link {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}
+
+.internal-link:hover {
+  text-decoration-style: solid;
+}
