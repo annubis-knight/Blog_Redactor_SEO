@@ -65,11 +65,11 @@ development_status:
   epic-3-retrospective: optional
 
   # Epic 4: Actions Contextuelles de Raffinement
-  epic-4: in-progress
+  epic-4: done
   4-1-infrastructure-du-bubble-menu-et-endpoint-dactions: done
   4-2-actions-de-reecriture-reformuler-simplifier-convertir-en-liste: done
   4-3-actions-denrichissement-seo-geo-exemple-pme-mot-cle-statistique-answer-capsule: done
-  4-4-actions-structurelles-question-et-lien-interne: backlog
+  4-4-actions-structurelles-question-et-lien-interne: done
   epic-4-retrospective: optional
 
   # Epic 5: Optimisation SEO & GEO en Temps Reel

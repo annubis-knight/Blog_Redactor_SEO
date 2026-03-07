@@ -14,10 +14,13 @@ import EditorBubbleMenu from '@/components/editor/EditorBubbleMenu.vue'
 import SaveStatusIndicator from '@/components/editor/SaveStatusIndicator.vue'
 import ActionMenu from '@/components/actions/ActionMenu.vue'
 import ActionResult from '@/components/actions/ActionResult.vue'
-import type { ArticleContent, ActionType } from '@shared/types/index.js'
+import ArticlePicker from '@/components/actions/ArticlePicker.vue'
+import { useArticlesStore } from '@/stores/articles.store'
+import type { ArticleContent, ActionType, Article } from '@shared/types/index.js'
 
 const route = useRoute()
 const editorStore = useEditorStore()
+const articlesStore = useArticlesStore()
 
 const slug = route.params.slug as string
 const isLoading = ref(true)
@@ -34,9 +37,12 @@ const {
   isStreaming,
   streamedResult,
   actionError,
+  showArticlePicker,
   executeAction,
   acceptResult,
   rejectResult,
+  applyInternalLink,
+  cancelLink,
 } = useContextualActions()
 
 useEventListener(document, 'keydown', (e: KeyboardEvent) => {
@@ -90,8 +96,20 @@ async function handleSelectAction(actionType: ActionType) {
   const selectedText = editor.state.doc.textBetween(from, to, ' ')
   if (!selectedText) return
 
-  showActionResult.value = true
+  // internal-link shows article picker, not action result
+  if (actionType !== 'internal-link') {
+    showActionResult.value = true
+  }
+
   await executeAction(actionType, selectedText, { articleSlug: slug }, editor)
+}
+
+function handleSelectArticle(article: Article) {
+  applyInternalLink(article)
+}
+
+function handleCancelLink() {
+  cancelLink()
 }
 
 function handleAcceptResult() {
@@ -166,6 +184,15 @@ onMounted(() => {
           :is-streaming="isStreaming"
           @accept="handleAcceptResult"
           @reject="handleRejectResult"
+        />
+      </div>
+
+      <!-- Article Picker for internal-link action -->
+      <div v-if="showArticlePicker" class="action-overlay" @click.self="handleCancelLink">
+        <ArticlePicker
+          :articles="articlesStore.articles.filter(a => a.slug !== slug)"
+          @select-article="handleSelectArticle"
+          @cancel="handleCancelLink"
         />
       </div>
 

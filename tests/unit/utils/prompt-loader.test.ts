@@ -169,4 +169,23 @@ describe('prompt-loader — loadPrompt', () => {
       'utf-8',
     )
   })
+
+  it('loads actions/question-heading prompt with variables', async () => {
+    mockReadFile.mockResolvedValueOnce(
+      'Question : """{{selectedText}}"""\n{{keywordInstruction}}',
+    )
+
+    const result = await loadPrompt('actions/question-heading', {
+      selectedText: 'Les avantages du SEO local',
+      keywordInstruction: 'Mot-clé : SEO local',
+    })
+
+    expect(result).toBe(
+      'Question : """Les avantages du SEO local"""\nMot-clé : SEO local',
+    )
+    expect(mockReadFile).toHaveBeenCalledWith(
+      expect.stringContaining('question-heading.md'),
+      'utf-8',
+    )
+  })
 })

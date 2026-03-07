@@ -383,4 +383,26 @@ describe('POST /generate/action', () => {
     expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
     expect(res.end).toHaveBeenCalled()
   })
+
+  it('loads question-heading prompt and streams SSE for actionType question-heading', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Comment optimiser votre SEO local ?']))
+
+    const req = {
+      body: { actionType: 'question-heading', selectedText: 'Les avantages du SEO local', articleSlug: 'test-article', keyword: 'SEO local' },
+    } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith('system-propulsite')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('actions/question-heading', expect.objectContaining({
+      selectedText: 'Les avantages du SEO local',
+      keywordInstruction: expect.stringContaining('SEO local'),
+    }))
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+    }))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
+    expect(res.end).toHaveBeenCalled()
+  })
 })

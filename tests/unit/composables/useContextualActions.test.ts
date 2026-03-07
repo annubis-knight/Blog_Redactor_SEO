@@ -26,6 +26,7 @@ function createMockEditor() {
       focus: vi.fn(() => ({
         setTextSelection: vi.fn(() => ({
           insertContent: vi.fn(() => ({ run })),
+          setMark: vi.fn(() => ({ run })),
         })),
       })),
     })),
@@ -102,5 +103,29 @@ describe('useContextualActions', () => {
     await executeAction('simplify', 'text', { articleSlug: 'slug' }, editor as any)
 
     expect(actionError.value).toBe('API error occurred')
+  })
+
+  it('executeAction for internal-link shows article picker instead of SSE', async () => {
+    const { executeAction, showArticlePicker } = useContextualActions()
+    const editor = createMockEditor()
+
+    await executeAction('internal-link', 'selected text', { articleSlug: 'slug' }, editor as any)
+
+    expect(showArticlePicker.value).toBe(true)
+    expect(mockStartStream).not.toHaveBeenCalled()
+  })
+
+  it('applyInternalLink applies TipTap mark and closes picker', async () => {
+    const { executeAction, applyInternalLink, showArticlePicker } = useContextualActions()
+    const editor = createMockEditor()
+
+    await executeAction('internal-link', 'selected text', { articleSlug: 'slug' }, editor as any)
+    expect(showArticlePicker.value).toBe(true)
+
+    applyInternalLink({ title: 'Article Test', slug: 'article-test', type: 'Pilier', theme: null, status: 'brouillon' })
+
+    expect(editor.chain).toHaveBeenCalled()
+    expect(editor._run).toHaveBeenCalled()
+    expect(showArticlePicker.value).toBe(false)
   })
 })

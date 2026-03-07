@@ -1,7 +1,7 @@
 import { ref, getCurrentInstance, onUnmounted } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { useStreaming } from '@/composables/useStreaming'
-import type { ActionType, ActionContext } from '@shared/types/index.js'
+import type { ActionType, ActionContext, Article } from '@shared/types/index.js'
 
 export function useContextualActions() {
   const { isStreaming, startStream, abort } = useStreaming<{ content: string }>()
@@ -15,6 +15,10 @@ export function useContextualActions() {
   const streamedResult = ref('')
   const actionError = ref<string | null>(null)
   const currentAction = ref<ActionType | null>(null)
+
+  /** Internal-link: show article picker instead of SSE pipeline */
+  const showArticlePicker = ref(false)
+  let pendingLinkEditor: Editor | null = null
 
   /** Saved selection range — preserved so we can restore after streaming */
   let savedFrom = 0
@@ -31,10 +35,18 @@ export function useContextualActions() {
     savedFrom = from
     savedTo = to
 
+    currentAction.value = actionType
+
+    // Internal-link: bypass SSE pipeline, show article picker
+    if (actionType === 'internal-link') {
+      pendingLinkEditor = editor
+      showArticlePicker.value = true
+      return
+    }
+
     isExecuting.value = true
     streamedResult.value = ''
     actionError.value = null
-    currentAction.value = actionType
 
     await startStream('/api/generate/action', {
       actionType,
@@ -55,6 +67,25 @@ export function useContextualActions() {
     })
 
     isExecuting.value = false
+  }
+
+  /** Apply internal link mark on the saved selection */
+  function applyInternalLink(article: Article) {
+    if (!pendingLinkEditor) return
+    pendingLinkEditor
+      .chain()
+      .focus()
+      .setTextSelection({ from: savedFrom, to: savedTo })
+      .setMark('internalLink', { slug: article.slug, href: `/${article.slug}` })
+      .run()
+    cancelLink()
+  }
+
+  /** Close the article picker without applying a link */
+  function cancelLink() {
+    showArticlePicker.value = false
+    pendingLinkEditor = null
+    resetState()
   }
 
   /** Replace the original selection with the streamed result */
@@ -88,9 +119,12 @@ export function useContextualActions() {
     streamedResult,
     actionError,
     currentAction,
+    showArticlePicker,
     executeAction,
     acceptResult,
     rejectResult,
+    applyInternalLink,
+    cancelLink,
     abort,
   }
 }
