@@ -8,8 +8,9 @@ import type { Cocoon } from '../../../shared/types/index.js'
 const mockCocoon: Cocoon = {
   id: 0,
   name: 'Refonte de site web pour PME',
+  siloName: 'Création de site',
   articles: [
-    { title: 'Article 1', type: 'Pilier', slug: 'article-1', theme: null, status: 'à rédiger' },
+    { title: 'Article 1', type: 'Pilier', slug: 'article-1', topic: null, status: 'à rédiger' },
   ],
   stats: {
     totalArticles: 10,

@@ -1,31 +1,29 @@
 <script setup lang="ts">
-import type { Article, Keyword } from '@shared/types/index.js'
+import type { Article } from '@shared/types/index.js'
 import StatusBadge from '@/components/shared/StatusBadge.vue'
-import KeywordBadge from '@/components/shared/KeywordBadge.vue'
 
-defineProps<{
+const props = defineProps<{
   article: Article
-  keywords: Keyword[]
+  cocoonId?: number
+  opportunityScore?: number | null
 }>()
 </script>
 
 <template>
-  <RouterLink :to="`/article/${article.slug}`" class="article-card">
+  <RouterLink :to="cocoonId != null ? `/cocoon/${cocoonId}/article/${article.slug}` : `/article/${article.slug}/editor`" class="article-card">
     <div class="article-header">
-      <h4 class="article-title">{{ article.title }}</h4>
-      <StatusBadge :status="article.status" />
-    </div>
-
-    <div class="article-meta">
-      <span class="article-type" :class="{
-        'type-pilier': article.type === 'Pilier',
-        'type-inter': article.type === 'Intermédiaire',
-        'type-spec': article.type === 'Spécialisé',
-      }">{{ article.type }}</span>
-    </div>
-
-    <div v-if="keywords.length > 0" class="article-keywords">
-      <KeywordBadge v-for="kw in keywords" :key="kw.keyword" :keyword="kw" />
+      <span class="article-title">{{ article.title }}</span>
+      <div class="article-badges">
+        <span
+          v-if="opportunityScore != null"
+          class="opportunity-badge"
+          :class="opportunityScore >= 70 ? 'opp-high' : opportunityScore >= 50 ? 'opp-medium' : opportunityScore >= 30 ? 'opp-low' : 'opp-very-low'"
+          :title="`Score d'opportunité: ${opportunityScore}/100`"
+        >
+          {{ opportunityScore }}
+        </span>
+        <StatusBadge :status="article.status" />
+      </div>
     </div>
   </RouterLink>
 </template>
@@ -33,9 +31,9 @@ defineProps<{
 <style scoped>
 .article-card {
   display: block;
-  padding: 1rem 1.25rem;
+  padding: 0.75rem 1rem;
   border: 1px solid var(--color-border);
-  border-radius: 8px;
+  border-radius: 6px;
   background: var(--color-background);
   text-decoration: none;
   color: inherit;
@@ -51,50 +49,43 @@ defineProps<{
 .article-header {
   display: flex;
   justify-content: space-between;
-  align-items: flex-start;
+  align-items: center;
   gap: 0.75rem;
-  margin-bottom: 0.5rem;
 }
 
 .article-title {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
   color: var(--color-text);
   flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.article-meta {
-  margin-bottom: 0.5rem;
-}
-
-.article-type {
-  display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: 4px;
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
-.type-pilier {
-  background: #dbeafe;
-  color: var(--color-primary);
-}
-
-.type-inter {
-  background: #fef3c7;
-  color: var(--color-warning);
-}
-
-.type-spec {
-  background: #dcfce7;
-  color: var(--color-success);
-}
-
-.article-keywords {
+.article-badges {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
   gap: 0.375rem;
-  margin-top: 0.5rem;
+  flex-shrink: 0;
 }
+
+.opportunity-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 20px;
+  padding: 0 0.25rem;
+  border-radius: 4px;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.opp-high { background: var(--color-badge-green-bg, #dcfce7); color: var(--color-badge-green-text, #166534); }
+.opp-medium { background: var(--color-badge-amber-bg, #fef3c7); color: var(--color-badge-amber-text, #92400e); }
+.opp-low { background: var(--color-badge-orange-bg, #fed7aa); color: var(--color-badge-orange-text, #9a3412); }
+.opp-very-low { background: var(--color-error-bg, #fee2e2); color: var(--color-error, #991b1b); }
 </style>

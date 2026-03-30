@@ -24,6 +24,8 @@ export interface KeywordOverview {
   cpc: number
   competition: number
   monthlySearches: number[]
+  wordsCount?: number
+  coreKeyword?: string
 }
 
 export interface DataForSeoCacheEntry {

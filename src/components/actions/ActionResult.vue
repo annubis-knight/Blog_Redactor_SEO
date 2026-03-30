@@ -80,7 +80,7 @@ const emit = defineEmits<{
 .btn-accept {
   padding: 0.25rem 0.75rem;
   border-radius: 4px;
-  font-size: 0.75rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   border: 1px solid var(--color-border);

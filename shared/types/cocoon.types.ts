@@ -25,6 +25,7 @@ export interface CocoonStats {
 export interface Cocoon {
   id: number
   name: string
+  siloName: string
   articles: Article[]
   stats: CocoonStats
 }

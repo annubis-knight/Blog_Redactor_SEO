@@ -9,7 +9,7 @@ export interface RawArticle {
   titre: string
   type: ArticleType
   slug: string
-  theme: string | null
+  topic: string | null
 }
 
 /** Raw cocoon as stored in BDD_Articles_Blog.json */
@@ -18,9 +18,23 @@ export interface RawCocoon {
   articles: RawArticle[]
 }
 
-/** Raw articles database structure */
+/** Raw silo as stored in BDD_Articles_Blog.json */
+export interface RawSilo {
+  nom: string
+  description: string
+  cocons: RawCocoon[]
+}
+
+/** Raw theme as stored in BDD_Articles_Blog.json */
+export interface RawTheme {
+  nom: string
+  description: string
+}
+
+/** Raw articles database structure (new silo/theme hierarchy) */
 export interface RawArticlesDb {
-  cocons_semantiques: RawCocoon[]
+  theme: RawTheme
+  silos: RawSilo[]
 }
 
 /** Article in camelCase for API responses */
@@ -28,7 +42,7 @@ export interface Article {
   title: string
   type: ArticleType
   slug: string
-  theme: string | null
+  topic: string | null
   status: ArticleStatus
 }
 

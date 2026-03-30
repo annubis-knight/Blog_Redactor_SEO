@@ -1,5 +1,7 @@
 import { Router } from 'express'
+import { log } from '../utils/logger.js'
 import { getCocoons, getArticlesByCocoon } from '../services/data.service.js'
+import { getCocoonStrategy } from '../services/cocoon-strategy.service.js'
 
 const router = Router()
 
@@ -9,7 +11,7 @@ router.get('/cocoons', async (_req, res) => {
     const cocoons = await getCocoons()
     res.json({ data: cocoons })
   } catch (err) {
-    console.error('[GET /api/cocoons]', err)
+    log.error(`GET /api/cocoons — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load cocoons' } })
   }
 })
@@ -31,8 +33,54 @@ router.get('/cocoons/:id/articles', async (req, res) => {
 
     res.json({ data: articles })
   } catch (err) {
-    console.error('[GET /api/cocoons/:id/articles]', err)
+    log.error(`GET /api/cocoons/${req.params.id}/articles — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load articles' } })
+  }
+})
+
+/** GET /api/cocoons/:id/strategy/context — Strategic context for Moteur */
+router.get('/cocoons/:id/strategy/context', async (req, res) => {
+  try {
+    const cocoonId = Number(req.params.id)
+    if (isNaN(cocoonId)) {
+      res.status(400).json({ error: { code: 'INVALID_ID', message: 'Cocoon ID must be a number' } })
+      return
+    }
+
+    const cocoons = await getCocoons()
+    const cocoon = cocoons.find(c => c.id === cocoonId)
+    if (!cocoon) {
+      res.json({ data: null })
+      return
+    }
+
+    const slug = cocoon.name
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+
+    const strategy = await getCocoonStrategy(slug)
+    if (!strategy) {
+      res.json({ data: null })
+      return
+    }
+
+    res.json({
+      data: {
+        cocoonName: cocoon.name,
+        siloName: cocoon.siloName,
+        cible: strategy.cible?.validated || null,
+        douleur: strategy.douleur?.validated || null,
+        angle: strategy.angle?.validated || null,
+        promesse: strategy.promesse?.validated || null,
+        cta: strategy.cta?.validated || null,
+      },
+    })
+  } catch (err) {
+    log.error(`GET /api/cocoons/${req.params.id}/strategy/context — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load strategy context' } })
   }
 })
 

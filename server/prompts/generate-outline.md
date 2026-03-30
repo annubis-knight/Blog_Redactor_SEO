@@ -9,6 +9,10 @@ Tu es un expert SEO et rédacteur web spécialisé dans la création de sommaire
 - **Cocon sémantique** : {{cocoonName}}
 - **Thématique** : {{theme}}
 
+{{strategyContext}}
+
+{{keywordContext}}
+
 ## Questions PAA (People Also Ask)
 
 {{paaQuestions}}
@@ -23,8 +27,8 @@ Génère un sommaire structuré en H1, H2 et H3 pour cet article. Le sommaire do
 
 3. **Respecter la structure suivante** :
    - H1 : Titre principal (1 seul)
-   - H2 : Sections principales (5-8 selon le type d'article)
-   - H3 : Sous-sections détaillées (2-4 par H2)
+   - H2 : Sections principales (selon le type d'article, voir consigne 6)
+   - H3 : Sous-sections détaillées (2-3 par H2, uniquement quand c'est pertinent — ne pas forcer des H3 sur chaque H2)
 
 4. **Inclure les blocs Propulsite** :
    - Le H1 doit avoir l'annotation `sommaire-cliquable` (sommaire interactif en haut d'article)
@@ -36,10 +40,11 @@ Génère un sommaire structuré en H1, H2 et H3 pour cet article. Le sommaire do
    - Intégrer les mots-clés secondaires naturellement dans les H2/H3
    - Varier les formulations (questions, affirmations, "comment faire...")
 
-6. **Adapter au type d'article** :
-   - Pilier : sommaire exhaustif (8+ H2, très détaillé)
-   - Intermédiaire : sommaire modéré (5-7 H2)
-   - Spécialisé : sommaire ciblé (4-6 H2, très précis)
+6. **Adapter au type d'article** (STRICT — ne pas dépasser ces limites) :
+   - Pilier : sommaire complet (6-8 H2, couvrir les aspects essentiels sans diluer)
+   - Intermédiaire : sommaire modéré (4-6 H2)
+   - Spécialisé : sommaire ciblé (3-5 H2, très précis)
+   - IMPORTANT : Privilégie la qualité à la quantité. Un sommaire trop long dilue le propos et nuit au SEO.
 
 ## Format de sortie
 

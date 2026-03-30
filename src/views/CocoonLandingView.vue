@@ -1,0 +1,119 @@
+<script setup lang="ts">
+import { onMounted, computed } from 'vue'
+import { useRoute } from 'vue-router'
+import { useCocoonsStore } from '@/stores/cocoons.store'
+import { useArticlesStore } from '@/stores/articles.store'
+import { useKeywordsStore } from '@/stores/keywords.store'
+import Breadcrumb from '@/components/shared/Breadcrumb.vue'
+import WorkflowChoice from '@/components/dashboard/WorkflowChoice.vue'
+import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
+import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+
+const route = useRoute()
+const cocoonsStore = useCocoonsStore()
+const articlesStore = useArticlesStore()
+const keywordsStore = useKeywordsStore()
+
+const cocoonId = computed(() => Number(route.params.cocoonId))
+
+const cocoon = computed(() =>
+  cocoonsStore.cocoons.find(c => c.id === cocoonId.value),
+)
+
+const breadcrumbItems = computed(() => [
+  { label: 'Dashboard', to: '/' },
+  { label: cocoon.value?.siloName ?? 'Silo' },
+  { label: cocoon.value?.name ?? 'Cocon' },
+])
+
+const isLoading = computed(() =>
+  articlesStore.isLoading || keywordsStore.isLoading,
+)
+
+const error = computed(() => articlesStore.error)
+
+async function loadData() {
+  if (cocoonsStore.cocoons.length === 0) {
+    await cocoonsStore.fetchCocoons()
+  }
+
+  const name = cocoonsStore.cocoons.find(c => c.id === cocoonId.value)?.name
+
+  await Promise.all([
+    articlesStore.fetchArticlesByCocoon(cocoonId.value),
+    name ? keywordsStore.fetchKeywordsByCocoon(name) : Promise.resolve(),
+  ])
+}
+
+onMounted(() => {
+  loadData()
+})
+</script>
+
+<template>
+  <div class="cocoon-landing">
+    <div class="landing-header">
+      <Breadcrumb :items="breadcrumbItems" />
+      <div class="title-row">
+        <h2 class="cocoon-title">{{ cocoon?.name ?? 'Cocon' }}</h2>
+        <div v-if="cocoon" class="cocoon-summary">
+          <span class="summary-stat">{{ cocoon.stats.totalArticles }} articles</span>
+          <span class="summary-sep">&middot;</span>
+          <span class="summary-stat">{{ cocoon.stats.completionPercent }}% complété</span>
+        </div>
+      </div>
+    </div>
+
+    <LoadingSpinner v-if="isLoading" />
+
+    <ErrorMessage
+      v-else-if="error"
+      :message="error"
+      @retry="loadData()"
+    />
+
+    <WorkflowChoice
+      v-else-if="cocoon"
+      :cocoon-id="cocoonId"
+      :cocoon="cocoon"
+      :keyword-count="keywordsStore.keywords.length"
+    />
+  </div>
+</template>
+
+<style scoped>
+.cocoon-landing {
+  padding: 2rem;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.landing-header {
+  margin-bottom: 1.5rem;
+}
+
+.title-row {
+  display: flex;
+  align-items: baseline;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.cocoon-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin: 0;
+}
+
+.cocoon-summary {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.summary-sep {
+  color: var(--color-border);
+}
+</style>

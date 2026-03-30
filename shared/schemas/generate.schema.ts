@@ -11,7 +11,7 @@ export const generateOutlineRequestSchema = z.object({
   articleType: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
-  theme: z.string().nullable(),
+  topic: z.string().nullable(),
 })
 
 export type GenerateOutlineRequest = z.infer<typeof generateOutlineRequestSchema>
@@ -28,7 +28,7 @@ export const generateArticleRequestSchema = z.object({
   articleType: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
-  theme: z.string().nullable(),
+  topic: z.string().nullable(),
 })
 
 export type GenerateArticleRequest = z.infer<typeof generateArticleRequestSchema>

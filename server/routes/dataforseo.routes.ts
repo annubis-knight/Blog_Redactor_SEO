@@ -1,4 +1,5 @@
 import { Router } from 'express'
+import { log } from '../utils/logger.js'
 import { briefRequestSchema } from '../../shared/schemas/dataforseo.schema.js'
 import { getBrief } from '../services/dataforseo.service.js'
 
@@ -19,7 +20,7 @@ router.post('/brief', async (req, res) => {
     const result = await getBrief(keyword, forceRefresh)
     res.json({ data: result })
   } catch (err) {
-    console.error('[POST /api/dataforseo/brief]', err)
+    log.error(`POST /api/dataforseo/brief — ${(err as Error).message}`)
     res.status(502).json({
       error: {
         code: 'DATAFORSEO_ERROR',

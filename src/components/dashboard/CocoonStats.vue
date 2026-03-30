@@ -24,7 +24,7 @@ function globalCompletion(): number {
   <div class="cocoon-stats-bar">
     <div class="stat-item">
       <span class="stat-value">{{ cocoons.length }}</span>
-      <span class="stat-label">Cocons</span>
+      <span class="stat-label">Th\u00e9matiques</span>
     </div>
     <div class="stat-item">
       <span class="stat-value">{{ totalArticles() }}</span>

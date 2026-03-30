@@ -8,7 +8,7 @@ const mockArticle: Article = {
   title: 'Pourquoi refondre votre site web en 2025',
   type: 'Pilier',
   slug: 'pourquoi-refondre-votre-site',
-  theme: null,
+  topic: null,
   status: 'à rédiger',
 }
 
@@ -20,43 +20,26 @@ const mockKeywords: Keyword[] = [
 describe('ArticleCard', () => {
   it('displays the article title', () => {
     const wrapper = mount(ArticleCard, {
-      props: { article: mockArticle, keywords: [] },
+      props: { article: mockArticle },
       global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
     })
     expect(wrapper.text()).toContain('Pourquoi refondre votre site web en 2025')
   })
 
-  it('displays the article type', () => {
-    const wrapper = mount(ArticleCard, {
-      props: { article: mockArticle, keywords: [] },
-      global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
-    })
-    expect(wrapper.text()).toContain('Pilier')
-  })
-
   it('displays the article status via StatusBadge', () => {
     const wrapper = mount(ArticleCard, {
-      props: { article: mockArticle, keywords: [] },
+      props: { article: mockArticle },
       global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
     })
     expect(wrapper.text()).toContain('À rédiger')
   })
 
-  it('displays keywords when provided', () => {
+  it('links to the article editor', () => {
     const wrapper = mount(ArticleCard, {
-      props: { article: mockArticle, keywords: mockKeywords },
-      global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
+      props: { article: mockArticle },
+      global: { stubs: { RouterLink: { template: '<a :to="to"><slot /></a>', props: ['to'] } } },
     })
-    expect(wrapper.text()).toContain('refonte site web')
-    expect(wrapper.text()).toContain('agence web refonte')
-  })
-
-  it('does not render keywords section when empty', () => {
-    const wrapper = mount(ArticleCard, {
-      props: { article: mockArticle, keywords: [] },
-      global: { stubs: { RouterLink: { template: '<a><slot /></a>' } } },
-    })
-    expect(wrapper.find('.article-keywords').exists()).toBe(false)
+    expect(wrapper.find('a').attributes('to')).toBe('/article/pourquoi-refondre-votre-site/editor')
   })
 })
 

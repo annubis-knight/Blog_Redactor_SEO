@@ -20,6 +20,9 @@ function createMockStream(events: unknown[]) {
         yield event
       }
     },
+    finalMessage: vi.fn().mockResolvedValue({
+      usage: { input_tokens: 150, output_tokens: 250 },
+    }),
   }
 }
 
@@ -40,7 +43,9 @@ describe('claude.service — streamChatCompletion', () => {
       chunks.push(chunk)
     }
 
-    expect(chunks).toEqual(['Hello', ' world'])
+    expect(chunks[0]).toBe('Hello')
+    expect(chunks[1]).toBe(' world')
+    expect(chunks[2]).toMatch(/^__USAGE__/)
   })
 
   it('calls messages.stream with correct params', async () => {
@@ -96,6 +101,7 @@ describe('claude.service — streamChatCompletion', () => {
       chunks.push(chunk)
     }
 
-    expect(chunks).toEqual(['ok'])
+    expect(chunks[0]).toBe('ok')
+    expect(chunks[1]).toMatch(/^__USAGE__/)
   })
 })

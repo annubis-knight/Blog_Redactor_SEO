@@ -1,8 +1,9 @@
 import { ref } from 'vue'
 import { defineStore } from 'pinia'
+import { log } from '@/utils/logger'
 import { useStreaming } from '@/composables/useStreaming'
 import { apiPut } from '@/services/api.service'
-import type { Outline, OutlineSection, BriefData } from '@shared/types/index.js'
+import type { Outline, OutlineSection, BriefData, ApiUsage } from '@shared/types/index.js'
 
 export const useOutlineStore = defineStore('outline', () => {
   const outline = ref<Outline | null>(null)
@@ -11,13 +12,16 @@ export const useOutlineStore = defineStore('outline', () => {
   const isValidated = ref(false)
   const isSaving = ref(false)
   const error = ref<string | null>(null)
+  const lastApiUsage = ref<ApiUsage | null>(null)
 
   async function generateOutline(briefData: BriefData) {
+    log.info(`Generating outline for "${briefData.article.title}"`)
     isGenerating.value = true
     isValidated.value = false
     error.value = null
     streamedText.value = ''
     outline.value = null
+    lastApiUsage.value = null
 
     const pilierKeyword = briefData.keywords.find(kw => kw.type === 'Pilier')
 
@@ -29,15 +33,22 @@ export const useOutlineStore = defineStore('outline', () => {
       articleType: briefData.article.type,
       articleTitle: briefData.article.title,
       cocoonName: briefData.article.cocoonName,
-      theme: briefData.article.theme,
+      topic: briefData.article.topic,
     }
 
     const streaming = useStreaming<Outline>()
 
     await streaming.startStream('/api/generate/outline', body, {
       onChunk: (accumulated) => { streamedText.value = accumulated },
-      onDone: (data) => { outline.value = data },
-      onError: (message) => { error.value = message },
+      onDone: (data) => {
+        outline.value = data
+        log.info('Outline generated', { sections: data.sections.length })
+      },
+      onError: (message) => {
+        log.error(`Outline generation failed — ${message}`)
+        error.value = message
+      },
+      onUsage: (u) => { lastApiUsage.value = u },
     })
 
     isGenerating.value = false
@@ -89,6 +100,12 @@ export const useOutlineStore = defineStore('outline', () => {
     isValidated.value = false
   }
 
+  /** Hydrate store with a previously saved & validated outline */
+  function loadExistingOutline(saved: Outline) {
+    outline.value = saved
+    isValidated.value = true
+  }
+
   async function validateOutline(slug: string) {
     if (!outline.value) return
     isSaving.value = true
@@ -96,7 +113,9 @@ export const useOutlineStore = defineStore('outline', () => {
     try {
       await apiPut(`/articles/${slug}`, { outline: JSON.stringify(outline.value) })
       isValidated.value = true
+      log.info(`Outline validated for "${slug}"`)
     } catch (err) {
+      log.error(`Outline validation failed — ${(err as Error).message}`)
       error.value = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde'
     } finally {
       isSaving.value = false
@@ -111,8 +130,8 @@ export const useOutlineStore = defineStore('outline', () => {
   }
 
   return {
-    outline, streamedText, isGenerating, isValidated, isSaving, error,
+    outline, streamedText, isGenerating, isValidated, isSaving, error, lastApiUsage,
     generateOutline, addSection, removeSection, updateSection, reorderSections,
-    setOutline, validateOutline, resetOutline,
+    setOutline, loadExistingOutline, validateOutline, resetOutline,
   }
 })

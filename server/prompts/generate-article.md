@@ -7,6 +7,10 @@
 - **Cocon sémantique** : {{cocoonName}}
 - **Thématique** : {{theme}}
 
+{{strategyContext}}
+
+{{keywordContext}}
+
 ## Sommaire validé
 
 {{outline}}

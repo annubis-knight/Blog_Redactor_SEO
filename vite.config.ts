@@ -16,10 +16,13 @@ export default defineConfig({
       '@shared': fileURLToPath(new URL('./shared', import.meta.url)),
     },
   },
+  optimizeDeps: {
+    exclude: ['@huggingface/transformers'],
+  },
   server: {
     proxy: {
       '/api': {
-        target: 'http://localhost:3001',
+        target: 'http://localhost:3005',
         changeOrigin: true,
       },
     },

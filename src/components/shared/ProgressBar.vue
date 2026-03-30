@@ -8,7 +8,13 @@ const props = withDefaults(defineProps<{
 </script>
 
 <template>
-  <div class="progress-bar">
+  <div
+    class="progress-bar"
+    role="progressbar"
+    :aria-valuenow="Math.round(props.percent)"
+    aria-valuemin="0"
+    aria-valuemax="100"
+  >
     <div
       class="progress-fill"
       :style="{ width: `${Math.min(100, Math.max(0, props.percent))}%`, background: props.color }"

@@ -24,3 +24,11 @@ export interface SseErrorEvent {
   code: string
   message: string
 }
+
+/** API usage metrics from Claude API calls */
+export interface ApiUsage {
+  inputTokens: number
+  outputTokens: number
+  model: string
+  estimatedCost: number
+}

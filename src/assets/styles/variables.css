@@ -1,15 +1,85 @@
-/* Blog Redactor SEO — CSS Variables */
+/* Blog Redactor SEO — Design Tokens
+ *
+ * Fichier central du design system. Toutes les couleurs, typographies
+ * et espacements sont définis ici via des custom properties CSS.
+ *
+ * Convention de nommage :
+ *   --color-{catégorie}-{variante}
+ *   --font-{usage}
+ *
+ * Accessibilité :
+ *   - Les tokens "texte" respectent WCAG AA (≥ 4.5:1 sur fond blanc)
+ *   - Les tokens "arc" sont décoratifs (SVG) et ne servent PAS de couleur texte
+ *   - Les tokens "badge-*-text" sont validés sur leur fond "-bg" associé
+ */
+
 :root {
-  --color-primary: #2563eb;
-  --color-secondary: #64748b;
-  --color-success: #16a34a;
-  --color-warning: #d97706;
-  --color-error: #dc2626;
+  /* ── Couleurs sémantiques ──────────────────────────────── */
+  --color-primary: #2563eb;            /* blue-600  — 4.6:1 */
+  --color-primary-hover: #1d4ed8;      /* blue-700  — 5.9:1 */
+  --color-secondary: #64748b;          /* slate-500 — 4.6:1 */
+  --color-success: #15803d;            /* green-700 — 5.0:1 */
+  --color-warning: #b45309;            /* amber-800 — 5.0:1 */
+  --color-error: #b91c1c;              /* red-800   — 5.5:1 */
+
+  /* ── Surfaces ──────────────────────────────────────────── */
   --color-background: #ffffff;
-  --color-surface: #f8fafc;
-  --color-text: #1e293b;
-  --color-text-muted: #64748b;
-  --color-border: #e2e8f0;
+  --color-surface: #f8fafc;            /* slate-50  */
+  --color-bg-elevated: #ffffff;
+  --color-bg-soft: #f8fafc;
+  --color-bg-hover: #f1f5f9;           /* slate-100 */
+  --color-bg-danger-hover: #fecaca;    /* red-200   */
+
+  /* ── Texte ─────────────────────────────────────────────── */
+  --color-text: #1e293b;               /* slate-800 — 13.5:1 */
+  --color-text-muted: #64748b;         /* slate-500 —  4.6:1 */
+  --color-heading: #1e293b;
+
+  /* ── Bordures ──────────────────────────────────────────── */
+  --color-border: #e2e8f0;             /* slate-200 */
+  --color-border-hover: rgba(60, 60, 60, 0.29);
+
+  /* ── Éditeur — surface d'écriture distincte ────────────── */
+  --color-editor-bg: #ffffff;
+  --color-editor-text: #1e293b;
+
+  /* ── Blocs spéciaux ────────────────────────────────────── */
+  --color-block-info-bg: #eff6ff;      /* blue-50   */
+  --color-block-info-border: #2563eb;  /* blue-600  */
+  --color-block-warning-bg: #fef3c7;   /* amber-100 */
+  --color-block-warning-border: #b45309; /* amber-800 */
+  --color-block-answer-bg: #f8fafc;
+  --color-error-bg: #fef2f2;           /* red-50    */
+
+  /* ── Scores — texte accessible (≥ 4.5:1 sur blanc) ───── */
+  --color-score-good: #15803d;         /* green-700 — 5.0:1 */
+  --color-score-fair: #b45309;         /* amber-800 — 5.0:1 */
+  --color-score-poor: #dc2626;         /* red-600   — 4.6:1 */
+
+  /* ── Scores — arcs SVG décoratifs (NE PAS utiliser comme texte) */
+  --color-score-good-arc: #22c55e;     /* green-400 — 2.3:1 (décoratif) */
+  --color-score-fair-arc: #f59e0b;     /* amber-400 — 2.1:1 (décoratif) */
+  --color-score-poor-arc: #ef4444;     /* red-400   — 3.1:1 (décoratif) */
+
+  /* ── Badges — texte accessible sur fonds teintés ──────── */
+  --color-badge-blue-bg: #dbeafe;      /* blue-100  */
+  --color-badge-blue-text: #1e40af;    /* blue-800  — 7.2:1 sur blue-100  */
+  --color-badge-amber-bg: #fef3c7;     /* amber-100 */
+  --color-badge-amber-text: #92400e;   /* amber-900 — 7.5:1 sur amber-100 */
+  --color-badge-green-bg: #dcfce7;     /* green-100 */
+  --color-badge-green-text: #166534;   /* green-800 — 7.1:1 sur green-100 */
+  --color-badge-slate-bg: #f1f5f9;     /* slate-100 */
+  --color-badge-slate-text: #475569;   /* slate-600 — 5.4:1 sur slate-100 */
+  --color-badge-purple-bg: #f3e8ff;    /* purple-100 */
+  --color-badge-purple-text: #7c3aed;  /* purple-600 — 5.2:1 sur purple-100 */
+
+  /* ── Panels (aside resizable) ──────────────────────────── */
+  --panel-min-width: 240px;
+  --panel-max-width: 480px;
+  --panel-default-width: 300px;
+
+  /* ── Typographie ───────────────────────────────────────── */
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
   --font-mono: 'JetBrains Mono', 'Fira Code', monospace;
+  --font-editor: Georgia, 'Times New Roman', serif;
 }

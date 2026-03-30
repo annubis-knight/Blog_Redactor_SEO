@@ -15,9 +15,10 @@ const mockCocoons: Cocoon[] = [
   {
     id: 0,
     name: 'Cocoon A',
+    siloName: 'Silo A',
     articles: [
-      { title: 'Article 1', type: 'Pilier', slug: 'article-1', theme: null, status: 'à rédiger' },
-      { title: 'Article 2', type: 'Intermédiaire', slug: 'article-2', theme: 'Theme', status: 'brouillon' },
+      { title: 'Article 1', type: 'Pilier', slug: 'article-1', topic: null, status: 'à rédiger' },
+      { title: 'Article 2', type: 'Intermédiaire', slug: 'article-2', topic: 'Theme', status: 'brouillon' },
     ],
     stats: {
       totalArticles: 2,
@@ -29,8 +30,9 @@ const mockCocoons: Cocoon[] = [
   {
     id: 1,
     name: 'Cocoon B',
+    siloName: 'Silo A',
     articles: [
-      { title: 'Article 3', type: 'Spécialisé', slug: 'article-3', theme: 'Theme', status: 'publié' },
+      { title: 'Article 3', type: 'Spécialisé', slug: 'article-3', topic: 'Theme', status: 'publié' },
     ],
     stats: {
       totalArticles: 1,

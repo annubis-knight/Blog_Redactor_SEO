@@ -37,26 +37,26 @@ const statusConfig: Record<ArticleStatus, { label: string; cssClass: string }> =
 }
 
 .status--todo {
-  background: #f1f5f9;
-  color: var(--color-secondary);
+  background: var(--color-badge-slate-bg);
+  color: var(--color-badge-slate-text);
 }
 .status--todo .status-dot {
-  background: var(--color-secondary);
+  background: var(--color-badge-slate-text);
 }
 
 .status--draft {
-  background: #fef3c7;
-  color: var(--color-warning);
+  background: var(--color-badge-amber-bg);
+  color: var(--color-badge-amber-text);
 }
 .status--draft .status-dot {
-  background: var(--color-warning);
+  background: var(--color-badge-amber-text);
 }
 
 .status--published {
-  background: #dcfce7;
-  color: var(--color-success);
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green-text);
 }
 .status--published .status-dot {
-  background: var(--color-success);
+  background: var(--color-badge-green-text);
 }
 </style>

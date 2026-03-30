@@ -24,7 +24,7 @@ const emit = defineEmits<{
   padding: 2rem;
   border: 1px solid var(--color-error);
   border-radius: 8px;
-  background: #fef2f2;
+  background: var(--color-error-bg);
 }
 
 .error-text {

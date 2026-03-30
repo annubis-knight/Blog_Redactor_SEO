@@ -140,22 +140,22 @@ const annotationLabels: Record<string, string> = {
 }
 
 .annotation--sommaire-cliquable {
-  background: #dbeafe;
-  color: #1d4ed8;
+  background: var(--color-badge-blue-bg);
+  color: var(--color-badge-blue-text);
 }
 
 .annotation--content-valeur {
-  background: #dcfce7;
-  color: #15803d;
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green-text);
 }
 
 .annotation--content-reminder {
-  background: #fef3c7;
-  color: #b45309;
+  background: var(--color-badge-amber-bg);
+  color: var(--color-badge-amber-text);
 }
 
 .annotation--answer-capsule {
-  background: #f3e8ff;
-  color: #7c3aed;
+  background: var(--color-badge-purple-bg);
+  color: var(--color-badge-purple-text);
 }
 </style>

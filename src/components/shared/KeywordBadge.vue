@@ -23,23 +23,23 @@ const typeClass: Record<string, string> = {
   display: inline-block;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
-  font-size: 0.6875rem;
-  font-weight: 500;
+  font-size: 0.75rem;
+  font-weight: 600;
   white-space: nowrap;
 }
 
 .kw--pilier {
-  background: #dbeafe;
-  color: var(--color-primary);
+  background: var(--color-badge-blue-bg);
+  color: var(--color-badge-blue-text);
 }
 
 .kw--moyenne {
-  background: #f1f5f9;
-  color: var(--color-secondary);
+  background: var(--color-badge-slate-bg);
+  color: var(--color-badge-slate-text);
 }
 
 .kw--longue {
-  background: #f8fafc;
-  color: #94a3b8;
+  background: var(--color-badge-slate-bg);
+  color: var(--color-badge-slate-text);
 }
 </style>

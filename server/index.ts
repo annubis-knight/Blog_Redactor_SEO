@@ -1,16 +1,29 @@
 import express from 'express'
+import { log } from './utils/logger.js'
 import { errorHandler } from './utils/error-handler.js'
 import cocoonRoutes from './routes/cocoons.routes.js'
 import keywordRoutes from './routes/keywords.routes.js'
 import articlesRoutes from './routes/articles.routes.js'
 import dataforseoRoutes from './routes/dataforseo.routes.js'
 import generateRoutes from './routes/generate.routes.js'
+import linksRoutes from './routes/links.routes.js'
+import exportRoutes from './routes/export.routes.js'
+import intentRoutes from './routes/intent.routes.js'
+import localRoutes from './routes/local.routes.js'
+import contentGapRoutes from './routes/content-gap.routes.js'
+import gscRoutes from './routes/gsc.routes.js'
+import siloRoutes from './routes/silos.routes.js'
+import strategyRoutes from './routes/strategy.routes.js'
+import articleProgressRoutes from './routes/article-progress.routes.js'
+import intentScanRoutes from './routes/intent-scan.routes.js'
+import discoveryCacheRoutes from './routes/discovery-cache.routes.js'
+import articleResultsRoutes from './routes/article-results.routes.js'
 
 const app = express()
-const PORT = process.env.PORT || 3001
+const PORT = process.env.PORT || 3005
 
 // Middleware
-app.use(express.json())
+app.use(express.json({ limit: '5mb' }))
 
 // CORS — localhost only
 app.use((req, res, next) => {
@@ -38,10 +51,25 @@ app.use('/api', keywordRoutes)
 app.use('/api', articlesRoutes)
 app.use('/api/dataforseo', dataforseoRoutes)
 app.use('/api', generateRoutes)
+app.use('/api', linksRoutes)
+app.use('/api', exportRoutes)
+app.use('/api', intentRoutes)
+app.use('/api', localRoutes)
+app.use('/api', contentGapRoutes)
+app.use('/api', gscRoutes)
+app.use('/api', siloRoutes)
+app.use('/api', strategyRoutes)
+app.use('/api', articleProgressRoutes)
+app.use('/api', intentScanRoutes)
+app.use('/api', discoveryCacheRoutes)
+app.use('/api', articleResultsRoutes)
 
 // Global error handler
 app.use(errorHandler)
 
 app.listen(PORT, () => {
-  console.log(`[server] Blog Redactor SEO API running on http://localhost:${PORT}`)
+  log.info(`Blog Redactor SEO API running on http://localhost:${PORT}`)
+  log.debug('Registered routes', {
+    routes: ['/api/cocoons', '/api/keywords', '/api/articles', '/api/dataforseo', '/api/generate', '/api/links', '/api/export', '/api/intent', '/api/local', '/api/content-gap', '/api/gsc', '/api/silos', '/api/theme', '/api/strategy'],
+  })
 })

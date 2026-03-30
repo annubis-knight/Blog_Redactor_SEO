@@ -1,0 +1,384 @@
+<script setup lang="ts">
+import { ref, computed, watch } from 'vue'
+import type { Article, ArticleType, ProposedArticle, SelectedArticle } from '@shared/types/index.js'
+import { useArticleProgressStore } from '@/stores/article-progress.store'
+import ProgressDots from './ProgressDots.vue'
+
+const progressStore = useArticleProgressStore()
+
+const props = defineProps<{
+  proposedArticles: ProposedArticle[]
+  publishedArticles: Article[]
+  selectedSlug: string | null
+}>()
+
+const emit = defineEmits<{
+  (e: 'select', article: SelectedArticle | null): void
+}>()
+
+const isSuggestedOpen = ref(true)
+const isPublishedOpen = ref(false)
+
+const TYPE_ORDER: ArticleType[] = ['Pilier', 'Intermédiaire', 'Spécialisé']
+
+const acceptedArticles = computed(() =>
+  props.proposedArticles.filter(a => a.accepted),
+)
+
+interface GroupedArticles {
+  type: ArticleType
+  articles: { slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }[]
+}
+
+function slugify(title: string): string {
+  return title
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+}
+
+const suggestedGroups = computed<GroupedArticles[]>(() => {
+  const groups: GroupedArticles[] = []
+  for (const type of TYPE_ORDER) {
+    const matching = acceptedArticles.value
+      .filter(a => a.type === type)
+      .map(a => ({
+        slug: slugify(a.title),
+        title: a.title,
+        keyword: a.suggestedKeyword,
+        type: a.type,
+        source: 'proposed' as const,
+        painPoint: a.painPoint || undefined,
+      }))
+    if (matching.length) groups.push({ type, articles: matching })
+  }
+  return groups
+})
+
+const publishedGroups = computed<GroupedArticles[]>(() => {
+  const groups: GroupedArticles[] = []
+  for (const type of TYPE_ORDER) {
+    const matching = props.publishedArticles
+      .filter(a => a.type === type && a.status === 'publié')
+      .map(a => ({
+        slug: a.slug,
+        title: a.title,
+        keyword: '',
+        type: a.type,
+        source: 'published' as const,
+      }))
+    if (matching.length) groups.push({ type, articles: matching })
+  }
+  return groups
+})
+
+function isSelected(slug: string): boolean {
+  return props.selectedSlug === slug
+}
+
+function getChecks(slug: string): string[] {
+  return progressStore.getProgress(slug)?.completedChecks ?? []
+}
+
+// Fetch progress for all visible articles
+watch(
+  [suggestedGroups, publishedGroups],
+  () => {
+    const allSlugs = [
+      ...suggestedGroups.value.flatMap(g => g.articles.map(a => a.slug)),
+      ...publishedGroups.value.flatMap(g => g.articles.map(a => a.slug)),
+    ]
+    for (const slug of allSlugs) {
+      if (!progressStore.getProgress(slug)) {
+        progressStore.fetchProgress(slug)
+      }
+    }
+  },
+  { immediate: true },
+)
+
+function toggleArticle(article: { slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }) {
+  if (isSelected(article.slug)) {
+    emit('select', null)
+  } else {
+    emit('select', {
+      slug: article.slug,
+      title: article.title,
+      keyword: article.keyword,
+      type: article.type,
+      locked: article.source === 'published',
+      source: article.source,
+      painPoint: article.painPoint,
+    })
+  }
+}
+</script>
+
+<template>
+  <div class="moteur-recap-group">
+    <!-- Panel 1: Articles suggérés -->
+    <div v-if="acceptedArticles.length > 0" class="moteur-recap">
+      <button class="recap-toggle" :aria-expanded="isSuggestedOpen" @click="isSuggestedOpen = !isSuggestedOpen">
+        <svg class="recap-chevron" :class="{ open: isSuggestedOpen }" width="12" height="12" viewBox="0 0 16 16"
+          fill="none" aria-hidden="true">
+          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+        <span class="recap-toggle-label">Articles sugg&eacute;r&eacute;s ({{ acceptedArticles.length }})</span>
+      </button>
+
+      <div class="recap-body" :class="{ collapsed: !isSuggestedOpen }">
+        <div v-for="group in suggestedGroups" :key="group.type" class="tree-group">
+          <div class="tree-type">
+            <span class="tree-type-badge"
+              :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
+              {{ group.type }}
+            </span>
+            <span class="tree-type-count">({{ group.articles.length }})</span>
+          </div>
+          <div class="tree-articles">
+            <button v-for="art in group.articles" :key="art.slug" class="tree-article-btn"
+              :class="{ selected: isSelected(art.slug) }" @click="toggleArticle(art)">
+              <span class="tree-branch" aria-hidden="true"></span>
+              <span class="tree-article-title">{{ art.title }}</span>
+              <ProgressDots :completed-checks="getChecks(art.slug)" />
+              <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Articles publiés -->
+    <div v-if="publishedArticles.length > 0" class="moteur-recap">
+      <button class="recap-toggle" :aria-expanded="isPublishedOpen" @click="isPublishedOpen = !isPublishedOpen">
+        <svg class="recap-chevron" :class="{ open: isPublishedOpen }" width="12" height="12" viewBox="0 0 16 16"
+          fill="none" aria-hidden="true">
+          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
+            stroke-linejoin="round" />
+        </svg>
+        <span class="recap-toggle-label">Articles publi&eacute;s ({{publishedArticles.filter(a => a.status ===
+          'publié').length }})</span>
+        <svg class="recap-lock-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
+          <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+        </svg>
+      </button>
+
+      <div class="recap-body" :class="{ collapsed: !isPublishedOpen }">
+        <div v-for="group in publishedGroups" :key="group.type" class="tree-group">
+          <div class="tree-type">
+            <span class="tree-type-badge"
+              :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
+              {{ group.type }}
+            </span>
+            <span class="tree-type-count">({{ group.articles.length }})</span>
+          </div>
+          <div class="tree-articles">
+            <button v-for="art in group.articles" :key="art.slug" class="tree-article-btn"
+              :class="{ selected: isSelected(art.slug), locked: true }" @click="toggleArticle(art)">
+              <span class="tree-branch" aria-hidden="true"></span>
+              <span class="tree-article-title">{{ art.title }}</span>
+              <ProgressDots :completed-checks="getChecks(art.slug)" />
+              <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
+                <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+              </svg>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style scoped>
+.moteur-recap-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem
+}
+
+.moteur-recap {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  background: var(--color-bg-soft);
+  overflow: hidden;
+}
+
+.recap-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  text-align: left;
+  transition: color 0.15s;
+}
+
+.recap-toggle:hover {
+  color: var(--color-primary);
+}
+
+.recap-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: inherit;
+}
+
+.recap-chevron.open {
+  transform: rotate(90deg);
+}
+
+.recap-toggle-label {
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.recap-lock-icon {
+  margin-left: auto;
+  opacity: 0.4;
+}
+
+.recap-body {
+  height: auto;
+  overflow: hidden;
+  transition: height 0.25s ease, opacity 0.2s ease;
+  opacity: 1;
+  padding: 0 0.75rem 0.625rem;
+  interpolate-size: allow-keywords;
+}
+
+.recap-body.collapsed {
+  height: 0;
+  opacity: 0;
+  padding-bottom: 0;
+}
+
+/* Tree: articles grouped by type */
+.tree-group {
+  padding: 0.375rem 0;
+}
+
+.tree-group+.tree-group {
+  border-top: 1px solid var(--color-border);
+}
+
+.tree-type {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  margin-bottom: 0.25rem;
+}
+
+.tree-type-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.625rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.tree-type--pilier {
+  background: var(--color-primary, #4a90d9);
+  color: white;
+}
+
+.tree-type--intermediaire {
+  background: var(--color-warning, #e8a838);
+  color: white;
+}
+
+.tree-type--specialise {
+  background: var(--color-success, #4caf50);
+  color: white;
+}
+
+.tree-type-count {
+  font-size: 0.625rem;
+  color: var(--color-text-muted);
+}
+
+.tree-articles {
+  padding-left: 0.5rem;
+  border-left: 2px solid var(--color-border);
+  margin-left: 0.5rem;
+}
+
+.tree-article-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.375rem;
+  margin: 0.125rem 0;
+  width: 100%;
+  border: none;
+  border-radius: 4px;
+  background: none;
+  cursor: pointer;
+  font-size: 0.6875rem;
+  color: var(--color-text);
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.tree-article-btn:hover {
+  background: var(--color-bg-hover, rgba(0, 0, 0, 0.04));
+}
+
+.tree-article-btn.selected {
+  background: var(--color-primary-soft, rgba(74, 144, 217, 0.1));
+  outline: 1px solid var(--color-primary);
+}
+
+.tree-article-btn.locked {
+  opacity: 0.8;
+}
+
+.tree-branch {
+  display: inline-block;
+  width: 0.625rem;
+  height: 1px;
+  background: var(--color-border);
+  flex-shrink: 0;
+}
+
+.tree-article-title {
+  flex: 1;
+  min-width: 0;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-article-keyword {
+  flex-shrink: 0;
+  font-size: 0.5625rem;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 3px;
+  background: var(--color-bg-soft);
+  color: var(--color-text-muted);
+  border: 1px solid var(--color-border);
+  max-width: 10rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tree-lock {
+  flex-shrink: 0;
+  opacity: 0.4;
+}
+</style>

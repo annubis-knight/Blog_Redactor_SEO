@@ -1,594 +1,609 @@
 {
-    "seo_data": [
-      {
-        "mot_clef": "refonte site web PME",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Pilier"
-      },
-      {
-        "mot_clef": "croissance digitale Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Pilier"
-      },
-      {
-        "mot_clef": "copywriting croissance",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Pilier"
-      },
-      {
-        "mot_clef": "visibilité web Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Pilier"
-      },
-      {
-        "mot_clef": "design web PME",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Pilier"
-      },
-      {
-        "mot_clef": "création site web sur mesure",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Pilier"
-      },
-      {
-        "mot_clef": "refonte site internet PME Toulouse",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "check-list refonte site 10 pages",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "refaire site web entreprise locale",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "refonte site vitrine PME",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "stratégie de croissance digitale Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "agence croissance digitale PME Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "accompagnement digitalisation entreprise Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "rédaction web optimisée SEO Toulouse",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "copywriting PME Toulouse",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "rédaction de contenus web pour PME",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "améliorer visibilité locale entreprise Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "référencement local PME Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "visibilité site internet Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "expérience utilisateur site PME",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "UX design PME Toulouse",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "création site web ergonomique PME",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Nouveau site web TPE",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Redesign site internet",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "étapes d'une refonte réussie",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Moderniser son site web",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Stratégie digitale entreprise Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Marketing digital PME Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Consultant croissance Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Définir son ADN",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Définir son marché cible",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Mesurer la croissance (KPI)",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Choisir ses leviers d'acquisition",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Parcours utilisateur et funnels",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Textes optimisés site web",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Rédaction web qui convertit",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Copywriting SEO",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Rédaction persuasive web",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "création site internet sur mesure PME",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "agence création site web personnalisé",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "développement site web sur mesure Toulouse",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "site vitrine sur mesure pour entreprises",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "création site internet professionnel sur mesure",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Site web qui convertit",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Optimisation site web entreprise",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Site web rentable PME",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Performance site web TPE",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "référencement entreprise Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "positionnement web Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "SEO Toulouse PME",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Expérience utilisateur site",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Design site web conversion",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Interface utilisateur web",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "Design responsive PME",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Moyenne traine"
-      },
-      {
-        "mot_clef": "comment réussir la refonte de son site web quand on est une PME à Toulouse",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "agence spécialisée en refonte de site internet pour PME toulousaine",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "refonte site web PME pour augmenter les conversions locales",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "étapes essentielles d'une refonte de site internet pour TPE/PME à Toulouse",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "refonte site web PME : erreurs à éviter pour ne pas perdre son référencement",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "comment booster la croissance digitale de sa PME à Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "solutions de croissance digitale sur mesure pour entreprises toulousaines",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "pourquoi investir dans la croissance digitale à Toulouse quand on est une PME",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "agence de croissance digitale pour TPE à Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "plan d'action pour la transformation digitale des PME à Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "comment le copywriting de croissance peut transformer la visibilité d'une PME à Toulouse",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "rédacteur web spécialisé en croissance pour entreprises locales toulousaines",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "techniques de copywriting pour booster le taux de conversion d'un site PME",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "rédaction web orientée résultats pour PME à Toulouse",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "exemples de copywriting efficace pour la croissance digitale d'une PME",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "comment améliorer la visibilité web locale de sa PME à Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "stratégie SEO local pour PME toulousaine",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "augmenter la visibilité de son site vitrine à Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "optimiser Google My Business pour une PME à Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "conseils pour booster la visibilité web d'une entreprise locale à Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "comment améliorer l'expérience utilisateur d'un site web PME à Toulouse",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "agence de design web pour PME toulousaine",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "conseils pour un site web PME efficace et orienté conversion",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "design responsive adapté aux besoins des PME locales",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "refonte UX/UI pour site internet de petite entreprise à Toulouse",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Quand refaire son site web d'entreprise",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Combien coûte une refonte de site web PME",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Signes qu'il faut refaire son site internet",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Refonte site web avec objectif croissance",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Nouveau site web sur mesure pour PME",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Agence spécialisée croissance TPE Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Comment développer son entreprise digitalement à Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Expert en stratégie digitale pour PME toulousaines",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Accompagnement croissance digitale Haute-Garonne",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Booster sa croissance avec le digital à Toulouse",
-        "cocon_seo": "Croissance digitale Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Comment écrire des textes qui vendent sur son site",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Rédaction web optimisée pour les moteurs de recherche",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Copywriting basé sur les états de conscience Schwartz",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Textes de site web adaptés à ma cible",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Améliorer ses conversions avec le copywriting",
-        "cocon_seo": "Copywriting de croissance & Rédaction web",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Mon site web ne génère pas de clients",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Pourquoi mon site web ne fonctionne pas",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Site web qui freine la croissance de mon entreprise",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Comment savoir si mon site web est performant",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Signes que mon site web ne convertit pas",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "comment créer un site web sur mesure adapté à son entreprise à Toulouse",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "avantages d'un site internet sur mesure pour PME toulousaine",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "agence spécialisée en création de site web sur mesure pour TPE/PME",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "processus de création d'un site web sur mesure pour entreprise locale",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "site web sur mesure : quelles fonctionnalités pour booster la croissance d'une PME",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "site internet sur mesure ou site template : que choisir pour une PME à Toulouse ?",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "combien coûte la création d'un site web sur mesure pour une petite entreprise",
-        "cocon_seo": "Création de site web sur mesure",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "référencement local PME Toulouse Google",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "SEO local entreprise Toulouse première page",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "visibilité web locale PME Toulouse stratégie",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "comment améliorer visibilité web PME Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "référencement naturel local PME Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "visibilité Google My Business PME Toulouse",
-        "cocon_seo": "Visibilité web locale à Toulouse",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Design de site web qui convertit les visiteurs",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Améliorer l'expérience utilisateur de mon site",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Call to action efficaces sur site web",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Design responsive pour site entreprise",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "Ergonomie site web pour PME",
-        "cocon_seo": "Design web et expérience utilisateur pour PME",
-        "type_mot_clef": "Longue traine"
-      },
-      {
-        "mot_clef": "combien coûte la refonte d'un site web pour PME à Toulouse",
-        "cocon_seo": "Refonte de site web pour PME",
-        "type_mot_clef": "Longue traine"
-      }
-    ]
-  }
+  "seo_data": [
+    {
+      "mot_clef": "refonte site web PME",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "croissance digitale Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "visibilité web Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "design web PME",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "création site web sur mesure",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "refonte site internet PME Toulouse",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "check-list refonte site 10 pages",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "refaire site web entreprise locale",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "refonte site vitrine PME",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "stratégie de croissance digitale Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "agence croissance digitale PME Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "accompagnement digitalisation entreprise Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "améliorer visibilité locale entreprise Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "référencement local PME Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "visibilité site internet Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "expérience utilisateur site PME",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "UX design PME Toulouse",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "création site web ergonomique PME",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Nouveau site web TPE",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Redesign site internet",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "étapes d'une refonte réussie",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Moderniser son site web",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Stratégie digitale entreprise Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Marketing digital PME Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Consultant croissance Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Définir son ADN",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Définir son marché cible",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Mesurer la croissance (KPI)",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Choisir ses leviers d'acquisition",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Parcours utilisateur et funnels",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Copywriting SEO",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "création site internet sur mesure PME",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "agence création site web personnalisé",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "développement site web sur mesure Toulouse",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "site vitrine sur mesure pour entreprises",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "création site internet professionnel sur mesure",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Site web qui convertit",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Optimisation site web entreprise",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Site web rentable PME",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Performance site web TPE",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "référencement entreprise Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "positionnement web Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "SEO Toulouse PME",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Expérience utilisateur site",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Design site web conversion",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Interface utilisateur web",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "Design responsive PME",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "comment réussir la refonte de son site web quand on est une PME à Toulouse",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "agence spécialisée en refonte de site internet pour PME toulousaine",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "refonte site web PME pour augmenter les conversions locales",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "étapes essentielles d'une refonte de site internet pour TPE/PME à Toulouse",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "refonte site web PME : erreurs à éviter pour ne pas perdre son référencement",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "comment booster la croissance digitale de sa PME à Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "solutions de croissance digitale sur mesure pour entreprises toulousaines",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "pourquoi investir dans la croissance digitale à Toulouse quand on est une PME",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "agence de croissance digitale pour TPE à Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "plan d'action pour la transformation digitale des PME à Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "comment améliorer la visibilité web locale de sa PME à Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "stratégie SEO local pour PME toulousaine",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "augmenter la visibilité de son site vitrine à Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "optimiser Google My Business pour une PME à Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "conseils pour booster la visibilité web d'une entreprise locale à Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "comment améliorer l'expérience utilisateur d'un site web PME à Toulouse",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "agence de design web pour PME toulousaine",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "conseils pour un site web PME efficace et orienté conversion",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "design responsive adapté aux besoins des PME locales",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "refonte UX/UI pour site internet de petite entreprise à Toulouse",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Quand refaire son site web d'entreprise",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Combien coûte une refonte de site web PME",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Signes qu'il faut refaire son site internet",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Refonte site web avec objectif croissance",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Nouveau site web sur mesure pour PME",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Agence spécialisée croissance TPE Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Comment développer son entreprise digitalement à Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Expert en stratégie digitale pour PME toulousaines",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Accompagnement croissance digitale Haute-Garonne",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Booster sa croissance avec le digital à Toulouse",
+      "cocon_seo": "Croissance digitale Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Mon site web ne génère pas de clients",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Pourquoi mon site web ne fonctionne pas",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Site web qui freine la croissance de mon entreprise",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Comment savoir si mon site web est performant",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Signes que mon site web ne convertit pas",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "comment créer un site web sur mesure adapté à son entreprise à Toulouse",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "avantages d'un site internet sur mesure pour PME toulousaine",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "agence spécialisée en création de site web sur mesure pour TPE/PME",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "processus de création d'un site web sur mesure pour entreprise locale",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "site web sur mesure : quelles fonctionnalités pour booster la croissance d'une PME",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "site internet sur mesure ou site template : que choisir pour une PME à Toulouse ?",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "combien coûte la création d'un site web sur mesure pour une petite entreprise",
+      "cocon_seo": "Création de site web sur mesure",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "référencement local PME Toulouse Google",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "SEO local entreprise Toulouse première page",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "visibilité web locale PME Toulouse stratégie",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "comment améliorer visibilité web PME Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "référencement naturel local PME Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "visibilité Google My Business PME Toulouse",
+      "cocon_seo": "Visibilité web locale à Toulouse",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Design de site web qui convertit les visiteurs",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Améliorer l'expérience utilisateur de mon site",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Call to action efficaces sur site web",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Design responsive pour site entreprise",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "Ergonomie site web pour PME",
+      "cocon_seo": "Design web et expérience utilisateur pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "combien coûte la refonte d'un site web pour PME à Toulouse",
+      "cocon_seo": "Refonte de site web pour PME",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "copywriting",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "le copywriting",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "definition copywriting",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "copywriting c'est quoi",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "copywriting email",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "freelance copywriting",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "avis copywriting",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "formation copywriting",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Moyenne traine"
+    },
+    {
+      "mot_clef": "copywriting websites",
+      "cocon_seo": "Copywriting de croissance & Rédaction web",
+      "type_mot_clef": "Longue traine"
+    },
+    {
+      "mot_clef": "stratégie croissance digitale entreprises Toulouse",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Pilier"
+    },
+    {
+      "mot_clef": "fondations stratégie digitale entreprise",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Intermédiaire"
+    },
+    {
+      "mot_clef": "positionnement marketing différenciation petite entreprise",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Intermédiaire"
+    },
+    {
+      "mot_clef": "visibilité locale Google petite entreprise",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Intermédiaire"
+    },
+    {
+      "mot_clef": "développer clientèle hors réseau",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Intermédiaire"
+    },
+    {
+      "mot_clef": "refaire son site web sans changer de stratégie",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Spécialisé"
+    },
+    {
+      "mot_clef": "signes site web freine croissance entreprise",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Spécialisé"
+    },
+    {
+      "mot_clef": "comment formuler son message pour attirer des clients",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Spécialisé"
+    },
+    {
+      "mot_clef": "concurrent mieux référencé sur Google que faire",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Spécialisé"
+    },
+    {
+      "mot_clef": "optimiser fiche Google My Business entreprise locale",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Spécialisé"
+    },
+    {
+      "mot_clef": "estimer perte de clients sans présence digitale",
+      "cocon_seo": "Stratégie de croissance",
+      "type_mot_clef": "Spécialisé"
+    }
+  ]
+}

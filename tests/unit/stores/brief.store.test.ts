@@ -13,7 +13,7 @@ const mockApiGet = vi.mocked(apiGet)
 const mockApiPost = vi.mocked(apiPost)
 
 const mockArticleResponse = {
-  article: { title: 'Test Article', type: 'Pilier' as const, slug: 'test-article', theme: 'Test', status: 'à rédiger' as const },
+  article: { title: 'Test Article', type: 'Pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const },
   cocoonName: 'Test Cocoon',
 }
 

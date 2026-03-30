@@ -1,11 +1,17 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { DataForSeoCacheEntry } from '@shared/types/index.js'
+import { evaluateKeywordHealth } from '@/utils/keyword-health'
+import KeywordHealthAlerts from '@/components/shared/KeywordHealthAlerts.vue'
 
-defineProps<{
+const props = defineProps<{
   data: DataForSeoCacheEntry | null
   isRefreshing: boolean
 }>()
+
+const healthAlerts = computed(() =>
+  props.data ? evaluateKeywordHealth(props.data) : [],
+)
 
 const emit = defineEmits<{
   refresh: []
@@ -52,6 +58,9 @@ function toggleSection(section: string) {
           <span class="card-value">{{ (data.keywordData.competition * 100).toFixed(0) }}%</span>
         </div>
       </div>
+
+      <!-- Keyword Health -->
+      <KeywordHealthAlerts :alerts="healthAlerts" />
 
       <!-- SERP Top 10 -->
       <div class="collapsible" :class="{ open: expandedSection === 'serp' }">

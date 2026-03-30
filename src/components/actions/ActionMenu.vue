@@ -49,17 +49,18 @@ const actionGroups: ActionGroup[] = [
 </script>
 
 <template>
-  <div class="action-menu">
-    <div v-for="group in actionGroups" :key="group.name" class="action-group">
+  <div class="action-menu" role="menu" aria-label="Actions contextuelles">
+    <div v-for="group in actionGroups" :key="group.name" class="action-group" role="group" :aria-label="group.name">
       <div class="group-label">{{ group.name }}</div>
       <button
         v-for="action in group.actions"
         :key="action.type"
         class="action-item"
+        role="menuitem"
         :disabled="disabled"
         @click="emit('select-action', action.type)"
       >
-        <span class="action-icon">{{ action.icon }}</span>
+        <span class="action-icon" aria-hidden="true">{{ action.icon }}</span>
         <span class="action-label">{{ action.label }}</span>
       </button>
     </div>
@@ -86,7 +87,7 @@ const actionGroups: ActionGroup[] = [
 
 .group-label {
   padding: 0.25rem 0.75rem;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   color: var(--color-text-muted);
   text-transform: uppercase;

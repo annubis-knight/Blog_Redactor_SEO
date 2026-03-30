@@ -1,4 +1,5 @@
 import type { Request, Response, NextFunction } from 'express'
+import { log } from './logger.js'
 
 export function errorHandler(
   err: Error,
@@ -6,7 +7,7 @@ export function errorHandler(
   res: Response,
   _next: NextFunction,
 ) {
-  console.error(`[${req.method}] ${req.path}:`, err.message)
+  log.error(`${req.method} ${req.path} — ${err.message}`)
   res.status(500).json({
     error: { code: 'INTERNAL_ERROR', message: err.message },
   })

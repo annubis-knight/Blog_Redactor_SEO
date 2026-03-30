@@ -1,6 +1,7 @@
 import { ref, getCurrentInstance, onUnmounted } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { useStreaming } from '@/composables/useStreaming'
+import { log } from '@/utils/logger'
 import type { ActionType, ActionContext, Article } from '@shared/types/index.js'
 
 export function useContextualActions() {
@@ -36,6 +37,7 @@ export function useContextualActions() {
     savedTo = to
 
     currentAction.value = actionType
+    log.info(`[contextual-actions] executing "${actionType}"`, { textLength: selectedText.length })
 
     // Internal-link: bypass SSE pipeline, show article picker
     if (actionType === 'internal-link') {
@@ -60,9 +62,11 @@ export function useContextualActions() {
       },
       onDone: (data) => {
         streamedResult.value = data.content
+        log.debug(`[contextual-actions] "${actionType}" done (${data.content.length} chars)`)
       },
       onError: (message) => {
         actionError.value = message
+        log.error(`[contextual-actions] "${actionType}" failed`, { error: message })
       },
     })
 
@@ -72,6 +76,8 @@ export function useContextualActions() {
   /** Apply internal link mark on the saved selection */
   function applyInternalLink(article: Article) {
     if (!pendingLinkEditor) return
+    log.debug(`[contextual-actions] applying internal link to "${article.slug}"`)
+
     pendingLinkEditor
       .chain()
       .focus()

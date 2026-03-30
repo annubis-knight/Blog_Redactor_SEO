@@ -68,10 +68,11 @@ function toggleLink() {
 .bubble-menu {
   display: flex;
   gap: 2px;
-  background: var(--color-text);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
   border-radius: 6px;
   padding: 0.25rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 .bubble-btn {
@@ -83,25 +84,26 @@ function toggleLink() {
   border: none;
   border-radius: 4px;
   background: transparent;
-  color: white;
-  font-size: 0.75rem;
+  color: var(--color-text);
+  font-size: 0.8125rem;
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
 }
 
 .bubble-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--color-bg-hover);
 }
 
 .bubble-btn.active {
   background: var(--color-primary);
+  color: white;
 }
 
 .bubble-separator {
   width: 1px;
   margin: 0.25rem 0.125rem;
-  background: rgba(255, 255, 255, 0.25);
+  background: var(--color-border);
 }
 
 .bubble-btn-action {

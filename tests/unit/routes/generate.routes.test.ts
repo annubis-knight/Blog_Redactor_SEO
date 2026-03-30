@@ -2,17 +2,28 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockStreamChatCompletion, mockLoadPrompt } = vi.hoisted(() => ({
+const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords } = vi.hoisted(() => ({
   mockStreamChatCompletion: vi.fn(),
   mockLoadPrompt: vi.fn(),
+  mockGetStrategy: vi.fn(),
+  mockGetArticleKeywords: vi.fn(),
 }))
 
 vi.mock('../../../server/services/claude.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
+  USAGE_SENTINEL: '__USAGE__',
 }))
 
 vi.mock('../../../server/utils/prompt-loader', () => ({
   loadPrompt: mockLoadPrompt,
+}))
+
+vi.mock('../../../server/services/strategy.service', () => ({
+  getStrategy: mockGetStrategy,
+}))
+
+vi.mock('../../../server/services/data.service', () => ({
+  getArticleKeywords: mockGetArticleKeywords,
 }))
 
 const { default: router } = await import('../../../server/routes/generate.routes')
@@ -43,10 +54,13 @@ function findHandler(method: string, path: string) {
   return layer?.route?.stack[0]?.handle
 }
 
+const fakeUsage = { inputTokens: 100, outputTokens: 200, model: 'claude-sonnet-4-6', estimatedCost: 0.0033 }
+
 async function* fakeStream(chunks: string[]) {
   for (const chunk of chunks) {
     yield chunk
   }
+  yield `__USAGE__${JSON.stringify(fakeUsage)}`
 }
 
 const validArticleBody = {
@@ -58,12 +72,137 @@ const validArticleBody = {
   articleType: 'Pilier' as const,
   articleTitle: 'Test Article Title',
   cocoonName: 'Test Cocoon',
-  theme: 'Test Theme',
+  topic: 'Test Theme',
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
   mockLoadPrompt.mockResolvedValue('mock prompt')
+  mockGetStrategy.mockResolvedValue(null)
+  mockGetArticleKeywords.mockResolvedValue(null)
+})
+
+const validOutlineBody = {
+  slug: 'test-article',
+  keyword: 'test keyword',
+  keywords: ['test keyword', 'secondary'],
+  paa: [{ question: 'What?', answer: 'Something' }],
+  articleType: 'Pilier' as const,
+  articleTitle: 'Test Article Title',
+  cocoonName: 'Test Cocoon',
+  topic: 'Test Theme',
+}
+
+const fakeStrategy = {
+  slug: 'test-article',
+  cible: { input: '', suggestion: null, validated: 'PME toulousaines 5-50 salariés' },
+  douleur: { input: '', suggestion: null, validated: 'Site web vieillissant' },
+  aiguillage: { suggestedType: null, suggestedParent: null, suggestedChildren: [], validated: false },
+  angle: { input: '', suggestion: null, validated: 'Approche sur mesure' },
+  promesse: { input: '', suggestion: null, validated: 'Un site qui convertit' },
+  cta: { type: 'service', target: '/creation-site', suggestion: null },
+  completedSteps: 6,
+  updatedAt: '2026-03-13T00:00:00.000Z',
+}
+
+describe('POST /generate/outline', () => {
+  const handler = findHandler('post', '/generate/outline')
+
+  it('streams outline and sends done event', async () => {
+    const outlineJson = '{"sections":[{"id":"h1","level":1,"title":"Test","annotation":null}]}'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([outlineJson]))
+
+    const req = { body: validOutlineBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      articleTitle: 'Test Article Title',
+      keyword: 'test keyword',
+      strategyContext: '',
+    }))
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+    }))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('includes strategy context in outline prompt when strategy exists', async () => {
+    mockGetStrategy.mockResolvedValueOnce(fakeStrategy)
+    const outlineJson = '{"sections":[{"id":"h1","level":1,"title":"Test","annotation":null}]}'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([outlineJson]))
+
+    const req = { body: validOutlineBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      strategyContext: expect.stringContaining('PME toulousaines'),
+    }))
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      strategyContext: expect.stringContaining('Approche sur mesure'),
+    }))
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      strategyContext: expect.stringContaining('/creation-site'),
+    }))
+  })
+
+  it('returns 400 on invalid body', async () => {
+    const req = { body: { slug: 'test' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+      }),
+    )
+  })
+
+  it('includes keyword context in outline prompt when article keywords exist', async () => {
+    const articleKw = {
+      articleSlug: 'test-article',
+      capitaine: 'création site web',
+      lieutenants: ['refonte site internet', 'web design'],
+      lexique: ['responsive', 'UX'],
+    }
+    mockGetArticleKeywords.mockResolvedValueOnce(articleKw)
+    const outlineJson = '{"sections":[{"id":"h1","level":1,"title":"Test","annotation":null}]}'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([outlineJson]))
+
+    const req = { body: validOutlineBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockGetArticleKeywords).toHaveBeenCalledWith('test-article')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      keywordContext: expect.stringContaining('création site web'),
+    }))
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      keywordContext: expect.stringContaining('refonte site internet'),
+    }))
+  })
+
+  it('passes empty keywordContext when no article keywords', async () => {
+    const outlineJson = '{"sections":[{"id":"h1","level":1,"title":"Test","annotation":null}]}'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([outlineJson]))
+
+    const req = { body: validOutlineBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
+      keywordContext: '',
+    }))
+  })
 })
 
 describe('POST /generate/article', () => {
@@ -142,6 +281,78 @@ describe('POST /generate/article', () => {
       }),
     )
   })
+
+  it('includes strategy context in article prompt when strategy exists', async () => {
+    mockGetStrategy.mockResolvedValueOnce(fakeStrategy)
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
+
+    const req = { body: validArticleBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      strategyContext: expect.stringContaining('PME toulousaines'),
+    }))
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      strategyContext: expect.stringContaining('Approche sur mesure'),
+    }))
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      strategyContext: expect.stringContaining('/creation-site'),
+    }))
+  })
+
+  it('passes empty strategyContext when getStrategy returns null', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
+
+    const req = { body: validArticleBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      strategyContext: '',
+    }))
+  })
+
+  it('includes keyword context in article prompt when article keywords exist', async () => {
+    const articleKw = {
+      articleSlug: 'test-article',
+      capitaine: 'création site web',
+      lieutenants: ['refonte site internet'],
+      lexique: ['responsive', 'UX'],
+    }
+    mockGetArticleKeywords.mockResolvedValueOnce(articleKw)
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
+
+    const req = { body: validArticleBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockGetArticleKeywords).toHaveBeenCalledWith('test-article')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      keywordContext: expect.stringContaining('création site web'),
+    }))
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      keywordContext: expect.stringContaining('Lieutenants'),
+    }))
+  })
+
+  it('passes empty keywordContext for article when no article keywords', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
+
+    const req = { body: validArticleBody } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+      keywordContext: '',
+    }))
+  })
 })
 
 const validMetaBody = {
@@ -171,7 +382,7 @@ describe('POST /generate/meta', () => {
     }))
     expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', 1024)
     expect(res.json).toHaveBeenCalledWith({
-      data: { metaTitle: 'Test Meta Title', metaDescription: 'Test meta description for the article.' },
+      data: { metaTitle: 'Test Meta Title', metaDescription: 'Test meta description for the article.', usage: fakeUsage },
     })
   })
 

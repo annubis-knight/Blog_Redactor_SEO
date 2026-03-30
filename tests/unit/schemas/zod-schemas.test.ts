@@ -5,11 +5,18 @@ import { rawKeywordsDbSchema } from '../../../shared/schemas/keyword.schema.js'
 describe('article.schema — rawArticlesDbSchema', () => {
   it('validates valid articles DB structure', () => {
     const valid = {
-      cocons_semantiques: [
+      theme: { nom: 'Test Theme', description: 'Desc' },
+      silos: [
         {
-          nom: 'Test Cocoon',
-          articles: [
-            { titre: 'Article 1', type: 'Pilier', slug: 'https://example.com/pages/article-1', theme: null },
+          nom: 'Test Silo',
+          description: 'Silo description',
+          cocons: [
+            {
+              nom: 'Test Cocoon',
+              articles: [
+                { titre: 'Article 1', type: 'Pilier', slug: 'https://example.com/pages/article-1', topic: null },
+              ],
+            },
           ],
         },
       ],
@@ -17,21 +24,28 @@ describe('article.schema — rawArticlesDbSchema', () => {
     expect(() => rawArticlesDbSchema.parse(valid)).not.toThrow()
   })
 
-  it('rejects missing cocons_semantiques', () => {
+  it('rejects missing theme or silos', () => {
     expect(() => rawArticlesDbSchema.parse({})).toThrow()
   })
 
-  it('rejects empty cocons_semantiques', () => {
-    expect(() => rawArticlesDbSchema.parse({ cocons_semantiques: [] })).toThrow()
+  it('rejects empty silos', () => {
+    expect(() => rawArticlesDbSchema.parse({ theme: { nom: 'T', description: '' }, silos: [] })).toThrow()
   })
 
   it('rejects invalid article type', () => {
     const invalid = {
-      cocons_semantiques: [
+      theme: { nom: 'T', description: '' },
+      silos: [
         {
-          nom: 'Test',
-          articles: [
-            { titre: 'A', type: 'Invalid', slug: 'url', theme: null },
+          nom: 'S',
+          description: '',
+          cocons: [
+            {
+              nom: 'Test',
+              articles: [
+                { titre: 'A', type: 'Invalid', slug: 'url', topic: null },
+              ],
+            },
           ],
         },
       ],
@@ -42,8 +56,15 @@ describe('article.schema — rawArticlesDbSchema', () => {
   it('accepts all valid article types', () => {
     for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé']) {
       const data = {
-        cocons_semantiques: [
-          { nom: 'C', articles: [{ titre: 'A', type, slug: 'url', theme: null }] },
+        theme: { nom: 'T', description: '' },
+        silos: [
+          {
+            nom: 'S',
+            description: '',
+            cocons: [
+              { nom: 'C', articles: [{ titre: 'A', type, slug: 'url', topic: null }] },
+            ],
+          },
         ],
       }
       expect(() => rawArticlesDbSchema.parse(data)).not.toThrow()

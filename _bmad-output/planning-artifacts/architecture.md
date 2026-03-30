@@ -1,20 +1,21 @@
 ---
 stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8]
 inputDocuments:
-  - prd.md
-  - product-brief-BMAD-2026-03-06.md
+  - '_bmad-output/planning-artifacts/prd.md'
+  - '_bmad-output/brainstorming/brainstorming-session-2026-03-28.md'
 workflowType: 'architecture'
 project_name: 'Blog Redactor SEO'
-user_name: 'Arnau'
-date: '2026-03-06'
+user_name: 'Utilisateur'
+date: '2026-03-30'
 lastStep: 8
 status: 'complete'
-completedAt: '2026-03-06'
+completedAt: '2026-03-30'
 ---
 
 # Architecture Decision Document — Blog Redactor SEO
 
-_Document d'architecture complet pour guider l'implémentation par agents IA de manière cohérente et sans conflits._
+**Auteur :** Utilisateur + Claude (Architect)
+**Date :** 2026-03-30
 
 ---
 
@@ -22,132 +23,91 @@ _Document d'architecture complet pour guider l'implémentation par agents IA de 
 
 ### Requirements Overview
 
-**Functional Requirements:**
+**Functional Requirements (28 FRs en 7 domaines) :**
 
-60 FRs organisées en 11 domaines fonctionnels :
+| Domaine | FRs | Implication architecturale |
+|---------|-----|--------------------------|
+| Moteur — Structure 3 phases | FR1-FR5 | Refactoring du MoteurView en layout à phases visuelles, suppression Content Gap, fusion Local+Maps |
+| Phase ① Générer | FR6-FR9 | Onglets optionnels avec verrouillage conditionnel (si mots-clés validés) |
+| Phase ② Valider | FR10-FR13 | 4 onglets tous actifs, onglet Local fusionné (2 sections dans 1 composant) |
+| Phase ③ Assigner | FR14-FR15 | Gating souple — message inline conditionnel (pas de blocage navigation) |
+| Progression & guidage | FR16-FR19 | Store article-progress comme hub central, checks automatiques, bandeaux de transition |
+| Pont Cerveau→Moteur | FR20-FR22 | Section collapsable, pré-processing prompts IA, indicateur d'alignement textuel |
+| Labo & Cache | FR23-FR28 | Composants dual-mode (contextualisé/libre), cache par article, persistance JSON |
 
-| Domaine | FRs | Implications architecturales |
-|---------|-----|------------------------------|
-| Plan Éditorial / Dashboard | FR1-FR5 | Composants de visualisation par cocon, state management des statuts articles |
-| Brief SEO/GEO | FR6-FR9 | Service DataForSEO avec cache, agrégation de données multi-sources |
-| Génération de Structure | FR10-FR13 | Service IA dédié sommaire, éditeur de plan interactif, blocs pédagogiques |
-| Génération de Contenu | FR14-FR20 | Streaming IA, system prompt Propulsite externalisé, méta-données auto |
-| Éditeur Rich Text | FR21-FR24 | TipTap/ProseMirror, template Propulsite préchargé, auto-save |
-| Actions Contextuelles | FR25-FR33 | 9 actions IA distinctes, toolbar flottante, intégration éditeur |
-| Scoring SEO | FR34-FR38 | Moteur de calcul temps réel, analyse de densité, checklist, NLP terms |
-| Scoring GEO | FR39-FR44 | Score composite, détection patterns (capsules, questions, stats, jargon) |
-| Maillage Interne | FR45-FR52 | Graphe orienté persistant, contraintes hiérarchie cocon, détection orphelins |
-| Export | FR53-FR56 | Moteur de template HTML, Schema markup JSON-LD, mise à jour statut |
-| Données & Persistance | FR57-FR60 | Lecture/écriture JSON, sauvegarde atomique, persistance maillage |
+**Non-Functional Requirements (12 NFRs sur 4 axes) :**
 
-**Non-Functional Requirements:**
+| Axe | NFRs | Contrainte architecturale |
+|-----|------|--------------------------|
+| Performance | NFR1-NFR4 | API locales < 200ms, SSE premier token < 2s, changement de vue < 500ms, cache hit > 90% |
+| Coûts | NFR5-NFR7 | Zéro appel API redondant, persistance disque, limite 5MB JSON |
+| Intégration | NFR8-NFR10 | Composants dual-mode (contextualisé/libre), enrichissement prompts optionnel, article-progress source unique |
+| Maintenabilité | NFR11-NFR12 | Pas de duplication composants (prop de mode), prompts .md séparés avec pré-processing |
 
-17 NFRs regroupées en 6 catégories :
+**Scale & Complexity :**
 
-- **Performance** (NFR1-5) : Sommaire < 10s, article < 60s, scoring < 2s, chargement < 3s, navigation < 500ms
-- **Coût** (NFR6-7) : < 0.50€/article, cache DataForSEO obligatoire
-- **Fiabilité** (NFR8-10) : Auto-save 30s, gestion erreurs API avec retry, sauvegarde atomique JSON
-- **Sécurité** (NFR11-12) : Clés API côté serveur, app locale uniquement
-- **Maintenabilité** (NFR13-15) : Règles GEO configurables, system prompt externalisé, templates HTML séparés
-- **Intégration** (NFR16-17) : DataForSEO REST avec rate limiting, Claude SDK avec streaming
-
-**Scale & Complexity:**
-
-- Domaine principal : Full-stack web application (SPA + API backend)
-- Niveau de complexité : Moyen-haut
-- Composants architecturaux estimés : ~18 modules distincts
-- Utilisateur unique, pas de multi-tenancy, pas d'auth, app locale
+- Domaine principal : Full-stack SPA (Vue 3 + Express 5)
+- Complexité : Moyenne — orchestration workflows, intégrations API multiples, pas de contraintes réglementaires
+- Contexte : Brownfield — 75+ composants, 21 stores Pinia, 29 services, 11 vues existantes
 
 ### Technical Constraints & Dependencies
 
-- **Vue 3 + Composition API** : imposé par choix utilisateur
-- **TipTap (ProseMirror)** : éditeur rich text — dépendance critique, conditionne toute l'expérience d'édition
-- **Claude API (Anthropic SDK)** : génération IA — streaming requis pour les contenus longs (NFR17)
-- **DataForSEO API** : enrichissement SEO — 4 endpoints, rate limiting, cache obligatoire
-- **JSON files** : stockage V1 — simplicité mais contraintes d'atomicité
-- **Node/Express** : backend proxy — principalement proxy API + persistence fichiers
-- **Desktop-only** : 1280px minimum, pas de responsive mobile
-- **Chrome-first** : Firefox/Edge en best-effort
+- **Brownfield** : la restructuration doit préserver les composants internes existants — seuls les wrappers (MoteurView) et le système de progression changent
+- **Stack figé** : Vue 3, Pinia, TipTap, Express 5, Claude API (Anthropic SDK), DataForSEO, Zod, Vitest
+- **Mono-utilisateur local** : Pas d'auth, pas de multi-tenant, pas de déploiement cloud
+- **Store article-progress existant** : Contient `completedChecks: string[]` — fondation de la progression
+- **Prompts IA en fichiers .md** : `server/prompts/*.md` avec `{{variable}}` — l'enrichissement est un pré-processing
+- **Cache DataForSEO en place** : Pattern à étendre aux autres services
 
 ### Cross-Cutting Concerns Identified
 
-1. **Tracking mots-clés omniprésent** : chaque modification de contenu doit recalculer les densités, checklist, NLP terms — le moteur de scoring doit être découplé et performant
-2. **Hiérarchie de cocon** : règles métier (Pilier ↔ Intermédiaire ↔ Spécialisé) qui affectent dashboard, maillage, brief, et structure du contenu
-3. **Ton Propulsite** : system prompt externalisé (NFR14) utilisé par toutes les générations IA — centralisation critique
-4. **Gestion coûts API** : monitoring Claude + DataForSEO, cache stratégique, génération en une passe
-5. **Persistance cohérente** : articles, mots-clés, maillage, configuration — multiples fichiers JSON interdépendants avec sauvegarde atomique
-6. **Réactivité scoring** : boucle éditeur → calcul → affichage en < 2s, via debounce dans les composables
-
-### Existing Data Assets
-
-Le projet possède déjà 3 fichiers de données à la racine :
-
-- **`BDD_Articles_Blog.json`** : structure `{ cocons_semantiques: [{ nom, articles: [{ titre, type, slug, theme }] }] }` — 6 cocons, 54 articles
-- **`BDD_Mots_Clefs_SEO.json`** : structure `{ seo_data: [{ mot_clef, cocon_seo, type_mot_clef }] }` — ~100 mots-clés classés Pilier / Moyenne traine / Longue traine
-- **`templateArticle.html`** : template HTML Propulsite avec Tailwind CSS, polices DM Serif Text + Red Hat Text, structure hero → sommaire → article → conclusion
+1. **Dual-mode composants** — Chaque composant Moteur doit fonctionner avec ou sans contexte article/cocon
+2. **Progression réactive** — Le store article-progress reçoit des événements de 7+ sources
+3. **Cache systématique** — 6+ services doivent implémenter le même pattern cache
+4. **Enrichissement prompts** — La stratégie du Cerveau doit être injectée dans les appels Claude du Moteur
+5. **Navigation libre avec guidage** — Aucun gating dur, mais messages conditionnels et bandeaux
 
 ---
 
-## Starter Template Evaluation
+## Starter Template — Brownfield Assessment
 
-### Primary Technology Domain
+### Stack existante (pas de starter template — brownfield)
 
-**Web Application SPA** — Vue 3 + Composition API avec backend Node/Express, basé sur les exigences du PRD.
+Ce projet est **brownfield**. Aucun starter template n'est nécessaire. Le stack est en place et verrouillé.
 
-### Starter Options Considered
+**Stack actuelle vérifiée :**
 
-| Starter | Description | Verdict |
-|---------|-------------|---------|
-| **create-vue** (officiel) | Scaffolding officiel Vue avec choix interactif TypeScript, Router, Pinia, Vitest, ESLint, Prettier | **Retenu** — standard de l'écosystème, tous les outils nécessaires |
-| **Vitesse** (antfu) | Template riche avec file-based routing, auto-imports, UnoCSS, i18n, PWA | Trop opinionated — features inutiles (PWA, i18n, file routing) |
-| **npm create vite@latest** | Template Vite minimal avec Vue | Trop minimal — pas de Router, Pinia, testing inclus |
-| **Nuxt** | Framework full-stack Vue avec SSR | Overkill — pas besoin de SSR, app locale simple |
+| Technologie | Version | Rôle |
+|-------------|---------|------|
+| Vue | 3.5.29 | Framework frontend |
+| Vue Router | 5.0.3 | Routing SPA |
+| Pinia | 3.0.4 | State management |
+| TipTap | 3.20.1 | Éditeur rich-text |
+| Express | 5.2.1 | Serveur API |
+| TypeScript | 5.9.3 | Typage |
+| Vite | 7.3.1 | Build & dev server |
+| Vitest | 4.0.18 | Tests unitaires |
+| Zod | 4.3.6 | Validation schemas |
+| Anthropic SDK | 0.78.0 | API Claude |
+| Hugging Face Transformers | 3.8.1 | Embeddings NLP |
+| VueUse | 14.2.1 | Composables utilitaires |
+| Chalk | 5.6.2 | Logs colorés |
 
-### Selected Starter: create-vue
+**Tooling :**
 
-**Rationale :** Outil officiel de l'équipe Vue, inclut exactement les dépendances nécessaires sans opinions superflues. Parfaitement adapté à une SPA avec Pinia et Vue Router.
+| Outil | Usage |
+|-------|-------|
+| oxlint + ESLint | Linting |
+| Prettier | Formatage |
+| concurrently | Dev server front + back simultanés |
+| tsx | Exécution TypeScript backend |
+| vue-tsc | Type-checking |
 
-**Initialization Command:**
+**Commande de dev :**
 
 ```bash
-npm create vue@latest blog-redactor-seo -- --typescript --router --pinia --vitest --eslint-with-prettier
+npm run dev  # concurrently: vite (front) + node --watch server/index.ts (back)
 ```
-
-**Versions vérifiées (Mars 2026) :**
-
-| Package | Version | Rôle |
-|---------|---------|------|
-| **Vue** | 3.5.x | Framework frontend |
-| **Vite** | 7.x | Build tool & dev server |
-| **create-vue** | 3.19.x | Scaffolding |
-| **Pinia** | 3.0.x | State management |
-| **Vue Router** | 5.0.x | Routing SPA |
-| **Vitest** | 4.0.x | Tests unitaires |
-| **TypeScript** | 5.x | Typage statique |
-| **ESLint** | 9.x | Linting (flat config) |
-| **Prettier** | 3.x | Formatting |
-
-**Dépendances additionnelles à installer :**
-
-| Package | Version | Rôle |
-|---------|---------|------|
-| **@tiptap/vue-3** | 3.x | Éditeur rich text pour Vue |
-| **@tiptap/starter-kit** | 3.x | Extensions TipTap de base |
-| **@anthropic-ai/sdk** | latest | SDK Claude API |
-| **express** | 5.x | Backend API proxy |
-| **zod** | 3.x | Validation de données runtime |
-| **@vueuse/core** | latest | Composables utilitaires (debounce, storage, etc.) |
-
-**Architectural Decisions Provided by Starter:**
-
-- **Language** : TypeScript strict avec paths aliases `@/`
-- **Styling** : CSS natif (pas de framework CSS — le template Propulsite utilise Tailwind via CDN dans l'export, mais l'app elle-même reste en CSS simple)
-- **Build** : Vite avec HMR, optimisations de production automatiques
-- **Tests** : Vitest avec couverture de code
-- **Linting** : ESLint flat config + Prettier
-- **Structure** : `src/` avec `components/`, `views/`, `router/`, `stores/`, `assets/`
-
-**Note:** L'initialisation du projet avec cette commande devrait être la première story d'implémentation.
 
 ---
 
@@ -155,182 +115,146 @@ npm create vue@latest blog-redactor-seo -- --typescript --router --pinia --vites
 
 ### Decision Priority Analysis
 
-**Critical Decisions (Bloquent l'implémentation) :**
-- Architecture monorepo client/server
-- Stockage JSON avec sauvegarde atomique
-- Communication client-server via REST + SSE
-- Intégration TipTap avec extensions custom
+**Décisions critiques (bloquent l'implémentation) :**
 
-**Important Decisions (Shaping) :**
-- Organisation des stores Pinia
-- Pattern de scoring temps réel
-- Stratégie de cache DataForSEO
-- Structure des prompts IA
+1. Pattern dual-mode composants (workflow vs libre)
+2. Architecture du système de progression
+3. Pattern d'enrichissement des prompts IA
+4. Restructuration du MoteurView
 
-**Décisions Reportées (Post-V1) :**
-- Migration JSON → SQLite/Supabase
-- CI/CD pipeline
-- Monitoring avancé
+**Décisions importantes (façonnent l'architecture) :**
+
+5. Pattern cache étendu
+6. Architecture du Labo
+7. Fusion Local + Maps
+
+**Décisions différées (post-MVP) :**
+
+8. Batch processing multi-articles
+9. Boucle GSC post-publication
 
 ### Data Architecture
 
-**Stockage : JSON Files (V1)**
+**Stockage : fichiers JSON locaux (inchangé)**
 
-- **Décision :** Fichiers JSON plats stockés dans un dossier `data/` à la racine du projet
-- **Rationale :** Simplicité maximale pour V1, utilisateur unique, pas de concurrent access. Les fichiers JSON existants (`BDD_Articles_Blog.json`, `BDD_Mots_Clefs_SEO.json`) définissent déjà le format
-- **Affects :** Tous les services backend, sauvegarde, persistance
+- Base de données : Fichiers JSON dans `data/` — pas de SGBD
+- Écriture atomique : `writeJson()` via fichier `.tmp` + `rename()` (pattern existant dans `server/utils/json-storage.ts`)
+- Validation : Schemas Zod partagés dans `shared/schemas/`
+- Limite mémoire : 5MB par fichier JSON (limite Express body-parser)
 
-**Modèle de données :**
+**Fichiers de données pour la progression :**
 
 ```
-data/
-├── BDD_Articles_Blog.json        # Source: 54 articles × 6 cocons (lecture + mise à jour statut)
-├── BDD_Mots_Clefs_SEO.json       # Source: ~100 mots-clés (lecture seule)
-├── articles/                      # Contenu généré par article
-│   └── {article-slug}.json        # { outline, content, metadata, seoScore, geoScore, status }
-├── cache/                         # Cache DataForSEO
-│   └── {keyword-slug}.json        # { serp, paa, relatedKeywords, keywordData, cachedAt }
-└── links/                         # Données de maillage
-    └── linking-matrix.json        # { links: [{ sourceSlug, targetSlug, anchorText, position }] }
+data/article-progress.json     # Existant — { [slug]: ArticleProgress }
+data/article-keywords.json     # Existant — assignations capitaine/lieutenants/lexique
 ```
 
-**Validation : Zod**
+Pas de nouveau fichier de données. Le store `article-progress` existant avec `completedChecks: string[]` est suffisant.
 
-- **Décision :** Zod pour la validation runtime des données JSON et des payloads API
-- **Rationale :** Validation TypeScript-first, inference de types automatique, messages d'erreur clairs
-- **Usage :** Schemas partagés entre client et server via un dossier `shared/`
+**Stratégie de cache :**
 
-**Cache DataForSEO :**
+Pattern uniforme pour tous les services qui appellent des APIs externes :
 
-- **Décision :** Cache fichier JSON par mot-clé pilier, durée illimitée (données peu volatiles)
-- **Rationale :** 1 appel par article (NFR7), résultat réutilisé pour brief + sommaire + NLP terms
-- **Invalidation :** Manuelle uniquement (bouton "Rafraîchir les données SEO" dans le brief)
+```typescript
+// Pseudo-code du pattern cache
+async function getOrFetch<T>(cacheKey: string, fetcher: () => Promise<T>): Promise<T> {
+  const cached = await readFromDisk(cacheKey)
+  if (cached) return cached
+  const result = await fetcher()
+  await writeToDisk(cacheKey, result)
+  return result
+}
+```
+
+Services concernés : DataForSEO (déjà en place), Discovery, Intent, Validation, Local, Autocomplete.
 
 ### Authentication & Security
 
-**Pas d'authentification — App locale (NFR12)**
+**Pas d'authentification** — application locale mono-utilisateur.
 
-- **Décision :** Aucun système d'auth. L'app tourne sur `localhost` uniquement
-- **Rationale :** Utilisateur unique (Arnau), pas d'exposition internet
-- **Sécurité API :**
-  - Clés API Claude et DataForSEO en variables d'environnement côté serveur (`.env`)
-  - Le frontend n'a jamais accès aux clés — tout passe par le proxy Express
-  - CORS restreint à `http://localhost:*`
+- CORS : localhost only (pattern existant)
+- Pas de tokens, sessions, ou middleware auth
+- Clés API (Claude, DataForSEO) : fichier `.env`, jamais exposées au frontend
+- Express body limit : 5MB (déjà en place)
 
-### API & Communication Patterns
+### API & Communication
 
-**REST API interne + Server-Sent Events (SSE)**
+**REST API existante (inchangée) :**
 
-- **Décision :** API REST pour les opérations CRUD et requêtes DataForSEO. SSE pour le streaming de contenu IA
-- **Rationale :** REST est simple et suffisant pour 90% des interactions. SSE permet le streaming natif de Claude API vers le frontend sans WebSocket
+- Prefix : `/api/`
+- Format succès : `{ data: T }`
+- Format erreur : `{ error: { code: string, message: string } }`
+- Streaming : SSE pour les appels Claude (génération article, sommaire, actions contextuelles)
+- Proxy Vite : `/api` → `http://localhost:3005`
 
-**Endpoints API :**
+**Wrapper frontend existant :**
 
-| Méthode | Endpoint | Description | Type |
-|---------|----------|-------------|------|
-| GET | `/api/cocoons` | Liste des cocons avec stats | REST |
-| GET | `/api/cocoons/:id/articles` | Articles d'un cocon | REST |
-| GET | `/api/articles/:slug` | Détail article + contenu sauvegardé | REST |
-| PUT | `/api/articles/:slug` | Sauvegarde contenu article | REST |
-| PUT | `/api/articles/:slug/status` | Mise à jour statut (brouillon/publié) | REST |
-| GET | `/api/keywords/:cocoon` | Mots-clés d'un cocon | REST |
-| POST | `/api/dataforseo/brief` | Enrichissement brief SEO | REST |
-| POST | `/api/generate/outline` | Génération sommaire | SSE stream |
-| POST | `/api/generate/article` | Génération article complet | SSE stream |
-| POST | `/api/generate/action` | Action contextuelle (reformuler, etc.) | SSE stream |
-| GET | `/api/links/matrix` | Matrice de maillage complète | REST |
-| POST | `/api/links/suggest` | Suggestions de liens internes | REST |
-| PUT | `/api/links` | Sauvegarde liens de maillage | REST |
-| POST | `/api/export/:slug` | Export HTML d'un article | REST |
+- `apiGet<T>()`, `apiPost<T>()`, `apiPut<T>()`, `apiDelete<T>()` dans `src/services/api.service.ts`
+- Décode automatiquement `json.data` — le type `T` est le contenu du champ `data`
+- Log automatique des erreurs
 
-**Format de réponse standardisé :**
+**Nouvelles routes nécessaires :**
 
-```typescript
-// Succès
-{ data: T }
+| Route | Méthode | Usage | FR |
+|-------|---------|-------|-----|
+| `/api/articles/:slug/progress/check` | POST | Ajouter un check automatique | FR17 |
+| `/api/cocoons/:id/strategy/context` | GET | Récupérer le contexte stratégique pour enrichissement | FR21 |
 
-// Erreur
-{ error: { code: string, message: string } }
-
-// SSE stream
-event: chunk\ndata: { content: string }\n\n
-event: done\ndata: { metadata: {...} }\n\n
-event: error\ndata: { code: string, message: string }\n\n
-```
-
-**Gestion d'erreurs :**
-
-- Codes HTTP standards : 200, 201, 400, 404, 500, 503
-- Retry automatique côté client pour les erreurs 503 (rate limiting DataForSEO) avec backoff exponentiel
-- Erreurs Claude API : affichage message + bouton retry dans le frontend
+Toutes les autres routes existent déjà.
 
 ### Frontend Architecture
 
-**State Management : Pinia — stores par domaine**
+**State management : Pinia (composition API)**
 
-| Store | Responsabilité | Persistence |
-|-------|---------------|-------------|
-| `articles` | Liste articles, statuts, article actif | Non (chargé depuis API) |
-| `cocoons` | Cocons, stats, progression | Non (dérivé des articles) |
-| `keywords` | Mots-clés par cocon et par article | Non (chargé depuis API) |
-| `editor` | Contenu éditeur, état sauvegarde, dirty flag | Auto-save 30s via API |
-| `seo` | Score SEO, densités, checklist, NLP terms | Non (calculé en temps réel) |
-| `geo` | Score GEO, capsules, questions, stats | Non (calculé en temps réel) |
-| `linking` | Matrice de maillage, suggestions, orphelins | Via API |
-| `brief` | Brief SEO actif, données DataForSEO | Non (chargé par article) |
-| `ui` | État UI global (panels ouverts, loading, notifications) | Non |
+Pattern existant (tous les stores utilisent ce format) :
 
-**Routing : Vue Router**
+```typescript
+export const useXxxStore = defineStore('xxx', () => {
+  const data = ref<T>(initialValue)
+  const isLoading = ref(false)
 
-```
-/                           → DashboardView (liste des cocons)
-/cocoon/:cocoonId           → CocoonView (articles du cocon)
-/article/:slug              → ArticleWorkflowView (brief → sommaire → éditeur)
-/article/:slug/editor       → ArticleEditorView (éditeur TipTap + panels)
-/linking                    → LinkingMatrixView (matrice globale)
+  async function fetchData() { /* ... */ }
+  function getData() { /* ... */ }
+
+  return { data, isLoading, fetchData, getData }
+})
 ```
 
-**Component Architecture : par feature**
-
-Les composants sont organisés par domaine fonctionnel, pas par type. Chaque dossier dans `components/` correspond à un domaine du PRD.
-
-**TipTap Integration :**
-
-- Extensions custom pour les blocs Propulsite : `ContentValeur`, `ContentReminder`, `AnswerCapsule`, `InternalLink`
-- Toolbar flottante contextuelle sur sélection de texte (Bubble Menu TipTap)
-- L'éditeur émet des événements `update` que le store `editor` écoute pour déclencher le scoring
-- Le scoring est calculé côté client via des composables dédiés avec debounce (300ms)
-
-**Scoring en temps réel :**
+**Composants : organisés par feature/domaine**
 
 ```
-TipTap Editor
-  → event: update (content changed)
-    → debounce 300ms
-      → useSeoScoring(content, keywords) → met à jour store seo
-      → useGeoScoring(content) → met à jour store geo
-        → SeoPanel / GeoPanel réagissent via Pinia reactivity
+src/components/
+├── moteur/          # Composants spécifiques au Moteur
+├── intent/          # Discovery, Douleur, Exploration, Validation
+├── keywords/        # Audit, Assignation, Comparaison
+├── local/           # Local, Maps
+├── strategy/        # Cerveau / stratégie cocon
+├── panels/          # Panneaux SEO/GEO latéraux
+├── shared/          # Composants réutilisables (Badge, Breadcrumb, etc.)
+└── ...
+```
+
+**Routing : Vue Router avec lazy loading**
+
+Pattern existant — toutes les vues sauf Dashboard sont lazy-loaded.
+
+**Nouvelle route pour le Labo :**
+
+```typescript
+{
+  path: '/labo',
+  name: 'labo',
+  component: () => import('../views/LaboView.vue'),
+}
 ```
 
 ### Infrastructure & Deployment
 
-**Local uniquement — pas de déploiement**
-
-- **Dev server :** `npm run dev` lance Vite (frontend) + Express (backend) simultanément
-- **Vite proxy :** Les requêtes `/api/*` sont proxied vers Express en développement
-- **Pas de Docker, pas de CI/CD** pour la V1
-- **Node.js 20 LTS** minimum
-
-**Configuration environnement :**
-
-```env
-# .env (jamais commité)
-ANTHROPIC_API_KEY=sk-ant-...
-DATAFORSEO_LOGIN=...
-DATAFORSEO_PASSWORD=...
-CLAUDE_MODEL=claude-sonnet-4-6
-PORT=3001
-```
+- **Local only** : `npm run dev` lance front + back en parallèle
+- **Pas de CI/CD** : projet solo, pas de pipeline
+- **Pas de Docker** : exécution directe avec Node.js
+- **Pas de monitoring** : logs console via `chalk` (module `server/utils/logger.ts`)
+- **Build** : `npm run build` (Vite) — pas de déploiement cloud
 
 ---
 
@@ -338,531 +262,631 @@ PORT=3001
 
 ### Naming Patterns
 
-**Fichiers et dossiers :**
+**Fichiers :**
 
-| Élément | Convention | Exemple |
-|---------|-----------|---------|
-| Composants Vue | PascalCase.vue | `CocoonCard.vue`, `SeoPanel.vue` |
-| Composables | camelCase avec prefix `use` | `useSeoScoring.ts`, `useArticleWorkflow.ts` |
-| Stores Pinia | kebab-case avec suffix `.store` | `articles.store.ts`, `seo.store.ts` |
-| Services | kebab-case avec suffix `.service` | `claude.service.ts`, `dataforseo.service.ts` |
-| Types/Interfaces | kebab-case avec suffix `.types` | `article.types.ts`, `seo.types.ts` |
-| Utils | kebab-case | `seo-calculator.ts`, `html-generator.ts` |
-| Routes Express | kebab-case avec suffix `.routes` | `articles.routes.ts`, `generate.routes.ts` |
-| Tests | même nom + suffix `.test` | `seo-calculator.test.ts`, `CocoonCard.test.ts` |
+| Type | Convention | Exemple |
+|------|-----------|---------|
+| Vue components | PascalCase | `KeywordAuditTable.vue` |
+| Stores | kebab-case + `.store.ts` | `article-progress.store.ts` |
+| Services backend | kebab-case + `.service.ts` | `keyword-discovery.service.ts` |
+| Routes backend | kebab-case + `.routes.ts` | `article-progress.routes.ts` |
+| Composables | camelCase + `use` prefix | `useKeywordScoring.ts` |
+| Types | kebab-case + `.types.ts` | `article-progress.types.ts` |
+| Schemas | kebab-case + `.schema.ts` | `article-progress.schema.ts` |
+| Prompts | kebab-case + `.md` | `generate-article.md` |
+| Tests | source mirroring + `.test.ts` | `tests/unit/stores/article-progress.store.test.ts` |
 
-**Code TypeScript :**
+**Code :**
 
-| Élément | Convention | Exemple |
-|---------|-----------|---------|
-| Variables / fonctions | camelCase | `articleSlug`, `calculateSeoScore()` |
-| Interfaces / Types | PascalCase | `Article`, `SeoScore`, `CocoonStats` |
-| Enums | PascalCase + PascalCase members | `ArticleStatus.Published` |
-| Constantes globales | UPPER_SNAKE_CASE | `MAX_KEYWORD_DENSITY`, `AUTO_SAVE_INTERVAL` |
-| Props Vue | camelCase | `articleSlug`, `isLoading` |
-| Emits Vue | kebab-case | `@update-content`, `@save-article` |
-
-**API :**
-
-| Élément | Convention | Exemple |
-|---------|-----------|---------|
-| Endpoints | kebab-case, noms pluriels | `/api/articles`, `/api/cocoons` |
-| Query params | camelCase | `?cocoonId=...&status=draft` |
-| JSON fields (request/response) | camelCase | `{ articleSlug, seoScore, metaTitle }` |
-| JSON fields (fichiers data existants) | snake_case (préservé) | `{ mot_clef, cocon_seo, type_mot_clef }` |
-
-**Important :** Les fichiers JSON existants (`BDD_Articles_Blog.json`, `BDD_Mots_Clefs_SEO.json`) gardent leur format snake_case original. La conversion snake_case → camelCase se fait dans les services backend lors du chargement.
+| Contexte | Convention | Exemple |
+|----------|-----------|---------|
+| Variables / fonctions | camelCase | `selectedArticle`, `fetchProgress()` |
+| Types / Interfaces | PascalCase | `ArticleProgress`, `SelectedArticle` |
+| Constantes | UPPER_SNAKE_CASE | `MAX_RETRIES`, `DEFAULT_PORT` |
+| Props Vue | camelCase | `modelValue`, `cocoonId` |
+| Events Vue | kebab-case | `@update:model-value`, `@check-added` |
+| API endpoints | kebab-case pluriel | `/api/articles/:slug/progress` |
+| JSON fields | camelCase | `{ completedChecks: [], phase: "moteur" }` |
 
 ### Structure Patterns
 
-**Organisation par feature (pas par type) :**
+**Organisation par feature/domaine (pas par type) :**
+
+Les composants sont regroupés par domaine métier (`intent/`, `keywords/`, `local/`, `moteur/`) et non par type technique (`buttons/`, `forms/`, `tables/`).
+
+**Tests : miroir de la source dans `tests/unit/` :**
 
 ```
-src/components/
-├── dashboard/      # FR1-FR5 : tout ce qui concerne le dashboard
-├── brief/          # FR6-FR9 : brief SEO
-├── outline/        # FR10-FR13 : génération de sommaire
-├── editor/         # FR21-FR24 : éditeur TipTap
-├── actions/        # FR25-FR33 : actions contextuelles
-├── panels/         # FR34-FR44 : panels SEO et GEO
-├── linking/        # FR45-FR52 : maillage interne
-├── export/         # FR53-FR56 : export HTML
-└── shared/         # Composants réutilisables (ScoreGauge, StatusBadge, etc.)
+tests/unit/
+├── components/     # Tests de composants Vue
+├── composables/    # Tests de composables
+├── routes/         # Tests de routes Express
+├── services/       # Tests de services backend
+├── stores/         # Tests de stores Pinia
+└── utils/          # Tests d'utilitaires
 ```
-
-**Tests à la racine :**
-
-- Les tests unitaires sont dans un dossier `tests/` à la racine (pas co-localisés)
-- Structure miroir de `src/` : `tests/unit/stores/`, `tests/unit/composables/`, `tests/unit/utils/`
-- Raison : séparation claire code source vs code test, pas de pollution du tree `src/`
-
-**Un composant Vue = un fichier :**
-
-- Pas de dossier par composant sauf si assets spécifiques nécessaires
-- `<script setup lang="ts">` obligatoire (Composition API)
-- Ordre dans le SFC : `<script setup>` → `<template>` → `<style scoped>`
 
 ### Format Patterns
 
-**Réponses API standardisées :**
+**API Response wrapper :**
 
 ```typescript
-// Toute réponse succès
-interface ApiSuccess<T> {
-  data: T
-}
+// Succès — TOUJOURS envelopper dans { data: T }
+res.json({ data: result })
 
-// Toute réponse erreur
-interface ApiError {
-  error: {
-    code: string    // 'ARTICLE_NOT_FOUND', 'CLAUDE_API_ERROR', 'DATAFORSEO_RATE_LIMIT'
-    message: string // Message humain en français
-  }
+// Erreur — TOUJOURS envelopper dans { error: { code, message } }
+res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid slug' } })
+
+// Le frontend décode automatiquement json.data via apiGet/apiPost/apiPut/apiDelete
+```
+
+**SSE Streaming (Claude API) :**
+
+```typescript
+// Événements SSE standards
+event: chunk\ndata: {"text": "..."}\n\n
+event: done\ndata: {"usage": {...}}\n\n
+event: error\ndata: {"message": "..."}\n\n
+```
+
+### Communication Patterns — Dual-Mode Composants
+
+**Décision architecturale majeure : prop `mode` sur chaque composant réutilisable.**
+
+```typescript
+// Prop commune à tous les composants du Moteur réutilisés dans le Labo
+interface DualModeProps {
+  mode: 'workflow' | 'libre'
+  // En mode 'workflow': articleSlug et cocoonId sont requis
+  articleSlug?: string
+  cocoonId?: number
+  // En mode 'libre': keywordQuery est le point d'entrée
+  keywordQuery?: string
 }
 ```
 
-**Dates :** ISO 8601 strings (`2026-03-06T14:30:00Z`) dans toutes les APIs et fichiers JSON.
+**Règles :**
 
-**Null handling :** `null` explicite dans le JSON, jamais `undefined`. Les champs optionnels sont présents avec valeur `null`.
+1. Un composant en mode `workflow` utilise `articleSlug` pour charger/sauvegarder le cache et mettre à jour la progression
+2. Un composant en mode `libre` utilise `keywordQuery` comme clé — pas de cache persistant, pas de progression
+3. Le composant **ne sait pas** s'il est dans le Moteur ou le Labo — c'est la vue parente qui passe le mode
+4. Pas de `if (mode === 'workflow')` dans la logique métier — le composant reçoit les callbacks de save/cache par injection (props ou provide/inject)
 
-### Communication Patterns
+### Communication Patterns — Progression
 
-**Events Vue :**
+**Le store `article-progress` est la source unique de vérité (NFR10).**
 
-- Naming : kebab-case verbe-nom (`update-content`, `save-article`, `generate-outline`)
-- Payload : toujours un objet typé, jamais de primitifs seuls
-
-**State management Pinia :**
-
-- Stores en mode `setup` (Composition API style), pas Options API
-- Actions pour toute opération async (appels API)
-- Getters pour les données dérivées (stats cocons, scores calculés)
-- Pas de mutations directes du state depuis les composants — toujours via actions
+Pattern de notification de progression :
 
 ```typescript
-// Pattern standard d'un store
-export const useArticlesStore = defineStore('articles', () => {
-  // State
-  const articles = ref<Article[]>([])
-  const activeArticle = ref<Article | null>(null)
-  const isLoading = ref(false)
+// Quand un onglet produit un résultat, il émet un événement
+// La vue MoteurView intercepte et appelle addCheck()
 
-  // Getters
-  const articlesByCocoon = computed(() => /* ... */)
+// Dans le composant enfant :
+const emit = defineEmits<{ 'check-completed': [checkName: string] }>()
+// Quand le résultat arrive :
+emit('check-completed', 'discovery_done')
 
-  // Actions
-  async function fetchArticles() { /* ... */ }
-  async function saveArticle(slug: string, content: ArticleContent) { /* ... */ }
-
-  return { articles, activeArticle, isLoading, articlesByCocoon, fetchArticles, saveArticle }
-})
+// Dans MoteurView :
+async function onCheckCompleted(check: string) {
+  if (!selectedArticle.value) return
+  await progressStore.addCheck(selectedArticle.value.slug, check)
+}
 ```
+
+**Checks standardisés (7 étapes) :**
+
+| Check name | Déclenché quand | Phase |
+|-----------|-----------------|-------|
+| `discovery_done` | Discovery IA termine l'analyse | ① Générer |
+| `radar_done` | Douleur Intent scanner termine | ① Générer |
+| `intent_done` | Exploration analyse l'intention | ② Valider |
+| `audit_done` | DataForSEO retourne des données | ② Valider |
+| `local_done` | Comparaison Local s'affiche | ② Valider |
+| `captain_chosen` | Un mot-clé est validé comme capitaine dans l'Audit | ③ Assigner |
+| `assignment_done` | Capitaine + lieutenants + lexique assignés | ③ Assigner |
 
 ### Process Patterns
 
-**Error Handling :**
+**Error handling :**
 
-- **Backend :** Middleware Express global catch-all. Chaque route wrappée dans un try/catch qui retourne `{ error: { code, message } }`
-- **Frontend :** Les stores Pinia gèrent les erreurs dans leurs actions. Les composants affichent les erreurs via un composant `ErrorMessage.vue` réutilisable
-- **Pas de throw** dans les stores — les erreurs sont stockées dans le state et affichées par les composants
-- **Logging :** `console.error` côté serveur avec le contexte, pas de service de logging externe
+```typescript
+// Backend : erreur handler global (existant)
+app.use(errorHandler)
+// → res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: err.message } })
 
-**Loading States :**
+// Frontend : try/catch dans chaque action de store, log via log.warn/log.error
+// Pas de toast global — les composants gèrent l'affichage d'erreur localement
+```
 
-- Chaque store a son propre `isLoading: ref(false)`
-- Les composants affichent un `LoadingSpinner` quand le store associé est en loading
-- Pour les générations IA : état intermédiaire `isStreaming: ref(false)` + texte progressif
+**Loading states :**
 
-**Auto-save (NFR8) :**
+```typescript
+// Pattern standard dans chaque store
+const isLoading = ref(false)
 
-- Le store `editor` déclenche un save toutes les 30 secondes SI le contenu a changé (`isDirty` flag)
-- Save = `PUT /api/articles/:slug` avec le contenu TipTap sérialisé
-- Indicateur visuel "Sauvegardé" / "Sauvegarde en cours..." dans l'éditeur
-
-**Sauvegarde atomique JSON (NFR10) :**
-
-- Pattern write-to-temp + rename : écrire dans `{filename}.tmp` puis `fs.rename()` pour remplacer l'original
-- Garantit qu'un crash pendant l'écriture ne corrompt pas le fichier existant
+async function fetchData() {
+  isLoading.value = true
+  try { /* ... */ }
+  finally { isLoading.value = false }
+}
+```
 
 ### Enforcement Guidelines
 
 **Tous les agents IA DOIVENT :**
 
-1. Utiliser `<script setup lang="ts">` pour tous les composants Vue
-2. Typer explicitement toutes les props, emits, et retours de fonctions
-3. Utiliser les stores Pinia via actions, jamais de mutation directe
-4. Suivre les conventions de nommage exactes définies ci-dessus
-5. Utiliser Zod pour valider tout input externe (API responses, fichiers JSON)
-6. Écrire des tests Vitest pour tout nouveau composable et utilitaire
-7. Garder les prompts IA dans des fichiers Markdown séparés dans `server/prompts/`
+1. Utiliser le wrapper `apiGet/apiPost/apiPut/apiDelete` pour tous les appels API côté frontend — jamais `fetch()` directement
+2. Envelopper les réponses API dans `{ data: T }` côté backend — jamais de réponse JSON brute
+3. Utiliser `defineStore('name', () => { ... })` (composition API) pour tout nouveau store — jamais l'options API
+4. Placer les tests dans `tests/unit/` en miroir de la structure source — jamais de tests co-localisés
+5. Utiliser `log.debug/info/warn/error` (module logger) pour les logs — jamais `console.log` directement
+6. Utiliser `loadPrompt()` pour charger les prompts IA — jamais de strings inline
+7. Utiliser `readJson/writeJson` pour la persistance JSON — jamais `fs.readFile/writeFile` directement
+8. Émettre `check-completed` quand un onglet du Moteur produit un résultat en mode workflow
 
-**Anti-Patterns à éviter :**
+**Anti-patterns à éviter :**
 
-- Options API dans les composants (`data()`, `methods:`, `computed:`)
-- `any` en TypeScript — utiliser `unknown` + type guards si nécessaire
-- Appels API directs depuis les composants — toujours via services ou stores
-- Logique métier dans les composants — extraire dans composables ou utils
-- Stockage de clés API côté frontend
+- Créer un nouveau fichier de données JSON sans schema Zod correspondant dans `shared/schemas/`
+- Appeler une API externe sans vérifier le cache d'abord
+- Dupliquer un composant entre Moteur et Labo au lieu d'utiliser la prop `mode`
+- Bloquer la navigation (gating dur) au lieu d'afficher un message inline
+- Modifier un fichier `.md` de prompt au lieu de pré-processer en amont
 
 ---
 
 ## Project Structure & Boundaries
 
-### Complete Project Directory Structure
+### Structure du projet (état actuel + ajouts PRD)
 
 ```
 blog-redactor-seo/
-├── .env                              # Variables d'environnement (non commité)
-├── .env.example                      # Template des variables d'environnement
-├── .eslintrc.cjs                     # Configuration ESLint
-├── .gitignore
-├── .prettierrc                       # Configuration Prettier
-├── index.html                        # Entry point HTML Vite
-├── package.json
-├── tsconfig.json                     # Config TS frontend
-├── tsconfig.node.json                # Config TS backend/node
-├── vite.config.ts                    # Config Vite + proxy API
+├── .env                          # Clés API (Claude, DataForSEO)
+├── .env.example                  # Template sans clés
+├── package.json                  # Dependencies & scripts
+├── vite.config.ts                # Vite + proxy /api → :3005
+├── tsconfig.json                 # TypeScript config
 │
-├── data/                             # Données persistantes (JSON files)
-│   ├── BDD_Articles_Blog.json        # 54 articles × 6 cocons (existant)
-│   ├── BDD_Mots_Clefs_SEO.json       # ~100 mots-clés SEO (existant)
-│   ├── articles/                     # Contenu généré par article
-│   │   └── {slug}.json               # Contenu, outline, metadata, scores
-│   ├── cache/                        # Cache DataForSEO
-│   │   └── {keyword-slug}.json       # Données SERP, PAA, related keywords
-│   └── links/
-│       └── linking-matrix.json       # Graphe de maillage interne
+├── data/                         # Fichiers JSON (base de données locale)
+│   ├── BDD_Articles_Blog.json    # Articles
+│   ├── BDD_Mots_Clefs_SEO.json  # Mots-clés
+│   ├── article-keywords.json     # Assignations capitaine/lieutenants/lexique
+│   ├── article-progress.json     # Progression par article (completedChecks[])
+│   ├── article-statuses.json     # Statuts des articles
+│   ├── article-semantic-fields.json
+│   ├── hierarchy.json            # Silos → Cocons → Articles
+│   ├── local-entities.json       # Entités locales
+│   ├── theme-config.json         # Configuration du thème
+│   └── strategies/               # Stratégies cocons (Cerveau)
 │
-├── server/                           # Backend Express (API proxy)
-│   ├── index.ts                      # Entry point Express, middleware, routes
-│   ├── routes/
-│   │   ├── articles.routes.ts        # CRUD articles, sauvegarde, statut
-│   │   ├── cocoons.routes.ts         # Liste cocons, stats
-│   │   ├── keywords.routes.ts        # Mots-clés par cocon/article
-│   │   ├── generate.routes.ts        # Proxy Claude API (SSE streaming)
-│   │   ├── dataforseo.routes.ts      # Proxy DataForSEO avec cache
-│   │   ├── links.routes.ts           # Maillage interne CRUD
-│   │   └── export.routes.ts          # Export HTML
+├── server/                       # Backend Express 5
+│   ├── index.ts                  # Point d'entrée, montage routes
+│   ├── routes/                   # Routes REST
+│   │   ├── articles.routes.ts
+│   │   ├── article-progress.routes.ts
+│   │   ├── cocoons.routes.ts
+│   │   ├── content-gap.routes.ts
+│   │   ├── dataforseo.routes.ts
+│   │   ├── discovery-cache.routes.ts
+│   │   ├── export.routes.ts
+│   │   ├── generate.routes.ts
+│   │   ├── gsc.routes.ts
+│   │   ├── intent.routes.ts
+│   │   ├── intent-scan.routes.ts
+│   │   ├── keywords.routes.ts
+│   │   ├── links.routes.ts
+│   │   ├── local.routes.ts
+│   │   ├── silos.routes.ts
+│   │   └── strategy.routes.ts
+│   ├── services/                 # Logique métier
+│   │   ├── article-content.service.ts
+│   │   ├── article-progress.service.ts
+│   │   ├── autocomplete.service.ts
+│   │   ├── claude.service.ts         # Appels Claude API + streaming SSE
+│   │   ├── cocoon-strategy.service.ts # Stratégies du Cerveau
+│   │   ├── community-discussions.service.ts
+│   │   ├── content-gap.service.ts
+│   │   ├── data.service.ts           # Chargement BDD JSON
+│   │   ├── dataforseo.service.ts     # DataForSEO + cache
+│   │   ├── discovery-cache.service.ts
+│   │   ├── embedding.service.ts      # Hugging Face Transformers
+│   │   ├── export.service.ts
+│   │   ├── gsc.service.ts
+│   │   ├── intent.service.ts
+│   │   ├── intent-scan.service.ts    # Radar Douleur Intent
+│   │   ├── keyword-assignment.service.ts
+│   │   ├── keyword-discovery.service.ts
+│   │   ├── keyword-radar.service.ts
+│   │   ├── linking.service.ts
+│   │   ├── local-entities.service.ts
+│   │   ├── local-seo.service.ts
+│   │   ├── paa-cache.service.ts
+│   │   ├── semantic-field.service.ts
+│   │   ├── strategy.service.ts
+│   │   ├── suggest.service.ts
+│   │   ├── theme-config.service.ts
+│   │   └── word-groups.service.ts
+│   ├── prompts/                  # Prompts IA en Markdown
+│   │   ├── actions/              # Prompts d'actions contextuelles
+│   │   ├── generate-article.md
+│   │   ├── generate-outline.md
+│   │   ├── intent-keywords.md
+│   │   ├── pain-translate.md
+│   │   ├── cocoon-brainstorm.md
+│   │   ├── strategy-*.md         # Prompts stratégie cocon
+│   │   └── ...
+│   └── utils/                    # Utilitaires backend
+│       ├── error-handler.ts      # Error handler global Express
+│       ├── json-storage.ts       # readJson / writeJson (atomic write)
+│       ├── logger.ts             # Logs colorés (chalk)
+│       └── prompt-loader.ts      # loadPrompt() avec {{variables}}
+│
+├── shared/                       # Types & schemas partagés front/back
+│   ├── types/                    # Interfaces TypeScript
+│   │   ├── index.ts              # Barrel export
+│   │   ├── article.types.ts
+│   │   ├── article-progress.types.ts
+│   │   ├── api.types.ts
+│   │   ├── cocoon.types.ts
+│   │   ├── dataforseo.types.ts
+│   │   ├── intent.types.ts
+│   │   ├── keyword.types.ts
+│   │   ├── keyword-audit.types.ts
+│   │   ├── keyword-discovery.types.ts
+│   │   ├── linking.types.ts
+│   │   ├── local.types.ts
+│   │   ├── seo.types.ts
+│   │   ├── geo.types.ts
+│   │   ├── silo.types.ts
+│   │   ├── strategy.types.ts
+│   │   └── ...
+│   ├── schemas/                  # Schemas Zod
+│   │   ├── article.schema.ts
+│   │   ├── article-progress.schema.ts
+│   │   ├── keyword.schema.ts
+│   │   ├── generate.schema.ts
+│   │   └── ...
+│   └── constants/                # Constantes partagées
+│       ├── geo.constants.ts
+│       └── seo.constants.ts
+│
+├── src/                          # Frontend Vue 3
+│   ├── App.vue                   # Layout racine
+│   ├── router/index.ts           # Routes (lazy loading)
+│   ├── assets/
+│   │   └── styles/
+│   │       ├── main.css          # Styles globaux
+│   │       ├── variables.css     # Design tokens CSS
+│   │       └── editor.css        # Styles TipTap
 │   ├── services/
-│   │   ├── claude.service.ts         # SDK Anthropic, streaming, retry
-│   │   ├── dataforseo.service.ts     # API DataForSEO, 4 endpoints, rate limiting
-│   │   ├── article.service.ts        # Lecture/écriture JSON articles
-│   │   ├── linking.service.ts        # Logique de maillage, détection orphelins
-│   │   └── export.service.ts         # Génération HTML + Schema markup
-│   ├── prompts/                      # Prompts IA externalisés (NFR14)
-│   │   ├── system-propulsite.md      # System prompt ton Propulsite
-│   │   ├── generate-outline.md       # Prompt génération sommaire
-│   │   ├── generate-article.md       # Prompt génération article complet
-│   │   └── actions/                  # Prompts actions contextuelles
-│   │       ├── reformulate.md
-│   │       ├── simplify.md
-│   │       ├── to-list.md
-│   │       ├── enrich-example.md
-│   │       ├── optimize-keyword.md
-│   │       ├── add-statistic.md
-│   │       ├── answer-capsule.md
-│   │       ├── to-question.md
-│   │       └── inject-link.md
-│   └── utils/
-│       ├── json-storage.ts           # Read/write JSON atomique
-│       ├── error-handler.ts          # Middleware erreur global Express
-│       └── slug.ts                   # Utilitaire slugification
+│   │   └── api.service.ts        # apiGet, apiPost, apiPut, apiDelete
+│   ├── stores/                   # Pinia stores (composition API)
+│   │   ├── articles.store.ts
+│   │   ├── article-keywords.store.ts
+│   │   ├── article-progress.store.ts  # Hub progression (source unique)
+│   │   ├── brief.store.ts
+│   │   ├── cocoons.store.ts
+│   │   ├── cocoon-strategy.store.ts
+│   │   ├── editor.store.ts
+│   │   ├── intent.store.ts
+│   │   ├── keyword-audit.store.ts
+│   │   ├── keyword-discovery.store.ts
+│   │   ├── keywords.store.ts
+│   │   ├── linking.store.ts
+│   │   ├── local.store.ts
+│   │   ├── outline.store.ts
+│   │   ├── seo.store.ts
+│   │   ├── silos.store.ts
+│   │   ├── strategy.store.ts
+│   │   └── theme-config.store.ts
+│   ├── composables/              # Composables Vue
+│   │   ├── useAutoSave.ts
+│   │   ├── useContextualActions.ts
+│   │   ├── useKeywordScoring.ts
+│   │   ├── useKeywordDiscoveryTab.ts
+│   │   ├── useNlpAnalysis.ts
+│   │   ├── useStreaming.ts
+│   │   └── ...
+│   ├── components/               # Composants Vue (par domaine)
+│   │   ├── moteur/               # Wrapper MoteurView, sélection article, contexte
+│   │   │   ├── MoteurContextRecap.vue
+│   │   │   ├── SelectedArticlePanel.vue
+│   │   │   └── KeywordDiscoveryTab.vue
+│   │   ├── intent/               # Discovery, Douleur, Exploration, Validation
+│   │   │   ├── DouleurIntentScanner.vue
+│   │   │   ├── ExplorationInput.vue
+│   │   │   ├── IntentStep.vue
+│   │   │   ├── AutocompleteValidation.vue
+│   │   │   ├── ExplorationVerdict.vue
+│   │   │   ├── PainTranslator.vue
+│   │   │   ├── PainValidation.vue
+│   │   │   └── LocalComparisonStep.vue
+│   │   ├── keywords/             # Audit, Assignation
+│   │   │   ├── KeywordAuditTable.vue
+│   │   │   ├── KeywordComparison.vue
+│   │   │   ├── KeywordEditor.vue
+│   │   │   └── DiscoveryPanel.vue
+│   │   ├── local/                # Maps & GBP
+│   │   │   └── MapsStep.vue
+│   │   ├── strategy/             # Cerveau / stratégie cocon
+│   │   ├── panels/               # Panneaux latéraux SEO/GEO
+│   │   ├── dashboard/            # Dashboard, SiloCard
+│   │   ├── editor/               # TipTap, BubbleMenu
+│   │   ├── outline/              # Sommaire
+│   │   ├── brief/                # Brief SEO, Content Gap
+│   │   ├── actions/              # Actions contextuelles
+│   │   ├── export/               # Export HTML
+│   │   ├── linking/              # Maillage interne
+│   │   └── shared/               # Badge, Breadcrumb, Spinner, etc.
+│   ├── utils/                    # Utilitaires frontend
+│   │   └── logger.ts
+│   └── views/                    # Vues (1 par route)
+│       ├── DashboardView.vue
+│       ├── ThemeConfigView.vue
+│       ├── SiloDetailView.vue
+│       ├── CocoonLandingView.vue
+│       ├── CerveauView.vue
+│       ├── MoteurView.vue           # Restructuré en 3 phases (changement principal)
+│       ├── LaboView.vue             # NOUVEAU — Recherche libre
+│       ├── RedactionView.vue
+│       ├── ArticleWorkflowView.vue
+│       ├── ArticleEditorView.vue
+│       ├── LinkingMatrixView.vue
+│       └── PostPublicationView.vue
 │
-├── shared/                           # Code partagé client/server
-│   ├── types/
-│   │   ├── article.types.ts          # Article, ArticleContent, ArticleStatus
-│   │   ├── cocoon.types.ts           # Cocoon, CocoonStats, CocoonType
-│   │   ├── keyword.types.ts          # Keyword, KeywordType, KeywordDensity
-│   │   ├── seo.types.ts              # SeoScore, SeoChecklist, NlpTerm
-│   │   ├── geo.types.ts              # GeoScore, AnswerCapsule, GeoMetrics
-│   │   ├── linking.types.ts          # Link, LinkingMatrix, OrphanArticle
-│   │   └── api.types.ts              # ApiSuccess<T>, ApiError, SSE events
-│   ├── schemas/
-│   │   ├── article.schema.ts         # Zod schemas articles
-│   │   ├── keyword.schema.ts         # Zod schemas mots-clés
-│   │   └── linking.schema.ts         # Zod schemas maillage
-│   └── constants/
-│       ├── seo.constants.ts          # Seuils SEO, densité cible par type de mot-clé
-│       └── geo.constants.ts          # Règles GEO configurables (NFR13)
-│
-├── src/                              # Frontend Vue 3
-│   ├── main.ts                       # Entry point Vue
-│   ├── App.vue                       # Layout principal
-│   ├── router/
-│   │   └── index.ts                  # Vue Router config
-│   ├── stores/
-│   │   ├── articles.store.ts         # Articles, statuts, article actif
-│   │   ├── cocoons.store.ts          # Cocons, stats, progression
-│   │   ├── keywords.store.ts         # Mots-clés par cocon et article
-│   │   ├── editor.store.ts           # Contenu éditeur, auto-save, dirty flag
-│   │   ├── seo.store.ts              # Score SEO temps réel
-│   │   ├── geo.store.ts              # Score GEO temps réel
-│   │   ├── linking.store.ts          # Matrice maillage, suggestions
-│   │   ├── brief.store.ts            # Brief SEO, données DataForSEO
-│   │   └── ui.store.ts               # État UI (panels, loading, notifications)
-│   ├── composables/
-│   │   ├── useArticleWorkflow.ts     # Orchestration workflow article
-│   │   ├── useSeoScoring.ts          # Calcul score SEO en temps réel
-│   │   ├── useGeoScoring.ts          # Calcul score GEO en temps réel
-│   │   ├── useContextualActions.ts   # Gestion des 9 actions contextuelles
-│   │   ├── useInternalLinking.ts     # Logique maillage côté client
-│   │   ├── useAutoSave.ts            # Auto-save 30s avec dirty detection
-│   │   └── useStreaming.ts           # Consommation SSE streams Claude
-│   ├── services/
-│   │   ├── api.service.ts            # Client HTTP de base (fetch wrapper)
-│   │   ├── articles.api.ts           # Appels API articles
-│   │   ├── generation.api.ts         # Appels API génération (SSE)
-│   │   ├── dataforseo.api.ts         # Appels API DataForSEO
-│   │   ├── links.api.ts              # Appels API maillage
-│   │   └── export.api.ts             # Appels API export
-│   ├── components/
-│   │   ├── dashboard/
-│   │   │   ├── CocoonList.vue        # Liste des 6 cocons avec progression
-│   │   │   ├── CocoonCard.vue        # Carte cocon (stats, barre progression)
-│   │   │   ├── ArticleList.vue       # Liste articles d'un cocon
-│   │   │   ├── ArticleCard.vue       # Carte article (titre, type, statut, mots-clés)
-│   │   │   └── CocoonStats.vue       # Statistiques santé cocon
-│   │   ├── brief/
-│   │   │   ├── SeoBrief.vue          # Brief SEO complet d'un article
-│   │   │   ├── KeywordList.vue       # Liste mots-clés (pilier, moyenne, longue traine)
-│   │   │   ├── DataForSeoPanel.vue   # Données DataForSEO (SERP, PAA, volumes)
-│   │   │   └── ContentRecommendation.vue  # Longueur recommandée, type article
-│   │   ├── outline/
-│   │   │   ├── OutlineEditor.vue     # Éditeur de sommaire interactif
-│   │   │   ├── OutlineNode.vue       # Nœud H2/H3 draggable
-│   │   │   └── OutlineActions.vue    # Actions sur le sommaire (valider, régénérer)
-│   │   ├── editor/
-│   │   │   ├── ArticleEditor.vue     # Wrapper TipTap principal
-│   │   │   ├── EditorToolbar.vue     # Toolbar formatage de base
-│   │   │   ├── BubbleMenu.vue        # Menu contextuel flottant sur sélection
-│   │   │   └── tiptap/
-│   │   │       └── extensions/
-│   │   │           ├── content-valeur.ts    # Extension bloc content-valeur
-│   │   │           ├── content-reminder.ts  # Extension bloc content-reminder
-│   │   │           ├── answer-capsule.ts    # Extension answer capsule GEO
-│   │   │           └── internal-link.ts     # Extension lien interne traçable
-│   │   ├── actions/
-│   │   │   ├── ActionMenu.vue        # Menu des 9 actions contextuelles
-│   │   │   └── ActionResult.vue      # Affichage résultat action (accept/reject)
-│   │   ├── panels/
-│   │   │   ├── SeoPanel.vue          # Panel latéral SEO complet
-│   │   │   ├── GeoPanel.vue          # Panel latéral GEO complet
-│   │   │   ├── KeywordDensity.vue    # Densité par mot-clé avec jauges
-│   │   │   ├── SeoChecklist.vue      # Checklist SEO (titre, H1, intro, etc.)
-│   │   │   ├── NlpTerms.vue          # Termes NLP DataForSEO à cocher
-│   │   │   ├── GeoScore.vue          # Score GEO composite
-│   │   │   ├── AnswerCapsuleCheck.vue # Vérification capsules par H2
-│   │   │   └── ParagraphLength.vue   # Alerte paragraphes > 3 lignes
-│   │   ├── linking/
-│   │   │   ├── LinkingMatrix.vue     # Matrice globale de maillage
-│   │   │   ├── LinkSuggestions.vue   # Suggestions de liens pour l'article actif
-│   │   │   └── OrphanDetector.vue    # Détection articles orphelins
-│   │   ├── export/
-│   │   │   ├── ExportButton.vue      # Bouton export HTML
-│   │   │   └── ExportPreview.vue     # Preview du HTML généré
-│   │   └── shared/
-│   │       ├── ScoreGauge.vue        # Jauge de score réutilisable (SEO/GEO)
-│   │       ├── StatusBadge.vue       # Badge statut article
-│   │       ├── ProgressBar.vue       # Barre de progression cocon
-│   │       ├── LoadingSpinner.vue    # Spinner de chargement
-│   │       └── ErrorMessage.vue      # Affichage erreur avec retry
-│   ├── views/
-│   │   ├── DashboardView.vue         # Page dashboard (liste cocons)
-│   │   ├── CocoonView.vue            # Page cocon (liste articles)
-│   │   ├── ArticleWorkflowView.vue   # Page workflow (brief → sommaire → éditeur)
-│   │   └── LinkingMatrixView.vue     # Page matrice maillage globale
-│   ├── utils/
-│   │   ├── seo-calculator.ts         # Logique calcul score SEO
-│   │   ├── geo-calculator.ts         # Logique calcul score GEO
-│   │   ├── keyword-analyzer.ts       # Analyse densité, placement mots-clés
-│   │   ├── html-generator.ts         # Génération HTML depuis contenu TipTap
-│   │   └── text-analyzer.ts          # Analyse texte (longueur, paragraphes, jargon)
-│   └── assets/
-│       ├── styles/
-│       │   ├── main.css              # Styles globaux de l'app
-│       │   ├── editor.css            # Styles spécifiques TipTap
-│       │   └── variables.css         # Variables CSS (couleurs, spacing)
-│       └── templates/
-│           └── templateArticle.html  # Template HTML Propulsite pour export
-│
-├── tests/
-│   ├── unit/
-│   │   ├── stores/                   # Tests des stores Pinia
-│   │   ├── composables/              # Tests des composables
-│   │   ├── utils/                    # Tests des utilitaires (scoring, analyse)
-│   │   └── services/                 # Tests des services backend
-│   └── setup.ts                      # Configuration globale Vitest
-│
-└── public/                           # Assets statiques Vite
+└── tests/                        # Tests Vitest
+    └── unit/
+        ├── components/
+        ├── composables/
+        ├── routes/
+        ├── services/
+        ├── stores/
+        └── utils/
 ```
 
 ### Architectural Boundaries
 
-**Diagramme de flux :**
+**Boundary frontend/backend :**
 
 ```
-┌─────────────────────────────────────────────────────┐
-│                    FRONTEND (Vue 3)                   │
-│  ┌─────────┐  ┌─────────┐  ┌──────────┐            │
-│  │ Stores  │←→│Composable│←→│Components│            │
-│  │ (Pinia) │  │   (use*) │  │  (.vue)  │            │
-│  └────┬────┘  └──────────┘  └──────────┘            │
-│       │                                               │
-│  ┌────┴────┐                                         │
-│  │Services │  ← fetch() / EventSource (SSE)          │
-│  │ (.api)  │                                         │
-│  └────┬────┘                                         │
-└───────┼─────────────────────────────────────────────┘
-        │ HTTP REST + SSE (localhost:3001)
-┌───────┼─────────────────────────────────────────────┐
-│       ▼           BACKEND (Express)                  │
-│  ┌─────────┐                                         │
-│  │ Routes  │                                         │
-│  └────┬────┘                                         │
-│       │                                               │
-│  ┌────┴────────────────────────────────┐             │
-│  │           Services                   │             │
-│  │  ┌──────────┐  ┌─────────────────┐  │             │
-│  │  │ Claude   │  │  DataForSEO     │  │             │
-│  │  │ Service  │  │  Service        │  │             │
-│  │  └────┬─────┘  └───────┬─────────┘  │             │
-│  │       │                │             │             │
-│  │  ┌────┴─────┐  ┌──────┴──────────┐  │             │
-│  │  │ Article  │  │  Export         │  │             │
-│  │  │ Service  │  │  Service        │  │             │
-│  │  └────┬─────┘  └───────┬─────────┘  │             │
-│  └───────┼────────────────┼─────────────┘             │
-│          │                │                           │
-│  ┌───────┴────────────────┴─────────┐                │
-│  │     JSON Storage (data/)          │                │
-│  └───────────────────────────────────┘                │
-└─────────────────────────────────────────────────────┘
-        │                    │
-        ▼                    ▼
-  Claude API           DataForSEO API
-  (streaming)          (REST + cache)
+[Vue App] ──fetch──→ [Vite Proxy /api] ──→ [Express :3005]
+                                               │
+                                     ┌─────────┼─────────┐
+                                     ▼         ▼         ▼
+                                  [Claude]  [DataForSEO]  [JSON files]
+                                  (SSE)     (REST)        (disk)
 ```
 
-**Règle de boundary critique :** Les composants Vue n'appellent JAMAIS les services API directement. Le flux est toujours : `Component → Store (action) → Service API → Backend`. Seuls les composables peuvent accéder directement aux stores.
+- Le frontend ne touche JAMAIS au filesystem — toujours via API
+- Le backend ne sert JAMAIS de HTML — uniquement JSON et SSE
+- Les types partagés dans `shared/` sont la seule dépendance commune
+
+**Boundary composants du Moteur :**
+
+```
+MoteurView.vue (orchestrateur)
+├── SelectedArticlePanel        # Sélection article (obligatoire)
+├── MoteurContextRecap          # Résumé stratégie Cerveau (collapsable)
+├── MoteurPhaseNavigation       # Navigation 3 phases + bandeaux
+│
+├── Phase ① Générer
+│   ├── KeywordDiscoveryTab     # Discovery IA (optionnel)
+│   ├── DouleurIntentScanner    # Radar (optionnel)
+│   └── PainTranslator          # Douleur → mots-clés
+│
+├── Phase ② Valider
+│   ├── PainValidation          # Validation multi-sources
+│   ├── ExplorationInput + IntentStep + AutocompleteValidation  # Exploration
+│   ├── KeywordAuditTable       # Audit DataForSEO
+│   └── LocalComparisonStep + MapsStep  # Local fusionné
+│
+└── Phase ③ Assigner
+    └── KeywordEditor + KeywordMigrationPreview  # Assignation
+```
+
+**Boundary Labo :**
+
+```
+LaboView.vue (orchestrateur — mode libre)
+├── Champ de recherche libre (pas de sélection article)
+│
+├── KeywordDiscoveryTab     mode="libre"
+├── DouleurIntentScanner    mode="libre"
+├── ExplorationInput + ...  mode="libre"
+├── KeywordAuditTable       mode="libre"
+└── LocalComparisonStep + MapsStep  mode="libre"
+```
+
+### Data Flow — Enrichissement prompts IA (Pont Cerveau→Moteur)
+
+```
+┌──────────────────┐     ┌─────────────────────────┐
+│ Cerveau Strategy │     │ Prompt .md template      │
+│ (data/strategies/│     │ (server/prompts/xxx.md)  │
+│  cocon-{id}.json)│     │                          │
+└────────┬─────────┘     └──────────┬──────────────┘
+         │                          │
+         ▼                          ▼
+┌────────────────────────────────────────────────┐
+│ prompt-loader.ts — loadPrompt()                │
+│                                                │
+│ 1. Load prompt .md                             │
+│ 2. Load strategy context (si cocoonId fourni)  │
+│ 3. Inject {{strategy_context}} variable        │
+│ 4. Return enriched prompt                      │
+└────────────────────┬───────────────────────────┘
+                     │
+                     ▼
+              ┌──────────────┐
+              │ Claude API   │
+              │ (SSE stream) │
+              └──────────────┘
+```
+
+**Règle :** Si aucune stratégie n'existe pour le cocon, `{{strategy_context}}` est remplacé par une string vide — le prompt fonctionne sans enrichissement (NFR9).
+
+### Data Flow — Progression automatique
+
+```
+┌────────────────────┐
+│ Composant onglet   │  emit('check-completed', 'discovery_done')
+│ (ex: Discovery)    │──────────────────────────────────────────┐
+└────────────────────┘                                          │
+                                                                ▼
+┌────────────────────┐     ┌─────────────────────┐     ┌──────────────┐
+│ MoteurView.vue     │────→│ article-progress     │────→│ Backend API  │
+│ onCheckCompleted() │     │ store.addCheck()     │     │ POST /check  │
+└────────────────────┘     └─────────┬───────────┘     └──────┬───────┘
+                                     │                        │
+                                     ▼                        ▼
+                           ┌─────────────────┐     ┌───────────────────┐
+                           │ Dots UI update  │     │ article-progress  │
+                           │ (computed)      │     │ .json (disk)      │
+                           └─────────────────┘     └───────────────────┘
+```
 
 ### Requirements to Structure Mapping
 
-| Domaine FR | Composants | Store | Service backend | Composable |
-|-----------|------------|-------|-----------------|------------|
-| FR1-FR5 Dashboard | `dashboard/*` | `cocoons`, `articles` | `cocoons.routes`, `articles.routes` | — |
-| FR6-FR9 Brief | `brief/*` | `brief`, `keywords` | `dataforseo.routes`, `keywords.routes` | — |
-| FR10-FR13 Sommaire | `outline/*` | `editor` | `generate.routes` | `useStreaming` |
-| FR14-FR20 Contenu | `editor/*` | `editor` | `generate.routes`, `claude.service` | `useStreaming`, `useAutoSave` |
-| FR21-FR24 Éditeur | `editor/*`, `tiptap/` | `editor` | — | `useAutoSave` |
-| FR25-FR33 Actions | `actions/*` | `editor` | `generate.routes` | `useContextualActions` |
-| FR34-FR38 SEO | `panels/Seo*` | `seo` | — | `useSeoScoring` |
-| FR39-FR44 GEO | `panels/Geo*` | `geo` | — | `useGeoScoring` |
-| FR45-FR52 Maillage | `linking/*` | `linking` | `links.routes`, `linking.service` | `useInternalLinking` |
-| FR53-FR56 Export | `export/*` | — | `export.routes`, `export.service` | — |
-| FR57-FR60 Data | — | — | `article.service`, `json-storage.ts` | — |
+| Feature PRD | Fichiers principaux impactés |
+|-------------|------------------------------|
+| FR1-FR5 : Moteur 3 phases | `src/views/MoteurView.vue` (restructuration), nouveau `MoteurPhaseNavigation.vue` |
+| FR4 : Fusion Local+Maps | `LocalComparisonStep.vue` + `MapsStep.vue` → composant wrapper fusionné |
+| FR5 : Retrait Content Gap | `src/views/MoteurView.vue` — retirer import ContentGapPanel |
+| FR16-FR17 : Dots + checks auto | `src/stores/article-progress.store.ts`, `server/services/article-progress.service.ts` |
+| FR18-FR19 : Bandeaux transition | Nouveau `src/components/moteur/PhaseTransitionBanner.vue` |
+| FR15 : Message inline Assignation | Nouveau `src/components/moteur/AssignmentGate.vue` |
+| FR20 : Contexte stratégique | `src/components/moteur/MoteurContextRecap.vue` (existant, à enrichir) |
+| FR21 : Enrichissement prompts | `server/utils/prompt-loader.ts` + `server/services/cocoon-strategy.service.ts` |
+| FR22 : Indicateur alignement | `src/components/keywords/KeywordAuditTable.vue` (ajout colonne) |
+| FR23-FR25 : Labo | Nouveau `src/views/LaboView.vue` + route `/labo` |
 
 ---
 
 ## Architecture Validation Results
 
-### Coherence Validation
+### Coherence Validation ✅
 
-**Decision Compatibility :**
-- Vue 3 + Vite + Pinia + Vue Router + TipTap : stack éprouvé, toutes les libs sont compatibles et maintenues activement
-- Express backend + Claude SDK + DataForSEO REST : intégration straightforward via HTTP
-- TypeScript partagé client/server via le dossier `shared/` : cohérence des types garantie
-- JSON storage + sauvegarde atomique : simple et suffisant pour un utilisateur unique
+**Compatibilité des décisions :**
 
-**Pattern Consistency :**
-- Naming conventions cohérentes à travers tout le projet (PascalCase composants, camelCase code, kebab-case fichiers)
-- Stores Pinia tous en mode Composition API setup — pas de mélange Options/Composition
-- Scoring SEO/GEO via composables avec debounce — pattern uniforme
+- Stack figée et cohérente — pas de conflits de versions
+- Le pattern dual-mode (prop `mode`) est compatible avec la composition API Pinia existante
+- L'enrichissement prompts via `loadPrompt()` s'insère dans le pattern existant sans casser l'interface
+- Le système de progression s'appuie sur le store `article-progress` existant
 
-**Structure Alignment :**
-- Organisation par feature alignée sur les domaines FR du PRD
-- Chaque domaine a ses composants, son store, son service API, et potentiellement son composable
-- Le dossier `shared/` évite la duplication des types entre client et server
+**Cohérence des patterns :**
 
-### Requirements Coverage
+- Tous les patterns (naming, structure, API format) sont extraits du code existant — pas de rupture
+- Le pattern cache à étendre suit le même modèle que `dataforseo.service.ts`
 
-**Functional Requirements : 60/60 couverts**
+### Requirements Coverage Validation ✅
 
-Chaque FR est mappé à au moins un composant, store, service, ou composable dans la structure projet. Voir le tableau "Requirements to Structure Mapping" ci-dessus.
+**Couverture fonctionnelle :**
 
-**Non-Functional Requirements : 17/17 adressés**
+| FR | Couvert | Mécanisme architectural |
+|----|---------|------------------------|
+| FR1-FR5 | ✅ | Restructuration MoteurView + MoteurPhaseNavigation |
+| FR6-FR9 | ✅ | Composants existants + verrouillage conditionnel (computed) |
+| FR10-FR13 | ✅ | Composants existants inchangés |
+| FR14-FR15 | ✅ | AssignmentGate inline |
+| FR16-FR19 | ✅ | article-progress store + emit check-completed + PhaseTransitionBanner |
+| FR20-FR22 | ✅ | MoteurContextRecap + loadPrompt enrichment + colonne alignement |
+| FR23-FR25 | ✅ | LaboView + prop mode="libre" |
+| FR26-FR28 | ✅ | Pattern cache étendu + readJson/writeJson |
 
-| NFR | Solution architecturale |
-|-----|------------------------|
-| NFR1-5 Performance | Debounce 300ms scoring, SSE streaming, Vite build optimisé |
-| NFR6-7 Coût | Cache DataForSEO fichier, génération Claude en une passe |
-| NFR8 Auto-save | `useAutoSave` composable, 30s interval, dirty detection |
-| NFR9 Error handling | Pattern retry + message utilisateur, middleware Express |
-| NFR10 Atomic writes | Write-to-temp + fs.rename dans `json-storage.ts` |
-| NFR11-12 Sécurité | `.env` server-side, proxy Express, CORS localhost |
-| NFR13 GEO configurable | `geo.constants.ts` dans `shared/constants/` |
-| NFR14 Prompts externalisés | `server/prompts/` en fichiers Markdown |
-| NFR15 Templates séparés | `src/assets/templates/templateArticle.html` |
-| NFR16-17 Intégrations | Services dédiés avec SDK/REST, rate limiting, streaming |
+**Couverture non-fonctionnelle :**
+
+| NFR | Couvert | Mécanisme |
+|-----|---------|-----------|
+| NFR1-NFR4 | ✅ | Architecture locale, pas de latence réseau |
+| NFR5-NFR7 | ✅ | Pattern cache systématique + writeJson atomic |
+| NFR8-NFR10 | ✅ | Prop mode dual + enrichissement optionnel + article-progress source unique |
+| NFR11-NFR12 | ✅ | Composants partagés via prop + prompts .md séparés |
+
+### Implementation Readiness ✅
+
+**Complétude :**
+
+- Toutes les décisions critiques documentées
+- Patterns extraits du code existant — pas d'invention
+- Structure projet complète et spécifique
+- Mapping FR → fichiers explicite
+
+**Gaps identifiés (aucun bloquant) :**
+
+- `MoteurPhaseNavigation.vue` — à créer
+- `PhaseTransitionBanner.vue` — à créer
+- `AssignmentGate.vue` — à créer
+- `LaboView.vue` — à créer
+- Variable `{{strategy_context}}` à ajouter dans les prompts concernés
 
 ### Architecture Completeness Checklist
 
-- [x] Contexte projet analysé en profondeur
-- [x] Échelle et complexité évaluées
-- [x] Contraintes techniques identifiées
-- [x] Préoccupations transversales mappées
-- [x] Starter template sélectionné et justifié
-- [x] Versions vérifiées via recherche web
-- [x] Décisions critiques documentées avec rationale
-- [x] Stack technique entièrement spécifié
-- [x] Patterns d'intégration définis (REST + SSE)
-- [x] Conventions de nommage exhaustives
-- [x] Patterns de structure définis
-- [x] Patterns de communication spécifiés
-- [x] Error handling et loading states documentés
-- [x] Structure de répertoires complète (~80 fichiers)
-- [x] Boundaries entre composants établies
-- [x] Points d'intégration mappés
-- [x] Mapping FR → structure complet (60/60)
-- [x] Mapping NFR → solutions complet (17/17)
+**✅ Requirements Analysis**
+
+- [x] Contexte projet analysé (brownfield, 75+ composants)
+- [x] Scale et complexité évalués (moyenne, mono-utilisateur)
+- [x] Contraintes techniques identifiées (stack figée, JSON, local)
+- [x] Cross-cutting concerns mappés (dual-mode, progression, cache, enrichissement)
+
+**✅ Architectural Decisions**
+
+- [x] Décisions critiques documentées (dual-mode, progression, enrichissement, restructuration)
+- [x] Stack technique spécifiée avec versions exactes
+- [x] Patterns d'intégration définis (API wrapper, SSE, cache)
+- [x] Performance considérée (cache, streaming, lazy loading)
+
+**✅ Implementation Patterns**
+
+- [x] Conventions de nommage établies (fichiers, code, API, JSON)
+- [x] Patterns de structure définis (par domaine, tests miroir)
+- [x] Patterns de communication spécifiés (emit check-completed, API wrapper)
+- [x] Patterns de process documentés (error handling, loading states)
+
+**✅ Project Structure**
+
+- [x] Arborescence complète définie
+- [x] Boundaries composants établies (Moteur, Labo, Backend)
+- [x] Points d'intégration mappés (data flows)
+- [x] Mapping requirements → structure complet
 
 ### Architecture Readiness Assessment
 
-**Status global : PRÊT POUR L'IMPLÉMENTATION**
+**Status global : READY FOR IMPLEMENTATION**
 
-**Niveau de confiance : Haut**
+**Niveau de confiance : HIGH**
 
-**Forces clés :**
-- Stack technologique éprouvé et bien documenté
-- Séparation claire frontend/backend/shared
-- Scoring temps réel via composables découplés
-- Prompts IA externalisés pour itération facile
-- Types partagés via Zod + TypeScript
-- Mapping 100% des FRs et NFRs vers la structure
+**Points forts :**
 
-**Améliorations futures (post-V1) :**
-- Migration JSON → SQLite/Supabase si volume augmente
-- CI/CD pipeline si déploiement externe
-- Tests E2E avec Playwright
-- Monitoring des coûts API avec dashboard dédié
+- Architecture brownfield — on s'appuie sur des patterns prouvés en production
+- Complexité maîtrisée — la plupart des composants existent déjà
+- Le store article-progress est la seule vraie nouveauté architecturale
+- Le pattern dual-mode est simple (une prop) et ne casse rien
+
+**Améliorations futures (hors scope) :**
+
+- Batch processing multi-articles (Phase 3 PRD)
+- Boucle GSC post-publication (Phase 3 PRD)
+- Suggestions proactives de cocons (Phase 3 PRD)
 
 ### Implementation Handoff
 
-**Guidelines pour agents IA :**
+**Guidelines pour les agents IA :**
 
-1. Suivre exactement toutes les décisions architecturales documentées
+1. Suivre les décisions architecturales exactement comme documentées
 2. Utiliser les patterns d'implémentation de manière cohérente
-3. Respecter la structure projet et les boundaries
+3. Respecter les boundaries et la structure du projet
 4. Se référer à ce document pour toute question architecturale
-5. Les prompts IA dans `server/prompts/`, jamais hardcodés
-6. Les types dans `shared/types/`, importés par client ET server
-7. Les constantes de scoring dans `shared/constants/`, configurables
+5. Émettre `check-completed` dans les composants Moteur en mode workflow
+6. Ne jamais dupliquer un composant — utiliser la prop `mode`
 
-**Première priorité d'implémentation :**
+**Priorité d'implémentation suggérée :**
 
-```bash
-npm create vue@latest blog-redactor-seo -- --typescript --router --pinia --vitest --eslint-with-prettier
-cd blog-redactor-seo
-npm install @tiptap/vue-3 @tiptap/starter-kit @anthropic-ai/sdk express zod @vueuse/core
-```
-
-Puis : créer la structure `server/`, `shared/`, `data/`, copier les fichiers JSON existants dans `data/`, et configurer le proxy Vite.
+1. Restructuration MoteurView en 3 phases (FR1-FR5)
+2. Fusion Local + Maps (FR4)
+3. Dots de progression + checks automatiques (FR16-FR17)
+4. Message inline Assignation (FR15)
+5. Enrichissement prompts Cerveau→Moteur (FR21)
+6. Bandeaux de transition (FR18-FR19)
+7. Contexte stratégique collapsable (FR20)
+8. Indicateur d'alignement (FR22)
+9. Labo (FR23-FR25)

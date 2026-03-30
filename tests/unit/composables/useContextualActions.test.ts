@@ -122,7 +122,7 @@ describe('useContextualActions', () => {
     await executeAction('internal-link', 'selected text', { articleSlug: 'slug' }, editor as any)
     expect(showArticlePicker.value).toBe(true)
 
-    applyInternalLink({ title: 'Article Test', slug: 'article-test', type: 'Pilier', theme: null, status: 'brouillon' })
+    applyInternalLink({ title: 'Article Test', slug: 'article-test', type: 'Pilier', topic: null, status: 'brouillon' })
 
     expect(editor.chain).toHaveBeenCalled()
     expect(editor._run).toHaveBeenCalled()

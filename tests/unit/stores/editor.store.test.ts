@@ -28,7 +28,7 @@ const mockBriefData: BriefData = {
     title: 'Test Article',
     type: 'Pilier',
     slug: 'test-article',
-    theme: 'Test Theme',
+    topic: 'Test Theme',
     status: 'à rédiger',
     cocoonName: 'Test Cocoon',
   },
@@ -77,7 +77,7 @@ describe('editor.store — generateArticle', () => {
         articleType: 'Pilier',
         articleTitle: 'Test Article',
         cocoonName: 'Test Cocoon',
-        theme: 'Test Theme',
+        topic: 'Test Theme',
       }),
       expect.objectContaining({
         onChunk: expect.any(Function),

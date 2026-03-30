@@ -1,0 +1,53 @@
+{
+  "avatar": {
+    "sector": "TPE / PME tous secteurs confondus",
+    "companySize": "1-10 employés",
+    "location": "Toulouse, France",
+    "budget": "Budget croissance digitale PME / TPE (faible à moyen)",
+    "digitalMaturity": "Débutant à intermédiaire — conscient de l'importance du web mais sans stratégie claire"
+  },
+  "positioning": {
+    "targetAudience": "Dirigeants et décideurs de TPE/PME toulousaines (1 à 10 personnes) souhaitant structurer leur présence digitale et générer leurs premiers résultats ou accélérer leur croissance en ligne",
+    "mainPromise": "Propulser la croissance digitale des petites entreprises toulousaines grâce à une stratégie claire, un message percutant et un site web sur mesure qui convertit",
+    "differentiators": [
+      "Freelance solo impliqué à 100% dans la réussite de chaque client",
+      "Accès direct au décisionnaire sans intermédiaire ni grande agence impersonnelle",
+      "Approche en 3 piliers cohérents : Stratégie, Message, Site web sur mesure",
+      "Ancrage local fort à Toulouse pour une relation de proximité",
+      "Posture humaine et authentique alliée à un niveau d'expertise professionnel"
+    ],
+    "painPoints": [
+      "Site web existant inefficace, obsolète ou qui ne génère aucun prospect",
+      "Manque de clarté sur le positionnement marketing et le message à adresser au marché",
+      "Absence de stratégie digitale structurée malgré une conscience de l'importance du web",
+      "Sentiment d'être noyé dans la masse et de ne pas se différencier en ligne",
+      "Difficulté à transformer leur présence web en levier concret de croissance"
+    ]
+  },
+  "offerings": {
+    "services": [
+      "Stratégie digitale et repositionnement marketing",
+      "Définition et clarification du message marché (copywriting stratégique)",
+      "Création de site web sur mesure orienté conversion",
+      "Audit et refonte de site web existant",
+      "Accompagnement global à la croissance digitale pour TPE/PME"
+    ],
+    "mainCTA": "Discutons de votre projet",
+    "ctaTarget": "www.propulsitetoulouse.website"
+  },
+  "toneOfVoice": {
+    "style": "Humain, direct et authentique — professionnel sans être corporate. Ton chaleureux et accessible, celui d'un expert de confiance qui parle vrai, sans jargon inutile ni posture d'agence froide. Proximité assumée, engagement sincère.",
+    "vocabulary": [
+      "Croissance digitale",
+      "Positionnement marketing",
+      "Site web sur mesure",
+      "Conversion",
+      "Stratégie",
+      "TPE / PME",
+      "Décideur",
+      "Résultats concrets",
+      "Propulser",
+      "Boosteur de croissance"
+    ]
+  }
+}

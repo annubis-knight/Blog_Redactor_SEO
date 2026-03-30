@@ -11,9 +11,9 @@ import { apiGet } from '../../../src/services/api.service'
 const mockApiGet = vi.mocked(apiGet)
 
 const mockArticles: Article[] = [
-  { title: 'Article Pilier', type: 'Pilier', slug: 'article-pilier', theme: null, status: 'à rédiger' },
-  { title: 'Article Inter', type: 'Intermédiaire', slug: 'article-inter', theme: 'Theme', status: 'brouillon' },
-  { title: 'Article Spéc', type: 'Spécialisé', slug: 'article-spec', theme: 'Theme', status: 'publié' },
+  { title: 'Article Pilier', type: 'Pilier', slug: 'article-pilier', topic: null, status: 'à rédiger' },
+  { title: 'Article Inter', type: 'Intermédiaire', slug: 'article-inter', topic: 'Theme', status: 'brouillon' },
+  { title: 'Article Spéc', type: 'Spécialisé', slug: 'article-spec', topic: 'Theme', status: 'publié' },
 ]
 
 beforeEach(() => {

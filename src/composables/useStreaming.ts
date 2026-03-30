@@ -1,4 +1,6 @@
 import { ref } from 'vue'
+import { log } from '@/utils/logger'
+import type { ApiUsage } from '@shared/types/index.js'
 
 /**
  * Composable for consuming SSE streams from POST endpoints.
@@ -8,6 +10,7 @@ export interface StreamingCallbacks<T> {
   onChunk?: (accumulated: string) => void
   onDone?: (data: T) => void
   onError?: (message: string) => void
+  onUsage?: (usage: ApiUsage) => void
 }
 
 export function useStreaming<T>() {
@@ -15,14 +18,17 @@ export function useStreaming<T>() {
   const isStreaming = ref(false)
   const error = ref<string | null>(null)
   const result = ref<T | null>(null) as { value: T | null }
+  const usage = ref<ApiUsage | null>(null)
   let abortController: AbortController | null = null
 
   async function startStream(url: string, body: unknown, callbacks?: StreamingCallbacks<T>) {
+    log.debug(`SSE stream start → ${url}`)
     abortController = new AbortController()
     isStreaming.value = true
     error.value = null
     chunks.value = ''
     result.value = null
+    usage.value = null
 
     try {
       const res = await fetch(url, {
@@ -67,6 +73,10 @@ export function useStreaming<T>() {
                 chunks.value += parsed.content
                 callbacks?.onChunk?.(chunks.value)
               } else if (eventType === 'done') {
+                if (parsed.usage) {
+                  usage.value = parsed.usage as ApiUsage
+                  callbacks?.onUsage?.(parsed.usage as ApiUsage)
+                }
                 result.value = parsed.outline ?? parsed.metadata ?? parsed
                 callbacks?.onDone?.(result.value as T)
               } else if (eventType === 'error') {
@@ -82,7 +92,11 @@ export function useStreaming<T>() {
         }
       }
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return
+      if ((err as Error).name === 'AbortError') {
+        log.debug(`SSE stream aborted ← ${url}`)
+        return
+      }
+      log.error(`SSE stream failed ← ${url} — ${(err as Error).message}`)
       error.value = err instanceof Error ? err.message : 'Erreur de streaming'
     } finally {
       isStreaming.value = false
@@ -94,5 +108,5 @@ export function useStreaming<T>() {
     abortController?.abort()
   }
 
-  return { chunks, isStreaming, error, result, startStream, abort }
+  return { chunks, isStreaming, error, result, usage, startStream, abort }
 }

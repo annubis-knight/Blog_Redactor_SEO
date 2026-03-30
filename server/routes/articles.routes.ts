@@ -1,7 +1,8 @@
 import { Router } from 'express'
-import { getArticleBySlug } from '../services/data.service.js'
+import { log } from '../utils/logger.js'
+import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon } from '../services/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article-content.service.js'
-import { updateArticleContentSchema } from '../../shared/schemas/article.schema.js'
+import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema } from '../../shared/schemas/article.schema.js'
 
 const router = Router()
 
@@ -15,7 +16,7 @@ router.get('/articles/:slug', async (req, res) => {
     }
     res.json({ data: result })
   } catch (err) {
-    console.error('[GET /api/articles/:slug]', err)
+    log.error(`GET /api/articles/${req.params.slug} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load article' } })
   }
 })
@@ -26,7 +27,7 @@ router.get('/articles/:slug/content', async (req, res) => {
     const content = await getArticleContent(req.params.slug)
     res.json({ data: content })
   } catch (err) {
-    console.error('[GET /api/articles/:slug/content]', err)
+    log.error(`GET /api/articles/${req.params.slug}/content — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load article content' } })
   }
 })
@@ -45,8 +46,52 @@ router.put('/articles/:slug', async (req, res) => {
     const saved = await saveArticleContent(req.params.slug, parsed.data)
     res.json({ data: saved })
   } catch (err) {
-    console.error('[PUT /api/articles/:slug]', err)
+    log.error(`PUT /api/articles/${req.params.slug} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save article content' } })
+  }
+})
+
+/** PUT /api/articles/:slug/status — Update article status */
+router.put('/articles/:slug/status', async (req, res) => {
+  const parsed = updateArticleStatusSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
+    })
+    return
+  }
+
+  try {
+    const result = await getArticleBySlug(req.params.slug)
+    if (!result) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article "${req.params.slug}" not found` } })
+      return
+    }
+
+    await updateArticleStatus(req.params.slug, parsed.data.status)
+    res.json({ data: { slug: req.params.slug, status: parsed.data.status } })
+  } catch (err) {
+    log.error(`PUT /api/articles/${req.params.slug}/status — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update article status' } })
+  }
+})
+
+/** POST /api/articles/batch-create — Create multiple articles in a cocoon */
+router.post('/articles/batch-create', async (req, res) => {
+  const parsed = batchCreateArticlesSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
+    })
+    return
+  }
+
+  try {
+    const created = await addArticlesToCocoon(parsed.data.cocoonName, parsed.data.articles)
+    res.json({ data: created })
+  } catch (err) {
+    log.error(`POST /api/articles/batch-create — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create articles' } })
   }
 })
 
