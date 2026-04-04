@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useKeywordRadar } from '@/composables/useResonanceScore'
+import { radarHeatIcon } from '@/composables/useResonanceScore'
 import { log } from '@/utils/logger'
-import RadarKeywordCard from './RadarKeywordCard.vue'
-import ConfidenceBar from './ConfidenceBar.vue'
-import type { RadarKeyword } from '@shared/types/intent.types'
+import RadarCardCheckable from './RadarCardCheckable.vue'
+import RadarThermometer from '@/components/shared/RadarThermometer.vue'
+import type { RadarKeyword, RadarCard } from '@shared/types/intent.types'
 
 const props = withDefaults(defineProps<{
   pilierKeyword: string
@@ -20,6 +21,7 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'scanned', payload: { globalScore: number; heatLevel: string }): void
   (e: 'keywords-cleared'): void
+  (e: 'cards-selected', cards: RadarCard[]): void
 }>()
 
 const {
@@ -31,11 +33,46 @@ const {
   error,
   heatColor,
   heatLabel,
+  radarCacheStatus,
+  checkRadarCache,
+  loadFromRadarCache,
   generate,
   scan,
   removeKeyword,
   reset,
 } = useKeywordRadar()
+
+const isLoadingCache = ref(false)
+
+// --- Checkbox selection for sending to Capitaine ---
+const checkedKeywords = ref(new Set<string>())
+
+const allChecked = computed(() =>
+  scanResult.value ? checkedKeywords.value.size === scanResult.value.cards.length : false,
+)
+
+function toggleCheck(keyword: string) {
+  const next = new Set(checkedKeywords.value)
+  if (next.has(keyword)) next.delete(keyword)
+  else next.add(keyword)
+  checkedKeywords.value = next
+}
+
+function toggleAllChecked() {
+  if (!scanResult.value) return
+  if (allChecked.value) {
+    checkedKeywords.value = new Set()
+  } else {
+    checkedKeywords.value = new Set(scanResult.value.cards.map(c => c.keyword))
+  }
+}
+
+function sendToCaptain() {
+  if (!scanResult.value || checkedKeywords.value.size === 0) return
+  const selected = scanResult.value.cards.filter(c => checkedKeywords.value.has(c.keyword))
+  log.info(`[DouleurIntent] Send ${selected.length} cards to Capitaine`)
+  emit('cards-selected', selected)
+}
 
 // Editable fields
 const broadKeyword = ref(props.pilierKeyword)
@@ -52,6 +89,17 @@ const phase = computed<Phase>(() => {
   return 'input'
 })
 
+// Check cache for seed keyword
+const cacheSeed = computed(() => props.articleKeyword || props.pilierKeyword)
+
+function triggerCacheCheck() {
+  if (cacheSeed.value && !scanResult.value) {
+    checkRadarCache(cacheSeed.value)
+  }
+}
+
+onMounted(triggerCacheCheck)
+
 // Reset when article changes (workflow mode only — in libre mode, reset is handled by LaboView)
 if (props.mode === 'workflow') {
   watch(() => [props.pilierKeyword, props.articleTopic, props.articleKeyword, props.articlePainPoint], () => {
@@ -64,7 +112,21 @@ if (props.mode === 'workflow') {
     specificTopic.value = props.articleTopic || props.articleKeyword || props.pilierKeyword
     painPoint.value = props.articlePainPoint || ''
     reset()
+    triggerCacheCheck()
   })
+}
+
+async function handleLoadFromCache() {
+  if (!cacheSeed.value) return
+  isLoadingCache.value = true
+  try {
+    const loaded = await loadFromRadarCache(cacheSeed.value)
+    if (loaded && scanResult.value) {
+      emit('scanned', { globalScore: scanResult.value.globalScore, heatLevel: scanResult.value.heatLevel })
+    }
+  } finally {
+    isLoadingCache.value = false
+  }
 }
 
 // Receive keywords injected from Discovery tab
@@ -75,17 +137,6 @@ watch(() => props.injectedKeywords, (newKeywords) => {
     scanResult.value = null
   }
 }, { immediate: true })
-
-// Heat icon
-const heatIcon = computed(() => {
-  if (!scanResult.value) return ''
-  switch (scanResult.value.heatLevel) {
-    case 'brulante': return '\uD83D\uDD25'
-    case 'chaude': return '\uD83D\uDFE0'
-    case 'tiede': return '\uD83D\uDD35'
-    case 'froide': return '\u2744\uFE0F'
-  }
-})
 
 // Autocomplete grouped by query
 const autoGroups = computed(() => {
@@ -118,7 +169,7 @@ async function handleGenerate() {
 async function handleScan() {
   if (generatedKeywords.value.length === 0) return
   log.info(`[DouleurIntent] Scan clicked: ${generatedKeywords.value.length} keywords, depth=${depth.value}`)
-  await scan(broadKeyword.value.trim(), specificTopic.value.trim(), generatedKeywords.value, depth.value)
+  await scan(broadKeyword.value.trim(), specificTopic.value.trim(), generatedKeywords.value, depth.value, cacheSeed.value || undefined)
   if (scanResult.value) {
     log.info(`[DouleurIntent] Scan result: score=${scanResult.value.globalScore}`)
     emit('scanned', { globalScore: scanResult.value.globalScore, heatLevel: scanResult.value.heatLevel })
@@ -185,6 +236,37 @@ function handleReset() {
       </div>
     </div>
 
+    <!-- Cache indicator -->
+    <div
+      v-if="radarCacheStatus?.cached && phase === 'input'"
+      class="cache-indicator"
+    >
+      <div class="cache-indicator__info">
+        <span class="cache-indicator__icon">{{ radarHeatIcon(radarCacheStatus.heatLevel ?? null) }}</span>
+        <span class="cache-indicator__text">
+          Scan precedent disponible
+          <template v-if="radarCacheStatus.globalScore !== undefined">
+            &middot; Score {{ radarCacheStatus.globalScore }}/100
+          </template>
+          <template v-if="radarCacheStatus.keywordCount">
+            &middot; {{ radarCacheStatus.keywordCount }} mots-cles
+          </template>
+        </span>
+      </div>
+      <div class="cache-indicator__actions">
+        <button
+          class="btn-action"
+          :disabled="isLoadingCache"
+          @click="handleLoadFromCache"
+        >
+          {{ isLoadingCache ? 'Chargement...' : 'Charger depuis le cache' }}
+        </button>
+        <button class="btn-action btn-action--secondary" @click="radarCacheStatus = null">
+          Ignorer
+        </button>
+      </div>
+    </div>
+
     <!-- Error -->
     <div v-if="error" class="scanner-error">
       {{ error }}
@@ -239,31 +321,14 @@ function handleReset() {
     <!-- Phase 3: Results -->
     <template v-if="phase === 'results' && scanResult">
       <!-- Global thermometer -->
-      <div class="thermometer" :style="{ borderColor: heatColor }">
-        <div class="thermo-header">
-          <div class="thermo-left">
-            <span class="thermo-icon">{{ heatIcon }}</span>
-            <span class="thermo-score" :style="{ color: heatColor }">{{ scanResult.globalScore }}/100</span>
-            <span class="thermo-label" :style="{ color: heatColor }">{{ heatLabel }}</span>
-          </div>
-          <div class="thermo-kpis">
-            <span class="kpi">
-              <span class="kpi-value">{{ scanResult.cards.length }}</span>
-              <span class="kpi-label">Keywords</span>
-            </span>
-            <span class="kpi">
-              <span class="kpi-value">{{ scanResult.autocomplete.totalCount }}</span>
-              <span class="kpi-label">Autocomplete</span>
-            </span>
-            <span class="kpi">
-              <span class="kpi-value">{{ scanResult.cards.reduce((s, c) => s + c.kpis.paaTotal, 0) }}</span>
-              <span class="kpi-label">PAA Total</span>
-            </span>
-          </div>
-        </div>
-        <p class="thermo-verdict">{{ scanResult.verdict }}</p>
-        <ConfidenceBar :value="scanResult.globalScore / 100" />
-      </div>
+      <RadarThermometer
+        :global-score="scanResult.globalScore"
+        :heat-level="scanResult.heatLevel"
+        :keywords-count="scanResult.cards.length"
+        :autocomplete-count="scanResult.autocomplete.totalCount"
+        :paa-total="scanResult.cards.reduce((s, c) => s + c.kpis.paaTotal, 0)"
+        :verdict="scanResult.verdict"
+      />
 
       <!-- Autocomplete section (full-width) -->
       <div v-if="scanResult.autocomplete.totalCount > 0" class="autocomplete-section">
@@ -284,14 +349,33 @@ function handleReset() {
         </div>
       </div>
 
-      <!-- Keyword cards -->
+      <!-- Keyword cards with checkboxes -->
       <div class="radar-cards">
-        <h4 class="section-title">Resultats par mot-cle ({{ scanResult.cards.length }})</h4>
-        <RadarKeywordCard
+        <div class="radar-cards-header">
+          <h4 class="section-title">Resultats par mot-cle ({{ scanResult.cards.length }})</h4>
+          <label class="check-all-toggle" @click.stop>
+            <input
+              type="checkbox"
+              :checked="allChecked"
+              @change="toggleAllChecked"
+            />
+            Tout
+          </label>
+        </div>
+        <RadarCardCheckable
           v-for="card in scanResult.cards"
           :key="card.keyword"
           :card="card"
+          :checked="checkedKeywords.has(card.keyword)"
+          @update:checked="toggleCheck(card.keyword)"
         />
+        <button
+          v-if="checkedKeywords.size > 0"
+          class="btn-send-captain"
+          @click="sendToCaptain"
+        >
+          Envoyer au Capitaine ({{ checkedKeywords.size }})
+        </button>
       </div>
     </template>
   </div>
@@ -419,6 +503,39 @@ function handleReset() {
 
 .btn-action--secondary {
   background: var(--color-text-muted);
+}
+
+/* --- Cache Indicator --- */
+.cache-indicator {
+  padding: 1rem 1.25rem;
+  background: var(--color-success-bg, #f0fdf4);
+  border: 1px solid var(--color-success, #22c55e);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  animation: fadeSlideIn 0.3s ease;
+}
+
+.cache-indicator__info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.cache-indicator__icon {
+  font-size: 1.25rem;
+}
+
+.cache-indicator__text {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text);
+}
+
+.cache-indicator__actions {
+  display: flex;
+  gap: 0.5rem;
 }
 
 /* --- Error --- */
@@ -571,75 +688,6 @@ function handleReset() {
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Thermometer --- */
-.thermometer {
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border: 2px solid;
-  border-radius: 10px;
-  transition: border-color 0.4s ease;
-  animation: fadeSlideIn 0.3s ease;
-}
-
-.thermo-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.75rem;
-}
-
-.thermo-left {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.thermo-icon { font-size: 1.5rem; }
-
-.thermo-score {
-  font-size: 1.75rem;
-  font-weight: 800;
-  font-variant-numeric: tabular-nums;
-}
-
-.thermo-label {
-  font-size: 1rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-}
-
-.thermo-kpis { display: flex; gap: 1rem; }
-
-.kpi {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.125rem;
-}
-
-.kpi-value {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--color-text);
-  font-variant-numeric: tabular-nums;
-}
-
-.kpi-label {
-  font-size: 0.625rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  color: var(--color-text-muted);
-  letter-spacing: 0.05em;
-}
-
-.thermo-verdict {
-  margin: 0 0 0.75rem;
-  font-size: 0.875rem;
-  color: var(--color-text);
-  font-style: italic;
-}
-
 /* --- Autocomplete Section --- */
 .autocomplete-section {
   padding: 1rem 1.25rem;
@@ -703,5 +751,50 @@ function handleReset() {
 /* --- Radar Cards Section --- */
 .radar-cards {
   animation: fadeSlideIn 0.3s ease;
+}
+
+.radar-cards-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.5rem;
+}
+
+.radar-cards-header .section-title {
+  margin: 0;
+}
+
+.check-all-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.check-all-toggle input[type="checkbox"] {
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.btn-send-captain {
+  display: block;
+  width: 100%;
+  margin-top: 0.75rem;
+  padding: 0.625rem 1.25rem;
+  background: var(--color-primary, #3b82f6);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-send-captain:hover {
+  background: var(--color-primary-hover, #2563eb);
 }
 </style>

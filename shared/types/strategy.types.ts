@@ -159,6 +159,8 @@ export interface ProposedArticle {
   painPoint: string
   suggestedKeyword: string
   suggestedKeywords: string[]
+  suggestedSlug: string
+  suggestedSlugs: string[]
   validatedSearchQuery: string | null
   keywordValidated: boolean
   searchQueryValidated: boolean
@@ -193,7 +195,7 @@ export interface StrategyContextData {
 
 /** Payload for POST /api/strategy/cocoon/:slug/suggest */
 export interface CocoonSuggestRequest {
-  step: 'cible' | 'douleur' | 'angle' | 'promesse' | 'cta' | 'articles'
+  step: 'cible' | 'douleur' | 'angle' | 'promesse' | 'cta' | 'articles' | 'articles-structure' | 'articles-paa-queries' | 'articles-spe' | 'add-article'
   currentInput: string
   /** When present, triggers a merge: Claude fuses currentInput + mergeWith into one coherent text */
   mergeWith?: string
@@ -205,5 +207,7 @@ export interface CocoonSuggestRequest {
     previousAnswers?: Record<string, string>
     existingArticles?: string[]
     themeContext?: ThemeContext
+    /** PAA questions grouped by Inter title — used by articles-spe step */
+    paaContext?: Record<string, Array<{ question: string; answer: string | null }>>
   }
 }

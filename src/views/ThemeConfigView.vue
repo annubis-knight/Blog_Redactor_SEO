@@ -5,8 +5,7 @@ import { apiPost } from '@/services/api.service'
 import type { ThemeConfig } from '@shared/types/index.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const store = useThemeConfigStore()
 const freeText = ref('')
@@ -82,15 +81,8 @@ onMounted(() => {
       </button>
     </div>
 
-    <LoadingSpinner v-if="store.isLoading" />
-
-    <ErrorMessage
-      v-else-if="store.error"
-      :message="store.error"
-      @retry="store.fetchConfig()"
-    />
-
-    <div v-else class="config-sections">
+    <AsyncContent :is-loading="store.isLoading" :error="store.error" @retry="store.fetchConfig()">
+      <div class="config-sections">
       <!-- AI free-text parser -->
       <div class="ai-parse-section">
         <label class="form-field">
@@ -355,7 +347,8 @@ onMounted(() => {
           </div>
         </CollapsableSection>
       </div>
-    </div>
+      </div>
+    </AsyncContent>
   </div>
 </template>
 

@@ -40,13 +40,8 @@ onMounted(() => {
 
     <LoadingSpinner v-if="cocoonsStore.isLoading" />
 
-    <BrainPhase
-      v-else-if="cocoon"
-      :cocoon-name="cocoon.name"
-      :silo-name="cocoon.siloName"
-      :cocoon-id="cocoonId"
-      @next="handleNext"
-    />
+    <BrainPhase v-else-if="cocoon" :cocoon-name="cocoon.name" :silo-name="cocoon.siloName" :cocoon-id="cocoonId"
+      @next="handleNext" />
 
     <div v-else class="empty-state">
       <p>Cocon introuvable.</p>

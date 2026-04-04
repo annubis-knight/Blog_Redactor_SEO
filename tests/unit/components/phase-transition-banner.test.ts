@@ -46,6 +46,23 @@ describe('PhaseTransitionBanner — Rendering', () => {
 
     expect(wrapper.find('.phase-transition-banner').attributes('role')).toBe('status')
   })
+
+  it('does NOT render action button when actionLabel is absent', () => {
+    const wrapper = mount(PhaseTransitionBanner, {
+      props: { message: 'Validation complète !' },
+    })
+
+    expect(wrapper.find('.phase-transition-btn').exists()).toBe(false)
+    expect(wrapper.find('.phase-transition-message').text()).toBe('Validation complète !')
+  })
+
+  it('renders dismiss button even without actionLabel', () => {
+    const wrapper = mount(PhaseTransitionBanner, {
+      props: { message: 'Validation complète !' },
+    })
+
+    expect(wrapper.find('.phase-transition-dismiss').exists()).toBe(true)
+  })
 })
 
 describe('PhaseTransitionBanner — Events', () => {
@@ -78,19 +95,16 @@ describe('PhaseTransitionBanner — Events', () => {
 
 const PHASE_CHECKS: Record<string, string[]> = {
   generer: ['discovery_done', 'radar_done'],
-  valider: ['intent_done', 'audit_done', 'local_done'],
-  assigner: ['captain_chosen', 'assignment_done'],
+  valider: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
 }
 
 const PHASE_NEXT: Record<string, { phaseLabel: string; firstTab: string }> = {
-  generer: { phaseLabel: 'Valider', firstTab: 'validation' },
-  valider: { phaseLabel: 'Assigner', firstTab: 'assignation' },
+  generer: { phaseLabel: 'Valider', firstTab: 'capitaine' },
 }
 
 function getCurrentPhaseId(activeTab: string): string {
-  if (['discovery', 'douleur-intent', 'douleur'].includes(activeTab)) return 'generer'
-  if (['validation', 'exploration', 'audit', 'local'].includes(activeTab)) return 'valider'
-  return 'assigner'
+  if (['discovery', 'radar'].includes(activeTab)) return 'generer'
+  return 'valider'
 }
 
 function createBannerHarness(slug: string | null, completedChecks: string[], activeTabValue: string) {
@@ -117,17 +131,27 @@ function createBannerHarness(slug: string | null, completedChecks: string[], act
   })
 
   const transitionBanner = computed(() => {
+    if (!isCurrentPhaseComplete.value) return null
+
     const next = PHASE_NEXT[currentPhaseId.value]
-    if (!next) return null
+    if (next) {
+      return {
+        message: `Phase ${currentPhaseId.value} complète — passer à ${next.phaseLabel} ?`,
+        actionLabel: `Passer à ${next.phaseLabel}`,
+        firstTab: next.firstTab,
+      }
+    }
+
+    // Completion banner — last phase
     return {
-      message: `Phase ${currentPhaseId.value} complète — passer à ${next.phaseLabel} ?`,
-      actionLabel: `Passer à ${next.phaseLabel}`,
-      firstTab: next.firstTab,
+      message: 'Validation complète — tous les mots-clés sont prêts pour la rédaction !',
+      actionLabel: undefined as string | undefined,
+      firstTab: undefined as string | undefined,
     }
   })
 
   const showTransitionBanner = computed(() =>
-    isCurrentPhaseComplete.value && !bannerDismissed.value && transitionBanner.value !== null,
+    transitionBanner.value !== null && !bannerDismissed.value,
   )
 
   return {
@@ -154,7 +178,7 @@ describe('Phase transition — phaseComplete computed', () => {
   })
 
   it('returns true when all checks of Phase ② are completed', () => {
-    const h = createBannerHarness('test-article', ['intent_done', 'audit_done', 'local_done'], 'audit')
+    const h = createBannerHarness('test-article', ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'], 'capitaine')
     expect(h.isCurrentPhaseComplete.value).toBe(true)
   })
 
@@ -171,14 +195,29 @@ describe('Phase transition — banner visibility', () => {
     expect(h.transitionBanner.value?.actionLabel).toBe('Passer à Valider')
   })
 
-  it('does NOT show banner for Phase ③ Assigner (last phase)', () => {
+  it('shows completion banner when Phase ② Valider is complete', () => {
     const h = createBannerHarness(
       'test-article',
-      ['captain_chosen', 'assignment_done'],
-      'assignation',
+      ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+      'capitaine',
     )
+    expect(h.showTransitionBanner.value).toBe(true)
+    expect(h.transitionBanner.value?.message).toBe(
+      'Validation complète — tous les mots-clés sont prêts pour la rédaction !',
+    )
+    expect(h.transitionBanner.value?.actionLabel).toBeUndefined()
+  })
+
+  it('completion banner can be dismissed', () => {
+    const h = createBannerHarness(
+      'test-article',
+      ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+      'capitaine',
+    )
+    expect(h.showTransitionBanner.value).toBe(true)
+
+    h.bannerDismissed.value = true
     expect(h.showTransitionBanner.value).toBe(false)
-    expect(h.transitionBanner.value).toBeNull()
   })
 
   it('does NOT show banner when phase is incomplete', () => {
@@ -203,7 +242,7 @@ describe('Phase transition — bannerDismissed reset', () => {
     expect(h.bannerDismissed.value).toBe(true)
 
     // Simulate phase change by switching to a tab in Phase ②
-    h.activeTab.value = 'audit'
+    h.activeTab.value = 'capitaine'
     await nextTick()
 
     // Note: In unit test the watch doesn't auto-fire without a real component.

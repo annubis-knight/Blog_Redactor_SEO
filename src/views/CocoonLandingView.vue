@@ -6,8 +6,7 @@ import { useArticlesStore } from '@/stores/articles.store'
 import { useKeywordsStore } from '@/stores/keywords.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import WorkflowChoice from '@/components/dashboard/WorkflowChoice.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const route = useRoute()
 const cocoonsStore = useCocoonsStore()
@@ -64,20 +63,14 @@ onMounted(() => {
       </div>
     </div>
 
-    <LoadingSpinner v-if="isLoading" />
-
-    <ErrorMessage
-      v-else-if="error"
-      :message="error"
-      @retry="loadData()"
-    />
-
-    <WorkflowChoice
-      v-else-if="cocoon"
-      :cocoon-id="cocoonId"
-      :cocoon="cocoon"
-      :keyword-count="keywordsStore.keywords.length"
-    />
+    <AsyncContent :is-loading="isLoading" :error="error" @retry="loadData()">
+      <WorkflowChoice
+        v-if="cocoon"
+        :cocoon-id="cocoonId"
+        :cocoon="cocoon"
+        :keyword-count="keywordsStore.keywords.length"
+      />
+    </AsyncContent>
   </div>
 </template>
 

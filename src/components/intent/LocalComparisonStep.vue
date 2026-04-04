@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useIntentStore } from '@/stores/intent.store'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
@@ -93,8 +93,14 @@ function formatDelta(delta: number): string {
   return `${sign}${delta}%`
 }
 
+watch(() => props.keyword, (newKw) => {
+  if (newKw) {
+    intentStore.compareLocalNational(newKw)
+  }
+})
+
 onMounted(() => {
-  if (!intentStore.comparisonData) {
+  if (!intentStore.comparisonData && props.keyword) {
     intentStore.compareLocalNational(props.keyword)
   }
 })
@@ -114,6 +120,12 @@ onMounted(() => {
       :message="intentStore.comparisonError"
       @retry="intentStore.compareLocalNational(keyword)"
     />
+
+    <!-- No data state -->
+    <div v-if="!intentStore.isComparing && !intentStore.comparisonError && !comparison" class="no-local-data">
+      <p>Aucune donnée locale disponible pour « {{ keyword }} ».</p>
+      <p class="no-local-hint">Essayez un mot-clé à dimension locale (ex: « plombier Toulouse »).</p>
+    </div>
 
     <template v-if="comparison && !intentStore.isComparing">
       <!-- Alert banner -->
@@ -393,5 +405,28 @@ onMounted(() => {
   padding-top: 0.5rem;
   border-top: 1px solid var(--color-border);
   margin-top: 0.5rem;
+}
+
+/* No data */
+.no-local-data {
+  text-align: center;
+  padding: 2rem;
+  color: var(--color-text-muted);
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+}
+
+.no-local-data p {
+  margin: 0 0 0.5rem;
+  font-size: 0.875rem;
+}
+
+.no-local-data p:last-child {
+  margin-bottom: 0;
+}
+
+.no-local-hint {
+  font-size: 0.75rem;
+  font-style: italic;
 }
 </style>

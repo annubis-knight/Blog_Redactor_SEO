@@ -2,8 +2,7 @@
 import { onMounted } from 'vue'
 import { useLinkingStore } from '@/stores/linking.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 import LinkingMatrix from '@/components/linking/LinkingMatrix.vue'
 import OrphanDetector from '@/components/linking/OrphanDetector.vue'
 import AnchorDiversityPanel from '@/components/linking/AnchorDiversityPanel.vue'
@@ -31,15 +30,8 @@ onMounted(async () => {
       </div>
     </div>
 
-    <LoadingSpinner v-if="linkingStore.isLoading || cocoonsStore.isLoading" />
-
-    <ErrorMessage
-      v-else-if="linkingStore.error"
-      :message="linkingStore.error"
-      @retry="linkingStore.fetchMatrix()"
-    />
-
-    <template v-else-if="linkingStore.matrix">
+    <AsyncContent :is-loading="linkingStore.isLoading || cocoonsStore.isLoading" :error="linkingStore.error" @retry="linkingStore.fetchMatrix()">
+      <template v-if="linkingStore.matrix">
       <div class="linking-content">
         <div class="matrix-section">
           <LinkingMatrix
@@ -54,7 +46,8 @@ onMounted(async () => {
           <CrossCocoonPanel :opportunities="linkingStore.crossCocoonOpportunities" />
         </div>
       </div>
-    </template>
+      </template>
+    </AsyncContent>
   </div>
 </template>
 

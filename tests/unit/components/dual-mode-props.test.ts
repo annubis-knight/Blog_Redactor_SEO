@@ -52,11 +52,15 @@ vi.mock('../../../src/composables/useResonanceScore', () => ({
     error: { value: null },
     heatColor: { value: '' },
     heatLabel: { value: '' },
+    radarCacheStatus: { value: null },
+    checkRadarCache: vi.fn(),
+    loadFromRadarCache: vi.fn(),
     generate: vi.fn(),
     scan: vi.fn(),
     removeKeyword: vi.fn(),
     reset: vi.fn(),
   }),
+  radarHeatIcon: () => '',
 }))
 
 vi.mock('../../../src/composables/useIntentVerdict', () => ({

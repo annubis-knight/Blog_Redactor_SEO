@@ -14,8 +14,7 @@ import { useSeoScoring } from '@/composables/useSeoScoring'
 import { useGeoScoring } from '@/composables/useGeoScoring'
 import { useInternalLinking } from '@/composables/useInternalLinking'
 import type { ArticleContent } from '@shared/types/index.js'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 import StrategyWizard from '@/components/strategy/StrategyWizard.vue'
 import SeoBrief from '@/components/brief/SeoBrief.vue'
 import KeywordList from '@/components/brief/KeywordList.vue'
@@ -230,15 +229,8 @@ onMounted(async () => {
       </div>
 
       <template v-else>
-        <LoadingSpinner v-if="briefStore.isLoading" />
-
-        <ErrorMessage
-          v-else-if="briefStore.error"
-          :message="briefStore.error"
-          @retry="briefStore.fetchBrief(slug)"
-        />
-
-        <template v-else-if="briefStore.briefData">
+        <AsyncContent :is-loading="briefStore.isLoading" :error="briefStore.error" @retry="briefStore.fetchBrief(slug)">
+        <template v-if="briefStore.briefData">
         <!-- Step 2: Brief -->
         <div v-if="currentStep === 'brief'" class="workflow-step">
           <CollapsableSection title="Brief SEO">
@@ -424,6 +416,7 @@ onMounted(async () => {
           </div>
         </div>
         </template>
+        </AsyncContent>
       </template>
     </div>
 

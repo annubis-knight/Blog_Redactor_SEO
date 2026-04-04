@@ -1,8 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
 import { useGscStore } from '@/stores/gsc.store'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const gscStore = useGscStore()
 
@@ -96,10 +95,8 @@ onMounted(async () => {
         </button>
       </div>
 
-      <LoadingSpinner v-if="gscStore.isLoading" />
-      <ErrorMessage v-else-if="gscStore.error" :message="gscStore.error" @retry="fetchData" />
-
-      <div v-else-if="gscStore.hasData" class="results">
+      <AsyncContent :is-loading="gscStore.isLoading" :error="gscStore.error" @retry="fetchData">
+        <div v-if="gscStore.hasData" class="results">
         <h2>Performance par page</h2>
         <table class="data-table">
           <thead>
@@ -123,11 +120,12 @@ onMounted(async () => {
             </tr>
           </tbody>
         </table>
-      </div>
+        </div>
 
-      <div v-else class="empty-state">
-        <p>Saisissez votre propriété GSC et cliquez sur Actualiser pour voir les données.</p>
-      </div>
+        <div v-else class="empty-state">
+          <p>Saisissez votre propriété GSC et cliquez sur Actualiser pour voir les données.</p>
+        </div>
+      </AsyncContent>
     </template>
   </div>
 </template>

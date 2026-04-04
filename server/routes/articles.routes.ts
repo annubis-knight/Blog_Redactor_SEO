@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon } from '../services/data.service.js'
+import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon } from '../services/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article-content.service.js'
 import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema } from '../../shared/schemas/article.schema.js'
 
@@ -73,6 +73,21 @@ router.put('/articles/:slug/status', async (req, res) => {
   } catch (err) {
     log.error(`PUT /api/articles/${req.params.slug}/status — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update article status' } })
+  }
+})
+
+/** DELETE /api/articles/:slug — Remove an article from its cocoon */
+router.delete('/articles/:slug', async (req, res) => {
+  try {
+    const removed = await removeArticleFromCocoon(req.params.slug)
+    if (!removed) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article "${req.params.slug}" not found` } })
+      return
+    }
+    res.json({ data: { slug: req.params.slug, removed: true } })
+  } catch (err) {
+    log.error(`DELETE /api/articles/${req.params.slug} — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete article' } })
   }
 })
 

@@ -2,14 +2,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent } = vi.hoisted(() => ({
+const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon } = vi.hoisted(() => ({
   mockGetArticleBySlug: vi.fn(),
   mockSaveArticleContent: vi.fn(),
   mockGetArticleContent: vi.fn(),
+  mockRemoveArticleFromCocoon: vi.fn(),
 }))
 
 vi.mock('../../../server/services/data.service', () => ({
   getArticleBySlug: mockGetArticleBySlug,
+  removeArticleFromCocoon: mockRemoveArticleFromCocoon,
 }))
 
 vi.mock('../../../server/services/article-content.service', () => ({
@@ -116,5 +118,53 @@ describe('GET /articles/:slug/content', () => {
     await handler(req, res)
 
     expect(res.json).toHaveBeenCalledWith({ data: content })
+  })
+})
+
+describe('DELETE /articles/:slug', () => {
+  const handler = findHandler('delete', '/articles/:slug')
+
+  it('deletes article and returns success', async () => {
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce(true)
+
+    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockRemoveArticleFromCocoon).toHaveBeenCalledWith('test-slug')
+    expect(res.json).toHaveBeenCalledWith({ data: { slug: 'test-slug', removed: true } })
+  })
+
+  it('returns 404 when article not found', async () => {
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce(false)
+
+    const req = { params: { slug: 'unknown-slug' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'NOT_FOUND' }),
+      }),
+    )
+  })
+
+  it('returns 500 on service error', async () => {
+    mockRemoveArticleFromCocoon.mockRejectedValueOnce(new Error('disk error'))
+
+    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(500)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'INTERNAL_ERROR' }),
+      }),
+    )
   })
 })

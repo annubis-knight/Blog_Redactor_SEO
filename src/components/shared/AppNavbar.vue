@@ -22,6 +22,7 @@ onMounted(() => {
       <RouterLink to="/linking" class="navbar-link">Maillage</RouterLink>
       <RouterLink to="/post-publication" class="navbar-link">GSC</RouterLink>
       <RouterLink to="/labo" class="navbar-link">Labo</RouterLink>
+      <RouterLink to="/explorateur" class="navbar-link">Explorateur</RouterLink>
     </nav>
 
     <RouterLink to="/config" class="navbar-config" title="Configuration du thème">

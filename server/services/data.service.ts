@@ -1,5 +1,6 @@
 import { join } from 'path'
 import { readJson, writeJson } from '../utils/json-storage.js'
+import { log } from '../utils/logger.js'
 import { rawArticlesDbSchema } from '../../shared/schemas/article.schema.js'
 import { rawKeywordsDbSchema } from '../../shared/schemas/keyword.schema.js'
 import { rawArticleKeywordsDbSchema } from '../../shared/schemas/article-keywords.schema.js'
@@ -93,8 +94,12 @@ function computeSiloStats(cocoons: Cocoon[]): SiloStats {
 
 /** Load and validate the articles database, populate caches */
 async function loadDb(): Promise<void> {
-  if (cachedCocoons && cachedTheme && cachedSilos) return
+  if (cachedCocoons && cachedTheme && cachedSilos) {
+    log.debug('loadDb() — cache hit, skip reload')
+    return
+  }
 
+  log.info('Chargement BDD_Articles_Blog.json...')
   const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
   rawArticlesDbSchema.parse(raw)
 
@@ -136,6 +141,8 @@ async function loadDb(): Promise<void> {
   cachedCocoons = allCocoons
   cachedSilos = silos
 
+  log.info('BDD chargée', { silos: silos.length, cocoons: allCocoons.length, articles: allCocoons.reduce((s, c) => s + c.articles.length, 0) })
+
   await applyStatusOverrides(cachedCocoons)
   // Recompute silo stats after status overrides
   for (const silo of cachedSilos) {
@@ -151,8 +158,12 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
 
 /** Load and validate the keywords database */
 export async function loadKeywordsDb(): Promise<Keyword[]> {
-  if (cachedKeywords) return cachedKeywords
+  if (cachedKeywords) {
+    log.debug('loadKeywordsDb() — cache hit')
+    return cachedKeywords
+  }
 
+  log.info('Chargement BDD_Mots_Clefs_SEO.json...')
   const raw = await readJson<RawKeywordsDb>(join(DATA_DIR, 'BDD_Mots_Clefs_SEO.json'))
   rawKeywordsDbSchema.parse(raw)
 
@@ -163,6 +174,7 @@ export async function loadKeywordsDb(): Promise<Keyword[]> {
     status: kw.statut ?? 'suggested',
   }))
 
+  log.info('Keywords chargés', { count: cachedKeywords.length })
   return cachedKeywords
 }
 
@@ -234,6 +246,7 @@ async function loadStatuses(): Promise<Record<string, ArticleStatus>> {
 
 /** Update an article's status (persisted in article-statuses.json) */
 export async function updateArticleStatus(slug: string, status: ArticleStatus): Promise<void> {
+  log.info('updateArticleStatus', { slug, status })
   const statuses = await loadStatuses()
   statuses[slug] = status
   await writeJson(STATUS_FILE, statuses)
@@ -264,7 +277,10 @@ async function applyStatusOverrides(cocoons: Cocoon[]): Promise<void> {
 export async function addKeyword(keyword: Keyword): Promise<{ success: boolean; duplicate?: boolean }> {
   const raw = await readJson<RawKeywordsDb>(join(DATA_DIR, 'BDD_Mots_Clefs_SEO.json'))
   const exists = raw.seo_data.some(k => k.mot_clef.toLowerCase() === keyword.keyword.toLowerCase())
-  if (exists) return { success: false, duplicate: true }
+  if (exists) {
+    log.warn('addKeyword — doublon détecté', { keyword: keyword.keyword })
+    return { success: false, duplicate: true }
+  }
   raw.seo_data.push({
     mot_clef: keyword.keyword,
     cocon_seo: keyword.cocoonName,
@@ -273,6 +289,7 @@ export async function addKeyword(keyword: Keyword): Promise<{ success: boolean; 
   })
   await writeJson(join(DATA_DIR, 'BDD_Mots_Clefs_SEO.json'), raw)
   cachedKeywords = null
+  log.info('addKeyword — succès', { keyword: keyword.keyword, cocoon: keyword.cocoonName })
   return { success: true }
 }
 
@@ -369,10 +386,12 @@ export async function addCocoonToSilo(
 
   const silo = raw.silos.find(s => s.nom === siloName)
   if (!silo) {
+    log.error('addCocoonToSilo — silo introuvable', { siloName })
     throw new Error(`Silo "${siloName}" not found`)
   }
 
   if (silo.cocons.some(c => c.nom === cocoonName)) {
+    log.warn('addCocoonToSilo — cocoon déjà existant', { cocoonName, siloName })
     throw new Error(`Cocoon "${cocoonName}" already exists in silo "${siloName}"`)
   }
 
@@ -395,6 +414,7 @@ export async function addCocoonToSilo(
   const allCocoons = raw.silos.flatMap(s => s.cocons)
   const id = allCocoons.indexOf(newCocoon)
 
+  log.info('addCocoonToSilo — succès', { cocoonName, siloName, id })
   return { id, name: cocoonName, siloName, articles: [], stats: emptyStats }
 }
 
@@ -415,6 +435,7 @@ export async function addArticlesToCocoon(
     }
   }
   if (!targetCocoon) {
+    log.error('addArticlesToCocoon — cocoon introuvable', { cocoonName })
     throw new Error(`Cocoon "${cocoonName}" not found`)
   }
 
@@ -447,9 +468,33 @@ export async function addArticlesToCocoon(
     cachedCocoons = null
     cachedSilos = null
     cachedTheme = null
+    log.info('addArticlesToCocoon — articles ajoutés', { cocoonName, count: created.length })
   }
 
   return created
+}
+
+/** Remove an article from its cocoon by slug */
+export async function removeArticleFromCocoon(slug: string): Promise<boolean> {
+  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+
+  for (const silo of raw.silos) {
+    for (const cocoon of silo.cocons) {
+      const idx = cocoon.articles.findIndex(a => extractSlug(a.slug) === slug)
+      if (idx !== -1) {
+        cocoon.articles.splice(idx, 1)
+        await writeJson(join(DATA_DIR, 'BDD_Articles_Blog.json'), raw)
+        cachedCocoons = null
+        cachedSilos = null
+        cachedTheme = null
+        log.info('removeArticleFromCocoon — article supprimé', { slug })
+        return true
+      }
+    }
+  }
+
+  log.warn('removeArticleFromCocoon — slug introuvable', { slug })
+  return false
 }
 
 /** Reset caches (useful for testing) */

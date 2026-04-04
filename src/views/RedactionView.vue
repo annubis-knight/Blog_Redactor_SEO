@@ -5,8 +5,7 @@ import { useCocoonsStore } from '@/stores/cocoons.store'
 import { useArticlesStore } from '@/stores/articles.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import ArticleList from '@/components/dashboard/ArticleList.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const route = useRoute()
 const cocoonsStore = useCocoonsStore()
@@ -41,19 +40,12 @@ onMounted(() => {
   <div class="redaction-view">
     <Breadcrumb :items="breadcrumbItems" />
 
-    <LoadingSpinner v-if="articlesStore.isLoading" />
-
-    <ErrorMessage
-      v-else-if="articlesStore.error"
-      :message="articlesStore.error"
-      @retry="loadData()"
-    />
-
-    <ArticleList
-      v-else
-      :articles="articlesStore.articles"
-      :cocoon-id="cocoonId"
-    />
+    <AsyncContent :is-loading="articlesStore.isLoading" :error="articlesStore.error" @retry="loadData()">
+      <ArticleList
+        :articles="articlesStore.articles"
+        :cocoon-id="cocoonId"
+      />
+    </AsyncContent>
   </div>
 </template>
 

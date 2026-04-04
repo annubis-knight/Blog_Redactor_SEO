@@ -90,8 +90,7 @@ const unlockedPhases: Phase[] = [
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: false },
-      { id: 'douleur-intent', label: 'Douleur Intent', optional: true, locked: false },
-      { id: 'douleur', label: 'Douleur' },
+      { id: 'radar', label: 'Radar', optional: true, locked: false },
     ],
   },
   {
@@ -100,7 +99,7 @@ const unlockedPhases: Phase[] = [
     number: 2,
     tabs: [
       { id: 'validation', label: 'Validation' },
-      { id: 'exploration', label: 'Exploration' },
+      { id: 'intention', label: 'Intention' },
       { id: 'audit', label: 'Audit' },
       { id: 'local', label: 'Local' },
     ],
@@ -122,66 +121,50 @@ const lockedPhases: Phase[] = [
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: true },
-      { id: 'douleur-intent', label: 'Douleur Intent', optional: true, locked: true },
-      { id: 'douleur', label: 'Douleur' },
+      { id: 'radar', label: 'Radar', optional: true, locked: true },
     ],
   },
   ...unlockedPhases.slice(1),
 ]
 
 describe('Phase ① Générer — Navigation with unlocked tabs', () => {
-  it('all 3 Phase ① tabs are accessible when unlocked', () => {
+  it('all 2 Phase ① tabs are accessible when unlocked', () => {
     const wrapper = mount(MoteurPhaseNavigation, {
       props: { phases: unlockedPhases, activeTab: 'discovery' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    // Discovery, Douleur Intent, Douleur should not be locked
+    // Discovery, Radar should not be locked
     expect(tabs[0].classes()).not.toContain('phase-tab--locked')
     expect(tabs[1].classes()).not.toContain('phase-tab--locked')
-    expect(tabs[2].classes()).not.toContain('phase-tab--locked')
   })
 
-  it('emits tab change for all Phase ① tabs when unlocked', async () => {
+  it('emits tab change for Phase ① tabs when unlocked', async () => {
     const wrapper = mount(MoteurPhaseNavigation, {
       props: { phases: unlockedPhases, activeTab: 'discovery' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
 
-    await tabs[1].trigger('click') // Douleur Intent
-    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['douleur-intent'])
-
-    await tabs[2].trigger('click') // Douleur
-    expect(wrapper.emitted('update:activeTab')![1]).toEqual(['douleur'])
+    await tabs[1].trigger('click') // Radar
+    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['radar'])
   })
 })
 
 describe('Phase ① Générer — Navigation with locked tabs', () => {
-  it('Discovery and Douleur Intent are locked', () => {
-    const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases: lockedPhases, activeTab: 'douleur' },
-    })
-
-    const tabs = wrapper.findAll('.phase-tab')
-    expect(tabs[0].classes()).toContain('phase-tab--locked')
-    expect(tabs[1].classes()).toContain('phase-tab--locked')
-    expect(tabs[2].classes()).not.toContain('phase-tab--locked')
-  })
-
-  it('Douleur tab remains accessible when others are locked', async () => {
+  it('Discovery and Radar are locked', () => {
     const wrapper = mount(MoteurPhaseNavigation, {
       props: { phases: lockedPhases, activeTab: 'validation' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    await tabs[2].trigger('click') // Douleur (index 2)
-    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['douleur'])
+    expect(tabs[0].classes()).toContain('phase-tab--locked')
+    expect(tabs[1].classes()).toContain('phase-tab--locked')
   })
 
   it('clicking locked Discovery does not emit', async () => {
     const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases: lockedPhases, activeTab: 'douleur' },
+      props: { phases: lockedPhases, activeTab: 'validation' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
@@ -189,13 +172,13 @@ describe('Phase ① Générer — Navigation with locked tabs', () => {
     expect(wrapper.emitted('update:activeTab')).toBeFalsy()
   })
 
-  it('clicking locked Douleur Intent does not emit', async () => {
+  it('clicking locked Radar does not emit', async () => {
     const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases: lockedPhases, activeTab: 'douleur' },
+      props: { phases: lockedPhases, activeTab: 'validation' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    await tabs[1].trigger('click') // Douleur Intent (locked)
+    await tabs[1].trigger('click') // Radar (locked)
     expect(wrapper.emitted('update:activeTab')).toBeFalsy()
   })
 })
@@ -213,14 +196,14 @@ const LockBannerHarness = defineComponent({
   },
   setup(props) {
     const isInGenererPhase = computed(() =>
-      props.activeTab === 'discovery' || props.activeTab === 'douleur-intent' || props.activeTab === 'douleur',
+      props.activeTab === 'discovery' || props.activeTab === 'radar',
     )
 
     return () => {
       if (props.selectedArticle && !props.isDiscoveryAllowed && isInGenererPhase.value) {
         return h('div', { class: 'lock-banner' }, [
           h('p', { class: 'lock-banner-message' },
-            'Les onglets Discovery et Douleur Intent sont verrouillés car des mots-clés sont déjà validés pour cet article.',
+            'Les onglets Discovery et Radar sont verrouillés car des mots-clés sont déjà validés pour cet article.',
           ),
           h('button', { class: 'lock-banner-link' }, 'Voir l\'Audit →'),
         ])
@@ -236,13 +219,25 @@ describe('Lock banner visibility', () => {
       props: {
         selectedArticle: { keyword: 'test' },
         isDiscoveryAllowed: false,
-        activeTab: 'douleur',
+        activeTab: 'discovery',
       },
     })
 
     expect(wrapper.find('.lock-banner').exists()).toBe(true)
     expect(wrapper.find('.lock-banner-message').text()).toContain('verrouillés')
     expect(wrapper.find('.lock-banner-link').exists()).toBe(true)
+  })
+
+  it('shows lock banner on radar tab', () => {
+    const wrapper = mount(LockBannerHarness, {
+      props: {
+        selectedArticle: { keyword: 'test' },
+        isDiscoveryAllowed: false,
+        activeTab: 'radar',
+      },
+    })
+
+    expect(wrapper.find('.lock-banner').exists()).toBe(true)
   })
 
   it('hides lock banner when discovery is allowed', () => {
@@ -262,7 +257,7 @@ describe('Lock banner visibility', () => {
       props: {
         selectedArticle: null,
         isDiscoveryAllowed: false,
-        activeTab: 'douleur',
+        activeTab: 'discovery',
       },
     })
 
@@ -280,31 +275,19 @@ describe('Lock banner visibility', () => {
 
     expect(wrapper.find('.lock-banner').exists()).toBe(false)
   })
-
-  it('shows lock banner on douleur-intent tab', () => {
-    const wrapper = mount(LockBannerHarness, {
-      props: {
-        selectedArticle: { keyword: 'test' },
-        isDiscoveryAllowed: false,
-        activeTab: 'douleur-intent',
-      },
-    })
-
-    expect(wrapper.find('.lock-banner').exists()).toBe(true)
-  })
 })
 
 // --- Cross-tab communication tests ---
 
 describe('Phase ① Générer — Cross-tab handleSendToRadar', () => {
-  it('handleSendToRadar sets discoveryRadarKeywords and navigates to douleur-intent', () => {
+  it('handleSendToRadar sets discoveryRadarKeywords and navigates to radar', () => {
     // Simulate MoteurView's handleSendToRadar logic
     const discoveryRadarKeywords = ref<any[]>([])
     const activeTab = ref<string>('discovery')
 
     function handleSendToRadar(keywords: any[]) {
       discoveryRadarKeywords.value = keywords
-      activeTab.value = 'douleur-intent'
+      activeTab.value = 'radar'
     }
 
     const fakeKeywords = [
@@ -315,7 +298,7 @@ describe('Phase ① Générer — Cross-tab handleSendToRadar', () => {
     handleSendToRadar(fakeKeywords)
 
     expect(discoveryRadarKeywords.value).toEqual(fakeKeywords)
-    expect(activeTab.value).toBe('douleur-intent')
+    expect(activeTab.value).toBe('radar')
   })
 })
 
@@ -330,15 +313,15 @@ describe('Phase ① Générer — Redirect on article selection', () => {
       k => k.keyword.toLowerCase() === article.keyword.toLowerCase(),
     )
     const isValidated = kw && kw.status !== 'suggested'
-    if (isValidated && (activeTab.value === 'discovery' || activeTab.value === 'douleur-intent')) {
+    if (isValidated && (activeTab.value === 'discovery' || activeTab.value === 'radar')) {
       activeTab.value = 'validation'
     }
 
     expect(activeTab.value).toBe('validation')
   })
 
-  it('does not redirect from douleur tab when selecting validated article', () => {
-    const activeTab = ref<string>('douleur')
+  it('redirects from radar to validation when selecting validated article', () => {
+    const activeTab = ref<string>('radar')
     const keywords = [{ keyword: 'erp cloud', status: 'validated' }]
 
     const article = { keyword: 'erp cloud', slug: 'test', title: 'Test' }
@@ -346,12 +329,11 @@ describe('Phase ① Générer — Redirect on article selection', () => {
       k => k.keyword.toLowerCase() === article.keyword.toLowerCase(),
     )
     const isValidated = kw && kw.status !== 'suggested'
-    if (isValidated && (activeTab.value === 'discovery' || activeTab.value === 'douleur-intent')) {
+    if (isValidated && (activeTab.value === 'discovery' || activeTab.value === 'radar')) {
       activeTab.value = 'validation'
     }
 
-    // Douleur tab is NOT redirected — it stays accessible
-    expect(activeTab.value).toBe('douleur')
+    expect(activeTab.value).toBe('validation')
   })
 
   it('does not redirect when selecting non-validated article', () => {
@@ -363,7 +345,7 @@ describe('Phase ① Générer — Redirect on article selection', () => {
       k => k.keyword.toLowerCase() === article.keyword.toLowerCase(),
     )
     const isValidated = kw && kw.status !== 'suggested'
-    if (isValidated && (activeTab.value === 'discovery' || activeTab.value === 'douleur-intent')) {
+    if (isValidated && (activeTab.value === 'discovery' || activeTab.value === 'radar')) {
       activeTab.value = 'validation'
     }
 

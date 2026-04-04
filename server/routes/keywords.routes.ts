@@ -1,5 +1,7 @@
 import { Router } from 'express'
+import { join } from 'path'
 import { log } from '../utils/logger.js'
+import { readCached, writeCached, slugify, isFresh } from '../utils/cache.js'
 import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords } from '../services/data.service.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword-discovery.service.js'
@@ -341,11 +343,23 @@ router.post('/keywords/translate-pain', async (req, res) => {
 })
 
 /** POST /api/keywords/validate-pain — Validate translated keywords via multi-source (DataForSEO + Discussions + Autocomplete) */
+const VALIDATION_CACHE_DIR = join(process.cwd(), 'data', 'cache', 'validation')
+
 router.post('/keywords/validate-pain', async (req, res) => {
   try {
     const { keywords } = req.body as { keywords: string[] }
     if (!keywords || !Array.isArray(keywords) || keywords.length === 0) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'keywords array is required' } })
+      return
+    }
+
+    // Check cache — key based on sorted keywords
+    const sortedKw = [...keywords].sort()
+    const cacheKey = slugify(sortedKw.join('-'))
+    const cached = await readCached(VALIDATION_CACHE_DIR, cacheKey)
+    if (cached && isFresh(cached.cachedAt, 24 * 60 * 60 * 1000)) {
+      log.debug(`[validate-pain] Cache hit for ${keywords.length} keywords`)
+      res.json({ data: cached.data })
       return
     }
 
@@ -389,6 +403,10 @@ router.post('/keywords/validate-pain', async (req, res) => {
         return { keyword: kw, dataforseo, community, autocomplete, verdict }
       }),
     )
+
+    // Save to cache
+    await writeCached(VALIDATION_CACHE_DIR, cacheKey, { results })
+    log.debug(`[validate-pain] Cached results for ${keywords.length} keywords`)
 
     res.json({ data: { results } })
   } catch (err) {

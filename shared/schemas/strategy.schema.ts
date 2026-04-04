@@ -92,6 +92,8 @@ export const proposedArticleSchema = z.object({
   painPoint: z.string().default(''),
   suggestedKeyword: z.string(),
   suggestedKeywords: z.array(z.string()).default([]),
+  suggestedSlug: z.string().default(''),
+  suggestedSlugs: z.array(z.string()).default([]),
   validatedSearchQuery: z.string().nullable().default(null),
   keywordValidated: z.boolean().default(false),
   searchQueryValidated: z.boolean().default(false),
@@ -112,8 +114,13 @@ export const cocoonStrategySchema = z.object({
   updatedAt: z.string(),
 })
 
+const paaQuestionSchema = z.object({
+  question: z.string(),
+  answer: z.string().nullable(),
+})
+
 export const cocoonSuggestRequestSchema = z.object({
-  step: z.enum(['cible', 'douleur', 'angle', 'promesse', 'cta', 'articles']),
+  step: z.enum(['cible', 'douleur', 'angle', 'promesse', 'cta', 'articles', 'articles-structure', 'articles-paa-queries', 'articles-spe', 'add-article']),
   currentInput: z.string(),
   mergeWith: z.string().optional(),
   existingValidated: z.string().optional(),
@@ -123,6 +130,7 @@ export const cocoonSuggestRequestSchema = z.object({
     previousAnswers: z.record(z.string(), z.string()).optional(),
     existingArticles: z.array(z.string()).optional(),
     themeContext: themeContextSchema.optional(),
+    paaContext: z.record(z.string(), z.array(paaQuestionSchema)).optional(),
   }),
 })
 

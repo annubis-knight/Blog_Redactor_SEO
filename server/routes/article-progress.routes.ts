@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getProgress, saveProgress, addCheck } from '../services/article-progress.service.js'
+import { getProgress, saveProgress, addCheck, removeCheck } from '../services/article-progress.service.js'
 import { getField, saveField, addTerms } from '../services/semantic-field.service.js'
 import { articleProgressSchema, addCheckSchema, saveSemanticFieldSchema, addSemanticTermsSchema } from '../../shared/schemas/article-progress.schema.js'
 
@@ -45,6 +45,21 @@ router.post('/articles/:slug/progress/check', async (req, res) => {
   } catch (err) {
     log.error(`POST /api/articles/${req.params.slug}/progress/check — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to add check' } })
+  }
+})
+
+router.post('/articles/:slug/progress/uncheck', async (req, res) => {
+  const parsed = addCheckSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.message } })
+    return
+  }
+  try {
+    const progress = await removeCheck(req.params.slug, parsed.data.check)
+    res.json({ data: progress })
+  } catch (err) {
+    log.error(`POST /api/articles/${req.params.slug}/progress/uncheck — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to remove check' } })
   }
 })
 

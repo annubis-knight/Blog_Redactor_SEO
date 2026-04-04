@@ -73,7 +73,7 @@ describe('GET /articles/:slug/cached-results', () => {
     await handler(req, res)
 
     expect(res.json).toHaveBeenCalledWith({
-      data: { intent: null, local: null, contentGap: null, autocomplete: null, comparison: null },
+      data: { intent: null, local: null, contentGap: null, autocomplete: null, comparison: null, radar: null },
     })
     expect(mockReadCached).not.toHaveBeenCalled()
   })
@@ -91,7 +91,7 @@ describe('GET /articles/:slug/cached-results', () => {
     await handler(req, res)
 
     expect(res.json).toHaveBeenCalledWith({
-      data: { intent: null, local: null, contentGap: null, autocomplete: null, comparison: null },
+      data: { intent: null, local: null, contentGap: null, autocomplete: null, comparison: null, radar: null },
     })
   })
 
@@ -112,13 +112,14 @@ describe('GET /articles/:slug/cached-results', () => {
       .mockResolvedValueOnce(null) // content-gap
       .mockResolvedValueOnce(null) // autocomplete
       .mockResolvedValueOnce(null) // comparison
+      .mockResolvedValueOnce(null) // radar
 
     const req = makeReq('seo-local')
     const res = makeRes()
     await handler(req, res)
 
-    // Verify all 5 readCached calls
-    expect(mockReadCached).toHaveBeenCalledTimes(5)
+    // Verify all 6 readCached calls
+    expect(mockReadCached).toHaveBeenCalledTimes(6)
 
     const result = res.json.mock.calls[0][0].data
     expect(result.intent).toEqual(intentData)
@@ -126,6 +127,7 @@ describe('GET /articles/:slug/cached-results', () => {
     expect(result.contentGap).toBeNull()
     expect(result.autocomplete).toBeNull()
     expect(result.comparison).toBeNull()
+    expect(result.radar).toBeNull()
   })
 
   it('returns 500 on unexpected error', async () => {
@@ -163,5 +165,7 @@ describe('GET /articles/:slug/cached-results', () => {
     // autocomplete uses just the key (no prefix)
     expect(calls[3][1]).toBe('referencement-local')
     expect(calls[4][1]).toBe('local-national-referencement-local')
+    // radar uses just the key (no prefix)
+    expect(calls[5][1]).toBe('referencement-local')
   })
 })

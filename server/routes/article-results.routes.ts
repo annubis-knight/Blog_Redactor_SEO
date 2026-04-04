@@ -8,6 +8,7 @@ const router = Router()
 
 const CACHE_DIR = join(process.cwd(), 'data', 'cache')
 const AUTOCOMPLETE_CACHE_DIR = join(CACHE_DIR, 'autocomplete')
+const RADAR_CACHE_DIR = join(CACHE_DIR, 'radar')
 
 /**
  * GET /articles/:slug/cached-results
@@ -24,7 +25,7 @@ router.get('/articles/:slug/cached-results', async (req, res) => {
     if (!articleKeywords || !articleKeywords.capitaine) {
       log.debug(`[article-results] No capitaine keyword for slug "${slug}"`)
       res.json({
-        data: { intent: null, local: null, contentGap: null, autocomplete: null, comparison: null },
+        data: { intent: null, local: null, contentGap: null, autocomplete: null, comparison: null, radar: null },
       })
       return
     }
@@ -34,12 +35,13 @@ router.get('/articles/:slug/cached-results', async (req, res) => {
     log.debug(`[article-results] Loading cached results for "${slug}" (keyword: "${keyword}", key: "${key}")`)
 
     // Read all caches in parallel — readCached returns null on miss
-    const [intent, local, contentGap, autocomplete, comparison] = await Promise.all([
+    const [intent, local, contentGap, autocomplete, comparison, radar] = await Promise.all([
       readCached(CACHE_DIR, `intent-${key}`),
       readCached(CACHE_DIR, `maps-${key}`),
       readCached(CACHE_DIR, `content-gap-${key}`),
       readCached(AUTOCOMPLETE_CACHE_DIR, key),
       readCached(CACHE_DIR, `local-national-${key}`),
+      readCached(RADAR_CACHE_DIR, key),
     ])
 
     const result = {
@@ -48,11 +50,12 @@ router.get('/articles/:slug/cached-results', async (req, res) => {
       contentGap: contentGap?.data ?? null,
       autocomplete: autocomplete?.data ?? null,
       comparison: comparison?.data ?? null,
+      radar: radar?.data ?? null,
     }
 
-    const hitCount = [result.intent, result.local, result.contentGap, result.autocomplete, result.comparison]
+    const hitCount = [result.intent, result.local, result.contentGap, result.autocomplete, result.comparison, result.radar]
       .filter(Boolean).length
-    log.info(`[article-results] Cached results for "${slug}": ${hitCount}/5 hits`)
+    log.info(`[article-results] Cached results for "${slug}": ${hitCount}/6 hits`)
 
     res.json({ data: result })
   } catch (err) {

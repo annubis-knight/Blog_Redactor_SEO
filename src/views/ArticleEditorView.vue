@@ -6,8 +6,7 @@ import { useEditorStore } from '@/stores/editor.store'
 import { useAutoSave } from '@/composables/useAutoSave'
 import { useContextualActions } from '@/composables/useContextualActions'
 import { apiGet } from '@/services/api.service'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import ArticleEditor from '@/components/editor/ArticleEditor.vue'
 import EditorBubbleMenu from '@/components/editor/EditorBubbleMenu.vue'
@@ -246,15 +245,8 @@ onMounted(() => {
         </div>
       </header>
 
-      <LoadingSpinner v-if="isLoading" />
-
-      <ErrorMessage
-        v-else-if="loadError"
-        :message="loadError"
-        @retry="loadContent()"
-      />
-
-      <template v-else-if="editorStore.content">
+      <AsyncContent :is-loading="isLoading" :error="loadError" @retry="loadContent()">
+        <template v-if="editorStore.content">
         <EditorToolbar :editor="articleEditorRef?.editor" />
 
         <EditorBubbleMenu
@@ -308,12 +300,13 @@ onMounted(() => {
         <div v-if="actionError" class="action-error">
           {{ actionError }}
         </div>
-      </template>
+        </template>
 
-      <div v-else class="empty-state">
-        <p>Aucun contenu &agrave; &eacute;diter. G&eacute;n&eacute;rez d'abord un article depuis le workflow.</p>
-        <RouterLink :to="backLink" class="btn-back">Retour au workflow</RouterLink>
-      </div>
+        <div v-else class="empty-state">
+          <p>Aucun contenu &agrave; &eacute;diter. G&eacute;n&eacute;rez d'abord un article depuis le workflow.</p>
+          <RouterLink :to="backLink" class="btn-back">Retour au workflow</RouterLink>
+        </div>
+      </AsyncContent>
     </div>
 
     <Transition name="panel-slide">

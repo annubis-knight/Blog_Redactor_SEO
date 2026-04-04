@@ -4,17 +4,34 @@ import { setActivePinia, createPinia } from 'pinia'
 
 // --- Mocks ---
 
-vi.mock('../../../src/stores/intent.store', () => ({
-  useIntentStore: () => ({
+vi.mock('../../../src/composables/useCapitaineValidation', () => ({
+  useCapitaineValidation: () => ({
+    result: { value: null },
+    currentResult: { value: null },
+    isLoading: { value: false },
+    error: { value: null },
+    history: { value: [] },
+    historyIndex: { value: -1 },
+    forceGo: { value: false },
+    rootResult: { value: null },
+    isLoadingRoot: { value: false },
+    validateKeyword: vi.fn(),
+    navigateHistory: vi.fn(),
+    toggleForceGo: vi.fn(),
     reset: vi.fn(),
-    exploreKeyword: vi.fn(),
-    explorationKeyword: '',
   }),
+  articleTypeToLevel: () => 'intermediaire',
 }))
 
-vi.mock('../../../src/stores/local.store', () => ({
-  useLocalStore: () => ({
-    reset: vi.fn(),
+vi.mock('../../../src/composables/useStreaming', () => ({
+  useStreaming: () => ({
+    chunks: { value: '' },
+    isStreaming: { value: false },
+    error: { value: null },
+    result: { value: null },
+    usage: { value: null },
+    startStream: vi.fn(),
+    abort: vi.fn(),
   }),
 }))
 
@@ -41,12 +58,7 @@ const globalStubs = {
   Breadcrumb: { template: '<nav class="breadcrumb-stub" />' },
   KeywordDiscoveryTab: componentStub,
   PainTranslator: componentStub,
-  ExplorationInput: componentStub,
-  IntentStep: componentStub,
-  AutocompleteValidation: componentStub,
-  ExplorationVerdict: componentStub,
-  LocalComparisonStep: componentStub,
-  MapsStep: componentStub,
+  CaptainValidation: componentStub,
 }
 
 // --- Router test ---
@@ -159,17 +171,16 @@ describe('LaboView', () => {
     expect(wrapper.text()).toContain('seo local')
   })
 
-  it('renders 4 tabs: Discovery, Douleur, Exploration, Local', async () => {
+  it('renders 3 tabs: Discovery, Douleur, Verdict', async () => {
     const wrapper = await mountLabo()
     await wrapper.find('.search-input').setValue('test kw')
     await wrapper.find('.search-btn').trigger('click')
 
     const tabs = wrapper.findAll('.labo-tab')
-    expect(tabs).toHaveLength(4)
+    expect(tabs).toHaveLength(3)
     expect(tabs[0].text()).toBe('Discovery')
     expect(tabs[1].text()).toBe('Douleur')
-    expect(tabs[2].text()).toBe('Exploration')
-    expect(tabs[3].text()).toBe('Local')
+    expect(tabs[2].text()).toBe('Verdict')
   })
 
   it('Discovery tab is active by default', async () => {
@@ -188,7 +199,7 @@ describe('LaboView', () => {
     await wrapper.find('.search-btn').trigger('click')
 
     const tabs = wrapper.findAll('.labo-tab')
-    await tabs[2].trigger('click') // Exploration
+    await tabs[2].trigger('click') // Verdict
 
     expect(tabs[2].classes()).toContain('active')
     expect(tabs[0].classes()).not.toContain('active')
@@ -201,5 +212,30 @@ describe('LaboView', () => {
 
     expect(wrapper.find('.labo-gate').exists()).toBe(true)
     expect(wrapper.find('.labo-tabs').exists()).toBe(false)
+  })
+
+  it('shows type selector after keyword activation', async () => {
+    const wrapper = await mountLabo()
+    expect(wrapper.find('[data-testid="labo-type-select"]').exists()).toBe(false)
+
+    await wrapper.find('.search-input').setValue('seo local')
+    await wrapper.find('.search-btn').trigger('click')
+
+    const select = wrapper.find('[data-testid="labo-type-select"]')
+    expect(select.exists()).toBe(true)
+    // Default is Intermédiaire
+    expect((select.element as HTMLSelectElement).value).toBe('Intermédiaire')
+  })
+
+  it('type selector has 3 options', async () => {
+    const wrapper = await mountLabo()
+    await wrapper.find('.search-input').setValue('seo local')
+    await wrapper.find('.search-btn').trigger('click')
+
+    const options = wrapper.findAll('[data-testid="labo-type-select"] option')
+    expect(options).toHaveLength(3)
+    expect(options[0].text()).toBe('Pilier')
+    expect(options[1].text()).toBe('Intermédiaire')
+    expect(options[2].text()).toBe('Spécialisé')
   })
 })

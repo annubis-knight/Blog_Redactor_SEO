@@ -1,5 +1,5 @@
 import { ref, computed } from 'vue'
-import { apiPost } from '@/services/api.service'
+import { apiGet, apiPost, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type {
   IntentScanResult,
@@ -7,6 +7,23 @@ import type {
   KeywordRadarScanResult,
   RadarKeyword,
 } from '@shared/types/intent.types.js'
+
+export interface RadarCacheStatus {
+  cached: boolean
+  cachedAt?: string
+  keywordCount?: number
+  globalScore?: number
+  heatLevel?: string
+}
+
+interface RadarCacheData {
+  seed: string
+  context: { broadKeyword: string; specificTopic: string; painPoint: string; depth: number }
+  generatedKeywords: RadarKeyword[]
+  scanResult: KeywordRadarScanResult
+  cachedAt: string
+  expiresAt: string
+}
 
 export function useResonanceScore() {
   const result = ref<IntentScanResult | null>(null)
@@ -91,7 +108,18 @@ export function useResonanceScore() {
 
 // --- Keyword Radar composable ---
 
-function radarHeatColor(level: KeywordRadarScanResult['heatLevel'] | null) {
+export function radarHeatIcon(level: string | null): string {
+  if (!level) return ''
+  switch (level) {
+    case 'brulante': return '\uD83D\uDD25'
+    case 'chaude': return '\uD83D\uDFE0'
+    case 'tiede': return '\uD83D\uDD35'
+    case 'froide': return '\u2744\uFE0F'
+    default: return ''
+  }
+}
+
+export function radarHeatColor(level: KeywordRadarScanResult['heatLevel'] | null) {
   if (!level) return 'var(--color-border)'
   switch (level) {
     case 'brulante': return 'var(--color-error, #dc2626)'
@@ -101,7 +129,7 @@ function radarHeatColor(level: KeywordRadarScanResult['heatLevel'] | null) {
   }
 }
 
-function radarHeatLabel(level: KeywordRadarScanResult['heatLevel'] | null) {
+export function radarHeatLabel(level: KeywordRadarScanResult['heatLevel'] | null) {
   if (!level) return ''
   switch (level) {
     case 'brulante': return 'Brulante'
@@ -118,14 +146,70 @@ export function useKeywordRadar() {
   const isScanning = ref(false)
   const error = ref<string | null>(null)
   const scanProgress = ref({ phase: '', scanned: 0, total: 0 })
+  const radarCacheStatus = ref<RadarCacheStatus | null>(null)
   let _progressTimer: ReturnType<typeof setInterval> | null = null
+  let _lastScanContext: { broadKeyword: string; specificTopic: string; painPoint: string; depth: number } | null = null
 
   const heatColor = computed(() => radarHeatColor(scanResult.value?.heatLevel ?? null))
   const heatLabel = computed(() => radarHeatLabel(scanResult.value?.heatLevel ?? null))
 
+  async function checkRadarCacheFn(seed: string) {
+    try {
+      radarCacheStatus.value = await apiGet<RadarCacheStatus>(`/radar-cache/check?seed=${encodeURIComponent(seed)}`)
+      log.debug('[Radar] Cache check', { seed, cached: radarCacheStatus.value.cached })
+    } catch (err) {
+      log.warn(`[Radar] Cache check failed: ${(err as Error).message}`)
+      radarCacheStatus.value = { cached: false }
+    }
+  }
+
+  async function loadFromRadarCache(seed: string): Promise<boolean> {
+    try {
+      const cached = await apiGet<RadarCacheData | null>(`/radar-cache/load?seed=${encodeURIComponent(seed)}`)
+      if (cached) {
+        generatedKeywords.value = cached.generatedKeywords
+        scanResult.value = cached.scanResult
+        _lastScanContext = cached.context
+        log.info(`[Radar] Loaded from cache: ${cached.generatedKeywords.length} keywords, score=${cached.scanResult.globalScore}`)
+        return true
+      }
+      return false
+    } catch (err) {
+      log.warn(`[Radar] Cache load failed: ${(err as Error).message}`)
+      return false
+    }
+  }
+
+  async function _saveToCache(seed: string) {
+    if (!scanResult.value || !_lastScanContext) return
+    try {
+      await apiPost('/radar-cache/save', {
+        seed,
+        context: _lastScanContext,
+        generatedKeywords: generatedKeywords.value,
+        scanResult: scanResult.value,
+      })
+      radarCacheStatus.value = {
+        cached: true,
+        keywordCount: generatedKeywords.value.length,
+        globalScore: scanResult.value.globalScore,
+        heatLevel: scanResult.value.heatLevel,
+      }
+      log.info(`[Radar] Saved to cache: "${seed}"`)
+    } catch (err) {
+      log.warn(`[Radar] Cache save failed: ${(err as Error).message}`)
+    }
+  }
+
   async function generate(title: string, keyword: string, painPoint: string) {
     isGenerating.value = true
     error.value = null
+    // Store painPoint for later cache save
+    if (_lastScanContext) {
+      _lastScanContext.painPoint = painPoint
+    } else {
+      _lastScanContext = { broadKeyword: keyword, specificTopic: title, painPoint, depth: 1 }
+    }
     log.info('[Radar] Generating keywords...', { keyword, title: title.slice(0, 50) })
 
     try {
@@ -178,10 +262,11 @@ export function useKeywordRadar() {
     scanProgress.value = { phase: '', scanned: 0, total: 0 }
   }
 
-  async function scan(broadKeyword: string, specificTopic: string, keywords: RadarKeyword[], depth: number = 1) {
+  async function scan(broadKeyword: string, specificTopic: string, keywords: RadarKeyword[], depth: number = 1, seed?: string) {
     isScanning.value = true
     error.value = null
     scanResult.value = null
+    _lastScanContext = { broadKeyword, specificTopic, painPoint: '', depth }
     log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${depth}`)
 
     _startProgressEstimation(keywords.length)
@@ -194,6 +279,11 @@ export function useKeywordRadar() {
         depth,
       })
       log.info(`[Radar] Scan complete: score=${scanResult.value.globalScore}, heat=${scanResult.value.heatLevel}`)
+
+      // Auto-save to cache
+      if (seed) {
+        _saveToCache(seed)
+      }
     } catch (err) {
       error.value = (err as Error).message
       log.error('[Radar] Scan failed', { error: error.value })
@@ -213,6 +303,8 @@ export function useKeywordRadar() {
     isGenerating.value = false
     isScanning.value = false
     error.value = null
+    radarCacheStatus.value = null
+    _lastScanContext = null
     _stopProgress()
   }
 
@@ -225,6 +317,9 @@ export function useKeywordRadar() {
     error,
     heatColor,
     heatLabel,
+    radarCacheStatus,
+    checkRadarCache: checkRadarCacheFn,
+    loadFromRadarCache,
     generate,
     scan,
     removeKeyword,

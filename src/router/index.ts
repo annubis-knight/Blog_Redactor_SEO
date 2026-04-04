@@ -56,6 +56,11 @@ const router = createRouter({
       component: () => import('../views/LaboView.vue'),
     },
     {
+      path: '/explorateur',
+      name: 'explorateur',
+      component: () => import('../views/ExplorateurView.vue'),
+    },
+    {
       path: '/linking',
       name: 'linking',
       component: () => import('../views/LinkingMatrixView.vue'),

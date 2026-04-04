@@ -1,7 +1,10 @@
 <script setup lang="ts">
-defineProps<{
+withDefaults(defineProps<{
   message: string
-}>()
+  hideRetry?: boolean
+}>(), {
+  hideRetry: false,
+})
 
 const emit = defineEmits<{
   retry: []
@@ -11,7 +14,7 @@ const emit = defineEmits<{
 <template>
   <div class="error-message" role="alert">
     <p class="error-text">{{ message }}</p>
-    <button class="retry-button" @click="emit('retry')">Réessayer</button>
+    <button v-if="!hideRetry" class="retry-button" @click="emit('retry')">Réessayer</button>
   </div>
 </template>
 

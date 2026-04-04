@@ -154,11 +154,11 @@ describe('PainValidation — rendering', () => {
     })
 
     // The hot keyword should be auto-selected (better verdict)
-    const continueBtn = wrapper.find('.btn-continue')
-    expect(continueBtn.text()).toContain('hot-kw')
+    const goBtn = wrapper.find('.btn-go')
+    expect(goBtn.text()).toContain('hot-kw')
   })
 
-  it('emits "select" with selected keyword on continue click', async () => {
+  it('emits "go" with selected keyword on go click', async () => {
     mockApiPost.mockResolvedValue({
       results: [makeResult('seo toulouse')],
     })
@@ -170,12 +170,12 @@ describe('PainValidation — rendering', () => {
     })
 
     await vi.waitFor(() => {
-      expect(wrapper.find('.btn-continue').exists()).toBe(true)
+      expect(wrapper.find('.btn-go').exists()).toBe(true)
     })
 
-    await wrapper.find('.btn-continue').trigger('click')
-    expect(wrapper.emitted('select')).toHaveLength(1)
-    expect(wrapper.emitted('select')![0]).toEqual(['seo toulouse'])
+    await wrapper.find('.btn-go').trigger('click')
+    expect(wrapper.emitted('go')).toHaveLength(1)
+    expect(wrapper.emitted('go')![0]).toEqual(['seo toulouse'])
   })
 
   it('emits "back" on back button click', async () => {

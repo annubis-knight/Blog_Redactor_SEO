@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
+import { onMounted, computed, watch } from 'vue'
 import { useLocalStore } from '@/stores/local.store'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
@@ -35,8 +35,14 @@ const gapColor = computed(() => {
   return 'var(--color-error)'
 })
 
+watch(() => props.keyword, (newKw) => {
+  if (newKw) {
+    localStore.analyzeMaps(newKw)
+  }
+})
+
 onMounted(() => {
-  if (!localStore.mapsData) {
+  if (!localStore.mapsData && props.keyword) {
     localStore.analyzeMaps(props.keyword)
   }
 })

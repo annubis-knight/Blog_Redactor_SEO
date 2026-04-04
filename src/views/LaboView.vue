@@ -1,33 +1,25 @@
 <script setup lang="ts">
-import { ref } from 'vue'
-import { useIntentStore } from '@/stores/intent.store'
-import { useLocalStore } from '@/stores/local.store'
+import { ref, computed } from 'vue'
 import { useKeywordDiscoveryTab } from '@/composables/useKeywordDiscoveryTab'
 import { log } from '@/utils/logger'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
+import type { SelectedArticle } from '@shared/types/index.js'
+import type { ArticleType } from '@shared/types/article.types.js'
 
-// Phase ① — Discovery / Douleur
+// Discovery / Douleur
 import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
 import PainTranslator from '@/components/intent/PainTranslator.vue'
 
-// Phase ② — Exploration
-import ExplorationInput from '@/components/intent/ExplorationInput.vue'
-import IntentStep from '@/components/intent/IntentStep.vue'
-import AutocompleteValidation from '@/components/intent/AutocompleteValidation.vue'
-import ExplorationVerdict from '@/components/intent/ExplorationVerdict.vue'
+// Verdict GO/NO-GO
+import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
 
-// Phase ② — Local
-import LocalComparisonStep from '@/components/intent/LocalComparisonStep.vue'
-import MapsStep from '@/components/local/MapsStep.vue'
-
-const intentStore = useIntentStore()
-const localStore = useLocalStore()
 const { reset: resetDiscovery } = useKeywordDiscoveryTab()
 
 const keywordInput = ref('')
 const activeKeyword = ref('')
+const selectedType = ref<ArticleType>('Intermédiaire')
 
-const TAB_IDS = ['discovery', 'douleur', 'exploration', 'local'] as const
+const TAB_IDS = ['discovery', 'douleur', 'capitaine'] as const
 type Tab = typeof TAB_IDS[number]
 const activeTab = ref<Tab>('discovery')
 
@@ -36,23 +28,28 @@ const breadcrumbItems = [
   { label: 'Labo' },
 ]
 
+const libreArticle = computed<SelectedArticle | null>(() => {
+  if (!activeKeyword.value) return null
+  return {
+    slug: '',
+    title: '',
+    keyword: activeKeyword.value,
+    type: selectedType.value,
+    locked: false,
+    source: 'proposed',
+  }
+})
+
 function setKeyword() {
   const trimmed = keywordInput.value.trim()
   if (trimmed.length < 2) return
 
   log.info(`[LaboView] Keyword set: "${trimmed}"`)
 
-  // Reset stores for new keyword
-  intentStore.reset()
-  localStore.reset()
   resetDiscovery()
 
   activeKeyword.value = trimmed
   activeTab.value = 'discovery'
-}
-
-function handleExplore(keyword: string) {
-  intentStore.exploreKeyword(keyword)
 }
 </script>
 
@@ -74,9 +71,19 @@ function handleExplore(keyword: string) {
           Rechercher
         </button>
       </div>
-      <p v-if="activeKeyword" class="active-keyword">
-        Mot-clé actif : <strong>{{ activeKeyword }}</strong>
-      </p>
+      <div v-if="activeKeyword" class="active-keyword-row">
+        <p class="active-keyword">
+          Mot-clé actif : <strong>{{ activeKeyword }}</strong>
+        </p>
+        <label class="type-selector">
+          <span class="type-label">Type :</span>
+          <select v-model="selectedType" class="type-select" data-testid="labo-type-select">
+            <option value="Pilier">Pilier</option>
+            <option value="Intermédiaire">Intermédiaire</option>
+            <option value="Spécialisé">Spécialisé</option>
+          </select>
+        </label>
+      </div>
     </div>
 
     <!-- Gate message -->
@@ -93,7 +100,7 @@ function handleExplore(keyword: string) {
         :class="{ active: activeTab === tab }"
         @click="activeTab = tab"
       >
-        {{ tab === 'discovery' ? 'Discovery' : tab === 'douleur' ? 'Douleur' : tab === 'exploration' ? 'Exploration' : 'Local' }}
+        {{ tab === 'discovery' ? 'Discovery' : tab === 'douleur' ? 'Douleur' : 'Verdict' }}
       </button>
     </nav>
 
@@ -114,28 +121,11 @@ function handleExplore(keyword: string) {
         <PainTranslator
           mode="libre"
           :suggested-keyword="activeKeyword"
-          @explore="handleExplore"
         />
       </div>
 
-      <div v-if="activeTab === 'exploration'" class="tab-content">
-        <ExplorationInput mode="libre" :default-keyword="activeKeyword" @explore="handleExplore" />
-        <template v-if="intentStore.explorationKeyword">
-          <AutocompleteValidation mode="libre" :keyword="intentStore.explorationKeyword" @explore-keyword="handleExplore" />
-          <IntentStep mode="libre" :keyword="intentStore.explorationKeyword" />
-          <ExplorationVerdict mode="libre" />
-        </template>
-      </div>
-
-      <div v-if="activeTab === 'local'" class="tab-content">
-        <section class="local-section">
-          <h3 class="local-section-title">Comparaison Local / National</h3>
-          <LocalComparisonStep mode="libre" :keyword="activeKeyword" />
-        </section>
-        <section class="local-section">
-          <h3 class="local-section-title">Maps &amp; GBP</h3>
-          <MapsStep mode="libre" :keyword="activeKeyword" />
-        </section>
+      <div v-if="activeTab === 'capitaine'" class="tab-content">
+        <CaptainValidation mode="libre" :selected-article="libreArticle" />
       </div>
     </template>
   </div>
@@ -200,10 +190,39 @@ function handleExplore(keyword: string) {
   cursor: not-allowed;
 }
 
+.active-keyword-row {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
 .active-keyword {
-  margin: 0.5rem 0 0;
+  margin: 0;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+}
+
+.type-selector {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: 0.8125rem;
+}
+
+.type-label {
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.type-select {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8125rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
 }
 
 /* --- Gate --- */
@@ -260,19 +279,5 @@ function handleExplore(keyword: string) {
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }
-}
-
-/* --- Local sections --- */
-.local-section {
-  margin-bottom: 1.5rem;
-}
-
-.local-section-title {
-  font-size: 1rem;
-  font-weight: 700;
-  margin: 0 0 0.75rem;
-  padding-bottom: 0.5rem;
-  border-bottom: 1px solid var(--color-border);
-  color: var(--color-heading);
 }
 </style>

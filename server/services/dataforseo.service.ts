@@ -105,6 +105,12 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
     if (response.ok) {
       const json = await response.json() as { status_code: number; tasks: Array<{ status_code: number; result: T[] }> }
       if (json.status_code !== 20000) {
+        // Retry on transient API-level errors (50000 = internal server error)
+        if (json.status_code >= 50000 && json.status_code < 60000) {
+          log.warn(`DataForSEO API transient error ${json.status_code} for ${endpoint}, will retry`)
+          lastError = new Error(`DataForSEO error: status ${json.status_code}`)
+          continue
+        }
         log.error(`DataForSEO API error status ${json.status_code} for ${endpoint}`)
         throw new Error(`DataForSEO error: status ${json.status_code}`)
       }
@@ -116,8 +122,8 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
       return json.tasks[0].result[0] as T
     }
 
-    // Retry only on 429 (rate limit) and 503 (service unavailable)
-    if (response.status === 429 || response.status === 503) {
+    // Retry on 429 (rate limit), 503 (service unavailable), and 500 (server error)
+    if (response.status === 429 || response.status === 500 || response.status === 503) {
       lastError = new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
       continue
     }
@@ -157,12 +163,18 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
     if (response.ok) {
       const json = await response.json() as { status_code: number; tasks: Array<{ status_code: number; result: T[] }> }
       if (json.status_code !== 20000) {
+        // Retry on transient API-level errors (50000 = internal server error)
+        if (json.status_code >= 50000 && json.status_code < 60000) {
+          log.warn(`DataForSEO batch API transient error ${json.status_code} for ${endpoint}, will retry`)
+          lastError = new Error(`DataForSEO error: status ${json.status_code}`)
+          continue
+        }
         throw new Error(`DataForSEO error: status ${json.status_code}`)
       }
       return json.tasks?.[0]?.result ?? []
     }
 
-    if (response.status === 429 || response.status === 503) {
+    if (response.status === 429 || response.status === 500 || response.status === 503) {
       lastError = new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
       continue
     }

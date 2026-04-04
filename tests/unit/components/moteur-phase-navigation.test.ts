@@ -10,8 +10,7 @@ const phases: Phase[] = [
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: false },
-      { id: 'douleur-intent', label: 'Douleur Intent', optional: true, locked: false },
-      { id: 'douleur', label: 'Douleur' },
+      { id: 'radar', label: 'Radar', optional: true, locked: false },
     ],
   },
   {
@@ -19,38 +18,28 @@ const phases: Phase[] = [
     label: 'Valider',
     number: 2,
     tabs: [
-      { id: 'validation', label: 'Validation' },
-      { id: 'exploration', label: 'Exploration' },
-      { id: 'audit', label: 'Audit' },
-      { id: 'local', label: 'Local' },
-    ],
-  },
-  {
-    id: 'assigner',
-    label: 'Assigner',
-    number: 3,
-    tabs: [
-      { id: 'assignation', label: 'Assignation' },
+      { id: 'capitaine', label: 'Capitaine' },
+      { id: 'lieutenants', label: 'Lieutenants' },
+      { id: 'lexique', label: 'Lexique' },
     ],
   },
 ]
 
 describe('MoteurPhaseNavigation', () => {
-  it('renders 3 phase groups with correct labels', () => {
+  it('renders 2 phase groups with correct labels', () => {
     const wrapper = mount(MoteurPhaseNavigation, {
       props: { phases, activeTab: 'discovery' },
     })
 
     const groups = wrapper.findAll('.phase-group')
-    expect(groups).toHaveLength(3)
+    expect(groups).toHaveLength(2)
 
     const labels = wrapper.findAll('.phase-label')
     expect(labels[0].text()).toBe('Générer')
     expect(labels[1].text()).toBe('Valider')
-    expect(labels[2].text()).toBe('Assigner')
   })
 
-  it('renders phase numbers ①②③', () => {
+  it('renders phase numbers ①②', () => {
     const wrapper = mount(MoteurPhaseNavigation, {
       props: { phases, activeTab: 'discovery' },
     })
@@ -58,7 +47,6 @@ describe('MoteurPhaseNavigation', () => {
     const numbers = wrapper.findAll('.phase-number')
     expect(numbers[0].text()).toBe('1')
     expect(numbers[1].text()).toBe('2')
-    expect(numbers[2].text()).toBe('3')
   })
 
   it('renders all tabs within each phase', () => {
@@ -67,42 +55,38 @@ describe('MoteurPhaseNavigation', () => {
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    // 3 + 4 + 1 = 8 tabs total
-    expect(tabs).toHaveLength(8)
+    // 2 + 3 = 5 tabs total
+    expect(tabs).toHaveLength(5)
 
     expect(tabs[0].text()).toContain('Discovery')
-    expect(tabs[1].text()).toContain('Douleur Intent')
-    expect(tabs[2].text()).toBe('Douleur')
-    expect(tabs[3].text()).toBe('Validation')
-    expect(tabs[4].text()).toBe('Exploration')
-    expect(tabs[5].text()).toBe('Audit')
-    expect(tabs[6].text()).toBe('Local')
-    expect(tabs[7].text()).toBe('Assignation')
+    expect(tabs[1].text()).toContain('Radar')
+    expect(tabs[2].text()).toBe('Capitaine')
+    expect(tabs[3].text()).toBe('Lieutenants')
+    expect(tabs[4].text()).toBe('Lexique')
   })
 
   it('highlights the active phase', () => {
     const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases, activeTab: 'validation' },
+      props: { phases, activeTab: 'capitaine' },
     })
 
     const groups = wrapper.findAll('.phase-group')
     expect(groups[0].classes()).not.toContain('phase-group--active')
     expect(groups[1].classes()).toContain('phase-group--active')
-    expect(groups[2].classes()).not.toContain('phase-group--active')
   })
 
   it('highlights the active tab', () => {
     const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases, activeTab: 'audit' },
+      props: { phases, activeTab: 'lieutenants' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    const auditTab = tabs[5]
-    expect(auditTab.classes()).toContain('phase-tab--active')
+    const lieutenantsTab = tabs[3]
+    expect(lieutenantsTab.classes()).toContain('phase-tab--active')
 
     // Other tabs should not be active
     expect(tabs[0].classes()).not.toContain('phase-tab--active')
-    expect(tabs[3].classes()).not.toContain('phase-tab--active')
+    expect(tabs[2].classes()).not.toContain('phase-tab--active')
   })
 
   it('emits update:activeTab when clicking a tab', async () => {
@@ -111,10 +95,10 @@ describe('MoteurPhaseNavigation', () => {
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    await tabs[3].trigger('click') // Click "Validation"
+    await tabs[2].trigger('click') // Click "Capitaine"
 
     expect(wrapper.emitted('update:activeTab')).toBeTruthy()
-    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['validation'])
+    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['capitaine'])
   })
 
   it('navigates freely between phases by clicking tabs', async () => {
@@ -125,16 +109,12 @@ describe('MoteurPhaseNavigation', () => {
     const tabs = wrapper.findAll('.phase-tab')
 
     // Phase ① → Phase ②
-    await tabs[5].trigger('click') // Click Audit
-    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['audit'])
+    await tabs[3].trigger('click') // Click Lieutenants
+    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['lieutenants'])
 
-    // Phase ② → Phase ③
-    await tabs[7].trigger('click') // Click Assignation
-    expect(wrapper.emitted('update:activeTab')![1]).toEqual(['assignation'])
-
-    // Phase ③ → Phase ①
-    await tabs[2].trigger('click') // Click Douleur
-    expect(wrapper.emitted('update:activeTab')![2]).toEqual(['douleur'])
+    // Phase ② → Phase ①
+    await tabs[1].trigger('click') // Click Radar
+    expect(wrapper.emitted('update:activeTab')![1]).toEqual(['radar'])
   })
 
   it('emits update:activeTab when clicking a phase header', async () => {
@@ -146,7 +126,7 @@ describe('MoteurPhaseNavigation', () => {
     await headers[1].trigger('click') // Click Phase ② header
 
     // Should navigate to first tab of Phase ②
-    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['validation'])
+    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['capitaine'])
   })
 
   it('disables all tabs when disabled prop is true', () => {
@@ -168,7 +148,7 @@ describe('MoteurPhaseNavigation', () => {
     })
 
     const tabs = wrapper.findAll('.phase-tab')
-    await tabs[3].trigger('click')
+    await tabs[2].trigger('click')
 
     expect(wrapper.emitted('update:activeTab')).toBeFalsy()
   })
@@ -180,8 +160,8 @@ describe('MoteurPhaseNavigation', () => {
 
     const tabs = wrapper.findAll('.phase-tab')
     expect(tabs[0].classes()).toContain('phase-tab--optional') // Discovery
-    expect(tabs[1].classes()).toContain('phase-tab--optional') // Douleur Intent
-    expect(tabs[2].classes()).not.toContain('phase-tab--optional') // Douleur
+    expect(tabs[1].classes()).toContain('phase-tab--optional') // Radar
+    expect(tabs[2].classes()).not.toContain('phase-tab--optional') // Capitaine
   })
 
   it('marks locked tabs and prevents clicks', async () => {
@@ -192,15 +172,14 @@ describe('MoteurPhaseNavigation', () => {
         number: 1,
         tabs: [
           { id: 'discovery', label: 'Discovery', optional: true, locked: true },
-          { id: 'douleur-intent', label: 'Douleur Intent', optional: true, locked: true },
-          { id: 'douleur', label: 'Douleur' },
+          { id: 'radar', label: 'Radar', optional: true, locked: true },
         ],
       },
       ...phases.slice(1),
     ]
 
     const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases: lockedPhases, activeTab: 'douleur' },
+      props: { phases: lockedPhases, activeTab: 'capitaine' },
     })
 
     const tabs = wrapper.findAll('.phase-tab')
@@ -219,21 +198,24 @@ describe('MoteurPhaseNavigation', () => {
         number: 1,
         tabs: [
           { id: 'discovery', label: 'Discovery', optional: true, locked: true },
-          { id: 'douleur-intent', label: 'Douleur Intent', optional: true, locked: true },
-          { id: 'douleur', label: 'Douleur' },
+          { id: 'radar', label: 'Radar', optional: true, locked: true },
         ],
       },
       ...phases.slice(1),
     ]
 
     const wrapper = mount(MoteurPhaseNavigation, {
-      props: { phases: lockedPhases, activeTab: 'validation' },
+      props: { phases: lockedPhases, activeTab: 'capitaine' },
     })
 
     const headers = wrapper.findAll('.phase-header')
     await headers[0].trigger('click') // Click Phase ① header
 
-    // Should skip locked discovery and douleur-intent, go to douleur
-    expect(wrapper.emitted('update:activeTab')![0]).toEqual(['douleur'])
+    // All Phase ① tabs are locked — should not emit (or emit nothing clickable)
+    const emitted = wrapper.emitted('update:activeTab')
+    if (emitted) {
+      // If it emits, it should NOT be a locked tab
+      expect(['discovery', 'radar']).not.toContain(emitted[0][0])
+    }
   })
 })

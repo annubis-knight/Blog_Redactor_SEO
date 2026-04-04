@@ -11,9 +11,14 @@ interface CachedResults {
   contentGap: unknown | null
   autocomplete: unknown | null
   comparison: unknown | null
+  radar: { scanResult?: { globalScore: number; heatLevel: string } } | null
 }
 
-export function useArticleResults() {
+export interface ArticleResultsOptions {
+  onRadarLoaded?: (scanResult: { globalScore: number; heatLevel: string }) => void
+}
+
+export function useArticleResults(options: ArticleResultsOptions = {}) {
   const intentStore = useIntentStore()
   const localStore = useLocalStore()
   const discoveryStore = useKeywordDiscoveryStore()
@@ -43,6 +48,7 @@ export function useArticleResults() {
         contentGap: !!cached.contentGap,
         autocomplete: !!cached.autocomplete,
         comparison: !!cached.comparison,
+        radar: !!cached.radar,
       })
 
       // Guard against race condition: if user switched articles during fetch, discard
@@ -68,6 +74,11 @@ export function useArticleResults() {
       // Populate local store
       if (cached.local) {
         localStore.mapsData = cached.local as any
+      }
+
+      // Notify radar callback
+      if (cached.radar?.scanResult && options.onRadarLoaded) {
+        options.onRadarLoaded(cached.radar.scanResult)
       }
     } catch (err) {
       log.warn(`[useArticleResults] Failed to load cached results for "${slug}": ${(err as Error).message}`)

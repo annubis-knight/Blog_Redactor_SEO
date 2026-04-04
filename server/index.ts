@@ -17,7 +17,12 @@ import strategyRoutes from './routes/strategy.routes.js'
 import articleProgressRoutes from './routes/article-progress.routes.js'
 import intentScanRoutes from './routes/intent-scan.routes.js'
 import discoveryCacheRoutes from './routes/discovery-cache.routes.js'
+import radarCacheRoutes from './routes/radar-cache.routes.js'
 import articleResultsRoutes from './routes/article-results.routes.js'
+import keywordValidateRoutes from './routes/keyword-validate.routes.js'
+import keywordAiPanelRoutes from './routes/keyword-ai-panel.routes.js'
+import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
+import paaRoutes from './routes/paa.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3005
@@ -62,7 +67,12 @@ app.use('/api', strategyRoutes)
 app.use('/api', articleProgressRoutes)
 app.use('/api', intentScanRoutes)
 app.use('/api', discoveryCacheRoutes)
+app.use('/api', radarCacheRoutes)
 app.use('/api', articleResultsRoutes)
+app.use('/api', keywordValidateRoutes)
+app.use('/api', keywordAiPanelRoutes)
+app.use('/api', serpAnalysisRoutes)
+app.use('/api', paaRoutes)
 
 // Global error handler
 app.use(errorHandler)

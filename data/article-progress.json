@@ -1,1 +1,16 @@
-{}
+{
+  "faut-il-refaire-son-site-web-ou-retravailler-sa-strategie-en-premier": {
+    "phase": "proposed",
+    "completedChecks": [
+      "discovery_done",
+      "radar_done"
+    ]
+  },
+  "comment-definir-son-message-marketing-quand-on-ne-sait-pas-comment-parler-a-ses-clients": {
+    "phase": "proposed",
+    "completedChecks": [
+      "discovery_done",
+      "radar_done"
+    ]
+  }
+}

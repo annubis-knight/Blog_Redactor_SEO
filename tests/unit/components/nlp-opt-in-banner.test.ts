@@ -51,13 +51,13 @@ describe('NlpOptinBanner', () => {
   describe('State: Disabled', () => {
     it('shows Activer button and description', () => {
       const wrapper = mount(NlpOptinBanner)
-      expect(wrapper.text()).toContain('Analyse NLP locale')
+      expect(wrapper.text()).toContain('Améliorer la précision des verdicts')
       expect(wrapper.text()).toContain('Premier chargement')
-      expect(wrapper.text()).toContain('Gratuit, local, hors-ligne')
+      expect(wrapper.text()).toContain('Gratuit, hors-ligne')
 
       const btn = wrapper.find('.nlp-btn--activate')
       expect(btn.exists()).toBe(true)
-      expect(btn.text()).toBe('Activer')
+      expect(btn.text()).toBe('Activer l\'analyse sémantique')
       expect(btn.attributes('disabled')).toBeUndefined()
     })
 
@@ -83,7 +83,7 @@ describe('NlpOptinBanner', () => {
       nlpState.value = 'unsupported'
       const wrapper = mount(NlpOptinBanner)
 
-      expect(wrapper.text()).toContain('NLP indisponible sur ce navigateur')
+      expect(wrapper.text()).toContain('indisponible sur ce navigateur')
       const btn = wrapper.find('.nlp-btn--activate')
       expect(btn.exists()).toBe(true)
       expect(btn.attributes('disabled')).toBeDefined()
@@ -155,8 +155,8 @@ describe('NlpOptinBanner', () => {
       nlpState.value = 'active'
       const wrapper = mount(NlpOptinBanner)
 
-      expect(wrapper.text()).toContain('NLP actif')
-      expect(wrapper.text()).toContain('Modèle caché')
+      expect(wrapper.text()).toContain('Analyse sémantique active')
+      expect(wrapper.text()).toContain('4e signal de confiance')
 
       const btn = wrapper.find('.nlp-btn--deactivate')
       expect(btn.exists()).toBe(true)

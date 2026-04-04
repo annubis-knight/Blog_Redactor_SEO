@@ -33,44 +33,47 @@
       ],
       "type": "Pilier",
       "parentTitle": null,
-      "rationale": "Article central du cocon qui couvre l'intégralité de l'approche Propulsite — stratégie, message, site web — en ciblant explicitement les dirigeants toulousains. Capte une requête à forte intention et sert de hub pour tous les articles du silo.",
-      "painPoint": "Je sais que mon entreprise doit être plus visible en ligne, mais je ne sais pas par où commencer ni comment structurer une vraie stratégie de croissance digitale.",
+      "rationale": "Article fondateur du cocon qui couvre l'ensemble du sujet — stratégie, message, site web — avec un ancrage local fort sur Toulouse et la Haute-Garonne. Il pose les bases pour tous les Intermédiaires et capte les dirigeants en phase de prise de conscience.",
+      "painPoint": "Je sais que le digital est important pour mon entreprise, mais je ne sais pas par où commencer ni comment structurer une vraie stratégie qui m'apporte des clients.",
       "suggestedKeyword": "stratégie croissance digitale entreprises Toulouse",
       "suggestedKeywords": [
         "stratégie croissance digitale entreprises Toulouse"
       ],
+      "suggestedSlug": "strategie-croissance-digitale-entreprises-toulouse",
+      "suggestedSlugs": [
+        "strategie-croissance-digitale-entreprises-toulouse"
+      ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
       "searchQueryValidated": false,
       "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
+      "accepted": false,
+      "createdInDb": false
     },
     {
-      "title": "Les 3 fondations d'une stratégie digitale solide pour structurer la croissance de votre activité",
+      "title": "Votre site existe, mais vos clients ne viennent pas : ce qui bloque vraiment la conversion",
       "suggestedTitles": [
-        "Pourquoi votre site web ne génère aucun client : les fondations d'une stratégie digitale efficace",
-        "Stratégie digitale pour votre activité : les 3 fondations qui transforment votre présence web en moteur de croissance",
-        "Les 3 fondations d'une stratégie digitale solide pour structurer la croissance de votre activité"
+        "Pourquoi votre site web ne génère aucun prospect : les erreurs qui coûtent des clients",
+        "Votre site existe, mais vos clients ne viennent pas : ce qui bloque vraiment la conversion",
+        "Un site web qui ne convertit pas : les vrais freins qui empêchent votre activité de transformer ses visiteurs en clients",
+        "Votre site attire des visiteurs mais ne génère aucun client : ce qui bloque vraiment votre activité",
+        "Visiteurs sans résultats : pourquoi votre site ne transforme pas pour votre activité"
       ],
       "type": "Intermédiaire",
       "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Traite la douleur centrale du persona — un site existant qui ne convertit pas — et pose les bases de l'approche en 3 piliers. Attire les dirigeants qui cherchent à comprendre pourquoi leur présence web ne fonctionne pas.",
-      "painPoint": "J'ai déjà un site web mais il ne génère aucun prospect — j'ai l'impression d'avoir investi pour rien et je ne comprends pas pourquoi ça ne marche pas.",
-      "suggestedKeyword": "fondations stratégie digitale entreprise",
+      "rationale": "Cet article répond directement au déclencheur émotionnel le plus fréquent — un site qui existe mais ne travaille pas — et prépare le terrain pour des Spécialisés sur le message, l'UX et la conversion.",
+      "painPoint": "J'ai déjà un site web mais il ne me rapporte rien — pas de contacts, pas de demandes, pas de clients. Je ne comprends pas pourquoi et je ne sais pas quoi corriger.",
+      "suggestedKeyword": "site web qui ne convertit pas",
       "suggestedKeywords": [
-        "stratégie digitale petite entreprise efficace",
-        "site web sans clients",
-        "site web ne convertit pas",
-        "site web inefficace entreprise",
-        "site web qui ne rapporte rien",
-        "site web sans résultats entreprise",
+        "site web inefficace générer prospects",
         "site web sans prospects",
-        "site web invisible entreprise",
-        "site web inutile entreprise",
-        "stratégie digitale TPE structurée",
-        "fondations stratégie digitale entreprise",
-        "stratégie digitale croissance PME"
+        "site web qui ne convertit pas",
+        "site web zéro contact",
+        "site web prospect dirigeant"
+      ],
+      "suggestedSlug": "site-web-qui-ne-convertit-pas",
+      "suggestedSlugs": [
+        "site-web-qui-ne-convertit-pas"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
@@ -80,17 +83,21 @@
       "createdInDb": true
     },
     {
-      "title": "Positionnement marketing : comment se différencier en ligne quand on dirige une petite structure",
+      "title": "Positionnement marketing : comment clarifier son message pour se différencier en ligne",
       "suggestedTitles": [
-        "Positionnement marketing : comment se différencier en ligne quand on dirige une petite structure"
+        "Positionnement marketing : comment clarifier son message pour se différencier en ligne"
       ],
       "type": "Intermédiaire",
       "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Aborde le pilier 'message' de Propulsite et répond au besoin du dirigeant de se distinguer dans un marché saturé. Cible une requête que pose naturellement un décideur qui veut sortir de l'invisibilité.",
-      "painPoint": "Mon offre est bonne mais en ligne je ressemble à tous mes concurrents — je ne sais pas comment me démarquer ni formuler ce qui me rend unique.",
-      "suggestedKeyword": "positionnement marketing différenciation petite entreprise",
+      "rationale": "Couvre le pilier Message de l'approche Propulsite et répond à la douleur de l'invisibilité concurrentielle. Ouvre naturellement sur des Spécialisés autour du copywriting, de l'avatar client et de la proposition de valeur.",
+      "painPoint": "Je ne sais pas vraiment comment parler de mon activité sur le web — mon message est flou, je ressemble à tous mes concurrents et je n'arrive pas à me démarquer.",
+      "suggestedKeyword": "positionnement marketing message différenciation entreprises",
       "suggestedKeywords": [
-        "positionnement marketing différenciation petite entreprise"
+        "positionnement marketing message différenciation entreprises"
+      ],
+      "suggestedSlug": "positionnement-marketing-message-differenciation-entreprises",
+      "suggestedSlugs": [
+        "positionnement-marketing-message-differenciation-entreprises"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
@@ -100,181 +107,327 @@
       "createdInDb": true
     },
     {
-      "title": "Visibilité locale sur Google : par où commencer pour une activité en Occitanie",
+      "title": "Mon site a du trafic mais personne ne me contacte : d'où vient le problème ?",
       "suggestedTitles": [
-        "Visibilité locale sur Google : par où commencer pour une activité en Occitanie"
+        "Mon site a du trafic mais personne ne me contacte : d'où vient le problème ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Pourquoi votre site web ne génère aucun prospect : les erreurs qui coûtent des clients",
+      "rationale": "Ce problème est très fréquent chez les dirigeants qui ont investi dans un site sans travailler le message ni les appels à l'action. Il permet d'introduire la notion de conversion et de cibler directement la frustration de 'visibilité sans résultats'.",
+      "painPoint": "Le dirigeant voit des visiteurs sur son site mais ne reçoit aucune demande de devis ni appel — il ne comprend pas pourquoi son trafic ne se transforme pas en prospects concrets.",
+      "suggestedKeyword": "pourquoi mon site a du trafic mais pas de contacts",
+      "suggestedKeywords": [
+        "pourquoi mon site a du trafic mais pas de contacts"
+      ],
+      "suggestedSlug": "pourquoi-mon-site-a-du-trafic-mais-pas-de-contacts",
+      "suggestedSlugs": [
+        "pourquoi-mon-site-a-du-trafic-mais-pas-de-contacts"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": false,
+      "createdInDb": false
+    },
+    {
+      "title": "Votre site donne une mauvaise première impression : comment le détecter et y remédier ?",
+      "suggestedTitles": [
+        "Votre site donne une mauvaise première impression : comment le détecter et y remédier ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Pourquoi votre site web ne génère aucun prospect : les erreurs qui coûtent des clients",
+      "rationale": "La première impression d'un site est souvent le frein invisible qui coûte des clients sans que le dirigeant s'en rende compte. Cet article permet d'ancrer le diagnostic concret et de créer un pont naturel vers l'offre d'audit et de refonte.",
+      "painPoint": "Le dirigeant se demande si son site web donne confiance aux visiteurs ou les fait fuir — il n'a jamais eu de retour objectif et ne sait pas comment évaluer lui-même l'impression que dégage son site.",
+      "suggestedKeyword": "comment savoir si mon site web fait mauvaise impression",
+      "suggestedKeywords": [
+        "comment savoir si mon site web fait mauvaise impression"
+      ],
+      "suggestedSlug": "comment-savoir-si-mon-site-web-fait-mauvaise-impression",
+      "suggestedSlugs": [
+        "comment-savoir-si-mon-site-web-fait-mauvaise-impression"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": false,
+      "createdInDb": false
+    },
+    {
+      "title": "Votre métier est clair dans votre tête, mais pas dans celle de vos clients : comment changer ça ?",
+      "suggestedTitles": [
+        "Comment expliquer ce que vous faites en une phrase que vos clients comprennent vraiment ?",
+        "Votre activité, expliquée clairement : comment faire comprendre ce que vous faites à vos clients",
+        "Parler de votre activité simplement : comment faire comprendre ce que vous faites dès les premières secondes",
+        "Votre métier est clair dans votre tête, mais pas dans celle de vos clients : comment changer ça ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Positionnement marketing : comment clarifier son message pour se différencier en ligne",
+      "rationale": "L'incapacité à formuler clairement son activité est l'une des causes principales d'un mauvais positionnement en ligne. Cet article touche directement à la clarté du message, pilier central de l'approche Propulsite.",
+      "painPoint": "Le dirigeant sait ce qu'il fait mais peine à l'expliquer simplement — sur son site, sur LinkedIn ou à voix haute, son message est flou, trop technique ou trop générique, et ne parle pas vraiment à ses clients cibles.",
+      "suggestedKeyword": "comment expliquer simplement son activité aux clients",
+      "suggestedKeywords": [
+        "comment formuler son activité clairement pour ses clients",
+        "comment expliquer simplement son activité aux clients",
+        "comment présenter son activité de façon claire et simple"
+      ],
+      "suggestedSlug": "comment-expliquer-simplement-son-activite-aux-clients",
+      "suggestedSlugs": [
+        "comment-expliquer-simplement-son-activite-aux-clients"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true
+    },
+    {
+      "title": "Pourquoi vos concurrents attirent des clients sur internet alors que vous proposez la même chose ?",
+      "suggestedTitles": [
+        "Vous ressemblez à tous vos concurrents en ligne : comment sortir du lot sans changer votre offre ?",
+        "Même offre que vos concurrents : comment faire la différence sur internet ?",
+        "Pourquoi vos concurrents attirent des clients sur internet alors que vous proposez la même chose ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Positionnement marketing : comment clarifier son message pour se différencier en ligne",
+      "rationale": "Ce problème de 'banalisation du message' est universel dans les petites entreprises. Il permet d'aborder le travail de positionnement et de différenciation par l'angle du message, sans passer par la case 'changer de produit'.",
+      "painPoint": "Le dirigeant constate que son site dit exactement la même chose que ses concurrents — mêmes mots, même structure, même promesse — et ne sait pas comment se distinguer sans modifier ce qu'il vend réellement.",
+      "suggestedKeyword": "comment se différencier de ses concurrents sur internet sans changer son offre",
+      "suggestedKeywords": [
+        "comment se différencier de ses concurrents sur internet sans changer son offre"
+      ],
+      "suggestedSlug": "comment-se-differencier-de-ses-concurrents-sur-internet-sans-changer-son-offre",
+      "suggestedSlugs": [
+        "comment-se-differencier-de-ses-concurrents-sur-internet-sans-changer-son-offre"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true
+    },
+    {
+      "title": "Vous ne savez pas à qui vous adresser vraiment ? Voici comment définir votre cible pour attirer les clients qui vous correspondent",
+      "suggestedTitles": [
+        "À qui parlez-vous vraiment ? Pourquoi cibler tout le monde revient à ne convaincre personne",
+        "Vouloir plaire à tout le monde : la première raison pour laquelle vous n'attirez pas les bons clients",
+        "Vous ne savez pas à qui vous adresser vraiment ? Voici comment définir votre cible pour attirer les clients qui vous correspondent"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Positionnement marketing : comment clarifier son message pour se différencier en ligne",
+      "rationale": "La peur de trop se spécialiser est un frein classique chez les dirigeants de petites structures. Cet article déconstruit cette croyance et introduit le concept d'avatar client, central dans l'onboarding Propulsite.",
+      "painPoint": "Le dirigeant essaie de s'adresser au plus grand nombre pour ne manquer aucune opportunité, mais son message reste vague et ne résonne avec personne — il ne comprend pas pourquoi son site ou ses réseaux ne génèrent aucun engagement.",
+      "suggestedKeyword": "comment définir sa cible pour attirer les bons clients",
+      "suggestedKeywords": [
+        "pourquoi cibler tout le monde nuit à son marketing en ligne",
+        "comment définir sa cible pour attirer les bons clients"
+      ],
+      "suggestedSlug": "comment-definir-sa-cible-pour-attirer-les-bons-clients",
+      "suggestedSlugs": [
+        "comment-definir-sa-cible-pour-attirer-les-bons-clients"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true
+    },
+    {
+      "title": "Google My Business : comment optimiser sa fiche pour apparaître dans les recherches locales ?",
+      "suggestedTitles": [
+        "Google My Business : comment optimiser sa fiche pour apparaître dans les recherches locales ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés",
+      "rationale": "Google My Business est souvent le premier levier de visibilité locale accessible aux petites entreprises, mais la majorité des fiches sont sous-optimisées. Cet article répond à une question très concrète et souvent cherchée sur Google.",
+      "painPoint": "Le dirigeant a une fiche Google My Business mais ne sait pas si elle est bien configurée, ni pourquoi il n'apparaît pas dans les résultats locaux quand ses clients potentiels le recherchent à Toulouse.",
+      "suggestedKeyword": "comment optimiser sa fiche google my business pour le référencement local",
+      "suggestedKeywords": [
+        "comment optimiser sa fiche google my business pour le référencement local"
+      ],
+      "suggestedSlug": "comment-optimiser-sa-fiche-google-my-business-pour-le-referencement-local",
+      "suggestedSlugs": [
+        "comment-optimiser-sa-fiche-google-my-business-pour-le-referencement-local"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": false,
+      "createdInDb": false
+    },
+    {
+      "title": "Pourquoi vos concurrents apparaissent sur Google et pas vous — et comment inverser la tendance ?",
+      "suggestedTitles": [
+        "Pourquoi vos concurrents apparaissent sur Google et pas vous — et comment inverser la tendance ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés",
+      "rationale": "C'est le déclencheur émotionnel numéro un identifié dans la stratégie du cocon. Cet article transforme ce choc de réalité en entrée dans la réflexion SEO, avec un ancrage direct sur la douleur la plus forte du persona.",
+      "painPoint": "Le dirigeant a tapé son activité sur Google et a vu son concurrent en premier résultat — il ne comprend pas pourquoi, ni ce qu'il faudrait faire concrètement pour inverser la situation sans dépenser une fortune.",
+      "suggestedKeyword": "pourquoi mon concurrent apparaît sur Google et pas mon entreprise",
+      "suggestedKeywords": [
+        "pourquoi mon concurrent apparaît sur Google et pas mon entreprise"
+      ],
+      "suggestedSlug": "pourquoi-mon-concurrent-apparait-sur-google-et-pas-mon-entreprise",
+      "suggestedSlugs": [
+        "pourquoi-mon-concurrent-apparait-sur-google-et-pas-mon-entreprise"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": false,
+      "createdInDb": false
+    },
+    {
+      "title": "Mots-clés locaux : comment choisir les bons termes pour attirer des clients près de chez vous ?",
+      "suggestedTitles": [
+        "Mots-clés locaux : comment choisir les bons termes pour attirer des clients près de chez vous ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés",
+      "rationale": "La recherche de mots-clés locaux est une étape bloquante pour les dirigeants sans expérience SEO. Cet article démystifie le processus et ancre la stratégie de contenu dans la réalité des recherches de proximité.",
+      "painPoint": "Le dirigeant entend parler de mots-clés depuis des années mais ne sait pas comment identifier ceux que tapent réellement ses clients à Toulouse — ni comment les intégrer sans rendre son site artificiel ou illisible.",
+      "suggestedKeyword": "comment choisir les bons mots-clés pour attirer des clients locaux",
+      "suggestedKeywords": [
+        "comment choisir les bons mots-clés pour attirer des clients locaux"
+      ],
+      "suggestedSlug": "comment-choisir-les-bons-mots-cles-pour-attirer-des-clients-locaux",
+      "suggestedSlugs": [
+        "comment-choisir-les-bons-mots-cles-pour-attirer-des-clients-locaux"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": false,
+      "createdInDb": false
+    },
+    {
+      "title": "Pourquoi votre présence digitale ne génère aucun prospect : les erreurs de stratégie qui coûtent des clients",
+      "suggestedTitles": [
+        "Pourquoi votre présence digitale ne génère aucun prospect : les erreurs de stratégie qui coûtent des clients"
       ],
       "type": "Intermédiaire",
       "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Répond au déclencheur émotionnel clé du persona — voir son concurrent apparaître sur Google avant lui — en ancrant l'article dans une réalité locale (Occitanie, Toulouse). Couvre le levier SEO local sans se perdre dans la technique.",
-      "painPoint": "Mes concurrents apparaissent sur Google quand on cherche mon métier à Toulouse, et moi je suis introuvable — je ne sais même pas par où commencer.",
-      "suggestedKeyword": "visibilité locale Google petite entreprise",
+      "rationale": "Les deux Intermédiaires existants couvrent la conversion (site qui ne convertit pas) et le positionnement (message et différenciation). Il manque un article intermédiaire qui traite la dimension stratégique d'ensemble : pourquoi une présence digitale éclatée en silos déconnectés — site, GMB, réseaux — ne produit aucun résultat sans une stratégie unifiée. Cet article fait le pont entre le pilier et les deux Intermédiaires existants, en posant la question en amont : avant de corriger la conversion ou le message, encore faut-il avoir une structure digitale cohérente et orientée vers un objectif.",
+      "painPoint": "Le dirigeant a un site web, peut-être des réseaux sociaux, une fiche Google — mais rien de tout cela ne lui apporte de clients. Il ne comprend pas pourquoi sa présence en ligne reste muette, et ne sait pas identifier l'erreur de fond : l'absence de stratégie cohérente qui relie tous ces outils entre eux.",
+      "suggestedKeyword": "présence digitale qui ne génère pas de prospects",
       "suggestedKeywords": [
-        "visibilité locale Google petite entreprise"
+        "présence digitale qui ne génère pas de prospects"
+      ],
+      "suggestedSlug": "presence-digitale-qui-ne-genere-pas-de-prospects",
+      "suggestedSlugs": [
+        "presence-digitale-qui-ne-genere-pas-de-prospects"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
       "searchQueryValidated": false,
       "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
+      "accepted": false,
+      "createdInDb": false
     },
     {
-      "title": "Développer sa clientèle au-delà du réseau personnel : le passage obligé pour structurer sa croissance",
+      "title": "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés",
       "suggestedTitles": [
-        "Comment passer du bouche-à-oreille à une vraie stratégie digitale pour développer son activité",
-        "Développer sa clientèle au-delà du réseau personnel : le passage obligé pour structurer sa croissance"
+        "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés"
       ],
       "type": "Intermédiaire",
       "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Cible le moment de bascule vécu par la majorité des dirigeants de TPE/PME : le bouche-à-oreille s'essouffle et il faut trouver un relais de croissance. Positionnement idéal pour contextualiser l'offre Propulsite comme réponse naturelle.",
-      "painPoint": "Mon bouche-à-oreille s'essouffle et je n'ai pas d'autre canal pour trouver de nouveaux clients — je dépends trop de mon réseau personnel.",
-      "suggestedKeyword": "développer clientèle hors réseau",
+      "rationale": "Les trois articles Spécialisés sur le SEO local (Google My Business, comparaison avec les concurrents sur Google, mots-clés locaux) sont orphelins : ils n'ont aucun article Intermédiaire parent dans le cocon. Cet article comble ce chaînon manquant en couvrant la facette 'visibilité et référencement local' — absente des trois Intermédiaires existants qui traitent respectivement de la conversion, du positionnement marketing et des erreurs de stratégie digitale.",
+      "painPoint": "Le dirigeant est invisible sur Google dans sa zone géographique : ses concurrents captent les recherches locales pendant que son activité n'apparaît nulle part, même pour des requêtes directement liées à son métier. Il ne sait pas comment le référencement local fonctionne ni par où commencer pour exister dans les résultats de recherche de proximité.",
+      "suggestedKeyword": "SEO local visibilité Google dirigeants entreprises",
       "suggestedKeywords": [
-        "passer bouche à oreille stratégie digitale entreprise",
-        "stratégie digitale TPE croissance",
-        "développer activité au-delà bouche à oreille",
-        "stratégie digitale artisan PME",
-        "remplacer bouche à oreille digital",
-        "développer clientèle hors réseau"
+        "SEO local visibilité Google dirigeants entreprises"
+      ],
+      "suggestedSlug": "seo-local-visibilite-google-dirigeants-entreprises",
+      "suggestedSlugs": [
+        "seo-local-visibilite-google-dirigeants-entreprises"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
       "searchQueryValidated": false,
       "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
+      "accepted": false,
+      "createdInDb": false
     },
     {
-      "title": "Faut-il refaire son site web ou retravailler sa stratégie en premier ?",
+      "title": "Créer un site web qui convertit : les fondations à poser avant de penser au design",
       "suggestedTitles": [
-        "Faut-il refaire son site web ou retravailler sa stratégie en premier ?",
-        "Refaire son site web sans changer de stratégie : une erreur qui coûte cher aux dirigeants toulousains"
+        "Créer un site web qui convertit : les fondations à poser avant de penser au design"
       ],
-      "type": "Spécialisé",
-      "parentTitle": "Pourquoi votre site web ne génère aucun client : les fondations d'une stratégie digitale efficace",
-      "rationale": "Question concrète que se posent les dirigeants avant d'investir. Permet d'incarner l'angle différenciateur de Propulsite — stratégie avant technique — et de guider le lecteur vers l'approche en 3 piliers.",
-      "painPoint": "Mon site a besoin d'un coup de neuf mais j'hésite à réinvestir sans savoir si le problème vient du site lui-même ou de ma stratégie globale.",
-      "suggestedKeyword": "refaire son site web sans changer de stratégie",
+      "type": "Intermédiaire",
+      "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
+      "rationale": "Les Intermédiaires existants couvrent la conversion bloquée (site existant inefficace), le positionnement message, la visibilité SEO et les erreurs de présence digitale — mais aucun ne traite la phase de création ou refonte de site sous l'angle des fondations stratégiques à poser en amont. Cet article comble ce manque en incarnant directement l'approche en 3 piliers de Propulsite (Stratégie → Message → Site web) et cible le dirigeant au moment clé où il décide de se lancer ou de refaire son site.",
+      "painPoint": "Le dirigeant veut (ou doit) créer ou refaire son site, mais il pense d'abord au design, aux couleurs et au nom de domaine — alors que ce qui fera vraiment convertir son site, c'est ce qu'on pose avant : stratégie, message, structure. Il finit avec un beau site vide de prospects.",
+      "suggestedKeyword": "créer site web qui convertit visiteurs clients",
       "suggestedKeywords": [
-        "refaire site web ou changer stratégie digitale d'abord",
-        "refaire son site web sans changer de stratégie"
+        "créer site web qui convertit visiteurs clients"
+      ],
+      "suggestedSlug": "creer-site-web-qui-convertit-visiteurs-clients",
+      "suggestedSlugs": [
+        "creer-site-web-qui-convertit-visiteurs-clients"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
       "searchQueryValidated": false,
       "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
+      "accepted": false,
+      "createdInDb": false
     },
     {
-      "title": "Quels sont les vrais signes que votre site web freine votre croissance ?",
+      "title": "Votre page d'accueil parle de vous, pas de vos clients : pourquoi ça fait fuir les visiteurs",
       "suggestedTitles": [
-        "Quels sont les vrais signes que votre site web freine votre croissance ?"
+        "Votre page d'accueil parle de vous, pas de vos clients : pourquoi ça fait fuir les visiteurs"
       ],
       "type": "Spécialisé",
-      "parentTitle": "Pourquoi votre site web ne génère aucun client : les fondations d'une stratégie digitale efficace",
-      "rationale": "Article diagnostic qui aide le dirigeant à identifier ses propres signaux d'alerte. Crée une prise de conscience actionnable et prépare naturellement à une demande d'audit ou de stratégie.",
-      "painPoint": "J'ai un doute : est-ce que mon site me fait perdre des clients sans que je m'en rende compte ? Je ne sais pas comment évaluer s'il est un frein ou un atout.",
-      "suggestedKeyword": "signes site web freine croissance entreprise",
+      "parentTitle": "Créer un site web qui convertit : les fondations à poser avant de penser au design",
+      "rationale": "L'article Intermédiaire 'Créer un site web qui convertit' n'a aucun Spécialisé rattaché. Cet angle couvre la douleur la plus fréquente et la plus concrète en matière de conversion : une page d'accueil centrée sur l'entreprise plutôt que sur le client. C'est un manque structurel direct dans le cocon, et un point de bascule clé dans l'approche en 3 piliers de Propulsite (Stratégie → Message → Site web).",
+      "painPoint": "Le dirigeant a un site qui semble bien fait visuellement, mais dont la page d'accueil parle avant tout de l'entreprise — son histoire, ses valeurs, ses certifications — au lieu de répondre immédiatement à la question du visiteur : 'est-ce que ce site est fait pour moi ?'. Résultat : les visiteurs repartent en quelques secondes sans laisser de contact.",
+      "suggestedKeyword": "pourquoi ma page d'accueil ne convertit pas les visiteurs en clients",
       "suggestedKeywords": [
-        "signes site web freine croissance entreprise"
+        "pourquoi ma page d'accueil ne convertit pas les visiteurs en clients"
+      ],
+      "suggestedSlug": "pourquoi-ma-page-daccueil-ne-convertit-pas-les-visiteurs-en-clients",
+      "suggestedSlugs": [
+        "pourquoi-ma-page-daccueil-ne-convertit-pas-les-visiteurs-en-clients"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
       "searchQueryValidated": false,
       "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
+      "accepted": false,
+      "createdInDb": false
     },
     {
-      "title": "Comment définir son message marketing quand on ne sait pas comment parler à ses clients ?",
+      "title": "Stratégie digitale avant tout : ce que chaque structure devrait clarifier avant de se lancer en ligne",
       "suggestedTitles": [
-        "Comment définir son message marketing quand on ne sait pas comment parler à ses clients ?"
+        "Avant de vous lancer en ligne : pourquoi poser une stratégie digitale avant de construire quoi que ce soit",
+        "Pourquoi toute activité devrait poser sa stratégie digitale avant de construire sa présence en ligne",
+        "Lancer sa présence en ligne sans stratégie digitale : l'erreur que commettent la plupart des structures",
+        "Stratégie digitale d'abord, présence en ligne ensuite : l'ordre que toute structure devrait respecter avant de se lancer",
+        "Ce que personne ne vous dit avant de lancer votre présence en ligne : la stratégie digitale d'abord, le reste ensuite",
+        "Construire sa présence en ligne sans stratégie digitale : pourquoi la plupart des structures repartent de zéro",
+        "Pourquoi lancer sa stratégie digitale avant même de penser à son site : l'ordre qui change tout pour une structure en croissance",
+        "Stratégie digitale avant tout : ce que chaque structure devrait clarifier avant de se lancer en ligne"
       ],
-      "type": "Spécialisé",
-      "parentTitle": "Positionnement marketing : comment se différencier en ligne quand on dirige une petite structure",
-      "rationale": "Répond à une douleur fréquente chez les dirigeants de petites structures qui maîtrisent leur métier mais peinent à le valoriser en ligne. Entrée directe dans le pilier 'message' de Propulsite.",
-      "painPoint": "Je connais mon métier par cœur mais je suis incapable de l'expliquer simplement sur mon site — mes textes sonnent faux ou trop techniques pour mes clients.",
-      "suggestedKeyword": "comment formuler son message pour attirer des clients",
+      "type": "Intermédiaire",
+      "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
+      "rationale": "Aucun article existant ne traite la phase amont de préparation stratégique — le 'business plan digital' — avant toute action concrète. Les Intermédiaires actuels couvrent la conversion, le positionnement, la visibilité et les erreurs à éviter, mais pas le travail de cadrage initial (objectifs, cible, proposition de valeur, priorisation des leviers) qui conditionne la réussite de tout ce qui suit. Cet article comble ce vide structurant et renforce la logique 'Stratégie d'abord' qui est le cœur de la différenciation Propulsite.",
+      "painPoint": "Le dirigeant fonce directement dans la création d'un site ou l'ouverture de réseaux sociaux sans avoir défini d'objectifs, de cible ni de plan d'action — il investit du temps et de l'argent sans jamais obtenir de résultats, faute de fondations stratégiques solides.",
+      "suggestedKeyword": "stratégie digitale avant lancement entreprise",
       "suggestedKeywords": [
-        "comment définir message marketing parler à ses clients",
-        "comment formuler son message pour attirer des clients"
+        "stratégie digitale avant création site web",
+        "stratégie digitale avant lancement entreprise"
       ],
-      "validatedSearchQuery": null,
-      "keywordValidated": false,
-      "searchQueryValidated": false,
-      "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
-    },
-    {
-      "title": "Pourquoi votre concurrent capte vos clients sur Google — et comment inverser la tendance",
-      "suggestedTitles": [
-        "Pourquoi votre concurrent capte vos clients sur Google — et comment inverser la tendance"
-      ],
-      "type": "Spécialisé",
-      "parentTitle": "Visibilité locale sur Google : par où commencer pour une activité en Occitanie",
-      "rationale": "Incarne le moment déclencheur le plus puissant du persona — voir son concurrent en tête de Google — et le transforme en levier d'engagement. Fort potentiel viral et émotionnel pour un article de conversion.",
-      "painPoint": "J'ai tapé mon métier sur Google et c'est mon concurrent qui apparaît en premier — ça me rend fou et je ne comprends pas comment il fait.",
-      "suggestedKeyword": "concurrent mieux référencé sur Google que faire",
-      "suggestedKeywords": [
-        "concurrent mieux référencé sur Google que faire"
-      ],
-      "validatedSearchQuery": null,
-      "keywordValidated": false,
-      "searchQueryValidated": false,
-      "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
-    },
-    {
-      "title": "Comment tirer le meilleur parti de votre fiche Google pour attirer plus de clients locaux ?",
-      "suggestedTitles": [
-        "Google My Business pour une entreprise locale à Toulouse : ça vaut vraiment le coup ?",
-        "Votre fiche Google My Business est-elle vraiment utile pour attirer des clients à Toulouse ?",
-        "Google My Business : ce que ça change vraiment pour une entreprise locale à Toulouse",
-        "Faut-il vraiment créer une fiche Google My Business quand on est une entreprise locale à Toulouse ?",
-        "Comment tirer le meilleur parti de votre fiche Google pour attirer plus de clients locaux ?"
-      ],
-      "type": "Spécialisé",
-      "parentTitle": "Visibilité locale sur Google : par où commencer pour une activité en Occitanie",
-      "rationale": "Requête très concrète posée par des dirigeants qui entendent parler de Google My Business sans savoir si c'est pertinent pour eux. Ancrage local fort et opportunité de qualifier les prospects selon leur maturité digitale.",
-      "painPoint": "On me dit de créer une fiche Google My Business mais je ne sais pas si ça sert vraiment à quelque chose pour mon activité ni comment l'optimiser.",
-      "suggestedKeyword": "optimiser fiche Google My Business entreprise locale",
-      "suggestedKeywords": [
-        "Google My Business entreprise locale Toulouse utile",
-        "optimiser fiche Google My Business entreprise locale"
-      ],
-      "validatedSearchQuery": null,
-      "keywordValidated": false,
-      "searchQueryValidated": false,
-      "titleValidated": false,
-      "accepted": true,
-      "createdInDb": true
-    },
-    {
-      "title": "Pas de site web, pas de clients en ligne : à quoi ressemble vraiment le manque à gagner pour une petite entreprise ?",
-      "suggestedTitles": [
-        "Combien de clients potentiels perdez-vous chaque mois faute de stratégie digitale ?",
-        "Votre activité perd-elle des clients parce qu'elle est invisible sur le web ?",
-        "Vous perdez vraiment des clients en étant absent du web — et comment l'estimer concrètement ?",
-        "À combien vous coûte vraiment l'absence de votre entreprise sur internet ?",
-        "Combien de clients votre absence en ligne vous fait-elle perdre chaque mois ?",
-        "Votre entreprise est absente du web : combien de clients partent chez vos concurrents sans que vous le sachiez ?",
-        "Pas de site web, pas de clients en ligne : à quoi ressemble vraiment le manque à gagner pour une petite entreprise ?"
-      ],
-      "type": "Spécialisé",
-      "parentTitle": "Comment passer du bouche-à-oreille à une vraie stratégie digitale pour développer son activité",
-      "rationale": "Article à fort impact émotionnel qui quantifie l'invisible — le coût de l'inaction — pour déclencher une prise de décision. Parfait pour conclure avec un CTA fort vers une consultation stratégique.",
-      "painPoint": "Je sens que je rate des clients en étant absent du web, mais je n'arrive pas à mesurer combien ça me coûte concrètement — et donc à justifier l'investissement.",
-      "suggestedKeyword": "estimer perte de clients sans présence digitale",
-      "suggestedKeywords": [
-        "clients perdus sans stratégie digitale petite entreprise",
-        "pourquoi mon entreprise est invisible sur internet",
-        "comment savoir si mon entreprise est visible sur internet",
-        "combien de clients je perds sans site web efficace",
-        "estimer perte de clients sans présence digitale"
+      "suggestedSlug": "strategie-digitale-avant-lancement-entreprise",
+      "suggestedSlugs": [
+        "strategie-digitale-avant-lancement-entreprise"
       ],
       "validatedSearchQuery": null,
       "keywordValidated": false,
@@ -285,5 +438,5 @@
     }
   ],
   "completedSteps": 6,
-  "updatedAt": "2026-03-19T12:05:28.134Z"
+  "updatedAt": "2026-04-04T01:06:30.669Z"
 }

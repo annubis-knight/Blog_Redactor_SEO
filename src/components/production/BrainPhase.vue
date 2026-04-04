@@ -4,12 +4,15 @@ import { useCocoonStrategyStore } from '@/stores/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
 import { useSilosStore } from '@/stores/silos.store'
 import { useThemeConfigStore } from '@/stores/theme-config.store'
-import type { StrategyStepData, CocoonSuggestRequest, ProposedArticle, ThemeContext, SubQuestion } from '@shared/types/index.js'
-import { apiPost } from '@/services/api.service'
+import type { StrategyStepData, CocoonSuggestRequest, ThemeContext, SubQuestion } from '@shared/types/index.js'
 import StrategyStep from '@/components/strategy/StrategyStep.vue'
 import ContextRecap from '@/components/strategy/ContextRecap.vue'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
 import ProposedArticleRow from '@/components/strategy/ProposedArticleRow.vue'
+import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
+import ArticleColumn from '@/components/production/ArticleColumn.vue'
+import GenerationStepper from '@/components/production/GenerationStepper.vue'
+import { useArticleProposals } from '@/composables/useArticleProposals'
 
 const props = defineProps<{
   cocoonName: string
@@ -26,6 +29,62 @@ const cocoonsStore = useCocoonsStore()
 const silosStore = useSilosStore()
 const themeConfigStore = useThemeConfigStore()
 const suggestingSubId = ref<string | null>(null)
+const articleSlide = ref(0)
+const columnsTrackRef = ref<HTMLElement>()
+
+function scrollToSlide(n: number) {
+  articleSlide.value = n
+  const el = columnsTrackRef.value
+  if (!el || typeof el.scrollTo !== 'function') return
+  if (n === 0) {
+    el.scrollTo({ left: 0, behavior: 'smooth' })
+  } else {
+    const cols = el.querySelectorAll('.article-column')
+    if (cols[1]) {
+      el.scrollTo({ left: (cols[1] as HTMLElement).offsetLeft, behavior: 'smooth' })
+    }
+  }
+}
+
+function onColumnsScroll() {
+  const el = columnsTrackRef.value
+  if (!el) return
+  const maxScroll = el.scrollWidth - el.clientWidth
+  articleSlide.value = el.scrollLeft > maxScroll * 0.3 ? 1 : 0
+}
+
+/* Drag-to-scroll */
+const isDragging = ref(false)
+let dragStartX = 0
+let dragScrollLeft = 0
+
+function onDragStart(e: MouseEvent) {
+  const el = columnsTrackRef.value
+  if (!el) return
+  isDragging.value = true
+  dragStartX = e.pageX - el.offsetLeft
+  dragScrollLeft = el.scrollLeft
+  el.style.scrollBehavior = 'auto'
+}
+
+function onDragMove(e: MouseEvent) {
+  if (!isDragging.value) return
+  const el = columnsTrackRef.value
+  if (!el) return
+  e.preventDefault()
+  const x = e.pageX - el.offsetLeft
+  el.scrollLeft = dragScrollLeft - (x - dragStartX)
+}
+
+function onDragEnd() {
+  if (!isDragging.value) return
+  isDragging.value = false
+  const el = columnsTrackRef.value
+  if (!el) return
+  el.style.scrollBehavior = 'smooth'
+  const maxScroll = el.scrollWidth - el.clientWidth
+  scrollToSlide(el.scrollLeft > maxScroll * 0.3 ? 1 : 0)
+}
 
 const cocoonSlug = computed(() =>
   props.cocoonName
@@ -107,7 +166,7 @@ function applySuggestion(suggestion: string) {
   const step = store.currentStepName
   if (!store.strategy || step === 'articles') return
   const stepData = store.strategy[step as keyof typeof store.strategy] as StrategyStepData
-  ;(store.strategy as any)[step] = { ...stepData, suggestion }
+    ; (store.strategy as any)[step] = { ...stepData, suggestion }
 }
 
 async function handleSuggest() {
@@ -133,7 +192,7 @@ async function handleMerge() {
     context: getSuggestContext(),
   })
   if (suggestion && store.strategy) {
-    ;(store.strategy as any)[step] = { ...stepData, validated: suggestion }
+    ; (store.strategy as any)[step] = { ...stepData, validated: suggestion }
   }
 }
 
@@ -167,7 +226,7 @@ async function handleDeepen() {
       validated: '',
     }
     const subs = [...(stepData.subQuestions ?? []), newSub]
-    ;(store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
+      ; (store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
   }
 }
 
@@ -190,7 +249,7 @@ async function handleSubSuggest(subId: string) {
       const subs = (stepData.subQuestions ?? []).map(sq =>
         sq.id === subId ? { ...sq, suggestion } : sq,
       )
-      ;(store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
+        ; (store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
     }
   } finally {
     suggestingSubId.value = null
@@ -217,7 +276,7 @@ async function handleSubMerge(subId: string) {
       const subs = (stepData.subQuestions ?? []).map(sq =>
         sq.id === subId ? { ...sq, suggestion, validated: suggestion } : sq,
       )
-      ;(store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
+        ; (store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
     }
   } finally {
     suggestingSubId.value = null
@@ -233,7 +292,7 @@ function handleDeleteSubQuestion(subId: string) {
   const stepName = store.currentStepName
   const stepData = (store.strategy as any)[stepName] as StrategyStepData
   const subs = (stepData.subQuestions ?? []).filter(sq => sq.id !== subId)
-  ;(store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
+    ; (store.strategy as any)[stepName] = { ...stepData, subQuestions: subs }
 }
 
 async function handleSubEnrich(subId: string) {
@@ -248,7 +307,7 @@ async function handleSubEnrich(subId: string) {
 
   // If no main validated text yet, use the sub-answer directly
   if (!stepData.validated.trim()) {
-    ;(store.strategy as any)[stepName] = { ...stepData, validated: subAnswer }
+    ; (store.strategy as any)[stepName] = { ...stepData, validated: subAnswer }
     return
   }
 
@@ -266,13 +325,13 @@ async function handleSubEnrich(subId: string) {
   })
 
   if (enriched && store.strategy) {
-    ;(store.strategy as any)[stepName] = { ...stepData, validated: enriched }
+    ; (store.strategy as any)[stepName] = { ...stepData, validated: enriched }
   }
 }
 
 function updateStepData(step: string, data: StrategyStepData) {
   if (store.strategy) {
-    ;(store.strategy as any)[step] = data
+    ; (store.strategy as any)[step] = data
   }
 }
 
@@ -289,273 +348,40 @@ function handleNext() {
   }
 }
 
-// --- Article proposal (step 6) ---
-const truncationWarning = ref<string | null>(null)
+// --- Article proposal (step 6) — extracted to composable ---
+const cocoonNameRef = computed(() => props.cocoonName)
 
-function addProposedArticle(type: 'Pilier' | 'Intermédiaire' | 'Spécialisé' = 'Spécialisé') {
-  if (!store.strategy) return
-  store.strategy.proposedArticles.push({
-    title: '',
-    suggestedTitles: [],
-    type,
-    parentTitle: null,
-    rationale: '',
-    painPoint: '',
-    suggestedKeyword: '',
-    suggestedKeywords: [],
-    validatedSearchQuery: null,
-    keywordValidated: false,
-    searchQueryValidated: false,
-    titleValidated: false,
-    accepted: false,
-    createdInDb: false,
-  })
-}
-
-function removeProposedArticle(index: number) {
-  if (!store.strategy) return
-  store.strategy.proposedArticles.splice(index, 1)
-}
-
-async function createArticleInDb(article: ProposedArticle): Promise<void> {
-  if (article.createdInDb || !article.title.trim()) return
-  try {
-    await apiPost('/articles/batch-create', {
-      cocoonName: props.cocoonName,
-      articles: [{ title: article.title, type: article.type }],
-    })
-    if (article.suggestedKeyword.trim()) {
-      await apiPost('/keywords', {
-        keyword: article.suggestedKeyword,
-        cocoonName: props.cocoonName,
-        type: article.type,
-      })
-    }
-    article.createdInDb = true
-  } catch {
-    // Slug duplicate or other error — silently ignore
-  }
-}
-
-async function toggleAccept(index: number) {
-  if (!store.strategy) return
-  const article = store.strategy.proposedArticles[index]
-  if (!article) return
-  const nowAccepted = !article.accepted
-  store.strategy.proposedArticles[index] = { ...article, accepted: nowAccepted }
-  if (nowAccepted && !article.createdInDb) {
-    await createArticleInDb(store.strategy.proposedArticles[index])
-    store.saveStrategy(cocoonSlug.value)
-    await cocoonsStore.fetchCocoons()
-  }
-}
-
-async function regenerateTitle(index: number) {
-  if (!store.strategy) return
-  const article = store.strategy.proposedArticles[index]
-  if (!article) return
-  const context = getSuggestContext()
-
-  const typeRules: Record<string, string> = {
-    'Pilier': 'Ton d\'expert, ancrage local naturel. Ne PAS écrire "PME" — utiliser "entreprises", "dirigeants". Ne PAS plaquer "Toulouse" — utiliser "toulousain", "Occitanie".',
-    'Intermédiaire': 'Spécifique métier ou technique. PAS de ville. Utiliser des synonymes de PME ("activité", "structure", "équipe").',
-    'Spécialisé': 'Question directe ou problème concret que le dirigeant se pose, en langage courant (pas de jargon).',
-  }
-
-  const allPreviousTitles = article.suggestedTitles?.length ? article.suggestedTitles.join('" / "') : article.title
-  const suggestion = await store.requestSuggestion(cocoonSlug.value, {
-    step: 'articles',
-    currentInput: `Régénère uniquement le titre de cet article de type "${article.type}" pour le cocon "${props.cocoonName}". Mot-clé technique : "${article.suggestedKeyword}". Titres déjà générés à NE PAS réutiliser : "${allPreviousTitles}". Propose un titre DIFFÉRENT. Règle pour ce type : ${typeRules[article.type] ?? ''}. Le titre doit intégrer le mot-clé de façon naturelle, pas mot pour mot. Réponds avec un seul nouveau titre, sans guillemets, sans explication.`,
-    context,
-  })
-  if (suggestion && store.strategy) {
-    const newTitle = suggestion.trim().replace(/^["«]|["»]$/g, '')
-    const history = [...(article.suggestedTitles || [article.title]), newTitle]
-    const uniqueHistory = [...new Set(history)]
-    store.strategy.proposedArticles[index] = { ...article, title: newTitle, suggestedTitles: uniqueHistory }
-  }
-}
-
-function selectTitle(articleIndex: number, titleIndex: number) {
-  if (!store.strategy) return
-  const article = store.strategy.proposedArticles[articleIndex]
-  if (!article?.suggestedTitles?.[titleIndex]) return
-  store.strategy.proposedArticles[articleIndex] = {
-    ...article,
-    title: article.suggestedTitles[titleIndex],
-  }
-}
-
-async function regenerateKeyword(index: number) {
-  if (!store.strategy) return
-  const article = store.strategy.proposedArticles[index]
-  if (!article) return
-  const context = getSuggestContext()
-
-  const typeRules: Record<string, string> = {
-    'Pilier': 'Moyenne traîne (3-4 mots), inclure la cible et la ville/région. Exemple : "stratégie digitale entreprises Toulouse".',
-    'Intermédiaire': 'Moyenne traîne (3-4 mots), sujet + cible. PAS de ville. Exemple : "design émotionnel site professionnel".',
-    'Spécialisé': 'Longue traîne (5+ mots), sous forme de question ou problème concret. Exemple : "comment choisir couleurs site web professionnel".',
-  }
-
-  const allPrevious = article.suggestedKeywords?.length ? article.suggestedKeywords.join(', ') : article.suggestedKeyword
-  const suggestion = await store.requestSuggestion(cocoonSlug.value, {
-    step: 'articles',
-    currentInput: `Régénère uniquement le mot-clé technique de cet article de type "${article.type}" pour le cocon "${props.cocoonName}". Titre actuel : "${article.title}". Mots-clés déjà générés à NE PAS réutiliser : ${allPrevious}. Propose un mot-clé DIFFÉRENT. Règle pour ce type : ${typeRules[article.type] ?? ''}. Le mot-clé doit être une requête Google réaliste que tapent de vrais dirigeants d'entreprise. Réponds avec un seul mot-clé, sans guillemets, sans explication.`,
-    context,
-  })
-  if (suggestion && store.strategy) {
-    const newKeyword = suggestion.trim().replace(/^["«]|["»]$/g, '')
-    const history = [...(article.suggestedKeywords || [article.suggestedKeyword]), newKeyword]
-    const uniqueHistory = [...new Set(history)]
-    store.strategy.proposedArticles[index] = { ...article, suggestedKeyword: newKeyword, suggestedKeywords: uniqueHistory }
-  }
-}
-
-function selectKeyword(articleIndex: number, keywordIndex: number) {
-  if (!store.strategy) return
-  const article = store.strategy.proposedArticles[articleIndex]
-  if (!article?.suggestedKeywords?.[keywordIndex]) return
-  store.strategy.proposedArticles[articleIndex] = {
-    ...article,
-    suggestedKeyword: article.suggestedKeywords[keywordIndex],
-  }
-}
-
-const articleColumns = computed(() => {
-  if (!store.strategy) return []
-  const cols = [
-    { key: 'pilier', label: 'Pilier', cssClass: 'col-pilier', type: 'Pilier' as const, tooltip: 'Mot-clé : moyenne traîne (3-4 mots), inclure cible + ville.\nTitre : ancrage local naturel, pas de « PME » brut.\nEx : stratégie digitale entreprises Toulouse' },
-    { key: 'inter', label: 'Intermédiaire', cssClass: 'col-inter', type: 'Intermédiaire' as const, tooltip: 'Mot-clé : moyenne traîne (3-4 mots), sans ville.\nTitre : spécifique métier/technique.\nEx : design émotionnel site professionnel' },
-    { key: 'spec', label: 'Spécialisé', cssClass: 'col-spec', type: 'Spécialisé' as const, tooltip: 'Mot-clé : longue traîne (5+ mots), forme question.\nTitre : problème concret, langage du dirigeant.\nEx : comment choisir couleurs site web professionnel' },
-  ]
-  return cols.map(col => ({
-    ...col,
-    articles: store.strategy!.proposedArticles
-      .map((a, i) => ({ ...a, originalIndex: i }))
-      .filter(a => a.type === col.type),
-  }))
+const {
+  truncationWarning,
+  generationPhase,
+  generationWarning,
+  addingArticleType,
+  articleColumns,
+  articleWarnings,
+  globalWarnings,
+  groupColors,
+  groupedSpecArticles,
+  compositionResults,
+  intermediateTitles,
+  normalizeTitle,
+  addEmptyArticle,
+  addSmartArticle,
+  removeProposedArticle,
+  toggleAccept,
+  regenerateTitle,
+  selectTitle,
+  regenerateKeyword,
+  selectKeyword,
+  regenerateSlug,
+  selectSlug,
+  changeParent,
+  generateArticleProposals,
+  validateArticles,
+} = useArticleProposals({
+  cocoonSlug,
+  cocoonName: cocoonNameRef,
+  getSuggestContext,
 })
-
-/** Extract individual article objects from possibly-truncated JSON */
-function extractArticlesFromJson(text: string): ProposedArticle[] {
-  // Strip markdown code fences
-  const stripped = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '')
-
-  // Match each complete { ... } object that has at least a "title"
-  const objectRegex = /\{[^{}]*"title"\s*:\s*"[^"]+?"[^{}]*\}/g
-  const matches = stripped.match(objectRegex)
-  if (!matches) return []
-
-  const articles: ProposedArticle[] = []
-  for (const raw of matches) {
-    try {
-      const obj = JSON.parse(raw) as Record<string, unknown>
-      if (typeof obj.title === 'string' && obj.title.trim()) {
-        articles.push({
-          title: obj.title.trim(),
-          suggestedTitles: [obj.title.trim()],
-          type: (['Pilier', 'Intermédiaire', 'Spécialisé'] as const).includes(obj.type as any) ? (obj.type as 'Pilier' | 'Intermédiaire' | 'Spécialisé') : 'Spécialisé',
-          parentTitle: (obj.parentTitle as string) ?? null,
-          rationale: (obj.rationale as string) ?? '',
-          painPoint: (obj.painPoint as string) ?? '',
-          suggestedKeyword: (obj.suggestedKeyword as string) ?? '',
-          suggestedKeywords: (obj.suggestedKeyword as string) ? [(obj.suggestedKeyword as string)] : [],
-          validatedSearchQuery: null,
-          keywordValidated: false,
-          searchQueryValidated: false,
-          titleValidated: false,
-          accepted: false,
-          createdInDb: false,
-        })
-      }
-    } catch { /* skip malformed object */ }
-  }
-  return articles
-}
-
-async function generateArticleProposals() {
-  truncationWarning.value = null
-  const context = getSuggestContext()
-  const suggestion = await store.requestSuggestion(cocoonSlug.value, {
-    step: 'articles',
-    currentInput: `Génère les articles pour ce cocon.`,
-    context,
-  })
-
-  if (suggestion && store.strategy) {
-    // Count total "title" occurrences to detect truncation
-    const titleOccurrences = (suggestion.match(/"title"\s*:/g) || []).length
-
-    // 1. Try full JSON array parse
-    try {
-      const jsonMatch = suggestion.match(/\[[\s\S]*\]/)
-      if (jsonMatch) {
-        const articles = JSON.parse(jsonMatch[0]) as ProposedArticle[]
-        store.strategy.proposedArticles = articles.map(a => ({
-          title: a.title ?? '',
-          suggestedTitles: a.title ? [a.title] : [],
-          type: a.type ?? 'Spécialisé',
-          parentTitle: a.parentTitle ?? null,
-          rationale: a.rationale ?? '',
-          painPoint: a.painPoint ?? '',
-          suggestedKeyword: a.suggestedKeyword ?? '',
-          suggestedKeywords: a.suggestedKeyword ? [a.suggestedKeyword] : [],
-          validatedSearchQuery: null,
-          keywordValidated: false,
-          searchQueryValidated: false,
-          titleValidated: false,
-          accepted: false,
-          createdInDb: false,
-        }))
-        return
-      }
-    } catch { /* JSON parse failed (likely truncated) — try object-by-object */ }
-
-    // 2. Extract individual objects (handles truncated JSON)
-    const extracted = extractArticlesFromJson(suggestion)
-    if (extracted.length > 0) {
-      store.strategy.proposedArticles = extracted
-      // Detect truncation
-      const lost = titleOccurrences - extracted.length
-      if (lost > 0) {
-        truncationWarning.value = `${lost} article${lost > 1 ? 's' : ''} tronqué${lost > 1 ? 's' : ''} dans la réponse IA — seuls les articles complets sont affichés.`
-      }
-      return
-    }
-
-    // 3. Last resort
-    store.strategy.proposedArticles = [{
-      title: 'Article à définir',
-      suggestedTitles: ['Article à définir'],
-      type: 'Pilier',
-      parentTitle: null,
-      rationale: suggestion,
-      painPoint: '',
-      suggestedKeyword: '',
-      suggestedKeywords: [],
-      validatedSearchQuery: null,
-      keywordValidated: false,
-      searchQueryValidated: false,
-      titleValidated: false,
-      accepted: false,
-      createdInDb: false,
-    }]
-  }
-}
-
-async function validateArticles() {
-  if (!store.strategy) return
-  store.strategy.proposedArticles = store.strategy.proposedArticles.map(a => ({ ...a, accepted: true }))
-  const toCreate = store.strategy.proposedArticles.filter(a => !a.createdInDb)
-  for (const article of toCreate) {
-    await createArticleInDb(article)
-  }
-  if (toCreate.length > 0) {
-    store.saveStrategy(cocoonSlug.value)
-    await cocoonsStore.fetchCocoons()
-  }
-}
 
 onMounted(async () => {
   await store.fetchStrategy(cocoonSlug.value)
@@ -587,10 +413,8 @@ onMounted(async () => {
           Continuer vers le Moteur &rarr;
         </button>
       </div>
-      <ProgressBar
-        :percent="progressPercent"
-        :color="progressPercent === 100 ? 'var(--color-success)' : 'var(--color-primary)'"
-      />
+      <ProgressBar :percent="progressPercent"
+        :color="progressPercent === 100 ? 'var(--color-success)' : 'var(--color-primary)'" />
     </div>
 
     <div v-if="store.isLoading" class="brain-loading">
@@ -600,68 +424,67 @@ onMounted(async () => {
     <template v-else-if="store.strategy">
       <!-- Wizard stepper -->
       <div class="wizard-stepper">
-        <button
-          v-for="(config, idx) in [...stepConfigs, { key: 'articles', title: 'Articles' }]"
-          :key="config.key"
-          class="wizard-step-btn"
-          :class="{
+        <button v-for="(config, idx) in [...stepConfigs, { key: 'articles', title: 'Articles' }]" :key="config.key"
+          class="wizard-step-btn" :class="{
             active: store.currentStep === idx,
             completed: idx < store.currentStep,
-          }"
-          @click="store.goToStep(idx)"
-        >
+          }" @click="store.goToStep(idx)">
           <span class="wizard-step-num">{{ idx + 1 }}</span>
           <span class="wizard-step-label">{{ config.title.split('?')[0]?.split(':')[0]?.trim() }}</span>
         </button>
       </div>
 
       <!-- Context recap (collapsible) -->
-      <ContextRecap
-        :theme-name="silosStore.theme?.nom"
-        :theme-description="silosStore.theme?.description"
-        :silo-name="props.siloName"
-        :silo-description="currentSilo?.description"
-        :cocoon-name="props.cocoonName"
+      <ContextRecap :theme-name="silosStore.theme?.nom" :theme-description="silosStore.theme?.description"
+        :silo-name="props.siloName" :silo-description="currentSilo?.description" :cocoon-name="props.cocoonName"
         :cocoon-articles="cocoon?.articles.map(a => `${a.title} (${a.type})`)"
-        :previous-answers="store.getPreviousAnswers()"
-        :theme-config="buildThemeContext().themeConfig"
-      />
+        :previous-answers="store.getPreviousAnswers()" :theme-config="buildThemeContext().themeConfig" />
 
       <!-- Steps 1-5: Q&A with StrategyStep -->
-      <StrategyStep
-        v-if="store.currentStep < 5"
-        :key="store.currentStepName"
+      <StrategyStep v-if="store.currentStep < 5" :key="store.currentStepName"
         :title="stepConfigs[store.currentStep]?.title ?? ''"
         :description="stepConfigs[store.currentStep]?.description ?? ''"
-        :step-data="(store.strategy as any)[store.currentStepName]"
-        :is-suggesting="store.isSuggesting"
-        :is-deepening="store.isDeepening"
-        :suggesting-sub-id="suggestingSubId"
-        @update:step-data="updateStepData(store.currentStepName as string, $event)"
-        @request-suggestion="handleSuggest"
-        @request-merge="handleMerge"
-        @request-deepen="handleDeepen"
-        @request-sub-suggestion="handleSubSuggest"
-        @request-sub-merge="handleSubMerge"
-        @delete-sub-question="handleDeleteSubQuestion"
-        @request-enrich="handleSubEnrich"
-      />
+        :step-data="(store.strategy as any)[store.currentStepName]" :is-suggesting="store.isSuggesting"
+        :is-deepening="store.isDeepening" :suggesting-sub-id="suggestingSubId"
+        @update:step-data="updateStepData(store.currentStepName as string, $event)" @request-suggestion="handleSuggest"
+        @request-merge="handleMerge" @request-deepen="handleDeepen" @request-sub-suggestion="handleSubSuggest"
+        @request-sub-merge="handleSubMerge" @delete-sub-question="handleDeleteSubQuestion"
+        @request-enrich="handleSubEnrich" />
 
       <!-- Step 6: Article proposal -->
-      <div v-else class="brain-step-content article-proposal">
+      <div v-else class="article-proposal-wrapper">
+      <div class="brain-step-content article-proposal">
         <h3 class="step-title">Proposition d'articles</h3>
         <p class="step-desc">
           En se basant sur vos réponses stratégiques, Claude peut proposer une liste
           d'articles pour ce cocon avec leur type (Pilier, Intermédiaire, Spécialisé).
         </p>
 
-        <button
-          class="btn-generate"
-          :disabled="store.isSuggesting"
-          @click="generateArticleProposals"
-        >
-          {{ store.isSuggesting ? 'Génération en cours...' : 'Générer les articles avec Claude' }}
+        <button class="btn-generate"
+          :disabled="generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error'"
+          @click="generateArticleProposals">
+          {{ (generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error') ? 'Génération en cours...' : 'Générer les articles avec Claude' }}
         </button>
+
+        <GenerationStepper :phase="generationPhase" />
+
+        <!-- Generation error -->
+        <div v-if="generationPhase === 'error'" class="truncation-warning">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2" />
+            <path d="M8 5v4M8 11v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          Erreur lors de la génération des articles. Réessayez.
+        </div>
+
+        <!-- Phase 3 warning (Spé not generated) -->
+        <div v-if="generationWarning" class="truncation-warning">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M8 1.5l6.5 12H1.5L8 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+            <path d="M8 6v3M8 11v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
+          </svg>
+          {{ generationWarning }}
+        </div>
 
         <!-- Truncation warning -->
         <div v-if="truncationWarning" class="truncation-warning">
@@ -672,41 +495,101 @@ onMounted(async () => {
           {{ truncationWarning }}
         </div>
 
-        <!-- 3-column article grid (always visible) -->
+        <!-- Global warnings (e.g. no Pilier at all) -->
+        <div v-if="globalWarnings.length > 0" class="structural-warnings" data-testid="structural-warnings">
+          <div v-for="(w, wi) in globalWarnings" :key="wi" class="structural-warning-item">
+            <span class="structural-warning-icon">&#9888;</span>
+            <span>{{ w.message }}</span>
+          </div>
+        </div>
+
+        <!-- 3-column article swiper -->
         <div class="article-columns">
-          <div
-            v-for="col in articleColumns"
-            :key="col.key"
-            class="article-column"
-          >
-            <div class="column-header" :class="col.cssClass">
-              <span class="column-label">{{ col.label }}</span>
-              <span class="column-info-wrapper">
-                <svg class="column-info-icon" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2" />
-                  <path d="M8 7v4M8 5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-                </svg>
-                <div class="column-tooltip">{{ col.tooltip }}</div>
-              </span>
-              <span class="column-count">{{ col.articles.length }}</span>
-            </div>
-            <div class="column-cards">
-              <ProposedArticleRow
-                v-for="article in col.articles"
-                :key="article.originalIndex"
-                :article="article"
-                :index="article.originalIndex"
-                @regenerate-title="regenerateTitle"
-                @regenerate-keyword="regenerateKeyword"
-                @select-keyword="selectKeyword"
-                @select-title="selectTitle"
-                @toggle-accept="toggleAccept"
-                @remove="removeProposedArticle"
+          <div ref="columnsTrackRef" class="article-columns-track" :class="{ 'is-dragging': isDragging }" @scroll="onColumnsScroll" @mousedown="onDragStart" @mousemove="onDragMove" @mouseup="onDragEnd" @mouseleave="onDragEnd">
+            <!-- Pilier column -->
+            <ArticleColumn
+              label="Pilier"
+              header-class="col-pilier"
+              :tooltip="articleColumns[0]?.tooltip"
+              :count="articleColumns[0]?.articles.length ?? 0"
+              :peek="articleSlide === 1"
+              @click-peek="scrollToSlide(0)"
+            >
+              <ProposedArticleRow v-for="article in articleColumns[0]?.articles ?? []" :key="article.originalIndex"
+                :article="article" :index="article.originalIndex"
+                :composition-result="compositionResults.get(article.originalIndex) ?? null"
+                :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
+                @regenerate-title="regenerateTitle" @regenerate-keyword="regenerateKeyword"
+                @regenerate-slug="regenerateSlug" @select-keyword="selectKeyword" @select-title="selectTitle"
+                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle" />
+              <AddArticleMenu
+                :is-loading="addingArticleType === 'Pilier'"
+                :disabled="addingArticleType !== null"
+                label="+ Ajouter un pilier"
+                @add-empty="addEmptyArticle('Pilier')"
+                @add-smart="addSmartArticle('Pilier')"
+                @add-guided="addSmartArticle('Pilier', $event)"
               />
-              <button class="add-article-placeholder" @click="addProposedArticle(col.type)">
-                + Ajouter un {{ col.label.toLowerCase() }}
-              </button>
-            </div>
+            </ArticleColumn>
+
+            <!-- Intermédiaire column -->
+            <ArticleColumn
+              label="Intermédiaire"
+              header-class="col-inter"
+              :tooltip="articleColumns[1]?.tooltip"
+              :count="articleColumns[1]?.articles.length ?? 0"
+            >
+              <ProposedArticleRow v-for="article in articleColumns[1]?.articles ?? []" :key="article.originalIndex"
+                :article="article" :index="article.originalIndex"
+                :group-color="groupColors.get(normalizeTitle(article.title))"
+                :composition-result="compositionResults.get(article.originalIndex) ?? null"
+                :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
+                @regenerate-title="regenerateTitle" @regenerate-keyword="regenerateKeyword"
+                @regenerate-slug="regenerateSlug" @select-keyword="selectKeyword" @select-title="selectTitle"
+                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle" />
+              <AddArticleMenu
+                :is-loading="addingArticleType === 'Intermédiaire'"
+                :disabled="addingArticleType !== null"
+                label="+ Ajouter un intermédiaire"
+                @add-empty="addEmptyArticle('Intermédiaire')"
+                @add-smart="addSmartArticle('Intermédiaire')"
+                @add-guided="addSmartArticle('Intermédiaire', $event)"
+              />
+            </ArticleColumn>
+
+            <!-- Spécialisé column (grouped by parent Inter) -->
+            <ArticleColumn
+              label="Spécialisé"
+              header-class="col-spec"
+              :tooltip="articleColumns[2]?.tooltip"
+              :count="articleColumns[2]?.articles.length ?? 0"
+              :peek="articleSlide === 0"
+              @click-peek="scrollToSlide(1)"
+            >
+              <div v-for="group in groupedSpecArticles" :key="group.parentTitle" class="spec-group"
+                :class="{ 'spec-group--orphan': group.parentTitle === 'Non rattachés' }">
+                <div class="spec-group-header">
+                  <span class="spec-group-dot" :style="{ background: group.color }"></span>
+                  <span class="spec-group-label">{{ group.parentTitle.length > 40 ? group.parentTitle.slice(0, 40) + '…' : group.parentTitle }}</span>
+                </div>
+                <ProposedArticleRow v-for="article in group.articles" :key="article.originalIndex" :article="article"
+                  :index="article.originalIndex" :group-color="group.color"
+                  :composition-result="compositionResults.get(article.originalIndex) ?? null"
+                  :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
+                  :available-parents="intermediateTitles" @regenerate-title="regenerateTitle"
+                  @regenerate-keyword="regenerateKeyword" @regenerate-slug="regenerateSlug"
+                  @select-keyword="selectKeyword" @select-title="selectTitle" @select-slug="selectSlug"
+                  @toggle-accept="toggleAccept" @remove="removeProposedArticle" @change-parent="changeParent" />
+              </div>
+              <AddArticleMenu
+                :is-loading="addingArticleType === 'Spécialisé'"
+                :disabled="addingArticleType !== null"
+                label="+ Ajouter un spécialisé"
+                @add-empty="addEmptyArticle('Spécialisé')"
+                @add-smart="addSmartArticle('Spécialisé')"
+                @add-guided="addSmartArticle('Spécialisé', $event)"
+              />
+            </ArticleColumn>
           </div>
         </div>
 
@@ -716,14 +599,25 @@ onMounted(async () => {
           </button>
         </div>
       </div>
+      <!-- Swiper arrows — outside the card -->
+      <div class="swiper-nav">
+        <button class="swiper-arrow" :disabled="articleSlide === 0" @click="scrollToSlide(0)">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+        <span class="swiper-label">{{ articleSlide === 0 ? 'Pilier + Intermédiaire' : 'Intermédiaire + Spécialisé' }}</span>
+        <button class="swiper-arrow" :disabled="articleSlide === 1" @click="scrollToSlide(1)">
+          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </button>
+      </div>
+      </div>
 
       <!-- Navigation -->
       <div class="wizard-nav">
-        <button
-          v-if="store.currentStep > 0"
-          class="btn-prev"
-          @click="store.prevStep()"
-        >
+        <button v-if="store.currentStep > 0" class="btn-prev" @click="store.prevStep()">
           Précédent
         </button>
         <div class="wizard-nav-right">
@@ -798,8 +692,13 @@ onMounted(async () => {
   white-space: nowrap;
 }
 
-.wizard-step-btn:first-child { border-radius: 6px 0 0 6px; }
-.wizard-step-btn:last-child { border-radius: 0 6px 6px 0; }
+.wizard-step-btn:first-child {
+  border-radius: 6px 0 0 6px;
+}
+
+.wizard-step-btn:last-child {
+  border-radius: 0 6px 6px 0;
+}
 
 .wizard-step-btn.active {
   background: var(--color-primary);
@@ -824,8 +723,14 @@ onMounted(async () => {
   background: rgba(0, 0, 0, 0.1);
 }
 
-.wizard-step-btn.active .wizard-step-num { background: rgba(255, 255, 255, 0.3); }
-.wizard-step-btn.completed .wizard-step-num { background: var(--color-success); color: white; }
+.wizard-step-btn.active .wizard-step-num {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.wizard-step-btn.completed .wizard-step-num {
+  background: var(--color-success);
+  color: white;
+}
 
 /* --- Step content --- */
 .brain-step-content {
@@ -884,137 +789,94 @@ onMounted(async () => {
 }
 
 .article-columns {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  position: relative;
+  margin-bottom: 1rem;
+}
+
+.article-columns-track {
+  display: flex;
   gap: 1.25rem;
   align-items: start;
-  margin-bottom: 1rem;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
 }
 
-.article-column {
+.article-columns-track::-webkit-scrollbar {
+  display: none;
+}
+
+/* Spacer — extends scrollable area so slide 2 (Inter+Spé) is fully reachable */
+.article-columns-track::after {
+  content: '';
+  flex: 0 0 calc(50% - 2rem);
+}
+
+/* --- Structural warnings --- */
+.structural-warnings {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-}
-
-.column-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  gap: 0.25rem;
   padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
   border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-}
-
-.column-label {
-  letter-spacing: 0.025em;
-}
-
-.column-info-wrapper {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  margin-left: auto;
-  margin-right: 0.375rem;
-}
-
-.column-info-icon {
-  opacity: 0.5;
-  cursor: help;
-  transition: opacity 0.15s;
-}
-
-.column-info-wrapper:hover .column-info-icon {
-  opacity: 1;
-}
-
-.column-tooltip {
-  display: none;
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 50%;
-  transform: translateX(-50%);
-  width: 260px;
-  padding: 0.625rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.75rem;
-  font-weight: 400;
-  line-height: 1.5;
-  white-space: pre-line;
-  background: var(--color-text, #1a1a2e);
-  color: var(--color-background, #fff);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  z-index: 10;
-}
-
-.column-info-wrapper:hover .column-tooltip {
-  display: block;
-}
-
-.column-count {
-  font-weight: 700;
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
-.col-pilier {
-  background: var(--color-badge-blue-bg);
-  color: var(--color-badge-blue-text);
-}
-
-.col-inter {
   background: var(--color-badge-amber-bg);
   color: var(--color-badge-amber-text);
+  font-size: 0.8125rem;
 }
 
-.col-spec {
-  background: var(--color-badge-green-bg);
-  color: var(--color-badge-green-text);
+.structural-warning-item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
 }
 
-.column-cards {
+.structural-warning-icon {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+/* --- Spec group (grouped by parent Inter) --- */
+.spec-group {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
 }
 
-.add-article-placeholder {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px dashed var(--color-border);
-  border-radius: 6px;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  background: transparent;
-  cursor: pointer;
-  text-align: center;
+.spec-group+.spec-group {
+  margin-top: 0.75rem;
 }
 
-.add-article-placeholder:hover {
+.spec-group--orphan .spec-group-header {
+  border-style: dashed;
+}
+
+.spec-group-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
   background: var(--color-bg-soft);
-  border-color: var(--color-primary);
-  color: var(--color-primary);
+  border: 1px solid var(--color-border);
 }
 
-@media (max-width: 900px) {
-  .article-columns {
-    grid-template-columns: 1fr;
-  }
+.spec-group-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
 }
 
-.empty-articles {
-  padding: 1.5rem;
-  text-align: center;
+.spec-group-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
   color: var(--color-text-muted);
-  border: 1px dashed var(--color-border);
-  border-radius: 8px;
-  margin-bottom: 1rem;
-}
-
-.empty-articles p {
-  margin: 0;
-  font-size: 0.8125rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .article-actions {
@@ -1022,7 +884,6 @@ onMounted(async () => {
   align-items: center;
   gap: 0.75rem;
 }
-
 
 /* --- Navigation --- */
 .wizard-nav {
@@ -1091,5 +952,91 @@ onMounted(async () => {
 
 .btn-primary:hover {
   background: var(--color-primary-hover);
+}
+
+/* --- Drag-to-scroll --- */
+.article-columns-track.is-dragging {
+  cursor: grabbing;
+  scroll-snap-type: none;
+  user-select: none;
+}
+
+.article-columns-track:not(.is-dragging) {
+  cursor: grab;
+}
+
+/* --- Swiper nav (outside card) --- */
+.article-proposal-wrapper {
+  display: flex;
+  flex-direction: column;
+}
+
+.swiper-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  padding-top: 0.75rem;
+}
+
+.swiper-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  min-width: 180px;
+  text-align: center;
+}
+
+.swiper-arrow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.swiper-arrow:hover:not(:disabled) {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  background: var(--color-primary-soft);
+}
+
+.swiper-arrow:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@media (max-width: 900px) {
+  .article-columns-track {
+    flex-direction: column;
+    overflow-x: visible;
+    scroll-snap-type: none;
+  }
+
+  .article-columns-track::after {
+    display: none;
+  }
+
+  .swiper-nav {
+    display: none;
+  }
+
+  .article-column--peek {
+    opacity: 1;
+    cursor: default;
+  }
+
+  .article-column {
+    flex: 0 0 auto;
+    width: 100%;
+    max-width: none;
+    scroll-snap-align: none;
+  }
 }
 </style>

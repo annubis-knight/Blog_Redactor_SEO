@@ -204,3 +204,26 @@ export type {
   DiscoveryCacheEntry,
   DiscoveryCacheStatus,
 } from './discovery-cache.types.js'
+
+export type {
+  ArticleLevel,
+  KpiColor,
+  KpiResult,
+  VerdictLevel,
+  ValidateVerdict,
+  ValidateResponse,
+  PaaQuestionValidate,
+  ThresholdConfig,
+} from './keyword-validate.types.js'
+
+export type {
+  HnNode,
+  SerpCompetitor,
+  SerpAnalysisResult,
+} from './serp-analysis.types.js'
+
+export type {
+  CompositionRuleName,
+  CompositionRuleResult,
+  CompositionCheckResult,
+} from './composition.types.js'

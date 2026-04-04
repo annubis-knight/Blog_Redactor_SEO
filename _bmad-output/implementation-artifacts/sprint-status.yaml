@@ -1,4 +1,4 @@
-# generated: 2026-03-30
+# generated: 2026-04-01
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
@@ -33,14 +33,14 @@
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
 
-generated: 2026-03-30
+generated: 2026-04-01
 project: BMAD
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts
 
 development_status:
-  # Epic 1 : Moteur structuré en 3 phases
+  # Epic 1 : Moteur structuré en 3 phases ✅
   epic-1: done
   1-1-layout-3-phases-navigation-et-selection-article: done
   1-2-phase-generer-discovery-douleur-intent-douleur-avec-verrouillage: done
@@ -48,28 +48,63 @@ development_status:
   1-4-phase-assigner-assignation-avec-gating-souple: done
   epic-1-retrospective: done
 
-  # Epic 2 : Progression automatique et guidage
+  # Epic 2 : Progression automatique et guidage ✅
   epic-2: done
   2-1-dots-de-progression-par-article-dans-la-liste: done
   2-2-checks-automatiques-via-emit-check-completed: done
   2-3-bandeaux-de-transition-entre-phases: done
   epic-2-retrospective: done
 
-  # Epic 3 : Pont Cerveau→Moteur
+  # Epic 3 : Pont Cerveau→Moteur ✅
   epic-3: done
   3-1-contexte-strategique-collapsable-dans-le-moteur: done
   3-2-enrichissement-automatique-des-prompts-ia: done
   3-3-indicateur-alignement-strategique-dans-laudit: done
   epic-3-retrospective: done
 
-  # Epic 4 : Cache systématique et persistance
+  # Epic 4 : Cache systématique et persistance ✅
   epic-4: done
   4-1-pattern-cache-getorfetch-uniforme-pour-tous-les-services: done
   4-2-rechargement-automatique-des-resultats-par-article: done
   epic-4-retrospective: done
 
-  # Epic 5 : Labo — Recherche libre
+  # Epic 5 : Labo — Recherche libre ✅
   epic-5: done
   5-1-vue-laboview-route-labo-et-acces-navbar-dashboard: done
   5-2-composants-moteur-en-mode-libre-dans-le-labo: done
   epic-5-retrospective: done
+
+  # Epic 6 : Moteur 2 phases + Verdict GO/NO-GO du Capitaine
+  epic-6: done
+  6-1-restructuration-moteur-3-2-phases-navigation-sous-onglets: done
+  6-2-scoring-contextuel-verdict-feu-tricolore-route-api-validate: done
+  6-3-interface-capitaine-thermometre-kpis-barres-et-tooltip-seuils: done
+  6-4-input-alternatif-historique-slider-decoupage-racine-forcer-go: done
+  6-5-panel-ia-expert-seo-streaming-lock-unlock-capitaine: done
+  epic-6-retrospective: optional
+
+  # Epic 7 : Lieutenants — Analyse SERP des concurrents
+  epic-7: done
+  7-1-route-api-serp-analyze-curseur-intelligent-en-tete-capitaine: done
+  7-2-sections-depliables-hn-concurrents-paa-et-groupes: done
+  7-3-candidats-lieutenants-avec-badges-selection-checkbox-compteur: done
+  7-4-panel-ia-structure-hn-lock-lieutenants: done
+  epic-7-retrospective: optional
+
+  # Epic 8 : Lexique TF-IDF + Validation finale
+  epic-8: done
+  8-1-extraction-tfidf-depuis-donnees-serp-3-niveaux-densite: done
+  8-2-panel-ia-lexical-validation-finale-articlekeywords: done
+  epic-8-retrospective: optional
+
+  # Epic 9 : Dashboard Explorateur — Extraction Intention, Audit, Local
+  epic-9: done
+  9-1-vue-explorateurview-route-explorateur-retrait-du-moteur: done
+  epic-9-retrospective: optional
+
+  # Epic 10 : Progression 5 checks + Guidage + Labo GO/NO-GO
+  epic-10: done
+  10-1-migration-7-5-checks-dots-de-progression-mis-a-jour: done
+  10-2-bandeaux-de-transition-adaptes-au-nouveau-workflow: done
+  10-3-labo-mis-a-jour-verdict-go-no-go-en-mode-libre: done
+  epic-10-retrospective: optional

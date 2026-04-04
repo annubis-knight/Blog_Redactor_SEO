@@ -1,7 +1,7 @@
 <script setup lang="ts">
 defineProps<{
   message: string
-  actionLabel: string
+  actionLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -14,7 +14,7 @@ const emit = defineEmits<{
   <div class="phase-transition-banner" role="status">
     <p class="phase-transition-message">{{ message }}</p>
     <div class="phase-transition-actions">
-      <button class="phase-transition-btn" @click="emit('navigate')">
+      <button v-if="actionLabel" class="phase-transition-btn" @click="emit('navigate')">
         {{ actionLabel }} &rarr;
       </button>
       <button

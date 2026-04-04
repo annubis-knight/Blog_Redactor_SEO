@@ -2,8 +2,7 @@
 import { onMounted } from 'vue'
 import { useSilosStore } from '@/stores/silos.store'
 import SiloCard from '@/components/dashboard/SiloCard.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const store = useSilosStore()
 
@@ -23,6 +22,7 @@ onMounted(() => {
         <RouterLink to="/linking" class="btn-linking">Maillage</RouterLink>
         <RouterLink to="/post-publication" class="btn-linking">GSC</RouterLink>
         <RouterLink to="/labo" class="btn-linking">Labo</RouterLink>
+        <RouterLink to="/explorateur" class="btn-linking">Explorateur</RouterLink>
         <RouterLink to="/config" class="btn-config" title="Configuration du thème">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2" />
@@ -51,17 +51,11 @@ onMounted(() => {
       </div>
     </div>
 
-    <LoadingSpinner v-if="store.isLoading" />
-
-    <ErrorMessage
-      v-else-if="store.error"
-      :message="store.error"
-      @retry="store.fetchSilos()"
-    />
-
-    <div v-else class="silos-list">
-      <SiloCard v-for="silo in store.silos" :key="silo.id" :silo="silo" />
-    </div>
+    <AsyncContent :is-loading="store.isLoading" :error="store.error" @retry="store.fetchSilos()">
+      <div class="silos-list">
+        <SiloCard v-for="silo in store.silos" :key="silo.id" :silo="silo" />
+      </div>
+    </AsyncContent>
   </div>
 </template>
 

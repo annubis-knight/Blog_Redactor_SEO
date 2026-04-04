@@ -35,6 +35,12 @@ export const useArticleProgressStore = defineStore('article-progress', () => {
     log.debug(`[article-progress] check added: "${check}" for ${slug}`)
   }
 
+  async function removeCheck(slug: string, check: string): Promise<void> {
+    const res = await apiPost<ArticleProgress>(`/articles/${encodeURIComponent(slug)}/progress/uncheck`, { check })
+    progressMap.value[slug] = res
+    log.debug(`[article-progress] check removed: "${check}" for ${slug}`)
+  }
+
   async function fetchSemanticField(slug: string): Promise<SemanticTerm[]> {
     try {
       const res = await apiGet<SemanticTerm[]>(`/articles/${encodeURIComponent(slug)}/semantic-field`)
@@ -74,6 +80,7 @@ export const useArticleProgressStore = defineStore('article-progress', () => {
     fetchProgress,
     saveProgress,
     addCheck,
+    removeCheck,
     fetchSemanticField,
     saveSemanticField,
     addSemanticTerms,

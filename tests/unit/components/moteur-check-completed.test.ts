@@ -46,10 +46,10 @@ describe('emitCheckCompleted — helper logic', () => {
     expect(addCheckSpy).not.toHaveBeenCalled()
   })
 
-  it('calls addCheck for each of the 7 standardized checks', () => {
+  it('calls addCheck for each of the 5 standardized checks', () => {
     const checks = [
-      'discovery_done', 'radar_done', 'intent_done',
-      'audit_done', 'local_done', 'captain_chosen', 'assignment_done',
+      'discovery_done', 'radar_done',
+      'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
     ]
 
     const emitCheck = createEmitCheckCompleted('test-slug')
@@ -57,7 +57,7 @@ describe('emitCheckCompleted — helper logic', () => {
       emitCheck(check)
     }
 
-    expect(addCheckSpy).toHaveBeenCalledTimes(7)
+    expect(addCheckSpy).toHaveBeenCalledTimes(5)
     for (const check of checks) {
       expect(addCheckSpy).toHaveBeenCalledWith('test-slug', check)
     }
@@ -93,31 +93,13 @@ describe('MoteurView handlers — check-completed integration', () => {
 
       handleSendToRadar(keywords: any[]) {
         discoveryRadarKeywords.value = keywords
-        activeTab.value = 'douleur-intent'
+        activeTab.value = 'radar'
         emitCheckCompleted('discovery_done')
       },
 
       handleRadarScanned(payload: { globalScore: number; heatLevel: string }) {
         radarScanResult.value = payload
         emitCheckCompleted('radar_done')
-      },
-
-      handleExplorationContinue() {
-        activeTab.value = 'audit'
-        emitCheckCompleted('intent_done')
-      },
-
-      async handleKeywordChange() {
-        emitCheckCompleted('audit_done')
-      },
-
-      handleLocalContinue() {
-        emitCheckCompleted('local_done')
-      },
-
-      async handleApplyMigration() {
-        emitCheckCompleted('captain_chosen')
-        emitCheckCompleted('assignment_done')
       },
     }
   }
@@ -126,11 +108,11 @@ describe('MoteurView handlers — check-completed integration', () => {
     vi.clearAllMocks()
   })
 
-  it('handleSendToRadar emits discovery_done and navigates to douleur-intent', () => {
+  it('handleSendToRadar emits discovery_done and navigates to radar', () => {
     const h = createHandlerHarness('test-article')
     h.handleSendToRadar([{ keyword: 'kw1' }])
 
-    expect(h.activeTab.value).toBe('douleur-intent')
+    expect(h.activeTab.value).toBe('radar')
     expect(h.discoveryRadarKeywords.value).toHaveLength(1)
     expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'discovery_done')
   })
@@ -141,36 +123,6 @@ describe('MoteurView handlers — check-completed integration', () => {
 
     expect(h.radarScanResult.value).toEqual({ globalScore: 75, heatLevel: 'hot' })
     expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'radar_done')
-  })
-
-  it('handleExplorationContinue emits intent_done and navigates to audit', () => {
-    const h = createHandlerHarness('test-article')
-    h.handleExplorationContinue()
-
-    expect(h.activeTab.value).toBe('audit')
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'intent_done')
-  })
-
-  it('handleKeywordChange emits audit_done', async () => {
-    const h = createHandlerHarness('test-article')
-    await h.handleKeywordChange()
-
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'audit_done')
-  })
-
-  it('handleLocalContinue emits local_done', () => {
-    const h = createHandlerHarness('test-article')
-    h.handleLocalContinue()
-
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'local_done')
-  })
-
-  it('handleApplyMigration emits captain_chosen AND assignment_done', async () => {
-    const h = createHandlerHarness('test-article')
-    await h.handleApplyMigration()
-
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'captain_chosen')
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'assignment_done')
   })
 })
 

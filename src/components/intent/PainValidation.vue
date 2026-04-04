@@ -4,6 +4,7 @@ import { apiPost } from '@/services/api.service'
 import { useMultiSourceVerdict, type VerdictResult } from '@/composables/useMultiSourceVerdict'
 import { useNlpAnalysis } from '@/composables/useNlpAnalysis'
 import type { TranslatedKeyword, ValidatePainResult, PainVerdictCategory } from '@shared/types/intent.types.js'
+import RadarThermometer from '@/components/shared/RadarThermometer.vue'
 import NlpOptinBanner from './NlpOptinBanner.vue'
 import ValidationSummary from './ValidationSummary.vue'
 import ValidationRow from './ValidationRow.vue'
@@ -18,7 +19,8 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  select: [keyword: string]
+  go: [keyword: string]
+  nogo: []
   back: []
 }>()
 
@@ -118,10 +120,14 @@ async function retrySource(keyword: string, source: string) {
   }
 }
 
-function handleContinue() {
+function handleGo() {
   if (selectedKeyword.value) {
-    emit('select', selectedKeyword.value)
+    emit('go', selectedKeyword.value)
   }
+}
+
+function handleNogo() {
+  emit('nogo')
 }
 
 function toggleDetail(keyword: string) {
@@ -156,14 +162,17 @@ autoReactivate()
       </p>
     </div>
 
-    <!-- Radar heat context banner -->
-    <div v-if="radarHeat" class="radar-heat-banner">
-      Resonance Radar : <strong>{{ radarHeat.globalScore }}%</strong>
-      <span :class="'heat-' + radarHeat.heatLevel">{{ radarHeat.heatLevel }}</span>
-    </div>
+    <!-- Radar heat context -->
+    <RadarThermometer
+      v-if="radarHeat"
+      :compact="true"
+      :global-score="radarHeat.globalScore"
+      :heat-level="radarHeat.heatLevel"
+    />
 
-    <!-- NLP Opt-in Banner -->
+    <!-- NLP Opt-in Banner (only show when there are results to analyze) -->
     <NlpOptinBanner
+      v-if="verdicts.length > 0 || apiResults.length > 0"
       @nlp-activated="handleNlpActivated"
       @nlp-deactivated="handleNlpDeactivated"
     />
@@ -238,13 +247,18 @@ autoReactivate()
         <button class="btn-back" @click="emit('back')">
           &larr; Modifier la douleur
         </button>
-        <button
-          class="btn-continue"
-          :disabled="!selectedKeyword"
-          @click="handleContinue"
-        >
-          Explorer « {{ selectedKeyword }} » &rarr;
-        </button>
+        <div class="validation-actions-right">
+          <button class="btn-nogo" @click="handleNogo">
+            Rejeter
+          </button>
+          <button
+            class="btn-go"
+            :disabled="!selectedKeyword"
+            @click="handleGo"
+          >
+            Valider « {{ selectedKeyword }} » &rarr;
+          </button>
+        </div>
       </div>
     </template>
 
@@ -262,22 +276,6 @@ autoReactivate()
   flex-direction: column;
   gap: 1rem;
 }
-
-.radar-heat-banner {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  background: var(--color-bg-soft);
-  border: 1px solid var(--color-border);
-}
-
-.heat-brulante { color: #ef4444; font-weight: 700; }
-.heat-chaude { color: #f59e0b; font-weight: 600; }
-.heat-tiede { color: #3b82f6; font-weight: 600; }
-.heat-froide { color: #64748b; font-weight: 500; }
 
 .validation-header {
   margin-bottom: 0.25rem;
@@ -406,23 +404,46 @@ autoReactivate()
   color: var(--color-primary);
 }
 
-.btn-continue {
+.validation-actions-right {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.btn-nogo {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-error, #dc2626);
+  background: none;
+  border: 1px solid var(--color-error, #dc2626);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.btn-nogo:hover {
+  background: var(--color-error, #dc2626);
+  color: white;
+}
+
+.btn-go {
   padding: 0.5rem 1rem;
   font-size: 0.8125rem;
   font-weight: 600;
   color: white;
-  background: var(--color-primary);
+  background: var(--color-success, #16a34a);
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: background 0.15s;
 }
 
-.btn-continue:hover:not(:disabled) {
-  background: var(--color-primary-hover);
+.btn-go:hover:not(:disabled) {
+  background: var(--color-success-hover, #15803d);
 }
 
-.btn-continue:disabled {
+.btn-go:disabled {
   opacity: 0.6;
   cursor: not-allowed;
 }

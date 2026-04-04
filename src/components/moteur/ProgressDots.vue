@@ -6,28 +6,22 @@ const MOTEUR_CHECKS = [
   'discovery_done',
   'radar_done',
   // Phase ② Valider (3 checks)
-  'intent_done',
-  'audit_done',
-  'local_done',
-  // Phase ③ Assigner (2 checks)
-  'captain_chosen',
-  'assignment_done',
+  'capitaine_locked',
+  'lieutenants_locked',
+  'lexique_validated',
 ] as const
 
 const PHASE_GROUPS = [
   { checks: ['discovery_done', 'radar_done'], label: 'Générer' },
-  { checks: ['intent_done', 'audit_done', 'local_done'], label: 'Valider' },
-  { checks: ['captain_chosen', 'assignment_done'], label: 'Assigner' },
+  { checks: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'], label: 'Valider' },
 ] as const
 
 const CHECK_TOOLTIPS: Record<string, string> = {
   'discovery_done': 'Discovery',
   'radar_done': 'Radar',
-  'intent_done': 'Intention',
-  'audit_done': 'Audit',
-  'local_done': 'Local',
-  'captain_chosen': 'Capitaine',
-  'assignment_done': 'Assignation',
+  'capitaine_locked': 'Capitaine',
+  'lieutenants_locked': 'Lieutenants',
+  'lexique_validated': 'Lexique',
 }
 
 const props = defineProps<{
@@ -44,10 +38,14 @@ const groups = computed(() =>
     })),
   })),
 )
+
+const filledCount = computed(() =>
+  MOTEUR_CHECKS.filter(c => props.completedChecks.includes(c)).length,
+)
 </script>
 
 <template>
-  <span class="progress-dots" :aria-label="`Progression : ${completedChecks.length} sur ${MOTEUR_CHECKS.length}`">
+  <span class="progress-dots" :aria-label="`Progression : ${filledCount} sur ${MOTEUR_CHECKS.length}`">
     <span
       v-for="(group, gi) in groups"
       :key="gi"

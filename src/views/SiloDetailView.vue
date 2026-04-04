@@ -4,8 +4,7 @@ import { useRoute } from 'vue-router'
 import { useSilosStore } from '@/stores/silos.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
-import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
-import ErrorMessage from '@/components/shared/ErrorMessage.vue'
+import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const route = useRoute()
 const silosStore = useSilosStore()
@@ -32,15 +31,8 @@ onMounted(() => {
   <div class="silo-detail">
     <Breadcrumb :items="breadcrumbItems" />
 
-    <LoadingSpinner v-if="silosStore.isLoading" />
-
-    <ErrorMessage
-      v-else-if="silosStore.error"
-      :message="silosStore.error"
-      @retry="silosStore.fetchSilos()"
-    />
-
-    <template v-else-if="silo">
+    <AsyncContent :is-loading="silosStore.isLoading" :error="silosStore.error" @retry="silosStore.fetchSilos()">
+      <template v-if="silo">
       <div class="silo-header">
         <h2 class="silo-title">{{ silo.nom }}</h2>
         <p v-if="silo.description" class="silo-desc">{{ silo.description }}</p>
@@ -98,12 +90,13 @@ onMounted(() => {
           </div>
         </RouterLink>
       </div>
-    </template>
+      </template>
 
-    <div v-else class="empty-state">
-      <p>Silo introuvable.</p>
-      <RouterLink to="/" class="back-link">&larr; Retour au dashboard</RouterLink>
-    </div>
+      <div v-else class="empty-state">
+        <p>Silo introuvable.</p>
+        <RouterLink to="/" class="back-link">&larr; Retour au dashboard</RouterLink>
+      </div>
+    </AsyncContent>
   </div>
 </template>
 

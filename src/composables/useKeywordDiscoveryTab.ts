@@ -349,8 +349,9 @@ export function useKeywordDiscoveryTab() {
       .finally(() => { dataforseoLoading.value = false })
   }
 
-  // --- Relevance scoring via Haiku (batched + 2-pass) ---
+  // --- Relevance scoring via Haiku (batched + 2-pass with concurrency) ---
   const SCORE_BATCH_SIZE = 40
+  const SCORE_CONCURRENCY = 3
 
   async function scoreBatch(
     seed: string,
@@ -377,6 +378,36 @@ export function useKeywordDiscoveryTab() {
     relevanceScores.value = next
   }
 
+  /** Run batches with limited concurrency, merging results as they arrive */
+  async function scoreBatchesConcurrently(
+    seed: string,
+    keywords: string[],
+    strict: boolean,
+    pass: number,
+  ): Promise<void> {
+    const batches: string[][] = []
+    for (let i = 0; i < keywords.length; i += SCORE_BATCH_SIZE) {
+      batches.push(keywords.slice(i, i + SCORE_BATCH_SIZE))
+    }
+
+    let completed = 0
+    const total = keywords.length
+
+    // Process batches with concurrency pool
+    const queue = [...batches]
+    const workers = Array.from({ length: Math.min(SCORE_CONCURRENCY, queue.length) }, async () => {
+      while (queue.length > 0) {
+        const batch = queue.shift()!
+        const scores = await scoreBatch(seed, batch, strict)
+        if (scores) mergeScores(scores)
+        completed += batch.length
+        scoringProgress.value = { scored: Math.min(completed, total), total, pass }
+      }
+    })
+
+    await Promise.all(workers)
+  }
+
   async function fetchRelevanceScores() {
     const seed = lastSeed.value
     if (!seed) return
@@ -399,13 +430,8 @@ export function useKeywordDiscoveryTab() {
     const totalToScore = unscored.length
     scoringProgress.value = { scored: 0, total: totalToScore, pass: 1 }
     try {
-      // Pass 1: Score all unscored keywords in batches of 40
-      for (let i = 0; i < unscored.length; i += SCORE_BATCH_SIZE) {
-        const batch = unscored.slice(i, i + SCORE_BATCH_SIZE)
-        const scores = await scoreBatch(seed, batch, false)
-        if (scores) mergeScores(scores)
-        scoringProgress.value = { scored: Math.min(i + SCORE_BATCH_SIZE, unscored.length), total: totalToScore, pass: 1 }
-      }
+      // Pass 1: Score all unscored keywords (concurrent batches of 40)
+      await scoreBatchesConcurrently(seed, unscored, false, 1)
       log.info(`Relevance pass-1: ${unscored.length} keywords scored`)
 
       // Pass 2: Re-verify keywords marked as relevant (stricter check)
@@ -415,12 +441,7 @@ export function useKeywordDiscoveryTab() {
 
       if (relevant.length > 0) {
         scoringProgress.value = { scored: 0, total: relevant.length, pass: 2 }
-        for (let i = 0; i < relevant.length; i += SCORE_BATCH_SIZE) {
-          const batch = relevant.slice(i, i + SCORE_BATCH_SIZE)
-          const scores = await scoreBatch(seed, batch, true)
-          if (scores) mergeScores(scores)
-          scoringProgress.value = { scored: Math.min(i + SCORE_BATCH_SIZE, relevant.length), total: relevant.length, pass: 2 }
-        }
+        await scoreBatchesConcurrently(seed, relevant, true, 2)
         const downgraded = relevant.filter(kw => (relevanceScores.value.get(kw) ?? 1) < RELEVANCE_THRESHOLD)
         log.info(`Relevance pass-2 (strict): ${relevant.length} re-checked, ${downgraded.length} downgraded`)
       }

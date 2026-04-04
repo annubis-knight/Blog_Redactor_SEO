@@ -211,6 +211,10 @@ const COCOON_STEP_DESCRIPTIONS: Record<string, string> = {
   promesse: "Quelle transformation ce cocon promet-il au lecteur ? Quel résultat concret obtiendra-t-il en parcourant vos articles ?",
   cta: "Quel est le call-to-action principal de ce cocon ? Où voulez-vous guider le lecteur après avoir lu vos contenus ?",
   articles: "Proposez une liste d'articles pour ce cocon avec leur type (Pilier, Intermédiaire, Spécialisé) et leur justification.",
+  'articles-structure': "Génère le Pilier et les Intermédiaires pour ce cocon.",
+  'articles-paa-queries': "Propose des requêtes de recherche Google pour récupérer les PAA par Intermédiaire.",
+  'articles-spe': "Génère les articles Spécialisés enrichis par les PAA récupérées.",
+  'add-article': "Génère un seul article complémentaire du type demandé.",
 }
 
 /** GET /api/strategy/cocoon/:cocoonSlug */
@@ -273,7 +277,20 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
         .replace(/\{\{#noExistingValidated\}\}([\s\S]*?)\{\{\/noExistingValidated\}\}/,
           hasValidated ? '' : '$1')
     } else {
-      const templateFile = parsed.step === 'articles' ? 'cocoon-articles.md' : 'cocoon-brainstorm.md'
+      // Determine template file based on step
+      let templateFile: string
+      if (parsed.step === 'articles' || parsed.step === 'articles-structure') {
+        templateFile = 'cocoon-articles.md'
+      } else if (parsed.step === 'articles-paa-queries') {
+        templateFile = 'cocoon-paa-queries.md'
+      } else if (parsed.step === 'articles-spe') {
+        templateFile = 'cocoon-articles-spe.md'
+      } else if (parsed.step === 'add-article') {
+        templateFile = 'cocoon-add-article.md'
+      } else {
+        templateFile = 'cocoon-brainstorm.md'
+      }
+
       const promptTemplate = await readFile(
         join(process.cwd(), 'server', 'prompts', templateFile),
         'utf-8',
@@ -288,6 +305,7 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
         .replace('{{step}}', parsed.step)
         .replace('{{stepDescription}}', COCOON_STEP_DESCRIPTIONS[parsed.step] ?? '')
         .replace('{{currentInput}}', parsed.currentInput)
+        .replace('{{articles}}', parsed.currentInput)
         .replace(/\{\{#themeContext\}\}[\s\S]*?\{\{\/themeContext\}\}/,
           themeBlock ? `## Contexte enrichi\n${themeBlock}` : '')
         .replace(/\{\{#previousAnswers\}\}[\s\S]*?\{\{\/previousAnswers\}\}/,
@@ -298,13 +316,55 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
           parsed.context.existingArticles?.length
             ? `- **Articles existants** : ${parsed.context.existingArticles.join(', ')}`
             : '')
+
+      // Build add-article context: resolve type conditionals and inject existing articles
+      if (parsed.step === 'add-article') {
+        const addCtx = JSON.parse(parsed.currentInput) as {
+          articleType: string
+          existingArticlesDetail: string
+          userInput?: string
+        }
+        const isPilier = addCtx.articleType === 'Pilier'
+        const isInter = addCtx.articleType === 'Intermédiaire'
+        const isSpe = addCtx.articleType === 'Spécialisé'
+        const hasUserInput = !!addCtx.userInput?.trim()
+
+        prompt = prompt
+          .replace(/\{\{articleType\}\}/g, addCtx.articleType)
+          .replace('{{existingArticles}}', addCtx.existingArticlesDetail)
+          .replace(/\{\{#isPilier\}\}([\s\S]*?)\{\{\/isPilier\}\}/, isPilier ? '$1' : '')
+          .replace(/\{\{#isIntermediaire\}\}([\s\S]*?)\{\{\/isIntermediaire\}\}/, isInter ? '$1' : '')
+          .replace(/\{\{#isSpecialise\}\}([\s\S]*?)\{\{\/isSpecialise\}\}/, isSpe ? '$1' : '')
+          .replace(/\{\{#userInput\}\}([\s\S]*?)\{\{\/userInput\}\}/,
+            hasUserInput ? '$1'.replace(/\{\{userInput\}\}/g, addCtx.userInput!.trim()) : '')
+      }
+
+      // Build PAA context block for articles-spe step
+      if (parsed.step === 'articles-spe') {
+        const paaCtx = parsed.context.paaContext
+        let paaBlock = ''
+        if (paaCtx && Object.keys(paaCtx).length > 0) {
+          const sections: string[] = []
+          for (const [interTitle, questions] of Object.entries(paaCtx)) {
+            if (questions.length > 0) {
+              const lines = questions.map(q => `- ${q.question}`).join('\n')
+              sections.push(`### Questions PAA pour "${interTitle}"\n${lines}`)
+            }
+          }
+          paaBlock = sections.join('\n\n')
+        }
+        prompt = prompt.replace(/\{\{#paaContext\}\}[\s\S]*?\{\{\/paaContext\}\}/,
+          paaBlock || '')
+      }
     }
 
     const userMessage = isMerge
       ? `Fusionne ces deux textes pour l'étape "${parsed.step}"`
       : parsed.currentInput
 
-    const maxTokens = parsed.step === 'articles' ? 4096 : 1024
+    const maxTokens = (parsed.step === 'articles' || parsed.step === 'articles-structure' || parsed.step === 'articles-spe') ? 4096
+      : parsed.step === 'articles-paa-queries' ? 2048
+      : 1024
 
     let suggestion = ''
     for await (const chunk of streamChatCompletion(prompt, userMessage, maxTokens)) {

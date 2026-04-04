@@ -40,6 +40,13 @@ vi.mock('../../../server/utils/prompt-loader', () => ({
   loadPrompt: vi.fn(),
 }))
 
+vi.mock('../../../server/utils/cache', () => ({
+  readCached: vi.fn().mockResolvedValue(null),
+  writeCached: vi.fn().mockResolvedValue(undefined),
+  slugify: (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+  isFresh: vi.fn().mockReturnValue(false),
+}))
+
 vi.mock('../../../server/services/data.service', () => ({
   getKeywordsByCocoon: vi.fn(),
   addKeyword: vi.fn(),

@@ -1,5 +1,6 @@
-import { readFile, writeFile, rename, mkdir } from 'fs/promises'
+import { readFile, writeFile, rename, mkdir, unlink } from 'fs/promises'
 import { dirname, basename } from 'path'
+import { randomBytes } from 'crypto'
 import { log } from './logger.js'
 
 export async function readJson<T>(filePath: string): Promise<T> {
@@ -9,10 +10,17 @@ export async function readJson<T>(filePath: string): Promise<T> {
 }
 
 export async function writeJson<T>(filePath: string, data: T): Promise<void> {
-  const tmpPath = `${filePath}.tmp`
+  const suffix = randomBytes(6).toString('hex')
+  const tmpPath = `${filePath}.${suffix}.tmp`
   await ensureDir(dirname(filePath))
   await writeFile(tmpPath, JSON.stringify(data, null, 2), 'utf-8')
-  await rename(tmpPath, filePath)
+  try {
+    await rename(tmpPath, filePath)
+  } catch (err) {
+    // Clean up orphaned tmp file on rename failure
+    await unlink(tmpPath).catch(() => {})
+    throw err
+  }
   log.debug(`writeJson: ${basename(filePath)} saved`)
 }
 

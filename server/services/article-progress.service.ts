@@ -46,3 +46,14 @@ export async function addCheck(slug: string, check: string): Promise<ArticleProg
   cache = all
   return existing
 }
+
+export async function removeCheck(slug: string, check: string): Promise<ArticleProgress> {
+  const all = await loadAll()
+  const existing = all[slug] ?? { phase: 'proposed' as const, completedChecks: [] }
+  existing.completedChecks = existing.completedChecks.filter(c => c !== check)
+  log.debug(`articleProgress: removed check "${check}" for ${slug}`)
+  all[slug] = existing
+  await writeJson(PROGRESS_FILE, all)
+  cache = all
+  return existing
+}

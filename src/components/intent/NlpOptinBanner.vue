@@ -53,19 +53,19 @@ async function handleRetry() {
     <!-- State: Disabled -->
     <template v-if="nlpState === 'disabled'">
       <div class="nlp-banner-content">
-        <span class="nlp-banner-title">Analyse NLP locale (optionnel)</span>
-        <span class="nlp-banner-desc">Premier chargement : ~30s | Gratuit, local, hors-ligne</span>
+        <span class="nlp-banner-title">Améliorer la précision des verdicts</span>
+        <span class="nlp-banner-desc">Analyse sémantique locale · Gratuit, hors-ligne · Premier chargement ~30s</span>
       </div>
       <button class="nlp-btn nlp-btn--activate" @click="handleActivate">
-        Activer
+        Activer l'analyse sémantique
       </button>
     </template>
 
     <!-- State: Unsupported -->
     <template v-else-if="nlpState === 'unsupported'">
       <div class="nlp-banner-content">
-        <span class="nlp-banner-title">Analyse NLP locale (optionnel)</span>
-        <span class="nlp-banner-desc">NLP indisponible sur ce navigateur</span>
+        <span class="nlp-banner-title">Améliorer la précision des verdicts</span>
+        <span class="nlp-banner-desc">Analyse sémantique indisponible sur ce navigateur</span>
       </div>
       <button class="nlp-btn nlp-btn--activate" disabled>
         Activer
@@ -113,8 +113,8 @@ async function handleRetry() {
     <!-- State: Active -->
     <template v-else-if="nlpState === 'active'">
       <div class="nlp-banner-content">
-        <span class="nlp-banner-title">NLP actif</span>
-        <span class="nlp-banner-desc">Modèle caché (25MB)</span>
+        <span class="nlp-banner-title">Analyse sémantique active</span>
+        <span class="nlp-banner-desc">Les verdicts bénéficient d'un 4e signal de confiance</span>
       </div>
       <button class="nlp-btn nlp-btn--deactivate" @click="handleDeactivate">
         Désactiver
