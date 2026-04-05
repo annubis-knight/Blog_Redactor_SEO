@@ -203,7 +203,7 @@ describe('data.service — getSiloByName', () => {
 describe('data.service — getCocoonsBySilo', () => {
   it('returns cocoons for valid silo name', async () => {
     const cocoons = await getCocoonsBySilo('Création de site')
-    expect(cocoons.length).toBe(3)
+    expect(cocoons.length).toBe(4)
   })
 
   it('returns empty array for non-existent silo', async () => {

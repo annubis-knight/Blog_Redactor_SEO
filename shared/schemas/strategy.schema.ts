@@ -84,6 +84,7 @@ export const strategySuggestRequestSchema = z.object({
 })
 
 export const proposedArticleSchema = z.object({
+  id: z.string().default(''),
   title: z.string(),
   suggestedTitles: z.array(z.string()).default([]),
   type: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
@@ -100,6 +101,13 @@ export const proposedArticleSchema = z.object({
   titleValidated: z.boolean().default(false),
   accepted: z.boolean(),
   createdInDb: z.boolean().default(false),
+  dbSlug: z.string().default(''),
+})
+
+export const suggestedTopicSchema = z.object({
+  id: z.string(),
+  topic: z.string(),
+  checked: z.boolean(),
 })
 
 export const cocoonStrategySchema = z.object({
@@ -110,6 +118,8 @@ export const cocoonStrategySchema = z.object({
   promesse: strategyStepDataSchema,
   cta: strategyStepDataSchema,
   proposedArticles: z.array(proposedArticleSchema),
+  suggestedTopics: z.array(suggestedTopicSchema).default([]),
+  topicsUserContext: z.string().default(''),
   completedSteps: z.number().int().min(0).max(6),
   updatedAt: z.string(),
 })
@@ -120,7 +130,7 @@ const paaQuestionSchema = z.object({
 })
 
 export const cocoonSuggestRequestSchema = z.object({
-  step: z.enum(['cible', 'douleur', 'angle', 'promesse', 'cta', 'articles', 'articles-structure', 'articles-paa-queries', 'articles-spe', 'add-article']),
+  step: z.enum(['cible', 'douleur', 'angle', 'promesse', 'cta', 'articles', 'articles-structure', 'articles-topics', 'articles-paa-queries', 'articles-spe', 'add-article']),
   currentInput: z.string(),
   mergeWith: z.string().optional(),
   existingValidated: z.string().optional(),
@@ -131,6 +141,8 @@ export const cocoonSuggestRequestSchema = z.object({
     existingArticles: z.array(z.string()).optional(),
     themeContext: themeContextSchema.optional(),
     paaContext: z.record(z.string(), z.array(paaQuestionSchema)).optional(),
+    topicSuggestions: z.array(z.string()).optional(),
+    topicUserContext: z.string().optional(),
   }),
 })
 

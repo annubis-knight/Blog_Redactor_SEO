@@ -31,6 +31,7 @@ export interface ArticleKeywords {
   capitaine: string            // 1 main keyword (Title, H1, URL)
   lieutenants: string[]        // 2-5 secondary variants (H2, H3)
   lexique: string[]            // 10-15 LSI terms (body text)
+  rootKeywords?: string[]      // Root variants from Capitaine deconstruction
 }
 
 /** Raw storage format for article-keywords.json */

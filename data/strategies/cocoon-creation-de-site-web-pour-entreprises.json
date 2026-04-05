@@ -1,0 +1,454 @@
+{
+  "cocoonSlug": "creation-de-site-web-pour-entreprises",
+  "cible": {
+    "input": "## Persona cible du cocon Le lecteur idéal est un **dirigeant-fondateur ou gérant de TPE/PME toulousaine**, à la tête d'une équipe d'environ 10 personnes pour un chiffre d'affaires autour de 300 000 €. Il cumule toutes les casquettes — commercial, opérationnel, RH — et n'a ni le temps ni les ressources pour piloter seul sa stratégie digitale. Sa douleur est concrète : il perd des clients face à des concurrents mieux référencés, son bouche-à-oreille s'essouffle, et il sent qu'il manque un vrai levier de croissance digitale sans savoir par où commencer. Ce profil est accessible et décisionnaire, ce qui facilite les échanges directs — il cherche une solution pragmatique, pas une formation théorique. Chaque contenu du cocon doit résonner avec ses signaux de déclenchement réels : *\"mes concurrents apparaissent sur Google et pas moi\"*, *\"je ne sais pas si mon site me rapporte quelque chose\"*, *\"je veux plus de clients ou de patients sans dépendre uniquement du bouche-à-oreille\"*.",
+    "suggestion": null,
+    "validated": "## Persona cible du cocon Le lecteur idéal est un **dirigeant-fondateur ou gérant de TPE/PME toulousaine**, à la tête d'une équipe d'environ 10 personnes pour un chiffre d'affaires autour de 300 000 €. Il cumule toutes les casquettes — commercial, opérationnel, RH — et n'a ni le temps ni les ressources pour piloter seul sa stratégie digitale. Sa douleur est concrète : il perd des clients face à des concurrents mieux référencés, son bouche-à-oreille s'essouffle, et il sent qu'il manque un vrai levier de croissance digitale sans savoir par où commencer. Ce profil est accessible et décisionnaire, ce qui facilite les échanges directs — il cherche une solution pragmatique, pas une formation théorique. Chaque contenu du cocon doit résonner avec ses signaux de déclenchement réels : *\"mes concurrents apparaissent sur Google et pas moi\"*, *\"je ne sais pas si mon site me rapporte quelque chose\"*, *\"je veux plus de clients ou de patients sans dépendre uniquement du bouche-à-oreille\"*."
+  },
+  "douleur": {
+    "input": "La plupart des dirigeants de TPE/PME toulousaines ne réalisent pas vraiment l'étendue du problème — jusqu'au jour où ils tapent une recherche sur Google et voient leur concurrent apparaître en premier, avec un site propre et professionnel, pendant que le leur reste invisible ou donne une mauvaise impression. Ce choc de réalité est court, émotionnel, et souvent suivi d'une phrase simple : *\"lui, il capte mes clients depuis internet — et moi pas.\"* Certains ont pourtant déjà un site web, mais il ne génère rien : pas de prospects, pas de contacts, pas de résultats concrets — juste une présence digitale qui donne bonne conscience sans vraiment travailler pour eux. D'autres sentent le besoin urgent de se développer en ligne sans savoir par où commencer, ni comment structurer un message qui parle vraiment à leurs clients. Dans tous les cas, la douleur est la même : ils passent à côté d'une croissance digitale qui leur est accessible, sans en avoir les clés. ## Moment déclencheur — Douleur principale Il n'existe pas toujours un instant unique et universel, mais le déclencheur le plus puissant reste **la comparaison avec un concurrent** : le dirigeant cherche une entreprise sur Google, voit que son concurrent apparaît en premier avec un site propre et professionnel, et se dit *\"lui, il capte mes clients depuis internet — et moi pas.\"* D'autres situations déclenchantes existent : réaliser que son site ne fonctionne pas comme souhaité, ou sentir le besoin urgent de se développer dans le digital sans savoir par où commencer. Dans tous les cas, c'est un choc de réalité court et émotionnel — pas un raisonnement long — et vos contenus doivent refléter ce moment dès les premières lignes pour créer une reconnaissance immédiate chez le lecteur. — Détails: [Quel est le moment précis où votre client idéal réalise qu'il a un problème — une situation concrète, un événement déclencheur, une phrase qu'il se dit ?] ## Moment déclencheur — Douleur principale Il n'existe pas toujours un instant unique et universel, mais le déclencheur le plus puissant reste **la comparaison avec un concurrent** : le dirigeant cherche une entreprise sur Google, voit que son concurrent apparaît en premier avec un site propre et professionnel, et se dit *\"lui, il capte mes clients depuis internet — et moi pas.\"* D'autres situations déclenchantes existent : réaliser que son site ne fonctionne pas comme souhaité, ou sentir le besoin urgent de se développer dans le digital sans savoir par où commencer. Dans tous les cas, c'est un choc de réalité court et émotionnel — pas un raisonnement long — et vos contenus doivent refléter ce moment dès les premières lignes pour créer une reconnaissance immédiate chez le lecteur.",
+    "suggestion": null,
+    "validated": "La plupart des dirigeants de TPE/PME toulousaines ne réalisent pas vraiment l'étendue du problème — jusqu'au jour où ils tapent une recherche sur Google et voient leur concurrent apparaître en premier, avec un site propre et professionnel, pendant que le leur reste invisible ou donne une mauvaise impression. Ce choc de réalité est court, émotionnel, et souvent suivi d'une phrase simple : *\"lui, il capte mes clients depuis internet — et moi pas.\"* Certains ont pourtant déjà un site web, mais il ne génère rien : pas de prospects, pas de contacts, pas de résultats concrets — juste une présence digitale qui donne bonne conscience sans vraiment travailler pour eux. D'autres sentent le besoin urgent de se développer en ligne sans savoir par où commencer, ni comment structurer un message qui parle vraiment à leurs clients. Dans tous les cas, la douleur est la même : ils passent à côté d'une croissance digitale qui leur est accessible, sans en avoir les clés. ## Moment déclencheur — Douleur principale Il n'existe pas toujours un instant unique et universel, mais le déclencheur le plus puissant reste **la comparaison avec un concurrent** : le dirigeant cherche une entreprise sur Google, voit que son concurrent apparaît en premier avec un site propre et professionnel, et se dit *\"lui, il capte mes clients depuis internet — et moi pas.\"* D'autres situations déclenchantes existent : réaliser que son site ne fonctionne pas comme souhaité, ou sentir le besoin urgent de se développer dans le digital sans savoir par où commencer. Dans tous les cas, c'est un choc de réalité court et émotionnel — pas un raisonnement long — et vos contenus doivent refléter ce moment dès les premières lignes pour créer une reconnaissance immédiate chez le lecteur. — Détails: [Quel est le moment précis où votre client idéal réalise qu'il a un problème — une situation concrète, un événement déclencheur, une phrase qu'il se dit ?] ## Moment déclencheur — Douleur principale Il n'existe pas toujours un instant unique et universel, mais le déclencheur le plus puissant reste **la comparaison avec un concurrent** : le dirigeant cherche une entreprise sur Google, voit que son concurrent apparaît en premier avec un site propre et professionnel, et se dit *\"lui, il capte mes clients depuis internet — et moi pas.\"* D'autres situations déclenchantes existent : réaliser que son site ne fonctionne pas comme souhaité, ou sentir le besoin urgent de se développer dans le digital sans savoir par où commencer. Dans tous les cas, c'est un choc de réalité court et émotionnel — pas un raisonnement long — et vos contenus doivent refléter ce moment dès les premières lignes pour créer une reconnaissance immédiate chez le lecteur."
+  },
+  "angle": {
+    "input": "Moi mon angle différenciant c'est que je ne veux pas du tout faire de template ou uniquement du site web, je veux vraiment faire des sites web sur mesure, c'est à dire que d'abord on va parler de la stratégie de l'entreprise que je veux aider, ensuite on va créer la structure du message qui sera dédié à leur marché cible et ensuite quand on aura la structure du message alors ça me donnera une input très forte pour créer la structure visuelle du site web, c'est vraiment une démarche qui a but d'optimisation de conversion et de site web sur mesure qui à la fois va mieux convertir, mieux aussi dégager une image de marque totalement cohérente avec le positionnement désiré par mon client à moi, en tout cas par l'entreprise que je vais démarcher.",
+    "suggestion": "## Angle de différenciation suggéré\n\n**\"Le site web qui naît de votre stratégie, pas d'un template\"**\n\nTon angle fort, c'est que tu ne crées pas un site web — tu construis un outil de conversion qui émerge d'un travail en profondeur sur la stratégie et le message, ce qui le rend structurellement différent d'un site \"catalogue\" livré en quelques clics. Pour les dirigeants de TPE/PME toulousaines, cela se traduit par un bénéfice concret et rare : un site qui leur *ressemble vraiment* et qui *travaille pour eux*, parce qu'il a été pensé de l'intérieur vers l'extérieur — de la stratégie au pixel — et non l'inverse. Dans ce cocon, chaque contenu devrait marteler cette logique en 3 temps (**Stratégie → Message → Site**) comme une signature de méthode reconnaissable, face aux agences qui livrent un design avant même d'avoir compris le positionnement du client.",
+    "validated": "## Angle de différenciation\n\nMon approche se distingue radicalement des agences et freelances qui livrent un site à partir d'un template : je ne crée jamais un site web sans avoir d'abord travaillé la **stratégie de l'entreprise** et construit la **structure de message** adaptée à son marché cible. C'est seulement quand ces deux fondations sont solides que je passe à la conception visuelle — ce qui garantit un site cohérent de l'intérieur vers l'extérieur, du positionnement jusqu'au pixel. Cette logique en 3 temps **Stratégie → Message → Site** produit un résultat que les templates ne peuvent pas offrir : un outil de conversion qui reflète vraiment l'identité de l'entreprise et qui parle directement à ses clients. Pour les dirigeants de TPE/PME toulousaines, le bénéfice est concret et mesurable — un site qui leur ressemble, qui se différencie en ligne, et qui travaille activement à leur croissance digitale plutôt que de simplement \"exister\"."
+  },
+  "promesse": {
+    "input": "concrètement, l'entreprise que je vais aider aura comme livrable un site web qui sera vraiment sur mesure optimisé pour la conversion, pour faire passer leurs messages à leur marché cible. Ce sera un site web qui inspirera confiance, qui montre leurs expertises et qui sera vraiment totalement fonctionnel et très moderne, car je compte mettre en œuvre des outils qui vont permettre de faire du tracking de comportement, ou en tout cas des analytics qui leur permettront d'analyser leur site web, leur toute conversion et je pourrais moi par la suite reprendre certaines missions courtes pour se recréer des pages secondaires ou terraciaires ou venir faire la maintenance au niveau des analytics du site web des outils etc. Il faut bien comprendre que ce livrable vient en même temps que le package avec la stratégie de conversion plus la structure du message, autrement dire le copyrighting que je vais travailler avant de travailler le site web. C'est une promesse de qualité avec également une promesse de disponibilité de temps, car je suis solo preneur et je serai entièrement dévoué à mon client, à l'entreprise que je vais démarcher.",
+    "suggestion": "## Promesse du cocon — Suggestion\n\nLa transformation à promettre au lecteur est la suivante : **passer d'un site vitrine qui \"existe sans travailler\" à un site sur mesure qui convertit activement des visiteurs en prospects**, parce qu'il a été conçu dans l'ordre — stratégie, message, puis design — avec un outil d'analyse intégré qui permet de mesurer les résultats en temps réel.\n\nFormulée en une phrase lecteur : *\"À l'issue de ce cocon, vous comprendrez exactement pourquoi votre site actuel ne convertit pas — et ce que produit concrètement un site construit sur des fondations solides, par un seul interlocuteur entièrement dédié à votre réussite.\"*\n\nL'angle de différenciation à ancrer tout au long du cocon est celui-ci : **la qualité du livrable n'est pas le fruit du design seul, mais d'un processus en 3 temps maîtrisé par une seule personne** — ce qui élimine les pertes d'information, les délais d'agence et les sites livrés sans stratégie derrière.",
+    "validated": "## Promesse du cocon\n\nLa transformation promise au lecteur est claire : **passer d'un site qui existe sans travailler à un outil de conversion sur mesure**, conçu dans l'ordre — stratégie, message, puis design — et livré par un seul interlocuteur entièrement dédié à leur réussite.\n\nConcrètement, le dirigeant qui parcourt ce cocon comprendra pourquoi son site actuel ne génère aucun prospect — et ce que produit un site construit différemment : une plateforme moderne, inspirant confiance, qui reflète leur expertise, intègre des analytics de comportement dès le départ, et permet de mesurer les résultats en temps réel.\n\nCe livrable ne se résume pas à un site web : il arrive en package avec la stratégie de conversion et la structure du message travaillées en amont, ce qui garantit une cohérence totale de l'intérieur vers l'extérieur — du positionnement jusqu'au pixel.\n\nEt parce que je travaille en solo, chaque client bénéficie d'une disponibilité et d'une implication que ni une agence ni un freelance multi-clients ne peuvent offrir — avec la possibilité de prolonger la relation sur des missions courtes de maintenance, d'optimisation ou de création de pages complémentaires."
+  },
+  "cta": {
+    "input": "à vrai dire pour l'instant mon site web ne me sert pas trop même si j'ai un formulaire de devis qui est censé être actif je pense que je préférerai recevoir des appels téléphoniques directement sur mon numéro de téléphone donc je sais pas ce qu'il faudrait mettre en place mais peut-être déjà commencer par avoir un cta qui insinue un appel téléphonique direct avec moi, et sinon bien tu vas diriger sur la page de formulaire avec un joli bouton d'action",
+    "suggestion": "## Suggestion CTA pour le cocon\n\nLe CTA principal de ce cocon doit guider le lecteur vers une **prise de contact directe et sans friction** : **\"Discutons de votre projet\"**, renvoyant vers une page de contact ou un formulaire court, idéalement enrichi d'une promesse de réponse rapide et personnalisée (ex. : *\"Je vous réponds sous 24h\"*). Ce CTA doit apparaître à la fin de chaque article du cocon, mais aussi en cours de lecture dès que la douleur est activée — notamment après les passages qui décrivent le problème du site inefficace ou la comparaison avec un concurrent. Pour maximiser la conversion, formulez-le en bénéfice concret plutôt qu'en action neutre : **\"Voyons ensemble comment propulser votre croissance digitale\"** résonne bien mieux qu'un simple \"Contactez-moi\" pour un dirigeant toulousain qui cherche des résultats, pas une prestation.",
+    "validated": "## CTA principal du cocon\n\nLe CTA prioritaire de ce cocon est un **appel téléphonique direct**, formulé de façon à lever toute friction : **\"Appelez-moi directement\"** ou **\"On en parle maintenant ?\"**, accompagné de votre numéro visible et cliquable (tel: link) pour une expérience mobile fluide. Ce CTA doit apparaître dès que la douleur est activée dans la lecture — notamment après les passages sur le site inefficace ou la comparaison avec un concurrent — et se répéter en fin d'article. En complément, un **bouton secondaire** renvoyant vers votre formulaire de devis existant offre une alternative pour les lecteurs moins à l'aise avec le téléphone, formulé en bénéfice concret : **\"Décrivez-moi votre projet\"** plutôt qu'un simple \"Contactez-moi\". La hiérarchie est claire : l'appel en premier, le formulaire en filet de sécurité — ce qui correspond parfaitement à votre posture d'interlocuteur unique, direct et disponible."
+  },
+  "proposedArticles": [
+    {
+      "title": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
+      "suggestedTitles": [
+        "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir"
+      ],
+      "type": "Pilier",
+      "parentTitle": null,
+      "rationale": "Article fondateur du silo qui couvre l'ensemble du sujet création de site web pour entreprises toulousaines, avec ancrage local fort et promesse de conversion. Il sert de hub vers tous les Intermédiaires et pose la logique Stratégie → Message → Site.",
+      "painPoint": "Mon site web existe mais ne génère aucun prospect — je ne sais pas si c'est le design, le contenu ou la stratégie qui cloche, et je ne sais pas par où commencer pour changer ça.",
+      "suggestedKeyword": "creation site web entreprises Toulouse",
+      "suggestedKeywords": [
+        "creation site web entreprises Toulouse"
+      ],
+      "suggestedSlug": "creation-site-web-entreprises-toulouse",
+      "suggestedSlugs": [
+        "creation-site-web-entreprises-toulouse"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "2f5ea8fd-539a-4e34-8bba-b530df011ae2",
+      "dbSlug": "creation-de-site-web-sur-mesure-a-toulouse-le-guide-complet-pour-les-entreprises-qui-veulent-vraiment-convertir"
+    },
+    {
+      "title": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
+      "suggestedTitles": [
+        "Design UX et conversion : comment transformer votre site en machine à générer des clients"
+      ],
+      "type": "Intermédiaire",
+      "parentTitle": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
+      "rationale": "Approfondit la dimension UX et conversion du Pilier — la facette design et expérience utilisateur qui conditionne directement les résultats. Se prête à des Spécialisés sur l'architecture de page, les CTA, la hiérarchie visuelle.",
+      "painPoint": "Mon site est visuellement correct mais les visiteurs ne font rien — pas de formulaire rempli, pas d'appel, pas de résultat. Je ne comprends pas pourquoi.",
+      "suggestedKeyword": "design UX site conversion professionnels",
+      "suggestedKeywords": [
+        "design UX site conversion professionnels"
+      ],
+      "suggestedSlug": "design-ux-site-conversion-professionnels",
+      "suggestedSlugs": [
+        "design-ux-site-conversion-professionnels"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "7d706110-7ade-40ef-88c6-78f26dcc42ee",
+      "dbSlug": "design-ux-et-conversion-comment-transformer-votre-site-en-machine-a-generer-des-clients"
+    },
+    {
+      "title": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
+      "suggestedTitles": [
+        "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité"
+      ],
+      "type": "Intermédiaire",
+      "parentTitle": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
+      "rationale": "Traite la facette technique et structurelle du Pilier — l'ossature logique d'un site avant même le design. Se prête à des Spécialisés sur les pages essentielles, le maillage interne, et la refonte de site existant.",
+      "painPoint": "Je veux créer ou refondre mon site mais je ne sais pas comment l'organiser — quelles pages créer, dans quel ordre, et comment guider mes visiteurs vers la prise de contact.",
+      "suggestedKeyword": "structure architecture site efficace",
+      "suggestedKeywords": [
+        "structure architecture site efficace"
+      ],
+      "suggestedSlug": "structure-architecture-site-efficace",
+      "suggestedSlugs": [
+        "structure-architecture-site-efficace"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "bf46cf62-bd6a-4f2a-8b4b-90717f4f2893",
+      "dbSlug": "architecture-et-structure-de-site-web-les-fondations-d-un-site-qui-travaille-pour-votre-activite"
+    },
+    {
+      "title": "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats",
+      "suggestedTitles": [
+        "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats"
+      ],
+      "type": "Intermédiaire",
+      "parentTitle": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
+      "rationale": "Couvre la facette analytics et pilotage du Pilier — souvent ignorée par les dirigeants de petites structures. Se prête à des Spécialisés sur la mise en place des analytics, l'interprétation des données, et la maintenance évolutive du site.",
+      "painPoint": "J'ai un site web mais je n'ai aucune idée de ce qu'il m'apporte concrètement — combien de visiteurs, d'où ils viennent, ce qu'ils font, et si mon investissement est rentable.",
+      "suggestedKeyword": "suivi performances mesure resultats site",
+      "suggestedKeywords": [
+        "suivi performances mesure resultats site"
+      ],
+      "suggestedSlug": "suivi-performances-mesure-resultats-site",
+      "suggestedSlugs": [
+        "suivi-performances-mesure-resultats-site"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "581f2afa-e015-4ffb-907b-2226db128e05",
+      "dbSlug": "mesurer-les-performances-de-votre-site-web-analytics-indicateurs-cles-et-pilotage-des-resultats"
+    },
+    {
+      "title": "Vos boutons d'appel à l'action font-ils vraiment cliquer vos visiteurs ?",
+      "suggestedTitles": [
+        "Vos boutons d'appel à l'action font-ils vraiment cliquer vos visiteurs ?",
+        "Pourquoi vos visiteurs ne cliquent pas sur vos boutons de contact — et comment inverser la tendance",
+        "Vos boutons de contact sont visibles, mais personne ne clique — voici pourquoi",
+        "Boutons d'appel à l'action sur votre site : ce qui empêche vos visiteurs de passer à l'étape suivante",
+        "Ce bouton sur votre site devrait ramener des clients — pourquoi reste-t-il sans clics ?",
+        "Vos visiteurs voient le bouton, mais ne cliquent pas : qu'est-ce qui coince vraiment ?",
+        "Ce bouton sur votre site attire-t-il vraiment des clics, ou vos visiteurs passent-ils à côté ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
+      "rationale": "Le CTA est l'élément de conversion le plus direct sur un site. Cet article répond à une douleur très concrète : avoir un site avec des boutons qui n'aboutissent à aucune demande, sans comprendre pourquoi.",
+      "painPoint": "J'ai des boutons de contact sur mon site mais personne ne clique dessus — je ne sais pas si c'est le texte, la couleur ou l'emplacement qui pose problème.",
+      "suggestedKeyword": "boutons appel action site web conversion",
+      "suggestedKeywords": [
+        "boutons appel action site web conversion"
+      ],
+      "suggestedSlug": "boutons-appel-action-site-web-conversion",
+      "suggestedSlugs": [
+        "boutons-appel-action-site-web-conversion"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "4232136e-5e1b-4648-ab8a-859e6526d780",
+      "dbSlug": "vos-boutons-d-appel-a-l-action-font-ils-vraiment-cliquer-vos-visiteurs"
+    },
+    {
+      "title": "Votre site est-il trop lent pour retenir vos visiteurs ?",
+      "suggestedTitles": [
+        "Votre site est-il trop lent pour retenir vos visiteurs ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
+      "rationale": "La vitesse est un facteur UX critique directement lié au taux de rebond et à la conversion. Cet article cible une douleur mesurable et souvent ignorée par les dirigeants non techniques.",
+      "painPoint": "Mon site reçoit des visites mais les gens repartent aussitôt — je soupçonne que le temps de chargement fait fuir mes prospects avant même qu'ils lisent quoi que ce soit.",
+      "suggestedKeyword": "vitesse chargement site web taux rebond",
+      "suggestedKeywords": [
+        "vitesse chargement site web taux rebond"
+      ],
+      "suggestedSlug": "vitesse-chargement-site-web-taux-rebond",
+      "suggestedSlugs": [
+        "vitesse-chargement-site-web-taux-rebond"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "a0dea325-b3db-4d1d-81ae-2a20e4482e14",
+      "dbSlug": "votre-site-est-il-trop-lent-pour-retenir-vos-visiteurs"
+    },
+    {
+      "title": "Votre site donne-t-il une bonne impression sur smartphone à vos prospects ?",
+      "suggestedTitles": [
+        "Votre site donne-t-il une bonne impression sur smartphone à vos prospects ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
+      "rationale": "Avec plus de 60 % du trafic web sur mobile, un site non optimisé perd des prospects en temps réel. Cet article ancre une prise de conscience concrète autour d'un moment de vérité UX décisif.",
+      "painPoint": "Je sais que mes clients consultent mon site depuis leur téléphone, mais je n'ai jamais vraiment vérifié comment il s'affiche — et j'ai peur qu'il fasse mauvaise impression au mauvais moment.",
+      "suggestedKeyword": "design mobile site web entreprise professionnelle",
+      "suggestedKeywords": [
+        "design mobile site web entreprise professionnelle"
+      ],
+      "suggestedSlug": "design-mobile-site-web-entreprise-professionnelle",
+      "suggestedSlugs": [
+        "design-mobile-site-web-entreprise-professionnelle"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "f1cff59c-f887-4e94-9644-2f54f46da117",
+      "dbSlug": "votre-site-donne-t-il-une-bonne-impression-sur-smartphone-a-vos-prospects"
+    },
+    {
+      "title": "Vos visiteurs trouvent-ils facilement ce qu'ils cherchent sur votre site ?",
+      "suggestedTitles": [
+        "Vos visiteurs trouvent-ils facilement ce qu'ils cherchent sur votre site ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
+      "rationale": "Une mauvaise arborescence est l'une des causes invisibles de la perte de prospects. Cet article répond à une question structurelle concrète que tout dirigeant se pose sans forcément avoir les mots pour la formuler.",
+      "painPoint": "Mon site a plusieurs pages mais les gens semblent se perdre ou ne pas trouver mes services — je ne sais pas si c'est l'organisation du menu ou la structure globale qui nuit à l'expérience.",
+      "suggestedKeyword": "navigation site web arborescence pages principales",
+      "suggestedKeywords": [
+        "navigation site web arborescence pages principales"
+      ],
+      "suggestedSlug": "navigation-site-web-arborescence-pages-principales",
+      "suggestedSlugs": [
+        "navigation-site-web-arborescence-pages-principales"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "9472d120-405e-44eb-9273-2ab7220c0224",
+      "dbSlug": "vos-visiteurs-trouvent-ils-facilement-ce-qu-ils-cherchent-sur-votre-site"
+    },
+    {
+      "title": "Vos pages de services convainquent-elles vraiment vos prospects de vous contacter ?",
+      "suggestedTitles": [
+        "Vos pages de services convainquent-elles vraiment vos prospects de vous contacter ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
+      "rationale": "Les pages de services sont le cœur stratégique d'un site orienté conversion. Cet article adresse directement le fossé entre une page informative et une page qui génère des demandes.",
+      "painPoint": "J'ai une page pour chacun de mes services, mais personne ne me contacte depuis le site — je pense que mes textes n'accrochent pas mais je ne sais pas comment les améliorer.",
+      "suggestedKeyword": "page service site web contenu persuasif",
+      "suggestedKeywords": [
+        "page service site web contenu persuasif"
+      ],
+      "suggestedSlug": "page-service-site-web-contenu-persuasif",
+      "suggestedSlugs": [
+        "page-service-site-web-contenu-persuasif"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "b8cd6ec9-cc76-4ac4-806b-1edae5e8231f",
+      "dbSlug": "vos-pages-de-services-convainquent-elles-vraiment-vos-prospects-de-vous-contacter"
+    },
+    {
+      "title": "Comment relier vos pages entre elles pour guider vos visiteurs vers la prise de contact ?",
+      "suggestedTitles": [
+        "Comment relier vos pages entre elles pour guider vos visiteurs vers la prise de contact ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
+      "rationale": "Le maillage interne est un levier méconnu des non-techniciens mais décisif pour orienter le parcours visiteur. Cet article traduit un concept SEO en bénéfice business immédiatement compréhensible.",
+      "painPoint": "Mes visiteurs consultent une page puis disparaissent sans aller plus loin — je ne sais pas comment structurer les liens entre mes pages pour les amener naturellement à me contacter.",
+      "suggestedKeyword": "maillage interne site web pages stratégiques",
+      "suggestedKeywords": [
+        "maillage interne site web pages stratégiques"
+      ],
+      "suggestedSlug": "maillage-interne-site-web-pages-strategiques",
+      "suggestedSlugs": [
+        "maillage-interne-site-web-pages-strategiques"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "7b14969a-b25e-45d1-bb71-147a8ba26b4f",
+      "dbSlug": "comment-relier-vos-pages-entre-elles-pour-guider-vos-visiteurs-vers-la-prise-de-contact"
+    },
+    {
+      "title": "Quels chiffres regarder pour savoir si votre site vous rapporte vraiment des clients ?",
+      "suggestedTitles": [
+        "Quels chiffres regarder pour savoir si votre site vous rapporte vraiment des clients ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats",
+      "rationale": "La majorité des dirigeants ont des outils d'analyse installés mais ne savent pas les lire. Cet article transforme des métriques abstraites en décisions business concrètes.",
+      "painPoint": "J'ai accès à Google Analytics mais je ne sais pas quels chiffres regarder — je vois des courbes mais je ne sais pas si mon site me rapporte des clients ou non.",
+      "suggestedKeyword": "indicateurs site web résultats concrets dirigeant",
+      "suggestedKeywords": [
+        "indicateurs site web résultats concrets dirigeant"
+      ],
+      "suggestedSlug": "indicateurs-site-web-resultats-concrets-dirigeant",
+      "suggestedSlugs": [
+        "indicateurs-site-web-resultats-concrets-dirigeant"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "f88a910b-7bd5-4fa4-b6cf-87c389e8cee9",
+      "dbSlug": "quels-chiffres-regarder-pour-savoir-si-votre-site-vous-rapporte-vraiment-des-clients"
+    },
+    {
+      "title": "Comment savoir d'où viennent vraiment vos demandes de contact reçues via votre site ?",
+      "suggestedTitles": [
+        "Comment savoir d'où viennent vraiment vos demandes de contact reçues via votre site ?"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats",
+      "rationale": "Attribuer une conversion à une source précise est la base du pilotage digital. Cet article répond à une frustration fréquente : avoir des résultats sans pouvoir les expliquer ni les reproduire.",
+      "painPoint": "Je reçois parfois des demandes via mon formulaire de contact, mais je ne sais pas quelle page ou quelle source les a générées — impossible pour moi de savoir ce qui fonctionne vraiment.",
+      "suggestedKeyword": "suivi formulaire contact site web Google Analytics",
+      "suggestedKeywords": [
+        "suivi formulaire contact site web Google Analytics"
+      ],
+      "suggestedSlug": "suivi-formulaire-contact-site-web-google-analytics",
+      "suggestedSlugs": [
+        "suivi-formulaire-contact-site-web-google-analytics"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "513848f7-660b-4897-a890-af322edcfb2f",
+      "dbSlug": "comment-savoir-d-ou-viennent-vraiment-vos-demandes-de-contact-recues-via-votre-site"
+    },
+    {
+      "title": "Design émotionnel : comment les détails de votre site influencent inconsciemment vos visiteurs",
+      "suggestedTitles": [
+        "Design émotionnel : comment les détails de votre site influencent inconsciemment vos visiteurs"
+      ],
+      "type": "Spécialisé",
+      "parentTitle": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
+      "rationale": "L'Intermédiaire 'Design UX et conversion' couvre déjà les CTA, la vitesse et le mobile — mais aucun article n'aborde la dimension psychologique et émotionnelle du design : comment les couleurs, les typographies, les espaces, les micro-animations ou les hiérarchies visuelles activent des biais cognitifs et des réponses émotionnelles qui conditionnent la confiance et la décision de contact. C'est un angle différenciant fort pour Propulsite, cohérent avec la promesse 'stratégie → message → site' et totalement absent du cocon actuel.",
+      "painPoint": "Le dirigeant ne comprend pas pourquoi des visiteurs quittent son site sans agir, alors qu'il pense que le contenu est bon — il ignore que des micro-détails visuels et UX déclenchent des réactions émotionnelles inconscientes qui font fuir ou retenir un prospect bien avant qu'il ait lu quoi que ce soit.",
+      "suggestedKeyword": "design émotionnel site web influence visiteur",
+      "suggestedKeywords": [
+        "design émotionnel site web influence visiteur"
+      ],
+      "suggestedSlug": "design-emotionnel-site-web-influence-visiteur",
+      "suggestedSlugs": [
+        "design-emotionnel-site-web-influence-visiteur"
+      ],
+      "validatedSearchQuery": null,
+      "keywordValidated": false,
+      "searchQueryValidated": false,
+      "titleValidated": false,
+      "accepted": true,
+      "createdInDb": true,
+      "id": "678ea21a-ed3e-441c-b89d-aa418472f124",
+      "dbSlug": "design-emotionnel-comment-les-details-de-votre-site-influencent-inconsciemment-vos-visiteurs"
+    }
+  ],
+  "suggestedTopics": [
+    {
+      "id": "mnkcxqa10ay6e",
+      "topic": "Création de site web sur mesure pour PME",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa128jua",
+      "topic": "Différence entre site sur mesure et template",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa1sj4f0",
+      "topic": "Processus de conception d'un site web professionnel",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa1do6p3",
+      "topic": "Design UX orienté conversion pour TPE",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa1leqrm",
+      "topic": "Structure et architecture d'un site web efficace",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa132wl6",
+      "topic": "Choix technologique pour la création de site",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa185sdo",
+      "topic": "Site web responsive et optimisation mobile",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa1m22ot",
+      "topic": "Intégration des analytics et mesure des performances",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa13x2gq",
+      "topic": "Maintenance et évolution d'un site web après livraison",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa1p7z8v",
+      "topic": "Coût et budget d'un site web sur mesure",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa2yakd4",
+      "topic": "Délais et étapes d'un projet de création de site",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa2u9l9y",
+      "topic": "Site web vitrine versus site web de conversion",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa22ebzr",
+      "topic": "Refonte de site web existant pour PME",
+      "checked": true
+    },
+    {
+      "id": "mnkcxqa2aypvt",
+      "topic": "Référencement naturel intégré dès la conception",
+      "checked": false
+    },
+    {
+      "id": "mnkcxqa236nzs",
+      "topic": "Sécurité et hébergement d'un site web professionnel",
+      "checked": false
+    }
+  ],
+  "topicsUserContext": "",
+  "completedSteps": 5,
+  "updatedAt": "2026-04-04T20:59:45.657Z"
+}

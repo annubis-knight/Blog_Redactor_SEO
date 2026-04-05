@@ -24,6 +24,7 @@ import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
+import { provideRecapRadioGroup } from '@/composables/useRecapRadioGroup'
 
 // Phase ① Générer
 import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
@@ -50,18 +51,36 @@ const { clearResults, loadCachedResults } = useArticleResults({
 })
 const basketStore = useMoteurBasketStore()
 
+provideRecapRadioGroup()
+
 const selectedArticle = ref<SelectedArticle | null>(null)
+
+// --- Cannibalization detection ---
+const capitainesMap = ref<Record<string, string>>({})
+
+function refreshCapitainesMap() {
+  if (!cocoonName.value) return
+  apiGet<Record<string, string>>(`/cocoons/${encodeURIComponent(cocoonName.value)}/capitaines`)
+    .then(data => { capitainesMap.value = data })
+    .catch(err => { log.warn('[MoteurView] refreshCapitainesMap failed', { error: err }) })
+}
 
 function emitCheckCompleted(check: string) {
   const slug = selectedArticle.value?.slug
   if (!slug) return
-  articleProgressStore.addCheck(slug, check)
+  articleProgressStore.addCheck(slug, check).catch(err =>
+    log.warn('[MoteurView] addCheck failed', { slug, check, error: err }),
+  )
+  if (check === 'capitaine_locked') refreshCapitainesMap()
 }
 
 function handleCheckRemoved(check: string) {
   const slug = selectedArticle.value?.slug
   if (!slug) return
-  articleProgressStore.removeCheck(slug, check)
+  articleProgressStore.removeCheck(slug, check).catch(err =>
+    log.warn('[MoteurView] removeCheck failed', { slug, check, error: err }),
+  )
+  if (check === 'capitaine_locked') refreshCapitainesMap()
 }
 
 const cocoonId = computed(() => Number(route.params.cocoonId))
@@ -118,10 +137,10 @@ const isDiscoveryAllowed = computed(() => {
 // --- Phase navigation ---
 const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique'] as const
 type Tab = typeof TAB_IDS[number]
-const activeTab = ref<Tab>('discovery')
+const activeTab = ref<Tab>('capitaine')
 
 // Track which tabs have been visited — v-if creates them lazily, v-show keeps them alive
-const visitedTabs = ref<Record<string, boolean>>({ discovery: true })
+const visitedTabs = ref<Record<string, boolean>>({ capitaine: true })
 watch(activeTab, (tab) => { visitedTabs.value[tab] = true })
 
 const phases = computed<Phase[]>(() => [
@@ -211,6 +230,17 @@ const showTransitionBanner = computed(() =>
   transitionBanner.value !== null && !bannerDismissed.value,
 )
 
+function computeSmartTab(slug: string): Tab {
+  const progress = articleProgressStore.getProgress(slug)
+  const checks = progress?.completedChecks ?? []
+  if (checks.length === 0) return 'capitaine'
+  // All Phase 2 checks done → back to capitaine (review from start)
+  if (checks.includes('capitaine_locked') && checks.includes('lieutenants_locked') && checks.includes('lexique_validated')) return 'capitaine'
+  if (checks.includes('lieutenants_locked')) return 'lexique'
+  if (checks.includes('capitaine_locked')) return 'lieutenants'
+  return 'capitaine'
+}
+
 function handleSelectArticle(article: SelectedArticle | null) {
   log.debug('[MoteurView] Article toggled', {
     slug: article?.slug ?? '(none)',
@@ -220,8 +250,10 @@ function handleSelectArticle(article: SelectedArticle | null) {
   })
   selectedArticle.value = article
 
-  // Reset visited tabs so components are re-created for the new article context
-  visitedTabs.value = { [activeTab.value]: true }
+  // Navigate to the smart tab (components handle article change via their slug watchers)
+  const smartTab = article ? computeSmartTab(article.slug) : 'capitaine'
+  activeTab.value = smartTab
+  visitedTabs.value[smartTab] = true
 
   // Sync basket with article
   basketStore.setArticle(article?.slug ?? null)
@@ -230,7 +262,9 @@ function handleSelectArticle(article: SelectedArticle | null) {
   selectedLieutenantsLocal.value = []
   discoveryRadarKeywords.value = []
   radarScanResult.value = null
+  radarCacheStatus.value = null
   radarCardsForCaptain.value = []
+  captainRootKeywords.value = []
 
   // Clear previous analysis results then reload cached ones for the new article
   clearResults()
@@ -354,6 +388,14 @@ const suggestedKeywordsForArticle = computed(() => {
   return proposed?.suggestedKeywords ?? []
 })
 
+const captainRootKeywords = ref<string[]>([])
+
+const effectiveRootKeywords = computed(() =>
+  captainRootKeywords.value.length > 0
+    ? captainRootKeywords.value
+    : articleKeywordsStore.keywords?.rootKeywords ?? [],
+)
+
 const selectedLieutenantsLocal = ref<string[]>([])
 
 const selectedLieutenantsForLexique = computed(() =>
@@ -364,6 +406,13 @@ const selectedLieutenantsForLexique = computed(() =>
 
 function handleLieutenantsUpdated(selected: string[]) {
   selectedLieutenantsLocal.value = selected
+}
+
+function handleSendToLieutenants(payload: { keyword: string; rootKeywords: string[] }) {
+  log.info('[MoteurView] Send to Lieutenants', payload)
+  captainRootKeywords.value = payload.rootKeywords
+  activeTab.value = 'lieutenants'
+  visitedTabs.value.lieutenants = true
 }
 
 // --- Tab cache entries for unified cache panel ---
@@ -393,22 +442,28 @@ const tabCacheEntries = computed(() => [
   {
     tabId: 'capitaine',
     tabLabel: 'Capitaine',
-    hasCachedData: false,
-    summary: undefined,
+    hasCachedData: isCaptaineLocked.value,
+    summary: isCaptaineLocked.value
+      ? `${captainKeyword.value ?? 'verrouillé'}`
+      : undefined,
     isCurrentTab: activeTab.value === 'capitaine',
   },
   {
     tabId: 'lieutenants',
     tabLabel: 'Lieutenants',
-    hasCachedData: false,
-    summary: undefined,
+    hasCachedData: isLieutenantsLocked.value,
+    summary: isLieutenantsLocked.value
+      ? `${articleKeywordsStore.keywords?.lieutenants?.length ?? 0} lieutenants`
+      : undefined,
     isCurrentTab: activeTab.value === 'lieutenants',
   },
   {
     tabId: 'lexique',
     tabLabel: 'Lexique',
-    hasCachedData: false,
-    summary: undefined,
+    hasCachedData: isLexiqueValidated.value,
+    summary: isLexiqueValidated.value
+      ? `${articleKeywordsStore.keywords?.lexique?.length ?? 0} termes`
+      : undefined,
     isCurrentTab: activeTab.value === 'lexique',
   },
 ])
@@ -425,6 +480,7 @@ async function loadData() {
     if (cocoonSlug.value) {
       strategyStore.fetchStrategy(cocoonSlug.value)
     }
+    refreshCapitainesMap()
   }
 
   strategyStore.fetchContext(cocoonId.value)
@@ -465,6 +521,7 @@ onMounted(() => {
         :proposed-articles="proposedArticles"
         :published-articles="publishedArticles"
         :selected-slug="selectedArticle?.slug ?? null"
+        :capitaines-map="capitainesMap"
         @select="handleSelectArticle"
       />
 
@@ -577,6 +634,7 @@ onMounted(() => {
             :radar-cards="radarCardsForCaptain"
             @check-completed="emitCheckCompleted"
             @check-removed="handleCheckRemoved"
+            @send-to-lieutenants="handleSendToLieutenants"
           />
         </div>
 
@@ -589,6 +647,7 @@ onMounted(() => {
             :article-level="articleLevelForLieutenants"
             :isCaptaineLocked="isCaptaineLocked"
             :word-groups="discoveryWordGroups"
+            :root-keywords="effectiveRootKeywords"
             :initial-locked="isLieutenantsLocked"
             :cocoon-slug="cocoonSlug"
             @check-completed="emitCheckCompleted"

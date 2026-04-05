@@ -13,16 +13,17 @@ import {
   getVerdict,
   fetchAutocompleteMergedGrouped,
   normalize,
+  computePaaWeightedScore,
 } from './intent-scan.service.js'
 import { readPaaCache, writePaaCache } from './paa-cache.service.js'
 import { computeSemanticScores } from './embedding.service.js'
+import { computeCombinedScore } from '../../shared/scoring.js'
 import type {
   KeywordRadarGenerateResult,
   RadarKeyword,
   RadarCard,
   RadarPaaItem,
   RadarKeywordKpis,
-  RadarCombinedScoreBreakdown,
   RadarIntentType,
   RadarMatchQuality,
   KeywordRadarScanResult,
@@ -177,66 +178,6 @@ function mapIntentTypes(raw: string): RadarIntentType[] {
   return types
 }
 
-function computeCombinedScore(
-  kpis: RadarKeywordKpis,
-  paaItems: RadarPaaItem[],
-): RadarCombinedScoreBreakdown {
-  // 1. PAA Match Score (30%) — weighted by match quality
-  //    exact total=15, stem total=10, semantic total=8
-  //    exact partial=7, stem partial=5, semantic partial=3
-  let paaMatchRaw = 0
-  for (const p of paaItems) {
-    if (p.match === 'none') continue
-    const q = p.matchQuality ?? 'stem'
-    if (p.match === 'total') {
-      paaMatchRaw += q === 'exact' ? 15 : q === 'stem' ? 10 : 8
-    } else {
-      paaMatchRaw += q === 'exact' ? 7 : q === 'stem' ? 5 : 3
-    }
-  }
-  const paaMatchScore = Math.min(100, paaMatchRaw)
-
-  // 2. Resonance Bonus (15%) — autocomplete matches×10 cap 30, + avg semantic×70
-  const autoBonus = Math.min(30, kpis.autocompleteMatchCount * 10)
-  const semanticBonus = kpis.avgSemanticScore != null ? kpis.avgSemanticScore * 70 : 0
-  const resonanceBonus = Math.min(100, autoBonus + semanticBonus)
-
-  // 3. Opportunity Score (25%) — log10(volume × (1 - KD/100)) normalized
-  const adjustedVol = Math.max(1, kpis.searchVolume * Math.max(0.01, 1 - kpis.difficulty / 100))
-  const opportunityScore = Math.min(100, Math.log10(adjustedVol) / 5 * 100)
-
-  // 4. Intent Value Score (15%) — best intent from array
-  const intentValues: Record<string, number> = {
-    commercial: 100,
-    transactional: 80,
-    informational: 50,
-    navigational: 20,
-  }
-  const intentValueScore = kpis.intentTypes.length > 0
-    ? Math.max(...kpis.intentTypes.map(t => intentValues[t] ?? 50))
-    : 50
-
-  // 5. CPC Score (15%) — log10(cpc+1) normalized, cap at CPC=10
-  const cpcScore = Math.min(100, Math.log10(kpis.cpc + 1) / Math.log10(11) * 100)
-
-  const total = Math.round(
-    paaMatchScore * 0.30 +
-    resonanceBonus * 0.15 +
-    opportunityScore * 0.25 +
-    intentValueScore * 0.15 +
-    cpcScore * 0.15,
-  )
-
-  return {
-    paaMatchScore: Math.round(paaMatchScore),
-    resonanceBonus: Math.round(resonanceBonus),
-    opportunityScore: Math.round(opportunityScore),
-    intentValueScore: Math.round(intentValueScore),
-    cpcScore: Math.round(cpcScore),
-    total: Math.min(100, Math.max(0, total)),
-  }
-}
-
 export async function scanRadarKeywords(
   broadKeyword: string,
   specificTopic: string,
@@ -370,11 +311,12 @@ export async function scanRadarKeywords(
       intentProbability: intentData?.intentProbability ?? null,
       autocompleteMatchCount: autoMatchCount,
       paaMatchCount: paaItems.filter(p => p.match !== 'none').length,
+      paaWeightedScore: Math.round(computePaaWeightedScore(paaItems) * 100) / 100,
       paaTotal: paaItems.length,
       avgSemanticScore,
     }
 
-    const scoreBreakdown = computeCombinedScore(kpis, paaItems)
+    const scoreBreakdown = computeCombinedScore(kpis)
     log.debug(`[Radar] Card "${kw.keyword}": score=${scoreBreakdown.total}, PAA=${kpis.paaMatchCount}/${kpis.paaTotal}, vol=${kpis.searchVolume}, intent=${kpis.intentTypes.join(',') || 'unknown'}`)
 
     cards.push({

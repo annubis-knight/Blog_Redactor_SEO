@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import type { ThemeContext } from '@shared/types/index.js'
+import RecapToggle from '@/components/shared/RecapToggle.vue'
 
 const props = defineProps<{
   themeName?: string
@@ -14,9 +15,6 @@ const props = defineProps<{
   cocoonStrategy?: Record<string, string>
   themeConfig?: ThemeContext['themeConfig']
 }>()
-
-const isContextOpen = ref(false)
-const isArticlesOpen = ref(false)
 
 const STEP_LABELS: Record<string, string> = {
   cible: 'Cible',
@@ -59,23 +57,7 @@ const articlesByType = computed(() => {
 <template>
   <div class="context-recap-group">
     <!-- Panel 1: Contexte stratégique -->
-    <div class="context-recap">
-      <button class="recap-toggle" :aria-expanded="isContextOpen" @click="isContextOpen = !isContextOpen">
-        <svg
-          class="recap-chevron"
-          :class="{ open: isContextOpen }"
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <span class="recap-toggle-label">Contexte envoy&eacute; &agrave; Claude</span>
-      </button>
-
-      <div class="recap-body" :class="{ collapsed: !isContextOpen }">
+    <RecapToggle panel-id="context-claude" label="Contexte envoyé à Claude">
         <!-- Theme -->
         <div v-if="themeName" class="recap-section">
           <span class="recap-key">Th&egrave;me</span>
@@ -186,27 +168,10 @@ const articlesByType = computed(() => {
             <span class="recap-val-sm">{{ answer }}</span>
           </div>
         </div>
-      </div>
-    </div>
+    </RecapToggle>
 
     <!-- Panel 2: Articles du cocon -->
-    <div v-if="cocoonArticles?.length" class="context-recap">
-      <button class="recap-toggle" :aria-expanded="isArticlesOpen" @click="isArticlesOpen = !isArticlesOpen">
-        <svg
-          class="recap-chevron"
-          :class="{ open: isArticlesOpen }"
-          width="12"
-          height="12"
-          viewBox="0 0 16 16"
-          fill="none"
-          aria-hidden="true"
-        >
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-        </svg>
-        <span class="recap-toggle-label">Articles du cocon ({{ cocoonArticles.length }})</span>
-      </button>
-
-      <div class="recap-body" :class="{ collapsed: !isArticlesOpen }">
+    <RecapToggle v-if="cocoonArticles?.length" panel-id="articles-cocon" :label="`Articles du cocon (${cocoonArticles.length})`">
         <div v-for="group in articlesByType" :key="group.type" class="tree-group">
           <div class="tree-type">
             <span class="tree-type-badge" :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
@@ -221,8 +186,7 @@ const articlesByType = computed(() => {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+    </RecapToggle>
   </div>
 </template>
 
@@ -231,63 +195,6 @@ const articlesByType = computed(() => {
   display: flex;
   flex-direction: column;
   gap: 0.5rem;
-}
-
-.context-recap {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg-soft);
-  overflow: hidden;
-}
-
-.recap-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-align: left;
-  transition: color 0.15s;
-}
-
-.recap-toggle:hover {
-  color: var(--color-primary);
-}
-
-.recap-chevron {
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-  color: inherit;
-}
-
-.recap-chevron.open {
-  transform: rotate(90deg);
-}
-
-.recap-toggle-label {
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-}
-
-.recap-body {
-  height: auto;
-  overflow: hidden;
-  transition: height 0.25s ease, opacity 0.2s ease;
-  opacity: 1;
-  padding: 0 0.75rem 0.625rem;
-  interpolate-size: allow-keywords;
-}
-
-.recap-body.collapsed {
-  height: 0;
-  opacity: 0;
-  padding-bottom: 0;
 }
 
 .recap-section {

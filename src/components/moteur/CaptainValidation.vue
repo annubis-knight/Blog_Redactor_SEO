@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { marked } from 'marked'
-import { useCapitaineValidation, articleTypeToLevel } from '@/composables/useCapitaineValidation'
+import { useCapitaineValidation, articleTypeToLevel, FRENCH_STOPWORDS } from '@/composables/useCapitaineValidation'
 import { useCompositionCheck } from '@/composables/useCompositionCheck'
 import { useRadarCarousel } from '@/composables/useRadarCarousel'
 import type { CarouselEntry } from '@/composables/useRadarCarousel'
@@ -13,7 +13,7 @@ import VerdictThermometer from '@/components/moteur/VerdictThermometer.vue'
 import RadarKeywordCard from '@/components/intent/RadarKeywordCard.vue'
 import RadarCardLockable from '@/components/intent/RadarCardLockable.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
-import type { SelectedArticle, KpiResult, VerdictLevel, ValidateVerdict, KpiColor, ArticleLevel } from '@shared/types/index.js'
+import type { SelectedArticle, KpiResult, VerdictLevel, ValidateVerdict, ValidateResponse, ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard } from '@shared/types/intent.types.js'
 
 // Configure marked
@@ -36,15 +36,16 @@ const emit = defineEmits<{
   (e: 'validated', keyword: string): void
   (e: 'check-completed', checkName: string): void
   (e: 'check-removed', checkName: string): void
+  (e: 'send-to-lieutenants', payload: { keyword: string; rootKeywords: string[] }): void
 }>()
 
 const articleKeywordsStore = useArticleKeywordsStore()
 
 const {
   result, currentResult, isLoading, error,
-  history, historyIndex, forceGo, rootResult, isLoadingRoot,
+  history, historyIndex, rootResult, isLoadingRoot,
   radarCard, isLoadingRadar,
-  validateKeyword, navigateHistory, toggleForceGo, reset,
+  validateKeyword, navigateHistory, reset,
 } = useCapitaineValidation()
 
 const articleLevel = computed<ArticleLevel>(() => {
@@ -67,14 +68,6 @@ function handleValidate() {
   const kw = keywordInput.value.trim()
   if (!kw) return
   log.info('CaptainValidation — validation', { keyword: kw, level: articleLevel.value })
-
-  // If carousel is active, add a new slide instead of using manual mode
-  if (carousel.isActive.value) {
-    carousel.addEntry(kw, articleLevel.value, props.selectedArticle?.title)
-    return
-  }
-
-  // If no carousel, start one with this keyword
   carousel.addEntry(kw, articleLevel.value, props.selectedArticle?.title)
 }
 
@@ -98,29 +91,37 @@ watch(
 watch(
   () => articleKeywordsStore.keywords?.capitaine,
   (persisted) => {
-    if (persisted && !keywordInput.value) {
-      keywordInput.value = persisted
-      log.debug('CaptainValidation — restauré depuis store', { keyword: persisted })
+    if (!persisted) return
+    keywordInput.value = persisted
+    log.debug('CaptainValidation — restauré depuis store', { keyword: persisted })
+    // If article has a locked capitaine with a different keyword than what's in carousel, re-validate
+    if (isLocked.value) {
+      const currentKw = carousel.currentEntry.value?.card.keyword
+      if (currentKw !== persisted) {
+        carousel.addEntry(persisted, articleLevel.value, props.selectedArticle?.title)
+      }
+      lockedKeyword.value = persisted
     }
   },
   { immediate: true },
 )
 
 // --- Verdict display ---
+function getVerdictLabel(verdict: ValidateVerdict): string {
+  if (verdict.autoNoGo) return 'Aucun signal détecté — ce mot-clé n\'existe pas dans les données.'
+  if (verdict.level === 'GO') return 'Signaux positifs — mot-clé viable.'
+  if (verdict.level === 'ORANGE') return 'Signaux mixtes — à étudier.'
+  return 'KPIs insuffisants pour valider ce mot-clé.'
+}
+
 const effectiveVerdict = computed(() => {
   if (!currentResult.value) return null
-  if (forceGo.value) return 'GO' as VerdictLevel
   return currentResult.value.verdict.level
 })
 
 const verdictLabel = computed(() => {
   if (!currentResult.value) return ''
-  if (forceGo.value) return 'GO forcé par l\'utilisateur'
-  const v = currentResult.value.verdict
-  if (v.autoNoGo) return 'Aucun signal détecté — ce mot-clé n\'existe pas dans les données.'
-  if (v.level === 'GO') return 'Signaux positifs — mot-clé viable.'
-  if (v.level === 'ORANGE') return 'Signaux mixtes — à étudier.'
-  return 'KPIs insuffisants pour valider ce mot-clé.'
+  return getVerdictLabel(currentResult.value.verdict)
 })
 
 // --- KPI display helpers ---
@@ -169,7 +170,7 @@ const THRESHOLDS_TABLE = {
   volume: { pilier: { green: 1000, orange: 200 }, intermediaire: { green: 200, orange: 50 }, specifique: { green: 30, orange: 5 } },
   kd: { pilier: { green: 40, orange: 65 }, intermediaire: { green: 30, orange: 50 }, specifique: { green: 20, orange: 40 } },
   cpc: { pilier: { bonus: 2 }, intermediaire: { bonus: 2 }, specifique: { bonus: 2 } },
-  paa: { pilier: { green: 3, orange: 1 }, intermediaire: { green: 2, orange: 1 }, specifique: { green: 1, orange: 0 } },
+  paa: { pilier: { green: 3.0, orange: 1.0 }, intermediaire: { green: 2.0, orange: 0.5 }, specifique: { green: 1.0, orange: 0.25 } },
   autocomplete: { pilier: { green: 3, orange: 6 }, intermediaire: { green: 4, orange: 7 }, specifique: { green: 5, orange: 8 } },
 }
 
@@ -267,6 +268,37 @@ function handleHistoryClick(index: number) {
 // ===== CAROUSEL (radar cards from Radar tab) =====
 const carousel = useRadarCarousel()
 const lockedKeyword = ref<string | null>(null)
+
+// Auto-validate suggested keyword (or article keyword) when article is selected
+let lastAutoValidatedSlug: string | null = null
+watch(
+  () => props.selectedArticle?.slug,
+  (slug, oldSlug) => {
+    // Reset carousel + AI state when switching to a different article
+    if (oldSlug && slug !== oldSlug) {
+      carousel.reset()
+      lockedKeyword.value = null
+      lastAutoValidatedSlug = null
+      abortAllAiStreams()
+      carouselAiCache.value = new Map()
+      carouselAiErrors.value = new Map()
+    }
+    if (!slug || slug === lastAutoValidatedSlug) return
+    const article = props.selectedArticle
+    if (!article) return
+    const suggestions = props.suggestedKeywords
+    const kw = (suggestions && suggestions.length > 0) ? suggestions[0] : article.keyword
+    if (!kw) return
+    lastAutoValidatedSlug = slug
+    keywordInput.value = kw
+    carousel.addEntry(kw, articleLevel.value, article.title)
+    // Restore locked state if article already has a validated capitaine
+    if (isLocked.value) {
+      lockedKeyword.value = kw
+    }
+  },
+  { immediate: true },
+)
 
 // AI panel — per-keyword independent streams (no shared useStreaming)
 const carouselAiCache = ref(new Map<string, string>())       // keyword → final markdown
@@ -425,12 +457,7 @@ function carouselEffectiveVerdict(entry: CarouselEntry): VerdictLevel | null {
 
 function carouselVerdictLabel(entry: CarouselEntry): string {
   if (!entry.validation) return ''
-  if (entry.forceGo) return 'GO forcé par l\'utilisateur'
-  const v = entry.validation.verdict
-  if (v.autoNoGo) return 'Aucun signal détecté — ce mot-clé n\'existe pas dans les données.'
-  if (v.level === 'GO') return 'Signaux positifs — mot-clé viable.'
-  if (v.level === 'ORANGE') return 'Signaux mixtes — à étudier.'
-  return 'KPIs insuffisants pour valider ce mot-clé.'
+  return getVerdictLabel(entry.validation.verdict)
 }
 
 // Filtered PAA questions (exclude empty entries)
@@ -459,9 +486,19 @@ function lockCarouselEntry() {
   }
   emit('validated', keyword)
   articleKeywordsStore.setCapitaine(keyword)
+  const rootKeys = entry ? Array.from(entry.rootVariants.keys()) : []
+  articleKeywordsStore.setRootKeywords(rootKeys)
   if (props.selectedArticle?.slug) {
     articleKeywordsStore.saveKeywords(props.selectedArticle.slug)
   }
+}
+
+function sendToLieutenants() {
+  if (!lockedKeyword.value) return
+  const entry = carousel.currentEntry.value
+  const rootKeywords = entry ? Array.from(entry.rootVariants.keys()) : []
+  emit('send-to-lieutenants', { keyword: lockedKeyword.value, rootKeywords })
+  log.info('CaptainValidation — Envoyé aux Lieutenants', { keyword: lockedKeyword.value, rootKeywords })
 }
 
 function unlockCarouselEntry() {
@@ -470,6 +507,94 @@ function unlockCarouselEntry() {
   log.info('CaptainValidation — Capitaine déverrouillé (carousel)')
   if (props.mode !== 'libre') {
     emit('check-removed', 'capitaine_locked')
+  }
+}
+
+// --- Interactive keyword words (root variant swap) ---
+const currentWords = computed(() => {
+  const entry = carousel.currentEntry.value
+  if (!entry) return []
+  return entry.originalCard.keyword.trim().split(/\s+/)
+})
+
+const minActiveCount = computed(() => {
+  const words = currentWords.value
+  let count = 0
+  let significant = 0
+  for (const w of words) {
+    count++
+    if (!FRENCH_STOPWORDS.has(w.toLowerCase())) significant++
+    if (significant >= 2) return count
+  }
+  return words.length // fallback: all words are core
+})
+
+const interactiveWordsProps = computed(() => {
+  const entry = carousel.currentEntry.value
+  if (!entry || (entry.rootVariants.size === 0 && !entry.isLoadingRoots)) return undefined
+  return {
+    words: currentWords.value,
+    activeCount: entry.activeWordCount,
+    minActiveCount: minActiveCount.value,
+    loading: entry.isLoadingRoots,
+  }
+})
+
+function handleWordToggle(activeCount: number) {
+  const entry = carousel.currentEntry.value
+  if (!entry) return
+  const idx = carousel.currentIndex.value
+
+  const words = currentWords.value
+  const activeKeyword = words.slice(0, activeCount).join(' ')
+
+  if (activeCount === words.length) {
+    // Reset to original card
+    carousel.entries.value[idx] = {
+      ...entry,
+      card: entry.originalCard,
+      validation: entry.validation,
+      activeWordCount: words.length,
+    }
+    return
+  }
+
+  const variant = entry.rootVariants.get(activeKeyword)
+  if (variant) {
+    carousel.entries.value[idx] = {
+      ...entry,
+      card: variant.card,
+      validation: variant.validation,
+      activeWordCount: activeCount,
+    }
+  } else {
+    log.warn('[CaptainValidation] handleWordToggle — variant not found', { activeKeyword })
+  }
+}
+
+// Computed for root zone dropdown
+const currentRootVariants = computed(() => {
+  const entry = carousel.currentEntry.value
+  if (!entry) return []
+  return Array.from(entry.rootVariants.values())
+})
+
+const activeVariantKeyword = computed(() => {
+  const entry = carousel.currentEntry.value
+  if (!entry) return ''
+  return entry.card.keyword
+})
+
+function switchToVariant(variant: { keyword: string; card: RadarCard; validation: ValidateResponse }) {
+  const entry = carousel.currentEntry.value
+  if (!entry) return
+  const idx = carousel.currentIndex.value
+  const variantWords = variant.keyword.trim().split(/\s+/)
+  carousel.entries.value[idx] = {
+    ...entry,
+    card: variant.card,
+    validation: variant.validation,
+    activeWordCount: variantWords.length,
   }
 }
 
@@ -521,19 +646,6 @@ onUnmounted(() => abortAllAiStreams())
         </button>
       </div>
 
-      <!-- Verdict dots -->
-      <div class="carousel-dots" data-testid="carousel-dots">
-        <button v-for="(entry, idx) in carousel.entries.value" :key="entry.card.keyword" type="button"
-          class="carousel-dot" :class="{
-            active: idx === carousel.currentIndex.value,
-            locked: entry.card.keyword === lockedKeyword,
-          }" :style="{
-            background: entry.validation
-              ? VERDICT_COLORS[carouselEffectiveVerdict(entry) ?? 'ORANGE']
-              : 'var(--color-border, #e2e8f0)',
-          }" :title="entry.card.keyword" @click="carousel.goTo(idx)" />
-      </div>
-
       <!-- Current entry content -->
       <template v-if="carousel.currentEntry.value">
         <!-- Loading -->
@@ -553,20 +665,12 @@ onUnmounted(() => abortAllAiStreams())
           <VerdictThermometer v-if="carouselEffectiveVerdict(carousel.currentEntry.value)"
             :verdict="carouselEffectiveVerdict(carousel.currentEntry.value)!"
             :verdict-label="carouselVerdictLabel(carousel.currentEntry.value)"
-            :kpis="carousel.currentEntry.value.validation.kpis" :forced="carousel.currentEntry.value.forceGo"
-            :from-cache="carousel.currentEntry.value.validation.fromCache">
-            <template #actions>
-              <button v-if="carousel.currentEntry.value.validation.verdict.level !== 'GO'" class="force-go-btn"
-                :class="{ 'force-go-btn--active': carousel.currentEntry.value.forceGo }" data-testid="carousel-force-go"
-                @click="carousel.toggleForceGo()">
-                {{ carousel.currentEntry.value.forceGo ? 'Annuler GO forcé' : 'Forcer GO' }}
-              </button>
-            </template>
-          </VerdictThermometer>
+            :kpis="carousel.currentEntry.value.validation.kpis"
+            :from-cache="carousel.currentEntry.value.validation.fromCache" />
 
           <!-- NO-GO feedback -->
           <div
-            v-if="carousel.currentEntry.value.validation.verdict.level === 'NO-GO' && !carousel.currentEntry.value.forceGo"
+            v-if="carousel.currentEntry.value.validation.verdict.level === 'NO-GO'"
             class="nogo-feedback">
             <p>{{ noGoFeedback(carousel.currentEntry.value.validation.verdict,
               carousel.currentEntry.value.validation.kpis) }}</p>
@@ -585,20 +689,33 @@ onUnmounted(() => abortAllAiStreams())
               </div>
             </div>
             <div class="kpi-root-zone">
-              <template v-if="carousel.currentEntry.value.rootResult">
-                <span class="kpi-root-head">Racine</span>
-                <span class="kpi-root-kw">{{ carousel.currentEntry.value.rootResult.keyword }}</span>
-                <span class="kpi-root-verdict"
-                  :style="{ color: VERDICT_COLORS[carousel.currentEntry.value.rootResult.verdict.level] }">
-                  {{ carousel.currentEntry.value.rootResult.verdict.level }}
-                  <small>{{ carousel.currentEntry.value.rootResult.verdict.greenCount }}/{{
-                    carousel.currentEntry.value.rootResult.verdict.totalKpis }}</small>
-                </span>
+              <template v-if="currentRootVariants.length > 0">
+                <span class="kpi-root-head">Racines</span>
+                <button
+                  v-for="variant in currentRootVariants"
+                  :key="variant.keyword"
+                  class="kpi-root-item"
+                  :class="{ 'kpi-root-item--active': variant.keyword === activeVariantKeyword }"
+                  @click="switchToVariant(variant)"
+                >
+                  <span class="kpi-root-kw">{{ variant.keyword }}</span>
+                  <span class="kpi-root-verdict"
+                    :style="{ color: VERDICT_COLORS[variant.validation.verdict.level] }">
+                    {{ variant.validation.verdict.level }}
+                  </span>
+                </button>
               </template>
-              <template v-else-if="carousel.currentEntry.value.isLoadingRoot">
-                <span class="kpi-root-head">Racine</span>
+              <template v-else-if="carousel.currentEntry.value.isLoadingRoots">
+                <span class="kpi-root-head">Racines</span>
                 <span class="kpi-root-loading" />
               </template>
+              <span
+                v-for="root in carousel.currentEntry.value.failedRoots"
+                :key="'fail-' + root"
+                class="kpi-root-failed"
+              >
+                {{ root }} (échec)
+              </span>
             </div>
           </div>
 
@@ -612,11 +729,14 @@ onUnmounted(() => abortAllAiStreams())
             </ul>
           </CollapsableSection>
 
-          <!-- Radar card with lock toggle -->
+          <!-- Radar card with lock toggle + interactive words -->
           <div class="radar-card-section">
             <RadarCardLockable :card="carousel.currentEntry.value.card"
-              :locked="carousel.currentEntry.value.card.keyword === lockedKeyword" data-testid="carousel-radar-lockable"
-              @update:locked="(val: boolean) => val ? lockCarouselEntry() : unlockCarouselEntry()" />
+              :locked="carousel.currentEntry.value.card.keyword === lockedKeyword"
+              :interactive-words="interactiveWordsProps"
+              data-testid="carousel-radar-lockable"
+              @update:locked="(val: boolean) => val ? lockCarouselEntry() : unlockCarouselEntry()"
+              @word-toggle="handleWordToggle" />
           </div>
 
           <!-- AI Panel (carousel) -->
@@ -650,6 +770,9 @@ onUnmounted(() => abortAllAiStreams())
             </button>
             <div v-else class="locked-state" data-testid="carousel-locked-state">
               <span class="locked-badge">Capitaine verrouillé</span>
+              <button class="send-lieutenant-btn" data-testid="send-to-lieutenants-btn" @click="sendToLieutenants">
+                Envoyer aux Lieutenants &rarr;
+              </button>
               <button class="unlock-btn" data-testid="carousel-unlock-btn" @click="unlockCarouselEntry">
                 Déverrouiller
               </button>
@@ -723,17 +846,10 @@ onUnmounted(() => abortAllAiStreams())
 
         <!-- Verdict thermometer (Change 3a) -->
         <VerdictThermometer v-if="effectiveVerdict" :verdict="effectiveVerdict" :verdict-label="verdictLabel"
-          :kpis="currentResult.kpis" :forced="forceGo" :from-cache="currentResult.fromCache">
-          <template #actions>
-            <button v-if="currentResult.verdict.level !== 'GO'" class="force-go-btn"
-              :class="{ 'force-go-btn--active': forceGo }" data-testid="force-go-btn" @click="toggleForceGo">
-              {{ forceGo ? 'Annuler GO forcé' : 'Forcer GO' }}
-            </button>
-          </template>
-        </VerdictThermometer>
+          :kpis="currentResult.kpis" :from-cache="currentResult.fromCache" />
 
         <!-- NO-GO feedback -->
-        <div v-if="currentResult.verdict.level === 'NO-GO' && !forceGo" class="nogo-feedback"
+        <div v-if="currentResult.verdict.level === 'NO-GO'" class="nogo-feedback"
           data-testid="nogo-feedback">
           <p>{{ noGoFeedback(currentResult.verdict, currentResult.kpis) }}</p>
         </div>
@@ -968,23 +1084,6 @@ onUnmounted(() => abortAllAiStreams())
   color: var(--color-error, #ef4444);
 }
 
-/* Force GO button */
-.force-go-btn {
-  padding: 0.375rem 0.75rem;
-  background: transparent;
-  border: 1px solid var(--color-warning, #f59e0b);
-  border-radius: 6px;
-  color: var(--color-warning, #f59e0b);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.force-go-btn--active {
-  background: var(--color-warning, #f59e0b);
-  color: #fff;
-}
-
 /* NO-GO feedback */
 .nogo-feedback {
   padding: 0.75rem 1rem;
@@ -1012,7 +1111,7 @@ onUnmounted(() => abortAllAiStreams())
   display: flex;
   flex: 1;
   min-width: 0;
-  max-width: 700px
+  max-width: 700px;
 }
 
 .kpi-cell {
@@ -1068,11 +1167,13 @@ onUnmounted(() => abortAllAiStreams())
 .kpi-root-zone {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   width: 200px;
+  max-height: 70px;
+  overflow-y: auto;
   flex-shrink: 0;
-  padding: 0.375rem 0.5rem;
+  padding: 0.25rem 0.375rem;
   border-left: 1px solid var(--color-border, #e2e8f0);
   background: var(--color-surface-dim, #f1f5f9);
   gap: 2px;
@@ -1084,27 +1185,51 @@ onUnmounted(() => abortAllAiStreams())
   text-transform: uppercase;
   letter-spacing: 0.03em;
   color: var(--color-text-muted, #94a3b8);
+  text-align: center;
+}
+
+.kpi-root-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  padding: 2px 6px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  cursor: pointer;
+  font-size: 0.625rem;
+  transition: background 0.1s;
+}
+
+.kpi-root-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.kpi-root-item--active {
+  background: rgba(0, 0, 0, 0.08);
+  font-weight: 600;
 }
 
 .kpi-root-kw {
-  font-size: 0.6875rem;
-  font-weight: 600;
+  font-size: 0.625rem;
+  font-weight: 500;
   color: var(--color-text, #1e293b);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 100px;
-  text-align: center;
+  max-width: 120px;
 }
 
 .kpi-root-verdict {
-  font-size: 0.75rem;
+  font-size: 0.625rem;
   font-weight: 800;
   text-transform: uppercase;
+  flex-shrink: 0;
 }
 
 .kpi-root-verdict small {
-  font-size: 0.625rem;
+  font-size: 0.5rem;
   font-weight: 500;
   opacity: 0.7;
 }
@@ -1116,6 +1241,14 @@ onUnmounted(() => abortAllAiStreams())
   border-top-color: var(--color-primary, #3b82f6);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
+}
+
+.kpi-root-failed {
+  font-size: 0.625rem;
+  color: var(--color-text-muted, #94a3b8);
+  font-style: italic;
+  opacity: 0.6;
+  padding: 0.125rem 0.375rem;
 }
 
 /* PAA list */
@@ -1369,6 +1502,22 @@ onUnmounted(() => abortAllAiStreams())
   color: var(--color-success, #22c55e);
 }
 
+.send-lieutenant-btn {
+  padding: 0.375rem 0.75rem;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.send-lieutenant-btn:hover {
+  background: var(--color-primary-hover);
+}
+
 .unlock-btn {
   padding: 0.375rem 0.75rem;
   background: transparent;
@@ -1442,33 +1591,6 @@ onUnmounted(() => abortAllAiStreams())
   margin-left: 0.375rem;
   font-size: 0.8125rem;
   color: var(--color-text-muted, #64748b);
-}
-
-.carousel-dots {
-  display: flex;
-  justify-content: center;
-  gap: 0.375rem;
-  margin-bottom: 1rem;
-}
-
-.carousel-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  border: 2px solid transparent;
-  cursor: pointer;
-  transition: transform 0.15s, border-color 0.15s;
-  padding: 0;
-}
-
-.carousel-dot.active {
-  transform: scale(1.4);
-  border-color: var(--color-text, #1e293b);
-}
-
-.carousel-dot.locked {
-  border-color: var(--color-success, #22c55e);
-  box-shadow: 0 0 0 2px var(--color-success-bg, #f0fdf4);
 }
 
 /* --- Composition warnings (advisory) --- */

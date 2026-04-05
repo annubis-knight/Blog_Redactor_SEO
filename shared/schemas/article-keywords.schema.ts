@@ -5,6 +5,7 @@ export const articleKeywordsSchema = z.object({
   capitaine: z.string(),
   lieutenants: z.array(z.string()),
   lexique: z.array(z.string()),
+  rootKeywords: z.array(z.string()).optional().default([]),
 })
 
 export const rawArticleKeywordsDbSchema = z.object({

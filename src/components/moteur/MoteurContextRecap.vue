@@ -1,23 +1,26 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, watch } from 'vue'
 import type { Article, ArticleType, ProposedArticle, SelectedArticle } from '@shared/types/index.js'
 import { useArticleProgressStore } from '@/stores/article-progress.store'
 import ProgressDots from './ProgressDots.vue'
+import RecapToggle from '@/components/shared/RecapToggle.vue'
 
 const progressStore = useArticleProgressStore()
 
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   proposedArticles: ProposedArticle[]
   publishedArticles: Article[]
   selectedSlug: string | null
-}>()
+  capitainesMap?: Record<string, string>
+  readonly?: boolean
+}>(), {
+  capitainesMap: () => ({}),
+  readonly: false,
+})
 
 const emit = defineEmits<{
   (e: 'select', article: SelectedArticle | null): void
 }>()
-
-const isSuggestedOpen = ref(true)
-const isPublishedOpen = ref(false)
 
 const TYPE_ORDER: ArticleType[] = ['Pilier', 'Intermédiaire', 'Spécialisé']
 
@@ -99,7 +102,17 @@ watch(
   { immediate: true },
 )
 
+function hasCannibalization(slug: string): boolean {
+  const cap = props.capitainesMap[slug]
+  if (!cap) return false
+  const capLower = cap.toLowerCase()
+  return Object.entries(props.capitainesMap).some(
+    ([s, c]) => s !== slug && c.toLowerCase() === capLower,
+  )
+}
+
 function toggleArticle(article: { slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }) {
+  if (props.readonly) return
   if (isSelected(article.slug)) {
     emit('select', null)
   } else {
@@ -119,78 +132,69 @@ function toggleArticle(article: { slug: string; title: string; keyword: string; 
 <template>
   <div class="moteur-recap-group">
     <!-- Panel 1: Articles suggérés -->
-    <div v-if="acceptedArticles.length > 0" class="moteur-recap">
-      <button class="recap-toggle" :aria-expanded="isSuggestedOpen" @click="isSuggestedOpen = !isSuggestedOpen">
-        <svg class="recap-chevron" :class="{ open: isSuggestedOpen }" width="12" height="12" viewBox="0 0 16 16"
-          fill="none" aria-hidden="true">
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round" />
-        </svg>
-        <span class="recap-toggle-label">Articles sugg&eacute;r&eacute;s ({{ acceptedArticles.length }})</span>
-      </button>
-
-      <div class="recap-body" :class="{ collapsed: !isSuggestedOpen }">
-        <div v-for="group in suggestedGroups" :key="group.type" class="tree-group">
-          <div class="tree-type">
-            <span class="tree-type-badge"
-              :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
-              {{ group.type }}
-            </span>
-            <span class="tree-type-count">({{ group.articles.length }})</span>
-          </div>
-          <div class="tree-articles">
-            <button v-for="art in group.articles" :key="art.slug" class="tree-article-btn"
-              :class="{ selected: isSelected(art.slug) }" @click="toggleArticle(art)">
-              <span class="tree-branch" aria-hidden="true"></span>
-              <span class="tree-article-title">{{ art.title }}</span>
-              <ProgressDots :completed-checks="getChecks(art.slug)" />
-              <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
-            </button>
-          </div>
+    <RecapToggle v-if="acceptedArticles.length > 0" panel-id="suggested-articles" :label="`Articles suggérés (${acceptedArticles.length})`">
+      <div v-for="group in suggestedGroups" :key="group.type" class="tree-group">
+        <div class="tree-type">
+          <span class="tree-type-badge"
+            :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
+            {{ group.type }}
+          </span>
+          <span class="tree-type-count">({{ group.articles.length }})</span>
+        </div>
+        <div class="tree-articles">
+          <button v-for="art in group.articles" :key="art.slug" class="tree-article-btn"
+            :class="{ selected: !readonly && isSelected(art.slug), 'is-readonly': readonly }" @click="toggleArticle(art)">
+            <span class="tree-branch" aria-hidden="true"></span>
+            <span class="tree-article-title">{{ art.title }}</span>
+            <svg v-if="hasCannibalization(art.slug)" class="warning-cannibal" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <title>Cannibalisation : un autre article utilise le même capitaine</title>
+              <path d="M8 1.5L1 14h14L8 1.5z" stroke="#f59e0b" stroke-width="1.2" fill="#fef3c7"/>
+              <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <ProgressDots :completed-checks="getChecks(art.slug)" />
+            <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
+          </button>
         </div>
       </div>
-    </div>
+    </RecapToggle>
 
     <!-- Panel 2: Articles publiés -->
-    <div v-if="publishedArticles.length > 0" class="moteur-recap">
-      <button class="recap-toggle" :aria-expanded="isPublishedOpen" @click="isPublishedOpen = !isPublishedOpen">
-        <svg class="recap-chevron" :class="{ open: isPublishedOpen }" width="12" height="12" viewBox="0 0 16 16"
-          fill="none" aria-hidden="true">
-          <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-            stroke-linejoin="round" />
-        </svg>
-        <span class="recap-toggle-label">Articles publi&eacute;s ({{publishedArticles.filter(a => a.status ===
-          'publié').length }})</span>
+    <RecapToggle v-if="publishedArticles.length > 0" panel-id="published-articles">
+      <template #header>
+        <span class="recap-toggle-label">Articles publiés ({{ publishedArticles.filter(a => a.status === 'publié').length }})</span>
         <svg class="recap-lock-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
           <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
         </svg>
-      </button>
+      </template>
 
-      <div class="recap-body" :class="{ collapsed: !isPublishedOpen }">
-        <div v-for="group in publishedGroups" :key="group.type" class="tree-group">
-          <div class="tree-type">
-            <span class="tree-type-badge"
-              :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
-              {{ group.type }}
-            </span>
-            <span class="tree-type-count">({{ group.articles.length }})</span>
-          </div>
-          <div class="tree-articles">
-            <button v-for="art in group.articles" :key="art.slug" class="tree-article-btn"
-              :class="{ selected: isSelected(art.slug), locked: true }" @click="toggleArticle(art)">
-              <span class="tree-branch" aria-hidden="true"></span>
-              <span class="tree-article-title">{{ art.title }}</span>
-              <ProgressDots :completed-checks="getChecks(art.slug)" />
-              <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
-                <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
-              </svg>
-            </button>
-          </div>
+      <div v-for="group in publishedGroups" :key="group.type" class="tree-group">
+        <div class="tree-type">
+          <span class="tree-type-badge"
+            :class="'tree-type--' + group.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
+            {{ group.type }}
+          </span>
+          <span class="tree-type-count">({{ group.articles.length }})</span>
+        </div>
+        <div class="tree-articles">
+          <button v-for="art in group.articles" :key="art.slug" class="tree-article-btn"
+            :class="{ selected: !readonly && isSelected(art.slug), locked: true, 'is-readonly': readonly }" @click="toggleArticle(art)">
+            <span class="tree-branch" aria-hidden="true"></span>
+            <span class="tree-article-title">{{ art.title }}</span>
+            <svg v-if="hasCannibalization(art.slug)" class="warning-cannibal" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <title>Cannibalisation : un autre article utilise le même capitaine</title>
+              <path d="M8 1.5L1 14h14L8 1.5z" stroke="#f59e0b" stroke-width="1.2" fill="#fef3c7"/>
+              <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
+            </svg>
+            <ProgressDots :completed-checks="getChecks(art.slug)" />
+            <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
+              <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+            </svg>
+          </button>
         </div>
       </div>
-    </div>
+    </RecapToggle>
   </div>
 </template>
 
@@ -202,43 +206,6 @@ function toggleArticle(article: { slug: string; title: string; keyword: string; 
   margin-bottom: 0.5rem
 }
 
-.moteur-recap {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  background: var(--color-bg-soft);
-  overflow: hidden;
-}
-
-.recap-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  background: none;
-  cursor: pointer;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-align: left;
-  transition: color 0.15s;
-}
-
-.recap-toggle:hover {
-  color: var(--color-primary);
-}
-
-.recap-chevron {
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-  color: inherit;
-}
-
-.recap-chevron.open {
-  transform: rotate(90deg);
-}
-
 .recap-toggle-label {
   text-transform: uppercase;
   letter-spacing: 0.04em;
@@ -247,21 +214,6 @@ function toggleArticle(article: { slug: string; title: string; keyword: string; 
 .recap-lock-icon {
   margin-left: auto;
   opacity: 0.4;
-}
-
-.recap-body {
-  height: auto;
-  overflow: hidden;
-  transition: height 0.25s ease, opacity 0.2s ease;
-  opacity: 1;
-  padding: 0 0.75rem 0.625rem;
-  interpolate-size: allow-keywords;
-}
-
-.recap-body.collapsed {
-  height: 0;
-  opacity: 0;
-  padding-bottom: 0;
 }
 
 /* Tree: articles grouped by type */
@@ -380,5 +332,17 @@ function toggleArticle(article: { slug: string; title: string; keyword: string; 
 .tree-lock {
   flex-shrink: 0;
   opacity: 0.4;
+}
+
+.tree-article-btn.is-readonly {
+  cursor: default;
+}
+
+.tree-article-btn.is-readonly:hover {
+  background: none;
+}
+
+.warning-cannibal {
+  flex-shrink: 0;
 }
 </style>

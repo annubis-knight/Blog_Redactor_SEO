@@ -45,31 +45,7 @@ const canExtract = computed(() =>
 
 async function extractLexique() {
   if (!props.captainKeyword || !canExtract.value) return
-
-  isLoading.value = true
-  error.value = null
-
-  try {
-    log.info(`[LexiqueExtraction] Extracting TF-IDF for "${props.captainKeyword}"`)
-    const result = await apiPost<TfidfResult>('/serp/tfidf', {
-      keyword: props.captainKeyword,
-    })
-    tfidfResult.value = result
-
-    // Pre-check all obligatoire terms
-    const preChecked = new Set<string>()
-    for (const term of result.obligatoire) {
-      preChecked.add(term.term)
-    }
-    selectedTerms.value = preChecked
-
-    log.info(`[LexiqueExtraction] TF-IDF loaded: ${result.obligatoire.length}O + ${result.differenciateur.length}D + ${result.optionnel.length}Op`)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Erreur inconnue'
-    log.error(`[LexiqueExtraction] TF-IDF extraction failed`, { error: error.value })
-  } finally {
-    isLoading.value = false
-  }
+  await fetchTfidf()
 }
 
 function toggleTerm(term: string) {
@@ -140,6 +116,47 @@ function unlockLexique() {
   isLocked.value = false
   emit('check-removed', 'lexique_validated')
 }
+
+// Fetch TF-IDF bypassing canExtract guard (used for auto-restore when locked)
+async function fetchTfidf() {
+  if (!props.captainKeyword) return
+
+  isLoading.value = true
+  error.value = null
+
+  try {
+    log.info(`[LexiqueExtraction] Fetching TF-IDF for "${props.captainKeyword}"`)
+    const result = await apiPost<TfidfResult>('/serp/tfidf', {
+      keyword: props.captainKeyword,
+    })
+    tfidfResult.value = result
+
+    // Pre-check all obligatoire terms
+    const preChecked = new Set<string>()
+    for (const term of result.obligatoire) {
+      preChecked.add(term.term)
+    }
+    selectedTerms.value = preChecked
+
+    log.info(`[LexiqueExtraction] TF-IDF loaded: ${result.obligatoire.length}O + ${result.differenciateur.length}D + ${result.optionnel.length}Op`)
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : 'Erreur inconnue'
+    log.error(`[LexiqueExtraction] TF-IDF fetch failed`, { error: error.value })
+  } finally {
+    isLoading.value = false
+  }
+}
+
+// Auto-restore TF-IDF when lieutenants are locked and we land on this tab
+watch(
+  [() => props.isLieutenantsLocked, () => props.captainKeyword],
+  ([locked, keyword]) => {
+    if (locked && keyword && !tfidfResult.value && !isLoading.value) {
+      fetchTfidf()
+    }
+  },
+  { immediate: true },
+)
 
 // Reset when article changes
 watch(

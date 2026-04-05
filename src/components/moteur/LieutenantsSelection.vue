@@ -24,11 +24,13 @@ const props = withDefaults(defineProps<{
   articleLevel: ArticleLevel | null
   isCaptaineLocked: boolean
   wordGroups?: WordGroup[]
+  rootKeywords?: string[]
   initialLocked?: boolean
   cocoonSlug?: string
 }>(), {
   mode: 'workflow',
   wordGroups: () => [],
+  rootKeywords: () => [],
   initialLocked: false,
   cocoonSlug: '',
 })
@@ -87,18 +89,7 @@ const canAnalyze = computed(() =>
 // Lieutenant candidate selection
 const selectedLieutenants = ref<Set<string>>(new Set())
 
-const RECOMMENDED_COUNTS: Record<string, { min: number; max: number }> = {
-  pilier: { min: 5, max: 8 },
-  intermediaire: { min: 3, max: 5 },
-  specifique: { min: 1, max: 3 },
-}
-
-const recommendedRange = computed(() => {
-  const level = props.articleLevel ?? 'intermediaire'
-  return RECOMMENDED_COUNTS[level] ?? { min: 3, max: 5 }
-})
-
-// Generate lieutenant candidates from 3 sources
+// Generate lieutenant candidates from 4 sources
 const lieutenantCandidates = computed<LieutenantCandidate[]>(() => {
   if (!serpResult.value) return []
 
@@ -138,6 +129,18 @@ const lieutenantCandidates = computed<LieutenantCandidate[]>(() => {
     }
   }
 
+  // Source 4: Root keywords from Capitaine deconstruction
+  for (const rk of props.rootKeywords) {
+    const key = rk.toLowerCase().trim()
+    if (!key) continue
+    const existing = candidateMap.get(key)
+    if (existing) {
+      if (!existing.sources.includes('root')) existing.sources.push('root')
+    } else {
+      candidateMap.set(key, { text: rk, sources: ['root'], relevance: 'faible' })
+    }
+  }
+
   // Compute relevance based on number of sources
   const candidates = Array.from(candidateMap.values())
   for (const c of candidates) {
@@ -146,7 +149,44 @@ const lieutenantCandidates = computed<LieutenantCandidate[]>(() => {
 
   // Sort: Fort first, then Moyen, then Faible
   const order: Record<string, number> = { fort: 0, moyen: 1, faible: 2 }
-  return candidates.sort((a, b) => (order[a.relevance] ?? 2) - (order[b.relevance] ?? 2))
+  return candidates
+    .filter(c => !(c.sources.length === 1 && c.sources[0] === 'root'))
+    .sort((a, b) => (order[a.relevance] ?? 2) - (order[b.relevance] ?? 2))
+})
+
+// Root-only candidates (separate display section)
+const rootOnlyCandidates = computed(() => {
+  if (!serpResult.value) {
+    // Show root keywords even before SERP analysis
+    return props.rootKeywords
+      .filter(rk => rk.trim())
+      .map(rk => ({ text: rk, sources: ['root'] as ('root')[], relevance: 'faible' as const }))
+  }
+  // After SERP: roots that didn't match any other source
+  const allCandidates = (() => {
+    const map = new Map<string, LieutenantCandidate>()
+    for (const rk of props.rootKeywords) {
+      const key = rk.toLowerCase().trim()
+      if (!key) continue
+      map.set(key, { text: rk, sources: ['root'], relevance: 'faible' })
+    }
+    // Check if any root appeared in other sources
+    for (const item of hnRecurrence.value) {
+      if (item.count < 2) continue
+      const key = item.text.toLowerCase().trim()
+      if (map.has(key)) map.delete(key)
+    }
+    for (const paa of serpResult.value!.paaQuestions) {
+      const key = paa.question.toLowerCase().trim()
+      if (map.has(key)) map.delete(key)
+    }
+    for (const g of props.wordGroups) {
+      const key = g.word.toLowerCase().trim()
+      if (map.has(key)) map.delete(key)
+    }
+    return Array.from(map.values())
+  })()
+  return allCandidates
 })
 
 function toggleLieutenant(text: string) {
@@ -202,10 +242,30 @@ watch(
     error.value = null
     sliderValue.value = 10
     selectedLieutenants.value = new Set()
-    isLocked.value = false
+    isLocked.value = props.initialLocked
     aiAbort()
   },
 )
+
+// Auto-trigger/restore SERP when captain is locked (covers both initial mount and article switching)
+watch(
+  [() => props.isCaptaineLocked, () => props.captainKeyword],
+  ([locked, keyword]) => {
+    if (locked && keyword && !serpResult.value && !isLoading.value) {
+      log.info('[LieutenantsSelection] Auto-triggering SERP analysis')
+      analyzeSERP()
+    }
+  },
+  { immediate: true, flush: 'post' },
+)
+
+function refreshSERP() {
+  serpResult.value = null
+  error.value = null
+  selectedLieutenants.value = new Set()
+  emit('lieutenants-updated', [])
+  analyzeSERP()
+}
 
 async function analyzeSERP() {
   if (!props.captainKeyword || !canAnalyze.value) return
@@ -268,6 +328,14 @@ async function analyzeSERP() {
       >
         {{ isLoading ? 'Analyse en cours...' : 'Analyser SERP' }}
       </button>
+      <button
+        v-if="serpResult && !isLocked"
+        class="btn-refresh"
+        :disabled="isLoading"
+        @click="refreshSERP"
+      >
+        Relancer l'analyse
+      </button>
     </div>
 
     <!-- Error -->
@@ -324,11 +392,21 @@ async function analyzeSERP() {
         <p v-else class="section-empty">Lancez d'abord la Decouverte pour voir les groupes thematiques.</p>
       </CollapsableSection>
 
+      <!-- Root keywords from Capitaine (reference section) -->
+      <div v-if="rootOnlyCandidates.length > 0" class="root-keywords-section">
+        <span class="root-section-label">Racines du Capitaine</span>
+        <div class="root-keywords-chips">
+          <span v-for="rk in rootOnlyCandidates" :key="rk.text" class="root-chip">
+            {{ rk.text }}
+            <span class="badge-source badge-root">ROOT</span>
+          </span>
+        </div>
+      </div>
+
       <!-- Section 4: Candidats Lieutenants -->
       <CollapsableSection title="Candidats Lieutenants" :default-open="true">
         <div class="lieutenant-counter">
-          {{ selectedLieutenants.size }} selectionne{{ selectedLieutenants.size > 1 ? 's' : '' }}
-          / {{ recommendedRange.min }}-{{ recommendedRange.max }} recommandes
+          {{ selectedLieutenants.size }} sélectionné{{ selectedLieutenants.size > 1 ? 's' : '' }}
         </div>
         <div v-if="lieutenantCandidates.length > 0" class="lieutenant-list">
           <div
@@ -722,6 +800,7 @@ async function analyzeSERP() {
 .badge-serp { background: var(--color-badge-blue-bg, #dbeafe); color: var(--color-primary); }
 .badge-paa { background: var(--color-badge-amber-bg, #fef3c7); color: #b45309; }
 .badge-group { background: var(--color-badge-green-bg, #dcfce7); color: #15803d; }
+.badge-root { background: var(--color-badge-purple-bg, #f3e8ff); color: #7c3aed; }
 
 .badge-relevance {
   display: inline-block;
@@ -897,6 +976,66 @@ async function analyzeSERP() {
 .unlock-btn:hover {
   border-color: var(--color-error, #ef4444);
   color: var(--color-error, #ef4444);
+}
+
+/* --- Refresh button --- */
+.btn-refresh {
+  padding: 0.5rem 1rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s;
+}
+
+.btn-refresh:hover:not(:disabled) {
+  background: var(--color-primary);
+  color: white;
+}
+
+.btn-refresh:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* --- Root keywords section --- */
+.root-keywords-section {
+  padding: 0.75rem 1rem;
+  background: var(--color-badge-purple-bg, #f3e8ff);
+  border: 1px solid #d8b4fe;
+  border-radius: 8px;
+}
+
+.root-section-label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #7c3aed;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.5rem;
+}
+
+.root-keywords-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+}
+
+.root-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  padding: 0.25rem 0.625rem;
+  font-size: 0.8125rem;
+  background: white;
+  border: 1px solid #d8b4fe;
+  border-radius: 6px;
+  color: var(--color-text);
 }
 
 /* --- Empty section --- */

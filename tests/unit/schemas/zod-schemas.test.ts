@@ -120,3 +120,45 @@ describe('keyword.schema — rawKeywordsDbSchema', () => {
     expect(() => rawKeywordsDbSchema.parse(data)).not.toThrow()
   })
 })
+
+describe('strategy.schema — cocoonStrategySchema suggestedTopics', async () => {
+  const { cocoonStrategySchema, cocoonSuggestRequestSchema } = await import('../../../shared/schemas/strategy.schema')
+
+  const baseStrategy = {
+    cocoonSlug: 'test',
+    cible: { input: '', suggestion: null, validated: '' },
+    douleur: { input: '', suggestion: null, validated: '' },
+    angle: { input: '', suggestion: null, validated: '' },
+    promesse: { input: '', suggestion: null, validated: '' },
+    cta: { input: '', suggestion: null, validated: '' },
+    proposedArticles: [],
+    completedSteps: 0,
+    updatedAt: '2026-04-04',
+  }
+
+  it('accepts strategy with suggestedTopics and topicsUserContext', () => {
+    const data = {
+      ...baseStrategy,
+      suggestedTopics: [{ id: '1', topic: 'SEO locale', checked: true }],
+      topicsUserContext: 'Mon contexte',
+    }
+    const result = cocoonStrategySchema.parse(data)
+    expect(result.suggestedTopics).toHaveLength(1)
+    expect(result.topicsUserContext).toBe('Mon contexte')
+  })
+
+  it('defaults suggestedTopics to [] and topicsUserContext to empty string when missing', () => {
+    const result = cocoonStrategySchema.parse(baseStrategy)
+    expect(result.suggestedTopics).toEqual([])
+    expect(result.topicsUserContext).toBe('')
+  })
+
+  it('accepts articles-topics as a valid step in cocoonSuggestRequestSchema', () => {
+    const data = {
+      step: 'articles-topics',
+      currentInput: 'Propose les sujets.',
+      context: { cocoonName: 'Test', siloName: 'Silo' },
+    }
+    expect(() => cocoonSuggestRequestSchema.parse(data)).not.toThrow()
+  })
+})

@@ -124,6 +124,7 @@ describe('article-keywords.store — initEmpty', () => {
       capitaine: '',
       lieutenants: [],
       lexique: [],
+      rootKeywords: [],
     })
   })
 })
@@ -247,6 +248,7 @@ describe('article-keywords.store — saveKeywords', () => {
       capitaine: 'updated capitaine',
       lieutenants: [],
       lexique: [],
+      rootKeywords: [],
     })
     expect(store.keywords).toEqual(savedKeywords)
     expect(store.isSaving).toBe(false)

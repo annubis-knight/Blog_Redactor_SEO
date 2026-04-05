@@ -20,7 +20,7 @@ function makeCard(keyword: string): RadarCard {
     kpis: {
       searchVolume: 100, difficulty: 20, cpc: 1.5, competition: 0.5,
       intentTypes: [], intentProbability: null,
-      autocompleteMatchCount: 2, paaMatchCount: 3, paaTotal: 5, avgSemanticScore: null,
+      autocompleteMatchCount: 2, paaMatchCount: 3, paaWeightedScore: 4.5, paaTotal: 5, avgSemanticScore: null,
     },
     paaItems: [],
     combinedScore: 75,
@@ -143,32 +143,18 @@ describe('useRadarCarousel', () => {
     expect(c.currentIndex.value).toBe(2)
   })
 
-  it('toggleForceGo flips forceGo on current entry', async () => {
-    mockApiPost.mockResolvedValue(goResponse)
-    const c = await createCarousel()
-    await c.loadCards([makeCard('a')], 'pilier')
-
-    expect(c.entries.value[0]?.forceGo).toBe(false)
-    c.toggleForceGo()
-    expect(c.entries.value[0]?.forceGo).toBe(true)
-    c.toggleForceGo()
-    expect(c.entries.value[0]?.forceGo).toBe(false)
-  })
-
-  it('effectiveVerdict returns GO when forceGo is true', async () => {
+  it('effectiveVerdict returns verdict level from validation', async () => {
     mockApiPost.mockResolvedValue(orangeResponse)
     const c = await createCarousel()
     await c.loadCards([makeCard('copywriting web')], 'pilier')
 
     const entry = c.entries.value[0]!
     expect(c.effectiveVerdict(entry)).toBe('ORANGE')
-    c.toggleForceGo()
-    expect(c.effectiveVerdict(c.entries.value[0]!)).toBe('GO')
   })
 
   it('effectiveVerdict returns null when no validation', async () => {
     const c = await createCarousel()
-    const entry = { card: makeCard('x'), validation: null, isLoading: true, error: null, forceGo: false, rootResult: null, isLoadingRoot: false }
+    const entry = { card: makeCard('x'), validation: null, isLoading: true, error: null, rootResult: null, isLoadingRoot: false }
     expect(c.effectiveVerdict(entry)).toBeNull()
   })
 
@@ -259,6 +245,144 @@ describe('useRadarCarousel', () => {
       expect(c.currentIndex.value).toBe(1)
       expect(c.entries.value[0]?.card.keyword).toBe('first')
       expect(c.entries.value[1]?.card.keyword).toBe('second')
+    })
+  })
+
+  describe('hydrateCardFromValidation', () => {
+    it('converts ValidateResponse to RadarCard with correct fields', async () => {
+      const { hydrateCardFromValidation } = await import('../../../src/composables/useRadarCarousel')
+
+      const response: ValidateResponse = {
+        keyword: 'test keyword',
+        articleLevel: 'pilier',
+        kpis: [
+          { name: 'volume', rawValue: 500, color: 'orange', label: '500', thresholds: { green: 1000, orange: 200 } },
+          { name: 'kd', rawValue: 25, color: 'green', label: 'KD 25', thresholds: { green: 40, orange: 65 } },
+          { name: 'cpc', rawValue: 1.5, color: 'green', label: '1.50€', thresholds: { green: 2 } },
+          { name: 'paa', rawValue: 3, color: 'green', label: '3 PAA', thresholds: { green: 3, orange: 1 } },
+          { name: 'autocomplete', rawValue: 2, color: 'green', label: 'Pos 2', thresholds: { green: 3, orange: 6 } },
+        ],
+        paaQuestions: [
+          { question: 'What is SEO?', answer: 'It is...', match: 'total', matchQuality: 'exact' },
+        ],
+        verdict: { level: 'GO', greenCount: 5, totalKpis: 5, autoNoGo: false },
+        fromCache: false,
+        cachedAt: null,
+      }
+
+      const card = hydrateCardFromValidation('test keyword', response)
+
+      expect(card.keyword).toBe('test keyword')
+      expect(card.kpis.searchVolume).toBe(500)
+      expect(card.kpis.difficulty).toBe(25)
+      expect(card.kpis.cpc).toBe(1.5)
+      expect(card.kpis.paaWeightedScore).toBe(3)
+      expect(card.kpis.autocompleteMatchCount).toBe(2)
+      expect(card.paaItems).toHaveLength(1)
+      expect(card.paaItems[0].question).toBe('What is SEO?')
+      expect(card.paaItems[0].match).toBe('total')
+      expect(card.combinedScore).toBeGreaterThan(0)
+      expect(card.scoreBreakdown).toBeDefined()
+      expect(card.reasoning).toBe('')
+      expect(card.cachedPaa).toBe(false)
+    })
+  })
+
+  describe('multi-root validation', () => {
+    const weakVolumeResponse: ValidateResponse = {
+      keyword: 'creation site web entreprise toulouse',
+      articleLevel: 'pilier',
+      kpis: [
+        { name: 'volume', rawValue: 50, color: 'orange', label: '50', thresholds: { green: 1000, orange: 200 } },
+        { name: 'kd', rawValue: 20, color: 'green', label: 'KD 20', thresholds: { green: 40, orange: 65 } },
+        { name: 'cpc', rawValue: 1.0, color: 'green', label: '1.00€', thresholds: { green: 2 } },
+        { name: 'paa', rawValue: 3, color: 'green', label: '3 PAA', thresholds: { green: 3, orange: 1 } },
+        { name: 'autocomplete', rawValue: 4, color: 'orange', label: 'Pos 4', thresholds: { green: 3, orange: 6 } },
+      ],
+      verdict: { level: 'ORANGE', greenCount: 3, totalKpis: 5, autoNoGo: false },
+      fromCache: false,
+      cachedAt: null,
+    }
+
+    function makeRootResponse(keyword: string): ValidateResponse {
+      return {
+        keyword,
+        articleLevel: 'pilier',
+        kpis: [
+          { name: 'volume', rawValue: 500, color: 'orange', label: '500', thresholds: { green: 1000, orange: 200 } },
+          { name: 'kd', rawValue: 15, color: 'green', label: 'KD 15', thresholds: { green: 40, orange: 65 } },
+          { name: 'cpc', rawValue: 2.0, color: 'green', label: '2.00€', thresholds: { green: 2 } },
+          { name: 'paa', rawValue: 4, color: 'green', label: '4 PAA', thresholds: { green: 3, orange: 1 } },
+          { name: 'autocomplete', rawValue: 2, color: 'green', label: 'Pos 2', thresholds: { green: 3, orange: 6 } },
+        ],
+        verdict: { level: 'GO', greenCount: 5, totalKpis: 5, autoNoGo: false },
+        fromCache: false,
+        cachedAt: null,
+      }
+    }
+
+    it('addEntry with 5-word keyword and weak volume validates all roots', async () => {
+      mockApiPost.mockImplementation((url: string) => {
+        if (url.includes('creation%20site%20web%20entreprise%20toulouse')) {
+          return Promise.resolve(weakVolumeResponse)
+        }
+        const keyword = decodeURIComponent(url.split('/keywords/')[1].split('/validate')[0])
+        return Promise.resolve(makeRootResponse(keyword))
+      })
+
+      const c = await createCarousel()
+      await c.addEntry('creation site web entreprise toulouse', 'pilier')
+
+      expect(mockApiPost).toHaveBeenCalledTimes(4) // main + 3 roots
+      const entry = c.entries.value[0]!
+      expect(entry.rootVariants.size).toBe(3)
+      expect(entry.rootVariants.has('creation site web entreprise')).toBe(true)
+      expect(entry.rootVariants.has('creation site web')).toBe(true)
+      expect(entry.rootVariants.has('creation site')).toBe(true)
+      expect(entry.isLoadingRoots).toBe(false)
+    })
+
+    it('addEntry with 2-word keyword skips root validation', async () => {
+      mockApiPost.mockResolvedValue(goResponse)
+      const c = await createCarousel()
+      await c.addEntry('seo local', 'pilier')
+
+      expect(mockApiPost).toHaveBeenCalledTimes(1)
+      expect(c.entries.value[0]?.rootVariants.size).toBe(0)
+    })
+
+    it('addEntry with green volume skips root validation', async () => {
+      const greenResponse: ValidateResponse = {
+        ...weakVolumeResponse,
+        kpis: weakVolumeResponse.kpis.map(k =>
+          k.name === 'volume' ? { ...k, color: 'green' as const, rawValue: 2000 } : k,
+        ),
+      }
+      mockApiPost.mockResolvedValue(greenResponse)
+      const c = await createCarousel()
+      await c.addEntry('creation site web entreprise toulouse', 'pilier')
+
+      expect(mockApiPost).toHaveBeenCalledTimes(1)
+      expect(c.entries.value[0]?.rootVariants.size).toBe(0)
+    })
+
+    it('stores successful roots when one root fails (best-effort)', async () => {
+      let rootCallIndex = 0
+      mockApiPost.mockImplementation((url: string) => {
+        if (url.includes('creation%20site%20web%20entreprise%20toulouse')) {
+          return Promise.resolve(weakVolumeResponse)
+        }
+        rootCallIndex++
+        if (rootCallIndex === 2) return Promise.reject(new Error('root API error'))
+        const keyword = decodeURIComponent(url.split('/keywords/')[1].split('/validate')[0])
+        return Promise.resolve(makeRootResponse(keyword))
+      })
+
+      const c = await createCarousel()
+      await c.addEntry('creation site web entreprise toulouse', 'pilier')
+
+      expect(c.entries.value[0]?.rootVariants.size).toBe(2)
+      expect(c.entries.value[0]?.isLoadingRoots).toBe(false)
     })
   })
 })

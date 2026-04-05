@@ -67,8 +67,8 @@ import { useCocoonStrategyStore } from '../../../src/stores/cocoon-strategy.stor
 
 const proposedArticleRowStub = {
   name: 'ProposedArticleRow',
-  template: '<div class="proposed-article-row-stub" :data-group-color="groupColor" />',
-  props: ['article', 'index', 'compositionResult', 'groupColor', 'structuralWarnings'],
+  template: '<div class="proposed-article-row-stub" />',
+  props: ['article', 'index', 'compositionResult', 'structuralWarnings'],
   emits: ['regenerate-title', 'regenerate-keyword', 'select-keyword', 'select-title', 'toggle-accept', 'remove'],
 }
 
@@ -270,28 +270,6 @@ describe('BrainPhase — structural warnings (per-article props)', () => {
   })
 })
 
-describe('BrainPhase — group colors', () => {
-  it('assigns distinct colors to different Inters', async () => {
-    const articles = makeWellFormedArticles()
-    const wrapper = mountBrainPhase(articles)
-    await flushPromises()
-
-    // Find ProposedArticleRow stubs in the Inter column
-    const stubs = wrapper.findAllComponents(proposedArticleRowStub)
-    // Inter cards should have groupColor assigned
-    const interStubs = stubs.filter(s => {
-      const art = s.props('article')
-      return art && art.type === 'Intermédiaire'
-    })
-    expect(interStubs.length).toBe(2)
-    const color1 = interStubs[0].props('groupColor')
-    const color2 = interStubs[1].props('groupColor')
-    expect(color1).toBeTruthy()
-    expect(color2).toBeTruthy()
-    expect(color1).not.toBe(color2)
-  })
-})
-
 describe('BrainPhase — Spé grouped by parentTitle', () => {
   it('groups Spé articles under their parent Inter with group headers', async () => {
     const articles = makeWellFormedArticles()
@@ -321,18 +299,4 @@ describe('BrainPhase — Spé grouped by parentTitle', () => {
     expect(orphanGroup.exists()).toBe(true)
   })
 
-  it('passes groupColor to Spé cards', async () => {
-    const articles = makeWellFormedArticles()
-    const wrapper = mountBrainPhase(articles)
-    await flushPromises()
-
-    const speStubs = wrapper.findAllComponents(proposedArticleRowStub).filter(s => {
-      const art = s.props('article')
-      return art && art.type === 'Spécialisé'
-    })
-    // All Spé should have a groupColor
-    for (const stub of speStubs) {
-      expect(stub.props('groupColor')).toBeTruthy()
-    }
-  })
 })

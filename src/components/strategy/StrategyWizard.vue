@@ -10,6 +10,7 @@ import StrategyStep from './StrategyStep.vue'
 import AiguillageStep from './AiguillageStep.vue'
 import CtaStep from './CtaStep.vue'
 import ContextRecap from './ContextRecap.vue'
+import { provideRecapRadioGroup } from '@/composables/useRecapRadioGroup'
 
 const props = defineProps<{
   slug: string
@@ -22,6 +23,8 @@ const emit = defineEmits<{
   (e: 'complete'): void
   (e: 'skip'): void
 }>()
+
+provideRecapRadioGroup()
 
 const store = useStrategyStore()
 const cocoonsStore = useCocoonsStore()

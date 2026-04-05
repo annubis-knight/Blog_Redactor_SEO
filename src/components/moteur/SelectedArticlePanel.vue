@@ -2,13 +2,13 @@
 import { ref, computed, watch } from 'vue'
 import { useArticleProgressStore } from '@/stores/article-progress.store'
 import type { SelectedArticle, SemanticTerm } from '@shared/types/index.js'
+import RecapToggle from '@/components/shared/RecapToggle.vue'
 
 const props = defineProps<{
   article: SelectedArticle
 }>()
 
 const progressStore = useArticleProgressStore()
-const isPanelOpen = ref(true)
 const newTerm = ref('')
 const newTermSource = ref<SemanticTerm['source']>('manual')
 
@@ -86,13 +86,8 @@ function getSourceLabel(source: SemanticTerm['source']): string {
 </script>
 
 <template>
-  <div class="selected-article-panel">
-    <button class="panel-toggle" :aria-expanded="isPanelOpen" @click="isPanelOpen = !isPanelOpen">
-      <svg class="panel-chevron" :class="{ open: isPanelOpen }" width="12" height="12" viewBox="0 0 16 16" fill="none"
-        aria-hidden="true">
-        <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"
-          stroke-linejoin="round" />
-      </svg>
+  <RecapToggle panel-id="selected-article" variant="panel" class="selected-article-panel">
+    <template #header>
       <span class="panel-toggle-label">{{ article.title }}</span>
       <span class="panel-type-badge"
         :class="'badge--' + article.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
@@ -106,15 +101,16 @@ function getSourceLabel(source: SemanticTerm['source']): string {
         </svg>
         Lecture seule
       </span>
-    </button>
+    </template>
 
-    <!-- Pain point — always visible -->
-    <div v-if="article.painPoint" class="panel-pain-bar">
-      <span class="pain-bar-label">Douleur</span>
-      <span class="pain-bar-text">{{ article.painPoint }}</span>
-    </div>
+    <template #between>
+      <!-- Pain point — always visible -->
+      <div v-if="article.painPoint" class="panel-pain-bar">
+        <span class="pain-bar-label">Douleur</span>
+        <span class="pain-bar-text">{{ article.painPoint }}</span>
+      </div>
+    </template>
 
-    <div class="panel-body" :class="{ collapsed: !isPanelOpen }">
       <!-- Progression -->
       <div class="panel-section">
         <span class="section-label">Progression</span>
@@ -179,46 +175,12 @@ function getSourceLabel(source: SemanticTerm['source']): string {
           <button class="btn-add-term" @click="addTerm">+</button>
         </div>
       </div>
-    </div>
-  </div>
+  </RecapToggle>
 </template>
 
 <style scoped>
 .selected-article-panel {
-  border: 1px solid var(--color-primary);
-  border-radius: 8px;
-  background: var(--color-surface);
-  overflow: hidden;
   margin: 0.5rem 0;
-}
-
-.panel-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.625rem 0.75rem;
-  border: none;
-  background: var(--color-primary-soft, rgba(74, 144, 217, 0.08));
-  cursor: pointer;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text);
-  text-align: left;
-  transition: background 0.15s;
-}
-
-.panel-toggle:hover {
-  background: var(--color-primary-soft, rgba(74, 144, 217, 0.12));
-}
-
-.panel-chevron {
-  flex-shrink: 0;
-  transition: transform 0.2s ease;
-}
-
-.panel-chevron.open {
-  transform: rotate(90deg);
 }
 
 .panel-toggle-label {
@@ -275,21 +237,6 @@ function getSourceLabel(source: SemanticTerm['source']): string {
   padding: 0.0625rem 0.375rem;
   border-radius: 3px;
   background: var(--color-badge-amber-bg, rgba(232, 168, 56, 0.1));
-}
-
-.panel-body {
-  height: auto;
-  overflow: hidden;
-  transition: height 0.25s ease, opacity 0.2s ease;
-  opacity: 1;
-  padding: 0 0.75rem 0.75rem;
-  interpolate-size: allow-keywords;
-}
-
-.panel-body.collapsed {
-  height: 0;
-  opacity: 0;
-  padding-bottom: 0;
 }
 
 .panel-section {

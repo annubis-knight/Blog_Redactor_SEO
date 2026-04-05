@@ -170,6 +170,8 @@ export const useCocoonStrategyStore = defineStore('cocoonStrategy', () => {
       promesse: { ...emptyStep },
       cta: { ...emptyStep },
       proposedArticles: [],
+      suggestedTopics: [],
+      topicsUserContext: '',
       completedSteps: 0,
       updatedAt: new Date().toISOString(),
     }

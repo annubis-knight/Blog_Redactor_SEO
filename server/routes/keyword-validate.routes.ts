@@ -2,9 +2,18 @@ import { Router } from 'express'
 import { join } from 'path'
 import { log } from '../utils/logger.js'
 import { readCached, writeCached, slugify, isFresh } from '../utils/cache.js'
-import { fetchKeywordOverview, fetchPaa } from '../services/dataforseo.service.js'
+import { fetchKeywordOverview, fetchSearchIntentBatch } from '../services/dataforseo.service.js'
 import { fetchAutocomplete } from '../services/autocomplete.service.js'
-import { getThresholds, scoreKpi, computeVerdict } from '../services/keyword-validate.service.js'
+import { getThresholds, scoreKpi, computeVerdict, computeIntentScore } from '../services/keyword-validate.service.js'
+import {
+  fetchSerpAdvanced,
+  extractPaaFromSerp,
+  matchResonanceDetailed,
+  extractTopicWords,
+  bestMatch,
+  computePaaWeightedScore,
+} from '../services/intent-scan.service.js'
+import type { ResonanceMatch, RadarMatchQuality } from '../../shared/types/intent.types.js'
 import type { ArticleLevel, ValidateResponse } from '../../shared/types/keyword-validate.types.js'
 
 const router = Router()
@@ -18,7 +27,7 @@ const VALID_LEVELS: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
 router.post('/keywords/:keyword/validate', async (req, res) => {
   try {
     const keyword = decodeURIComponent(req.params.keyword)
-    const { level } = req.body as { level?: string }
+    const { level, articleTitle } = req.body as { level?: string; articleTitle?: string }
 
     // Validate inputs
     if (!keyword) {
@@ -31,29 +40,54 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
     }
 
     const articleLevel = level as ArticleLevel
-    const cacheKey = `${slugify(keyword)}-${articleLevel}`
+    const titleSlug = articleTitle ? `-${slugify(articleTitle)}` : ''
+    const cacheKey = `${slugify(keyword)}-${articleLevel}${titleSlug}`
 
-    // Check cache
+    // Check cache — skip if cached result had zero signals (stale auto NO-GO)
     const cached = await readCached<ValidateResponse>(CACHE_DIR, cacheKey)
-    if (cached && isFresh(cached.cachedAt, CACHE_TTL_MS)) {
+    if (cached && isFresh(cached.cachedAt, CACHE_TTL_MS) && !cached.data.verdict?.autoNoGo) {
       log.debug(`Validate cache hit for "${keyword}" (${articleLevel})`)
       res.json({ data: { ...cached.data, fromCache: true, cachedAt: cached.cachedAt } })
       return
     }
+    if (cached?.data.verdict?.autoNoGo) {
+      log.info(`Validate cache skipped for "${keyword}" — stale auto NO-GO, re-fetching`)
+    }
 
     log.info(`Validating keyword "${keyword}" for level "${articleLevel}"`)
 
-    // Parallel fetch: DataForSEO (volume, KD, CPC), Autocomplete, PAA
-    const [overview, autocomplete, paa] = await Promise.all([
+    // Parallel fetch: DataForSEO (volume, KD, CPC), Autocomplete, SERP (PAA), Intent
+    const [overview, autocomplete, serpResult, intentMap] = await Promise.all([
       fetchKeywordOverview(keyword),
       fetchAutocomplete(keyword),
-      fetchPaa(keyword),
+      fetchSerpAdvanced(keyword),
+      fetchSearchIntentBatch([keyword]),
     ])
+    const paa = extractPaaFromSerp(serpResult)
 
-    // Encode intent: check if intent data available from overview
-    // For now, use a simple heuristic based on keyword characteristics
-    // Full intent scoring will use fetchSearchIntentBatch in future stories
-    const intentValue = 0.5 // Default to mixed until full intent integration
+    // Match PAA items against topic words for weighted scoring
+    const topicSource = articleTitle ? `${keyword} ${articleTitle}` : keyword
+    const topicWords = extractTopicWords(topicSource)
+
+    const matchedPaaItems = paa.map(p => {
+      const qDetail = matchResonanceDetailed(p.question, topicWords)
+      const aDetail = p.answer
+        ? matchResonanceDetailed(p.answer, topicWords)
+        : { match: 'none' as ResonanceMatch, quality: 'stem' as const }
+      const match = bestMatch(qDetail.match, aDetail.match)
+      // Aligned with radar: quality comes from the side providing the best match
+      const quality: RadarMatchQuality =
+        qDetail.match === aDetail.match
+          ? (qDetail.quality === 'exact' || aDetail.quality === 'exact' ? 'exact' : 'stem')
+          : (bestMatch(qDetail.match, aDetail.match) === qDetail.match ? qDetail.quality : aDetail.quality)
+      return { match, matchQuality: match !== 'none' ? quality : undefined }
+    })
+
+    // Compute real intent score from DataForSEO
+    const intentData = intentMap.get(keyword)
+    const intentValue = intentData
+      ? computeIntentScore(intentData.intent, intentData.intentProbability, articleLevel)
+      : 0.5
 
     // Build 6 KPIs
     const config = getThresholds(articleLevel)
@@ -61,7 +95,7 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       scoreKpi('volume', overview.searchVolume, config),
       scoreKpi('kd', overview.difficulty, config),
       scoreKpi('cpc', overview.cpc, config),
-      scoreKpi('paa', paa.length, config),
+      scoreKpi('paa', computePaaWeightedScore(matchedPaaItems), config),
       scoreKpi('intent', intentValue, config),
       scoreKpi('autocomplete', autocomplete.position ?? 0, config),
     ]
@@ -76,7 +110,12 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       verdict,
       fromCache: false,
       cachedAt: null,
-      paaQuestions: paa.length > 0 ? paa.map(p => ({ question: p.question, answer: p.answer })) : undefined,
+      paaQuestions: paa.length > 0 ? paa.map((p, idx) => ({
+        question: p.question,
+        answer: p.answer ?? null,
+        match: matchedPaaItems[idx].match,
+        matchQuality: matchedPaaItems[idx].matchQuality,
+      })) : undefined,
     }
 
     // Write cache

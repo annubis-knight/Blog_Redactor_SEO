@@ -156,8 +156,11 @@ describe('LieutenantsSelection', () => {
 
   // --- Analyze button ---
   describe('Analyze SERP button', () => {
-    it('is enabled when captain is locked and keyword exists', () => {
+    it('is enabled when captain is locked and keyword exists (after auto-trigger completes)', async () => {
       const w = mountComponent()
+      // Auto-trigger fires at mount (immediate watcher), wait for it to complete
+      await nextTick()
+      await nextTick()
       const btn = w.find('.btn-analyze')
       expect((btn.element as HTMLButtonElement).disabled).toBe(false)
     })
@@ -589,26 +592,11 @@ describe('LieutenantsSelection', () => {
     })
   })
 
-  // --- Recommended counter ---
-  describe('Recommended counter', () => {
-    it('shows "3-5 recommandes" for intermediaire', async () => {
+  // --- Selection counter ---
+  describe('Selection counter', () => {
+    it('shows "0 sélectionné" initially', async () => {
       const w = await mountWithResults({ wordGroups: WORD_GROUPS })
-      expect(w.find('.lieutenant-counter').text()).toContain('3-5 recommandes')
-    })
-
-    it('shows "5-8 recommandes" for pilier', async () => {
-      const w = await mountWithResults({ wordGroups: WORD_GROUPS, articleLevel: 'pilier' })
-      expect(w.find('.lieutenant-counter').text()).toContain('5-8 recommandes')
-    })
-
-    it('shows "1-3 recommandes" for specifique', async () => {
-      const w = await mountWithResults({ wordGroups: WORD_GROUPS, articleLevel: 'specifique' })
-      expect(w.find('.lieutenant-counter').text()).toContain('1-3 recommandes')
-    })
-
-    it('shows "0 selectionne" initially', async () => {
-      const w = await mountWithResults({ wordGroups: WORD_GROUPS })
-      expect(w.find('.lieutenant-counter').text()).toContain('0 selectionne')
+      expect(w.find('.lieutenant-counter').text()).toContain('0 sélectionné')
     })
   })
 
@@ -627,7 +615,7 @@ describe('LieutenantsSelection', () => {
       const rows = w.findAll('.lieutenant-row')
       await rows[0].trigger('click')
       await nextTick()
-      expect(w.find('.lieutenant-counter').text()).toContain('1 selectionne')
+      expect(w.find('.lieutenant-counter').text()).toContain('1 sélectionné')
     })
 
     it('deselects a candidate on second click', async () => {
@@ -638,7 +626,7 @@ describe('LieutenantsSelection', () => {
       await rows[0].trigger('click')
       await nextTick()
       expect(rows[0].classes()).not.toContain('selected')
-      expect(w.find('.lieutenant-counter').text()).toContain('0 selectionne')
+      expect(w.find('.lieutenant-counter').text()).toContain('0 sélectionné')
     })
 
     it('emits lieutenants-updated on selection', async () => {
@@ -679,7 +667,7 @@ describe('LieutenantsSelection', () => {
       await nextTick()
       await rows[1].trigger('click')
       await nextTick()
-      expect(w.find('.lieutenant-counter').text()).toContain('2 selectionnes')
+      expect(w.find('.lieutenant-counter').text()).toContain('2 sélectionnés')
     })
   })
 

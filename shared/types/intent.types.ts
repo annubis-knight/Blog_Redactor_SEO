@@ -1,3 +1,5 @@
+import type { ValidateResponse } from './keyword-validate.types.js'
+
 // --- SERP Module Detection (Epic 11) ---
 
 export type SerpModuleType =
@@ -241,6 +243,7 @@ export interface RadarKeywordKpis {
   intentProbability: number | null
   autocompleteMatchCount: number
   paaMatchCount: number
+  paaWeightedScore: number
   paaTotal: number
   avgSemanticScore: number | null
 }
@@ -262,6 +265,12 @@ export interface RadarCard {
   combinedScore: number
   scoreBreakdown: RadarCombinedScoreBreakdown
   cachedPaa: boolean
+}
+
+export interface KeywordRootVariant {
+  keyword: string
+  card: RadarCard
+  validation: ValidateResponse
 }
 
 export interface KeywordRadarScanResult {

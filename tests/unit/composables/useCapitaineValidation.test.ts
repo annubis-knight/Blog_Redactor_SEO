@@ -9,7 +9,7 @@ vi.mock('../../../src/utils/logger', () => ({
 }))
 
 import { apiPost } from '../../../src/services/api.service'
-import { useCapitaineValidation, articleTypeToLevel, extractRoot } from '../../../src/composables/useCapitaineValidation'
+import { useCapitaineValidation, articleTypeToLevel, extractRoot, extractRoots } from '../../../src/composables/useCapitaineValidation'
 import type { ValidateResponse } from '../../../shared/types/keyword-validate.types'
 
 const mockApiPost = vi.mocked(apiPost)
@@ -100,7 +100,7 @@ describe('useCapitaineValidation', () => {
   it('populates radarCard from scan result', async () => {
     const mockCard = {
       keyword: 'seo', reasoning: '', combinedScore: 72,
-      kpis: { searchVolume: 1500, difficulty: 30, cpc: 2.5, competition: 0.5, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, paaMatchCount: 0, paaTotal: 0, avgSemanticScore: null },
+      kpis: { searchVolume: 1500, difficulty: 30, cpc: 2.5, competition: 0.5, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, paaMatchCount: 0, paaWeightedScore: 0, paaTotal: 0, avgSemanticScore: null },
       paaItems: [], scoreBreakdown: { paaMatchScore: 0, resonanceBonus: 0, opportunityScore: 0, intentValueScore: 0, cpcScore: 0, total: 72 },
       cachedPaa: false,
     }
@@ -143,12 +143,11 @@ describe('useCapitaineValidation', () => {
 
   it('reset clears all state including radarCard', async () => {
     setupRoutedMock([makeMockResult('seo')])
-    const { result, history, forceGo, radarCard, validateKeyword, reset } = useCapitaineValidation()
+    const { result, history, radarCard, validateKeyword, reset } = useCapitaineValidation()
     await validateKeyword('seo', 'pilier')
     reset()
     expect(result.value).toBeNull()
     expect(history.value).toHaveLength(0)
-    expect(forceGo.value).toBe(false)
     expect(radarCard.value).toBeNull()
   })
 
@@ -209,26 +208,6 @@ describe('useCapitaineValidation', () => {
     })
   })
 
-  describe('forceGo', () => {
-    it('toggles forceGo', () => {
-      const { forceGo, toggleForceGo } = useCapitaineValidation()
-      expect(forceGo.value).toBe(false)
-      toggleForceGo()
-      expect(forceGo.value).toBe(true)
-      toggleForceGo()
-      expect(forceGo.value).toBe(false)
-    })
-
-    it('resets forceGo on new validation', async () => {
-      setupRoutedMock([makeMockResult('seo')])
-      const { forceGo, toggleForceGo, validateKeyword } = useCapitaineValidation()
-      toggleForceGo()
-      expect(forceGo.value).toBe(true)
-      await validateKeyword('seo', 'pilier')
-      expect(forceGo.value).toBe(false)
-    })
-  })
-
   describe('root analysis', () => {
     it('fetches root for long-tail with weak volume', async () => {
       const weakResult = makeMockResult('plombier urgence paris')
@@ -271,12 +250,14 @@ describe('extractRoot', () => {
     expect(extractRoot('plombier urgence paris')).toBe('plombier urgence')
   })
 
-  it('skips French stopwords', () => {
-    expect(extractRoot('refaire son site web')).toBe('refaire site')
+  it('returns shortest contiguous truncation with 2+ significant words', () => {
+    // "refaire son site" has 2 significant words (refaire, site) → valid shortest root
+    expect(extractRoot('refaire son site web')).toBe('refaire son site')
   })
 
-  it('skips multiple stopwords', () => {
-    expect(extractRoot('refaire son site web sans changer de stratégie')).toBe('refaire site')
+  it('returns shortest contiguous truncation for long keywords', () => {
+    // "refaire son site" → significant = [refaire, site] ≥ 2 → shortest valid root
+    expect(extractRoot('refaire son site web sans changer de stratégie')).toBe('refaire son site')
   })
 
   it('returns null for 2-word keywords', () => {
@@ -293,5 +274,44 @@ describe('extractRoot', () => {
 
   it('returns null if fewer than 2 significant words after filtering', () => {
     expect(extractRoot('le la les')).toBeNull()
+  })
+})
+
+describe('extractRoots', () => {
+  it('returns all progressive truncations for 5-word keyword', () => {
+    expect(extractRoots('creation site web entreprise toulouse')).toEqual([
+      'creation site web entreprise',
+      'creation site web',
+      'creation site',
+    ])
+  })
+
+  it('excludes truncations with fewer than 2 significant words', () => {
+    // "refaire son site" → significant = ["refaire", "site"] ≥ 2 → included
+    // "refaire son" → significant = ["refaire"] < 2 → excluded
+    expect(extractRoots('refaire son site web')).toEqual([
+      'refaire son site',
+    ])
+  })
+
+  it('returns empty array for 2-word keywords', () => {
+    expect(extractRoots('seo local')).toEqual([])
+  })
+
+  it('returns empty array for all stopwords', () => {
+    expect(extractRoots('le la les des')).toEqual([])
+  })
+
+  it('handles 4-word keyword correctly', () => {
+    expect(extractRoots('plombier urgence paris 20')).toEqual([
+      'plombier urgence paris',
+      'plombier urgence',
+    ])
+  })
+
+  it('handles 3-word keyword — returns single root', () => {
+    expect(extractRoots('plombier urgence paris')).toEqual([
+      'plombier urgence',
+    ])
   })
 })

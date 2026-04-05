@@ -18,7 +18,7 @@ export interface SerpCompetitor {
 
 export interface LieutenantCandidate {
   text: string
-  sources: ('serp' | 'paa' | 'group')[]
+  sources: ('serp' | 'paa' | 'group' | 'root')[]
   relevance: 'fort' | 'moyen' | 'faible'
 }
 

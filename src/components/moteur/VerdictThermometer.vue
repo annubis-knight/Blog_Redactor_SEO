@@ -8,7 +8,6 @@ const props = defineProps<{
   verdict: VerdictLevel
   verdictLabel: string
   kpis: KpiResult[]
-  forced?: boolean
   fromCache?: boolean
 }>()
 
@@ -35,7 +34,6 @@ const greenCount = computed(() =>
       <div class="vt-left">
         <span class="vt-icon">{{ config.icon }}</span>
         <span class="vt-level" :style="{ color: config.color }">{{ verdict }}</span>
-        <span v-if="forced" class="vt-forced" data-testid="force-go-badge">(forc\u00e9)</span>
       </div>
       <div class="vt-right">
         <span class="vt-count">{{ greenCount }}/{{ kpis.length }} verts</span>
@@ -44,9 +42,7 @@ const greenCount = computed(() =>
     </div>
     <div class="vt-label">{{ verdictLabel }}</div>
     <ConfidenceBar :value="greenRatio" />
-    <div class="vt-actions">
-      <slot name="actions" />
-    </div>
+    <slot name="actions" />
   </div>
 </template>
 
@@ -80,13 +76,6 @@ const greenCount = computed(() =>
   text-transform: uppercase;
 }
 
-.vt-forced {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-warning, #f59e0b);
-  font-style: italic;
-}
-
 .vt-right {
   display: flex;
   align-items: center;
@@ -112,10 +101,4 @@ const greenCount = computed(() =>
   line-height: 1.25em;
 }
 
-.vt-actions {
-  min-height: 34px;
-  display: flex;
-  align-items: center;
-  margin-top: 0.5rem;
-}
 </style>

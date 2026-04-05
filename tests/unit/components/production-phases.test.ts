@@ -147,7 +147,7 @@ describe('BrainPhase', () => {
     await stepBtns[5]!.trigger('click')
 
     expect(wrapper.text()).toContain("Proposition d'articles")
-    expect(wrapper.text()).toContain('Générer les articles avec Claude')
+    expect(wrapper.text()).toContain('Générer avec Claude')
   })
 
   it('shows "Suivant" button for steps 1-5 and "Terminer" for step 6', async () => {

@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon } from '../services/data.service.js'
+import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon } from '../services/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article-content.service.js'
-import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema } from '../../shared/schemas/article.schema.js'
+import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 
 const router = Router()
 
@@ -73,6 +73,29 @@ router.put('/articles/:slug/status', async (req, res) => {
   } catch (err) {
     log.error(`PUT /api/articles/${req.params.slug}/status — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update article status' } })
+  }
+})
+
+/** PATCH /api/articles/:slug — Update article metadata (title) */
+router.patch('/articles/:slug', async (req, res) => {
+  const parsed = patchArticleSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
+    })
+    return
+  }
+
+  try {
+    const updated = await updateArticleInCocoon(req.params.slug, parsed.data)
+    if (!updated) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article "${req.params.slug}" not found` } })
+      return
+    }
+    res.json({ data: { slug: req.params.slug, updated: true } })
+  } catch (err) {
+    log.error(`PATCH /api/articles/${req.params.slug} — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update article' } })
   }
 })
 

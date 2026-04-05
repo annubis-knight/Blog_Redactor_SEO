@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getCocoons, getArticlesByCocoon } from '../services/data.service.js'
+import { getCocoons, getArticlesByCocoon, getArticleKeywordsByCocoon } from '../services/data.service.js'
 import { getCocoonStrategy } from '../services/cocoon-strategy.service.js'
 
 const router = Router()
@@ -81,6 +81,26 @@ router.get('/cocoons/:id/strategy/context', async (req, res) => {
   } catch (err) {
     log.error(`GET /api/cocoons/${req.params.id}/strategy/context — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load strategy context' } })
+  }
+})
+
+/** GET /api/cocoons/:cocoonName/capitaines — Capitaine keywords per article in a cocoon */
+router.get('/cocoons/:cocoonName/capitaines', async (req, res) => {
+  try {
+    const cocoonName = decodeURIComponent(req.params.cocoonName)
+    const articleKeywords = await getArticleKeywordsByCocoon(cocoonName)
+
+    const capitainesMap: Record<string, string> = {}
+    for (const ak of articleKeywords) {
+      if (ak.capitaine) {
+        capitainesMap[ak.articleSlug] = ak.capitaine
+      }
+    }
+
+    res.json({ data: capitainesMap })
+  } catch (err) {
+    log.error(`GET /api/cocoons/:cocoonName/capitaines — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load capitaines' } })
   }
 })
 

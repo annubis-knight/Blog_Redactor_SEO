@@ -3,6 +3,7 @@ import {
   getThresholds,
   scoreKpi,
   computeVerdict,
+  computeIntentScore,
 } from '../../../server/services/keyword-validate.service'
 import type { KpiResult, ThresholdConfig } from '../../../shared/types/keyword-validate.types'
 
@@ -12,8 +13,8 @@ function buildKpis(overrides: Partial<Record<string, KpiResult>>): KpiResult[] {
     { name: 'volume', rawValue: 2000, color: 'green', label: '', thresholds: { green: 1000, orange: 200 } },
     { name: 'kd', rawValue: 20, color: 'green', label: '', thresholds: { green: 40, orange: 65 } },
     { name: 'cpc', rawValue: 3, color: 'bonus', label: '', thresholds: { green: 2 } },
-    { name: 'paa', rawValue: 5, color: 'green', label: '', thresholds: { green: 3, orange: 1 } },
-    { name: 'intent', rawValue: 1, color: 'green', label: '', thresholds: { green: 1, orange: 0.5 } },
+    { name: 'paa', rawValue: 3.5, color: 'green', label: '', thresholds: { green: 3.0, orange: 1.0 } },
+    { name: 'intent', rawValue: 0.85, color: 'green', label: '', thresholds: { green: 0.7, orange: 0.4 } },
     { name: 'autocomplete', rawValue: 2, color: 'green', label: '', thresholds: { green: 3, orange: 6 } },
   ]
   return defaults.map(k => overrides[k.name] ?? k)
@@ -285,35 +286,128 @@ describe('keyword-validate.service', () => {
   })
 
   // --- Scoring individual KPIs ---
-  describe('scoreKpi — PAA', () => {
+  describe('scoreKpi — PAA (weighted score)', () => {
     const config = getThresholds('pilier')
 
-    it('PAA ≥3 = green (pilier)', () => {
-      expect(scoreKpi('paa', 5, config).color).toBe('green')
+    it('PAA weighted ≥3.0 = green (pilier)', () => {
+      expect(scoreKpi('paa', 3.5, config).color).toBe('green')
     })
 
-    it('PAA 2 = orange (pilier)', () => {
-      expect(scoreKpi('paa', 2, config).color).toBe('orange')
+    it('PAA weighted 3.0 = green (boundary)', () => {
+      expect(scoreKpi('paa', 3.0, config).color).toBe('green')
     })
 
-    it('PAA 0 = red (pilier)', () => {
+    it('PAA weighted 1.5 = orange (pilier)', () => {
+      expect(scoreKpi('paa', 1.5, config).color).toBe('orange')
+    })
+
+    it('PAA weighted 0.5 = red (pilier, <1.0)', () => {
+      expect(scoreKpi('paa', 0.5, config).color).toBe('red')
+    })
+
+    it('PAA weighted 0 = red (pilier)', () => {
       expect(scoreKpi('paa', 0, config).color).toBe('red')
+    })
+
+    it('PAA label shows weighted format', () => {
+      expect(scoreKpi('paa', 3.5, config).label).toBe('3.5 pts')
+    })
+
+    it('PAA weighted specifique: 0 = red (orange threshold 0.25)', () => {
+      const specConfig = getThresholds('specifique')
+      expect(scoreKpi('paa', 0, specConfig).color).toBe('red')
+    })
+
+    it('PAA weighted specifique: 0.25 = orange (boundary)', () => {
+      const specConfig = getThresholds('specifique')
+      expect(scoreKpi('paa', 0.25, specConfig).color).toBe('orange')
+    })
+
+    it('PAA weighted intermediaire: 2.0 = green (boundary)', () => {
+      const interConfig = getThresholds('intermediaire')
+      expect(scoreKpi('paa', 2.0, interConfig).color).toBe('green')
+    })
+
+    it('PAA weighted intermediaire: 0.5 = orange (boundary)', () => {
+      const interConfig = getThresholds('intermediaire')
+      expect(scoreKpi('paa', 0.5, interConfig).color).toBe('orange')
     })
   })
 
-  describe('scoreKpi — Intent', () => {
+  describe('scoreKpi — Intent (continuous thresholds)', () => {
     const config = getThresholds('pilier')
 
-    it('intent 1 (match) = green', () => {
-      expect(scoreKpi('intent', 1, config).color).toBe('green')
+    it('intent >= 0.7 = green', () => {
+      expect(scoreKpi('intent', 0.85, config).color).toBe('green')
     })
 
-    it('intent 0.5 (mixed) = orange', () => {
+    it('intent = 0.7 = green (boundary)', () => {
+      expect(scoreKpi('intent', 0.7, config).color).toBe('green')
+    })
+
+    it('intent 0.5 = orange (>= 0.4)', () => {
       expect(scoreKpi('intent', 0.5, config).color).toBe('orange')
     })
 
-    it('intent 0 (mismatch) = red', () => {
+    it('intent 0.4 = orange (boundary)', () => {
+      expect(scoreKpi('intent', 0.4, config).color).toBe('orange')
+    })
+
+    it('intent 0.3 = red (< 0.4)', () => {
+      expect(scoreKpi('intent', 0.3, config).color).toBe('red')
+    })
+
+    it('intent 0 = red', () => {
       expect(scoreKpi('intent', 0, config).color).toBe('red')
+    })
+
+    it('intent label shows rounded score', () => {
+      expect(scoreKpi('intent', 0.85, config).label).toBe('0.85')
+    })
+
+    it('intent thresholds match config', () => {
+      const r = scoreKpi('intent', 0.5, config)
+      expect(r.thresholds).toEqual({ green: 0.7, orange: 0.4 })
+    })
+  })
+
+  describe('computeIntentScore', () => {
+    it('informational + pilier = 0.7 * probability', () => {
+      expect(computeIntentScore('informational', 1.0, 'pilier')).toBeCloseTo(0.7)
+    })
+
+    it('informational + specifique = 1.0 * probability', () => {
+      expect(computeIntentScore('informational', 0.85, 'specifique')).toBeCloseTo(0.85)
+    })
+
+    it('commercial + pilier = 1.0 * probability', () => {
+      expect(computeIntentScore('commercial', 0.9, 'pilier')).toBeCloseTo(0.9)
+    })
+
+    it('commercial + specifique = 0.5 * probability', () => {
+      expect(computeIntentScore('commercial', 1.0, 'specifique')).toBeCloseTo(0.5)
+    })
+
+    it('transactional + pilier = 0.3 * probability', () => {
+      expect(computeIntentScore('transactional', 1.0, 'pilier')).toBeCloseTo(0.3)
+    })
+
+    it('transactional + intermediaire = 0.7 * probability', () => {
+      expect(computeIntentScore('transactional', 0.8, 'intermediaire')).toBeCloseTo(0.56)
+    })
+
+    it('navigational = 0.2 for all levels', () => {
+      expect(computeIntentScore('navigational', 1.0, 'pilier')).toBeCloseTo(0.2)
+      expect(computeIntentScore('navigational', 1.0, 'intermediaire')).toBeCloseTo(0.2)
+      expect(computeIntentScore('navigational', 1.0, 'specifique')).toBeCloseTo(0.2)
+    })
+
+    it('unknown intent falls back to 0.5', () => {
+      expect(computeIntentScore('unknown_intent', 1.0, 'pilier')).toBe(0.5)
+    })
+
+    it('probability scales the score', () => {
+      expect(computeIntentScore('informational', 0.5, 'specifique')).toBeCloseTo(0.5)
     })
   })
 

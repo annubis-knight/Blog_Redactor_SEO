@@ -36,6 +36,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         capitaine: keywords.value.capitaine,
         lieutenants: keywords.value.lieutenants,
         lexique: keywords.value.lexique,
+        rootKeywords: keywords.value.rootKeywords ?? [],
       })
       log.debug(`[article-keywords] saved for ${slug}`)
     } catch (err) {
@@ -71,10 +72,15 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   function setCapitaine(value: string) {
     if (!keywords.value) {
-      keywords.value = { articleSlug: '', capitaine: value, lieutenants: [], lexique: [] }
+      keywords.value = { articleSlug: '', capitaine: value, lieutenants: [], lexique: [], rootKeywords: [] }
     } else {
       keywords.value.capitaine = value
     }
+  }
+
+  function setRootKeywords(roots: string[]) {
+    if (!keywords.value) return
+    keywords.value.rootKeywords = roots
   }
 
   function addLieutenant(value: string) {
@@ -102,7 +108,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   }
 
   function initEmpty(slug: string) {
-    keywords.value = { articleSlug: slug, capitaine: '', lieutenants: [], lexique: [] }
+    keywords.value = { articleSlug: slug, capitaine: '', lieutenants: [], lexique: [], rootKeywords: [] }
   }
 
   function $reset() {
@@ -116,7 +122,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   return {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     fetchKeywords, saveKeywords, suggestLexique,
-    setCapitaine, addLieutenant, removeLieutenant, addLexiqueTerm, removeLexiqueTerm,
+    setCapitaine, setRootKeywords, addLieutenant, removeLieutenant, addLexiqueTerm, removeLexiqueTerm,
     initEmpty, $reset,
   }
 })

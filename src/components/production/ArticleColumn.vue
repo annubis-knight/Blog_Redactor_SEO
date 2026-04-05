@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import IconInfo from '@/components/shared/icons/IconInfo.vue'
 
+const INTERACTIVE = 'a,button,input,textarea,select,[role="button"]'
+
 defineProps<{
   label: string
   headerClass: string
@@ -9,16 +11,21 @@ defineProps<{
   peek?: boolean
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   (e: 'click-peek'): void
 }>()
+
+function onColumnClick(e: MouseEvent) {
+  if ((e.target as HTMLElement).closest(INTERACTIVE)) return
+  emit('click-peek')
+}
 </script>
 
 <template>
   <div
     class="article-column"
     :class="{ 'article-column--peek': peek }"
-    @click="peek && $emit('click-peek')"
+    @click="peek && onColumnClick($event)"
   >
     <div class="column-header" :class="headerClass">
       <span class="column-label">{{ label }}</span>

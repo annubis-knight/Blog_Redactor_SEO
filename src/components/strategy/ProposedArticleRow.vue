@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, nextTick } from 'vue'
 import type { ProposedArticle, CompositionCheckResult } from '@shared/types/index.js'
-import { IconArrow, IconCheck, IconClose, IconKebab, IconRefresh, IconLink } from '@/components/shared/icons'
+import { IconArrow, IconCheck, IconClose, IconEdit, IconKebab, IconRefresh, IconLink } from '@/components/shared/icons'
 
 const props = defineProps<{
   article: ProposedArticle
   index: number
   compositionResult?: CompositionCheckResult | null
-  groupColor?: string
   structuralWarnings?: Array<{ type: string; message: string }>
   availableParents?: string[]
 }>()
@@ -22,6 +21,9 @@ const emit = defineEmits<{
   (e: 'toggle-accept', index: number): void
   (e: 'remove', index: number): void
   (e: 'change-parent', index: number, parentTitle: string): void
+  (e: 'edit-title', index: number, value: string): void
+  (e: 'edit-keyword', index: number, value: string): void
+  (e: 'edit-slug', index: number, value: string): void
 }>()
 
 const keywords = computed(() => props.article.suggestedKeywords?.length ? props.article.suggestedKeywords : [props.article.suggestedKeyword])
@@ -45,12 +47,6 @@ const currentSlugIndex = computed(() => {
 const expanded = ref(false)
 const parentMenuOpen = ref(false)
 const actionsMenuOpen = ref(false)
-
-const truncatedParentTitle = computed(() => {
-  if (!props.article.parentTitle) return null
-  const t = props.article.parentTitle
-  return t.length > 30 ? t.slice(0, 30) + '…' : t
-})
 
 const tooltipVisible = ref(false)
 let tooltipTimer: ReturnType<typeof setTimeout> | null = null
@@ -76,54 +72,71 @@ const hasAnyIssue = computed(() => {
   return totalWarningCount.value > 0 || (props.compositionResult && !props.compositionResult.allPass)
 })
 
-const maturityTags = [
-  { key: 'keywordValidated' as const, label: 'Mot-clé technique', labelDone: 'Mot-clé technique ✓' },
-  { key: 'searchQueryValidated' as const, label: 'Requête recherche', labelDone: 'Requête recherche ✓' },
-  { key: 'titleValidated' as const, label: 'Titre', labelDone: 'Titre ✓' },
-] as const
+const keywordColorClass = computed(() => {
+  switch (props.article.type) {
+    case 'Pilier': return 'keyword-badge--pilier'
+    case 'Intermédiaire': return 'keyword-badge--inter'
+    case 'Spécialisé': return 'keyword-badge--spe'
+    default: return ''
+  }
+})
+
+const editingField = ref<'title' | 'keyword' | 'slug' | null>(null)
+const editValue = ref('')
+const editInputRef = ref<HTMLInputElement | null>(null)
+
+function startEdit(field: 'title' | 'keyword' | 'slug') {
+  if (field === 'title') editValue.value = props.article.title
+  else if (field === 'keyword') editValue.value = props.article.suggestedKeyword
+  else if (field === 'slug') editValue.value = props.article.suggestedSlug
+  editingField.value = field
+  nextTick(() => editInputRef.value?.focus())
+}
+
+function commitEdit(field: 'title' | 'keyword' | 'slug') {
+  if (editingField.value !== field) return
+  const value = editValue.value.trim()
+  if (value) {
+    if (field === 'title' && value !== props.article.title) emit('edit-title', props.index, value)
+    else if (field === 'keyword' && value !== props.article.suggestedKeyword) emit('edit-keyword', props.index, value)
+    else if (field === 'slug' && value !== props.article.suggestedSlug) emit('edit-slug', props.index, value)
+  }
+  editingField.value = null
+}
+
 </script>
 
 <template>
   <div
     class="proposal-item"
     :class="{ expanded, accepted: article.accepted }"
-    :style="groupColor ? { borderLeft: `3px solid ${groupColor}` } : undefined"
     @click="expanded = !expanded"
   >
-    <!-- Maturity tags (above title) -->
-    <div class="maturity-tags">
-      <span
-        v-for="tag in maturityTags"
-        :key="tag.key"
-        class="maturity-tag"
-        :class="article[tag.key] ? 'maturity-tag--done' : 'maturity-tag--pending'"
-      >
-        {{ article[tag.key] ? tag.labelDone : tag.label }}
-      </span>
-    </div>
-
     <!-- Header row -->
     <div class="proposal-header">
-      <button
-        v-if="titles.length > 1 && currentTitleIndex > 0"
-        class="slider-arrow"
-        @click.stop="emit('select-title', index, currentTitleIndex - 1)"
-      >
-        <IconArrow direction="left" />
-      </button>
-      <span class="proposal-title" :title="expanded ? undefined : article.title">
-        {{ article.title || 'Sans titre' }}
-      </span>
-      <span v-if="titles.length > 1" class="slider-counter">{{ currentTitleIndex + 1 }}/{{ titles.length }}</span>
-      <button
-        v-if="titles.length > 1 && currentTitleIndex < titles.length - 1"
-        class="slider-arrow"
-        @click.stop="emit('select-title', index, currentTitleIndex + 1)"
-      >
-        <IconArrow direction="right" />
-      </button>
+      <div class="proposal-title-block">
+        <div v-if="expanded" class="label-with-edit">
+          <span class="keyword-label">Titre</span>
+          <button class="edit-icon-btn" title="Modifier le titre" @click.stop="startEdit('title')">
+            <IconEdit :size="12" />
+          </button>
+        </div>
+        <input
+          v-if="expanded && editingField === 'title'"
+          ref="editInputRef"
+          class="inline-edit-input inline-edit-input--title"
+          :value="editValue"
+          @input="editValue = ($event.target as HTMLInputElement).value"
+          @blur="commitEdit('title')"
+          @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+          @click.stop
+        />
+        <span v-else class="proposal-title" :title="expanded ? undefined : article.title">
+          {{ article.title || 'Sans titre' }}
+        </span>
+      </div>
 
-      <!-- Composition badge with hover tooltip -->
+      <!-- Composition badge (between title and slider nav) -->
       <span
         v-if="hasAnyIssue"
         class="composition-badge composition-badge--warn"
@@ -138,6 +151,24 @@ const maturityTags = [
         @mouseenter="showTooltip"
         @mouseleave="hideTooltip"
       >&#10003;</span>
+
+      <div v-if="titles.length > 1" class="slider-nav" @click.stop>
+        <button
+          class="slider-arrow"
+          :disabled="currentTitleIndex <= 0"
+          @click.stop="emit('select-title', index, currentTitleIndex - 1)"
+        >
+          <IconArrow direction="left" />
+        </button>
+        <span class="slider-counter">{{ currentTitleIndex + 1 }}/{{ titles.length }}</span>
+        <button
+          class="slider-arrow"
+          :disabled="currentTitleIndex >= titles.length - 1"
+          @click.stop="emit('select-title', index, currentTitleIndex + 1)"
+        >
+          <IconArrow direction="right" />
+        </button>
+      </div>
 
       <!-- Tooltip (hover on badge) -->
       <div
@@ -252,57 +283,83 @@ const maturityTags = [
       /{{ article.suggestedSlug }}
     </div>
 
-    <!-- Parent title badge (collapsed only) -->
-    <div v-if="!expanded && truncatedParentTitle" class="parent-title-badge" data-testid="parent-title-badge">
-      <svg width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-        <path d="M6.5 3.5h6v6M12 4L4 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
-      </svg>
-      <span>{{ truncatedParentTitle }}</span>
-    </div>
-
     <!-- Expanded details -->
     <div v-if="expanded" class="proposal-details">
       <div v-if="article.suggestedKeyword" class="keyword-slider">
-        <span class="keyword-label">Mot-clé suggéré</span>
+        <div class="label-with-edit">
+          <span class="keyword-label">Mot-clé suggéré</span>
+          <button class="edit-icon-btn" title="Modifier le mot-clé" @click.stop="startEdit('keyword')">
+            <IconEdit :size="12" />
+          </button>
+        </div>
         <div class="keyword-slider-row">
-          <button
-            class="slider-arrow"
-            :disabled="currentKeywordIndex <= 0"
-            @click.stop="emit('select-keyword', index, currentKeywordIndex - 1)"
-          >
-            <IconArrow direction="left" />
-          </button>
-          <span class="keyword-badge">{{ article.suggestedKeyword }}</span>
-          <button
-            class="slider-arrow"
-            :disabled="currentKeywordIndex >= keywords.length - 1"
-            @click.stop="emit('select-keyword', index, currentKeywordIndex + 1)"
-          >
-            <IconArrow direction="right" />
-          </button>
-          <span v-if="keywords.length > 1" class="slider-counter">{{ currentKeywordIndex + 1 }} / {{ keywords.length }}</span>
+          <input
+            v-if="editingField === 'keyword'"
+            ref="editInputRef"
+            class="inline-edit-input"
+            :value="editValue"
+            @input="editValue = ($event.target as HTMLInputElement).value"
+            @blur="commitEdit('keyword')"
+            @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+            @click.stop
+          />
+          <span v-else class="keyword-badge" :class="keywordColorClass">{{ article.suggestedKeyword }}</span>
+          <div v-if="keywords.length > 1" class="slider-nav" @click.stop>
+            <button
+              class="slider-arrow"
+              :disabled="currentKeywordIndex <= 0"
+              @click.stop="emit('select-keyword', index, currentKeywordIndex - 1)"
+            >
+              <IconArrow direction="left" />
+            </button>
+            <span class="slider-counter">{{ currentKeywordIndex + 1 }}/{{ keywords.length }}</span>
+            <button
+              class="slider-arrow"
+              :disabled="currentKeywordIndex >= keywords.length - 1"
+              @click.stop="emit('select-keyword', index, currentKeywordIndex + 1)"
+            >
+              <IconArrow direction="right" />
+            </button>
+          </div>
         </div>
       </div>
 
       <div v-if="article.suggestedSlug" class="slug-slider">
-        <span class="keyword-label">Slug</span>
+        <div class="label-with-edit">
+          <span class="keyword-label">Slug</span>
+          <button class="edit-icon-btn" title="Modifier le slug" @click.stop="startEdit('slug')">
+            <IconEdit :size="12" />
+          </button>
+        </div>
         <div class="keyword-slider-row">
-          <button
-            class="slider-arrow"
-            :disabled="currentSlugIndex <= 0"
-            @click.stop="emit('select-slug', index, currentSlugIndex - 1)"
-          >
-            <IconArrow direction="left" />
-          </button>
-          <span class="keyword-badge keyword-badge--slug" data-testid="slug-badge">{{ article.suggestedSlug }}</span>
-          <button
-            class="slider-arrow"
-            :disabled="currentSlugIndex >= slugs.length - 1"
-            @click.stop="emit('select-slug', index, currentSlugIndex + 1)"
-          >
-            <IconArrow direction="right" />
-          </button>
-          <span v-if="slugs.length > 1" class="slider-counter">{{ currentSlugIndex + 1 }} / {{ slugs.length }}</span>
+          <input
+            v-if="editingField === 'slug'"
+            ref="editInputRef"
+            class="inline-edit-input inline-edit-input--slug"
+            :value="editValue"
+            @input="editValue = ($event.target as HTMLInputElement).value"
+            @blur="commitEdit('slug')"
+            @keydown.enter.prevent="($event.target as HTMLInputElement).blur()"
+            @click.stop
+          />
+          <span v-else class="keyword-badge keyword-badge--slug" data-testid="slug-badge">{{ article.suggestedSlug }}</span>
+          <div v-if="slugs.length > 1" class="slider-nav" @click.stop>
+            <button
+              class="slider-arrow"
+              :disabled="currentSlugIndex <= 0"
+              @click.stop="emit('select-slug', index, currentSlugIndex - 1)"
+            >
+              <IconArrow direction="left" />
+            </button>
+            <span class="slider-counter">{{ currentSlugIndex + 1 }}/{{ slugs.length }}</span>
+            <button
+              class="slider-arrow"
+              :disabled="currentSlugIndex >= slugs.length - 1"
+              @click.stop="emit('select-slug', index, currentSlugIndex + 1)"
+            >
+              <IconArrow direction="right" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -312,7 +369,7 @@ const maturityTags = [
       </div>
 
       <div v-if="article.painPoint" class="detail-pain-point">
-        <span class="pain-point-label">Douleur</span>
+        <span class="keyword-label">Douleur</span>
         <span class="pain-point-text">{{ article.painPoint }}</span>
       </div>
 
@@ -369,45 +426,20 @@ const maturityTags = [
 
 <style scoped>
 .proposal-item {
-  border: 1px solid var(--color-border);
+  border: 1.5px solid var(--color-badge-amber-text);
   border-radius: 6px;
   background: var(--color-surface);
   transition: border-color 0.15s, box-shadow 0.15s;
   cursor: pointer;
 }
 
+.proposal-item.accepted {
+  border-color: var(--color-badge-green-text);
+}
+
 .proposal-item:hover {
   border-color: var(--color-primary);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-}
-
-/* --- Maturity tags (above title) --- */
-.maturity-tags {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.625rem 0;
-  flex-wrap: wrap;
-}
-
-.maturity-tag {
-  display: inline-block;
-  padding: 0.125rem 0.5rem;
-  border-radius: 9999px;
-  font-size: 0.625rem;
-  font-weight: 500;
-  letter-spacing: 0.01em;
-  line-height: 1.4;
-}
-
-.maturity-tag--pending {
-  background: var(--color-badge-slate-bg);
-  color: var(--color-badge-slate-text);
-}
-
-.maturity-tag--done {
-  background: var(--color-badge-green-bg);
-  color: var(--color-badge-green-text);
 }
 
 /* --- Header --- */
@@ -416,7 +448,7 @@ const maturityTags = [
   display: flex;
   align-items: center;
   gap: 0.5rem;
-  padding: 0.375rem 0.625rem 0.625rem 0.5rem;
+  padding: 0.625rem 0.625rem 0.625rem 0.5rem;
 }
 
 /* When expanded, title wraps */
@@ -424,9 +456,15 @@ const maturityTags = [
   align-items: flex-start;
 }
 
-.proposal-title {
+.proposal-title-block {
   flex: 1;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.proposal-title {
   font-size: 0.8125rem;
   font-weight: 500;
   color: var(--color-text);
@@ -435,12 +473,14 @@ const maturityTags = [
   text-overflow: ellipsis;
 }
 
-/* Expanded: full title, multi-line */
+/* Expanded: full title, multi-line, bigger */
 .expanded .proposal-title {
   white-space: normal;
   overflow: visible;
   text-overflow: unset;
   line-height: 1.4;
+  font-size: 0.9375rem;
+  font-weight: 600;
 }
 
 /* --- Actions --- */
@@ -477,11 +517,6 @@ const maturityTags = [
   color: var(--color-primary);
 }
 
-.proposal-action-accept {
-  opacity: 1;
-  color: var(--color-text-muted);
-}
-
 .proposal-action-accept--active {
   color: var(--color-badge-green-text);
   background: var(--color-badge-green-bg);
@@ -490,10 +525,6 @@ const maturityTags = [
 .proposal-action-accept:hover:not(.proposal-action-accept--active) {
   background: var(--color-badge-green-bg);
   color: var(--color-badge-green-text);
-}
-
-.proposal-item.accepted {
-  border-color: var(--color-badge-green-text);
 }
 
 .proposal-action-delete:hover {
@@ -528,7 +559,7 @@ const maturityTags = [
   padding: 0.25rem 0.75rem 0.75rem;
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
+  gap: 0.75rem;
 }
 
 .keyword-slider {
@@ -550,12 +581,20 @@ const maturityTags = [
   line-height: 1.4;
 }
 
+/* --- Slider navigation group (arrows + counter) --- */
+.slider-nav {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+  flex-shrink: 0;
+}
+
 .slider-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
+  width: 1.25rem;
+  height: 1.25rem;
   border: none;
   background: none;
   color: var(--color-text-muted);
@@ -578,14 +617,16 @@ const maturityTags = [
 .slider-counter {
   font-size: 0.625rem;
   color: var(--color-text-muted);
-  margin-left: 0.125rem;
+  min-width: 1.5rem;
+  text-align: center;
 }
 
 .detail-keyword {
   display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .keyword-label {
@@ -618,28 +659,92 @@ const maturityTags = [
   font-size: 0.6875rem;
 }
 
+.keyword-badge--pilier {
+  background: var(--color-badge-blue-bg);
+  color: var(--color-badge-blue-text);
+}
+
+.keyword-badge--inter {
+  background: var(--color-badge-amber-bg);
+  color: var(--color-badge-amber-text);
+}
+
+.keyword-badge--spe {
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green-text);
+}
+
+/* --- Label with edit icon --- */
+.label-with-edit {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.edit-icon-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.25rem;
+  height: 1.25rem;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  border-radius: 3px;
+  padding: 0;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.15s, color 0.15s;
+}
+
+.proposal-item:hover .edit-icon-btn {
+  opacity: 0.6;
+}
+
+.edit-icon-btn:hover {
+  opacity: 1 !important;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+
+/* --- Inline edit input --- */
+.inline-edit-input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.25rem 0.5rem;
+  border: 1.5px solid var(--color-primary);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-family: inherit;
+  color: var(--color-text);
+  background: var(--color-background);
+  outline: none;
+}
+
+.inline-edit-input--title {
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.inline-edit-input--slug {
+  font-family: monospace;
+  font-size: 0.6875rem;
+}
+
 .slug-slider {
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .detail-pain-point {
   display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
-  padding: 0.375rem 0.625rem;
-  border-radius: 4px;
-  background: var(--color-badge-amber-bg, rgba(232, 168, 56, 0.1));
-}
-
-.pain-point-label {
-  font-size: 0.625rem;
-  font-weight: 700;
-  color: var(--color-badge-amber-text, #d97706);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  flex-shrink: 0;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--color-border);
 }
 
 .pain-point-text {
@@ -654,11 +759,13 @@ const maturityTags = [
   font-style: italic;
   color: var(--color-text-muted);
   line-height: 1.5;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--color-border);
 }
 
 /* --- Collapsed slug --- */
 .collapsed-slug {
-  padding: 0 0.625rem 0.25rem;
+  padding: 0 0.625rem 0.5rem;
   font-size: 0.6875rem;
   font-family: monospace;
   color: var(--color-text-muted);
@@ -666,22 +773,6 @@ const maturityTags = [
   overflow: hidden;
   text-overflow: ellipsis;
   opacity: 0.7;
-}
-
-/* --- Parent title badge --- */
-.parent-title-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0 0.625rem 0.5rem 0.625rem;
-  font-size: 0.6875rem;
-  font-style: italic;
-  color: var(--color-text-muted);
-}
-
-.parent-title-badge svg {
-  flex-shrink: 0;
-  opacity: 0.6;
 }
 
 /* --- Composition badges --- */

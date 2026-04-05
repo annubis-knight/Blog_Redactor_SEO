@@ -16,6 +16,8 @@ function emptyCocoonStrategy(cocoonSlug: string): CocoonStrategy {
     promesse: { ...emptyStep },
     cta: { ...emptyStep },
     proposedArticles: [],
+    suggestedTopics: [],
+    topicsUserContext: '',
     completedSteps: 0,
     updatedAt: new Date().toISOString(),
   }

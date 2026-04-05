@@ -32,7 +32,9 @@ const isLoading = computed(() =>
 const error = computed(() => articlesStore.error)
 
 async function loadData() {
-  if (cocoonsStore.cocoons.length === 0) {
+  const needsFetch = cocoonsStore.cocoons.length === 0
+    || !cocoonsStore.cocoons.some(c => c.id === cocoonId.value)
+  if (needsFetch) {
     await cocoonsStore.fetchCocoons()
   }
 

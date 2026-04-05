@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import type { RadarCard } from '@shared/types/intent.types.js'
 import RadarKeywordCard from './RadarKeywordCard.vue'
+import type { InteractiveWordsProps } from './RadarKeywordCard.vue'
 
 defineProps<{
   card: RadarCard
   locked: boolean
+  interactiveWords?: InteractiveWordsProps
 }>()
 
 defineEmits<{
   'update:locked': [value: boolean]
+  'word-toggle': [activeCount: number]
 }>()
 </script>
 
@@ -31,7 +34,7 @@ defineEmits<{
       </svg>
     </button>
     <div class="radar-card-lockable__content">
-      <RadarKeywordCard :card="card" />
+      <RadarKeywordCard :card="card" :interactive-words="interactiveWords" @word-toggle="$emit('word-toggle', $event)" />
     </div>
   </div>
 </template>

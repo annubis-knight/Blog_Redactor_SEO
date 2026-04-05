@@ -29,90 +29,27 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('ProposedArticleRow — parentTitle display', () => {
-  it('shows parentTitle badge when parentTitle is present and collapsed', () => {
+describe('ProposedArticleRow — accepted border', () => {
+  it('does not have accepted class when article is not accepted', () => {
     const wrapper = mount(ProposedArticleRow, {
       props: {
-        article: makeArticle({ parentTitle: 'Mon Intermédiaire Parent' }),
-        index: 0,
-      },
-    })
-    const badge = wrapper.find('[data-testid="parent-title-badge"]')
-    expect(badge.exists()).toBe(true)
-    expect(badge.text()).toContain('Mon Intermédiaire Parent')
-  })
-
-  it('hides parentTitle badge when parentTitle is null', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: {
-        article: makeArticle({ parentTitle: null }),
-        index: 0,
-      },
-    })
-    expect(wrapper.find('[data-testid="parent-title-badge"]').exists()).toBe(false)
-  })
-
-  it('truncates parentTitle at 30 characters', () => {
-    const longTitle = 'Ceci est un titre très très long qui dépasse trente caractères facilement'
-    const wrapper = mount(ProposedArticleRow, {
-      props: {
-        article: makeArticle({ parentTitle: longTitle }),
-        index: 0,
-      },
-    })
-    const badge = wrapper.find('[data-testid="parent-title-badge"]')
-    expect(badge.exists()).toBe(true)
-    // The displayed text should be truncated to 30 chars + ellipsis
-    const displayed = badge.text()
-    expect(displayed.length).toBeLessThanOrEqual(longTitle.length)
-    expect(displayed).toContain('…')
-    // Verify first 30 chars are present
-    expect(displayed).toContain(longTitle.slice(0, 30))
-  })
-
-  it('hides parentTitle badge when expanded', async () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: {
-        article: makeArticle({ parentTitle: 'Mon Parent' }),
-        index: 0,
-      },
-    })
-    // Initially collapsed — badge visible
-    expect(wrapper.find('[data-testid="parent-title-badge"]').exists()).toBe(true)
-
-    // Expand the card
-    await wrapper.find('.proposal-item').trigger('click')
-
-    // Badge should be hidden when expanded
-    expect(wrapper.find('[data-testid="parent-title-badge"]').exists()).toBe(false)
-  })
-})
-
-describe('ProposedArticleRow — groupColor', () => {
-  it('applies border-left when groupColor is provided', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: {
-        article: makeArticle(),
-        index: 0,
-        groupColor: '#3b82f6',
-      },
-    })
-    const item = wrapper.find('.proposal-item')
-    const style = item.attributes('style') ?? ''
-    expect(style).toContain('border-left')
-    expect(style).toContain('3px solid')
-  })
-
-  it('does not apply border-left when groupColor is absent', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: {
-        article: makeArticle(),
+        article: makeArticle({ accepted: false }),
         index: 0,
       },
     })
     const item = wrapper.find('.proposal-item')
-    const style = item.attributes('style') ?? ''
-    expect(style).not.toContain('border-left')
+    expect(item.classes()).not.toContain('accepted')
+  })
+
+  it('has accepted class when article is accepted', () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: {
+        article: makeArticle({ accepted: true }),
+        index: 0,
+      },
+    })
+    const item = wrapper.find('.proposal-item')
+    expect(item.classes()).toContain('accepted')
   })
 })
 
@@ -463,5 +400,154 @@ describe('ProposedArticleRow — composition tooltip', () => {
     const badge = wrapper.find('[data-testid="composition-badge-warn"]')
     expect(badge.exists()).toBe(true)
     expect(badge.text()).toContain('1')
+  })
+})
+
+describe('ProposedArticleRow — Titre label & bigger title (expanded)', () => {
+  it('shows Titre label when expanded', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 0 },
+    })
+    // Collapsed: no label
+    expect(wrapper.find('.proposal-title-block .keyword-label').exists()).toBe(false)
+
+    await wrapper.find('.proposal-item').trigger('click')
+
+    const label = wrapper.find('.proposal-title-block .keyword-label')
+    expect(label.exists()).toBe(true)
+    expect(label.text()).toBe('Titre')
+  })
+
+  it('has expanded class on title when expanded', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+
+    expect(wrapper.find('.expanded .proposal-title').exists()).toBe(true)
+  })
+})
+
+describe('ProposedArticleRow — inline edit', () => {
+  it('shows edit icon next to Titre label when expanded', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+
+    const editBtn = wrapper.find('.proposal-title-block .edit-icon-btn')
+    expect(editBtn.exists()).toBe(true)
+  })
+
+  it('shows edit icon next to Mot-clé and Slug labels when expanded', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle({ suggestedSlug: 'test-slug' }), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+
+    const editBtns = wrapper.findAll('.edit-icon-btn')
+    // Title + Keyword + Slug = 3
+    expect(editBtns.length).toBe(3)
+  })
+
+  it('enters title edit mode on pencil click', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+    await wrapper.find('.proposal-title-block .edit-icon-btn').trigger('click')
+
+    const input = wrapper.find('.inline-edit-input--title')
+    expect(input.exists()).toBe(true)
+    expect((input.element as HTMLInputElement).value).toBe('Test article Spécialisé')
+  })
+
+  it('emits edit-title on blur with changed value', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 2 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+    await wrapper.find('.proposal-title-block .edit-icon-btn').trigger('click')
+
+    const input = wrapper.find('.inline-edit-input--title')
+    await input.setValue('Nouveau titre')
+    await input.trigger('blur')
+
+    expect(wrapper.emitted('edit-title')).toEqual([[2, 'Nouveau titre']])
+  })
+
+  it('does not emit edit-title if value unchanged', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+    await wrapper.find('.proposal-title-block .edit-icon-btn').trigger('click')
+
+    const input = wrapper.find('.inline-edit-input--title')
+    await input.trigger('blur')
+
+    expect(wrapper.emitted('edit-title')).toBeUndefined()
+  })
+
+  it('enters keyword edit mode and emits edit-keyword on blur', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle(), index: 1 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+    await wrapper.find('.keyword-slider .edit-icon-btn').trigger('click')
+
+    const input = wrapper.find('.keyword-slider .inline-edit-input')
+    expect(input.exists()).toBe(true)
+    await input.setValue('nouveau mot-clé')
+    await input.trigger('blur')
+
+    expect(wrapper.emitted('edit-keyword')).toEqual([[1, 'nouveau mot-clé']])
+  })
+
+  it('enters slug edit mode and emits edit-slug on blur', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle({ suggestedSlug: 'old-slug' }), index: 3 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+    await wrapper.find('.slug-slider .edit-icon-btn').trigger('click')
+
+    const input = wrapper.find('.slug-slider .inline-edit-input')
+    expect(input.exists()).toBe(true)
+    await input.setValue('new-slug')
+    await input.trigger('blur')
+
+    expect(wrapper.emitted('edit-slug')).toEqual([[3, 'new-slug']])
+  })
+})
+
+describe('ProposedArticleRow — keyword badge color by type', () => {
+  it('applies pilier color class for Pilier type', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle({ type: 'Pilier' }), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+
+    const badge = wrapper.find('.keyword-badge')
+    expect(badge.classes()).toContain('keyword-badge--pilier')
+  })
+
+  it('applies inter color class for Intermédiaire type', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle({ type: 'Intermédiaire' }), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+
+    const badge = wrapper.find('.keyword-badge')
+    expect(badge.classes()).toContain('keyword-badge--inter')
+  })
+
+  it('applies spe color class for Spécialisé type', async () => {
+    const wrapper = mount(ProposedArticleRow, {
+      props: { article: makeArticle({ type: 'Spécialisé' }), index: 0 },
+    })
+    await wrapper.find('.proposal-item').trigger('click')
+
+    const badge = wrapper.find('.keyword-badge')
+    expect(badge.classes()).toContain('keyword-badge--spe')
   })
 })

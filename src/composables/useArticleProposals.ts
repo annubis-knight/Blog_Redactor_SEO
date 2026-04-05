@@ -3,8 +3,8 @@ import { checkKeywordComposition } from '@/composables/useCompositionCheck'
 import { articleTypeToLevel } from '@/composables/useCapitaineValidation'
 import { useCocoonStrategyStore } from '@/stores/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
-import type { ProposedArticle, CocoonSuggestRequest } from '@shared/types/index.js'
-import { apiPost, apiDelete } from '@/services/api.service'
+import type { ProposedArticle, CocoonSuggestRequest, SuggestedTopic } from '@shared/types/index.js'
+import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
 
 type ArticleType = 'Pilier' | 'Intermédiaire' | 'Spécialisé'
 
@@ -42,17 +42,37 @@ export function useArticleProposals(params: {
   const generationWarning = ref<string | null>(null)
   const addingArticleType = ref<ArticleType | null>(null)
 
-  // --- Migrate existing articles: derive slugs from keywords if missing ---
+  // --- Migrate existing articles: derive slugs + assign IDs + backfill dbSlug ---
   watch(() => store.strategy?.proposedArticles, (articles) => {
     if (!articles) return
     let patched = false
+    // Build title→slug map from BDD for dbSlug backfill
+    const cocoon = cocoonsStore.cocoons.find(c => c.name === cocoonName.value)
+    const dbTitleToSlug = new Map<string, string>()
+    if (cocoon) {
+      for (const a of cocoon.articles) {
+        dbTitleToSlug.set(a.title, a.slug)
+      }
+    }
     for (const article of articles) {
+      if (!article.id) {
+        article.id = crypto.randomUUID()
+        patched = true
+      }
       if (!article.suggestedSlug && article.suggestedKeyword) {
         article.suggestedSlug = keywordToSlug(article.suggestedKeyword)
         if (!article.suggestedSlugs?.length) {
           article.suggestedSlugs = [article.suggestedSlug]
         }
         patched = true
+      }
+      // Backfill dbSlug for articles already in BDD but missing the field
+      if (article.createdInDb && !article.dbSlug && article.title) {
+        const found = dbTitleToSlug.get(article.title)
+        if (found) {
+          article.dbSlug = found
+          patched = true
+        }
       }
     }
     if (patched) {
@@ -74,6 +94,7 @@ export function useArticleProposals(params: {
     const keyword = String(obj.suggestedKeyword ?? '')
     const slug = String(obj.suggestedSlug ?? '') || keywordToSlug(keyword)
     return {
+      id: crypto.randomUUID(),
       title,
       suggestedTitles: title ? [title] : [],
       type,
@@ -90,6 +111,7 @@ export function useArticleProposals(params: {
       titleValidated: false,
       accepted: false,
       createdInDb: false,
+      dbSlug: '',
     }
   }
 
@@ -130,6 +152,7 @@ export function useArticleProposals(params: {
           const kw = (obj.suggestedKeyword as string) ?? ''
           const sl = ((obj.suggestedSlug as string) ?? '') || keywordToSlug(kw)
           articles.push({
+            id: crypto.randomUUID(),
             title: obj.title.trim(),
             suggestedTitles: [obj.title.trim()],
             type: (['Pilier', 'Intermédiaire', 'Spécialisé'] as const).includes(obj.type as any) ? (obj.type as ArticleType) : 'Spécialisé',
@@ -146,6 +169,7 @@ export function useArticleProposals(params: {
             titleValidated: false,
             accepted: false,
             createdInDb: false,
+            dbSlug: '',
           })
         }
       } catch { /* skip malformed object */ }
@@ -191,6 +215,7 @@ export function useArticleProposals(params: {
           const kw = a.suggestedKeyword ?? ''
           const sl = (a.suggestedSlug ?? '') || keywordToSlug(kw)
           return {
+            id: crypto.randomUUID(),
             title: a.title ?? '',
             suggestedTitles: a.title ? [a.title] : [],
             type: a.type ?? 'Spécialisé',
@@ -207,6 +232,7 @@ export function useArticleProposals(params: {
             titleValidated: false,
             accepted: false,
             createdInDb: false,
+            dbSlug: '',
           }
         })
       }
@@ -219,6 +245,7 @@ export function useArticleProposals(params: {
   function addEmptyArticle(type: ArticleType) {
     if (!store.strategy) return
     store.strategy.proposedArticles.push({
+      id: crypto.randomUUID(),
       title: '',
       suggestedTitles: [],
       type,
@@ -235,6 +262,7 @@ export function useArticleProposals(params: {
       titleValidated: false,
       accepted: false,
       createdInDb: false,
+      dbSlug: '',
     })
   }
 
@@ -287,15 +315,9 @@ export function useArticleProposals(params: {
     const article = store.strategy.proposedArticles[index]
     if (!article) return
 
-    if (article.createdInDb && article.title.trim()) {
-      const slug = article.title
-        .toLowerCase()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/^-|-$/g, '')
+    if (article.createdInDb && article.dbSlug) {
       try {
-        await apiDelete(`/articles/${slug}`)
+        await apiDelete(`/articles/${article.dbSlug}`)
       } catch {
         // Article may already have been removed
       }
@@ -309,10 +331,13 @@ export function useArticleProposals(params: {
   async function createArticleInDb(article: ProposedArticle): Promise<void> {
     if (article.createdInDb || !article.title.trim()) return
     try {
-      await apiPost('/articles/batch-create', {
+      const created = await apiPost<Array<{ slug: string }>>('/articles/batch-create', {
         cocoonName: cocoonName.value,
         articles: [{ title: article.title, type: article.type, slug: article.suggestedSlug || undefined }],
       })
+      if (created?.[0]?.slug) {
+        article.dbSlug = created[0].slug
+      }
       if (article.suggestedKeyword.trim()) {
         await apiPost('/keywords', {
           keyword: article.suggestedKeyword,
@@ -461,6 +486,36 @@ export function useArticleProposals(params: {
     store.saveStrategy(cocoonSlug.value)
   }
 
+  async function editTitle(index: number, value: string) {
+    if (!store.strategy) return
+    const article = store.strategy.proposedArticles[index]
+    if (!article) return
+    store.strategy.proposedArticles[index] = { ...article, title: value }
+    store.saveStrategy(cocoonSlug.value)
+    if (article.createdInDb && article.dbSlug) {
+      try {
+        await apiPatch(`/articles/${article.dbSlug}`, { title: value })
+        await cocoonsStore.fetchCocoons()
+      } catch { /* BDD sync failed — strategy still saved */ }
+    }
+  }
+
+  function editKeyword(index: number, value: string) {
+    if (!store.strategy) return
+    const article = store.strategy.proposedArticles[index]
+    if (!article) return
+    store.strategy.proposedArticles[index] = { ...article, suggestedKeyword: value }
+    store.saveStrategy(cocoonSlug.value)
+  }
+
+  function editSlug(index: number, value: string) {
+    if (!store.strategy) return
+    const article = store.strategy.proposedArticles[index]
+    if (!article) return
+    store.strategy.proposedArticles[index] = { ...article, suggestedSlug: value }
+    store.saveStrategy(cocoonSlug.value)
+  }
+
   // --- Column computeds ---
 
   const articleColumns = computed(() => {
@@ -591,11 +646,24 @@ export function useArticleProposals(params: {
 
   // --- Generation ---
 
+  function getTopicEnrichedContext() {
+    const context = getSuggestContext()
+    if (store.strategy) {
+      const checked = store.strategy.suggestedTopics
+        ?.filter(t => t.checked)
+        .map(t => t.topic) ?? []
+      if (checked.length > 0) context.topicSuggestions = checked
+      const userCtx = store.strategy.topicsUserContext?.trim()
+      if (userCtx) context.topicUserContext = userCtx
+    }
+    return context
+  }
+
   async function generateArticleProposals() {
     truncationWarning.value = null
     generationWarning.value = null
     generationPhase.value = 'structure'
-    const context = getSuggestContext()
+    const context = getTopicEnrichedContext()
 
     let pilierAndInterArticles: ProposedArticle[] = []
 
@@ -728,12 +796,137 @@ export function useArticleProposals(params: {
     }
   }
 
+  // --- Topic Suggestions ---
+
+  const topicsLoading = ref(false)
+  const topicsError = ref<string | null>(null)
+
+  let saveContextTimeout: ReturnType<typeof setTimeout> | null = null
+
+  function generateTopicId(): string {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2, 7)
+  }
+
+  function parseTopicsFromSuggestion(raw: string): string[] {
+    // Strip code fences if present
+    const cleaned = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
+    try {
+      const parsed = JSON.parse(cleaned)
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'string')) {
+        return parsed.filter(s => s.trim().length > 0)
+      }
+      // Handle array of objects with topic field
+      if (Array.isArray(parsed) && parsed.every(item => typeof item === 'object' && item.topic)) {
+        return parsed.map(item => item.topic).filter((s: string) => s.trim().length > 0)
+      }
+    } catch {
+      // Try to extract a JSON array from the text
+      const match = cleaned.match(/\[[\s\S]*\]/)
+      if (match) {
+        try {
+          const arr = JSON.parse(match[0])
+          if (Array.isArray(arr)) return arr.filter((s: unknown) => typeof s === 'string' && s.trim().length > 0)
+        } catch { /* give up */ }
+      }
+    }
+    return []
+  }
+
+  async function generateTopics() {
+    if (topicsLoading.value || !store.strategy) return
+    topicsLoading.value = true
+    topicsError.value = null
+
+    try {
+      const context = getSuggestContext()
+      // Guard: verify we have meaningful strategic content (F3 fix)
+      const answers = context.previousAnswers ?? {}
+      if (Object.keys(answers).length < 1) {
+        topicsError.value = 'Complétez au moins les premières étapes stratégiques avant de générer les sujets.'
+        return
+      }
+
+      const suggestion = await store.requestSuggestion(cocoonSlug.value, {
+        step: 'articles-topics',
+        currentInput: 'Propose les sujets du cocon.',
+        context,
+      })
+
+      if (!suggestion || !store.strategy) {
+        topicsError.value = 'Échec de la génération des sujets. Réessayez.'
+        return
+      }
+
+      const topics = parseTopicsFromSuggestion(suggestion)
+      if (topics.length === 0) {
+        topicsError.value = 'Aucun sujet retourné. Réessayez.'
+        return
+      }
+
+      store.strategy.suggestedTopics = topics.map(topic => ({
+        id: generateTopicId(),
+        topic,
+        checked: true,
+      }))
+      store.saveStrategy(cocoonSlug.value)
+    } catch {
+      topicsError.value = 'Erreur lors de la génération des sujets.'
+    } finally {
+      topicsLoading.value = false
+    }
+  }
+
+  function toggleTopic(index: number) {
+    if (!store.strategy || index < 0 || index >= store.strategy.suggestedTopics.length) return
+    store.strategy.suggestedTopics[index]!.checked = !store.strategy.suggestedTopics[index]!.checked
+    store.saveStrategy(cocoonSlug.value)
+  }
+
+  function removeTopic(index: number) {
+    if (!store.strategy || index < 0 || index >= store.strategy.suggestedTopics.length) return
+    store.strategy.suggestedTopics.splice(index, 1)
+    store.saveStrategy(cocoonSlug.value)
+  }
+
+  function addTopic(topic: string) {
+    if (!store.strategy || !topic.trim()) return
+    store.strategy.suggestedTopics.push({
+      id: generateTopicId(),
+      topic: topic.trim(),
+      checked: true,
+    })
+    store.saveStrategy(cocoonSlug.value)
+  }
+
+  function updateUserContext(text: string) {
+    if (!store.strategy) return
+    store.strategy.topicsUserContext = text
+    if (saveContextTimeout) clearTimeout(saveContextTimeout)
+    saveContextTimeout = setTimeout(() => {
+      store.saveStrategy(cocoonSlug.value)
+    }, 500)
+  }
+
+  // Auto-generate topics when arriving at step 6 (Articles) for the first time
+  watch(() => store.currentStep, (step) => {
+    if (
+      step === 5
+      && store.strategy
+      && (!store.strategy.suggestedTopics || store.strategy.suggestedTopics.length === 0)
+      && !topicsLoading.value
+    ) {
+      generateTopics()
+    }
+  })
+
   return {
     // Refs
     truncationWarning,
     generationPhase,
     generationWarning,
     addingArticleType,
+    topicsLoading,
+    topicsError,
     // Computeds
     articleColumns,
     articleWarnings,
@@ -756,7 +949,16 @@ export function useArticleProposals(params: {
     regenerateSlug,
     selectSlug,
     changeParent,
+    editTitle,
+    editKeyword,
+    editSlug,
     generateArticleProposals,
     validateArticles,
+    // Topic actions
+    generateTopics,
+    toggleTopic,
+    removeTopic,
+    addTopic,
+    updateUserContext,
   }
 }

@@ -12,7 +12,9 @@ import ProposedArticleRow from '@/components/strategy/ProposedArticleRow.vue'
 import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
 import GenerationStepper from '@/components/production/GenerationStepper.vue'
+import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
 import { useArticleProposals } from '@/composables/useArticleProposals'
+import { provideRecapRadioGroup } from '@/composables/useRecapRadioGroup'
 
 const props = defineProps<{
   cocoonName: string
@@ -23,6 +25,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   (e: 'next'): void
 }>()
+
+provideRecapRadioGroup()
 
 const store = useCocoonStrategyStore()
 const cocoonsStore = useCocoonsStore()
@@ -54,11 +58,13 @@ function onColumnsScroll() {
 }
 
 /* Drag-to-scroll */
+const INTERACTIVE_SELECTOR = 'a,button,input,textarea,select,[role="button"]'
 const isDragging = ref(false)
 let dragStartX = 0
 let dragScrollLeft = 0
 
 function onDragStart(e: MouseEvent) {
+  if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return
   const el = columnsTrackRef.value
   if (!el) return
   isDragging.value = true
@@ -111,6 +117,43 @@ const currentSilo = computed(() =>
   silosStore.silos.find(s => s.nom === props.siloName) ?? null,
 )
 
+/** Merge DB articles with strategy-store proposed articles so edits show in recap */
+const mergedCocoonArticles = computed(() => {
+  const dbArticles = cocoon.value?.articles ?? []
+  const proposed = store.strategy?.proposedArticles ?? []
+
+  // Build slug→proposed map for accepted articles already created in DB
+  const proposedBySlug = new Map<string, (typeof proposed)[0]>()
+  for (const p of proposed) {
+    if (p.accepted && p.createdInDb && p.dbSlug) {
+      proposedBySlug.set(p.dbSlug, p)
+    }
+  }
+
+  const seenSlugs = new Set<string>()
+  const result: string[] = []
+
+  // DB articles — overlay strategy-store title when available
+  for (const dbArt of dbArticles) {
+    const match = proposedBySlug.get(dbArt.slug)
+    if (match) {
+      result.push(`${match.title} (${match.type})`)
+      seenSlugs.add(dbArt.slug)
+    } else {
+      result.push(`${dbArt.title} (${dbArt.type})`)
+    }
+  }
+
+  // Accepted proposed articles not yet in DB
+  for (const p of proposed) {
+    if (p.accepted && !p.createdInDb && p.title.trim() && !seenSlugs.has(p.suggestedSlug)) {
+      result.push(`${p.title} (${p.type})`)
+    }
+  }
+
+  return result
+})
+
 const progressPercent = computed(() =>
   Math.round(((store.strategy?.completedSteps ?? 0) / 6) * 100),
 )
@@ -125,7 +168,7 @@ function buildThemeContext(): ThemeContext {
     themeName: silosStore.theme?.nom || undefined,
     themeDescription: silosStore.theme?.description || undefined,
     siloDescription: currentSilo.value?.description || undefined,
-    cocoonArticles: cocoon.value?.articles.map(a => `${a.title} (${a.type})`) ?? [],
+    cocoonArticles: mergedCocoonArticles.value,
     themeConfig: hasAnyConfigData(cfg) ? {
       mainPromise: cfg.positioning.mainPromise || undefined,
       differentiators: cfg.positioning.differentiators.length ? cfg.positioning.differentiators : undefined,
@@ -375,8 +418,18 @@ const {
   regenerateSlug,
   selectSlug,
   changeParent,
+  editTitle,
+  editKeyword,
+  editSlug,
   generateArticleProposals,
   validateArticles,
+  topicsLoading,
+  topicsError,
+  generateTopics,
+  toggleTopic,
+  removeTopic,
+  addTopic,
+  updateUserContext,
 } = useArticleProposals({
   cocoonSlug,
   cocoonName: cocoonNameRef,
@@ -437,7 +490,7 @@ onMounted(async () => {
       <!-- Context recap (collapsible) -->
       <ContextRecap :theme-name="silosStore.theme?.nom" :theme-description="silosStore.theme?.description"
         :silo-name="props.siloName" :silo-description="currentSilo?.description" :cocoon-name="props.cocoonName"
-        :cocoon-articles="cocoon?.articles.map(a => `${a.title} (${a.type})`)"
+        :cocoon-articles="mergedCocoonArticles"
         :previous-answers="store.getPreviousAnswers()" :theme-config="buildThemeContext().themeConfig" />
 
       <!-- Steps 1-5: Q&A with StrategyStep -->
@@ -454,17 +507,47 @@ onMounted(async () => {
       <!-- Step 6: Article proposal -->
       <div v-else class="article-proposal-wrapper">
       <div class="brain-step-content article-proposal">
-        <h3 class="step-title">Proposition d'articles</h3>
-        <p class="step-desc">
-          En se basant sur vos réponses stratégiques, Claude peut proposer une liste
-          d'articles pour ce cocon avec leur type (Pilier, Intermédiaire, Spécialisé).
-        </p>
+        <div class="step-header-row">
+          <div class="step-header-text">
+            <h3 class="step-title">Proposition d'articles</h3>
+            <p class="step-desc">
+              En se basant sur vos réponses stratégiques, Claude peut proposer une liste
+              d'articles pour ce cocon avec leur type (Pilier, Intermédiaire, Spécialisé).
+            </p>
+          </div>
+          <div class="step-header-actions">
+            <button class="btn-generate"
+              :disabled="generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error'"
+              @click="generateArticleProposals">
+              {{ (generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error') ? 'Génération...' : 'Générer avec Claude' }}
+            </button>
+            <div class="swiper-nav">
+              <button class="swiper-arrow" :disabled="articleSlide === 0" @click="scrollToSlide(0)">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+              <button class="swiper-arrow" :disabled="articleSlide === 1" @click="scrollToSlide(1)">
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                  <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
 
-        <button class="btn-generate"
-          :disabled="generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error'"
-          @click="generateArticleProposals">
-          {{ (generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error') ? 'Génération en cours...' : 'Générer les articles avec Claude' }}
-        </button>
+        <TopicSuggestions
+          :topics="store.strategy?.suggestedTopics ?? []"
+          :user-context="store.strategy?.topicsUserContext ?? ''"
+          :loading="topicsLoading"
+          :error="topicsError"
+          :initially-collapsed="true"
+          @toggle="toggleTopic"
+          @remove="removeTopic"
+          @add="addTopic"
+          @regenerate="generateTopics"
+          @update:user-context="updateUserContext"
+        />
 
         <GenerationStepper :phase="generationPhase" />
 
@@ -521,7 +604,8 @@ onMounted(async () => {
                 :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
                 @regenerate-title="regenerateTitle" @regenerate-keyword="regenerateKeyword"
                 @regenerate-slug="regenerateSlug" @select-keyword="selectKeyword" @select-title="selectTitle"
-                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle" />
+                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle"
+                @edit-title="editTitle" @edit-keyword="editKeyword" @edit-slug="editSlug" />
               <AddArticleMenu
                 :is-loading="addingArticleType === 'Pilier'"
                 :disabled="addingArticleType !== null"
@@ -541,12 +625,12 @@ onMounted(async () => {
             >
               <ProposedArticleRow v-for="article in articleColumns[1]?.articles ?? []" :key="article.originalIndex"
                 :article="article" :index="article.originalIndex"
-                :group-color="groupColors.get(normalizeTitle(article.title))"
                 :composition-result="compositionResults.get(article.originalIndex) ?? null"
                 :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
                 @regenerate-title="regenerateTitle" @regenerate-keyword="regenerateKeyword"
                 @regenerate-slug="regenerateSlug" @select-keyword="selectKeyword" @select-title="selectTitle"
-                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle" />
+                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle"
+                @edit-title="editTitle" @edit-keyword="editKeyword" @edit-slug="editSlug" />
               <AddArticleMenu
                 :is-loading="addingArticleType === 'Intermédiaire'"
                 :disabled="addingArticleType !== null"
@@ -573,13 +657,14 @@ onMounted(async () => {
                   <span class="spec-group-label">{{ group.parentTitle.length > 40 ? group.parentTitle.slice(0, 40) + '…' : group.parentTitle }}</span>
                 </div>
                 <ProposedArticleRow v-for="article in group.articles" :key="article.originalIndex" :article="article"
-                  :index="article.originalIndex" :group-color="group.color"
+                  :index="article.originalIndex"
                   :composition-result="compositionResults.get(article.originalIndex) ?? null"
                   :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
                   :available-parents="intermediateTitles" @regenerate-title="regenerateTitle"
                   @regenerate-keyword="regenerateKeyword" @regenerate-slug="regenerateSlug"
                   @select-keyword="selectKeyword" @select-title="selectTitle" @select-slug="selectSlug"
-                  @toggle-accept="toggleAccept" @remove="removeProposedArticle" @change-parent="changeParent" />
+                  @toggle-accept="toggleAccept" @remove="removeProposedArticle" @change-parent="changeParent"
+                  @edit-title="editTitle" @edit-keyword="editKeyword" @edit-slug="editSlug" />
               </div>
               <AddArticleMenu
                 :is-loading="addingArticleType === 'Spécialisé'"
@@ -598,20 +683,6 @@ onMounted(async () => {
             Tout valider
           </button>
         </div>
-      </div>
-      <!-- Swiper arrows — outside the card -->
-      <div class="swiper-nav">
-        <button class="swiper-arrow" :disabled="articleSlide === 0" @click="scrollToSlide(0)">
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
-        <span class="swiper-label">{{ articleSlide === 0 ? 'Pilier + Intermédiaire' : 'Intermédiaire + Spécialisé' }}</span>
-        <button class="swiper-arrow" :disabled="articleSlide === 1" @click="scrollToSlide(1)">
-          <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-          </svg>
-        </button>
       </div>
       </div>
 
@@ -754,6 +825,26 @@ onMounted(async () => {
   color: var(--color-badge-amber-text);
 }
 
+.step-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.step-header-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.step-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
 .step-title {
   font-size: 1.125rem;
   font-weight: 700;
@@ -763,20 +854,20 @@ onMounted(async () => {
 .step-desc {
   font-size: 0.875rem;
   color: var(--color-text-muted);
-  margin: 0 0 1rem;
+  margin: 0;
   line-height: 1.5;
 }
 
 .btn-generate {
-  padding: 0.625rem 1.25rem;
+  padding: 0.5rem 1rem;
   border: 1px solid var(--color-primary);
   border-radius: 6px;
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-primary);
   background: transparent;
   cursor: pointer;
-  margin-bottom: 1rem;
+  white-space: nowrap;
 }
 
 .btn-generate:hover:not(:disabled) {
@@ -965,7 +1056,7 @@ onMounted(async () => {
   cursor: grab;
 }
 
-/* --- Swiper nav (outside card) --- */
+/* --- Swiper nav (inline in header) --- */
 .article-proposal-wrapper {
   display: flex;
   flex-direction: column;
@@ -974,25 +1065,15 @@ onMounted(async () => {
 .swiper-nav {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  padding-top: 0.75rem;
-}
-
-.swiper-label {
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  min-width: 180px;
-  text-align: center;
+  gap: 0.25rem;
 }
 
 .swiper-arrow {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2rem;
-  height: 2rem;
+  width: 1.625rem;
+  height: 1.625rem;
   border: 1px solid var(--color-border);
   border-radius: 50%;
   background: var(--color-surface);
@@ -1013,6 +1094,15 @@ onMounted(async () => {
 }
 
 @media (max-width: 900px) {
+  .step-header-row {
+    flex-direction: column;
+  }
+
+  .step-header-actions {
+    width: 100%;
+    justify-content: space-between;
+  }
+
   .article-columns-track {
     flex-direction: column;
     overflow-x: visible;

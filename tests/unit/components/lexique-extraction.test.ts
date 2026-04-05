@@ -132,8 +132,11 @@ describe('LexiqueExtraction', () => {
       expect(btn.attributes('disabled')).toBeDefined()
     })
 
-    it('is enabled when lieutenants locked and captain keyword present', () => {
+    it('is enabled when lieutenants locked and captain keyword present (after auto-restore completes)', async () => {
       const wrapper = mountComponent()
+      // Auto-restore watcher fires at mount, wait for it to complete
+      await nextTick()
+      await nextTick()
       const btn = wrapper.find('[data-testid="btn-extract"]')
       expect(btn.attributes('disabled')).toBeUndefined()
     })

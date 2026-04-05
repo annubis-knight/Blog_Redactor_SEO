@@ -309,78 +309,6 @@
       "createdInDb": false
     },
     {
-      "title": "Pourquoi votre présence digitale ne génère aucun prospect : les erreurs de stratégie qui coûtent des clients",
-      "suggestedTitles": [
-        "Pourquoi votre présence digitale ne génère aucun prospect : les erreurs de stratégie qui coûtent des clients"
-      ],
-      "type": "Intermédiaire",
-      "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Les deux Intermédiaires existants couvrent la conversion (site qui ne convertit pas) et le positionnement (message et différenciation). Il manque un article intermédiaire qui traite la dimension stratégique d'ensemble : pourquoi une présence digitale éclatée en silos déconnectés — site, GMB, réseaux — ne produit aucun résultat sans une stratégie unifiée. Cet article fait le pont entre le pilier et les deux Intermédiaires existants, en posant la question en amont : avant de corriger la conversion ou le message, encore faut-il avoir une structure digitale cohérente et orientée vers un objectif.",
-      "painPoint": "Le dirigeant a un site web, peut-être des réseaux sociaux, une fiche Google — mais rien de tout cela ne lui apporte de clients. Il ne comprend pas pourquoi sa présence en ligne reste muette, et ne sait pas identifier l'erreur de fond : l'absence de stratégie cohérente qui relie tous ces outils entre eux.",
-      "suggestedKeyword": "présence digitale qui ne génère pas de prospects",
-      "suggestedKeywords": [
-        "présence digitale qui ne génère pas de prospects"
-      ],
-      "suggestedSlug": "presence-digitale-qui-ne-genere-pas-de-prospects",
-      "suggestedSlugs": [
-        "presence-digitale-qui-ne-genere-pas-de-prospects"
-      ],
-      "validatedSearchQuery": null,
-      "keywordValidated": false,
-      "searchQueryValidated": false,
-      "titleValidated": false,
-      "accepted": false,
-      "createdInDb": false
-    },
-    {
-      "title": "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés",
-      "suggestedTitles": [
-        "SEO local et visibilité sur Google : comment les dirigeants attirent des clients qualifiés"
-      ],
-      "type": "Intermédiaire",
-      "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Les trois articles Spécialisés sur le SEO local (Google My Business, comparaison avec les concurrents sur Google, mots-clés locaux) sont orphelins : ils n'ont aucun article Intermédiaire parent dans le cocon. Cet article comble ce chaînon manquant en couvrant la facette 'visibilité et référencement local' — absente des trois Intermédiaires existants qui traitent respectivement de la conversion, du positionnement marketing et des erreurs de stratégie digitale.",
-      "painPoint": "Le dirigeant est invisible sur Google dans sa zone géographique : ses concurrents captent les recherches locales pendant que son activité n'apparaît nulle part, même pour des requêtes directement liées à son métier. Il ne sait pas comment le référencement local fonctionne ni par où commencer pour exister dans les résultats de recherche de proximité.",
-      "suggestedKeyword": "SEO local visibilité Google dirigeants entreprises",
-      "suggestedKeywords": [
-        "SEO local visibilité Google dirigeants entreprises"
-      ],
-      "suggestedSlug": "seo-local-visibilite-google-dirigeants-entreprises",
-      "suggestedSlugs": [
-        "seo-local-visibilite-google-dirigeants-entreprises"
-      ],
-      "validatedSearchQuery": null,
-      "keywordValidated": false,
-      "searchQueryValidated": false,
-      "titleValidated": false,
-      "accepted": false,
-      "createdInDb": false
-    },
-    {
-      "title": "Créer un site web qui convertit : les fondations à poser avant de penser au design",
-      "suggestedTitles": [
-        "Créer un site web qui convertit : les fondations à poser avant de penser au design"
-      ],
-      "type": "Intermédiaire",
-      "parentTitle": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
-      "rationale": "Les Intermédiaires existants couvrent la conversion bloquée (site existant inefficace), le positionnement message, la visibilité SEO et les erreurs de présence digitale — mais aucun ne traite la phase de création ou refonte de site sous l'angle des fondations stratégiques à poser en amont. Cet article comble ce manque en incarnant directement l'approche en 3 piliers de Propulsite (Stratégie → Message → Site web) et cible le dirigeant au moment clé où il décide de se lancer ou de refaire son site.",
-      "painPoint": "Le dirigeant veut (ou doit) créer ou refaire son site, mais il pense d'abord au design, aux couleurs et au nom de domaine — alors que ce qui fera vraiment convertir son site, c'est ce qu'on pose avant : stratégie, message, structure. Il finit avec un beau site vide de prospects.",
-      "suggestedKeyword": "créer site web qui convertit visiteurs clients",
-      "suggestedKeywords": [
-        "créer site web qui convertit visiteurs clients"
-      ],
-      "suggestedSlug": "creer-site-web-qui-convertit-visiteurs-clients",
-      "suggestedSlugs": [
-        "creer-site-web-qui-convertit-visiteurs-clients"
-      ],
-      "validatedSearchQuery": null,
-      "keywordValidated": false,
-      "searchQueryValidated": false,
-      "titleValidated": false,
-      "accepted": false,
-      "createdInDb": false
-    },
-    {
       "title": "Votre page d'accueil parle de vous, pas de vos clients : pourquoi ça fait fuir les visiteurs",
       "suggestedTitles": [
         "Votre page d'accueil parle de vous, pas de vos clients : pourquoi ça fait fuir les visiteurs"
@@ -437,6 +365,84 @@
       "createdInDb": true
     }
   ],
+  "suggestedTopics": [
+    {
+      "id": "mnk5ali461wvm",
+      "topic": "Stratégie de croissance digitale pour PME toulousaines",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali4m8gjj",
+      "topic": "Positionnement marketing et clarification du message",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali4lpvso",
+      "topic": "Définition de la cible et avatar client idéal",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali4iauxz",
+      "topic": "Différenciation face aux concurrents en ligne",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali481jt6",
+      "topic": "Conversion et performance du site web existant",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali4kik0b",
+      "topic": "Stratégie digitale avant le lancement en ligne",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali48r8sf",
+      "topic": "SEO local et visibilité sur Google à Toulouse",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali40znak",
+      "topic": "Message client et communication de l'activité",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali4zkj9c",
+      "topic": "Feuille de route digitale et priorisation des leviers",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali4d7pr3",
+      "topic": "Bouche-à-oreille versus acquisition digitale",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali4z5glw",
+      "topic": "Fondations stratégiques avant la création de site",
+      "checked": true
+    },
+    {
+      "id": "mnk5ali4sv492",
+      "topic": "Tunnel de conversion et parcours client en ligne",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali40qqub",
+      "topic": "Freelance versus agence web pour TPE-PME",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali4dihc9",
+      "topic": "Budget et retour sur investissement digital",
+      "checked": false
+    },
+    {
+      "id": "mnk5ali4emnpm",
+      "topic": "Accompagnement sur mesure et relation client directe",
+      "checked": false
+    }
+  ],
+  "topicsUserContext": "",
   "completedSteps": 6,
-  "updatedAt": "2026-04-04T01:06:30.669Z"
+  "updatedAt": "2026-04-04T09:45:28.445Z"
 }

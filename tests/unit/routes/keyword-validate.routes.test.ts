@@ -5,10 +5,20 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../../server/services/dataforseo.service', () => ({
   fetchKeywordOverview: vi.fn(),
   fetchPaa: vi.fn(),
+  fetchSearchIntentBatch: vi.fn(),
 }))
 
 vi.mock('../../../server/services/autocomplete.service', () => ({
   fetchAutocomplete: vi.fn(),
+}))
+
+vi.mock('../../../server/services/intent-scan.service', () => ({
+  fetchSerpAdvanced: vi.fn(),
+  extractPaaFromSerp: vi.fn(),
+  matchResonanceDetailed: vi.fn(),
+  extractTopicWords: vi.fn(),
+  bestMatch: vi.fn(),
+  computePaaWeightedScore: vi.fn(),
 }))
 
 vi.mock('../../../server/utils/cache', () => ({
@@ -28,12 +38,20 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { fetchKeywordOverview, fetchPaa } from '../../../server/services/dataforseo.service'
+import { fetchKeywordOverview, fetchPaa, fetchSearchIntentBatch } from '../../../server/services/dataforseo.service'
 import { fetchAutocomplete } from '../../../server/services/autocomplete.service'
+import { fetchSerpAdvanced, extractPaaFromSerp, matchResonanceDetailed, extractTopicWords, bestMatch, computePaaWeightedScore } from '../../../server/services/intent-scan.service'
 import { readCached, writeCached, isFresh } from '../../../server/utils/cache'
 
 const mockFetchOverview = vi.mocked(fetchKeywordOverview)
 const mockFetchPaa = vi.mocked(fetchPaa)
+const mockFetchIntentBatch = vi.mocked(fetchSearchIntentBatch)
+const mockFetchSerpAdvanced = vi.mocked(fetchSerpAdvanced)
+const mockExtractPaaFromSerp = vi.mocked(extractPaaFromSerp)
+const mockMatchResonanceDetailed = vi.mocked(matchResonanceDetailed)
+const mockExtractTopicWords = vi.mocked(extractTopicWords)
+const mockBestMatch = vi.mocked(bestMatch)
+const mockComputePaaWeightedScore = vi.mocked(computePaaWeightedScore)
 const mockFetchAutocomplete = vi.mocked(fetchAutocomplete)
 const mockReadCached = vi.mocked(readCached)
 const mockWriteCached = vi.mocked(writeCached)
@@ -95,6 +113,13 @@ beforeEach(() => {
   mockFetchOverview.mockResolvedValue(defaultOverview as any)
   mockFetchPaa.mockResolvedValue(defaultPaa as any)
   mockFetchAutocomplete.mockResolvedValue(defaultAutocomplete as any)
+  mockFetchIntentBatch.mockResolvedValue(new Map([['seo', { intent: 'informational', intentProbability: 0.85 }]]) as any)
+  mockFetchSerpAdvanced.mockResolvedValue({ items: [], paaItems: [] } as any)
+  mockExtractPaaFromSerp.mockReturnValue([])
+  mockMatchResonanceDetailed.mockReturnValue({ match: 'none', quality: 'stem' } as any)
+  mockExtractTopicWords.mockReturnValue(['seo'])
+  mockBestMatch.mockReturnValue('none' as any)
+  mockComputePaaWeightedScore.mockReturnValue(0)
   mockWriteCached.mockResolvedValue(undefined)
 })
 
@@ -129,7 +154,7 @@ describe('POST /keywords/:keyword/validate', () => {
 
   // --- AC #1: Parallel fetch + response structure ---
   describe('parallel fetch and response', () => {
-    it('calls all 3 sources in parallel', async () => {
+    it('calls all 4 sources in parallel', async () => {
       const handler = getHandler()
       const req = makeReq('seo', { level: 'pilier' })
       const res = makeRes()
@@ -137,8 +162,9 @@ describe('POST /keywords/:keyword/validate', () => {
       await handler(req, res)
 
       expect(mockFetchOverview).toHaveBeenCalledWith('seo')
-      expect(mockFetchPaa).toHaveBeenCalledWith('seo')
+      expect(mockFetchSerpAdvanced).toHaveBeenCalledWith('seo')
       expect(mockFetchAutocomplete).toHaveBeenCalledWith('seo')
+      expect(mockFetchIntentBatch).toHaveBeenCalledWith(['seo'])
     })
 
     it('returns { data: ValidateResponse } with 6 KPIs and verdict', async () => {

@@ -16,7 +16,7 @@ export function articleTypeToLevel(type: ArticleType): ArticleLevel {
   return LEVEL_MAP[type] ?? 'intermediaire'
 }
 
-const FRENCH_STOPWORDS = new Set([
+export const FRENCH_STOPWORDS = new Set([
   'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'en', 'son', 'sa', 'ses',
   'ou', 'et', 'à', 'au', 'aux', 'par', 'pour', 'sur', 'dans', 'avec', 'sans',
   'que', 'qui', 'ne', 'pas', 'se', 'ce', 'cette', 'ces', 'mon', 'ma', 'mes',
@@ -25,13 +25,22 @@ const FRENCH_STOPWORDS = new Set([
   'voir', 'aussi', 'plus', 'tout', 'bien', 'si', 'son', 'sa', 'ses', 'd',
 ])
 
-/** Extract root keyword (first 2 significant words) for long-tail keywords (3+ words) */
-export function extractRoot(keyword: string): string | null {
+/** Generate all progressive truncations from longest (N-1 words) to shortest (2 words min, ≥2 significant) */
+export function extractRoots(keyword: string): string[] {
   const words = keyword.trim().split(/\s+/)
-  if (words.length < 3) return null
-  const significant = words.filter(w => !FRENCH_STOPWORDS.has(w.toLowerCase()))
-  if (significant.length < 2) return null
-  return significant.slice(0, 2).join(' ')
+  if (words.length < 3) return []
+  const roots: string[] = []
+  for (let len = words.length - 1; len >= 2; len--) {
+    const significant = words.slice(0, len).filter(w => !FRENCH_STOPWORDS.has(w.toLowerCase()))
+    if (significant.length >= 2) roots.push(words.slice(0, len).join(' '))
+  }
+  return roots
+}
+
+/** Extract root keyword (first 2 significant words) for long-tail keywords (3+ words) — retro-compatible alias */
+export function extractRoot(keyword: string): string | null {
+  const roots = extractRoots(keyword)
+  return roots.length > 0 ? roots[roots.length - 1]! : null
 }
 
 export function useCapitaineValidation() {
@@ -40,7 +49,6 @@ export function useCapitaineValidation() {
   const error = ref<string | null>(null)
   const history = ref<ValidateResponse[]>([])
   const historyIndex = ref(-1)
-  const forceGo = ref(false)
   const rootResult = ref<ValidateResponse | null>(null)
   const isLoadingRoot = ref(false)
   const radarCard = ref<RadarCard | null>(null)
@@ -59,7 +67,6 @@ export function useCapitaineValidation() {
     const thisVersion = ++validationVersion
     isLoading.value = true
     error.value = null
-    forceGo.value = false
     rootResult.value = null
     radarCard.value = null
 
@@ -141,13 +148,8 @@ export function useCapitaineValidation() {
     if (index >= 0 && index < history.value.length) {
       historyIndex.value = index
       result.value = history.value[index] ?? null
-      forceGo.value = false
       rootResult.value = null
     }
-  }
-
-  function toggleForceGo() {
-    forceGo.value = !forceGo.value
   }
 
   function reset() {
@@ -156,7 +158,6 @@ export function useCapitaineValidation() {
     error.value = null
     history.value = []
     historyIndex.value = -1
-    forceGo.value = false
     rootResult.value = null
     isLoadingRoot.value = false
     radarCard.value = null
@@ -170,14 +171,12 @@ export function useCapitaineValidation() {
     error,
     history,
     historyIndex,
-    forceGo,
     rootResult,
     isLoadingRoot,
     radarCard,
     isLoadingRadar,
     validateKeyword,
     navigateHistory,
-    toggleForceGo,
     reset,
   }
 }

@@ -29,6 +29,8 @@ export interface ValidateVerdict {
 export interface PaaQuestionValidate {
   question: string
   answer: string | null
+  match?: 'none' | 'partial' | 'total'
+  matchQuality?: 'exact' | 'stem'
 }
 
 export interface ValidateResponse {
@@ -46,6 +48,6 @@ export interface ThresholdConfig {
   kd: { green: number; orange: number }
   cpc: { bonus: number }
   paa: { green: number; orange: number }
-  intent: { match: string; mixed: string }
+  intent: { green: number; orange: number }
   autocomplete: { green: number; orange: number }
 }

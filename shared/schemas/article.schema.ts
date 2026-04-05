@@ -50,5 +50,12 @@ export const batchCreateArticlesSchema = z.object({
   articles: z.array(z.object({
     title: z.string().min(1),
     type: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
+    slug: z.string().optional(),
   })).min(1),
 })
+
+export const patchArticleSchema = z.object({
+  title: z.string().min(1).optional(),
+})
+
+export type PatchArticleRequest = z.infer<typeof patchArticleSchema>

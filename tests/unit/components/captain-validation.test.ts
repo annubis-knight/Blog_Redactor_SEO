@@ -12,14 +12,12 @@ const mockIsLoading = ref(false)
 const mockError = ref<string | null>(null)
 const mockHistory = ref<ValidateResponse[]>([])
 const mockHistoryIndex = ref(-1)
-const mockForceGo = ref(false)
 const mockRootResult = ref<ValidateResponse | null>(null)
 const mockIsLoadingRoot = ref(false)
 const mockRadarCard = ref<RadarCard | null>(null)
 const mockIsLoadingRadar = ref(false)
 const mockValidateKeyword = vi.fn()
 const mockNavigateHistory = vi.fn()
-const mockToggleForceGo = vi.fn(() => { mockForceGo.value = !mockForceGo.value })
 const mockReset = vi.fn()
 
 vi.mock('../../../src/composables/useCapitaineValidation', () => ({
@@ -30,20 +28,19 @@ vi.mock('../../../src/composables/useCapitaineValidation', () => ({
     error: mockError,
     history: mockHistory,
     historyIndex: mockHistoryIndex,
-    forceGo: mockForceGo,
     rootResult: mockRootResult,
     isLoadingRoot: mockIsLoadingRoot,
     radarCard: mockRadarCard,
     isLoadingRadar: mockIsLoadingRadar,
     validateKeyword: mockValidateKeyword,
     navigateHistory: mockNavigateHistory,
-    toggleForceGo: mockToggleForceGo,
     reset: mockReset,
   }),
   articleTypeToLevel: (type: string) => {
     const map: Record<string, string> = { 'Pilier': 'pilier', 'Intermédiaire': 'intermediaire', 'Spécialisé': 'specifique' }
     return map[type] ?? 'intermediaire'
   },
+  FRENCH_STOPWORDS: new Set(['le', 'la', 'les', 'des', 'de', 'du', 'un', 'une', 'et', 'en', 'au', 'aux', 'à', 'ce', 'son', 'sa', 'ses', 'pour', 'par', 'sur', 'dans', 'avec', 'est', 'sont', 'qui', 'que', 'ne', 'pas', 'plus']),
 }))
 
 // Mock useStreaming
@@ -79,10 +76,8 @@ const mockCarouselPrev = vi.fn(() => {
   if (mockCarouselCurrentIndex.value > 0) mockCarouselCurrentIndex.value--
 })
 const mockCarouselGoTo = vi.fn((idx: number) => { mockCarouselCurrentIndex.value = idx })
-const mockCarouselToggleForceGo = vi.fn()
 const mockCarouselEffectiveVerdict = vi.fn((entry: any) => {
   if (!entry.validation) return null
-  if (entry.forceGo) return 'GO'
   return entry.validation.verdict.level
 })
 const mockCarouselReset = vi.fn()
@@ -100,7 +95,6 @@ vi.mock('../../../src/composables/useRadarCarousel', () => ({
     next: mockCarouselNext,
     prev: mockCarouselPrev,
     goTo: mockCarouselGoTo,
-    toggleForceGo: mockCarouselToggleForceGo,
     effectiveVerdict: mockCarouselEffectiveVerdict,
     reset: mockCarouselReset,
   }),
@@ -155,7 +149,7 @@ beforeEach(() => {
   mockError.value = null
   mockHistory.value = []
   mockHistoryIndex.value = -1
-  mockForceGo.value = false
+
   mockRootResult.value = null
   mockIsLoadingRoot.value = false
   mockRadarCard.value = null
@@ -342,50 +336,6 @@ describe('CaptainValidation', () => {
     })
   })
 
-  describe('force GO', () => {
-    it('shows force GO button when verdict is not GO', async () => {
-      mockResult.value = {
-        ...fullResult,
-        verdict: { level: 'ORANGE', greenCount: 3, totalKpis: 6, autoNoGo: false },
-      }
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
-      await nextTick()
-      expect(wrapper.find('[data-testid="force-go-btn"]').exists()).toBe(true)
-    })
-
-    it('does NOT show force GO button when verdict is GO', async () => {
-      mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
-      await nextTick()
-      expect(wrapper.find('[data-testid="force-go-btn"]').exists()).toBe(false)
-    })
-
-    it('shows "(forcé)" badge when forceGo is active', async () => {
-      mockResult.value = {
-        ...fullResult,
-        verdict: { level: 'NO-GO', greenCount: 1, totalKpis: 6, autoNoGo: false },
-      }
-      mockForceGo.value = true
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
-      await nextTick()
-
-      expect(wrapper.find('[data-testid="force-go-badge"]').exists()).toBe(true)
-      expect(wrapper.text()).toContain('GO')
-    })
-
-    it('calls toggleForceGo on click', async () => {
-      mockResult.value = {
-        ...fullResult,
-        verdict: { level: 'ORANGE', greenCount: 3, totalKpis: 6, autoNoGo: false },
-      }
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
-      await nextTick()
-
-      await wrapper.find('[data-testid="force-go-btn"]').trigger('click')
-      expect(mockToggleForceGo).toHaveBeenCalled()
-    })
-  })
-
   describe('root analysis', () => {
     it('shows root analysis when available', async () => {
       mockResult.value = fullResult
@@ -567,19 +517,6 @@ describe('CaptainValidation', () => {
       expect((lockBtn.element as HTMLButtonElement).disabled).toBe(true)
     })
 
-    it('lock button is enabled when forceGo makes effective verdict GO', async () => {
-      mockResult.value = {
-        ...fullResult,
-        verdict: { level: 'ORANGE', greenCount: 3, totalKpis: 6, autoNoGo: false },
-      }
-      mockForceGo.value = true
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
-      await nextTick()
-
-      const lockBtn = wrapper.find('[data-testid="lock-btn"]')
-      expect((lockBtn.element as HTMLButtonElement).disabled).toBe(false)
-    })
-
     it('emits check-completed on lock', async () => {
       mockResult.value = fullResult
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
@@ -690,7 +627,7 @@ describe('CaptainValidation', () => {
       kpis: {
         searchVolume: 1500, difficulty: 30, cpc: 2.5, competition: 0.5,
         intentTypes: ['informational'], intentProbability: 0.8,
-        autocompleteMatchCount: 2, paaMatchCount: 3, paaTotal: 5, avgSemanticScore: 0.65,
+        autocompleteMatchCount: 2, paaMatchCount: 3, paaWeightedScore: 4.5, paaTotal: 5, avgSemanticScore: 0.65,
       },
       paaItems: [
         { question: 'Comment faire du SEO local ?', depth: 1, match: 'total', matchQuality: 'exact' },
@@ -803,7 +740,7 @@ describe('CaptainValidation', () => {
       kpis: {
         searchVolume: 1500, difficulty: 30, cpc: 2.5, competition: 0.5,
         intentTypes: ['informational'], intentProbability: 0.8,
-        autocompleteMatchCount: 2, paaMatchCount: 3, paaTotal: 5, avgSemanticScore: 0.65,
+        autocompleteMatchCount: 2, paaMatchCount: 3, paaWeightedScore: 4.5, paaTotal: 5, avgSemanticScore: 0.65,
       },
       paaItems: [],
       scoreBreakdown: { paaMatchScore: 60, resonanceBonus: 10, opportunityScore: 50, intentValueScore: 40, cpcScore: 30, total: 72 },
@@ -819,12 +756,14 @@ describe('CaptainValidation', () => {
     function makeCarouselEntry(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
       return {
         card,
+        originalCard: card,
         validation,
         isLoading: false,
         error: null,
-        forceGo: false,
-        rootResult: null,
-        isLoadingRoot: false,
+        rootVariants: new Map(),
+        isLoadingRoots: false,
+        activeWordCount: card.keyword.trim().split(/\s+/).length,
+        failedRoots: [],
         ...overrides,
       }
     }
@@ -924,7 +863,7 @@ describe('CaptainValidation', () => {
       expect((wrapper.find('[data-testid="carousel-next"]').element as HTMLButtonElement).disabled).toBe(true)
     })
 
-    it('renders verdict dots for each entry', async () => {
+    it('renders carousel counter showing current/total', async () => {
       mockCarouselEntries.value = [
         makeCarouselEntry(mockRadarCardA, validationA),
         makeCarouselEntry(mockRadarCardB, validationB),
@@ -934,10 +873,9 @@ describe('CaptainValidation', () => {
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
-      const dots = wrapper.findAll('.carousel-dot')
-      expect(dots.length).toBe(2)
-      expect(dots[0].classes()).toContain('active')
-      expect(dots[1].classes()).not.toContain('active')
+      const nav = wrapper.find('[data-testid="carousel-nav"]')
+      expect(nav.exists()).toBe(true)
+      expect(nav.text()).toContain('1/2')
     })
 
     it('shows loading state when entry is loading', async () => {
@@ -1140,6 +1078,149 @@ describe('CaptainValidation', () => {
       await nextTick()
 
       expect(wrapper.find('[data-testid="carousel-radar-lockable"]').exists()).toBe(true)
+    })
+  })
+
+  describe('interactive keyword words and root variants', () => {
+    const longTailCard: RadarCard = {
+      keyword: 'creation site web entreprise toulouse',
+      reasoning: '',
+      combinedScore: 55,
+      kpis: {
+        searchVolume: 50, difficulty: 20, cpc: 1.0, competition: 0.3,
+        intentTypes: [], intentProbability: null,
+        autocompleteMatchCount: 2, paaMatchCount: 1, paaWeightedScore: 2, paaTotal: 3, avgSemanticScore: null,
+      },
+      paaItems: [],
+      scoreBreakdown: { paaMatchScore: 40, resonanceBonus: 20, opportunityScore: 30, intentValueScore: 50, cpcScore: 20, total: 55 },
+      cachedPaa: false,
+    }
+
+    const rootVariantCard4: RadarCard = {
+      ...longTailCard,
+      keyword: 'creation site web entreprise',
+      combinedScore: 70,
+    }
+
+    const rootVariantCard3: RadarCard = {
+      ...longTailCard,
+      keyword: 'creation site web',
+      combinedScore: 65,
+    }
+
+    const longTailValidation: ValidateResponse = {
+      ...fullResult,
+      keyword: 'creation site web entreprise toulouse',
+    }
+
+    const rootVariantValidation4: ValidateResponse = {
+      ...fullResult,
+      keyword: 'creation site web entreprise',
+      verdict: { level: 'GO' as const, greenCount: 5, totalKpis: 6, autoNoGo: false },
+    }
+
+    const rootVariantValidation3: ValidateResponse = {
+      ...fullResult,
+      keyword: 'creation site web',
+      verdict: { level: 'ORANGE' as const, greenCount: 3, totalKpis: 6, autoNoGo: false },
+    }
+
+    const rootVariantsMap = new Map([
+      ['creation site web entreprise', { keyword: 'creation site web entreprise', card: rootVariantCard4, validation: rootVariantValidation4 }],
+      ['creation site web', { keyword: 'creation site web', card: rootVariantCard3, validation: rootVariantValidation3 }],
+    ])
+
+    function makeCarouselEntryLocal(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
+      return {
+        card,
+        originalCard: card,
+        validation,
+        isLoading: false,
+        error: null,
+        rootVariants: new Map(),
+        isLoadingRoots: false,
+        activeWordCount: card.keyword.trim().split(/\s+/).length,
+        failedRoots: [],
+        ...overrides,
+      }
+    }
+
+    it('shows kpi-root-zone buttons when rootVariants are present', async () => {
+      mockCarouselEntries.value = [
+        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+          rootVariants: rootVariantsMap,
+        }),
+      ]
+      mockCarouselCurrentIndex.value = 0
+
+      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      await nextTick()
+
+      const rootItems = wrapper.findAll('.kpi-root-item')
+      expect(rootItems.length).toBe(2)
+      expect(rootItems[0].text()).toContain('creation site web entreprise')
+      expect(rootItems[0].text()).toContain('GO')
+      expect(rootItems[1].text()).toContain('creation site web')
+      expect(rootItems[1].text()).toContain('ORANGE')
+    })
+
+    it('clicking a kpi-root-item swaps the carousel card', async () => {
+      mockCarouselEntries.value = [
+        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+          rootVariants: rootVariantsMap,
+        }),
+      ]
+      mockCarouselCurrentIndex.value = 0
+
+      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      await nextTick()
+
+      expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web entreprise toulouse')
+
+      await wrapper.findAll('.kpi-root-item')[0].trigger('click')
+      await nextTick()
+
+      expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web entreprise')
+    })
+
+    it('renders interactive keyword words when rootVariants are present', async () => {
+      mockCarouselEntries.value = [
+        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+          rootVariants: rootVariantsMap,
+        }),
+      ]
+      mockCarouselCurrentIndex.value = 0
+
+      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      await nextTick()
+
+      const kwWords = wrapper.findAll('.kw-word')
+      expect(kwWords.length).toBe(5)
+      expect(kwWords[0].text()).toBe('creation')
+      expect(kwWords[0].classes()).toContain('kw-word--core')
+      expect(kwWords[1].text()).toBe('site')
+      expect(kwWords[1].classes()).toContain('kw-word--core')
+      expect(kwWords[2].classes()).toContain('kw-word--active')
+    })
+
+    it('clicking an active word swaps to the corresponding root variant', async () => {
+      mockCarouselEntries.value = [
+        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+          rootVariants: rootVariantsMap,
+          activeWordCount: 5,
+        }),
+      ]
+      mockCarouselCurrentIndex.value = 0
+
+      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      await nextTick()
+
+      // Click 'entreprise' (index 3, active) → handleWordToggle(3) → activeKeyword = 'creation site web'
+      const kwWords = wrapper.findAll('.kw-word')
+      await kwWords[3].trigger('click')
+      await nextTick()
+
+      expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web')
     })
   })
 })

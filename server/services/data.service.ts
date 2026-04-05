@@ -421,7 +421,7 @@ export async function addCocoonToSilo(
 /** Add articles to a cocoon in BDD_Articles_Blog.json */
 export async function addArticlesToCocoon(
   cocoonName: string,
-  articles: { title: string; type: ArticleType }[],
+  articles: { title: string; type: ArticleType; slug?: string }[],
 ): Promise<Article[]> {
   const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
 
@@ -443,7 +443,7 @@ export async function addArticlesToCocoon(
   const created: Article[] = []
 
   for (const article of articles) {
-    const slug = article.title
+    const slug = article.slug?.trim() || article.title
       .toLowerCase()
       .normalize('NFD')
       .replace(/[\u0300-\u036f]/g, '')
@@ -472,6 +472,29 @@ export async function addArticlesToCocoon(
   }
 
   return created
+}
+
+/** Update an article's title in its cocoon (identified by slug) */
+export async function updateArticleInCocoon(slug: string, updates: { title?: string }): Promise<boolean> {
+  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+
+  for (const silo of raw.silos) {
+    for (const cocoon of silo.cocons) {
+      const article = cocoon.articles.find(a => extractSlug(a.slug) === slug)
+      if (article) {
+        if (updates.title !== undefined) article.titre = updates.title
+        await writeJson(join(DATA_DIR, 'BDD_Articles_Blog.json'), raw)
+        cachedCocoons = null
+        cachedSilos = null
+        cachedTheme = null
+        log.info('updateArticleInCocoon — article mis à jour', { slug, updates })
+        return true
+      }
+    }
+  }
+
+  log.warn('updateArticleInCocoon — slug introuvable', { slug })
+  return false
 }
 
 /** Remove an article from its cocoon by slug */

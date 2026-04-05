@@ -2,7 +2,7 @@ import { log } from '../utils/logger.js'
 import { fetchAutocomplete, type AutocompleteSignal } from './autocomplete.service.js'
 import { fetchDataForSeo, fetchKeywordOverview } from './dataforseo.service.js'
 import { computeSemanticScores } from './embedding.service.js'
-import type { IntentScanResult, ResonanceItem, ResonanceMatch } from '../../shared/types/intent.types.js'
+import type { IntentScanResult, ResonanceItem, ResonanceMatch, RadarMatchQuality } from '../../shared/types/intent.types.js'
 
 export interface SerpAdvancedRawResult {
   items: Array<{
@@ -176,6 +176,28 @@ export function matchResonanceDetailed(
   if (stemCombined >= 0.2) return { match: 'partial', quality: 'stem' }
 
   return { match: 'none', quality: 'stem' }
+}
+
+/**
+ * Compute a weighted PAA score based on match quality.
+ * Barème: none=0, partial+stem/semantic=0.25, partial+exact=0.5,
+ *         total+stem/semantic=1.0, total+exact=2.0
+ */
+export function computePaaWeightedScore(
+  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality }>,
+): number {
+  let sum = 0
+  for (const item of items) {
+    if (item.match === 'none') continue
+    const quality = item.matchQuality ?? 'stem'
+    if (item.match === 'total') {
+      sum += quality === 'exact' ? 2.0 : 1.0
+    } else {
+      // partial
+      sum += quality === 'exact' ? 0.5 : 0.25
+    }
+  }
+  return sum
 }
 
 export interface PaaExtracted {

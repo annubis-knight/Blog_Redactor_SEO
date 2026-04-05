@@ -1,5 +1,6 @@
 export { default as IconArrow } from './IconArrow.vue'
 export { default as IconCheck } from './IconCheck.vue'
+export { default as IconEdit } from './IconEdit.vue'
 export { default as IconClose } from './IconClose.vue'
 export { default as IconInfo } from './IconInfo.vue'
 export { default as IconKebab } from './IconKebab.vue'

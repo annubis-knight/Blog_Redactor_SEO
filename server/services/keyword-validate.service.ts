@@ -15,26 +15,50 @@ const THRESHOLDS: Record<ArticleLevel, ThresholdConfig> = {
     volume:       { green: 1000, orange: 200 },
     kd:           { green: 40, orange: 65 },       // Inversé : < green = vert
     cpc:          { bonus: 2 },                     // Asymétrique : >2€ = bonus
-    paa:          { green: 3, orange: 1 },          // Nombre de PAA pertinents
-    intent:       { match: 'informational', mixed: 'mixed' },
+    paa:          { green: 3.0, orange: 1.0 },        // Score PAA pondéré
+    intent:       { green: 0.7, orange: 0.4 },
     autocomplete: { green: 3, orange: 6 },          // Position dans suggestions (< = mieux)
   },
   intermediaire: {
     volume:       { green: 200, orange: 50 },
     kd:           { green: 30, orange: 50 },
     cpc:          { bonus: 2 },
-    paa:          { green: 2, orange: 1 },
-    intent:       { match: 'informational', mixed: 'mixed' },
+    paa:          { green: 2.0, orange: 0.5 },
+    intent:       { green: 0.7, orange: 0.4 },
     autocomplete: { green: 4, orange: 7 },
   },
   specifique: {
     volume:       { green: 30, orange: 5 },
     kd:           { green: 20, orange: 40 },
     cpc:          { bonus: 2 },
-    paa:          { green: 1, orange: 0 },
-    intent:       { match: 'informational', mixed: 'mixed' },
+    paa:          { green: 1.0, orange: 0.25 },
+    intent:       { green: 0.7, orange: 0.4 },
     autocomplete: { green: 5, orange: 8 },
   },
+}
+
+// ---------------------------------------------------------------------------
+// Intent scoring matrix
+// ---------------------------------------------------------------------------
+
+const INTENT_MATRIX: Record<string, Record<ArticleLevel, number>> = {
+  informational:  { pilier: 0.7, intermediaire: 0.5, specifique: 1.0 },
+  commercial:     { pilier: 1.0, intermediaire: 1.0, specifique: 0.5 },
+  transactional:  { pilier: 0.3, intermediaire: 0.7, specifique: 0.3 },
+  navigational:   { pilier: 0.2, intermediaire: 0.2, specifique: 0.2 },
+}
+
+/**
+ * Compute a continuous intent score (0..1) from DataForSEO intent label + probability.
+ */
+export function computeIntentScore(
+  intent: string,
+  probability: number,
+  articleLevel: ArticleLevel,
+): number {
+  const levelMap = INTENT_MATRIX[intent]
+  if (!levelMap) return 0.5 // Fallback for unknown intents
+  return Math.min(1, Math.max(0, levelMap[articleLevel] * probability))
 }
 
 // ---------------------------------------------------------------------------
@@ -189,25 +213,24 @@ function scorePaa(rawValue: number, config: ThresholdConfig): KpiResult {
     name: 'paa',
     rawValue,
     color,
-    label: `${rawValue} PAA`,
+    label: `${rawValue.toFixed(1)} pts`,
     thresholds: { green, orange },
   }
 }
 
 function scoreIntent(rawValue: number, config: ThresholdConfig): KpiResult {
-  // Intent is encoded as: 1 = match, 0.5 = mixed, 0 = mismatch
+  const { green, orange } = config.intent
   let color: KpiColor
-  if (rawValue === 1) color = 'green'
-  else if (rawValue === 0.5) color = 'orange'
+  if (rawValue >= green) color = 'green'
+  else if (rawValue >= orange) color = 'orange'
   else color = 'red'
 
-  const labelMap: Record<number, string> = { 1: config.intent.match, 0.5: config.intent.mixed, 0: 'mismatch' }
   return {
     name: 'intent',
     rawValue,
     color,
-    label: labelMap[rawValue] ?? 'unknown',
-    thresholds: { green: 1, orange: 0.5 },
+    label: rawValue.toFixed(2),
+    thresholds: { green, orange },
   }
 }
 

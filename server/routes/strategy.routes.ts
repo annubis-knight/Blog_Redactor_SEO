@@ -184,7 +184,7 @@ router.post('/strategy/:slug/suggest', async (req, res) => {
 
     const userMessage = isMerge
       ? `Fusionne ces deux textes pour l'étape "${parsed.step}"`
-      : parsed.currentInput
+      : parsed.currentInput || `Exécute la mission pour l'étape "${parsed.step}"`
 
     // Collect the streamed response into a single string
     let suggestion = ''
@@ -214,6 +214,7 @@ const COCOON_STEP_DESCRIPTIONS: Record<string, string> = {
   'articles-structure': "Génère le Pilier et les Intermédiaires pour ce cocon.",
   'articles-paa-queries': "Propose des requêtes de recherche Google pour récupérer les PAA par Intermédiaire.",
   'articles-spe': "Génère les articles Spécialisés enrichis par les PAA récupérées.",
+  'articles-topics': "Propose les sujets et sous-thèmes à couvrir dans ce cocon pour guider la génération d'articles.",
   'add-article': "Génère un seul article complémentaire du type demandé.",
 }
 
@@ -281,6 +282,8 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
       let templateFile: string
       if (parsed.step === 'articles' || parsed.step === 'articles-structure') {
         templateFile = 'cocoon-articles.md'
+      } else if (parsed.step === 'articles-topics') {
+        templateFile = 'cocoon-articles-topics.md'
       } else if (parsed.step === 'articles-paa-queries') {
         templateFile = 'cocoon-paa-queries.md'
       } else if (parsed.step === 'articles-spe') {
@@ -316,6 +319,25 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
           parsed.context.existingArticles?.length
             ? `- **Articles existants** : ${parsed.context.existingArticles.join(', ')}`
             : '')
+
+      // Build topic suggestions block for articles-structure step only
+      if (parsed.step === 'articles-structure') {
+        let topicBlock = ''
+        const topics = parsed.context.topicSuggestions
+        const userCtx = parsed.context.topicUserContext?.trim()
+        if (topics?.length || userCtx) {
+          const parts: string[] = []
+          if (topics?.length) {
+            parts.push(`L'utilisateur a sélectionné ces sujets comme pistes d'orientation :\n${topics.map(t => `- ${t}`).join('\n')}`)
+          }
+          if (userCtx) {
+            parts.push(`Contexte additionnel de l'utilisateur :\n> ${userCtx}`)
+          }
+          topicBlock = parts.join('\n\n')
+        }
+        prompt = prompt.replace(/\{\{#topicSuggestions\}\}[\s\S]*?\{\{\/topicSuggestions\}\}/,
+          topicBlock || '')
+      }
 
       // Build add-article context: resolve type conditionals and inject existing articles
       if (parsed.step === 'add-article') {
@@ -360,10 +382,10 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
 
     const userMessage = isMerge
       ? `Fusionne ces deux textes pour l'étape "${parsed.step}"`
-      : parsed.currentInput
+      : parsed.currentInput || `Exécute la mission pour l'étape "${parsed.step}"`
 
     const maxTokens = (parsed.step === 'articles' || parsed.step === 'articles-structure' || parsed.step === 'articles-spe') ? 4096
-      : parsed.step === 'articles-paa-queries' ? 2048
+      : (parsed.step === 'articles-paa-queries' || parsed.step === 'articles-topics') ? 2048
       : 1024
 
     let suggestion = ''

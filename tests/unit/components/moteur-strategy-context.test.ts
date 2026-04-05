@@ -92,7 +92,7 @@ describe('MoteurStrategyContext — rendering', () => {
     })
 
     // Click to open
-    await wrapper.find('.strategy-context-toggle').trigger('click')
+    await wrapper.find('.recap-toggle-btn').trigger('click')
 
     const labels = wrapper.findAll('.strategy-context-label')
     const values = wrapper.findAll('.strategy-context-value')
@@ -117,7 +117,7 @@ describe('MoteurStrategyContext — rendering', () => {
       },
     })
 
-    await wrapper.find('.strategy-context-toggle').trigger('click')
+    await wrapper.find('.recap-toggle-btn').trigger('click')
 
     const labels = wrapper.findAll('.strategy-context-label')
     expect(labels).toHaveLength(5)
@@ -137,8 +137,8 @@ describe('MoteurStrategyContext — collapsed by default', () => {
       },
     })
 
-    expect(wrapper.find('.strategy-context-body').exists()).toBe(false)
-    expect(wrapper.find('.strategy-context-toggle').attributes('aria-expanded')).toBe('false')
+    expect(wrapper.find('.recap-toggle-body').classes()).toContain('collapsed')
+    expect(wrapper.find('.recap-toggle-btn').attributes('aria-expanded')).toBe('false')
   })
 })
 
@@ -154,10 +154,10 @@ describe('MoteurStrategyContext — toggle interaction', () => {
       },
     })
 
-    await wrapper.find('.strategy-context-toggle').trigger('click')
+    await wrapper.find('.recap-toggle-btn').trigger('click')
 
-    expect(wrapper.find('.strategy-context-body').exists()).toBe(true)
-    expect(wrapper.find('.strategy-context-toggle').attributes('aria-expanded')).toBe('true')
+    expect(wrapper.find('.recap-toggle-body').classes()).not.toContain('collapsed')
+    expect(wrapper.find('.recap-toggle-btn').attributes('aria-expanded')).toBe('true')
   })
 
   it('closes when toggle is clicked again', async () => {
@@ -171,11 +171,11 @@ describe('MoteurStrategyContext — toggle interaction', () => {
       },
     })
 
-    const toggle = wrapper.find('.strategy-context-toggle')
+    const toggle = wrapper.find('.recap-toggle-btn')
     await toggle.trigger('click') // open
     await toggle.trigger('click') // close
 
-    expect(wrapper.find('.strategy-context-body').exists()).toBe(false)
+    expect(wrapper.find('.recap-toggle-body').classes()).toContain('collapsed')
   })
 })
 

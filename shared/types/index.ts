@@ -127,6 +127,7 @@ export type {
   ValidatePainResult,
   NlpResult,
   NlpState,
+  KeywordRootVariant,
 } from './intent.types.js'
 
 export type {
@@ -193,6 +194,7 @@ export type {
   StrategySuggestRequest,
   StrategySuggestResponse,
   ProposedArticle,
+  SuggestedTopic,
   CocoonStrategy,
   CocoonSuggestRequest,
   StrategyContextData,

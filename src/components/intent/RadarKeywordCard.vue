@@ -1,9 +1,22 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { RadarCard, RadarIntentType, RadarPaaItem } from '@shared/types/intent.types.js'
+import KeywordWords from './KeywordWords.vue'
+
+export interface InteractiveWordsProps {
+  words: string[]
+  activeCount: number
+  minActiveCount: number
+  loading: boolean
+}
 
 const props = defineProps<{
   card: RadarCard
+  interactiveWords?: InteractiveWordsProps
+}>()
+
+const emit = defineEmits<{
+  'word-toggle': [activeCount: number]
 }>()
 
 const expanded = ref(false)
@@ -140,7 +153,16 @@ function itemBorderClass(paa: RadarPaaItem): string {
     <div class="radar-card__header" @click="expanded = !expanded">
       <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }">&#9654;</span>
 
-      <span class="radar-card__keyword">{{ card.keyword }}</span>
+      <KeywordWords
+        v-if="interactiveWords"
+        class="radar-card__keyword"
+        :words="interactiveWords.words"
+        :active-count="interactiveWords.activeCount"
+        :min-active-count="interactiveWords.minActiveCount"
+        :loading="interactiveWords.loading"
+        @update:active-count="emit('word-toggle', $event)"
+      />
+      <span v-else class="radar-card__keyword">{{ card.keyword }}</span>
 
       <!-- Intent badges (SVG) -->
       <div v-if="intentBadges.length > 0" class="radar-card__intents">
@@ -168,7 +190,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
         <span class="kpi-sep">·</span>
         <span class="kpi-item">
           <span class="kpi-lbl">PAA</span>
-          <span class="kpi-num">{{ card.kpis.paaMatchCount }}/{{ card.kpis.paaTotal }}</span>
+          <span class="kpi-num">{{ card.kpis.paaWeightedScore.toFixed(1) }} pts</span>
         </span>
       </div>
 

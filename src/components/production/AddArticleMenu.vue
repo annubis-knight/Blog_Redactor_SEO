@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 
 defineProps<{
   isLoading: boolean
@@ -16,11 +16,29 @@ const emit = defineEmits<{
 const menuOpen = ref(false)
 const guidedOpen = ref(false)
 const guidedInput = ref('')
+const btnRef = ref<HTMLElement>()
+const menuStyle = ref({ top: '0px', left: '0px', width: '0px' })
 
 function toggleMenu() {
-  menuOpen.value = !menuOpen.value
+  if (menuOpen.value) {
+    closeMenu()
+    return
+  }
   guidedOpen.value = false
   guidedInput.value = ''
+  menuOpen.value = true
+  nextTick(positionMenu)
+}
+
+function positionMenu() {
+  const el = btnRef.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  menuStyle.value = {
+    top: `${rect.bottom + 4}px`,
+    left: `${rect.left}px`,
+    width: `${rect.width}px`,
+  }
 }
 
 function closeMenu() {
@@ -47,6 +65,7 @@ function confirmGuided() {
 <template>
   <div class="add-article-wrapper">
     <button
+      ref="btnRef"
       class="add-article-placeholder"
       :class="{ 'is-loading': isLoading }"
       :disabled="disabled"
@@ -55,14 +74,16 @@ function confirmGuided() {
       <span v-if="isLoading" class="add-spinner"></span>
       {{ isLoading ? 'Génération...' : label }}
     </button>
-    <div v-if="menuOpen" class="add-menu">
-      <div class="add-menu-backdrop" @click="closeMenu"></div>
-      <div class="add-menu-items">
-        <button @click="emit('add-empty'); closeMenu()">Article vide</button>
-        <button @click="closeMenu(); emit('add-smart')">Article complémentaire</button>
-        <button @click="openGuided()">Article guidé...</button>
+    <Teleport to="body">
+      <div v-if="menuOpen" class="add-menu-overlay">
+        <div class="add-menu-backdrop" @click="closeMenu"></div>
+        <div class="add-menu-items" :style="menuStyle">
+          <button @click="emit('add-empty'); closeMenu()">Article vide</button>
+          <button @click="closeMenu(); emit('add-smart')">Article complémentaire</button>
+          <button @click="openGuided()">Article guidé...</button>
+        </div>
       </div>
-    </div>
+    </Teleport>
     <div v-if="guidedOpen && !isLoading" class="add-guided-input">
       <input
         v-model="guidedInput"
@@ -126,49 +147,6 @@ function confirmGuided() {
   to { transform: rotate(360deg); }
 }
 
-.add-menu-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 9;
-}
-
-.add-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  left: 0;
-  right: 0;
-  z-index: 10;
-}
-
-.add-menu-items {
-  position: relative;
-  z-index: 10;
-  background: var(--color-bg-elevated, #fff);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  padding: 0.25rem;
-  display: flex;
-  flex-direction: column;
-}
-
-.add-menu-items button {
-  display: block;
-  width: 100%;
-  padding: 0.4rem 0.6rem;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 0.75rem;
-  color: var(--color-text);
-  text-align: left;
-  cursor: pointer;
-}
-
-.add-menu-items button:hover {
-  background: var(--color-bg-hover, #f1f5f9);
-}
-
 .add-guided-input {
   display: flex;
   gap: 0.25rem;
@@ -219,5 +197,48 @@ function confirmGuided() {
 
 .add-guided-close:hover {
   background: var(--color-bg-soft);
+}
+</style>
+
+<style>
+/* Global styles for teleported menu */
+.add-menu-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+}
+
+.add-menu-backdrop {
+  position: absolute;
+  inset: 0;
+}
+
+.add-menu-items {
+  position: fixed;
+  z-index: 10000;
+  background: var(--color-bg-elevated, #fff);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  padding: 0.25rem;
+  display: flex;
+  flex-direction: column;
+}
+
+.add-menu-items button {
+  display: block;
+  width: 100%;
+  padding: 0.4rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  font-size: 0.75rem;
+  color: var(--color-text);
+  text-align: left;
+  cursor: pointer;
+}
+
+.add-menu-items button:hover {
+  background: var(--color-bg-hover, #f1f5f9);
 }
 </style>

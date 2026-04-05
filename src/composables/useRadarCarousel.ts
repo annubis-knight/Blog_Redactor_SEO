@@ -1,29 +1,77 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
-import { extractRoot } from '@/composables/useCapitaineValidation'
+import { extractRoots } from '@/composables/useCapitaineValidation'
 import { log } from '@/utils/logger'
+import { computeCombinedScore } from '@shared/scoring.js'
 import type { ValidateResponse, ArticleLevel, VerdictLevel } from '@shared/types/index.js'
-import type { RadarCard } from '@shared/types/intent.types.js'
+import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
 
 export interface CarouselEntry {
   card: RadarCard
+  originalCard: RadarCard
   validation: ValidateResponse | null
   isLoading: boolean
   error: string | null
-  forceGo: boolean
-  rootResult: ValidateResponse | null
-  isLoadingRoot: boolean
+  rootVariants: Map<string, KeywordRootVariant>
+  isLoadingRoots: boolean
+  activeWordCount: number
+  failedRoots: string[]
+}
+
+/** Convert a ValidateResponse into a fully hydrated RadarCard */
+export function hydrateCardFromValidation(keyword: string, response: ValidateResponse): RadarCard {
+  const kpiMap = Object.fromEntries(response.kpis.map(k => [k.name, k]))
+
+  const paaItems: RadarPaaItem[] = (response.paaQuestions || []).map(p => ({
+    question: p.question,
+    answer: p.answer ?? undefined,
+    depth: 0,
+    match: p.match || 'none',
+    matchQuality: p.matchQuality,
+  }))
+
+  const scoreBreakdown = computeCombinedScore({
+    searchVolume: kpiMap.volume?.rawValue ?? 0,
+    difficulty: kpiMap.kd?.rawValue ?? 0,
+    cpc: kpiMap.cpc?.rawValue ?? 0,
+    paaWeightedScore: kpiMap.paa?.rawValue ?? 0,
+    autocompleteMatchCount: kpiMap.autocomplete?.rawValue ?? 0,
+  })
+
+  return {
+    keyword,
+    kpis: {
+      searchVolume: kpiMap.volume?.rawValue ?? 0,
+      difficulty: kpiMap.kd?.rawValue ?? 0,
+      cpc: kpiMap.cpc?.rawValue ?? 0,
+      competition: 0,
+      paaWeightedScore: kpiMap.paa?.rawValue ?? 0,
+      autocompleteMatchCount: kpiMap.autocomplete?.rawValue ?? 0,
+      paaTotal: paaItems.length,
+      paaMatchCount: paaItems.filter(p => p.match !== 'none').length,
+      intentTypes: [],
+      intentProbability: null,
+      avgSemanticScore: null,
+    },
+    paaItems,
+    combinedScore: scoreBreakdown.total,
+    scoreBreakdown,
+    reasoning: '',
+    cachedPaa: false,
+  }
 }
 
 function createEntry(card: RadarCard): CarouselEntry {
   return {
     card,
+    originalCard: card,
     validation: null,
     isLoading: true,
     error: null,
-    forceGo: false,
-    rootResult: null,
-    isLoadingRoot: false,
+    rootVariants: new Map(),
+    isLoadingRoots: false,
+    activeWordCount: card.keyword.trim().split(/\s+/).length,
+    failedRoots: [],
   }
 }
 
@@ -42,6 +90,41 @@ export function useRadarCarousel() {
     entries.value[i] = { ...current, ...updates }
   }
 
+  /** Validate root variants for a long-tail keyword with weak volume (best-effort, capped at 5) */
+  async function validateRoots(
+    keyword: string,
+    response: ValidateResponse,
+    entryIndex: number,
+    level: ArticleLevel,
+    articleTitle: string | undefined,
+    thisVersion: number,
+  ) {
+    const roots = extractRoots(keyword).slice(0, 5)
+    if (roots.length === 0 || response.kpis.find(k => k.name === 'volume')?.color === 'green') return
+
+    patch(entryIndex, { isLoadingRoots: true })
+    const variants = new Map<string, KeywordRootVariant>()
+    const failed: string[] = []
+    await Promise.allSettled(
+      roots.map(async (rootKw) => {
+        try {
+          const rootResponse = await apiPost<ValidateResponse>(
+            `/keywords/${encodeURIComponent(rootKw)}/validate`,
+            { level, articleTitle },
+          )
+          if (thisVersion !== loadVersion) return
+          const rootCard = hydrateCardFromValidation(rootKw, rootResponse)
+          variants.set(rootKw, { keyword: rootKw, card: rootCard, validation: rootResponse })
+        } catch {
+          failed.push(rootKw)
+        }
+      }),
+    )
+    if (thisVersion === loadVersion) {
+      patch(entryIndex, { rootVariants: variants, isLoadingRoots: false, failedRoots: failed })
+    }
+  }
+
   async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string) {
     const thisVersion = ++loadVersion
     entries.value = cards.map(createEntry)
@@ -52,28 +135,14 @@ export function useRadarCarousel() {
         try {
           const response = await apiPost<ValidateResponse>(
             `/keywords/${encodeURIComponent(card.keyword)}/validate`,
-            { level },
+            { level, articleTitle },
           )
           if (thisVersion !== loadVersion) return
-          patch(i, { validation: response, isLoading: false })
+          patch(i, { validation: response, originalCard: card, isLoading: false })
 
           log.debug('[useRadarCarousel] Validated', { keyword: card.keyword, verdict: response.verdict.level })
 
-          // Auto root analysis for long-tail keywords with weak volume
-          const root = extractRoot(card.keyword)
-          if (root && response.kpis.find(k => k.name === 'volume')?.color !== 'green') {
-            patch(i, { isLoadingRoot: true })
-            try {
-              const rootResponse = await apiPost<ValidateResponse>(
-                `/keywords/${encodeURIComponent(root)}/validate`,
-                { level },
-              )
-              if (thisVersion !== loadVersion) return
-              patch(i, { rootResult: rootResponse, isLoadingRoot: false })
-            } catch {
-              if (thisVersion === loadVersion) patch(i, { isLoadingRoot: false })
-            }
-          }
+          await validateRoots(card.keyword, response, i, level, articleTitle, thisVersion)
         } catch (err) {
           if (thisVersion !== loadVersion) return
           patch(i, { error: (err as Error).message, isLoading: false })
@@ -101,62 +170,44 @@ export function useRadarCarousel() {
     }
   }
 
-  function toggleForceGo(index?: number) {
-    const idx = index ?? currentIndex.value
-    const entry = entries.value[idx]
-    if (entry) {
-      entries.value[idx] = { ...entry, forceGo: !entry.forceGo }
-    }
-  }
-
   function effectiveVerdict(entry: CarouselEntry): VerdictLevel | null {
     if (!entry.validation) return null
-    if (entry.forceGo) return 'GO'
     return entry.validation.verdict.level
   }
 
   /** Add a single keyword as a new carousel entry and validate it */
   async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string) {
+    const thisVersion = ++loadVersion
     // Build a minimal RadarCard for a manually-entered keyword
     const card: RadarCard = {
       keyword,
       combinedScore: 0,
       scoreBreakdown: { paaMatchScore: 0, resonanceBonus: 0, opportunityScore: 0, intentValueScore: 0, cpcScore: 0, total: 0 },
-      kpis: { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, paaTotal: 0, paaMatchCount: 0, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, avgSemanticScore: null },
+      kpis: { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, paaTotal: 0, paaMatchCount: 0, paaWeightedScore: 0, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, avgSemanticScore: null },
       paaItems: [],
       reasoning: '',
       cachedPaa: false,
     }
     const newEntry = createEntry(card)
     entries.value = [...entries.value, newEntry]
-    const newIndex = entries.value.length - 1
-    currentIndex.value = newIndex
+    const entryIndex = entries.value.length - 1
+    currentIndex.value = entryIndex
 
     // Validate
     try {
       const response = await apiPost<ValidateResponse>(
         `/keywords/${encodeURIComponent(keyword)}/validate`,
-        { level },
+        { level, articleTitle },
       )
-      patch(newIndex, { validation: response, isLoading: false })
+      if (thisVersion !== loadVersion) return
+      const hydratedCard = hydrateCardFromValidation(keyword, response)
+      patch(entryIndex, { card: hydratedCard, originalCard: hydratedCard, validation: response, isLoading: false })
       log.debug('[useRadarCarousel] addEntry validated', { keyword, verdict: response.verdict.level })
 
-      // Auto root analysis for long-tail
-      const root = extractRoot(keyword)
-      if (root && response.kpis.find(k => k.name === 'volume')?.color !== 'green') {
-        patch(newIndex, { isLoadingRoot: true })
-        try {
-          const rootResponse = await apiPost<ValidateResponse>(
-            `/keywords/${encodeURIComponent(root)}/validate`,
-            { level },
-          )
-          patch(newIndex, { rootResult: rootResponse, isLoadingRoot: false })
-        } catch {
-          patch(newIndex, { isLoadingRoot: false })
-        }
-      }
+      await validateRoots(keyword, response, entryIndex, level, articleTitle, thisVersion)
     } catch (err) {
-      patch(newIndex, { error: (err as Error).message, isLoading: false })
+      if (thisVersion !== loadVersion) return
+      patch(entryIndex, { error: (err as Error).message, isLoading: false })
       log.warn('[useRadarCarousel] addEntry failed', { keyword, error: (err as Error).message })
     }
   }
@@ -178,7 +229,6 @@ export function useRadarCarousel() {
     next,
     prev,
     goTo,
-    toggleForceGo,
     effectiveVerdict,
     reset,
   }
