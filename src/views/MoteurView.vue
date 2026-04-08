@@ -656,17 +656,17 @@ onMounted(() => {
           />
         </div>
 
-        <!-- Phase ② Valider — Lexique (gating souple : nécessite Lieutenants verrouillés) -->
+        <!-- Phase ② Valider — Lexique (gating souple : nécessite Capitaine verrouillé) -->
         <div v-if="visitedTabs.lexique" v-show="activeTab === 'lexique'" class="tab-content">
-          <div v-if="!isLieutenantsLocked" class="soft-gate-message">
-            <p>Verrouillez d'abord les Lieutenants pour débloquer les actions Lexique.</p>
+          <div v-if="!isCaptaineLocked" class="soft-gate-message">
+            <p>Verrouillez d'abord le Capitaine pour débloquer les actions Lexique.</p>
           </div>
           <LexiqueExtraction
             :selected-article="selectedArticle"
             :captain-keyword="captainKeyword"
             :article-level="articleLevelForLieutenants"
             :selected-lieutenants="selectedLieutenantsForLexique"
-            :is-lieutenants-locked="isLieutenantsLocked"
+            :isCaptaineLocked="isCaptaineLocked"
             :initial-locked="isLexiqueValidated"
             :cocoon-slug="cocoonSlug"
             @check-completed="emitCheckCompleted"

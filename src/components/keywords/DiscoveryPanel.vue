@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { log } from '@/utils/logger'
 import { useKeywordDiscoveryStore } from '@/stores/keyword-discovery.store'
 import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
 import { useKeywordScoring } from '@/composables/useKeywordScoring'
@@ -53,6 +54,7 @@ const adding = ref(false)
 async function addSelectedToCocoon() {
   if (selected.value.size === 0) return
   adding.value = true
+  log.info('Adding discovered keywords to cocoon', { count: selected.value.size, cocoon: props.cocoonName })
   try {
     for (const keyword of selected.value) {
       const kw = discoveryStore.results.find(r => r.keyword === keyword)
@@ -63,8 +65,11 @@ async function addSelectedToCocoon() {
         body: JSON.stringify({ keyword: kw.keyword, cocoonName: props.cocoonName, type: kw.type }),
       })
     }
+    log.info('Keywords added to cocoon', { count: selected.value.size })
     selected.value.clear()
     emit('keywordAdded')
+  } catch (err) {
+    log.error('Failed to add keywords to cocoon', { cocoon: props.cocoonName, error: (err as Error).message })
   } finally {
     adding.value = false
   }

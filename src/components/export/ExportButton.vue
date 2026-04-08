@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { apiPost, apiPut } from '@/services/api.service'
+import { log } from '@/utils/logger'
 
 const props = defineProps<{
   slug: string
@@ -18,11 +19,14 @@ async function handleExport() {
   error.value = null
 
   try {
+    log.info('Exporting article', { slug: props.slug })
     const result = await apiPost<{ html: string; slug: string }>(`/export/${props.slug}`, {})
     // Update article status to 'publié' after successful export
     await apiPut(`/articles/${props.slug}/status`, { status: 'publié' })
+    log.info('Export complete', { slug: props.slug })
     emit('export-ready', result.html)
   } catch (err) {
+    log.error('Export failed', { slug: props.slug, error: (err as Error).message })
     error.value = err instanceof Error ? err.message : 'Erreur lors de l\'export'
   } finally {
     isExporting.value = false

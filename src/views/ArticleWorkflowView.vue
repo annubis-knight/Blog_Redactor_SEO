@@ -1,11 +1,10 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBriefStore } from '@/stores/brief.store'
 import { useOutlineStore } from '@/stores/outline.store'
 import { useEditorStore } from '@/stores/editor.store'
 import { useKeywordsStore } from '@/stores/keywords.store'
-import { useStrategyStore } from '@/stores/strategy.store'
 import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
 import { apiGet } from '@/services/api.service'
@@ -13,22 +12,18 @@ import { usePanelToggle } from '@/composables/usePanelToggle'
 import { useSeoScoring } from '@/composables/useSeoScoring'
 import { useGeoScoring } from '@/composables/useGeoScoring'
 import { useInternalLinking } from '@/composables/useInternalLinking'
+import { useStreaming } from '@/composables/useStreaming'
+import { marked } from 'marked'
 import type { ArticleContent } from '@shared/types/index.js'
+import { useArticleProgressStore } from '@/stores/article-progress.store'
+import { log } from '@/utils/logger'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
-import StrategyWizard from '@/components/strategy/StrategyWizard.vue'
-import SeoBrief from '@/components/brief/SeoBrief.vue'
-import KeywordList from '@/components/brief/KeywordList.vue'
-import DataForSeoPanel from '@/components/brief/DataForSeoPanel.vue'
-import ContentRecommendation from '@/components/brief/ContentRecommendation.vue'
-import ContentGapPanel from '@/components/brief/ContentGapPanel.vue'
-import OutlineActions from '@/components/outline/OutlineActions.vue'
-import OutlineDisplay from '@/components/outline/OutlineDisplay.vue'
-import OutlineEditor from '@/components/outline/OutlineEditor.vue'
+import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
 import ArticleActions from '@/components/article/ArticleActions.vue'
 import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
+import OutlineRecap from '@/components/article/OutlineRecap.vue'
 import ApiCostBadge from '@/components/shared/ApiCostBadge.vue'
-import ArticleKeywordsPanel from '@/components/keywords/ArticleKeywordsPanel.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import SeoPanel from '@/components/panels/SeoPanel.vue'
@@ -40,24 +35,19 @@ const briefStore = useBriefStore()
 const outlineStore = useOutlineStore()
 const editorStore = useEditorStore()
 const keywordsStore = useKeywordsStore()
-const strategyStore = useStrategyStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const cocoonsStore = useCocoonsStore()
+const articleProgressStore = useArticleProgressStore()
 
 const slug = route.params.slug as string
 const cocoonId = route.params.cocoonId as string | undefined
-
-// --- Keyword for all workflow sub-steps ---
-const workflowKeyword = computed(() =>
-  briefStore.pilierKeyword?.keyword ?? briefStore.briefData?.article.title ?? '',
-)
 
 // --- Back link to cocoon redaction or dashboard ---
 const backLink = computed(() =>
   cocoonId ? `/cocoon/${cocoonId}/redaction` : '/',
 )
 const backLabel = computed(() =>
-  cocoonId ? 'Retour \u00e0 la r\u00e9daction' : 'Retour au dashboard',
+  cocoonId ? 'Retour à la rédaction' : 'Retour au dashboard',
 )
 
 // --- Strategy context lookups ---
@@ -68,14 +58,12 @@ const siloName = computed(() => {
   return cocoon?.siloName ?? ''
 })
 
-// --- Linear workflow step tracker ---
-const currentStep = ref<'strategy' | 'brief' | 'outline' | 'article'>('strategy')
+// --- Linear workflow step tracker (2 steps) ---
+const currentStep = ref<'brief-structure' | 'article'>('brief-structure')
 
 const steps = [
-  { id: 'strategy' as const, number: 1, label: 'Strat\u00e9gie' },
-  { id: 'brief' as const, number: 2, label: 'Brief' },
-  { id: 'outline' as const, number: 3, label: 'Sommaire' },
-  { id: 'article' as const, number: 4, label: 'Article' },
+  { id: 'brief-structure' as const, number: 1, label: 'Brief & Structure' },
+  { id: 'article' as const, number: 2, label: 'Article' },
 ]
 
 function goToStep(step: typeof currentStep.value) {
@@ -89,7 +77,19 @@ function isStepCompleted(stepId: string): boolean {
   return stepIdx < currentIdx
 }
 
-const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, hasActivePanel } = usePanelToggle('seo')
+// --- Body gating for scoring panels ---
+const hasBody = computed(() => !!editorStore.content)
+
+function handleBriefCheck(check: string) {
+  articleProgressStore.addCheck(slug, check)
+}
+
+const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
+
+function guardedToggle(panel: Parameters<typeof toggle>[0]) {
+  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking')) return
+  toggle(panel)
+}
 
 const {
   suggestions: linkSuggestions,
@@ -100,7 +100,7 @@ const {
 } = useInternalLinking(slug)
 
 // Scoring composables — watch editorStore.content reactively
-useSeoScoring(
+const { seoStore } = useSeoScoring(
   () => keywordsStore.keywords.length > 0 ? keywordsStore.keywords : (briefStore.briefData?.keywords ?? []),
   () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
@@ -108,19 +108,81 @@ useSeoScoring(
 )
 useGeoScoring()
 
+// --- Word count ---
+const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
+const wordCountPercent = computed(() => {
+  if (!wordCountTarget.value || !seoStore.score) return 0
+  return Math.round((seoStore.score.wordCount / wordCountTarget.value) * 100)
+})
+
+// --- IA Brief Panel ---
+const { chunks: iaBriefChunks, isStreaming: iaBriefStreaming, startStream: startBriefExplain } = useStreaming()
+const iaBriefTriggered = ref(false)
+
+const parsedBriefMarkdown = computed(() => {
+  if (!iaBriefChunks.value) return ''
+  return marked.parse(iaBriefChunks.value) as string
+})
+
+function triggerBriefExplain() {
+  iaBriefTriggered.value = true
+  const dfs = briefStore.briefData?.dataForSeo
+  startBriefExplain('/api/generate/brief-explain', {
+    slug,
+    articleTitle: articleTitle.value,
+    keyword: articleKeywordsStore.keywords?.capitaine ?? articleTitle.value,
+    cocoonName: cocoonName.value,
+    articleType: briefStore.briefData?.article.type ?? 'Spécialisé',
+    keywords: articleKeywordsStore.keywords?.lieutenants ?? [],
+    lexique: articleKeywordsStore.keywords?.lexique ?? [],
+    hnStructure: articleKeywordsStore.keywords?.hnStructure ?? [],
+    paaQuestions: dfs?.paa?.map(p => p.question) ?? [],
+    topCompetitors: dfs?.serp?.slice(0, 5).map(s => ({ title: s.title, domain: s.domain })) ?? [],
+    cocoonArticles: briefStore.briefData?.article.cocoonName
+      ? cocoonsStore.cocoons
+          .find(c => c.name === briefStore.briefData!.article.cocoonName)
+          ?.articles.filter(a => a.slug !== slug).map(a => a.title) ?? []
+      : [],
+  })
+}
+
+function handleToggleIaBrief() {
+  toggle('ia-brief')
+  if (showIaBriefPanel.value && !iaBriefTriggered.value) {
+    triggerBriefExplain()
+  }
+}
+
 async function handleGenerateArticle() {
+  log.info('[workflow] Starting article generation', {
+    slug,
+    briefKeywords: briefStore.briefData?.keywords.length,
+    articleKeywords: articleKeywordsStore.keywords
+      ? `cap=${articleKeywordsStore.keywords.capitaine}, lt=${articleKeywordsStore.keywords.lieutenants.length}`
+      : 'null',
+    outlineSections: outlineStore.outline?.sections.length,
+  })
   await editorStore.generateArticle(briefStore.briefData!, outlineStore.outline!)
   if (editorStore.content && !editorStore.error) {
     const pilierKeyword = briefStore.briefData!.keywords.find(kw => kw.type === 'Pilier')
     const keyword = pilierKeyword?.keyword ?? briefStore.briefData!.article.title
+    log.info('[workflow] Article done, generating meta', { slug, keyword, contentLength: editorStore.content.length })
     await editorStore.generateMeta(slug, keyword, briefStore.briefData!.article.title, editorStore.content)
     if (!editorStore.error) {
+      log.info('[workflow] Meta done, saving', {
+        slug,
+        metaTitle: editorStore.metaTitle,
+        metaDescription: editorStore.metaDescription?.substring(0, 50),
+      })
       await editorStore.saveArticle(slug)
     }
+  } else {
+    log.warn('[workflow] Article generation failed or no content', { hasContent: !!editorStore.content, error: editorStore.error })
   }
 }
 
 function handleToggleLinkSuggestions() {
+  if (!hasBody.value) return
   toggle('linking')
   if (showLinkSuggestions.value && linkSuggestions.value.length === 0) {
     requestSuggestions()
@@ -133,25 +195,30 @@ function handleCloseLinkSuggestions() {
 }
 
 onMounted(async () => {
+  log.info('[workflow] ArticleWorkflowView mounted', { slug })
   if (cocoonsStore.cocoons.length === 0) {
     cocoonsStore.fetchCocoons()
   }
 
-  articleKeywordsStore.fetchKeywords(slug)
+  // Fetch article keywords (await to ensure they're ready before SEO scoring)
+  await articleKeywordsStore.fetchKeywords(slug)
+  log.info('[workflow] Article keywords loaded', {
+    hasKeywords: articleKeywordsStore.hasKeywords,
+    capitaine: articleKeywordsStore.keywords?.capitaine,
+    lieutenants: articleKeywordsStore.keywords?.lieutenants.length,
+    lexique: articleKeywordsStore.keywords?.lexique.length,
+  })
 
   await briefStore.fetchBrief(slug)
-
-  // Load strategy and auto-skip if already complete
-  strategyStore.fetchStrategy(slug).then(() => {
-    if (strategyStore.isComplete) {
-      if (currentStep.value === 'strategy') {
-        currentStep.value = 'brief'
-      }
-    }
+  log.info('[workflow] Brief loaded', {
+    slug,
+    briefKeywords: briefStore.briefData?.keywords.length,
+    briefKeywordsList: briefStore.briefData?.keywords.map(k => k.keyword).join(', '),
   })
 
   // Hydrate outline & editor stores with existing saved content
   try {
+    log.info('[workflow] Loading saved article content', { slug })
     const saved = await apiGet<ArticleContent>(`/articles/${slug}/content`)
     if (saved.outline) {
       outlineStore.loadExistingOutline(JSON.parse(saved.outline))
@@ -163,8 +230,15 @@ onMounted(async () => {
         metaDescription: saved.metaDescription,
       })
     }
-  } catch {
-    // No saved content yet — user will generate from scratch
+    log.info('[workflow] Saved content hydrated', {
+      slug,
+      hasOutline: !!saved.outline,
+      hasContent: !!saved.content,
+      contentLength: saved.content?.length,
+      metaTitle: saved.metaTitle,
+    })
+  } catch (err) {
+    log.warn('[workflow] No saved content found, starting fresh', { slug, error: (err as Error).message })
   }
 })
 </script>
@@ -177,32 +251,46 @@ onMounted(async () => {
         <div class="panel-toggles" role="toolbar" aria-label="Panneaux d'analyse">
           <button
             class="btn-toggle"
-            :class="{ active: showSeoPanel }"
+            :class="{ active: showSeoPanel, disabled: !hasBody }"
             :aria-pressed="showSeoPanel"
-            @click="toggle('seo')"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Generez un article pour activer le scoring SEO' : undefined"
+            @click="guardedToggle('seo')"
           >
             SEO
           </button>
           <button
             class="btn-toggle"
-            :class="{ active: showGeoPanel }"
+            :class="{ active: showGeoPanel, disabled: !hasBody }"
             :aria-pressed="showGeoPanel"
-            @click="toggle('geo')"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Generez un article pour activer le scoring GEO' : undefined"
+            @click="guardedToggle('geo')"
           >
             GEO
           </button>
           <button
             class="btn-toggle"
-            :class="{ active: showLinkSuggestions }"
+            :class="{ active: showLinkSuggestions, disabled: !hasBody }"
             :aria-pressed="showLinkSuggestions"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Generez un article pour activer le maillage' : undefined"
             @click="handleToggleLinkSuggestions"
           >
             Maillage
           </button>
+          <button
+            class="btn-toggle"
+            :class="{ active: showIaBriefPanel }"
+            :aria-pressed="showIaBriefPanel"
+            @click="handleToggleIaBrief"
+          >
+            IA Brief
+          </button>
         </div>
       </div>
 
-      <!-- Linear workflow stepper -->
+      <!-- Linear workflow stepper (2 steps) -->
       <div class="workflow-stepper">
         <button
           v-for="step in steps"
@@ -216,212 +304,117 @@ onMounted(async () => {
         </button>
       </div>
 
-      <!-- Step 1: Strategy -->
-      <div v-if="currentStep === 'strategy'" class="workflow-step">
-        <StrategyWizard
-          :slug="slug"
-          :article-title="articleTitle"
-          :cocoon-name="cocoonName"
-          :silo-name="siloName"
-          @complete="goToStep('brief')"
-          @skip="goToStep('brief')"
-        />
-      </div>
-
-      <template v-else>
-        <AsyncContent :is-loading="briefStore.isLoading" :error="briefStore.error" @retry="briefStore.fetchBrief(slug)">
+      <AsyncContent :is-loading="briefStore.isLoading" :error="briefStore.error" @retry="briefStore.fetchBrief(slug)">
         <template v-if="briefStore.briefData">
-        <!-- Step 2: Brief -->
-        <div v-if="currentStep === 'brief'" class="workflow-step">
-          <CollapsableSection title="Brief SEO">
-            <SeoBrief
-              :article="briefStore.briefData.article"
-              :pilier-keyword="briefStore.pilierKeyword?.keyword ?? null"
-              :strategy="strategyStore.strategy"
-            />
-          </CollapsableSection>
-
-          <CollapsableSection title="Mots-cl&eacute;s">
-            <KeywordList :keywords="briefStore.briefData.keywords" />
-          </CollapsableSection>
-
-          <CollapsableSection title="Mots-cl&eacute;s de l'article">
-            <ArticleKeywordsPanel
+          <!-- Step 1: Brief & Structure -->
+          <div v-if="currentStep === 'brief-structure'" class="workflow-step">
+            <BriefStructureStep
               :slug="slug"
-              :article-title="briefStore.briefData?.article.title ?? ''"
               :cocoon-name="cocoonName"
+              :silo-name="siloName"
+              :article-title="articleTitle"
+              @outline-validated="goToStep('article')"
+              @check-completed="handleBriefCheck"
             />
-          </CollapsableSection>
-
-          <CollapsableSection title="DataForSEO">
-            <DataForSeoPanel
-              :data="briefStore.briefData.dataForSeo"
-              :is-refreshing="briefStore.isRefreshing"
-              @refresh="briefStore.refreshDataForSeo()"
-            />
-
-            <ApiCostBadge
-              v-if="briefStore.dataForSeoFromCache !== null"
-              label="DataForSEO"
-              :from-cache="briefStore.dataForSeoFromCache"
-            />
-          </CollapsableSection>
-
-          <CollapsableSection title="Recommandation de contenu">
-            <ContentRecommendation
-              :recommendation="briefStore.briefData.contentLengthRecommendation"
-              :article-type="briefStore.briefData.article.type"
-            />
-          </CollapsableSection>
-
-          <ContentGapPanel :keyword="workflowKeyword" />
-
-          <div class="step-navigation">
-            <button class="btn-review-strategy" @click="goToStep('strategy')">
-              Revoir la strat\u00e9gie
-            </button>
-            <button class="btn btn-primary" @click="goToStep('outline')">
-              Continuer vers le Sommaire
-            </button>
           </div>
-        </div>
 
-        <!-- Step 3: Outline -->
-        <div v-if="currentStep === 'outline'" class="workflow-step">
-          <CollapsableSection title="Sommaire">
-            <OutlineActions
-              :is-generating="outlineStore.isGenerating"
-              :has-outline="!!outlineStore.outline"
-              :has-brief-data="!!briefStore.briefData"
-              @generate="outlineStore.generateOutline(briefStore.briefData!)"
-              @regenerate="outlineStore.generateOutline(briefStore.briefData!)"
-            />
-
-            <ApiCostBadge
-              v-if="outlineStore.lastApiUsage"
-              label="Sommaire"
-              :usage="outlineStore.lastApiUsage"
-            />
-
-            <ErrorMessage
-              v-if="outlineStore.error && !outlineStore.isGenerating"
-              :message="outlineStore.error"
-              @retry="outlineStore.generateOutline(briefStore.briefData!)"
-            />
-
-            <!-- Streaming view during generation -->
-            <OutlineDisplay
-              v-if="outlineStore.isGenerating || !outlineStore.outline"
-              :outline="outlineStore.outline"
-              :streamed-text="outlineStore.streamedText"
-              :is-generating="outlineStore.isGenerating"
-            />
-
-            <!-- Interactive editor after generation -->
-            <template v-else>
-              <OutlineEditor
-                v-if="!outlineStore.isValidated"
-                :outline="outlineStore.outline"
-                @update:outline="outlineStore.setOutline($event)"
+          <!-- Step 2: Article -->
+          <div v-if="currentStep === 'article'" class="workflow-step">
+            <CollapsableSection title="Article">
+              <ArticleActions
+                :is-generating="editorStore.isGenerating"
+                :has-content="!!editorStore.content"
+                :is-outline-validated="outlineStore.isValidated"
+                @generate="handleGenerateArticle()"
+                @regenerate="handleGenerateArticle()"
               />
 
-              <OutlineDisplay
-                v-else
-                :outline="outlineStore.outline"
-                :streamed-text="''"
-                :is-generating="false"
-              />
-
-              <div class="outline-validation">
-                <p v-if="outlineStore.isValidated" class="validation-msg">
-                  Sommaire valid&eacute; et sauvegard&eacute;.
-                </p>
-                <button
-                  v-if="!outlineStore.isValidated"
-                  class="btn btn-validate"
-                  :disabled="outlineStore.isSaving"
-                  @click="outlineStore.validateOutline(slug)"
-                >
-                  {{ outlineStore.isSaving ? 'Sauvegarde en cours...' : 'Valider le sommaire' }}
-                </button>
+              <div v-if="editorStore.isGenerating && editorStore.sectionProgress" class="section-progress">
+                <div class="section-progress-header">
+                  <span class="section-progress-label">
+                    Section {{ editorStore.sectionProgress.current + 1 }}/{{ editorStore.sectionProgress.total }}
+                  </span>
+                  <span class="section-progress-title">{{ editorStore.sectionProgress.title }}</span>
+                </div>
+                <div class="section-progress-bar">
+                  <div
+                    class="section-progress-fill"
+                    :style="{ width: ((editorStore.sectionProgress.current + 1) / editorStore.sectionProgress.total * 100) + '%' }"
+                  />
+                </div>
               </div>
-            </template>
-          </CollapsableSection>
 
-          <div v-if="outlineStore.isValidated" class="step-navigation">
-            <button class="btn-review-strategy" @click="goToStep('strategy')">
-              Revoir la strat\u00e9gie
-            </button>
-            <button class="btn btn-primary" @click="goToStep('article')">
-              Continuer vers l'Article
-            </button>
-          </div>
-        </div>
-
-        <!-- Step 4: Article -->
-        <div v-if="currentStep === 'article'" class="workflow-step">
-          <CollapsableSection title="Article">
-            <ArticleActions
-              :is-generating="editorStore.isGenerating"
-              :has-content="!!editorStore.content"
-              :is-outline-validated="outlineStore.isValidated"
-              @generate="handleGenerateArticle()"
-              @regenerate="handleGenerateArticle()"
-            />
-
-            <ErrorMessage
-              v-if="editorStore.error && !editorStore.isGenerating"
-              :message="editorStore.error"
-              @retry="handleGenerateArticle()"
-            />
-
-            <ArticleStreamDisplay
-              :streamed-text="editorStore.streamedText"
-              :content="editorStore.content"
-              :is-generating="editorStore.isGenerating"
-            />
-
-            <div v-if="editorStore.lastArticleUsage || editorStore.lastMetaUsage" class="cost-badges">
-              <ApiCostBadge
-                v-if="editorStore.lastArticleUsage"
-                label="Article"
-                :usage="editorStore.lastArticleUsage"
+              <ErrorMessage
+                v-if="editorStore.error && !editorStore.isGenerating"
+                :message="editorStore.error"
+                @retry="handleGenerateArticle()"
               />
-              <ApiCostBadge
-                v-if="editorStore.lastMetaUsage"
-                label="Meta"
-                :usage="editorStore.lastMetaUsage"
+
+              <ArticleMetaDisplay
+                :meta-title="editorStore.metaTitle"
+                :meta-description="editorStore.metaDescription"
+                :is-generating="editorStore.isGeneratingMeta"
               />
+
+              <OutlineRecap :outline="outlineStore.outline" />
+
+              <ArticleStreamDisplay
+                :streamed-text="editorStore.streamedText"
+                :content="editorStore.content"
+                :is-generating="editorStore.isGenerating"
+              />
+
+              <div v-if="editorStore.lastArticleUsage || editorStore.lastMetaUsage" class="cost-badges">
+                <ApiCostBadge
+                  v-if="editorStore.lastArticleUsage"
+                  label="Article"
+                  :usage="editorStore.lastArticleUsage"
+                />
+                <ApiCostBadge
+                  v-if="editorStore.lastMetaUsage"
+                  label="Meta"
+                  :usage="editorStore.lastMetaUsage"
+                />
+              </div>
+
+              <div v-if="seoStore.score && editorStore.content" class="word-count-bar">
+                <div class="word-count-info">
+                  <span class="word-count-value">{{ seoStore.score.wordCount }} mots</span>
+                  <span v-if="wordCountTarget" class="word-count-target">/ {{ wordCountTarget }} cible</span>
+                </div>
+                <div v-if="wordCountTarget" class="word-count-progress">
+                  <div
+                    class="word-count-fill"
+                    :class="wordCountPercent >= 80 ? 'fill-good' : 'fill-fair'"
+                    :style="{ width: Math.min(100, wordCountPercent) + '%' }"
+                  />
+                </div>
+              </div>
+
+              <RouterLink
+                v-if="editorStore.content && !editorStore.isGenerating"
+                :to="`/article/${slug}/editor`"
+                class="btn-edit-article"
+              >
+                &Eacute;diter l'article
+              </RouterLink>
+            </CollapsableSection>
+
+            <div class="step-navigation">
+              <button class="btn-review-strategy" @click="goToStep('brief-structure')">
+                Revoir le Brief
+              </button>
             </div>
-
-            <ArticleMetaDisplay
-              :meta-title="editorStore.metaTitle"
-              :meta-description="editorStore.metaDescription"
-              :is-generating="editorStore.isGeneratingMeta"
-            />
-
-            <RouterLink
-              v-if="editorStore.content && !editorStore.isGenerating"
-              :to="`/article/${slug}/editor`"
-              class="btn-edit-article"
-            >
-              &Eacute;diter l'article
-            </RouterLink>
-          </CollapsableSection>
-
-          <div class="step-navigation">
-            <button class="btn-review-strategy" @click="goToStep('strategy')">
-              Revoir la strat\u00e9gie
-            </button>
           </div>
-        </div>
         </template>
-        </AsyncContent>
-      </template>
+      </AsyncContent>
     </div>
 
     <Transition name="panel-slide">
       <ResizablePanel v-if="hasActivePanel" :key="activePanel!">
+        <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions)" class="panel-disabled-overlay">
+          <p class="panel-disabled-msg">Generez un article pour activer le scoring</p>
+        </div>
         <SeoPanel v-if="showSeoPanel" />
         <GeoPanel v-if="showGeoPanel" />
         <LinkSuggestions
@@ -432,6 +425,25 @@ onMounted(async () => {
           @request="requestSuggestions"
           @close="handleCloseLinkSuggestions"
         />
+        <div v-if="showIaBriefPanel" class="ia-brief-panel">
+          <div class="ia-brief-header">
+            <h3>Analyse IA du Brief</h3>
+            <button
+              class="btn-relaunch"
+              :disabled="iaBriefStreaming"
+              @click="triggerBriefExplain"
+            >
+              {{ iaBriefStreaming ? 'Analyse en cours...' : 'Relancer l\'analyse' }}
+            </button>
+          </div>
+          <div
+            v-if="parsedBriefMarkdown"
+            class="ia-brief-content markdown-body"
+            v-html="parsedBriefMarkdown"
+          />
+          <p v-else-if="iaBriefStreaming" class="ia-brief-loading">Analyse en cours...</p>
+          <p v-else class="ia-brief-empty">Cliquez sur "Relancer l'analyse" pour générer une analyse IA.</p>
+        </div>
       </ResizablePanel>
     </Transition>
   </div>
@@ -593,39 +605,82 @@ onMounted(async () => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.outline-validation {
-  margin-top: 1rem;
+.btn-toggle.disabled,
+.btn-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.btn-toggle:disabled:hover {
+  background: transparent;
+}
+
+/* Panel disabled overlay */
+.panel-disabled-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
   display: flex;
   align-items: center;
-  gap: 1rem;
+  justify-content: center;
+  background: rgba(var(--color-bg-rgb, 255, 255, 255), 0.7);
+  backdrop-filter: blur(2px);
 }
 
-.validation-msg {
-  color: var(--color-success);
-  font-weight: 500;
-  font-size: 0.875rem;
+.panel-disabled-msg {
   margin: 0;
-}
-
-.btn-validate {
-  padding: 0.5rem 1.25rem;
-  border-radius: 6px;
-  font-size: 0.875rem;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.8125rem;
   font-weight: 600;
-  cursor: pointer;
-  border: none;
+  color: var(--color-text-muted);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  text-align: center;
+}
+
+/* --- Section progress bar --- */
+.section-progress {
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.section-progress-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+}
+
+.section-progress-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.section-progress-title {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-progress-bar {
+  height: 4px;
+  background: var(--color-bg-soft);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.section-progress-fill {
+  height: 100%;
   background: var(--color-primary);
-  color: white;
-  transition: background 0.15s;
-}
-
-.btn-validate:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.btn-validate:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
+  border-radius: 2px;
+  transition: width 0.3s ease;
 }
 
 .btn-edit-article {
@@ -650,6 +705,104 @@ onMounted(async () => {
   gap: 0.5rem;
   margin-top: 0.5rem;
   flex-wrap: wrap;
+}
+
+/* --- Word count bar --- */
+.word-count-bar {
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.word-count-info {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  margin-bottom: 0.375rem;
+}
+
+.word-count-value {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+
+.word-count-target {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.word-count-progress {
+  height: 4px;
+  background: var(--color-bg-soft);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.word-count-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.word-count-fill.fill-good {
+  background: var(--color-success);
+}
+
+.word-count-fill.fill-fair {
+  background: var(--color-warning);
+}
+
+/* --- IA Brief panel --- */
+.ia-brief-panel {
+  padding: 1rem;
+}
+
+.ia-brief-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.ia-brief-header h3 {
+  margin: 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+}
+
+.btn-relaunch {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.75rem;
+  background: var(--color-bg-soft);
+  color: var(--color-text);
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-relaunch:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.btn-relaunch:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.ia-brief-content {
+  font-size: 0.8125rem;
+  line-height: 1.6;
+}
+
+.ia-brief-loading,
+.ia-brief-empty {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-style: italic;
 }
 
 /* --- Panel slide transition --- */

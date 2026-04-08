@@ -227,12 +227,18 @@ router.get('/articles/:slug/keywords', async (req, res) => {
 /** PUT /api/articles/:slug/keywords — Save keywords for a specific article */
 router.put('/articles/:slug/keywords', async (req, res) => {
   try {
-    const { capitaine, lieutenants, lexique } = req.body as { capitaine: string; lieutenants: string[]; lexique: string[] }
+    const { capitaine, lieutenants, lexique, rootKeywords, hnStructure } = req.body as { capitaine: string; lieutenants: string[]; lexique: string[]; rootKeywords?: string[]; hnStructure?: any[] }
     if (capitaine === undefined) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'capitaine is required' } })
       return
     }
-    const saved = await saveArticleKeywords(req.params.slug, { capitaine, lieutenants: lieutenants ?? [], lexique: lexique ?? [] })
+    const saved = await saveArticleKeywords(req.params.slug, {
+      capitaine,
+      lieutenants: lieutenants ?? [],
+      lexique: lexique ?? [],
+      rootKeywords: rootKeywords ?? [],
+      hnStructure: hnStructure ?? [],
+    })
     res.json({ data: saved })
   } catch (err) {
     log.error(`PUT /api/articles/${req.params.slug}/keywords — ${(err as Error).message}`)

@@ -84,12 +84,14 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
 
   let lastError: Error | null = null
 
-  log.debug(`DataForSEO request → ${endpoint}`)
+  log.debug(`DataForSEO request → ${endpoint}`, { url, bodyItems: body.length })
+
+  const start = Date.now()
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
-      log.warn(`DataForSEO retry ${attempt}/${MAX_RETRIES} for ${endpoint} (waiting ${delay}ms)`)
+      log.warn(`DataForSEO retry ${attempt}/${MAX_RETRIES} for ${endpoint}`, { delay, ms: Date.now() - start })
       await sleep(delay)
     }
 
@@ -107,34 +109,35 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
       if (json.status_code !== 20000) {
         // Retry on transient API-level errors (50000 = internal server error)
         if (json.status_code >= 50000 && json.status_code < 60000) {
-          log.warn(`DataForSEO API transient error ${json.status_code} for ${endpoint}, will retry`)
+          log.warn(`DataForSEO API transient error ${json.status_code} for ${endpoint}, will retry`, { attempt })
           lastError = new Error(`DataForSEO error: status ${json.status_code}`)
           continue
         }
-        log.error(`DataForSEO API error status ${json.status_code} for ${endpoint}`)
+        log.error(`DataForSEO API error status ${json.status_code} for ${endpoint}`, { ms: Date.now() - start })
         throw new Error(`DataForSEO error: status ${json.status_code}`)
       }
       if (!json.tasks?.[0]?.result?.[0]) {
-        log.warn(`DataForSEO empty result for ${endpoint}`)
+        log.warn(`DataForSEO empty result for ${endpoint}`, { ms: Date.now() - start })
         throw new Error('DataForSEO: empty result')
       }
-      log.debug(`DataForSEO response OK ← ${endpoint}`)
+      log.debug(`DataForSEO response OK ← ${endpoint}`, { ms: Date.now() - start, resultCount: json.tasks[0].result.length })
       return json.tasks[0].result[0] as T
     }
 
     // Retry on 429 (rate limit), 503 (service unavailable), and 500 (server error)
     if (response.status === 429 || response.status === 500 || response.status === 503) {
+      log.warn(`DataForSEO HTTP ${response.status} for ${endpoint}, will retry`, { attempt, ms: Date.now() - start })
       lastError = new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
       continue
     }
 
     // Non-retryable errors
-    log.error(`DataForSEO HTTP ${response.status} for ${endpoint}`)
+    log.error(`DataForSEO HTTP ${response.status} for ${endpoint}`, { ms: Date.now() - start, status: response.status })
     throw new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
   }
 
   // All retries exhausted for retryable error
-  log.error(`DataForSEO max retries exceeded for ${endpoint}`)
+  log.error(`DataForSEO max retries exceeded for ${endpoint}`, { ms: Date.now() - start, retries: MAX_RETRIES })
   throw lastError ?? new Error('DataForSEO: max retries exceeded')
 }
 
@@ -145,9 +148,14 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
 
   let lastError: Error | null = null
 
+  log.debug(`DataForSEO batch request → ${endpoint}`, { url, bodyItems: body.length })
+
+  const start = Date.now()
+
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
       const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
+      log.warn(`DataForSEO batch retry ${attempt}/${MAX_RETRIES} for ${endpoint}`, { delay, ms: Date.now() - start })
       await sleep(delay)
     }
 
@@ -165,23 +173,29 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
       if (json.status_code !== 20000) {
         // Retry on transient API-level errors (50000 = internal server error)
         if (json.status_code >= 50000 && json.status_code < 60000) {
-          log.warn(`DataForSEO batch API transient error ${json.status_code} for ${endpoint}, will retry`)
+          log.warn(`DataForSEO batch API transient error ${json.status_code} for ${endpoint}, will retry`, { attempt })
           lastError = new Error(`DataForSEO error: status ${json.status_code}`)
           continue
         }
+        log.error(`DataForSEO batch API error ${json.status_code} for ${endpoint}`, { ms: Date.now() - start })
         throw new Error(`DataForSEO error: status ${json.status_code}`)
       }
-      return json.tasks?.[0]?.result ?? []
+      const results = json.tasks?.[0]?.result ?? []
+      log.debug(`DataForSEO batch response OK ← ${endpoint}`, { ms: Date.now() - start, resultCount: results.length })
+      return results
     }
 
     if (response.status === 429 || response.status === 500 || response.status === 503) {
+      log.warn(`DataForSEO batch HTTP ${response.status} for ${endpoint}, will retry`, { attempt, ms: Date.now() - start })
       lastError = new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
       continue
     }
 
+    log.error(`DataForSEO batch HTTP ${response.status} for ${endpoint}`, { ms: Date.now() - start, status: response.status })
     throw new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
   }
 
+  log.error(`DataForSEO batch max retries exceeded for ${endpoint}`, { ms: Date.now() - start, retries: MAX_RETRIES })
   throw lastError ?? new Error('DataForSEO: max retries exceeded')
 }
 
@@ -203,12 +217,13 @@ export async function fetchSerp(
   locationCode = DEFAULT_LOCATION_CODE,
   languageCode = DEFAULT_LANGUAGE_CODE,
 ): Promise<SerpResult[]> {
+  log.debug(`fetchSerp start`, { keyword, locationCode, languageCode })
   const result = await fetchDataForSeo<SerpRawResult>(
     '/serp/google/organic/live/regular',
     [{ keyword, location_code: locationCode, language_code: languageCode }],
   )
 
-  return (result.items ?? [])
+  const items = (result.items ?? [])
     .filter((item) => item.type === 'organic')
     .slice(0, 10)
     .map((item) => ({
@@ -218,6 +233,8 @@ export async function fetchSerp(
       description: item.description ?? '',
       domain: item.domain ?? '',
     }))
+  log.debug(`fetchSerp done`, { keyword, organicResults: items.length, totalItems: result.items?.length ?? 0 })
+  return items
 }
 
 interface PaaRawResult {
@@ -235,17 +252,20 @@ export async function fetchPaa(
   locationCode = DEFAULT_LOCATION_CODE,
   languageCode = DEFAULT_LANGUAGE_CODE,
 ): Promise<PaaQuestion[]> {
+  log.debug(`fetchPaa start`, { keyword, locationCode, languageCode })
   const result = await fetchDataForSeo<PaaRawResult>(
     '/serp/google/organic/live/advanced',
     [{ keyword, location_code: locationCode, language_code: languageCode }],
   )
 
-  return (result.items ?? [])
+  const questions = (result.items ?? [])
     .filter((item) => item.type === 'people_also_ask')
     .map((item) => ({
       question: item.title ?? '',
       answer: item.expanded_element?.[0]?.description ?? null,
     }))
+  log.debug(`fetchPaa done`, { keyword, questionsFound: questions.length })
+  return questions
 }
 
 interface RelatedRawResult {
@@ -274,15 +294,19 @@ export async function fetchRelatedKeywords(
   locationCode = DEFAULT_LOCATION_CODE,
   languageCode = DEFAULT_LANGUAGE_CODE,
 ): Promise<RelatedKeyword[]> {
+  log.debug(`fetchRelatedKeywords start`, { keyword, locationCode, languageCode })
   const result = await fetchDataForSeo<RelatedRawResult>(
     '/dataforseo_labs/google/related_keywords/live',
     [{ keyword, location_code: locationCode, language_code: languageCode, depth: 2, limit: 50 }],
   )
 
   const firstItem = result.items?.[0]
-  if (!firstItem?.related_keywords) return []
+  if (!firstItem?.related_keywords) {
+    log.debug(`fetchRelatedKeywords done — no related keywords`, { keyword })
+    return []
+  }
 
-  return firstItem.related_keywords
+  const related = firstItem.related_keywords
     .filter((rk) => rk.keyword != null)
     .map((rk) => ({
       keyword: rk.keyword,
@@ -290,6 +314,8 @@ export async function fetchRelatedKeywords(
       competition: rk.keyword_info?.competition ?? 0,
       cpc: rk.keyword_info?.cpc ?? 0,
     }))
+  log.debug(`fetchRelatedKeywords done`, { keyword, relatedCount: related.length })
+  return related
 }
 
 // --- Keyword Suggestions (fallback when relatedKeywords is empty) ---
@@ -311,14 +337,18 @@ export async function fetchKeywordSuggestions(
   languageCode = DEFAULT_LANGUAGE_CODE,
   limit = 20,
 ): Promise<RelatedKeyword[]> {
+  log.debug(`fetchKeywordSuggestions start`, { keyword, locationCode, languageCode, limit })
   const result = await fetchDataForSeo<SuggestionRawResult>(
     '/dataforseo_labs/google/keyword_suggestions/live',
     [{ keyword, location_code: locationCode, language_code: languageCode, limit }],
   )
 
-  if (!result.items) return []
+  if (!result.items) {
+    log.debug(`fetchKeywordSuggestions done — no items`, { keyword })
+    return []
+  }
 
-  return result.items
+  const suggestions = result.items
     .filter((item) => item.keyword != null)
     .map((item) => ({
       keyword: item.keyword,
@@ -326,6 +356,8 @@ export async function fetchKeywordSuggestions(
       competition: item.keyword_info?.competition ?? 0,
       cpc: item.keyword_info?.cpc ?? 0,
     }))
+  log.debug(`fetchKeywordSuggestions done`, { keyword, suggestionsCount: suggestions.length })
+  return suggestions
 }
 
 interface KeywordRawResult {
@@ -350,6 +382,7 @@ export async function fetchKeywordOverview(
   locationCode = DEFAULT_LOCATION_CODE,
   languageCode = DEFAULT_LANGUAGE_CODE,
 ): Promise<KeywordOverview> {
+  log.debug(`fetchKeywordOverview start`, { keyword, locationCode, languageCode })
   const result = await fetchDataForSeo<KeywordRawResult>(
     '/dataforseo_labs/google/keyword_overview/live',
     [{ keywords: [keyword], location_code: locationCode, language_code: languageCode }],
@@ -361,6 +394,7 @@ export async function fetchKeywordOverview(
     return { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, monthlySearches: [] }
   }
 
+  log.debug(`fetchKeywordOverview done`, { keyword, volume: item.keyword_info?.search_volume, difficulty: item.keyword_properties?.keyword_difficulty })
   return {
     searchVolume: item.keyword_info?.search_volume ?? 0,
     difficulty: item.keyword_properties?.keyword_difficulty ?? 0,
@@ -404,14 +438,19 @@ export async function fetchKeywordOverviewBatch(
     chunks.push(keywords.slice(i, i + KEYWORD_OVERVIEW_BATCH_MAX))
   }
 
+  log.info(`fetchKeywordOverviewBatch start`, { totalKeywords: keywords.length, chunks: chunks.length, locationCode, languageCode })
+  const batchStart = Date.now()
+
   for (const chunk of chunks) {
     try {
+      const start = Date.now()
       const rawResults = await fetchDataForSeoBatch<{ items: KeywordOverviewBatchItem[] | null }>(
         '/dataforseo_labs/google/keyword_overview/live',
         [{ keywords: chunk, location_code: locationCode, language_code: languageCode }],
       )
       // API returns result[0].items — unwrap the wrapper
       const items = rawResults.flatMap(r => r.items ?? [])
+      log.debug(`fetchKeywordOverviewBatch chunk done`, { chunkSize: chunk.length, itemsReturned: items.length, ms: Date.now() - start })
 
       for (const item of items) {
         if (!item?.keyword) continue
@@ -431,6 +470,7 @@ export async function fetchKeywordOverviewBatch(
     }
   }
 
+  log.info(`fetchKeywordOverviewBatch done`, { totalKeywords: keywords.length, resultsReturned: result.size, ms: Date.now() - batchStart })
   return result
 }
 
@@ -456,14 +496,19 @@ export async function fetchSearchIntentBatch(
     chunks.push(keywords.slice(i, i + SEARCH_INTENT_BATCH_MAX))
   }
 
+  log.info(`fetchSearchIntentBatch start`, { totalKeywords: keywords.length, chunks: chunks.length, languageCode })
+  const batchStart = Date.now()
+
   for (const chunk of chunks) {
     try {
+      const start = Date.now()
       const rawResults = await fetchDataForSeoBatch<{ items: SearchIntentItem[] | null }>(
         '/dataforseo_labs/google/search_intent/live',
         [{ keywords: chunk, language_code: languageCode }],
       )
       // API returns result[0].items — unwrap the wrapper
       const items = rawResults.flatMap(r => r.items ?? [])
+      log.debug(`fetchSearchIntentBatch chunk done`, { chunkSize: chunk.length, itemsReturned: items.length, ms: Date.now() - start })
 
       for (const item of items) {
         if (!item?.keyword || !item.keyword_intent) continue
@@ -478,6 +523,7 @@ export async function fetchSearchIntentBatch(
     }
   }
 
+  log.info(`fetchSearchIntentBatch done`, { totalKeywords: keywords.length, resultsReturned: result.size, ms: Date.now() - batchStart })
   return result
 }
 
@@ -494,6 +540,8 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
   }
 
   log.info(`Fetching SEO brief for "${keyword}"${forceRefresh ? ' (force refresh)' : ''}`)
+
+  const briefStart = Date.now()
 
   // Fetch all 4 endpoints in parallel — graceful degradation on individual failures
   const [serpResult, paaResult, relatedResult, keywordResult] = await Promise.allSettled([
@@ -529,6 +577,7 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
   await writeCache(entry)
 
   log.info(`SEO brief done for "${keyword}"`, {
+    ms: Date.now() - briefStart,
     serp: serp.length,
     paa: paa.length,
     related: relatedKeywords.length,
@@ -635,6 +684,8 @@ export async function auditCocoonKeywords(
 ): Promise<KeywordAuditResult[]> {
   log.info(`Auditing ${keywords.length} keywords${forceRefresh ? ' (force refresh)' : ''}`)
 
+  const auditStart = Date.now()
+
   // Step 1: Separate cached vs stale keywords
   const cachedResults: KeywordAuditResult[] = []
   const staleKeywords: Keyword[] = []
@@ -669,7 +720,11 @@ export async function auditCocoonKeywords(
     staleKeywords.push(kw)
   }
 
-  if (staleKeywords.length === 0) return cachedResults
+  log.debug(`Audit cache check done`, { cached: cachedResults.length, stale: staleKeywords.length })
+  if (staleKeywords.length === 0) {
+    log.info(`Audit complete (all cached)`, { total: keywords.length, ms: Date.now() - auditStart })
+    return cachedResults
+  }
 
   // Step 2: Batch fetch keyword_overview + search_intent in parallel
   const staleKeywordStrings = staleKeywords.map(kw => kw.keyword)
@@ -745,6 +800,7 @@ export async function auditCocoonKeywords(
     })
   }
 
+  log.info(`Audit complete`, { total: keywords.length, cached: cachedResults.length, fresh: freshResults.length, ms: Date.now() - auditStart })
   return [...cachedResults, ...freshResults]
 }
 

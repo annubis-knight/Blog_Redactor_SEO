@@ -4,6 +4,7 @@ import { log } from '../utils/logger.js'
 import { rawArticlesDbSchema } from '../../shared/schemas/article.schema.js'
 import { rawKeywordsDbSchema } from '../../shared/schemas/keyword.schema.js'
 import { rawArticleKeywordsDbSchema } from '../../shared/schemas/article-keywords.schema.js'
+import { microContextDbSchema } from '../../shared/schemas/article-micro-context.schema.js'
 import type {
   RawArticle,
   RawArticlesDb,
@@ -23,11 +24,13 @@ import type {
   Theme,
   Silo,
   SiloStats,
+  ArticleMicroContext,
 } from '../../shared/types/index.js'
 
 const DATA_DIR = join(process.cwd(), 'data')
 const STATUS_FILE = join(DATA_DIR, 'article-statuses.json')
 const ARTICLE_KEYWORDS_FILE = join(DATA_DIR, 'article-keywords.json')
+const MICRO_CONTEXT_FILE = join(DATA_DIR, 'article-micro-context.json')
 
 let cachedCocoons: Cocoon[] | null = null
 let cachedKeywords: Keyword[] | null = null
@@ -35,6 +38,7 @@ let cachedStatuses: Record<string, ArticleStatus> | null = null
 let cachedTheme: Theme | null = null
 let cachedSilos: Silo[] | null = null
 let cachedArticleKeywords: ArticleKeywords[] | null = null
+let cachedMicroContexts: ArticleMicroContext[] | null = null
 
 /** Extract short slug from full URL */
 function extractSlug(url: string): string {
@@ -377,6 +381,16 @@ export async function getArticleKeywordsByCocoon(cocoonName: string): Promise<Ar
   return all.filter(ak => slugs.includes(ak.articleSlug))
 }
 
+/** Get all lieutenants already assigned to sibling articles in the same cocoon (anti-cannibalization) */
+export async function getCocoonExistingLieutenants(articleSlug: string): Promise<string[]> {
+  const found = await getArticleBySlug(articleSlug)
+  if (!found) return []
+  const siblingKeywords = await getArticleKeywordsByCocoon(found.cocoonName)
+  return siblingKeywords
+    .filter(ak => ak.articleSlug !== articleSlug)
+    .flatMap(ak => ak.lieutenants ?? [])
+}
+
 /** Add a new empty cocoon to a silo in BDD_Articles_Blog.json */
 export async function addCocoonToSilo(
   siloName: string,
@@ -520,6 +534,43 @@ export async function removeArticleFromCocoon(slug: string): Promise<boolean> {
   return false
 }
 
+// --- Micro-context ---
+
+async function loadMicroContexts(): Promise<ArticleMicroContext[]> {
+  if (cachedMicroContexts) return cachedMicroContexts
+  try {
+    const raw = await readJson<{ micro_contexts: ArticleMicroContext[] }>(MICRO_CONTEXT_FILE)
+    microContextDbSchema.parse(raw)
+    cachedMicroContexts = raw.micro_contexts
+  } catch {
+    cachedMicroContexts = []
+  }
+  return cachedMicroContexts
+}
+
+/** Get micro-context for a specific article */
+export async function loadArticleMicroContext(slug: string): Promise<ArticleMicroContext | null> {
+  const all = await loadMicroContexts()
+  return all.find(mc => mc.slug === slug) ?? null
+}
+
+/** Save micro-context for an article */
+export async function saveArticleMicroContext(slug: string, data: Omit<ArticleMicroContext, 'slug'>): Promise<ArticleMicroContext> {
+  const all = await loadMicroContexts()
+  const existing = all.findIndex(mc => mc.slug === slug)
+  const entry: ArticleMicroContext = { slug, ...data }
+
+  if (existing >= 0) {
+    all[existing] = entry
+  } else {
+    all.push(entry)
+  }
+
+  await writeJson(MICRO_CONTEXT_FILE, { micro_contexts: all })
+  cachedMicroContexts = all
+  return entry
+}
+
 /** Reset caches (useful for testing) */
 export function resetCache(): void {
   cachedCocoons = null
@@ -528,4 +579,5 @@ export function resetCache(): void {
   cachedTheme = null
   cachedSilos = null
   cachedArticleKeywords = null
+  cachedMicroContexts = null
 }

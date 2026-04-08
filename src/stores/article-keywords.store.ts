@@ -37,6 +37,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         lieutenants: keywords.value.lieutenants,
         lexique: keywords.value.lexique,
         rootKeywords: keywords.value.rootKeywords ?? [],
+        hnStructure: keywords.value.hnStructure ?? [],
       })
       log.debug(`[article-keywords] saved for ${slug}`)
     } catch (err) {

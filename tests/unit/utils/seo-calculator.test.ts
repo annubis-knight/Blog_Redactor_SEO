@@ -35,13 +35,13 @@ describe('seo-calculator', () => {
     const moyenneKeyword: Keyword = { keyword: 'optimisation', cocoonName: 'SEO', type: 'Moyenne traine' }
 
     it('calculates density for a keyword present in content', () => {
-      // 20 words total, "référencement naturel" appears 2 times (2-word phrase), density = (2*2/20)*100 = 20%
       const html = '<p>Le référencement naturel est important. Le référencement naturel aide les PME à se développer sur le web de manière efficace et durable.</p>'
       const result = calculateKeywordDensity(html, pilierKeyword)
       expect(result.keyword).toBe('référencement naturel')
       expect(result.type).toBe('Pilier')
       expect(result.occurrences).toBe(2)
       expect(result.density).toBeGreaterThan(0)
+      expect(result.matchMethod).toBe('exact')
     })
 
     it('returns 0 density when keyword is not found', () => {
@@ -59,11 +59,9 @@ describe('seo-calculator', () => {
     })
 
     it('sets inTarget true when density is within range', () => {
-      // Pilier target: 1.5%-2.5%. Need keyword to appear ~3 times in ~100 words for ~2%
       const words = Array(98).fill('mot').join(' ')
       const html = `<p>référencement naturel ${words} référencement naturel et encore référencement naturel</p>`
       const result = calculateKeywordDensity(html, pilierKeyword)
-      // Check it calculated something
       expect(result.target.min).toBe(1.5)
       expect(result.target.max).toBe(2.5)
     })
@@ -74,6 +72,21 @@ describe('seo-calculator', () => {
       const result = calculateKeywordDensity(html, longue)
       expect(result.target.min).toBe(0.3)
       expect(result.target.max).toBe(0.8)
+    })
+
+    it('detects long-tail keywords via semantic matching', () => {
+      const html = "<p>Les étapes clés d'une création de site web professionnel réussie doivent être suivies méthodiquement.</p>"
+      const kw: Keyword = { keyword: 'étapes création site web professionnel', cocoonName: 'Web', type: 'Moyenne traine' }
+      const result = calculateKeywordDensity(html, kw)
+      expect(result.occurrences).toBeGreaterThanOrEqual(1)
+      expect(result.matchMethod).toBe('semantic')
+    })
+
+    it('includes matchMethod field', () => {
+      const html = '<p>Le seo est important pour votre site</p>'
+      const kw: Keyword = { keyword: 'seo', cocoonName: 'SEO', type: 'Pilier' }
+      const result = calculateKeywordDensity(html, kw)
+      expect(result.matchMethod).toBeDefined()
     })
   })
 
@@ -118,7 +131,7 @@ describe('seo-calculator', () => {
 
   describe('analyzeMetaTags', () => {
     it('detects meta title in optimal range', () => {
-      const title = 'A'.repeat(55) // 55 chars, within 50-60
+      const title = 'A'.repeat(55)
       const result = analyzeMetaTags(title, null, null)
       expect(result.titleLength).toBe(55)
       expect(result.titleInRange).toBe(true)
@@ -130,13 +143,13 @@ describe('seo-calculator', () => {
     })
 
     it('detects meta description in optimal range', () => {
-      const desc = 'A'.repeat(155) // 155 chars, within 150-160
+      const desc = 'A'.repeat(155)
       const result = analyzeMetaTags(null, desc, null)
       expect(result.descriptionLength).toBe(155)
       expect(result.descriptionInRange).toBe(true)
     })
 
-    it('detects keyword presence in meta title', () => {
+    it('detects keyword presence in meta title via smart matching', () => {
       const result = analyzeMetaTags('Guide du référencement SEO pour les PME', null, 'référencement SEO')
       expect(result.titleHasKeyword).toBe(true)
     })
@@ -166,14 +179,6 @@ describe('seo-calculator', () => {
       const result = calculateSeoScore(html, keywords, 'Guide SEO complet pour les entreprises françaises en 2026', 'Découvrez notre guide complet sur le SEO et l\'optimisation de votre site web pour améliorer votre référencement naturel durablement.', 100)
       expect(result.global).toBeGreaterThanOrEqual(0)
       expect(result.global).toBeLessThanOrEqual(100)
-    })
-
-    it('includes keyword densities for all keywords', () => {
-      const html = '<h1>SEO</h1><p>Content about seo and optimisation</p>'
-      const result = calculateSeoScore(html, keywords, null, null)
-      expect(result.keywordDensities).toHaveLength(2)
-      expect(result.keywordDensities[0].keyword).toBe('seo')
-      expect(result.keywordDensities[1].keyword).toBe('optimisation')
     })
 
     it('includes heading validation', () => {
@@ -255,17 +260,19 @@ describe('seo-calculator', () => {
       // Capitaine density type should be Pilier
       const capitaineDensity = result.keywordDensities.find(d => d.keyword === 'design web')
       expect(capitaineDensity?.type).toBe('Pilier')
+      // hasArticleKeywords flag
+      expect(result.hasArticleKeywords).toBe(true)
     })
 
-    it('falls back to cocoon keywords when articleKeywords is undefined', () => {
+    it('returns empty densities when no articleKeywords (no fallback)', () => {
       const html = '<h1>SEO</h1><p>seo optimisation</p>'
       const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, undefined)
-      expect(result.keywordDensities).toHaveLength(2)
-      expect(result.keywordDensities[0].keyword).toBe('seo')
-      expect(result.keywordDensities[1].keyword).toBe('optimisation')
+      // No fallback to cocoon keywords anymore — empty densities
+      expect(result.keywordDensities).toHaveLength(0)
+      expect(result.hasArticleKeywords).toBe(false)
     })
 
-    it('falls back to cocoon keywords when articleKeywords has empty capitaine', () => {
+    it('returns empty densities when articleKeywords has empty capitaine', () => {
       const emptyArticleKw: ArticleKeywords = {
         articleSlug: 'test',
         capitaine: '',
@@ -274,8 +281,8 @@ describe('seo-calculator', () => {
       }
       const html = '<h1>SEO</h1><p>seo optimisation</p>'
       const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, emptyArticleKw)
-      expect(result.keywordDensities).toHaveLength(2)
-      expect(result.keywordDensities[0].keyword).toBe('seo')
+      expect(result.keywordDensities).toHaveLength(0)
+      expect(result.hasArticleKeywords).toBe(false)
     })
 
     it('uses capitaine for checklist when articleKeywords is provided', () => {
@@ -290,6 +297,13 @@ describe('seo-calculator', () => {
       // Checklist should check for 'design web', not 'seo'
       expect(result.checklistItems.length).toBeGreaterThan(0)
       expect(result.checklistItems[0].keyword).toBe('design web')
+    })
+
+    it('includes hasArticleKeywords field', () => {
+      const html = '<h1>T</h1><p>text</p>'
+      const result = calculateSeoScore(html, keywords, null, null)
+      expect(result).toHaveProperty('hasArticleKeywords')
+      expect(typeof result.hasArticleKeywords).toBe('boolean')
     })
   })
 
@@ -352,6 +366,27 @@ describe('seo-calculator', () => {
       ]
       const result = generateSeoChecklist('<h1>T</h1><p>c</p>', noKeywords, null, null)
       expect(result).toHaveLength(0)
+    })
+
+    it('includes matchMethod and matchScore fields', () => {
+      const html = '<h1>Guide SEO complet</h1><p>Le seo est la clé.</p>'
+      const result = generateSeoChecklist(html, keywords, 'Guide SEO', null)
+      const metaItem = result.find(r => r.location === 'metaTitle')!
+      expect(metaItem).toHaveProperty('matchMethod')
+      expect(metaItem).toHaveProperty('matchScore')
+      expect(metaItem.matchMethod).toBe('exact')
+      expect(metaItem.matchScore).toBe(1.0)
+    })
+
+    it('detects long-tail keyword via semantic matching in checklist', () => {
+      const longTailKws: Keyword[] = [
+        { keyword: 'étapes création site web professionnel', cocoonName: 'Web', type: 'Pilier' },
+      ]
+      const html = "<h1>Les étapes clés d'une création de site web professionnel réussie</h1><h2>Pourquoi créer un site</h2><p>Introduction sur les étapes clés de la création d'un site web professionnel.</p><p>Conclusion sur les étapes de création de site web professionnel.</p>"
+      const result = generateSeoChecklist(html, longTailKws, "Les étapes pour créer un site web professionnel", null)
+      const h1Item = result.find(r => r.location === 'h1')
+      expect(h1Item?.isPresent).toBe(true)
+      expect(h1Item?.matchMethod).toBe('semantic')
     })
   })
 

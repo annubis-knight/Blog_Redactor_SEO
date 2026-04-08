@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { log } from '@/utils/logger'
 import { useKeywordsStore } from '@/stores/keywords.store'
 import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
 import { apiPost } from '@/services/api.service'
@@ -60,13 +61,15 @@ async function fetchDataForSeo(forceRefresh = false) {
     isLoadingDataForSeo.value = true
   }
   try {
+    log.info('Fetching DataForSEO', { keyword: pilierKeyword.value, forceRefresh })
     const result = await apiPost<DataForSeoCacheEntry>('/dataforseo/brief', {
       keyword: pilierKeyword.value,
       ...(forceRefresh ? { forceRefresh: true } : {}),
     })
     dataForSeo.value = result
-  } catch {
-    // DataForSEO unavailable — continue without
+    log.info('DataForSEO loaded', { keyword: pilierKeyword.value })
+  } catch (err) {
+    log.warn('DataForSEO unavailable', { keyword: pilierKeyword.value, error: (err as Error).message })
   } finally {
     isLoadingDataForSeo.value = false
     isRefreshingDataForSeo.value = false
@@ -82,13 +85,16 @@ const migrationError = ref<string | null>(null)
 async function startMigration() {
   migrationError.value = null
   try {
+    log.info('Previewing keyword migration', { cocoon: props.cocoonName })
     const data = await apiPost<{ cocoonName: string; assignments: any[]; warnings: string[] }>(
       `/keywords/migrate/${encodeURIComponent(props.cocoonName)}/preview`,
       {},
     )
     migrationPreview.value = data
     showMigration.value = true
+    log.info('Migration preview ready', { assignments: data.assignments.length, warnings: data.warnings.length })
   } catch (err) {
+    log.error('Migration preview failed', { cocoon: props.cocoonName, error: (err as Error).message })
     migrationError.value = (err as Error).message
   }
 }
@@ -97,10 +103,13 @@ async function handleApplyMigration(assignments: any[]) {
   isApplyingMigration.value = true
   migrationError.value = null
   try {
+    log.info('Applying keyword migration', { cocoon: props.cocoonName, assignments: assignments.length })
     await apiPost(`/keywords/migrate/${encodeURIComponent(props.cocoonName)}/apply`, { assignments })
     showMigration.value = false
     migrationPreview.value = null
+    log.info('Keyword migration applied', { cocoon: props.cocoonName })
   } catch (err) {
+    log.error('Migration apply failed', { cocoon: props.cocoonName, error: (err as Error).message })
     migrationError.value = (err as Error).message
   } finally {
     isApplyingMigration.value = false

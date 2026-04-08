@@ -27,6 +27,7 @@ async function ensureModel(): Promise<boolean> {
   loading = true
   try {
     log.info(`[Embedding] Loading model ${MODEL_ID}...`)
+    const startLoad = Date.now()
     const { pipeline } = await import('@huggingface/transformers')
 
     const loadPromise = pipeline('feature-extraction', MODEL_ID)
@@ -35,7 +36,7 @@ async function ensureModel(): Promise<boolean> {
     )
 
     embedder = await Promise.race([loadPromise, timeoutPromise])
-    log.info('[Embedding] Model loaded successfully')
+    log.info(`[Embedding] Model loaded successfully in ${Date.now() - startLoad}ms`)
     return true
   } catch (err) {
     loadFailed = true
@@ -55,21 +56,28 @@ async function ensureModel(): Promise<boolean> {
 export async function embedTexts(texts: string[], prefix: 'query' | 'passage' = 'query'): Promise<number[][] | null> {
   if (!await ensureModel()) return null
 
+  const totalBatches = Math.ceil(texts.length / 32)
+  log.debug(`[Embedding] Embedding ${texts.length} texts (prefix="${prefix}", batches=${totalBatches})`)
+  const startEmbed = Date.now()
+
   try {
     const BATCH_SIZE = 32
     const results: number[][] = []
     for (let i = 0; i < texts.length; i += BATCH_SIZE) {
       const batch = texts.slice(i, i + BATCH_SIZE).map(t => `${prefix}: ${t}`)
+      const startBatch = Date.now()
       const output = await (embedder as CallableFunction)(
         batch,
         { pooling: 'mean', normalize: true },
       )
       // Output tensor shape [N, hidden_dim] — tolist() returns number[][]
       results.push(...(output.tolist() as number[][]))
+      log.debug(`[Embedding] Batch ${Math.floor(i / BATCH_SIZE) + 1}/${totalBatches}: ${batch.length} texts in ${Date.now() - startBatch}ms`)
     }
+    log.info(`[Embedding] Embedded ${results.length} texts in ${Date.now() - startEmbed}ms`)
     return results
   } catch (err) {
-    log.warn(`[Embedding] Embedding failed: ${(err as Error).message}`)
+    log.warn(`[Embedding] Embedding failed after ${Date.now() - startEmbed}ms: ${(err as Error).message}`)
     return null
   }
 }
@@ -98,6 +106,9 @@ export async function computeSemanticScores(
 ): Promise<number[] | null> {
   if (texts.length === 0) return []
 
+  log.info(`[Embedding] Computing semantic scores: topic="${topic.slice(0, 60)}" vs ${texts.length} texts`)
+  const startScores = Date.now()
+
   const topicEmbedding = await embedTexts([topic], 'query')
   if (!topicEmbedding) return null
 
@@ -105,5 +116,12 @@ export async function computeSemanticScores(
   if (!textEmbeddings) return null
 
   const topicVec = topicEmbedding[0]
-  return textEmbeddings.map(vec => cosineSimilarity(topicVec, vec))
+  const scores = textEmbeddings.map(vec => cosineSimilarity(topicVec, vec))
+
+  const min = Math.min(...scores)
+  const max = Math.max(...scores)
+  const avg = scores.reduce((s, v) => s + v, 0) / scores.length
+  log.info(`[Embedding] Semantic scores computed in ${Date.now() - startScores}ms: min=${min.toFixed(3)}, max=${max.toFixed(3)}, avg=${avg.toFixed(3)}`)
+
+  return scores
 }

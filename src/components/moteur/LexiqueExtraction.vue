@@ -7,14 +7,14 @@ import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
-import type { TfidfResult } from '@shared/types/serp-analysis.types.js'
+import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
 
 const props = withDefaults(defineProps<{
   selectedArticle: SelectedArticle | null
   captainKeyword: string | null
   articleLevel: ArticleLevel | null
   selectedLieutenants: string[]
-  isLieutenantsLocked: boolean
+  isCaptaineLocked: boolean
   initialLocked?: boolean
   cocoonSlug?: string
 }>(), {
@@ -35,12 +35,17 @@ const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
 const isLocked = ref(props.initialLocked)
 
-// --- AI Panel (streaming) ---
+// --- IA Upfront Analysis (NOUVEAU) ---
+const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, result: iaRawResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<LexiqueAnalysisResult>()
+const iaResult = computed(() => iaRawResult.value)
+const iaRecommendations = ref<Map<string, LexiqueTermRecommendation>>(new Map())
+
+// --- Legacy AI Panel (streaming text) ---
 const { chunks: aiChunks, isStreaming: aiIsStreaming, error: aiError, startStream: aiStartStream, abort: aiAbort } = useStreaming()
 const aiPanelOpen = ref(true)
 
 const canExtract = computed(() =>
-  props.isLieutenantsLocked && !!props.captainKeyword && !isLoading.value && !isLocked.value,
+  props.isCaptaineLocked && !!props.captainKeyword && !isLoading.value && !isLocked.value,
 )
 
 async function extractLexique() {
@@ -71,28 +76,66 @@ const selectedByLevel = computed(() => {
   }
 })
 
-// --- AI Lexique Analysis ---
-function generateLexiqueAnalysis() {
+// IA recommendation helpers
+function getRecommendation(term: string): LexiqueTermRecommendation | undefined {
+  return iaRecommendations.value.get(term.toLowerCase())
+}
+
+function isIaRecommended(term: string): boolean | null {
+  const rec = getRecommendation(term)
+  return rec ? rec.aiRecommended : null
+}
+
+// --- IA Upfront Lexique Analysis ---
+function generateLexiqueUpfront() {
   if (!props.captainKeyword || !tfidfResult.value) return
   const data = tfidfResult.value
-  aiAbort()
-  aiStartStream(
-    `/api/keywords/${encodeURIComponent(props.captainKeyword)}/ai-lexique`,
+  iaAbort()
+  iaRecommendations.value = new Map()
+
+  iaStartStream(
+    `/api/keywords/${encodeURIComponent(props.captainKeyword)}/ai-lexique-upfront`,
     {
       level: props.articleLevel,
-      lexiqueTerms: {
-        obligatoire: data.obligatoire.filter(t => selectedTerms.value.has(t.term)).map(t => t.term),
-        differenciateur: data.differenciateur.filter(t => selectedTerms.value.has(t.term)).map(t => t.term),
-        optionnel: data.optionnel.filter(t => selectedTerms.value.has(t.term)).map(t => t.term),
+      allTerms: {
+        obligatoire: data.obligatoire.map(t => t.term),
+        differenciateur: data.differenciateur.map(t => t.term),
+        optionnel: data.optionnel.map(t => t.term),
       },
       cocoonSlug: props.cocoonSlug || undefined,
+    },
+    {
+      onDone: (result) => {
+        log.info(`[LexiqueExtraction] IA upfront: ${result.recommendations.length} recommendations`)
+        // Build lookup map
+        const map = new Map<string, LexiqueTermRecommendation>()
+        for (const rec of result.recommendations) {
+          map.set(rec.term.toLowerCase(), rec)
+        }
+        iaRecommendations.value = map
+
+        // Pre-check: all obligatoire + differenciateur where aiRecommended
+        if (tfidfResult.value) {
+          const preChecked = new Set<string>()
+          for (const term of tfidfResult.value.obligatoire) {
+            preChecked.add(term.term)
+          }
+          for (const term of tfidfResult.value.differenciateur) {
+            const rec = map.get(term.term.toLowerCase())
+            if (rec?.aiRecommended) {
+              preChecked.add(term.term)
+            }
+          }
+          selectedTerms.value = preChecked
+        }
+      },
     },
   )
 }
 
-// Auto-trigger AI analysis when TF-IDF results arrive
+// Auto-trigger IA upfront after TF-IDF results
 watch(tfidfResult, (res) => {
-  if (res) generateLexiqueAnalysis()
+  if (res) generateLexiqueUpfront()
 })
 
 // --- Validate / Lock ---
@@ -117,7 +160,7 @@ function unlockLexique() {
   emit('check-removed', 'lexique_validated')
 }
 
-// Fetch TF-IDF bypassing canExtract guard (used for auto-restore when locked)
+// Fetch TF-IDF
 async function fetchTfidf() {
   if (!props.captainKeyword) return
 
@@ -131,7 +174,7 @@ async function fetchTfidf() {
     })
     tfidfResult.value = result
 
-    // Pre-check all obligatoire terms
+    // Initial pre-check: all obligatoire (will be refined by IA upfront)
     const preChecked = new Set<string>()
     for (const term of result.obligatoire) {
       preChecked.add(term.term)
@@ -147,9 +190,9 @@ async function fetchTfidf() {
   }
 }
 
-// Auto-restore TF-IDF when lieutenants are locked and we land on this tab
+// Auto-restore TF-IDF when captain is locked
 watch(
-  [() => props.isLieutenantsLocked, () => props.captainKeyword],
+  [() => props.isCaptaineLocked, () => props.captainKeyword],
   ([locked, keyword]) => {
     if (locked && keyword && !tfidfResult.value && !isLoading.value) {
       fetchTfidf()
@@ -165,12 +208,17 @@ watch(
     tfidfResult.value = null
     error.value = null
     selectedTerms.value = new Set()
+    iaRecommendations.value = new Map()
     isLocked.value = props.initialLocked
+    iaAbort()
     aiAbort()
   },
 )
 
-onUnmounted(() => aiAbort())
+onUnmounted(() => {
+  iaAbort()
+  aiAbort()
+})
 </script>
 
 <template>
@@ -206,6 +254,24 @@ onUnmounted(() => aiAbort())
 
     <!-- Results -->
     <div v-if="tfidfResult" class="lexique-results" data-testid="lexique-results">
+
+      <!-- IA Analysis Summary (moved BEFORE term sections) -->
+      <div class="ia-analysis-section" data-testid="ia-analysis-section">
+        <div v-if="iaIsStreaming" class="ia-loading" data-testid="ia-loading">
+          <span class="pulse-dot" /> Analyse IA en cours...
+        </div>
+        <div v-else-if="iaError" class="ia-error" data-testid="ia-error">
+          <p>{{ iaError }}</p>
+          <button class="btn-retry" @click="generateLexiqueUpfront">Relancer l'analyse IA</button>
+        </div>
+        <div v-else-if="iaResult" class="ia-summary" data-testid="ia-summary">
+          <p>{{ iaResult.summary }}</p>
+          <div v-if="iaResult.missingTerms.length > 0" class="ia-missing-terms">
+            <strong>Termes manquants :</strong> {{ iaResult.missingTerms.join(', ') }}
+          </div>
+        </div>
+      </div>
+
       <!-- Selection counter -->
       <div class="selection-counter" data-testid="selection-counter">
         {{ selectedCount }} terme{{ selectedCount > 1 ? 's' : '' }} selectionne{{ selectedCount > 1 ? 's' : '' }}
@@ -220,6 +286,9 @@ onUnmounted(() => aiAbort())
           <div v-for="term in tfidfResult.obligatoire" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
             <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
             <span class="term-text">{{ term.term }}</span>
+            <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
+              {{ isIaRecommended(term.term) ? 'IA recommandé' : 'IA optionnel' }}
+            </span>
             <span class="term-density">&times;{{ term.density }}/page</span>
             <span class="term-percent">{{ Math.round(term.documentFrequency * 100) }}%</span>
           </div>
@@ -233,6 +302,9 @@ onUnmounted(() => aiAbort())
           <div v-for="term in tfidfResult.differenciateur" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
             <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
             <span class="term-text">{{ term.term }}</span>
+            <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
+              {{ isIaRecommended(term.term) ? 'IA recommandé' : 'IA optionnel' }}
+            </span>
             <span class="term-density">&times;{{ term.density }}/page</span>
             <span class="term-percent">{{ Math.round(term.documentFrequency * 100) }}%</span>
           </div>
@@ -246,6 +318,9 @@ onUnmounted(() => aiAbort())
           <div v-for="term in tfidfResult.optionnel" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
             <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
             <span class="term-text">{{ term.term }}</span>
+            <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
+              {{ isIaRecommended(term.term) ? 'IA recommandé' : 'IA optionnel' }}
+            </span>
             <span class="term-density">&times;{{ term.density }}/page</span>
             <span class="term-percent">{{ Math.round(term.documentFrequency * 100) }}%</span>
           </div>
@@ -253,7 +328,7 @@ onUnmounted(() => aiAbort())
         <p v-else class="section-empty">Aucun terme optionnel identifie.</p>
       </CollapsableSection>
 
-      <!-- AI Expert Panel -->
+      <!-- AI Expert Panel (legacy streaming text) -->
       <div class="ai-panel" data-testid="ai-panel">
         <button
           class="ai-panel-toggle"
@@ -412,6 +487,82 @@ onUnmounted(() => aiAbort())
   gap: 0.75rem;
 }
 
+/* --- IA Analysis Section --- */
+.ia-analysis-section {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+}
+
+.ia-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success, #22c55e);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.ia-error {
+  padding: 0.5rem;
+  background: var(--color-block-error-bg, #fef2f2);
+  border-radius: 6px;
+}
+
+.ia-error p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--color-error, #ef4444);
+}
+
+.btn-retry {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-retry:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+.ia-summary {
+  font-size: 0.8125rem;
+  line-height: 1.5;
+}
+
+.ia-summary p {
+  margin: 0;
+}
+
+.ia-missing-terms {
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--color-badge-amber-bg, #fef3c7);
+  border-radius: 4px;
+  font-size: 0.8125rem;
+}
+
+/* --- Selection counter --- */
 .selection-counter {
   padding: 0.5rem 0;
   font-size: 0.8125rem;
@@ -465,6 +616,26 @@ onUnmounted(() => aiAbort())
   white-space: nowrap;
 }
 
+.badge-ia {
+  display: inline-block;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.625rem;
+  border-radius: 4px;
+  font-weight: 600;
+  flex-shrink: 0;
+  cursor: help;
+}
+
+.badge-ia-recommended {
+  background: var(--color-badge-green-bg, #dcfce7);
+  color: #15803d;
+}
+
+.badge-ia-optional {
+  background: var(--color-border);
+  color: var(--color-text-muted);
+}
+
 .term-density {
   font-weight: 600;
   font-size: 0.75rem;
@@ -489,7 +660,7 @@ onUnmounted(() => aiAbort())
   font-style: italic;
 }
 
-/* --- AI Panel --- */
+/* --- AI Panel (legacy) --- */
 .ai-panel {
   margin-top: 0.5rem;
   border: 1px solid var(--color-border, #e2e8f0);
@@ -523,11 +694,6 @@ onUnmounted(() => aiAbort())
   border-radius: 50%;
   background: var(--color-primary, #3b82f6);
   animation: pulse 1s ease infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 1; }
 }
 
 .ai-panel-content {

@@ -229,3 +229,7 @@ export type {
   CompositionRuleResult,
   CompositionCheckResult,
 } from './composition.types.js'
+
+export type {
+  ArticleMicroContext,
+} from './article-micro-context.types.js'

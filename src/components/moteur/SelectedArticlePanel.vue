@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { computed, watch } from 'vue'
 import { useArticleProgressStore } from '@/stores/article-progress.store'
-import type { SelectedArticle, SemanticTerm } from '@shared/types/index.js'
+import type { SelectedArticle } from '@shared/types/index.js'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
 
 const props = defineProps<{
@@ -9,11 +9,8 @@ const props = defineProps<{
 }>()
 
 const progressStore = useArticleProgressStore()
-const newTerm = ref('')
-const newTermSource = ref<SemanticTerm['source']>('manual')
 
 const progress = computed(() => progressStore.getProgress(props.article.slug))
-const semanticField = computed(() => progressStore.getSemanticField(props.article.slug))
 
 const PHASE_LABELS: Record<string, string> = {
   proposed: 'Proposé',
@@ -23,6 +20,11 @@ const PHASE_LABELS: Record<string, string> = {
 }
 
 const CHECK_LABELS: Record<string, string> = {
+  'discovery_done': 'Discovery',
+  'radar_done': 'Radar',
+  'capitaine_locked': 'Capitaine',
+  'lieutenants_locked': 'Lieutenants',
+  'lexique_validated': 'Lexique',
   'intent-analyzed': 'Intention analysée',
   'local-checked': 'Local vérifié',
   'competitors-analyzed': 'Concurrents analysés',
@@ -36,53 +38,9 @@ const CHECK_LABELS: Record<string, string> = {
   'geo-ok': 'GEO validé',
 }
 
-const sortedTerms = computed(() =>
-  [...semanticField.value].sort((a, b) => b.targetCount - a.targetCount),
-)
-
 watch(() => props.article.slug, async (slug) => {
-  await Promise.all([
-    progressStore.fetchProgress(slug),
-    progressStore.fetchSemanticField(slug),
-  ])
+  await progressStore.fetchProgress(slug)
 }, { immediate: true })
-
-async function addTerm() {
-  const term = newTerm.value.trim()
-  if (!term || props.article.locked) return
-  await progressStore.addSemanticTerms(props.article.slug, [{
-    term,
-    source: newTermSource.value,
-    occurrences: 0,
-    targetCount: 1,
-  }])
-  newTerm.value = ''
-}
-
-async function removeTerm(term: string) {
-  if (props.article.locked) return
-  const updated = semanticField.value.filter(t => t.term !== term)
-  await progressStore.saveSemanticField(props.article.slug, updated)
-}
-
-async function updateTargetCount(term: string, count: number) {
-  if (props.article.locked) return
-  const updated = semanticField.value.map(t =>
-    t.term === term ? { ...t, targetCount: Math.max(0, count) } : t,
-  )
-  await progressStore.saveSemanticField(props.article.slug, updated)
-}
-
-function getSourceLabel(source: SemanticTerm['source']): string {
-  const labels: Record<string, string> = {
-    competitor: 'Concurrent',
-    dataforseo: 'DataForSEO',
-    autocomplete: 'Autocomplete',
-    paa: 'PAA',
-    manual: 'Manuel',
-  }
-  return labels[source] ?? source
-}
 </script>
 
 <template>
@@ -126,54 +84,6 @@ function getSourceLabel(source: SemanticTerm['source']): string {
           </span>
         </div>
         <p v-else class="empty-hint">Aucune étape validée</p>
-      </div>
-
-      <!-- Champ sémantique -->
-      <div class="panel-section">
-        <div class="section-header">
-          <span class="section-label">Champ sémantique ({{ semanticField.length }})</span>
-        </div>
-
-        <div v-if="sortedTerms.length > 0" class="semantic-table">
-          <div class="semantic-header-row">
-            <span class="sem-col-term">Terme</span>
-            <span class="sem-col-source">Source</span>
-            <span class="sem-col-occ">Occ.</span>
-            <span class="sem-col-target">Cible</span>
-            <span v-if="!article.locked" class="sem-col-actions"></span>
-          </div>
-          <div v-for="term in sortedTerms" :key="term.term" class="semantic-row">
-            <span class="sem-col-term">{{ term.term }}</span>
-            <span class="sem-col-source sem-source-badge">{{ getSourceLabel(term.source) }}</span>
-            <span class="sem-col-occ">{{ term.occurrences }}</span>
-            <span class="sem-col-target">
-              <template v-if="article.locked">{{ term.targetCount }}</template>
-              <input v-else type="number" class="target-input" :value="term.targetCount" min="0"
-                @change="updateTargetCount(term.term, Number(($event.target as HTMLInputElement).value))" />
-            </span>
-            <span v-if="!article.locked" class="sem-col-actions">
-              <button class="btn-remove-term" @click="removeTerm(term.term)" title="Supprimer">
-                &times;
-              </button>
-            </span>
-          </div>
-        </div>
-
-        <p v-else class="empty-hint">Aucun terme — enrichissez via les onglets ou ajoutez manuellement</p>
-
-        <!-- Add term form -->
-        <div v-if="!article.locked" class="add-term-row">
-          <input v-model="newTerm" type="text" class="add-term-input" placeholder="Nouveau terme..."
-            @keydown.enter="addTerm" />
-          <select v-model="newTermSource" class="add-term-select">
-            <option value="manual">Manuel</option>
-            <option value="competitor">Concurrent</option>
-            <option value="dataforseo">DataForSEO</option>
-            <option value="autocomplete">Autocomplete</option>
-            <option value="paa">PAA</option>
-          </select>
-          <button class="btn-add-term" @click="addTerm">+</button>
-        </div>
       </div>
   </RecapToggle>
 </template>
@@ -241,17 +151,6 @@ function getSourceLabel(source: SemanticTerm['source']): string {
 
 .panel-section {
   padding: 0.5rem 0;
-}
-
-.panel-section+.panel-section {
-  border-top: 1px solid var(--color-border);
-}
-
-.section-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.375rem;
 }
 
 .section-label {
@@ -349,166 +248,5 @@ function getSourceLabel(source: SemanticTerm['source']): string {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-
-/* Semantic table */
-.semantic-table {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-  font-size: 0.6875rem;
-}
-
-.semantic-header-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-  border-bottom: 1px solid var(--color-border);
-  font-weight: 600;
-  color: var(--color-text-muted);
-  font-size: 0.625rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.semantic-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.25rem 0;
-  border-bottom: 1px solid var(--color-border-light, rgba(0, 0, 0, 0.04));
-}
-
-.semantic-row:last-child {
-  border-bottom: none;
-}
-
-.sem-col-term {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.sem-col-source {
-  flex-shrink: 0;
-  width: 5.5rem;
-  text-align: center;
-}
-
-.sem-source-badge {
-  font-size: 0.5625rem;
-  padding: 0.0625rem 0.25rem;
-  border-radius: 3px;
-  background: var(--color-bg-soft);
-  color: var(--color-text-muted);
-}
-
-.sem-col-occ {
-  flex-shrink: 0;
-  width: 2rem;
-  text-align: center;
-}
-
-.sem-col-target {
-  flex-shrink: 0;
-  width: 3rem;
-  text-align: center;
-}
-
-.sem-col-actions {
-  flex-shrink: 0;
-  width: 1.5rem;
-  text-align: center;
-}
-
-.target-input {
-  width: 2.5rem;
-  padding: 0.125rem 0.25rem;
-  border: 1px solid var(--color-border);
-  border-radius: 3px;
-  font-size: 0.6875rem;
-  text-align: center;
-  background: var(--color-background);
-  color: var(--color-text);
-}
-
-.target-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.btn-remove-term {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border: none;
-  border-radius: 3px;
-  background: none;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-size: 0.875rem;
-  line-height: 1;
-}
-
-.btn-remove-term:hover {
-  background: var(--color-error-soft, #fef2f2);
-  color: var(--color-error, #dc2626);
-}
-
-/* Add term form */
-.add-term-row {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  margin-top: 0.5rem;
-}
-
-.add-term-input {
-  flex: 1;
-  padding: 0.25rem 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 0.6875rem;
-  background: var(--color-background);
-  color: var(--color-text);
-}
-
-.add-term-input:focus {
-  outline: none;
-  border-color: var(--color-primary);
-}
-
-.add-term-select {
-  padding: 0.25rem 0.375rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  font-size: 0.6875rem;
-  background: var(--color-background);
-  color: var(--color-text);
-}
-
-.btn-add-term {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border: 1px solid var(--color-primary);
-  border-radius: 4px;
-  background: var(--color-primary-soft, rgba(74, 144, 217, 0.08));
-  color: var(--color-primary);
-  cursor: pointer;
-  font-size: 0.875rem;
-  font-weight: 700;
-}
-
-.btn-add-term:hover {
-  background: var(--color-primary);
-  color: white;
 }
 </style>

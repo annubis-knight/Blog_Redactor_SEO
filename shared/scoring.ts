@@ -58,3 +58,4 @@ export function computeCombinedScore(input: CombinedScoreInput): RadarCombinedSc
     total: Math.min(100, Math.max(0, total)),
   }
 }
+

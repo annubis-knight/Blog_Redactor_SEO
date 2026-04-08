@@ -1,5 +1,6 @@
 import { ref, computed, onMounted } from 'vue'
 import type { NlpResult, NlpState } from '../../shared/types/intent.types.js'
+import { log } from '@/utils/logger'
 
 // --- Constants ---
 
@@ -81,12 +82,13 @@ async function activate(): Promise<void> {
     nlpState.value = 'active'
     isEnabled.value = true
     localStorage.setItem(STORAGE_KEY, 'true')
+    log.info('NLP model loaded successfully')
   } catch (err) {
     if (abortController?.signal.aborted) {
       nlpState.value = 'disabled'
     } else {
       nlpState.value = 'error'
-      console.error('[NLP] Model loading failed:', err)
+      log.error('NLP model loading failed', { error: (err as Error).message })
     }
   } finally {
     abortController = null
@@ -117,6 +119,7 @@ async function analyzeKeywords(keywords: string[]): Promise<void> {
 
   nlpState.value = 'analyzing'
   analysisProgress.value = { done: 0, total: keywords.length }
+  log.debug('NLP analysis started', { count: keywords.length })
 
   const newResults = new Map<string, NlpResult>()
 
@@ -157,6 +160,7 @@ async function analyzeKeywords(keywords: string[]): Promise<void> {
 
   results.value = newResults
   nlpState.value = 'active'
+  log.info('NLP analysis complete', { analyzed: newResults.size })
 }
 
 function getNlpSignal(keyword: string): { score: number; label: string; confidence: number } | null {

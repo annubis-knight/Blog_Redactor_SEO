@@ -112,6 +112,8 @@ async function fetchSuggestions(
   limit: number,
 ): Promise<Array<{ keyword: string; source: 'suggestions' }>> {
   try {
+    log.debug(`[Discovery] Fetching suggestions for "${seed}" (limit=${limit})`)
+    const start = Date.now()
     const result = await fetchDataForSeo<SuggestionRawResult>(
       '/dataforseo_labs/google/keyword_suggestions/live',
       [{
@@ -122,9 +124,11 @@ async function fetchSuggestions(
         filters: ['keyword_info.search_volume', '>', 0],
       }],
     )
-    return (result.items ?? [])
+    const items = (result.items ?? [])
       .filter(i => i.keyword)
       .map(i => ({ keyword: i.keyword, source: 'suggestions' as const }))
+    log.info(`[Discovery] Suggestions for "${seed}": ${items.length} keywords in ${Date.now() - start}ms`)
+    return items
   } catch (err) {
     log.warn(`Keyword suggestions failed for "${seed}": ${(err as Error).message}`)
     return []
@@ -137,6 +141,8 @@ async function fetchRelated(
   limit: number,
 ): Promise<Array<{ keyword: string; source: 'related' }>> {
   try {
+    log.debug(`[Discovery] Fetching related keywords for "${seed}" (limit=${limit})`)
+    const start = Date.now()
     const result = await fetchDataForSeo<RelatedRawResult>(
       '/dataforseo_labs/google/related_keywords/live',
       [{
@@ -148,10 +154,15 @@ async function fetchRelated(
       }],
     )
     const firstItem = result.items?.[0]
-    if (!firstItem?.related_keywords) return []
-    return firstItem.related_keywords
+    if (!firstItem?.related_keywords) {
+      log.info(`[Discovery] Related for "${seed}": 0 keywords in ${Date.now() - start}ms`)
+      return []
+    }
+    const items = firstItem.related_keywords
       .filter(rk => rk.keyword)
       .map(rk => ({ keyword: rk.keyword, source: 'related' as const }))
+    log.info(`[Discovery] Related for "${seed}": ${items.length} keywords in ${Date.now() - start}ms`)
+    return items
   } catch (err) {
     log.warn(`Related keywords failed for "${seed}": ${(err as Error).message}`)
     return []
@@ -164,6 +175,8 @@ async function fetchIdeas(
   limit: number,
 ): Promise<Array<{ keyword: string; source: 'ideas' }>> {
   try {
+    log.debug(`[Discovery] Fetching ideas for "${seed}" (limit=${limit})`)
+    const start = Date.now()
     const result = await fetchDataForSeo<KeywordIdeasRawResult>(
       '/dataforseo_labs/google/keyword_ideas/live',
       [{
@@ -174,9 +187,11 @@ async function fetchIdeas(
         filters: ['keyword_info.search_volume', '>', 0],
       }],
     )
-    return (result.items ?? [])
+    const items = (result.items ?? [])
       .filter(i => i.keyword)
       .map(i => ({ keyword: i.keyword, source: 'ideas' as const }))
+    log.info(`[Discovery] Ideas for "${seed}": ${items.length} keywords in ${Date.now() - start}ms`)
+    return items
   } catch (err) {
     log.warn(`Keyword ideas failed for "${seed}": ${(err as Error).message}`)
     return []
@@ -207,10 +222,13 @@ async function enrichAndClassify(
   const keywordStrings = rawKeywords.map(k => k.keyword)
 
   // Batch fetch overview + intent in parallel
+  log.info(`[Discovery] Enriching ${keywordStrings.length} keywords (overview + intent batch)`)
+  const startEnrich = Date.now()
   const [overviewMap, intentMap] = await Promise.all([
     fetchKeywordOverviewBatch(keywordStrings),
     fetchSearchIntentBatch(keywordStrings),
   ])
+  log.info(`[Discovery] Enrichment done in ${Date.now() - startEnrich}ms: overview=${overviewMap.size}, intent=${intentMap.size}`)
 
   // Build enriched entries (without type yet)
   const enriched: Array<{
@@ -259,6 +277,10 @@ async function enrichAndClassify(
   // Sort by composite score descending
   results.sort((a, b) => b.compositeScore.total - a.compositeScore.total)
 
+  const typeCounts: Record<string, number> = { Pilier: 0, 'Moyenne traine': 0, 'Longue traine': 0, 'Intermédiaire': 0, 'Spécialisé': 0 }
+  for (const r of results) typeCounts[r.type]++
+  log.info(`[Discovery] Classification: ${results.length} keywords`, typeCounts)
+
   return results
 }
 
@@ -270,6 +292,8 @@ export async function discoverKeywords(
   options?: { maxResults?: number },
 ): Promise<KeywordDiscoveryResult> {
   return getOrFetch<KeywordDiscoveryResult>(DISCOVERY_CACHE_DIR, `seed-${slugify(seed)}`, DISCOVERY_TTL_MS, async () => {
+    const startTotal = Date.now()
+    log.info(`[Discovery] Starting seed discovery for "${seed}"`)
     const maxPerEndpoint = Math.min(options?.maxResults ?? 200, 200)
 
     const [suggestions, related, ideas] = await Promise.all([
@@ -281,9 +305,13 @@ export async function discoverKeywords(
     const totalBeforeDedup = suggestions.length + related.length + ideas.length
     const allRaw = [...suggestions, ...related, ...ideas]
     const unique = deduplicateKeywords(allRaw)
+    log.info(`[Discovery] Dedup for "${seed}": ${totalBeforeDedup} raw → ${unique.length} unique (suggestions=${suggestions.length}, related=${related.length}, ideas=${ideas.length})`)
+
     const keywords = await enrichAndClassify(unique)
 
     const apiCost = 0.05 + 0.01 + 0.05 + 0.01 + 0.001
+
+    log.info(`[Discovery] Seed discovery for "${seed}" complete in ${Date.now() - startTotal}ms: ${keywords.length} final keywords, cost=$${Math.round(apiCost * 1000) / 1000}`)
 
     return {
       seed,
@@ -302,10 +330,14 @@ export async function discoverFromDomain(
   existingCocoonKeywords?: string[],
 ): Promise<DomainDiscoveryResult> {
   return getOrFetch<DomainDiscoveryResult>(DISCOVERY_CACHE_DIR, `domain-${slugify(domain)}`, DISCOVERY_TTL_MS, async () => {
+    const startTotal = Date.now()
+    log.info(`[Discovery] Starting domain discovery for "${domain}"`)
     const limit = options?.maxResults ?? 200
 
     let rawKeywords: Array<{ keyword: string; source: 'competitor' }> = []
     try {
+      log.debug(`[Discovery] Fetching keywords_for_site for "${domain}" (limit=${limit})`)
+      const startSite = Date.now()
       const result = await fetchDataForSeo<KeywordsForSiteRawResult>(
         '/dataforseo_labs/google/keywords_for_site/live',
         [{
@@ -319,6 +351,7 @@ export async function discoverFromDomain(
       rawKeywords = (result.items ?? [])
         .filter(i => i.keyword)
         .map(i => ({ keyword: i.keyword, source: 'competitor' as const }))
+      log.info(`[Discovery] keywords_for_site for "${domain}": ${rawKeywords.length} keywords in ${Date.now() - startSite}ms`)
     } catch (err) {
       log.warn(`Keywords for site failed for "${domain}": ${(err as Error).message}`)
     }
@@ -329,6 +362,8 @@ export async function discoverFromDomain(
 
     const keywords = await enrichAndClassify(rawKeywords, existingSet)
     const apiCost = 0.05 + 0.01 + 0.001
+
+    log.info(`[Discovery] Domain discovery for "${domain}" complete in ${Date.now() - startTotal}ms: ${keywords.length} final keywords, cost=$${Math.round(apiCost * 1000) / 1000}`)
 
     return {
       domain,

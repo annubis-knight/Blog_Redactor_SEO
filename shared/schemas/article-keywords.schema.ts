@@ -6,6 +6,11 @@ export const articleKeywordsSchema = z.object({
   lieutenants: z.array(z.string()),
   lexique: z.array(z.string()),
   rootKeywords: z.array(z.string()).optional().default([]),
+  hnStructure: z.array(z.object({
+    level: z.number(),
+    text: z.string(),
+    children: z.array(z.object({ level: z.number(), text: z.string() })).optional(),
+  })).optional().default([]),
 })
 
 export const rawArticleKeywordsDbSchema = z.object({

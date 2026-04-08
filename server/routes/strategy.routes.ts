@@ -84,6 +84,8 @@ const STEP_DESCRIPTIONS: Record<string, string> = {
 router.post('/strategy/batch-status', async (req, res) => {
   try {
     const { slugs } = batchStrategyStatusRequestSchema.parse(req.body)
+    log.info('POST /api/strategy/batch-status', { slugCount: slugs.length })
+    const start = Date.now()
     const statuses: Record<string, { completedSteps: number }> = {}
     await Promise.all(
       slugs.map(async (slug) => {
@@ -91,6 +93,7 @@ router.post('/strategy/batch-status', async (req, res) => {
         statuses[slug] = { completedSteps: strategy?.completedSteps ?? 0 }
       }),
     )
+    log.debug('batch-status done', { slugCount: slugs.length, ms: Date.now() - start })
     res.json({ data: statuses })
   } catch (err) {
     log.error(`POST /api/strategy/batch-status — ${(err as Error).message}`)
@@ -101,7 +104,9 @@ router.post('/strategy/batch-status', async (req, res) => {
 /** GET /api/strategy/:slug */
 router.get('/strategy/:slug', async (req, res) => {
   try {
+    log.info('GET /api/strategy/:slug', { slug: req.params.slug })
     const strategy = await getStrategy(req.params.slug)
+    log.debug('strategy loaded', { slug: req.params.slug, completedSteps: strategy?.completedSteps ?? 0 })
     res.json({ data: strategy })
   } catch (err) {
     log.error(`GET /api/strategy/${req.params.slug} — ${(err as Error).message}`)
@@ -112,7 +117,9 @@ router.get('/strategy/:slug', async (req, res) => {
 /** PUT /api/strategy/:slug */
 router.put('/strategy/:slug', async (req, res) => {
   try {
+    log.info('PUT /api/strategy/:slug', { slug: req.params.slug })
     const saved = await saveStrategy(req.params.slug, req.body)
+    log.debug('strategy saved', { slug: req.params.slug, completedSteps: saved?.completedSteps ?? 0 })
     res.json({ data: saved })
   } catch (err) {
     log.error(`PUT /api/strategy/${req.params.slug} — ${(err as Error).message}`)
@@ -126,11 +133,15 @@ router.post('/strategy/:slug/suggest', async (req, res) => {
     const parsed = strategySuggestRequestSchema.parse(req.body)
     const isMerge = !!parsed.mergeWith
 
+    log.info('POST /api/strategy/:slug/suggest', { slug: req.params.slug, step: parsed.step, isMerge })
+
     const templateFile = isMerge ? 'strategy-merge.md' : 'strategy-suggest.md'
+    const startPrompt = Date.now()
     const promptTemplate = await readFile(
       join(process.cwd(), 'server', 'prompts', templateFile),
       'utf-8',
     )
+    log.debug('prompt template loaded', { templateFile, chars: promptTemplate.length, ms: Date.now() - startPrompt })
 
     let prompt: string
     if (isMerge) {
@@ -186,16 +197,20 @@ router.post('/strategy/:slug/suggest', async (req, res) => {
       ? `Fusionne ces deux textes pour l'étape "${parsed.step}"`
       : parsed.currentInput || `Exécute la mission pour l'étape "${parsed.step}"`
 
+    log.debug('suggest prompt built', { slug: req.params.slug, step: parsed.step, promptChars: prompt.length })
+
     // Collect the streamed response into a single string
+    const startAi = Date.now()
     let suggestion = ''
     for await (const chunk of streamChatCompletion(prompt, userMessage, 1024)) {
       if (chunk.startsWith(USAGE_SENTINEL)) break
       suggestion += chunk
     }
 
+    log.info('suggest done', { slug: req.params.slug, step: parsed.step, isMerge, suggestionChars: suggestion.length, ms: Date.now() - startAi })
     res.json({ data: { suggestion } })
   } catch (err) {
-    log.error(`POST /api/strategy/${req.params.slug}/suggest — ${(err as Error).message}`)
+    log.error(`POST /api/strategy/${req.params.slug}/suggest — ${(err as Error).message}`, { slug: req.params.slug })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate suggestion' } })
   }
 })
@@ -221,10 +236,12 @@ const COCOON_STEP_DESCRIPTIONS: Record<string, string> = {
 /** GET /api/strategy/cocoon/:cocoonSlug */
 router.get('/strategy/cocoon/:cocoonSlug', async (req, res) => {
   try {
+    log.info('GET /api/strategy/cocoon/:cocoonSlug', { cocoonSlug: req.params.cocoonSlug })
     const strategy = await getCocoonStrategy(req.params.cocoonSlug)
+    log.debug('cocoon strategy loaded', { cocoonSlug: req.params.cocoonSlug, completedSteps: strategy?.completedSteps ?? 0 })
     res.json({ data: strategy })
   } catch (err) {
-    log.error(`GET /api/strategy/cocoon/${req.params.cocoonSlug} — ${(err as Error).message}`)
+    log.error(`GET /api/strategy/cocoon/${req.params.cocoonSlug} — ${(err as Error).message}`, { cocoonSlug: req.params.cocoonSlug })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load cocoon strategy' } })
   }
 })
@@ -232,10 +249,12 @@ router.get('/strategy/cocoon/:cocoonSlug', async (req, res) => {
 /** PUT /api/strategy/cocoon/:cocoonSlug */
 router.put('/strategy/cocoon/:cocoonSlug', async (req, res) => {
   try {
+    log.info('PUT /api/strategy/cocoon/:cocoonSlug', { cocoonSlug: req.params.cocoonSlug })
     const saved = await saveCocoonStrategy(req.params.cocoonSlug, req.body)
+    log.debug('cocoon strategy saved', { cocoonSlug: req.params.cocoonSlug, completedSteps: saved?.completedSteps ?? 0 })
     res.json({ data: saved })
   } catch (err) {
-    log.error(`PUT /api/strategy/cocoon/${req.params.cocoonSlug} — ${(err as Error).message}`)
+    log.error(`PUT /api/strategy/cocoon/${req.params.cocoonSlug} — ${(err as Error).message}`, { cocoonSlug: req.params.cocoonSlug })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save cocoon strategy' } })
   }
 })
@@ -246,12 +265,16 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
     const parsed = cocoonSuggestRequestSchema.parse(req.body)
     const isMerge = !!parsed.mergeWith
 
+    log.info('POST /api/strategy/cocoon/:cocoonSlug/suggest', { cocoonSlug: req.params.cocoonSlug, step: parsed.step, isMerge })
+
     let prompt: string
     if (isMerge) {
+      const startPrompt = Date.now()
       const mergeTemplate = await readFile(
         join(process.cwd(), 'server', 'prompts', 'strategy-merge.md'),
         'utf-8',
       )
+      log.debug('merge template loaded', { chars: mergeTemplate.length, ms: Date.now() - startPrompt })
       const themeBlock = buildThemeContextBlock(parsed.context.themeContext as Record<string, unknown> | undefined)
       const prevBlock = buildPreviousAnswersBlock(parsed.context.previousAnswers)
       const hasValidated = !!parsed.existingValidated?.trim()
@@ -294,10 +317,12 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
         templateFile = 'cocoon-brainstorm.md'
       }
 
+      const startPromptLoad = Date.now()
       const promptTemplate = await readFile(
         join(process.cwd(), 'server', 'prompts', templateFile),
         'utf-8',
       )
+      log.debug('cocoon prompt template loaded', { templateFile, chars: promptTemplate.length, ms: Date.now() - startPromptLoad })
 
       const themeBlock = buildThemeContextBlock(parsed.context.themeContext as Record<string, unknown> | undefined)
       const prevBlock = buildPreviousAnswersBlock(parsed.context.previousAnswers)
@@ -388,15 +413,19 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
       : (parsed.step === 'articles-paa-queries' || parsed.step === 'articles-topics') ? 2048
       : 1024
 
+    log.debug('cocoon suggest prompt built', { cocoonSlug: req.params.cocoonSlug, step: parsed.step, promptChars: prompt.length, maxTokens })
+
+    const startAi = Date.now()
     let suggestion = ''
     for await (const chunk of streamChatCompletion(prompt, userMessage, maxTokens)) {
       if (chunk.startsWith(USAGE_SENTINEL)) break
       suggestion += chunk
     }
 
+    log.info('cocoon suggest done', { cocoonSlug: req.params.cocoonSlug, step: parsed.step, isMerge, suggestionChars: suggestion.length, ms: Date.now() - startAi })
     res.json({ data: { suggestion } })
   } catch (err) {
-    log.error(`POST /api/strategy/cocoon/${req.params.cocoonSlug}/suggest — ${(err as Error).message}`)
+    log.error(`POST /api/strategy/cocoon/${req.params.cocoonSlug}/suggest — ${(err as Error).message}`, { cocoonSlug: req.params.cocoonSlug, step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate cocoon suggestion' } })
   }
 })
@@ -408,10 +437,13 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
 async function handleDeepen(req: import('express').Request, res: import('express').Response, label: string) {
   try {
     const parsed = strategyDeepenRequestSchema.parse(req.body)
+    log.info(label, { step: parsed.step, existingSubQuestions: parsed.existingSubQuestions.length })
+    const startPrompt = Date.now()
     const promptTemplate = await readFile(
       join(process.cwd(), 'server', 'prompts', 'strategy-deepen.md'),
       'utf-8',
     )
+    log.debug('deepen prompt loaded', { chars: promptTemplate.length, ms: Date.now() - startPrompt })
 
     const themeBlock = buildThemeContextBlock(parsed.context.themeContext as Record<string, unknown> | undefined)
     const prevBlock = buildPreviousAnswersBlock(parsed.context.previousAnswers)
@@ -430,21 +462,25 @@ async function handleDeepen(req: import('express').Request, res: import('express
       .replace('{{previousAnswers}}', prevBlock || 'Aucune étape validée.')
       .replace('{{contextBlock}}', themeBlock || 'Pas de contexte supplémentaire.')
 
+    const startAi = Date.now()
     let result = ''
     for await (const chunk of streamChatCompletion(prompt, `Génère une sous-question pour l'étape "${parsed.step}"`, 512)) {
       if (chunk.startsWith(USAGE_SENTINEL)) break
       result += chunk
     }
+    log.debug('deepen AI done', { step: parsed.step, resultChars: result.length, ms: Date.now() - startAi })
 
     const jsonMatch = result.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const obj = JSON.parse(jsonMatch[0])
+      log.info('deepen parsed JSON sub-question', { step: parsed.step })
       res.json({ data: { question: obj.question, description: obj.description } })
     } else {
+      log.warn('deepen fallback — no JSON found, using raw text', { step: parsed.step, resultChars: result.length })
       res.json({ data: { question: result.trim(), description: '' } })
     }
   } catch (err) {
-    log.error(`${label} — ${(err as Error).message}`)
+    log.error(`${label} — ${(err as Error).message}`, { step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate sub-question' } })
   }
 }
@@ -452,6 +488,7 @@ async function handleDeepen(req: import('express').Request, res: import('express
 async function handleConsolidate(req: import('express').Request, res: import('express').Response, label: string) {
   try {
     const parsed = strategyConsolidateRequestSchema.parse(req.body)
+    log.info(label, { step: parsed.step, subAnswers: parsed.subAnswers.length })
     const promptTemplate = await readFile(
       join(process.cwd(), 'server', 'prompts', 'strategy-consolidate.md'),
       'utf-8',
@@ -469,15 +506,17 @@ async function handleConsolidate(req: import('express').Request, res: import('ex
       .replace('{{subAnswers}}', subAnswersBlock)
       .replace('{{contextBlock}}', themeBlock || 'Pas de contexte supplémentaire.')
 
+    const startAi = Date.now()
     let consolidated = ''
     for await (const chunk of streamChatCompletion(prompt, `Consolide les réponses pour l'étape "${parsed.step}"`, 1024)) {
       if (chunk.startsWith(USAGE_SENTINEL)) break
       consolidated += chunk
     }
 
+    log.info('consolidate done', { step: parsed.step, consolidatedChars: consolidated.length, ms: Date.now() - startAi })
     res.json({ data: { consolidated } })
   } catch (err) {
-    log.error(`${label} — ${(err as Error).message}`)
+    log.error(`${label} — ${(err as Error).message}`, { step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to consolidate answers' } })
   }
 }
@@ -485,6 +524,7 @@ async function handleConsolidate(req: import('express').Request, res: import('ex
 async function handleEnrich(req: import('express').Request, res: import('express').Response, label: string) {
   try {
     const parsed = strategyEnrichRequestSchema.parse(req.body)
+    log.info(label, { step: parsed.step, existingValidatedChars: parsed.existingValidated.length })
     const promptTemplate = await readFile(
       join(process.cwd(), 'server', 'prompts', 'strategy-enrich.md'),
       'utf-8',
@@ -507,15 +547,17 @@ async function handleEnrich(req: import('express').Request, res: import('express
       .replace('{{subAnswer}}', parsed.subAnswer)
       .replace('{{contextBlock}}', contextLines.join('\n'))
 
+    const startAi = Date.now()
     let enriched = ''
     for await (const chunk of streamChatCompletion(prompt, `Enrichis le texte validé avec la sous-réponse pour l'étape "${parsed.step}"`, 1024)) {
       if (chunk.startsWith(USAGE_SENTINEL)) break
       enriched += chunk
     }
 
+    log.info('enrich done', { step: parsed.step, enrichedChars: enriched.length, ms: Date.now() - startAi })
     res.json({ data: { enriched } })
   } catch (err) {
-    log.error(`${label} — ${(err as Error).message}`)
+    log.error(`${label} — ${(err as Error).message}`, { step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to enrich answer' } })
   }
 }

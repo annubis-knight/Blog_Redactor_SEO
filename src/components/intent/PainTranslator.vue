@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 import { apiPost } from '@/services/api.service'
+import { log } from '@/utils/logger'
 
 const props = withDefaults(defineProps<{
   initialPainText?: string
@@ -35,6 +36,7 @@ async function translatePain() {
   results.value = []
 
   try {
+    log.info('Translating pain to keywords', { textLength: painText.value.length })
     const data = await apiPost<{ keywords: { keyword: string; reasoning: string }[] }>(
       '/keywords/translate-pain',
       { painText: painText.value },
@@ -56,7 +58,9 @@ async function translatePain() {
     }
 
     results.value = keywords
+    log.info('Pain translation complete', { keywordCount: keywords.length })
   } catch (err) {
+    log.error('Pain translation failed', { error: (err as Error).message })
     error.value = err instanceof Error ? err.message : 'Erreur traduction sémantique'
   } finally {
     isLoading.value = false

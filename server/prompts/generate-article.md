@@ -43,6 +43,8 @@ Rédige l'article complet en suivant EXACTEMENT le sommaire ci-dessus. Pour chaq
 
 9. **Conclusion** : Termine par une conclusion actionnable avec des étapes concrètes que le lecteur peut appliquer.
 
+10. **Longueur cible** : Si un nombre de mots cible est specifie dans le micro-contexte, vise ce nombre (±20%). Ne dilue pas pour atteindre le compte, et ne coupe pas court si le contenu le justifie.
+
 ## Format de sortie
 
 Génère le contenu en HTML structuré. N'inclus PAS de balise `<h1>` (le H1 est géré séparément). Commence directement par le contenu de l'introduction.

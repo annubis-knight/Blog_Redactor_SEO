@@ -9,6 +9,7 @@ vi.mock('../../../server/utils/json-storage', () => ({
 
 const mockClaudeCreate = vi.fn().mockResolvedValue({
   content: [{ type: 'text', text: '{"type":"transactional_local","confidence":0.85,"reasoning":"Local pack present"}' }],
+  usage: { input_tokens: 100, output_tokens: 50 },
 })
 
 vi.mock('@anthropic-ai/sdk', () => {
@@ -220,6 +221,7 @@ describe('analyzeIntent', () => {
     // Override Claude to return invalid JSON for this test
     mockClaudeCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: 'NOT VALID JSON' }],
+      usage: { input_tokens: 100, output_tokens: 50 },
     })
 
     const serpResult = makeSerpResult(['local_pack', 'organic'])
@@ -238,6 +240,7 @@ describe('analyzeIntent', () => {
 
     mockClaudeCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: '---broken---' }],
+      usage: { input_tokens: 100, output_tokens: 50 },
     })
 
     const serpResult = makeSerpResult(['featured_snippet', 'organic'])

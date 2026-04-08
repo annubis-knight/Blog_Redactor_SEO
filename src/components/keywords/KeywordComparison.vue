@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
+import { log } from '@/utils/logger'
 import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
 import { useKeywordScoring } from '@/composables/useKeywordScoring'
 import type { KeywordSuggestion } from '../../../shared/types/index.js'
@@ -27,15 +28,18 @@ async function handleReplace() {
   if (!selectedSuggestion.value || !currentResult.value) return
   replacing.value = true
   try {
+    log.info('Replacing keyword', { from: props.keyword, to: selectedSuggestion.value.suggested.keyword })
     await auditStore.replaceKeywordAction(
       props.keyword,
       selectedSuggestion.value.suggested.keyword,
       props.cocoonName,
       currentResult.value.type,
     )
+    log.info('Keyword replaced', { from: props.keyword, to: selectedSuggestion.value.suggested.keyword })
     emit('replace')
     emit('close')
   } catch (err) {
+    log.error('Keyword replacement failed', { keyword: props.keyword, error: (err as Error).message })
     alert(err instanceof Error ? err.message : 'Erreur lors du remplacement')
   } finally {
     replacing.value = false

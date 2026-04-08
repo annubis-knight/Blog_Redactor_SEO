@@ -1,5 +1,8 @@
 import type { KeywordType } from './keyword.types.js'
 
+/** How the keyword was matched in the content */
+export type MatchMethod = 'exact' | 'semantic' | 'partial' | 'none'
+
 /** Individual keyword density measurement */
 export interface KeywordDensity {
   keyword: string
@@ -8,6 +11,7 @@ export interface KeywordDensity {
   density: number
   target: { min: number; max: number }
   inTarget: boolean
+  matchMethod: MatchMethod
 }
 
 /** Single heading validation error */
@@ -52,6 +56,8 @@ export interface ChecklistItem {
   location: ChecklistLocation
   label: string
   isPresent: boolean
+  matchMethod: MatchMethod
+  matchScore: number
 }
 
 /** NLP term detection result */
@@ -71,4 +77,6 @@ export interface SeoScore {
   wordCount: number
   checklistItems: ChecklistItem[]
   nlpTerms: NlpTermResult[]
+  /** True when article-level keywords (Capitaine/Lieutenants) are defined */
+  hasArticleKeywords: boolean
 }

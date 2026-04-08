@@ -16,6 +16,7 @@ import ActionResult from '@/components/actions/ActionResult.vue'
 import ArticlePicker from '@/components/actions/ArticlePicker.vue'
 import { useArticlesStore } from '@/stores/articles.store'
 import { useKeywordsStore } from '@/stores/keywords.store'
+import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import { useBriefStore } from '@/stores/brief.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
 import { useSeoScoring } from '@/composables/useSeoScoring'
@@ -29,11 +30,13 @@ import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import ExportButton from '@/components/export/ExportButton.vue'
 import ExportPreview from '@/components/export/ExportPreview.vue'
 import type { ArticleContent, ActionType, Article, LinkSuggestion } from '@shared/types/index.js'
+import { log } from '@/utils/logger'
 
 const route = useRoute()
 const editorStore = useEditorStore()
 const articlesStore = useArticlesStore()
 const keywordsStore = useKeywordsStore()
+const articleKeywordsStore = useArticleKeywordsStore()
 const briefStore = useBriefStore()
 const cocoonsStore = useCocoonsStore()
 
@@ -62,6 +65,7 @@ useSeoScoring(
   () => keywordsStore.keywords,
   () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
+  () => articleKeywordsStore.keywords,
 )
 useGeoScoring()
 const isLoading = ref(true)
@@ -100,6 +104,7 @@ async function loadContent() {
   loadError.value = null
 
   try {
+    log.info('Loading article content', { slug })
     const data = await apiGet<ArticleContent>(`/articles/${slug}/content`)
     if (data.content) {
       editorStore.setContent(data.content)
@@ -111,8 +116,10 @@ async function loadContent() {
         metaDescription: data.metaDescription ?? editorStore.metaDescription,
       })
     }
+    log.info('Article content loaded', { slug })
   } catch (err) {
     loadError.value = err instanceof Error ? err.message : 'Erreur lors du chargement'
+    log.error('Failed to load article content', { slug, error: (err as Error).message })
   } finally {
     isLoading.value = false
   }
@@ -142,6 +149,7 @@ async function handleSelectAction(actionType: ActionType) {
     showActionResult.value = true
   }
 
+  log.info('Executing contextual action', { actionType, slug })
   await executeAction(actionType, selectedText, { articleSlug: slug }, editor)
 }
 
@@ -187,10 +195,12 @@ function handleCloseLinkSuggestions() {
   clearSuggestions()
 }
 
-onMounted(() => {
+onMounted(async () => {
+  log.info('ArticleEditorView mounted', { slug })
   if (cocoonsStore.cocoons.length === 0) {
     cocoonsStore.fetchCocoons()
   }
+  await articleKeywordsStore.fetchKeywords(slug)
   briefStore.fetchBrief(slug)
   loadContent()
 })

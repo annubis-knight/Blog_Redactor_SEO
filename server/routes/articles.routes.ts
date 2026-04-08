@@ -1,8 +1,9 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon } from '../services/data.service.js'
+import { getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext } from '../services/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article-content.service.js'
 import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
+import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
 
 const router = Router()
 
@@ -130,6 +131,41 @@ router.post('/articles/batch-create', async (req, res) => {
   } catch (err) {
     log.error(`POST /api/articles/batch-create — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create articles' } })
+  }
+})
+
+/** GET /api/articles/:slug/micro-context — Get micro-context for an article */
+router.get('/articles/:slug/micro-context', async (req, res) => {
+  try {
+    const result = await loadArticleMicroContext(req.params.slug)
+    res.json({ data: result })
+  } catch (err) {
+    log.error(`GET /api/articles/${req.params.slug}/micro-context — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load micro-context' } })
+  }
+})
+
+/** PUT /api/articles/:slug/micro-context — Save micro-context for an article */
+router.put('/articles/:slug/micro-context', async (req, res) => {
+  const parsed = updateMicroContextSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({
+      error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
+    })
+    return
+  }
+
+  try {
+    const saved = await saveArticleMicroContext(req.params.slug, {
+      angle: parsed.data.angle,
+      tone: parsed.data.tone,
+      directives: parsed.data.directives,
+      updatedAt: new Date().toISOString(),
+    })
+    res.json({ data: saved })
+  } catch (err) {
+    log.error(`PUT /api/articles/${req.params.slug}/micro-context — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save micro-context' } })
   }
 })
 

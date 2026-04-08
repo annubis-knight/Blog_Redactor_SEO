@@ -6,6 +6,7 @@ import type { ThemeConfig } from '@shared/types/index.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
+import { log } from '@/utils/logger'
 
 const store = useThemeConfigStore()
 const freeText = ref('')
@@ -17,12 +18,15 @@ async function parseWithAI() {
   isParsing.value = true
   parseError.value = null
   try {
+    log.info('Parsing theme config with AI')
     const result = await apiPost<ThemeConfig>('/theme/config/parse', { text: freeText.value })
     store.config = result
     await store.saveConfig()
     freeText.value = ''
+    log.info('AI parse complete, config saved')
   } catch (err) {
     parseError.value = (err as Error).message
+    log.error('AI theme parse failed', { error: (err as Error).message })
   } finally {
     isParsing.value = false
   }
@@ -62,6 +66,7 @@ function debouncedSave() {
 }
 
 onMounted(() => {
+  log.info('ThemeConfigView mounted, fetching config')
   store.fetchConfig()
 })
 </script>

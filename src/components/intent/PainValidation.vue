@@ -4,6 +4,7 @@ import { apiPost } from '@/services/api.service'
 import { useMultiSourceVerdict, type VerdictResult } from '@/composables/useMultiSourceVerdict'
 import { useNlpAnalysis } from '@/composables/useNlpAnalysis'
 import type { TranslatedKeyword, ValidatePainResult, PainVerdictCategory } from '@shared/types/intent.types.js'
+import { log } from '@/utils/logger'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'
 import NlpOptinBanner from './NlpOptinBanner.vue'
 import ValidationSummary from './ValidationSummary.vue'
@@ -81,11 +82,13 @@ async function validate() {
   error.value = null
 
   try {
+    log.info('Validating pain keywords', { count: props.translatedKeywords.length })
     const data = await apiPost<{ results: ValidatePainResult[] }>('/keywords/validate-pain', {
       keywords: props.translatedKeywords.map(k => k.keyword),
     })
 
     apiResults.value = data.results
+    log.info('Pain validation complete', { results: data.results.length })
 
     // Auto-select best keyword after verdicts compute
     setTimeout(() => {
@@ -95,6 +98,7 @@ async function validate() {
       }
     }, 0)
   } catch (err) {
+    log.error('Pain validation failed', { error: (err as Error).message })
     error.value = err instanceof Error ? err.message : 'Erreur validation multi-sources'
   } finally {
     isLoading.value = false
@@ -104,6 +108,7 @@ async function validate() {
 async function retrySource(keyword: string, source: string) {
   // Re-validate the single keyword to refresh the specific source
   try {
+    log.info('Retrying source validation', { keyword, source })
     const data = await apiPost<{ results: ValidatePainResult[] }>('/keywords/validate-pain', {
       keywords: [keyword],
     })
@@ -115,8 +120,8 @@ async function retrySource(keyword: string, source: string) {
         apiResults.value = [...apiResults.value] // trigger reactivity
       }
     }
-  } catch {
-    // Silent retry failure
+  } catch (err) {
+    log.warn('Source retry failed', { keyword, source, error: (err as Error).message })
   }
 }
 

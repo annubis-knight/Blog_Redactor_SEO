@@ -2,12 +2,15 @@
 import { ref, computed, watch } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { useStreaming } from '@/composables/useStreaming'
+import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { extractRoots } from '@/composables/useCapitaineValidation'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
-import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
+import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
+import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
-import type { LieutenantCandidate } from '@shared/types/serp-analysis.types.js'
+import type { FilteredProposeLieutenantsResult, ProposedLieutenant, ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
 
 export interface HnRecurrenceItem {
   level: number
@@ -42,26 +45,45 @@ const emit = defineEmits<{
   (e: 'check-removed', check: string): void
 }>()
 
+const articleKeywordsStore = useArticleKeywordsStore()
+
+// --- SERP State (Phase 1) ---
 const sliderValue = ref(10)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const serpResult = ref<SerpAnalysisResult | null>(null)
 
-// Smart cursor: filter competitors locally when slider decreases
+/** Individual SERP results keyed by keyword — preserves per-keyword data for display */
+const serpResultsByKeyword = ref<Map<string, SerpAnalysisResult>>(new Map())
+
+/** SERP progress tracking: "2 / 4" */
+const serpDoneCount = ref(0)
+const serpTotalCount = ref(0)
+
+/** Active tab for per-keyword competitor URLs */
+const activeSerpTab = ref<string>('')
+const activeSerpTabResult = computed(() => {
+  if (!activeSerpTab.value) return null
+  return serpResultsByKeyword.value.get(activeSerpTab.value) ?? null
+})
+
+/** Active tab for Structure Hn concurrents — '__all__' = merged view */
+const activeHnTab = ref<string>('__all__')
+
 const displayedCompetitors = computed(() => {
   if (!serpResult.value) return []
   return serpResult.value.competitors.slice(0, sliderValue.value)
 })
 
-// Hn recurrence: aggregate headings across displayed competitors
-const hnRecurrence = computed<HnRecurrenceItem[]>(() => {
-  const comps = displayedCompetitors.value.filter(c => !c.fetchError)
-  const total = comps.length
+/** Compute Hn recurrence from a list of competitors */
+function computeHnRecurrenceFrom(comps: SerpCompetitor[]): HnRecurrenceItem[] {
+  const valid = comps.filter(c => !c.fetchError)
+  const total = valid.length
   if (total === 0) return []
 
   const freqMap = new Map<string, { level: number; text: string; count: number }>()
 
-  for (const comp of comps) {
+  for (const comp of valid) {
     const seen = new Set<string>()
     for (const h of comp.headings) {
       const key = `${h.level}:${h.text.toLowerCase().trim()}`
@@ -80,153 +102,90 @@ const hnRecurrence = computed<HnRecurrenceItem[]>(() => {
   return Array.from(freqMap.values())
     .map(item => ({ ...item, total, percent: Math.round(item.count / total * 100) }))
     .sort((a, b) => b.percent - a.percent || a.level - b.level)
+}
+
+const hnRecurrence = computed<HnRecurrenceItem[]>(() => {
+  return computeHnRecurrenceFrom(displayedCompetitors.value)
+})
+
+/** Hn recurrence for the active tab — '__all__' uses merged data, otherwise per-keyword */
+const activeHnRecurrence = computed<HnRecurrenceItem[]>(() => {
+  if (activeHnTab.value === '__all__') return hnRecurrence.value
+  const result = serpResultsByKeyword.value.get(activeHnTab.value)
+  if (!result) return []
+  return computeHnRecurrenceFrom(result.competitors)
 })
 
 const canAnalyze = computed(() =>
   props.isCaptaineLocked && !!props.captainKeyword && !isLoading.value,
 )
 
-// Lieutenant candidate selection
-const selectedLieutenants = ref<Set<string>>(new Set())
-
-// Generate lieutenant candidates from 4 sources
-const lieutenantCandidates = computed<LieutenantCandidate[]>(() => {
-  if (!serpResult.value) return []
-
-  const candidateMap = new Map<string, LieutenantCandidate>()
-
-  // Source 1: H2/H3 recurrent headings (≥ 2 occurrences)
-  for (const item of hnRecurrence.value) {
-    if (item.count < 2) continue
-    const key = item.text.toLowerCase().trim()
-    const existing = candidateMap.get(key)
-    if (existing) {
-      if (!existing.sources.includes('serp')) existing.sources.push('serp')
-    } else {
-      candidateMap.set(key, { text: item.text, sources: ['serp'], relevance: 'faible' })
-    }
-  }
-
-  // Source 2: PAA questions
-  for (const paa of serpResult.value.paaQuestions) {
-    const key = paa.question.toLowerCase().trim()
-    const existing = candidateMap.get(key)
-    if (existing) {
-      if (!existing.sources.includes('paa')) existing.sources.push('paa')
-    } else {
-      candidateMap.set(key, { text: paa.question, sources: ['paa'], relevance: 'faible' })
-    }
-  }
-
-  // Source 3: Word groups from discovery
-  for (const g of props.wordGroups) {
-    const key = g.word.toLowerCase().trim()
-    const existing = candidateMap.get(key)
-    if (existing) {
-      if (!existing.sources.includes('group')) existing.sources.push('group')
-    } else {
-      candidateMap.set(key, { text: g.word, sources: ['group'], relevance: 'faible' })
-    }
-  }
-
-  // Source 4: Root keywords from Capitaine deconstruction
-  for (const rk of props.rootKeywords) {
-    const key = rk.toLowerCase().trim()
-    if (!key) continue
-    const existing = candidateMap.get(key)
-    if (existing) {
-      if (!existing.sources.includes('root')) existing.sources.push('root')
-    } else {
-      candidateMap.set(key, { text: rk, sources: ['root'], relevance: 'faible' })
-    }
-  }
-
-  // Compute relevance based on number of sources
-  const candidates = Array.from(candidateMap.values())
-  for (const c of candidates) {
-    c.relevance = c.sources.length >= 3 ? 'fort' : c.sources.length === 2 ? 'moyen' : 'faible'
-  }
-
-  // Sort: Fort first, then Moyen, then Faible
-  const order: Record<string, number> = { fort: 0, moyen: 1, faible: 2 }
-  return candidates
-    .filter(c => !(c.sources.length === 1 && c.sources[0] === 'root'))
-    .sort((a, b) => (order[a.relevance] ?? 2) - (order[b.relevance] ?? 2))
+/** Root keywords: use props if available, else generate from captain keyword */
+const resolvedRootKeywords = computed(() => {
+  if (props.rootKeywords.length > 0) return props.rootKeywords
+  if (!props.captainKeyword) return []
+  return extractRoots(props.captainKeyword).slice(0, 5)
 })
 
-// Root-only candidates (separate display section)
-const rootOnlyCandidates = computed(() => {
-  if (!serpResult.value) {
-    // Show root keywords even before SERP analysis
-    return props.rootKeywords
-      .filter(rk => rk.trim())
-      .map(rk => ({ text: rk, sources: ['root'] as ('root')[], relevance: 'faible' as const }))
-  }
-  // After SERP: roots that didn't match any other source
-  const allCandidates = (() => {
-    const map = new Map<string, LieutenantCandidate>()
-    for (const rk of props.rootKeywords) {
-      const key = rk.toLowerCase().trim()
-      if (!key) continue
-      map.set(key, { text: rk, sources: ['root'], relevance: 'faible' })
-    }
-    // Check if any root appeared in other sources
-    for (const item of hnRecurrence.value) {
-      if (item.count < 2) continue
-      const key = item.text.toLowerCase().trim()
-      if (map.has(key)) map.delete(key)
-    }
-    for (const paa of serpResult.value!.paaQuestions) {
-      const key = paa.question.toLowerCase().trim()
-      if (map.has(key)) map.delete(key)
-    }
-    for (const g of props.wordGroups) {
-      const key = g.word.toLowerCase().trim()
-      if (map.has(key)) map.delete(key)
-    }
-    return Array.from(map.values())
-  })()
-  return allCandidates
-})
+// --- IA Proposal State (Phase 2 — NOUVEAU) ---
+const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, result: iaResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<FilteredProposeLieutenantsResult>()
+const lieutenantCards = ref<ProposedLieutenant[]>([])
+const eliminatedCards = ref<ProposedLieutenant[]>([])
+const totalGenerated = ref(0)
+const showEliminated = ref(false)
+const hnStructure = ref<ProposeLieutenantsHnNode[]>([])
+const contentGapInsights = ref('')
 
-function toggleLieutenant(text: string) {
+// --- Selection State (Phase 3) ---
+const selectedCards = ref<Map<string, ProposedLieutenant>>(new Map())
+
+function toggleLieutenant(card: ProposedLieutenant) {
   if (isLocked.value) return
-  const next = new Set(selectedLieutenants.value)
-  if (next.has(text)) {
-    next.delete(text)
+  const next = new Map(selectedCards.value)
+  if (next.has(card.keyword)) {
+    next.delete(card.keyword)
   } else {
-    next.add(text)
+    next.set(card.keyword, card)
   }
-  selectedLieutenants.value = next
-  emit('lieutenants-updated', Array.from(next))
+  selectedCards.value = next
+  emit('lieutenants-updated', Array.from(next.keys()))
 }
 
-// --- AI panel for Hn structure recommendation ---
-const { chunks: aiChunks, isStreaming: aiIsStreaming, error: aiError, startStream: aiStartStream, abort: aiAbort } = useStreaming()
-const aiPanelOpen = ref(false)
+function isCardSelected(keyword: string): boolean {
+  return selectedCards.value.has(keyword)
+}
 
-function generateHnStructure() {
-  if (!props.captainKeyword || selectedLieutenants.value.size === 0) return
-  aiAbort()
-  aiStartStream(
-    `/api/keywords/${encodeURIComponent(props.captainKeyword)}/ai-hn-structure`,
-    {
-      lieutenants: Array.from(selectedLieutenants.value),
-      level: props.articleLevel ?? 'intermediaire',
-      hnStructure: hnRecurrence.value
-        .filter(h => h.count >= 2)
-        .map(h => ({ level: h.level, text: h.text, count: h.count })),
-      ...(props.cocoonSlug ? { cocoonSlug: props.cocoonSlug } : {}),
-    },
-  )
+// --- HN Structure save ---
+const hnSaved = ref(false)
+const isSavingHn = ref(false)
+
+async function saveHnStructure() {
+  const slug = props.selectedArticle?.slug
+  if (!slug || !articleKeywordsStore.keywords || hnStructure.value.length === 0) return
+
+  isSavingHn.value = true
+  articleKeywordsStore.keywords.hnStructure = hnStructure.value
+  await articleKeywordsStore.saveKeywords(slug)
+  hnSaved.value = true
+  isSavingHn.value = false
+  setTimeout(() => { hnSaved.value = false }, 2000)
+  log.info('[LieutenantsSelection] HN structure saved independently', { nodes: hnStructure.value.length })
 }
 
 // --- Lock/unlock Lieutenants ---
 const isLocked = ref(props.initialLocked)
 
-function lockLieutenants() {
+async function lockLieutenants() {
+  if (selectedCards.value.size === 0) return
+  const slug = props.selectedArticle?.slug
+  if (!slug || !articleKeywordsStore.keywords) return
+
+  articleKeywordsStore.keywords.lieutenants = Array.from(selectedCards.value.keys())
+  articleKeywordsStore.keywords.hnStructure = hnStructure.value
+  await articleKeywordsStore.saveKeywords(slug)
   isLocked.value = true
   emit('check-completed', 'lieutenants_locked')
+  emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
 }
 
 function unlockLieutenants() {
@@ -234,24 +193,67 @@ function unlockLieutenants() {
   emit('check-removed', 'lieutenants_locked')
 }
 
-// Reset when article changes
+// --- Analysis step tracking ---
+type AnalysisStep = 'idle' | 'serp' | 'ia-proposal' | 'filtering' | 'done'
+const currentStep = ref<AnalysisStep>('idle')
+
+// --- Auto-set active tabs when SERP results arrive ---
+watch(serpResultsByKeyword, (map) => {
+  if (map.size > 0 && !map.has(activeSerpTab.value)) {
+    activeSerpTab.value = map.keys().next().value!
+    activeHnTab.value = '__all__'
+  }
+})
+
+// --- Reset when article changes ---
 watch(
   () => props.selectedArticle?.slug,
   () => {
     serpResult.value = null
+    serpResultsByKeyword.value = new Map()
     error.value = null
     sliderValue.value = 10
-    selectedLieutenants.value = new Set()
+    serpDoneCount.value = 0
+    serpTotalCount.value = 0
+    activeSerpTab.value = ''
+    activeHnTab.value = '__all__'
+    currentStep.value = 'idle'
+    selectedCards.value = new Map()
+    lieutenantCards.value = []
+    eliminatedCards.value = []
+    totalGenerated.value = 0
+    showEliminated.value = false
+    hnStructure.value = []
+    contentGapInsights.value = ''
+
     isLocked.value = props.initialLocked
-    aiAbort()
+    iaAbort()
+
+    // Restore hnStructure from store if article was previously locked
+    if (props.initialLocked) {
+      if (articleKeywordsStore.keywords?.hnStructure && articleKeywordsStore.keywords.hnStructure.length > 0) {
+        hnStructure.value = articleKeywordsStore.keywords.hnStructure
+      }
+    }
   },
 )
 
-// Auto-trigger/restore SERP when captain is locked (covers both initial mount and article switching)
+// --- Restore hnStructure when keywords arrive (async fetch) ---
+watch(
+  () => articleKeywordsStore.keywords?.hnStructure,
+  (hn) => {
+    if (isLocked.value && hn && hn.length > 0 && hnStructure.value.length === 0) {
+      hnStructure.value = hn
+      log.info('[LieutenantsSelection] HN structure restored from store', { nodes: hn.length })
+    }
+  },
+)
+
+// --- Auto-trigger SERP when captain is locked (skip if lieutenants already locked) ---
 watch(
   [() => props.isCaptaineLocked, () => props.captainKeyword],
   ([locked, keyword]) => {
-    if (locked && keyword && !serpResult.value && !isLoading.value) {
+    if (locked && keyword && !serpResult.value && !isLoading.value && !isLocked.value) {
       log.info('[LieutenantsSelection] Auto-triggering SERP analysis')
       analyzeSERP()
     }
@@ -259,12 +261,61 @@ watch(
   { immediate: true, flush: 'post' },
 )
 
+// --- Auto-trigger IA proposal after SERP success (skip if lieutenants already locked) ---
+watch(serpResult, (result) => {
+  if (result && !iaIsStreaming.value && lieutenantCards.value.length === 0 && !isLocked.value) {
+    log.info('[LieutenantsSelection] Auto-triggering IA proposal after SERP')
+    proposeLieutenants()
+  }
+})
+
 function refreshSERP() {
   serpResult.value = null
   error.value = null
-  selectedLieutenants.value = new Set()
+  currentStep.value = 'idle'
+  selectedCards.value = new Map()
+  lieutenantCards.value = []
+  eliminatedCards.value = []
+  totalGenerated.value = 0
+  showEliminated.value = false
+  hnStructure.value = []
+  contentGapInsights.value = ''
   emit('lieutenants-updated', [])
   analyzeSERP()
+}
+
+/** Merge multiple SerpAnalysisResult — dedup competitors by URL, PAA by question */
+function mergeSerpResults(results: SerpAnalysisResult[]): SerpAnalysisResult {
+  if (results.length === 1) return results[0]!
+
+  const base = results[0]!
+  const seenUrls = new Set<string>()
+  const mergedCompetitors: SerpCompetitor[] = []
+  const seenPaa = new Set<string>()
+  const mergedPaa: PaaQuestion[] = []
+
+  for (const r of results) {
+    for (const c of r.competitors) {
+      if (!seenUrls.has(c.url)) {
+        seenUrls.add(c.url)
+        mergedCompetitors.push(c)
+      }
+    }
+    for (const p of r.paaQuestions) {
+      const key = p.question.toLowerCase().trim()
+      if (!seenPaa.has(key)) {
+        seenPaa.add(key)
+        mergedPaa.push(p)
+      }
+    }
+  }
+
+  return {
+    ...base,
+    competitors: mergedCompetitors,
+    paaQuestions: mergedPaa,
+    maxScraped: mergedCompetitors.length,
+  }
 }
 
 async function analyzeSERP() {
@@ -272,24 +323,139 @@ async function analyzeSERP() {
 
   isLoading.value = true
   error.value = null
+  currentStep.value = 'serp'
+  serpResultsByKeyword.value = new Map()
+
+  // Build list of keywords: captain + root keywords (deduped)
+  const allKeywords = [props.captainKeyword]
+  const captainLower = props.captainKeyword.toLowerCase().trim()
+  for (const rk of resolvedRootKeywords.value) {
+    if (rk.toLowerCase().trim() !== captainLower && !allKeywords.includes(rk)) {
+      allKeywords.push(rk)
+    }
+  }
+
+  serpTotalCount.value = allKeywords.length
+  serpDoneCount.value = 0
+  log.info(`[LieutenantsSelection] Multi-SERP analysis: ${allKeywords.length} keywords`, allKeywords)
 
   try {
-    log.info(`[LieutenantsSelection] Analyzing SERP for "${props.captainKeyword}"`)
-    const result = await apiPost<SerpAnalysisResult>('/serp/analyze', {
-      keyword: props.captainKeyword,
-      topN: 10, // Always scrape max, filter locally
-      articleLevel: props.articleLevel ?? 'intermediaire',
-    })
-    serpResult.value = result
-    emit('serp-loaded', result)
-    log.info(`[LieutenantsSelection] SERP loaded: ${result.competitors.length} competitors`)
+    const results: SerpAnalysisResult[] = []
+
+    // Analyze each keyword sequentially for visible progress
+    for (const kw of allKeywords) {
+      const result = await apiPost<SerpAnalysisResult>('/serp/analyze', {
+        keyword: kw,
+        topN: 10,
+        articleLevel: props.articleLevel ?? 'intermediaire',
+      })
+      results.push(result)
+      serpResultsByKeyword.value = new Map(serpResultsByKeyword.value).set(kw, result)
+      serpDoneCount.value++
+      log.info(`[LieutenantsSelection] SERP ${serpDoneCount.value}/${allKeywords.length}: "${kw}" → ${result.competitors.length} comp, ${result.paaQuestions.length} PAA`)
+    }
+
+    const merged = mergeSerpResults(results)
+    serpResult.value = merged
+    emit('serp-loaded', merged)
+    log.info(`[LieutenantsSelection] Multi-SERP merged: ${merged.competitors.length} competitors, ${merged.paaQuestions.length} PAA`)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erreur inconnue'
+    currentStep.value = 'idle'
     log.error(`[LieutenantsSelection] SERP analysis failed`, { error: error.value })
   } finally {
     isLoading.value = false
   }
 }
+
+// --- IA Proposal flow ---
+function proposeLieutenants() {
+  if (!props.captainKeyword || !serpResult.value || !props.selectedArticle) return
+  iaAbort()
+  lieutenantCards.value = []
+  eliminatedCards.value = []
+  totalGenerated.value = 0
+  showEliminated.value = false
+  selectedCards.value = new Map()
+  currentStep.value = 'ia-proposal'
+
+  // Captain-only SERP data (high weight)
+  const captainResult = serpResultsByKeyword.value.get(props.captainKeyword)
+  const captainHn = captainResult
+    ? computeHnRecurrenceFrom(captainResult.competitors)
+        .filter(h => h.percent >= 10)
+        .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
+    : hnRecurrence.value
+        .filter(h => h.percent >= 10)
+        .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
+
+  const captainCompetitors = captainResult
+    ? captainResult.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position }))
+    : serpResult.value.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position }))
+
+  const captainPaa = captainResult
+    ? captainResult.paaQuestions.map(q => ({ question: q.question, answer: q.answer }))
+    : serpResult.value.paaQuestions.map(q => ({ question: q.question, answer: q.answer }))
+
+  // Root keywords SERP data (lower weight — different search intent)
+  const rootKeywordsSerpData: Array<{
+    keyword: string
+    competitors: { domain: string; title: string; position: number }[]
+    hnRecurrence: { level: number; text: string; count: number; percent: number }[]
+    paaQuestions: { question: string; answer?: string }[]
+  }> = []
+
+  for (const [kw, result] of serpResultsByKeyword.value) {
+    if (kw === props.captainKeyword) continue
+    rootKeywordsSerpData.push({
+      keyword: kw,
+      competitors: result.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position })),
+      hnRecurrence: computeHnRecurrenceFrom(result.competitors)
+        .filter(h => h.percent >= 10)
+        .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent })),
+      paaQuestions: result.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? undefined })),
+    })
+  }
+
+  iaStartStream(
+    `/api/keywords/${encodeURIComponent(props.captainKeyword)}/propose-lieutenants`,
+    {
+      level: props.articleLevel ?? 'intermediaire',
+      articleSlug: props.selectedArticle?.slug ?? '',
+      serpHeadings: captainHn,
+      paaQuestions: captainPaa,
+      wordGroups: props.wordGroups.map(g => g.word),
+      rootKeywords: resolvedRootKeywords.value,
+      serpCompetitors: captainCompetitors,
+      rootKeywordsSerpData,
+      ...(props.cocoonSlug ? { cocoonSlug: props.cocoonSlug } : {}),
+    },
+    {
+      onDone: (data) => {
+        log.info(`[LieutenantsSelection] IA generated ${data.totalGenerated} lieutenants, selected ${data.selectedLieutenants.length}, eliminated ${data.eliminatedLieutenants.length}`)
+        totalGenerated.value = data.totalGenerated
+        hnStructure.value = data.hnStructure ?? []
+        contentGapInsights.value = data.contentGapInsights ?? ''
+
+        // Step 3: Assign cards directly from AI data (no batch KPI)
+        currentStep.value = 'filtering'
+        lieutenantCards.value = data.selectedLieutenants
+        eliminatedCards.value = data.eliminatedLieutenants
+
+        // Pre-select all filtered-in lieutenants
+        const preSelected = new Map<string, ProposedLieutenant>()
+        for (const lt of data.selectedLieutenants) {
+          preSelected.set(lt.keyword, lt)
+        }
+        selectedCards.value = preSelected
+        emit('lieutenants-updated', Array.from(preSelected.keys()))
+        currentStep.value = 'done'
+        log.info(`[LieutenantsSelection] Selection complete: ${preSelected.size} pre-selected`)
+      },
+    },
+  )
+}
+
 </script>
 
 <template>
@@ -331,11 +497,31 @@ async function analyzeSERP() {
       <button
         v-if="serpResult && !isLocked"
         class="btn-refresh"
-        :disabled="isLoading"
+        :disabled="isLoading || iaIsStreaming"
         @click="refreshSERP"
       >
-        Relancer l'analyse
+        Tout relancer (SERP + IA)
       </button>
+    </div>
+
+    <!-- Multi-step progress loader -->
+    <div v-if="currentStep !== 'idle' && currentStep !== 'done'" class="analysis-steps" data-testid="analysis-steps">
+      <div class="step-item" :class="{ active: currentStep === 'serp', done: currentStep !== 'serp' }">
+        <span class="step-icon">{{ currentStep === 'serp' ? '&#9899;' : '&#9989;' }}</span>
+        <span class="step-label">Scraping SERP Google
+          <span class="step-progress">({{ serpDoneCount }} / {{ serpTotalCount }} mots-cles)</span>
+        </span>
+      </div>
+      <div class="step-item" :class="{ active: currentStep === 'ia-proposal', done: currentStep === 'filtering', pending: currentStep === 'serp' }">
+        <span class="step-icon">{{ currentStep === 'ia-proposal' ? '&#9899;' : currentStep === 'serp' ? '&#9898;' : '&#9989;' }}</span>
+        <span class="step-label">Analyse IA — proposition de lieutenants
+          <span v-if="currentStep === 'ia-proposal' && iaChunks" class="step-progress">({{ Math.round(iaChunks.length / 1000) }}k car. recus)</span>
+        </span>
+      </div>
+      <div class="step-item" :class="{ active: currentStep === 'filtering', pending: currentStep === 'serp' || currentStep === 'ia-proposal' }">
+        <span class="step-icon">{{ currentStep === 'filtering' ? '&#9899;' : (currentStep === 'serp' || currentStep === 'ia-proposal') ? '&#9898;' : '&#9989;' }}</span>
+        <span class="step-label">Filtrage et selection des meilleurs candidats</span>
+      </div>
     </div>
 
     <!-- Error -->
@@ -354,12 +540,183 @@ async function analyzeSERP() {
         <p v-if="serpResult.paaQuestions.length > 0" class="paa-count">
           {{ serpResult.paaQuestions.length }} questions PAA
         </p>
+        <p v-else class="paa-count paa-warning">0 PAA — les lieutenants seront bases sur les headings et la strategie du cocon</p>
       </div>
 
-      <!-- Section 1: Structure Hn concurrents -->
-      <CollapsableSection title="Structure Hn concurrents" :default-open="true">
-        <ul v-if="hnRecurrence.length > 0" class="hn-recurrence-list">
-          <li v-for="item in hnRecurrence" :key="`${item.level}:${item.text}`" class="hn-recurrence-item">
+      <!-- Per-keyword SERP results with tabs -->
+      <div v-if="serpResultsByKeyword.size > 0" class="serp-keyword-tabs" data-testid="serp-keyword-tabs">
+        <div class="serp-tab-headers">
+          <button
+            v-for="[kw] in serpResultsByKeyword"
+            :key="kw"
+            class="serp-tab-btn"
+            :class="{ active: activeSerpTab === kw }"
+            @click="activeSerpTab = kw"
+          >
+            {{ kw }}
+            <span class="serp-tab-count">{{ serpResultsByKeyword.get(kw)?.competitors.filter(c => !c.fetchError).length ?? 0 }}</span>
+          </button>
+        </div>
+        <div v-if="activeSerpTabResult" class="serp-tab-content">
+          <div class="serp-tab-summary">
+            {{ activeSerpTabResult.competitors.filter(c => !c.fetchError).length }} concurrents,
+            {{ activeSerpTabResult.paaQuestions.length }} PAA
+            <span v-if="activeSerpTabResult.fromCache" class="cache-badge">(cache)</span>
+          </div>
+          <div class="serp-urls" data-testid="serp-urls">
+            <div
+              v-for="comp in activeSerpTabResult.competitors"
+              :key="comp.url"
+              class="serp-url-item"
+              :class="{ 'serp-url-error': comp.fetchError }"
+            >
+              <span class="serp-url-position">#{{ comp.position }}</span>
+              <span class="serp-url-domain">{{ comp.domain }}</span>
+              <a :href="comp.url" target="_blank" rel="noopener" class="serp-url-link">{{ comp.title }}</a>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Section: IA Proposal — Propositions IA (NOUVEAU) -->
+      <div class="ia-proposal-section" data-testid="ia-proposal-section">
+        <h3 class="section-title">
+          Lieutenants proposes par l'IA
+          <span v-if="iaIsStreaming" class="pulse-dot" />
+        </h3>
+
+        <!-- IA streaming state -->
+        <div v-if="iaIsStreaming" class="ia-loading" data-testid="ia-loading">
+          <span class="pulse-dot" /> Analyse IA en cours...
+        </div>
+
+        <!-- IA error -->
+        <div v-else-if="iaError" class="ia-error" data-testid="ia-error">
+          <p>{{ iaError }}</p>
+          <button class="btn-retry" @click="proposeLieutenants">Relancer la proposition IA</button>
+        </div>
+
+        <!-- Lieutenant RadarCards -->
+        <template v-else-if="lieutenantCards.length > 0">
+          <div class="lieutenant-counter" data-testid="lieutenant-counter">
+            {{ selectedCards.size }} lieutenant{{ selectedCards.size > 1 ? 's' : '' }}
+            selectionne{{ selectedCards.size > 1 ? 's' : '' }}
+            sur {{ totalGenerated }} generes par l'IA
+            <span v-if="eliminatedCards.length > 0" class="filter-info">
+              ({{ lieutenantCards.length }} retenus, {{ eliminatedCards.length }} elimines)
+            </span>
+          </div>
+
+          <!-- Selected lieutenant cards -->
+          <div class="lieutenant-cards-list" data-testid="lieutenant-cards-list">
+            <LieutenantCard
+              v-for="lt in lieutenantCards"
+              :key="lt.keyword"
+              :lieutenant="lt"
+              :checked="isCardSelected(lt.keyword)"
+              :disabled="isLocked"
+              @update:checked="toggleLieutenant(lt)"
+            />
+          </div>
+
+          <!-- Eliminated candidates (collapsible) -->
+          <div v-if="eliminatedCards.length > 0" class="eliminated-section" data-testid="eliminated-section">
+            <button
+              class="eliminated-toggle"
+              @click="showEliminated = !showEliminated"
+            >
+              <span class="eliminated-toggle-icon">{{ showEliminated ? '\u25BC' : '\u25B6' }}</span>
+              Autres candidats ({{ eliminatedCards.length }})
+            </button>
+            <div v-if="showEliminated" class="eliminated-cards-list" data-testid="eliminated-cards-list">
+              <LieutenantCard
+                v-for="lt in eliminatedCards"
+                :key="lt.keyword"
+                :lieutenant="lt"
+                :checked="isCardSelected(lt.keyword)"
+                :disabled="isLocked"
+                class="eliminated"
+                @update:checked="toggleLieutenant(lt)"
+              />
+            </div>
+          </div>
+
+          <!-- Content gap insights -->
+          <div v-if="contentGapInsights" class="content-gap-section">
+            <strong>Failles de contenu :</strong> {{ contentGapInsights }}
+          </div>
+        </template>
+
+        <p v-else class="section-empty">L'IA proposera des lieutenants apres l'analyse SERP.</p>
+      </div>
+
+      <!-- Section: Structure Hn recommandee (from IA proposal) -->
+      <CollapsableSection
+        v-if="hnStructure.length > 0"
+        title="Structure Hn recommandee (IA)"
+        :default-open="true"
+        data-testid="hn-structure-section"
+      >
+        <ul class="hn-structure-list">
+          <li v-for="(node, idx) in hnStructure" :key="idx" class="hn-structure-item">
+            <span class="hn-level-tag">H{{ node.level }}</span>
+            <span class="hn-text">{{ node.text }}</span>
+            <ul v-if="node.children && node.children.length > 0" class="hn-structure-children">
+              <li v-for="(child, cidx) in node.children" :key="cidx" class="hn-structure-child">
+                <span class="hn-level-tag">H{{ child.level }}</span>
+                <span class="hn-text">{{ child.text }}</span>
+              </li>
+            </ul>
+          </li>
+        </ul>
+        <div class="hn-structure-actions">
+          <button
+            v-if="!isLocked"
+            class="btn-save-hn"
+            :disabled="isSavingHn"
+            @click="saveHnStructure"
+          >
+            {{ isSavingHn ? 'Sauvegarde...' : 'Sauvegarder la structure' }}
+          </button>
+          <Transition name="fade">
+            <span v-if="hnSaved" class="hn-saved-badge">
+              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+              Sauvegardee
+            </span>
+          </Transition>
+          <span v-if="isLocked && !hnSaved" class="hn-saved-badge">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+              <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+            </svg>
+            Validee avec les lieutenants
+          </span>
+        </div>
+      </CollapsableSection>
+
+      <!-- Section: Structure Hn concurrents (collapsed by default, tabs per keyword) -->
+      <CollapsableSection title="Structure Hn concurrents" :default-open="false" data-testid="hn-concurrents-section">
+        <div v-if="serpResultsByKeyword.size > 1" class="kw-tab-headers">
+          <button
+            class="kw-tab-btn"
+            :class="{ active: activeHnTab === '__all__' }"
+            @click="activeHnTab = '__all__'"
+          >
+            Tous ({{ hnRecurrence.length }})
+          </button>
+          <button
+            v-for="[kw] in serpResultsByKeyword"
+            :key="kw"
+            class="kw-tab-btn"
+            :class="{ active: activeHnTab === kw }"
+            @click="activeHnTab = kw"
+          >
+            {{ kw }}
+          </button>
+        </div>
+        <ul v-if="activeHnRecurrence.length > 0" class="hn-recurrence-list">
+          <li v-for="item in activeHnRecurrence" :key="`${item.level}:${item.text}`" class="hn-recurrence-item">
             <span class="hn-level-tag">H{{ item.level }}</span>
             <span class="hn-text">{{ item.text }}</span>
             <span class="hn-freq">{{ item.count }}/{{ item.total }}</span>
@@ -370,7 +727,7 @@ async function analyzeSERP() {
         <p v-else class="section-empty">Aucun heading extrait des concurrents.</p>
       </CollapsableSection>
 
-      <!-- Section 2: PAA associes -->
+      <!-- Section: PAA associes (collapsed by default) -->
       <CollapsableSection title="PAA associes" :default-open="false">
         <ul v-if="serpResult.paaQuestions.length > 0" class="paa-list">
           <li v-for="paa in serpResult.paaQuestions" :key="paa.question" class="paa-item">
@@ -381,7 +738,7 @@ async function analyzeSERP() {
         <p v-else class="section-empty">Aucune question PAA trouvee.</p>
       </CollapsableSection>
 
-      <!-- Section 3: Groupes de mots-cles -->
+      <!-- Section: Groupes de mots-cles (collapsed by default) -->
       <CollapsableSection title="Groupes de mots-cles" :default-open="false">
         <ul v-if="wordGroups.length > 0" class="group-list">
           <li v-for="g in wordGroups" :key="g.normalized" class="group-item">
@@ -392,78 +749,13 @@ async function analyzeSERP() {
         <p v-else class="section-empty">Lancez d'abord la Decouverte pour voir les groupes thematiques.</p>
       </CollapsableSection>
 
-      <!-- Root keywords from Capitaine (reference section) -->
-      <div v-if="rootOnlyCandidates.length > 0" class="root-keywords-section">
-        <span class="root-section-label">Racines du Capitaine</span>
-        <div class="root-keywords-chips">
-          <span v-for="rk in rootOnlyCandidates" :key="rk.text" class="root-chip">
-            {{ rk.text }}
-            <span class="badge-source badge-root">ROOT</span>
-          </span>
-        </div>
-      </div>
-
-      <!-- Section 4: Candidats Lieutenants -->
-      <CollapsableSection title="Candidats Lieutenants" :default-open="true">
-        <div class="lieutenant-counter">
-          {{ selectedLieutenants.size }} sélectionné{{ selectedLieutenants.size > 1 ? 's' : '' }}
-        </div>
-        <div v-if="lieutenantCandidates.length > 0" class="lieutenant-list">
-          <div
-            v-for="candidate in lieutenantCandidates"
-            :key="candidate.text"
-            class="lieutenant-row"
-            :class="{ selected: selectedLieutenants.has(candidate.text), locked: isLocked }"
-            @click="toggleLieutenant(candidate.text)"
-          >
-            <input
-              type="checkbox"
-              :checked="selectedLieutenants.has(candidate.text)"
-              class="lieutenant-checkbox"
-              :disabled="isLocked"
-              @click.stop="toggleLieutenant(candidate.text)"
-            />
-            <span class="lieutenant-text">{{ candidate.text }}</span>
-            <span class="lieutenant-badges">
-              <span v-for="s in candidate.sources" :key="s" :class="'badge-source badge-' + s">{{ s.toUpperCase() }}</span>
-            </span>
-            <span :class="'badge-relevance badge-relevance-' + candidate.relevance">{{ candidate.relevance }}</span>
-          </div>
-        </div>
-        <p v-else class="section-empty">Aucun candidat identifie. Lancez l'analyse SERP.</p>
-      </CollapsableSection>
-
-      <!-- AI Panel: Hn structure recommendation -->
-      <div class="ai-panel" data-testid="ai-panel">
-        <button class="ai-panel-toggle" data-testid="ai-panel-toggle" @click="aiPanelOpen = !aiPanelOpen">
-          <span class="ai-panel-toggle-icon">{{ aiPanelOpen ? '\u25BC' : '\u25B6' }}</span>
-          Structure Hn recommandee
-          <span v-if="aiIsStreaming" class="ai-panel-streaming-dot" />
-        </button>
-        <div v-if="aiPanelOpen" class="ai-panel-content" data-testid="ai-panel-content">
-          <button
-            v-if="!isLocked && !aiIsStreaming"
-            class="btn-generate"
-            data-testid="btn-generate"
-            :disabled="selectedLieutenants.size === 0"
-            @click="generateHnStructure"
-          >
-            Generer la structure
-          </button>
-          <div v-if="aiIsStreaming && !aiChunks" class="ai-panel-loading">Analyse en cours...</div>
-          <div v-else-if="aiError" class="ai-panel-error">{{ aiError }}</div>
-          <div v-else-if="aiChunks" class="ai-panel-text" data-testid="ai-panel-text">{{ aiChunks }}</div>
-          <div v-else class="ai-panel-empty">Selectionnez des Lieutenants puis cliquez sur "Generer".</div>
-        </div>
-      </div>
-
       <!-- Lock/unlock Lieutenants -->
       <div class="lieutenant-lock" data-testid="lieutenant-lock">
         <button
           v-if="!isLocked"
           class="lock-btn"
           data-testid="lock-btn"
-          :disabled="selectedLieutenants.size === 0"
+          :disabled="selectedCards.size === 0"
           @click="lockLieutenants"
         >
           Valider les Lieutenants
@@ -482,6 +774,173 @@ async function analyzeSERP() {
   display: flex;
   flex-direction: column;
   gap: 1rem;
+}
+
+/* --- Analysis steps loader --- */
+.analysis-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-block-info-bg, #eff6ff);
+  border: 1px solid var(--color-info, #3b82f6);
+  border-radius: 8px;
+}
+
+.step-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-text-muted, #6b7280);
+  transition: color 0.2s;
+}
+
+.step-item.active {
+  color: var(--color-primary, #3b82f6);
+  font-weight: 600;
+}
+
+.step-item.done {
+  color: var(--color-success, #22c55e);
+}
+
+.step-item.active .step-icon {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.step-progress {
+  font-weight: 400;
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+.paa-warning {
+  color: var(--color-warning, #f59e0b);
+  font-style: italic;
+}
+
+/* --- Keyword tabs (shared for SERP URLs + Hn concurrents) --- */
+.kw-tab-headers,
+.serp-tab-headers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 2px solid var(--color-border);
+  padding-bottom: 0.5rem;
+}
+
+.kw-tab-btn,
+.serp-tab-btn {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: 2px solid transparent;
+  border-radius: 6px 6px 0 0;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+  max-width: 250px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.kw-tab-btn:hover,
+.serp-tab-btn:hover {
+  color: var(--color-primary);
+  background: var(--color-bg-secondary, #f9fafb);
+}
+
+.kw-tab-btn.active,
+.serp-tab-btn.active {
+  color: var(--color-primary);
+  font-weight: 600;
+  border-color: var(--color-border);
+  border-bottom-color: var(--color-primary);
+  background: var(--color-bg-secondary, #f9fafb);
+}
+
+.serp-tab-count {
+  display: inline-block;
+  margin-left: 0.25rem;
+  padding: 0 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  background: var(--color-badge-blue-bg, #dbeafe);
+  color: var(--color-primary);
+  border-radius: 4px;
+}
+
+.serp-keyword-tabs {
+  margin-top: 0.5rem;
+}
+
+.serp-tab-content {
+  padding: 0.5rem 0;
+}
+
+.serp-tab-summary {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  margin-bottom: 0.5rem;
+}
+
+/* --- Competitor URLs --- */
+.serp-urls {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-bg-secondary, #f9fafb);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.serp-url-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 0;
+}
+
+.serp-url-item.serp-url-error {
+  opacity: 0.5;
+  text-decoration: line-through;
+}
+
+.serp-url-position {
+  flex-shrink: 0;
+  color: var(--color-text-muted, #6b7280);
+  font-weight: 600;
+  width: 1.75rem;
+}
+
+.serp-url-domain {
+  flex-shrink: 0;
+  color: var(--color-primary, #3b82f6);
+  font-weight: 500;
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serp-url-link {
+  color: var(--color-text-muted, #6b7280);
+  text-decoration: none;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.serp-url-link:hover {
+  text-decoration: underline;
 }
 
 /* --- Header --- */
@@ -624,6 +1083,178 @@ async function analyzeSERP() {
   border-radius: 4px;
 }
 
+/* --- IA Proposal Section --- */
+.ia-proposal-section {
+  border: 1px solid var(--color-border);
+  border-radius: 8px;
+  padding: 1rem;
+}
+
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0 0 0.75rem 0;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--color-heading);
+}
+
+.pulse-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-success, #22c55e);
+  animation: pulse 1s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
+
+.ia-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  font-style: italic;
+}
+
+.ia-error {
+  padding: 0.5rem;
+  background: var(--color-block-error-bg, #fef2f2);
+  border-radius: 6px;
+}
+
+.ia-error p {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.8125rem;
+  color: var(--color-error, #ef4444);
+}
+
+.btn-retry {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-primary);
+  background: transparent;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.btn-retry:hover {
+  background: var(--color-primary);
+  color: white;
+}
+
+/* --- Lieutenant cards --- */
+.lieutenant-counter {
+  padding: 0.5rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.lieutenant-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+
+/* --- Content gap --- */
+.content-gap-section {
+  margin-top: 0.5rem;
+  padding: 0.75rem;
+  font-size: 0.8125rem;
+  background: var(--color-badge-amber-bg, #fef3c7);
+  border: 1px solid var(--color-warning, #f59e0b);
+  border-radius: 6px;
+  line-height: 1.5;
+}
+
+/* --- Hn structure from IA --- */
+.hn-structure-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+
+.hn-structure-item {
+  padding: 0.375rem 0.625rem;
+  font-size: 0.8125rem;
+  background: var(--color-bg-secondary, #f9fafb);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.hn-structure-children {
+  list-style: none;
+  padding: 0 0 0 1.5rem;
+  margin: 0.25rem 0 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.hn-structure-child {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.75rem;
+}
+
+.hn-structure-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.btn-save-hn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-primary);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: var(--color-primary);
+  color: white;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-save-hn:hover:not(:disabled) {
+  background: var(--color-primary-hover);
+}
+
+.btn-save-hn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.hn-saved-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-success, #16a34a);
+}
+
+.fade-enter-active { transition: opacity 0.2s ease; }
+.fade-leave-active { transition: opacity 0.5s ease; }
+.fade-enter-from,
+.fade-leave-to { opacity: 0; }
+
 /* --- Hn recurrence --- */
 .hn-recurrence-list,
 .paa-list,
@@ -733,190 +1364,6 @@ async function analyzeSERP() {
   color: var(--color-text-muted);
 }
 
-/* --- Lieutenant candidates --- */
-.lieutenant-counter {
-  padding: 0.5rem 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.lieutenant-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.lieutenant-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.625rem;
-  font-size: 0.8125rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.lieutenant-row:hover {
-  border-color: var(--color-primary);
-}
-
-.lieutenant-row.selected {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft, #eff6ff);
-}
-
-.lieutenant-checkbox {
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.lieutenant-text {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.lieutenant-badges {
-  display: flex;
-  gap: 0.25rem;
-  flex-shrink: 0;
-}
-
-.badge-source {
-  display: inline-block;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.625rem;
-  border-radius: 4px;
-  text-transform: uppercase;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-}
-
-.badge-serp { background: var(--color-badge-blue-bg, #dbeafe); color: var(--color-primary); }
-.badge-paa { background: var(--color-badge-amber-bg, #fef3c7); color: #b45309; }
-.badge-group { background: var(--color-badge-green-bg, #dcfce7); color: #15803d; }
-.badge-root { background: var(--color-badge-purple-bg, #f3e8ff); color: #7c3aed; }
-
-.badge-relevance {
-  display: inline-block;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.625rem;
-  border-radius: 4px;
-  font-weight: 600;
-  text-transform: capitalize;
-  flex-shrink: 0;
-}
-
-.badge-relevance-fort { background: var(--color-success, #22c55e); color: white; }
-.badge-relevance-moyen { background: var(--color-warning, #f59e0b); color: white; }
-.badge-relevance-faible { background: var(--color-border); color: var(--color-text-muted); }
-
-/* --- Locked row state --- */
-.lieutenant-row.locked {
-  cursor: default;
-  opacity: 0.7;
-}
-
-.lieutenant-row.locked:hover {
-  border-color: var(--color-border);
-}
-
-/* --- AI Panel --- */
-.ai-panel {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.ai-panel-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-heading);
-  background: var(--color-bg-secondary, #f9fafb);
-  border: none;
-  cursor: pointer;
-  text-align: left;
-}
-
-.ai-panel-toggle:hover {
-  background: var(--color-border);
-}
-
-.ai-panel-toggle-icon {
-  font-size: 0.625rem;
-  flex-shrink: 0;
-}
-
-.ai-panel-streaming-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-success, #22c55e);
-  animation: pulse 1s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.ai-panel-content {
-  padding: 0.75rem 1rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.ai-panel-loading,
-.ai-panel-empty {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.ai-panel-error {
-  font-size: 0.8125rem;
-  color: var(--color-error, #ef4444);
-}
-
-.ai-panel-text {
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--color-text);
-  white-space: pre-wrap;
-}
-
-.btn-generate {
-  margin-bottom: 0.5rem;
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: white;
-  background: var(--color-primary);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-generate:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.btn-generate:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
 /* --- Lock/unlock --- */
 .lieutenant-lock {
   display: flex;
@@ -1002,40 +1449,58 @@ async function analyzeSERP() {
   cursor: not-allowed;
 }
 
-/* --- Root keywords section --- */
-.root-keywords-section {
-  padding: 0.75rem 1rem;
-  background: var(--color-badge-purple-bg, #f3e8ff);
-  border: 1px solid #d8b4fe;
-  border-radius: 8px;
-}
-
-.root-section-label {
-  display: block;
+/* --- Filter info --- */
+.filter-info {
+  font-weight: 400;
+  color: var(--color-text-muted);
   font-size: 0.75rem;
-  font-weight: 600;
-  color: #7c3aed;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  margin-bottom: 0.5rem;
 }
 
-.root-keywords-chips {
+/* --- Eliminated section --- */
+.eliminated-section {
+  margin-top: 0.5rem;
+}
+
+.eliminated-toggle {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  background: transparent;
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
 }
 
-.root-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.8125rem;
-  background: white;
-  border: 1px solid #d8b4fe;
+.eliminated-toggle:hover {
+  color: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.eliminated-toggle-icon {
+  font-size: 0.625rem;
+  flex-shrink: 0;
+}
+
+.eliminated-cards-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: var(--color-bg-secondary, #f9fafb);
+  border: 1px dashed var(--color-border);
   border-radius: 6px;
-  color: var(--color-text);
+}
+
+.eliminated {
+  opacity: 0.7;
 }
 
 /* --- Empty section --- */

@@ -44,8 +44,9 @@ describe('useSeoScoring', () => {
 
     expect(seoStore.score).not.toBeNull()
     expect(seoStore.score!.global).toBeGreaterThanOrEqual(0)
-    expect(seoStore.score!.keywordDensities).toHaveLength(1)
-    expect(seoStore.score!.keywordDensities[0].keyword).toBe('seo')
+    // Without articleKeywords, no keyword densities are computed (no fallback)
+    expect(seoStore.score!.keywordDensities).toHaveLength(0)
+    expect(seoStore.score!.hasArticleKeywords).toBe(false)
   })
 
   it('seo store resets properly', () => {

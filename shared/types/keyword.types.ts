@@ -1,3 +1,5 @@
+import type { ProposeLieutenantsHnNode } from './serp-analysis.types.js'
+
 /** Keyword type classification */
 export type KeywordType = 'Pilier' | 'Moyenne traine' | 'Longue traine' | 'Intermédiaire' | 'Spécialisé'
 
@@ -32,6 +34,7 @@ export interface ArticleKeywords {
   lieutenants: string[]        // 2-5 secondary variants (H2, H3)
   lexique: string[]            // 10-15 LSI terms (body text)
   rootKeywords?: string[]      // Root variants from Capitaine deconstruction
+  hnStructure?: ProposeLieutenantsHnNode[]  // HN structure from Moteur lieutenant proposal
 }
 
 /** Raw storage format for article-keywords.json */

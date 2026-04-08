@@ -22,24 +22,59 @@ export function useSeoScoring(
   const debouncedRecalculate = useDebounceFn(() => {
     const content = editorStore.content
     if (!content) {
+      log.debug('[seo-scoring] no content, resetting')
       seoStore.reset()
       return
     }
-    log.debug('[seo-scoring] recalculating', { contentLength: content.length, keywords: keywords().length })
+
+    const kws = keywords()
+    const artKws = articleKeywords?.() ?? null
+
+    log.info('[seo-scoring] recalculating', {
+      contentLength: content.length,
+      cocoonKeywords: kws.length,
+      articleKeywords: artKws ? `capitaine=${artKws.capitaine}, lieutenants=${artKws.lieutenants.length}, lexique=${artKws.lexique.length}` : 'null',
+    })
+
     seoStore.recalculate(
       content,
-      keywords(),
+      kws,
       editorStore.metaTitle,
       editorStore.metaDescription,
       contentLengthTarget?.(),
       relatedKeywords?.(),
-      articleKeywords?.() ?? null,
+      artKws,
     )
+
+    if (seoStore.score) {
+      log.info('[seo-scoring] result', {
+        global: seoStore.score.global,
+        wordCount: seoStore.score.wordCount,
+        densities: seoStore.score.keywordDensities.map(d => `${d.keyword}: ${d.occurrences}x (${d.density}%)`),
+        metaTitle: `${seoStore.score.metaAnalysis.titleLength}ch`,
+        metaDesc: `${seoStore.score.metaAnalysis.descriptionLength}ch`,
+      })
+    }
   }, 300)
 
   watch(
-    () => [editorStore.content, editorStore.metaTitle, editorStore.metaDescription],
-    () => { debouncedRecalculate() },
+    () => [
+      editorStore.content,
+      editorStore.metaTitle,
+      editorStore.metaDescription,
+      keywords(),
+      articleKeywords?.(),
+    ],
+    () => {
+      log.debug('[seo-scoring] watcher triggered', {
+        hasContent: !!editorStore.content,
+        hasMeta: !!editorStore.metaTitle,
+        keywordsCount: keywords().length,
+        hasArticleKeywords: !!articleKeywords?.()?.capitaine,
+      })
+      debouncedRecalculate()
+    },
+    { deep: true },
   )
 
   return { seoStore }

@@ -4,6 +4,55 @@ import { log } from '@/utils/logger'
 import { useStreaming } from '@/composables/useStreaming'
 import { apiPut } from '@/services/api.service'
 import type { Outline, OutlineSection, BriefData, ApiUsage } from '@shared/types/index.js'
+import type { ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
+
+/** Build an outline from lieutenants alone (fallback when hnStructure is empty) */
+export function lieutenantsToOutline(lieutenants: string[], articleTitle: string): Outline {
+  const now = Date.now()
+  const sections: OutlineSection[] = []
+
+  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable' })
+  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur' })
+
+  lieutenants.forEach((lt, idx) => {
+    sections.push({ id: `h2-${now}-${idx}`, level: 2, title: lt, annotation: null })
+  })
+
+  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder' })
+  return { sections }
+}
+
+/** Transform HN structure from Moteur into an editable Outline */
+export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: string): Outline {
+  const now = Date.now()
+  const sections: OutlineSection[] = []
+
+  // H1 — Article title
+  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable' })
+
+  // Introduction
+  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur' })
+
+  // Flatten HN nodes with clamping [2, 3]
+  let idx = 0
+  for (const node of hnNodes) {
+    const clampedLevel = Math.min(3, Math.max(2, node.level)) as 2 | 3
+    sections.push({ id: `h${clampedLevel}-${now}-${idx}`, level: clampedLevel, title: node.text, annotation: null })
+    idx++
+    if (node.children) {
+      for (const child of node.children) {
+        const childLevel = Math.min(3, Math.max(2, child.level)) as 2 | 3
+        sections.push({ id: `h${childLevel}-${now}-${idx}`, level: childLevel, title: child.text, annotation: null })
+        idx++
+      }
+    }
+  }
+
+  // Conclusion
+  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder' })
+
+  return { sections }
+}
 
 export const useOutlineStore = defineStore('outline', () => {
   const outline = ref<Outline | null>(null)
@@ -106,6 +155,12 @@ export const useOutlineStore = defineStore('outline', () => {
     isValidated.value = true
   }
 
+  /** Hydrate store from a persisted HN structure (not validated yet) */
+  function loadFromHnStructure(hnNodes: ProposeLieutenantsHnNode[], articleTitle: string) {
+    outline.value = hnToOutline(hnNodes, articleTitle)
+    isValidated.value = false
+  }
+
   async function validateOutline(slug: string) {
     if (!outline.value) return
     isSaving.value = true
@@ -122,6 +177,10 @@ export const useOutlineStore = defineStore('outline', () => {
     }
   }
 
+  function unvalidateOutline() {
+    isValidated.value = false
+  }
+
   function resetOutline() {
     outline.value = null
     streamedText.value = ''
@@ -132,6 +191,6 @@ export const useOutlineStore = defineStore('outline', () => {
   return {
     outline, streamedText, isGenerating, isValidated, isSaving, error, lastApiUsage,
     generateOutline, addSection, removeSection, updateSection, reorderSections,
-    setOutline, loadExistingOutline, validateOutline, resetOutline,
+    setOutline, loadExistingOutline, loadFromHnStructure, validateOutline, unvalidateOutline, resetOutline,
   }
 })

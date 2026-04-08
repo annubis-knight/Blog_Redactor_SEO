@@ -18,6 +18,12 @@ import {
   META_DESCRIPTION_LENGTH,
   DEFAULT_CONTENT_LENGTH_TARGET,
 } from '@shared/constants/seo.constants.js'
+import {
+  prepareText,
+  matchKeywordPrepared,
+  matchKeyword,
+  type PreparedText,
+} from './keyword-matcher'
 
 /**
  * Strip HTML tags and return plain text.
@@ -37,36 +43,33 @@ export function countWords(text: string): number {
 
 /**
  * Calculate keyword density for a single keyword in HTML content.
+ * Uses smart matching (exact → semantic → partial).
  */
 export function calculateKeywordDensity(
   htmlContent: string,
   keyword: Keyword,
+  prepared?: PreparedText,
 ): KeywordDensity {
   const plainText = stripHtml(htmlContent).toLowerCase()
   const totalWords = countWords(plainText)
-  const kw = keyword.keyword.toLowerCase()
-  const kwWords = kw.split(/\s+/).length
+  const prep = prepared ?? prepareText(plainText)
+  const kwWords = keyword.keyword.split(/\s+/).length
 
-  let occurrences = 0
-  if (totalWords > 0) {
-    // Count phrase occurrences
-    let pos = 0
-    while ((pos = plainText.indexOf(kw, pos)) !== -1) {
-      occurrences++
-      pos += kw.length
-    }
-  }
+  const match = matchKeywordPrepared(prep, keyword.keyword)
 
-  const density = totalWords > 0 ? (occurrences * kwWords / totalWords) * 100 : 0
+  const density = totalWords > 0
+    ? (match.occurrences * kwWords / totalWords) * 100
+    : 0
   const target = KEYWORD_DENSITY_TARGETS[keyword.type]
 
   return {
     keyword: keyword.keyword,
     type: keyword.type,
-    occurrences,
+    occurrences: match.occurrences,
     density: Math.round(density * 100) / 100,
     target,
     inTarget: density >= target.min && density <= target.max,
+    matchMethod: match.method,
   }
 }
 
@@ -116,6 +119,7 @@ export function validateHeadingHierarchy(htmlContent: string): HeadingValidation
 
 /**
  * Analyze meta tags for SEO compliance.
+ * Uses smart keyword matching instead of exact includes.
  */
 export function analyzeMetaTags(
   metaTitle: string | null,
@@ -125,13 +129,16 @@ export function analyzeMetaTags(
   const titleLength = metaTitle?.length ?? 0
   const descriptionLength = metaDescription?.length ?? 0
 
-  const titleHasKeyword = pilierKeyword
-    ? (metaTitle?.toLowerCase().includes(pilierKeyword.toLowerCase()) ?? false)
-    : false
+  let titleHasKeyword = false
+  let descriptionHasKeyword = false
 
-  const descriptionHasKeyword = pilierKeyword
-    ? (metaDescription?.toLowerCase().includes(pilierKeyword.toLowerCase()) ?? false)
-    : false
+  if (pilierKeyword) {
+    const titleMatch = matchKeyword(metaTitle ?? '', pilierKeyword)
+    titleHasKeyword = titleMatch.detected
+
+    const descMatch = matchKeyword(metaDescription ?? '', pilierKeyword)
+    descriptionHasKeyword = descMatch.detected
+  }
 
   return {
     titleLength,
@@ -170,17 +177,24 @@ function scoreMetaLength(length: number, range: { min: number; max: number }): n
 }
 
 /**
- * Extract text content from the first paragraph of the HTML (intro).
+ * Extract all text content BEFORE the first H2 (intro section).
  */
 function extractIntro(html: string): string {
-  const match = /<p[^>]*>([\s\S]*?)<\/p>/i.exec(html)
-  return match ? stripHtml(match[1]!).toLowerCase() : ''
+  const h2Index = html.search(/<h2[\s>]/i)
+  const introHtml = h2Index > 0 ? html.substring(0, h2Index) : html
+  return stripHtml(introHtml).toLowerCase()
 }
 
 /**
- * Extract text content from the last paragraph of the HTML (conclusion).
+ * Extract all text content AFTER the last H2 (conclusion section).
+ * Falls back to last paragraph if no H2 is found.
  */
 function extractConclusion(html: string): string {
+  const h2Matches = [...html.matchAll(/<h2[\s>]/gi)]
+  if (h2Matches.length > 0) {
+    const lastH2Index = h2Matches[h2Matches.length - 1]!.index!
+    return stripHtml(html.substring(lastH2Index)).toLowerCase()
+  }
   const paragraphs = html.match(/<p[^>]*>[\s\S]*?<\/p>/gi)
   if (!paragraphs || paragraphs.length === 0) return ''
   return stripHtml(paragraphs[paragraphs.length - 1]!).toLowerCase()
@@ -218,6 +232,7 @@ const CHECKLIST_LOCATIONS: { location: ChecklistLocation; label: string }[] = [
 
 /**
  * Generate SEO checklist items for pilier keyword presence in key content locations.
+ * Uses smart matching (exact → semantic → partial).
  */
 export function generateSeoChecklist(
   htmlContent: string,
@@ -228,45 +243,50 @@ export function generateSeoChecklist(
   const pilierKeyword = keywords.find(kw => kw.type === 'Pilier')
   if (!pilierKeyword) return []
 
-  const kw = pilierKeyword.keyword.toLowerCase()
-  const metaTitleLower = metaTitle?.toLowerCase() ?? ''
-  const metaDescLower = metaDescription?.toLowerCase() ?? ''
-  const h1Text = extractH1(htmlContent)
-  const introText = extractIntro(htmlContent)
-  const h2Text = extractH2s(htmlContent)
-  const conclusionText = extractConclusion(htmlContent)
+  const kw = pilierKeyword.keyword
 
-  const detectors: Record<ChecklistLocation, string> = {
-    metaTitle: metaTitleLower,
-    h1: h1Text,
-    intro: introText,
-    metaDescription: metaDescLower,
-    h2: h2Text,
-    conclusion: conclusionText,
+  const sectionTexts: Record<ChecklistLocation, string> = {
+    metaTitle: metaTitle?.toLowerCase() ?? '',
+    h1: extractH1(htmlContent),
+    intro: extractIntro(htmlContent),
+    metaDescription: metaDescription?.toLowerCase() ?? '',
+    h2: extractH2s(htmlContent),
+    conclusion: extractConclusion(htmlContent),
   }
 
-  return CHECKLIST_LOCATIONS.map(({ location, label }) => ({
-    keyword: pilierKeyword.keyword,
-    location,
-    label,
-    isPresent: detectors[location].includes(kw),
-  }))
+  return CHECKLIST_LOCATIONS.map(({ location, label }) => {
+    const prepared = prepareText(sectionTexts[location])
+    const match = matchKeywordPrepared(prepared, kw)
+    return {
+      keyword: pilierKeyword.keyword,
+      location,
+      label,
+      isPresent: match.detected,
+      matchMethod: match.method,
+      matchScore: match.score,
+    }
+  })
 }
 
 /**
  * Detect NLP terms (DataForSEO related keywords) in HTML content.
+ * Uses smart matching for better detection of multi-word terms.
  */
 export function detectNlpTerms(
   htmlContent: string,
   relatedKeywords: RelatedKeyword[],
 ): NlpTermResult[] {
   const plainText = stripHtml(htmlContent).toLowerCase()
+  const prepared = prepareText(plainText)
 
-  return relatedKeywords.map(rk => ({
-    term: rk.keyword,
-    searchVolume: rk.searchVolume,
-    isDetected: plainText.includes(rk.keyword.toLowerCase()),
-  }))
+  return relatedKeywords.map(rk => {
+    const match = matchKeywordPrepared(prepared, rk.keyword)
+    return {
+      term: rk.keyword,
+      searchVolume: rk.searchVolume,
+      isDetected: match.detected,
+    }
+  })
 }
 
 /**
@@ -283,30 +303,52 @@ export function calculateSeoScore(
 ): SeoScore {
   const plainText = stripHtml(htmlContent)
   const wordCount = countWords(plainText)
+  const prepared = prepareText(plainText.toLowerCase())
 
-  // Use article-level keywords if available, fallback to cocoon keywords
+  // Use article-level keywords — no fallback to cocoon keywords
   let keywordDensities: KeywordDensity[]
   let pilierKeyword: string | null
+  let hasArticleKeywords = false
 
   if (articleKeywords?.capitaine) {
+    hasArticleKeywords = true
     // Build keyword densities from article keywords hierarchy
     const capitaineKw: Keyword = { keyword: articleKeywords.capitaine, cocoonName: '', type: 'Pilier', status: 'validated' }
     const lieutenantKws: Keyword[] = articleKeywords.lieutenants.map(lt => ({
       keyword: lt, cocoonName: '', type: 'Moyenne traine' as const, status: 'validated' as const,
     }))
 
-    keywordDensities = [capitaineKw, ...lieutenantKws].map(kw => calculateKeywordDensity(htmlContent, kw))
+    const allKws = [capitaineKw, ...lieutenantKws]
+    keywordDensities = allKws.map(kw => calculateKeywordDensity(htmlContent, kw, prepared))
     pilierKeyword = articleKeywords.capitaine
+
+    // Debug: log density calculation details
+    if (typeof window !== 'undefined') {
+      console.debug('[seo-calc] using articleKeywords —', {
+        capitaine: articleKeywords.capitaine,
+        lieutenants: articleKeywords.lieutenants,
+        wordCount,
+        plainTextSnippet: plainText.substring(0, 200),
+        densities: keywordDensities.map(d => ({ kw: d.keyword, occ: d.occurrences, density: d.density, method: d.matchMethod })),
+      })
+    }
   } else {
-    keywordDensities = keywords.map(kw => calculateKeywordDensity(htmlContent, kw))
-    pilierKeyword = keywords.find(kw => kw.type === 'Pilier')?.keyword ?? null
+    // No article keywords — return empty densities (no fallback to cocoon)
+    keywordDensities = []
+    pilierKeyword = null
+
+    if (typeof window !== 'undefined') {
+      console.debug('[seo-calc] no article keywords — keyword scoring disabled')
+    }
   }
 
   // Lexique presence score (if article keywords available)
   let lexiquePresenceScore = 50 // neutral default
   if (articleKeywords?.lexique && articleKeywords.lexique.length > 0) {
-    const plainLower = plainText.toLowerCase()
-    const presentCount = articleKeywords.lexique.filter(term => plainLower.includes(term.toLowerCase())).length
+    const presentCount = articleKeywords.lexique.filter(term => {
+      const match = matchKeywordPrepared(prepared, term)
+      return match.detected
+    }).length
     lexiquePresenceScore = Math.round((presentCount / articleKeywords.lexique.length) * 100)
   }
 
@@ -377,5 +419,6 @@ export function calculateSeoScore(
     wordCount,
     checklistItems,
     nlpTerms,
+    hasArticleKeywords,
   }
 }

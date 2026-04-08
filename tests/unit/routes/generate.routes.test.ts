@@ -2,11 +2,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords } = vi.hoisted(() => ({
+const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext } = vi.hoisted(() => ({
   mockStreamChatCompletion: vi.fn(),
   mockLoadPrompt: vi.fn(),
   mockGetStrategy: vi.fn(),
   mockGetArticleKeywords: vi.fn(),
+  mockLoadArticleMicroContext: vi.fn(),
 }))
 
 vi.mock('../../../server/services/claude.service', () => ({
@@ -24,6 +25,7 @@ vi.mock('../../../server/services/strategy.service', () => ({
 
 vi.mock('../../../server/services/data.service', () => ({
   getArticleKeywords: mockGetArticleKeywords,
+  loadArticleMicroContext: mockLoadArticleMicroContext,
 }))
 
 const { default: router } = await import('../../../server/routes/generate.routes')
@@ -65,7 +67,13 @@ async function* fakeStream(chunks: string[]) {
 
 const validArticleBody = {
   slug: 'test-article',
-  outline: '{"sections":[]}',
+  outline: JSON.stringify({
+    sections: [
+      { id: 'h1', level: 1, title: 'Test Article Title', annotation: null },
+      { id: 'h2-1', level: 2, title: 'First Section', annotation: null },
+      { id: 'h3-1', level: 3, title: 'Subsection', annotation: null },
+    ],
+  }),
   keyword: 'test keyword',
   keywords: ['test keyword', 'secondary'],
   paa: [{ question: 'What?', answer: 'Something' }],
@@ -76,10 +84,11 @@ const validArticleBody = {
 }
 
 beforeEach(() => {
-  vi.clearAllMocks()
+  vi.resetAllMocks()
   mockLoadPrompt.mockResolvedValue('mock prompt')
   mockGetStrategy.mockResolvedValue(null)
   mockGetArticleKeywords.mockResolvedValue(null)
+  mockLoadArticleMicroContext.mockResolvedValue(null)
 })
 
 const validOutlineBody = {
@@ -205,28 +214,35 @@ describe('POST /generate/outline', () => {
   })
 })
 
-describe('POST /generate/article', () => {
+describe('POST /generate/article (section-by-section)', () => {
   const handler = findHandler('post', '/generate/article')
 
-  it('streams article content and sends done event', async () => {
+  function createArticleReq(body: unknown) {
+    return { body, socket: { setTimeout: vi.fn(), destroyed: false } } as unknown as Request
+  }
+
+  it('streams article section-by-section and sends done event', async () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>', '<p>World</p>']))
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
 
     await handler(req, res)
 
     expect(mockLoadPrompt).toHaveBeenCalledWith('system-propulsite')
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       articleTitle: 'Test Article Title',
       keyword: 'test keyword',
-      outline: '{"sections":[]}',
+      sectionOutline: expect.stringContaining('First Section'),
+      sectionPosition: 'intro',
     }))
-    expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', 16384)
+    expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', 4096)
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: section-start'))
     expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: chunk'))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: section-done'))
     expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
     expect(res.end).toHaveBeenCalled()
   })
@@ -245,15 +261,14 @@ describe('POST /generate/article', () => {
     )
   })
 
-  it('sends SSE error event when Claude API fails after headers sent', async () => {
-    mockStreamChatCompletion.mockImplementationOnce(async function* () {
-      yield 'partial'
-      throw new Error('Claude API error')
-    })
+  it('sends SSE error event when Claude API fails after retry', async () => {
+    // Section-by-section retries once per section — both attempts must fail
+    mockStreamChatCompletion
+      .mockReturnValueOnce((async function* () { throw new Error('Claude API error') })())
+      .mockReturnValueOnce((async function* () { throw new Error('Claude API error') })())
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
-    // Simulate headersSent being true after writeHead
     res.writeHead = vi.fn().mockImplementation(() => {
       ;(res as any).headersSent = true
     })
@@ -269,7 +284,7 @@ describe('POST /generate/article', () => {
   it('returns JSON error when prompt loading fails before headers sent', async () => {
     mockLoadPrompt.mockRejectedValueOnce(new Error('Prompt not found'))
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
 
     await handler(req, res)
@@ -282,23 +297,23 @@ describe('POST /generate/article', () => {
     )
   })
 
-  it('includes strategy context in article prompt when strategy exists', async () => {
+  it('includes strategy context in section prompt when strategy exists', async () => {
     mockGetStrategy.mockResolvedValueOnce(fakeStrategy)
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
 
     await handler(req, res)
 
     expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       strategyContext: expect.stringContaining('PME toulousaines'),
     }))
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       strategyContext: expect.stringContaining('Approche sur mesure'),
     }))
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       strategyContext: expect.stringContaining('/creation-site'),
     }))
   })
@@ -306,18 +321,18 @@ describe('POST /generate/article', () => {
   it('passes empty strategyContext when getStrategy returns null', async () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
 
     await handler(req, res)
 
     expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       strategyContext: '',
     }))
   })
 
-  it('includes keyword context in article prompt when article keywords exist', async () => {
+  it('includes keyword context in section prompt when article keywords exist', async () => {
     const articleKw = {
       articleSlug: 'test-article',
       capitaine: 'création site web',
@@ -327,16 +342,16 @@ describe('POST /generate/article', () => {
     mockGetArticleKeywords.mockResolvedValueOnce(articleKw)
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
 
     await handler(req, res)
 
     expect(mockGetArticleKeywords).toHaveBeenCalledWith('test-article')
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       keywordContext: expect.stringContaining('création site web'),
     }))
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       keywordContext: expect.stringContaining('Lieutenants'),
     }))
   })
@@ -344,12 +359,12 @@ describe('POST /generate/article', () => {
   it('passes empty keywordContext for article when no article keywords', async () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
 
-    const req = { body: validArticleBody } as unknown as Request
+    const req = createArticleReq(validArticleBody)
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article', expect.objectContaining({
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       keywordContext: '',
     }))
   })
@@ -615,5 +630,151 @@ describe('POST /generate/action', () => {
     }))
     expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
     expect(res.end).toHaveBeenCalled()
+  })
+})
+
+describe('POST /generate/micro-context-suggest', () => {
+  const handler = findHandler('post', '/generate/micro-context-suggest')
+
+  it('streams micro-context suggestion and parses JSON result', async () => {
+    const jsonResult = '```json\n{"angle":"Test angle","tone":"expert","directives":"Be precise"}\n```'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([jsonResult]))
+
+    const req = {
+      body: {
+        slug: 'test-article',
+        articleTitle: 'Test Article',
+        articleType: 'Pilier',
+        keyword: 'test keyword',
+        cocoonName: 'Test Cocoon',
+        siloName: 'Test Silo',
+      },
+    } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith('micro-context-suggest', expect.objectContaining({
+      articleTitle: 'Test Article',
+      keyword: 'test keyword',
+    }), expect.any(Object))
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+    }))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('"angle":"Test angle"'))
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('returns 400 when required fields are missing', async () => {
+    const req = { body: { slug: 'test-article' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'MISSING_PARAM' }),
+      }),
+    )
+  })
+
+  it('sends SSE error event when Claude API fails after headers sent', async () => {
+    mockStreamChatCompletion.mockImplementationOnce(async function* () {
+      yield 'partial'
+      throw new Error('Claude API error')
+    })
+
+    const req = {
+      body: {
+        slug: 'test-article',
+        articleTitle: 'Test Article',
+        articleType: 'Pilier',
+        keyword: 'test keyword',
+        cocoonName: 'Test Cocoon',
+      },
+    } as unknown as Request
+    const res = createMockRes()
+    res.writeHead = vi.fn().mockImplementation(() => {
+      ;(res as any).headersSent = true
+    })
+
+    await handler(req, res)
+
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: error'))
+    expect(res.end).toHaveBeenCalled()
+  })
+})
+
+describe('POST /generate/brief-explain', () => {
+  const handler = findHandler('post', '/generate/brief-explain')
+
+  it('streams markdown brief analysis', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['## Analyse\n', 'Forces du positionnement...']))
+
+    const req = {
+      body: {
+        slug: 'test-article',
+        articleTitle: 'Test Article',
+        keyword: 'test keyword',
+        cocoonName: 'Test Cocoon',
+        keywords: ['kw1', 'kw2'],
+        hnStructure: [{ level: 2, text: 'Section' }],
+        dataForSeoSummary: 'Volume: 10 SERP results',
+      },
+    } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith('brief-ia-panel', expect.objectContaining({
+      articleTitle: 'Test Article',
+      keyword: 'test keyword',
+      keywords: 'kw1, kw2',
+    }), expect.any(Object))
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+    }))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: chunk'))
+    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('loads micro-context from server when available', async () => {
+    const microCtx = { slug: 'test-article', angle: 'Server angle', tone: 'expert', directives: 'Be precise', updatedAt: '2026-04-06T00:00:00.000Z' }
+    mockLoadArticleMicroContext.mockResolvedValueOnce(microCtx)
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Analysis']))
+
+    const req = {
+      body: {
+        slug: 'test-article',
+        articleTitle: 'Test Article',
+        keyword: 'test keyword',
+        cocoonName: 'Test Cocoon',
+      },
+    } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadArticleMicroContext).toHaveBeenCalledWith('test-article')
+    expect(mockLoadPrompt).toHaveBeenCalledWith('brief-ia-panel', expect.objectContaining({
+      microContext: expect.stringContaining('Server angle'),
+    }), expect.any(Object))
+  })
+
+  it('returns 400 when required fields are missing', async () => {
+    const req = { body: { slug: 'test-article' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'MISSING_PARAM' }),
+      }),
+    )
   })
 })

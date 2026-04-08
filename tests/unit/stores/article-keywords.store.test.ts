@@ -249,6 +249,7 @@ describe('article-keywords.store — saveKeywords', () => {
       lieutenants: [],
       lexique: [],
       rootKeywords: [],
+      hnStructure: [],
     })
     expect(store.keywords).toEqual(savedKeywords)
     expect(store.isSaving).toBe(false)

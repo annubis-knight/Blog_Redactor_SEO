@@ -436,6 +436,89 @@
               "topic": "Fonctionnalités"
             }
           ]
+        },
+        {
+          "nom": "Création de site web pour entreprises",
+          "articles": [
+            {
+              "titre": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
+              "type": "Pilier",
+              "slug": "creation-de-site-web-sur-mesure-a-toulouse-le-guide-complet-pour-les-entreprises-qui-veulent-vraiment-convertir",
+              "topic": null
+            },
+            {
+              "titre": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
+              "type": "Intermédiaire",
+              "slug": "design-ux-et-conversion-comment-transformer-votre-site-en-machine-a-generer-des-clients",
+              "topic": null
+            },
+            {
+              "titre": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
+              "type": "Intermédiaire",
+              "slug": "architecture-et-structure-de-site-web-les-fondations-d-un-site-qui-travaille-pour-votre-activite",
+              "topic": null
+            },
+            {
+              "titre": "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats",
+              "type": "Intermédiaire",
+              "slug": "mesurer-les-performances-de-votre-site-web-analytics-indicateurs-cles-et-pilotage-des-resultats",
+              "topic": null
+            },
+            {
+              "titre": "Vos boutons d'appel à l'action font-ils vraiment cliquer vos visiteurs ?",
+              "type": "Spécialisé",
+              "slug": "vos-boutons-d-appel-a-l-action-font-ils-vraiment-cliquer-vos-visiteurs",
+              "topic": null
+            },
+            {
+              "titre": "Votre site est-il trop lent pour retenir vos visiteurs ?",
+              "type": "Spécialisé",
+              "slug": "votre-site-est-il-trop-lent-pour-retenir-vos-visiteurs",
+              "topic": null
+            },
+            {
+              "titre": "Votre site donne-t-il une bonne impression sur smartphone à vos prospects ?",
+              "type": "Spécialisé",
+              "slug": "votre-site-donne-t-il-une-bonne-impression-sur-smartphone-a-vos-prospects",
+              "topic": null
+            },
+            {
+              "titre": "Vos visiteurs trouvent-ils facilement ce qu'ils cherchent sur votre site ?",
+              "type": "Spécialisé",
+              "slug": "vos-visiteurs-trouvent-ils-facilement-ce-qu-ils-cherchent-sur-votre-site",
+              "topic": null
+            },
+            {
+              "titre": "Vos pages de services convainquent-elles vraiment vos prospects de vous contacter ?",
+              "type": "Spécialisé",
+              "slug": "vos-pages-de-services-convainquent-elles-vraiment-vos-prospects-de-vous-contacter",
+              "topic": null
+            },
+            {
+              "titre": "Comment relier vos pages entre elles pour guider vos visiteurs vers la prise de contact ?",
+              "type": "Spécialisé",
+              "slug": "comment-relier-vos-pages-entre-elles-pour-guider-vos-visiteurs-vers-la-prise-de-contact",
+              "topic": null
+            },
+            {
+              "titre": "Quels chiffres regarder pour savoir si votre site vous rapporte vraiment des clients ?",
+              "type": "Spécialisé",
+              "slug": "quels-chiffres-regarder-pour-savoir-si-votre-site-vous-rapporte-vraiment-des-clients",
+              "topic": null
+            },
+            {
+              "titre": "Comment savoir d'où viennent vraiment vos demandes de contact reçues via votre site ?",
+              "type": "Spécialisé",
+              "slug": "comment-savoir-d-ou-viennent-vraiment-vos-demandes-de-contact-recues-via-votre-site",
+              "topic": null
+            },
+            {
+              "titre": "Design émotionnel : comment les détails de votre site influencent inconsciemment vos visiteurs",
+              "type": "Spécialisé",
+              "slug": "design-emotionnel-comment-les-details-de-votre-site-influencent-inconsciemment-vos-visiteurs",
+              "topic": null
+            }
+          ]
         }
       ]
     }

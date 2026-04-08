@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { log } from '@/utils/logger'
 import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
 import type { KeywordType } from '../../../shared/types/index.js'
 
@@ -31,10 +32,13 @@ async function handleSave() {
   errorMsg.value = ''
 
   try {
+    log.info('Adding keyword', { keyword: keyword.value.trim(), type: type.value, cocoon: props.cocoonName })
     await auditStore.addKeyword(keyword.value.trim(), props.cocoonName, type.value)
+    log.info('Keyword added', { keyword: keyword.value.trim() })
     emit('saved')
     emit('close')
   } catch (err) {
+    log.error('Failed to add keyword', { keyword: keyword.value.trim(), error: (err as Error).message })
     errorMsg.value = err instanceof Error ? err.message : 'Erreur lors de l\'ajout'
   } finally {
     saving.value = false

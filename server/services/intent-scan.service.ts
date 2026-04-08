@@ -23,10 +23,14 @@ export interface SerpAdvancedRawResult {
  */
 export async function fetchSerpAdvanced(keyword: string): Promise<SerpAdvancedRawResult | null> {
   try {
-    return await fetchDataForSeo<SerpAdvancedRawResult>(
+    log.debug(`[IntentScan] SERP Advanced request for "${keyword}"`)
+    const start = Date.now()
+    const result = await fetchDataForSeo<SerpAdvancedRawResult>(
       '/serp/google/organic/live/advanced',
       [{ keyword, location_code: 2250, language_code: 'fr' }],
     )
+    log.debug(`[IntentScan] SERP Advanced for "${keyword}": ${result?.items?.length ?? 0} items in ${Date.now() - start}ms`)
+    return result
   } catch (err) {
     log.warn(`SERP Advanced fetch failed for "${keyword}": ${(err as Error).message}`)
     return null
@@ -234,6 +238,7 @@ async function crawlPaaDeep(
   broadKeyword: string,
   maxDepth: number,
 ): Promise<{ questions: Array<{ text: string; answer?: string; depth: number; parent?: string }> }> {
+  const startCrawl = Date.now()
   const serpResult = await fetchSerpAdvanced(broadKeyword)
   const level1Paa = extractPaaFromSerp(serpResult)
 
@@ -275,6 +280,7 @@ async function crawlPaaDeep(
     log.info(`PAA level 2 done: ${allQuestions.filter((q: { depth: number }) => q.depth === 2).length} new questions`)
   }
 
+  log.info(`[IntentScan] PAA crawl complete in ${Date.now() - startCrawl}ms: ${allQuestions.length} total questions (depth=${maxDepth})`)
   return { questions: allQuestions }
 }
 
@@ -434,6 +440,7 @@ export interface TaggedSuggestion {
  * Returns tagged suggestions preserving which query produced each result.
  */
 export async function fetchAutocompleteMergedGrouped(keyword: string): Promise<{ suggestions: TaggedSuggestion[]; totalCount: number; unfilteredCount: number }> {
+  const startMerge = Date.now()
   const seen = new Set<string>()
   const all: TaggedSuggestion[] = []
 
@@ -463,9 +470,9 @@ export async function fetchAutocompleteMergedGrouped(keyword: string): Promise<{
 
   if (subQueries.length === 0) {
     if (fullCount > 0) {
-      log.info(`Autocomplete for "${keyword}": ${fullCount} suggestions (popular, no sub-queries needed)`)
+      log.info(`Autocomplete for "${keyword}": ${fullCount} suggestions (popular, no sub-queries needed) in ${Date.now() - startMerge}ms`)
     } else {
-      log.info(`Autocomplete for "${keyword}": 0 suggestions, no sub-queries possible`)
+      log.info(`Autocomplete for "${keyword}": 0 suggestions, no sub-queries possible in ${Date.now() - startMerge}ms`)
     }
     return { suggestions: all, totalCount: all.length, unfilteredCount: all.length }
   }
@@ -497,11 +504,11 @@ export async function fetchAutocompleteMergedGrouped(keyword: string): Promise<{
       log.info(`Autocomplete relevance filter for "${keyword}": kept ${filtered.length}/${unfilteredCount} (removed ${removed} off-topic)`)
     }
 
-    log.info(`Autocomplete merged for "${keyword}": ${filtered.length} relevant suggestions (${fullCount} direct + ${filtered.length - fullCount} from sub-queries, ${removed} filtered)`)
+    log.info(`Autocomplete merged for "${keyword}": ${filtered.length} relevant suggestions (${fullCount} direct + ${filtered.length - fullCount} from sub-queries, ${removed} filtered) in ${Date.now() - startMerge}ms`)
     return { suggestions: filtered, totalCount: filtered.length, unfilteredCount }
   }
 
-  log.info(`Autocomplete merged for "${keyword}": ${all.length} unique suggestions (${fullCount} direct + ${all.length - fullCount} from sub-queries)`)
+  log.info(`Autocomplete merged for "${keyword}": ${all.length} unique suggestions (${fullCount} direct + ${all.length - fullCount} from sub-queries) in ${Date.now() - startMerge}ms`)
   return { suggestions: all, totalCount: all.length, unfilteredCount }
 }
 
@@ -516,19 +523,24 @@ export async function scanIntent(
   specificTopic: string,
   depth: number = 1,
 ): Promise<IntentScanResult> {
+  const startScan = Date.now()
   const effectiveDepth = Math.min(Math.max(depth, 1), 2)
   log.info(`Intent scan: broad="${broadKeyword}" specific="${specificTopic}" depth=${effectiveDepth}`)
 
   const topicWords = extractTopicWords(specificTopic)
 
   // Pass 1: Fetch broad data in parallel
+  log.debug(`[IntentScan] Pass 1: fetching autocomplete + PAA + keyword overview in parallel`)
+  const startPass1 = Date.now()
   const [autocompleteResult, paaResult, keywordData] = await Promise.all([
     fetchAutocompleteMergedGrouped(broadKeyword),
     crawlPaaDeep(broadKeyword, effectiveDepth),
     fetchKeywordOverview(broadKeyword).catch(() => null),
   ])
+  log.info(`[IntentScan] Pass 1 done in ${Date.now() - startPass1}ms: autocomplete=${autocompleteResult.totalCount}, paa=${paaResult.questions.length}, keywordData=${keywordData ? 'ok' : 'unavailable'}`)
 
   // Pass 2: Score resonance
+  log.debug(`[IntentScan] Pass 2: scoring resonance for ${autocompleteResult.suggestions.length} autocomplete + ${paaResult.questions.length} PAA items`)
   const items: ResonanceItem[] = []
 
   for (const suggestion of autocompleteResult.suggestions) {
@@ -559,6 +571,10 @@ export async function scanIntent(
       parentQuestion: paaQ.parent,
     })
   }
+
+  const autoMatches = items.filter(i => i.source === 'autocomplete' && i.match !== 'none').length
+  const paaMatches = items.filter(i => i.source === 'paa' && i.match !== 'none').length
+  log.info(`[IntentScan] Pass 2 resonance: autocomplete ${autoMatches}/${autocompleteResult.suggestions.length} matched, PAA ${paaMatches}/${paaResult.questions.length} matched`)
 
   // Pass 3: Semantic boost via embeddings (graceful fallback if unavailable)
   const itemTexts = items.map(i => {
@@ -604,7 +620,7 @@ export async function scanIntent(
     depth: effectiveDepth,
   }
 
-  log.info(`Intent scan done: score=${resonanceScore}, heat=${heatLevel}`, {
+  log.info(`Intent scan done in ${Date.now() - startScan}ms: score=${resonanceScore}, heat=${heatLevel}`, {
     paaTotal: paaResult.questions.length,
     paaL1: paaResult.questions.filter((q: { depth: number }) => q.depth === 1).length,
     paaL2: paaResult.questions.filter((q: { depth: number }) => q.depth === 2).length,

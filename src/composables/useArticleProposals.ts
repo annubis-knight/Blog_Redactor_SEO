@@ -5,6 +5,7 @@ import { useCocoonStrategyStore } from '@/stores/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
 import type { ProposedArticle, CocoonSuggestRequest, SuggestedTopic } from '@shared/types/index.js'
 import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
+import { log } from '@/utils/logger'
 
 type ArticleType = 'Pilier' | 'Intermédiaire' | 'Spécialisé'
 
@@ -299,11 +300,14 @@ export function useArticleProposals(params: {
         if (article) {
           store.strategy.proposedArticles.push(article)
           store.saveStrategy(cocoonSlug.value)
+          log.info('Smart article added', { type, title: article.title })
           return
         }
       }
+      log.warn('Smart article suggestion empty, falling back to empty article', { type })
       addEmptyArticle(type)
-    } catch {
+    } catch (err) {
+      log.error('addSmartArticle failed', { type, error: (err as Error).message })
       addEmptyArticle(type)
     } finally {
       addingArticleType.value = null
@@ -318,8 +322,9 @@ export function useArticleProposals(params: {
     if (article.createdInDb && article.dbSlug) {
       try {
         await apiDelete(`/articles/${article.dbSlug}`)
-      } catch {
-        // Article may already have been removed
+        log.info('Article deleted from DB', { slug: article.dbSlug })
+      } catch (err) {
+        log.warn('Article delete failed (may already be removed)', { slug: article.dbSlug })
       }
     }
 
@@ -346,8 +351,9 @@ export function useArticleProposals(params: {
         })
       }
       article.createdInDb = true
-    } catch {
-      // Slug duplicate or other error
+      log.info('Article created in DB', { title: article.title, slug: article.dbSlug })
+    } catch (err) {
+      log.error('createArticleInDb failed', { title: article.title, error: (err as Error).message })
     }
   }
 
@@ -496,7 +502,9 @@ export function useArticleProposals(params: {
       try {
         await apiPatch(`/articles/${article.dbSlug}`, { title: value })
         await cocoonsStore.fetchCocoons()
-      } catch { /* BDD sync failed — strategy still saved */ }
+      } catch (err) {
+        log.warn('Article title sync to DB failed', { slug: article.dbSlug, error: (err as Error).message })
+      }
     }
   }
 
@@ -663,6 +671,7 @@ export function useArticleProposals(params: {
     truncationWarning.value = null
     generationWarning.value = null
     generationPhase.value = 'structure'
+    log.info('Article generation started', { cocoon: cocoonSlug.value })
     const context = getTopicEnrichedContext()
 
     let pilierAndInterArticles: ProposedArticle[] = []
@@ -686,10 +695,12 @@ export function useArticleProposals(params: {
 
       pilierAndInterArticles = parseArticlesFromSuggestion(structureSuggestion)
       if (pilierAndInterArticles.length === 0) {
+        log.error('Structure generation returned no articles')
         generationPhase.value = 'error'
         return
       }
 
+      log.info('Structure generated', { count: pilierAndInterArticles.length })
       store.strategy.proposedArticles = pilierAndInterArticles
 
       // === Phase 2: PAA queries ===
@@ -743,8 +754,8 @@ export function useArticleProposals(params: {
             }
           }
         }
-      } catch {
-        // Phase 2 failure — continue without PAA
+      } catch (err) {
+        log.warn('PAA phase failed, continuing without PAA', { error: (err as Error).message })
       }
 
       // === Phase 3: Spécialisés enrichis ===
@@ -762,6 +773,7 @@ export function useArticleProposals(params: {
           const speArticles = parseArticlesFromSuggestion(speSuggestion)
 
           if (speArticles.length > 0) {
+            log.info('Spécialisés generated', { count: speArticles.length })
             store.strategy.proposedArticles = [...pilierAndInterArticles, ...speArticles]
             const lost = titleOccurrences - speArticles.length
             if (lost > 0) {
@@ -778,7 +790,9 @@ export function useArticleProposals(params: {
       }
 
       generationPhase.value = 'done'
-    } catch {
+      log.info('Article generation complete', { total: store.strategy?.proposedArticles.length })
+    } catch (err) {
+      log.error('Article generation failed', { error: (err as Error).message })
       generationPhase.value = 'error'
     }
   }
@@ -869,7 +883,8 @@ export function useArticleProposals(params: {
         checked: true,
       }))
       store.saveStrategy(cocoonSlug.value)
-    } catch {
+    } catch (err) {
+      log.error('Topic generation failed', { error: (err as Error).message })
       topicsError.value = 'Erreur lors de la génération des sujets.'
     } finally {
       topicsLoading.value = false

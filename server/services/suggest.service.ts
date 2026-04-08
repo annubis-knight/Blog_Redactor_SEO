@@ -62,17 +62,31 @@ async function fetchSuggestions(query: string, language = 'fr', country = 'fr'):
   url.searchParams.set('hl', language)
   url.searchParams.set('gl', country)
 
-  const res = await fetch(url.toString(), {
-    signal: AbortSignal.timeout(10_000),
-    headers: { 'User-Agent': 'Mozilla/5.0' },
-  })
-  if (!res.ok) return []
-
-  const text = await res.text()
   try {
-    const data = JSON.parse(text) as [string, string[]]
-    return data[1] ?? []
-  } catch {
+    const res = await fetch(url.toString(), {
+      signal: AbortSignal.timeout(10_000),
+      headers: { 'User-Agent': 'Mozilla/5.0' },
+    })
+    if (!res.ok) {
+      log.warn('Google Suggest HTTP error', { query, status: res.status })
+      return []
+    }
+
+    const text = await res.text()
+    try {
+      const data = JSON.parse(text) as [string, string[]]
+      return data[1] ?? []
+    } catch (err) {
+      log.warn('Google Suggest parse error', { query, error: (err as Error).message, responsePreview: text.slice(0, 100) })
+      return []
+    }
+  } catch (err) {
+    const message = (err as Error).message
+    if (message.includes('abort') || message.includes('timeout')) {
+      log.warn('Google Suggest timeout', { query })
+    } else {
+      log.error('Google Suggest fetch error', { query, error: message })
+    }
     return []
   }
 }
@@ -98,6 +112,7 @@ async function withConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): P
 
 export async function suggestAlphabet(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
   return getOrFetch<SuggestItem[]>(CACHE_DIR, `alphabet-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+    const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
 
@@ -126,7 +141,7 @@ export async function suggestAlphabet(keyword: string, language = 'fr', country 
       addResults(sug, source)
     }
 
-    log.info(`Suggest alphabet "${keyword}" — ${results.length} unique results`)
+    log.info(`Suggest alphabet "${keyword}" — ${results.length} unique results`, { queries: 27, ms: Date.now() - start })
     return results
   })
 }
@@ -135,6 +150,7 @@ export async function suggestAlphabet(keyword: string, language = 'fr', country 
 
 export async function suggestQuestions(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
   return getOrFetch<SuggestItem[]>(CACHE_DIR, `questions-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+    const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
     const prefixes = QUESTION_PREFIXES_FR
@@ -157,7 +173,7 @@ export async function suggestQuestions(keyword: string, language = 'fr', country
       }
     }
 
-    log.info(`Suggest questions "${keyword}" — ${results.length} unique results (${variants.length} variants × ${prefixes.length} prefixes)`)
+    log.info(`Suggest questions "${keyword}" — ${results.length} unique results (${variants.length} variants × ${prefixes.length} prefixes)`, { queries: tasks.length, ms: Date.now() - start })
     return results
   })
 }
@@ -166,6 +182,7 @@ export async function suggestQuestions(keyword: string, language = 'fr', country
 
 export async function suggestIntents(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
   return getOrFetch<SuggestItem[]>(CACHE_DIR, `intents-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+    const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
     const modifiers = INTENT_MODIFIERS_FR
@@ -188,7 +205,7 @@ export async function suggestIntents(keyword: string, language = 'fr', country =
       }
     }
 
-    log.info(`Suggest intents "${keyword}" — ${results.length} unique results (${variants.length} variants × ${modifiers.length} modifiers)`)
+    log.info(`Suggest intents "${keyword}" — ${results.length} unique results (${variants.length} variants × ${modifiers.length} modifiers)`, { queries: tasks.length, ms: Date.now() - start })
     return results
   })
 }
@@ -197,6 +214,7 @@ export async function suggestIntents(keyword: string, language = 'fr', country =
 
 export async function suggestPrepositions(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
   return getOrFetch<SuggestItem[]>(CACHE_DIR, `prepositions-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+    const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
     const preps = PREPOSITIONS_FR
@@ -219,7 +237,7 @@ export async function suggestPrepositions(keyword: string, language = 'fr', coun
       }
     }
 
-    log.info(`Suggest prepositions "${keyword}" — ${results.length} unique results (${variants.length} variants × ${preps.length} preps)`)
+    log.info(`Suggest prepositions "${keyword}" — ${results.length} unique results (${variants.length} variants × ${preps.length} preps)`, { queries: tasks.length, ms: Date.now() - start })
     return results
   })
 }
@@ -235,6 +253,8 @@ export interface SuggestAllResult {
 }
 
 export async function suggestAll(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestAllResult> {
+  const start = Date.now()
+
   const [alphabet, questions, intents, prepositions] = await Promise.all([
     suggestAlphabet(keyword, language, country),
     suggestQuestions(keyword, language, country),
@@ -248,6 +268,12 @@ export async function suggestAll(keyword: string, language = 'fr', country = 'fr
     allQueries.add(item.query)
   }
 
-  log.info(`Suggest all "${keyword}" — ${allQueries.size} total unique across 4 strategies`)
+  log.info(`Suggest all "${keyword}" — ${allQueries.size} total unique across 4 strategies`, {
+    alphabet: alphabet.length,
+    questions: questions.length,
+    intents: intents.length,
+    prepositions: prepositions.length,
+    ms: Date.now() - start,
+  })
   return { alphabet, questions, intents, prepositions, totalUnique: allQueries.size }
 }

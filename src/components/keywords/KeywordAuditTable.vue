@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { log } from '@/utils/logger'
 import type { KeywordAuditResult, RedundancyPair, StrategyContextData } from '../../../shared/types/index.js'
 import { useKeywordScoring } from '@/composables/useKeywordScoring'
 import { usePainVerdict } from '@/composables/usePainVerdict'
@@ -57,10 +58,12 @@ async function addLocalVariant(keyword: string) {
   const variant = getLocalVariant(keyword)
   if (!variant) return
   try {
+    log.info('Adding local variant', { keyword: variant.keyword })
     await auditStore.addKeyword(variant.keyword, auditStore.currentCocoon, 'Longue traine')
     emit('addVariant', variant.keyword)
     switcherKeyword.value = null
   } catch (err) {
+    log.error('Failed to add local variant', { keyword: variant.keyword, error: (err as Error).message })
     alert(err instanceof Error ? err.message : 'Erreur ajout variante locale')
   }
 }
@@ -68,8 +71,10 @@ async function addLocalVariant(keyword: string) {
 async function handleStatusChange(keyword: string, status: 'validated' | 'rejected' | 'suggested') {
   try {
     await auditStore.updateKeywordStatus(keyword, status)
+    log.info('Keyword status changed', { keyword, status })
     emit('statusChange')
   } catch (err) {
+    log.error('Status change failed', { keyword, status, error: (err as Error).message })
     alert(err instanceof Error ? err.message : 'Erreur lors du changement de statut')
   }
 }
@@ -143,8 +148,10 @@ async function handleDelete(keyword: string) {
   if (!confirm(`Supprimer le mot-clé "${keyword}" ?`)) return
   try {
     await auditStore.deleteKeywordAction(keyword)
+    log.info('Keyword deleted', { keyword })
     emit('delete')
   } catch (err) {
+    log.error('Keyword deletion failed', { keyword, error: (err as Error).message })
     alert(err instanceof Error ? err.message : 'Erreur lors de la suppression')
   }
 }

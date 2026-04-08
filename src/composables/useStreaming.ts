@@ -6,11 +6,19 @@ import type { ApiUsage } from '@shared/types/index.js'
  * Composable for consuming SSE streams from POST endpoints.
  * Cannot use EventSource for POST — uses fetch() with ReadableStream.
  */
+export interface SectionStartInfo {
+  index: number
+  total: number
+  title: string
+}
+
 export interface StreamingCallbacks<T> {
   onChunk?: (accumulated: string) => void
   onDone?: (data: T) => void
   onError?: (message: string) => void
   onUsage?: (usage: ApiUsage) => void
+  onSectionStart?: (info: SectionStartInfo) => void
+  onSectionDone?: (info: { index: number }) => void
 }
 
 export function useStreaming<T>() {
@@ -79,6 +87,10 @@ export function useStreaming<T>() {
                 }
                 result.value = parsed.outline ?? parsed.metadata ?? parsed
                 callbacks?.onDone?.(result.value as T)
+              } else if (eventType === 'section-start') {
+                callbacks?.onSectionStart?.(parsed as SectionStartInfo)
+              } else if (eventType === 'section-done') {
+                callbacks?.onSectionDone?.(parsed as { index: number })
               } else if (eventType === 'error') {
                 const msg = parsed.message ?? 'Erreur inconnue'
                 error.value = msg

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import KeywordLevelBadge from './KeywordLevelBadge.vue'
 
@@ -14,6 +14,31 @@ const store = useArticleKeywordsStore()
 
 const newLieutenant = ref('')
 const newLexiqueTerm = ref('')
+
+// Collapsable sub-sections
+const showCapitaine = ref(true)
+const showLieutenants = ref(true)
+const showLexique = ref(true)
+
+// HN level mapping for lieutenants
+const hnLevelMap = computed(() => {
+  const map = new Map<string, number>()
+  const hn = store.keywords?.hnStructure
+  if (!hn) return map
+  for (const node of hn) {
+    map.set(node.text.toLowerCase(), node.level)
+    if (node.children) {
+      for (const child of node.children) {
+        map.set(child.text.toLowerCase(), child.level)
+      }
+    }
+  }
+  return map
+})
+
+function getHnLevel(lieutenant: string): number | null {
+  return hnLevelMap.value.get(lieutenant.toLowerCase()) ?? null
+}
 
 function handleAddLieutenant() {
   if (newLieutenant.value.trim()) {
@@ -37,9 +62,9 @@ async function handleSuggestLexique() {
   await store.suggestLexique(props.slug, props.articleTitle, props.cocoonName)
 }
 
-onMounted(async () => {
-  await store.fetchKeywords(props.slug)
-  if (!store.keywords) {
+onMounted(() => {
+  // Keywords already fetched by ArticleWorkflowView — just ensure init
+  if (!store.keywords && !store.isLoading) {
     store.initEmpty(props.slug)
   }
 })
@@ -52,73 +77,95 @@ onMounted(async () => {
     <template v-else-if="store.keywords">
       <!-- Capitaine -->
       <div class="kw-section">
-        <label class="section-label">Capitaine</label>
-        <p class="section-hint">Le mot-clé principal ciblé dans le Title, H1 et URL</p>
-        <div class="capitaine-input">
-          <input
-            :value="store.keywords.capitaine"
-            class="input-capitaine"
-            placeholder="Mot-clé principal..."
-            @input="store.setCapitaine(($event.target as HTMLInputElement).value)"
-          />
+        <button class="kw-section-header" @click="showCapitaine = !showCapitaine">
+          <svg class="kw-chevron" :class="{ open: showCapitaine }" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="section-label">Capitaine</span>
+        </button>
+        <div v-show="showCapitaine" class="kw-section-body">
+          <p class="section-hint">Le mot-cle principal cible dans le Title, H1 et URL</p>
+          <div class="capitaine-input">
+            <input
+              :value="store.keywords.capitaine"
+              class="input-capitaine"
+              placeholder="Mot-cle principal..."
+              @input="store.setCapitaine(($event.target as HTMLInputElement).value)"
+            />
+          </div>
         </div>
       </div>
 
       <!-- Lieutenants -->
       <div class="kw-section">
-        <label class="section-label">Lieutenants <span class="count">({{ store.keywords.lieutenants.length }})</span></label>
-        <p class="section-hint">2-5 variantes secondaires pour les H2/H3</p>
-        <div class="kw-tags">
-          <KeywordLevelBadge
-            v-for="lt in store.keywords.lieutenants"
-            :key="lt"
-            level="lieutenant"
-            :label="lt"
-            removable
-            @remove="store.removeLieutenant(lt)"
-          />
-        </div>
-        <div class="add-input">
-          <input
-            v-model="newLieutenant"
-            class="input-sm"
-            placeholder="Ajouter un lieutenant..."
-            @keyup.enter="handleAddLieutenant"
-          />
-          <button class="btn-add" :disabled="!newLieutenant.trim()" @click="handleAddLieutenant">+</button>
+        <button class="kw-section-header" @click="showLieutenants = !showLieutenants">
+          <svg class="kw-chevron" :class="{ open: showLieutenants }" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="section-label">Lieutenants <span class="count">({{ store.keywords.lieutenants.length }})</span></span>
+        </button>
+        <div v-show="showLieutenants" class="kw-section-body">
+          <p class="section-hint">2-5 variantes secondaires pour les H2/H3</p>
+          <div class="kw-tags">
+            <span v-for="lt in store.keywords.lieutenants" :key="lt" class="lieutenant-with-hn">
+              <KeywordLevelBadge
+                level="lieutenant"
+                :label="lt"
+                removable
+                @remove="store.removeLieutenant(lt)"
+              />
+              <span v-if="getHnLevel(lt)" class="hn-badge">H{{ getHnLevel(lt) }}</span>
+            </span>
+          </div>
+          <div class="add-input">
+            <input
+              v-model="newLieutenant"
+              class="input-sm"
+              placeholder="Ajouter un lieutenant..."
+              @keyup.enter="handleAddLieutenant"
+            />
+            <button class="btn-add" :disabled="!newLieutenant.trim()" @click="handleAddLieutenant">+</button>
+          </div>
         </div>
       </div>
 
       <!-- Lexique -->
       <div class="kw-section">
-        <label class="section-label">Lexique sémantique <span class="count">({{ store.keywords.lexique.length }})</span></label>
-        <p class="section-hint">10-15 termes LSI à inclure naturellement dans le corps de texte</p>
-        <div class="kw-tags">
-          <KeywordLevelBadge
-            v-for="term in store.keywords.lexique"
-            :key="term"
-            level="lexique"
-            :label="term"
-            removable
-            @remove="store.removeLexiqueTerm(term)"
-          />
-        </div>
-        <div class="add-input">
-          <input
-            v-model="newLexiqueTerm"
-            class="input-sm"
-            placeholder="Ajouter un terme..."
-            @keyup.enter="handleAddLexique"
-          />
-          <button class="btn-add" :disabled="!newLexiqueTerm.trim()" @click="handleAddLexique">+</button>
-        </div>
-        <button
-          class="btn-suggest-lexique"
-          :disabled="store.isSuggestingLexique || !store.keywords.capitaine"
-          @click="handleSuggestLexique"
-        >
-          {{ store.isSuggestingLexique ? 'Génération...' : 'Suggérer le Lexique via Claude' }}
+        <button class="kw-section-header" @click="showLexique = !showLexique">
+          <svg class="kw-chevron" :class="{ open: showLexique }" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M6 4l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+          <span class="section-label">Lexique semantique <span class="count">({{ store.keywords.lexique.length }})</span></span>
         </button>
+        <div v-show="showLexique" class="kw-section-body">
+          <p class="section-hint">10-15 termes LSI a inclure naturellement dans le corps de texte</p>
+          <div class="kw-tags">
+            <KeywordLevelBadge
+              v-for="term in store.keywords.lexique"
+              :key="term"
+              level="lexique"
+              :label="term"
+              removable
+              @remove="store.removeLexiqueTerm(term)"
+            />
+          </div>
+          <div class="add-input">
+            <input
+              v-model="newLexiqueTerm"
+              class="input-sm"
+              placeholder="Ajouter un terme..."
+              @keyup.enter="handleAddLexique"
+            />
+            <button class="btn-add" :disabled="!newLexiqueTerm.trim()" @click="handleAddLexique">+</button>
+          </div>
+          <button
+            class="btn-suggest-lexique"
+            :disabled="store.isSuggestingLexique || !store.keywords.capitaine"
+            @click="handleSuggestLexique"
+          >
+            {{ store.isSuggestingLexique ? 'Generation...' : 'Suggerer le Lexique via Claude' }}
+          </button>
+        </div>
       </div>
 
       <!-- Save -->
@@ -140,7 +187,8 @@ onMounted(async () => {
 .article-keywords-panel {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .loading {
@@ -150,6 +198,40 @@ onMounted(async () => {
 }
 
 .kw-section {
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.kw-section-header {
+  display: flex;
+  align-items: center;
+  gap: 0.375rem;
+  width: 100%;
+  padding: 0.5rem 0.75rem;
+  border: none;
+  background: var(--color-bg-soft);
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.15s;
+}
+
+.kw-section-header:hover {
+  background: var(--color-bg-hover);
+}
+
+.kw-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--color-text-muted);
+}
+
+.kw-chevron.open {
+  transform: rotate(90deg);
+}
+
+.kw-section-body {
+  padding: 0.5rem 0.75rem 0.75rem;
   display: flex;
   flex-direction: column;
   gap: 0.375rem;
@@ -197,6 +279,23 @@ onMounted(async () => {
   display: flex;
   flex-wrap: wrap;
   gap: 0.375rem;
+}
+
+.lieutenant-with-hn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.125rem;
+}
+
+.hn-badge {
+  display: inline-block;
+  padding: 0.0625rem 0.25rem;
+  border-radius: 3px;
+  font-size: 0.5625rem;
+  font-weight: 700;
+  background: var(--color-primary);
+  color: white;
+  line-height: 1.2;
 }
 
 .add-input {
@@ -268,8 +367,7 @@ onMounted(async () => {
   align-items: center;
   justify-content: flex-end;
   gap: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-border);
+  padding-top: 0.5rem;
 }
 
 .error-msg {

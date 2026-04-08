@@ -36,21 +36,30 @@ export async function classifyWithTool<T>(
   model = 'claude-haiku-4-5-20251001',
   maxTokens = 4096,
 ): Promise<{ result: T; usage: ApiUsage }> {
-  log.info(`Claude API tool call start`, { model, tool: tool.name })
+  const promptChars = systemPrompt.length + userPrompt.length
+  log.info(`Claude API tool call start`, { model, tool: tool.name, maxTokens, promptChars })
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-    tools: [tool],
-    tool_choice: { type: 'tool', name: tool.name },
-  })
+  const start = Date.now()
+  let response: Anthropic.Message
+  try {
+    response = await client.messages.create({
+      model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+      tools: [tool],
+      tool_choice: { type: 'tool', name: tool.name },
+    })
+  } catch (err) {
+    log.error(`Claude API tool call failed`, { model, tool: tool.name, ms: Date.now() - start, error: (err as Error).message })
+    throw err
+  }
 
   const toolBlock = response.content.find(
     (b): b is Anthropic.ToolUseBlock => b.type === 'tool_use',
   )
   if (!toolBlock) {
+    log.error(`Claude API no tool_use block in response`, { model, tool: tool.name, stopReason: response.stop_reason })
     throw new Error(`Expected tool_use response from ${tool.name} but got none`)
   }
 
@@ -60,7 +69,7 @@ export async function classifyWithTool<T>(
     model,
     estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
   }
-  log.info(`Claude API tool call done`, { tool: tool.name, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
+  log.info(`Claude API tool call done`, { tool: tool.name, ms: Date.now() - start, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
 
   return { result: toolBlock.input as T, usage }
 }
@@ -78,20 +87,35 @@ export async function* streamChatCompletion(
   maxTokens = 4096,
 ): AsyncGenerator<string> {
   const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
+  const promptChars = systemPrompt.length + userPrompt.length
 
-  log.info(`Claude API stream start`, { model, maxTokens })
+  log.info(`Claude API stream start`, { model, maxTokens, promptChars })
 
-  const stream = client.messages.stream({
-    model,
-    max_tokens: maxTokens,
-    system: systemPrompt,
-    messages: [{ role: 'user', content: userPrompt }],
-  })
+  const start = Date.now()
+  let stream: ReturnType<typeof client.messages.stream>
+  try {
+    stream = client.messages.stream({
+      model,
+      max_tokens: maxTokens,
+      system: systemPrompt,
+      messages: [{ role: 'user', content: userPrompt }],
+    })
+  } catch (err) {
+    log.error(`Claude API stream creation failed`, { model, ms: Date.now() - start, error: (err as Error).message })
+    throw err
+  }
 
-  for await (const event of stream) {
-    if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
-      yield event.delta.text
+  let chunkCount = 0
+  try {
+    for await (const event of stream) {
+      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+        chunkCount++
+        yield event.delta.text
+      }
     }
+  } catch (err) {
+    log.error(`Claude API stream interrupted`, { model, ms: Date.now() - start, chunkCount, error: (err as Error).message })
+    throw err
   }
 
   // Extract usage from final message
@@ -102,6 +126,6 @@ export async function* streamChatCompletion(
     model,
     estimatedCost: calculateCost(model, finalMessage.usage.input_tokens, finalMessage.usage.output_tokens),
   }
-  log.info(`Claude API stream done`, { inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
+  log.info(`Claude API stream done`, { ms: Date.now() - start, chunkCount, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
   yield `${USAGE_SENTINEL}${JSON.stringify(usage)}`
 }

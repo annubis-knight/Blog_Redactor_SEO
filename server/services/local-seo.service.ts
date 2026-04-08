@@ -10,6 +10,9 @@ async function fetchGoogleMaps(keyword: string, locationCode: number = 1006157):
   const url = `${getBaseUrl()}/serp/google/maps/live/advanced`
   const auth = getAuthHeader()
 
+  log.debug('DataForSEO Maps request', { keyword, locationCode, url })
+  const start = Date.now()
+
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
@@ -20,12 +23,22 @@ async function fetchGoogleMaps(keyword: string, locationCode: number = 1006157):
     }]),
   })
 
-  if (!res.ok) throw new Error(`DataForSEO Maps error: ${res.status}`)
+  if (!res.ok) {
+    log.error('DataForSEO Maps HTTP error', { keyword, status: res.status, ms: Date.now() - start })
+    throw new Error(`DataForSEO Maps error: ${res.status}`)
+  }
   const json = await res.json()
   if (json.tasks?.[0]?.status_code !== 20000) {
-    throw new Error(json.tasks?.[0]?.status_message ?? 'DataForSEO Maps error')
+    const statusMsg = json.tasks?.[0]?.status_message ?? 'DataForSEO Maps error'
+    log.error('DataForSEO Maps task error', { keyword, statusCode: json.tasks?.[0]?.status_code, statusMsg, ms: Date.now() - start })
+    throw new Error(statusMsg)
   }
-  return json.tasks[0].result?.[0] ?? null
+
+  const result = json.tasks[0].result?.[0] ?? null
+  const itemCount = result?.items?.length ?? 0
+  log.info('DataForSEO Maps done', { keyword, itemCount, ms: Date.now() - start })
+
+  return result
 }
 
 function extractListings(mapsResult: any): GbpListing[] {
@@ -67,11 +80,29 @@ export async function analyzeMaps(keyword: string, locationCode: number = 100615
     Infinity,
     async () => {
       log.info(`Analyzing Google Maps for "${keyword}"`, { locationCode })
+      const totalStart = Date.now()
 
-      const mapsResult = await fetchGoogleMaps(keyword, locationCode)
+      let mapsResult: any
+      try {
+        mapsResult = await fetchGoogleMaps(keyword, locationCode)
+      } catch (err) {
+        log.error('Maps analysis failed', { keyword, locationCode, error: (err as Error).message, ms: Date.now() - totalStart })
+        throw err
+      }
+
       const listings = extractListings(mapsResult)
       const reviewGap = calculateReviewGap(listings)
       const hasLocalPack = listings.length > 0
+
+      log.info('Maps analysis done', {
+        keyword,
+        hasLocalPack,
+        listingCount: listings.length,
+        avgRating: listings.length > 0 ? +(listings.reduce((s, l) => s + (l.rating ?? 0), 0) / listings.length).toFixed(1) : null,
+        reviewGap: reviewGap.gap,
+        avgCompetitorReviews: reviewGap.averageCompetitorReviews,
+        ms: Date.now() - totalStart,
+      })
 
       return {
         keyword,

@@ -109,6 +109,7 @@ vi.mock('../../../src/stores/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockStoreKeywords.value,
     setCapitaine: mockSetCapitaine,
+    setRootKeywords: vi.fn(),
     saveKeywords: mockSaveKeywords,
   }),
 }))

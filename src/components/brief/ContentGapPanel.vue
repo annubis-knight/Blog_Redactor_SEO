@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
+import { log } from '@/utils/logger'
 import type { ContentGapAnalysis, ThematicGap } from '@shared/types/index.js'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
@@ -67,11 +68,14 @@ async function handleAnalyze() {
   isAnalyzing.value = true
   error.value = null
   try {
+    log.info('Analyzing content gap', { keyword: props.keyword })
     gapData.value = await apiPost<ContentGapAnalysis>('/content-gap/analyze', { keyword: props.keyword })
+    log.info('Content gap analysis complete', { competitors: gapData.value?.competitors.length, gaps: gapData.value?.gaps.length })
     if (gapData.value?.averageWordCount) {
       emit('analyzed', gapData.value.averageWordCount)
     }
   } catch (err) {
+    log.error('Content gap analysis failed', { keyword: props.keyword, error: (err as Error).message })
     error.value = err instanceof Error ? err.message : 'Erreur analyse content gap'
   } finally {
     isAnalyzing.value = false

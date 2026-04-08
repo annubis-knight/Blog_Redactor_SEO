@@ -122,6 +122,8 @@ describe('PUT /articles/:slug/keywords', () => {
       capitaine: 'main keyword',
       lieutenants: ['lt1'],
       lexique: ['lsi1'],
+      rootKeywords: [],
+      hnStructure: [],
     })
     expect(res.json).toHaveBeenCalledWith({ data: saved })
   })

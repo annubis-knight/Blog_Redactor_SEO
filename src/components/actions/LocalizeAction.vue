@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
+import { log } from '@/utils/logger'
 
 const props = defineProps<{
   selectedText: string
@@ -21,6 +22,7 @@ async function localize() {
   result.value = null
 
   try {
+    log.info('Localizing paragraph', { keyword: props.keyword, textLength: props.selectedText.length })
     const res = await fetch('/api/generate/action', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -50,14 +52,16 @@ async function localize() {
             try {
               const data = JSON.parse(line.slice(6))
               if (data.content) fullContent += data.content
-            } catch { /* skip non-JSON lines */ }
+            } catch { /* skip non-JSON SSE lines */ }
           }
         }
       }
     }
 
     result.value = fullContent || null
+    log.info('Localization complete', { resultLength: fullContent.length })
   } catch (err) {
+    log.error('Localization failed', { keyword: props.keyword, error: (err as Error).message })
     error.value = err instanceof Error ? err.message : 'Erreur localisation'
   } finally {
     isGenerating.value = false

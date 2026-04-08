@@ -62,5 +62,6 @@ const { panelWidth, isResizing, onPointerDown } = useResizablePanel()
   flex: 1;
   overflow-y: auto;
   min-width: 0;
+  position: relative;
 }
 </style>

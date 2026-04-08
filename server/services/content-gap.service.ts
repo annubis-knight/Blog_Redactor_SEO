@@ -17,6 +17,9 @@ async function searchWithTavily(
   const apiKey = process.env.TAVILY_API_KEY
   if (!apiKey) throw new Error('TAVILY_API_KEY must be set in environment variables')
 
+  log.debug('Tavily search request', { keyword, search_depth: 'advanced', max_results: 5 })
+  const start = Date.now()
+
   const res = await fetch('https://api.tavily.com/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -29,14 +32,22 @@ async function searchWithTavily(
     }),
   })
 
-  if (!res.ok) throw new Error(`Tavily API error: ${res.status}`)
+  if (!res.ok) {
+    log.error('Tavily API error', { keyword, status: res.status, ms: Date.now() - start })
+    throw new Error(`Tavily API error: ${res.status}`)
+  }
   const json = await res.json()
 
-  return (json.results ?? []).map((r: any) => ({
+  const results = (json.results ?? []).map((r: any) => ({
     url: r.url ?? '',
     title: r.title ?? '',
     content: (r.raw_content ?? r.content ?? '').slice(0, 5000), // limit content size
   }))
+
+  const totalContentSize = results.reduce((sum: number, r: any) => sum + r.content.length, 0)
+  log.info('Tavily search done', { keyword, resultCount: results.length, totalContentSize, ms: Date.now() - start })
+
+  return results
 }
 
 async function analyzeCompetitorContent(
@@ -56,6 +67,9 @@ async function analyzeCompetitorContent(
         `--- Concurrent ${i + 1}: ${c.title} (${c.url}) ---\n${c.content.slice(0, 2000)}`,
     )
     .join('\n\n')
+
+  log.debug('Claude analysis request', { keyword, model, contentCount: contents.length, promptSize: contentSummaries.length })
+  const start = Date.now()
 
   const response = await client.messages.create({
     model,
@@ -86,14 +100,19 @@ Pour paasCovered: liste les questions PAA (People Also Ask) auxquelles le conten
   })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : '{}'
+  log.info('Claude analysis done', { keyword, ms: Date.now() - start, responseSize: text.length, tokensUsed: response.usage?.output_tokens })
+
   const cleaned = text
     .replace(/```json\s*/g, '')
     .replace(/```\s*/g, '')
     .trim()
 
   try {
-    return JSON.parse(cleaned)
-  } catch {
+    const parsed = JSON.parse(cleaned)
+    log.debug('Claude analysis parsed', { keyword, competitors: parsed.competitors?.length ?? 0, themes: parsed.themes?.length ?? 0, localEntities: parsed.localEntities?.length ?? 0 })
+    return parsed
+  } catch (err) {
+    log.error('Claude analysis JSON parse failed', { keyword, error: (err as Error).message, responsePreview: cleaned.slice(0, 200) })
     return { competitors: [], themes: [], localEntities: [] }
   }
 }
@@ -108,6 +127,7 @@ export async function analyzeContentGap(
     Infinity,
     async () => {
       log.info(`Analyzing content gap for "${keyword}"`)
+      const totalStart = Date.now()
 
       const searchResults = await searchWithTavily(keyword)
       log.debug(`Tavily returned ${searchResults.length} results for "${keyword}"`)
@@ -128,6 +148,8 @@ export async function analyzeContentGap(
         presentInArticle: currentLower.includes(t.theme.toLowerCase()),
       }))
       const gaps = themes.filter((t) => !t.presentInArticle && t.frequency >= 3)
+
+      log.info('Content gap analysis done', { keyword, competitors: analysis.competitors.length, themes: themes.length, gaps: gaps.length, avgWordCount, ms: Date.now() - totalStart })
 
       return {
         keyword,
