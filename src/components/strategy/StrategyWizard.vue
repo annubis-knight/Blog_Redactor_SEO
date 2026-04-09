@@ -369,7 +369,7 @@ onMounted(async () => {
         :title="stepConfigs[store.currentStep]?.title ?? ''"
         :description="stepConfigs[store.currentStep]?.description ?? ''"
         :step-data="(store.strategy as any)?.[store.currentStepName]"
-        :is-suggesting="store.isSuggesting"
+        :is-suggesting="store.isProcessing"
         :is-deepening="store.isDeepening"
         :suggesting-sub-id="suggestingSubId"
         @update:step-data="updateStepData(store.currentStepName as string, $event)"
@@ -387,7 +387,7 @@ onMounted(async () => {
         v-else-if="store.currentStepName === 'aiguillage'"
         :aiguillage="store.strategy.aiguillage"
         :cocoon="cocoon"
-        :is-suggesting="store.isSuggesting"
+        :is-suggesting="store.isProcessing"
         @update:aiguillage="updateAiguillage"
         @request-suggestion="handleSuggest"
       />
@@ -396,7 +396,7 @@ onMounted(async () => {
       <CtaStep
         v-else-if="store.currentStepName === 'cta'"
         :cta="store.strategy.cta"
-        :is-suggesting="store.isSuggesting"
+        :is-suggesting="store.isProcessing"
         @update:cta="updateCta"
         @request-suggestion="handleSuggest"
       />

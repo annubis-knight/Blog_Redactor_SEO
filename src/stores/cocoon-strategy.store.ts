@@ -1,4 +1,5 @@
 import { ref, computed } from 'vue'
+
 import { defineStore } from 'pinia'
 import { apiGet, apiPut, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
@@ -9,8 +10,12 @@ export const useCocoonStrategyStore = defineStore('cocoonStrategy', () => {
   const strategicContext = ref<StrategyContextData | null>(null)
   const isLoading = ref(false)
   const isSuggesting = ref(false)
+  const isConsolidating = ref(false)
+  const isEnriching = ref(false)
   const isDeepening = ref(false)
   const error = ref<string | null>(null)
+
+  const isProcessing = computed(() => isSuggesting.value || isConsolidating.value || isEnriching.value || isDeepening.value)
   const currentStep = ref(0) // 0-5 for the 6 steps
 
   const steps = ['cible', 'douleur', 'angle', 'promesse', 'cta', 'articles'] as const
@@ -89,7 +94,7 @@ export const useCocoonStrategyStore = defineStore('cocoonStrategy', () => {
   }
 
   async function requestConsolidate(cocoonSlug: string, request: StrategyConsolidateRequest): Promise<string | null> {
-    isSuggesting.value = true
+    isConsolidating.value = true
     error.value = null
     try {
       const result = await apiPost<StrategyConsolidateResponse>(`/strategy/cocoon/${cocoonSlug}/consolidate`, request)
@@ -98,12 +103,12 @@ export const useCocoonStrategyStore = defineStore('cocoonStrategy', () => {
       error.value = err instanceof Error ? err.message : 'Erreur de consolidation'
       return null
     } finally {
-      isSuggesting.value = false
+      isConsolidating.value = false
     }
   }
 
   async function requestEnrich(cocoonSlug: string, request: StrategyEnrichRequest): Promise<string | null> {
-    isSuggesting.value = true
+    isEnriching.value = true
     error.value = null
     try {
       const result = await apiPost<StrategyEnrichResponse>(`/strategy/cocoon/${cocoonSlug}/enrich`, request)
@@ -112,7 +117,7 @@ export const useCocoonStrategyStore = defineStore('cocoonStrategy', () => {
       error.value = err instanceof Error ? err.message : "Erreur d'enrichissement"
       return null
     } finally {
-      isSuggesting.value = false
+      isEnriching.value = false
     }
   }
 
@@ -183,13 +188,15 @@ export const useCocoonStrategyStore = defineStore('cocoonStrategy', () => {
     strategicContext.value = null
     isLoading.value = false
     isSuggesting.value = false
+    isConsolidating.value = false
+    isEnriching.value = false
     isDeepening.value = false
     error.value = null
     currentStep.value = 0
   }
 
   return {
-    strategy, strategicContext, isLoading, isSuggesting, isDeepening, error, currentStep, steps, currentStepName, isComplete,
+    strategy, strategicContext, isLoading, isSuggesting, isConsolidating, isEnriching, isDeepening, isProcessing, error, currentStep, steps, currentStepName, isComplete,
     fetchContext, fetchStrategy, saveStrategy, requestSuggestion, requestDeepen, requestConsolidate, requestEnrich, getPreviousAnswers,
     nextStep, prevStep, goToStep, initEmpty, $reset,
   }

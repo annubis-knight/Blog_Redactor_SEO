@@ -1,4 +1,4 @@
-import { ref, computed } from 'vue'
+import { ref, computed, onBeforeUnmount } from 'vue'
 import { apiGet, apiPost, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type {
@@ -296,6 +296,10 @@ export function useKeywordRadar() {
   function removeKeyword(index: number) {
     generatedKeywords.value.splice(index, 1)
   }
+
+  onBeforeUnmount(() => {
+    _stopProgress()
+  })
 
   function reset() {
     generatedKeywords.value = []

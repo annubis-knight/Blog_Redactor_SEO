@@ -5,8 +5,11 @@ import type { ClassifiedKeyword, KeywordDiscoveryResult, DomainDiscoveryResult, 
 
 export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
   const results = ref<ClassifiedKeyword[]>([])
-  const loading = ref(false)
+  const isLoadingSeed = ref(false)
+  const isLoadingDomain = ref(false)
+  const loading = computed(() => isLoadingSeed.value || isLoadingDomain.value)
   const error = ref<string | null>(null)
+  let currentController: AbortController | null = null
   const seed = ref('')
   const domain = ref('')
   const apiCost = ref(0)
@@ -52,7 +55,9 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
   })
 
   async function discoverFromSeed(keyword: string, maxResults?: number) {
-    loading.value = true
+    currentController?.abort()
+    const myController = currentController = new AbortController()
+    isLoadingSeed.value = true
     error.value = null
     seed.value = keyword
     domain.value = ''
@@ -62,6 +67,7 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ keyword, options: maxResults ? { maxResults } : undefined }),
+        signal: currentController.signal,
       })
 
       if (!response.ok) {
@@ -76,15 +82,20 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
       totalBeforeDedup.value = data.totalBeforeDedup
       totalAfterDedup.value = data.totalAfterDedup
     } catch (err) {
+      if ((err as Error).name === 'AbortError') return
       error.value = (err as Error).message
       results.value = []
     } finally {
-      loading.value = false
+      if (currentController === myController) {
+        isLoadingSeed.value = false
+      }
     }
   }
 
   async function discoverFromDomain(domainName: string, maxResults?: number) {
-    loading.value = true
+    currentController?.abort()
+    const myController = currentController = new AbortController()
+    isLoadingDomain.value = true
     error.value = null
     domain.value = domainName
     seed.value = ''
@@ -94,6 +105,7 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ domain: domainName, options: maxResults ? { maxResults } : undefined }),
+        signal: currentController.signal,
       })
 
       if (!response.ok) {
@@ -108,10 +120,13 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
       totalBeforeDedup.value = data.total
       totalAfterDedup.value = data.keywords.length
     } catch (err) {
+      if ((err as Error).name === 'AbortError') return
       error.value = (err as Error).message
       results.value = []
     } finally {
-      loading.value = false
+      if (currentController === myController) {
+        isLoadingDomain.value = false
+      }
     }
   }
 
@@ -142,6 +157,8 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
   return {
     results,
     loading,
+    isLoadingSeed,
+    isLoadingDomain,
     error,
     seed,
     domain,

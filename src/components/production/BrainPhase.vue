@@ -497,7 +497,7 @@ onMounted(async () => {
       <StrategyStep v-if="store.currentStep < 5" :key="store.currentStepName"
         :title="stepConfigs[store.currentStep]?.title ?? ''"
         :description="stepConfigs[store.currentStep]?.description ?? ''"
-        :step-data="(store.strategy as any)[store.currentStepName]" :is-suggesting="store.isSuggesting"
+        :step-data="(store.strategy as any)[store.currentStepName]" :is-suggesting="store.isProcessing"
         :is-deepening="store.isDeepening" :suggesting-sub-id="suggestingSubId"
         @update:step-data="updateStepData(store.currentStepName as string, $event)" @request-suggestion="handleSuggest"
         @request-merge="handleMerge" @request-deepen="handleDeepen" @request-sub-suggestion="handleSubSuggest"

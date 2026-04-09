@@ -6,7 +6,9 @@ import type { GscPerformance, GscKeywordGap } from '@shared/types/index.js'
 
 export const useGscStore = defineStore('gsc', () => {
   const isConnected = ref(false)
-  const isLoading = ref(false)
+  const isLoadingPerformance = ref(false)
+  const isLoadingKeywordGap = ref(false)
+  const isLoading = computed(() => isLoadingPerformance.value || isLoadingKeywordGap.value)
   const error = ref<string | null>(null)
   const performance = ref<GscPerformance | null>(null)
   const keywordGap = ref<GscKeywordGap | null>(null)
@@ -25,7 +27,7 @@ export const useGscStore = defineStore('gsc', () => {
   }
 
   async function fetchPerformance(siteUrl: string, startDate: string, endDate: string) {
-    isLoading.value = true
+    isLoadingPerformance.value = true
     error.value = null
     log.info(`[gsc] fetchPerformance`, { siteUrl, startDate, endDate })
     try {
@@ -35,12 +37,12 @@ export const useGscStore = defineStore('gsc', () => {
       error.value = err instanceof Error ? err.message : 'Erreur GSC'
       log.error(`[gsc] fetchPerformance failed: ${error.value}`)
     } finally {
-      isLoading.value = false
+      isLoadingPerformance.value = false
     }
   }
 
   async function fetchKeywordGap(articleUrl: string, targetKeywords: string[], siteUrl: string) {
-    isLoading.value = true
+    isLoadingKeywordGap.value = true
     error.value = null
     log.info(`[gsc] fetchKeywordGap`, { articleUrl, keywords: targetKeywords.length })
     try {
@@ -50,18 +52,20 @@ export const useGscStore = defineStore('gsc', () => {
       error.value = err instanceof Error ? err.message : 'Erreur keyword gap'
       log.error(`[gsc] fetchKeywordGap failed: ${error.value}`)
     } finally {
-      isLoading.value = false
+      isLoadingKeywordGap.value = false
     }
   }
 
   function reset() {
     performance.value = null
     keywordGap.value = null
+    isLoadingPerformance.value = false
+    isLoadingKeywordGap.value = false
     error.value = null
   }
 
   return {
-    isConnected, isLoading, error, performance, keywordGap, hasData,
+    isConnected, isLoading, isLoadingPerformance, isLoadingKeywordGap, error, performance, keywordGap, hasData,
     checkConnection, fetchPerformance, fetchKeywordGap, reset,
   }
 })

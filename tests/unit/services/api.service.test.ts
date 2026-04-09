@@ -15,7 +15,7 @@ describe('api.service — apiGet', () => {
       json: () => Promise.resolve({ data: [] }),
     })
     await apiGet('/cocoons')
-    expect(mockFetch).toHaveBeenCalledWith('/api/cocoons')
+    expect(mockFetch).toHaveBeenCalledWith('/api/cocoons', { signal: undefined })
   })
 
   it('returns data from successful response', async () => {
@@ -58,6 +58,7 @@ describe('api.service — apiPost', () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ keyword: 'test' }),
+      signal: undefined,
     })
   })
 

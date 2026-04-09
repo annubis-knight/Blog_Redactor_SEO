@@ -1,4 +1,4 @@
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import type { NlpResult, NlpState } from '../../shared/types/intent.types.js'
 import { log } from '@/utils/logger'
 
@@ -6,6 +6,8 @@ import { log } from '@/utils/logger'
 
 const STORAGE_KEY = 'nlp-enabled'
 const MODEL_ID = 'Xenova/mobilebert-uncased-mnli'
+
+const MAX_NLP_RESULTS = 200
 
 const PAIN_LABELS = [
   'problème technique',
@@ -158,7 +160,13 @@ async function analyzeKeywords(keywords: string[]): Promise<void> {
     }
   }
 
-  results.value = newResults
+  // Bound results map size
+  if (newResults.size > MAX_NLP_RESULTS) {
+    const entries = [...newResults.entries()]
+    results.value = new Map(entries.slice(entries.length - MAX_NLP_RESULTS))
+  } else {
+    results.value = newResults
+  }
   nlpState.value = 'active'
   log.info('NLP analysis complete', { analyzed: newResults.size })
 }
@@ -192,6 +200,14 @@ export function useNlpAnalysis() {
   onMounted(() => {
     if (nlpState.value === 'disabled') {
       checkSupport()
+    }
+  })
+
+  onBeforeUnmount(() => {
+    // Only cancel in-progress download — don't destroy singleton model state
+    if (abortController) {
+      abortController.abort()
+      abortController = null
     }
   })
 

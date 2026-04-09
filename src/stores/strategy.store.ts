@@ -8,8 +8,12 @@ export const useStrategyStore = defineStore('strategy', () => {
   const strategy = ref<ArticleStrategy | null>(null)
   const isLoading = ref(false)
   const isSuggesting = ref(false)
+  const isConsolidating = ref(false)
+  const isEnriching = ref(false)
   const isDeepening = ref(false)
   const error = ref<string | null>(null)
+
+  const isProcessing = computed(() => isSuggesting.value || isConsolidating.value || isEnriching.value || isDeepening.value)
   const currentStep = ref(0) // 0-5 for the 6 steps
 
   const steps = ['cible', 'douleur', 'aiguillage', 'angle', 'promesse', 'cta'] as const
@@ -79,7 +83,7 @@ export const useStrategyStore = defineStore('strategy', () => {
   }
 
   async function requestConsolidate(slug: string, request: StrategyConsolidateRequest): Promise<string | null> {
-    isSuggesting.value = true
+    isConsolidating.value = true
     error.value = null
     try {
       const result = await apiPost<StrategyConsolidateResponse>(`/strategy/${slug}/consolidate`, request)
@@ -88,12 +92,12 @@ export const useStrategyStore = defineStore('strategy', () => {
       error.value = err instanceof Error ? err.message : 'Erreur de consolidation'
       return null
     } finally {
-      isSuggesting.value = false
+      isConsolidating.value = false
     }
   }
 
   async function requestEnrich(slug: string, request: StrategyEnrichRequest): Promise<string | null> {
-    isSuggesting.value = true
+    isEnriching.value = true
     error.value = null
     try {
       const result = await apiPost<StrategyEnrichResponse>(`/strategy/${slug}/enrich`, request)
@@ -102,7 +106,7 @@ export const useStrategyStore = defineStore('strategy', () => {
       error.value = err instanceof Error ? err.message : "Erreur d'enrichissement"
       return null
     } finally {
-      isSuggesting.value = false
+      isEnriching.value = false
     }
   }
 
@@ -176,13 +180,15 @@ export const useStrategyStore = defineStore('strategy', () => {
     strategy.value = null
     isLoading.value = false
     isSuggesting.value = false
+    isConsolidating.value = false
+    isEnriching.value = false
     isDeepening.value = false
     error.value = null
     currentStep.value = 0
   }
 
   return {
-    strategy, isLoading, isSuggesting, isDeepening, error, currentStep, steps, currentStepName, isComplete,
+    strategy, isLoading, isSuggesting, isConsolidating, isEnriching, isDeepening, isProcessing, error, currentStep, steps, currentStepName, isComplete,
     fetchStrategy, saveStrategy, requestSuggestion, requestDeepen, requestConsolidate, requestEnrich, getPreviousAnswers, nextStep, prevStep, goToStep, initEmpty, $reset,
   }
 })

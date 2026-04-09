@@ -65,8 +65,8 @@ describe('brief.store — fetchBrief', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(mockApiGet).toHaveBeenCalledWith('/articles/test-article')
-    expect(mockApiGet).toHaveBeenCalledWith('/keywords/Test%20Cocoon')
+    expect(mockApiGet).toHaveBeenCalledWith('/articles/test-article', expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    expect(mockApiGet).toHaveBeenCalledWith('/keywords/Test%20Cocoon', expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
   it('calls apiPost for DataForSEO with pilier keyword', async () => {
@@ -77,7 +77,7 @@ describe('brief.store — fetchBrief', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé pilier' })
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé pilier' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
   it('skips DataForSEO call when no pilier keyword exists', async () => {
