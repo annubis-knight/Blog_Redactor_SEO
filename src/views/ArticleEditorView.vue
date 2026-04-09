@@ -26,6 +26,7 @@ import { usePanelToggle } from '@/composables/usePanelToggle'
 import SeoPanel from '@/components/panels/SeoPanel.vue'
 import GeoPanel from '@/components/panels/GeoPanel.vue'
 import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
+import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import ExportButton from '@/components/export/ExportButton.vue'
 import ExportPreview from '@/components/export/ExportPreview.vue'
@@ -321,17 +322,22 @@ onMounted(async () => {
 
     <Transition name="panel-slide">
       <ResizablePanel v-if="hasActivePanel" :key="activePanel!">
-        <SeoPanel v-if="showSeoPanel" />
-        <GeoPanel v-if="showGeoPanel" />
-        <LinkSuggestions
-          v-if="showLinkSuggestions"
-          :suggestions="linkSuggestions"
-          :is-suggesting="isSuggesting"
-          @accept="handleAcceptSuggestion"
-          @dismiss="handleDismissSuggestion"
-          @request="requestSuggestions"
-          @close="handleCloseLinkSuggestions"
-        />
+        <ErrorBoundary v-if="showSeoPanel" fallback-message="Erreur dans le panneau SEO.">
+          <SeoPanel />
+        </ErrorBoundary>
+        <ErrorBoundary v-if="showGeoPanel" fallback-message="Erreur dans le panneau géo.">
+          <GeoPanel />
+        </ErrorBoundary>
+        <ErrorBoundary v-if="showLinkSuggestions" fallback-message="Erreur dans les suggestions de liens.">
+          <LinkSuggestions
+            :suggestions="linkSuggestions"
+            :is-suggesting="isSuggesting"
+            @accept="handleAcceptSuggestion"
+            @dismiss="handleDismissSuggestion"
+            @request="requestSuggestions"
+            @close="handleCloseLinkSuggestions"
+          />
+        </ErrorBoundary>
       </ResizablePanel>
     </Transition>
   </div>

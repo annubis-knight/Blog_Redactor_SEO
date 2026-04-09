@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, config } from '@vue/test-utils'
 import { ref, nextTick, computed } from 'vue'
+import { safeHtmlDirective } from '../../../src/directives/v-safe-html'
 import CaptainValidation from '../../../src/components/moteur/CaptainValidation.vue'
+
+// Register the v-safe-html directive globally for all mount() calls
+config.global.directives = { ...config.global.directives, 'safe-html': safeHtmlDirective }
 import type { ValidateResponse, SelectedArticle } from '../../../shared/types/index'
 import type { RadarCard } from '../../../shared/types/intent.types'
 

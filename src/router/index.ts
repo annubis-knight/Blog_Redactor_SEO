@@ -1,6 +1,7 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { log } from '@/utils/logger'
 import DashboardView from '../views/DashboardView.vue'
+import NotFoundView from '../views/NotFoundView.vue'
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -87,11 +88,47 @@ const router = createRouter({
       path: '/cocoon/:cocoonId/keywords',
       redirect: to => `/cocoon/${to.params.cocoonId}/moteur`,
     },
+    // Catch-all 404 — MUST be last
+    {
+      path: '/:pathMatch(.*)*',
+      name: 'not-found',
+      component: NotFoundView,
+    },
   ],
+})
+
+// Validate route params — reject empty/whitespace-only values
+router.beforeEach((to) => {
+  const paramsToValidate = ['cocoonId', 'slug', 'siloId', 'themeId'] as const
+  for (const param of paramsToValidate) {
+    const value = to.params[param] as string | undefined
+    if (value !== undefined && !value.trim()) {
+      return { name: 'not-found' }
+    }
+  }
+  return true
 })
 
 router.afterEach((to, from) => {
   log.debug(`[router] ${from.name?.toString() ?? '/'} → ${to.name?.toString() ?? to.path}`, { params: to.params })
+})
+
+// Handle lazy-loading errors (e.g. chunk failures after deployment)
+const CHUNK_RELOAD_KEY = 'chunk_reload_count'
+router.onError((error, to) => {
+  log.error('[Router Error]', { error: error.message, to: to.path })
+  if (error.message.includes('Failed to fetch dynamically imported module') ||
+      error.message.includes('Loading chunk')) {
+    const reloadCount = Number(sessionStorage.getItem(CHUNK_RELOAD_KEY) || '0')
+    if (reloadCount < 2) {
+      sessionStorage.setItem(CHUNK_RELOAD_KEY, String(reloadCount + 1))
+      window.location.href = to.fullPath
+    } else {
+      sessionStorage.removeItem(CHUNK_RELOAD_KEY)
+      log.error('[Router] Chunk reload limit reached, redirecting to home')
+      window.location.href = '/'
+    }
+  }
 })
 
 export default router

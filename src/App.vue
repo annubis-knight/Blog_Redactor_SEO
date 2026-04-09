@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppNavbar from '@/components/shared/AppNavbar.vue'
+import ToastContainer from '@/components/shared/ToastContainer.vue'
 </script>
 
 <template>
@@ -8,6 +9,7 @@ import AppNavbar from '@/components/shared/AppNavbar.vue'
     <main class="app-main">
       <RouterView />
     </main>
+    <ToastContainer />
   </div>
 </template>
 

@@ -21,10 +21,10 @@ const processedContent = computed(() =>
 
 <template>
   <!-- Streaming view: rendered HTML blocks with animated cursor -->
-  <div v-if="isGenerating && streamedText" class="article-content streaming" v-html="streamedWithCursor" />
+  <div v-if="isGenerating && streamedText" class="article-content streaming" v-safe-html="streamedWithCursor" />
 
   <!-- Final rendered HTML content -->
-  <div v-else-if="processedContent" class="article-content" v-html="processedContent" />
+  <div v-else-if="processedContent" class="article-content" v-safe-html="processedContent" />
 </template>
 
 <style scoped>

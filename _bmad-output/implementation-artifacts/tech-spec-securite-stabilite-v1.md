@@ -2,7 +2,7 @@
 title: 'Sécurité & Stabilité — DOMPurify, Error Boundary, Router Guards, Toasts'
 slug: 'securite-stabilite-v1'
 created: '2026-04-09'
-status: 'ready-for-dev'
+status: 'completed'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['Vue 3.4', 'TypeScript 5', 'Pinia 2', 'Vue Router 4', 'Vitest', 'TipTap 2', 'marked', 'DOMPurify (à ajouter)']
 files_to_modify:
@@ -128,11 +128,11 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
 
 #### Bloc A — Sanitization HTML (Priorité 1)
 
-- [ ] **Task 1 : Installer DOMPurify**
+- [x] **Task 1 : Installer DOMPurify**
   - Action : `npm install dompurify` + `npm install -D @types/dompurify`
   - Notes : ~7kb gzip, aucune autre dépendance
 
-- [ ] **Task 2 : Créer la directive `v-safe-html`**
+- [x] **Task 2 : Créer la directive `v-safe-html`**
   - File : `src/directives/v-safe-html.ts`
   - Action : Créer une directive Vue 3 custom qui :
     1. Importe `DOMPurify`
@@ -141,37 +141,37 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     4. Hook `updated` : même chose quand la valeur change
   - Notes : Exporter aussi une fonction `sanitizeHtml(html: string): string` pour usage programmatique (dans les composables qui utilisent `marked`)
 
-- [ ] **Task 3 : Enregistrer la directive globalement**
+- [x] **Task 3 : Enregistrer la directive globalement**
   - File : `src/main.ts`
   - Action : Ajouter `app.directive('safe-html', safeHtmlDirective)` après `app.use(router)` et avant `app.mount('#app')`
   - Notes : Import depuis `@/directives/v-safe-html`
 
-- [ ] **Task 4 : Remplacer `v-html` par `v-safe-html` dans ArticleStreamDisplay.vue**
+- [x] **Task 4 : Remplacer `v-html` par `v-safe-html` dans ArticleStreamDisplay.vue**
   - File : `src/components/article/ArticleStreamDisplay.vue`
   - Action :
     - Ligne 24 : `v-html="streamedWithCursor"` → `v-safe-html="streamedWithCursor"`
     - Ligne 27 : `v-html="processedContent"` → `v-safe-html="processedContent"`
   - Notes : Pas de changement dans le `<script>`, la directive gère tout
 
-- [ ] **Task 5 : Remplacer `v-html` par `v-safe-html` dans CaptainValidation.vue**
+- [x] **Task 5 : Remplacer `v-html` par `v-safe-html` dans CaptainValidation.vue**
   - File : `src/components/moteur/CaptainValidation.vue`
   - Action :
     - Ligne 757 : `v-html="carouselParsedMarkdown"` → `v-safe-html="carouselParsedMarkdown"`
     - Ligne 934 : `v-html="parsedMarkdown"` → `v-safe-html="parsedMarkdown"`
   - Notes : Le markdown est parsé via `marked()`. La sanitization s'applique APRÈS le parsing marked.
 
-- [ ] **Task 6 : Remplacer `v-html` par `v-safe-html` dans RadarKeywordCard.vue**
+- [x] **Task 6 : Remplacer `v-html` par `v-safe-html` dans RadarKeywordCard.vue**
   - File : `src/components/intent/RadarKeywordCard.vue`
   - Action :
     - Ligne 171 : `v-html="badge.svg"` → `v-safe-html="badge.svg"`
   - Notes : Le SVG vient de données internes (pas d'input utilisateur), mais on sanitize par cohérence. La config DOMPurify doit autoriser les tags SVG.
 
-- [ ] **Task 7 : Remplacer `v-html` par `v-safe-html` dans ArticleWorkflowView.vue**
+- [x] **Task 7 : Remplacer `v-html` par `v-safe-html` dans ArticleWorkflowView.vue**
   - File : `src/views/ArticleWorkflowView.vue`
   - Action :
     - Ligne 442 : `v-html="parsedBriefMarkdown"` → `v-safe-html="parsedBriefMarkdown"`
 
-- [ ] **Task 8 : Tests directive v-safe-html**
+- [x] **Task 8 : Tests directive v-safe-html**
   - File : `tests/unit/directives/v-safe-html.test.ts`
   - Action : Créer les tests suivants :
     - `it('sanitize les balises script')` — input `<p>OK</p><script>alert('xss')</script>` → output ne contient pas `<script>`
@@ -183,7 +183,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
 
 #### Bloc B — Error Boundary (Priorité 2)
 
-- [ ] **Task 9 : Créer le composant ErrorBoundary.vue**
+- [x] **Task 9 : Créer le composant ErrorBoundary.vue**
   - File : `src/components/shared/ErrorBoundary.vue`
   - Action : Créer un composant avec :
     - Props : `fallbackMessage?: string` (default: "Une erreur est survenue dans ce panneau.")
@@ -194,7 +194,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     - Style : bordure rouge douce, fond rose pâle, cohérent avec `--color-*`
   - Notes : `return false` dans `onErrorCaptured` est crucial pour empêcher l'erreur de remonter et crasher l'app
 
-- [ ] **Task 10 : Ajouter `app.config.errorHandler` dans main.ts**
+- [x] **Task 10 : Ajouter `app.config.errorHandler` dans main.ts**
   - File : `src/main.ts`
   - Action : Avant `app.mount('#app')`, ajouter :
     ```typescript
@@ -204,7 +204,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     ```
   - Notes : C'est le filet de sécurité ultime. Les erreurs non capturées par un ErrorBoundary arrivent ici.
 
-- [ ] **Task 11 : Wrapper les panneaux critiques avec ErrorBoundary**
+- [x] **Task 11 : Wrapper les panneaux critiques avec ErrorBoundary**
   - Files : `src/views/ArticleWorkflowView.vue`, `src/views/ArticleEditorView.vue`
   - Action : Importer `ErrorBoundary` et wrapper les composants suivants :
     - `<ErrorBoundary fallback-message="Erreur dans le panneau SEO."><SeoPanel ... /></ErrorBoundary>`
@@ -214,7 +214,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     - `<ErrorBoundary fallback-message="Erreur dans le contenu de l'article."><ArticleStreamDisplay ... /></ErrorBoundary>`
   - Notes : Ne PAS wrapper le composant root ou le router-view (ça empêcherait la navigation). Wrapper uniquement les panneaux latéraux/secondaires.
 
-- [ ] **Task 12 : Tests ErrorBoundary**
+- [x] **Task 12 : Tests ErrorBoundary**
   - File : `tests/unit/components/error-boundary.test.ts`
   - Action : Créer les tests suivants :
     - `it('affiche le slot enfant quand pas d\'erreur')` — render un `<ErrorBoundary><p>OK</p></ErrorBoundary>`, vérifier que "OK" est visible
@@ -225,7 +225,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
 
 #### Bloc C — Router Guards & 404 (Priorité 3)
 
-- [ ] **Task 13 : Créer la page NotFoundView.vue**
+- [x] **Task 13 : Créer la page NotFoundView.vue**
   - File : `src/views/NotFoundView.vue`
   - Action : Créer une page 404 simple :
     - Titre "Page introuvable"
@@ -233,7 +233,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     - Bouton "Retour au tableau de bord" → `router.push('/')`
     - Style cohérent avec l'app (CSS variables `--color-*`)
 
-- [ ] **Task 14 : Ajouter la route catch-all 404**
+- [x] **Task 14 : Ajouter la route catch-all 404**
   - File : `src/router/index.ts`
   - Action : Ajouter en dernière position dans le tableau `routes` :
     ```typescript
@@ -245,7 +245,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     ```
   - Notes : DOIT être la dernière route. Les legacy redirects doivent rester avant.
 
-- [ ] **Task 15 : Ajouter `router.beforeEach()` pour valider les params**
+- [x] **Task 15 : Ajouter `router.beforeEach()` pour valider les params**
   - File : `src/router/index.ts`
   - Action : Ajouter un guard `beforeEach` qui :
     1. Pour les routes avec `:cocoonId` — vérifie que le param n'est pas vide et a un format valide (string non vide)
@@ -254,7 +254,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     4. Sinon → `return true` (laisser passer)
   - Notes : Validation **syntaxique uniquement** (pas d'appel API). On vérifie le format, pas l'existence en BDD. Raison : pas de latence ajoutée, pas de dépendance à l'API.
 
-- [ ] **Task 16 : Ajouter `router.onError()` pour les erreurs de lazy-loading**
+- [x] **Task 16 : Ajouter `router.onError()` pour les erreurs de lazy-loading**
   - File : `src/router/index.ts`
   - Action : Ajouter après le `beforeEach` :
     ```typescript
@@ -269,7 +269,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     ```
   - Notes : Les erreurs de lazy-loading arrivent quand un déploiement change les noms de fichiers pendant qu'un utilisateur navigue. Le rechargement complet résout le problème.
 
-- [ ] **Task 17 : Tests Router Guards**
+- [x] **Task 17 : Tests Router Guards**
   - File : `tests/unit/router/router-guards.test.ts`
   - Action : Créer les tests suivants :
     - `it('laisse passer les routes valides')` — `/cocoon/mon-cocoon/article/mon-slug` → OK
@@ -281,7 +281,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
 
 #### Bloc D — Système de Notifications Toast (Priorité 4)
 
-- [ ] **Task 18 : Créer le store `notificationStore`**
+- [x] **Task 18 : Créer le store `notificationStore`**
   - File : `src/stores/notification.store.ts`
   - Action : Créer un store Pinia avec :
     - Types : `NotificationType = 'success' | 'error' | 'warning' | 'info'`
@@ -297,14 +297,14 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     - Computed : `hasNotifications` — boolean
   - Notes : Les erreurs ont un auto-dismiss plus long (8s au lieu de 5s) car l'utilisateur a besoin de plus de temps pour les lire
 
-- [ ] **Task 19 : Créer le composable `useNotify()`**
+- [x] **Task 19 : Créer le composable `useNotify()`**
   - File : `src/composables/useNotify.ts`
   - Action : Créer un composable qui :
     - Importe `useNotificationStore`
     - Retourne `{ success, error, warning, info }` (les raccourcis du store)
   - Notes : Ce composable est un simple wrapper pour un import plus propre dans les composants. Usage : `const { success, error } = useNotify()`
 
-- [ ] **Task 20 : Créer le composant `ToastContainer.vue`**
+- [x] **Task 20 : Créer le composant `ToastContainer.vue`**
   - File : `src/components/shared/ToastContainer.vue`
   - Action : Créer un composant qui :
     - Importe `useNotificationStore`
@@ -318,12 +318,12 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     - Couleurs via CSS variables : `--color-success`, `--color-danger`, `--color-warning`, `--color-primary`
   - Notes : Max 5 toasts visibles en même temps. Si plus, les anciens sont retirés.
 
-- [ ] **Task 21 : Monter le ToastContainer dans App.vue**
+- [x] **Task 21 : Monter le ToastContainer dans App.vue**
   - File : `src/App.vue`
   - Action : Ajouter `<ToastContainer />` après `</main>` et avant `</div>`, import du composant
   - Notes : Le ToastContainer est rendu en dehors du flow principal, en position fixe
 
-- [ ] **Task 22 : Tests notification store**
+- [x] **Task 22 : Tests notification store**
   - File : `tests/unit/stores/notification.store.test.ts`
   - Action :
     - `it('démarre avec zéro notification')` — `notifications.length === 0`
@@ -334,7 +334,7 @@ L'application présente 4 lacunes critiques de sécurité et de stabilité :
     - `it('limite à 5 notifications')` — ajouter 7, vérifier que seules les 5 dernières sont présentes
     - `it('hasNotifications est réactif')` — vérifier computed
 
-- [ ] **Task 23 : Tests composable useNotify**
+- [x] **Task 23 : Tests composable useNotify**
   - File : `tests/unit/composables/useNotify.test.ts`
   - Action :
     - `it('expose les méthodes success/error/warning/info')` — vérifier que les 4 sont des fonctions
@@ -378,3 +378,9 @@ Aucune autre nouvelle dépendance. Tout le reste (ErrorBoundary, Router Guards, 
 - Connecter `useNotify()` aux stores existants pour afficher automatiquement les `error.value` en toast
 - Ajouter un mode "offline" au toast pour les erreurs réseau
 - Error Boundary avec rapport d'erreur (envoi au serveur pour monitoring)
+
+## Review Notes
+- Adversarial review completed
+- Findings: 34 total, 9 Critical/High fixed, remaining Low/Medium acknowledged
+- Resolution approach: auto-fix Critical + High findings
+- Key fixes applied: separated DOMPurify configs (strict/svg), fixed ErrorBoundary :key on slot, added chunk reload cap, added onScopeDispose for timer cleanup, validated all route params, static import for 404 page, improved a11y

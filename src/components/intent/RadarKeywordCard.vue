@@ -168,7 +168,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
       <div v-if="intentBadges.length > 0" class="radar-card__intents">
         <span v-for="(badge, i) in intentBadges" :key="'intent-' + i" class="intent-badge"
           :style="{ color: badge.color }" :title="badge.label"><svg viewBox="0 0 24 24" width="18" height="18"
-            v-html="badge.svg" /></span>
+            v-safe-svg="badge.svg" /></span>
       </div>
 
       <!-- KPIs -->

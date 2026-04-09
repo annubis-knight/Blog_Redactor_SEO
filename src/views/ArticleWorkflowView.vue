@@ -29,6 +29,7 @@ import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import SeoPanel from '@/components/panels/SeoPanel.vue'
 import GeoPanel from '@/components/panels/GeoPanel.vue'
 import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
+import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 
 const route = useRoute()
 const briefStore = useBriefStore()
@@ -358,11 +359,13 @@ onMounted(async () => {
 
               <OutlineRecap :outline="outlineStore.outline" />
 
-              <ArticleStreamDisplay
-                :streamed-text="editorStore.streamedText"
-                :content="editorStore.content"
-                :is-generating="editorStore.isGenerating"
-              />
+              <ErrorBoundary fallback-message="Erreur dans le contenu de l'article.">
+                <ArticleStreamDisplay
+                  :streamed-text="editorStore.streamedText"
+                  :content="editorStore.content"
+                  :is-generating="editorStore.isGenerating"
+                />
+              </ErrorBoundary>
 
               <div v-if="editorStore.lastArticleUsage || editorStore.lastMetaUsage" class="cost-badges">
                 <ApiCostBadge
@@ -415,16 +418,21 @@ onMounted(async () => {
         <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions)" class="panel-disabled-overlay">
           <p class="panel-disabled-msg">Generez un article pour activer le scoring</p>
         </div>
-        <SeoPanel v-if="showSeoPanel" />
-        <GeoPanel v-if="showGeoPanel" />
-        <LinkSuggestions
-          v-if="showLinkSuggestions"
-          :suggestions="linkSuggestions"
-          :is-suggesting="isSuggesting"
-          @dismiss="dismissSuggestion($event)"
-          @request="requestSuggestions"
-          @close="handleCloseLinkSuggestions"
-        />
+        <ErrorBoundary v-if="showSeoPanel" fallback-message="Erreur dans le panneau SEO.">
+          <SeoPanel />
+        </ErrorBoundary>
+        <ErrorBoundary v-if="showGeoPanel" fallback-message="Erreur dans le panneau géo.">
+          <GeoPanel />
+        </ErrorBoundary>
+        <ErrorBoundary v-if="showLinkSuggestions" fallback-message="Erreur dans les suggestions de liens.">
+          <LinkSuggestions
+            :suggestions="linkSuggestions"
+            :is-suggesting="isSuggesting"
+            @dismiss="dismissSuggestion($event)"
+            @request="requestSuggestions"
+            @close="handleCloseLinkSuggestions"
+          />
+        </ErrorBoundary>
         <div v-if="showIaBriefPanel" class="ia-brief-panel">
           <div class="ia-brief-header">
             <h3>Analyse IA du Brief</h3>
@@ -439,7 +447,7 @@ onMounted(async () => {
           <div
             v-if="parsedBriefMarkdown"
             class="ia-brief-content markdown-body"
-            v-html="parsedBriefMarkdown"
+            v-safe-html="parsedBriefMarkdown"
           />
           <p v-else-if="iaBriefStreaming" class="ia-brief-loading">Analyse en cours...</p>
           <p v-else class="ia-brief-empty">Cliquez sur "Relancer l'analyse" pour générer une analyse IA.</p>

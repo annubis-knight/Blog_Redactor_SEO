@@ -754,7 +754,7 @@ onUnmounted(() => abortAllAiStreams())
                 {{ carouselCurrentAiError }}
               </div>
               <div v-else-if="carouselParsedMarkdown" class="ai-panel-text ai-markdown"
-                v-html="carouselParsedMarkdown" />
+                v-safe-html="carouselParsedMarkdown" />
               <div v-else class="ai-panel-empty">
                 En attente des résultats de validation...
               </div>
@@ -931,7 +931,7 @@ onUnmounted(() => abortAllAiStreams())
               {{ aiError }}
             </div>
             <div v-else-if="aiChunks" class="ai-panel-text ai-markdown" data-testid="ai-panel-text"
-              v-html="parsedMarkdown" />
+              v-safe-html="parsedMarkdown" />
             <div v-else class="ai-panel-empty">
               En attente des résultats de validation...
             </div>
