@@ -177,14 +177,14 @@ describe('Font sizes — minimum readability', () => {
     expect(groupLabelMatch![1].trim()).toBe('0.75rem')
   })
 
-  it('SeoPanel meta-range uses 0.75rem (12px)', () => {
+  it('MetaCard meta-range uses 0.625rem (10px)', () => {
     const vue = readFileSync(
-      resolve(__dirname, '../../../src/components/panels/SeoPanel.vue'),
+      resolve(__dirname, '../../../src/components/panels/indicators/MetaCard.vue'),
       'utf-8',
     )
     const metaMatch = vue.match(/\.meta-range\s*\{[^}]*font-size:\s*([^;]+)/)
     expect(metaMatch).not.toBeNull()
-    expect(metaMatch![1].trim()).toBe('0.75rem')
+    expect(metaMatch![1].trim()).toBe('0.625rem')
   })
 
   it('GeoPanel metric-target uses 0.75rem (12px)', () => {
@@ -200,22 +200,26 @@ describe('Font sizes — minimum readability', () => {
 
 // ─── Panels — color token migration ──────────────────────────────────────
 
-describe('SeoPanel — color tokens', () => {
-  const vue = readFileSync(
-    resolve(__dirname, '../../../src/components/panels/SeoPanel.vue'),
+describe('SeoPanel indicator sub-components — color tokens', () => {
+  const sharedCss = readFileSync(
+    resolve(__dirname, '../../../src/components/panels/indicators/indicators-shared.css'),
+    'utf-8',
+  )
+  const metaVue = readFileSync(
+    resolve(__dirname, '../../../src/components/panels/indicators/MetaCard.vue'),
     'utf-8',
   )
 
-  it('uses --color-success for valid headings', () => {
-    expect(vue).toContain('var(--color-success)')
+  it('shared CSS uses --color-success for valid state', () => {
+    expect(sharedCss).toContain('--color-success')
   })
 
-  it('uses --color-error for validation errors', () => {
-    expect(vue).toContain('var(--color-error)')
+  it('shared CSS uses --color-error for error state', () => {
+    expect(sharedCss).toContain('--color-error')
   })
 
-  it('uses --color-warning for meta warnings', () => {
-    expect(vue).toContain('var(--color-warning)')
+  it('uses --color-warning for meta warnings (in shared CSS)', () => {
+    expect(sharedCss).toContain('--color-warning')
   })
 })
 

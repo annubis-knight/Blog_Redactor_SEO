@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed } from 'vue'
 import type { NlpTermResult } from '@shared/types/seo.types.js'
 
 const props = defineProps<{
@@ -14,6 +14,20 @@ const sortedTerms = computed(() =>
     return b.searchVolume - a.searchVolume
   }),
 )
+
+const copiedIndex = ref<number | null>(null)
+
+async function copyTerm(term: string, index: number) {
+  try {
+    await navigator.clipboard.writeText(term)
+    copiedIndex.value = index
+    setTimeout(() => {
+      if (copiedIndex.value === index) copiedIndex.value = null
+    }, 1500)
+  } catch {
+    // Clipboard API not available — silently fail
+  }
+}
 </script>
 
 <template>
@@ -26,10 +40,15 @@ const sortedTerms = computed(() =>
         v-for="(term, i) in sortedTerms"
         :key="i"
         class="nlp-tag"
-        :class="{ detected: term.isDetected }"
-        :title="`Vol: ${term.searchVolume}`"
+        :class="{ detected: term.isDetected, copied: copiedIndex === i }"
+        :title="`Cliquez pour copier « ${term.term} » (Vol: ${term.searchVolume})`"
+        role="button"
+        tabindex="0"
+        @click="copyTerm(term.term, i)"
+        @keydown.enter="copyTerm(term.term, i)"
+        @keydown.space.prevent="copyTerm(term.term, i)"
       >
-        {{ term.term }}
+        {{ copiedIndex === i ? 'Copié !' : term.term }}
       </span>
     </div>
     <div v-if="terms.length === 0" class="nlp-empty">
@@ -64,11 +83,33 @@ const sortedTerms = computed(() =>
   font-size: 0.6875rem;
   background: var(--color-border, #e5e7eb);
   color: var(--color-text-muted, #6b7280);
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+  user-select: none;
+}
+
+.nlp-tag:hover {
+  background: var(--color-text-muted, #6b7280);
+  color: white;
+}
+
+.nlp-tag:active {
+  transform: scale(0.95);
 }
 
 .nlp-tag.detected {
   background: var(--color-badge-green-bg);
   color: var(--color-badge-green-text);
+}
+
+.nlp-tag.detected:hover {
+  background: var(--color-badge-green-text);
+  color: white;
+}
+
+.nlp-tag.copied {
+  background: var(--color-primary, #2563eb);
+  color: white;
 }
 
 .nlp-empty {

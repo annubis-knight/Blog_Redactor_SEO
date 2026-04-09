@@ -6,18 +6,29 @@ import { log } from '@/utils/logger'
 import type { Keyword, ArticleKeywords } from '@shared/types/index.js'
 import type { RelatedKeyword } from '@shared/types/dataforseo.types.js'
 
+const scheduleIdle = typeof requestIdleCallback === 'function'
+  ? requestIdleCallback
+  : (cb: IdleRequestCallback) => setTimeout(cb, 0) as unknown as number
+
+const cancelIdle = typeof cancelIdleCallback === 'function'
+  ? cancelIdleCallback
+  : (id: number) => clearTimeout(id)
+
 /**
  * Composable that watches editor content and recalculates SEO score
- * with a 300ms debounce (NFR3).
+ * with a 300ms debounce + requestIdleCallback for non-blocking UI.
  */
 export function useSeoScoring(
   keywords: () => Keyword[],
   contentLengthTarget?: () => number | undefined,
   relatedKeywords?: () => RelatedKeyword[],
   articleKeywords?: () => ArticleKeywords | null,
+  articleSlug?: () => string | undefined,
 ) {
   const editorStore = useEditorStore()
   const seoStore = useSeoStore()
+
+  let pendingIdle: number | null = null
 
   const debouncedRecalculate = useDebounceFn(() => {
     const content = editorStore.content
@@ -29,6 +40,7 @@ export function useSeoScoring(
 
     const kws = keywords()
     const artKws = articleKeywords?.() ?? null
+    const slug = articleSlug?.()
 
     log.info('[seo-scoring] recalculating', {
       contentLength: content.length,
@@ -36,25 +48,32 @@ export function useSeoScoring(
       articleKeywords: artKws ? `capitaine=${artKws.capitaine}, lieutenants=${artKws.lieutenants.length}, lexique=${artKws.lexique.length}` : 'null',
     })
 
-    seoStore.recalculate(
-      content,
-      kws,
-      editorStore.metaTitle,
-      editorStore.metaDescription,
-      contentLengthTarget?.(),
-      relatedKeywords?.(),
-      artKws,
-    )
+    if (pendingIdle !== null) cancelIdle(pendingIdle)
 
-    if (seoStore.score) {
-      log.info('[seo-scoring] result', {
-        global: seoStore.score.global,
-        wordCount: seoStore.score.wordCount,
-        densities: seoStore.score.keywordDensities.map(d => `${d.keyword}: ${d.occurrences}x (${d.density}%)`),
-        metaTitle: `${seoStore.score.metaAnalysis.titleLength}ch`,
-        metaDesc: `${seoStore.score.metaAnalysis.descriptionLength}ch`,
-      })
-    }
+    pendingIdle = scheduleIdle(() => {
+      seoStore.recalculate(
+        content,
+        kws,
+        editorStore.metaTitle,
+        editorStore.metaDescription,
+        contentLengthTarget?.(),
+        relatedKeywords?.(),
+        artKws,
+        slug,
+      )
+
+      if (seoStore.score) {
+        log.info('[seo-scoring] result', {
+          global: seoStore.score.global,
+          wordCount: seoStore.score.wordCount,
+          densities: seoStore.score.keywordDensities.map(d => `${d.keyword}: ${d.occurrences}x (${d.density}%)`),
+          metaTitle: `${seoStore.score.metaAnalysis.titleLength}ch`,
+          metaDesc: `${seoStore.score.metaAnalysis.descriptionLength}ch`,
+        })
+      }
+
+      pendingIdle = null
+    })
   }, 300)
 
   watch(

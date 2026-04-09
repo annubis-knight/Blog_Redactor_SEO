@@ -66,6 +66,11 @@ export type {
   ChecklistItem,
   ChecklistLocation,
   NlpTermResult,
+  ImageAnalysis,
+  CannibalizationWarning,
+  KeywordLocationPresence,
+  LexiqueTermResult,
+  LexiqueCoverage,
 } from './seo.types.js'
 
 export type {

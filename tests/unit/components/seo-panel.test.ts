@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect, beforeEach, vi } from 'vitest'
+import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SeoPanel from '@/components/panels/SeoPanel.vue'
@@ -6,13 +7,33 @@ import { useSeoStore } from '@/stores/seo.store'
 import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import type { SeoScore } from '@shared/types/seo.types.js'
 
+// Mock useCannibalization to avoid real API calls — must return a real ref
+vi.mock('@/composables/useCannibalization', () => ({
+  useCannibalization: () => ({ warnings: ref([]), refresh: vi.fn() }),
+}))
+
+// Mock briefStore
+vi.mock('@/stores/brief.store', () => ({
+  useBriefStore: () => ({
+    briefData: null,
+    isRefreshing: false,
+    refreshDataForSeo: vi.fn(),
+  }),
+}))
+
 function makeSeoScore(overrides: Partial<SeoScore> = {}): SeoScore {
   return {
     global: 72,
     wordCount: 1500,
+    readingTimeMinutes: 8,
+    paragraphCount: 12,
+    imageAnalysis: { total: 3, withAlt: 2, withKeywordInAlt: 1 },
+    slugHasKeyword: true,
     hasArticleKeywords: true,
     keywordDensities: [],
-    headingValidation: { isValid: true, errors: [] },
+    headingValidation: { isValid: true, h1Count: 1, h2Count: 0, h3Count: 0, errors: [] },
+    lieutenantPresence: [],
+    lexiqueCoverage: null,
     metaAnalysis: {
       titleLength: 55,
       titleInRange: true,
@@ -22,7 +43,8 @@ function makeSeoScore(overrides: Partial<SeoScore> = {}): SeoScore {
       descriptionHasKeyword: true,
     },
     checklistItems: [
-      { keyword: 'seo', location: 'h1', label: 'H1 présent', isPresent: true, matchMethod: 'exact', matchScore: 1 },
+      { keyword: 'seo', location: 'h1', label: 'Titre H1', isPresent: true, matchMethod: 'exact', matchScore: 1 },
+      { keyword: 'seo', location: 'metaTitle', label: 'Meta title', isPresent: true, matchMethod: 'exact', matchScore: 1 },
     ],
     nlpTerms: [
       { term: 'optimisation', isDetected: true, searchVolume: 1000 },
@@ -45,38 +67,35 @@ describe('SeoPanel', () => {
     setActivePinia(createPinia())
   })
 
-  it('renders tab bar with 5 tabs when no score (empty state)', () => {
+  it('renders tab bar with 3 tabs when no score (empty state)', () => {
     const wrapper = mount(SeoPanel)
 
     expect(wrapper.find('.seo-tabs').exists()).toBe(true)
-    expect(wrapper.findAll('.seo-tab')).toHaveLength(5)
-    expect(wrapper.find('.na-text').exists()).toBe(true)
+    expect(wrapper.findAll('.seo-tab')).toHaveLength(3)
   })
 
-  it('renders tab bar with 5 tabs when score exists', () => {
+  it('renders tab bar with 3 tabs when score exists', () => {
     const seoStore = useSeoStore()
     seoStore.score = makeSeoScore()
 
     const wrapper = mount(SeoPanel)
 
     const tabs = wrapper.findAll('.seo-tab')
-    expect(tabs).toHaveLength(5)
+    expect(tabs).toHaveLength(3)
     expect(tabs[0].text()).toBe('Mots-clefs')
-    expect(tabs[1].text()).toBe('Hiérarchie')
-    expect(tabs[2].text()).toBe('Balises')
-    expect(tabs[3].text()).toBe('Checklist')
-    expect(tabs[4].text()).toBe('Facteurs')
+    expect(tabs[1].text()).toBe('Indicateurs')
+    expect(tabs[2].text()).toBe('SERP Data')
   })
 
-  it('shows Mots-clefs tab active by default', () => {
+  it('shows Indicateurs tab active by default', () => {
     const seoStore = useSeoStore()
     seoStore.score = makeSeoScore()
 
     const wrapper = mount(SeoPanel)
 
     const tabs = wrapper.findAll('.seo-tab')
-    expect(tabs[0].classes()).toContain('active')
-    expect(tabs[1].classes()).not.toContain('active')
+    expect(tabs[1].classes()).toContain('active')
+    expect(tabs[0].classes()).not.toContain('active')
   })
 
   it('has ARIA attributes on tab bar', () => {
@@ -87,10 +106,10 @@ describe('SeoPanel', () => {
 
     expect(wrapper.find('.seo-tabs').attributes('role')).toBe('tablist')
     const tabs = wrapper.findAll('.seo-tab')
-    expect(tabs[0].attributes('role')).toBe('tab')
-    expect(tabs[0].attributes('aria-selected')).toBe('true')
-    expect(tabs[1].attributes('aria-selected')).toBe('false')
-    expect(tabs[0].attributes('aria-controls')).toBe('seo-tabpanel-mots-clefs')
+    expect(tabs[1].attributes('role')).toBe('tab')
+    expect(tabs[1].attributes('aria-selected')).toBe('true')
+    expect(tabs[0].attributes('aria-selected')).toBe('false')
+    expect(tabs[1].attributes('aria-controls')).toBe('seo-tabpanel-indicateurs')
   })
 
   it('has role=tabpanel on tab panels', () => {
@@ -99,7 +118,7 @@ describe('SeoPanel', () => {
 
     const wrapper = mount(SeoPanel)
 
-    const panel = wrapper.find('#seo-tabpanel-mots-clefs')
+    const panel = wrapper.find('#seo-tabpanel-indicateurs')
     expect(panel.exists()).toBe(true)
     expect(panel.attributes('role')).toBe('tabpanel')
   })
@@ -111,29 +130,68 @@ describe('SeoPanel', () => {
     const wrapper = mount(SeoPanel)
 
     const tabs = wrapper.findAll('.seo-tab')
-    await tabs[1].trigger('click') // Hiérarchie
+    await tabs[0].trigger('click') // Mots-clefs
 
-    expect(tabs[1].classes()).toContain('active')
-    expect(wrapper.find('.validation-ok').isVisible()).toBe(true)
+    expect(tabs[0].classes()).toContain('active')
+    expect(wrapper.find('#seo-tabpanel-mots-clefs').isVisible()).toBe(true)
   })
 
-  it('shows keyword select dropdown in mots-clefs tab', () => {
+  it('shows score section with ScoreGauge and reading time', () => {
     const seoStore = useSeoStore()
     seoStore.score = makeSeoScore()
 
     const wrapper = mount(SeoPanel)
 
-    expect(wrapper.find('.keyword-select').exists()).toBe(true)
+    expect(wrapper.find('.score-section').exists()).toBe(true)
+    expect(wrapper.find('.word-count').text()).toContain('1500 mots')
+    expect(wrapper.find('.reading-time').text()).toContain('~8 min')
   })
 
-  it('shows warning when no article keywords and category is not NLP', () => {
+  it('shows warning when no article keywords defined', () => {
     const seoStore = useSeoStore()
-    seoStore.score = makeSeoScore()
+    seoStore.score = makeSeoScore({ hasArticleKeywords: false })
 
     const wrapper = mount(SeoPanel)
 
     const warnings = wrapper.findAll('.panel-warning')
     expect(warnings.length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('empty state: navigates between all tabs without crash', async () => {
+    const wrapper = mount(SeoPanel)
+
+    const tabs = wrapper.findAll('.seo-tab')
+    expect(tabs).toHaveLength(3)
+
+    for (let i = 0; i < tabs.length; i++) {
+      await tabs[i].trigger('click')
+      expect(tabs[i].classes()).toContain('active')
+    }
+
+    expect(wrapper.find('#seo-tabpanel-mots-clefs').exists()).toBe(true)
+    expect(wrapper.find('#seo-tabpanel-indicateurs').exists()).toBe(true)
+    expect(wrapper.find('#seo-tabpanel-serp-data').exists()).toBe(true)
+  })
+
+  it('renders indicator cards in indicateurs tab', () => {
+    const seoStore = useSeoStore()
+    seoStore.score = makeSeoScore()
+
+    const wrapper = mount(SeoPanel)
+
+    const cards = wrapper.findAll('.indicator-card')
+    expect(cards.length).toBe(4)
+  })
+
+  it('shows keyword select in mots-clefs tab', async () => {
+    const seoStore = useSeoStore()
+    seoStore.score = makeSeoScore()
+
+    const wrapper = mount(SeoPanel)
+
+    await wrapper.findAll('.seo-tab')[0].trigger('click')
+
+    expect(wrapper.find('.keyword-select').exists()).toBe(true)
   })
 
   it('shows NlpTerms when category is nlp', async () => {
@@ -142,13 +200,14 @@ describe('SeoPanel', () => {
 
     const wrapper = mount(SeoPanel)
 
+    await wrapper.findAll('.seo-tab')[0].trigger('click')
     const select = wrapper.find('.keyword-select')
     await select.setValue('nlp')
 
     expect(wrapper.find('.nlp-terms').exists()).toBe(true)
   })
 
-  it('shows KeywordListPanel when keywords exist and category is capitaine', () => {
+  it('shows SeoKeywordChip when keywords exist and category is capitaine', async () => {
     const seoStore = useSeoStore()
     seoStore.score = makeSeoScore()
 
@@ -163,139 +222,9 @@ describe('SeoPanel', () => {
 
     const wrapper = mount(SeoPanel)
 
-    expect(wrapper.find('.keyword-list-panel').exists()).toBe(true)
-    expect(wrapper.find('.keyword-tag').text()).toBe('seo-local')
-  })
+    await wrapper.findAll('.seo-tab')[0].trigger('click')
 
-  it('shows heading validation in hierarchie tab', async () => {
-    const seoStore = useSeoStore()
-    seoStore.score = makeSeoScore({
-      headingValidation: {
-        isValid: false,
-        errors: [{ message: 'H1 manquant', level: 1 }],
-      },
-    })
-
-    const wrapper = mount(SeoPanel)
-
-    await wrapper.findAll('.seo-tab')[1].trigger('click')
-
-    expect(wrapper.find('.validation-error').text()).toBe('H1 manquant')
-  })
-
-  it('shows meta analysis in balises tab', async () => {
-    const seoStore = useSeoStore()
-    seoStore.score = makeSeoScore()
-
-    const wrapper = mount(SeoPanel)
-
-    await wrapper.findAll('.seo-tab')[2].trigger('click')
-
-    const metaItems = wrapper.findAll('.meta-item')
-    expect(metaItems.length).toBeGreaterThanOrEqual(2)
-    expect(metaItems[0].find('.meta-label').text()).toBe('Title')
-  })
-
-  it('shows factors in facteurs tab', async () => {
-    const seoStore = useSeoStore()
-    seoStore.score = makeSeoScore()
-
-    const wrapper = mount(SeoPanel)
-
-    await wrapper.findAll('.seo-tab')[4].trigger('click')
-
-    const factorItems = wrapper.findAll('.factor-item')
-    expect(factorItems).toHaveLength(6)
-  })
-
-  it('does not crash when score is null and select is disabled (AC13)', () => {
-    const wrapper = mount(SeoPanel)
-
-    const select = wrapper.find('.keyword-select')
-    expect(select.exists()).toBe(true)
-    expect((select.element as HTMLSelectElement).disabled).toBe(true)
-  })
-
-  it('does not crash when keywords is null (AC12)', () => {
-    const seoStore = useSeoStore()
-    seoStore.score = makeSeoScore()
-
-    const wrapper = mount(SeoPanel)
-
-    expect(wrapper.find('.panel-warning').exists()).toBe(true)
-  })
-
-  it('shows score section with ScoreGauge', () => {
-    const seoStore = useSeoStore()
-    seoStore.score = makeSeoScore()
-
-    const wrapper = mount(SeoPanel)
-
-    expect(wrapper.find('.score-section').exists()).toBe(true)
-    expect(wrapper.find('.word-count').text()).toContain('1500 mots')
-  })
-
-  it('empty state has tab bar and disabled select', () => {
-    const wrapper = mount(SeoPanel)
-
-    expect(wrapper.findAll('.seo-tab')).toHaveLength(5)
-    expect(wrapper.find('.keyword-select').exists()).toBe(true)
-    expect((wrapper.find('.keyword-select').element as HTMLSelectElement).disabled).toBe(true)
-  })
-
-  it('empty state facteurs tab shows dashes', async () => {
-    const wrapper = mount(SeoPanel)
-
-    await wrapper.findAll('.seo-tab')[4].trigger('click')
-
-    const scores = wrapper.findAll('.factor-score')
-    expect(scores).toHaveLength(6)
-    for (const score of scores) {
-      expect(score.text()).toBe('-')
-    }
-  })
-
-  // F12: Empty state tab navigation
-  it('empty state: navigates between all tabs without crash', async () => {
-    const wrapper = mount(SeoPanel)
-
-    const tabs = wrapper.findAll('.seo-tab')
-    expect(tabs).toHaveLength(5)
-
-    // Click through all tabs sequentially
-    for (let i = 0; i < tabs.length; i++) {
-      await tabs[i].trigger('click')
-      expect(tabs[i].classes()).toContain('active')
-    }
-
-    // Verify each tabpanel was created (visitedTabs accumulated)
-    expect(wrapper.find('#seo-tabpanel-mots-clefs').exists()).toBe(true)
-    expect(wrapper.find('#seo-tabpanel-hierarchie').exists()).toBe(true)
-    expect(wrapper.find('#seo-tabpanel-balises').exists()).toBe(true)
-    expect(wrapper.find('#seo-tabpanel-checklist').exists()).toBe(true)
-    expect(wrapper.find('#seo-tabpanel-facteurs').exists()).toBe(true)
-  })
-
-  it('empty state: hierarchie tab shows N/A', async () => {
-    const wrapper = mount(SeoPanel)
-
-    await wrapper.findAll('.seo-tab')[1].trigger('click')
-
-    const panel = wrapper.find('#seo-tabpanel-hierarchie')
-    expect(panel.isVisible()).toBe(true)
-    expect(panel.find('.na-text').text()).toBe('N/A')
-  })
-
-  it('empty state: balises tab shows meta placeholders', async () => {
-    const wrapper = mount(SeoPanel)
-
-    await wrapper.findAll('.seo-tab')[2].trigger('click')
-
-    const panel = wrapper.find('#seo-tabpanel-balises')
-    expect(panel.isVisible()).toBe(true)
-    const metaItems = panel.findAll('.meta-item')
-    expect(metaItems).toHaveLength(2)
-    expect(metaItems[0].find('.meta-label').text()).toBe('Title')
-    expect(metaItems[0].find('.na-text').text()).toBe('-')
+    expect(wrapper.find('.seo-chip').exists()).toBe(true)
+    expect(wrapper.find('.chip-keyword').text()).toBe('seo-local')
   })
 })

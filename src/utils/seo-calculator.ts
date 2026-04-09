@@ -9,6 +9,10 @@ import type {
   ChecklistItem,
   ChecklistLocation,
   NlpTermResult,
+  ImageAnalysis,
+  KeywordLocationPresence,
+  LexiqueTermResult,
+  LexiqueCoverage,
 } from '@shared/types/seo.types.js'
 import type { RelatedKeyword } from '@shared/types/dataforseo.types.js'
 import {
@@ -110,9 +114,14 @@ export function validateHeadingHierarchy(htmlContent: string): HeadingValidation
     }
   }
 
+  const h2Count = headings.filter(h => h === 2).length
+  const h3Count = headings.filter(h => h === 3).length
+
   return {
     isValid: errors.length === 0,
     h1Count,
+    h2Count,
+    h3Count,
     errors,
   }
 }
@@ -221,6 +230,63 @@ function extractH2s(html: string): string {
   return texts.join(' ')
 }
 
+/**
+ * Count paragraph tags in HTML content.
+ */
+export function countParagraphs(html: string): number {
+  const matches = html.match(/<p[\s>]/gi)
+  return matches ? matches.length : 0
+}
+
+/**
+ * Analyze images in HTML: total count, alt attribute presence, keyword in alt.
+ */
+export function analyzeImages(html: string, pilierKeyword: string | null): ImageAnalysis {
+  const imgRegex = /<img\s[^>]*>/gi
+  const imgs = html.match(imgRegex) ?? []
+  let withAlt = 0
+  let withKeywordInAlt = 0
+
+  for (const img of imgs) {
+    const altMatch = /alt\s*=\s*["']([^"']*)["']/i.exec(img)
+    if (altMatch && altMatch[1]!.trim()) {
+      withAlt++
+      if (pilierKeyword) {
+        const altText = altMatch[1]!.toLowerCase()
+        const kw = pilierKeyword.toLowerCase()
+        if (altText.includes(kw)) {
+          withKeywordInAlt++
+        }
+      }
+    }
+  }
+
+  return { total: imgs.length, withAlt, withKeywordInAlt }
+}
+
+/**
+ * Check if the article slug contains the pilier keyword.
+ */
+export function checkSlugKeyword(slug: string | null | undefined, keyword: string | null): boolean {
+  if (!slug || !keyword) return false
+  const normalizedSlug = slug.toLowerCase().replace(/[-_]/g, ' ')
+  const normalizedKw = keyword.toLowerCase().replace(/[-_]/g, ' ')
+  return normalizedSlug.includes(normalizedKw)
+}
+
+/**
+ * Extract all image alt texts combined for checklist matching.
+ */
+function extractImageAlts(html: string): string {
+  const altRegex = /<img\s[^>]*alt\s*=\s*["']([^"']*)["'][^>]*>/gi
+  const texts: string[] = []
+  let m: RegExpExecArray | null
+  while ((m = altRegex.exec(html)) !== null) {
+    if (m[1]!.trim()) texts.push(m[1]!.toLowerCase())
+  }
+  return texts.join(' ')
+}
+
 const CHECKLIST_LOCATIONS: { location: ChecklistLocation; label: string }[] = [
   { location: 'metaTitle', label: 'Meta title' },
   { location: 'h1', label: 'Titre H1' },
@@ -228,7 +294,43 @@ const CHECKLIST_LOCATIONS: { location: ChecklistLocation; label: string }[] = [
   { location: 'metaDescription', label: 'Meta description' },
   { location: 'h2', label: 'Sous-titres H2' },
   { location: 'conclusion', label: 'Conclusion' },
+  { location: 'slug', label: 'URL / Slug' },
+  { location: 'imageAlt', label: 'Alt images' },
 ]
+
+/** Pre-extracted text content for each content location */
+export interface LocationTexts {
+  metaTitle: string
+  h1: string
+  intro: string
+  metaDescription: string
+  h2: string
+  conclusion: string
+  slug: string
+  imageAlt: string
+}
+
+/**
+ * Extract text from all 8 content locations once, for reuse across checklist,
+ * lieutenant presence, etc.
+ */
+export function extractLocationTexts(
+  htmlContent: string,
+  metaTitle: string | null,
+  metaDescription: string | null,
+  articleSlug?: string,
+): LocationTexts {
+  return {
+    metaTitle: metaTitle?.toLowerCase() ?? '',
+    h1: extractH1(htmlContent),
+    intro: extractIntro(htmlContent),
+    metaDescription: metaDescription?.toLowerCase() ?? '',
+    h2: extractH2s(htmlContent),
+    conclusion: extractConclusion(htmlContent),
+    slug: articleSlug?.toLowerCase().replace(/[-_]/g, ' ') ?? '',
+    imageAlt: extractImageAlts(htmlContent),
+  }
+}
 
 /**
  * Generate SEO checklist items for pilier keyword presence in key content locations.
@@ -239,20 +341,14 @@ export function generateSeoChecklist(
   keywords: Keyword[],
   metaTitle: string | null,
   metaDescription: string | null,
+  articleSlug?: string,
+  precomputedLocations?: LocationTexts,
 ): ChecklistItem[] {
   const pilierKeyword = keywords.find(kw => kw.type === 'Pilier')
   if (!pilierKeyword) return []
 
   const kw = pilierKeyword.keyword
-
-  const sectionTexts: Record<ChecklistLocation, string> = {
-    metaTitle: metaTitle?.toLowerCase() ?? '',
-    h1: extractH1(htmlContent),
-    intro: extractIntro(htmlContent),
-    metaDescription: metaDescription?.toLowerCase() ?? '',
-    h2: extractH2s(htmlContent),
-    conclusion: extractConclusion(htmlContent),
-  }
+  const sectionTexts = precomputedLocations ?? extractLocationTexts(htmlContent, metaTitle, metaDescription, articleSlug)
 
   return CHECKLIST_LOCATIONS.map(({ location, label }) => {
     const prepared = prepareText(sectionTexts[location])
@@ -266,6 +362,74 @@ export function generateSeoChecklist(
       matchScore: match.score,
     }
   })
+}
+
+/**
+ * Calculate lieutenant keyword presence across all content locations.
+ * For each lieutenant, returns which locations contain it.
+ */
+export function calculateLieutenantPresence(
+  lieutenants: string[],
+  locationTexts: LocationTexts,
+): KeywordLocationPresence[] {
+  const preparedLocations = Object.fromEntries(
+    CHECKLIST_LOCATIONS.map(({ location }) => [location, prepareText(locationTexts[location])]),
+  ) as Record<ChecklistLocation, PreparedText>
+
+  return lieutenants.map(keyword => {
+    const locations: ChecklistLocation[] = []
+    let bestMethod: KeywordLocationPresence['matchMethod'] = 'none'
+    let bestScore = 0
+
+    for (const { location } of CHECKLIST_LOCATIONS) {
+      const match = matchKeywordPrepared(preparedLocations[location], keyword)
+      if (match.detected) {
+        locations.push(location)
+        if (match.score > bestScore) {
+          bestScore = match.score
+          bestMethod = match.method
+        }
+      }
+    }
+
+    return {
+      keyword,
+      detected: locations.length > 0,
+      matchMethod: bestMethod,
+      matchScore: bestScore,
+      locations,
+    }
+  })
+}
+
+/**
+ * Calculate lexique vocabulary coverage against the full text.
+ * Each term is binary (present/absent). Returns coverage ratio.
+ */
+export function calculateLexiqueCoverage(
+  lexique: string[],
+  preparedFullText: PreparedText,
+): LexiqueCoverage | null {
+  if (lexique.length === 0) return null
+
+  const terms: LexiqueTermResult[] = lexique.map(term => {
+    const match = matchKeywordPrepared(preparedFullText, term)
+    return {
+      term,
+      detected: match.detected,
+      occurrences: match.occurrences,
+      recommended: 1,
+      matchMethod: match.method,
+    }
+  })
+
+  const detected = terms.filter(t => t.detected).length
+  return {
+    total: lexique.length,
+    detected,
+    ratio: lexique.length > 0 ? detected / lexique.length : 0,
+    terms,
+  }
 }
 
 /**
@@ -300,6 +464,7 @@ export function calculateSeoScore(
   contentLengthTarget?: number,
   relatedKeywords?: RelatedKeyword[],
   articleKeywords?: ArticleKeywords,
+  articleSlug?: string,
 ): SeoScore {
   const plainText = stripHtml(htmlContent)
   const wordCount = countWords(plainText)
@@ -403,12 +568,31 @@ export function calculateSeoScore(
     factors.contentLengthScore * SEO_SCORE_WEIGHTS.contentLength,
   )
 
+  // New indicators
+  const readingTimeMinutes = Math.max(1, Math.round(wordCount / 200))
+  const paragraphCount = countParagraphs(htmlContent)
+  const imageAnalysis = analyzeImages(htmlContent, pilierKeyword)
+  const slugHasKeyword = checkSlugKeyword(articleSlug, pilierKeyword)
+
+  // Extract location texts once for reuse
+  const locationTexts = extractLocationTexts(htmlContent, metaTitle, metaDescription, articleSlug)
+
   // Checklist & NLP terms
   const checklistKeywords = articleKeywords?.capitaine
     ? [{ keyword: articleKeywords.capitaine, cocoonName: '', type: 'Pilier' as const, status: 'validated' as const }]
     : keywords
-  const checklistItems = generateSeoChecklist(htmlContent, checklistKeywords, metaTitle, metaDescription)
+  const checklistItems = generateSeoChecklist(htmlContent, checklistKeywords, metaTitle, metaDescription, articleSlug, locationTexts)
   const nlpTerms = relatedKeywords ? detectNlpTerms(htmlContent, relatedKeywords) : []
+
+  // Lieutenant presence across locations
+  const lieutenantPresence = articleKeywords?.lieutenants
+    ? calculateLieutenantPresence(articleKeywords.lieutenants, locationTexts)
+    : []
+
+  // Lexique coverage
+  const lexiqueCoverage = articleKeywords?.lexique
+    ? calculateLexiqueCoverage(articleKeywords.lexique, prepared)
+    : null
 
   return {
     global: Math.min(100, Math.max(0, global)),
@@ -417,8 +601,14 @@ export function calculateSeoScore(
     headingValidation,
     metaAnalysis,
     wordCount,
+    readingTimeMinutes,
+    paragraphCount,
+    imageAnalysis,
+    slugHasKeyword,
     checklistItems,
     nlpTerms,
     hasArticleKeywords,
+    lieutenantPresence,
+    lexiqueCoverage,
   }
 }

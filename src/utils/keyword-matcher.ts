@@ -50,20 +50,49 @@ const FRENCH_STOP_WORDS = new Set([
 // French suffix normalisation (lightweight — no external lib)
 // ---------------------------------------------------------------------------
 
+// Derivational suffixes for Phase 2 stemming (longest first to avoid partial matches)
+const DERIVATIONAL_SUFFIXES = [
+  'isation', 'ification',
+  'tion', 'sion',
+  'ment',
+  'ance', 'ence',
+  'euse', 'eur',
+  'age',
+  'ible', 'able',
+  'iser', 'ifier',  // before 'er'/'ir' so optimiser→optim, simplifier→simpl
+  'er', 'ir',
+  'ant', 'ent',
+]
+
+/** Strip diacritics for suffix matching only (é→e, è→e, etc.) */
+function stripAccents(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+}
+
+/** Check if a character is a French vowel (including accented forms). */
+function isVowel(ch: string): boolean {
+  return 'aeiouyàâäéèêëïîôùûüÿ'.includes(ch)
+}
+
 /**
- * Normalise a French word by stripping common suffixes.
- * Good enough to match plurals, feminine forms, and light conjugation.
+ * Normalise a French word by stripping inflectional + derivational suffixes.
+ *
+ * Phase 1 — Inflectional: plurals (-s, -x), feminine (-e), consonant dedup.
+ * Phase 2 — Derivational: -tion, -ment, -eur, -er, -ir, etc.
+ * Phase 3 — Trailing vowel after derivational stripping.
  *
  * Examples:
- *   étapes   → étap   (s then e)
- *   étape    → étap   (e)
- *   professionnelle → professionnel (e)
- *   créations → création (s)
- *   réseaux   → réseau (x)
+ *   créer → cré, création → cré, créé → cré
+ *   développement → développ, développer → développ
+ *   optimisation → optim, optimiser → optim
+ *   professionnelle → professionnel (unchanged by phase 2)
+ *   étapes → étap (unchanged by phase 2)
  */
 export function normalizeFrench(word: string): string {
   let w = word
   if (w.length <= 3) return w
+
+  // --- Phase 1: Inflectional ---
 
   // Strip trailing 's' (plural) – but not 'ss' endings like "stress"
   if (w.length > 3 && w.endsWith('s') && !w.endsWith('ss')) {
@@ -77,9 +106,30 @@ export function normalizeFrench(word: string): string {
   if (w.length > 4 && w.endsWith('e') && !w.endsWith('ee') && !w.endsWith('èe')) {
     w = w.slice(0, -1)
   }
-
   // Deduplicate trailing consonant after feminine stripping (professionnell → professionnel)
   if (w.length > 4 && w[w.length - 1] === w[w.length - 2]) {
+    w = w.slice(0, -1)
+  }
+
+  // --- Phase 2: Derivational suffix stripping ---
+
+  let derivationalStripped = false
+  const wNorm = stripAccents(w)
+
+  for (const suffix of DERIVATIONAL_SUFFIXES) {
+    if (wNorm.length > suffix.length + 2 && wNorm.endsWith(suffix)) {
+      const root = w.slice(0, w.length - suffix.length)
+      if (root.length >= 3) {
+        w = root
+        derivationalStripped = true
+        break
+      }
+    }
+  }
+
+  // --- Phase 3: Strip trailing vowel after derivational stripping ---
+
+  if (derivationalStripped && w.length > 3 && isVowel(w[w.length - 1]!)) {
     w = w.slice(0, -1)
   }
 

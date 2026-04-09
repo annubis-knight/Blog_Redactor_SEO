@@ -7,7 +7,14 @@ import {
   calculateSeoScore,
   generateSeoChecklist,
   detectNlpTerms,
+  countParagraphs,
+  analyzeImages,
+  checkSlugKeyword,
+  extractLocationTexts,
+  calculateLieutenantPresence,
+  calculateLexiqueCoverage,
 } from '../../../src/utils/seo-calculator'
+import { prepareText } from '../../../src/utils/keyword-matcher'
 import type { Keyword, ArticleKeywords } from '../../../shared/types/index'
 import type { RelatedKeyword } from '../../../shared/types/dataforseo.types'
 
@@ -96,6 +103,8 @@ describe('seo-calculator', () => {
       const result = validateHeadingHierarchy(html)
       expect(result.isValid).toBe(true)
       expect(result.h1Count).toBe(1)
+      expect(result.h2Count).toBe(2)
+      expect(result.h3Count).toBe(1)
       expect(result.errors).toHaveLength(0)
     })
 
@@ -104,6 +113,8 @@ describe('seo-calculator', () => {
       const result = validateHeadingHierarchy(html)
       expect(result.isValid).toBe(false)
       expect(result.h1Count).toBe(0)
+      expect(result.h2Count).toBe(1)
+      expect(result.h3Count).toBe(1)
       expect(result.errors.some(e => e.message.includes('Aucun H1'))).toBe(true)
     })
 
@@ -112,6 +123,7 @@ describe('seo-calculator', () => {
       const result = validateHeadingHierarchy(html)
       expect(result.isValid).toBe(false)
       expect(result.h1Count).toBe(2)
+      expect(result.h2Count).toBe(1)
       expect(result.errors.some(e => e.message.includes('2 H1'))).toBe(true)
     })
 
@@ -119,6 +131,7 @@ describe('seo-calculator', () => {
       const html = '<h1>Title</h1><h3>Subsection</h3>'
       const result = validateHeadingHierarchy(html)
       expect(result.isValid).toBe(false)
+      expect(result.h3Count).toBe(1)
       expect(result.errors.some(e => e.message.includes('Saut de niveau'))).toBe(true)
     })
 
@@ -126,6 +139,8 @@ describe('seo-calculator', () => {
       const result = validateHeadingHierarchy('')
       expect(result.isValid).toBe(false)
       expect(result.h1Count).toBe(0)
+      expect(result.h2Count).toBe(0)
+      expect(result.h3Count).toBe(0)
     })
   })
 
@@ -312,10 +327,10 @@ describe('seo-calculator', () => {
       { keyword: 'seo', cocoonName: 'SEO', type: 'Pilier' },
     ]
 
-    it('returns 6 checklist items for pilier keyword', () => {
+    it('returns 8 checklist items for pilier keyword (6 original + slug + imageAlt)', () => {
       const html = '<h1>SEO Guide</h1><h2>SEO Tips</h2><p>Le seo est important.</p><p>Conclusion avec seo.</p>'
       const result = generateSeoChecklist(html, keywords, 'Meta SEO', 'Description SEO')
-      expect(result).toHaveLength(6)
+      expect(result).toHaveLength(8)
     })
 
     it('detects keyword in meta title', () => {
@@ -420,6 +435,357 @@ describe('seo-calculator', () => {
       const html = '<p>Le RÉFÉRENCEMENT est important.</p>'
       const result = detectNlpTerms(html, relatedKeywords)
       expect(result.find(r => r.term === 'référencement')?.isDetected).toBe(true)
+    })
+  })
+
+  describe('countParagraphs', () => {
+    it('counts <p> tags in HTML', () => {
+      const html = '<p>First</p><p>Second</p><p>Third</p>'
+      expect(countParagraphs(html)).toBe(3)
+    })
+
+    it('returns 0 for no paragraphs', () => {
+      expect(countParagraphs('<div>content</div>')).toBe(0)
+    })
+
+    it('returns 0 for empty string', () => {
+      expect(countParagraphs('')).toBe(0)
+    })
+
+    it('handles <p> with attributes', () => {
+      const html = '<p class="intro">First</p><p data-x="y">Second</p>'
+      expect(countParagraphs(html)).toBe(2)
+    })
+
+    it('is case-insensitive', () => {
+      const html = '<P>Upper</P><p>Lower</p>'
+      expect(countParagraphs(html)).toBe(2)
+    })
+  })
+
+  describe('analyzeImages', () => {
+    it('counts total images', () => {
+      const html = '<img src="a.jpg" alt="photo"><img src="b.jpg"><img src="c.jpg" alt="desc">'
+      const result = analyzeImages(html, null)
+      expect(result.total).toBe(3)
+    })
+
+    it('counts images with alt attribute', () => {
+      const html = '<img src="a.jpg" alt="photo"><img src="b.jpg"><img src="c.jpg" alt="">'
+      const result = analyzeImages(html, null)
+      expect(result.withAlt).toBe(1) // only non-empty alt
+    })
+
+    it('counts images with keyword in alt', () => {
+      const html = '<img src="a.jpg" alt="guide seo complet"><img src="b.jpg" alt="photo random">'
+      const result = analyzeImages(html, 'seo')
+      expect(result.withKeywordInAlt).toBe(1)
+    })
+
+    it('is case-insensitive for keyword matching', () => {
+      const html = '<img src="a.jpg" alt="Guide SEO Complet">'
+      const result = analyzeImages(html, 'seo')
+      expect(result.withKeywordInAlt).toBe(1)
+    })
+
+    it('returns zeros for no images', () => {
+      const result = analyzeImages('<p>No images here</p>', 'seo')
+      expect(result.total).toBe(0)
+      expect(result.withAlt).toBe(0)
+      expect(result.withKeywordInAlt).toBe(0)
+    })
+
+    it('handles null keyword', () => {
+      const html = '<img src="a.jpg" alt="photo">'
+      const result = analyzeImages(html, null)
+      expect(result.withKeywordInAlt).toBe(0)
+      expect(result.withAlt).toBe(1)
+    })
+  })
+
+  describe('checkSlugKeyword', () => {
+    it('returns true when keyword is in slug', () => {
+      expect(checkSlugKeyword('guide-seo-complet', 'seo')).toBe(true)
+    })
+
+    it('returns false when keyword is not in slug', () => {
+      expect(checkSlugKeyword('guide-marketing', 'seo')).toBe(false)
+    })
+
+    it('is case-insensitive', () => {
+      expect(checkSlugKeyword('Guide-SEO', 'seo')).toBe(true)
+    })
+
+    it('normalizes hyphens and underscores', () => {
+      expect(checkSlugKeyword('design-web-moderne', 'design web')).toBe(true)
+      expect(checkSlugKeyword('design_web_moderne', 'design web')).toBe(true)
+    })
+
+    it('returns false for null slug', () => {
+      expect(checkSlugKeyword(null, 'seo')).toBe(false)
+    })
+
+    it('returns false for null keyword', () => {
+      expect(checkSlugKeyword('guide-seo', null)).toBe(false)
+    })
+
+    it('returns false for undefined slug', () => {
+      expect(checkSlugKeyword(undefined, 'seo')).toBe(false)
+    })
+  })
+
+  describe('calculateSeoScore — new fields', () => {
+    const keywords: Keyword[] = [
+      { keyword: 'seo', cocoonName: 'SEO', type: 'Pilier' },
+    ]
+
+    it('includes readingTimeMinutes', () => {
+      const html = '<h1>Title</h1><p>' + 'word '.repeat(400) + '</p>'
+      const result = calculateSeoScore(html, keywords, null, null)
+      expect(result.readingTimeMinutes).toBeGreaterThan(0)
+      // ~401 words / 200 = ~2 min
+      expect(result.readingTimeMinutes).toBeCloseTo(2, 0)
+    })
+
+    it('includes paragraphCount', () => {
+      const html = '<h1>Title</h1><p>One</p><p>Two</p><p>Three</p>'
+      const result = calculateSeoScore(html, keywords, null, null)
+      expect(result.paragraphCount).toBe(3)
+    })
+
+    it('includes imageAnalysis', () => {
+      const articleKw: ArticleKeywords = {
+        articleSlug: 'test',
+        capitaine: 'seo',
+        lieutenants: [],
+        lexique: [],
+      }
+      const html = '<h1>SEO</h1><p>text</p><img src="a.jpg" alt="guide seo"><img src="b.jpg">'
+      const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, articleKw, 'test')
+      expect(result.imageAnalysis.total).toBe(2)
+      expect(result.imageAnalysis.withAlt).toBe(1)
+      expect(result.imageAnalysis.withKeywordInAlt).toBe(1)
+    })
+
+    it('includes slugHasKeyword', () => {
+      const articleKw: ArticleKeywords = {
+        articleSlug: 'guide-seo',
+        capitaine: 'seo',
+        lieutenants: [],
+        lexique: [],
+      }
+      const html = '<h1>SEO</h1><p>text</p>'
+      const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, articleKw, 'guide-seo')
+      expect(result.slugHasKeyword).toBe(true)
+    })
+
+    it('slugHasKeyword is false when keyword not in slug', () => {
+      const articleKw: ArticleKeywords = {
+        articleSlug: 'guide-marketing',
+        capitaine: 'seo',
+        lieutenants: [],
+        lexique: [],
+      }
+      const html = '<h1>SEO</h1><p>text</p>'
+      const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, articleKw, 'guide-marketing')
+      expect(result.slugHasKeyword).toBe(false)
+    })
+  })
+
+  describe('generateSeoChecklist — extended locations', () => {
+    const keywords: Keyword[] = [
+      { keyword: 'seo', cocoonName: 'SEO', type: 'Pilier' },
+    ]
+
+    it('includes slug location in checklist', () => {
+      const html = '<h1>SEO Guide</h1><p>Content about seo.</p>'
+      const result = generateSeoChecklist(html, keywords, null, null, 'guide-seo')
+      const slugItem = result.find(r => r.location === 'slug')
+      expect(slugItem).toBeDefined()
+      expect(slugItem?.isPresent).toBe(true)
+    })
+
+    it('marks slug absent when keyword not in slug', () => {
+      const html = '<h1>SEO Guide</h1><p>Content about seo.</p>'
+      const result = generateSeoChecklist(html, keywords, null, null, 'guide-marketing')
+      const slugItem = result.find(r => r.location === 'slug')
+      expect(slugItem).toBeDefined()
+      expect(slugItem?.isPresent).toBe(false)
+    })
+
+    it('includes imageAlt location in checklist', () => {
+      const html = '<h1>SEO Guide</h1><p>Content.</p><img src="a.jpg" alt="guide seo complet">'
+      const result = generateSeoChecklist(html, keywords, null, null)
+      const imgItem = result.find(r => r.location === 'imageAlt')
+      expect(imgItem).toBeDefined()
+      expect(imgItem?.isPresent).toBe(true)
+    })
+
+    it('marks imageAlt absent when keyword not in any alt', () => {
+      const html = '<h1>SEO Guide</h1><p>Content.</p><img src="a.jpg" alt="random photo">'
+      const result = generateSeoChecklist(html, keywords, null, null)
+      const imgItem = result.find(r => r.location === 'imageAlt')
+      expect(imgItem).toBeDefined()
+      expect(imgItem?.isPresent).toBe(false)
+    })
+
+    it('returns 8 checklist items with all locations', () => {
+      const html = '<h1>SEO Guide</h1><h2>SEO Tips</h2><p>Le seo est important.</p><p>Conclusion avec seo.</p><img src="a.jpg" alt="seo">'
+      const result = generateSeoChecklist(html, keywords, 'Meta SEO', 'Description SEO', 'guide-seo')
+      expect(result).toHaveLength(8)
+      const locations = result.map(r => r.location)
+      expect(locations).toContain('metaTitle')
+      expect(locations).toContain('h1')
+      expect(locations).toContain('intro')
+      expect(locations).toContain('metaDescription')
+      expect(locations).toContain('h2')
+      expect(locations).toContain('conclusion')
+      expect(locations).toContain('slug')
+      expect(locations).toContain('imageAlt')
+    })
+  })
+
+  describe('calculateLieutenantPresence', () => {
+    it('detects lieutenant in multiple locations', () => {
+      const html = '<h1>UX design moderne</h1><h2>UX design avancé</h2><p>Intro sur le ux design.</p><p>Conclusion.</p>'
+      const locations = extractLocationTexts(html, 'Meta UX design', null)
+      const result = calculateLieutenantPresence(['ux design'], locations)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].keyword).toBe('ux design')
+      expect(result[0].detected).toBe(true)
+      expect(result[0].locations).toContain('h1')
+      expect(result[0].locations).toContain('h2')
+      expect(result[0].locations).toContain('metaTitle')
+    })
+
+    it('returns detected false when lieutenant is absent', () => {
+      const html = '<h1>Design web</h1><p>Le design web est important.</p>'
+      const locations = extractLocationTexts(html, null, null)
+      const result = calculateLieutenantPresence(['ergonomie mobile'], locations)
+
+      expect(result).toHaveLength(1)
+      expect(result[0].detected).toBe(false)
+      expect(result[0].locations).toHaveLength(0)
+    })
+
+    it('handles multiple lieutenants with mixed presence', () => {
+      const html = '<h1>Design web</h1><h2>Responsive</h2><p>Le design web responsive est essentiel.</p><p>Conclusion.</p>'
+      const locations = extractLocationTexts(html, null, null)
+      const result = calculateLieutenantPresence(['design web', 'responsive', 'ergonomie'], locations)
+
+      expect(result).toHaveLength(3)
+      expect(result.find(r => r.keyword === 'design web')?.detected).toBe(true)
+      expect(result.find(r => r.keyword === 'responsive')?.detected).toBe(true)
+      expect(result.find(r => r.keyword === 'ergonomie')?.detected).toBe(false)
+    })
+
+    it('returns empty array for empty lieutenants list', () => {
+      const locations = extractLocationTexts('<h1>T</h1><p>c</p>', null, null)
+      const result = calculateLieutenantPresence([], locations)
+      expect(result).toHaveLength(0)
+    })
+  })
+
+  describe('calculateLexiqueCoverage', () => {
+    it('returns null for empty lexique', () => {
+      const prepared = prepareText('some text')
+      const result = calculateLexiqueCoverage([], prepared)
+      expect(result).toBeNull()
+    })
+
+    it('calculates coverage ratio correctly', () => {
+      const text = 'Le design web responsive est essentiel pour une bonne interface utilisateur moderne et ergonomique'
+      const prepared = prepareText(text)
+      const result = calculateLexiqueCoverage(['design', 'interface', 'ergonomique', 'typographie'], prepared)
+
+      expect(result).not.toBeNull()
+      expect(result!.total).toBe(4)
+      expect(result!.detected).toBe(3) // design, interface, ergonomique present; typographie absent
+      expect(result!.ratio).toBeCloseTo(0.75)
+    })
+
+    it('returns 0 ratio when no terms are detected', () => {
+      const prepared = prepareText('un texte sans rapport')
+      const result = calculateLexiqueCoverage(['javascript', 'python', 'rust'], prepared)
+
+      expect(result).not.toBeNull()
+      expect(result!.detected).toBe(0)
+      expect(result!.ratio).toBe(0)
+    })
+
+    it('returns 1 ratio when all terms are detected', () => {
+      const prepared = prepareText('le seo et le référencement naturel sont importants')
+      const result = calculateLexiqueCoverage(['seo', 'référencement'], prepared)
+
+      expect(result).not.toBeNull()
+      expect(result!.detected).toBe(2)
+      expect(result!.ratio).toBe(1)
+    })
+
+    it('includes occurrences and matchMethod per term', () => {
+      const prepared = prepareText('le seo est important pour le seo de votre site')
+      const result = calculateLexiqueCoverage(['seo', 'marketing'], prepared)
+
+      expect(result).not.toBeNull()
+      const seoTerm = result!.terms.find(t => t.term === 'seo')
+      expect(seoTerm?.detected).toBe(true)
+      expect(seoTerm?.occurrences).toBeGreaterThanOrEqual(1)
+      expect(seoTerm?.matchMethod).toBe('exact')
+      expect(seoTerm?.recommended).toBe(1)
+
+      const marketingTerm = result!.terms.find(t => t.term === 'marketing')
+      expect(marketingTerm?.detected).toBe(false)
+      expect(marketingTerm?.matchMethod).toBe('none')
+    })
+  })
+
+  describe('calculateSeoScore — lieutenant & lexique fields', () => {
+    const keywords: Keyword[] = [
+      { keyword: 'seo', cocoonName: 'SEO', type: 'Pilier' },
+    ]
+
+    it('includes lieutenantPresence when articleKeywords has lieutenants', () => {
+      const articleKw: ArticleKeywords = {
+        articleSlug: 'test',
+        capitaine: 'design web',
+        lieutenants: ['ux design', 'responsive'],
+        lexique: [],
+      }
+      const html = '<h1>Design web</h1><h2>UX design tips</h2><p>Le design web et le ux design sont essentiels. Le responsive est important.</p><p>Conclusion.</p>'
+      const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, articleKw)
+
+      expect(result.lieutenantPresence).toHaveLength(2)
+      expect(result.lieutenantPresence.find(l => l.keyword === 'ux design')?.detected).toBe(true)
+      expect(result.lieutenantPresence.find(l => l.keyword === 'responsive')?.detected).toBe(true)
+    })
+
+    it('returns empty lieutenantPresence when no articleKeywords', () => {
+      const html = '<h1>T</h1><p>text</p>'
+      const result = calculateSeoScore(html, keywords, null, null)
+      expect(result.lieutenantPresence).toHaveLength(0)
+    })
+
+    it('includes lexiqueCoverage when articleKeywords has lexique', () => {
+      const articleKw: ArticleKeywords = {
+        articleSlug: 'test',
+        capitaine: 'design web',
+        lieutenants: [],
+        lexique: ['interface', 'ergonomie', 'typographie'],
+      }
+      const html = '<h1>Design web</h1><p>L\'interface et l\'ergonomie sont importants pour le design web.</p>'
+      const result = calculateSeoScore(html, keywords, null, null, undefined, undefined, articleKw)
+
+      expect(result.lexiqueCoverage).not.toBeNull()
+      expect(result.lexiqueCoverage!.total).toBe(3)
+      expect(result.lexiqueCoverage!.detected).toBe(2) // interface + ergonomie
+      expect(result.lexiqueCoverage!.terms).toHaveLength(3)
+    })
+
+    it('returns null lexiqueCoverage when no articleKeywords', () => {
+      const html = '<h1>T</h1><p>text</p>'
+      const result = calculateSeoScore(html, keywords, null, null)
+      expect(result.lexiqueCoverage).toBeNull()
     })
   })
 })

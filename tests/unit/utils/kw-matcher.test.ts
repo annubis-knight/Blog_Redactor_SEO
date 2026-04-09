@@ -3,11 +3,28 @@ import { matchKeyword, prepareText, matchKeywordPrepared, normalizeFrench } from
 
 describe('keyword-matcher', () => {
   it('normalizeFrench strips plural and feminine correctly', () => {
-    expect(normalizeFrench('créations')).toBe('création')
-    expect(normalizeFrench('réseaux')).toBe('réseau')
     expect(normalizeFrench('professionnelle')).toBe('professionnel')
     expect(normalizeFrench('étapes')).toBe('étap')
     expect(normalizeFrench('seo')).toBe('seo')
+  })
+
+  it('normalizeFrench derivational stemming — verb/noun pairs converge', () => {
+    // créer / création / créé → cré
+    expect(normalizeFrench('créer')).toBe('cré')
+    expect(normalizeFrench('création')).toBe('cré')
+    expect(normalizeFrench('créé')).toBe('créé') // length ≤ 4 after inflectional, stays
+    expect(normalizeFrench('créations')).toBe('cré')
+
+    // développement / développer → développ
+    expect(normalizeFrench('développement')).toBe('développ')
+    expect(normalizeFrench('développer')).toBe('développ')
+
+    // optimisation / optimiser → optim
+    expect(normalizeFrench('optimisation')).toBe('optim')
+    expect(normalizeFrench('optimiser')).toBe('optim')
+
+    // réseaux → réseau (plural strip only, no derivational suffix matches)
+    expect(normalizeFrench('réseaux')).toBe('réseau')
   })
 
   it('exact match detects keyword and semantic match detects long-tail French', () => {

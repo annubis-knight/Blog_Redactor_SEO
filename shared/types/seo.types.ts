@@ -25,6 +25,8 @@ export interface HeadingError {
 export interface HeadingValidation {
   isValid: boolean
   h1Count: number
+  h2Count: number
+  h3Count: number
   errors: HeadingError[]
 }
 
@@ -49,7 +51,7 @@ export interface SeoFactors {
 }
 
 /** SEO checklist item — tracks keyword presence in a specific content location */
-export type ChecklistLocation = 'metaTitle' | 'h1' | 'intro' | 'metaDescription' | 'h2' | 'conclusion'
+export type ChecklistLocation = 'metaTitle' | 'h1' | 'intro' | 'metaDescription' | 'h2' | 'conclusion' | 'slug' | 'imageAlt'
 
 export interface ChecklistItem {
   keyword: string
@@ -67,6 +69,46 @@ export interface NlpTermResult {
   isDetected: boolean
 }
 
+/** Image alt text analysis */
+export interface ImageAnalysis {
+  total: number
+  withAlt: number
+  withKeywordInAlt: number
+}
+
+/** Cannibalization warning for SeoPanel alerts */
+export interface CannibalizationWarning {
+  keyword: string
+  conflictingSlug: string
+  conflictingTitle: string
+}
+
+/** Presence of a lieutenant keyword across content locations */
+export interface KeywordLocationPresence {
+  keyword: string
+  detected: boolean
+  matchMethod: MatchMethod
+  matchScore: number
+  locations: ChecklistLocation[]
+}
+
+/** Detection result for a single lexique term */
+export interface LexiqueTermResult {
+  term: string
+  detected: boolean
+  occurrences: number
+  recommended: number
+  matchMethod: MatchMethod
+}
+
+/** Overall lexique coverage stats */
+export interface LexiqueCoverage {
+  total: number
+  detected: number
+  ratio: number
+  terms: LexiqueTermResult[]
+}
+
 /** Complete SEO score result */
 export interface SeoScore {
   global: number
@@ -75,8 +117,16 @@ export interface SeoScore {
   headingValidation: HeadingValidation
   metaAnalysis: MetaTagAnalysis
   wordCount: number
+  readingTimeMinutes: number
+  paragraphCount: number
+  imageAnalysis: ImageAnalysis
+  slugHasKeyword: boolean
   checklistItems: ChecklistItem[]
   nlpTerms: NlpTermResult[]
   /** True when article-level keywords (Capitaine/Lieutenants) are defined */
   hasArticleKeywords: boolean
+  /** Presence of each lieutenant keyword by content location */
+  lieutenantPresence: KeywordLocationPresence[]
+  /** Lexique vocabulary coverage stats */
+  lexiqueCoverage: LexiqueCoverage | null
 }
