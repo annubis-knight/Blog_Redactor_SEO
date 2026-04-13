@@ -16,7 +16,9 @@ router.post('/intent/analyze', async (req, res) => {
   try {
     const result = await analyzeIntent(keyword, locationCode)
     log.info(`Intent result for "${keyword}": ${result.dominantIntent}`, { modules: result.modules.filter(m => m.present).length, scores: result.scores.length })
-    res.json({ data: result })
+    // Forward Claude usage for cost tracking (classification.usage set by classifyIntentWithClaude)
+    const _apiUsage = (result.classification as any)?.usage ?? undefined
+    res.json({ data: { ...result, _apiUsage } })
   } catch (err) {
     log.error(`POST /api/intent/analyze — ${(err as Error).message}`)
     const message = err instanceof Error ? err.message : 'Erreur analyse intention'

@@ -2,7 +2,8 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import type { ContentGapAnalysis, ThematicGap } from '@shared/types/index.js'
+import { useCostLogStore } from '@/stores/cost-log.store'
+import type { ContentGapAnalysis, ThematicGap, ApiUsage } from '@shared/types/index.js'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
@@ -69,7 +70,11 @@ async function handleAnalyze() {
   error.value = null
   try {
     log.info('Analyzing content gap', { keyword: props.keyword })
-    gapData.value = await apiPost<ContentGapAnalysis>('/content-gap/analyze', { keyword: props.keyword })
+    const raw = await apiPost<ContentGapAnalysis & { _apiUsage?: ApiUsage }>('/content-gap/analyze', { keyword: props.keyword })
+    if (raw._apiUsage) {
+      try { useCostLogStore().addEntry('Analyse content gap', raw._apiUsage) } catch { /* noop */ }
+    }
+    gapData.value = raw
     log.info('Content gap analysis complete', { competitors: gapData.value?.competitors.length, gaps: gapData.value?.gaps.length })
     if (gapData.value?.averageWordCount) {
       emit('analyzed', gapData.value.averageWordCount)

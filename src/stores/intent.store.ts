@@ -2,7 +2,8 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import type { IntentAnalysis, LocalNationalComparison, AutocompleteResult, ExplorationHistoryEntry } from '@shared/types/index.js'
+import { useCostLogStore } from '@/stores/cost-log.store'
+import type { IntentAnalysis, LocalNationalComparison, AutocompleteResult, ExplorationHistoryEntry, ApiUsage } from '@shared/types/index.js'
 
 export const useIntentStore = defineStore('intent', () => {
   // Intent Analysis (Epic 11)
@@ -58,7 +59,11 @@ export const useIntentStore = defineStore('intent', () => {
     intentError.value = null
     log.info(`[intent] analyzeIntent "${keyword}"`, locationCode ? { locationCode } : undefined)
     try {
-      intentData.value = await apiPost<IntentAnalysis>('/intent/analyze', { keyword, locationCode })
+      const raw = await apiPost<IntentAnalysis & { _apiUsage?: ApiUsage }>('/intent/analyze', { keyword, locationCode })
+      if (raw._apiUsage) {
+        try { useCostLogStore().addEntry('Classification intention', raw._apiUsage) } catch { /* noop */ }
+      }
+      intentData.value = raw
       log.debug(`[intent] analyzeIntent done`, { dominant: intentData.value?.dominantIntent })
     } catch (err) {
       intentError.value = err instanceof Error ? err.message : 'Erreur analyse intention'

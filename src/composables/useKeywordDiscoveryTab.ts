@@ -1,7 +1,9 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import type { DiscoveredKeyword, DiscoverySource, WordGroup, SuggestAllResult } from '@shared/types/discovery-tab.types'
+import { useCostLogStore } from '@/stores/cost-log.store'
+import type { ApiUsage } from '@shared/types/index.js'
+import type { DiscoveredKeyword, DiscoverySource, WordGroup, SuggestAllResult, AnalyzedKeyword, AnalysisResult } from '@shared/types/discovery-tab.types'
 import { toRadarKeywords } from '@shared/types/discovery-tab.types'
 import type { KeywordRadarGenerateResult } from '@shared/types/intent.types'
 import type { KeywordDiscoveryResult } from '@shared/types/keyword-discovery.types'
@@ -11,16 +13,8 @@ import { useDiscoveryCache } from './useDiscoveryCache'
 import { useRelevanceScoring } from './useRelevanceScoring'
 import { useDiscoverySelection } from './useDiscoverySelection'
 
-// --- Exported types (consumed by other components) ---
-export interface AnalyzedKeyword {
-  keyword: string
-  reasoning: string
-  priority: 'high' | 'medium' | 'low'
-}
-export interface AnalysisResult {
-  keywords: AnalyzedKeyword[]
-  summary: string
-}
+// Re-export types for backward compatibility
+export type { AnalyzedKeyword, AnalysisResult } from '@shared/types/discovery-tab.types'
 
 // --- Source colors for multi-source indicator ---
 const SOURCE_COLORS: Record<DiscoverySource, string> = {
@@ -251,12 +245,15 @@ export function useKeywordDiscoveryTab() {
     // 2. AI generation via Claude Haiku
     if (articleTitle || articleKeyword) {
       aiLoading.value = true
-      apiPost<KeywordRadarGenerateResult>('/keywords/radar/generate', {
+      apiPost<KeywordRadarGenerateResult & { _apiUsage?: ApiUsage }>('/keywords/radar/generate', {
         title: articleTitle || seed,
         keyword: articleKeyword || seed,
         painPoint: painPoint || seed,
       })
         .then(data => {
+          if (data._apiUsage) {
+            try { useCostLogStore().addEntry('Génération keywords radar', data._apiUsage) } catch { /* noop */ }
+          }
           aiKeywords.value = data.keywords.map(k => ({
             keyword: k.keyword,
             source: 'ai' as const,
@@ -311,13 +308,11 @@ export function useKeywordDiscoveryTab() {
     suggestPrepositionsKw.value = entry.suggestPrepositions
     aiKeywords.value = entry.aiKeywords
     dataforseoKeywords.value = entry.dataforseoKeywords
-    relevance.relevanceScores.value = new Map(Object.entries(entry.relevanceScores))
     wordGroups.value = entry.wordGroups
     analysisResult.value = entry.analysisResult
     selection.resetSelection()
     error.value = null
     relevance.resetScores()
-    // Restore scores after reset (reset clears them)
     relevance.relevanceScores.value = new Map(Object.entries(entry.relevanceScores))
 
     return true
@@ -401,7 +396,7 @@ export function useKeywordDiscoveryTab() {
         })
       }
 
-      const result = await apiPost<AnalysisResult & { usage: unknown }>(
+      const result = await apiPost<AnalysisResult & { usage?: ApiUsage }>(
         '/keywords/analyze-discovery',
         {
           seed: lastSeed.value,
@@ -410,6 +405,9 @@ export function useKeywordDiscoveryTab() {
           articleContext: lastArticleContext.value,
         },
       )
+      if (result.usage) {
+        try { useCostLogStore().addEntry('Analyse discovery', result.usage as ApiUsage) } catch { /* noop */ }
+      }
       analysisResult.value = { keywords: result.keywords, summary: result.summary }
       log.info(`Discovery analysis: ${result.keywords.length} keywords curated`)
     } catch (err) {

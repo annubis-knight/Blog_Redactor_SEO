@@ -3,6 +3,7 @@ import { log } from '../utils/logger.js'
 import { getBaseUrl, getAuthHeader, slugify, isSandbox } from './dataforseo.service.js'
 import { getOrFetch, readCached, writeCached } from '../utils/cache.js'
 import Anthropic from '@anthropic-ai/sdk'
+import { calculateCost, type ApiUsage } from './claude.service.js'
 import type {
   IntentAnalysis,
   SerpModule,
@@ -147,7 +148,7 @@ function extractPaaQuestions(serpResult: any): string[] {
 
 // --- Claude Intent Classification ---
 
-async function classifyIntentWithClaude(keyword: string, modules: SerpModule[], organicResults: OrganicResult[]): Promise<{ type: IntentType; confidence: number; reasoning: string }> {
+async function classifyIntentWithClaude(keyword: string, modules: SerpModule[], organicResults: OrganicResult[]): Promise<{ type: IntentType; confidence: number; reasoning: string; usage?: ApiUsage }> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
 
@@ -180,7 +181,13 @@ Réponds en JSON: {"type": "informational|transactional_local|navigational|mixed
     throw err
   }
 
-  log.debug(`classifyIntentWithClaude response received`, { keyword, ms: Date.now() - start, inputTokens: response.usage.input_tokens, outputTokens: response.usage.output_tokens })
+  const usage: ApiUsage = {
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    model,
+    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
+  }
+  log.info(`classifyIntentWithClaude done`, { keyword, ms: Date.now() - start, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
 
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
@@ -191,8 +198,8 @@ Réponds en JSON: {"type": "informational|transactional_local|navigational|mixed
       type: parsed.type ?? 'mixed',
       confidence: parsed.confidence ?? 0.5,
       reasoning: parsed.reasoning ?? '',
+      usage,
     }
-    log.info(`classifyIntentWithClaude done`, { keyword, intent: result.type, confidence: result.confidence, ms: Date.now() - start })
     return result
   } catch (err) {
     log.warn(`classifyIntentWithClaude JSON parse failed, using fallback`, { keyword, rawLength: cleaned.length, error: (err as Error).message })
@@ -202,6 +209,7 @@ Réponds en JSON: {"type": "informational|transactional_local|navigational|mixed
       type: hasLocalPack ? 'transactional_local' : 'informational',
       confidence: 0.3,
       reasoning: 'Classification par défaut basée sur les modules SERP',
+      usage,
     }
   }
 }

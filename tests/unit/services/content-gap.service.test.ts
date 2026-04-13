@@ -64,6 +64,7 @@ beforeEach(() => {
   // Default Claude response
   mockCreateFn.mockResolvedValue({
     content: [{ type: 'text', text: JSON.stringify(claudeAnalysisResult) }],
+    usage: { input_tokens: 100, output_tokens: 50 },
   })
 })
 

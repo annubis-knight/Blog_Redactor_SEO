@@ -13,14 +13,14 @@ export interface ApiUsage {
 }
 
 // Pricing per million tokens
-const PRICING: Record<string, { input: number; output: number }> = {
+export const PRICING: Record<string, { input: number; output: number }> = {
   'claude-sonnet-4-6': { input: 3, output: 15 },
   'claude-sonnet-4-5-20250514': { input: 3, output: 15 },
   'claude-haiku-4-5-20251001': { input: 0.8, output: 4 },
   'claude-opus-4-6': { input: 15, output: 75 },
 }
 
-function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
+export function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
   const pricing = PRICING[model] ?? { input: 3, output: 15 }
   return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000
 }
@@ -77,19 +77,35 @@ export async function classifyWithTool<T>(
 export const USAGE_SENTINEL = '__USAGE__'
 
 /**
+ * Claude server-side web search tool — runs on Anthropic's infra, no client-side exec.
+ * Pass in the `tools` array of streamChatCompletion to let Claude search the web
+ * and ground its response with real sources.
+ */
+export const WEB_SEARCH_TOOL = {
+  type: 'web_search_20250305',
+  name: 'web_search',
+  max_uses: 3,
+} as unknown as Anthropic.Messages.ToolUnion
+
+/**
  * Stream a chat completion from Claude API.
  * Yields text chunks as they arrive.
  * Final yield is a sentinel string __USAGE__{...} with token metrics.
+ *
+ * @param tools — optional server-side tools (e.g., web_search). Only text deltas
+ *   are yielded; server tool blocks (web_search_tool_result) stay server-side
+ *   but Claude's synthesized text response is streamed normally.
  */
 export async function* streamChatCompletion(
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 4096,
+  tools?: Anthropic.Messages.ToolUnion[],
 ): AsyncGenerator<string> {
   const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
   const promptChars = systemPrompt.length + userPrompt.length
 
-  log.info(`Claude API stream start`, { model, maxTokens, promptChars })
+  log.info(`Claude API stream start`, { model, maxTokens, promptChars, toolCount: tools?.length ?? 0 })
 
   const start = Date.now()
   let stream: ReturnType<typeof client.messages.stream>
@@ -99,6 +115,7 @@ export async function* streamChatCompletion(
       max_tokens: maxTokens,
       system: systemPrompt,
       messages: [{ role: 'user', content: userPrompt }],
+      ...(tools && tools.length > 0 ? { tools } : {}),
     })
   } catch (err) {
     log.error(`Claude API stream creation failed`, { model, ms: Date.now() - start, error: (err as Error).message })

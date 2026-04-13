@@ -1,4 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
+import { calculateCost, type ApiUsage } from './claude.service.js'
 import { log } from '../utils/logger.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { fetchKeywordOverviewBatch, fetchSearchIntentBatch } from './dataforseo.service.js'
@@ -54,9 +55,15 @@ export async function generateRadarKeywords(
     messages: [{ role: 'user', content: prompt }],
   })
 
+  const radarUsage: ApiUsage = {
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    model,
+    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
+  }
   const text = response.content[0].type === 'text' ? response.content[0].text : ''
   const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-  log.debug(`[Radar] Haiku raw response length: ${text.length} chars`)
+  log.info(`[Radar] Haiku call done`, { keyword, inputTokens: radarUsage.inputTokens, outputTokens: radarUsage.outputTokens, cost: `$${radarUsage.estimatedCost.toFixed(4)}` })
 
   let keywords: RadarKeyword[] = []
   try {
@@ -87,12 +94,13 @@ export async function generateRadarKeywords(
   if (dupeCount > 0) log.debug(`[Radar] Removed ${dupeCount} duplicate keywords`)
 
   // Cap at 25
-  const result: KeywordRadarGenerateResult = {
+  const result: KeywordRadarGenerateResult & { _apiUsage?: ApiUsage } = {
     articleTitle: title,
     articleKeyword: keyword,
     painPoint,
     keywords: unique.slice(0, 25),
     generatedAt: new Date().toISOString(),
+    _apiUsage: radarUsage,
   }
 
   log.info(`[Radar] Generated ${result.keywords.length} unique keywords`)

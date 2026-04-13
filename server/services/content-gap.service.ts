@@ -3,6 +3,7 @@ import { log } from '../utils/logger.js'
 import { slugify } from './dataforseo.service.js'
 import { getOrFetch } from '../utils/cache.js'
 import Anthropic from '@anthropic-ai/sdk'
+import { calculateCost, type ApiUsage } from './claude.service.js'
 import type {
   ContentGapAnalysis,
   CompetitorContent,
@@ -57,6 +58,7 @@ async function analyzeCompetitorContent(
   competitors: CompetitorContent[]
   themes: ThematicGap[]
   localEntities: { entity: string; frequency: number }[]
+  _apiUsage?: ApiUsage
 }> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
@@ -99,8 +101,14 @@ Pour paasCovered: liste les questions PAA (People Also Ask) auxquelles le conten
     ],
   })
 
+  const usage: ApiUsage = {
+    inputTokens: response.usage.input_tokens,
+    outputTokens: response.usage.output_tokens,
+    model,
+    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
+  }
   const text = response.content[0].type === 'text' ? response.content[0].text : '{}'
-  log.info('Claude analysis done', { keyword, ms: Date.now() - start, responseSize: text.length, tokensUsed: response.usage?.output_tokens })
+  log.info('Claude analysis done', { keyword, ms: Date.now() - start, responseSize: text.length, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
 
   const cleaned = text
     .replace(/```json\s*/g, '')
@@ -110,10 +118,10 @@ Pour paasCovered: liste les questions PAA (People Also Ask) auxquelles le conten
   try {
     const parsed = JSON.parse(cleaned)
     log.debug('Claude analysis parsed', { keyword, competitors: parsed.competitors?.length ?? 0, themes: parsed.themes?.length ?? 0, localEntities: parsed.localEntities?.length ?? 0 })
-    return parsed
+    return { ...parsed, _apiUsage: usage }
   } catch (err) {
     log.error('Claude analysis JSON parse failed', { keyword, error: (err as Error).message, responsePreview: cleaned.slice(0, 200) })
-    return { competitors: [], themes: [], localEntities: [] }
+    return { competitors: [], themes: [], localEntities: [], _apiUsage: usage }
   }
 }
 

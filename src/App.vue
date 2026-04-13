@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import AppNavbar from '@/components/shared/AppNavbar.vue'
 import ToastContainer from '@/components/shared/ToastContainer.vue'
+import CostLogPanel from '@/components/shared/CostLogPanel.vue'
 </script>
 
 <template>
@@ -10,6 +11,7 @@ import ToastContainer from '@/components/shared/ToastContainer.vue'
       <RouterView />
     </main>
     <ToastContainer />
+    <CostLogPanel />
   </div>
 </template>
 

@@ -1,6 +1,8 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { apiGet, apiPost, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { useCostLogStore } from '@/stores/cost-log.store'
+import type { ApiUsage } from '@shared/types/index.js'
 import type {
   IntentScanResult,
   KeywordRadarGenerateResult,
@@ -213,11 +215,14 @@ export function useKeywordRadar() {
     log.info('[Radar] Generating keywords...', { keyword, title: title.slice(0, 50) })
 
     try {
-      const result = await apiPost<KeywordRadarGenerateResult>('/keywords/radar/generate', {
+      const result = await apiPost<KeywordRadarGenerateResult & { _apiUsage?: ApiUsage }>('/keywords/radar/generate', {
         title,
         keyword,
         painPoint,
       })
+      if (result._apiUsage) {
+        try { useCostLogStore().addEntry('Génération keywords radar', result._apiUsage) } catch { /* noop */ }
+      }
       generatedKeywords.value = result.keywords
       log.info(`[Radar] Generated ${result.keywords.length} keywords`)
     } catch (err) {

@@ -7,10 +7,12 @@ vi.mock('../../../server/utils/json-storage', () => ({
   writeJson: vi.fn(),
 }))
 
-const mockClaudeCreate = vi.fn().mockResolvedValue({
-  content: [{ type: 'text', text: '{"type":"transactional_local","confidence":0.85,"reasoning":"Local pack present"}' }],
-  usage: { input_tokens: 100, output_tokens: 50 },
-})
+const { mockClaudeCreate } = vi.hoisted(() => ({
+  mockClaudeCreate: vi.fn().mockResolvedValue({
+    content: [{ type: 'text', text: '{"type":"transactional_local","confidence":0.85,"reasoning":"Local pack present"}' }],
+    usage: { input_tokens: 100, output_tokens: 50 },
+  }),
+}))
 
 vi.mock('@anthropic-ai/sdk', () => {
   return {
