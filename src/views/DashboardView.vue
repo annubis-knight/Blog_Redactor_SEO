@@ -3,6 +3,7 @@ import { onMounted } from 'vue'
 import { useSilosStore } from '@/stores/silos.store'
 import SiloCard from '@/components/dashboard/SiloCard.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
+import SkeletonCard from '@/components/shared/SkeletonCard.vue'
 
 const store = useSilosStore()
 
@@ -52,6 +53,11 @@ onMounted(() => {
     </div>
 
     <AsyncContent :is-loading="store.isLoading" :error="store.error" @retry="store.fetchSilos()">
+      <template #skeleton>
+        <div class="silos-list">
+          <SkeletonCard v-for="i in 3" :key="i" height="140px" />
+        </div>
+      </template>
       <div class="silos-list">
         <SiloCard v-for="silo in store.silos" :key="silo.id" :silo="silo" />
       </div>

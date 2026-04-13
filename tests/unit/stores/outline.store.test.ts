@@ -170,3 +170,87 @@ describe('outline.store — resetOutline', () => {
     expect(store.error).toBeNull()
   })
 })
+
+describe('outline.store — undo/redo', () => {
+  it('undo restaure l etat precedent apres addSection', () => {
+    const store = useOutlineStore()
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+
+    expect(store.outline.sections).toHaveLength(1)
+
+    store.addSection(null, 2)
+    expect(store.outline!.sections).toHaveLength(2)
+
+    store.undo()
+    expect(store.outline!.sections).toHaveLength(1)
+  })
+
+  it('redo refait l operation annulee', () => {
+    const store = useOutlineStore()
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+
+    store.addSection(null, 2)
+    expect(store.outline!.sections).toHaveLength(2)
+
+    store.undo()
+    expect(store.outline!.sections).toHaveLength(1)
+
+    store.redo()
+    expect(store.outline!.sections).toHaveLength(2)
+  })
+
+  it('canUndo est false quand le stack est vide', () => {
+    const store = useOutlineStore()
+    store.outline = { sections: [] }
+    expect(store.canUndo).toBe(false)
+
+    store.addSection(null, 2)
+    expect(store.canUndo).toBe(true)
+
+    store.undo()
+    expect(store.canUndo).toBe(false)
+  })
+
+  it('le stack est limite a 20 entrees', () => {
+    const store = useOutlineStore()
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+
+    // Perform 25 modifications
+    for (let i = 0; i < 25; i++) {
+      store.addSection(null, 2)
+    }
+
+    // Undo should work 20 times max
+    let undoCount = 0
+    while (store.canUndo) {
+      store.undo()
+      undoCount++
+    }
+    expect(undoCount).toBe(20)
+  })
+
+  it('redo stack est vide apres une nouvelle operation', () => {
+    const store = useOutlineStore()
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+
+    store.addSection(null, 2)
+    store.undo()
+    expect(store.canRedo).toBe(true)
+
+    // New operation clears redo stack
+    store.addSection(null, 3)
+    expect(store.canRedo).toBe(false)
+  })
+
+  it('resetOutline vide les stacks undo/redo', () => {
+    const store = useOutlineStore()
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+
+    store.addSection(null, 2)
+    expect(store.canUndo).toBe(true)
+
+    store.resetOutline()
+    expect(store.canUndo).toBe(false)
+    expect(store.canRedo).toBe(false)
+  })
+})

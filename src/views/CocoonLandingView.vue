@@ -7,6 +7,7 @@ import { useKeywordsStore } from '@/stores/keywords.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import WorkflowChoice from '@/components/dashboard/WorkflowChoice.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
+import SkeletonCard from '@/components/shared/SkeletonCard.vue'
 
 const route = useRoute()
 const cocoonsStore = useCocoonsStore()
@@ -66,6 +67,11 @@ onMounted(() => {
     </div>
 
     <AsyncContent :is-loading="isLoading" :error="error" @retry="loadData()">
+      <template #skeleton>
+        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+          <SkeletonCard v-for="i in 3" :key="i" width="280px" height="160px" />
+        </div>
+      </template>
       <WorkflowChoice
         v-if="cocoon"
         :cocoon-id="cocoonId"

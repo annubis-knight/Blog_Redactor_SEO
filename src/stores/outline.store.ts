@@ -1,4 +1,4 @@
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
 import { useStreaming } from '@/composables/useStreaming'
@@ -54,6 +54,8 @@ export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: s
   return { sections }
 }
 
+const MAX_UNDO_STACK = 20
+
 export const useOutlineStore = defineStore('outline', () => {
   const outline = ref<Outline | null>(null)
   const streamedText = ref('')
@@ -62,6 +64,33 @@ export const useOutlineStore = defineStore('outline', () => {
   const isSaving = ref(false)
   const error = ref<string | null>(null)
   const lastApiUsage = ref<ApiUsage | null>(null)
+
+  // --- Undo / Redo ---
+  const undoStack = ref<Outline[]>([])
+  const redoStack = ref<Outline[]>([])
+  const canUndo = computed(() => undoStack.value.length > 0)
+  const canRedo = computed(() => redoStack.value.length > 0)
+
+  function pushUndo() {
+    if (!outline.value) return
+    undoStack.value.push(JSON.parse(JSON.stringify(outline.value)))
+    if (undoStack.value.length > MAX_UNDO_STACK) undoStack.value.shift()
+    redoStack.value = []
+  }
+
+  function undo() {
+    if (!canUndo.value || !outline.value) return
+    redoStack.value.push(JSON.parse(JSON.stringify(outline.value)))
+    if (redoStack.value.length > MAX_UNDO_STACK) redoStack.value.shift()
+    outline.value = undoStack.value.pop()!
+  }
+
+  function redo() {
+    if (!canRedo.value || !outline.value) return
+    undoStack.value.push(JSON.parse(JSON.stringify(outline.value)))
+    if (undoStack.value.length > MAX_UNDO_STACK) undoStack.value.shift()
+    outline.value = redoStack.value.pop()!
+  }
 
   async function generateOutline(briefData: BriefData) {
     log.info(`Generating outline for "${briefData.article.title}"`)
@@ -105,6 +134,7 @@ export const useOutlineStore = defineStore('outline', () => {
 
   function addSection(afterId: string | null, level: 2 | 3) {
     if (!outline.value) return
+    pushUndo()
     const newSection: OutlineSection = {
       id: `h${level}-${Date.now()}`,
       level,
@@ -123,11 +153,14 @@ export const useOutlineStore = defineStore('outline', () => {
 
   function removeSection(id: string) {
     if (!outline.value) return
+    pushUndo()
     outline.value = { sections: outline.value.sections.filter(s => s.id !== id) }
   }
 
   function updateSection(id: string, updates: Partial<OutlineSection>) {
     if (!outline.value) return
+    // No pushUndo here — updateSection is called on every keystroke (title editing).
+    // Undo captures structural changes only (add, remove, reorder).
     outline.value = {
       sections: outline.value.sections.map(s =>
         s.id === id ? { ...s, ...updates } : s,
@@ -137,6 +170,7 @@ export const useOutlineStore = defineStore('outline', () => {
 
   function reorderSections(fromIndex: number, toIndex: number) {
     if (!outline.value) return
+    pushUndo()
     const sections = [...outline.value.sections]
     const moved = sections.splice(fromIndex, 1)[0]
     if (!moved) return
@@ -165,11 +199,16 @@ export const useOutlineStore = defineStore('outline', () => {
     if (!outline.value) return
     isSaving.value = true
     error.value = null
+
+    // Optimistic update
+    isValidated.value = true
+
     try {
       await apiPut(`/articles/${slug}`, { outline: JSON.stringify(outline.value) })
-      isValidated.value = true
       log.info(`Outline validated for "${slug}"`)
     } catch (err) {
+      // Rollback on failure
+      isValidated.value = false
       log.error(`Outline validation failed — ${(err as Error).message}`)
       error.value = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde'
     } finally {
@@ -186,11 +225,15 @@ export const useOutlineStore = defineStore('outline', () => {
     streamedText.value = ''
     error.value = null
     isValidated.value = false
+    undoStack.value = []
+    redoStack.value = []
   }
 
   return {
     outline, streamedText, isGenerating, isValidated, isSaving, error, lastApiUsage,
+    canUndo, canRedo,
     generateOutline, addSection, removeSection, updateSection, reorderSections,
     setOutline, loadExistingOutline, loadFromHnStructure, validateOutline, unvalidateOutline, resetOutline,
+    undo, redo,
   }
 })

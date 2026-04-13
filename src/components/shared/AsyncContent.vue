@@ -13,11 +13,19 @@ withDefaults(defineProps<{
 defineEmits<{
   retry: []
 }>()
+
+const slots = defineSlots<{
+  default(): any
+  skeleton?(): any
+}>()
 </script>
 
 <template>
   <div class="async-content">
-    <LoadingSpinner v-if="isLoading" />
+    <template v-if="isLoading">
+      <slot v-if="slots.skeleton" name="skeleton" />
+      <LoadingSpinner v-else />
+    </template>
     <ErrorMessage v-else-if="error" :message="error" :hide-retry="hideRetry" @retry="$emit('retry')" />
     <slot v-else />
   </div>

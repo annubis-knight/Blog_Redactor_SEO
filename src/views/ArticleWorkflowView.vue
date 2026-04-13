@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useBriefStore } from '@/stores/brief.store'
 import { useOutlineStore } from '@/stores/outline.store'
@@ -30,6 +30,8 @@ import SeoPanel from '@/components/panels/SeoPanel.vue'
 import GeoPanel from '@/components/panels/GeoPanel.vue'
 import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
+import SkeletonText from '@/components/shared/SkeletonText.vue'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 
 const route = useRoute()
 const briefStore = useBriefStore()
@@ -87,6 +89,25 @@ function handleBriefCheck(check: string) {
 
 const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
 
+useKeyboardShortcuts([
+  {
+    keys: 'ctrl+s',
+    global: true,
+    action: () => {
+      if (editorStore.isDirty && !editorStore.isSaving) {
+        editorStore.saveArticle(slug)
+      }
+    },
+  },
+  {
+    keys: 'escape',
+    global: true,
+    action: () => {
+      if (hasActivePanel.value) toggle(activePanel.value!)
+    },
+  },
+])
+
 function guardedToggle(panel: Parameters<typeof toggle>[0]) {
   if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking')) return
   toggle(panel)
@@ -109,12 +130,20 @@ const { seoStore } = useSeoScoring(
 )
 useGeoScoring()
 
-// --- Word count ---
+// --- Word count (SSOT from editorStore — finding G5) ---
 const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
 const wordCountPercent = computed(() => {
-  if (!wordCountTarget.value || !seoStore.score) return 0
-  return Math.round((seoStore.score.wordCount / wordCountTarget.value) * 100)
+  if (!wordCountTarget.value || !editorStore.wordCount) return 0
+  return Math.round((editorStore.wordCount / wordCountTarget.value) * 100)
 })
+const canReduce = computed(() => {
+  if (!wordCountTarget.value || !editorStore.content) return false
+  const delta = editorStore.wordCountDelta(wordCountTarget.value)
+  if (delta === null) return false
+  const pct = (delta / wordCountTarget.value) * 100
+  return pct > 15
+})
+const wordCountDeltaDisplay = computed(() => editorStore.wordCountDelta(wordCountTarget.value))
 
 // --- IA Brief Panel ---
 const { chunks: iaBriefChunks, isStreaming: iaBriefStreaming, startStream: startBriefExplain } = useStreaming()
@@ -163,7 +192,7 @@ async function handleGenerateArticle() {
       : 'null',
     outlineSections: outlineStore.outline?.sections.length,
   })
-  await editorStore.generateArticle(briefStore.briefData!, outlineStore.outline!)
+  await editorStore.generateArticle(briefStore.briefData!, outlineStore.outline!, wordCountTarget.value ?? undefined)
   if (editorStore.content && !editorStore.error) {
     const pilierKeyword = briefStore.briefData!.keywords.find(kw => kw.type === 'Pilier')
     const keyword = pilierKeyword?.keyword ?? briefStore.briefData!.article.title
@@ -181,6 +210,37 @@ async function handleGenerateArticle() {
     log.warn('[workflow] Article generation failed or no content', { hasContent: !!editorStore.content, error: editorStore.error })
   }
 }
+
+// --- Reduce / Humanize handlers ---
+const currentKeyword = computed(() =>
+  articleKeywordsStore.keywords?.capitaine ?? briefStore.briefData?.article.title ?? '',
+)
+const allKeywords = computed(() =>
+  briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
+)
+
+async function handleReduce() {
+  if (!wordCountTarget.value) return
+  await editorStore.reduceArticle(slug, wordCountTarget.value, currentKeyword.value, allKeywords.value)
+  if (editorStore.content && !editorStore.error) {
+    await editorStore.saveArticle(slug)
+  }
+}
+
+async function handleHumanize() {
+  await editorStore.humanizeArticle(slug, currentKeyword.value, allKeywords.value)
+  if (editorStore.content && !editorStore.error) {
+    await editorStore.saveArticle(slug)
+  }
+}
+
+function handleAbortHumanize() {
+  editorStore.abortHumanize()
+}
+
+onBeforeUnmount(() => {
+  editorStore.abortHumanize()
+})
 
 function handleToggleLinkSuggestions() {
   if (!hasBody.value) return
@@ -306,6 +366,9 @@ onMounted(async () => {
       </div>
 
       <AsyncContent :is-loading="briefStore.isLoading" :error="briefStore.error" @retry="briefStore.fetchBrief(slug)">
+        <template #skeleton>
+          <SkeletonText :lines="5" />
+        </template>
         <template v-if="briefStore.briefData">
           <!-- Step 1: Brief & Structure -->
           <div v-if="currentStep === 'brief-structure'" class="workflow-step">
@@ -326,8 +389,16 @@ onMounted(async () => {
                 :is-generating="editorStore.isGenerating"
                 :has-content="!!editorStore.content"
                 :is-outline-validated="outlineStore.isValidated"
+                :is-reducing="editorStore.isReducing"
+                :is-humanizing="editorStore.isHumanizing"
+                :can-reduce="canReduce"
+                :word-count-delta="wordCountDeltaDisplay"
+                :humanize-progress="editorStore.humanizeProgress"
                 @generate="handleGenerateArticle()"
                 @regenerate="handleGenerateArticle()"
+                @reduce="handleReduce()"
+                @humanize="handleHumanize()"
+                @abort-humanize="handleAbortHumanize()"
               />
 
               <div v-if="editorStore.isGenerating && editorStore.sectionProgress" class="section-progress">
@@ -367,7 +438,7 @@ onMounted(async () => {
                 />
               </ErrorBoundary>
 
-              <div v-if="editorStore.lastArticleUsage || editorStore.lastMetaUsage" class="cost-badges">
+              <div v-if="editorStore.lastArticleUsage || editorStore.lastMetaUsage || editorStore.lastReduceUsage || editorStore.lastHumanizeUsage" class="cost-badges">
                 <ApiCostBadge
                   v-if="editorStore.lastArticleUsage"
                   label="Article"
@@ -378,11 +449,21 @@ onMounted(async () => {
                   label="Meta"
                   :usage="editorStore.lastMetaUsage"
                 />
+                <ApiCostBadge
+                  v-if="editorStore.lastReduceUsage"
+                  label="Réduction"
+                  :usage="editorStore.lastReduceUsage"
+                />
+                <ApiCostBadge
+                  v-if="editorStore.lastHumanizeUsage"
+                  label="Humanisation"
+                  :usage="editorStore.lastHumanizeUsage"
+                />
               </div>
 
-              <div v-if="seoStore.score && editorStore.content" class="word-count-bar">
+              <div v-if="editorStore.content" class="word-count-bar">
                 <div class="word-count-info">
-                  <span class="word-count-value">{{ seoStore.score.wordCount }} mots</span>
+                  <span class="word-count-value">{{ editorStore.wordCount }} mots</span>
                   <span v-if="wordCountTarget" class="word-count-target">/ {{ wordCountTarget }} cible</span>
                 </div>
                 <div v-if="wordCountTarget" class="word-count-progress">

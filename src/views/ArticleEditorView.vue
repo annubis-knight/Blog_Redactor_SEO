@@ -1,7 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRoute } from 'vue-router'
-import { useEventListener } from '@vueuse/core'
 import { useEditorStore } from '@/stores/editor.store'
 import { useAutoSave } from '@/composables/useAutoSave'
 import { useContextualActions } from '@/composables/useContextualActions'
@@ -25,11 +24,19 @@ import { useInternalLinking } from '@/composables/useInternalLinking'
 import { usePanelToggle } from '@/composables/usePanelToggle'
 import SeoPanel from '@/components/panels/SeoPanel.vue'
 import GeoPanel from '@/components/panels/GeoPanel.vue'
+import BlocksPanel from '@/components/panels/BlocksPanel.vue'
 import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import ExportButton from '@/components/export/ExportButton.vue'
 import ExportPreview from '@/components/export/ExportPreview.vue'
+import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
+import ArticleActions from '@/components/article/ArticleActions.vue'
+import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
+import OutlineRecap from '@/components/article/OutlineRecap.vue'
+import CollapsableSection from '@/components/shared/CollapsableSection.vue'
+import { useOutlineStore } from '@/stores/outline.store'
+import { useKeyboardShortcuts } from '@/composables/useKeyboardShortcuts'
 import type { ArticleContent, ActionType, Article, LinkSuggestion } from '@shared/types/index.js'
 import { log } from '@/utils/logger'
 
@@ -40,6 +47,7 @@ const keywordsStore = useKeywordsStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const briefStore = useBriefStore()
 const cocoonsStore = useCocoonsStore()
+const outlineStore = useOutlineStore()
 
 const slug = route.params.slug as string
 
@@ -51,8 +59,32 @@ const backLink = computed(() =>
   cocoonId.value ? `/cocoon/${cocoonId.value}/article/${slug}` : '/',
 )
 
-const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, hasActivePanel } = usePanelToggle('seo')
+const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showBlocksPanel, hasActivePanel } = usePanelToggle('blocks')
 const exportHtml = ref<string | null>(null)
+
+// --- Body gating for panels (same pattern as WorkflowView) ---
+const hasBody = computed(() => !!editorStore.content)
+
+function guardedToggle(panel: Parameters<typeof toggle>[0]) {
+  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'blocks')) return
+  toggle(panel)
+}
+
+// --- Generation data (reused from WorkflowView) ---
+const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
+const canReduce = computed(() => {
+  if (!wordCountTarget.value || !editorStore.content) return false
+  const delta = editorStore.wordCountDelta(wordCountTarget.value)
+  if (delta === null) return false
+  return (delta / wordCountTarget.value) * 100 > 15
+})
+const wordCountDeltaDisplay = computed(() => editorStore.wordCountDelta(wordCountTarget.value))
+const currentKeyword = computed(() =>
+  articleKeywordsStore.keywords?.capitaine ?? briefStore.briefData?.article.title ?? '',
+)
+const allKeywords = computed(() =>
+  briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
+)
 
 const {
   suggestions: linkSuggestions,
@@ -91,14 +123,24 @@ const {
   cancelLink,
 } = useContextualActions()
 
-useEventListener(document, 'keydown', (e: KeyboardEvent) => {
-  if ((e.ctrlKey || e.metaKey) && e.key === 's') {
-    e.preventDefault()
-    if (editorStore.isDirty && !editorStore.isSaving) {
-      editorStore.saveArticle(slug)
-    }
-  }
-})
+useKeyboardShortcuts([
+  {
+    keys: 'ctrl+s',
+    global: true,
+    action: () => {
+      if (editorStore.isDirty && !editorStore.isSaving) {
+        editorStore.saveArticle(slug)
+      }
+    },
+  },
+  {
+    keys: 'escape',
+    global: true,
+    action: () => {
+      if (hasActivePanel.value) toggle(activePanel.value!)
+    },
+  },
+])
 
 async function loadContent() {
   isLoading.value = true
@@ -116,6 +158,9 @@ async function loadContent() {
         metaTitle: data.metaTitle ?? editorStore.metaTitle,
         metaDescription: data.metaDescription ?? editorStore.metaDescription,
       })
+    }
+    if (data.outline) {
+      outlineStore.loadExistingOutline(JSON.parse(data.outline))
     }
     log.info('Article content loaded', { slug })
   } catch (err) {
@@ -175,6 +220,7 @@ function handleRejectResult() {
 }
 
 function handleToggleLinkSuggestions() {
+  if (!hasBody.value) return
   toggle('linking')
   if (showLinkSuggestions.value && linkSuggestions.value.length === 0) {
     requestSuggestions()
@@ -195,6 +241,59 @@ function handleCloseLinkSuggestions() {
   toggle('linking')
   clearSuggestions()
 }
+
+// --- Article generation handlers ---
+async function handleGenerateArticle() {
+  if (!briefStore.briefData || !outlineStore.outline) return
+  log.info('[editor-view] Starting article generation', { slug })
+
+  await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, wordCountTarget.value ?? undefined)
+
+  if (editorStore.content && !editorStore.error) {
+    const keyword = briefStore.briefData.keywords.find(kw => kw.type === 'Pilier')?.keyword
+      ?? briefStore.briefData.article.title
+    await editorStore.generateMeta(slug, keyword, briefStore.briefData.article.title, editorStore.content)
+    if (!editorStore.error) {
+      await editorStore.saveArticle(slug)
+    }
+  }
+}
+
+async function handleReduce() {
+  if (!wordCountTarget.value) return
+  await editorStore.reduceArticle(slug, wordCountTarget.value, currentKeyword.value, allKeywords.value)
+  if (editorStore.content && !editorStore.error) {
+    await editorStore.saveArticle(slug)
+  }
+}
+
+async function handleHumanize() {
+  await editorStore.humanizeArticle(slug, currentKeyword.value, allKeywords.value)
+  if (editorStore.content && !editorStore.error) {
+    await editorStore.saveArticle(slug)
+  }
+}
+
+function handleAbortHumanize() {
+  editorStore.abortHumanize()
+}
+
+async function handleDeleteContent() {
+  if (!confirm('Supprimer le contenu de l\'article ? Le brief et le sommaire seront conservés.')) return
+  log.info('[editor-view] Deleting article content', { slug })
+  editorStore.$patch({
+    content: null,
+    streamedText: '',
+    metaTitle: null,
+    metaDescription: null,
+    isDirty: false,
+  })
+  await editorStore.saveArticle(slug)
+}
+
+onBeforeUnmount(() => {
+  editorStore.abortHumanize()
+})
 
 onMounted(async () => {
   log.info('ArticleEditorView mounted', { slug })
@@ -219,31 +318,56 @@ onMounted(async () => {
         <div class="header-center" role="toolbar" aria-label="Panneaux d'analyse">
           <button
             class="btn-toggle"
-            :class="{ active: showSeoPanel }"
+            :class="{ active: showSeoPanel, disabled: !hasBody }"
             :aria-pressed="showSeoPanel"
-            @click="toggle('seo')"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Générez un article pour activer le scoring SEO' : undefined"
+            @click="guardedToggle('seo')"
           >
             SEO
           </button>
           <button
             class="btn-toggle"
-            :class="{ active: showGeoPanel }"
+            :class="{ active: showGeoPanel, disabled: !hasBody }"
             :aria-pressed="showGeoPanel"
-            @click="toggle('geo')"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Générez un article pour activer le scoring GEO' : undefined"
+            @click="guardedToggle('geo')"
           >
             GEO
           </button>
           <button
             class="btn-toggle"
-            :class="{ active: showLinkSuggestions }"
+            :class="{ active: showLinkSuggestions, disabled: !hasBody }"
             :aria-pressed="showLinkSuggestions"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Générez un article pour activer le maillage' : undefined"
             @click="handleToggleLinkSuggestions"
           >
             Maillage
           </button>
+          <button
+            class="btn-toggle"
+            :class="{ active: showBlocksPanel, disabled: !hasBody }"
+            :aria-pressed="showBlocksPanel"
+            :disabled="!hasBody"
+            :title="!hasBody ? 'Générez un article pour activer les blocs' : undefined"
+            @click="guardedToggle('blocks')"
+          >
+            Blocs
+          </button>
         </div>
 
         <div class="header-right">
+          <button
+            v-if="hasBody"
+            class="btn-delete-content"
+            title="Supprimer le contenu (conserve le brief et le sommaire)"
+            :disabled="editorStore.isGenerating || editorStore.isSaving"
+            @click="handleDeleteContent"
+          >
+            Supprimer le contenu
+          </button>
           <button
             class="btn-save"
             aria-label="Sauvegarder (Ctrl+S)"
@@ -256,8 +380,84 @@ onMounted(async () => {
         </div>
       </header>
 
+      <CollapsableSection
+        v-if="editorStore.metaTitle || editorStore.metaDescription"
+        title="Meta SEO"
+        :default-open="false"
+      >
+        <ArticleMetaDisplay
+          :meta-title="editorStore.metaTitle"
+          :meta-description="editorStore.metaDescription"
+          :is-generating="editorStore.isGeneratingMeta"
+        />
+      </CollapsableSection>
+
+      <CollapsableSection
+        v-if="outlineStore.outline"
+        title="Table des matières"
+        :default-open="false"
+      >
+        <OutlineRecap :outline="outlineStore.outline" />
+      </CollapsableSection>
+
       <AsyncContent :is-loading="isLoading" :error="loadError" @retry="loadContent()">
-        <template v-if="editorStore.content">
+
+        <!-- STATE 1: No content, not generating → show generate button -->
+        <div v-if="!editorStore.content && !editorStore.isGenerating" class="empty-state">
+          <p>Aucun contenu. Générez l'article ou retournez au workflow.</p>
+          <ArticleActions
+            :is-generating="false"
+            :has-content="false"
+            :is-outline-validated="!!outlineStore.outline"
+            :is-reducing="false"
+            :is-humanizing="false"
+            :can-reduce="false"
+            :word-count-delta="null"
+            :humanize-progress="null"
+            @generate="handleGenerateArticle()"
+          />
+          <RouterLink :to="backLink" class="btn-back">Retour au workflow</RouterLink>
+        </div>
+
+        <!-- STATE 2: Generating → streaming read-only display -->
+        <div v-else-if="editorStore.isGenerating" class="generation-view">
+          <ArticleActions
+            :is-generating="true"
+            :has-content="false"
+            :is-outline-validated="true"
+            :is-reducing="false"
+            :is-humanizing="false"
+            :can-reduce="false"
+            :word-count-delta="null"
+            :humanize-progress="null"
+          />
+
+          <div v-if="editorStore.sectionProgress" class="section-progress">
+            <div class="section-progress-header">
+              <span class="section-progress-label">
+                Section {{ editorStore.sectionProgress.current + 1 }}/{{ editorStore.sectionProgress.total }}
+              </span>
+              <span class="section-progress-title">{{ editorStore.sectionProgress.title }}</span>
+            </div>
+            <div class="section-progress-bar">
+              <div
+                class="section-progress-fill"
+                :style="{ width: ((editorStore.sectionProgress.current + 1) / editorStore.sectionProgress.total * 100) + '%' }"
+              />
+            </div>
+          </div>
+
+          <ErrorBoundary fallback-message="Erreur dans le contenu de l'article.">
+            <ArticleStreamDisplay
+              :streamed-text="editorStore.streamedText"
+              :content="null"
+              :is-generating="true"
+            />
+          </ErrorBoundary>
+        </div>
+
+        <!-- STATE 3: Content exists → TipTap editor (unchanged) -->
+        <template v-else>
         <EditorToolbar :editor="articleEditorRef?.editor" />
 
         <EditorBubbleMenu
@@ -269,6 +469,9 @@ onMounted(async () => {
         <ArticleEditor
           ref="articleEditorRef"
           :content="editorStore.content"
+          :article-slug="slug"
+          :keyword="articleKeywordsStore.keywords?.capitaine"
+          :keywords="articleKeywordsStore.keywords?.lieutenants ?? []"
           @update:content="handleContentUpdate"
         />
 
@@ -313,15 +516,14 @@ onMounted(async () => {
         </div>
         </template>
 
-        <div v-else class="empty-state">
-          <p>Aucun contenu &agrave; &eacute;diter. G&eacute;n&eacute;rez d'abord un article depuis le workflow.</p>
-          <RouterLink :to="backLink" class="btn-back">Retour au workflow</RouterLink>
-        </div>
       </AsyncContent>
     </div>
 
     <Transition name="panel-slide">
       <ResizablePanel v-if="hasActivePanel" :key="activePanel!">
+        <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions || showBlocksPanel)" class="panel-disabled-overlay">
+          <p class="panel-disabled-msg">Générez un article pour activer ce panneau</p>
+        </div>
         <ErrorBoundary v-if="showSeoPanel" fallback-message="Erreur dans le panneau SEO.">
           <SeoPanel />
         </ErrorBoundary>
@@ -337,6 +539,9 @@ onMounted(async () => {
             @request="requestSuggestions"
             @close="handleCloseLinkSuggestions"
           />
+        </ErrorBoundary>
+        <ErrorBoundary v-if="showBlocksPanel" fallback-message="Erreur dans le panneau blocs.">
+          <BlocksPanel />
         </ErrorBoundary>
       </ResizablePanel>
     </Transition>
@@ -420,6 +625,35 @@ onMounted(async () => {
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
+.btn-toggle.disabled,
+.btn-toggle:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* --- Delete content button --- */
+.btn-delete-content {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-error, #e53e3e);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--color-error, #e53e3e);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-delete-content:hover:not(:disabled) {
+  background: var(--color-error, #e53e3e);
+  color: white;
+}
+
+.btn-delete-content:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* --- Save button --- */
 .btn-save {
   padding: 0.375rem 0.875rem;
@@ -481,6 +715,77 @@ onMounted(async () => {
 .btn-back:hover {
   opacity: 0.9;
   text-decoration: none;
+}
+
+/* --- Generation view --- */
+.generation-view {
+  padding: 1rem 0;
+}
+
+/* --- Section progress bar --- */
+.section-progress {
+  margin-top: 0.75rem;
+  padding: 0.625rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.section-progress-header {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 0.375rem;
+}
+
+.section-progress-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-primary);
+}
+
+.section-progress-title {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.section-progress-bar {
+  height: 4px;
+  background: var(--color-bg-soft);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.section-progress-fill {
+  height: 100%;
+  background: var(--color-primary);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* --- Panel disabled overlay --- */
+.panel-disabled-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(2px);
+}
+
+.panel-disabled-msg {
+  margin: 0;
+  padding: 0.75rem 1.25rem;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 }
 
 /* --- Panel slide transition --- */

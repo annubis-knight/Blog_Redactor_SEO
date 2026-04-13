@@ -366,6 +366,27 @@ onMounted(async () => {
     <!-- Section 4: Structure HN / Sommaire -->
     <CollapsableSection title="Structure / Sommaire" :default-open="true">
       <template v-if="outlineStore.outline">
+        <div v-if="!outlineStore.isValidated" class="outline-undo-redo">
+          <button
+            class="btn-icon"
+            title="Annuler (Undo)"
+            aria-label="Annuler"
+            :disabled="!outlineStore.canUndo"
+            @click="outlineStore.undo()"
+          >
+            &#x27F2;
+          </button>
+          <button
+            class="btn-icon"
+            title="Refaire (Redo)"
+            aria-label="Refaire"
+            :disabled="!outlineStore.canRedo"
+            @click="outlineStore.redo()"
+          >
+            &#x27F3;
+          </button>
+        </div>
+
         <OutlineEditor
           v-if="!outlineStore.isValidated"
           :outline="outlineStore.outline"
@@ -379,6 +400,9 @@ onMounted(async () => {
         />
 
         <div class="outline-actions">
+          <p v-if="outlineStore.error" class="outline-error">
+            {{ outlineStore.error }}
+          </p>
           <p v-if="outlineStore.isValidated" class="validation-msg">
             Sommaire valide et sauvegarde.
           </p>
@@ -575,6 +599,43 @@ onMounted(async () => {
 
 .btn-suggest:disabled {
   opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.outline-undo-redo {
+  display: flex;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.outline-error {
+  color: var(--color-error, #dc2626);
+  font-size: 0.8125rem;
+  font-weight: 500;
+  margin: 0;
+}
+
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-bg-soft);
+  color: var(--color-text);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-icon:hover:not(:disabled) {
+  background: var(--color-bg-hover);
+}
+
+.btn-icon:disabled {
+  opacity: 0.35;
   cursor: not-allowed;
 }
 

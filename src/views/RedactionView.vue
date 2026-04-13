@@ -9,6 +9,7 @@ import { provideRecapRadioGroup } from '@/composables/useRecapRadioGroup'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import ArticleList from '@/components/dashboard/ArticleList.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
+import SkeletonCard from '@/components/shared/SkeletonCard.vue'
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 
@@ -103,6 +104,11 @@ onMounted(() => {
     />
 
     <AsyncContent :is-loading="articlesStore.isLoading" :error="articlesStore.error" @retry="loadData()">
+      <template #skeleton>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <SkeletonCard v-for="i in 4" :key="i" height="80px" />
+        </div>
+      </template>
       <ArticleList
         :articles="articlesStore.articles"
         :cocoon-id="cocoonId"

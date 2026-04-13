@@ -2,7 +2,7 @@
 title: 'UX & Features — Undo/Redo, Skeletons, Optimistic Updates, Raccourcis clavier'
 slug: 'ux-features-v1'
 created: '2026-04-09'
-status: 'ready-for-dev'
+status: 'completed'
 stepsCompleted: [1, 2, 3, 4]
 tech_stack: ['Vue 3.4', 'TypeScript 5', 'Pinia 2', 'TipTap 2', 'Vitest']
 files_to_modify:
@@ -75,7 +75,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
 
 #### Bloc A — Undo/Redo (Priorité 1)
 
-- [ ] **Task 1 : Ajouter boutons Undo/Redo dans EditorToolbar.vue**
+- [x] **Task 1 : Ajouter boutons Undo/Redo dans EditorToolbar.vue**
   - File : `src/components/editor/EditorToolbar.vue`
   - Action :
     - Ajouter 2 boutons dans la toolbar : Undo (⟲) et Redo (⟳)
@@ -85,7 +85,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - Style : mêmes classes que les boutons existants
   - Notes : TipTap StarterKit inclut déjà les extensions History (undo/redo). Les raccourcis Ctrl+Z/Y fonctionnent déjà dans l'éditeur, on ajoute juste les boutons visuels.
 
-- [ ] **Task 2 : Ajouter undo basique pour l'outline**
+- [x] **Task 2 : Ajouter undo basique pour l'outline**
   - File : `src/stores/outline.store.ts`
   - Action :
     - Ajouter un `undoStack: ref<Outline[]>([])` et `redoStack: ref<Outline[]>([])`
@@ -96,13 +96,13 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - Limiter le stack à 20 entrées (shift oldest)
   - Notes : Deep clone simple via `JSON.parse(JSON.stringify())` — les Outline sont des objets sérialisables
 
-- [ ] **Task 3 : Boutons Undo/Redo dans le OutlineEditor**
+- [x] **Task 3 : Boutons Undo/Redo dans le OutlineEditor**
   - File : `src/views/ArticleWorkflowView.vue` (section outline)
   - Action : Ajouter des boutons Undo/Redo liés à `outlineStore.undo()` / `outlineStore.redo()`
 
 #### Bloc B — Skeleton Screens (Priorité 2)
 
-- [ ] **Task 4 : Créer `SkeletonLoader.vue`**
+- [x] **Task 4 : Créer `SkeletonLoader.vue`**
   - File : `src/components/shared/SkeletonLoader.vue`
   - Action : Composant wrapper qui :
     - Props : `loading: boolean`, `lines?: number` (default: 3)
@@ -111,18 +111,18 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - Animation CSS `@keyframes shimmer` avec gradient linéaire
     - Style cohérent : `border-radius: 4px`, couleurs via `--color-bg-soft`, `--color-border`
 
-- [ ] **Task 5 : Créer `SkeletonCard.vue`**
+- [x] **Task 5 : Créer `SkeletonCard.vue`**
   - File : `src/components/shared/SkeletonCard.vue`
   - Action : Skeleton en forme de carte (rectangle avec header + 3 lignes de texte)
   - Props : `width?: string`, `height?: string`
   - Usage : remplacer les `<LoadingSpinner />` dans les listes de cartes (Dashboard, CocoonLanding)
 
-- [ ] **Task 6 : Créer `SkeletonText.vue`**
+- [x] **Task 6 : Créer `SkeletonText.vue`**
   - File : `src/components/shared/SkeletonText.vue`
   - Action : Lignes de texte animées de longueurs variables
   - Props : `lines?: number` (default: 3), `lastLineWidth?: string` (default: '60%')
 
-- [ ] **Task 7 : Remplacer les LoadingSpinner par des Skeletons**
+- [x] **Task 7 : Remplacer les LoadingSpinner par des Skeletons**
   - Files : `src/views/DashboardView.vue`, `src/views/CocoonLandingView.vue`, `src/views/RedactionView.vue`
   - Action :
     - Dashboard : remplacer le spinner de chargement des silos par 3 `<SkeletonCard />`
@@ -130,13 +130,13 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - RedactionView : même chose pour la liste d'articles
   - Notes : Garder le `<LoadingSpinner />` pour les actions courtes (generate, save). Les skeletons sont pour le chargement initial de page.
 
-- [ ] **Task 8 : Skeleton pour le brief dans ArticleWorkflowView**
+- [x] **Task 8 : Skeleton pour le brief dans ArticleWorkflowView**
   - File : `src/views/ArticleWorkflowView.vue`
   - Action : Quand `briefStore.isLoading`, afficher un `<SkeletonText :lines="5" />` au lieu du spinner dans le panneau brief
 
 #### Bloc C — Optimistic Updates (Priorité 3)
 
-- [ ] **Task 9 : Optimistic save dans editorStore**
+- [x] **Task 9 : Optimistic save dans editorStore**
   - File : `src/stores/editor.store.ts`
   - Action : Dans `saveArticle(slug)` :
     1. **Avant** l'appel API : `markClean()` immédiatement (l'UI montre "Sauvegardé" tout de suite)
@@ -145,7 +145,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     4. En cas de succès : `lastSavedAt.value = new Date().toISOString()`
   - Notes : Si Spec 1 (toasts) n'est pas encore implémentée, utiliser `log.error()` en attendant. Le rollback fonctionne indépendamment.
 
-- [ ] **Task 10 : Optimistic validate dans outlineStore**
+- [x] **Task 10 : Optimistic validate dans outlineStore**
   - File : `src/stores/outline.store.ts`
   - Action : Dans `validateOutline(slug)` :
     1. `isValidated.value = true` immédiatement
@@ -154,7 +154,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
 
 #### Bloc D — Raccourcis clavier (Priorité 4)
 
-- [ ] **Task 11 : Créer `useKeyboardShortcuts.ts`**
+- [x] **Task 11 : Créer `useKeyboardShortcuts.ts`**
   - File : `src/composables/useKeyboardShortcuts.ts`
   - Action : Composable qui :
     - Enregistre des raccourcis clavier globaux via `addEventListener('keydown', ...)`
@@ -163,7 +163,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - Gère les combos : `Ctrl+S`, `Ctrl+Z`, `Escape`
     - Ne s'active PAS quand un input/textarea est focus (sauf Ctrl+S qui marche partout)
 
-- [ ] **Task 12 : Intégrer les raccourcis dans les vues article**
+- [x] **Task 12 : Intégrer les raccourcis dans les vues article**
   - Files : `src/views/ArticleWorkflowView.vue`, `src/views/ArticleEditorView.vue`
   - Action :
     - `Ctrl+S` : appelle `editorStore.saveArticle(slug)` + `event.preventDefault()` (empêche le save navigateur)
@@ -171,7 +171,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
 
 #### Bloc E — Tests
 
-- [ ] **Task 13 : Tests skeletons**
+- [x] **Task 13 : Tests skeletons**
   - File : `tests/unit/components/skeleton-loader.test.ts`
   - Action :
     - `it('affiche le skeleton quand loading=true')`
@@ -179,7 +179,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - `it('affiche le bon nombre de lignes')`
     - `it('applique l animation shimmer')` — vérifier la classe CSS
 
-- [ ] **Task 14 : Tests raccourcis clavier**
+- [x] **Task 14 : Tests raccourcis clavier**
   - File : `tests/unit/composables/useKeyboardShortcuts.test.ts`
   - Action :
     - `it('exécute l action quand le raccourci est pressé')` — simuler Ctrl+S, vérifier que l'action est appelée
@@ -187,7 +187,7 @@ L'application fonctionne mais l'expérience utilisateur manque de polish :
     - `it('cleanup les listeners sur unmount')` — unmount le composant, vérifier removeEventListener
     - `it('empêche le comportement par défaut du navigateur')` — Ctrl+S, vérifier `event.defaultPrevented`
 
-- [ ] **Task 15 : Tests outline undo/redo**
+- [x] **Task 15 : Tests outline undo/redo**
   - File : existant `tests/unit/stores/outline.store.test.ts` (ajouter des cas)
   - Action :
     - `it('undo restaure l état précédent après addSection')`
@@ -222,3 +222,9 @@ Aucune nouvelle dépendance. TipTap History est déjà inclus dans StarterKit.
 5. Tasks 9-10 (optimistic updates) — 30 min
 6. Tasks 7-8 (remplacement spinners) — 30 min
 7. Tasks 12-15 (intégration + tests) — 1h
+
+## Review Notes
+- Adversarial review completed (24 findings)
+- Findings: 10 relevant, 10 fixed, 0 skipped
+- Resolution approach: auto-fix
+- Fixes applied: redo stack bounded, Escape global for contentEditable, shimmer keyframes factored, matchesCombo strict modifier check, updateSection undo removed (keystroke granularity), outline error feedback, aria-label on undo/redo buttons, SkeletonCard aria-hidden, preventDefault opt-in
