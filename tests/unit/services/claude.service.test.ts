@@ -57,7 +57,7 @@ describe('claude.service — streamChatCompletion', () => {
 
     expect(mockStreamFn).toHaveBeenCalledWith(
       expect.objectContaining({
-        system: 'my system prompt',
+        system: [{ type: 'text', text: 'my system prompt', cache_control: { type: 'ephemeral' } }],
         messages: [{ role: 'user', content: 'my user prompt' }],
       }),
     )

@@ -1,24 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
-import { apiPost } from '@/services/api.service'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
+import { useDebounceFn } from '@vueuse/core'
+import { apiPost, apiPut } from '@/services/api.service'
+import { hnToOutline } from '@/stores/outline.store'
 import { useStreaming } from '@/composables/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import { extractRoots } from '@/composables/useCapitaineValidation'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
-import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
+import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
+import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
+import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
 import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
-import type { FilteredProposeLieutenantsResult, ProposedLieutenant, ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
+import type { FilteredProposeLieutenantsResult, ProposedLieutenant, ProposeLieutenantsHnNode, HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
-export interface HnRecurrenceItem {
-  level: number
-  text: string
-  count: number
-  total: number
-  percent: number
-}
+export type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
 const props = withDefaults(defineProps<{
   selectedArticle: SelectedArticle | null
@@ -46,6 +44,34 @@ const emit = defineEmits<{
 }>()
 
 const articleKeywordsStore = useArticleKeywordsStore()
+
+// Debounced save: coalesces rafales de mutations (auto-save propositions IA + saveHn)
+// avec garde anti-cross-article. Cohérent avec CaptainValidation pour éviter le spam EPERM.
+let saveRequested = false
+
+function persistIfOwned() {
+  const id = props.selectedArticle?.id
+  if (id && articleKeywordsStore.keywords?.articleId === id) {
+    articleKeywordsStore.saveKeywords(id)
+  }
+}
+
+const debouncedSave = useDebounceFn(() => {
+  saveRequested = false
+  persistIfOwned()
+}, 300)
+
+function requestSave() {
+  saveRequested = true
+  debouncedSave()
+}
+
+onBeforeUnmount(() => {
+  if (saveRequested) {
+    saveRequested = false
+    persistIfOwned()
+  }
+})
 
 // --- SERP State (Phase 1) ---
 const sliderValue = ref(10)
@@ -132,7 +158,6 @@ const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, result: ia
 const lieutenantCards = ref<ProposedLieutenant[]>([])
 const eliminatedCards = ref<ProposedLieutenant[]>([])
 const totalGenerated = ref(0)
-const showEliminated = ref(false)
 const hnStructure = ref<ProposeLieutenantsHnNode[]>([])
 const contentGapInsights = ref('')
 
@@ -151,38 +176,66 @@ function toggleLieutenant(card: ProposedLieutenant) {
   emit('lieutenants-updated', Array.from(next.keys()))
 }
 
-function isCardSelected(keyword: string): boolean {
-  return selectedCards.value.has(keyword)
-}
-
 // --- HN Structure save ---
 const hnSaved = ref(false)
 const isSavingHn = ref(false)
 
 async function saveHnStructure() {
-  const slug = props.selectedArticle?.slug
-  if (!slug || !articleKeywordsStore.keywords || hnStructure.value.length === 0) return
+  const id = props.selectedArticle?.id
+  const title = props.selectedArticle?.title
+  if (!id || !title || !articleKeywordsStore.keywords || hnStructure.value.length === 0) return
 
   isSavingHn.value = true
+  // Save outline directly to articles/{id}.json (single source of truth)
+  const outline = hnToOutline(hnStructure.value, title)
+  await apiPut(`/articles/${id}`, { outline })
+  // Also keep hnStructure in keywords for backward compat
   articleKeywordsStore.keywords.hnStructure = hnStructure.value
-  await articleKeywordsStore.saveKeywords(slug)
+  await articleKeywordsStore.saveKeywords(id)
   hnSaved.value = true
   isSavingHn.value = false
   setTimeout(() => { hnSaved.value = false }, 2000)
-  log.info('[LieutenantsSelection] HN structure saved independently', { nodes: hnStructure.value.length })
+  log.info('[LieutenantsSelection] Outline saved from HN structure', { sections: outline.sections.length })
 }
 
 // --- Lock/unlock Lieutenants ---
 const isLocked = ref(props.initialLocked)
 
+// --- Debug log: state on mount ---
+watch(
+  () => articleKeywordsStore.keywords,
+  (kw) => {
+    log.debug('[LieutenantsSelection] store keywords snapshot', {
+      articleId: props.selectedArticle?.id,
+      richLieutenants: kw?.richLieutenants?.map(lt => ({
+        keyword: lt.keyword,
+        status: lt.status,
+      })) ?? [],
+      flatLieutenants: kw?.lieutenants ?? [],
+      hnStructure: kw?.hnStructure ? `${(kw.hnStructure as unknown[]).length} nodes` : 'none',
+      isCaptainLocked: props.isCaptaineLocked,
+      captainKeyword: props.captainKeyword,
+    })
+  },
+  { immediate: true },
+)
+
 async function lockLieutenants() {
   if (selectedCards.value.size === 0) return
-  const slug = props.selectedArticle?.slug
-  if (!slug || !articleKeywordsStore.keywords) return
+  const id = props.selectedArticle?.id
+  const title = props.selectedArticle?.title
+  if (!id || !title || !articleKeywordsStore.keywords) return
 
-  articleKeywordsStore.keywords.lieutenants = Array.from(selectedCards.value.keys())
+  // Persist rich lieutenant data with status 'locked' / 'eliminated'
+  const selected = Array.from(selectedCards.value.values())
+  articleKeywordsStore.setRichLieutenants(selected, eliminatedCards.value)
   articleKeywordsStore.keywords.hnStructure = hnStructure.value
-  await articleKeywordsStore.saveKeywords(slug)
+  await articleKeywordsStore.saveKeywords(id)
+  // Save outline directly to articles/{id}.json (single source of truth)
+  if (hnStructure.value.length > 0) {
+    const outline = hnToOutline(hnStructure.value, title)
+    await apiPut(`/articles/${id}`, { outline })
+  }
   isLocked.value = true
   emit('check-completed', 'lieutenants_locked')
   emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
@@ -207,7 +260,7 @@ watch(serpResultsByKeyword, (map) => {
 
 // --- Reset when article changes ---
 watch(
-  () => props.selectedArticle?.slug,
+  () => props.selectedArticle?.id,
   () => {
     serpResult.value = null
     serpResultsByKeyword.value = new Map()
@@ -222,18 +275,18 @@ watch(
     lieutenantCards.value = []
     eliminatedCards.value = []
     totalGenerated.value = 0
-    showEliminated.value = false
     hnStructure.value = []
     contentGapInsights.value = ''
 
     isLocked.value = props.initialLocked
     iaAbort()
 
-    // Restore hnStructure from store if article was previously locked
+    // Restore saved data if article was previously locked
     if (props.initialLocked) {
       if (articleKeywordsStore.keywords?.hnStructure && articleKeywordsStore.keywords.hnStructure.length > 0) {
         hnStructure.value = articleKeywordsStore.keywords.hnStructure
       }
+      restoreLockedLieutenants()
     }
   },
 )
@@ -245,6 +298,16 @@ watch(
     if (isLocked.value && hn && hn.length > 0 && hnStructure.value.length === 0) {
       hnStructure.value = hn
       log.info('[LieutenantsSelection] HN structure restored from store', { nodes: hn.length })
+    }
+  },
+)
+
+// --- Restore lieutenant cards when keywords arrive (async fetch) ---
+watch(
+  () => articleKeywordsStore.keywords?.lieutenants,
+  (lts) => {
+    if (isLocked.value && lts && lts.length > 0 && lieutenantCards.value.length === 0) {
+      restoreLockedLieutenants()
     }
   },
 )
@@ -277,7 +340,6 @@ function refreshSERP() {
   lieutenantCards.value = []
   eliminatedCards.value = []
   totalGenerated.value = 0
-  showEliminated.value = false
   hnStructure.value = []
   contentGapInsights.value = ''
   emit('lieutenants-updated', [])
@@ -369,13 +431,69 @@ async function analyzeSERP() {
 }
 
 // --- IA Proposal flow ---
+/** Restore lieutenant cards from saved data when in locked state */
+function restoreLockedLieutenants() {
+  if (lieutenantCards.value.length > 0) return // already restored
+
+  // Prefer rich data if available
+  const richLts = articleKeywordsStore.keywords?.richLieutenants
+  if (richLts && richLts.length > 0) {
+    const locked = richLts.filter(lt => lt.status === 'locked')
+    const eliminated = richLts.filter(lt => lt.status === 'eliminated')
+    lieutenantCards.value = locked.map(lt => ({
+      keyword: lt.keyword,
+      reasoning: lt.reasoning,
+      sources: lt.sources,
+      aiConfidence: lt.aiConfidence,
+      suggestedHnLevel: lt.suggestedHnLevel,
+      score: lt.score,
+    }))
+    eliminatedCards.value = eliminated.map(lt => ({
+      keyword: lt.keyword,
+      reasoning: lt.reasoning,
+      sources: lt.sources,
+      aiConfidence: lt.aiConfidence,
+      suggestedHnLevel: lt.suggestedHnLevel,
+      score: lt.score,
+    }))
+    const selected = new Map<string, ProposedLieutenant>()
+    for (const card of lieutenantCards.value) {
+      selected.set(card.keyword, card)
+    }
+    selectedCards.value = selected
+    emit('lieutenants-updated', Array.from(selected.keys()))
+    log.info('[LieutenantsSelection] Lieutenants restored from rich data', { locked: locked.length, eliminated: eliminated.length })
+    return
+  }
+
+  // Fallback: flat lieutenants[] (backward compat)
+  const lieutenants = articleKeywordsStore.keywords?.lieutenants
+  if (!lieutenants || lieutenants.length === 0) return
+
+  const cards: ProposedLieutenant[] = lieutenants.map(kw => ({
+    keyword: kw,
+    reasoning: '',
+    sources: [],
+    aiConfidence: 'fort' as const,
+    suggestedHnLevel: 2 as const,
+    score: 0,
+  }))
+  lieutenantCards.value = cards
+  const selected = new Map<string, ProposedLieutenant>()
+  for (const card of cards) {
+    selected.set(card.keyword, card)
+  }
+  selectedCards.value = selected
+  emit('lieutenants-updated', Array.from(selected.keys()))
+  log.info('[LieutenantsSelection] Lieutenants restored from flat data', { count: lieutenants.length })
+}
+
 function proposeLieutenants() {
   if (!props.captainKeyword || !serpResult.value || !props.selectedArticle) return
   iaAbort()
   lieutenantCards.value = []
   eliminatedCards.value = []
   totalGenerated.value = 0
-  showEliminated.value = false
   selectedCards.value = new Map()
   currentStep.value = 'ia-proposal'
 
@@ -421,7 +539,7 @@ function proposeLieutenants() {
     `/api/keywords/${encodeURIComponent(props.captainKeyword)}/propose-lieutenants`,
     {
       level: props.articleLevel ?? 'intermediaire',
-      articleSlug: props.selectedArticle?.slug ?? '',
+      articleId: props.selectedArticle?.id ?? 0,
       serpHeadings: captainHn,
       paaQuestions: captainPaa,
       wordGroups: props.wordGroups.map(g => g.word),
@@ -451,6 +569,15 @@ function proposeLieutenants() {
         emit('lieutenants-updated', Array.from(preSelected.keys()))
         currentStep.value = 'done'
         log.info(`[LieutenantsSelection] Selection complete: ${preSelected.size} pre-selected`)
+
+        // Auto-save rich lieutenant proposals (status='suggested') dès que l'IA répond.
+        // Respecte la règle métier : tout keyword approfondi DOIT être persisté,
+        // même avant que l'utilisateur ne clique "Valider". Guard cross-article.
+        const articleId = props.selectedArticle?.id
+        if (articleId && articleKeywordsStore.keywords?.articleId === articleId) {
+          articleKeywordsStore.saveRichLieutenantProposals(data.selectedLieutenants, data.eliminatedLieutenants)
+          requestSave()
+        }
       },
     },
   )
@@ -474,261 +601,65 @@ function proposeLieutenants() {
       <p>Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP.</p>
     </div>
 
-    <!-- SERP controls -->
-    <div class="serp-controls">
-      <div class="slider-row">
-        <label class="slider-label">Resultats SERP : <strong>{{ sliderValue }}</strong></label>
-        <input
-          type="range"
-          min="3"
-          max="10"
-          v-model.number="sliderValue"
-          class="serp-slider"
-          :disabled="!isCaptaineLocked"
-        />
-      </div>
-      <button
-        class="btn-analyze"
-        :disabled="!canAnalyze"
-        @click="analyzeSERP"
-      >
-        {{ isLoading ? 'Analyse en cours...' : 'Analyser SERP' }}
-      </button>
-      <button
-        v-if="serpResult && !isLocked"
-        class="btn-refresh"
-        :disabled="isLoading || iaIsStreaming"
-        @click="refreshSERP"
-      >
-        Tout relancer (SERP + IA)
-      </button>
-    </div>
-
-    <!-- Multi-step progress loader -->
-    <div v-if="currentStep !== 'idle' && currentStep !== 'done'" class="analysis-steps" data-testid="analysis-steps">
-      <div class="step-item" :class="{ active: currentStep === 'serp', done: currentStep !== 'serp' }">
-        <span class="step-icon">{{ currentStep === 'serp' ? '&#9899;' : '&#9989;' }}</span>
-        <span class="step-label">Scraping SERP Google
-          <span class="step-progress">({{ serpDoneCount }} / {{ serpTotalCount }} mots-cles)</span>
-        </span>
-      </div>
-      <div class="step-item" :class="{ active: currentStep === 'ia-proposal', done: currentStep === 'filtering', pending: currentStep === 'serp' }">
-        <span class="step-icon">{{ currentStep === 'ia-proposal' ? '&#9899;' : currentStep === 'serp' ? '&#9898;' : '&#9989;' }}</span>
-        <span class="step-label">Analyse IA — proposition de lieutenants
-          <span v-if="currentStep === 'ia-proposal' && iaChunks" class="step-progress">({{ Math.round(iaChunks.length / 1000) }}k car. recus)</span>
-        </span>
-      </div>
-      <div class="step-item" :class="{ active: currentStep === 'filtering', pending: currentStep === 'serp' || currentStep === 'ia-proposal' }">
-        <span class="step-icon">{{ currentStep === 'filtering' ? '&#9899;' : (currentStep === 'serp' || currentStep === 'ia-proposal') ? '&#9898;' : '&#9989;' }}</span>
-        <span class="step-label">Filtrage et selection des meilleurs candidats</span>
-      </div>
-    </div>
+    <!-- SERP Analysis: controls, progress, results summary, per-keyword tabs -->
+    <LieutenantSerpAnalysis
+      :serp-results-by-keyword="serpResultsByKeyword"
+      :active-serp-tab="activeSerpTab"
+      :active-serp-tab-result="activeSerpTabResult"
+      :displayed-competitors="displayedCompetitors"
+      :serp-result="serpResult"
+      :slider-value="sliderValue"
+      :is-loading="isLoading"
+      :can-analyze="canAnalyze"
+      :is-locked="isLocked"
+      :ia-is-streaming="iaIsStreaming"
+      :serp-done-count="serpDoneCount"
+      :serp-total-count="serpTotalCount"
+      :ia-chunks="iaChunks"
+      :current-step="currentStep"
+      @analyze="analyzeSERP"
+      @refresh="refreshSERP"
+      @update:slider-value="sliderValue = $event"
+      @update:active-serp-tab="activeSerpTab = $event"
+    />
 
     <!-- Error -->
     <div v-if="error" class="error-message">
       <p>{{ error }}</p>
     </div>
 
-    <!-- Results summary -->
-    <div v-if="serpResult" class="serp-results">
-      <div class="results-summary">
-        <p>
-          {{ displayedCompetitors.length }} concurrent{{ displayedCompetitors.length > 1 ? 's' : '' }}
-          affiche{{ displayedCompetitors.length > 1 ? 's' : '' }}
-          <span v-if="serpResult.fromCache" class="cache-badge">(cache)</span>
-        </p>
-        <p v-if="serpResult.paaQuestions.length > 0" class="paa-count">
-          {{ serpResult.paaQuestions.length }} questions PAA
-        </p>
-        <p v-else class="paa-count paa-warning">0 PAA — les lieutenants seront bases sur les headings et la strategie du cocon</p>
-      </div>
+    <div v-if="serpResult || isLocked" class="serp-results">
+      <!-- IA Proposals: streaming, cards, eliminated, content gap -->
+      <LieutenantProposals
+        :ia-is-streaming="iaIsStreaming"
+        :ia-chunks="iaChunks"
+        :ia-error="iaError"
+        :lieutenant-cards="lieutenantCards"
+        :eliminated-cards="eliminatedCards"
+        :total-generated="totalGenerated"
+        :selected-cards="selectedCards"
+        :is-locked="isLocked"
+        :content-gap-insights="contentGapInsights"
+        @toggle="toggleLieutenant"
+        @retry="proposeLieutenants"
+      />
 
-      <!-- Per-keyword SERP results with tabs -->
-      <div v-if="serpResultsByKeyword.size > 0" class="serp-keyword-tabs" data-testid="serp-keyword-tabs">
-        <div class="serp-tab-headers">
-          <button
-            v-for="[kw] in serpResultsByKeyword"
-            :key="kw"
-            class="serp-tab-btn"
-            :class="{ active: activeSerpTab === kw }"
-            @click="activeSerpTab = kw"
-          >
-            {{ kw }}
-            <span class="serp-tab-count">{{ serpResultsByKeyword.get(kw)?.competitors.filter(c => !c.fetchError).length ?? 0 }}</span>
-          </button>
-        </div>
-        <div v-if="activeSerpTabResult" class="serp-tab-content">
-          <div class="serp-tab-summary">
-            {{ activeSerpTabResult.competitors.filter(c => !c.fetchError).length }} concurrents,
-            {{ activeSerpTabResult.paaQuestions.length }} PAA
-            <span v-if="activeSerpTabResult.fromCache" class="cache-badge">(cache)</span>
-          </div>
-          <div class="serp-urls" data-testid="serp-urls">
-            <div
-              v-for="comp in activeSerpTabResult.competitors"
-              :key="comp.url"
-              class="serp-url-item"
-              :class="{ 'serp-url-error': comp.fetchError }"
-            >
-              <span class="serp-url-position">#{{ comp.position }}</span>
-              <span class="serp-url-domain">{{ comp.domain }}</span>
-              <a :href="comp.url" target="_blank" rel="noopener" class="serp-url-link">{{ comp.title }}</a>
-            </div>
-          </div>
-        </div>
-      </div>
+      <!-- HN Structure: IA recommendations + competitor recurrence -->
+      <LieutenantH2Structure
+        :hn-structure="hnStructure"
+        :active-hn-recurrence="activeHnRecurrence"
+        :hn-recurrence="hnRecurrence"
+        :serp-results-by-keyword="serpResultsByKeyword"
+        :active-hn-tab="activeHnTab"
+        :is-locked="isLocked"
+        :hn-saved="hnSaved"
+        :is-saving-hn="isSavingHn"
+        @save-hn="saveHnStructure"
+        @update:active-hn-tab="activeHnTab = $event"
+      />
 
-      <!-- Section: IA Proposal — Propositions IA (NOUVEAU) -->
-      <div class="ia-proposal-section" data-testid="ia-proposal-section">
-        <h3 class="section-title">
-          Lieutenants proposes par l'IA
-          <span v-if="iaIsStreaming" class="pulse-dot" />
-        </h3>
-
-        <!-- IA streaming state -->
-        <div v-if="iaIsStreaming" class="ia-loading" data-testid="ia-loading">
-          <span class="pulse-dot" /> Analyse IA en cours...
-        </div>
-
-        <!-- IA error -->
-        <div v-else-if="iaError" class="ia-error" data-testid="ia-error">
-          <p>{{ iaError }}</p>
-          <button class="btn-retry" @click="proposeLieutenants">Relancer la proposition IA</button>
-        </div>
-
-        <!-- Lieutenant RadarCards -->
-        <template v-else-if="lieutenantCards.length > 0">
-          <div class="lieutenant-counter" data-testid="lieutenant-counter">
-            {{ selectedCards.size }} lieutenant{{ selectedCards.size > 1 ? 's' : '' }}
-            selectionne{{ selectedCards.size > 1 ? 's' : '' }}
-            sur {{ totalGenerated }} generes par l'IA
-            <span v-if="eliminatedCards.length > 0" class="filter-info">
-              ({{ lieutenantCards.length }} retenus, {{ eliminatedCards.length }} elimines)
-            </span>
-          </div>
-
-          <!-- Selected lieutenant cards -->
-          <div class="lieutenant-cards-list" data-testid="lieutenant-cards-list">
-            <LieutenantCard
-              v-for="lt in lieutenantCards"
-              :key="lt.keyword"
-              :lieutenant="lt"
-              :checked="isCardSelected(lt.keyword)"
-              :disabled="isLocked"
-              @update:checked="toggleLieutenant(lt)"
-            />
-          </div>
-
-          <!-- Eliminated candidates (collapsible) -->
-          <div v-if="eliminatedCards.length > 0" class="eliminated-section" data-testid="eliminated-section">
-            <button
-              class="eliminated-toggle"
-              @click="showEliminated = !showEliminated"
-            >
-              <span class="eliminated-toggle-icon">{{ showEliminated ? '\u25BC' : '\u25B6' }}</span>
-              Autres candidats ({{ eliminatedCards.length }})
-            </button>
-            <div v-if="showEliminated" class="eliminated-cards-list" data-testid="eliminated-cards-list">
-              <LieutenantCard
-                v-for="lt in eliminatedCards"
-                :key="lt.keyword"
-                :lieutenant="lt"
-                :checked="isCardSelected(lt.keyword)"
-                :disabled="isLocked"
-                class="eliminated"
-                @update:checked="toggleLieutenant(lt)"
-              />
-            </div>
-          </div>
-
-          <!-- Content gap insights -->
-          <div v-if="contentGapInsights" class="content-gap-section">
-            <strong>Failles de contenu :</strong> {{ contentGapInsights }}
-          </div>
-        </template>
-
-        <p v-else class="section-empty">L'IA proposera des lieutenants apres l'analyse SERP.</p>
-      </div>
-
-      <!-- Section: Structure Hn recommandee (from IA proposal) -->
-      <CollapsableSection
-        v-if="hnStructure.length > 0"
-        title="Structure Hn recommandee (IA)"
-        :default-open="true"
-        data-testid="hn-structure-section"
-      >
-        <ul class="hn-structure-list">
-          <li v-for="(node, idx) in hnStructure" :key="idx" class="hn-structure-item">
-            <span class="hn-level-tag">H{{ node.level }}</span>
-            <span class="hn-text">{{ node.text }}</span>
-            <ul v-if="node.children && node.children.length > 0" class="hn-structure-children">
-              <li v-for="(child, cidx) in node.children" :key="cidx" class="hn-structure-child">
-                <span class="hn-level-tag">H{{ child.level }}</span>
-                <span class="hn-text">{{ child.text }}</span>
-              </li>
-            </ul>
-          </li>
-        </ul>
-        <div class="hn-structure-actions">
-          <button
-            v-if="!isLocked"
-            class="btn-save-hn"
-            :disabled="isSavingHn"
-            @click="saveHnStructure"
-          >
-            {{ isSavingHn ? 'Sauvegarde...' : 'Sauvegarder la structure' }}
-          </button>
-          <Transition name="fade">
-            <span v-if="hnSaved" class="hn-saved-badge">
-              <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-              </svg>
-              Sauvegardee
-            </span>
-          </Transition>
-          <span v-if="isLocked && !hnSaved" class="hn-saved-badge">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Validee avec les lieutenants
-          </span>
-        </div>
-      </CollapsableSection>
-
-      <!-- Section: Structure Hn concurrents (collapsed by default, tabs per keyword) -->
-      <CollapsableSection title="Structure Hn concurrents" :default-open="false" data-testid="hn-concurrents-section">
-        <div v-if="serpResultsByKeyword.size > 1" class="kw-tab-headers">
-          <button
-            class="kw-tab-btn"
-            :class="{ active: activeHnTab === '__all__' }"
-            @click="activeHnTab = '__all__'"
-          >
-            Tous ({{ hnRecurrence.length }})
-          </button>
-          <button
-            v-for="[kw] in serpResultsByKeyword"
-            :key="kw"
-            class="kw-tab-btn"
-            :class="{ active: activeHnTab === kw }"
-            @click="activeHnTab = kw"
-          >
-            {{ kw }}
-          </button>
-        </div>
-        <ul v-if="activeHnRecurrence.length > 0" class="hn-recurrence-list">
-          <li v-for="item in activeHnRecurrence" :key="`${item.level}:${item.text}`" class="hn-recurrence-item">
-            <span class="hn-level-tag">H{{ item.level }}</span>
-            <span class="hn-text">{{ item.text }}</span>
-            <span class="hn-freq">{{ item.count }}/{{ item.total }}</span>
-            <span class="hn-percent">({{ item.percent }}%)</span>
-            <div class="hn-bar" :style="{ width: item.percent + '%' }" />
-          </li>
-        </ul>
-        <p v-else class="section-empty">Aucun heading extrait des concurrents.</p>
-      </CollapsableSection>
-
-      <!-- Section: PAA associes (collapsed by default) -->
-      <CollapsableSection title="PAA associes" :default-open="false">
+      <!-- PAA -->
+      <CollapsableSection v-if="serpResult" title="PAA associes" :default-open="false">
         <ul v-if="serpResult.paaQuestions.length > 0" class="paa-list">
           <li v-for="paa in serpResult.paaQuestions" :key="paa.question" class="paa-item">
             <div class="paa-question">{{ paa.question }}</div>
@@ -738,8 +669,8 @@ function proposeLieutenants() {
         <p v-else class="section-empty">Aucune question PAA trouvee.</p>
       </CollapsableSection>
 
-      <!-- Section: Groupes de mots-cles (collapsed by default) -->
-      <CollapsableSection title="Groupes de mots-cles" :default-open="false">
+      <!-- Word groups -->
+      <CollapsableSection v-if="serpResult" title="Groupes de mots-cles" :default-open="false">
         <ul v-if="wordGroups.length > 0" class="group-list">
           <li v-for="g in wordGroups" :key="g.normalized" class="group-item">
             <span class="group-word">{{ g.word }}</span>
@@ -776,171 +707,10 @@ function proposeLieutenants() {
   gap: 1rem;
 }
 
-/* --- Analysis steps loader --- */
-.analysis-steps {
+.serp-results {
   display: flex;
   flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--color-block-info-bg, #eff6ff);
-  border: 1px solid var(--color-info, #3b82f6);
-  border-radius: 8px;
-}
-
-.step-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.875rem;
-  color: var(--color-text-muted, #6b7280);
-  transition: color 0.2s;
-}
-
-.step-item.active {
-  color: var(--color-primary, #3b82f6);
-  font-weight: 600;
-}
-
-.step-item.done {
-  color: var(--color-success, #22c55e);
-}
-
-.step-item.active .step-icon {
-  animation: pulse 1.5s ease-in-out infinite;
-}
-
-.step-progress {
-  font-weight: 400;
-  font-size: 0.75rem;
-  opacity: 0.7;
-}
-
-.paa-warning {
-  color: var(--color-warning, #f59e0b);
-  font-style: italic;
-}
-
-/* --- Keyword tabs (shared for SERP URLs + Hn concurrents) --- */
-.kw-tab-headers,
-.serp-tab-headers {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.25rem;
-  margin-bottom: 0.75rem;
-  border-bottom: 2px solid var(--color-border);
-  padding-bottom: 0.5rem;
-}
-
-.kw-tab-btn,
-.serp-tab-btn {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 1px solid transparent;
-  border-bottom: 2px solid transparent;
-  border-radius: 6px 6px 0 0;
-  cursor: pointer;
-  transition: all 0.15s;
-  white-space: nowrap;
-  max-width: 250px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.kw-tab-btn:hover,
-.serp-tab-btn:hover {
-  color: var(--color-primary);
-  background: var(--color-bg-secondary, #f9fafb);
-}
-
-.kw-tab-btn.active,
-.serp-tab-btn.active {
-  color: var(--color-primary);
-  font-weight: 600;
-  border-color: var(--color-border);
-  border-bottom-color: var(--color-primary);
-  background: var(--color-bg-secondary, #f9fafb);
-}
-
-.serp-tab-count {
-  display: inline-block;
-  margin-left: 0.25rem;
-  padding: 0 0.25rem;
-  font-size: 0.625rem;
-  font-weight: 600;
-  background: var(--color-badge-blue-bg, #dbeafe);
-  color: var(--color-primary);
-  border-radius: 4px;
-}
-
-.serp-keyword-tabs {
-  margin-top: 0.5rem;
-}
-
-.serp-tab-content {
-  padding: 0.5rem 0;
-}
-
-.serp-tab-summary {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-bottom: 0.5rem;
-}
-
-/* --- Competitor URLs --- */
-.serp-urls {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  max-height: 200px;
-  overflow-y: auto;
-}
-
-.serp-url-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  min-width: 0;
-}
-
-.serp-url-item.serp-url-error {
-  opacity: 0.5;
-  text-decoration: line-through;
-}
-
-.serp-url-position {
-  flex-shrink: 0;
-  color: var(--color-text-muted, #6b7280);
-  font-weight: 600;
-  width: 1.75rem;
-}
-
-.serp-url-domain {
-  flex-shrink: 0;
-  color: var(--color-primary, #3b82f6);
-  font-weight: 500;
-  max-width: 180px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.serp-url-link {
-  color: var(--color-text-muted, #6b7280);
-  text-decoration: none;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.serp-url-link:hover {
-  text-decoration: underline;
+  gap: 0.75rem;
 }
 
 /* --- Header --- */
@@ -962,9 +732,7 @@ function proposeLieutenants() {
   font-size: 0.9375rem;
 }
 
-.captain-icon {
-  font-size: 1.125rem;
-}
+.captain-icon { font-size: 1.125rem; }
 
 .level-badge {
   margin-left: auto;
@@ -986,62 +754,7 @@ function proposeLieutenants() {
   border-radius: 8px;
 }
 
-.soft-gate-message p {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--color-text);
-}
-
-/* --- Controls --- */
-.serp-controls {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-}
-
-.slider-row {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex: 1;
-}
-
-.slider-label {
-  font-size: 0.8125rem;
-  white-space: nowrap;
-  color: var(--color-text);
-}
-
-.serp-slider {
-  flex: 1;
-  max-width: 200px;
-}
-
-.btn-analyze {
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: white;
-  background: var(--color-primary);
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-
-.btn-analyze:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.btn-analyze:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
+.soft-gate-message p { margin: 0; font-size: 0.8125rem; color: var(--color-text); }
 
 /* --- Error --- */
 .error-message {
@@ -1051,134 +764,10 @@ function proposeLieutenants() {
   border-radius: 8px;
 }
 
-.error-message p {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--color-error, #ef4444);
-}
+.error-message p { margin: 0; font-size: 0.8125rem; color: var(--color-error, #ef4444); }
 
-/* --- Results --- */
-.serp-results {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.results-summary {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.results-summary p {
-  margin: 0;
-}
-
-.cache-badge {
-  font-size: 0.6875rem;
-  padding: 0.125rem 0.375rem;
-  background: var(--color-badge-amber-bg, #fef3c7);
-  border-radius: 4px;
-}
-
-/* --- IA Proposal Section --- */
-.ia-proposal-section {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 1rem;
-}
-
-.section-title {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  margin: 0 0 0.75rem 0;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-.pulse-dot {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-success, #22c55e);
-  animation: pulse 1s ease-in-out infinite;
-}
-
-@keyframes pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.3; }
-}
-
-.ia-loading {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
-.ia-error {
-  padding: 0.5rem;
-  background: var(--color-block-error-bg, #fef2f2);
-  border-radius: 6px;
-}
-
-.ia-error p {
-  margin: 0 0 0.5rem 0;
-  font-size: 0.8125rem;
-  color: var(--color-error, #ef4444);
-}
-
-.btn-retry {
-  padding: 0.375rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  cursor: pointer;
-}
-
-.btn-retry:hover {
-  background: var(--color-primary);
-  color: white;
-}
-
-/* --- Lieutenant cards --- */
-.lieutenant-counter {
-  padding: 0.5rem 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.lieutenant-cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-
-/* --- Content gap --- */
-.content-gap-section {
-  margin-top: 0.5rem;
-  padding: 0.75rem;
-  font-size: 0.8125rem;
-  background: var(--color-badge-amber-bg, #fef3c7);
-  border: 1px solid var(--color-warning, #f59e0b);
-  border-radius: 6px;
-  line-height: 1.5;
-}
-
-/* --- Hn structure from IA --- */
-.hn-structure-list {
+/* --- PAA --- */
+.paa-list {
   list-style: none;
   padding: 0;
   margin: 0;
@@ -1187,77 +776,17 @@ function proposeLieutenants() {
   gap: 0.375rem;
 }
 
-.hn-structure-item {
-  padding: 0.375rem 0.625rem;
-  font-size: 0.8125rem;
+.paa-item {
+  padding: 0.5rem 0.625rem;
   background: var(--color-bg-secondary, #f9fafb);
   border: 1px solid var(--color-border);
   border-radius: 6px;
 }
 
-.hn-structure-children {
-  list-style: none;
-  padding: 0 0 0 1.5rem;
-  margin: 0.25rem 0 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
+.paa-question { font-size: 0.8125rem; font-weight: 600; color: var(--color-heading); }
+.paa-answer { margin-top: 0.25rem; font-size: 0.75rem; color: var(--color-text-muted); line-height: 1.4; }
 
-.hn-structure-child {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.75rem;
-}
-
-.hn-structure-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  margin-top: 0.75rem;
-  padding-top: 0.75rem;
-  border-top: 1px solid var(--color-border);
-}
-
-.btn-save-hn {
-  padding: 0.375rem 0.75rem;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  background: var(--color-primary);
-  color: white;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-save-hn:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
-
-.btn-save-hn:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.hn-saved-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 500;
-  color: var(--color-success, #16a34a);
-}
-
-.fade-enter-active { transition: opacity 0.2s ease; }
-.fade-leave-active { transition: opacity 0.5s ease; }
-.fade-enter-from,
-.fade-leave-to { opacity: 0; }
-
-/* --- Hn recurrence --- */
-.hn-recurrence-list,
-.paa-list,
+/* --- Groups --- */
 .group-list {
   list-style: none;
   padding: 0;
@@ -1267,83 +796,6 @@ function proposeLieutenants() {
   gap: 0.375rem;
 }
 
-.hn-recurrence-item {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.8125rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  position: relative;
-  overflow: hidden;
-}
-
-.hn-level-tag {
-  font-size: 0.6875rem;
-  font-weight: 700;
-  padding: 0.125rem 0.375rem;
-  background: var(--color-badge-blue-bg, #dbeafe);
-  color: var(--color-primary);
-  border-radius: 4px;
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.hn-text {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.hn-freq {
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.hn-percent {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.hn-bar {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 2px;
-  background: var(--color-primary);
-  transition: width 0.2s ease;
-}
-
-/* --- PAA --- */
-.paa-item {
-  padding: 0.5rem 0.625rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-}
-
-.paa-question {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-heading);
-}
-
-.paa-answer {
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  line-height: 1.4;
-}
-
-/* --- Groups --- */
 .group-item {
   display: flex;
   align-items: center;
@@ -1355,14 +807,8 @@ function proposeLieutenants() {
   border-radius: 6px;
 }
 
-.group-word {
-  font-weight: 600;
-}
-
-.group-count {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-}
+.group-word { font-weight: 600; }
+.group-count { font-size: 0.6875rem; color: var(--color-text-muted); }
 
 /* --- Lock/unlock --- */
 .lieutenant-lock {
@@ -1384,20 +830,10 @@ function proposeLieutenants() {
   transition: background 0.15s;
 }
 
-.lock-btn:hover:not(:disabled) {
-  background: #16a34a;
-}
+.lock-btn:hover:not(:disabled) { background: #16a34a; }
+.lock-btn:disabled { opacity: 0.5; cursor: not-allowed; }
 
-.lock-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.locked-state {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-}
+.locked-state { display: flex; align-items: center; gap: 1rem; }
 
 .locked-badge {
   padding: 0.375rem 0.75rem;
@@ -1420,95 +856,8 @@ function proposeLieutenants() {
   transition: all 0.15s;
 }
 
-.unlock-btn:hover {
-  border-color: var(--color-error, #ef4444);
-  color: var(--color-error, #ef4444);
-}
-
-/* --- Refresh button --- */
-.btn-refresh {
-  padding: 0.5rem 1rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s;
-}
-
-.btn-refresh:hover:not(:disabled) {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-refresh:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-/* --- Filter info --- */
-.filter-info {
-  font-weight: 400;
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-}
-
-/* --- Eliminated section --- */
-.eliminated-section {
-  margin-top: 0.5rem;
-}
-
-.eliminated-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  background: transparent;
-  border: 1px dashed var(--color-border);
-  border-radius: 6px;
-  cursor: pointer;
-  text-align: left;
-  transition: all 0.15s;
-}
-
-.eliminated-toggle:hover {
-  color: var(--color-primary);
-  border-color: var(--color-primary);
-}
-
-.eliminated-toggle-icon {
-  font-size: 0.625rem;
-  flex-shrink: 0;
-}
-
-.eliminated-cards-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  padding: 0.5rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px dashed var(--color-border);
-  border-radius: 6px;
-}
-
-.eliminated {
-  opacity: 0.7;
-}
+.unlock-btn:hover { border-color: var(--color-error, #ef4444); color: var(--color-error, #ef4444); }
 
 /* --- Empty section --- */
-.section-empty {
-  margin: 0;
-  padding: 0.5rem 0;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
+.section-empty { margin: 0; padding: 0.5rem 0; font-size: 0.8125rem; color: var(--color-text-muted); font-style: italic; }
 </style>

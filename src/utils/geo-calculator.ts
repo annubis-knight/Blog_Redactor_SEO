@@ -14,13 +14,7 @@ import {
   MAX_PARAGRAPH_WORDS,
   JARGON_DICTIONARY,
 } from '@shared/constants/geo.constants.js'
-
-/**
- * Strip HTML tags and return plain text.
- */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-}
+import { stripHtml } from './text-utils'
 
 /**
  * Check if a text string is formulated as a question.

@@ -9,6 +9,7 @@ import {
   splitArticleByH2,
   validateHtmlStructurePreserved,
 } from '@/utils/text-utils'
+import { useOutlineStore } from '@/stores/outline.store'
 import type { BriefData, Outline, ApiUsage } from '@shared/types/index.js'
 
 /** Mutate `total` in place by summing tokens + cost from `partial`. */
@@ -16,12 +17,14 @@ function aggregateUsage(total: ApiUsage, partial: ApiUsage | null): void {
   if (!partial) return
   total.inputTokens += partial.inputTokens
   total.outputTokens += partial.outputTokens
+  total.cacheReadTokens += partial.cacheReadTokens ?? 0
+  total.cacheCreationTokens += partial.cacheCreationTokens ?? 0
   total.estimatedCost += partial.estimatedCost
   if (partial.model) total.model = partial.model
 }
 
 interface HumanizeSectionPayload {
-  slug: string
+  articleId: number
   sectionHtml: string
   sectionIndex: number
   sectionTitle: string
@@ -39,9 +42,21 @@ interface HumanizeSectionResponse {
   error?: string
 }
 
-interface ReduceArticleResponse {
+interface ReduceSectionPayload {
+  articleId: number
+  sectionHtml: string
+  sectionIndex: number
+  sectionTitle: string
+  targetWordCount: number
+  currentWordCount: number
+  keyword: string
+  keywords: string[]
+}
+
+interface ReduceSectionResponse {
   html: string
   usage: ApiUsage | null
+  sectionIndex: number
 }
 
 export const useEditorStore = defineStore('editor', () => {
@@ -67,6 +82,11 @@ export const useEditorStore = defineStore('editor', () => {
   const lastHumanizeError = ref<string | null>(null)
   const humanizeFallbackCount = ref(0)
   let humanizeAbortController: AbortController | null = null
+  const reduceProgress = ref<{ current: number; total: number; title: string } | null>(null)
+  let reduceAbortController: AbortController | null = null
+
+  // --- Web search toggle (session-level) ---
+  const webSearchEnabled = ref(true)
 
   // --- SSOT word count (finding G5) ---
   const wordCount = computed(() => countWordsFromHtml(content.value ?? ''))
@@ -78,7 +98,7 @@ export const useEditorStore = defineStore('editor', () => {
 
   async function generateArticle(briefData: BriefData, outline: Outline, targetWordCount?: number) {
     log.info(`[editor] Generating article "${briefData.article.title}"`, {
-      slug: briefData.article.slug,
+      articleId: briefData.article.id,
       type: briefData.article.type,
       keywordsCount: briefData.keywords.length,
       outlineSections: outline.sections.length,
@@ -98,8 +118,8 @@ export const useEditorStore = defineStore('editor', () => {
     log.debug('[editor] pilier keyword', { keyword: pilierKeyword?.keyword ?? briefData.article.title })
 
     const body = {
-      slug: briefData.article.slug,
-      outline: JSON.stringify(outline),
+      articleId: briefData.article.id,
+      outline,
       keyword: pilierKeyword?.keyword ?? briefData.article.title,
       keywords: briefData.keywords.map(kw => kw.keyword),
       paa: briefData.dataForSeo?.paa ?? [],
@@ -108,6 +128,7 @@ export const useEditorStore = defineStore('editor', () => {
       cocoonName: briefData.article.cocoonName,
       topic: briefData.article.topic,
       ...(targetWordCount ? { targetWordCount } : {}),
+      webSearchEnabled: webSearchEnabled.value,
     }
 
     const streaming = useStreaming<{ content: string }>()
@@ -130,6 +151,24 @@ export const useEditorStore = defineStore('editor', () => {
         log.info(`[editor] Section ${info.index + 1}/${info.total}: "${info.title}"`)
         sectionProgress.value = { current: info.index, total: info.total, title: info.title }
       },
+      onSectionDone: ({ index }) => {
+        // Mark all sections in the completed group as 'generated'
+        const outlineStore = useOutlineStore()
+        if (!outlineStore.outline) return
+        // Groups are H2-based: collect H2 indices (excluding H1)
+        const h2Indices: number[] = []
+        outlineStore.outline.sections.forEach((s, i) => {
+          if (s.level === 2) h2Indices.push(i)
+        })
+        const h2Idx = h2Indices[index]
+        if (h2Idx === undefined) return
+        // Mark H2 and its following H3s
+        const sections = outlineStore.outline.sections
+        outlineStore.updateSection(sections[h2Idx]!.id, { status: 'generated' })
+        for (let i = h2Idx + 1; i < sections.length && sections[i]!.level === 3; i++) {
+          outlineStore.updateSection(sections[i]!.id, { status: 'generated' })
+        }
+      },
     })
 
     isGenerating.value = false
@@ -139,14 +178,14 @@ export const useEditorStore = defineStore('editor', () => {
 
   const isGeneratingMeta = ref(false)
 
-  async function generateMeta(slug: string, keyword: string, articleTitle: string, articleContent: string) {
-    log.info(`[editor] Generating meta for "${articleTitle}"`, { slug, keyword, contentLength: articleContent.length })
+  async function generateMeta(articleId: number, keyword: string, articleTitle: string, articleContent: string) {
+    log.info(`[editor] Generating meta for "${articleTitle}"`, { articleId, keyword, contentLength: articleContent.length })
     isGeneratingMeta.value = true
     error.value = null
 
     try {
       const data = await apiPost<{ metaTitle: string; metaDescription: string; usage?: ApiUsage }>('/generate/meta', {
-        slug,
+        articleId,
         keyword,
         articleTitle,
         articleContent,
@@ -171,8 +210,8 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
-  async function saveArticle(slug: string) {
-    log.info(`Saving article "${slug}"`)
+  async function saveArticle(articleId: number) {
+    log.info(`Saving article ${articleId}`)
     isSaving.value = true
 
     // Optimistic update: mark clean immediately
@@ -180,17 +219,17 @@ export const useEditorStore = defineStore('editor', () => {
     markClean()
 
     try {
-      await apiPut(`/articles/${slug}`, {
+      await apiPut(`/articles/${articleId}`, {
         content: content.value,
         metaTitle: metaTitle.value,
         metaDescription: metaDescription.value,
       })
       lastSavedAt.value = new Date().toISOString()
-      log.info(`Article "${slug}" saved`)
+      log.info(`Article ${articleId} saved`)
     } catch (err) {
       // Rollback on failure
       isDirty.value = wasDirty
-      log.error(`Save failed for "${slug}" — ${(err as Error).message}`)
+      log.error(`Save failed for article ${articleId} — ${(err as Error).message}`)
       error.value = err instanceof Error ? err.message : 'Erreur lors de la sauvegarde'
     } finally {
       isSaving.value = false
@@ -211,11 +250,25 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   /**
-   * Reduce the current article to approach `targetWordCount`.
-   * Snapshots content before the call and rolls back on error (F31).
+   * Call /generate/reduce-section for a single section.
+   * Stateless — safe to call sequentially in a loop.
+   */
+  async function callReduceSection(
+    payload: ReduceSectionPayload,
+    signal: AbortSignal,
+  ): Promise<StreamOnceResult<ReduceSectionResponse>> {
+    return startStreamOnce<ReduceSectionResponse>('/api/generate/reduce-section', payload, {
+      signal,
+    })
+  }
+
+  /**
+   * Reduce the article section-by-section to approach `targetWordCount`.
+   * Follows the same pattern as `humanizeArticle`: split by H2, loop with
+   * `startStreamOnce`, progress tracking, rollback on abort (F31).
    */
   async function reduceArticle(
-    slug: string,
+    articleId: number,
     targetWordCount: number,
     keyword: string,
     keywords: string[],
@@ -224,46 +277,117 @@ export const useEditorStore = defineStore('editor', () => {
     if (isReducing.value || isHumanizing.value || isGenerating.value) return
 
     const originalContent = content.value
-    const currentWordCount = countWordsFromHtml(originalContent)
+    const totalCurrentWords = countWordsFromHtml(originalContent)
 
-    log.info('[editor] reduceArticle start', { slug, targetWordCount, currentWordCount })
+    log.info('[editor] reduceArticle start', { articleId, targetWordCount, currentWordCount: totalCurrentWords })
     isReducing.value = true
     error.value = null
     lastReduceUsage.value = null
+    reduceAbortController = new AbortController()
+    const signal = reduceAbortController.signal
+
+    const totalUsage: ApiUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, model: '', estimatedCost: 0 }
 
     try {
-      const result = await startStreamOnce<ReduceArticleResponse>('/api/generate/reduce', {
-        slug,
-        articleHtml: originalContent,
-        targetWordCount,
-        currentWordCount,
-        keyword,
-        keywords,
-      })
+      const { intro, sections } = splitArticleByH2(originalContent)
 
-      if (result.errorMessage) {
-        error.value = result.errorMessage
+      interface ReduceUnit {
+        index: number
+        title: string
+        html: string
+        isIntro: boolean
+      }
+      const units: ReduceUnit[] = []
+      if (intro.trim()) {
+        units.push({ index: -1, title: 'Introduction', html: intro, isIntro: true })
+      }
+      for (const s of sections) {
+        units.push({ index: s.index, title: s.title, html: s.html, isIntro: false })
+      }
+
+      if (units.length === 0) {
+        log.warn('[editor] reduceArticle: nothing to reduce')
+        return
+      }
+
+      reduceProgress.value = { current: 0, total: units.length, title: units[0]!.title }
+
+      const reducedUnits: string[] = []
+      let aborted = false
+
+      for (let i = 0; i < units.length; i++) {
+        if (signal.aborted) { aborted = true; break }
+        const unit = units[i]!
+        reduceProgress.value = { current: i, total: units.length, title: unit.title }
+
+        const unitWords = countWordsFromHtml(unit.html)
+        const ratio = totalCurrentWords > 0 ? unitWords / totalCurrentWords : 1 / units.length
+        const unitTarget = Math.max(1, Math.round(targetWordCount * ratio))
+
+        const result = await callReduceSection(
+          {
+            articleId,
+            sectionHtml: unit.html,
+            sectionIndex: unit.isIntro ? 0 : Math.max(0, unit.index),
+            sectionTitle: unit.title,
+            targetWordCount: unitTarget,
+            currentWordCount: unitWords,
+            keyword,
+            keywords,
+          },
+          signal,
+        )
+
+        if (result.aborted) { aborted = true; break }
+
+        if (result.errorMessage) {
+          log.warn('[editor] reduce section error — keeping original', {
+            index: unit.index,
+            error: result.errorMessage,
+          })
+          reducedUnits.push(unit.html)
+          continue
+        }
+
+        if (!result.result?.html) {
+          reducedUnits.push(unit.html)
+          continue
+        }
+
+        reducedUnits.push(result.result.html)
+        if (result.usage) aggregateUsage(totalUsage, result.usage)
+      }
+
+      if (aborted || signal.aborted) {
+        log.info('[editor] reduceArticle aborted — rolling back')
         content.value = originalContent
         return
       }
 
-      if (!result.result?.html) {
-        content.value = originalContent
-        return
-      }
-
-      content.value = result.result.html
+      const finalHtml = reducedUnits.join('\n')
+      content.value = finalHtml
       markDirty()
-      if (result.usage) lastReduceUsage.value = result.usage
+      lastReduceUsage.value = totalUsage
       log.info('[editor] reduceArticle done', {
-        newWordCount: countWordsFromHtml(result.result.html),
+        units: units.length,
+        newWordCount: countWordsFromHtml(finalHtml),
         targetWordCount,
+        cost: `$${totalUsage.estimatedCost.toFixed(4)}`,
       })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur lors de la réduction'
       content.value = originalContent
     } finally {
       isReducing.value = false
+      reduceProgress.value = null
+      reduceAbortController = null
+    }
+  }
+
+  function abortReduce(): void {
+    if (reduceAbortController) {
+      log.info('[editor] abortReduce triggered')
+      reduceAbortController.abort()
     }
   }
 
@@ -285,7 +409,7 @@ export const useEditorStore = defineStore('editor', () => {
    * on structure preservation (AC 11, AC 12). Rolls back on abort/error (F31).
    */
   async function humanizeArticle(
-    slug: string,
+    articleId: number,
     keyword: string,
     keywords: string[],
   ): Promise<void> {
@@ -293,7 +417,7 @@ export const useEditorStore = defineStore('editor', () => {
     if (isHumanizing.value || isReducing.value || isGenerating.value) return
 
     const originalContent = content.value
-    log.info('[editor] humanizeArticle start', { slug })
+    log.info('[editor] humanizeArticle start', { articleId })
 
     isHumanizing.value = true
     error.value = null
@@ -303,7 +427,7 @@ export const useEditorStore = defineStore('editor', () => {
     humanizeAbortController = new AbortController()
     const signal = humanizeAbortController.signal
 
-    const totalUsage: ApiUsage = { inputTokens: 0, outputTokens: 0, model: '', estimatedCost: 0 }
+    const totalUsage: ApiUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, model: '', estimatedCost: 0 }
 
     try {
       const { intro, sections } = splitArticleByH2(originalContent)
@@ -339,7 +463,7 @@ export const useEditorStore = defineStore('editor', () => {
 
         const result = await callHumanizeSection(
           {
-            slug,
+            articleId,
             sectionHtml: unit.html,
             sectionIndex: unit.isIntro ? 0 : Math.max(0, unit.index),
             sectionTitle: unit.title,
@@ -458,6 +582,7 @@ export const useEditorStore = defineStore('editor', () => {
     isReducing.value = false
     isHumanizing.value = false
     humanizeProgress.value = null
+    reduceProgress.value = null
     lastReduceUsage.value = null
     lastHumanizeUsage.value = null
     lastHumanizeError.value = null
@@ -466,20 +591,24 @@ export const useEditorStore = defineStore('editor', () => {
       humanizeAbortController.abort()
       humanizeAbortController = null
     }
+    if (reduceAbortController) {
+      reduceAbortController.abort()
+      reduceAbortController = null
+    }
   }
 
   return {
     content, streamedText, isGenerating, isGeneratingMeta, error,
     metaTitle, metaDescription, isDirty, isSaving, lastSavedAt,
-    lastArticleUsage, lastMetaUsage, sectionProgress,
+    lastArticleUsage, lastMetaUsage, sectionProgress, webSearchEnabled,
     // reduce / humanize
-    isReducing, isHumanizing, humanizeProgress,
+    isReducing, isHumanizing, humanizeProgress, reduceProgress,
     lastReduceUsage, lastHumanizeUsage, lastHumanizeError, humanizeFallbackCount,
     // computed
     wordCount, wordCountDelta,
     // actions
     generateArticle, generateMeta, saveArticle, setContent,
     loadExistingContent, markClean, markDirty, resetEditor,
-    reduceArticle, humanizeArticle, abortHumanize, callHumanizeSection,
+    reduceArticle, abortReduce, humanizeArticle, abortHumanize, callHumanizeSection,
   }
 })

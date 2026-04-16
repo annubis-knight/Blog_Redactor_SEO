@@ -8,5 +8,6 @@ export const rawKeywordSchema = z.object({
 })
 
 export const rawKeywordsDbSchema = z.object({
+  _schemaVersion: z.number().optional(),
   seo_data: z.array(rawKeywordSchema).min(1),
 })

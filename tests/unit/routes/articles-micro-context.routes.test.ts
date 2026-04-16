@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
 const {
+  mockGetArticleById,
   mockGetArticleBySlug,
   mockLoadArticleMicroContext,
   mockSaveArticleMicroContext,
@@ -13,6 +14,7 @@ const {
   mockRemoveArticleFromCocoon,
   mockUpdateArticleInCocoon,
 } = vi.hoisted(() => ({
+  mockGetArticleById: vi.fn(),
   mockGetArticleBySlug: vi.fn(),
   mockLoadArticleMicroContext: vi.fn(),
   mockSaveArticleMicroContext: vi.fn(),
@@ -25,6 +27,7 @@ const {
 }))
 
 vi.mock('../../../server/services/data.service', () => ({
+  getArticleById: mockGetArticleById,
   getArticleBySlug: mockGetArticleBySlug,
   updateArticleStatus: mockUpdateArticleStatus,
   addArticlesToCocoon: mockAddArticlesToCocoon,
@@ -60,12 +63,12 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('GET /articles/:slug/micro-context', () => {
-  const handler = findHandler('get', '/articles/:slug/micro-context')
+describe('GET /articles/:id/micro-context', () => {
+  const handler = findHandler('get', '/articles/:id/micro-context')
 
   it('returns micro-context when found', async () => {
     const microCtx = {
-      slug: 'test-article',
+      articleId: 1,
       angle: 'Test angle',
       tone: 'expert',
       directives: 'Be precise',
@@ -73,19 +76,19 @@ describe('GET /articles/:slug/micro-context', () => {
     }
     mockLoadArticleMicroContext.mockResolvedValueOnce(microCtx)
 
-    const req = { params: { slug: 'test-article' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockLoadArticleMicroContext).toHaveBeenCalledWith('test-article')
+    expect(mockLoadArticleMicroContext).toHaveBeenCalledWith(1)
     expect(res.json).toHaveBeenCalledWith({ data: microCtx })
   })
 
   it('returns data: null when no micro-context exists', async () => {
     mockLoadArticleMicroContext.mockResolvedValueOnce(null)
 
-    const req = { params: { slug: 'new-article' } } as unknown as Request
+    const req = { params: { id: '2' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -96,7 +99,7 @@ describe('GET /articles/:slug/micro-context', () => {
   it('returns 500 on service error', async () => {
     mockLoadArticleMicroContext.mockRejectedValueOnce(new Error('disk error'))
 
-    const req = { params: { slug: 'test-article' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -110,28 +113,29 @@ describe('GET /articles/:slug/micro-context', () => {
   })
 })
 
-describe('PUT /articles/:slug/micro-context', () => {
-  const handler = findHandler('put', '/articles/:slug/micro-context')
+describe('PUT /articles/:id/micro-context', () => {
+  const handler = findHandler('put', '/articles/:id/micro-context')
 
   it('saves valid micro-context and returns result', async () => {
     const saved = {
-      slug: 'test-article',
+      articleId: 1,
       angle: 'Unique angle',
       tone: 'pedagogique',
       directives: 'Include examples',
       updatedAt: '2026-04-06T12:00:00.000Z',
     }
+    mockGetArticleById.mockResolvedValueOnce({ article: { id: 1, slug: 'test-slug', title: 'Test' } })
     mockSaveArticleMicroContext.mockResolvedValueOnce(saved)
 
     const req = {
-      params: { slug: 'test-article' },
+      params: { id: '1' },
       body: { angle: 'Unique angle', tone: 'pedagogique', directives: 'Include examples' },
     } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockSaveArticleMicroContext).toHaveBeenCalledWith('test-article', expect.objectContaining({
+    expect(mockSaveArticleMicroContext).toHaveBeenCalledWith(1, expect.objectContaining({
       angle: 'Unique angle',
       tone: 'pedagogique',
       directives: 'Include examples',
@@ -141,23 +145,24 @@ describe('PUT /articles/:slug/micro-context', () => {
 
   it('saves with optional fields omitted (defaults to empty strings via schema)', async () => {
     const saved = {
-      slug: 'test-article',
+      articleId: 1,
       angle: 'Some angle',
       tone: '',
       directives: '',
       updatedAt: '2026-04-06T12:00:00.000Z',
     }
+    mockGetArticleById.mockResolvedValueOnce({ article: { id: 1, slug: 'test-slug', title: 'Test' } })
     mockSaveArticleMicroContext.mockResolvedValueOnce(saved)
 
     const req = {
-      params: { slug: 'test-article' },
+      params: { id: '1' },
       body: { angle: 'Some angle' },
     } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockSaveArticleMicroContext).toHaveBeenCalledWith('test-article', expect.objectContaining({
+    expect(mockSaveArticleMicroContext).toHaveBeenCalledWith(1, expect.objectContaining({
       angle: 'Some angle',
       tone: '',
       directives: '',
@@ -166,7 +171,7 @@ describe('PUT /articles/:slug/micro-context', () => {
 
   it('returns 400 on invalid body (angle must be string)', async () => {
     const req = {
-      params: { slug: 'test-article' },
+      params: { id: '1' },
       body: { angle: 12345 },
     } as unknown as Request
     const res = createMockRes()
@@ -184,7 +189,7 @@ describe('PUT /articles/:slug/micro-context', () => {
 
   it('returns 400 when angle exceeds max length', async () => {
     const req = {
-      params: { slug: 'test-article' },
+      params: { id: '1' },
       body: { angle: 'x'.repeat(2001) },
     } as unknown as Request
     const res = createMockRes()
@@ -196,10 +201,11 @@ describe('PUT /articles/:slug/micro-context', () => {
   })
 
   it('returns 500 on service error', async () => {
+    mockGetArticleById.mockResolvedValueOnce({ article: { id: 1, slug: 'test-slug', title: 'Test' } })
     mockSaveArticleMicroContext.mockRejectedValueOnce(new Error('write failed'))
 
     const req = {
-      params: { slug: 'test-article' },
+      params: { id: '1' },
       body: { angle: 'Valid angle' },
     } as unknown as Request
     const res = createMockRes()

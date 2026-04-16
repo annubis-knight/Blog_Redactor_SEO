@@ -6,9 +6,8 @@ const props = defineProps<{
   outline: Outline | null
 }>()
 
-/** Filter to only H2/H3 sections (skip H1 — it's the article title) */
 const tocSections = computed(() =>
-  props.outline?.sections.filter(s => s.level === 2 || s.level === 3) ?? [],
+  props.outline?.sections.filter(s => s.level >= 1 && s.level <= 3) ?? [],
 )
 </script>
 
@@ -21,7 +20,10 @@ const tocSections = computed(() =>
           v-for="section in tocSections"
           :key="section.id"
           class="toc-item"
-          :class="{ 'toc-h3': section.level === 3 }"
+          :class="{
+            'toc-h1': section.level === 1,
+            'toc-h3': section.level === 3,
+          }"
         >
           <span class="toc-link">{{ section.title }}</span>
         </li>
@@ -73,6 +75,13 @@ const tocSections = computed(() =>
 
 .toc-link:hover {
   text-decoration-color: var(--color-primary, #2563eb);
+}
+
+/* H1 item — article title, bold, no indent */
+.toc-h1 {
+  font-weight: 700;
+  font-size: 0.875rem;
+  margin-bottom: 0.25rem;
 }
 
 /* H3 items are indented like a nested list */

@@ -490,7 +490,7 @@ function makeLieutenantJson(count = 3) {
 
 const proposeLtBaseBody = {
   level: 'pilier',
-  articleSlug: 'test-article',
+  articleId: 1,
   serpHeadings: [{ level: 2, text: 'Causes', count: 3 }],
   paaQuestions: [{ question: 'Question 1?', answer: 'Answer 1' }],
   wordGroups: ['group1'],
@@ -505,7 +505,7 @@ describe('POST /api/keywords/:keyword/propose-lieutenants', () => {
 
   it('returns 400 if level is missing', async () => {
     const handler = getProposeLieutenantsHandler()
-    const req = makeReq('seo', { articleSlug: 'test' })
+    const req = makeReq('seo', { articleId: 1 })
     const res = makeRes()
     await handler(req, res)
     expect(res.status).toHaveBeenCalledWith(400)
@@ -514,7 +514,7 @@ describe('POST /api/keywords/:keyword/propose-lieutenants', () => {
     }))
   })
 
-  it('returns 400 if articleSlug is missing', async () => {
+  it('returns 400 if articleId is missing', async () => {
     const handler = getProposeLieutenantsHandler()
     const req = makeReq('seo', { level: 'pilier' })
     const res = makeRes()
@@ -524,7 +524,7 @@ describe('POST /api/keywords/:keyword/propose-lieutenants', () => {
 
   it('returns 400 if level is invalid', async () => {
     const handler = getProposeLieutenantsHandler()
-    const req = makeReq('seo', { level: 'invalid', articleSlug: 'test' })
+    const req = makeReq('seo', { level: 'invalid', articleId: 1 })
     const res = makeRes()
     await handler(req, res)
     expect(res.status).toHaveBeenCalledWith(400)
@@ -544,13 +544,13 @@ describe('POST /api/keywords/:keyword/propose-lieutenants', () => {
     }))
   })
 
-  it('calls getCocoonExistingLieutenants with articleSlug', async () => {
+  it('calls getCocoonExistingLieutenants with articleId', async () => {
     mockStreamGenerator.mockReturnValue(createMockStream([makeLieutenantJson()])())
     const handler = getProposeLieutenantsHandler()
     const req = makeReq('seo', proposeLtBaseBody)
     const res = makeRes()
     await handler(req, res)
-    expect(mockGetCocoonExistingLieutenants).toHaveBeenCalledWith('test-article')
+    expect(mockGetCocoonExistingLieutenants).toHaveBeenCalledWith(1)
   })
 
   it('loads propose-lieutenants prompt with variables', async () => {

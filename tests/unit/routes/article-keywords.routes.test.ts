@@ -49,31 +49,31 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('GET /articles/:slug/keywords', () => {
-  const handler = findHandler('get', '/articles/:slug/keywords')
+describe('GET /articles/:id/keywords', () => {
+  const handler = findHandler('get', '/articles/:id/keywords')
 
   it('returns article keywords data', async () => {
     const keywords = {
-      articleSlug: 'test-slug',
+      articleId: 1,
       capitaine: 'main keyword',
       lieutenants: ['lt1', 'lt2'],
       lexique: ['lsi1', 'lsi2'],
     }
     mockGetArticleKeywords.mockResolvedValueOnce(keywords)
 
-    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockGetArticleKeywords).toHaveBeenCalledWith('test-slug')
+    expect(mockGetArticleKeywords).toHaveBeenCalledWith(1)
     expect(res.json).toHaveBeenCalledWith({ data: keywords })
   })
 
   it('returns null when no keywords found', async () => {
     mockGetArticleKeywords.mockResolvedValueOnce(null)
 
-    const req = { params: { slug: 'missing-slug' } } as unknown as Request
+    const req = { params: { id: '99' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -84,7 +84,7 @@ describe('GET /articles/:slug/keywords', () => {
   it('returns 500 on error', async () => {
     mockGetArticleKeywords.mockRejectedValueOnce(new Error('read error'))
 
-    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -98,12 +98,12 @@ describe('GET /articles/:slug/keywords', () => {
   })
 })
 
-describe('PUT /articles/:slug/keywords', () => {
-  const handler = findHandler('put', '/articles/:slug/keywords')
+describe('PUT /articles/:id/keywords', () => {
+  const handler = findHandler('put', '/articles/:id/keywords')
 
   it('saves and returns article keywords', async () => {
     const saved = {
-      articleSlug: 'test-slug',
+      articleId: 1,
       capitaine: 'main keyword',
       lieutenants: ['lt1'],
       lexique: ['lsi1'],
@@ -111,14 +111,14 @@ describe('PUT /articles/:slug/keywords', () => {
     mockSaveArticleKeywords.mockResolvedValueOnce(saved)
 
     const req = {
-      params: { slug: 'test-slug' },
+      params: { id: '1' },
       body: { capitaine: 'main keyword', lieutenants: ['lt1'], lexique: ['lsi1'] },
     } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockSaveArticleKeywords).toHaveBeenCalledWith('test-slug', {
+    expect(mockSaveArticleKeywords).toHaveBeenCalledWith(1, {
       capitaine: 'main keyword',
       lieutenants: ['lt1'],
       lexique: ['lsi1'],
@@ -130,7 +130,7 @@ describe('PUT /articles/:slug/keywords', () => {
 
   it('returns 400 when capitaine is missing', async () => {
     const req = {
-      params: { slug: 'test-slug' },
+      params: { id: '1' },
       body: { lieutenants: ['lt1'], lexique: ['lsi1'] },
     } as unknown as Request
     const res = createMockRes()
@@ -149,7 +149,7 @@ describe('PUT /articles/:slug/keywords', () => {
     mockSaveArticleKeywords.mockRejectedValueOnce(new Error('write error'))
 
     const req = {
-      params: { slug: 'test-slug' },
+      params: { id: '1' },
       body: { capitaine: 'main keyword', lieutenants: [], lexique: [] },
     } as unknown as Request
     const res = createMockRes()

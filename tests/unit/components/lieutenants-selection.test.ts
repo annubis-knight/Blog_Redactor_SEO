@@ -29,24 +29,30 @@ vi.mock('../../../src/composables/useStreaming', () => ({
 
 // --- Mock article-keywords store ---
 const mockStoreKeywords = ref<{
-  articleSlug: string
+  articleId: number
   capitaine: string
   lieutenants: string[]
   lexique: string[]
   rootKeywords: string[]
+  richLieutenants?: any[]
 } | null>({
-  articleSlug: 'test-article',
+  articleId: 1,
   capitaine: 'seo local',
   lieutenants: [],
   lexique: [],
   rootKeywords: [],
+  richLieutenants: [],
 })
 const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
+const mockSetRichLieutenants = vi.fn()
+const mockSaveRichLieutenantProposals = vi.fn()
 
 vi.mock('../../../src/stores/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockStoreKeywords.value,
     saveKeywords: mockSaveKeywords,
+    setRichLieutenants: mockSetRichLieutenants,
+    saveRichLieutenantProposals: mockSaveRichLieutenantProposals,
   }),
 }))
 
@@ -57,11 +63,14 @@ vi.mock('../../../src/utils/logger', () => ({
 
 // --- Test data ---
 const ARTICLE: SelectedArticle = {
+  id: 1,
   slug: 'test-article',
   title: 'Test Article',
   keyword: 'seo local',
   painPoint: 'pain',
   type: 'Cluster',
+  locked: false,
+  source: 'proposed',
 }
 
 const SERP_RESULT: SerpAnalysisResult = {
@@ -210,7 +219,7 @@ beforeEach(() => {
   iaStreaming.abort.mockClear()
   // Reset store
   mockStoreKeywords.value = {
-    articleSlug: 'test-article',
+    articleId: 1,
     capitaine: 'seo local',
     lieutenants: [],
     lexique: [],
@@ -591,7 +600,7 @@ describe('LieutenantsSelection', () => {
         expect.stringContaining('/propose-lieutenants'),
         expect.objectContaining({
           level: 'intermediaire',
-          articleSlug: 'test-article',
+          articleId: 1,
         }),
         expect.any(Object),
       )
@@ -604,7 +613,7 @@ describe('LieutenantsSelection', () => {
         expect.stringContaining('/api/keywords/seo%20local/propose-lieutenants'),
         expect.objectContaining({
           level: 'intermediaire',
-          articleSlug: 'test-article',
+          articleId: 1,
           wordGroups: ['referencement', 'local', 'google'],
           rootKeywords: ['seo'],
         }),
@@ -857,7 +866,7 @@ describe('LieutenantsSelection', () => {
       expect(w.find('.serp-results').exists()).toBe(true)
 
       await w.setProps({
-        selectedArticle: { ...ARTICLE, slug: 'other-article' },
+        selectedArticle: { ...ARTICLE, id: 2 },
       })
       await nextTick()
       expect(w.find('.serp-results').exists()).toBe(false)
@@ -868,7 +877,7 @@ describe('LieutenantsSelection', () => {
       expect((w.vm as any).selectedCards.size).toBeGreaterThan(0)
 
       await w.setProps({
-        selectedArticle: { ...ARTICLE, slug: 'other-article' },
+        selectedArticle: { ...ARTICLE, id: 2 },
       })
       await nextTick()
       expect((w.vm as any).selectedCards.size).toBe(0)
@@ -882,7 +891,7 @@ describe('LieutenantsSelection', () => {
       expect((w.vm as any).isLocked).toBe(true)
 
       await w.setProps({
-        selectedArticle: { ...ARTICLE, slug: 'other-article' },
+        selectedArticle: { ...ARTICLE, id: 2 },
       })
       await nextTick()
       expect((w.vm as any).isLocked).toBe(false)
@@ -893,7 +902,7 @@ describe('LieutenantsSelection', () => {
       iaStreaming.abort.mockClear()
 
       await w.setProps({
-        selectedArticle: { ...ARTICLE, slug: 'other-article' },
+        selectedArticle: { ...ARTICLE, id: 2 },
       })
       await nextTick()
       expect(iaStreaming.abort).toHaveBeenCalled()
@@ -904,7 +913,7 @@ describe('LieutenantsSelection', () => {
       expect((w.vm as any).lieutenantCards.length).toBe(3)
 
       await w.setProps({
-        selectedArticle: { ...ARTICLE, slug: 'other-article' },
+        selectedArticle: { ...ARTICLE, id: 2 },
       })
       await nextTick()
       expect((w.vm as any).lieutenantCards.length).toBe(0)
@@ -936,15 +945,17 @@ describe('LieutenantsSelection', () => {
       const w = await mountWithCards()
       await w.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
-      expect(mockSaveKeywords).toHaveBeenCalledWith('test-article')
+      expect(mockSaveKeywords).toHaveBeenCalledWith(1)
     })
 
     it('writes lieutenants to store keywords before saving', async () => {
       const w = await mountWithCards()
       await w.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
-      // The store keywords should have been updated with the selected lieutenant keywords
-      expect(mockStoreKeywords.value!.lieutenants).toContain('causes seo')
+      // setRichLieutenants is called with selected and eliminated proposals
+      expect(mockSetRichLieutenants).toHaveBeenCalled()
+      const [selected] = mockSetRichLieutenants.mock.calls[0]
+      expect(selected.some((s: any) => s.keyword === 'causes seo')).toBe(true)
     })
 
     it('emits check-completed with lieutenants_locked on lock', async () => {
@@ -1075,6 +1086,78 @@ describe('LieutenantsSelection', () => {
       ;(w.vm as any).contentGapInsights = ''
       await nextTick()
       expect(w.find('.content-gap-section').exists()).toBe(false)
+    })
+  })
+
+  // --- Auto-save rich lieutenant proposals (status='suggested') ---
+  // Business rule: tout keyword approfondi (ici: proposition IA après SERP + Claude)
+  // DOIT être persisté dès son apparition dans l'interface, même avant "Valider".
+  describe('Auto-save rich lieutenant proposals', () => {
+    it('saves proposals with status=suggested as soon as IA onDone fires', async () => {
+      const w = await mountWithResults()
+      ;(w.vm as any).proposeLieutenants()
+      await nextTick()
+
+      // Retrieve the onDone callback passed to iaStartStream
+      const startStreamCall = iaStreaming.startStream.mock.calls[0]
+      expect(startStreamCall).toBeDefined()
+      const options = startStreamCall[2] as { onDone: (data: FilteredProposeLieutenantsResult) => void }
+      expect(typeof options.onDone).toBe('function')
+
+      // Simulate IA streaming completion
+      options.onDone(MOCK_IA_RESULT)
+      await nextTick()
+
+      // Must have persisted with status='suggested' (via saveRichLieutenantProposals)
+      expect(mockSaveRichLieutenantProposals).toHaveBeenCalledTimes(1)
+      expect(mockSaveRichLieutenantProposals).toHaveBeenCalledWith(
+        MOCK_IA_RESULT.selectedLieutenants,
+        MOCK_IA_RESULT.eliminatedLieutenants,
+      )
+
+      // setRichLieutenants (status='locked') must NOT be called — only after user clicks Valider
+      expect(mockSetRichLieutenants).not.toHaveBeenCalled()
+    })
+
+    it('debounces the saveKeywords call after proposal auto-save', async () => {
+      vi.useFakeTimers()
+      try {
+        const w = await mountWithResults()
+        ;(w.vm as any).proposeLieutenants()
+        await nextTick()
+
+        const options = iaStreaming.startStream.mock.calls[0][2] as { onDone: (data: FilteredProposeLieutenantsResult) => void }
+        options.onDone(MOCK_IA_RESULT)
+        await nextTick()
+
+        // Before debounce window expires: saveKeywords not yet called
+        expect(mockSaveKeywords).not.toHaveBeenCalled()
+
+        // Advance past the 300ms debounce window
+        await vi.advanceTimersByTimeAsync(350)
+
+        expect(mockSaveKeywords).toHaveBeenCalledWith(ARTICLE.id)
+      } finally {
+        vi.useRealTimers()
+      }
+    })
+
+    it('skips auto-save when selectedArticle.id differs from store articleId (cross-article guard)', async () => {
+      // Simulate a cross-article race: mount with a different article than the store's
+      // articleId. The store mock is static (articleId=1), so we select a DIFFERENT
+      // selectedArticle — the guard must detect the mismatch and abort persistence.
+      const mismatchedArticle: SelectedArticle = { ...ARTICLE, id: 999 }
+      const w = await mountWithResults({ selectedArticle: mismatchedArticle })
+      ;(w.vm as any).proposeLieutenants()
+      await nextTick()
+
+      const options = iaStreaming.startStream.mock.calls[0][2] as { onDone: (data: FilteredProposeLieutenantsResult) => void }
+      options.onDone(MOCK_IA_RESULT)
+      await nextTick()
+
+      // Guard must prevent persistence when articleId mismatch
+      expect(mockSaveRichLieutenantProposals).not.toHaveBeenCalled()
+      expect(mockSaveKeywords).not.toHaveBeenCalled()
     })
   })
 })

@@ -110,6 +110,19 @@ function onKeydown(e: KeyboardEvent) {
       {{ annotationLabels[section.annotation] ?? section.annotation }}
     </span>
 
+    <span
+      v-if="section.status === 'suggested'"
+      class="status-badge status--suggested"
+    >
+      Suggestion IA
+    </span>
+    <span
+      v-else-if="section.status === 'generated'"
+      class="status-badge status--generated"
+    >
+      Contenu généré
+    </span>
+
     <div class="node-actions">
       <button
         class="action-btn"
@@ -261,6 +274,25 @@ function onKeydown(e: KeyboardEvent) {
 .annotation--answer-capsule {
   background: var(--color-badge-purple-bg);
   color: var(--color-badge-purple-text);
+}
+
+.status-badge {
+  flex-shrink: 0;
+  font-size: 0.625rem;
+  font-weight: 600;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+}
+
+.status--suggested {
+  background: var(--color-badge-amber-bg, #fef3c7);
+  color: var(--color-badge-amber-text, #92400e);
+}
+
+.status--generated {
+  background: var(--color-badge-green-bg, #d1fae5);
+  color: var(--color-badge-green-text, #065f46);
 }
 
 .node-actions {

@@ -114,17 +114,20 @@ describe('article-keywords.store — fetchKeywords', () => {
 })
 
 describe('article-keywords.store — initEmpty', () => {
-  it('creates empty keywords for a given slug', () => {
+  it('creates empty keywords for a given article id', () => {
     const store = useArticleKeywordsStore()
 
-    store.initEmpty('my-article')
+    store.initEmpty(1)
 
     expect(store.keywords).toEqual({
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: '',
       lieutenants: [],
       lexique: [],
       rootKeywords: [],
+      richCaptain: undefined,
+      richRootKeywords: [],
+      richLieutenants: [],
     })
   })
 })
@@ -250,6 +253,8 @@ describe('article-keywords.store — saveKeywords', () => {
       lexique: [],
       rootKeywords: [],
       hnStructure: [],
+      richRootKeywords: [],
+      richLieutenants: [],
     })
     expect(store.keywords).toEqual(savedKeywords)
     expect(store.isSaving).toBe(false)
@@ -279,12 +284,17 @@ describe('article-keywords.store — saveKeywords', () => {
     expect(store.error).toBe('Erreur de sauvegarde')
   })
 
-  it('does nothing if keywords is null', async () => {
+  it('auto-initializes and saves when keywords is null', async () => {
     const store = useArticleKeywordsStore()
+    mockApiPut.mockResolvedValueOnce({
+      articleSlug: 'design-emotionnel', capitaine: '', lieutenants: [], lexique: [],
+      rootKeywords: [], richRootKeywords: [], richLieutenants: [],
+    })
 
     await store.saveKeywords('design-emotionnel')
 
-    expect(mockApiPut).not.toHaveBeenCalled()
+    expect(mockApiPut).toHaveBeenCalled()
+    expect(store.keywords).not.toBeNull()
   })
 
   it('sets isSaving true during save', async () => {

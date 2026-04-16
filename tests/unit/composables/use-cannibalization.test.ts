@@ -23,10 +23,10 @@ describe('useCannibalization', () => {
   })
 
   it('returns empty warnings initially when no cocoon or capitaine', async () => {
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('')
 
-    const { warnings } = useCannibalization(articleSlug, cocoonName)
+    const { warnings } = useCannibalization(articleId, cocoonName)
     await nextTick()
 
     expect(warnings.value).toEqual([])
@@ -36,21 +36,21 @@ describe('useCannibalization', () => {
   it('fetches capitaines and detects no conflict', async () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: 'seo',
       lieutenants: [],
       lexique: [],
     }
 
     mockedApiGet.mockResolvedValue({
-      'my-article': 'seo',
-      'other-article': 'marketing',
+      1: 'seo',
+      2: 'marketing',
     })
 
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('cocoon-a')
 
-    const { warnings } = useCannibalization(articleSlug, cocoonName)
+    const { warnings } = useCannibalization(articleId, cocoonName)
 
     // Wait for the async fetch triggered by the watch
     await vi.waitFor(() => {
@@ -64,21 +64,21 @@ describe('useCannibalization', () => {
   it('detects cannibalization when another article has same capitaine', async () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: 'seo',
       lieutenants: [],
       lexique: [],
     }
 
     mockedApiGet.mockResolvedValue({
-      'my-article': 'seo',
-      'other-article': 'seo',
+      1: 'seo',
+      2: 'seo',
     })
 
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('cocoon-a')
 
-    const { warnings } = useCannibalization(articleSlug, cocoonName)
+    const { warnings } = useCannibalization(articleId, cocoonName)
 
     await vi.waitFor(() => {
       expect(mockedApiGet).toHaveBeenCalled()
@@ -87,27 +87,27 @@ describe('useCannibalization', () => {
 
     expect(warnings.value).toHaveLength(1)
     expect(warnings.value[0].keyword).toBe('seo')
-    expect(warnings.value[0].conflictingSlug).toBe('other-article')
+    expect(warnings.value[0].conflictingSlug).toBe('2')
   })
 
   it('is case-insensitive for capitaine comparison', async () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: 'SEO',
       lieutenants: [],
       lexique: [],
     }
 
     mockedApiGet.mockResolvedValue({
-      'my-article': 'SEO',
-      'other-article': 'seo',
+      1: 'SEO',
+      2: 'seo',
     })
 
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('cocoon-a')
 
-    const { warnings } = useCannibalization(articleSlug, cocoonName)
+    const { warnings } = useCannibalization(articleId, cocoonName)
 
     await vi.waitFor(() => {
       expect(mockedApiGet).toHaveBeenCalled()
@@ -120,7 +120,7 @@ describe('useCannibalization', () => {
   it('clears warnings on API error', async () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: 'seo',
       lieutenants: [],
       lexique: [],
@@ -128,10 +128,10 @@ describe('useCannibalization', () => {
 
     mockedApiGet.mockRejectedValue(new Error('Network error'))
 
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('cocoon-a')
 
-    const { warnings } = useCannibalization(articleSlug, cocoonName)
+    const { warnings } = useCannibalization(articleId, cocoonName)
 
     await vi.waitFor(() => {
       expect(mockedApiGet).toHaveBeenCalled()
@@ -144,18 +144,18 @@ describe('useCannibalization', () => {
   it('re-fetches when cocoonName changes', async () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: 'seo',
       lieutenants: [],
       lexique: [],
     }
 
-    mockedApiGet.mockResolvedValue({ 'my-article': 'seo' })
+    mockedApiGet.mockResolvedValue({ 1: 'seo' })
 
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('cocoon-a')
 
-    useCannibalization(articleSlug, cocoonName)
+    useCannibalization(articleId, cocoonName)
 
     await vi.waitFor(() => {
       expect(mockedApiGet).toHaveBeenCalledTimes(1)
@@ -173,7 +173,7 @@ describe('useCannibalization', () => {
   it('calls correct API endpoint', async () => {
     const articleKeywordsStore = useArticleKeywordsStore()
     articleKeywordsStore.keywords = {
-      articleSlug: 'my-article',
+      articleId: 1,
       capitaine: 'seo',
       lieutenants: [],
       lexique: [],
@@ -181,10 +181,10 @@ describe('useCannibalization', () => {
 
     mockedApiGet.mockResolvedValue({})
 
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('my-cocoon')
 
-    useCannibalization(articleSlug, cocoonName)
+    useCannibalization(articleId, cocoonName)
 
     await vi.waitFor(() => {
       expect(mockedApiGet).toHaveBeenCalledWith('/cocoons/my-cocoon/capitaines')
@@ -192,10 +192,10 @@ describe('useCannibalization', () => {
   })
 
   it('expose refresh function', () => {
-    const articleSlug = ref('my-article')
+    const articleId = ref(1)
     const cocoonName = ref('')
 
-    const { refresh } = useCannibalization(articleSlug, cocoonName)
+    const { refresh } = useCannibalization(articleId, cocoonName)
     expect(typeof refresh).toBe('function')
   })
 })

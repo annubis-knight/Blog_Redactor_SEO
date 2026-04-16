@@ -397,13 +397,13 @@ describe('Cocoon strategy schemas', () => {
 // Batch-status route (backend) — kept from before
 // =============================================
 describe('POST /strategy/batch-status — route', () => {
-  it('schema validates slugs array', async () => {
+  it('schema validates ids array', async () => {
     const { batchStrategyStatusRequestSchema } = await import('../../../shared/schemas/strategy.schema')
 
-    const valid = batchStrategyStatusRequestSchema.parse({ slugs: ['article-1', 'article-2'] })
-    expect(valid.slugs).toEqual(['article-1', 'article-2'])
+    const valid = batchStrategyStatusRequestSchema.parse({ ids: [1, 2] })
+    expect(valid.ids).toEqual([1, 2])
 
-    expect(() => batchStrategyStatusRequestSchema.parse({ slugs: 123 })).toThrow()
+    expect(() => batchStrategyStatusRequestSchema.parse({ ids: 123 })).toThrow()
     expect(() => batchStrategyStatusRequestSchema.parse({})).toThrow()
   })
 })

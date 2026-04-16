@@ -83,17 +83,17 @@ const STEP_DESCRIPTIONS: Record<string, string> = {
 /** POST /api/strategy/batch-status */
 router.post('/strategy/batch-status', async (req, res) => {
   try {
-    const { slugs } = batchStrategyStatusRequestSchema.parse(req.body)
-    log.info('POST /api/strategy/batch-status', { slugCount: slugs.length })
+    const { ids } = batchStrategyStatusRequestSchema.parse(req.body)
+    log.info('POST /api/strategy/batch-status', { idCount: ids.length })
     const start = Date.now()
-    const statuses: Record<string, { completedSteps: number }> = {}
+    const statuses: Record<number, { completedSteps: number }> = {}
     await Promise.all(
-      slugs.map(async (slug) => {
-        const strategy = await getStrategy(slug)
-        statuses[slug] = { completedSteps: strategy?.completedSteps ?? 0 }
+      ids.map(async (id) => {
+        const strategy = await getStrategy(id)
+        statuses[id] = { completedSteps: strategy?.completedSteps ?? 0 }
       }),
     )
-    log.debug('batch-status done', { slugCount: slugs.length, ms: Date.now() - start })
+    log.debug('batch-status done', { idCount: ids.length, ms: Date.now() - start })
     res.json({ data: statuses })
   } catch (err) {
     log.error(`POST /api/strategy/batch-status — ${(err as Error).message}`)
@@ -101,39 +101,57 @@ router.post('/strategy/batch-status', async (req, res) => {
   }
 })
 
-/** GET /api/strategy/:slug */
-router.get('/strategy/:slug', async (req, res) => {
+/** GET /api/strategy/:id */
+router.get('/strategy/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
   try {
-    log.info('GET /api/strategy/:slug', { slug: req.params.slug })
-    const strategy = await getStrategy(req.params.slug)
-    log.debug('strategy loaded', { slug: req.params.slug, completedSteps: strategy?.completedSteps ?? 0 })
+    log.info('GET /api/strategy/:id', { id })
+    const strategy = await getStrategy(id)
+    log.debug('strategy loaded', { id, completedSteps: strategy?.completedSteps ?? 0 })
     res.json({ data: strategy })
   } catch (err) {
-    log.error(`GET /api/strategy/${req.params.slug} — ${(err as Error).message}`)
+    log.error(`GET /api/strategy/${id} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load strategy' } })
   }
 })
 
-/** PUT /api/strategy/:slug */
-router.put('/strategy/:slug', async (req, res) => {
+/** PUT /api/strategy/:id */
+router.put('/strategy/:id', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
   try {
-    log.info('PUT /api/strategy/:slug', { slug: req.params.slug })
-    const saved = await saveStrategy(req.params.slug, req.body)
-    log.debug('strategy saved', { slug: req.params.slug, completedSteps: saved?.completedSteps ?? 0 })
+    log.info('PUT /api/strategy/:id', { id })
+    const saved = await saveStrategy(id, req.body)
+    log.debug('strategy saved', { id, completedSteps: saved?.completedSteps ?? 0 })
     res.json({ data: saved })
   } catch (err) {
-    log.error(`PUT /api/strategy/${req.params.slug} — ${(err as Error).message}`)
+    log.error(`PUT /api/strategy/${id} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save strategy' } })
   }
 })
 
-/** POST /api/strategy/:slug/suggest (also handles merge when mergeWith is present) */
-router.post('/strategy/:slug/suggest', async (req, res) => {
+/** POST /api/strategy/:id/suggest (also handles merge when mergeWith is present) */
+router.post('/strategy/:id/suggest', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
   try {
     const parsed = strategySuggestRequestSchema.parse(req.body)
     const isMerge = !!parsed.mergeWith
 
-    log.info('POST /api/strategy/:slug/suggest', { slug: req.params.slug, step: parsed.step, isMerge })
+    log.info('POST /api/strategy/:id/suggest', { id, step: parsed.step, isMerge })
 
     const templateFile = isMerge ? 'strategy-merge.md' : 'strategy-suggest.md'
     const startPrompt = Date.now()
@@ -197,7 +215,7 @@ router.post('/strategy/:slug/suggest', async (req, res) => {
       ? `Fusionne ces deux textes pour l'étape "${parsed.step}"`
       : parsed.currentInput || `Exécute la mission pour l'étape "${parsed.step}"`
 
-    log.debug('suggest prompt built', { slug: req.params.slug, step: parsed.step, promptChars: prompt.length })
+    log.debug('suggest prompt built', { id, step: parsed.step, promptChars: prompt.length })
 
     // Collect the streamed response into a single string
     const startAi = Date.now()
@@ -207,10 +225,10 @@ router.post('/strategy/:slug/suggest', async (req, res) => {
       suggestion += chunk
     }
 
-    log.info('suggest done', { slug: req.params.slug, step: parsed.step, isMerge, suggestionChars: suggestion.length, ms: Date.now() - startAi })
+    log.info('suggest done', { id, step: parsed.step, isMerge, suggestionChars: suggestion.length, ms: Date.now() - startAi })
     res.json({ data: { suggestion } })
   } catch (err) {
-    log.error(`POST /api/strategy/${req.params.slug}/suggest — ${(err as Error).message}`, { slug: req.params.slug })
+    log.error(`POST /api/strategy/${id}/suggest — ${(err as Error).message}`, { id })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate suggestion' } })
   }
 })
@@ -562,13 +580,13 @@ async function handleEnrich(req: import('express').Request, res: import('express
   }
 }
 
-/** POST /api/strategy/:slug/deepen */
-router.post('/strategy/:slug/deepen', (req, res) =>
-  handleDeepen(req, res, `POST /api/strategy/${req.params.slug}/deepen`))
+/** POST /api/strategy/:id/deepen */
+router.post('/strategy/:id/deepen', (req, res) =>
+  handleDeepen(req, res, `POST /api/strategy/${req.params.id}/deepen`))
 
-/** POST /api/strategy/:slug/consolidate */
-router.post('/strategy/:slug/consolidate', (req, res) =>
-  handleConsolidate(req, res, `POST /api/strategy/${req.params.slug}/consolidate`))
+/** POST /api/strategy/:id/consolidate */
+router.post('/strategy/:id/consolidate', (req, res) =>
+  handleConsolidate(req, res, `POST /api/strategy/${req.params.id}/consolidate`))
 
 /** POST /api/strategy/cocoon/:cocoonSlug/deepen */
 router.post('/strategy/cocoon/:cocoonSlug/deepen', (req, res) =>
@@ -578,9 +596,9 @@ router.post('/strategy/cocoon/:cocoonSlug/deepen', (req, res) =>
 router.post('/strategy/cocoon/:cocoonSlug/consolidate', (req, res) =>
   handleConsolidate(req, res, `POST /api/strategy/cocoon/${req.params.cocoonSlug}/consolidate`))
 
-/** POST /api/strategy/:slug/enrich */
-router.post('/strategy/:slug/enrich', (req, res) =>
-  handleEnrich(req, res, `POST /api/strategy/${req.params.slug}/enrich`))
+/** POST /api/strategy/:id/enrich */
+router.post('/strategy/:id/enrich', (req, res) =>
+  handleEnrich(req, res, `POST /api/strategy/${req.params.id}/enrich`))
 
 /** POST /api/strategy/cocoon/:cocoonSlug/enrich */
 router.post('/strategy/cocoon/:cocoonSlug/enrich', (req, res) =>

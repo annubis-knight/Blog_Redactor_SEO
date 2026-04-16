@@ -49,23 +49,23 @@ describe('useMoteurBasketStore', () => {
   })
 
   it('setArticle clears keywords when slug changes', () => {
-    store.setArticle('article-1')
+    store.setArticle(1)
     store.addKeywords([{ keyword: 'erp cloud' }], 'discovery')
 
     expect(store.count).toBe(1)
-    expect(store.articleSlug).toBe('article-1')
+    expect(store.articleId).toBe(1)
 
-    store.setArticle('article-2')
+    store.setArticle(2)
     expect(store.count).toBe(0)
-    expect(store.articleSlug).toBe('article-2')
+    expect(store.articleId).toBe(2)
   })
 
   it('setArticle does not clear when same slug is set again', () => {
-    store.setArticle('article-1')
+    store.setArticle(1)
     store.addKeywords([{ keyword: 'erp cloud' }], 'discovery')
     expect(store.count).toBe(1)
 
-    store.setArticle('article-1') // same slug
+    store.setArticle(1) // same id
     expect(store.count).toBe(1) // still there
   })
 
@@ -108,21 +108,21 @@ describe('useMoteurBasketStore', () => {
     expect(store.keywords[0].validated).toBe(true)
   })
 
-  it('clear empties keywords but keeps articleSlug', () => {
-    store.setArticle('article-1')
+  it('clear empties keywords but keeps articleId', () => {
+    store.setArticle(1)
     store.addKeywords([{ keyword: 'erp cloud' }], 'discovery')
 
     store.clear()
     expect(store.count).toBe(0)
-    expect(store.articleSlug).toBe('article-1')
+    expect(store.articleId).toBe(1)
   })
 
   it('$reset empties everything', () => {
-    store.setArticle('article-1')
+    store.setArticle(1)
     store.addKeywords([{ keyword: 'erp cloud' }], 'discovery')
 
     store.$reset()
     expect(store.count).toBe(0)
-    expect(store.articleSlug).toBeNull()
+    expect(store.articleId).toBeNull()
   })
 })

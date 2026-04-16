@@ -213,35 +213,53 @@ router.post('/keywords/discover-from-site', async (req, res) => {
   }
 })
 
-/** GET /api/articles/:slug/keywords — Get keywords for a specific article */
-router.get('/articles/:slug/keywords', async (req, res) => {
+/** GET /api/articles/:id/keywords — Get keywords for a specific article */
+router.get('/articles/:id/keywords', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
   try {
-    const keywords = await getArticleKeywords(req.params.slug)
+    const keywords = await getArticleKeywords(id)
     res.json({ data: keywords })
   } catch (err) {
-    log.error(`GET /api/articles/${req.params.slug}/keywords — ${(err as Error).message}`)
+    log.error(`GET /api/articles/${id}/keywords — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load article keywords' } })
   }
 })
 
-/** PUT /api/articles/:slug/keywords — Save keywords for a specific article */
-router.put('/articles/:slug/keywords', async (req, res) => {
+/** PUT /api/articles/:id/keywords — Save keywords for a specific article */
+router.put('/articles/:id/keywords', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
   try {
-    const { capitaine, lieutenants, lexique, rootKeywords, hnStructure } = req.body as { capitaine: string; lieutenants: string[]; lexique: string[]; rootKeywords?: string[]; hnStructure?: any[] }
+    const { capitaine, lieutenants, lexique, rootKeywords, hnStructure, richCaptain, richRootKeywords, richLieutenants } = req.body as {
+      capitaine: string; lieutenants: string[]; lexique: string[]; rootKeywords?: string[]; hnStructure?: any[]
+      richCaptain?: any; richRootKeywords?: any[]; richLieutenants?: any[]
+    }
     if (capitaine === undefined) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'capitaine is required' } })
       return
     }
-    const saved = await saveArticleKeywords(req.params.slug, {
+    const saved = await saveArticleKeywords(id, {
       capitaine,
       lieutenants: lieutenants ?? [],
       lexique: lexique ?? [],
       rootKeywords: rootKeywords ?? [],
       hnStructure: hnStructure ?? [],
+      ...(richCaptain !== undefined && { richCaptain }),
+      ...(richRootKeywords !== undefined && { richRootKeywords }),
+      ...(richLieutenants !== undefined && { richLieutenants }),
     })
     res.json({ data: saved })
   } catch (err) {
-    log.error(`PUT /api/articles/${req.params.slug}/keywords — ${(err as Error).message}`)
+    log.error(`PUT /api/articles/${id}/keywords — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save article keywords' } })
   }
 })

@@ -27,6 +27,7 @@
   },
   "proposedArticles": [
     {
+      "id": "2f5ea8fd-539a-4e34-8bba-b530df011ae2",
       "title": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
       "suggestedTitles": [
         "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir"
@@ -49,10 +50,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "2f5ea8fd-539a-4e34-8bba-b530df011ae2",
-      "dbSlug": "creation-de-site-web-sur-mesure-a-toulouse-le-guide-complet-pour-les-entreprises-qui-veulent-vraiment-convertir"
+      "dbId": 64
     },
     {
+      "id": "7d706110-7ade-40ef-88c6-78f26dcc42ee",
       "title": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
       "suggestedTitles": [
         "Design UX et conversion : comment transformer votre site en machine à générer des clients"
@@ -75,10 +76,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "7d706110-7ade-40ef-88c6-78f26dcc42ee",
-      "dbSlug": "design-ux-et-conversion-comment-transformer-votre-site-en-machine-a-generer-des-clients"
+      "dbId": 65
     },
     {
+      "id": "bf46cf62-bd6a-4f2a-8b4b-90717f4f2893",
       "title": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
       "suggestedTitles": [
         "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité"
@@ -101,10 +102,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "bf46cf62-bd6a-4f2a-8b4b-90717f4f2893",
-      "dbSlug": "architecture-et-structure-de-site-web-les-fondations-d-un-site-qui-travaille-pour-votre-activite"
+      "dbId": 66
     },
     {
+      "id": "581f2afa-e015-4ffb-907b-2226db128e05",
       "title": "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats",
       "suggestedTitles": [
         "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats"
@@ -127,10 +128,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "581f2afa-e015-4ffb-907b-2226db128e05",
-      "dbSlug": "mesurer-les-performances-de-votre-site-web-analytics-indicateurs-cles-et-pilotage-des-resultats"
+      "dbId": 67
     },
     {
+      "id": "4232136e-5e1b-4648-ab8a-859e6526d780",
       "title": "Vos boutons d'appel à l'action font-ils vraiment cliquer vos visiteurs ?",
       "suggestedTitles": [
         "Vos boutons d'appel à l'action font-ils vraiment cliquer vos visiteurs ?",
@@ -159,10 +160,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "4232136e-5e1b-4648-ab8a-859e6526d780",
-      "dbSlug": "vos-boutons-d-appel-a-l-action-font-ils-vraiment-cliquer-vos-visiteurs"
+      "dbId": 68
     },
     {
+      "id": "a0dea325-b3db-4d1d-81ae-2a20e4482e14",
       "title": "Votre site est-il trop lent pour retenir vos visiteurs ?",
       "suggestedTitles": [
         "Votre site est-il trop lent pour retenir vos visiteurs ?"
@@ -185,10 +186,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "a0dea325-b3db-4d1d-81ae-2a20e4482e14",
-      "dbSlug": "votre-site-est-il-trop-lent-pour-retenir-vos-visiteurs"
+      "dbId": 69
     },
     {
+      "id": "f1cff59c-f887-4e94-9644-2f54f46da117",
       "title": "Votre site donne-t-il une bonne impression sur smartphone à vos prospects ?",
       "suggestedTitles": [
         "Votre site donne-t-il une bonne impression sur smartphone à vos prospects ?"
@@ -211,10 +212,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "f1cff59c-f887-4e94-9644-2f54f46da117",
-      "dbSlug": "votre-site-donne-t-il-une-bonne-impression-sur-smartphone-a-vos-prospects"
+      "dbId": 70
     },
     {
+      "id": "9472d120-405e-44eb-9273-2ab7220c0224",
       "title": "Vos visiteurs trouvent-ils facilement ce qu'ils cherchent sur votre site ?",
       "suggestedTitles": [
         "Vos visiteurs trouvent-ils facilement ce qu'ils cherchent sur votre site ?"
@@ -237,10 +238,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "9472d120-405e-44eb-9273-2ab7220c0224",
-      "dbSlug": "vos-visiteurs-trouvent-ils-facilement-ce-qu-ils-cherchent-sur-votre-site"
+      "dbId": 71
     },
     {
+      "id": "b8cd6ec9-cc76-4ac4-806b-1edae5e8231f",
       "title": "Vos pages de services convainquent-elles vraiment vos prospects de vous contacter ?",
       "suggestedTitles": [
         "Vos pages de services convainquent-elles vraiment vos prospects de vous contacter ?"
@@ -263,10 +264,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "b8cd6ec9-cc76-4ac4-806b-1edae5e8231f",
-      "dbSlug": "vos-pages-de-services-convainquent-elles-vraiment-vos-prospects-de-vous-contacter"
+      "dbId": 72
     },
     {
+      "id": "7b14969a-b25e-45d1-bb71-147a8ba26b4f",
       "title": "Comment relier vos pages entre elles pour guider vos visiteurs vers la prise de contact ?",
       "suggestedTitles": [
         "Comment relier vos pages entre elles pour guider vos visiteurs vers la prise de contact ?"
@@ -289,10 +290,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "7b14969a-b25e-45d1-bb71-147a8ba26b4f",
-      "dbSlug": "comment-relier-vos-pages-entre-elles-pour-guider-vos-visiteurs-vers-la-prise-de-contact"
+      "dbId": 73
     },
     {
+      "id": "f88a910b-7bd5-4fa4-b6cf-87c389e8cee9",
       "title": "Quels chiffres regarder pour savoir si votre site vous rapporte vraiment des clients ?",
       "suggestedTitles": [
         "Quels chiffres regarder pour savoir si votre site vous rapporte vraiment des clients ?"
@@ -315,10 +316,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "f88a910b-7bd5-4fa4-b6cf-87c389e8cee9",
-      "dbSlug": "quels-chiffres-regarder-pour-savoir-si-votre-site-vous-rapporte-vraiment-des-clients"
+      "dbId": 74
     },
     {
+      "id": "513848f7-660b-4897-a890-af322edcfb2f",
       "title": "Comment savoir d'où viennent vraiment vos demandes de contact reçues via votre site ?",
       "suggestedTitles": [
         "Comment savoir d'où viennent vraiment vos demandes de contact reçues via votre site ?"
@@ -341,10 +342,10 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "513848f7-660b-4897-a890-af322edcfb2f",
-      "dbSlug": "comment-savoir-d-ou-viennent-vraiment-vos-demandes-de-contact-recues-via-votre-site"
+      "dbId": 75
     },
     {
+      "id": "678ea21a-ed3e-441c-b89d-aa418472f124",
       "title": "Design émotionnel : comment les détails de votre site influencent inconsciemment vos visiteurs",
       "suggestedTitles": [
         "Design émotionnel : comment les détails de votre site influencent inconsciemment vos visiteurs"
@@ -367,8 +368,7 @@
       "titleValidated": false,
       "accepted": true,
       "createdInDb": true,
-      "id": "678ea21a-ed3e-441c-b89d-aa418472f124",
-      "dbSlug": "design-emotionnel-comment-les-details-de-votre-site-influencent-inconsciemment-vos-visiteurs"
+      "dbId": 76
     }
   ],
   "suggestedTopics": [
@@ -450,5 +450,5 @@
   ],
   "topicsUserContext": "",
   "completedSteps": 5,
-  "updatedAt": "2026-04-04T20:59:45.657Z"
+  "updatedAt": "2026-04-15T20:40:13.458Z"
 }

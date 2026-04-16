@@ -1,27 +1,29 @@
-import DOMPurify from 'dompurify'
+import DOMPurify, { type Config } from 'dompurify'
 import type { Directive } from 'vue'
 
 /** Strict config for untrusted content (LLM output, user input, markdown) */
-const strictConfig: DOMPurify.Config = {
+const strictConfig: Config = {
   ADD_ATTR: ['class'],
+  RETURN_TRUSTED_TYPE: false,
 }
 
 /** Permissive config for trusted SVG (app-internal icon definitions) */
-const svgConfig: DOMPurify.Config = {
+const svgConfig: Config = {
   ADD_TAGS: ['svg', 'path', 'circle', 'rect', 'line', 'polyline', 'polygon', 'text', 'g', 'defs', 'use'],
   ADD_ATTR: ['class', 'viewBox', 'd', 'cx', 'cy', 'r', 'x', 'y', 'x1', 'y1', 'x2', 'y2',
     'fill', 'stroke', 'stroke-width', 'stroke-linecap', 'stroke-linejoin', 'stroke-dasharray', 'stroke-dashoffset',
     'transform', 'points', 'text-anchor', 'font-size', 'font-weight', 'width', 'height'],
+  RETURN_TRUSTED_TYPE: false,
 }
 
 /** Sanitize HTML with strict config (default — for LLM/user content) */
 export function sanitizeHtml(html: string): string {
-  return DOMPurify.sanitize(html, strictConfig)
+  return DOMPurify.sanitize(html, strictConfig) as string
 }
 
 /** Sanitize SVG content with permissive config (for app-internal SVG only) */
 export function sanitizeSvg(html: string): string {
-  return DOMPurify.sanitize(html, svgConfig)
+  return DOMPurify.sanitize(html, svgConfig) as string
 }
 
 function updateContent(el: HTMLElement, value: unknown, mode: 'strict' | 'svg') {

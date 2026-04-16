@@ -2,8 +2,8 @@ import type { ArticleType } from './article.types.js'
 
 /** A single internal link between two articles */
 export interface InternalLink {
-  sourceSlug: string
-  targetSlug: string
+  sourceId: number
+  targetId: number
   anchorText: string
   position: string
 }
@@ -16,7 +16,7 @@ export interface LinkingMatrix {
 
 /** Link suggestion returned by POST /api/links/suggest */
 export interface LinkSuggestion {
-  targetSlug: string
+  targetId: number
   targetTitle: string
   targetType: ArticleType
   suggestedAnchor: string
@@ -32,6 +32,7 @@ export interface AnchorDiversityAlert {
 
 /** Orphan article (no incoming links) */
 export interface OrphanArticle {
+  id: number
   slug: string
   title: string
   cocoonName: string
@@ -40,10 +41,10 @@ export interface OrphanArticle {
 
 /** Cross-cocoon link opportunity */
 export interface CrossCocoonOpportunity {
-  sourceSlug: string
+  sourceId: number
   sourceTitle: string
   sourceCocoon: string
-  targetSlug: string
+  targetId: number
   targetTitle: string
   targetCocoon: string
   suggestedAnchor: string

@@ -10,7 +10,7 @@ const props = defineProps<{
 
 const progressStore = useArticleProgressStore()
 
-const progress = computed(() => progressStore.getProgress(props.article.slug))
+const progress = computed(() => progressStore.getProgress(props.article.id))
 
 const PHASE_LABELS: Record<string, string> = {
   proposed: 'Proposé',
@@ -38,8 +38,8 @@ const CHECK_LABELS: Record<string, string> = {
   'geo-ok': 'GEO validé',
 }
 
-watch(() => props.article.slug, async (slug) => {
-  await progressStore.fetchProgress(slug)
+watch(() => props.article.id, async (id) => {
+  await progressStore.fetchProgress(id)
 }, { immediate: true })
 </script>
 

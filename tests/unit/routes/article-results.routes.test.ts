@@ -28,8 +28,8 @@ const mockGetArticleKeywords = vi.mocked(getArticleKeywords)
 const mockReadCached = vi.mocked(readCached)
 
 // --- Minimal Express helpers ---
-function makeReq(slug: string) {
-  return { params: { slug } } as any
+function makeReq(id: string) {
+  return { params: { id } } as any
 }
 
 function makeRes() {
@@ -48,7 +48,7 @@ import router from '../../../server/routes/article-results.routes'
 // Express Router stores handlers in router.stack
 function getHandler() {
   const layer = (router as any).stack.find(
-    (l: any) => l.route?.path === '/articles/:slug/cached-results' && l.route?.methods?.get,
+    (l: any) => l.route?.path === '/articles/:id/cached-results' && l.route?.methods?.get,
   )
   return layer?.route?.stack?.[0]?.handle
 }
@@ -57,7 +57,7 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
-describe('GET /articles/:slug/cached-results', () => {
+describe('GET /articles/:id/cached-results', () => {
   const handler = getHandler()
 
   it('has a registered GET handler', () => {
@@ -68,7 +68,7 @@ describe('GET /articles/:slug/cached-results', () => {
   it('returns all-null when no capitaine keyword', async () => {
     mockGetArticleKeywords.mockResolvedValue(null)
 
-    const req = makeReq('test-article')
+    const req = makeReq('1')
     const res = makeRes()
     await handler(req, res)
 
@@ -80,13 +80,13 @@ describe('GET /articles/:slug/cached-results', () => {
 
   it('returns all-null when capitaine is empty', async () => {
     mockGetArticleKeywords.mockResolvedValue({
-      articleSlug: 'test',
+      articleId: 1,
       capitaine: '',
       lieutenants: [],
       lexique: [],
     })
 
-    const req = makeReq('test-article')
+    const req = makeReq('1')
     const res = makeRes()
     await handler(req, res)
 
@@ -97,7 +97,7 @@ describe('GET /articles/:slug/cached-results', () => {
 
   it('reads 5 cache files in parallel and returns data', async () => {
     mockGetArticleKeywords.mockResolvedValue({
-      articleSlug: 'seo-local',
+      articleId: 2,
       capitaine: 'SEO local Toulouse',
       lieutenants: [],
       lexique: [],
@@ -114,7 +114,7 @@ describe('GET /articles/:slug/cached-results', () => {
       .mockResolvedValueOnce(null) // comparison
       .mockResolvedValueOnce(null) // radar
 
-    const req = makeReq('seo-local')
+    const req = makeReq('2')
     const res = makeRes()
     await handler(req, res)
 
@@ -133,7 +133,7 @@ describe('GET /articles/:slug/cached-results', () => {
   it('returns 500 on unexpected error', async () => {
     mockGetArticleKeywords.mockRejectedValue(new Error('DB failure'))
 
-    const req = makeReq('broken')
+    const req = makeReq('99')
     const res = makeRes()
     await handler(req, res)
 
@@ -145,7 +145,7 @@ describe('GET /articles/:slug/cached-results', () => {
 
   it('uses slugified keyword as cache key', async () => {
     mockGetArticleKeywords.mockResolvedValue({
-      articleSlug: 'article-test',
+      articleId: 3,
       capitaine: 'Référencement local',
       lieutenants: [],
       lexique: [],
@@ -153,7 +153,7 @@ describe('GET /articles/:slug/cached-results', () => {
 
     mockReadCached.mockResolvedValue(null)
 
-    const req = makeReq('article-test')
+    const req = makeReq('3')
     const res = makeRes()
     await handler(req, res)
 

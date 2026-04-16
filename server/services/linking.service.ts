@@ -29,8 +29,8 @@ const HIERARCHY_ORDER: Record<ArticleType, number> = {
 
 /**
  * Check if a link respects the cocoon hierarchy.
- * Pilier ↔ Intermédiaire, Intermédiaire ↔ Spécialisé.
- * Pilier → Spécialisé is allowed but not recommended (distance = 2).
+ * Pilier <-> Intermédiaire, Intermédiaire <-> Spécialisé.
+ * Pilier -> Spécialisé is allowed but not recommended (distance = 2).
  */
 export function isValidHierarchyLink(sourceType: ArticleType, targetType: ArticleType): boolean {
   const distance = Math.abs(HIERARCHY_ORDER[sourceType]! - HIERARCHY_ORDER[targetType]!)
@@ -62,7 +62,7 @@ export async function upsertLinks(newLinks: InternalLink[]): Promise<LinkingMatr
 
   for (const link of newLinks) {
     const existingIndex = matrix.links.findIndex(
-      (l) => l.sourceSlug === link.sourceSlug && l.targetSlug === link.targetSlug && l.position === link.position,
+      (l) => l.sourceId === link.sourceId && l.targetId === link.targetId && l.position === link.position,
     )
     if (existingIndex >= 0) {
       matrix.links[existingIndex] = link
@@ -75,26 +75,26 @@ export async function upsertLinks(newLinks: InternalLink[]): Promise<LinkingMatr
 }
 
 /** Remove all links from a specific source article */
-export async function removeLinksFromSource(sourceSlug: string): Promise<LinkingMatrix> {
+export async function removeLinksFromSource(sourceId: number): Promise<LinkingMatrix> {
   const matrix = await getMatrix()
-  matrix.links = matrix.links.filter((l) => l.sourceSlug !== sourceSlug)
+  matrix.links = matrix.links.filter((l) => l.sourceId !== sourceId)
   return saveMatrix(matrix)
 }
 
 /** Get links for a specific article (as source or target) */
 export function getLinksForArticle(
   matrix: LinkingMatrix,
-  slug: string,
+  articleId: number,
 ): { outgoing: InternalLink[]; incoming: InternalLink[] } {
   return {
-    outgoing: matrix.links.filter((l) => l.sourceSlug === slug),
-    incoming: matrix.links.filter((l) => l.targetSlug === slug),
+    outgoing: matrix.links.filter((l) => l.sourceId === articleId),
+    incoming: matrix.links.filter((l) => l.targetId === articleId),
   }
 }
 
 /** Suggest internal links for an article based on content analysis */
-export async function suggestLinks(articleSlug: string, content: string): Promise<LinkSuggestion[]> {
-  log.info(`Suggesting links for "${articleSlug}"`)
+export async function suggestLinks(articleId: number, content: string): Promise<LinkSuggestion[]> {
+  log.info(`Suggesting links for article ${articleId}`)
   const cocoons = await loadArticlesDb()
   const suggestions: LinkSuggestion[] = []
 
@@ -102,7 +102,7 @@ export async function suggestLinks(articleSlug: string, content: string): Promis
   let sourceCocoonName: string | null = null
   let sourceType: ArticleType | null = null
   for (const cocoon of cocoons) {
-    const found = cocoon.articles.find((a) => a.slug === articleSlug)
+    const found = cocoon.articles.find((a) => a.id === articleId)
     if (found) {
       sourceCocoonName = cocoon.name
       sourceType = found.type
@@ -114,7 +114,7 @@ export async function suggestLinks(articleSlug: string, content: string): Promis
 
   const matrix = await getMatrix()
   const existingTargets = new Set(
-    matrix.links.filter((l) => l.sourceSlug === articleSlug).map((l) => l.targetSlug),
+    matrix.links.filter((l) => l.sourceId === articleId).map((l) => l.targetId),
   )
 
   const contentLower = content.toLowerCase()
@@ -122,8 +122,8 @@ export async function suggestLinks(articleSlug: string, content: string): Promis
   // Look for potential link targets in the same cocoon first, then others
   for (const cocoon of cocoons) {
     for (const article of cocoon.articles) {
-      if (article.slug === articleSlug) continue
-      if (existingTargets.has(article.slug)) continue
+      if (article.id === articleId) continue
+      if (existingTargets.has(article.id)) continue
 
       // Check if article title words appear in content
       const titleWords = article.title.toLowerCase().split(/\s+/).filter((w) => w.length > 3)
@@ -135,7 +135,7 @@ export async function suggestLinks(articleSlug: string, content: string): Promis
 
         if (hierarchyValid) {
           suggestions.push({
-            targetSlug: article.slug,
+            targetId: article.id,
             targetTitle: article.title,
             targetType: article.type,
             suggestedAnchor: matchingWords.slice(0, 4).join(' '),
@@ -164,13 +164,14 @@ export async function detectOrphans(): Promise<OrphanArticle[]> {
   const cocoons = await loadArticlesDb()
   const matrix = await getMatrix()
 
-  const targetsWithIncoming = new Set(matrix.links.map((l) => l.targetSlug))
+  const targetsWithIncoming = new Set(matrix.links.map((l) => l.targetId))
   const orphans: OrphanArticle[] = []
 
   for (const cocoon of cocoons) {
     for (const article of cocoon.articles) {
-      if (!targetsWithIncoming.has(article.slug)) {
+      if (!targetsWithIncoming.has(article.id)) {
         orphans.push({
+          id: article.id,
           slug: article.slug,
           title: article.title,
           cocoonName: cocoon.name,
@@ -183,14 +184,14 @@ export async function detectOrphans(): Promise<OrphanArticle[]> {
   return orphans
 }
 
-/** Check anchor text diversity — flag anchors used more than 3 times */
+/** Check anchor text diversity -- flag anchors used more than 3 times */
 export function checkAnchorDiversity(matrix: LinkingMatrix): AnchorDiversityAlert[] {
   const anchorCounts = new Map<string, string[]>()
 
   for (const link of matrix.links) {
     const key = link.anchorText.toLowerCase().trim()
     const targets = anchorCounts.get(key) || []
-    targets.push(link.targetSlug)
+    targets.push(String(link.targetId))
     anchorCounts.set(key, targets)
   }
 
@@ -215,37 +216,37 @@ export async function findCrossCocoonOpportunities(): Promise<CrossCocoonOpportu
   const opportunities: CrossCocoonOpportunity[] = []
 
   // Build cocoon lookup
-  const articleCocoon = new Map<string, { cocoonName: string; title: string; type: ArticleType }>()
+  const articleCocoon = new Map<number, { cocoonName: string; title: string; type: ArticleType }>()
   for (const cocoon of cocoons) {
     for (const article of cocoon.articles) {
-      articleCocoon.set(article.slug, { cocoonName: cocoon.name, title: article.title, type: article.type })
+      articleCocoon.set(article.id, { cocoonName: cocoon.name, title: article.title, type: article.type })
     }
   }
 
   // Find existing cross-cocoon links
   const existingCrossLinks = new Set<string>()
   for (const link of matrix.links) {
-    const source = articleCocoon.get(link.sourceSlug)
-    const target = articleCocoon.get(link.targetSlug)
+    const source = articleCocoon.get(link.sourceId)
+    const target = articleCocoon.get(link.targetId)
     if (source && target && source.cocoonName !== target.cocoonName) {
-      existingCrossLinks.add(`${link.sourceSlug}→${link.targetSlug}`)
+      existingCrossLinks.add(`${link.sourceId}->${link.targetId}`)
     }
   }
 
   // Suggest cross-cocoon links for Pilier articles
   const pilierArticles = [...articleCocoon.entries()].filter(([, info]) => info.type === 'Pilier')
 
-  for (const [sourceSlug, sourceInfo] of pilierArticles) {
-    for (const [targetSlug, targetInfo] of pilierArticles) {
-      if (sourceSlug === targetSlug) continue
+  for (const [sourceId, sourceInfo] of pilierArticles) {
+    for (const [targetId, targetInfo] of pilierArticles) {
+      if (sourceId === targetId) continue
       if (sourceInfo.cocoonName === targetInfo.cocoonName) continue
-      if (existingCrossLinks.has(`${sourceSlug}→${targetSlug}`)) continue
+      if (existingCrossLinks.has(`${sourceId}->${targetId}`)) continue
 
       opportunities.push({
-        sourceSlug,
+        sourceId,
         sourceTitle: sourceInfo.title,
         sourceCocoon: sourceInfo.cocoonName,
-        targetSlug,
+        targetId,
         targetTitle: targetInfo.title,
         targetCocoon: targetInfo.cocoonName,
         suggestedAnchor: targetInfo.title,

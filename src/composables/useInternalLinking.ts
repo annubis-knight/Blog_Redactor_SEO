@@ -1,11 +1,11 @@
-import { computed } from 'vue'
+import { computed, type Ref, unref, type MaybeRef } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { useLinkingStore } from '@/stores/linking.store'
 import { useEditorStore } from '@/stores/editor.store'
 import { log } from '@/utils/logger'
 import type { LinkSuggestion, InternalLink } from '@shared/types/index.js'
 
-export function useInternalLinking(articleSlug: string) {
+export function useInternalLinking(articleId: MaybeRef<number>) {
   const linkingStore = useLinkingStore()
   const editorStore = useEditorStore()
 
@@ -16,8 +16,9 @@ export function useInternalLinking(articleSlug: string) {
   async function requestSuggestions() {
     const content = editorStore.content
     if (!content) return
-    log.info(`[internal-linking] requesting suggestions for ${articleSlug}`)
-    await linkingStore.fetchSuggestions(articleSlug, content)
+    const id = unref(articleId)
+    log.info(`[internal-linking] requesting suggestions for article #${id}`)
+    await linkingStore.fetchSuggestions(id, content)
     log.debug(`[internal-linking] ${linkingStore.suggestions.length} suggestions received`)
   }
 
@@ -49,21 +50,22 @@ export function useInternalLinking(articleSlug: string) {
     })
 
     if (from > 0 && to > from) {
-      log.debug(`[internal-linking] applying link: "${anchor}" → ${suggestion.targetSlug}`)
+      log.debug(`[internal-linking] applying link: "${anchor}" → target #${suggestion.targetId}`)
       editor
         .chain()
         .focus()
         .setTextSelection({ from, to })
         .setMark('internalLink', {
-          slug: suggestion.targetSlug,
-          href: `/${suggestion.targetSlug}`,
+          targetId: suggestion.targetId,
+          href: `#article-${suggestion.targetId}`,
         })
         .run()
 
       // Save the link to the matrix
+      const id = unref(articleId)
       const link: InternalLink = {
-        sourceSlug: articleSlug,
-        targetSlug: suggestion.targetSlug,
+        sourceId: id,
+        targetId: suggestion.targetId,
         anchorText: anchor,
         position: `char-${anchorIndex}`,
       }
@@ -72,13 +74,13 @@ export function useInternalLinking(articleSlug: string) {
 
     // Remove the suggestion from the list
     linkingStore.suggestions = linkingStore.suggestions.filter(
-      (s) => s.targetSlug !== suggestion.targetSlug,
+      (s) => s.targetId !== suggestion.targetId,
     )
   }
 
   function dismissSuggestion(suggestion: LinkSuggestion) {
     linkingStore.suggestions = linkingStore.suggestions.filter(
-      (s) => s.targetSlug !== suggestion.targetSlug,
+      (s) => s.targetId !== suggestion.targetId,
     )
   }
 

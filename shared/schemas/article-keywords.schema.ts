@@ -1,7 +1,72 @@
 import { z } from 'zod/v4'
 
+// ---- Shared enums ----
+
+const articleLevelSchema = z.enum(['pilier', 'intermediaire', 'specifique'])
+
+// ---- KPI summary (lightweight: name + rawValue only) ----
+
+const kpiSummarySchema = z.object({
+  name: z.string(),
+  rawValue: z.number(),
+})
+
+// ---- PAA question ----
+
+const paaQuestionValidateSchema = z.object({
+  question: z.string(),
+  answer: z.string().nullable(),
+  match: z.enum(['none', 'partial', 'total']).optional(),
+  matchQuality: z.enum(['exact', 'stem']).optional(),
+})
+
+// ---- Rich captain schemas ----
+
+const captainValidationEntrySchema = z.object({
+  keyword: z.string().min(1),
+  kpis: z.array(kpiSummarySchema),
+  articleLevel: articleLevelSchema,
+  rootKeywords: z.array(z.string()),
+  paaQuestions: z.array(paaQuestionValidateSchema).optional(),
+  aiPanelMarkdown: z.string().nullable().optional(),
+})
+
+const richCaptainSchema = z.object({
+  keyword: z.string(),
+  status: z.enum(['suggested', 'locked']),
+  validationHistory: z.array(captainValidationEntrySchema),
+  aiPanelMarkdown: z.string().nullable(),
+  lockedAt: z.string().nullable(),
+})
+
+// ---- Rich root keyword schema ----
+
+const richRootKeywordSchema = z.object({
+  keyword: z.string().min(1),
+  parentKeyword: z.string().min(1),
+  kpis: z.array(kpiSummarySchema),
+  articleLevel: articleLevelSchema,
+  timestamp: z.string(),
+})
+
+// ---- Rich lieutenant schema ----
+
+const richLieutenantSchema = z.object({
+  keyword: z.string().min(1),
+  status: z.enum(['suggested', 'locked', 'eliminated']),
+  reasoning: z.string(),
+  sources: z.array(z.enum(['paa', 'serp', 'group', 'root', 'content-gap'])),
+  aiConfidence: z.enum(['fort', 'moyen', 'faible']),
+  suggestedHnLevel: z.union([z.literal(2), z.literal(3)]),
+  score: z.number(),
+  kpis: z.array(kpiSummarySchema).nullable(),
+  lockedAt: z.string().nullable(),
+})
+
+// ---- Main article keywords schema ----
+
 export const articleKeywordsSchema = z.object({
-  articleSlug: z.string().min(1),
+  articleId: z.number().int().positive(),
   capitaine: z.string(),
   lieutenants: z.array(z.string()),
   lexique: z.array(z.string()),
@@ -11,8 +76,12 @@ export const articleKeywordsSchema = z.object({
     text: z.string(),
     children: z.array(z.object({ level: z.number(), text: z.string() })).optional(),
   })).optional().default([]),
+  richCaptain: richCaptainSchema.optional(),
+  richRootKeywords: z.array(richRootKeywordSchema).optional(),
+  richLieutenants: z.array(richLieutenantSchema).optional(),
 })
 
 export const rawArticleKeywordsDbSchema = z.object({
+  _schemaVersion: z.number().optional(),
   keywords_par_article: z.array(articleKeywordsSchema),
 })

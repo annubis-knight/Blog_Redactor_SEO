@@ -1,12 +1,15 @@
 <script setup lang="ts">
+import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/shared/AppNavbar.vue'
 import ToastContainer from '@/components/shared/ToastContainer.vue'
 import CostLogPanel from '@/components/shared/CostLogPanel.vue'
+
+const route = useRoute()
 </script>
 
 <template>
   <div class="app">
-    <AppNavbar />
+    <AppNavbar v-if="!route.meta.hideNavbar" />
     <main class="app-main">
       <RouterView />
     </main>

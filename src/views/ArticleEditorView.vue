@@ -28,8 +28,6 @@ import BlocksPanel from '@/components/panels/BlocksPanel.vue'
 import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
-import ExportButton from '@/components/export/ExportButton.vue'
-import ExportPreview from '@/components/export/ExportPreview.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
 import ArticleActions from '@/components/article/ArticleActions.vue'
 import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
@@ -49,18 +47,35 @@ const briefStore = useBriefStore()
 const cocoonsStore = useCocoonsStore()
 const outlineStore = useOutlineStore()
 
-const slug = route.params.slug as string
+// --- Article ID from route ---
+const articleId = ref<number | null>(null)
+const slugResolutionError = ref<string | null>(null)
+
+{
+  const raw = Number(route.params.articleId)
+  if (!isNaN(raw) && raw > 0) {
+    articleId.value = raw
+  } else {
+    slugResolutionError.value = `Article ID "${route.params.articleId}" invalide`
+  }
+}
 
 const cocoonId = computed(() => {
   const cocoonName = briefStore.briefData?.article.cocoonName
   return cocoonsStore.cocoons.find(c => c.name === cocoonName)?.id ?? null
 })
 const backLink = computed(() =>
-  cocoonId.value ? `/cocoon/${cocoonId.value}/article/${slug}` : '/',
+  cocoonId.value ? `/cocoon/${cocoonId.value}/article/${articleId.value}` : '/',
 )
 
 const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showBlocksPanel, hasActivePanel } = usePanelToggle('blocks')
-const exportHtml = ref<string | null>(null)
+async function handlePreview() {
+  if (!articleId.value) return
+  if (editorStore.isDirty) {
+    await editorStore.saveArticle(articleId.value)
+  }
+  window.open(`/article/${articleId.value}/preview`, '_blank')
+}
 
 // --- Body gating for panels (same pattern as WorkflowView) ---
 const hasBody = computed(() => !!editorStore.content)
@@ -93,7 +108,7 @@ const {
   applySuggestion,
   dismissSuggestion,
   clearSuggestions,
-} = useInternalLinking(slug)
+} = useInternalLinking(computed(() => articleId.value ?? 0))
 useSeoScoring(
   () => keywordsStore.keywords,
   () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
@@ -108,7 +123,7 @@ const articleEditorRef = ref<InstanceType<typeof ArticleEditor> | null>(null)
 const showActionMenu = ref(false)
 const showActionResult = ref(false)
 
-useAutoSave(slug)
+// useAutoSave is initialized in onMounted
 
 const {
   isExecuting,
@@ -128,8 +143,8 @@ useKeyboardShortcuts([
     keys: 'ctrl+s',
     global: true,
     action: () => {
-      if (editorStore.isDirty && !editorStore.isSaving) {
-        editorStore.saveArticle(slug)
+      if (articleId.value && editorStore.isDirty && !editorStore.isSaving) {
+        editorStore.saveArticle(articleId.value)
       }
     },
   },
@@ -143,12 +158,14 @@ useKeyboardShortcuts([
 ])
 
 async function loadContent() {
+  if (!articleId.value) return
+  const id = articleId.value
   isLoading.value = true
   loadError.value = null
 
   try {
-    log.info('Loading article content', { slug })
-    const data = await apiGet<ArticleContent>(`/articles/${slug}/content`)
+    log.info('Loading article content', { articleId: id })
+    const data = await apiGet<ArticleContent>(`/articles/${id}/content`)
     if (data.content) {
       editorStore.setContent(data.content)
       editorStore.markClean()
@@ -160,12 +177,13 @@ async function loadContent() {
       })
     }
     if (data.outline) {
-      outlineStore.loadExistingOutline(JSON.parse(data.outline))
+      const outline = typeof data.outline === 'string' ? JSON.parse(data.outline) : data.outline
+      outlineStore.loadExistingOutline(outline)
     }
-    log.info('Article content loaded', { slug })
+    log.info('Article content loaded', { articleId: id })
   } catch (err) {
     loadError.value = err instanceof Error ? err.message : 'Erreur lors du chargement'
-    log.error('Failed to load article content', { slug, error: (err as Error).message })
+    log.error('Failed to load article content', { articleId: id, error: (err as Error).message })
   } finally {
     isLoading.value = false
   }
@@ -195,8 +213,8 @@ async function handleSelectAction(actionType: ActionType) {
     showActionResult.value = true
   }
 
-  log.info('Executing contextual action', { actionType, slug })
-  await executeAction(actionType, selectedText, { articleSlug: slug }, editor)
+  log.info('Executing contextual action', { actionType, articleId: articleId.value })
+  await executeAction(actionType, selectedText, { articleId: articleId.value! }, editor)
 }
 
 function handleSelectArticle(article: Article) {
@@ -244,34 +262,40 @@ function handleCloseLinkSuggestions() {
 
 // --- Article generation handlers ---
 async function handleGenerateArticle() {
-  if (!briefStore.briefData || !outlineStore.outline) return
-  log.info('[editor-view] Starting article generation', { slug })
+  if (!articleId.value || !briefStore.briefData || !outlineStore.outline) return
+  const id = articleId.value
+  log.info('[editor-view] Starting article generation', { articleId: id })
 
   await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, wordCountTarget.value ?? undefined)
 
   if (editorStore.content && !editorStore.error) {
     const keyword = briefStore.briefData.keywords.find(kw => kw.type === 'Pilier')?.keyword
       ?? briefStore.briefData.article.title
-    await editorStore.generateMeta(slug, keyword, briefStore.briefData.article.title, editorStore.content)
+    await editorStore.generateMeta(id, keyword, briefStore.briefData.article.title, editorStore.content)
     if (!editorStore.error) {
-      await editorStore.saveArticle(slug)
+      await editorStore.saveArticle(id)
     }
   }
 }
 
 async function handleReduce() {
-  if (!wordCountTarget.value) return
-  await editorStore.reduceArticle(slug, wordCountTarget.value, currentKeyword.value, allKeywords.value)
+  if (!articleId.value || !wordCountTarget.value) return
+  await editorStore.reduceArticle(articleId.value, wordCountTarget.value, currentKeyword.value, allKeywords.value)
   if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(slug)
+    await editorStore.saveArticle(articleId.value)
   }
 }
 
 async function handleHumanize() {
-  await editorStore.humanizeArticle(slug, currentKeyword.value, allKeywords.value)
+  if (!articleId.value) return
+  await editorStore.humanizeArticle(articleId.value, currentKeyword.value, allKeywords.value)
   if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(slug)
+    await editorStore.saveArticle(articleId.value)
   }
+}
+
+function handleAbortReduce() {
+  editorStore.abortReduce()
 }
 
 function handleAbortHumanize() {
@@ -279,8 +303,9 @@ function handleAbortHumanize() {
 }
 
 async function handleDeleteContent() {
+  if (!articleId.value) return
   if (!confirm('Supprimer le contenu de l\'article ? Le brief et le sommaire seront conservés.')) return
-  log.info('[editor-view] Deleting article content', { slug })
+  log.info('[editor-view] Deleting article content', { articleId: articleId.value })
   editorStore.$patch({
     content: null,
     streamedText: '',
@@ -288,7 +313,7 @@ async function handleDeleteContent() {
     metaDescription: null,
     isDirty: false,
   })
-  await editorStore.saveArticle(slug)
+  await editorStore.saveArticle(articleId.value)
 }
 
 onBeforeUnmount(() => {
@@ -296,18 +321,31 @@ onBeforeUnmount(() => {
 })
 
 onMounted(async () => {
-  log.info('ArticleEditorView mounted', { slug })
+  if (!articleId.value) return
+  const id = articleId.value
+  log.info('ArticleEditorView mounted', { articleId: id })
+
+  // Initialize auto-save
+  useAutoSave(id)
+
   if (cocoonsStore.cocoons.length === 0) {
     cocoonsStore.fetchCocoons()
   }
-  await articleKeywordsStore.fetchKeywords(slug)
-  briefStore.fetchBrief(slug)
+  await articleKeywordsStore.fetchKeywords(id)
+  briefStore.fetchBrief(id)
   loadContent()
 })
 </script>
 
 <template>
   <div class="article-editor-layout">
+    <!-- Slug resolution error -->
+    <div v-if="slugResolutionError" class="slug-error">
+      <p>{{ slugResolutionError }}</p>
+      <RouterLink to="/" class="back-link">&larr; Retour au dashboard</RouterLink>
+    </div>
+
+    <template v-else>
     <div class="article-editor-view">
       <header class="editor-header">
         <div class="header-left">
@@ -372,11 +410,18 @@ onMounted(async () => {
             class="btn-save"
             aria-label="Sauvegarder (Ctrl+S)"
             :disabled="!editorStore.isDirty || editorStore.isSaving"
-            @click="editorStore.saveArticle(slug)"
+            @click="articleId && editorStore.saveArticle(articleId)"
           >
             Sauvegarder
           </button>
-          <ExportButton :slug="slug" @export-ready="exportHtml = $event" />
+          <button
+            v-if="hasBody && editorStore.metaTitle && editorStore.metaDescription"
+            class="btn-preview"
+            :disabled="editorStore.isSaving"
+            @click="handlePreview"
+          >
+            Visualiser l'article
+          </button>
         </div>
       </header>
 
@@ -414,6 +459,7 @@ onMounted(async () => {
             :can-reduce="false"
             :word-count-delta="null"
             :humanize-progress="null"
+            :reduce-progress="null"
             @generate="handleGenerateArticle()"
           />
           <RouterLink :to="backLink" class="btn-back">Retour au workflow</RouterLink>
@@ -430,6 +476,7 @@ onMounted(async () => {
             :can-reduce="false"
             :word-count-delta="null"
             :humanize-progress="null"
+            :reduce-progress="null"
           />
 
           <div v-if="editorStore.sectionProgress" class="section-progress">
@@ -456,8 +503,35 @@ onMounted(async () => {
           </ErrorBoundary>
         </div>
 
-        <!-- STATE 3: Content exists → TipTap editor (unchanged) -->
+        <!-- STATE 3: Content exists → TipTap editor -->
         <template v-else>
+        <div class="editor-actions-bar">
+          <ArticleActions
+            :is-generating="editorStore.isGenerating"
+            :has-content="true"
+            :is-outline-validated="true"
+            :is-reducing="editorStore.isReducing"
+            :is-humanizing="editorStore.isHumanizing"
+            :can-reduce="canReduce"
+            :word-count-delta="wordCountDeltaDisplay"
+            :humanize-progress="editorStore.humanizeProgress"
+            :reduce-progress="editorStore.reduceProgress"
+            @generate="handleGenerateArticle()"
+            @regenerate="handleGenerateArticle()"
+            @reduce="handleReduce()"
+            @abort-reduce="handleAbortReduce()"
+            @humanize="handleHumanize()"
+            @abort-humanize="handleAbortHumanize()"
+          />
+          <label class="web-search-toggle">
+            <input
+              v-model="editorStore.webSearchEnabled"
+              type="checkbox"
+              :disabled="editorStore.isGenerating"
+            />
+            Recherche web
+          </label>
+        </div>
         <EditorToolbar :editor="articleEditorRef?.editor" />
 
         <EditorBubbleMenu
@@ -468,8 +542,8 @@ onMounted(async () => {
 
         <ArticleEditor
           ref="articleEditorRef"
-          :content="editorStore.content"
-          :article-slug="slug"
+          :content="editorStore.content ?? ''"
+          :article-id="articleId ?? 0"
           :keyword="articleKeywordsStore.keywords?.capitaine"
           :keywords="articleKeywordsStore.keywords?.lieutenants ?? []"
           @update:content="handleContentUpdate"
@@ -496,18 +570,9 @@ onMounted(async () => {
         <!-- Article Picker for internal-link action -->
         <div v-if="showArticlePicker" class="action-overlay" @click.self="handleCancelLink">
           <ArticlePicker
-            :articles="articlesStore.articles.filter(a => a.slug !== slug)"
+            :articles="articlesStore.articles.filter(a => a.id !== articleId)"
             @select-article="handleSelectArticle"
             @cancel="handleCancelLink"
-          />
-        </div>
-
-        <!-- Export Preview -->
-        <div v-if="exportHtml" class="action-overlay" @click.self="exportHtml = null">
-          <ExportPreview
-            :html="exportHtml"
-            :slug="slug"
-            @close="exportHtml = null"
           />
         </div>
 
@@ -545,10 +610,17 @@ onMounted(async () => {
         </ErrorBoundary>
       </ResizablePanel>
     </Transition>
+    </template>
   </div>
 </template>
 
 <style scoped>
+.slug-error {
+  text-align: center;
+  padding: 3rem;
+  color: var(--color-error, #e53e3e);
+}
+
 .article-editor-layout {
   display: flex;
 }
@@ -675,6 +747,29 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
+/* --- Preview button --- */
+.btn-preview {
+  padding: 0.375rem 0.875rem;
+  border: 1px solid var(--color-success);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: transparent;
+  color: var(--color-success);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.btn-preview:hover:not(:disabled) {
+  background: var(--color-success);
+  color: white;
+}
+
+.btn-preview:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* --- Overlays --- */
 .action-overlay {
   position: fixed;
@@ -700,6 +795,28 @@ onMounted(async () => {
   padding: 3rem;
   color: var(--color-text-muted);
 }
+
+.editor-actions-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+}
+
+.web-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.web-search-toggle input { cursor: pointer; }
 
 .btn-back {
   display: inline-block;

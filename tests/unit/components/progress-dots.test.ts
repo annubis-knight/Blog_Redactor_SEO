@@ -155,8 +155,8 @@ vi.mock('@/services/api.service', () => ({
 
 describe('MoteurContextRecap — ProgressDots integration', () => {
   const proposedArticles = [
-    { title: 'Article Pilier A', type: 'Pilier', accepted: true, suggestedKeyword: 'kw1', suggestedSlug: '', suggestedSlugs: [], painPoint: '' },
-    { title: 'Article Spécialisé B', type: 'Spécialisé', accepted: true, suggestedKeyword: 'kw2', suggestedSlug: '', suggestedSlugs: [], painPoint: '' },
+    { title: 'Article Pilier A', type: 'Pilier', accepted: true, suggestedKeyword: 'kw1', suggestedSlug: 'article-pilier-a', suggestedSlugs: [], painPoint: '', dbId: 42, createdInDb: true },
+    { title: 'Article Spécialisé B', type: 'Spécialisé', accepted: true, suggestedKeyword: 'kw2', suggestedSlug: 'article-specialise-b', suggestedSlugs: [], painPoint: '', dbId: 43, createdInDb: true },
   ]
 
   beforeEach(() => {
@@ -167,8 +167,8 @@ describe('MoteurContextRecap — ProgressDots integration', () => {
   it('renders ProgressDots for each suggested article', () => {
     // Pre-populate store
     const store = useArticleProgressStore()
-    store.progressMap['article-pilier-a'] = { phase: 'generer', completedChecks: ['discovery_done'] } as any
-    store.progressMap['article-specialise-b'] = { phase: 'generer', completedChecks: [] } as any
+    store.progressMap['42'] = { phase: 'generer', completedChecks: ['discovery_done'] } as any
+    store.progressMap['43'] = { phase: 'generer', completedChecks: [] } as any
 
     const wrapper = mount(MoteurContextRecap, {
       props: {
@@ -184,7 +184,7 @@ describe('MoteurContextRecap — ProgressDots integration', () => {
 
   it('passes correct completedChecks from progress store', () => {
     const store = useArticleProgressStore()
-    store.progressMap['article-pilier-a'] = {
+    store.progressMap['42'] = {
       phase: 'valider',
       completedChecks: ['discovery_done', 'radar_done', 'capitaine_locked'],
     } as any

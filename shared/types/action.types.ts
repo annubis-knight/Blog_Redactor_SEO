@@ -8,9 +8,12 @@ export type ActionType =
   | 'answer-capsule'
   | 'question-heading'
   | 'internal-link'
+  | 'sources-chiffrees'
+  | 'exemples-reels'
+  | 'ce-quil-faut-retenir'
 
 export interface ActionContext {
-  articleSlug: string
+  articleId: number
   keyword?: string
   keywords?: string[]
 }

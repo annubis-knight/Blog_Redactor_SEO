@@ -14,7 +14,7 @@ describe('article.schema — rawArticlesDbSchema', () => {
             {
               nom: 'Test Cocoon',
               articles: [
-                { titre: 'Article 1', type: 'Pilier', slug: 'https://example.com/pages/article-1', topic: null },
+                { id: 1, titre: 'Article 1', type: 'Pilier', slug: 'https://example.com/pages/article-1', topic: null },
               ],
             },
           ],
@@ -43,7 +43,7 @@ describe('article.schema — rawArticlesDbSchema', () => {
             {
               nom: 'Test',
               articles: [
-                { titre: 'A', type: 'Invalid', slug: 'url', topic: null },
+                { id: 1, titre: 'A', type: 'Invalid', slug: 'url', topic: null },
               ],
             },
           ],
@@ -62,7 +62,7 @@ describe('article.schema — rawArticlesDbSchema', () => {
             nom: 'S',
             description: '',
             cocons: [
-              { nom: 'C', articles: [{ titre: 'A', type, slug: 'url', topic: null }] },
+              { nom: 'C', articles: [{ id: 1, titre: 'A', type, slug: 'url', topic: null }] },
             ],
           },
         ],

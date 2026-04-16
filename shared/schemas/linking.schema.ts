@@ -1,8 +1,8 @@
 import { z } from 'zod/v4'
 
 export const internalLinkSchema = z.object({
-  sourceSlug: z.string().min(1),
-  targetSlug: z.string().min(1),
+  sourceId: z.number().int().positive(),
+  targetId: z.number().int().positive(),
   anchorText: z.string().min(1),
   position: z.string().min(1),
 })
@@ -13,7 +13,7 @@ export const linkingMatrixSchema = z.object({
 })
 
 export const suggestLinksRequestSchema = z.object({
-  articleSlug: z.string().min(1),
+  articleId: z.number().int().positive(),
   content: z.string().min(1),
 })
 

@@ -66,19 +66,19 @@ function refreshCapitainesMap() {
 }
 
 function emitCheckCompleted(check: string) {
-  const slug = selectedArticle.value?.slug
-  if (!slug) return
-  articleProgressStore.addCheck(slug, check).catch(err =>
-    log.warn('[MoteurView] addCheck failed', { slug, check, error: err }),
+  const id = selectedArticle.value?.id
+  if (!id) return
+  articleProgressStore.addCheck(id, check).catch(err =>
+    log.warn('[MoteurView] addCheck failed', { articleId: id, check, error: err }),
   )
   if (check === 'capitaine_locked') refreshCapitainesMap()
 }
 
 function handleCheckRemoved(check: string) {
-  const slug = selectedArticle.value?.slug
-  if (!slug) return
-  articleProgressStore.removeCheck(slug, check).catch(err =>
-    log.warn('[MoteurView] removeCheck failed', { slug, check, error: err }),
+  const id = selectedArticle.value?.id
+  if (!id) return
+  articleProgressStore.removeCheck(id, check).catch(err =>
+    log.warn('[MoteurView] removeCheck failed', { articleId: id, check, error: err }),
   )
   if (check === 'capitaine_locked') refreshCapitainesMap()
 }
@@ -192,9 +192,9 @@ const currentPhaseId = computed(() => {
 })
 
 const isCurrentPhaseComplete = computed(() => {
-  const slug = selectedArticle.value?.slug
-  if (!slug) return false
-  const checks = articleProgressStore.getProgress(slug)?.completedChecks ?? []
+  const id = selectedArticle.value?.id
+  if (!id) return false
+  const checks = articleProgressStore.getProgress(id)?.completedChecks ?? []
   const required = PHASE_CHECKS[currentPhaseId.value]
   if (!required) return false
   return required.every(c => checks.includes(c))
@@ -203,7 +203,7 @@ const isCurrentPhaseComplete = computed(() => {
 const bannerDismissed = ref(false)
 
 watch(currentPhaseId, () => { bannerDismissed.value = false })
-watch(() => selectedArticle.value?.slug, () => { bannerDismissed.value = false })
+watch(() => selectedArticle.value?.id, () => { bannerDismissed.value = false })
 
 const transitionBanner = computed(() => {
   if (!isCurrentPhaseComplete.value) return null
@@ -230,8 +230,8 @@ const showTransitionBanner = computed(() =>
   transitionBanner.value !== null && !bannerDismissed.value,
 )
 
-function computeSmartTab(slug: string): Tab {
-  const progress = articleProgressStore.getProgress(slug)
+function computeSmartTab(articleId: number): Tab {
+  const progress = articleProgressStore.getProgress(articleId)
   const checks = progress?.completedChecks ?? []
   if (checks.length === 0) return 'capitaine'
   // All Phase 2 checks done → back to capitaine (review from start)
@@ -250,13 +250,13 @@ function handleSelectArticle(article: SelectedArticle | null) {
   })
   selectedArticle.value = article
 
-  // Navigate to the smart tab (components handle article change via their slug watchers)
-  const smartTab = article ? computeSmartTab(article.slug) : 'capitaine'
+  // Navigate to the smart tab (components handle article change via their id watchers)
+  const smartTab = article ? computeSmartTab(article.id) : 'capitaine'
   activeTab.value = smartTab
   visitedTabs.value[smartTab] = true
 
   // Sync basket with article
-  basketStore.setArticle(article?.slug ?? null)
+  basketStore.setArticle(article?.id ?? null)
 
   // Reset cross-tab state
   selectedLieutenantsLocal.value = []
@@ -271,8 +271,8 @@ function handleSelectArticle(article: SelectedArticle | null) {
 
   // Fetch article-level keywords (capitaine, lieutenants, lexique)
   if (article) {
-    articleKeywordsStore.fetchKeywords(article.slug)
-    loadCachedResults(article.slug)
+    articleKeywordsStore.fetchKeywords(article.id)
+    loadCachedResults(article.id)
 
     // Check discovery + radar cache for this article's seed keyword
     const seed = article.keyword || pilierKeyword.value
@@ -352,21 +352,21 @@ function handleTranslated(keywords: TranslatedKeyword[]) {
 
 // --- Soft gating computeds for Phase ② sous-onglets ---
 const isCaptaineLocked = computed(() => {
-  const slug = selectedArticle.value?.slug
-  if (!slug) return false
-  return articleProgressStore.getProgress(slug)?.completedChecks?.includes('capitaine_locked') ?? false
+  const id = selectedArticle.value?.id
+  if (!id) return false
+  return articleProgressStore.getProgress(id)?.completedChecks?.includes('capitaine_locked') ?? false
 })
 
 const isLieutenantsLocked = computed(() => {
-  const slug = selectedArticle.value?.slug
-  if (!slug) return false
-  return articleProgressStore.getProgress(slug)?.completedChecks?.includes('lieutenants_locked') ?? false
+  const id = selectedArticle.value?.id
+  if (!id) return false
+  return articleProgressStore.getProgress(id)?.completedChecks?.includes('lieutenants_locked') ?? false
 })
 
 const isLexiqueValidated = computed(() => {
-  const slug = selectedArticle.value?.slug
-  if (!slug) return false
-  return articleProgressStore.getProgress(slug)?.completedChecks?.includes('lexique_validated') ?? false
+  const id = selectedArticle.value?.id
+  if (!id) return false
+  return articleProgressStore.getProgress(id)?.completedChecks?.includes('lexique_validated') ?? false
 })
 
 // --- Lieutenants props ---

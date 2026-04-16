@@ -21,6 +21,7 @@ vi.mock('../../../src/composables/useStreaming', () => ({
 
 const mockBriefData: BriefData = {
   article: {
+    id: 1,
     title: 'Test Article',
     type: 'Pilier',
     slug: 'test-article',
@@ -45,8 +46,8 @@ const mockBriefData: BriefData = {
 
 const mockOutline: Outline = {
   sections: [
-    { id: 'h1-test', level: 1, title: 'Test Article', annotation: 'sommaire-cliquable' },
-    { id: 'h2-intro', level: 2, title: 'Introduction', annotation: 'content-valeur' },
+    { id: 'h1-test', level: 1, title: 'Test Article', annotation: 'sommaire-cliquable', status: 'accepted' },
+    { id: 'h2-intro', level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'accepted' },
   ],
 }
 
@@ -68,7 +69,7 @@ describe('outline.store — generateOutline', () => {
     expect(mockStartStream).toHaveBeenCalledWith(
       '/api/generate/outline',
       expect.objectContaining({
-        slug: 'test-article',
+        articleId: 1,
         keyword: 'pilier keyword',
         keywords: ['pilier keyword', 'secondary keyword'],
         articleType: 'Pilier',
@@ -174,7 +175,7 @@ describe('outline.store — resetOutline', () => {
 describe('outline.store — undo/redo', () => {
   it('undo restaure l etat precedent apres addSection', () => {
     const store = useOutlineStore()
-    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null, status: 'accepted' }] }
 
     expect(store.outline.sections).toHaveLength(1)
 
@@ -187,7 +188,7 @@ describe('outline.store — undo/redo', () => {
 
   it('redo refait l operation annulee', () => {
     const store = useOutlineStore()
-    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null, status: 'accepted' }] }
 
     store.addSection(null, 2)
     expect(store.outline!.sections).toHaveLength(2)
@@ -213,7 +214,7 @@ describe('outline.store — undo/redo', () => {
 
   it('le stack est limite a 20 entrees', () => {
     const store = useOutlineStore()
-    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null, status: 'accepted' }] }
 
     // Perform 25 modifications
     for (let i = 0; i < 25; i++) {
@@ -231,7 +232,7 @@ describe('outline.store — undo/redo', () => {
 
   it('redo stack est vide apres une nouvelle operation', () => {
     const store = useOutlineStore()
-    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null, status: 'accepted' }] }
 
     store.addSection(null, 2)
     store.undo()
@@ -244,7 +245,7 @@ describe('outline.store — undo/redo', () => {
 
   it('resetOutline vide les stacks undo/redo', () => {
     const store = useOutlineStore()
-    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null }] }
+    store.outline = { sections: [{ id: 'h1-1', level: 1, title: 'Title', annotation: null, status: 'accepted' }] }
 
     store.addSection(null, 2)
     expect(store.canUndo).toBe(true)

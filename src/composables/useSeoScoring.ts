@@ -23,7 +23,7 @@ export function useSeoScoring(
   contentLengthTarget?: () => number | undefined,
   relatedKeywords?: () => RelatedKeyword[],
   articleKeywords?: () => ArticleKeywords | null,
-  articleSlug?: () => string | undefined,
+  articleId?: () => number | undefined,
 ) {
   const editorStore = useEditorStore()
   const seoStore = useSeoStore()
@@ -40,7 +40,7 @@ export function useSeoScoring(
 
     const kws = keywords()
     const artKws = articleKeywords?.() ?? null
-    const slug = articleSlug?.()
+    const id = articleId?.()
 
     log.info('[seo-scoring] recalculating', {
       contentLength: content.length,
@@ -59,7 +59,7 @@ export function useSeoScoring(
         contentLengthTarget?.(),
         relatedKeywords?.(),
         artKws,
-        slug,
+        id,
       )
 
       if (seoStore.score) {

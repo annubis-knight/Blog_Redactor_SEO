@@ -19,7 +19,12 @@
     { "name": "Saint-Étienne", "type": "quartier", "aliases": ["St-Étienne", "Saint-Etienne"] },
     { "name": "Carmes", "type": "quartier", "aliases": ["Les Carmes"] },
     { "name": "Esquirol", "type": "quartier" },
-    { "name": "Arnaud-Bernard", "type": "quartier" }
+    { "name": "Arnaud-Bernard", "type": "quartier" },
+    { "name": "Croix de Pierre", "type": "quartier", "aliases": ["Croix-de-Pierre"] },
+    { "name": "Saint-Simon", "type": "quartier", "aliases": ["St Simon", "St-Simon"] },
+    { "name": "Zone Thibaud", "type": "quartier", "aliases": ["Thibaud"] },
+    { "name": "Lafourguette", "type": "quartier" },
+    { "name": "Route d'Espagne", "type": "quartier" }
   ],
   "entreprises": [
     { "name": "IoT Valley", "type": "entreprise" },

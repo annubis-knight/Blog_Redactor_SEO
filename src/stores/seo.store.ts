@@ -6,10 +6,15 @@ import type { Keyword, ArticleKeywords } from '@shared/types/index.js'
 import type { RelatedKeyword } from '@shared/types/dataforseo.types.js'
 import { calculateSeoScore } from '@/utils/seo-calculator'
 import { SEO_SCORE_LEVELS } from '@shared/constants/seo.constants.js'
+import { useEditorStore } from '@/stores/editor.store'
 
 export const useSeoStore = defineStore('seo', () => {
   const score = ref<SeoScore | null>(null)
   const isCalculating = ref(false)
+
+  // SSOT wordCount — delegates to editorStore (finding G5).
+  // Use this for the word-count-bar and reduce/humanize delta.
+  const wordCount = computed(() => useEditorStore().wordCount)
 
   const scoreLevel = computed<'good' | 'fair' | 'poor' | null>(() => {
     if (!score.value) return null
@@ -34,7 +39,7 @@ export const useSeoStore = defineStore('seo', () => {
     contentLengthTarget?: number,
     relatedKeywords?: RelatedKeyword[],
     articleKeywords?: ArticleKeywords | null,
-    articleSlug?: string,
+    articleId?: number,
   ) {
     isCalculating.value = true
     log.debug(`[seo] recalculate`, {
@@ -44,7 +49,7 @@ export const useSeoStore = defineStore('seo', () => {
       metaDesc: metaDescription ? `${metaDescription.length}ch` : 'null',
       articleKeywords: articleKeywords ? `cap=${articleKeywords.capitaine}, lt=${articleKeywords.lieutenants.length}` : 'null',
     })
-    score.value = calculateSeoScore(content, keywords, metaTitle, metaDescription, contentLengthTarget, relatedKeywords, articleKeywords ?? undefined, articleSlug)
+    score.value = calculateSeoScore(content, keywords, metaTitle, metaDescription, contentLengthTarget, relatedKeywords, articleKeywords ?? undefined, articleId != null ? String(articleId) : undefined)
     log.info(`[seo] score: ${score.value?.global}`, {
       wordCount: score.value?.wordCount,
       densities: score.value?.keywordDensities.map(d => `${d.keyword}:${d.occurrences}x`).join(', '),
@@ -58,5 +63,5 @@ export const useSeoStore = defineStore('seo', () => {
     isCalculating.value = false
   }
 
-  return { score, isCalculating, scoreLevel, hasIssues, recalculate, reset }
+  return { score, isCalculating, scoreLevel, hasIssues, wordCount, recalculate, reset }
 })

@@ -20,26 +20,26 @@ export const useBriefStore = defineStore('brief', () => {
   const error = ref<string | null>(null)
   const isRefreshing = ref(false)
   const dataForSeoFromCache = ref<boolean | null>(null)
-  const currentSlug = ref<string | null>(null)
+  const currentId = ref<number | null>(null)
   let fetchController: AbortController | null = null
 
   const pilierKeyword = computed(() =>
     briefData.value?.keywords.find(kw => kw.type === 'Pilier') ?? null,
   )
 
-  async function fetchBrief(slug: string) {
+  async function fetchBrief(id: number) {
     fetchController?.abort()
     fetchController = new AbortController()
     const signal = fetchController.signal
-    currentSlug.value = slug
+    currentId.value = id
 
-    log.info(`Fetching brief for "${slug}"`)
+    log.info(`Fetching brief for article ${id}`)
     isLoading.value = true
     error.value = null
     try {
       // 1. Fetch article details
-      const { article, cocoonName } = await apiGet<{ article: Article; cocoonName: string }>(`/articles/${slug}`, { signal })
-      if (slug !== currentSlug.value) return // slug changed during fetch
+      const { article, cocoonName } = await apiGet<{ article: Article; cocoonName: string }>(`/articles/${id}`, { signal })
+      if (id !== currentId.value) return // id changed during fetch
 
       const articleWithCocoon = { ...article, cocoonName }
 
@@ -51,7 +51,7 @@ export const useBriefStore = defineStore('brief', () => {
         if ((err as Error).name === 'AbortError') throw err
         // Keywords unavailable — continue with empty list
       }
-      if (slug !== currentSlug.value) return
+      if (id !== currentId.value) return
 
       // 3. Fetch DataForSEO data (if pilier keyword exists, non-blocking)
       const pilier = keywords.find(kw => kw.type === 'Pilier')
@@ -66,19 +66,19 @@ export const useBriefStore = defineStore('brief', () => {
           // DataForSEO unavailable — continue without
         }
       }
-      if (slug !== currentSlug.value) return
+      if (id !== currentId.value) return
 
       // 4. Calculate content length recommendation
       const contentLengthRecommendation = calculateContentLength(article.type)
 
       briefData.value = { article: articleWithCocoon, keywords, dataForSeo, contentLengthRecommendation }
-      log.info(`Brief loaded for "${slug}"`, { keywords: keywords.length, hasDataForSeo: !!dataForSeo })
+      log.info(`Brief loaded for article ${id}`, { keywords: keywords.length, hasDataForSeo: !!dataForSeo })
     } catch (err) {
       if ((err as Error).name === 'AbortError') return
-      log.error(`Brief fetch failed for "${slug}" — ${(err as Error).message}`)
+      log.error(`Brief fetch failed for article ${id} — ${(err as Error).message}`)
       error.value = err instanceof Error ? err.message : 'Erreur inconnue'
     } finally {
-      if (slug === currentSlug.value) {
+      if (id === currentId.value) {
         isLoading.value = false
       }
     }

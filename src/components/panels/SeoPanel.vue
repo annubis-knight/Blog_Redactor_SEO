@@ -11,9 +11,11 @@ import SerpDataTab from '@/components/panels/SerpDataTab.vue'
 
 const props = withDefaults(defineProps<{
   articleSlug?: string
+  articleId?: number
   cocoonName?: string
 }>(), {
   articleSlug: '',
+  articleId: 0,
   cocoonName: '',
 })
 
@@ -22,9 +24,9 @@ const briefStore = useBriefStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 
 // Cannibalization detection
-const slugRef = computed(() => props.articleSlug || briefStore.briefData?.article?.slug || '')
+const articleIdRef = computed(() => props.articleId || briefStore.briefData?.article?.id || 0)
 const cocoonRef = computed(() => props.cocoonName || briefStore.briefData?.article?.cocoonName || '')
-const { warnings: cannibalizationWarnings } = useCannibalization(slugRef, cocoonRef)
+const { warnings: cannibalizationWarnings } = useCannibalization(articleIdRef, cocoonRef)
 
 // Content length target
 const contentLengthTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? 1500)

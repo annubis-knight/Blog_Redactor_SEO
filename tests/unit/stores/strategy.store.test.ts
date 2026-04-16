@@ -16,7 +16,7 @@ const mockApiPut = vi.mocked(apiPut)
 const mockApiPost = vi.mocked(apiPost)
 
 const mockStrategy: ArticleStrategy = {
-  slug: 'test-article',
+  id: 1,
   cible: { input: 'PME dirigeants', suggestion: 'Cible suggestion', validated: 'PME dirigeants' },
   douleur: { input: 'Pas de visibilité', suggestion: null, validated: '' },
   aiguillage: { suggestedType: 'Intermédiaire', suggestedParent: 'article-pilier', suggestedChildren: [], validated: true },
@@ -51,19 +51,19 @@ describe('strategy.store — fetchStrategy', () => {
     mockApiGet.mockResolvedValue(mockStrategy)
     const store = useStrategyStore()
 
-    await store.fetchStrategy('test-article')
+    await store.fetchStrategy(1)
 
     expect(store.strategy).toEqual(mockStrategy)
     expect(store.isLoading).toBe(false)
     expect(store.error).toBeNull()
-    expect(mockApiGet).toHaveBeenCalledWith('/strategy/test-article')
+    expect(mockApiGet).toHaveBeenCalledWith('/strategy/1')
   })
 
   it('sets currentStep to completedSteps when loading existing strategy', async () => {
     mockApiGet.mockResolvedValue(mockStrategy) // completedSteps = 2
     const store = useStrategyStore()
 
-    await store.fetchStrategy('test-article')
+    await store.fetchStrategy(1)
 
     expect(store.currentStep).toBe(2)
   })
@@ -73,7 +73,7 @@ describe('strategy.store — fetchStrategy', () => {
     mockApiGet.mockResolvedValue(completeStrategy)
     const store = useStrategyStore()
 
-    await store.fetchStrategy('test-article')
+    await store.fetchStrategy(1)
 
     expect(store.currentStep).toBe(5)
   })
@@ -82,7 +82,7 @@ describe('strategy.store — fetchStrategy', () => {
     mockApiGet.mockResolvedValue(null)
     const store = useStrategyStore()
 
-    await store.fetchStrategy('unknown-slug')
+    await store.fetchStrategy(99)
 
     expect(store.strategy).toBeNull()
     expect(store.isLoading).toBe(false)
@@ -93,7 +93,7 @@ describe('strategy.store — fetchStrategy', () => {
     mockApiGet.mockRejectedValue(new Error('Network error'))
     const store = useStrategyStore()
 
-    await store.fetchStrategy('test-article')
+    await store.fetchStrategy(1)
 
     expect(store.error).toBe('Network error')
     expect(store.strategy).toBeNull()
@@ -104,7 +104,7 @@ describe('strategy.store — fetchStrategy', () => {
     mockApiGet.mockRejectedValue('something went wrong')
     const store = useStrategyStore()
 
-    await store.fetchStrategy('test-article')
+    await store.fetchStrategy(1)
 
     expect(store.error).toBe('Erreur inconnue')
   })
@@ -114,7 +114,7 @@ describe('strategy.store — fetchStrategy', () => {
     mockApiGet.mockImplementation(() => new Promise((resolve) => { resolvePromise = resolve as any }))
     const store = useStrategyStore()
 
-    const promise = store.fetchStrategy('test-article')
+    const promise = store.fetchStrategy(1)
     expect(store.isLoading).toBe(true)
 
     resolvePromise!(mockStrategy)
@@ -128,10 +128,10 @@ describe('strategy.store — initEmpty', () => {
   it('creates an empty strategy with correct slug', () => {
     const store = useStrategyStore()
 
-    store.initEmpty('new-article')
+    store.initEmpty(1)
 
     expect(store.strategy).not.toBeNull()
-    expect(store.strategy!.slug).toBe('new-article')
+    expect(store.strategy!.id).toBe(1)
     expect(store.strategy!.completedSteps).toBe(0)
     expect(store.currentStep).toBe(0)
   })
@@ -139,7 +139,7 @@ describe('strategy.store — initEmpty', () => {
   it('initializes all step data as empty', () => {
     const store = useStrategyStore()
 
-    store.initEmpty('new-article')
+    store.initEmpty(1)
 
     expect(store.strategy!.cible).toEqual({ input: '', suggestion: null, validated: '' })
     expect(store.strategy!.douleur).toEqual({ input: '', suggestion: null, validated: '' })
@@ -152,7 +152,7 @@ describe('strategy.store — initEmpty', () => {
   it('sets updatedAt to a valid ISO date string', () => {
     const store = useStrategyStore()
 
-    store.initEmpty('new-article')
+    store.initEmpty(1)
 
     expect(store.strategy!.updatedAt).toBeTruthy()
     expect(new Date(store.strategy!.updatedAt).toISOString()).toBe(store.strategy!.updatedAt)
@@ -163,21 +163,21 @@ describe('strategy.store — step navigation', () => {
   it('nextStep increments currentStep and saves', async () => {
     mockApiPut.mockResolvedValue(mockStrategy)
     const store = useStrategyStore()
-    store.initEmpty('test-article')
+    store.initEmpty(1)
 
-    store.nextStep('test-article')
+    store.nextStep(1)
 
     expect(store.currentStep).toBe(1)
-    expect(mockApiPut).toHaveBeenCalledWith('/strategy/test-article', store.strategy)
+    expect(mockApiPut).toHaveBeenCalledWith('/strategy/1', store.strategy)
   })
 
   it('nextStep does not go beyond step 5', async () => {
     mockApiPut.mockResolvedValue(mockStrategy)
     const store = useStrategyStore()
-    store.initEmpty('test-article')
+    store.initEmpty(1)
     store.currentStep = 5
 
-    store.nextStep('test-article')
+    store.nextStep(1)
 
     expect(store.currentStep).toBe(5)
   })
@@ -185,17 +185,17 @@ describe('strategy.store — step navigation', () => {
   it('nextStep updates completedSteps when advancing beyond it', async () => {
     mockApiPut.mockResolvedValue(mockStrategy)
     const store = useStrategyStore()
-    store.initEmpty('test-article')
+    store.initEmpty(1)
     expect(store.strategy!.completedSteps).toBe(0)
 
-    store.nextStep('test-article')
+    store.nextStep(1)
 
     expect(store.strategy!.completedSteps).toBe(1)
   })
 
   it('prevStep decrements currentStep', () => {
     const store = useStrategyStore()
-    store.initEmpty('test-article')
+    store.initEmpty(1)
     store.currentStep = 3
 
     store.prevStep()
@@ -205,7 +205,7 @@ describe('strategy.store — step navigation', () => {
 
   it('prevStep does not go below 0', () => {
     const store = useStrategyStore()
-    store.initEmpty('test-article')
+    store.initEmpty(1)
     store.currentStep = 0
 
     store.prevStep()
@@ -258,7 +258,7 @@ describe('strategy.store — requestSuggestion', () => {
     mockApiPost.mockResolvedValue(mockResponse)
     const store = useStrategyStore()
 
-    const result = await store.requestSuggestion('test-article', {
+    const result = await store.requestSuggestion(1, {
       step: 'cible',
       currentInput: 'PME dirigeants',
       context: { articleTitle: 'Test', cocoonName: 'Cocon A', siloName: 'Silo 1' },
@@ -267,7 +267,7 @@ describe('strategy.store — requestSuggestion', () => {
     expect(result).toBe('Voici une suggestion')
     expect(store.isSuggesting).toBe(false)
     expect(store.error).toBeNull()
-    expect(mockApiPost).toHaveBeenCalledWith('/strategy/test-article/suggest', {
+    expect(mockApiPost).toHaveBeenCalledWith('/strategy/1/suggest', {
       step: 'cible',
       currentInput: 'PME dirigeants',
       context: { articleTitle: 'Test', cocoonName: 'Cocon A', siloName: 'Silo 1' },
@@ -279,7 +279,7 @@ describe('strategy.store — requestSuggestion', () => {
     mockApiPost.mockImplementation(() => new Promise((resolve) => { resolvePromise = resolve as any }))
     const store = useStrategyStore()
 
-    const promise = store.requestSuggestion('test-article', {
+    const promise = store.requestSuggestion(1, {
       step: 'cible',
       currentInput: 'test',
       context: { articleTitle: 'Test', cocoonName: 'Cocon A', siloName: 'Silo 1' },
@@ -296,7 +296,7 @@ describe('strategy.store — requestSuggestion', () => {
     mockApiPost.mockRejectedValue(new Error('API unavailable'))
     const store = useStrategyStore()
 
-    const result = await store.requestSuggestion('test-article', {
+    const result = await store.requestSuggestion(1, {
       step: 'douleur',
       currentInput: 'test',
       context: { articleTitle: 'Test', cocoonName: 'Cocon A', siloName: 'Silo 1' },
@@ -311,7 +311,7 @@ describe('strategy.store — requestSuggestion', () => {
     mockApiPost.mockRejectedValue('unknown error')
     const store = useStrategyStore()
 
-    const result = await store.requestSuggestion('test-article', {
+    const result = await store.requestSuggestion(1, {
       step: 'angle',
       currentInput: 'test',
       context: { articleTitle: 'Test', cocoonName: 'Cocon A', siloName: 'Silo 1' },
@@ -330,9 +330,9 @@ describe('strategy.store — saveStrategy', () => {
     store.strategy = { ...mockStrategy }
     const strategyBeforeSave = { ...store.strategy }
 
-    await store.saveStrategy('test-article')
+    await store.saveStrategy(1)
 
-    expect(mockApiPut).toHaveBeenCalledWith('/strategy/test-article', strategyBeforeSave)
+    expect(mockApiPut).toHaveBeenCalledWith('/strategy/1', strategyBeforeSave)
     // After save, strategy is updated with the server response
     expect(store.strategy).toEqual(savedStrategy)
   })
@@ -340,7 +340,7 @@ describe('strategy.store — saveStrategy', () => {
   it('does nothing when strategy is null', async () => {
     const store = useStrategyStore()
 
-    await store.saveStrategy('test-article')
+    await store.saveStrategy(1)
 
     expect(mockApiPut).not.toHaveBeenCalled()
   })
@@ -350,7 +350,7 @@ describe('strategy.store — saveStrategy', () => {
     const store = useStrategyStore()
     store.strategy = { ...mockStrategy }
 
-    await store.saveStrategy('test-article')
+    await store.saveStrategy(1)
 
     expect(store.error).toBe('Save failed')
   })
@@ -395,7 +395,7 @@ describe('strategy.store — $reset', () => {
   it('resets all state to defaults', async () => {
     mockApiGet.mockResolvedValue(mockStrategy)
     const store = useStrategyStore()
-    await store.fetchStrategy('test-article')
+    await store.fetchStrategy(1)
 
     store.$reset()
 

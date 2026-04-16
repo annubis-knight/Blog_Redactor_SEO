@@ -21,7 +21,7 @@ defineProps<{
       <RouterLink
         v-for="orphan in orphans"
         :key="orphan.slug"
-        :to="`/article/${orphan.slug}/editor`"
+        :to="`/article/${orphan.id}/editor`"
         class="orphan-item"
       >
         <span class="orphan-article-title">{{ orphan.title }}</span>

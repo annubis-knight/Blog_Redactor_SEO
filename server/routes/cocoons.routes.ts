@@ -90,10 +90,10 @@ router.get('/cocoons/:cocoonName/capitaines', async (req, res) => {
     const cocoonName = decodeURIComponent(req.params.cocoonName)
     const articleKeywords = await getArticleKeywordsByCocoon(cocoonName)
 
-    const capitainesMap: Record<string, string> = {}
+    const capitainesMap: Record<number, string> = {}
     for (const ak of articleKeywords) {
       if (ak.capitaine) {
-        capitainesMap[ak.articleSlug] = ak.capitaine
+        capitainesMap[ak.articleId] = ak.capitaine
       }
     }
 

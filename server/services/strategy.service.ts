@@ -6,10 +6,10 @@ import { log } from '../utils/logger.js'
 
 const STRATEGIES_DIR = join(process.cwd(), 'data', 'strategies')
 
-function emptyStrategy(slug: string): ArticleStrategy {
+function emptyStrategy(id: number): ArticleStrategy {
   const emptyStep = { input: '', suggestion: null, validated: '' }
   return {
-    slug,
+    id,
     cible: { ...emptyStep },
     douleur: { ...emptyStep },
     aiguillage: { suggestedType: null, suggestedParent: null, suggestedChildren: [], validated: false },
@@ -21,25 +21,25 @@ function emptyStrategy(slug: string): ArticleStrategy {
   }
 }
 
-export async function getStrategy(slug: string): Promise<ArticleStrategy | null> {
+export async function getStrategy(id: number): Promise<ArticleStrategy | null> {
   try {
-    const data = await readJson<ArticleStrategy>(join(STRATEGIES_DIR, `${slug}.json`))
+    const data = await readJson<ArticleStrategy>(join(STRATEGIES_DIR, `${id}.json`))
     return articleStrategySchema.parse(data)
   } catch {
     return null
   }
 }
 
-export async function saveStrategy(slug: string, strategy: Partial<ArticleStrategy>): Promise<ArticleStrategy> {
-  const existing = await getStrategy(slug) ?? emptyStrategy(slug)
+export async function saveStrategy(id: number, strategy: Partial<ArticleStrategy>): Promise<ArticleStrategy> {
+  const existing = await getStrategy(id) ?? emptyStrategy(id)
   const merged: ArticleStrategy = {
     ...existing,
     ...strategy,
-    slug, // enforce slug consistency
+    id, // enforce id consistency
     updatedAt: new Date().toISOString(),
   }
   articleStrategySchema.parse(merged)
-  await writeJson(join(STRATEGIES_DIR, `${slug}.json`), merged)
-  log.info(`Strategy saved for article "${slug}"`)
+  await writeJson(join(STRATEGIES_DIR, `${id}.json`), merged)
+  log.info(`Strategy saved for article "${id}"`)
   return merged
 }

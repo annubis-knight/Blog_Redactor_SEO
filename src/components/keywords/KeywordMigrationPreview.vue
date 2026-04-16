@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 
 interface Assignment {
-  articleSlug: string
+  articleId: number
   articleTitle: string
   articleType: string
   capitaine: string
@@ -35,7 +35,7 @@ const editableAssignments = ref([...props.assignments])
     <div class="assignments-table">
       <div
         v-for="assignment in editableAssignments"
-        :key="assignment.articleSlug"
+        :key="assignment.articleId"
         class="assignment-row"
       >
         <div class="assignment-article">

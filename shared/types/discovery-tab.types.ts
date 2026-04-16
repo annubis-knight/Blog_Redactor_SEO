@@ -41,6 +41,17 @@ export interface SuggestAllResult {
   totalUnique: number
 }
 
+export interface AnalyzedKeyword {
+  keyword: string
+  reasoning: string
+  priority: 'high' | 'medium' | 'low'
+}
+
+export interface AnalysisResult {
+  keywords: AnalyzedKeyword[]
+  summary: string
+}
+
 /** Convert checked DiscoveredKeywords to RadarKeyword[] for DouleurIntentScanner */
 export function toRadarKeywords(keywords: DiscoveredKeyword[]): RadarKeyword[] {
   const seen = new Set<string>()

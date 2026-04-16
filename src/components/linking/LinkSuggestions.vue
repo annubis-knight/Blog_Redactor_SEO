@@ -35,7 +35,7 @@ const emit = defineEmits<{
     </div>
 
     <div v-else class="suggestions-list">
-      <div v-for="suggestion in suggestions" :key="suggestion.targetSlug" class="suggestion-item">
+      <div v-for="suggestion in suggestions" :key="suggestion.targetId" class="suggestion-item">
         <div class="suggestion-info">
           <span class="suggestion-title">{{ suggestion.targetTitle }}</span>
           <span class="suggestion-type" :class="suggestion.targetType">{{ suggestion.targetType }}</span>

@@ -1,6 +1,6 @@
 {
   "avatar": {
-    "sector": "TPE / PME tous secteurs confondus",
+    "sector": "TPE / PME de services, artisans, professions libérales (pas de e-commerce)",
     "companySize": "1-10 employés",
     "location": "Toulouse, France",
     "budget": "Budget croissance digitale PME / TPE (faible à moyen)",
@@ -36,7 +36,7 @@
     "ctaTarget": "www.propulsitetoulouse.website"
   },
   "toneOfVoice": {
-    "style": "Humain, direct et authentique — professionnel sans être corporate. Ton chaleureux et accessible, celui d'un expert de confiance qui parle vrai, sans jargon inutile ni posture d'agence froide. Proximité assumée, engagement sincère.",
+    "style": "Expert pédagogue — utilise le vocabulaire métier et les termes d'expert, mais explique chaque terme technique simplement, comme à un enfant de 12 ans, avec des images ou des exemples concrets. Humain, direct et authentique. Ton chaleureux et accessible, celui d'un expert de confiance qui parle vrai sans posture d'agence froide. Proximité assumée, engagement sincère.",
     "vocabulary": [
       "Croissance digitale",
       "Positionnement marketing",

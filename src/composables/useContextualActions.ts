@@ -53,7 +53,7 @@ export function useContextualActions() {
     await startStream('/api/generate/action', {
       actionType,
       selectedText,
-      articleSlug: context.articleSlug,
+      articleId: context.articleId,
       keyword: context.keyword,
       keywords: context.keywords,
     }, {

@@ -83,29 +83,12 @@ describe('LoadingSpinner — accessibility', () => {
   })
 })
 
-// ─── 2.4 — ARIA : ExportPreview ──────────────────────────────────────────
-
-describe('ExportPreview — ARIA attributes', () => {
-  const vue = readFileSync(
-    resolve(__dirname, '../../../src/components/export/ExportPreview.vue'),
-    'utf-8',
-  )
-
-  it('has role="dialog" on the container', () => {
-    expect(vue).toContain('role="dialog"')
-  })
-
-  it('has aria-label on the dialog', () => {
-    expect(vue).toContain('aria-label="Aperçu de l\'export HTML"')
-  })
-
-  it('has aria-label on the close button', () => {
-    expect(vue).toContain('aria-label="Fermer l\'aperçu"')
-  })
-
-  it('has title attribute on the iframe', () => {
-    expect(vue).toContain('title="Aperçu du HTML exporté"')
-  })
+// ExportPreview was removed — tests skipped
+describe.skip('ExportPreview — ARIA attributes', () => {
+  it('has role="dialog" on the container', () => {})
+  it('has aria-label on the dialog', () => {})
+  it('has aria-label on the close button', () => {})
+  it('has title attribute on the iframe', () => {})
 })
 
 // ─── 2.4 — ARIA : ActionMenu ─────────────────────────────────────────────
@@ -275,7 +258,7 @@ describe('LinkSuggestions — component behavior', () => {
       props: {
         suggestions: [
           {
-            targetSlug: 'article-1',
+            targetId: 1,
             targetTitle: 'Article 1',
             targetType: 'Pilier',
             suggestedAnchor: 'référencement',
@@ -305,7 +288,7 @@ describe('LinkSuggestions — component behavior', () => {
 
   it('emits "accept" with suggestion when accept button is clicked', async () => {
     const suggestion = {
-      targetSlug: 'test',
+      targetId: 1,
       targetTitle: 'Test',
       targetType: 'Pilier' as const,
       suggestedAnchor: 'test',
@@ -323,7 +306,7 @@ describe('LinkSuggestions — component behavior', () => {
 
   it('emits "dismiss" with suggestion when dismiss button is clicked', async () => {
     const suggestion = {
-      targetSlug: 'test',
+      targetId: 1,
       targetTitle: 'Test',
       targetType: 'Pilier' as const,
       suggestedAnchor: 'test',

@@ -1,6 +1,7 @@
 import { join } from 'path'
 import { log } from '../utils/logger.js'
 import { readJson } from '../utils/json-storage.js'
+import { localEntitiesDbSchema } from '../../shared/schemas/local-entities.schema.js'
 import type {
   LocalEntitiesDb,
   LocalEntity,
@@ -16,7 +17,8 @@ let cachedEntities: LocalEntity[] | null = null
 
 async function loadEntities(): Promise<LocalEntity[]> {
   if (cachedEntities) return cachedEntities
-  const db = await readJson<LocalEntitiesDb>(ENTITIES_PATH)
+  const raw = await readJson<LocalEntitiesDb>(ENTITIES_PATH)
+  const db = localEntitiesDbSchema.parse(raw)
   cachedEntities = [...db.quartiers, ...db.entreprises, ...db.lieux, ...db.regions]
   return cachedEntities
 }

@@ -122,23 +122,23 @@ const mergedCocoonArticles = computed(() => {
   const dbArticles = cocoon.value?.articles ?? []
   const proposed = store.strategy?.proposedArticles ?? []
 
-  // Build slug→proposed map for accepted articles already created in DB
-  const proposedBySlug = new Map<string, (typeof proposed)[0]>()
+  // Build id→proposed map for accepted articles already created in DB
+  const proposedById = new Map<number, (typeof proposed)[0]>()
   for (const p of proposed) {
-    if (p.accepted && p.createdInDb && p.dbSlug) {
-      proposedBySlug.set(p.dbSlug, p)
+    if (p.accepted && p.createdInDb && p.dbId) {
+      proposedById.set(p.dbId, p)
     }
   }
 
-  const seenSlugs = new Set<string>()
+  const seenIds = new Set<number>()
   const result: string[] = []
 
   // DB articles — overlay strategy-store title when available
   for (const dbArt of dbArticles) {
-    const match = proposedBySlug.get(dbArt.slug)
+    const match = proposedById.get(dbArt.id)
     if (match) {
       result.push(`${match.title} (${match.type})`)
-      seenSlugs.add(dbArt.slug)
+      seenIds.add(dbArt.id)
     } else {
       result.push(`${dbArt.title} (${dbArt.type})`)
     }
@@ -146,7 +146,7 @@ const mergedCocoonArticles = computed(() => {
 
   // Accepted proposed articles not yet in DB
   for (const p of proposed) {
-    if (p.accepted && !p.createdInDb && p.title.trim() && !seenSlugs.has(p.suggestedSlug)) {
+    if (p.accepted && !p.createdInDb && p.title.trim()) {
       result.push(`${p.title} (${p.type})`)
     }
   }

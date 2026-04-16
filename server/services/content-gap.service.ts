@@ -104,6 +104,8 @@ Pour paasCovered: liste les questions PAA (People Also Ask) auxquelles le conten
   const usage: ApiUsage = {
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
     model,
     estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
   }

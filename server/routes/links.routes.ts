@@ -45,7 +45,7 @@ router.post('/links/suggest', async (req, res) => {
   }
 
   try {
-    const suggestions = await suggestLinks(parsed.data.articleSlug, parsed.data.content)
+    const suggestions = await suggestLinks(parsed.data.articleId, parsed.data.content)
     res.json({ data: suggestions })
   } catch (err) {
     log.error(`POST /api/links/suggest — ${(err as Error).message}`)

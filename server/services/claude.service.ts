@@ -8,6 +8,8 @@ const client = new Anthropic({
 export interface ApiUsage {
   inputTokens: number
   outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
   model: string
   estimatedCost: number
 }
@@ -20,9 +22,19 @@ export const PRICING: Record<string, { input: number; output: number }> = {
   'claude-opus-4-6': { input: 15, output: 75 },
 }
 
-export function calculateCost(model: string, inputTokens: number, outputTokens: number): number {
+export function calculateCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+  cacheReadTokens = 0,
+  cacheCreationTokens = 0,
+): number {
   const pricing = PRICING[model] ?? { input: 3, output: 15 }
-  return (inputTokens * pricing.input + outputTokens * pricing.output) / 1_000_000
+  const inputCost = inputTokens * pricing.input
+  const outputCost = outputTokens * pricing.output
+  const cacheReadCost = cacheReadTokens * pricing.input * 0.1   // 90% discount
+  const cacheCreationCost = cacheCreationTokens * pricing.input * 1.25
+  return (inputCost + outputCost + cacheReadCost + cacheCreationCost) / 1_000_000
 }
 
 /**
@@ -63,11 +75,16 @@ export async function classifyWithTool<T>(
     throw new Error(`Expected tool_use response from ${tool.name} but got none`)
   }
 
+  const usageAny = response.usage as unknown as Record<string, number>
+  const cacheRead = usageAny.cache_read_input_tokens ?? 0
+  const cacheCreation = usageAny.cache_creation_input_tokens ?? 0
   const usage: ApiUsage = {
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
+    cacheReadTokens: cacheRead,
+    cacheCreationTokens: cacheCreation,
     model,
-    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
+    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens, cacheRead, cacheCreation),
   }
   log.info(`Claude API tool call done`, { tool: tool.name, ms: Date.now() - start, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
 
@@ -80,11 +97,13 @@ export const USAGE_SENTINEL = '__USAGE__'
  * Claude server-side web search tool — runs on Anthropic's infra, no client-side exec.
  * Pass in the `tools` array of streamChatCompletion to let Claude search the web
  * and ground its response with real sources.
+ *
+ * Adjust `max_uses` to control how many searches Claude can do per call (impacts cost heavily).
  */
 export const WEB_SEARCH_TOOL = {
   type: 'web_search_20250305',
   name: 'web_search',
-  max_uses: 3,
+  max_uses: 3, // ← nombre max de recherches web par appel API (chaque recherche ajoute ~10-15k input tokens)
 } as unknown as Anthropic.Messages.ToolUnion
 
 /**
@@ -113,7 +132,7 @@ export async function* streamChatCompletion(
     stream = client.messages.stream({
       model,
       max_tokens: maxTokens,
-      system: systemPrompt,
+      system: [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }],
       messages: [{ role: 'user', content: userPrompt }],
       ...(tools && tools.length > 0 ? { tools } : {}),
     })
@@ -135,14 +154,24 @@ export async function* streamChatCompletion(
     throw err
   }
 
-  // Extract usage from final message
+  // Extract usage from final message (including cache metrics)
   const finalMessage = await stream.finalMessage()
+  const finalUsageAny = finalMessage.usage as unknown as Record<string, number>
+  const cacheReadTokens = finalUsageAny.cache_read_input_tokens ?? 0
+  const cacheCreationTokens = finalUsageAny.cache_creation_input_tokens ?? 0
   const usage: ApiUsage = {
     inputTokens: finalMessage.usage.input_tokens,
     outputTokens: finalMessage.usage.output_tokens,
+    cacheReadTokens,
+    cacheCreationTokens,
     model,
-    estimatedCost: calculateCost(model, finalMessage.usage.input_tokens, finalMessage.usage.output_tokens),
+    estimatedCost: calculateCost(model, finalMessage.usage.input_tokens, finalMessage.usage.output_tokens, cacheReadTokens, cacheCreationTokens),
   }
-  log.info(`Claude API stream done`, { ms: Date.now() - start, chunkCount, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
+  log.info(`Claude API stream done`, {
+    ms: Date.now() - start, chunkCount,
+    inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
+    cacheRead: cacheReadTokens, cacheCreation: cacheCreationTokens,
+    cost: `$${usage.estimatedCost.toFixed(4)}`,
+  })
   yield `${USAGE_SENTINEL}${JSON.stringify(usage)}`
 }

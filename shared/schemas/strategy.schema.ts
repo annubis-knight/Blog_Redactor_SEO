@@ -30,7 +30,7 @@ const ctaDataSchema = z.object({
 })
 
 export const articleStrategySchema = z.object({
-  slug: z.string(),
+  id: z.number().int().positive(),
   cible: strategyStepDataSchema,
   douleur: strategyStepDataSchema,
   aiguillage: aiguillageDataSchema,
@@ -42,7 +42,7 @@ export const articleStrategySchema = z.object({
 })
 
 export const batchStrategyStatusRequestSchema = z.object({
-  slugs: z.array(z.string()),
+  ids: z.array(z.number().int().positive()),
 })
 
 const themeContextSchema = z.object({
@@ -101,7 +101,7 @@ export const proposedArticleSchema = z.object({
   titleValidated: z.boolean().default(false),
   accepted: z.boolean(),
   createdInDb: z.boolean().default(false),
-  dbSlug: z.string().default(''),
+  dbId: z.number().default(0),
 })
 
 export const suggestedTopicSchema = z.object({

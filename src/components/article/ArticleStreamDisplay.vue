@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { mergeConsecutiveElements } from '@shared/html-utils'
+import { mergeConsecutiveElements, removeEmptyElements } from '@shared/html-utils'
 
 const props = defineProps<{
   streamedText: string
@@ -13,9 +13,9 @@ const streamedWithCursor = computed(() =>
   props.streamedText + '<span class="streaming-cursor">&#x2588;</span>',
 )
 
-/** Final content with consecutive same-tag elements merged (safety net for old articles) */
+/** Final content: merge consecutive tags, then strip empty elements */
 const processedContent = computed(() =>
-  props.content ? mergeConsecutiveElements(props.content) : null,
+  props.content ? removeEmptyElements(mergeConsecutiveElements(props.content)) : null,
 )
 </script>
 
@@ -44,60 +44,45 @@ const processedContent = computed(() =>
   border-style: dashed;
 }
 
-/* Bordure visible sur CHAQUE bloc enfant */
+/* --- Uniform border/padding on block elements --- */
+
+.article-content :deep(h2),
+.article-content :deep(h3),
+.article-content :deep(p),
+.article-content :deep(ul),
+.article-content :deep(ol),
+.article-content :deep(blockquote),
+.article-content :deep(table),
+.article-content :deep(div) {
+  margin: 0.5rem 0;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+}
+
 .article-content :deep(h2) {
   font-size: 1.375rem;
-  margin: 1.5rem 0 0.5rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-primary);
-  border-radius: 4px;
-  background: var(--color-bg-soft);
-  color: var(--color-text);
+  font-weight: 700;
+  margin-top: 1.5rem;
 }
 
 .article-content :deep(h3) {
   font-size: 1.125rem;
-  margin: 1.25rem 0 0.5rem;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-left: 3px solid var(--color-primary);
-  border-radius: 4px;
-  color: var(--color-text);
-}
-
-.article-content :deep(p) {
-  margin: 0.5rem 0;
-  padding: 0.5rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  font-weight: 600;
+  margin-top: 1.25rem;
 }
 
 .article-content :deep(ul),
 .article-content :deep(ol) {
-  padding: 0.75rem 1rem 0.75rem 2rem;
-  margin: 0.5rem 0;
-  background: var(--color-bg-soft);
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
+  padding-left: 2rem;
 }
 
 .article-content :deep(blockquote) {
-  border: 1px solid var(--color-border);
-  border-left: 4px solid var(--color-primary);
-  padding: 0.75rem 1rem;
-  margin: 0.5rem 0;
-  background: var(--color-bg-soft);
-  border-radius: 0 4px 4px 0;
   color: var(--color-text-muted);
   font-style: italic;
 }
 
 .article-content :deep(table) {
-  margin: 0.5rem 0;
-  padding: 0.5rem;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
   width: 100%;
   border-collapse: collapse;
 }

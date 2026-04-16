@@ -23,6 +23,14 @@ export interface LieutenantCandidate {
   relevance: 'fort' | 'moyen' | 'faible'
 }
 
+export interface HnRecurrenceItem {
+  level: number
+  text: string
+  count: number
+  total: number
+  percent: number
+}
+
 export interface SerpAnalysisResult {
   keyword: string
   articleLevel: ArticleLevel

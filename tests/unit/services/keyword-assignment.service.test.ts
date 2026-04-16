@@ -28,25 +28,25 @@ const MOCK_COCOON: Cocoon = {
   name: 'Design Web',
   siloName: 'Web',
   articles: [
-    { title: 'Guide du design web', type: 'Pilier', slug: 'guide-design-web', topic: null, status: 'à rédiger' },
-    { title: 'Couleurs en web design', type: 'Intermédiaire', slug: 'couleurs-web-design', topic: null, status: 'à rédiger' },
-    { title: 'Typographie web', type: 'Intermédiaire', slug: 'typographie-web', topic: null, status: 'à rédiger' },
-    { title: 'Micro-interactions CSS', type: 'Spécialisé', slug: 'micro-interactions-css', topic: null, status: 'à rédiger' },
-    { title: 'Dark mode design', type: 'Spécialisé', slug: 'dark-mode-design', topic: null, status: 'à rédiger' },
+    { id: 1, title: 'Guide du design web', type: 'Pilier', slug: 'guide-design-web', topic: null, status: 'à rédiger' },
+    { id: 2, title: 'Couleurs en web design', type: 'Intermédiaire', slug: 'couleurs-web-design', topic: null, status: 'à rédiger' },
+    { id: 3, title: 'Typographie web', type: 'Intermédiaire', slug: 'typographie-web', topic: null, status: 'à rédiger' },
+    { id: 4, title: 'Micro-interactions CSS', type: 'Spécialisé', slug: 'micro-interactions-css', topic: null, status: 'à rédiger' },
+    { id: 5, title: 'Dark mode design', type: 'Spécialisé', slug: 'dark-mode-design', topic: null, status: 'à rédiger' },
   ],
   stats: { totalArticles: 5, byType: { pilier: 1, intermediaire: 2, specialise: 2 }, byStatus: { aRediger: 5, brouillon: 0, publie: 0 }, completionPercent: 0 },
 }
 
 const MOCK_KEYWORDS: Keyword[] = [
   { keyword: 'design web', cocoonName: 'Design Web', type: 'Pilier' },
-  { keyword: 'couleurs web', cocoonName: 'Design Web', type: 'Moyenne traine' },
-  { keyword: 'palette de couleurs', cocoonName: 'Design Web', type: 'Moyenne traine' },
-  { keyword: 'typographie responsive', cocoonName: 'Design Web', type: 'Moyenne traine' },
-  { keyword: 'police de caractères web', cocoonName: 'Design Web', type: 'Moyenne traine' },
-  { keyword: 'animations CSS micro-interactions', cocoonName: 'Design Web', type: 'Longue traine' },
-  { keyword: 'dark mode CSS variables', cocoonName: 'Design Web', type: 'Longue traine' },
-  { keyword: 'design sombre accessibilité', cocoonName: 'Design Web', type: 'Longue traine' },
-  { keyword: 'transitions hover CSS', cocoonName: 'Design Web', type: 'Longue traine' },
+  { keyword: 'couleurs web', cocoonName: 'Design Web', type: 'Intermédiaire' },
+  { keyword: 'palette de couleurs', cocoonName: 'Design Web', type: 'Intermédiaire' },
+  { keyword: 'typographie responsive', cocoonName: 'Design Web', type: 'Intermédiaire' },
+  { keyword: 'police de caractères web', cocoonName: 'Design Web', type: 'Intermédiaire' },
+  { keyword: 'animations CSS micro-interactions', cocoonName: 'Design Web', type: 'Spécialisé' },
+  { keyword: 'dark mode CSS variables', cocoonName: 'Design Web', type: 'Spécialisé' },
+  { keyword: 'design sombre accessibilité', cocoonName: 'Design Web', type: 'Spécialisé' },
+  { keyword: 'transitions hover CSS', cocoonName: 'Design Web', type: 'Spécialisé' },
 ]
 
 beforeEach(() => {
@@ -68,7 +68,7 @@ describe('keyword-assignment.service — previewMigration', () => {
     expect(preview.assignments).toHaveLength(5)
 
     // Pilier article gets Pilier keyword as capitaine
-    const pilierAssignment = preview.assignments.find(a => a.articleSlug === 'guide-design-web')
+    const pilierAssignment = preview.assignments.find(a => a.articleId === 1)
     expect(pilierAssignment).toBeDefined()
     expect(pilierAssignment!.capitaine).toBe('design web')
     expect(pilierAssignment!.articleType).toBe('Pilier')
@@ -94,18 +94,18 @@ describe('keyword-assignment.service — previewMigration', () => {
   })
 
   it('warns about duplicate capitaines', async () => {
-    // Create keywords with duplicates: two Pilier keywords with the same text
+    // Create keywords with duplicates: two Pilier articles get the same keyword as capitaine
     const duplicateKeywords: Keyword[] = [
       { keyword: 'design web', cocoonName: 'Design Web', type: 'Pilier' },
-      { keyword: 'design web', cocoonName: 'Design Web', type: 'Moyenne traine' },
+      { keyword: 'design web', cocoonName: 'Design Web', type: 'Pilier' },
     ]
     const cocoonWithTwoPiliers: Cocoon = {
       ...MOCK_COCOON,
       articles: [
-        { title: 'Article A', type: 'Pilier', slug: 'article-a', topic: null, status: 'à rédiger' },
-        { title: 'Article B', type: 'Intermédiaire', slug: 'article-b', topic: null, status: 'à rédiger' },
+        { id: 10, title: 'Article A', type: 'Pilier', slug: 'article-a', topic: null, status: 'à rédiger' },
+        { id: 11, title: 'Article B', type: 'Pilier', slug: 'article-b', topic: null, status: 'à rédiger' },
       ],
-      stats: { totalArticles: 2, byType: { pilier: 1, intermediaire: 1, specialise: 0 }, byStatus: { aRediger: 2, brouillon: 0, publie: 0 }, completionPercent: 0 },
+      stats: { totalArticles: 2, byType: { pilier: 2, intermediaire: 0, specialise: 0 }, byStatus: { aRediger: 2, brouillon: 0, publie: 0 }, completionPercent: 0 },
     }
 
     mockGetCocoons.mockResolvedValue([cocoonWithTwoPiliers])
@@ -121,12 +121,12 @@ describe('keyword-assignment.service — previewMigration', () => {
     mockGetCocoons.mockResolvedValue([MOCK_COCOON])
     mockGetKeywordsByCocoon.mockResolvedValue(MOCK_KEYWORDS)
     mockGetArticleKeywordsByCocoon.mockResolvedValue([
-      { articleSlug: 'guide-design-web', capitaine: 'old keyword', lieutenants: [], lexique: [] },
+      { articleId: 1, capitaine: 'old keyword', lieutenants: [], lexique: [] },
     ])
 
     const preview = await previewMigration('Design Web')
 
-    expect(preview.warnings.some(w => w.includes('guide-design-web') && w.includes('déjà'))).toBe(true)
+    expect(preview.warnings.some(w => w.includes('id=1') && w.includes('déjà'))).toBe(true)
   })
 
   it('throws for missing cocoon', async () => {
@@ -152,31 +152,31 @@ describe('keyword-assignment.service — previewMigration', () => {
 
 describe('keyword-assignment.service — applyMigration', () => {
   it('saves all assignments via saveArticleKeywords', async () => {
-    mockSaveArticleKeywords.mockImplementation(async (slug, data) => ({
-      articleSlug: slug,
+    mockSaveArticleKeywords.mockImplementation(async (id, data) => ({
+      articleId: id,
       ...data,
     }))
 
     const assignments = [
-      { articleSlug: 'article-a', articleTitle: 'A', articleType: 'Pilier', capitaine: 'kw1', lieutenants: ['kw2'], lexique: [] },
-      { articleSlug: 'article-b', articleTitle: 'B', articleType: 'Intermédiaire', capitaine: 'kw3', lieutenants: [], lexique: [] },
+      { articleId: 10, articleTitle: 'A', articleType: 'Pilier', capitaine: 'kw1', lieutenants: ['kw2'], lexique: [] },
+      { articleId: 11, articleTitle: 'B', articleType: 'Intermédiaire', capitaine: 'kw3', lieutenants: [], lexique: [] },
     ]
 
     const results = await applyMigration(assignments)
 
     expect(mockSaveArticleKeywords).toHaveBeenCalledTimes(2)
-    expect(mockSaveArticleKeywords).toHaveBeenCalledWith('article-a', {
+    expect(mockSaveArticleKeywords).toHaveBeenCalledWith(10, {
       capitaine: 'kw1',
       lieutenants: ['kw2'],
       lexique: [],
     })
-    expect(mockSaveArticleKeywords).toHaveBeenCalledWith('article-b', {
+    expect(mockSaveArticleKeywords).toHaveBeenCalledWith(11, {
       capitaine: 'kw3',
       lieutenants: [],
       lexique: [],
     })
     expect(results).toHaveLength(2)
-    expect(results[0]!.articleSlug).toBe('article-a')
-    expect(results[1]!.articleSlug).toBe('article-b')
+    expect(results[0]!.articleId).toBe(10)
+    expect(results[1]!.articleId).toBe(11)
   })
 })

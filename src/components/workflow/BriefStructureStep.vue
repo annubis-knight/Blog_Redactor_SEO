@@ -21,7 +21,7 @@ import ArticleKeywordsPanel from '@/components/keywords/ArticleKeywordsPanel.vue
 import type { ArticleMicroContext } from '@shared/types/index.js'
 
 const props = defineProps<{
-  slug: string
+  articleId: number
   cocoonName: string
   siloName: string
   articleTitle: string
@@ -67,7 +67,7 @@ const suggestPreviewData = ref<{ angle: string; tone: string; directives: string
 
 async function loadMicroContext() {
   try {
-    const data = await apiGet<ArticleMicroContext | null>(`/articles/${props.slug}/micro-context`)
+    const data = await apiGet<ArticleMicroContext | null>(`/articles/${props.articleId}/micro-context`)
     if (data) {
       angle.value = data.angle ?? ''
       tone.value = data.tone ?? ''
@@ -75,7 +75,7 @@ async function loadMicroContext() {
       targetWordCount.value = data.targetWordCount ?? undefined
     }
   } catch (err) {
-    log.warn('[BriefStructureStep] No micro-context found', { slug: props.slug })
+    log.warn('[BriefStructureStep] No micro-context found', { articleId: props.articleId })
   }
 }
 
@@ -88,7 +88,7 @@ async function saveMicroContext() {
   }
   isSavingMicroContext.value = true
   try {
-    await apiPut(`/articles/${props.slug}/micro-context`, {
+    await apiPut(`/articles/${props.articleId}/micro-context`, {
       angle: angle.value,
       tone: tone.value,
       directives: directives.value,
@@ -112,7 +112,7 @@ async function saveMicroContext() {
 
 function suggestMicroContext() {
   startSuggest('/api/generate/micro-context-suggest', {
-    slug: props.slug,
+    articleId: props.articleId,
     articleTitle: props.articleTitle,
     articleType: briefStore.briefData?.article.type ?? 'Spécialisé',
     keyword: articleKeywordsStore.keywords?.capitaine ?? props.articleTitle,
@@ -153,25 +153,8 @@ function handleTargetWordCountUpdate(value: number) {
   saveMicroContext()
 }
 
-// --- Outline loading priority ---
-const outlineLoaded = ref(false)
+// --- Outline loading ---
 const outlineWarning = ref<string | null>(null)
-
-function loadOutlineFromKeywords() {
-  const kw = articleKeywordsStore.keywords
-  if (!kw) return
-
-  const hn = kw.hnStructure
-  if (hn && hn.length > 0) {
-    outlineStore.loadFromHnStructure(hn, props.articleTitle)
-    outlineLoaded.value = true
-    outlineWarning.value = null
-    log.info('[BriefStructureStep] Outline loaded from HN structure', { sections: outlineStore.outline?.sections.length })
-  } else {
-    outlineWarning.value = 'Aucune structure Hn disponible. Retournez au Moteur pour generer et valider les lieutenants avec leur structure Hn.'
-    log.warn('[BriefStructureStep] No HN structure available for outline')
-  }
-}
 
 // --- Cocoon context for ContextRecap ---
 const cocoonArticles = computed(() => {
@@ -206,7 +189,7 @@ const flatThemeConfig = computed(() => {
 })
 
 function handleOutlineValidated() {
-  outlineStore.validateOutline(props.slug)
+  outlineStore.validateOutline(props.articleId)
   emit('outline-validated')
 }
 
@@ -224,20 +207,11 @@ onMounted(async () => {
     themeConfigStore.fetchConfig()
   }
 
-  // Outline loading priority: (1) existing outline in store, (2) hnStructure, (3) fallback
+  // Outline is loaded by ArticleWorkflowView from articles/{slug}.json
+  // If no outline exists, the user must first validate lieutenants in the Moteur
   if (!outlineStore.outline) {
-    // Wait for keywords to be loaded
-    const checkHn = () => {
-      if (articleKeywordsStore.keywords && !outlineLoaded.value && !outlineStore.outline) {
-        loadOutlineFromKeywords()
-      }
-    }
-
-    // If keywords are already loaded
-    checkHn()
-
-    // Watch for keywords to arrive
-    watch(() => articleKeywordsStore.keywords, checkHn, { once: true })
+    outlineWarning.value = 'Aucun sommaire disponible. Retournez au Moteur pour générer et valider les lieutenants avec leur structure Hn.'
+    log.warn('[BriefStructureStep] No outline found — user must validate lieutenants in Moteur first')
   }
 })
 </script>
@@ -346,7 +320,7 @@ onMounted(async () => {
     <CollapsableSection title="Mots-cles" :default-open="false">
       <KeywordList v-if="briefStore.briefData" :keywords="briefStore.briefData.keywords" />
       <ArticleKeywordsPanel
-        :slug="slug"
+        :article-id="articleId"
         :article-title="articleTitle"
         :cocoon-name="cocoonName"
       />

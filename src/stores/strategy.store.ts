@@ -21,58 +21,58 @@ export const useStrategyStore = defineStore('strategy', () => {
   const currentStepName = computed(() => steps[currentStep.value] as typeof steps[number])
   const isComplete = computed(() => (strategy.value?.completedSteps ?? 0) >= 6)
 
-  async function fetchStrategy(slug: string) {
+  async function fetchStrategy(id: number) {
     isLoading.value = true
     error.value = null
     try {
-      const data = await apiGet<ArticleStrategy | null>(`/strategy/${slug}`)
+      const data = await apiGet<ArticleStrategy | null>(`/strategy/${id}`)
       strategy.value = data
       if (data) {
         currentStep.value = Math.min(data.completedSteps, 5)
-        log.debug(`[strategy] loaded for ${slug} (step=${currentStep.value})`)
+        log.debug(`[strategy] loaded for ${id} (step=${currentStep.value})`)
       }
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur inconnue'
-      log.error(`[strategy] fetchStrategy failed`, { slug, error: error.value })
+      log.error(`[strategy] fetchStrategy failed`, { id, error: error.value })
     } finally {
       isLoading.value = false
     }
   }
 
-  async function saveStrategy(slug: string) {
+  async function saveStrategy(id: number) {
     if (!strategy.value) return
     try {
-      const saved = await apiPut<ArticleStrategy>(`/strategy/${slug}`, strategy.value)
+      const saved = await apiPut<ArticleStrategy>(`/strategy/${id}`, strategy.value)
       strategy.value = saved
-      log.debug(`[strategy] saved for ${slug}`)
+      log.debug(`[strategy] saved for ${id}`)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
-      log.error(`[strategy] saveStrategy failed`, { slug, error: error.value })
+      log.error(`[strategy] saveStrategy failed`, { id, error: error.value })
     }
   }
 
-  async function requestSuggestion(slug: string, request: StrategySuggestRequest) {
-    log.info(`[strategy] requesting suggestion for ${slug}`, { step: request.step })
+  async function requestSuggestion(id: number, request: StrategySuggestRequest) {
+    log.info(`[strategy] requesting suggestion for ${id}`, { step: request.step })
     isSuggesting.value = true
     error.value = null
     try {
-      const result = await apiPost<StrategySuggestResponse>(`/strategy/${slug}/suggest`, request)
+      const result = await apiPost<StrategySuggestResponse>(`/strategy/${id}/suggest`, request)
       log.debug(`[strategy] suggestion received (${result.suggestion.length} chars)`)
       return result.suggestion
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de suggestion'
-      log.error(`[strategy] requestSuggestion failed`, { slug, error: error.value })
+      log.error(`[strategy] requestSuggestion failed`, { id, error: error.value })
       return null
     } finally {
       isSuggesting.value = false
     }
   }
 
-  async function requestDeepen(slug: string, request: StrategyDeepenRequest): Promise<StrategyDeepenResponse | null> {
+  async function requestDeepen(id: number, request: StrategyDeepenRequest): Promise<StrategyDeepenResponse | null> {
     isDeepening.value = true
     error.value = null
     try {
-      const result = await apiPost<StrategyDeepenResponse>(`/strategy/${slug}/deepen`, request)
+      const result = await apiPost<StrategyDeepenResponse>(`/strategy/${id}/deepen`, request)
       return result
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Erreur d'approfondissement"
@@ -82,11 +82,11 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
   }
 
-  async function requestConsolidate(slug: string, request: StrategyConsolidateRequest): Promise<string | null> {
+  async function requestConsolidate(id: number, request: StrategyConsolidateRequest): Promise<string | null> {
     isConsolidating.value = true
     error.value = null
     try {
-      const result = await apiPost<StrategyConsolidateResponse>(`/strategy/${slug}/consolidate`, request)
+      const result = await apiPost<StrategyConsolidateResponse>(`/strategy/${id}/consolidate`, request)
       return result.consolidated
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de consolidation'
@@ -96,11 +96,11 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
   }
 
-  async function requestEnrich(slug: string, request: StrategyEnrichRequest): Promise<string | null> {
+  async function requestEnrich(id: number, request: StrategyEnrichRequest): Promise<string | null> {
     isEnriching.value = true
     error.value = null
     try {
-      const result = await apiPost<StrategyEnrichResponse>(`/strategy/${slug}/enrich`, request)
+      const result = await apiPost<StrategyEnrichResponse>(`/strategy/${id}/enrich`, request)
       return result.enriched
     } catch (err) {
       error.value = err instanceof Error ? err.message : "Erreur d'enrichissement"
@@ -137,7 +137,7 @@ export const useStrategyStore = defineStore('strategy', () => {
     return answers
   }
 
-  function nextStep(slug: string) {
+  function nextStep(id: number) {
     if (currentStep.value < 5) {
       currentStep.value++
       log.debug(`[strategy] → step ${currentStep.value} (${steps[currentStep.value]})`)
@@ -145,7 +145,7 @@ export const useStrategyStore = defineStore('strategy', () => {
     if (strategy.value && currentStep.value >= (strategy.value.completedSteps ?? 0)) {
       strategy.value.completedSteps = currentStep.value
     }
-    saveStrategy(slug)
+    saveStrategy(id)
   }
 
   function prevStep() {
@@ -160,10 +160,10 @@ export const useStrategyStore = defineStore('strategy', () => {
     }
   }
 
-  function initEmpty(slug: string) {
+  function initEmpty(id: number) {
     const emptyStep = { input: '', suggestion: null, validated: '' }
     strategy.value = {
-      slug,
+      id,
       cible: { ...emptyStep },
       douleur: { ...emptyStep },
       aiguillage: { suggestedType: null, suggestedParent: null, suggestedChildren: [], validated: false },

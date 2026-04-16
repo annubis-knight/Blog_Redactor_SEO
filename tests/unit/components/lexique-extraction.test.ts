@@ -42,7 +42,7 @@ vi.mock('../../../src/composables/useStreaming', () => ({
 
 const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
 const mockInitEmpty = vi.fn()
-const mockKeywordsRef = ref<{ articleSlug: string; capitaine: string; lieutenants: string[]; lexique: string[] } | null>(null)
+const mockKeywordsRef = ref<{ articleId: number; capitaine: string; lieutenants: string[]; lexique: string[] } | null>(null)
 
 vi.mock('../../../src/stores/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
@@ -101,7 +101,7 @@ function simulateIaUpfrontDone(result: LexiqueAnalysisResult = MOCK_IA_RESULT) {
 function mountComponent(overrides: Record<string, unknown> = {}) {
   return mount(LexiqueExtraction, {
     props: {
-      selectedArticle: { slug: 'test-article', keyword: 'seo', title: 'Test', type: 'Cluster', painPoint: '' },
+      selectedArticle: { id: 1, slug: 'test-article', keyword: 'seo', title: 'Test', type: 'Cluster', painPoint: '', locked: false, source: 'proposed' as const },
       captainKeyword: 'seo',
       articleLevel: 'intermediaire',
       selectedLieutenants: ['causes', 'solutions'],
@@ -799,7 +799,7 @@ describe('LexiqueExtraction', () => {
     })
 
     it('emits check-completed on validate', async () => {
-      mockKeywordsRef.value = { articleSlug: 'test-article', capitaine: 'seo', lieutenants: [], lexique: [] }
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: [] }
       const wrapper = await mountWithResults()
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
@@ -809,16 +809,16 @@ describe('LexiqueExtraction', () => {
     })
 
     it('saves keywords to store on validate', async () => {
-      mockKeywordsRef.value = { articleSlug: 'test-article', capitaine: 'seo', lieutenants: [], lexique: [] }
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: [] }
       const wrapper = await mountWithResults()
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
 
-      expect(mockSaveKeywords).toHaveBeenCalledWith('test-article')
+      expect(mockSaveKeywords).toHaveBeenCalledWith(1)
     })
 
     it('shows locked state after validation', async () => {
-      mockKeywordsRef.value = { articleSlug: 'test-article', capitaine: 'seo', lieutenants: [], lexique: [] }
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: [] }
       const wrapper = await mountWithResults()
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
@@ -828,7 +828,7 @@ describe('LexiqueExtraction', () => {
     })
 
     it('disables checkboxes when locked', async () => {
-      mockKeywordsRef.value = { articleSlug: 'test-article', capitaine: 'seo', lieutenants: [], lexique: [] }
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: [] }
       const wrapper = await mountWithResults()
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
@@ -840,7 +840,7 @@ describe('LexiqueExtraction', () => {
     })
 
     it('disables extract button when locked', async () => {
-      mockKeywordsRef.value = { articleSlug: 'test-article', capitaine: 'seo', lieutenants: [], lexique: [] }
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: [] }
       const wrapper = await mountWithResults()
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()

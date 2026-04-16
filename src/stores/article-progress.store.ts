@@ -4,12 +4,12 @@ import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ArticleProgress, SemanticTerm } from '@shared/types/index.js'
 
-const MAX_CACHED_SLUGS = 50
+const MAX_CACHED_ITEMS = 50
 
 function evictOldest(map: Record<string, unknown>) {
   const keys = Object.keys(map)
-  if (keys.length > MAX_CACHED_SLUGS) {
-    const toRemove = keys.slice(0, keys.length - MAX_CACHED_SLUGS)
+  if (keys.length > MAX_CACHED_ITEMS) {
+    const toRemove = keys.slice(0, keys.length - MAX_CACHED_ITEMS)
     for (const key of toRemove) delete map[key]
   }
 }
@@ -19,75 +19,75 @@ export const useArticleProgressStore = defineStore('article-progress', () => {
   const semanticMap = ref<Record<string, SemanticTerm[]>>({})
   const isLoading = ref(false)
 
-  async function fetchProgress(slug: string): Promise<ArticleProgress | null> {
+  async function fetchProgress(id: number): Promise<ArticleProgress | null> {
     try {
-      const res = await apiGet<ArticleProgress | null>(`/articles/${encodeURIComponent(slug)}/progress`)
+      const res = await apiGet<ArticleProgress | null>(`/articles/${id}/progress`)
       if (res) {
-        progressMap.value[slug] = res
+        progressMap.value[String(id)] = res
         evictOldest(progressMap.value)
-        log.debug(`[article-progress] fetched ${slug} (phase=${res.phase})`)
+        log.debug(`[article-progress] fetched ${id} (phase=${res.phase})`)
       }
       return res
     } catch {
-      log.warn(`[article-progress] fetchProgress failed for ${slug}`)
+      log.warn(`[article-progress] fetchProgress failed for ${id}`)
       return null
     }
   }
 
-  async function saveProgress(slug: string, progress: ArticleProgress): Promise<void> {
-    const res = await apiPut<ArticleProgress>(`/articles/${encodeURIComponent(slug)}/progress`, progress)
-    progressMap.value[slug] = res
+  async function saveProgress(id: number, progress: ArticleProgress): Promise<void> {
+    const res = await apiPut<ArticleProgress>(`/articles/${id}/progress`, progress)
+    progressMap.value[String(id)] = res
     evictOldest(progressMap.value)
-    log.debug(`[article-progress] saved ${slug} (phase=${progress.phase})`)
+    log.debug(`[article-progress] saved ${id} (phase=${progress.phase})`)
   }
 
-  async function addCheck(slug: string, check: string): Promise<void> {
-    const res = await apiPost<ArticleProgress>(`/articles/${encodeURIComponent(slug)}/progress/check`, { check })
-    progressMap.value[slug] = res
+  async function addCheck(id: number, check: string): Promise<void> {
+    const res = await apiPost<ArticleProgress>(`/articles/${id}/progress/check`, { check })
+    progressMap.value[String(id)] = res
     evictOldest(progressMap.value)
-    log.debug(`[article-progress] check added: "${check}" for ${slug}`)
+    log.debug(`[article-progress] check added: "${check}" for ${id}`)
   }
 
-  async function removeCheck(slug: string, check: string): Promise<void> {
-    const res = await apiPost<ArticleProgress>(`/articles/${encodeURIComponent(slug)}/progress/uncheck`, { check })
-    progressMap.value[slug] = res
+  async function removeCheck(id: number, check: string): Promise<void> {
+    const res = await apiPost<ArticleProgress>(`/articles/${id}/progress/uncheck`, { check })
+    progressMap.value[String(id)] = res
     evictOldest(progressMap.value)
-    log.debug(`[article-progress] check removed: "${check}" for ${slug}`)
+    log.debug(`[article-progress] check removed: "${check}" for ${id}`)
   }
 
-  async function fetchSemanticField(slug: string): Promise<SemanticTerm[]> {
+  async function fetchSemanticField(id: number): Promise<SemanticTerm[]> {
     try {
-      const res = await apiGet<SemanticTerm[]>(`/articles/${encodeURIComponent(slug)}/semantic-field`)
-      semanticMap.value[slug] = res ?? []
+      const res = await apiGet<SemanticTerm[]>(`/articles/${id}/semantic-field`)
+      semanticMap.value[String(id)] = res ?? []
       evictOldest(semanticMap.value)
-      log.debug(`[article-progress] semantic field loaded for ${slug}: ${(res ?? []).length} terms`)
+      log.debug(`[article-progress] semantic field loaded for ${id}: ${(res ?? []).length} terms`)
       return res ?? []
     } catch {
-      log.warn(`[article-progress] fetchSemanticField failed for ${slug}`)
+      log.warn(`[article-progress] fetchSemanticField failed for ${id}`)
       return []
     }
   }
 
-  async function saveSemanticField(slug: string, terms: SemanticTerm[]): Promise<void> {
-    const res = await apiPut<SemanticTerm[]>(`/articles/${encodeURIComponent(slug)}/semantic-field`, { terms })
-    semanticMap.value[slug] = res
+  async function saveSemanticField(id: number, terms: SemanticTerm[]): Promise<void> {
+    const res = await apiPut<SemanticTerm[]>(`/articles/${id}/semantic-field`, { terms })
+    semanticMap.value[String(id)] = res
     evictOldest(semanticMap.value)
-    log.debug(`[article-progress] semantic field saved for ${slug}: ${terms.length} terms`)
+    log.debug(`[article-progress] semantic field saved for ${id}: ${terms.length} terms`)
   }
 
-  async function addSemanticTerms(slug: string, terms: SemanticTerm[]): Promise<void> {
-    const res = await apiPost<SemanticTerm[]>(`/articles/${encodeURIComponent(slug)}/semantic-field/add`, { terms })
-    semanticMap.value[slug] = res
+  async function addSemanticTerms(id: number, terms: SemanticTerm[]): Promise<void> {
+    const res = await apiPost<SemanticTerm[]>(`/articles/${id}/semantic-field/add`, { terms })
+    semanticMap.value[String(id)] = res
     evictOldest(semanticMap.value)
-    log.debug(`[article-progress] ${terms.length} semantic terms added for ${slug}`)
+    log.debug(`[article-progress] ${terms.length} semantic terms added for ${id}`)
   }
 
-  function getProgress(slug: string): ArticleProgress | null {
-    return progressMap.value[slug] ?? null
+  function getProgress(id: number): ArticleProgress | null {
+    return progressMap.value[String(id)] ?? null
   }
 
-  function getSemanticField(slug: string): SemanticTerm[] {
-    return semanticMap.value[slug] ?? []
+  function getSemanticField(id: number): SemanticTerm[] {
+    return semanticMap.value[String(id)] ?? []
   }
 
   function clearAll() {

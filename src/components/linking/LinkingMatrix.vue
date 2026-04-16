@@ -8,17 +8,17 @@ const props = defineProps<{
 }>()
 
 interface MatrixCell {
-  sourceSlug: string
-  targetSlug: string
+  sourceId: number
+  targetId: number
   count: number
   anchors: string[]
 }
 
 const allArticles = computed(() => {
-  const articles: { slug: string; title: string; cocoonName: string; cocoonIndex: number }[] = []
+  const articles: { id: number; title: string; cocoonName: string; cocoonIndex: number }[] = []
   props.cocoons.forEach((cocoon, idx) => {
     cocoon.articles.forEach((article) => {
-      articles.push({ slug: article.slug, title: article.title, cocoonName: cocoon.name, cocoonIndex: idx })
+      articles.push({ id: article.id, title: article.title, cocoonName: cocoon.name, cocoonIndex: idx })
     })
   })
   return articles
@@ -27,15 +27,15 @@ const allArticles = computed(() => {
 const matrixMap = computed(() => {
   const map = new Map<string, MatrixCell>()
   for (const link of props.links) {
-    const key = `${link.sourceSlug}→${link.targetSlug}`
+    const key = `${link.sourceId}→${link.targetId}`
     const existing = map.get(key)
     if (existing) {
       existing.count++
       existing.anchors.push(link.anchorText)
     } else {
       map.set(key, {
-        sourceSlug: link.sourceSlug,
-        targetSlug: link.targetSlug,
+        sourceId: link.sourceId,
+        targetId: link.targetId,
         count: 1,
         anchors: [link.anchorText],
       })
@@ -44,8 +44,8 @@ const matrixMap = computed(() => {
   return map
 })
 
-function getCell(sourceSlug: string, targetSlug: string): MatrixCell | undefined {
-  return matrixMap.value.get(`${sourceSlug}→${targetSlug}`)
+function getCell(sourceId: number, targetId: number): MatrixCell | undefined {
+  return matrixMap.value.get(`${sourceId}→${targetId}`)
 }
 
 function truncate(text: string, maxLength: number): string {
@@ -66,7 +66,7 @@ function truncate(text: string, maxLength: number): string {
             <th class="matrix-corner">Source \ Cible</th>
             <th
               v-for="article in allArticles"
-              :key="'col-' + article.slug"
+              :key="'col-' + article.id"
               class="matrix-col-header"
               :title="article.title"
             >
@@ -75,25 +75,25 @@ function truncate(text: string, maxLength: number): string {
           </tr>
         </thead>
         <tbody>
-          <tr v-for="source in allArticles" :key="'row-' + source.slug">
+          <tr v-for="source in allArticles" :key="'row-' + source.id">
             <td class="matrix-row-header" :title="source.title">
               <span class="row-cocoon">{{ source.cocoonName }}</span>
               <span class="row-title">{{ truncate(source.title, 20) }}</span>
             </td>
             <td
               v-for="target in allArticles"
-              :key="source.slug + '-' + target.slug"
+              :key="source.id + '-' + target.id"
               class="matrix-cell"
               :class="{
-                'self': source.slug === target.slug,
-                'has-link': getCell(source.slug, target.slug),
-                'same-cocoon': source.cocoonIndex === target.cocoonIndex && source.slug !== target.slug,
+                'self': source.id === target.id,
+                'has-link': getCell(source.id, target.id),
+                'same-cocoon': source.cocoonIndex === target.cocoonIndex && source.id !== target.id,
               }"
-              :title="getCell(source.slug, target.slug)?.anchors.join(', ') || ''"
+              :title="getCell(source.id, target.id)?.anchors.join(', ') || ''"
             >
-              <span v-if="source.slug === target.slug" class="cell-self">—</span>
-              <span v-else-if="getCell(source.slug, target.slug)" class="cell-count">
-                {{ getCell(source.slug, target.slug)!.count }}
+              <span v-if="source.id === target.id" class="cell-self">—</span>
+              <span v-else-if="getCell(source.id, target.id)" class="cell-count">
+                {{ getCell(source.id, target.id)!.count }}
               </span>
             </td>
           </tr>

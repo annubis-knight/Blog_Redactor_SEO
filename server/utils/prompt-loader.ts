@@ -1,3 +1,14 @@
+// ---------------------------------------------------------------------------
+// WARNING — Prompt injection hardening (finding G3)
+// ---------------------------------------------------------------------------
+// NEVER call `loadPrompt` on user-controlled content without passing the
+// matching key in `options.escapeKeys`. User content (articleHtml, sectionHtml,
+// selectedText, etc.) MUST be escaped with `escapePromptContent` before it is
+// interpolated into a Markdown prompt — otherwise a malicious payload could
+// inject `\n\nHuman: ...` / `<system>` / `{{...}}` sequences and hijack the
+// model's instructions.
+// ---------------------------------------------------------------------------
+
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { log } from './logger.js'
@@ -5,6 +16,40 @@ import { getCocoonStrategy } from '../services/cocoon-strategy.service.js'
 import type { CocoonStrategy } from '../../shared/types/index.js'
 
 const PROMPTS_DIR = join(process.cwd(), 'server', 'prompts')
+
+/**
+ * Neutralize instruction sequences and delimiters in user-provided content,
+ * then wrap the result in a `<user-content>...</user-content>` envelope so the
+ * downstream prompt can reference it explicitly and tell Claude to ignore any
+ * embedded instructions.
+ *
+ * Targeted sequences (finding G3):
+ *   - `\n\nHuman:` / `\n\nAssistant:` — legacy Anthropic turn markers
+ *   - `<system>` / `</system>` — system-block injection
+ *   - `<user-content>` / `</user-content>` — envelope spoofing
+ *   - `{{` / `}}` — template placeholder injection
+ */
+const INSTRUCTION_SEQUENCES: RegExp[] = [
+  /\n\nHuman:/g,
+  /\n\nAssistant:/g,
+  /<system>/gi,
+  /<\/system>/gi,
+  /<user-content>/gi,
+  /<\/user-content>/gi,
+  /\{\{/g,
+  /\}\}/g,
+]
+
+export function escapePromptContent(raw: string): string {
+  if (!raw) return '<user-content>\n\n</user-content>'
+  let out = raw
+  for (const re of INSTRUCTION_SEQUENCES) {
+    out = out.replace(re, (match) =>
+      match.replace(/[<{}HA/]/g, (c) => `\\u${c.charCodeAt(0).toString(16).padStart(4, '0')}`),
+    )
+  }
+  return `<user-content>\n${out}\n</user-content>`
+}
 
 /** Build a markdown strategy context block from a cocoon strategy */
 export function buildCocoonStrategyBlock(strategy: CocoonStrategy): string {
@@ -36,13 +81,21 @@ async function loadCocoonStrategyBlock(cocoonSlug: string): Promise<string> {
   }
 }
 
-/** Load a prompt template and replace {{variable}} placeholders */
+/**
+ * Load a prompt template and replace {{variable}} placeholders.
+ *
+ * @param options.escapeKeys  Keys from `variables` whose values are treated as
+ *                            user-provided content and MUST be wrapped with
+ *                            `escapePromptContent` before interpolation
+ *                            (finding G3). Prevents prompt injection attacks
+ *                            via article/section HTML.
+ */
 export async function loadPrompt(
   name: string,
   variables: Record<string, string> = {},
-  options?: { cocoonSlug?: string },
+  options?: { cocoonSlug?: string; escapeKeys?: string[] },
 ): Promise<string> {
-  log.debug(`loadPrompt: ${name}`, { variables: Object.keys(variables), cocoonSlug: options?.cocoonSlug ?? null })
+  log.debug(`loadPrompt: ${name}`, { variables: Object.keys(variables), cocoonSlug: options?.cocoonSlug ?? null, escapeKeys: options?.escapeKeys ?? [] })
   const content = await readFile(join(PROMPTS_DIR, `${name}.md`), 'utf-8')
 
   // Build cocoon strategy enrichment if cocoonSlug provided
@@ -51,8 +104,17 @@ export async function loadPrompt(
     strategyBlock = await loadCocoonStrategyBlock(options.cocoonSlug)
   }
 
+  // Escape user-provided content before interpolation (finding G3).
+  const escapeKeySet = new Set(options?.escapeKeys ?? [])
+  const sanitizedVariables = Object.fromEntries(
+    Object.entries(variables).map(([k, v]) => [
+      k,
+      escapeKeySet.has(k) ? escapePromptContent(v) : v,
+    ]),
+  )
+
   // Add strategy_context to variables for explicit {{strategy_context}} placeholders
-  const allVariables = { ...variables, strategy_context: strategyBlock }
+  const allVariables = { ...sanitizedVariables, strategy_context: strategyBlock }
 
   let result = Object.entries(allVariables).reduce(
     (text, [key, value]) => text.replaceAll(`{{${key}}}`, value),

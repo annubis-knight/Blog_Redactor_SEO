@@ -1,6 +1,7 @@
 import { z } from 'zod/v4'
 
 export const articleMicroContextSchema = z.object({
+  id: z.number().int().positive(),
   slug: z.string().min(1),
   angle: z.string(),
   tone: z.string().optional().default(''),
@@ -10,10 +11,11 @@ export const articleMicroContextSchema = z.object({
 })
 
 export const microContextDbSchema = z.object({
+  _schemaVersion: z.number().optional(),
   micro_contexts: z.array(articleMicroContextSchema),
 })
 
-/** Zod schema for PUT /api/articles/:slug/micro-context request body */
+/** Zod schema for PUT /api/articles/:id/micro-context request body */
 export const updateMicroContextSchema = z.object({
   angle: z.string().max(2000),
   tone: z.string().max(500).optional().default(''),

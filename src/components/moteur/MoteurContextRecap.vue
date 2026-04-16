@@ -30,16 +30,7 @@ const acceptedArticles = computed(() =>
 
 interface GroupedArticles {
   type: ArticleType
-  articles: { slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }[]
-}
-
-function slugify(title: string): string {
-  return title
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-|-$/g, '')
+  articles: { id: number; slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }[]
 }
 
 const suggestedGroups = computed<GroupedArticles[]>(() => {
@@ -47,14 +38,17 @@ const suggestedGroups = computed<GroupedArticles[]>(() => {
   for (const type of TYPE_ORDER) {
     const matching = acceptedArticles.value
       .filter(a => a.type === type)
-      .map(a => ({
-        slug: slugify(a.title),
-        title: a.title,
-        keyword: a.suggestedKeyword,
-        type: a.type,
-        source: 'proposed' as const,
-        painPoint: a.painPoint || undefined,
-      }))
+      .map(a => {
+        return {
+          id: a.dbId ?? 0,
+          slug: a.suggestedSlug,
+          title: a.title,
+          keyword: a.suggestedKeyword,
+          type: a.type,
+          source: 'proposed' as const,
+          painPoint: a.painPoint || undefined,
+        }
+      })
     if (matching.length) groups.push({ type, articles: matching })
   }
   return groups
@@ -66,9 +60,12 @@ const publishedGroups = computed<GroupedArticles[]>(() => {
     const matching = props.publishedArticles
       .filter(a => a.type === type && a.status === 'publié')
       .map(a => ({
+        id: a.id,
         slug: a.slug,
         title: a.title,
-        keyword: '',
+        // Canonical keyword for display: locked Capitaine in priority, otherwise suggestion from strategy.
+        // Both fields now live directly in BDD — no secondary fetch needed (see data.service.ts mirror logic).
+        keyword: a.captainKeywordLocked ?? a.suggestedKeyword ?? '',
         type: a.type,
         source: 'published' as const,
       }))
@@ -77,25 +74,38 @@ const publishedGroups = computed<GroupedArticles[]>(() => {
   return groups
 })
 
+/**
+ * Unified slug → captain-keyword map built from tree articles themselves.
+ * Falls back to the legacy `capitainesMap` prop for entries still only known via
+ * that older fetch path (until MoteurView's separate fetch is fully retired).
+ */
+const unifiedCapitainesMap = computed<Record<string, string>>(() => {
+  const map: Record<string, string> = {}
+  for (const g of suggestedGroups.value) for (const a of g.articles) if (a.keyword) map[a.slug] = a.keyword
+  for (const g of publishedGroups.value) for (const a of g.articles) if (a.keyword) map[a.slug] = a.keyword
+  for (const [slug, kw] of Object.entries(props.capitainesMap)) if (kw && !map[slug]) map[slug] = kw
+  return map
+})
+
 function isSelected(slug: string): boolean {
   return props.selectedSlug === slug
 }
 
-function getChecks(slug: string): string[] {
-  return progressStore.getProgress(slug)?.completedChecks ?? []
+function getChecks(id: number): string[] {
+  return progressStore.getProgress(id)?.completedChecks ?? []
 }
 
 // Fetch progress for all visible articles
 watch(
   [suggestedGroups, publishedGroups],
   () => {
-    const allSlugs = [
-      ...suggestedGroups.value.flatMap(g => g.articles.map(a => a.slug)),
-      ...publishedGroups.value.flatMap(g => g.articles.map(a => a.slug)),
-    ]
-    for (const slug of allSlugs) {
-      if (!progressStore.getProgress(slug)) {
-        progressStore.fetchProgress(slug)
+    const allIds = [
+      ...suggestedGroups.value.flatMap(g => g.articles.map(a => a.id)),
+      ...publishedGroups.value.flatMap(g => g.articles.map(a => a.id)),
+    ].filter(id => id > 0)
+    for (const id of allIds) {
+      if (!progressStore.getProgress(id)) {
+        progressStore.fetchProgress(id)
       }
     }
   },
@@ -103,20 +113,21 @@ watch(
 )
 
 function hasCannibalization(slug: string): boolean {
-  const cap = props.capitainesMap[slug]
+  const cap = unifiedCapitainesMap.value[slug]
   if (!cap) return false
   const capLower = cap.toLowerCase()
-  return Object.entries(props.capitainesMap).some(
+  return Object.entries(unifiedCapitainesMap.value).some(
     ([s, c]) => s !== slug && c.toLowerCase() === capLower,
   )
 }
 
-function toggleArticle(article: { slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }) {
+function toggleArticle(article: { id: number; slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }) {
   if (props.readonly) return
   if (isSelected(article.slug)) {
     emit('select', null)
   } else {
     emit('select', {
+      id: article.id,
       slug: article.slug,
       title: article.title,
       keyword: article.keyword,
@@ -151,7 +162,7 @@ function toggleArticle(article: { slug: string; title: string; keyword: string; 
               <path d="M8 1.5L1 14h14L8 1.5z" stroke="#f59e0b" stroke-width="1.2" fill="#fef3c7"/>
               <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
-            <ProgressDots :completed-checks="getChecks(art.slug)" />
+            <ProgressDots :completed-checks="getChecks(art.id)" />
             <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
           </button>
         </div>
@@ -186,7 +197,8 @@ function toggleArticle(article: { slug: string; title: string; keyword: string; 
               <path d="M8 1.5L1 14h14L8 1.5z" stroke="#f59e0b" stroke-width="1.2" fill="#fef3c7"/>
               <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
-            <ProgressDots :completed-checks="getChecks(art.slug)" />
+            <ProgressDots :completed-checks="getChecks(art.id)" />
+            <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
             <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
               <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />

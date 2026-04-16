@@ -41,7 +41,7 @@ function findHandler(method: string, path: string) {
 }
 
 const validStrategy = {
-  slug: 'test-article',
+  id: 1,
   cible: { input: 'PME du BTP', suggestion: null, validated: '' },
   douleur: { input: '', suggestion: null, validated: '' },
   aiguillage: { suggestedType: null, suggestedParent: null, suggestedChildren: [], validated: false },
@@ -56,25 +56,25 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('GET /strategy/:slug', () => {
-  const handler = findHandler('get', '/strategy/:slug')
+describe('GET /strategy/:id', () => {
+  const handler = findHandler('get', '/strategy/:id')
 
   it('returns strategy data', async () => {
     mockGetStrategy.mockResolvedValueOnce(validStrategy)
 
-    const req = { params: { slug: 'test-article' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockGetStrategy).toHaveBeenCalledWith(1)
     expect(res.json).toHaveBeenCalledWith({ data: validStrategy })
   })
 
   it('returns null data when strategy does not exist', async () => {
     mockGetStrategy.mockResolvedValueOnce(null)
 
-    const req = { params: { slug: 'missing' } } as unknown as Request
+    const req = { params: { id: '99' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -85,7 +85,7 @@ describe('GET /strategy/:slug', () => {
   it('returns 500 on error', async () => {
     mockGetStrategy.mockRejectedValueOnce(new Error('read error'))
 
-    const req = { params: { slug: 'test-article' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -99,25 +99,25 @@ describe('GET /strategy/:slug', () => {
   })
 })
 
-describe('PUT /strategy/:slug', () => {
-  const handler = findHandler('put', '/strategy/:slug')
+describe('PUT /strategy/:id', () => {
+  const handler = findHandler('put', '/strategy/:id')
 
   it('saves and returns strategy', async () => {
     mockSaveStrategy.mockResolvedValueOnce(validStrategy)
 
-    const req = { params: { slug: 'test-article' }, body: { cible: { input: 'PME', suggestion: null, validated: '' } } } as unknown as Request
+    const req = { params: { id: '1' }, body: { cible: { input: 'PME', suggestion: null, validated: '' } } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockSaveStrategy).toHaveBeenCalledWith('test-article', req.body)
+    expect(mockSaveStrategy).toHaveBeenCalledWith(1, req.body)
     expect(res.json).toHaveBeenCalledWith({ data: validStrategy })
   })
 
   it('returns 500 on error', async () => {
     mockSaveStrategy.mockRejectedValueOnce(new Error('write error'))
 
-    const req = { params: { slug: 'test-article' }, body: {} } as unknown as Request
+    const req = { params: { id: '1' }, body: {} } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -131,8 +131,8 @@ describe('PUT /strategy/:slug', () => {
   })
 })
 
-describe('POST /strategy/:slug/suggest', () => {
-  const handler = findHandler('post', '/strategy/:slug/suggest')
+describe('POST /strategy/:id/suggest', () => {
+  const handler = findHandler('post', '/strategy/:id/suggest')
 
   const validBody = {
     step: 'cible',
@@ -155,7 +155,7 @@ describe('POST /strategy/:slug/suggest', () => {
     mockReadFile.mockResolvedValueOnce('Template {{articleTitle}} {{cocoonName}} {{siloName}} {{step}} {{stepDescription}} {{currentInput}} {{#existingArticles}}{{existingArticles}}{{/existingArticles}}')
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Ciblez les artisans ', 'du BTP en Occitanie.']))
 
-    const req = { params: { slug: 'test-article' }, body: validBody } as unknown as Request
+    const req = { params: { id: '1' }, body: validBody } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -170,7 +170,7 @@ describe('POST /strategy/:slug/suggest', () => {
     mockReadFile.mockResolvedValueOnce('Article: {{articleTitle}}, Cocon: {{cocoonName}}, Silo: {{siloName}}, Step: {{step}}, Desc: {{stepDescription}}, Input: {{currentInput}}')
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['suggestion']))
 
-    const req = { params: { slug: 'test-article' }, body: validBody } as unknown as Request
+    const req = { params: { id: '1' }, body: validBody } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -194,7 +194,7 @@ describe('POST /strategy/:slug/suggest', () => {
       },
     }
 
-    const req = { params: { slug: 'test-article' }, body: bodyWithArticles } as unknown as Request
+    const req = { params: { id: '1' }, body: bodyWithArticles } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -204,7 +204,7 @@ describe('POST /strategy/:slug/suggest', () => {
   })
 
   it('returns 500 when validation fails', async () => {
-    const req = { params: { slug: 'test-article' }, body: { step: 'invalid_step' } } as unknown as Request
+    const req = { params: { id: '1' }, body: { step: 'invalid_step' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -223,7 +223,7 @@ describe('POST /strategy/:slug/suggest', () => {
       throw new Error('Claude API error')
     })
 
-    const req = { params: { slug: 'test-article' }, body: validBody } as unknown as Request
+    const req = { params: { id: '1' }, body: validBody } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)

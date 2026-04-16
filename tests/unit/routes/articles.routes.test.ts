@@ -42,8 +42,8 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('PUT /articles/:slug', () => {
-  const handler = findHandler('put', '/articles/:slug')
+describe('PUT /articles/:id', () => {
+  const handler = findHandler('put', '/articles/:id')
 
   it('saves outline and returns merged content', async () => {
     const saved = {
@@ -57,17 +57,17 @@ describe('PUT /articles/:slug', () => {
     }
     mockSaveArticleContent.mockResolvedValueOnce(saved)
 
-    const req = { params: { slug: 'test-slug' }, body: { outline: '{"sections":[]}' } } as unknown as Request
+    const req = { params: { id: '1' }, body: { outline: '{"sections":[]}' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
     expect(res.json).toHaveBeenCalledWith({ data: saved })
-    expect(mockSaveArticleContent).toHaveBeenCalledWith('test-slug', { outline: '{"sections":[]}' })
+    expect(mockSaveArticleContent).toHaveBeenCalledWith(1, { outline: '{"sections":[]}' })
   })
 
   it('returns 400 on invalid body (seoScore must be number)', async () => {
-    const req = { params: { slug: 'test-slug' }, body: { seoScore: 'not-a-number' } } as unknown as Request
+    const req = { params: { id: '1' }, body: { seoScore: 'not-a-number' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -83,7 +83,7 @@ describe('PUT /articles/:slug', () => {
   it('returns 500 on service error', async () => {
     mockSaveArticleContent.mockRejectedValueOnce(new Error('write error'))
 
-    const req = { params: { slug: 'test-slug' }, body: { outline: '{"sections":[]}' } } as unknown as Request
+    const req = { params: { id: '1' }, body: { outline: '{"sections":[]}' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -97,8 +97,8 @@ describe('PUT /articles/:slug', () => {
   })
 })
 
-describe('GET /articles/:slug/content', () => {
-  const handler = findHandler('get', '/articles/:slug/content')
+describe('GET /articles/:id/content', () => {
+  const handler = findHandler('get', '/articles/:id/content')
 
   it('returns article content', async () => {
     const content = {
@@ -112,7 +112,7 @@ describe('GET /articles/:slug/content', () => {
     }
     mockGetArticleContent.mockResolvedValueOnce(content)
 
-    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -121,25 +121,25 @@ describe('GET /articles/:slug/content', () => {
   })
 })
 
-describe('DELETE /articles/:slug', () => {
-  const handler = findHandler('delete', '/articles/:slug')
+describe('DELETE /articles/:id', () => {
+  const handler = findHandler('delete', '/articles/:id')
 
   it('deletes article and returns success', async () => {
     mockRemoveArticleFromCocoon.mockResolvedValueOnce(true)
 
-    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(mockRemoveArticleFromCocoon).toHaveBeenCalledWith('test-slug')
-    expect(res.json).toHaveBeenCalledWith({ data: { slug: 'test-slug', removed: true } })
+    expect(mockRemoveArticleFromCocoon).toHaveBeenCalledWith(1)
+    expect(res.json).toHaveBeenCalledWith({ data: { id: 1, removed: true } })
   })
 
   it('returns 404 when article not found', async () => {
     mockRemoveArticleFromCocoon.mockResolvedValueOnce(false)
 
-    const req = { params: { slug: 'unknown-slug' } } as unknown as Request
+    const req = { params: { id: '99' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
@@ -155,7 +155,7 @@ describe('DELETE /articles/:slug', () => {
   it('returns 500 on service error', async () => {
     mockRemoveArticleFromCocoon.mockRejectedValueOnce(new Error('disk error'))
 
-    const req = { params: { slug: 'test-slug' } } as unknown as Request
+    const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)

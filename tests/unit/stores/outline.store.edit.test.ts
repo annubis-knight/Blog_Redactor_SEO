@@ -23,10 +23,10 @@ vi.mock('../../../src/services/api.service', () => ({
 
 const mockOutline: Outline = {
   sections: [
-    { id: 'h1-main', level: 1, title: 'Main Title', annotation: 'sommaire-cliquable' },
-    { id: 'h2-intro', level: 2, title: 'Introduction', annotation: 'content-valeur' },
-    { id: 'h3-detail', level: 3, title: 'Detail', annotation: null },
-    { id: 'h2-conclusion', level: 2, title: 'Conclusion', annotation: 'content-reminder' },
+    { id: 'h1-main', level: 1, title: 'Main Title', annotation: 'sommaire-cliquable', status: 'accepted' },
+    { id: 'h2-intro', level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'accepted' },
+    { id: 'h3-detail', level: 3, title: 'Detail', annotation: null, status: 'accepted' },
+    { id: 'h2-conclusion', level: 2, title: 'Conclusion', annotation: 'content-reminder', status: 'accepted' },
   ],
 }
 
@@ -94,7 +94,7 @@ describe('outline.store — edit actions', () => {
     store.isValidated = true
     store.outline = mockOutline
 
-    const newOutline: Outline = { sections: [{ id: 'h1-new', level: 1, title: 'New', annotation: null }] }
+    const newOutline: Outline = { sections: [{ id: 'h1-new', level: 1, title: 'New', annotation: null, status: 'accepted' }] }
     store.setOutline(newOutline)
 
     expect(store.outline).toEqual(newOutline)
@@ -110,7 +110,7 @@ describe('outline.store — validateOutline', () => {
     await store.validateOutline('test-slug')
 
     expect(mockApiPut).toHaveBeenCalledWith('/articles/test-slug', {
-      outline: JSON.stringify(mockOutline),
+      outline: mockOutline,
     })
     expect(store.isValidated).toBe(true)
     expect(store.isSaving).toBe(false)

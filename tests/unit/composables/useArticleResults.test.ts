@@ -38,14 +38,14 @@ describe('useArticleResults', () => {
       intentStore.comparisonData = { alert: 'some alert' } as any
       localStore.mapsData = { hasLocalPack: true } as any
 
-      const { clearResults, currentSlug } = useArticleResults()
+      const { clearResults, currentArticleId } = useArticleResults()
       clearResults()
 
       expect(intentStore.intentData).toBeNull()
       expect(intentStore.comparisonData).toBeNull()
       expect(intentStore.autocompleteData).toBeNull()
       expect(localStore.mapsData).toBeNull()
-      expect(currentSlug.value).toBeNull()
+      expect(currentArticleId.value).toBeNull()
     })
   })
 
@@ -66,7 +66,7 @@ describe('useArticleResults', () => {
 
       const { loadCachedResults, isLoading } = useArticleResults()
 
-      const promise = loadCachedResults('test-article')
+      const promise = loadCachedResults(1)
 
       // isLoading should be true during fetch
       expect(isLoading.value).toBe(true)
@@ -74,7 +74,7 @@ describe('useArticleResults', () => {
       await promise
 
       expect(isLoading.value).toBe(false)
-      expect(mockApiGet).toHaveBeenCalledWith('/articles/test-article/cached-results')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/1/cached-results')
 
       // Stores should be populated
       expect(intentStore.intentData).toEqual(cachedData.intent)
@@ -83,15 +83,15 @@ describe('useArticleResults', () => {
       expect(localStore.mapsData).toEqual(cachedData.local)
     })
 
-    it('encodes slug in URL', async () => {
+    it('calls correct URL with numeric id', async () => {
       mockApiGet.mockResolvedValue({
         intent: null, local: null, contentGap: null, autocomplete: null, comparison: null,
       })
 
       const { loadCachedResults } = useArticleResults()
-      await loadCachedResults('article with spaces')
+      await loadCachedResults(42)
 
-      expect(mockApiGet).toHaveBeenCalledWith('/articles/article%20with%20spaces/cached-results')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/42/cached-results')
     })
 
     it('does not populate stores when all values are null', async () => {
@@ -103,7 +103,7 @@ describe('useArticleResults', () => {
       })
 
       const { loadCachedResults } = useArticleResults()
-      await loadCachedResults('empty-article')
+      await loadCachedResults(99)
 
       expect(intentStore.intentData).toBeNull()
       expect(intentStore.comparisonData).toBeNull()
@@ -117,7 +117,7 @@ describe('useArticleResults', () => {
       mockApiGet.mockRejectedValue(new Error('Network error'))
 
       const { loadCachedResults, isLoading } = useArticleResults()
-      await loadCachedResults('broken-article')
+      await loadCachedResults(7)
 
       expect(isLoading.value).toBe(false)
       expect(intentStore.intentData).toBeNull()
@@ -138,18 +138,18 @@ describe('useArticleResults', () => {
       }
       mockApiGet.mockResolvedValueOnce(secondData)
 
-      const { loadCachedResults, currentSlug } = useArticleResults()
+      const { loadCachedResults, currentArticleId } = useArticleResults()
 
       // Start first load
-      const p1 = loadCachedResults('article-a')
+      const p1 = loadCachedResults(1)
 
       // Immediately start second load (simulating user switching articles)
-      const p2 = loadCachedResults('article-b')
+      const p2 = loadCachedResults(2)
 
       // Second load completes first
       await p2
 
-      expect(currentSlug.value).toBe('article-b')
+      expect(currentArticleId.value).toBe(2)
       expect(intentStore.intentData).toEqual(secondData.intent)
 
       // Now resolve the first call — its results should be discarded

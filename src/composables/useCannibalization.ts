@@ -9,7 +9,7 @@ import type { CannibalizationWarning } from '@shared/types/seo.types.js'
  * with other articles in the same cocoon.
  */
 export function useCannibalization(
-  articleSlug: Ref<string>,
+  articleId: Ref<number>,
   cocoonName: Ref<string>,
 ) {
   const warnings = ref<CannibalizationWarning[]>([])
@@ -22,20 +22,20 @@ export function useCannibalization(
     }
 
     try {
-      const capitainesMap = await apiGet<Record<string, string>>(
+      const capitainesMap = await apiGet<Record<number, string>>(
         `/cocoons/${encodeURIComponent(cocoonName.value)}/capitaines`,
       )
 
       const myCapitaine = articleKeywordsStore.keywords.capitaine.toLowerCase()
-      const mySlug = articleSlug.value
+      const myId = articleId.value
       const result: CannibalizationWarning[] = []
 
-      for (const [slug, cap] of Object.entries(capitainesMap)) {
-        if (slug !== mySlug && cap.toLowerCase() === myCapitaine) {
+      for (const [idStr, cap] of Object.entries(capitainesMap)) {
+        if (Number(idStr) !== myId && cap.toLowerCase() === myCapitaine) {
           result.push({
             keyword: articleKeywordsStore.keywords.capitaine,
-            conflictingSlug: slug,
-            conflictingTitle: slug, // slug as title fallback
+            conflictingSlug: idStr, // id as string (used as display key)
+            conflictingTitle: `Article #${idStr}`,
           })
         }
       }

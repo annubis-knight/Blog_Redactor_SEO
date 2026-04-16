@@ -5,11 +5,14 @@ import KeywordBadge from '../../../src/components/shared/KeywordBadge.vue'
 import type { Article, Keyword } from '../../../shared/types/index.js'
 
 const mockArticle: Article = {
+  id: 10,
   title: 'Pourquoi refondre votre site web en 2025',
   type: 'Pilier',
   slug: 'pourquoi-refondre-votre-site',
   topic: null,
   status: 'à rédiger',
+  phase: 'proposed',
+  completedChecks: [],
 }
 
 const mockKeywords: Keyword[] = [
@@ -39,7 +42,7 @@ describe('ArticleCard', () => {
       props: { article: mockArticle },
       global: { stubs: { RouterLink: { template: '<a :to="to"><slot /></a>', props: ['to'] } } },
     })
-    expect(wrapper.find('a').attributes('to')).toBe('/article/pourquoi-refondre-votre-site/editor')
+    expect(wrapper.find('a').attributes('to')).toBe('/article/10/editor')
   })
 })
 

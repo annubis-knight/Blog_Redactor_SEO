@@ -1,135 +1,94 @@
 <script setup lang="ts">
+import { ref, watch } from 'vue'
 import { useGeoStore } from '@/stores/geo.store'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'
-import ParagraphAlerts from '@/components/panels/ParagraphAlerts.vue'
-import JargonAlerts from '@/components/panels/JargonAlerts.vue'
+import ExtractibilityTab from '@/components/panels/geo/ExtractibilityTab.vue'
+import ReadabilityTab from '@/components/panels/geo/ReadabilityTab.vue'
 
 const geoStore = useGeoStore()
+
+// Tab management
+type TabId = 'extractibilite' | 'lisibilite'
+
+const TAB_DEFS: { id: TabId; label: string }[] = [
+  { id: 'extractibilite', label: 'Extractibilité' },
+  { id: 'lisibilite', label: 'Lisibilité' },
+]
+
+const activeTab = ref<TabId>('extractibilite')
+const visitedTabs = ref<Partial<Record<TabId, boolean>>>({ extractibilite: true })
+watch(activeTab, (tab) => { visitedTabs.value[tab] = true })
 </script>
 
 <template>
   <div class="geo-panel">
     <h3 class="panel-title">GEO</h3>
 
-    <template v-if="geoStore.score">
-      <!-- Global Score -->
-      <div class="panel-section score-section">
-        <ScoreGauge :score="geoStore.score.global" label="GEO" />
-      </div>
+    <!-- Global Score -->
+    <div class="panel-section score-section" title="Score GEO global — extractibilité + lisibilité">
+      <ScoreGauge :score="geoStore.score?.global ?? 0" label="GEO" />
+    </div>
 
-      <!-- Question Headings -->
-      <div class="panel-section">
-        <h4 class="section-title">Titres en questions</h4>
-        <div class="metric-row">
-          <span>{{ geoStore.score.questionHeadings.questionCount }}/{{ geoStore.score.questionHeadings.totalH2H3 }} H2/H3</span>
-          <span :class="geoStore.score.questionHeadings.percentage >= 70 ? 'metric-ok' : 'metric-warn'">
-            {{ geoStore.score.questionHeadings.percentage }}%
-            <span class="metric-target">(cible 70%)</span>
-          </span>
+    <!-- Factors -->
+    <div class="panel-section factor-section">
+      <div class="factor-list">
+        <div class="factor-item">
+          <span>Extractibilité</span>
+          <span class="factor-score">{{ geoStore.score?.factors.extractibilityScore ?? '-' }}</span>
+        </div>
+        <div class="factor-item">
+          <span>Questions H2/H3</span>
+          <span class="factor-score">{{ geoStore.score?.factors.questionHeadingsScore ?? '-' }}</span>
+        </div>
+        <div class="factor-item">
+          <span>Answer Capsules</span>
+          <span class="factor-score">{{ geoStore.score?.factors.answerCapsulesScore ?? '-' }}</span>
+        </div>
+        <div class="factor-item">
+          <span>Stats sourcées</span>
+          <span class="factor-score">{{ geoStore.score?.factors.sourcedStatsScore ?? '-' }}</span>
         </div>
       </div>
+    </div>
 
-      <!-- Answer Capsules -->
-      <div class="panel-section">
-        <h4 class="section-title">Answer Capsules</h4>
-        <div v-if="geoStore.score.answerCapsules.length === 0" class="empty-info">
-          Aucun H2 d&eacute;tect&eacute;
-        </div>
-        <div
-          v-for="(capsule, i) in geoStore.score.answerCapsules"
-          :key="i"
-          class="capsule-item"
-          :class="{ present: capsule.hasAnswerCapsule }"
-        >
-          <span class="capsule-icon">{{ capsule.hasAnswerCapsule ? '&#10003;' : '&#10007;' }}</span>
-          <span class="capsule-heading">{{ capsule.heading }}</span>
-        </div>
-      </div>
+    <!-- Tab bar -->
+    <div class="geo-tabs" role="tablist">
+      <button
+        v-for="tab in TAB_DEFS"
+        :key="tab.id"
+        role="tab"
+        :aria-selected="activeTab === tab.id"
+        :aria-controls="`geo-tabpanel-${tab.id}`"
+        class="geo-tab"
+        :class="{ active: activeTab === tab.id }"
+        @click="activeTab = tab.id"
+      >
+        {{ tab.label }}
+      </button>
+    </div>
 
-      <!-- Sourced Stats -->
-      <div class="panel-section">
-        <h4 class="section-title">Statistiques sourc&eacute;es</h4>
-        <div class="metric-row">
-          <span>{{ geoStore.score.sourcedStats.count }} d&eacute;tect&eacute;e(s)</span>
-          <span :class="geoStore.score.sourcedStats.inTarget ? 'metric-ok' : 'metric-warn'">
-            <span class="metric-target">(cible {{ '\u2265' }}3)</span>
-          </span>
-        </div>
-      </div>
-
-      <!-- Paragraph Length Alerts -->
-      <div class="panel-section">
-        <h4 class="section-title">Longueur des paragraphes</h4>
-        <ParagraphAlerts :alerts="geoStore.score.paragraphAlerts" />
+    <!-- Tab content -->
+    <div class="tab-content">
+      <div
+        v-if="visitedTabs['extractibilite']"
+        v-show="activeTab === 'extractibilite'"
+        id="geo-tabpanel-extractibilite"
+        role="tabpanel"
+        class="tab-panel"
+      >
+        <ExtractibilityTab />
       </div>
 
-      <!-- Jargon Detection -->
-      <div class="panel-section">
-        <h4 class="section-title">D&eacute;tection de jargon</h4>
-        <JargonAlerts :detections="geoStore.score.jargonDetections" />
+      <div
+        v-if="visitedTabs['lisibilite']"
+        v-show="activeTab === 'lisibilite'"
+        id="geo-tabpanel-lisibilite"
+        role="tabpanel"
+        class="tab-panel"
+      >
+        <ReadabilityTab />
       </div>
-
-      <!-- Factor Breakdown -->
-      <div class="panel-section">
-        <h4 class="section-title">Facteurs</h4>
-        <div class="factor-list">
-          <div class="factor-item">
-            <span>Extractibilit&eacute;</span>
-            <span class="factor-score">{{ geoStore.score.factors.extractibilityScore }}</span>
-          </div>
-          <div class="factor-item">
-            <span>Questions H2/H3</span>
-            <span class="factor-score">{{ geoStore.score.factors.questionHeadingsScore }}</span>
-          </div>
-          <div class="factor-item">
-            <span>Answer Capsules</span>
-            <span class="factor-score">{{ geoStore.score.factors.answerCapsulesScore }}</span>
-          </div>
-          <div class="factor-item">
-            <span>Stats sourc&eacute;es</span>
-            <span class="factor-score">{{ geoStore.score.factors.sourcedStatsScore }}</span>
-          </div>
-        </div>
-      </div>
-    </template>
-
-    <template v-else>
-      <div class="panel-section score-section">
-        <ScoreGauge :score="0" label="GEO" />
-      </div>
-      <div class="panel-section">
-        <h4 class="section-title">Titres en questions</h4>
-        <div class="metric-row">
-          <span class="na-text">- H2/H3</span>
-          <span class="na-text">-</span>
-        </div>
-      </div>
-      <div class="panel-section">
-        <h4 class="section-title">Answer Capsules</h4>
-        <span class="na-text">N/A</span>
-      </div>
-      <div class="panel-section">
-        <h4 class="section-title">Statistiques sourc&eacute;es</h4>
-        <span class="na-text">N/A</span>
-      </div>
-      <div class="panel-section">
-        <h4 class="section-title">Longueur des paragraphes</h4>
-        <span class="na-text">N/A</span>
-      </div>
-      <div class="panel-section">
-        <h4 class="section-title">D&eacute;tection de jargon</h4>
-        <span class="na-text">N/A</span>
-      </div>
-      <div class="panel-section">
-        <h4 class="section-title">Facteurs</h4>
-        <div class="factor-list">
-          <div class="factor-item"><span>Extractibilit&eacute;</span><span class="factor-score na-text">-</span></div>
-          <div class="factor-item"><span>Questions H2/H3</span><span class="factor-score na-text">-</span></div>
-          <div class="factor-item"><span>Answer Capsules</span><span class="factor-score na-text">-</span></div>
-          <div class="factor-item"><span>Stats sourc&eacute;es</span><span class="factor-score na-text">-</span></div>
-        </div>
-      </div>
-    </template>
+    </div>
   </div>
 </template>
 
@@ -151,10 +110,6 @@ const geoStore = useGeoStore()
   border-bottom: 1px solid var(--color-border, #e5e7eb);
 }
 
-.panel-section:last-child {
-  border-bottom: none;
-}
-
 .score-section {
   display: flex;
   flex-direction: column;
@@ -162,67 +117,9 @@ const geoStore = useGeoStore()
   gap: 0.5rem;
 }
 
-.section-title {
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  color: var(--color-text-muted, #6b7280);
-  margin: 0 0 0.5rem;
-}
-
-.metric-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.75rem;
-}
-
-.metric-ok {
-  color: var(--color-success);
-  font-weight: 500;
-}
-
-.metric-warn {
-  color: var(--color-warning);
-  font-weight: 500;
-}
-
-.metric-target {
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #6b7280);
-  font-weight: 400;
-}
-
-.empty-info {
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #6b7280);
-}
-
-.capsule-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 0.375rem;
-  padding: 0.125rem 0;
-  font-size: 0.75rem;
-  color: var(--color-error);
-}
-
-.capsule-item.present {
-  color: var(--color-success);
-}
-
-.capsule-icon {
-  flex-shrink: 0;
-  width: 1rem;
-  text-align: center;
-}
-
-.capsule-heading {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+.factor-section {
+  margin-bottom: 0.75rem;
+  padding-bottom: 0.75rem;
 }
 
 .factor-list {
@@ -243,9 +140,50 @@ const geoStore = useGeoStore()
   text-align: right;
 }
 
-.na-text {
-  color: var(--color-text-muted);
+/* --- Tab bar --- */
+.geo-tabs {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border, #e5e7eb);
+  margin-bottom: 0.75rem;
+  overflow-x: auto;
+  white-space: nowrap;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+.geo-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.geo-tab {
+  padding: 0.375rem 0.625rem;
   font-size: 0.75rem;
-  font-style: italic;
+  font-weight: 500;
+  color: var(--color-text-muted, #6b7280);
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.geo-tab:hover {
+  color: var(--color-text, #1f2937);
+}
+
+.geo-tab.active {
+  color: var(--color-primary, #2563eb);
+  border-bottom-color: var(--color-primary, #2563eb);
+}
+
+/* --- Tab content --- */
+.tab-content {
+  min-height: 3rem;
+}
+
+.tab-panel {
+  padding-top: 0.5rem;
 }
 </style>

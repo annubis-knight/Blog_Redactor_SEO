@@ -8,6 +8,7 @@
   color: var(--color-text);
   padding: 1.5rem 2rem;
   min-height: 400px;
+  position: relative;
 }
 
 .ProseMirror:focus {
@@ -99,6 +100,127 @@
   font-size: 0.9375rem;
 }
 
+/* Dynamic blocks — générés par l'IA au drop */
+.dynamic-block {
+  position: relative;
+  border-radius: 8px;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-border);
+}
+
+.dynamic-block > p:first-child,
+.dynamic-block > h4:first-child {
+  margin-top: 0;
+}
+
+.dynamic-block > *:last-child {
+  margin-bottom: 0;
+}
+
+.dynamic-block ul.dynamic-block-list,
+.dynamic-block ol.dynamic-block-list {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+}
+
+.dynamic-block ul.dynamic-block-list li,
+.dynamic-block ol.dynamic-block-list li {
+  margin: 0.5rem 0;
+}
+
+.dynamic-block cite {
+  display: inline-block;
+  margin-left: 0.5rem;
+  font-size: 0.8125rem;
+  font-style: normal;
+  color: var(--color-text-muted);
+}
+
+.dynamic-block cite a {
+  color: var(--color-primary);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+}
+
+.dynamic-block cite a:hover {
+  text-decoration-style: solid;
+}
+
+/* Variante — sources chiffrées (bleu data / graph) */
+.dynamic-block.sources-chiffrees {
+  background: var(--color-block-info-bg);
+  border-left: 4px solid var(--color-block-info-border);
+}
+
+/* Variante — exemples réels (jaune / doré — story) */
+.dynamic-block.exemples-reels {
+  background: var(--color-block-warning-bg);
+  border-left: 4px solid var(--color-block-warning-border);
+}
+
+/* Variante — ce qu'il faut retenir (vert / récap) */
+.dynamic-block.ce-quil-faut-retenir {
+  background: var(--color-block-answer-bg);
+  border-left: 4px solid var(--color-primary);
+}
+
+/* --- État loading — pendant la génération IA --- */
+.dynamic-block[data-loading="true"] {
+  position: relative;
+  min-height: 72px;
+  overflow: hidden;
+}
+
+.dynamic-block[data-loading="true"]::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 100%
+  );
+  animation: dynamic-block-shimmer 1.4s infinite linear;
+  pointer-events: none;
+}
+
+.dynamic-block[data-loading="true"] > p:first-child {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  font-style: italic;
+  color: var(--color-text-muted);
+  margin: 0;
+}
+
+.dynamic-block[data-loading="true"] > p:first-child::before {
+  content: "";
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: dynamic-block-spin 0.9s linear infinite;
+}
+
+@keyframes dynamic-block-shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes dynamic-block-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* Custom Propulsite marks — internal-link */
 .internal-link {
   color: var(--color-primary);
@@ -109,4 +231,95 @@
 
 .internal-link:hover {
   text-decoration-style: solid;
+}
+
+/* --- Drag handle --- */
+
+.drag-handle-btn {
+  position: absolute;
+  left: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: grab;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s;
+  z-index: 10;
+  border-radius: 3px;
+  user-select: none;
+  -webkit-user-drag: element;
+}
+
+/* Critical: SVG child must not capture pointer events, otherwise drag starts
+   from the inner SVG element (which is not draggable) and fails silently */
+.drag-handle-btn svg,
+.drag-handle-btn svg * {
+  pointer-events: none;
+}
+
+.drag-handle-btn:hover {
+  color: var(--color-text);
+  background: var(--color-border);
+}
+
+.drag-handle-btn:active {
+  cursor: grabbing;
+}
+
+/* --- Delete handle --- */
+
+.delete-handle-btn {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+  z-index: 10;
+  border-radius: 3px;
+  user-select: none;
+}
+
+.delete-handle-btn svg,
+.delete-handle-btn svg * {
+  pointer-events: none;
+}
+
+.delete-handle-btn:hover {
+  color: var(--color-error, #dc2626);
+  background: var(--color-border);
+}
+
+/* Dragging state */
+.ProseMirror > .is-dragging {
+  opacity: 0.4;
+}
+
+/* Drop indicator line */
+.drop-indicator {
+  position: absolute;
+  left: 2rem;
+  right: 0.75rem;
+  height: 2px;
+  background: var(--color-primary);
+  border-radius: 1px;
+  opacity: 0;
+  pointer-events: none;
+  z-index: 10;
+  transition: opacity 0.1s;
 }

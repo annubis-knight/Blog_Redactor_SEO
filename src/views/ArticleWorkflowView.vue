@@ -42,8 +42,20 @@ const articleKeywordsStore = useArticleKeywordsStore()
 const cocoonsStore = useCocoonsStore()
 const articleProgressStore = useArticleProgressStore()
 
-const slug = route.params.slug as string
 const cocoonId = route.params.cocoonId as string | undefined
+
+// --- Article ID from route ---
+const articleId = ref<number | null>(null)
+const slugResolutionError = ref<string | null>(null)
+
+{
+  const raw = Number(route.params.articleId)
+  if (!isNaN(raw) && raw > 0) {
+    articleId.value = raw
+  } else {
+    slugResolutionError.value = `Article ID "${route.params.articleId}" invalide`
+  }
+}
 
 // --- Back link to cocoon redaction or dashboard ---
 const backLink = computed(() =>
@@ -84,7 +96,8 @@ function isStepCompleted(stepId: string): boolean {
 const hasBody = computed(() => !!editorStore.content)
 
 function handleBriefCheck(check: string) {
-  articleProgressStore.addCheck(slug, check)
+  if (!articleId.value) return
+  articleProgressStore.addCheck(articleId.value, check)
 }
 
 const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
@@ -94,8 +107,8 @@ useKeyboardShortcuts([
     keys: 'ctrl+s',
     global: true,
     action: () => {
-      if (editorStore.isDirty && !editorStore.isSaving) {
-        editorStore.saveArticle(slug)
+      if (articleId.value && editorStore.isDirty && !editorStore.isSaving) {
+        editorStore.saveArticle(articleId.value)
       }
     },
   },
@@ -119,7 +132,7 @@ const {
   requestSuggestions,
   dismissSuggestion,
   clearSuggestions,
-} = useInternalLinking(slug)
+} = useInternalLinking(computed(() => articleId.value ?? 0))
 
 // Scoring composables — watch editorStore.content reactively
 const { seoStore } = useSeoScoring(
@@ -155,10 +168,11 @@ const parsedBriefMarkdown = computed(() => {
 })
 
 function triggerBriefExplain() {
+  if (!articleId.value) return
   iaBriefTriggered.value = true
   const dfs = briefStore.briefData?.dataForSeo
   startBriefExplain('/api/generate/brief-explain', {
-    slug,
+    articleId: articleId.value,
     articleTitle: articleTitle.value,
     keyword: articleKeywordsStore.keywords?.capitaine ?? articleTitle.value,
     cocoonName: cocoonName.value,
@@ -171,7 +185,7 @@ function triggerBriefExplain() {
     cocoonArticles: briefStore.briefData?.article.cocoonName
       ? cocoonsStore.cocoons
           .find(c => c.name === briefStore.briefData!.article.cocoonName)
-          ?.articles.filter(a => a.slug !== slug).map(a => a.title) ?? []
+          ?.articles.filter(a => a.id !== articleId.value).map(a => a.title) ?? []
       : [],
   })
 }
@@ -184,8 +198,10 @@ function handleToggleIaBrief() {
 }
 
 async function handleGenerateArticle() {
+  if (!articleId.value) return
+  const id = articleId.value
   log.info('[workflow] Starting article generation', {
-    slug,
+    articleId: id,
     briefKeywords: briefStore.briefData?.keywords.length,
     articleKeywords: articleKeywordsStore.keywords
       ? `cap=${articleKeywordsStore.keywords.capitaine}, lt=${articleKeywordsStore.keywords.lieutenants.length}`
@@ -194,17 +210,23 @@ async function handleGenerateArticle() {
   })
   await editorStore.generateArticle(briefStore.briefData!, outlineStore.outline!, wordCountTarget.value ?? undefined)
   if (editorStore.content && !editorStore.error) {
+    // Save article content immediately — don't lose it if meta generation fails
+    log.info('[workflow] Article done, saving content before meta', { articleId: id, contentLength: editorStore.content.length })
+    await editorStore.saveArticle(id)
+
     const pilierKeyword = briefStore.briefData!.keywords.find(kw => kw.type === 'Pilier')
     const keyword = pilierKeyword?.keyword ?? briefStore.briefData!.article.title
-    log.info('[workflow] Article done, generating meta', { slug, keyword, contentLength: editorStore.content.length })
-    await editorStore.generateMeta(slug, keyword, briefStore.briefData!.article.title, editorStore.content)
+    log.info('[workflow] Generating meta', { articleId: id, keyword })
+    await editorStore.generateMeta(id, keyword, briefStore.briefData!.article.title, editorStore.content)
     if (!editorStore.error) {
-      log.info('[workflow] Meta done, saving', {
-        slug,
+      log.info('[workflow] Meta done, saving with meta', {
+        articleId: id,
         metaTitle: editorStore.metaTitle,
         metaDescription: editorStore.metaDescription?.substring(0, 50),
       })
-      await editorStore.saveArticle(slug)
+      await editorStore.saveArticle(id)
+    } else {
+      log.warn('[workflow] Meta generation failed — article content was already saved', { error: editorStore.error })
     }
   } else {
     log.warn('[workflow] Article generation failed or no content', { hasContent: !!editorStore.content, error: editorStore.error })
@@ -220,18 +242,23 @@ const allKeywords = computed(() =>
 )
 
 async function handleReduce() {
-  if (!wordCountTarget.value) return
-  await editorStore.reduceArticle(slug, wordCountTarget.value, currentKeyword.value, allKeywords.value)
+  if (!articleId.value || !wordCountTarget.value) return
+  await editorStore.reduceArticle(articleId.value, wordCountTarget.value, currentKeyword.value, allKeywords.value)
   if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(slug)
+    await editorStore.saveArticle(articleId.value)
   }
 }
 
 async function handleHumanize() {
-  await editorStore.humanizeArticle(slug, currentKeyword.value, allKeywords.value)
+  if (!articleId.value) return
+  await editorStore.humanizeArticle(articleId.value, currentKeyword.value, allKeywords.value)
   if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(slug)
+    await editorStore.saveArticle(articleId.value)
   }
+}
+
+function handleAbortReduce() {
+  editorStore.abortReduce()
 }
 
 function handleAbortHumanize() {
@@ -239,6 +266,7 @@ function handleAbortHumanize() {
 }
 
 onBeforeUnmount(() => {
+  editorStore.abortReduce()
   editorStore.abortHumanize()
 })
 
@@ -256,13 +284,16 @@ function handleCloseLinkSuggestions() {
 }
 
 onMounted(async () => {
-  log.info('[workflow] ArticleWorkflowView mounted', { slug })
+  if (!articleId.value) return
+  const id = articleId.value
+  log.info('[workflow] ArticleWorkflowView mounted', { articleId: id })
+
   if (cocoonsStore.cocoons.length === 0) {
     cocoonsStore.fetchCocoons()
   }
 
   // Fetch article keywords (await to ensure they're ready before SEO scoring)
-  await articleKeywordsStore.fetchKeywords(slug)
+  await articleKeywordsStore.fetchKeywords(id)
   log.info('[workflow] Article keywords loaded', {
     hasKeywords: articleKeywordsStore.hasKeywords,
     capitaine: articleKeywordsStore.keywords?.capitaine,
@@ -270,19 +301,20 @@ onMounted(async () => {
     lexique: articleKeywordsStore.keywords?.lexique.length,
   })
 
-  await briefStore.fetchBrief(slug)
+  await briefStore.fetchBrief(id)
   log.info('[workflow] Brief loaded', {
-    slug,
+    articleId: id,
     briefKeywords: briefStore.briefData?.keywords.length,
     briefKeywordsList: briefStore.briefData?.keywords.map(k => k.keyword).join(', '),
   })
 
   // Hydrate outline & editor stores with existing saved content
   try {
-    log.info('[workflow] Loading saved article content', { slug })
-    const saved = await apiGet<ArticleContent>(`/articles/${slug}/content`)
+    log.info('[workflow] Loading saved article content', { articleId: id })
+    const saved = await apiGet<ArticleContent>(`/articles/${id}/content`)
     if (saved.outline) {
-      outlineStore.loadExistingOutline(JSON.parse(saved.outline))
+      const outline = typeof saved.outline === 'string' ? JSON.parse(saved.outline) : saved.outline
+      outlineStore.loadExistingOutline(outline)
     }
     if (saved.content) {
       editorStore.loadExistingContent({
@@ -292,14 +324,14 @@ onMounted(async () => {
       })
     }
     log.info('[workflow] Saved content hydrated', {
-      slug,
+      articleId: id,
       hasOutline: !!saved.outline,
       hasContent: !!saved.content,
       contentLength: saved.content?.length,
       metaTitle: saved.metaTitle,
     })
   } catch (err) {
-    log.warn('[workflow] No saved content found, starting fresh', { slug, error: (err as Error).message })
+    log.warn('[workflow] No saved content found, starting fresh', { articleId: id, error: (err as Error).message })
   }
 })
 </script>
@@ -365,7 +397,13 @@ onMounted(async () => {
         </button>
       </div>
 
-      <AsyncContent :is-loading="briefStore.isLoading" :error="briefStore.error" @retry="briefStore.fetchBrief(slug)">
+      <!-- Slug resolution error -->
+      <div v-if="slugResolutionError" class="slug-error">
+        <p>{{ slugResolutionError }}</p>
+        <RouterLink to="/" class="back-link">&larr; Retour au dashboard</RouterLink>
+      </div>
+
+      <AsyncContent v-else-if="articleId" :is-loading="briefStore.isLoading" :error="briefStore.error" @retry="briefStore.fetchBrief(articleId!)">
         <template #skeleton>
           <SkeletonText :lines="5" />
         </template>
@@ -373,7 +411,7 @@ onMounted(async () => {
           <!-- Step 1: Brief & Structure -->
           <div v-if="currentStep === 'brief-structure'" class="workflow-step">
             <BriefStructureStep
-              :slug="slug"
+              :article-id="articleId"
               :cocoon-name="cocoonName"
               :silo-name="siloName"
               :article-title="articleTitle"
@@ -385,6 +423,15 @@ onMounted(async () => {
           <!-- Step 2: Article -->
           <div v-if="currentStep === 'article'" class="workflow-step">
             <CollapsableSection title="Article">
+              <label class="web-search-toggle">
+                <input
+                  v-model="editorStore.webSearchEnabled"
+                  type="checkbox"
+                  :disabled="editorStore.isGenerating"
+                />
+                Recherche web
+              </label>
+
               <ArticleActions
                 :is-generating="editorStore.isGenerating"
                 :has-content="!!editorStore.content"
@@ -394,9 +441,11 @@ onMounted(async () => {
                 :can-reduce="canReduce"
                 :word-count-delta="wordCountDeltaDisplay"
                 :humanize-progress="editorStore.humanizeProgress"
+                :reduce-progress="editorStore.reduceProgress"
                 @generate="handleGenerateArticle()"
                 @regenerate="handleGenerateArticle()"
                 @reduce="handleReduce()"
+                @abort-reduce="handleAbortReduce()"
                 @humanize="handleHumanize()"
                 @abort-humanize="handleAbortHumanize()"
               />
@@ -477,7 +526,7 @@ onMounted(async () => {
 
               <RouterLink
                 v-if="editorStore.content && !editorStore.isGenerating"
-                :to="`/article/${slug}/editor`"
+                :to="`/article/${articleId}/editor`"
                 class="btn-edit-article"
               >
                 &Eacute;diter l'article
@@ -539,6 +588,23 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.slug-error {
+  text-align: center;
+  padding: 3rem;
+  color: var(--color-error, #e53e3e);
+}
+
+.web-search-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  color: var(--color-text-muted, #888);
+  cursor: pointer;
+  margin-bottom: 0.5rem;
+}
+.web-search-toggle input { cursor: pointer; }
+
 .workflow-layout {
   display: flex;
   width: 100%;

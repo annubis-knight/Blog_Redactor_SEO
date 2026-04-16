@@ -13,7 +13,7 @@ export interface BasketKeyword {
 
 export const useMoteurBasketStore = defineStore('moteurBasket', () => {
   const keywords = ref<BasketKeyword[]>([])
-  const articleSlug = ref<string | null>(null)
+  const articleId = ref<number | null>(null)
 
   const keywordStrings = computed(() => keywords.value.map(k => k.keyword))
 
@@ -29,11 +29,11 @@ export const useMoteurBasketStore = defineStore('moteurBasket', () => {
 
   const validatedKeywords = computed(() => keywords.value.filter(k => k.validated))
 
-  function setArticle(slug: string | null) {
-    if (slug !== articleSlug.value) {
-      log.debug('[basket] Article changed, clearing basket', { old: articleSlug.value, new: slug })
+  function setArticle(id: number | null) {
+    if (id !== articleId.value) {
+      log.debug('[basket] Article changed, clearing basket', { old: articleId.value, new: id })
       keywords.value = []
-      articleSlug.value = slug
+      articleId.value = id
     }
   }
 
@@ -82,7 +82,7 @@ export const useMoteurBasketStore = defineStore('moteurBasket', () => {
 
   function $reset() {
     keywords.value = []
-    articleSlug.value = null
+    articleId.value = null
   }
 
   return {
@@ -92,7 +92,7 @@ export const useMoteurBasketStore = defineStore('moteurBasket', () => {
     isEmpty,
     bestKeyword,
     validatedKeywords,
-    articleSlug,
+    articleId,
     setArticle,
     addKeywords,
     removeKeyword,

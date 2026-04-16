@@ -32,7 +32,7 @@ export interface CtaData {
 }
 
 export interface ArticleStrategy {
-  slug: string
+  id: number
   cible: StrategyStepData
   douleur: StrategyStepData
   aiguillage: AiguillageData
@@ -168,7 +168,7 @@ export interface ProposedArticle {
   titleValidated: boolean
   accepted: boolean
   createdInDb: boolean
-  dbSlug: string
+  dbId: number
 }
 
 /** A topic suggested by Claude to guide article generation */

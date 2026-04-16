@@ -2,17 +2,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext } = vi.hoisted(() => ({
+const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext, mockValidateHtmlStructurePreserved } = vi.hoisted(() => ({
   mockStreamChatCompletion: vi.fn(),
   mockLoadPrompt: vi.fn(),
   mockGetStrategy: vi.fn(),
   mockGetArticleKeywords: vi.fn(),
   mockLoadArticleMicroContext: vi.fn(),
+  mockValidateHtmlStructurePreserved: vi.fn(),
 }))
 
 vi.mock('../../../server/services/claude.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
+  WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
 }))
 
 vi.mock('../../../server/utils/prompt-loader', () => ({
@@ -27,6 +29,14 @@ vi.mock('../../../server/services/data.service', () => ({
   getArticleKeywords: mockGetArticleKeywords,
   loadArticleMicroContext: mockLoadArticleMicroContext,
 }))
+
+vi.mock('../../../shared/html-utils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../shared/html-utils')>()
+  return {
+    ...actual,
+    validateHtmlStructurePreserved: mockValidateHtmlStructurePreserved,
+  }
+})
 
 const { default: router } = await import('../../../server/routes/generate.routes')
 
@@ -66,12 +76,12 @@ async function* fakeStream(chunks: string[]) {
 }
 
 const validArticleBody = {
-  slug: 'test-article',
+  articleId: 1,
   outline: JSON.stringify({
     sections: [
-      { id: 'h1', level: 1, title: 'Test Article Title', annotation: null },
-      { id: 'h2-1', level: 2, title: 'First Section', annotation: null },
-      { id: 'h3-1', level: 3, title: 'Subsection', annotation: null },
+      { id: 'h1', level: 1, title: 'Test Article Title', annotation: null, status: 'accepted' },
+      { id: 'h2-1', level: 2, title: 'First Section', annotation: null, status: 'accepted' },
+      { id: 'h3-1', level: 3, title: 'Subsection', annotation: null, status: 'accepted' },
     ],
   }),
   keyword: 'test keyword',
@@ -92,7 +102,7 @@ beforeEach(() => {
 })
 
 const validOutlineBody = {
-  slug: 'test-article',
+  articleId: 1,
   keyword: 'test keyword',
   keywords: ['test keyword', 'secondary'],
   paa: [{ question: 'What?', answer: 'Something' }],
@@ -103,7 +113,7 @@ const validOutlineBody = {
 }
 
 const fakeStrategy = {
-  slug: 'test-article',
+  id: 1,
   cible: { input: '', suggestion: null, validated: 'PME toulousaines 5-50 salariés' },
   douleur: { input: '', suggestion: null, validated: 'Site web vieillissant' },
   aiguillage: { suggestedType: null, suggestedParent: null, suggestedChildren: [], validated: false },
@@ -126,7 +136,7 @@ describe('POST /generate/outline', () => {
 
     await handler(req, res)
 
-    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockGetStrategy).toHaveBeenCalledWith(1)
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
       articleTitle: 'Test Article Title',
       keyword: 'test keyword',
@@ -190,7 +200,7 @@ describe('POST /generate/outline', () => {
 
     await handler(req, res)
 
-    expect(mockGetArticleKeywords).toHaveBeenCalledWith('test-article')
+    expect(mockGetArticleKeywords).toHaveBeenCalledWith(1)
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
       keywordContext: expect.stringContaining('création site web'),
     }))
@@ -236,7 +246,9 @@ describe('POST /generate/article (section-by-section)', () => {
       sectionOutline: expect.stringContaining('First Section'),
       sectionPosition: 'intro',
     }))
-    expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', 4096)
+    // maxTokens is now dynamic (computeSectionBudget), not hardcoded 4096 (F12)
+    // 4th arg is [WEB_SEARCH_TOOL] tools array
+    expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', expect.any(Number), expect.any(Array))
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -306,7 +318,7 @@ describe('POST /generate/article (section-by-section)', () => {
 
     await handler(req, res)
 
-    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockGetStrategy).toHaveBeenCalledWith(1)
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       strategyContext: expect.stringContaining('PME toulousaines'),
     }))
@@ -326,7 +338,7 @@ describe('POST /generate/article (section-by-section)', () => {
 
     await handler(req, res)
 
-    expect(mockGetStrategy).toHaveBeenCalledWith('test-article')
+    expect(mockGetStrategy).toHaveBeenCalledWith(1)
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       strategyContext: '',
     }))
@@ -347,7 +359,7 @@ describe('POST /generate/article (section-by-section)', () => {
 
     await handler(req, res)
 
-    expect(mockGetArticleKeywords).toHaveBeenCalledWith('test-article')
+    expect(mockGetArticleKeywords).toHaveBeenCalledWith(1)
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       keywordContext: expect.stringContaining('création site web'),
     }))
@@ -371,7 +383,7 @@ describe('POST /generate/article (section-by-section)', () => {
 })
 
 const validMetaBody = {
-  slug: 'test-article',
+  articleId: 1,
   keyword: 'test keyword',
   articleTitle: 'Test Article Title',
   articleContent: '<h2>Hello</h2><p>World</p>',
@@ -437,7 +449,7 @@ describe('POST /generate/meta', () => {
 const validActionBody = {
   actionType: 'reformulate' as const,
   selectedText: 'Some text to reformulate',
-  articleSlug: 'test-article',
+  articleId: 1,
   keyword: 'seo',
 }
 
@@ -482,7 +494,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Simplified text']))
 
     const req = {
-      body: { actionType: 'simplify', selectedText: 'Complex text to simplify', articleSlug: 'test-article' },
+      body: { actionType: 'simplify', selectedText: 'Complex text to simplify', articleId: 1 },
     } as unknown as Request
     const res = createMockRes()
 
@@ -504,7 +516,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<ul><li>Point 1</li></ul>']))
 
     const req = {
-      body: { actionType: 'convert-list', selectedText: 'A paragraph with multiple ideas', articleSlug: 'test-article', keyword: 'seo' },
+      body: { actionType: 'convert-list', selectedText: 'A paragraph with multiple ideas', articleId: 1, keyword: 'seo' },
     } as unknown as Request
     const res = createMockRes()
 
@@ -526,7 +538,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Nike utilise le storytelling...']))
 
     const req = {
-      body: { actionType: 'pme-example', selectedText: 'Le storytelling est un levier marketing puissant.', articleSlug: 'test-article' },
+      body: { actionType: 'pme-example', selectedText: 'Le storytelling est un levier marketing puissant.', articleId: 1 },
     } as unknown as Request
     const res = createMockRes()
 
@@ -548,7 +560,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Texte optimisé avec mot-clé']))
 
     const req = {
-      body: { actionType: 'keyword-optimize', selectedText: 'Un paragraphe à optimiser.', articleSlug: 'test-article', keyword: 'référencement naturel' },
+      body: { actionType: 'keyword-optimize', selectedText: 'Un paragraphe à optimiser.', articleId: 1, keyword: 'référencement naturel' },
     } as unknown as Request
     const res = createMockRes()
 
@@ -570,7 +582,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Selon HubSpot, 2024, 73% des PME...']))
 
     const req = {
-      body: { actionType: 'add-statistic', selectedText: 'Le marketing digital est essentiel.', articleSlug: 'test-article' },
+      body: { actionType: 'add-statistic', selectedText: 'Le marketing digital est essentiel.', articleId: 1 },
     } as unknown as Request
     const res = createMockRes()
 
@@ -592,7 +604,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Le SEO local permet aux PME de se positionner efficacement.']))
 
     const req = {
-      body: { actionType: 'answer-capsule', selectedText: 'Un long paragraphe sur le SEO local.', articleSlug: 'test-article', keyword: 'SEO local' },
+      body: { actionType: 'answer-capsule', selectedText: 'Un long paragraphe sur le SEO local.', articleId: 1, keyword: 'SEO local' },
     } as unknown as Request
     const res = createMockRes()
 
@@ -614,7 +626,7 @@ describe('POST /generate/action', () => {
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Comment optimiser votre SEO local ?']))
 
     const req = {
-      body: { actionType: 'question-heading', selectedText: 'Les avantages du SEO local', articleSlug: 'test-article', keyword: 'SEO local' },
+      body: { actionType: 'question-heading', selectedText: 'Les avantages du SEO local', articleId: 1, keyword: 'SEO local' },
     } as unknown as Request
     const res = createMockRes()
 
@@ -642,7 +654,7 @@ describe('POST /generate/micro-context-suggest', () => {
 
     const req = {
       body: {
-        slug: 'test-article',
+        articleId: 1,
         articleTitle: 'Test Article',
         articleType: 'Pilier',
         keyword: 'test keyword',
@@ -688,7 +700,7 @@ describe('POST /generate/micro-context-suggest', () => {
 
     const req = {
       body: {
-        slug: 'test-article',
+        articleId: 1,
         articleTitle: 'Test Article',
         articleType: 'Pilier',
         keyword: 'test keyword',
@@ -715,7 +727,7 @@ describe('POST /generate/brief-explain', () => {
 
     const req = {
       body: {
-        slug: 'test-article',
+        articleId: 1,
         articleTitle: 'Test Article',
         keyword: 'test keyword',
         cocoonName: 'Test Cocoon',
@@ -742,13 +754,13 @@ describe('POST /generate/brief-explain', () => {
   })
 
   it('loads micro-context from server when available', async () => {
-    const microCtx = { slug: 'test-article', angle: 'Server angle', tone: 'expert', directives: 'Be precise', updatedAt: '2026-04-06T00:00:00.000Z' }
+    const microCtx = { articleId: 1, angle: 'Server angle', tone: 'expert', directives: 'Be precise', updatedAt: '2026-04-06T00:00:00.000Z' }
     mockLoadArticleMicroContext.mockResolvedValueOnce(microCtx)
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Analysis']))
 
     const req = {
       body: {
-        slug: 'test-article',
+        articleId: 1,
         articleTitle: 'Test Article',
         keyword: 'test keyword',
         cocoonName: 'Test Cocoon',
@@ -758,7 +770,7 @@ describe('POST /generate/brief-explain', () => {
 
     await handler(req, res)
 
-    expect(mockLoadArticleMicroContext).toHaveBeenCalledWith('test-article')
+    expect(mockLoadArticleMicroContext).toHaveBeenCalledWith(1)
     expect(mockLoadPrompt).toHaveBeenCalledWith('brief-ia-panel', expect.objectContaining({
       microContext: expect.stringContaining('Server angle'),
     }), expect.any(Object))
@@ -776,5 +788,399 @@ describe('POST /generate/brief-explain', () => {
         error: expect.objectContaining({ code: 'MISSING_PARAM' }),
       }),
     )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// POST /generate/reduce-section
+// ---------------------------------------------------------------------------
+
+const validReduceSectionBody = {
+  articleId: 1,
+  sectionHtml: '<h2>Section</h2><p>Un paragraphe très long qui dépasse le budget mots.</p>',
+  sectionIndex: 1,
+  sectionTitle: 'Section',
+  targetWordCount: 200,
+  currentWordCount: 400,
+  keyword: 'test keyword',
+  keywords: ['test keyword', 'secondary'],
+}
+
+describe('POST /generate/reduce-section', () => {
+  const handler = findHandler('post', '/generate/reduce-section')
+
+  function createReduceReq(body: unknown) {
+    return { body, socket: { setTimeout: vi.fn(), destroyed: false } } as unknown as Request
+  }
+
+  it('returns SSE done event with unified key html, usage, and sectionIndex (F9)', async () => {
+    const reducedHtml = '<h2>Section</h2><p>Un paragraphe concis.</p>'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([reducedHtml]))
+
+    const req = createReduceReq(validReduceSectionBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+    }))
+    // chunk event uses key `html` (NOT `content`)
+    const chunkCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: chunk'),
+    )
+    expect(chunkCall).toBeDefined()
+    const chunkData = JSON.parse(chunkCall![0].split('data: ')[1])
+    expect(chunkData).toHaveProperty('html')
+    expect(chunkData).not.toHaveProperty('content')
+
+    // done event also uses key `html` + has usage + sectionIndex
+    const doneCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: done'),
+    )
+    expect(doneCall).toBeDefined()
+    const doneData = JSON.parse(doneCall![0].split('data: ')[1])
+    expect(doneData).toHaveProperty('html', reducedHtml)
+    expect(doneData).toHaveProperty('usage')
+    expect(doneData).toHaveProperty('sectionIndex', 1)
+
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('returns 400 on invalid body', async () => {
+    const req = { body: { slug: 'test' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+      }),
+    )
+  })
+
+  it('calls loadPrompt with escapeKeys: [sectionHtml] (G3)', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<p>reduced</p>']))
+
+    const req = createReduceReq(validReduceSectionBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith(
+      'reduce-section',
+      expect.objectContaining({
+        sectionHtml: validReduceSectionBody.sectionHtml,
+        sectionTitle: 'Section',
+        targetWordCount: String(validReduceSectionBody.targetWordCount),
+        currentWordCount: String(validReduceSectionBody.currentWordCount),
+      }),
+      { escapeKeys: ['sectionHtml'] },
+    )
+  })
+
+  it('loads strategy context via getStrategy(slug)', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<p>reduced</p>']))
+
+    const req = createReduceReq(validReduceSectionBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockGetStrategy).toHaveBeenCalledWith(1)
+  })
+
+  it('uses correct maxTokens formula clamped between 512 and 8192', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<p>reduced</p>']))
+
+    const req = createReduceReq(validReduceSectionBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    // Formula: Math.min(8192, Math.max(512, Math.ceil(targetWordCount * 1.5 * 1.3)))
+    const expectedMaxTokens = Math.min(8192, Math.max(512, Math.ceil(200 * 1.5 * 1.3)))
+    expect(mockStreamChatCompletion).toHaveBeenCalledWith(
+      'mock prompt', // systemPrompt
+      'mock prompt', // userPrompt
+      expectedMaxTokens,
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// POST /generate/humanize-section
+// ---------------------------------------------------------------------------
+
+const validHumanizeBody = {
+  articleId: 1,
+  sectionHtml: '<h2>Ma Section</h2><p>Un texte généré par IA.</p><ul><li>Point 1</li></ul>',
+  sectionIndex: 0,
+  sectionTitle: 'Ma Section',
+  keyword: 'test keyword',
+  keywords: ['test keyword', 'secondary'],
+}
+
+describe('POST /generate/humanize-section', () => {
+  const handler = findHandler('post', '/generate/humanize-section')
+
+  function createHumanizeReq(body: unknown) {
+    return { body, socket: { setTimeout: vi.fn(), destroyed: false } } as unknown as Request
+  }
+
+  it('happy path — structure preserved on first attempt → done with structurePreserved: true', async () => {
+    const humanizedHtml = '<h2>Ma Section</h2><p>Un texte naturel et fluide.</p><ul><li>Point 1</li></ul>'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([humanizedHtml]))
+    mockValidateHtmlStructurePreserved.mockReturnValueOnce({
+      preserved: true,
+      originalTags: [],
+      modifiedTags: [],
+    })
+
+    const req = createHumanizeReq(validHumanizeBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      'Content-Type': 'text/event-stream',
+    }))
+
+    // Should emit chunk then done
+    const chunkCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: chunk'),
+    )
+    expect(chunkCall).toBeDefined()
+
+    const doneCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: done'),
+    )
+    expect(doneCall).toBeDefined()
+    const doneData = JSON.parse(doneCall![0].split('data: ')[1])
+    expect(doneData.structurePreserved).toBe(true)
+    expect(doneData.fallback).toBe(false)
+    expect(doneData.html).toBe(humanizedHtml)
+    expect(doneData.usage).toEqual(fakeUsage)
+    expect(doneData.sectionIndex).toBe(0)
+
+    // Only one call to streamChatCompletion (no retry)
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(1)
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('structure broken on first attempt → retries with reinforcement → preserved on second → done', async () => {
+    const attempt1Html = '<h2>Ma Section</h2><p>Texte cassé.</p>'
+    const attempt2Html = '<h2>Ma Section</h2><p>Texte corrigé.</p><ul><li>Point 1</li></ul>'
+
+    mockStreamChatCompletion
+      .mockReturnValueOnce(fakeStream([attempt1Html]))
+      .mockReturnValueOnce(fakeStream([attempt2Html]))
+
+    // First validation: broken
+    mockValidateHtmlStructurePreserved.mockReturnValueOnce({
+      preserved: false,
+      originalTags: [],
+      modifiedTags: [],
+      diff: { index: 2, reason: 'missing', expected: 'ul' },
+    })
+    // Second validation: preserved
+    mockValidateHtmlStructurePreserved.mockReturnValueOnce({
+      preserved: true,
+      originalTags: [],
+      modifiedTags: [],
+    })
+
+    const req = createHumanizeReq(validHumanizeBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    // Two calls to streamChatCompletion (retry)
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(2)
+
+    // Second call to loadPrompt('humanize-section') should include reinforcement
+    const humanizePromptCalls = mockLoadPrompt.mock.calls.filter(
+      (c: unknown[]) => c[0] === 'humanize-section',
+    )
+    expect(humanizePromptCalls.length).toBe(2)
+    // First call: no reinforcement
+    expect(humanizePromptCalls[0][1].reinforcement).toBe('')
+    // Second call: with reinforcement
+    expect(humanizePromptCalls[1][1].reinforcement).toContain('Retry')
+
+    const doneCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: done'),
+    )
+    expect(doneCall).toBeDefined()
+    const doneData = JSON.parse(doneCall![0].split('data: ')[1])
+    expect(doneData.structurePreserved).toBe(true)
+    expect(doneData.fallback).toBe(false)
+    expect(doneData.html).toBe(attempt2Html)
+    // Usage should be aggregated from both attempts
+    expect(doneData.usage.inputTokens).toBe(fakeUsage.inputTokens * 2)
+    expect(doneData.usage.outputTokens).toBe(fakeUsage.outputTokens * 2)
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('both attempts fail → falls back to original sectionHtml with fallback: true', async () => {
+    const brokenHtml1 = '<h2>Broken</h2><div>wrong</div>'
+    const brokenHtml2 = '<h2>Still Broken</h2><span>wrong</span>'
+
+    mockStreamChatCompletion
+      .mockReturnValueOnce(fakeStream([brokenHtml1]))
+      .mockReturnValueOnce(fakeStream([brokenHtml2]))
+
+    mockValidateHtmlStructurePreserved
+      .mockReturnValueOnce({
+        preserved: false,
+        originalTags: [],
+        modifiedTags: [],
+        diff: { index: 1, reason: 'tag-name', expected: 'p', got: 'div' },
+      })
+      .mockReturnValueOnce({
+        preserved: false,
+        originalTags: [],
+        modifiedTags: [],
+        diff: { index: 1, reason: 'tag-name', expected: 'p', got: 'span' },
+      })
+
+    const req = createHumanizeReq(validHumanizeBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(2)
+
+    const doneCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: done'),
+    )
+    expect(doneCall).toBeDefined()
+    const doneData = JSON.parse(doneCall![0].split('data: ')[1])
+    expect(doneData.structurePreserved).toBe(false)
+    expect(doneData.fallback).toBe(true)
+    // Falls back to original sectionHtml
+    expect(doneData.html).toBe(validHumanizeBody.sectionHtml)
+    expect(doneData.sectionIndex).toBe(0)
+    expect(doneData.diff).toBeDefined()
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('returns 400 on invalid body', async () => {
+    const req = { body: { slug: 'test' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({
+        error: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
+      }),
+    )
+  })
+
+  it('API error → emits error event + done with fallback', async () => {
+    mockStreamChatCompletion.mockImplementationOnce(async function* () {
+      throw new Error('Claude API error')
+    })
+
+    const req = createHumanizeReq(validHumanizeBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    // Should emit error event
+    const errorCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: error'),
+    )
+    expect(errorCall).toBeDefined()
+
+    // Should emit done with fallback to original html
+    const doneCall = (res.write as ReturnType<typeof vi.fn>).mock.calls.find(
+      (c: unknown[]) => typeof c[0] === 'string' && c[0].includes('event: done'),
+    )
+    expect(doneCall).toBeDefined()
+    const doneData = JSON.parse(doneCall![0].split('data: ')[1])
+    expect(doneData.fallback).toBe(true)
+    expect(doneData.html).toBe(validHumanizeBody.sectionHtml)
+    expect(doneData.sectionIndex).toBe(0)
+    expect(doneData.error).toBe('Claude API error')
+    expect(res.end).toHaveBeenCalled()
+  })
+
+  it('uses escapeKeys: [sectionHtml] (G3)', async () => {
+    const humanizedHtml = '<h2>Ma Section</h2><p>Texte humanisé.</p><ul><li>Point 1</li></ul>'
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream([humanizedHtml]))
+    mockValidateHtmlStructurePreserved.mockReturnValueOnce({
+      preserved: true,
+      originalTags: [],
+      modifiedTags: [],
+    })
+
+    const req = createHumanizeReq(validHumanizeBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(mockLoadPrompt).toHaveBeenCalledWith(
+      'humanize-section',
+      expect.objectContaining({
+        sectionHtml: validHumanizeBody.sectionHtml,
+        sectionTitle: validHumanizeBody.sectionTitle,
+        keyword: validHumanizeBody.keyword,
+      }),
+      { escapeKeys: ['sectionHtml'] },
+    )
+  })
+})
+
+// ---------------------------------------------------------------------------
+// POST /generate/article — updated tests for dynamic maxTokens + targetWordCount
+// ---------------------------------------------------------------------------
+
+describe('POST /generate/article (dynamic maxTokens & targetWordCount)', () => {
+  const handler = findHandler('post', '/generate/article')
+
+  function createArticleReq(body: unknown) {
+    return { body, socket: { setTimeout: vi.fn(), destroyed: false } } as unknown as Request
+  }
+
+  it('uses dynamic maxTokens (NOT hardcoded 4096) based on computeSectionBudget', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2><p>World</p>']))
+
+    const req = createArticleReq(validArticleBody)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    // The default target for Pilier is 2500. With 1 H2 group (intro position),
+    // the budget is computed dynamically. The maxTokens argument should NOT be 4096.
+    const callArgs = mockStreamChatCompletion.mock.calls[0]
+    const maxTokensArg = callArgs[2]
+    // Must be a number computed dynamically (NOT the old hardcoded 4096)
+    expect(typeof maxTokensArg).toBe('number')
+    expect(maxTokensArg).toBeGreaterThanOrEqual(2048)
+    expect(maxTokensArg).toBeLessThanOrEqual(8192)
+    // For Pilier (2500 words), single group: budget = 2500, maxTokens = min(8192, ceil(2500*4)) = 8192
+    expect(maxTokensArg).toBe(Math.min(8192, Math.max(2048, Math.ceil(2500 * 4))))
+  })
+
+  it('passes targetWordCount from parsed.data when provided (F7)', async () => {
+    const customTarget = 1200
+    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2><p>World</p>']))
+
+    const bodyWithTarget = { ...validArticleBody, targetWordCount: customTarget }
+    const req = createArticleReq(bodyWithTarget)
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    // With targetWordCount = 1200 and 1 group: budget = 1200, maxTokens = ceil(1200*4) = 4800
+    const callArgs = mockStreamChatCompletion.mock.calls[0]
+    const maxTokensArg = callArgs[2]
+    const expectedMaxTokens = Math.min(8192, Math.max(2048, Math.ceil(customTarget * 4)))
+    expect(maxTokensArg).toBe(expectedMaxTokens)
   })
 })

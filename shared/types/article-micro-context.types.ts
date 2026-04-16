@@ -1,4 +1,5 @@
 export interface ArticleMicroContext {
+  id: number
   slug: string
   angle: string           // Obligatoire — angle différenciant de cet article
   tone: string            // Ton/style spécifique (défaut: '')

@@ -1,6 +1,7 @@
 export type {
   ArticleType,
   ArticleStatus,
+  ArticlePhase,
   RawArticle,
   RawCocoon,
   RawSilo,
@@ -25,6 +26,13 @@ export type {
   Keyword,
   ArticleKeywords,
   RawArticleKeywordsDb,
+  KpiSummary,
+  CaptainKeywordStatus,
+  LieutenantKeywordStatus,
+  CaptainValidationEntry,
+  RichCaptain,
+  RichRootKeyword,
+  RichLieutenant,
 } from './keyword.types.js'
 
 export type {
@@ -42,8 +50,11 @@ export type {
   RelatedKeyword,
   KeywordOverview,
   DataForSeoCacheEntry,
-  BriefData,
 } from './dataforseo.types.js'
+
+export type {
+  BriefData,
+} from './brief.types.js'
 
 export type {
   OutlineAnnotation,

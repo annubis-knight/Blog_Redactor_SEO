@@ -3,7 +3,9 @@ import { apiPost } from '@/services/api.service'
 import { extractRoots } from '@/composables/useCapitaineValidation'
 import { log } from '@/utils/logger'
 import { computeCombinedScore } from '@shared/scoring.js'
+import { getThresholds, scoreKpi, computeVerdict } from '@shared/kpi-scoring.js'
 import type { ValidateResponse, ArticleLevel, VerdictLevel } from '@shared/types/index.js'
+import type { CaptainValidationEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
 import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
 
 export interface CarouselEntry {
@@ -212,6 +214,65 @@ export function useRadarCarousel() {
     }
   }
 
+  /** Restore carousel entries from persisted validation history (no API calls) */
+  function restoreFromHistory(
+    history: CaptainValidationEntry[],
+    level: ArticleLevel,
+    richRootKeywords?: RichRootKeyword[],
+  ) {
+    ++loadVersion
+    const config = getThresholds(level)
+
+    entries.value = history.map(h => {
+      const kpis = h.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
+      const verdict = computeVerdict(kpis)
+
+      const response: ValidateResponse = {
+        keyword: h.keyword,
+        articleLevel: h.articleLevel,
+        kpis,
+        verdict,
+        fromCache: true,
+        cachedAt: null,
+        paaQuestions: h.paaQuestions,
+      }
+      const card = hydrateCardFromValidation(h.keyword, response)
+
+      // Restore root variants if available
+      const rootVariants = new Map<string, KeywordRootVariant>()
+      const rootsForKeyword = richRootKeywords?.filter(r => r.parentKeyword === h.keyword) ?? []
+      for (const root of rootsForKeyword) {
+        const rootKpis = root.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
+        const rootVerdict = computeVerdict(rootKpis)
+        const rootResponse: ValidateResponse = {
+          keyword: root.keyword,
+          articleLevel: root.articleLevel,
+          kpis: rootKpis,
+          verdict: rootVerdict,
+          fromCache: true,
+          cachedAt: null,
+        }
+        const rootCard = hydrateCardFromValidation(root.keyword, rootResponse)
+        rootVariants.set(root.keyword, { keyword: root.keyword, card: rootCard, validation: rootResponse })
+      }
+
+      return {
+        card,
+        originalCard: card,
+        validation: response,
+        isLoading: false,
+        error: null,
+        rootVariants,
+        isLoadingRoots: false,
+        activeWordCount: h.keyword.trim().split(/\s+/).length,
+        failedRoots: [],
+      } satisfies CarouselEntry
+    })
+
+    currentIndex.value = 0
+    log.debug('[useRadarCarousel] Restored from history', { count: history.length })
+  }
+
   function reset() {
     loadVersion++
     entries.value = []
@@ -226,6 +287,7 @@ export function useRadarCarousel() {
     count,
     loadCards,
     addEntry,
+    restoreFromHistory,
     next,
     prev,
     goTo,

@@ -28,13 +28,7 @@ import {
   matchKeyword,
   type PreparedText,
 } from './keyword-matcher'
-
-/**
- * Strip HTML tags and return plain text.
- */
-function stripHtml(html: string): string {
-  return html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
-}
+import { stripHtml } from './text-utils'
 
 /**
  * Count words in a plain text string.

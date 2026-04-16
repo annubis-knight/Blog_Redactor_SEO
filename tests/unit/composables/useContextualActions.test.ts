@@ -45,7 +45,7 @@ describe('useContextualActions', () => {
     const editor = createMockEditor()
 
     await executeAction('reformulate', 'selected text', {
-      articleSlug: 'test-slug',
+      articleId: 1,
       keyword: 'seo',
     }, editor as any)
 
@@ -54,7 +54,7 @@ describe('useContextualActions', () => {
       {
         actionType: 'reformulate',
         selectedText: 'selected text',
-        articleSlug: 'test-slug',
+        articleId: 1,
         keyword: 'seo',
         keywords: undefined,
       },
@@ -100,7 +100,7 @@ describe('useContextualActions', () => {
     const { executeAction, actionError } = useContextualActions()
     const editor = createMockEditor()
 
-    await executeAction('simplify', 'text', { articleSlug: 'slug' }, editor as any)
+    await executeAction('simplify', 'text', { articleId: 1 }, editor as any)
 
     expect(actionError.value).toBe('API error occurred')
   })
@@ -109,7 +109,7 @@ describe('useContextualActions', () => {
     const { executeAction, showArticlePicker } = useContextualActions()
     const editor = createMockEditor()
 
-    await executeAction('internal-link', 'selected text', { articleSlug: 'slug' }, editor as any)
+    await executeAction('internal-link', 'selected text', { articleId: 1 }, editor as any)
 
     expect(showArticlePicker.value).toBe(true)
     expect(mockStartStream).not.toHaveBeenCalled()
@@ -119,7 +119,7 @@ describe('useContextualActions', () => {
     const { executeAction, applyInternalLink, showArticlePicker } = useContextualActions()
     const editor = createMockEditor()
 
-    await executeAction('internal-link', 'selected text', { articleSlug: 'slug' }, editor as any)
+    await executeAction('internal-link', 'selected text', { articleId: 1 }, editor as any)
     expect(showArticlePicker.value).toBe(true)
 
     applyInternalLink({ title: 'Article Test', slug: 'article-test', type: 'Pilier', topic: null, status: 'brouillon' })

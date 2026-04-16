@@ -7,9 +7,19 @@ describe('hnToOutline', () => {
     const result = hnToOutline([], 'Mon Article')
 
     expect(result.sections).toHaveLength(3)
-    expect(result.sections[0]).toMatchObject({ level: 1, title: 'Mon Article', annotation: 'sommaire-cliquable' })
-    expect(result.sections[1]).toMatchObject({ level: 2, title: 'Introduction', annotation: 'content-valeur' })
-    expect(result.sections[2]).toMatchObject({ level: 2, title: 'Conclusion', annotation: 'content-reminder' })
+    expect(result.sections[0]).toMatchObject({ level: 1, title: 'Mon Article', annotation: 'sommaire-cliquable', status: 'suggested' })
+    expect(result.sections[1]).toMatchObject({ level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'suggested' })
+    expect(result.sections[2]).toMatchObject({ level: 2, title: 'Conclusion', annotation: 'content-reminder', status: 'suggested' })
+  })
+
+  it('all sections have status suggested', () => {
+    const nodes: ProposeLieutenantsHnNode[] = [
+      { level: 2, text: 'A', children: [{ level: 3, text: 'A1' }] },
+    ]
+    const result = hnToOutline(nodes, 'Titre')
+    for (const section of result.sections) {
+      expect(section.status).toBe('suggested')
+    }
   })
 
   it('creates sections from H2/H3 nodes', () => {

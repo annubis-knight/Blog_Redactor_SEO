@@ -31,6 +31,7 @@ const breadcrumbItems = [
 const libreArticle = computed<SelectedArticle | null>(() => {
   if (!activeKeyword.value) return null
   return {
+    id: 0,
     slug: '',
     title: '',
     keyword: activeKeyword.value,

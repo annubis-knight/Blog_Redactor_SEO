@@ -23,26 +23,26 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
   const localStore = useLocalStore()
   const discoveryStore = useKeywordDiscoveryStore()
   const isLoading = ref(false)
-  const currentSlug = ref<string | null>(null)
+  const currentArticleId = ref<number | null>(null)
 
   /** Clear all analysis stores (intent, local, discovery) */
   function clearResults() {
     intentStore.reset()
     localStore.reset()
     discoveryStore.clearResults()
-    currentSlug.value = null
+    currentArticleId.value = null
     log.debug('[useArticleResults] Cleared all analysis stores')
   }
 
   /** Load cached results for an article and populate stores */
-  async function loadCachedResults(slug: string): Promise<void> {
-    currentSlug.value = slug
+  async function loadCachedResults(articleId: number): Promise<void> {
+    currentArticleId.value = articleId
     isLoading.value = true
 
     try {
-      const cached = await apiGet<CachedResults>(`/articles/${encodeURIComponent(slug)}/cached-results`)
+      const cached = await apiGet<CachedResults>(`/articles/${articleId}/cached-results`)
       log.debug('[useArticleResults] Cached results received', {
-        slug,
+        articleId,
         intent: !!cached.intent,
         local: !!cached.local,
         contentGap: !!cached.contentGap,
@@ -52,10 +52,10 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
       })
 
       // Guard against race condition: if user switched articles during fetch, discard
-      if (currentSlug.value !== slug) {
-        log.debug('[useArticleResults] Slug changed during fetch, discarding results', {
-          expected: slug,
-          current: currentSlug.value,
+      if (currentArticleId.value !== articleId) {
+        log.debug('[useArticleResults] Article changed during fetch, discarding results', {
+          expected: articleId,
+          current: currentArticleId.value,
         })
         return
       }
@@ -81,7 +81,7 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
         options.onRadarLoaded(cached.radar.scanResult)
       }
     } catch (err) {
-      log.warn(`[useArticleResults] Failed to load cached results for "${slug}": ${(err as Error).message}`)
+      log.warn(`[useArticleResults] Failed to load cached results for articleId=${articleId}: ${(err as Error).message}`)
       // Graceful degradation — stores stay empty, user can run analyses manually
     } finally {
       isLoading.value = false
@@ -90,7 +90,7 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
 
   return {
     isLoading,
-    currentSlug,
+    currentArticleId,
     clearResults,
     loadCachedResults,
   }

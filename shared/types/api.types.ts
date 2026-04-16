@@ -29,6 +29,8 @@ export interface SseErrorEvent {
 export interface ApiUsage {
   inputTokens: number
   outputTokens: number
+  cacheReadTokens: number
+  cacheCreationTokens: number
   model: string
   estimatedCost: number
 }

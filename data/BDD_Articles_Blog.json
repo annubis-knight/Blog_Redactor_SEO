@@ -15,55 +15,82 @@
               "titre": "Booster la croissance digitale de votre PME à Toulouse : les leviers clés",
               "type": "Pilier",
               "slug": "https://blog.propulsitetoulouse.website/pages/booster-la-croissance-digitale-de-votre-pme-a-toulouse-les-leviers-cles",
-              "topic": null
+              "topic": null,
+              "id": 1,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Panorama des outils digitaux pour PME toulousaines",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/panorama-des-outils-digitaux-pour-pme-toulousaines",
-              "topic": "Outils digitaux"
+              "topic": "Outils digitaux",
+              "id": 2,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Témoignages de PME toulousaines en pleine croissance digitale",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/temoignages-de-pme-toulousaines-en-pleine-croissance-digitale",
-              "topic": "Outils digitaux"
+              "topic": "Outils digitaux",
+              "id": 3,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Optimiser son budget digital quand on est une PME locale",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-son-budget-digital-quand-on-est-une-pme-locale",
-              "topic": "Outils digitaux"
+              "topic": "Outils digitaux",
+              "id": 4,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Stratégies gagnantes pour la croissance digitale locale",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/strategies-gagnantes-pour-la-croissance-digitale-locale",
-              "topic": "Stratégie digitale"
+              "topic": "Stratégie digitale",
+              "id": 5,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les erreurs à éviter pour digitaliser sa PME à Toulouse",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-erreurs-a-eviter-pour-digitaliser-sa-pme-a-toulouse",
-              "topic": "Stratégie digitale"
+              "topic": "Stratégie digitale",
+              "id": 6,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Travailler avec une agence digitale à Toulouse : mode d'emploi",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/travailler-avec-une-agence-digitale-a-toulouse-mode-demploi",
-              "topic": "Stratégie digitale"
+              "topic": "Stratégie digitale",
+              "id": 7,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment mesurer la croissance digitale de votre entreprise",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-mesurer-la-croissance-digitale-de-votre-entreprise",
-              "topic": "Pilotage digital"
+              "topic": "Pilotage digital",
+              "id": 8,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les spécificités du marché digital toulousain pour les PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-specificites-du-marche-digital-toulousain-pour-les-pme",
-              "topic": "Pilotage digital"
+              "topic": "Pilotage digital",
+              "id": 9,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         },
@@ -74,55 +101,82 @@
               "titre": "Augmenter la visibilité web de votre PME à Toulouse : les bonnes pratiques",
               "type": "Pilier",
               "slug": "https://blog.propulsitetoulouse.website/pages/augmenter-la-visibilite-web-de-votre-pme-a-toulouse-les-bonnes-pratiques",
-              "topic": null
+              "topic": null,
+              "id": 10,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Référencement local : comment apparaître en tête sur Google à Toulouse",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/referencement-local-comment-apparaitre-en-tete-sur-google-a-toulouse",
-              "topic": "SEO local"
+              "topic": "SEO local",
+              "id": 11,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les annuaires locaux utiles pour les PME toulousaines",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-annuaires-locaux-utiles-pour-les-pme-toulousaines",
-              "topic": "SEO local"
+              "topic": "SEO local",
+              "id": 12,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Analyse de la concurrence locale sur le web",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/analyse-de-la-concurrence-locale-sur-le-web",
-              "topic": "SEO local"
+              "topic": "SEO local",
+              "id": 13,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Optimiser votre fiche Google Business Profile pour attirer des clients locaux",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-votre-fiche-google-business-profile-pour-attirer-des-clients-locaux",
-              "topic": "Google Business"
+              "topic": "Google Business",
+              "id": 14,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Le rôle des avis clients dans la visibilité locale",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/le-role-des-avis-clients-dans-la-visibilite-locale",
-              "topic": "Avis clients"
+              "topic": "Avis clients",
+              "id": 15,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Créer des partenariats locaux pour booster votre présence en ligne",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/creer-des-partenariats-locaux-pour-booster-votre-presence-en-ligne",
-              "topic": "Avis clients"
+              "topic": "Avis clients",
+              "id": 16,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Gérer sa e-réputation à l'échelle locale",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/gerer-sa-e-reputation-a-lechelle-locale",
-              "topic": "Avis clients"
+              "topic": "Avis clients",
+              "id": 17,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Organiser des événements pour gagner en visibilité locale",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/organiser-des-evenements-pour-gagner-en-visibilite-locale",
-              "topic": "Avis clients"
+              "topic": "Avis clients",
+              "id": 18,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         },
@@ -133,43 +187,64 @@
               "titre": "Stratégie de croissance digitale pour les entreprises toulousaines : le guide complet",
               "type": "Pilier",
               "slug": "strategie-de-croissance-digitale-pour-les-entreprises-toulousaines-le-guide-complet",
-              "topic": null
+              "topic": null,
+              "id": 19,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Positionnement marketing : comment clarifier son message pour se différencier en ligne",
               "type": "Intermédiaire",
               "slug": "positionnement-marketing-comment-clarifier-son-message-pour-se-differencier-en-ligne",
-              "topic": null
+              "topic": null,
+              "id": 20,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Votre métier est clair dans votre tête, mais pas dans celle de vos clients : comment changer ça ?",
               "type": "Spécialisé",
               "slug": "votre-metier-est-clair-dans-votre-tete-mais-pas-dans-celle-de-vos-clients-comment-changer-ca",
-              "topic": null
+              "topic": null,
+              "id": 21,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Pourquoi vos concurrents attirent des clients sur internet alors que vous proposez la même chose ?",
               "type": "Spécialisé",
               "slug": "pourquoi-vos-concurrents-attirent-des-clients-sur-internet-alors-que-vous-proposez-la-meme-chose",
-              "topic": null
+              "topic": null,
+              "id": 22,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Vous ne savez pas à qui vous adresser vraiment ? Voici comment définir votre cible pour attirer les clients qui vous correspondent",
               "type": "Spécialisé",
               "slug": "vous-ne-savez-pas-a-qui-vous-adresser-vraiment-voici-comment-definir-votre-cible-pour-attirer-les-clients-qui-vous-correspondent",
-              "topic": null
+              "topic": null,
+              "id": 23,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Votre site existe, mais vos clients ne viennent pas : ce qui bloque vraiment la conversion",
               "type": "Intermédiaire",
               "slug": "votre-site-existe-mais-vos-clients-ne-viennent-pas-ce-qui-bloque-vraiment-la-conversion",
-              "topic": null
+              "topic": null,
+              "id": 24,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Stratégie digitale avant tout : ce que chaque structure devrait clarifier avant de se lancer en ligne",
               "type": "Intermédiaire",
               "slug": "strategie-digitale-avant-tout-ce-que-chaque-structure-devrait-clarifier-avant-de-se-lancer-en-ligne",
-              "topic": null
+              "topic": null,
+              "id": 25,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         },
@@ -190,55 +265,82 @@
               "titre": "Le copywriting de croissance : comment transformer votre site en machine à clients",
               "type": "Pilier",
               "slug": "https://blog.propulsitetoulouse.website/pages/le-copywriting-de-croissance-comment-transformer-votre-site-en-machine-a-clients",
-              "topic": null
+              "topic": null,
+              "id": 26,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comprendre l'état de conscience de vos prospects selon Eugene Schwartz",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/comprendre-letat-de-conscience-de-vos-prospects-selon-eugene-schwartz",
-              "topic": "Psychologie client"
+              "topic": "Psychologie client",
+              "id": 27,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Exemples de titres percutants pour PME toulousaines",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/exemples-de-titres-percutants-pour-pme-toulousaines",
-              "topic": "Psychologie client"
+              "topic": "Psychologie client",
+              "id": 28,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Structurer une page de vente efficace pour une PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/structurer-une-page-de-vente-efficace-pour-une-pme",
-              "topic": "Psychologie client"
+              "topic": "Psychologie client",
+              "id": 29,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Optimiser vos pages web pour convertir plus de visiteurs",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-vos-pages-web-pour-convertir-plus-de-visiteurs",
-              "topic": "Conversion web"
+              "topic": "Conversion web",
+              "id": 30,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Rédiger pour le SEO sans sacrifier l'expérience utilisateur",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/rediger-pour-le-seo-sans-sacrifier-lexperience-utilisateur",
-              "topic": "Conversion web"
+              "topic": "Conversion web",
+              "id": 31,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Utiliser l'IA pour booster votre rédaction web",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/utiliser-lia-pour-booster-votre-redaction-web",
-              "topic": "Conversion web"
+              "topic": "Conversion web",
+              "id": 32,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment adapter votre ton de communication à votre marché cible",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-adapter-votre-ton-de-communication-a-votre-marche-cible",
-              "topic": "Positionnement éditorial"
+              "topic": "Positionnement éditorial",
+              "id": 33,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les erreurs fréquentes en copywriting pour PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-erreurs-frequentes-en-copywriting-pour-pme",
-              "topic": "Positionnement éditorial"
+              "topic": "Positionnement éditorial",
+              "id": 34,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         }
@@ -255,55 +357,82 @@
               "titre": "Pourquoi la refonte de votre site web est essentielle à la croissance de votre PME",
               "type": "Pilier",
               "slug": "https://blog.propulsitetoulouse.website/pages/pourquoi-la-refonte-de-votre-site-web-est-essentielle-a-la-croissance-de-votre-pme",
-              "topic": null
+              "topic": null,
+              "id": 35,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les 7 signes que votre site freine la croissance de votre PME",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-7-signes-que-votre-site-freine-la-croissance-de-votre-pme",
-              "topic": "Audit site web"
+              "topic": "Audit site web",
+              "id": 36,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Checklist technique pour une refonte de site réussie",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/checklist-technique-pour-une-refonte-de-site-reussie",
-              "topic": "Audit site web"
+              "topic": "Audit site web",
+              "id": 37,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Refonte ou simple mise à jour : comment choisir pour votre PME ?",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/refonte-ou-simple-mise-a-jour-comment-choisir-pour-votre-pme",
-              "topic": "Audit site web"
+              "topic": "Audit site web",
+              "id": 38,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment préparer la refonte de votre site sans perturber votre activité",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-preparer-la-refonte-de-votre-site-sans-perturber-votre-activite",
-              "topic": "Planification refonte"
+              "topic": "Planification refonte",
+              "id": 39,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Budgetiser la refonte de son site : les postes à ne pas négliger",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/budgetiser-la-refonte-de-son-site-les-postes-a-ne-pas-negliger",
-              "topic": "Planification refonte"
+              "topic": "Planification refonte",
+              "id": 40,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment impliquer vos équipes dans la refonte du site",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-impliquer-vos-equipes-dans-la-refonte-du-site",
-              "topic": "Planification refonte"
+              "topic": "Planification refonte",
+              "id": 41,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Refonte de site : erreurs courantes des PME et comment les éviter",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/refonte-de-site-erreurs-courantes-des-pme-et-comment-les-eviter",
-              "topic": "Risques refonte"
+              "topic": "Risques refonte",
+              "id": 42,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les impacts SEO d'une refonte de site web",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-impacts-seo-dune-refonte-de-site-web",
-              "topic": "Risques refonte"
+              "topic": "Risques refonte",
+              "id": 43,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         },
@@ -314,61 +443,92 @@
               "titre": "Créer un design web efficace pour les PME : l'expérience utilisateur au service de la croissance",
               "type": "Pilier",
               "slug": "https://blog.propulsitetoulouse.website/pages/creer-un-design-web-efficace-pour-les-pme-lexperience-utilisateur-au-service-de-la-croissance",
-              "topic": null
+              "topic": null,
+              "id": 44,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les fondamentaux du design web pour PME",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-fondamentaux-du-design-web-pour-pme",
-              "topic": "UI design"
+              "topic": "UI design",
+              "id": 45,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Charte graphique : pourquoi et comment la définir pour une PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/charte-graphique-pourquoi-et-comment-la-definir-pour-une-pme",
-              "topic": "UI design"
+              "topic": "UI design",
+              "id": 46,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les meilleurs call-to-action pour sites PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-meilleurs-call-to-action-pour-sites-pme",
-              "topic": "UI design"
+              "topic": "UI design",
+              "id": 47,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment améliorer l'expérience utilisateur sur un site PME",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-ameliorer-lexperience-utilisateur-sur-un-site-pme",
-              "topic": "UX design"
+              "topic": "UX design",
+              "id": 48,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Optimiser la navigation pour convertir plus de visiteurs",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/optimiser-la-navigation-pour-convertir-plus-de-visiteurs",
-              "topic": "UX design"
+              "topic": "UX design",
+              "id": 49,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Accessibilité web : les bases pour PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/accessibilite-web-les-bases-pour-pme",
-              "topic": "UX design"
+              "topic": "UX design",
+              "id": 50,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Responsive design : un impératif pour les PME en 2025",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/responsive-design-un-imperatif-pour-les-pme-en-2025",
-              "topic": "Responsive design"
+              "topic": "Responsive design",
+              "id": 51,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Exemples de sites PME au design réussi",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/exemples-de-sites-pme-au-design-reussi",
-              "topic": "Responsive design"
+              "topic": "Responsive design",
+              "id": 52,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Design Émotionnel : comment toucher vos clients à travers l'UI UX",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/design-emotionnel-comment-toucher-vos-clients-a-travers-l-ui-ux",
-              "topic": "UX design"
+              "topic": "UX design",
+              "id": 53,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z",
+              "status": "brouillon"
             }
           ]
         },
@@ -379,61 +539,91 @@
               "titre": "Pourquoi choisir un site web sur mesure pour votre PME ?",
               "type": "Pilier",
               "slug": "https://blog.propulsitetoulouse.website/pages/pourquoi-choisir-un-site-web-sur-mesure-pour-votre-pme",
-              "topic": null
+              "topic": null,
+              "id": 54,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les étapes clés d'un projet web sur mesure",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-etapes-cles-dun-projet-web-sur-mesure",
-              "topic": "Gestion de projet"
+              "topic": "Gestion de projet",
+              "id": 55,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Bien choisir son prestataire pour un site sur mesure",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/bien-choisir-son-prestataire-pour-un-site-sur-mesure",
-              "topic": "Choix prestataire"
+              "topic": "Choix prestataire",
+              "id": 56,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Fonctionnalités essentielles d'un site PME sur mesure",
               "type": "Intermédiaire",
               "slug": "https://blog.propulsitetoulouse.website/pages/fonctionnalites-essentielles-dun-site-pme-sur-mesure",
-              "topic": "Fonctionnalités"
+              "topic": "Fonctionnalités",
+              "id": 57,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Cahier des charges : comment bien cadrer son projet web",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/cahier-des-charges-comment-bien-cadrer-son-projet-web",
-              "topic": "Gestion de projet"
+              "topic": "Gestion de projet",
+              "id": 58,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Les erreurs à éviter lors de la création d'un site sur mesure",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/les-erreurs-a-eviter-lors-de-la-creation-dun-site-sur-mesure",
-              "topic": "Gestion de projet"
+              "topic": "Gestion de projet",
+              "id": 59,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment évaluer la qualité d'un développeur web",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-evaluer-la-qualite-dun-developpeur-web",
-              "topic": "Choix prestataire"
+              "topic": "Choix prestataire",
+              "id": 60,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Freelance, agence ou internalisation : quel modèle pour votre projet ?",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/freelance-agence-ou-internalisation-quel-modele-pour-votre-projet",
-              "topic": "Choix prestataire"
+              "topic": "Choix prestataire",
+              "id": 61,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Exemples de fonctionnalités sur mesure pour PME",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/exemples-de-fonctionnalites-sur-mesure-pour-pme",
-              "topic": "Fonctionnalités"
+              "topic": "Fonctionnalités",
+              "id": 62,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment anticiper l'évolutivité de son site web sur mesure",
               "type": "Spécialisé",
               "slug": "https://blog.propulsitetoulouse.website/pages/comment-anticiper-levolutivite-de-son-site-web-sur-mesure",
-              "topic": "Fonctionnalités"
+              "topic": "Fonctionnalités",
+              "id": 63,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         },
@@ -444,79 +634,140 @@
               "titre": "Création de site web sur mesure à Toulouse : le guide complet pour les entreprises qui veulent vraiment convertir",
               "type": "Pilier",
               "slug": "creation-de-site-web-sur-mesure-a-toulouse-le-guide-complet-pour-les-entreprises-qui-veulent-vraiment-convertir",
-              "topic": null
+              "topic": null,
+              "id": 64,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z",
+              "phase": "proposed",
+              "completedChecks": [
+                "discovery_done",
+                "radar_done",
+                "capitaine_locked",
+                "lexique_validated",
+                "lieutenants_locked",
+                "brief-validated"
+              ]
             },
             {
               "titre": "Design UX et conversion : comment transformer votre site en machine à générer des clients",
               "type": "Intermédiaire",
               "slug": "design-ux-et-conversion-comment-transformer-votre-site-en-machine-a-generer-des-clients",
-              "topic": null
+              "topic": null,
+              "id": 65,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Architecture et structure de site web : les fondations d'un site qui travaille pour votre activité",
               "type": "Intermédiaire",
               "slug": "architecture-et-structure-de-site-web-les-fondations-d-un-site-qui-travaille-pour-votre-activite",
-              "topic": null
+              "topic": null,
+              "id": 66,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-16T13:51:43.538Z",
+              "phase": "proposed",
+              "completedChecks": [
+                "discovery_done",
+                "radar_done",
+                "capitaine_locked"
+              ],
+              "checkTimestamps": {},
+              "captainKeywordLocked": "structure arborescence"
             },
             {
               "titre": "Mesurer les performances de votre site web : analytics, indicateurs clés et pilotage des résultats",
               "type": "Intermédiaire",
               "slug": "mesurer-les-performances-de-votre-site-web-analytics-indicateurs-cles-et-pilotage-des-resultats",
-              "topic": null
+              "topic": null,
+              "id": 67,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Vos boutons d'appel à l'action font-ils vraiment cliquer vos visiteurs ?",
               "type": "Spécialisé",
               "slug": "vos-boutons-d-appel-a-l-action-font-ils-vraiment-cliquer-vos-visiteurs",
-              "topic": null
+              "topic": null,
+              "id": 68,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Votre site est-il trop lent pour retenir vos visiteurs ?",
               "type": "Spécialisé",
               "slug": "votre-site-est-il-trop-lent-pour-retenir-vos-visiteurs",
-              "topic": null
+              "topic": null,
+              "id": 69,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z",
+              "phase": "proposed",
+              "completedChecks": [
+                "discovery_done",
+                "radar_done"
+              ]
             },
             {
               "titre": "Votre site donne-t-il une bonne impression sur smartphone à vos prospects ?",
               "type": "Spécialisé",
               "slug": "votre-site-donne-t-il-une-bonne-impression-sur-smartphone-a-vos-prospects",
-              "topic": null
+              "topic": null,
+              "id": 70,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Vos visiteurs trouvent-ils facilement ce qu'ils cherchent sur votre site ?",
               "type": "Spécialisé",
               "slug": "vos-visiteurs-trouvent-ils-facilement-ce-qu-ils-cherchent-sur-votre-site",
-              "topic": null
+              "topic": null,
+              "id": 71,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Vos pages de services convainquent-elles vraiment vos prospects de vous contacter ?",
               "type": "Spécialisé",
               "slug": "vos-pages-de-services-convainquent-elles-vraiment-vos-prospects-de-vous-contacter",
-              "topic": null
+              "topic": null,
+              "id": 72,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment relier vos pages entre elles pour guider vos visiteurs vers la prise de contact ?",
               "type": "Spécialisé",
               "slug": "comment-relier-vos-pages-entre-elles-pour-guider-vos-visiteurs-vers-la-prise-de-contact",
-              "topic": null
+              "topic": null,
+              "id": 73,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Quels chiffres regarder pour savoir si votre site vous rapporte vraiment des clients ?",
               "type": "Spécialisé",
               "slug": "quels-chiffres-regarder-pour-savoir-si-votre-site-vous-rapporte-vraiment-des-clients",
-              "topic": null
+              "topic": null,
+              "id": 74,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Comment savoir d'où viennent vraiment vos demandes de contact reçues via votre site ?",
               "type": "Spécialisé",
               "slug": "comment-savoir-d-ou-viennent-vraiment-vos-demandes-de-contact-recues-via-votre-site",
-              "topic": null
+              "topic": null,
+              "id": 75,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             },
             {
               "titre": "Design émotionnel : comment les détails de votre site influencent inconsciemment vos visiteurs",
               "type": "Spécialisé",
               "slug": "design-emotionnel-comment-les-details-de-votre-site-influencent-inconsciemment-vos-visiteurs",
-              "topic": null
+              "topic": null,
+              "id": 76,
+              "createdAt": "2026-04-15T20:09:59.935Z",
+              "updatedAt": "2026-04-15T20:09:59.935Z"
             }
           ]
         }

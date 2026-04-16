@@ -32,27 +32,27 @@ describe('linking.service', () => {
 
   describe('getLinksForArticle', () => {
     const links: InternalLink[] = [
-      { sourceSlug: 'a', targetSlug: 'b', anchorText: 'link ab', position: 'p-1' },
-      { sourceSlug: 'a', targetSlug: 'c', anchorText: 'link ac', position: 'p-2' },
-      { sourceSlug: 'b', targetSlug: 'a', anchorText: 'link ba', position: 'p-1' },
-      { sourceSlug: 'c', targetSlug: 'd', anchorText: 'link cd', position: 'p-1' },
+      { sourceId: 1, targetId: 2, anchorText: 'link ab', position: 'p-1' },
+      { sourceId: 1, targetId: 3, anchorText: 'link ac', position: 'p-2' },
+      { sourceId: 2, targetId: 1, anchorText: 'link ba', position: 'p-1' },
+      { sourceId: 3, targetId: 4, anchorText: 'link cd', position: 'p-1' },
     ]
     const matrix: LinkingMatrix = { links, updatedAt: null }
 
-    it('returns outgoing links for article a', () => {
-      const result = getLinksForArticle(matrix, 'a')
+    it('returns outgoing links for article 1', () => {
+      const result = getLinksForArticle(matrix, 1)
       expect(result.outgoing).toHaveLength(2)
-      expect(result.outgoing[0]!.targetSlug).toBe('b')
+      expect(result.outgoing[0]!.targetId).toBe(2)
     })
 
-    it('returns incoming links for article a', () => {
-      const result = getLinksForArticle(matrix, 'a')
+    it('returns incoming links for article 1', () => {
+      const result = getLinksForArticle(matrix, 1)
       expect(result.incoming).toHaveLength(1)
-      expect(result.incoming[0]!.sourceSlug).toBe('b')
+      expect(result.incoming[0]!.sourceId).toBe(2)
     })
 
     it('returns empty arrays for unknown article', () => {
-      const result = getLinksForArticle(matrix, 'unknown')
+      const result = getLinksForArticle(matrix, 99)
       expect(result.outgoing).toHaveLength(0)
       expect(result.incoming).toHaveLength(0)
     })
@@ -62,9 +62,9 @@ describe('linking.service', () => {
     it('returns no alerts when anchors are diverse', () => {
       const matrix: LinkingMatrix = {
         links: [
-          { sourceSlug: 'a', targetSlug: 'b', anchorText: 'anchor 1', position: 'p-1' },
-          { sourceSlug: 'a', targetSlug: 'c', anchorText: 'anchor 2', position: 'p-2' },
-          { sourceSlug: 'b', targetSlug: 'c', anchorText: 'anchor 3', position: 'p-1' },
+          { sourceId: 1, targetId: 2, anchorText: 'anchor 1', position: 'p-1' },
+          { sourceId: 1, targetId: 3, anchorText: 'anchor 2', position: 'p-2' },
+          { sourceId: 2, targetId: 3, anchorText: 'anchor 3', position: 'p-1' },
         ],
         updatedAt: null,
       }
@@ -74,10 +74,10 @@ describe('linking.service', () => {
     it('flags anchors used more than 3 times', () => {
       const matrix: LinkingMatrix = {
         links: [
-          { sourceSlug: 'a', targetSlug: 'b', anchorText: 'same text', position: 'p-1' },
-          { sourceSlug: 'a', targetSlug: 'c', anchorText: 'same text', position: 'p-2' },
-          { sourceSlug: 'b', targetSlug: 'c', anchorText: 'same text', position: 'p-1' },
-          { sourceSlug: 'c', targetSlug: 'd', anchorText: 'same text', position: 'p-1' },
+          { sourceId: 1, targetId: 2, anchorText: 'same text', position: 'p-1' },
+          { sourceId: 1, targetId: 3, anchorText: 'same text', position: 'p-2' },
+          { sourceId: 2, targetId: 3, anchorText: 'same text', position: 'p-1' },
+          { sourceId: 3, targetId: 4, anchorText: 'same text', position: 'p-1' },
         ],
         updatedAt: null,
       }
@@ -90,10 +90,10 @@ describe('linking.service', () => {
     it('is case-insensitive for anchor comparison', () => {
       const matrix: LinkingMatrix = {
         links: [
-          { sourceSlug: 'a', targetSlug: 'b', anchorText: 'SEO Tips', position: 'p-1' },
-          { sourceSlug: 'a', targetSlug: 'c', anchorText: 'seo tips', position: 'p-2' },
-          { sourceSlug: 'b', targetSlug: 'c', anchorText: 'Seo Tips', position: 'p-1' },
-          { sourceSlug: 'c', targetSlug: 'd', anchorText: 'seo tips', position: 'p-1' },
+          { sourceId: 1, targetId: 2, anchorText: 'SEO Tips', position: 'p-1' },
+          { sourceId: 1, targetId: 3, anchorText: 'seo tips', position: 'p-2' },
+          { sourceId: 2, targetId: 3, anchorText: 'Seo Tips', position: 'p-1' },
+          { sourceId: 3, targetId: 4, anchorText: 'seo tips', position: 'p-1' },
         ],
         updatedAt: null,
       }

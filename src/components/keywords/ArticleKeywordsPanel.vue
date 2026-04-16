@@ -4,7 +4,7 @@ import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import KeywordLevelBadge from './KeywordLevelBadge.vue'
 
 const props = defineProps<{
-  slug: string
+  articleId: number
   articleTitle: string
   cocoonName: string
   cocoonKeywords?: string[]  // available keywords from the cocoon for suggestions
@@ -55,17 +55,17 @@ function handleAddLexique() {
 }
 
 async function handleSave() {
-  await store.saveKeywords(props.slug)
+  await store.saveKeywords(props.articleId)
 }
 
 async function handleSuggestLexique() {
-  await store.suggestLexique(props.slug, props.articleTitle, props.cocoonName)
+  await store.suggestLexique(props.articleId, props.articleTitle, props.cocoonName)
 }
 
 onMounted(() => {
   // Keywords already fetched by ArticleWorkflowView — just ensure init
   if (!store.keywords && !store.isLoading) {
-    store.initEmpty(props.slug)
+    store.initEmpty(props.articleId)
   }
 })
 </script>

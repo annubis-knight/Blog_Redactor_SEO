@@ -50,13 +50,13 @@ export const useLinkingStore = defineStore('linking', () => {
     }
   }
 
-  async function fetchSuggestions(articleSlug: string, content: string) {
+  async function fetchSuggestions(articleId: number, content: string) {
     isSuggesting.value = true
     error.value = null
-    log.info(`[linking] fetchSuggestions for "${articleSlug}"`)
+    log.info(`[linking] fetchSuggestions for article ${articleId}`)
     try {
       suggestions.value = await apiPost<LinkSuggestion[]>('/links/suggest', {
-        articleSlug,
+        articleId,
         content,
       })
       log.debug(`[linking] ${suggestions.value.length} suggestions found`)

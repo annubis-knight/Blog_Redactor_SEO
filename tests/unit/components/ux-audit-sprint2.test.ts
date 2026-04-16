@@ -107,37 +107,15 @@ describe('editor.css — block colors use tokens', () => {
   })
 })
 
-describe('ExportButton — token-based colors', () => {
-  const vue = readFileSync(
-    resolve(__dirname, '../../../src/components/export/ExportButton.vue'),
-    'utf-8',
-  )
-
-  it('uses --color-success instead of hardcoded green', () => {
-    expect(vue).toContain('var(--color-success)')
-    expect(vue).not.toContain('#16a34a')
-  })
-
-  it('uses --color-error instead of hardcoded red', () => {
-    expect(vue).toContain('var(--color-error)')
-    expect(vue).not.toContain('#dc2626')
-  })
+// ExportButton and ExportPreview were removed — tests skipped
+describe.skip('ExportButton — token-based colors', () => {
+  it('uses --color-success instead of hardcoded green', () => {})
+  it('uses --color-error instead of hardcoded red', () => {})
 })
 
-describe('ExportPreview — token-based colors', () => {
-  const vue = readFileSync(
-    resolve(__dirname, '../../../src/components/export/ExportPreview.vue'),
-    'utf-8',
-  )
-
-  it('uses --color-bg-elevated for background', () => {
-    expect(vue).toContain('var(--color-bg-elevated)')
-  })
-
-  it('uses --color-success for download button', () => {
-    expect(vue).toContain('var(--color-success)')
-    expect(vue).not.toContain('#16a34a')
-  })
+describe.skip('ExportPreview — token-based colors', () => {
+  it('uses --color-bg-elevated for background', () => {})
+  it('uses --color-success for download button', () => {})
 })
 
 describe('DashboardView — token-based colors', () => {
@@ -187,14 +165,14 @@ describe('Font sizes — minimum readability', () => {
     expect(metaMatch![1].trim()).toBe('0.625rem')
   })
 
-  it('GeoPanel metric-target uses 0.75rem (12px)', () => {
+  it('GeoPanel QuestionsCard target-hint uses 0.625rem (10px)', () => {
     const vue = readFileSync(
-      resolve(__dirname, '../../../src/components/panels/GeoPanel.vue'),
+      resolve(__dirname, '../../../src/components/panels/geo/QuestionsCard.vue'),
       'utf-8',
     )
-    const metricMatch = vue.match(/\.metric-target\s*\{[^}]*font-size:\s*([^;]+)/)
-    expect(metricMatch).not.toBeNull()
-    expect(metricMatch![1].trim()).toBe('0.75rem')
+    const hintMatch = vue.match(/\.target-hint\s*\{[^}]*font-size:\s*([^;]+)/)
+    expect(hintMatch).not.toBeNull()
+    expect(hintMatch![1].trim()).toBe('0.625rem')
   })
 })
 
@@ -223,21 +201,25 @@ describe('SeoPanel indicator sub-components — color tokens', () => {
   })
 })
 
-describe('GeoPanel — color tokens', () => {
-  const vue = readFileSync(
-    resolve(__dirname, '../../../src/components/panels/GeoPanel.vue'),
+describe('GeoPanel sub-components — color tokens', () => {
+  const capsulesVue = readFileSync(
+    resolve(__dirname, '../../../src/components/panels/geo/CapsulesCard.vue'),
+    'utf-8',
+  )
+  const sharedCss = readFileSync(
+    resolve(__dirname, '../../../src/components/panels/indicators/indicators-shared.css'),
     'utf-8',
   )
 
-  it('uses --color-success for metric-ok', () => {
-    expect(vue).toContain('var(--color-success)')
+  it('CapsulesCard uses --color-success for present capsules', () => {
+    expect(capsulesVue).toContain('--color-success')
   })
 
-  it('uses --color-warning for metric-warn', () => {
-    expect(vue).toContain('var(--color-warning)')
+  it('CapsulesCard uses --color-error for missing capsules', () => {
+    expect(capsulesVue).toContain('--color-error')
   })
 
-  it('uses --color-error for missing capsules', () => {
-    expect(vue).toContain('var(--color-error)')
+  it('shared CSS uses --color-warning for warn state', () => {
+    expect(sharedCss).toContain('--color-warning')
   })
 })

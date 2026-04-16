@@ -184,6 +184,8 @@ Réponds en JSON: {"type": "informational|transactional_local|navigational|mixed
   const usage: ApiUsage = {
     inputTokens: response.usage.input_tokens,
     outputTokens: response.usage.output_tokens,
+    cacheReadTokens: 0,
+    cacheCreationTokens: 0,
     model,
     estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
   }

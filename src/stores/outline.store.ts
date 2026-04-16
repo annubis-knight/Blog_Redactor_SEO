@@ -11,14 +11,14 @@ export function lieutenantsToOutline(lieutenants: string[], articleTitle: string
   const now = Date.now()
   const sections: OutlineSection[] = []
 
-  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable' })
-  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur' })
+  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable', status: 'suggested' })
+  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'suggested' })
 
   lieutenants.forEach((lt, idx) => {
-    sections.push({ id: `h2-${now}-${idx}`, level: 2, title: lt, annotation: null })
+    sections.push({ id: `h2-${now}-${idx}`, level: 2, title: lt, annotation: null, status: 'suggested' })
   })
 
-  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder' })
+  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder', status: 'suggested' })
   return { sections }
 }
 
@@ -28,28 +28,28 @@ export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: s
   const sections: OutlineSection[] = []
 
   // H1 — Article title
-  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable' })
+  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable', status: 'suggested' })
 
   // Introduction
-  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur' })
+  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'suggested' })
 
   // Flatten HN nodes with clamping [2, 3]
   let idx = 0
   for (const node of hnNodes) {
     const clampedLevel = Math.min(3, Math.max(2, node.level)) as 2 | 3
-    sections.push({ id: `h${clampedLevel}-${now}-${idx}`, level: clampedLevel, title: node.text, annotation: null })
+    sections.push({ id: `h${clampedLevel}-${now}-${idx}`, level: clampedLevel, title: node.text, annotation: null, status: 'suggested' })
     idx++
     if (node.children) {
       for (const child of node.children) {
         const childLevel = Math.min(3, Math.max(2, child.level)) as 2 | 3
-        sections.push({ id: `h${childLevel}-${now}-${idx}`, level: childLevel, title: child.text, annotation: null })
+        sections.push({ id: `h${childLevel}-${now}-${idx}`, level: childLevel, title: child.text, annotation: null, status: 'suggested' })
         idx++
       }
     }
   }
 
   // Conclusion
-  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder' })
+  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder', status: 'suggested' })
 
   return { sections }
 }
@@ -104,7 +104,7 @@ export const useOutlineStore = defineStore('outline', () => {
     const pilierKeyword = briefData.keywords.find(kw => kw.type === 'Pilier')
 
     const body = {
-      slug: briefData.article.slug,
+      articleId: briefData.article.id,
       keyword: pilierKeyword?.keyword ?? briefData.article.title,
       keywords: briefData.keywords.map(kw => kw.keyword),
       paa: briefData.dataForSeo?.paa ?? [],
@@ -119,7 +119,10 @@ export const useOutlineStore = defineStore('outline', () => {
     await streaming.startStream('/api/generate/outline', body, {
       onChunk: (accumulated) => { streamedText.value = accumulated },
       onDone: (data) => {
-        outline.value = data
+        // AI-generated sections start as 'suggested'
+        outline.value = {
+          sections: data.sections.map(s => ({ ...s, status: s.status ?? 'suggested' })),
+        }
         log.info('Outline generated', { sections: data.sections.length })
       },
       onError: (message) => {
@@ -140,6 +143,7 @@ export const useOutlineStore = defineStore('outline', () => {
       level,
       title: 'Nouvelle section',
       annotation: null,
+      status: 'accepted',
     }
     if (!afterId) {
       outline.value = { sections: [...outline.value.sections, newSection] }
@@ -185,7 +189,10 @@ export const useOutlineStore = defineStore('outline', () => {
 
   /** Hydrate store with a previously saved & validated outline */
   function loadExistingOutline(saved: Outline) {
-    outline.value = saved
+    // Backward compat: old outlines without status default to 'accepted'
+    outline.value = {
+      sections: saved.sections.map(s => ({ ...s, status: s.status ?? 'accepted' })),
+    }
     isValidated.value = true
   }
 
@@ -195,17 +202,25 @@ export const useOutlineStore = defineStore('outline', () => {
     isValidated.value = false
   }
 
-  async function validateOutline(slug: string) {
+  async function validateOutline(articleId: number) {
     if (!outline.value) return
     isSaving.value = true
     error.value = null
+
+    // Promote suggested sections to accepted
+    outline.value = {
+      sections: outline.value.sections.map(s => ({
+        ...s,
+        status: s.status === 'suggested' ? 'accepted' : s.status,
+      })),
+    }
 
     // Optimistic update
     isValidated.value = true
 
     try {
-      await apiPut(`/articles/${slug}`, { outline: JSON.stringify(outline.value) })
-      log.info(`Outline validated for "${slug}"`)
+      await apiPut(`/articles/${articleId}`, { outline: outline.value })
+      log.info(`Outline validated for article ${articleId}`)
     } catch (err) {
       // Rollback on failure
       isValidated.value = false

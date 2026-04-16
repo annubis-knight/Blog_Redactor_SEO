@@ -48,6 +48,23 @@ const canExtract = computed(() =>
   props.isCaptaineLocked && !!props.captainKeyword && !isLoading.value && !isLocked.value,
 )
 
+// --- Debug log: state on mount ---
+watch(
+  () => articleKeywordsStore.keywords,
+  (kw) => {
+    log.debug('[LexiqueExtraction] store keywords snapshot', {
+      articleId: props.selectedArticle?.id,
+      lexiqueTerms: kw?.lexique ?? [],
+      lexiqueCount: kw?.lexique?.length ?? 0,
+      isCaptainLocked: props.isCaptaineLocked,
+      captainKeyword: props.captainKeyword,
+      isLocked: isLocked.value,
+      tfidfLoaded: !!tfidfResult.value,
+    })
+  },
+  { immediate: true },
+)
+
 async function extractLexique() {
   if (!props.captainKeyword || !canExtract.value) return
   await fetchTfidf()
@@ -140,15 +157,15 @@ watch(tfidfResult, (res) => {
 
 // --- Validate / Lock ---
 async function validateLexique() {
-  const slug = props.selectedArticle?.slug
-  if (!slug || selectedTerms.value.size === 0) return
+  const id = props.selectedArticle?.id
+  if (!id || selectedTerms.value.size === 0) return
 
   const terms = [...selectedTerms.value]
   if (!articleKeywordsStore.keywords) {
-    articleKeywordsStore.initEmpty(slug)
+    articleKeywordsStore.initEmpty(id)
   }
   articleKeywordsStore.keywords!.lexique = terms
-  await articleKeywordsStore.saveKeywords(slug)
+  await articleKeywordsStore.saveKeywords(id)
 
   isLocked.value = true
   emit('check-completed', 'lexique_validated')

@@ -6,6 +6,7 @@ import type {
   CommunitySignal,
   AutocompleteSignal,
 } from '../../shared/types/intent.types.js'
+import { FRENCH_STOPWORDS } from '@/constants/french-nlp'
 
 // --- Weights ---
 const WEIGHTS_NO_NLP = { dataforseo: 0.4375, community: 0.375, autocomplete: 0.1875 }
@@ -33,13 +34,6 @@ const CONFIDENCE_FORCE_UNCERTAIN = 0.25
 const CONFIDENCE_SHOW_EXPLANATION = 0.70
 
 // --- Long-tail detection ---
-
-const FRENCH_STOPWORDS = new Set([
-  'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une',
-  'et', 'ou', 'en', 'au', 'aux', 'pour', 'par', 'sur',
-  'avec', 'dans', 'son', 'sa', 'ses', 'mon', 'ma', 'mes',
-  'ce', 'cette', 'ces', 'que', 'qui', 'comment', 'pourquoi',
-])
 
 export function isLongTail(keyword: string): boolean {
   const words = keyword.trim().split(/\s+/).filter(w => !FRENCH_STOPWORDS.has(w.toLowerCase()))

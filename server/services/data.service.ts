@@ -5,6 +5,7 @@ import { rawArticlesDbSchema } from '../../shared/schemas/article.schema.js'
 import { rawKeywordsDbSchema } from '../../shared/schemas/keyword.schema.js'
 import { rawArticleKeywordsDbSchema } from '../../shared/schemas/article-keywords.schema.js'
 import { microContextDbSchema } from '../../shared/schemas/article-micro-context.schema.js'
+import { existsSync, renameSync } from 'fs'
 import type {
   RawArticle,
   RawArticlesDb,
@@ -13,6 +14,7 @@ import type {
   Article,
   ArticleType,
   ArticleStatus,
+  ArticlePhase,
   ArticleKeywords,
   RawArticleKeywordsDb,
   Cocoon,
@@ -25,20 +27,25 @@ import type {
   Silo,
   SiloStats,
   ArticleMicroContext,
+  ArticleProgress,
 } from '../../shared/types/index.js'
 
 const DATA_DIR = join(process.cwd(), 'data')
-const STATUS_FILE = join(DATA_DIR, 'article-statuses.json')
+const BDD_FILE = join(DATA_DIR, 'BDD_Articles_Blog.json')
 const ARTICLE_KEYWORDS_FILE = join(DATA_DIR, 'article-keywords.json')
 const MICRO_CONTEXT_FILE = join(DATA_DIR, 'article-micro-context.json')
 
+// Legacy files — migrated into BDD_Articles_Blog.json on first load
+const LEGACY_PROGRESS_FILE = join(DATA_DIR, 'article-progress.json')
+const LEGACY_STATUS_FILE = join(DATA_DIR, 'article-statuses.json')
+
 let cachedCocoons: Cocoon[] | null = null
 let cachedKeywords: Keyword[] | null = null
-let cachedStatuses: Record<string, ArticleStatus> | null = null
 let cachedTheme: Theme | null = null
 let cachedSilos: Silo[] | null = null
 let cachedArticleKeywords: ArticleKeywords[] | null = null
 let cachedMicroContexts: ArticleMicroContext[] | null = null
+let migrationDone = false
 
 /** Extract short slug from full URL */
 function extractSlug(url: string): string {
@@ -49,11 +56,19 @@ function extractSlug(url: string): string {
 /** Convert a RawArticle to an Article (snake_case → camelCase) */
 function mapArticle(raw: RawArticle): Article {
   return {
+    id: raw.id,
     title: raw.titre,
     type: raw.type,
     slug: extractSlug(raw.slug),
     topic: raw.topic,
-    status: 'à rédiger',
+    status: raw.status ?? 'à rédiger',
+    phase: raw.phase ?? 'proposed',
+    completedChecks: raw.completedChecks ?? [],
+    checkTimestamps: raw.checkTimestamps,
+    suggestedKeyword: raw.suggestedKeyword ?? null,
+    captainKeywordLocked: raw.captainKeywordLocked ?? null,
+    createdAt: raw.createdAt,
+    updatedAt: raw.updatedAt,
   }
 }
 
@@ -96,6 +111,84 @@ function computeSiloStats(cocoons: Cocoon[]): SiloStats {
   }
 }
 
+/** One-time migration: merge article-progress.json + article-statuses.json into BDD_Articles_Blog.json */
+async function migrateProgressAndStatuses(raw: RawArticlesDb): Promise<boolean> {
+  if (migrationDone) return false
+  migrationDone = true
+
+  let changed = false
+
+  // Build id → RawArticle and slug → RawArticle maps
+  const idMap = new Map<number, RawArticle>()
+  const slugMap = new Map<string, RawArticle>()
+  for (const silo of raw.silos) {
+    for (const cocoon of silo.cocons) {
+      for (const a of cocoon.articles) {
+        idMap.set(a.id, a)
+        const simple = extractSlug(a.slug)
+        slugMap.set(simple, a)
+      }
+    }
+  }
+
+  // Migrate article-progress.json
+  if (existsSync(LEGACY_PROGRESS_FILE)) {
+    try {
+      const progressData = await readJson<Record<string, { phase?: ArticlePhase; completedChecks?: string[]; checkTimestamps?: Record<string, string> }>>(LEGACY_PROGRESS_FILE)
+      let migratedCount = 0
+      for (const [key, progress] of Object.entries(progressData)) {
+        // Key can be numeric id or slug
+        const numId = parseInt(key, 10)
+        const article = !isNaN(numId) ? idMap.get(numId) : slugMap.get(key)
+        if (article && progress) {
+          if (!article.phase) article.phase = progress.phase ?? 'proposed'
+          if (!article.completedChecks || article.completedChecks.length === 0) {
+            article.completedChecks = progress.completedChecks ?? []
+          }
+          if (!article.checkTimestamps && progress.checkTimestamps) {
+            article.checkTimestamps = progress.checkTimestamps
+          }
+          migratedCount++
+        }
+      }
+      if (migratedCount > 0) {
+        changed = true
+        log.info(`Migration: ${migratedCount} entrées article-progress.json → BDD`)
+      }
+      renameSync(LEGACY_PROGRESS_FILE, LEGACY_PROGRESS_FILE + '.bak')
+      log.info('Migration: article-progress.json renommé en .bak')
+    } catch (err) {
+      log.warn('Migration article-progress.json échouée', { error: (err as Error).message })
+    }
+  }
+
+  // Migrate article-statuses.json
+  if (existsSync(LEGACY_STATUS_FILE)) {
+    try {
+      const statusData = await readJson<Record<string, ArticleStatus>>(LEGACY_STATUS_FILE)
+      let migratedCount = 0
+      for (const [key, status] of Object.entries(statusData)) {
+        const numId = parseInt(key, 10)
+        const article = !isNaN(numId) ? idMap.get(numId) : slugMap.get(key)
+        if (article && status) {
+          article.status = status
+          migratedCount++
+        }
+      }
+      if (migratedCount > 0) {
+        changed = true
+        log.info(`Migration: ${migratedCount} entrées article-statuses.json → BDD`)
+      }
+      renameSync(LEGACY_STATUS_FILE, LEGACY_STATUS_FILE + '.bak')
+      log.info('Migration: article-statuses.json renommé en .bak')
+    } catch (err) {
+      log.warn('Migration article-statuses.json échouée', { error: (err as Error).message })
+    }
+  }
+
+  return changed
+}
+
 /** Load and validate the articles database, populate caches */
 async function loadDb(): Promise<void> {
   if (cachedCocoons && cachedTheme && cachedSilos) {
@@ -104,8 +197,15 @@ async function loadDb(): Promise<void> {
   }
 
   log.info('Chargement BDD_Articles_Blog.json...')
-  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+  const raw = await readJson<RawArticlesDb>(BDD_FILE)
   rawArticlesDbSchema.parse(raw)
+
+  // One-time migration from legacy files
+  const migrated = await migrateProgressAndStatuses(raw)
+  if (migrated) {
+    await writeJson(BDD_FILE, raw)
+    log.info('Migration: BDD_Articles_Blog.json mis à jour')
+  }
 
   cachedTheme = {
     nom: raw.theme.nom,
@@ -146,12 +246,6 @@ async function loadDb(): Promise<void> {
   cachedSilos = silos
 
   log.info('BDD chargée', { silos: silos.length, cocoons: allCocoons.length, articles: allCocoons.reduce((s, c) => s + c.articles.length, 0) })
-
-  await applyStatusOverrides(cachedCocoons)
-  // Recompute silo stats after status overrides
-  for (const silo of cachedSilos) {
-    silo.stats = computeSiloStats(silo.cocons)
-  }
 }
 
 /** Load and validate the articles database, return cocoons with stats */
@@ -225,56 +319,270 @@ export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[]
   return filtered.length > 0 ? filtered : null
 }
 
-/** Get a single article by slug, with its cocoon name */
+/** Get a single article by id, with its cocoon name */
+export async function getArticleById(id: number): Promise<{ article: Article; cocoonName: string } | null> {
+  const cocoons = await loadArticlesDb()
+  for (const cocoon of cocoons) {
+    const article = cocoon.articles.find(a => a.id === id)
+    if (article) return { article, cocoonName: cocoon.name }
+  }
+  return null
+}
+
+/** Get a single article by slug, with its cocoon name (for frontend slug→id lookup) */
 export async function getArticleBySlug(slug: string): Promise<{ article: Article; cocoonName: string } | null> {
   const cocoons = await loadArticlesDb()
   for (const cocoon of cocoons) {
     const article = cocoon.articles.find(a => a.slug === slug)
+    if (article) return { article, cocoonName: cocoon.name }
+  }
+  return null
+}
+
+/** Helper: find a raw article by id in the BDD file and mutate it */
+async function mutateRawArticle(id: number, mutate: (article: RawArticle) => void): Promise<boolean> {
+  const raw = await readJson<RawArticlesDb>(BDD_FILE)
+  for (const silo of raw.silos) {
+    for (const cocoon of silo.cocons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        mutate(article)
+        await writeJson(BDD_FILE, raw)
+        return true
+      }
+    }
+  }
+  return false
+}
+
+/** Update an article's status (persisted directly in BDD_Articles_Blog.json) */
+export async function updateArticleStatus(id: number, status: ArticleStatus): Promise<void> {
+  log.info('updateArticleStatus', { id, status })
+
+  const found = await mutateRawArticle(id, article => {
+    article.status = status
+  })
+  if (!found) {
+    log.warn('updateArticleStatus — article introuvable', { id })
+    return
+  }
+
+  // Update in-memory cache
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        article.status = status
+        cocoon.stats = computeStats(cocoon.articles)
+        break
+      }
+    }
+    // Recompute silo stats
+    if (cachedSilos) {
+      for (const silo of cachedSilos) {
+        silo.stats = computeSiloStats(silo.cocons)
+      }
+    }
+  }
+}
+
+/**
+ * Update an article's suggestedKeyword (persisted directly in BDD_Articles_Blog.json).
+ * Called at article-creation-from-proposal time (copies value from strategies/*.json).
+ * Idempotent: a null value clears the field.
+ */
+export async function updateArticleSuggestedKeyword(id: number, suggestedKeyword: string | null): Promise<boolean> {
+  log.info('updateArticleSuggestedKeyword', { id, suggestedKeyword })
+
+  const found = await mutateRawArticle(id, article => {
+    article.suggestedKeyword = suggestedKeyword
+    article.updatedAt = new Date().toISOString()
+  })
+  if (!found) {
+    log.warn('updateArticleSuggestedKeyword — article introuvable', { id })
+    return false
+  }
+
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        article.suggestedKeyword = suggestedKeyword
+        break
+      }
+    }
+  }
+  return true
+}
+
+/**
+ * Update an article's captainKeywordLocked (persisted directly in BDD_Articles_Blog.json).
+ * Called when the Capitaine is locked (keyword) or unlocked (null).
+ * Acts as the canonical mirror of richCaptain.keyword for article-tree/recap-toggle displays —
+ * avoids having to fetch article-keywords.json just to read one string per article.
+ */
+export async function updateArticleCaptainKeyword(id: number, captainKeyword: string | null): Promise<boolean> {
+  log.info('updateArticleCaptainKeyword', { id, captainKeyword })
+
+  const found = await mutateRawArticle(id, article => {
+    article.captainKeywordLocked = captainKeyword
+    article.updatedAt = new Date().toISOString()
+  })
+  if (!found) {
+    log.warn('updateArticleCaptainKeyword — article introuvable', { id })
+    return false
+  }
+
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        article.captainKeywordLocked = captainKeyword
+        break
+      }
+    }
+  }
+  return true
+}
+
+// --- Article Progress (integrated into BDD) ---
+
+/** Get progress for an article */
+export async function getArticleProgress(id: number): Promise<ArticleProgress | null> {
+  const cocoons = await loadArticlesDb()
+  for (const cocoon of cocoons) {
+    const article = cocoon.articles.find(a => a.id === id)
     if (article) {
-      return { article, cocoonName: cocoon.name }
+      return {
+        phase: article.phase,
+        completedChecks: article.completedChecks,
+        checkTimestamps: article.checkTimestamps,
+      }
     }
   }
   return null
 }
 
-/** Load article status overrides from disk */
-async function loadStatuses(): Promise<Record<string, ArticleStatus>> {
-  if (cachedStatuses) return cachedStatuses
-  try {
-    cachedStatuses = await readJson<Record<string, ArticleStatus>>(STATUS_FILE)
-  } catch {
-    cachedStatuses = {}
-  }
-  return cachedStatuses
-}
+/** Save full progress for an article */
+export async function saveArticleProgress(id: number, progress: ArticleProgress): Promise<ArticleProgress> {
+  log.debug(`saveArticleProgress: ${id} (phase=${progress.phase})`)
 
-/** Update an article's status (persisted in article-statuses.json) */
-export async function updateArticleStatus(slug: string, status: ArticleStatus): Promise<void> {
-  log.info('updateArticleStatus', { slug, status })
-  const statuses = await loadStatuses()
-  statuses[slug] = status
-  await writeJson(STATUS_FILE, statuses)
-  cachedStatuses = statuses
+  await mutateRawArticle(id, article => {
+    article.phase = progress.phase
+    article.completedChecks = progress.completedChecks
+    if (progress.checkTimestamps) article.checkTimestamps = progress.checkTimestamps
+  })
 
-  // Invalidate caches so stats are recalculated
-  cachedCocoons = null
-  cachedSilos = null
-  cachedTheme = null
-}
-
-/** Apply status overrides to articles loaded from BDD */
-async function applyStatusOverrides(cocoons: Cocoon[]): Promise<void> {
-  const statuses = await loadStatuses()
-  for (const cocoon of cocoons) {
-    for (const article of cocoon.articles) {
-      const override = statuses[article.slug]
-      if (override) {
-        article.status = override
+  // Update in-memory cache
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        article.phase = progress.phase
+        article.completedChecks = progress.completedChecks
+        if (progress.checkTimestamps) article.checkTimestamps = progress.checkTimestamps
+        break
       }
     }
-    // Recompute stats with updated statuses
-    cocoon.stats = computeStats(cocoon.articles)
   }
+
+  return progress
+}
+
+/** Add a workflow check to an article */
+export async function addArticleCheck(id: number, check: string): Promise<ArticleProgress> {
+  await loadDb()
+
+  // Find current state from cache
+  let current: ArticleProgress = { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        current = {
+          phase: article.phase,
+          completedChecks: [...article.completedChecks],
+          checkTimestamps: { ...article.checkTimestamps },
+        }
+        break
+      }
+    }
+  }
+
+  if (!current.completedChecks.includes(check)) {
+    current.completedChecks.push(check)
+    if (!current.checkTimestamps) current.checkTimestamps = {}
+    current.checkTimestamps[check] = new Date().toISOString()
+    log.debug(`addArticleCheck: added "${check}" for ${id}`)
+  }
+
+  await mutateRawArticle(id, article => {
+    article.completedChecks = current.completedChecks
+    article.checkTimestamps = current.checkTimestamps
+    article.phase = current.phase
+  })
+
+  // Update in-memory cache
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        article.completedChecks = current.completedChecks
+        article.checkTimestamps = current.checkTimestamps
+        article.phase = current.phase
+        break
+      }
+    }
+  }
+
+  return current
+}
+
+/** Remove a workflow check from an article */
+export async function removeArticleCheck(id: number, check: string): Promise<ArticleProgress> {
+  await loadDb()
+
+  let current: ArticleProgress = { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        current = {
+          phase: article.phase,
+          completedChecks: [...article.completedChecks],
+          checkTimestamps: { ...article.checkTimestamps },
+        }
+        break
+      }
+    }
+  }
+
+  current.completedChecks = current.completedChecks.filter(c => c !== check)
+  if (current.checkTimestamps) {
+    delete current.checkTimestamps[check]
+  }
+  log.debug(`removeArticleCheck: removed "${check}" for ${id}`)
+
+  await mutateRawArticle(id, article => {
+    article.completedChecks = current.completedChecks
+    article.checkTimestamps = current.checkTimestamps
+    article.phase = current.phase
+  })
+
+  // Update in-memory cache
+  if (cachedCocoons) {
+    for (const cocoon of cachedCocoons) {
+      const article = cocoon.articles.find(a => a.id === id)
+      if (article) {
+        article.completedChecks = current.completedChecks
+        article.checkTimestamps = current.checkTimestamps
+        article.phase = current.phase
+        break
+      }
+    }
+  }
+
+  return current
 }
 
 /** Add a keyword to the database (rejects duplicates) */
@@ -348,17 +656,94 @@ async function loadArticleKeywords(): Promise<ArticleKeywords[]> {
   return cachedArticleKeywords
 }
 
-/** Get article keywords by slug */
-export async function getArticleKeywords(slug: string): Promise<ArticleKeywords | null> {
-  const all = await loadArticleKeywords()
-  return all.find(ak => ak.articleSlug === slug) ?? null
+/** Strip verbose KPI fields down to { name, rawValue } */
+function stripKpis(kpis: { name: string; rawValue: number; [k: string]: unknown }[]): { name: string; rawValue: number }[] {
+  return kpis.map(({ name, rawValue }) => ({ name, rawValue }))
 }
 
-/** Save article keywords for a slug */
-export async function saveArticleKeywords(slug: string, data: Omit<ArticleKeywords, 'articleSlug'>): Promise<ArticleKeywords> {
+/** Clean up rich data: strip verbose KPI fields and remove deprecated verdict/count fields */
+function cleanRichData(entry: ArticleKeywords): void {
+  if (entry.richCaptain) {
+    // Dedup validationHistory by keyword (keep last occurrence)
+    const seen = new Map<string, number>()
+    const history = entry.richCaptain.validationHistory as unknown as Record<string, unknown>[]
+    for (let i = 0; i < history.length; i++) {
+      const kw = history[i].keyword as string
+      if (seen.has(kw)) history[seen.get(kw)!] = null as any
+      seen.set(kw, i)
+    }
+    entry.richCaptain.validationHistory = history.filter(Boolean) as any
+
+    for (const v of entry.richCaptain.validationHistory as unknown as Record<string, unknown>[]) {
+      if (Array.isArray(v.kpis) && v.kpis.length > 0 && 'color' in v.kpis[0]) {
+        v.kpis = stripKpis(v.kpis)
+      }
+      delete v.verdict
+      delete v.greenCount
+      delete v.totalKpis
+      delete v.timestamp
+    }
+  }
+  if (entry.richRootKeywords) {
+    for (const r of entry.richRootKeywords as unknown as Record<string, unknown>[]) {
+      if (Array.isArray(r.kpis) && r.kpis.length > 0 && 'color' in r.kpis[0]) {
+        r.kpis = stripKpis(r.kpis)
+      }
+      delete r.verdict
+      delete r.greenCount
+      delete r.totalKpis
+    }
+  }
+}
+
+/** Migrate old flat-only article keywords to enriched format (idempotent) */
+function migrateArticleKeywords(entry: ArticleKeywords): ArticleKeywords {
+  cleanRichData(entry)
+  if (entry.richCaptain) return entry // already migrated
+
+  if (entry.capitaine) {
+    entry.richCaptain = {
+      keyword: entry.capitaine,
+      status: 'locked',
+      validationHistory: [],
+      aiPanelMarkdown: null,
+      lockedAt: null,
+    }
+  }
+
+  if (!entry.richRootKeywords) {
+    entry.richRootKeywords = []
+  }
+
+  if (!entry.richLieutenants && entry.lieutenants.length > 0) {
+    entry.richLieutenants = entry.lieutenants.map(kw => ({
+      keyword: kw,
+      status: 'locked' as const,
+      reasoning: '',
+      sources: [],
+      aiConfidence: 'fort' as const,
+      suggestedHnLevel: 2 as const,
+      score: 0,
+      kpis: null,
+      lockedAt: null,
+    }))
+  }
+
+  return entry
+}
+
+/** Get article keywords by id */
+export async function getArticleKeywords(id: number): Promise<ArticleKeywords | null> {
   const all = await loadArticleKeywords()
-  const existing = all.findIndex(ak => ak.articleSlug === slug)
-  const entry: ArticleKeywords = { articleSlug: slug, ...data }
+  const entry = all.find(ak => ak.articleId === id) ?? null
+  return entry ? migrateArticleKeywords(entry) : null
+}
+
+/** Save article keywords for an article id */
+export async function saveArticleKeywords(id: number, data: Omit<ArticleKeywords, 'articleId'>): Promise<ArticleKeywords> {
+  const all = await loadArticleKeywords()
+  const existing = all.findIndex(ak => ak.articleId === id)
+  const entry: ArticleKeywords = { articleId: id, ...data }
 
   if (existing >= 0) {
     all[existing] = entry
@@ -368,6 +753,16 @@ export async function saveArticleKeywords(slug: string, data: Omit<ArticleKeywor
 
   await writeJson(ARTICLE_KEYWORDS_FILE, { keywords_par_article: all })
   cachedArticleKeywords = all
+
+  // Mirror captain lock state into BDD (canonical source for recap-toggle).
+  // - locked → write richCaptain.keyword
+  // - any other status (or no richCaptain) → null
+  // This avoids a second fetch against article-keywords.json for display purposes.
+  const mirrored = entry.richCaptain?.status === 'locked' ? entry.richCaptain.keyword ?? null : null
+  await updateArticleCaptainKeyword(id, mirrored).catch(err => {
+    log.warn('saveArticleKeywords — mirror captainKeyword failed', { id, error: (err as Error).message })
+  })
+
   return entry
 }
 
@@ -376,18 +771,18 @@ export async function getArticleKeywordsByCocoon(cocoonName: string): Promise<Ar
   const cocoons = await getCocoons()
   const cocoon = cocoons.find(c => c.name === cocoonName)
   if (!cocoon) return []
-  const slugs = cocoon.articles.map(a => a.slug)
+  const ids = cocoon.articles.map(a => a.id)
   const all = await loadArticleKeywords()
-  return all.filter(ak => slugs.includes(ak.articleSlug))
+  return all.filter(ak => ids.includes(ak.articleId))
 }
 
 /** Get all lieutenants already assigned to sibling articles in the same cocoon (anti-cannibalization) */
-export async function getCocoonExistingLieutenants(articleSlug: string): Promise<string[]> {
-  const found = await getArticleBySlug(articleSlug)
+export async function getCocoonExistingLieutenants(id: number): Promise<string[]> {
+  const found = await getArticleById(id)
   if (!found) return []
   const siblingKeywords = await getArticleKeywordsByCocoon(found.cocoonName)
   return siblingKeywords
-    .filter(ak => ak.articleSlug !== articleSlug)
+    .filter(ak => ak.articleId !== id)
     .flatMap(ak => ak.lieutenants ?? [])
 }
 
@@ -396,7 +791,7 @@ export async function addCocoonToSilo(
   siloName: string,
   cocoonName: string,
 ): Promise<Cocoon> {
-  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+  const raw = await readJson<RawArticlesDb>(BDD_FILE)
 
   const silo = raw.silos.find(s => s.nom === siloName)
   if (!silo) {
@@ -412,7 +807,7 @@ export async function addCocoonToSilo(
   const newCocoon: RawCocoon = { nom: cocoonName, articles: [] }
   silo.cocons.push(newCocoon)
 
-  await writeJson(join(DATA_DIR, 'BDD_Articles_Blog.json'), raw)
+  await writeJson(BDD_FILE, raw)
   cachedCocoons = null
   cachedSilos = null
   cachedTheme = null
@@ -435,9 +830,9 @@ export async function addCocoonToSilo(
 /** Add articles to a cocoon in BDD_Articles_Blog.json */
 export async function addArticlesToCocoon(
   cocoonName: string,
-  articles: { title: string; type: ArticleType; slug?: string }[],
+  articles: { title: string; type: ArticleType; slug?: string; suggestedKeyword?: string | null }[],
 ): Promise<Article[]> {
-  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+  const raw = await readJson<RawArticlesDb>(BDD_FILE)
 
   // Find the cocoon in the raw data
   let targetCocoon: RawCocoon | null = null
@@ -453,8 +848,19 @@ export async function addArticlesToCocoon(
     throw new Error(`Cocoon "${cocoonName}" not found`)
   }
 
+  // Collect all existing article IDs from raw data
+  const allRawIds: number[] = []
+  for (const silo of raw.silos) {
+    for (const cocoon of silo.cocons) {
+      for (const a of cocoon.articles) {
+        allRawIds.push(a.id)
+      }
+    }
+  }
+
   const existingSlugs = new Set(targetCocoon.articles.map(a => extractSlug(a.slug)))
   const created: Article[] = []
+  let nextIdCounter = allRawIds.length > 0 ? Math.max(...allRawIds) : 0
 
   for (const article of articles) {
     const slug = article.slug?.trim() || article.title
@@ -466,11 +872,17 @@ export async function addArticlesToCocoon(
 
     if (existingSlugs.has(slug)) continue
 
+    nextIdCounter++
+    const now = new Date().toISOString()
     const rawArticle: RawArticle = {
+      id: nextIdCounter,
       titre: article.title,
       type: article.type,
       slug,
       topic: null,
+      suggestedKeyword: article.suggestedKeyword ?? null,
+      createdAt: now,
+      updatedAt: now,
     }
     targetCocoon.articles.push(rawArticle)
     existingSlugs.add(slug)
@@ -478,7 +890,7 @@ export async function addArticlesToCocoon(
   }
 
   if (created.length > 0) {
-    await writeJson(join(DATA_DIR, 'BDD_Articles_Blog.json'), raw)
+    await writeJson(BDD_FILE, raw)
     cachedCocoons = null
     cachedSilos = null
     cachedTheme = null
@@ -488,49 +900,51 @@ export async function addArticlesToCocoon(
   return created
 }
 
-/** Update an article's title in its cocoon (identified by slug) */
-export async function updateArticleInCocoon(slug: string, updates: { title?: string }): Promise<boolean> {
-  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+/** Update an article's title/slug in its cocoon (identified by id) */
+export async function updateArticleInCocoon(id: number, updates: { title?: string; slug?: string }): Promise<boolean> {
+  const raw = await readJson<RawArticlesDb>(BDD_FILE)
 
   for (const silo of raw.silos) {
     for (const cocoon of silo.cocons) {
-      const article = cocoon.articles.find(a => extractSlug(a.slug) === slug)
+      const article = cocoon.articles.find(a => a.id === id)
       if (article) {
         if (updates.title !== undefined) article.titre = updates.title
-        await writeJson(join(DATA_DIR, 'BDD_Articles_Blog.json'), raw)
+        if (updates.slug !== undefined) article.slug = updates.slug
+        article.updatedAt = new Date().toISOString()
+        await writeJson(BDD_FILE, raw)
         cachedCocoons = null
         cachedSilos = null
         cachedTheme = null
-        log.info('updateArticleInCocoon — article mis à jour', { slug, updates })
+        log.info('updateArticleInCocoon — article mis à jour', { id, updates })
         return true
       }
     }
   }
 
-  log.warn('updateArticleInCocoon — slug introuvable', { slug })
+  log.warn('updateArticleInCocoon — id introuvable', { id })
   return false
 }
 
-/** Remove an article from its cocoon by slug */
-export async function removeArticleFromCocoon(slug: string): Promise<boolean> {
-  const raw = await readJson<RawArticlesDb>(join(DATA_DIR, 'BDD_Articles_Blog.json'))
+/** Remove an article from its cocoon by id */
+export async function removeArticleFromCocoon(id: number): Promise<boolean> {
+  const raw = await readJson<RawArticlesDb>(BDD_FILE)
 
   for (const silo of raw.silos) {
     for (const cocoon of silo.cocons) {
-      const idx = cocoon.articles.findIndex(a => extractSlug(a.slug) === slug)
+      const idx = cocoon.articles.findIndex(a => a.id === id)
       if (idx !== -1) {
         cocoon.articles.splice(idx, 1)
-        await writeJson(join(DATA_DIR, 'BDD_Articles_Blog.json'), raw)
+        await writeJson(BDD_FILE, raw)
         cachedCocoons = null
         cachedSilos = null
         cachedTheme = null
-        log.info('removeArticleFromCocoon — article supprimé', { slug })
+        log.info('removeArticleFromCocoon — article supprimé', { id })
         return true
       }
     }
   }
 
-  log.warn('removeArticleFromCocoon — slug introuvable', { slug })
+  log.warn('removeArticleFromCocoon — id introuvable', { id })
   return false
 }
 
@@ -549,16 +963,16 @@ async function loadMicroContexts(): Promise<ArticleMicroContext[]> {
 }
 
 /** Get micro-context for a specific article */
-export async function loadArticleMicroContext(slug: string): Promise<ArticleMicroContext | null> {
+export async function loadArticleMicroContext(id: number): Promise<ArticleMicroContext | null> {
   const all = await loadMicroContexts()
-  return all.find(mc => mc.slug === slug) ?? null
+  return all.find(mc => mc.id === id) ?? null
 }
 
 /** Save micro-context for an article */
-export async function saveArticleMicroContext(slug: string, data: Omit<ArticleMicroContext, 'slug'>): Promise<ArticleMicroContext> {
+export async function saveArticleMicroContext(id: number, data: Omit<ArticleMicroContext, 'id'>): Promise<ArticleMicroContext> {
   const all = await loadMicroContexts()
-  const existing = all.findIndex(mc => mc.slug === slug)
-  const entry: ArticleMicroContext = { slug, ...data }
+  const existing = all.findIndex(mc => mc.id === id)
+  const entry: ArticleMicroContext = { id, ...data }
 
   if (existing >= 0) {
     all[existing] = entry
@@ -575,9 +989,9 @@ export async function saveArticleMicroContext(slug: string, data: Omit<ArticleMi
 export function resetCache(): void {
   cachedCocoons = null
   cachedKeywords = null
-  cachedStatuses = null
   cachedTheme = null
   cachedSilos = null
   cachedArticleKeywords = null
   cachedMicroContexts = null
+  migrationDone = false
 }

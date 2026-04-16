@@ -9,7 +9,7 @@ export interface MigrationPreview {
 }
 
 export interface ArticleKeywordAssignment {
-  articleSlug: string
+  articleId: number
   articleTitle: string
   articleType: string
   capitaine: string
@@ -27,8 +27,8 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
   const existing = await getArticleKeywordsByCocoon(cocoonName)
 
   const pilierKws = keywords.filter(k => k.type === 'Pilier')
-  const moyenneKws = keywords.filter(k => k.type === 'Moyenne traine')
-  const longueKws = keywords.filter(k => k.type === 'Longue traine')
+  const intermediaireKws = keywords.filter(k => k.type === 'Intermédiaire')
+  const specialiseKws = keywords.filter(k => k.type === 'Spécialisé')
 
   const pilierArticles = cocoon.articles.filter(a => a.type === 'Pilier')
   const interArticles = cocoon.articles.filter(a => a.type === 'Intermédiaire')
@@ -42,7 +42,7 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
     const article = pilierArticles[i]!
     const capitaine = pilierKws[i]?.keyword ?? ''
     assignments.push({
-      articleSlug: article.slug,
+      articleId: article.id,
       articleTitle: article.title,
       articleType: article.type,
       capitaine,
@@ -51,18 +51,18 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
     })
   }
 
-  // Distribute Moyenne traine keywords as Lieutenants across Intermédiaire articles
+  // Distribute Intermédiaire keywords as Lieutenants across Intermédiaire articles
   for (let i = 0; i < interArticles.length; i++) {
     const article = interArticles[i]!
-    // Each intermédiaire gets a share of moyenne traine keywords
-    const start = Math.floor((i * moyenneKws.length) / Math.max(interArticles.length, 1))
-    const end = Math.floor(((i + 1) * moyenneKws.length) / Math.max(interArticles.length, 1))
-    const assigned = moyenneKws.slice(start, end)
+    // Each intermédiaire gets a share of intermédiaire keywords
+    const start = Math.floor((i * intermediaireKws.length) / Math.max(interArticles.length, 1))
+    const end = Math.floor(((i + 1) * intermediaireKws.length) / Math.max(interArticles.length, 1))
+    const assigned = intermediaireKws.slice(start, end)
     const capitaine = assigned[0]?.keyword ?? ''
     const lieutenants = assigned.slice(1).map(k => k.keyword)
 
     assignments.push({
-      articleSlug: article.slug,
+      articleId: article.id,
       articleTitle: article.title,
       articleType: article.type,
       capitaine,
@@ -71,17 +71,17 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
     })
   }
 
-  // Distribute Longue traine keywords as Lieutenants across Spécialisé articles
+  // Distribute Spécialisé keywords as Lieutenants across Spécialisé articles
   for (let i = 0; i < specArticles.length; i++) {
     const article = specArticles[i]!
-    const start = Math.floor((i * longueKws.length) / Math.max(specArticles.length, 1))
-    const end = Math.floor(((i + 1) * longueKws.length) / Math.max(specArticles.length, 1))
-    const assigned = longueKws.slice(start, end)
+    const start = Math.floor((i * specialiseKws.length) / Math.max(specArticles.length, 1))
+    const end = Math.floor(((i + 1) * specialiseKws.length) / Math.max(specArticles.length, 1))
+    const assigned = specialiseKws.slice(start, end)
     const capitaine = assigned[0]?.keyword ?? ''
     const lieutenants = assigned.slice(1).map(k => k.keyword)
 
     assignments.push({
-      articleSlug: article.slug,
+      articleId: article.id,
       articleTitle: article.title,
       articleType: article.type,
       capitaine,
@@ -103,7 +103,7 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
   // Check for already assigned articles
   for (const ex of existing) {
     if (ex.capitaine) {
-      warnings.push(`L'article "${ex.articleSlug}" a déjà des keywords assignés (capitaine: "${ex.capitaine}")`)
+      warnings.push(`L'article id=${ex.articleId} a déjà des keywords assignés (capitaine: "${ex.capitaine}")`)
     }
   }
 
@@ -114,7 +114,7 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
 export async function applyMigration(assignments: ArticleKeywordAssignment[]): Promise<ArticleKeywords[]> {
   const results: ArticleKeywords[] = []
   for (const assignment of assignments) {
-    const saved = await saveArticleKeywords(assignment.articleSlug, {
+    const saved = await saveArticleKeywords(assignment.articleId, {
       capitaine: assignment.capitaine,
       lieutenants: assignment.lieutenants,
       lexique: assignment.lexique,

@@ -15,7 +15,7 @@ import { getStrategy, saveStrategy } from '../../../server/services/strategy.ser
 import type { ArticleStrategy } from '../../../shared/types/index'
 
 const validStrategy: ArticleStrategy = {
-  slug: 'test-article',
+  id: 1,
   cible: { input: 'PME du BTP', suggestion: 'Ciblez les artisans', validated: 'PME du BTP validé' },
   douleur: { input: 'Manque de visibilité', suggestion: null, validated: '' },
   aiguillage: { suggestedType: 'Pilier', suggestedParent: null, suggestedChildren: ['article-enfant'], validated: false },
@@ -36,7 +36,7 @@ describe('strategy.service', () => {
     it('returns null when file does not exist', async () => {
       mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
 
-      const result = await getStrategy('missing-slug')
+      const result = await getStrategy(99)
 
       expect(result).toBeNull()
     })
@@ -44,15 +44,15 @@ describe('strategy.service', () => {
     it('returns parsed strategy when file exists', async () => {
       mockReadJson.mockResolvedValueOnce(validStrategy)
 
-      const result = await getStrategy('test-article')
+      const result = await getStrategy(1)
 
       expect(result).toEqual(validStrategy)
     })
 
     it('returns null when data fails Zod validation', async () => {
-      mockReadJson.mockResolvedValueOnce({ slug: 'bad', completedSteps: 99 })
+      mockReadJson.mockResolvedValueOnce({ id: 1, completedSteps: 99 })
 
-      const result = await getStrategy('bad')
+      const result = await getStrategy(1)
 
       expect(result).toBeNull()
     })
@@ -62,17 +62,17 @@ describe('strategy.service', () => {
     it('saves and returns merged strategy', async () => {
       mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
 
-      const result = await saveStrategy('new-article', {
+      const result = await saveStrategy(1, {
         cible: { input: 'Dirigeants PME', suggestion: null, validated: '' },
       })
 
-      expect(result.slug).toBe('new-article')
+      expect(result.id).toBe(1)
       expect(result.cible.input).toBe('Dirigeants PME')
       expect(result.completedSteps).toBe(0)
       expect(mockWriteJson).toHaveBeenCalledWith(
-        expect.stringContaining('new-article.json'),
+        expect.stringContaining('1.json'),
         expect.objectContaining({
-          slug: 'new-article',
+          id: 1,
           cible: expect.objectContaining({ input: 'Dirigeants PME' }),
           updatedAt: expect.any(String),
         }),
@@ -82,31 +82,31 @@ describe('strategy.service', () => {
     it('merges with existing data', async () => {
       mockReadJson.mockResolvedValueOnce(validStrategy)
 
-      const result = await saveStrategy('test-article', {
+      const result = await saveStrategy(1, {
         douleur: { input: 'Pas de clients en ligne', suggestion: 'Ciblez le SEO local', validated: 'OK' },
         completedSteps: 2,
       })
 
-      expect(result.slug).toBe('test-article')
+      expect(result.id).toBe(1)
       expect(result.cible).toEqual(validStrategy.cible)
       expect(result.douleur.input).toBe('Pas de clients en ligne')
       expect(result.completedSteps).toBe(2)
       expect(mockWriteJson).toHaveBeenCalled()
     })
 
-    it('enforces slug consistency', async () => {
+    it('enforces id consistency', async () => {
       mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
 
-      const result = await saveStrategy('correct-slug', { slug: 'wrong-slug' } as any)
+      const result = await saveStrategy(1, { id: 2 } as any)
 
-      expect(result.slug).toBe('correct-slug')
+      expect(result.id).toBe(1)
     })
 
     it('rejects invalid merged strategy via Zod', async () => {
       mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
 
       await expect(
-        saveStrategy('bad', { completedSteps: 99 } as any),
+        saveStrategy(1, { completedSteps: 99 } as any),
       ).rejects.toThrow()
     })
   })

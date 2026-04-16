@@ -291,15 +291,15 @@ function filterLieutenants(parsed: ProposeLieutenantsResult, level: ArticleLevel
 /**
  * POST /keywords/:keyword/propose-lieutenants
  * SSE streaming AI lieutenant proposal.
- * Body: { level, articleSlug, serpHeadings: { level, text, count }[], paaQuestions: { question, answer? }[], wordGroups?: string[], rootKeywords?: string[] }
+ * Body: { level, articleId, serpHeadings: { level, text, count }[], paaQuestions: { question, answer? }[], wordGroups?: string[], rootKeywords?: string[] }
  */
 router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  const { level, articleSlug, serpHeadings, paaQuestions, wordGroups, rootKeywords, serpCompetitors, rootKeywordsSerpData, cocoonSlug } = req.body
+  const { level, articleId, serpHeadings, paaQuestions, wordGroups, rootKeywords, serpCompetitors, rootKeywordsSerpData, cocoonSlug } = req.body
 
   const VALID_LEVELS: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
-  if (!keyword || !level || !articleSlug) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword, level, and articleSlug are required' } })
+  if (!keyword || !level || !articleId) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword, level, and articleId are required' } })
     return
   }
   if (!VALID_LEVELS.includes(level as ArticleLevel)) {
@@ -318,8 +318,8 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
   try {
     const startTotal = Date.now()
     // Anti-cannibalization: get lieutenants already assigned to sibling articles
-    const existingLieutenants = await getCocoonExistingLieutenants(articleSlug)
-    log.debug('existing lieutenants loaded', { articleSlug, count: existingLieutenants.length })
+    const existingLieutenants = await getCocoonExistingLieutenants(articleId)
+    log.debug('existing lieutenants loaded', { articleId, count: existingLieutenants.length })
 
     const validPaa = Array.isArray(paaQuestions)
       ? paaQuestions.filter((q: { question: string }) => q.question?.trim())
@@ -413,7 +413,7 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
     res.end()
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erreur lors de la proposition de lieutenants IA'
-    log.error(`AI propose-lieutenants failed for "${keyword}" — ${message}`, { keyword, level, articleSlug, cocoonSlug })
+    log.error(`AI propose-lieutenants failed for "${keyword}" — ${message}`, { keyword, level, articleId, cocoonSlug })
     if (res.headersSent) {
       res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
       res.end()

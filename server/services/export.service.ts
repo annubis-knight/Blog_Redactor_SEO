@@ -1,4 +1,24 @@
+import { readFile } from 'fs/promises'
+import { join } from 'path'
 import { log } from '../utils/logger.js'
+import { splitByH2Regex } from '../../shared/html-utils.js'
+
+const DOCS_DIR = join(process.cwd(), 'docs')
+
+/** Read and concatenate the Propulsite CSS files for inline embedding */
+async function loadPropulsiteCss(): Promise<string> {
+  const files = ['tailwindOut.css', 'variables.css', 'styles.css']
+  const parts: string[] = []
+  for (const file of files) {
+    try {
+      const css = await readFile(join(DOCS_DIR, file), 'utf-8')
+      parts.push(`/* --- ${file} --- */\n${css}`)
+    } catch {
+      log.warn(`loadPropulsiteCss: ${file} not found, skipping`)
+    }
+  }
+  return parts.join('\n\n')
+}
 
 interface ExportOptions {
   title: string
@@ -8,50 +28,25 @@ interface ExportOptions {
   content: string
   /** Optional JSON-LD script block to inject in <head> */
   jsonLd?: string
+  /** When true, CSS is inlined as <style> instead of external <link> tags (for iframe preview) */
+  embedCss?: boolean
 }
 
-/** Parse TipTap HTML to extract structured sections */
+/** Parse TipTap HTML to extract structured sections (uses shared splitByH2Regex) */
 function parseSections(html: string): { intro: string; chapters: { title: string; id: string; body: string }[]; conclusion: string } {
-  const sections: { title: string; id: string; body: string }[] = []
-  let intro = ''
-  let conclusion = ''
+  const split = splitByH2Regex(html)
 
-  // Split by H2 tags
-  const h2Pattern = /<h2[^>]*>(.*?)<\/h2>/gi
-  const matches: { index: number; title: string }[] = []
-  let match: RegExpExecArray | null
+  // Intro sections (H2 "Introduction") get merged into intro text
+  const introSections = split.sections.filter(s => s.isIntro)
+  const introParts = [split.intro, ...introSections.map(s => s.bodyHtml)].filter(Boolean)
 
-  while ((match = h2Pattern.exec(html)) !== null) {
-    matches.push({ index: match.index, title: match[1]! })
+  return {
+    intro: introParts.join('\n').trim(),
+    chapters: split.sections
+      .filter(s => !s.isIntro && !s.isConclusion)
+      .map(s => ({ title: s.title, id: slugify(s.title), body: s.bodyHtml })),
+    conclusion: split.sections.find(s => s.isConclusion)?.bodyHtml ?? '',
   }
-
-  if (matches.length === 0) {
-    // No H2s — treat entire content as intro
-    intro = html
-    return { intro, chapters: sections, conclusion }
-  }
-
-  // Content before first H2 is intro
-  intro = html.slice(0, matches[0]!.index).trim()
-
-  for (let i = 0; i < matches.length; i++) {
-    const current = matches[i]!
-    const nextIndex = i + 1 < matches.length ? matches[i + 1]!.index : html.length
-    const fullSection = html.slice(current.index, nextIndex)
-    // Remove the H2 tag itself to get body
-    const body = fullSection.replace(/<h2[^>]*>.*?<\/h2>/i, '').trim()
-    const titleText = current.title.replace(/<[^>]+>/g, '').trim()
-    const id = slugify(titleText)
-
-    const isConclusion = titleText.toLowerCase().includes('conclusion')
-    if (isConclusion) {
-      conclusion = body
-    } else {
-      sections.push({ title: titleText, id, body })
-    }
-  }
-
-  return { intro, chapters: sections, conclusion }
 }
 
 /** Create a URL-friendly slug from text */
@@ -87,8 +82,8 @@ function buildChapters(chapters: { title: string; id: string; body: string }[]):
 
 /** Generate full Propulsite-compliant HTML from article data */
 export async function generateExportHtml(options: ExportOptions): Promise<string> {
-  const { title, metaTitle, metaDescription, cocoonName, content, jsonLd } = options
-  log.info(`generateExportHtml: ${title}`, { contentLength: content.length, hasJsonLd: !!jsonLd })
+  const { title, metaTitle, metaDescription, cocoonName, content, jsonLd, embedCss } = options
+  log.info(`generateExportHtml: ${title}`, { contentLength: content.length, hasJsonLd: !!jsonLd, embedCss: !!embedCss })
 
   const { intro, chapters, conclusion } = parseSections(content)
   log.debug(`generateExportHtml: parsed ${chapters.length} chapters, intro=${intro.length > 0}, conclusion=${conclusion.length > 0}`)
@@ -109,13 +104,25 @@ export async function generateExportHtml(options: ExportOptions): Promise<string
                         </div>`
     : ''
 
+  // In preview mode (embedCss), assets are served from Vite public/ at root (e.g. /svg/, /images/)
+  // In export mode, assets are at /assets/svg/, /assets/images/ on the Propulsite production site
+  const assetPrefix = embedCss ? '' : '/assets'
+
+  const cssBlock = embedCss
+    ? `    <style>\n${(await loadPropulsiteCss()).replace(/\/assets\//g, '/')}\n    </style>`
+    : `    <link href="/css/tailwindOut.css" rel="stylesheet">
+    <link href="/css/globals.css" rel="stylesheet">
+    <link href="/css/styles.css" rel="stylesheet">`
+
+  const baseTag = embedCss ? '    <base href="/">\n' : ''
+
   const html = `<!DOCTYPE html>
 <html lang="fr">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${escapeHtml(metaTitle)}</title>
+${baseTag}    <title>${escapeHtml(metaTitle)}</title>
     <meta name="description" content="${escapeHtml(metaDescription)}">
     <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Text&family=Red+Hat+Text:wght@400;500;600;700&display=swap"
@@ -124,9 +131,7 @@ export async function generateExportHtml(options: ExportOptions): Promise<string
         href="https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&family=Petrona:ital,wght@0,100..900;1,100..900&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap"
         rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
-    <link href="/css/tailwindOut.css" rel="stylesheet">
-    <link href="/css/globals.css" rel="stylesheet">
-    <link href="/css/styles.css" rel="stylesheet">
+${cssBlock}
 ${jsonLdBlock}
 </head>
 
@@ -136,7 +141,7 @@ ${jsonLdBlock}
         <!-- Section Hero -->
         <section id="sectionHeroRealisation" class="pad-y-large">
             <div class="absoluteIcon2">
-                <img src="/assets/svg/NomIcone=outStr_Arrow.svg" alt="Image absolute" class="w-full">
+                <img src="${assetPrefix}/svg/NomIcone=outStr_Arrow.svg" alt="Image absolute" class="w-full">
             </div>
             <div class="containerMax mx-auto x-5">
                 <div class="grid-tailwind py-20">
@@ -218,28 +223,18 @@ export function generateJsonLd(options: {
   log.info(`generateJsonLd: ${slug}`)
   const now = datePublished || new Date().toISOString()
 
-  // Extract H2 questions for FAQPage
-  const h2Pattern = /<h2[^>]*>(.*?)<\/h2>/gi
+  // Extract H2 questions for FAQPage (using shared splitter)
+  const split = splitByH2Regex(content)
   const questions: { question: string; answer: string }[] = []
-  let match: RegExpExecArray | null
-  const h2Matches: { index: number; title: string; fullMatch: string }[] = []
 
-  while ((match = h2Pattern.exec(content)) !== null) {
-    h2Matches.push({ index: match.index, title: match[1]!, fullMatch: match[0] })
-  }
-
-  for (let i = 0; i < h2Matches.length; i++) {
-    const current = h2Matches[i]!
-    const titleText = current.title.replace(/<[^>]+>/g, '').trim()
+  for (const section of split.sections) {
     // Check if heading is a question
-    if (titleText.includes('?') || /^(comment|pourquoi|quand|où|quel|quelle|quels|quelles)\b/i.test(titleText)) {
-      const nextIndex = i + 1 < h2Matches.length ? h2Matches[i + 1]!.index : content.length
-      const sectionContent = content.slice(current.index + current.fullMatch.length, nextIndex)
+    if (section.title.includes('?') || /^(comment|pourquoi|quand|où|quel|quelle|quels|quelles)\b/i.test(section.title)) {
       // Extract first paragraph as answer
-      const pMatch = /<p[^>]*>(.*?)<\/p>/is.exec(sectionContent)
+      const pMatch = /<p[^>]*>(.*?)<\/p>/is.exec(section.bodyHtml)
       const answer = pMatch ? pMatch[1]!.replace(/<[^>]+>/g, '').trim() : ''
       if (answer) {
-        questions.push({ question: titleText, answer })
+        questions.push({ question: section.title, answer })
       }
     }
   }

@@ -4,6 +4,9 @@ import { log } from '@/utils/logger'
 import type { ValidateResponse, ArticleLevel } from '@shared/types/index.js'
 import type { ArticleType } from '@shared/types/article.types.js'
 import type { RadarCard, KeywordRadarScanResult } from '@shared/types/intent.types.js'
+import { FRENCH_STOPWORDS } from '@/constants/french-nlp'
+
+export { FRENCH_STOPWORDS }
 
 /** Map ArticleType (display) to ArticleLevel (API) */
 const LEVEL_MAP: Record<ArticleType, ArticleLevel> = {
@@ -15,15 +18,6 @@ const LEVEL_MAP: Record<ArticleType, ArticleLevel> = {
 export function articleTypeToLevel(type: ArticleType): ArticleLevel {
   return LEVEL_MAP[type] ?? 'intermediaire'
 }
-
-export const FRENCH_STOPWORDS = new Set([
-  'le', 'la', 'les', 'de', 'du', 'des', 'un', 'une', 'en', 'son', 'sa', 'ses',
-  'ou', 'et', 'à', 'au', 'aux', 'par', 'pour', 'sur', 'dans', 'avec', 'sans',
-  'que', 'qui', 'ne', 'pas', 'se', 'ce', 'cette', 'ces', 'mon', 'ma', 'mes',
-  'ton', 'ta', 'tes', 'votre', 'vos', 'leur', 'leurs', 'il', 'elle', 'on',
-  'nous', 'vous', 'ils', 'elles', 'être', 'avoir', 'faire', 'dire', 'aller',
-  'voir', 'aussi', 'plus', 'tout', 'bien', 'si', 'son', 'sa', 'ses', 'd',
-])
 
 /** Generate all progressive truncations from longest (N-1 words) to shortest (2 words min, ≥2 significant) */
 export function extractRoots(keyword: string): string[] {

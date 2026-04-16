@@ -25,6 +25,7 @@ vi.mock('../../../src/services/api.service', () => ({
 
 const mockBriefData: BriefData = {
   article: {
+    id: 1,
     title: 'Test Article',
     type: 'Pilier',
     slug: 'test-article',
@@ -49,8 +50,8 @@ const mockBriefData: BriefData = {
 
 const mockOutline: Outline = {
   sections: [
-    { id: 'h1-test', level: 1, title: 'Test Article', annotation: 'sommaire-cliquable' },
-    { id: 'h2-intro', level: 2, title: 'Introduction', annotation: 'content-valeur' },
+    { id: 'h1-test', level: 1, title: 'Test Article', annotation: 'sommaire-cliquable', status: 'accepted' },
+    { id: 'h2-intro', level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'accepted' },
   ],
 }
 
@@ -70,8 +71,8 @@ describe('editor.store — generateArticle', () => {
     expect(mockStartStream).toHaveBeenCalledWith(
       '/api/generate/article',
       expect.objectContaining({
-        slug: 'test-article',
-        outline: JSON.stringify(mockOutline),
+        articleId: 1,
+        outline: mockOutline,
         keyword: 'pilier keyword',
         keywords: ['pilier keyword', 'secondary keyword'],
         articleType: 'Pilier',
@@ -147,10 +148,10 @@ describe('editor.store — generateArticle', () => {
 describe('editor.store — generateMeta', () => {
   it('calls apiPost and stores meta values', async () => {
     const store = useEditorStore()
-    await store.generateMeta('test-slug', 'keyword', 'Title', '<p>Content</p>')
+    await store.generateMeta(1, 'keyword', 'Title', '<p>Content</p>')
 
     expect(mockApiPost).toHaveBeenCalledWith('/generate/meta', {
-      slug: 'test-slug',
+      articleId: 1,
       keyword: 'keyword',
       articleTitle: 'Title',
       articleContent: '<p>Content</p>',
@@ -164,7 +165,7 @@ describe('editor.store — generateMeta', () => {
     mockApiPost.mockRejectedValueOnce(new Error('API failed'))
 
     const store = useEditorStore()
-    await store.generateMeta('test-slug', 'keyword', 'Title', '<p>Content</p>')
+    await store.generateMeta(1, 'keyword', 'Title', '<p>Content</p>')
 
     expect(store.error).toBe('API failed')
     expect(store.isGeneratingMeta).toBe(false)
@@ -179,11 +180,11 @@ describe('editor.store — saveArticle', () => {
       callbacks.onDone({ content: '<h2>Article</h2>' })
     })
     await store.generateArticle(mockBriefData, mockOutline)
-    await store.generateMeta('test-slug', 'keyword', 'Title', '<h2>Article</h2>')
+    await store.generateMeta(1, 'keyword', 'Title', '<h2>Article</h2>')
 
-    await store.saveArticle('test-slug')
+    await store.saveArticle(1)
 
-    expect(mockApiPut).toHaveBeenCalledWith('/articles/test-slug', {
+    expect(mockApiPut).toHaveBeenCalledWith('/articles/1', {
       content: '<h2>Article</h2>',
       metaTitle: 'Mock Title',
       metaDescription: 'Mock description.',
@@ -194,7 +195,7 @@ describe('editor.store — saveArticle', () => {
     mockApiPut.mockRejectedValueOnce(new Error('Save failed'))
 
     const store = useEditorStore()
-    await store.saveArticle('test-slug')
+    await store.saveArticle(1)
 
     expect(store.error).toBe('Save failed')
   })
@@ -206,7 +207,7 @@ describe('editor.store — saveArticle', () => {
     expect(store.isSaving).toBe(false)
     expect(store.lastSavedAt).toBeNull()
 
-    await store.saveArticle('test-slug')
+    await store.saveArticle(1)
 
     expect(store.isSaving).toBe(false)
     expect(store.isDirty).toBe(false)
@@ -219,7 +220,7 @@ describe('editor.store — saveArticle', () => {
     const store = useEditorStore()
     store.setContent('<p>Changed</p>')
 
-    await store.saveArticle('test-slug')
+    await store.saveArticle(1)
 
     expect(store.isSaving).toBe(false)
     expect(store.error).toBe('Network error')

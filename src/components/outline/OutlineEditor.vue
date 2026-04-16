@@ -65,6 +65,7 @@ function addSection(afterIndex: number, level: 2 | 3) {
     level,
     title: 'Nouvelle section',
     annotation: null,
+    status: 'accepted',
   }
   sections.splice(afterIndex + 1, 0, newSection)
   emit('update:outline', { sections })

@@ -42,14 +42,20 @@ const router = createRouter({
       component: () => import('../views/RedactionView.vue'),
     },
     {
-      path: '/cocoon/:cocoonId/article/:slug',
+      path: '/cocoon/:cocoonId/article/:articleId',
       name: 'article',
       component: () => import('../views/ArticleWorkflowView.vue'),
     },
     {
-      path: '/article/:slug/editor',
+      path: '/article/:articleId/editor',
       name: 'article-editor',
       component: () => import('../views/ArticleEditorView.vue'),
+    },
+    {
+      path: '/article/:articleId/preview',
+      name: 'article-preview',
+      component: () => import('../views/ArticlePreviewView.vue'),
+      meta: { hideNavbar: true },
     },
     {
       path: '/labo',
@@ -77,8 +83,8 @@ const router = createRouter({
       redirect: to => `/cocoon/${to.params.themeId}`,
     },
     {
-      path: '/theme/:themeId/article/:slug',
-      redirect: to => `/cocoon/${to.params.themeId}/article/${to.params.slug}`,
+      path: '/theme/:themeId/article/:articleId',
+      redirect: to => `/cocoon/${to.params.themeId}/article/${to.params.articleId}`,
     },
     {
       path: '/theme/:themeId/keywords',
@@ -99,7 +105,7 @@ const router = createRouter({
 
 // Validate route params — reject empty/whitespace-only values
 router.beforeEach((to) => {
-  const paramsToValidate = ['cocoonId', 'slug', 'siloId', 'themeId'] as const
+  const paramsToValidate = ['cocoonId', 'articleId', 'siloId', 'themeId'] as const
   for (const param of paramsToValidate) {
     const value = to.params[param] as string | undefined
     if (value !== undefined && !value.trim()) {

@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { readJson, writeJson } from '../../../server/utils/json-storage.js'
-import { unlink, mkdir } from 'fs/promises'
+import { unlink } from 'fs/promises'
 import { join } from 'path'
 import { existsSync } from 'fs'
 
@@ -44,4 +44,31 @@ describe('json-storage', () => {
     const { rm } = await import('fs/promises')
     await rm(join(TEST_DIR, 'nested'), { recursive: true })
   })
+
+  describe('concurrent writes (mutex)', () => {
+    it('serializes 10 parallel writes without data loss — last write wins', async () => {
+      // Fire 10 writeJson in parallel on the same path. Without mutex,
+      // multiple callers can race on tmp+rename causing lost updates.
+      const writes = Array.from({ length: 10 }, (_, i) =>
+        writeJson(TEST_FILE, { seq: i }),
+      )
+      await Promise.all(writes)
+      const result = await readJson<{ seq: number }>(TEST_FILE)
+      // Last write must win deterministically (not a random intermediate value)
+      expect(result.seq).toBe(9)
+    })
+
+    it('preserves every writer payload integrity under concurrency', async () => {
+      // Each writer stores a unique payload. After all complete, file must
+      // parse to ONE valid payload (no interleaved/corrupt JSON).
+      const writes = Array.from({ length: 8 }, (_, i) =>
+        writeJson(TEST_FILE, { writer: i, data: `payload-${i}` }),
+      )
+      await Promise.all(writes)
+      const result = await readJson<{ writer: number; data: string }>(TEST_FILE)
+      // Whatever the final writer is, data field must match its writer index
+      expect(result.data).toBe(`payload-${result.writer}`)
+    })
+  })
+
 })

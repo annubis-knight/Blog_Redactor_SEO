@@ -86,4 +86,28 @@ describe('useAutoSave', () => {
 
     expect(saveSpy).not.toHaveBeenCalled()
   })
+
+  it('does NOT call saveArticle when isReducing is true (G2 guard)', async () => {
+    const store = useEditorStore()
+    store.setContent('<p>Changed</p>')
+    store.$patch({ isReducing: true })
+    const saveSpy = vi.spyOn(store, 'saveArticle')
+
+    useAutoSave('test-slug', 30_000)
+    await intervalCallback!()
+
+    expect(saveSpy).not.toHaveBeenCalled()
+  })
+
+  it('does NOT call saveArticle when isHumanizing is true (G2 guard)', async () => {
+    const store = useEditorStore()
+    store.setContent('<p>Changed</p>')
+    store.$patch({ isHumanizing: true })
+    const saveSpy = vi.spyOn(store, 'saveArticle')
+
+    useAutoSave('test-slug', 30_000)
+    await intervalCallback!()
+
+    expect(saveSpy).not.toHaveBeenCalled()
+  })
 })

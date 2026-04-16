@@ -14,7 +14,7 @@ import contentGapRoutes from './routes/content-gap.routes.js'
 import gscRoutes from './routes/gsc.routes.js'
 import siloRoutes from './routes/silos.routes.js'
 import strategyRoutes from './routes/strategy.routes.js'
-import articleProgressRoutes from './routes/article-progress.routes.js'
+
 import intentScanRoutes from './routes/intent-scan.routes.js'
 import discoveryCacheRoutes from './routes/discovery-cache.routes.js'
 import radarCacheRoutes from './routes/radar-cache.routes.js'
@@ -64,7 +64,7 @@ app.use('/api', contentGapRoutes)
 app.use('/api', gscRoutes)
 app.use('/api', siloRoutes)
 app.use('/api', strategyRoutes)
-app.use('/api', articleProgressRoutes)
+
 app.use('/api', intentScanRoutes)
 app.use('/api', discoveryCacheRoutes)
 app.use('/api', radarCacheRoutes)

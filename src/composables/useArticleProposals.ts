@@ -43,16 +43,16 @@ export function useArticleProposals(params: {
   const generationWarning = ref<string | null>(null)
   const addingArticleType = ref<ArticleType | null>(null)
 
-  // --- Migrate existing articles: derive slugs + assign IDs + backfill dbSlug ---
+  // --- Migrate existing articles: derive slugs + assign IDs + backfill dbId ---
   watch(() => store.strategy?.proposedArticles, (articles) => {
     if (!articles) return
     let patched = false
-    // Build title→slug map from BDD for dbSlug backfill
+    // Build title→id map from BDD for dbId backfill
     const cocoon = cocoonsStore.cocoons.find(c => c.name === cocoonName.value)
-    const dbTitleToSlug = new Map<string, string>()
+    const dbTitleToId = new Map<string, number>()
     if (cocoon) {
       for (const a of cocoon.articles) {
-        dbTitleToSlug.set(a.title, a.slug)
+        dbTitleToId.set(a.title, a.id)
       }
     }
     for (const article of articles) {
@@ -67,11 +67,11 @@ export function useArticleProposals(params: {
         }
         patched = true
       }
-      // Backfill dbSlug for articles already in BDD but missing the field
-      if (article.createdInDb && !article.dbSlug && article.title) {
-        const found = dbTitleToSlug.get(article.title)
+      // Backfill dbId for articles already in BDD but missing the field
+      if (article.createdInDb && !article.dbId && article.title) {
+        const found = dbTitleToId.get(article.title)
         if (found) {
-          article.dbSlug = found
+          article.dbId = found
           patched = true
         }
       }
@@ -112,7 +112,7 @@ export function useArticleProposals(params: {
       titleValidated: false,
       accepted: false,
       createdInDb: false,
-      dbSlug: '',
+      dbId: 0,
     }
   }
 
@@ -170,7 +170,7 @@ export function useArticleProposals(params: {
             titleValidated: false,
             accepted: false,
             createdInDb: false,
-            dbSlug: '',
+            dbId: 0,
           })
         }
       } catch { /* skip malformed object */ }
@@ -233,7 +233,7 @@ export function useArticleProposals(params: {
             titleValidated: false,
             accepted: false,
             createdInDb: false,
-            dbSlug: '',
+            dbId: 0,
           }
         })
       }
@@ -263,7 +263,7 @@ export function useArticleProposals(params: {
       titleValidated: false,
       accepted: false,
       createdInDb: false,
-      dbSlug: '',
+      dbId: 0,
     })
   }
 
@@ -319,12 +319,12 @@ export function useArticleProposals(params: {
     const article = store.strategy.proposedArticles[index]
     if (!article) return
 
-    if (article.createdInDb && article.dbSlug) {
+    if (article.createdInDb && article.dbId) {
       try {
-        await apiDelete(`/articles/${article.dbSlug}`)
-        log.info('Article deleted from DB', { slug: article.dbSlug })
+        await apiDelete(`/articles/${article.dbId}`)
+        log.info('Article deleted from DB', { articleId: article.dbId })
       } catch (err) {
-        log.warn('Article delete failed (may already be removed)', { slug: article.dbSlug })
+        log.warn('Article delete failed (may already be removed)', { articleId: article.dbId })
       }
     }
 
@@ -336,12 +336,17 @@ export function useArticleProposals(params: {
   async function createArticleInDb(article: ProposedArticle): Promise<void> {
     if (article.createdInDb || !article.title.trim()) return
     try {
-      const created = await apiPost<Array<{ slug: string }>>('/articles/batch-create', {
+      const created = await apiPost<Array<{ id: number; slug: string }>>('/articles/batch-create', {
         cocoonName: cocoonName.value,
-        articles: [{ title: article.title, type: article.type, slug: article.suggestedSlug || undefined }],
+        articles: [{
+          title: article.title,
+          type: article.type,
+          slug: article.suggestedSlug || undefined,
+          suggestedKeyword: article.suggestedKeyword?.trim() || null,
+        }],
       })
-      if (created?.[0]?.slug) {
-        article.dbSlug = created[0].slug
+      if (created?.[0]?.id) {
+        article.dbId = created[0].id
       }
       if (article.suggestedKeyword.trim()) {
         await apiPost('/keywords', {
@@ -351,7 +356,7 @@ export function useArticleProposals(params: {
         })
       }
       article.createdInDb = true
-      log.info('Article created in DB', { title: article.title, slug: article.dbSlug })
+      log.info('Article created in DB', { title: article.title, articleId: article.dbId })
     } catch (err) {
       log.error('createArticleInDb failed', { title: article.title, error: (err as Error).message })
     }
@@ -498,12 +503,12 @@ export function useArticleProposals(params: {
     if (!article) return
     store.strategy.proposedArticles[index] = { ...article, title: value }
     store.saveStrategy(cocoonSlug.value)
-    if (article.createdInDb && article.dbSlug) {
+    if (article.createdInDb && article.dbId) {
       try {
-        await apiPatch(`/articles/${article.dbSlug}`, { title: value })
+        await apiPatch(`/articles/${article.dbId}`, { title: value })
         await cocoonsStore.fetchCocoons()
       } catch (err) {
-        log.warn('Article title sync to DB failed', { slug: article.dbSlug, error: (err as Error).message })
+        log.warn('Article title sync to DB failed', { articleId: article.dbId, error: (err as Error).message })
       }
     }
   }
