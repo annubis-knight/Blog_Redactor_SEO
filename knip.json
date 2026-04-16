@@ -1,0 +1,22 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "src/main.ts",
+    "server/index.ts",
+    "env.d.ts",
+    "scripts/**/*.{ts,mjs}"
+  ],
+  "project": [
+    "src/**/*.{ts,vue}",
+    "server/**/*.ts",
+    "shared/**/*.ts",
+    "tests/**/*.ts"
+  ],
+  "vitest": {
+    "config": ["vitest.config.*"],
+    "entry": ["tests/setup.ts", "tests/**/*.test.ts"]
+  },
+  "ignoreDependencies": [
+    "madge"
+  ]
+}

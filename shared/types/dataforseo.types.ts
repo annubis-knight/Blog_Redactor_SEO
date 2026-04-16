@@ -36,13 +36,3 @@ export interface DataForSeoCacheEntry {
   keywordData: KeywordOverview
   cachedAt: string
 }
-
-import type { Article } from './article.types.js'
-import type { Keyword } from './keyword.types.js'
-
-export interface BriefData {
-  article: Article & { cocoonName: string }
-  keywords: Keyword[]
-  dataForSeo: DataForSeoCacheEntry | null
-  contentLengthRecommendation: number | null
-}

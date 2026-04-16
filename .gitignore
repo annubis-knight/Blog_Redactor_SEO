@@ -49,3 +49,4 @@ data/articles/
 data/cache/
 data/links/
 *.tmp
+*.bak
