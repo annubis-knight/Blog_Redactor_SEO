@@ -74,13 +74,6 @@ export async function upsertLinks(newLinks: InternalLink[]): Promise<LinkingMatr
   return saveMatrix(matrix)
 }
 
-/** Remove all links from a specific source article */
-export async function removeLinksFromSource(sourceId: number): Promise<LinkingMatrix> {
-  const matrix = await getMatrix()
-  matrix.links = matrix.links.filter((l) => l.sourceId !== sourceId)
-  return saveMatrix(matrix)
-}
-
 /** Get links for a specific article (as source or target) */
 export function getLinksForArticle(
   matrix: LinkingMatrix,

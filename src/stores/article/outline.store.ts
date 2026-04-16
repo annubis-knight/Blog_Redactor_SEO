@@ -6,22 +6,6 @@ import { apiPut } from '@/services/api.service'
 import type { Outline, OutlineSection, BriefData, ApiUsage } from '@shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
 
-/** Build an outline from lieutenants alone (fallback when hnStructure is empty) */
-export function lieutenantsToOutline(lieutenants: string[], articleTitle: string): Outline {
-  const now = Date.now()
-  const sections: OutlineSection[] = []
-
-  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable', status: 'suggested' })
-  sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'suggested' })
-
-  lieutenants.forEach((lt, idx) => {
-    sections.push({ id: `h2-${now}-${idx}`, level: 2, title: lt, annotation: null, status: 'suggested' })
-  })
-
-  sections.push({ id: `h2-${now}-conclusion`, level: 2, title: 'Conclusion', annotation: 'content-reminder', status: 'suggested' })
-  return { sections }
-}
-
 /** Transform HN structure from Moteur into an editable Outline */
 export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: string): Outline {
   const now = Date.now()

@@ -22,7 +22,7 @@ export function sanitizeHtml(html: string): string {
 }
 
 /** Sanitize SVG content with permissive config (for app-internal SVG only) */
-export function sanitizeSvg(html: string): string {
+function sanitizeSvg(html: string): string {
   return DOMPurify.sanitize(html, svgConfig) as string
 }
 

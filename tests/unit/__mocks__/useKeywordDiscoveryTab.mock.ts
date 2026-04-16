@@ -4,7 +4,7 @@ import { vi } from 'vitest'
  * Full mock factory for useKeywordDiscoveryTab composable.
  * Use via vi.mock path with createMock() or import the default mock.
  */
-export function createKeywordDiscoveryTabMock() {
+function createKeywordDiscoveryTabMock() {
   return {
     suggestAlphabetKw: { value: [] },
     suggestQuestionsKw: { value: [] },

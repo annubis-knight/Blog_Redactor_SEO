@@ -96,14 +96,3 @@ async function updateReverseIndex(keyword: string, questions: string[]): Promise
   log.debug(`[PAA Cache] Reverse index updated: ${questions.length} questions mapped to "${keyword}"`)
 }
 
-/**
- * Find all keywords that triggered a given PAA question.
- * Returns empty array if question not found.
- */
-export async function findKeywordsForQuestion(question: string): Promise<string[]> {
-  const index = await readReverseIndex()
-  const key = normalize(question)
-  const keywords = index.entries[key]?.keywords ?? []
-  log.debug(`[PAA Cache] Reverse lookup "${question.slice(0, 50)}..." → ${keywords.length} keywords`)
-  return keywords
-}

@@ -19,7 +19,7 @@ const STOPWORDS = new Set([
   'their', 'he', 'she', 'my', 'me', 'do', 'no', 'so', 'if',
 ])
 
-const TOKEN_RE = /[\s\-_.,;:!?'"()\[\]{}/\\]+/
+const TOKEN_RE = /[\s\-_.,;:!?'"()[\]{}/\\]+/
 
 /** Strip diacritics and lowercase: "Référencement" → "referencement" */
 function normalize(s: string): string {
@@ -85,13 +85,3 @@ export function computeWordGroups(
   return results.slice(0, maxGroups)
 }
 
-/**
- * Filter keywords containing a specific word (normalized comparison).
- */
-export function filterByGroup(keywords: string[], word: string): string[] {
-  const target = normalize(word)
-  return keywords.filter(kw => {
-    const tokens = kw.toLowerCase().split(TOKEN_RE)
-    return tokens.some(t => normalize(t) === target)
-  })
-}

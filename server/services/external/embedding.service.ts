@@ -53,7 +53,7 @@ async function ensureModel(): Promise<boolean> {
  * E5 models require a prefix: "query: " for search queries, "passage: " for documents.
  * Processes in batches of BATCH_SIZE for memory efficiency.
  */
-export async function embedTexts(texts: string[], prefix: 'query' | 'passage' = 'query'): Promise<number[][] | null> {
+async function embedTexts(texts: string[], prefix: 'query' | 'passage' = 'query'): Promise<number[][] | null> {
   if (!await ensureModel()) return null
 
   const totalBatches = Math.ceil(texts.length / 32)
@@ -87,7 +87,7 @@ export async function embedTexts(texts: string[], prefix: 'query' | 'passage' = 
  * If vectors are already L2-normalized (which e5 + normalize:true does),
  * cosine similarity = dot product.
  */
-export function cosineSimilarity(a: number[], b: number[]): number {
+function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0
   for (let i = 0; i < a.length; i++) {
     dot += a[i] * b[i]
