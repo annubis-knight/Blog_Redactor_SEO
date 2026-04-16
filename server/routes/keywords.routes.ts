@@ -2,14 +2,14 @@ import { Router } from 'express'
 import { join } from 'path'
 import { log } from '../utils/logger.js'
 import { readCached, writeCached, slugify, isFresh } from '../utils/cache.js'
-import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords } from '../services/data.service.js'
-import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/dataforseo.service.js'
-import { discoverKeywords, discoverFromDomain } from '../services/keyword-discovery.service.js'
-import { previewMigration, applyMigration } from '../services/keyword-assignment.service.js'
-import { fetchAutocomplete } from '../services/autocomplete.service.js'
-import { suggestAll } from '../services/suggest.service.js'
-import { computeWordGroups } from '../services/word-groups.service.js'
-import type { ArticleKeywordAssignment } from '../services/keyword-assignment.service.js'
+import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords } from '../services/infra/data.service.js'
+import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
+import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
+import { previewMigration, applyMigration } from '../services/keyword/keyword-assignment.service.js'
+import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
+import { suggestAll } from '../services/keyword/suggest.service.js'
+import { computeWordGroups } from '../services/keyword/word-groups.service.js'
+import type { ArticleKeywordAssignment } from '../services/keyword/keyword-assignment.service.js'
 import type { Keyword, KeywordStatus } from '../../shared/types/index.js'
 
 const router = Router()
@@ -302,7 +302,7 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
     }
 
     const { loadPrompt } = await import('../utils/prompt-loader.js')
-    const { streamChatCompletion, USAGE_SENTINEL } = await import('../services/claude.service.js')
+    const { streamChatCompletion, USAGE_SENTINEL } = await import('../services/external/claude.service.js')
 
     const cocoonSlug = cocoonName
       ? cocoonName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -341,7 +341,7 @@ router.post('/keywords/translate-pain', async (req, res) => {
     }
 
     const { loadPrompt } = await import('../utils/prompt-loader.js')
-    const { streamChatCompletion, USAGE_SENTINEL } = await import('../services/claude.service.js')
+    const { streamChatCompletion, USAGE_SENTINEL } = await import('../services/external/claude.service.js')
 
     const painCocoonSlug = painCocoonName
       ? painCocoonName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -387,9 +387,9 @@ router.post('/keywords/validate-pain', async (req, res) => {
       return
     }
 
-    const { fetchKeywordOverviewBatch, fetchRelatedKeywords } = await import('../services/dataforseo.service.js')
-    const { fetchCommunityDiscussions } = await import('../services/community-discussions.service.js')
-    const { fetchAutocomplete } = await import('../services/autocomplete.service.js')
+    const { fetchKeywordOverviewBatch, fetchRelatedKeywords } = await import('../services/external/dataforseo.service.js')
+    const { fetchCommunityDiscussions } = await import('../services/intent/community-discussions.service.js')
+    const { fetchAutocomplete } = await import('../services/keyword/autocomplete.service.js')
 
     const overviews = await fetchKeywordOverviewBatch(keywords)
 
@@ -538,8 +538,8 @@ router.post('/keywords/relevance-score', async (req, res) => {
       return
     }
 
-    const { classifyWithTool } = await import('../services/claude.service.js')
-    const { getThemeConfig } = await import('../services/theme-config.service.js')
+    const { classifyWithTool } = await import('../services/external/claude.service.js')
+    const { getThemeConfig } = await import('../services/strategy/theme-config.service.js')
 
     // Load business context from theme config
     const theme = await getThemeConfig()
@@ -639,8 +639,8 @@ router.post('/keywords/analyze-discovery', async (req, res) => {
       return
     }
 
-    const { classifyWithTool } = await import('../services/claude.service.js')
-    const { getThemeConfig } = await import('../services/theme-config.service.js')
+    const { classifyWithTool } = await import('../services/external/claude.service.js')
+    const { getThemeConfig } = await import('../services/strategy/theme-config.service.js')
 
     // Business context
     const theme = await getThemeConfig()

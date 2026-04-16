@@ -37,7 +37,7 @@ beforeEach(async () => {
 })
 
 async function importService() {
-  const mod = await import('../../../server/services/local-entities.service')
+  const mod = await import('../../../server/services/infra/local-entities.service')
   return mod
 }
 

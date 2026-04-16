@@ -11,7 +11,7 @@ const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticl
   mockValidateHtmlStructurePreserved: vi.fn(),
 }))
 
-vi.mock('../../../server/services/claude.service', () => ({
+vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
   WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
@@ -21,11 +21,11 @@ vi.mock('../../../server/utils/prompt-loader', () => ({
   loadPrompt: mockLoadPrompt,
 }))
 
-vi.mock('../../../server/services/strategy.service', () => ({
+vi.mock('../../../server/services/strategy/strategy.service', () => ({
   getStrategy: mockGetStrategy,
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleKeywords: mockGetArticleKeywords,
   loadArticleMicroContext: mockLoadArticleMicroContext,
 }))

@@ -8,11 +8,11 @@ import {
   generateReduceSectionRequestSchema,
   generateHumanizeSectionRequestSchema,
 } from '../../shared/schemas/generate.schema.js'
-import { streamChatCompletion, USAGE_SENTINEL, WEB_SEARCH_TOOL } from '../services/claude.service.js'
-import type { ApiUsage } from '../services/claude.service.js'
+import { streamChatCompletion, USAGE_SENTINEL, WEB_SEARCH_TOOL } from '../services/external/claude.service.js'
+import type { ApiUsage } from '../services/external/claude.service.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
-import { getStrategy } from '../services/strategy.service.js'
-import { getArticleKeywords, loadArticleMicroContext } from '../services/data.service.js'
+import { getStrategy } from '../services/strategy/strategy.service.js'
+import { getArticleKeywords, loadArticleMicroContext } from '../services/infra/data.service.js'
 import type { ArticleStrategy, ArticleKeywords, Outline, OutlineSection } from '../../shared/types/index.js'
 import { mergeConsecutiveElements, validateHtmlStructurePreserved } from '../../shared/html-utils.js'
 

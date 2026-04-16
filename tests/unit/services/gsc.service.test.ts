@@ -15,7 +15,7 @@ import {
   isConnected,
   queryPerformance,
   analyzeKeywordGap,
-} from '../../../server/services/gsc.service'
+} from '../../../server/services/external/gsc.service'
 
 const mockReadJson = vi.mocked(readJson)
 const mockWriteJson = vi.mocked(writeJson)

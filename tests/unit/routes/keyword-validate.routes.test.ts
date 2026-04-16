@@ -2,17 +2,17 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks ---
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchKeywordOverview: vi.fn(),
   fetchPaa: vi.fn(),
   fetchSearchIntentBatch: vi.fn(),
 }))
 
-vi.mock('../../../server/services/autocomplete.service', () => ({
+vi.mock('../../../server/services/keyword/autocomplete.service', () => ({
   fetchAutocomplete: vi.fn(),
 }))
 
-vi.mock('../../../server/services/intent-scan.service', () => ({
+vi.mock('../../../server/services/intent/intent-scan.service', () => ({
   fetchSerpAdvanced: vi.fn(),
   extractPaaFromSerp: vi.fn(),
   matchResonanceDetailed: vi.fn(),
@@ -38,9 +38,9 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { fetchKeywordOverview, fetchPaa, fetchSearchIntentBatch } from '../../../server/services/dataforseo.service'
-import { fetchAutocomplete } from '../../../server/services/autocomplete.service'
-import { fetchSerpAdvanced, extractPaaFromSerp, matchResonanceDetailed, extractTopicWords, bestMatch, computePaaWeightedScore } from '../../../server/services/intent-scan.service'
+import { fetchKeywordOverview, fetchPaa, fetchSearchIntentBatch } from '../../../server/services/external/dataforseo.service'
+import { fetchAutocomplete } from '../../../server/services/keyword/autocomplete.service'
+import { fetchSerpAdvanced, extractPaaFromSerp, matchResonanceDetailed, extractTopicWords, bestMatch, computePaaWeightedScore } from '../../../server/services/intent/intent-scan.service'
 import { readCached, writeCached, isFresh } from '../../../server/utils/cache'
 
 const mockFetchOverview = vi.mocked(fetchKeywordOverview)

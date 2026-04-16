@@ -7,7 +7,7 @@ import {
   detectOrphans,
   checkAnchorDiversity,
   findCrossCocoonOpportunities,
-} from '../services/linking.service.js'
+} from '../services/article/linking.service.js'
 import { suggestLinksRequestSchema, saveLinksRequestSchema } from '../../shared/schemas/linking.schema.js'
 
 const router = Router()

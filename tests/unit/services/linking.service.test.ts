@@ -3,7 +3,7 @@ import {
   isValidHierarchyLink,
   getLinksForArticle,
   checkAnchorDiversity,
-} from '../../../server/services/linking.service'
+} from '../../../server/services/article/linking.service'
 import type { LinkingMatrix, InternalLink } from '../../../shared/types/linking.types'
 
 describe('linking.service', () => {

@@ -15,7 +15,7 @@ vi.stubEnv('DATAFORSEO_LOGIN', 'test_login')
 vi.stubEnv('DATAFORSEO_PASSWORD', 'test_password')
 
 import { readJson, writeJson } from '../../../server/utils/json-storage'
-import { analyzeMaps } from '../../../server/services/local-seo.service'
+import { analyzeMaps } from '../../../server/services/strategy/local-seo.service'
 
 const mockReadJson = vi.mocked(readJson)
 const mockWriteJson = vi.mocked(writeJson)

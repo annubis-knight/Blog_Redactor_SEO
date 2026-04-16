@@ -24,7 +24,7 @@ vi.mock('@anthropic-ai/sdk', () => {
 })
 
 import { readJson, writeJson } from '../../../server/utils/json-storage'
-import { analyzeIntent, compareLocalNational, validateAutocomplete } from '../../../server/services/intent.service'
+import { analyzeIntent, compareLocalNational, validateAutocomplete } from '../../../server/services/intent/intent.service'
 import type { IntentAnalysis, LocalNationalComparison, AutocompleteResult } from '../../../shared/types/index'
 
 const mockReadJson = readJson as Mock

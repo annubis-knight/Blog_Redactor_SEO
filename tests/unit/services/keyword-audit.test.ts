@@ -12,7 +12,7 @@ import {
   detectRedundancy,
   isCacheFresh,
   getMinRefreshHours,
-} from '../../../server/services/dataforseo.service.js'
+} from '../../../server/services/external/dataforseo.service.js'
 import type { KeywordAuditResult, KeywordOverview } from '../../../shared/types/index.js'
 
 describe('computeCompositeScore', () => {

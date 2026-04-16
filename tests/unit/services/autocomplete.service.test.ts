@@ -7,7 +7,7 @@ vi.mock('../../../server/utils/json-storage', () => ({
 }))
 
 // Mock dataforseo.service for slugify only
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   slugify: vi.fn((kw: string) =>
     kw.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
   ),
@@ -18,8 +18,8 @@ const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 import { readJson, writeJson } from '../../../server/utils/json-storage'
-import { fetchAutocomplete } from '../../../server/services/autocomplete.service'
-import type { AutocompleteSignal } from '../../../server/services/autocomplete.service'
+import { fetchAutocomplete } from '../../../server/services/keyword/autocomplete.service'
+import type { AutocompleteSignal } from '../../../server/services/keyword/autocomplete.service'
 
 const mockReadJson = vi.mocked(readJson)
 const mockWriteJson = vi.mocked(writeJson)

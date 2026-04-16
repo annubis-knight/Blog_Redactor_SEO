@@ -8,7 +8,7 @@ const { mockGetTheme, mockGetSilos, mockGetSiloByName } = vi.hoisted(() => ({
   mockGetSiloByName: vi.fn(),
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getTheme: mockGetTheme,
   getSilos: mockGetSilos,
   getSiloByName: mockGetSiloByName,

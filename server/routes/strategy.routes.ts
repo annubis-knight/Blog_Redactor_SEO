@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getStrategy, saveStrategy } from '../services/strategy.service.js'
-import { getCocoonStrategy, saveCocoonStrategy } from '../services/cocoon-strategy.service.js'
+import { getStrategy, saveStrategy } from '../services/strategy/strategy.service.js'
+import { getCocoonStrategy, saveCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
 import { strategySuggestRequestSchema, batchStrategyStatusRequestSchema, cocoonSuggestRequestSchema, strategyDeepenRequestSchema, strategyConsolidateRequestSchema, strategyEnrichRequestSchema } from '../../shared/schemas/strategy.schema.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/claude.service.js'
+import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/claude.service.js'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 

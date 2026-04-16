@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getCocoons, getArticlesByCocoon, getArticleKeywordsByCocoon } from '../services/data.service.js'
-import { getCocoonStrategy } from '../services/cocoon-strategy.service.js'
+import { getCocoons, getArticlesByCocoon, getArticleKeywordsByCocoon } from '../services/infra/data.service.js'
+import { getCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
 
 const router = Router()
 

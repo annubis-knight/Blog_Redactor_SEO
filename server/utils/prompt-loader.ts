@@ -12,7 +12,7 @@
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { log } from './logger.js'
-import { getCocoonStrategy } from '../services/cocoon-strategy.service.js'
+import { getCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
 import type { CocoonStrategy } from '../../shared/types/index.js'
 
 const PROMPTS_DIR = join(process.cwd(), 'server', 'prompts')

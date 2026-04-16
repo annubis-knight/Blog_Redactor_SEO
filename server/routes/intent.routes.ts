@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { analyzeIntent, compareLocalNational, validateAutocomplete } from '../services/intent.service.js'
+import { analyzeIntent, compareLocalNational, validateAutocomplete } from '../services/intent/intent.service.js'
 
 const router = Router()
 

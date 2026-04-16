@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { analyzeContentGap } from '../services/content-gap.service.js'
+import { analyzeContentGap } from '../services/article/content-gap.service.js'
 
 const router = Router()
 

@@ -7,7 +7,7 @@ const mockLoad = vi.fn()
 const mockSave = vi.fn()
 const mockClear = vi.fn()
 
-vi.mock('../../../server/services/radar-cache.service', () => ({
+vi.mock('../../../server/services/infra/radar-cache.service', () => ({
   checkRadarCache: (...args: unknown[]) => mockCheck(...args),
   loadRadarCache: (...args: unknown[]) => mockLoad(...args),
   saveRadarCache: (...args: unknown[]) => mockSave(...args),

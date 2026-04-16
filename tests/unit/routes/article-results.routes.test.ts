@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks ---
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleKeywords: vi.fn(),
 }))
 
@@ -21,7 +21,7 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { getArticleKeywords } from '../../../server/services/data.service'
+import { getArticleKeywords } from '../../../server/services/infra/data.service'
 import { readCached } from '../../../server/utils/cache'
 
 const mockGetArticleKeywords = vi.mocked(getArticleKeywords)

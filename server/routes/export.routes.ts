@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleById } from '../services/data.service.js'
-import { getArticleContent } from '../services/article-content.service.js'
-import { generateExportHtml, generateJsonLd } from '../services/export.service.js'
+import { getArticleById } from '../services/infra/data.service.js'
+import { getArticleContent } from '../services/article/article-content.service.js'
+import { generateExportHtml, generateJsonLd } from '../services/article/export.service.js'
 
 const router = Router()
 

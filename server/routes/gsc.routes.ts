@@ -6,7 +6,7 @@ import {
   isConnected,
   queryPerformance,
   analyzeKeywordGap,
-} from '../services/gsc.service.js'
+} from '../services/external/gsc.service.js'
 
 const router = Router()
 

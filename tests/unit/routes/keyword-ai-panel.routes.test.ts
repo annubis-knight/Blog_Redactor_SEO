@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks ---
 const mockStreamGenerator = vi.fn()
-vi.mock('../../../server/services/claude.service', () => ({
+vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
   USAGE_SENTINEL: '__USAGE__',
 }))
@@ -17,7 +17,7 @@ vi.mock('../../../server/utils/logger', () => ({
 }))
 
 const mockGetCocoonExistingLieutenants = vi.fn().mockResolvedValue([])
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoonExistingLieutenants: (...args: unknown[]) => mockGetCocoonExistingLieutenants(...args),
 }))
 

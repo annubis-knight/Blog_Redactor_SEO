@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { generateExportHtml, generateJsonLd } from '../../../server/services/export.service'
+import { generateExportHtml, generateJsonLd } from '../../../server/services/article/export.service'
 
 describe('export.service', () => {
   describe('generateExportHtml', () => {

@@ -9,7 +9,7 @@ import {
   getSiloByName,
   getCocoonsBySilo,
   resetCache,
-} from '../../../server/services/data.service.js'
+} from '../../../server/services/infra/data.service.js'
 
 beforeEach(() => {
   resetCache()

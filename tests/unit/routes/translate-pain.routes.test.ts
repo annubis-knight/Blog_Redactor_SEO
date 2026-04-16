@@ -7,7 +7,7 @@ const { mockStreamChatCompletion, mockLoadPrompt } = vi.hoisted(() => ({
   mockLoadPrompt: vi.fn(),
 }))
 
-vi.mock('../../../server/services/claude.service', () => ({
+vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
 }))
@@ -17,7 +17,7 @@ vi.mock('../../../server/utils/prompt-loader', () => ({
 }))
 
 // Mock all data.service exports used by keywords.routes
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getKeywordsByCocoon: vi.fn(),
   addKeyword: vi.fn(),
   replaceKeyword: vi.fn(),
@@ -28,18 +28,18 @@ vi.mock('../../../server/services/data.service', () => ({
   saveArticleKeywords: vi.fn(),
 }))
 
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   auditCocoonKeywords: vi.fn(),
   getAuditCacheStatus: vi.fn(),
   detectRedundancy: vi.fn(),
 }))
 
-vi.mock('../../../server/services/keyword-discovery.service', () => ({
+vi.mock('../../../server/services/keyword/keyword-discovery.service', () => ({
   discoverKeywords: vi.fn(),
   discoverFromDomain: vi.fn(),
 }))
 
-vi.mock('../../../server/services/keyword-assignment.service', () => ({
+vi.mock('../../../server/services/keyword/keyword-assignment.service', () => ({
   previewMigration: vi.fn(),
   applyMigration: vi.fn(),
 }))

@@ -26,7 +26,7 @@ const {
   mockUpdateArticleInCocoon: vi.fn(),
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleById: mockGetArticleById,
   getArticleBySlug: mockGetArticleBySlug,
   updateArticleStatus: mockUpdateArticleStatus,
@@ -37,7 +37,7 @@ vi.mock('../../../server/services/data.service', () => ({
   saveArticleMicroContext: mockSaveArticleMicroContext,
 }))
 
-vi.mock('../../../server/services/article-content.service', () => ({
+vi.mock('../../../server/services/article/article-content.service', () => ({
   saveArticleContent: mockSaveArticleContent,
   getArticleContent: mockGetArticleContent,
 }))

@@ -7,7 +7,7 @@ vi.mock('../../../server/utils/json-storage', () => ({
 }))
 
 // Mock dataforseo.service — we only need fetchDataForSeo and slugify
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchDataForSeo: vi.fn(),
   getBaseUrl: vi.fn(() => 'https://sandbox.dataforseo.com/v3'),
   getAuthHeader: vi.fn(() => 'Basic dGVzdDp0ZXN0'),
@@ -17,9 +17,9 @@ vi.mock('../../../server/services/dataforseo.service', () => ({
 }))
 
 import { readJson, writeJson } from '../../../server/utils/json-storage'
-import { fetchDataForSeo } from '../../../server/services/dataforseo.service'
-import { fetchCommunityDiscussions } from '../../../server/services/community-discussions.service'
-import type { CommunitySignal } from '../../../server/services/community-discussions.service'
+import { fetchDataForSeo } from '../../../server/services/external/dataforseo.service'
+import { fetchCommunityDiscussions } from '../../../server/services/intent/community-discussions.service'
+import type { CommunitySignal } from '../../../server/services/intent/community-discussions.service'
 
 const mockReadJson = vi.mocked(readJson)
 const mockWriteJson = vi.mocked(writeJson)

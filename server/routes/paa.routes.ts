@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { z } from 'zod/v4'
 import { log } from '../utils/logger.js'
-import { fetchPaa } from '../services/dataforseo.service.js'
+import { fetchPaa } from '../services/external/dataforseo.service.js'
 import type { PaaQuestion } from '../../shared/types/dataforseo.types.js'
 
 const router = Router()

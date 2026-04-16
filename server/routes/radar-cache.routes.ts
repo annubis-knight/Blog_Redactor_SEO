@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { checkRadarCache, loadRadarCache, saveRadarCache, clearRadarCache } from '../services/radar-cache.service.js'
+import { checkRadarCache, loadRadarCache, saveRadarCache, clearRadarCache } from '../services/infra/radar-cache.service.js'
 
 const router = Router()
 

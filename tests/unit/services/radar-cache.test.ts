@@ -19,7 +19,7 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { checkRadarCache, loadRadarCache, saveRadarCache, clearRadarCache } from '../../../server/services/radar-cache.service'
+import { checkRadarCache, loadRadarCache, saveRadarCache, clearRadarCache } from '../../../server/services/infra/radar-cache.service'
 
 const validEntry = {
   seed: 'refonte site web',

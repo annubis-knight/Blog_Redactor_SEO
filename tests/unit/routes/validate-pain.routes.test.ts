@@ -15,7 +15,7 @@ const { mockFetchAutocomplete } = vi.hoisted(() => ({
   mockFetchAutocomplete: vi.fn(),
 }))
 
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchKeywordOverviewBatch: mockFetchKeywordOverviewBatch,
   fetchRelatedKeywords: mockFetchRelatedKeywords,
   auditCocoonKeywords: vi.fn(),
@@ -23,15 +23,15 @@ vi.mock('../../../server/services/dataforseo.service', () => ({
   detectRedundancy: vi.fn(),
 }))
 
-vi.mock('../../../server/services/community-discussions.service', () => ({
+vi.mock('../../../server/services/intent/community-discussions.service', () => ({
   fetchCommunityDiscussions: mockFetchCommunityDiscussions,
 }))
 
-vi.mock('../../../server/services/autocomplete.service', () => ({
+vi.mock('../../../server/services/keyword/autocomplete.service', () => ({
   fetchAutocomplete: mockFetchAutocomplete,
 }))
 
-vi.mock('../../../server/services/claude.service', () => ({
+vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: vi.fn(),
   USAGE_SENTINEL: '__USAGE__',
 }))
@@ -47,7 +47,7 @@ vi.mock('../../../server/utils/cache', () => ({
   isFresh: vi.fn().mockReturnValue(false),
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getKeywordsByCocoon: vi.fn(),
   addKeyword: vi.fn(),
   replaceKeyword: vi.fn(),
@@ -58,12 +58,12 @@ vi.mock('../../../server/services/data.service', () => ({
   saveArticleKeywords: vi.fn(),
 }))
 
-vi.mock('../../../server/services/keyword-discovery.service', () => ({
+vi.mock('../../../server/services/keyword/keyword-discovery.service', () => ({
   discoverKeywords: vi.fn(),
   discoverFromDomain: vi.fn(),
 }))
 
-vi.mock('../../../server/services/keyword-assignment.service', () => ({
+vi.mock('../../../server/services/keyword/keyword-assignment.service', () => ({
   previewMigration: vi.fn(),
   applyMigration: vi.fn(),
 }))

@@ -49,7 +49,7 @@ beforeEach(async () => {
 })
 
 async function importService() {
-  const mod = await import('../../../server/services/data.service')
+  const mod = await import('../../../server/services/infra/data.service')
   return mod
 }
 

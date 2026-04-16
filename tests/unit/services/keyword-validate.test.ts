@@ -4,7 +4,7 @@ import {
   scoreKpi,
   computeVerdict,
   computeIntentScore,
-} from '../../../server/services/keyword-validate.service'
+} from '../../../server/services/keyword/keyword-validate.service'
 import type { KpiResult, ThresholdConfig } from '../../../shared/types/keyword-validate.types'
 
 // Helper to build a full set of 6 KPIs quickly

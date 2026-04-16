@@ -8,7 +8,7 @@ vi.mock('../../../server/utils/json-storage', () => ({
   writeJson: vi.fn(),
 }))
 
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   slugify: (s: string) =>
     s
       .toLowerCase()
@@ -42,7 +42,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 }))
 
 import { readJson, writeJson } from '../../../server/utils/json-storage'
-import { analyzeContentGap } from '../../../server/services/content-gap.service'
+import { analyzeContentGap } from '../../../server/services/article/content-gap.service'
 
 const mockReadJson = vi.mocked(readJson)
 const mockWriteJson = vi.mocked(writeJson)

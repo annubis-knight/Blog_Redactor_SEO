@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Mock dataforseo.service before importing
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchDataForSeo: vi.fn(),
   fetchKeywordOverviewBatch: vi.fn(),
   fetchSearchIntentBatch: vi.fn(),
@@ -9,7 +9,7 @@ vi.mock('../../../server/services/dataforseo.service', () => ({
 }))
 
 // Mock data.service
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getKeywordsByCocoon: vi.fn(),
 }))
 
@@ -18,12 +18,12 @@ import {
   fetchKeywordOverviewBatch,
   fetchSearchIntentBatch,
   computeCompositeScore,
-} from '../../../server/services/dataforseo.service'
+} from '../../../server/services/external/dataforseo.service'
 import {
   classifyKeywordsRelative,
   discoverKeywords,
   discoverFromDomain,
-} from '../../../server/services/keyword-discovery.service'
+} from '../../../server/services/keyword/keyword-discovery.service'
 
 const mockFetchDataForSeo = vi.mocked(fetchDataForSeo)
 const mockFetchOverviewBatch = vi.mocked(fetchKeywordOverviewBatch)

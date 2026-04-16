@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { checkCache, loadCache, saveCache, clearCache } from '../services/discovery-cache.service.js'
+import { checkCache, loadCache, saveCache, clearCache } from '../services/infra/discovery-cache.service.js'
 import { saveDiscoveryCacheSchema } from '../../shared/schemas/discovery-cache.schema.js'
 
 const router = Router()

@@ -9,12 +9,12 @@ const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, moc
   mockRemoveArticleFromCocoon: vi.fn(),
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleBySlug: mockGetArticleBySlug,
   removeArticleFromCocoon: mockRemoveArticleFromCocoon,
 }))
 
-vi.mock('../../../server/services/article-content.service', () => ({
+vi.mock('../../../server/services/article/article-content.service', () => ({
   saveArticleContent: mockSaveArticleContent,
   getArticleContent: mockGetArticleContent,
 }))

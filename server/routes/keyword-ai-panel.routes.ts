@@ -1,9 +1,9 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/claude.service.js'
-import type { ApiUsage } from '../services/claude.service.js'
+import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/claude.service.js'
+import type { ApiUsage } from '../services/external/claude.service.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
-import { getCocoonExistingLieutenants } from '../services/data.service.js'
+import { getCocoonExistingLieutenants } from '../services/infra/data.service.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
 

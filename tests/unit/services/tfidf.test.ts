@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { tokenize, extractTfidf } from '../../../server/services/tfidf.service'
+import { tokenize, extractTfidf } from '../../../server/services/keyword/tfidf.service'
 import type { SerpCompetitor } from '../../../shared/types/serp-analysis.types'
 
 function makeCompetitor(textContent: string, fetchError?: string): SerpCompetitor {

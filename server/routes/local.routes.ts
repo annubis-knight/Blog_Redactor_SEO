@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { analyzeMaps } from '../services/local-seo.service.js'
-import { scoreLocalAnchoring, getEntities } from '../services/local-entities.service.js'
+import { analyzeMaps } from '../services/strategy/local-seo.service.js'
+import { scoreLocalAnchoring, getEntities } from '../services/infra/local-entities.service.js'
 
 const router = Router()
 

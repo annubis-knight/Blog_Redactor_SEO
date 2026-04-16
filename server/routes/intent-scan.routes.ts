@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { scanIntent } from '../services/intent-scan.service.js'
-import { generateRadarKeywords, scanRadarKeywords } from '../services/keyword-radar.service.js'
+import { scanIntent } from '../services/intent/intent-scan.service.js'
+import { generateRadarKeywords, scanRadarKeywords } from '../services/keyword/keyword-radar.service.js'
 
 const router = Router()
 

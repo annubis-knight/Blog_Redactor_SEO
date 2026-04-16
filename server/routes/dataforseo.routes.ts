@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { briefRequestSchema } from '../../shared/schemas/dataforseo.schema.js'
-import { getBrief } from '../services/dataforseo.service.js'
+import { getBrief } from '../services/external/dataforseo.service.js'
 
 const router = Router()
 

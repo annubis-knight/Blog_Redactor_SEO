@@ -2,9 +2,9 @@ import { Router } from 'express'
 import { join } from 'path'
 import { log } from '../utils/logger.js'
 import { readCached, writeCached, slugify, isFresh } from '../utils/cache.js'
-import { fetchKeywordOverview, fetchSearchIntentBatch } from '../services/dataforseo.service.js'
-import { fetchAutocomplete } from '../services/autocomplete.service.js'
-import { getThresholds, scoreKpi, computeVerdict, computeIntentScore } from '../services/keyword-validate.service.js'
+import { fetchKeywordOverview, fetchSearchIntentBatch } from '../services/external/dataforseo.service.js'
+import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
+import { getThresholds, scoreKpi, computeVerdict, computeIntentScore } from '../services/keyword/keyword-validate.service.js'
 import {
   fetchSerpAdvanced,
   extractPaaFromSerp,
@@ -12,7 +12,7 @@ import {
   extractTopicWords,
   bestMatch,
   computePaaWeightedScore,
-} from '../services/intent-scan.service.js'
+} from '../services/intent/intent-scan.service.js'
 import type { ResonanceMatch, RadarMatchQuality } from '../../shared/types/intent.types.js'
 import type { ArticleLevel, ValidateResponse } from '../../shared/types/keyword-validate.types.js'
 

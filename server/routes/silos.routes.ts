@@ -2,10 +2,10 @@ import { Router } from 'express'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { log } from '../utils/logger.js'
-import { getTheme, getSilos, getSiloByName, addCocoonToSilo } from '../services/data.service.js'
-import { getThemeConfig, saveThemeConfig } from '../services/theme-config.service.js'
+import { getTheme, getSilos, getSiloByName, addCocoonToSilo } from '../services/infra/data.service.js'
+import { getThemeConfig, saveThemeConfig } from '../services/strategy/theme-config.service.js'
 import { themeConfigSchema } from '../../shared/schemas/theme-config.schema.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/claude.service.js'
+import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/claude.service.js'
 
 const router = Router()
 

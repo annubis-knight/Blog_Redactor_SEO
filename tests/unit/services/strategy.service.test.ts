@@ -11,7 +11,7 @@ vi.mock('../../../server/utils/json-storage', () => ({
   writeJson: mockWriteJson,
 }))
 
-import { getStrategy, saveStrategy } from '../../../server/services/strategy.service'
+import { getStrategy, saveStrategy } from '../../../server/services/strategy/strategy.service'
 import type { ArticleStrategy } from '../../../shared/types/index'
 
 const validStrategy: ArticleStrategy = {

@@ -11,7 +11,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }))
 
-import { streamChatCompletion } from '../../../server/services/claude.service'
+import { streamChatCompletion } from '../../../server/services/external/claude.service'
 
 function createMockStream(events: unknown[]) {
   return {

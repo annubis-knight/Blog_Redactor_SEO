@@ -15,12 +15,12 @@ vi.mock('../../../server/utils/cache', () => ({
 }))
 
 const mockExtractTfidf = vi.fn()
-vi.mock('../../../server/services/tfidf.service', () => ({
+vi.mock('../../../server/services/keyword/tfidf.service', () => ({
   extractTfidf: (...args: unknown[]) => mockExtractTfidf(...args),
 }))
 
 const mockAnalyze = vi.fn()
-vi.mock('../../../server/services/serp-analysis.service', () => ({
+vi.mock('../../../server/services/external/serp-analysis.service', () => ({
   analyzeSerpCompetitors: (...args: unknown[]) => mockAnalyze(...args),
   CACHE_DIR: '/mock/cache/serp',
 }))

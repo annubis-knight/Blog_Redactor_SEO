@@ -9,7 +9,7 @@ const { mockReadFile } = vi.hoisted(() => ({
   mockReadFile: vi.fn(),
 }))
 
-vi.mock('../../../server/services/cocoon-strategy.service', () => ({
+vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({
   getCocoonStrategy: mockGetCocoonStrategy,
 }))
 

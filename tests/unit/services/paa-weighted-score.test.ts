@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { computePaaWeightedScore } from '../../../server/services/intent-scan.service'
+import { computePaaWeightedScore } from '../../../server/services/intent/intent-scan.service'
 import type { ResonanceMatch, RadarMatchQuality } from '../../../shared/types/intent.types'
 
 function item(match: ResonanceMatch, quality?: RadarMatchQuality) {

@@ -36,7 +36,7 @@ import {
   detectRedundancy,
   auditCocoonKeywords,
   getAuditCacheStatus,
-} from '../../../server/services/dataforseo.service'
+} from '../../../server/services/external/dataforseo.service'
 
 const mockReadJson = vi.mocked(readJson)
 const mockWriteJson = vi.mocked(writeJson)

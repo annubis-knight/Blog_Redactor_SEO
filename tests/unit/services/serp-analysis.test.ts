@@ -13,7 +13,7 @@ vi.mock('../../../server/utils/cache', () => ({
   isFresh: vi.fn().mockReturnValue(false),
 }))
 
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchSerp: vi.fn().mockResolvedValue([
     { position: 1, title: 'Page 1', url: 'https://example.com/1', description: 'Desc 1', domain: 'example.com' },
     { position: 2, title: 'Page 2', url: 'https://example.com/2', description: 'Desc 2', domain: 'example.com' },
@@ -28,8 +28,8 @@ const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
 import { readCached, isFresh, writeCached } from '../../../server/utils/cache'
-import { fetchSerp, fetchPaa } from '../../../server/services/dataforseo.service'
-import { extractHeadings, extractTextContent, analyzeSerpCompetitors } from '../../../server/services/serp-analysis.service'
+import { fetchSerp, fetchPaa } from '../../../server/services/external/dataforseo.service'
+import { extractHeadings, extractTextContent, analyzeSerpCompetitors } from '../../../server/services/external/serp-analysis.service'
 
 const mockReadCached = vi.mocked(readCached)
 const mockIsFresh = vi.mocked(isFresh)

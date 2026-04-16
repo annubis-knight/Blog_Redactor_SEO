@@ -9,12 +9,12 @@ const { mockGetStrategy, mockSaveStrategy, mockStreamChatCompletion, mockReadFil
   mockReadFile: vi.fn(),
 }))
 
-vi.mock('../../../server/services/strategy.service', () => ({
+vi.mock('../../../server/services/strategy/strategy.service', () => ({
   getStrategy: mockGetStrategy,
   saveStrategy: mockSaveStrategy,
 }))
 
-vi.mock('../../../server/services/claude.service', () => ({
+vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
 }))

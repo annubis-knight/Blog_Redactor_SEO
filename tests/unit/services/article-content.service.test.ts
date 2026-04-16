@@ -12,11 +12,11 @@ vi.mock('../../../server/utils/json-storage', () => ({
   writeJson: mockWriteJson,
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleById: mockGetArticleById,
 }))
 
-import { getArticleContent, saveArticleContent } from '../../../server/services/article-content.service'
+import { getArticleContent, saveArticleContent } from '../../../server/services/article/article-content.service'
 
 beforeEach(() => {
   vi.clearAllMocks()

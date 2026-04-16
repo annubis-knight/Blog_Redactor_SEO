@@ -7,7 +7,7 @@ vi.mock('../../../server/utils/logger', () => ({
 }))
 
 const mockFetchPaa = vi.fn()
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchPaa: (...args: unknown[]) => mockFetchPaa(...args),
 }))
 

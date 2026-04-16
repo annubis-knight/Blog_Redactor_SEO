@@ -7,7 +7,7 @@ vi.mock('../../../server/utils/logger', () => ({
 }))
 
 const mockAnalyze = vi.fn()
-vi.mock('../../../server/services/serp-analysis.service', () => ({
+vi.mock('../../../server/services/external/serp-analysis.service', () => ({
   analyzeSerpCompetitors: (...args: unknown[]) => mockAnalyze(...args),
 }))
 

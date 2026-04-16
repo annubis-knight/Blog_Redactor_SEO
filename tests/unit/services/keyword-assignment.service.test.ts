@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Cocoon, Keyword, ArticleKeywords } from '../../../shared/types/index'
 
 // Mock data.service before importing the service
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoons: vi.fn(),
   getKeywordsByCocoon: vi.fn(),
   saveArticleKeywords: vi.fn(),
@@ -15,8 +15,8 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { getCocoons, getKeywordsByCocoon, saveArticleKeywords, getArticleKeywordsByCocoon } from '../../../server/services/data.service'
-import { previewMigration, applyMigration } from '../../../server/services/keyword-assignment.service'
+import { getCocoons, getKeywordsByCocoon, saveArticleKeywords, getArticleKeywordsByCocoon } from '../../../server/services/infra/data.service'
+import { previewMigration, applyMigration } from '../../../server/services/keyword/keyword-assignment.service'
 
 const mockGetCocoons = vi.mocked(getCocoons)
 const mockGetKeywordsByCocoon = vi.mocked(getKeywordsByCocoon)

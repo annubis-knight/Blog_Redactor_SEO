@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { join } from 'path'
 import { log } from '../utils/logger.js'
 import { readCached, slugify } from '../utils/cache.js'
-import { getArticleKeywords } from '../services/data.service.js'
+import { getArticleKeywords } from '../services/infra/data.service.js'
 
 const router = Router()
 

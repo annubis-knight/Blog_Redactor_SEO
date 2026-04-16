@@ -7,7 +7,7 @@ const { mockGetArticleKeywords, mockSaveArticleKeywords } = vi.hoisted(() => ({
   mockSaveArticleKeywords: vi.fn(),
 }))
 
-vi.mock('../../../server/services/data.service', () => ({
+vi.mock('../../../server/services/infra/data.service', () => ({
   getKeywordsByCocoon: vi.fn(),
   addKeyword: vi.fn(),
   replaceKeyword: vi.fn(),
@@ -17,13 +17,13 @@ vi.mock('../../../server/services/data.service', () => ({
   saveArticleKeywords: mockSaveArticleKeywords,
 }))
 
-vi.mock('../../../server/services/dataforseo.service', () => ({
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
   auditCocoonKeywords: vi.fn(),
   getAuditCacheStatus: vi.fn(),
   detectRedundancy: vi.fn(),
 }))
 
-vi.mock('../../../server/services/keyword-discovery.service', () => ({
+vi.mock('../../../server/services/keyword/keyword-discovery.service', () => ({
   discoverKeywords: vi.fn(),
   discoverFromDomain: vi.fn(),
 }))
