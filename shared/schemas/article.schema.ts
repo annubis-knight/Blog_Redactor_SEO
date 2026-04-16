@@ -1,13 +1,18 @@
 import { z } from 'zod/v4'
+import {
+  articleTypeSchema,
+  articleStatusSchema,
+  articlePhaseSchema,
+} from './shared-enums.schema.js'
 
 export const rawArticleSchema = z.object({
   id: z.number().int().positive(),
   titre: z.string().min(1),
-  type: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
+  type: articleTypeSchema,
   slug: z.string().min(1),
   topic: z.string().nullable(),
-  status: z.enum(['à rédiger', 'brouillon', 'publié']).optional(),
-  phase: z.enum(['proposed', 'moteur', 'redaction', 'published']).optional(),
+  status: articleStatusSchema.optional(),
+  phase: articlePhaseSchema.optional(),
   completedChecks: z.array(z.string()).optional(),
   checkTimestamps: z.record(z.string(), z.string()).optional(),
   /** Keyword suggéré (copié depuis strategies/*.json proposedArticles[].suggestedKeyword à la création) */
@@ -52,7 +57,7 @@ export const updateArticleContentSchema = z.object({
 export type UpdateArticleContentRequest = z.infer<typeof updateArticleContentSchema>
 
 export const updateArticleStatusSchema = z.object({
-  status: z.enum(['à rédiger', 'brouillon', 'publié']),
+  status: articleStatusSchema,
 })
 
 export type UpdateArticleStatusRequest = z.infer<typeof updateArticleStatusSchema>
@@ -61,7 +66,7 @@ export const batchCreateArticlesSchema = z.object({
   cocoonName: z.string().min(1),
   articles: z.array(z.object({
     title: z.string().min(1),
-    type: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
+    type: articleTypeSchema,
     slug: z.string().optional(),
     suggestedKeyword: z.string().nullable().optional(),
   })).min(1),

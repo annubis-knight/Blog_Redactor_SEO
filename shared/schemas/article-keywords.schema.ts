@@ -1,8 +1,5 @@
 import { z } from 'zod/v4'
-
-// ---- Shared enums ----
-
-const articleLevelSchema = z.enum(['pilier', 'intermediaire', 'specifique'])
+import { articleLevelSchema } from './shared-enums.schema.js'
 
 // ---- KPI summary (lightweight: name + rawValue only) ----
 

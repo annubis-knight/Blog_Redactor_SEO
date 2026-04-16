@@ -1,7 +1,8 @@
 import { z } from 'zod/v4'
+import { articlePhaseSchema } from './shared-enums.schema.js'
 
 export const articleProgressSchema = z.object({
-  phase: z.enum(['proposed', 'moteur', 'redaction', 'published']),
+  phase: articlePhaseSchema,
   completedChecks: z.array(z.string()).default([]),
 })
 

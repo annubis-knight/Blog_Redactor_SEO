@@ -1,12 +1,11 @@
 import { z } from 'zod/v4'
+import { articleTypeSchema, keywordTypeSchema } from './shared-enums.schema.js'
 
 const discoverySourceSchema = z.enum([
   'autocomplete', 'ai', 'dataforseo',
   'suggest-alphabet', 'suggest-questions',
   'suggest-intents', 'suggest-prepositions',
 ])
-
-const keywordTypeSchema = z.enum(['Pilier', 'Moyenne traine', 'Longue traine', 'Intermédiaire', 'Spécialisé'])
 
 const discoveredKeywordSchema = z.object({
   keyword: z.string().min(1),
@@ -37,7 +36,7 @@ export const discoveryContextSchema = z.object({
   cocoonTheme: z.string().optional(),
   articleTitle: z.string().optional(),
   articleKeyword: z.string().optional(),
-  articleType: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']).optional(),
+  articleType: articleTypeSchema.optional(),
   painPoint: z.string().optional(),
   seedKeyword: z.string().min(1),
 })

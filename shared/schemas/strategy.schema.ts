@@ -1,4 +1,5 @@
 import { z } from 'zod/v4'
+import { articleTypeSchema } from './shared-enums.schema.js'
 
 const subQuestionSchema = z.object({
   id: z.string(),
@@ -17,7 +18,7 @@ const strategyStepDataSchema = z.object({
 })
 
 const aiguillageDataSchema = z.object({
-  suggestedType: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']).nullable(),
+  suggestedType: articleTypeSchema.nullable(),
   suggestedParent: z.string().nullable(),
   suggestedChildren: z.array(z.string()),
   validated: z.boolean(),
@@ -87,7 +88,7 @@ export const proposedArticleSchema = z.object({
   id: z.string().default(''),
   title: z.string(),
   suggestedTitles: z.array(z.string()).default([]),
-  type: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
+  type: articleTypeSchema,
   parentTitle: z.string().nullable(),
   rationale: z.string(),
   painPoint: z.string().default(''),

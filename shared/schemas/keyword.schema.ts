@@ -1,10 +1,11 @@
 import { z } from 'zod/v4'
+import { keywordTypeSchema, keywordStatusSchema } from './shared-enums.schema.js'
 
 export const rawKeywordSchema = z.object({
   mot_clef: z.string().min(1),
   cocon_seo: z.string().min(1),
-  type_mot_clef: z.enum(['Pilier', 'Moyenne traine', 'Longue traine', 'Intermédiaire', 'Spécialisé']),
-  statut: z.enum(['suggested', 'validated', 'rejected']).optional(),
+  type_mot_clef: keywordTypeSchema,
+  statut: keywordStatusSchema.optional(),
 })
 
 export const rawKeywordsDbSchema = z.object({

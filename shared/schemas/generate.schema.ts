@@ -1,4 +1,5 @@
 import { z } from 'zod/v4'
+import { articleTypeSchema } from './shared-enums.schema.js'
 
 export const generateOutlineRequestSchema = z.object({
   articleId: z.number().int().positive(),
@@ -8,7 +9,7 @@ export const generateOutlineRequestSchema = z.object({
     question: z.string(),
     answer: z.string().nullable(),
   })),
-  articleType: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
+  articleType: articleTypeSchema,
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
   topic: z.string().nullable(),
@@ -25,7 +26,7 @@ export const generateArticleRequestSchema = z.object({
     question: z.string(),
     answer: z.string().nullable(),
   })),
-  articleType: z.enum(['Pilier', 'Intermédiaire', 'Spécialisé']),
+  articleType: articleTypeSchema,
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
   topic: z.string().nullable(),
