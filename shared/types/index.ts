@@ -4,8 +4,6 @@ export type {
   ArticlePhase,
   RawArticle,
   RawCocoon,
-  RawSilo,
-  RawTheme,
   RawArticlesDb,
   Article,
   ArticleContent,
@@ -21,26 +19,16 @@ export type {
 export type {
   KeywordType,
   KeywordStatus,
-  RawKeyword,
   RawKeywordsDb,
   Keyword,
   ArticleKeywords,
   RawArticleKeywordsDb,
-  KpiSummary,
-  CaptainKeywordStatus,
-  LieutenantKeywordStatus,
   CaptainValidationEntry,
-  RichCaptain,
   RichRootKeyword,
   RichLieutenant,
 } from './keyword.types.js'
 
 export type {
-  ApiSuccess,
-  ApiError,
-  SseChunkEvent,
-  SseDoneEvent,
-  SseErrorEvent,
   ApiUsage,
 } from './api.types.js'
 
@@ -57,7 +45,6 @@ export type {
 } from './brief.types.js'
 
 export type {
-  OutlineAnnotation,
   OutlineSection,
   Outline,
 } from './outline.types.js'
@@ -66,33 +53,6 @@ export type {
   ActionType,
   ActionContext,
 } from './action.types.js'
-
-export type {
-  KeywordDensity,
-  HeadingError,
-  HeadingValidation,
-  MetaTagAnalysis,
-  SeoFactors,
-  SeoScore,
-  ChecklistItem,
-  ChecklistLocation,
-  NlpTermResult,
-  ImageAnalysis,
-  CannibalizationWarning,
-  KeywordLocationPresence,
-  LexiqueTermResult,
-  LexiqueCoverage,
-} from './seo.types.js'
-
-export type {
-  GeoFactors,
-  AnswerCapsuleCheck,
-  QuestionHeadingsAnalysis,
-  SourcedStatsAnalysis,
-  ParagraphAlert,
-  JargonDetection,
-  GeoScore,
-} from './geo.types.js'
 
 export type {
   InternalLink,
@@ -134,16 +94,6 @@ export type {
   CertaintyIndex,
   AutocompleteResult,
   ExplorationHistoryEntry,
-  TranslatedKeyword,
-  TopDiscussion,
-  CommunitySignal,
-  AutocompleteSignal,
-  PainVerdictCategory,
-  MultiSourceVerdict,
-  ValidatePainResult,
-  NlpResult,
-  NlpState,
-  KeywordRootVariant,
 } from './intent.types.js'
 
 export type {
@@ -186,20 +136,9 @@ export type {
 } from './article-progress.types.js'
 
 export type {
-  DiscoverySource,
-  DiscoveredKeyword,
-  WordGroup,
-  SuggestStrategyResult,
-  SuggestAllResult,
-} from './discovery-tab.types.js'
-export { toRadarKeywords } from './discovery-tab.types.js'
-
-export type {
   SubQuestion,
   ArticleStrategy,
   StrategyStepData,
-  AiguillageData,
-  CtaData,
   ThemeContext,
   StrategyDeepenRequest,
   StrategyDeepenResponse,
@@ -217,32 +156,20 @@ export type {
 } from './strategy.types.js'
 
 export type {
-  DiscoveryContext,
-  CachedAnalyzedKeyword,
-  DiscoveryCacheEntry,
-  DiscoveryCacheStatus,
-} from './discovery-cache.types.js'
-
-export type {
   ArticleLevel,
   KpiColor,
   KpiResult,
   VerdictLevel,
   ValidateVerdict,
   ValidateResponse,
-  PaaQuestionValidate,
-  ThresholdConfig,
 } from './keyword-validate.types.js'
 
 export type {
-  HnNode,
   SerpCompetitor,
   SerpAnalysisResult,
 } from './serp-analysis.types.js'
 
 export type {
-  CompositionRuleName,
-  CompositionRuleResult,
   CompositionCheckResult,
 } from './composition.types.js'
 
