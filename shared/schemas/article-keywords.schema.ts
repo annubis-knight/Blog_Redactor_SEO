@@ -62,7 +62,7 @@ const richLieutenantSchema = z.object({
 
 // ---- Main article keywords schema ----
 
-export const articleKeywordsSchema = z.object({
+const articleKeywordsSchema = z.object({
   articleId: z.number().int().positive(),
   capitaine: z.string(),
   lieutenants: z.array(z.string()),

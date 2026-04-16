@@ -31,7 +31,7 @@ const analyzedKeywordSchema = z.object({
   priority: z.enum(['high', 'medium', 'low']),
 })
 
-export const discoveryContextSchema = z.object({
+const discoveryContextSchema = z.object({
   cocoonName: z.string(),
   cocoonTheme: z.string().optional(),
   articleTitle: z.string().optional(),

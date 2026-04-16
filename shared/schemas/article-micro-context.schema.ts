@@ -1,6 +1,6 @@
 import { z } from 'zod/v4'
 
-export const articleMicroContextSchema = z.object({
+const articleMicroContextSchema = z.object({
   id: z.number().int().positive(),
   slug: z.string().min(1),
   angle: z.string(),

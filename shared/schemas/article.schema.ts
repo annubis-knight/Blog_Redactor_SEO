@@ -5,7 +5,7 @@ import {
   articlePhaseSchema,
 } from './shared-enums.schema.js'
 
-export const rawArticleSchema = z.object({
+const rawArticleSchema = z.object({
   id: z.number().int().positive(),
   titre: z.string().min(1),
   type: articleTypeSchema,
@@ -23,18 +23,18 @@ export const rawArticleSchema = z.object({
   updatedAt: z.string().optional(),
 })
 
-export const rawCocoonSchema = z.object({
+const rawCocoonSchema = z.object({
   nom: z.string().min(1),
   articles: z.array(rawArticleSchema),
 })
 
-export const rawSiloSchema = z.object({
+const rawSiloSchema = z.object({
   nom: z.string().min(1),
   description: z.string(),
   cocons: z.array(rawCocoonSchema).min(1),
 })
 
-export const rawThemeSchema = z.object({
+const rawThemeSchema = z.object({
   nom: z.string().min(1),
   description: z.string(),
 })

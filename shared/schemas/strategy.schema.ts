@@ -105,7 +105,7 @@ export const proposedArticleSchema = z.object({
   dbId: z.number().default(0),
 })
 
-export const suggestedTopicSchema = z.object({
+const suggestedTopicSchema = z.object({
   id: z.string(),
   topic: z.string(),
   checked: z.boolean(),

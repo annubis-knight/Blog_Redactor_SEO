@@ -1,15 +1,10 @@
 import { z } from 'zod/v4'
 
-export const internalLinkSchema = z.object({
+const internalLinkSchema = z.object({
   sourceId: z.number().int().positive(),
   targetId: z.number().int().positive(),
   anchorText: z.string().min(1),
   position: z.string().min(1),
-})
-
-export const linkingMatrixSchema = z.object({
-  links: z.array(internalLinkSchema),
-  updatedAt: z.string().nullable(),
 })
 
 export const suggestLinksRequestSchema = z.object({
