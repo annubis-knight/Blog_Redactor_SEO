@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useGeoStore } from '../../../src/stores/geo.store'
+import { useGeoStore } from '../../../src/stores/article/geo.store'
 
 describe('geo.store', () => {
   beforeEach(() => {

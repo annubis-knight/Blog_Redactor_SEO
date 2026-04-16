@@ -2,7 +2,7 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ContentGapAnalysis, ThematicGap, ApiUsage } from '@shared/types/index.js'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'

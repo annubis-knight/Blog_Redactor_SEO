@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useSeoStore } from '@/stores/seo.store'
-import { useBriefStore } from '@/stores/brief.store'
-import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { useSeoStore } from '@/stores/article/seo.store'
+import { useBriefStore } from '@/stores/strategy/brief.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useCannibalization } from '@/composables/seo/useCannibalization'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'
 import KeywordsTab from '@/components/panels/KeywordsTab.vue'

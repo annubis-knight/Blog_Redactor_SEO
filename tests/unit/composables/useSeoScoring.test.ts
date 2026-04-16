@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useEditorStore } from '../../../src/stores/editor.store'
-import { useSeoStore } from '../../../src/stores/seo.store'
+import { useEditorStore } from '../../../src/stores/article/editor.store'
+import { useSeoStore } from '../../../src/stores/article/seo.store'
 import type { Keyword, ArticleKeywords } from '../../../shared/types/index'
 
 // Mock useStreaming used by editor store

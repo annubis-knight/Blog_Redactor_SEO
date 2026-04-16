@@ -1,4 +1,4 @@
-import { useNotificationStore } from '@/stores/notification.store'
+import { useNotificationStore } from '@/stores/ui/notification.store'
 
 export function useNotify() {
   const store = useNotificationStore()

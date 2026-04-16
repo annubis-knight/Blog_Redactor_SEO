@@ -18,7 +18,7 @@ vi.mock('vue-router', () => ({
   useRouter: () => ({ push: vi.fn() }),
 }))
 
-vi.mock('../../../src/stores/cocoons.store', () => ({
+vi.mock('../../../src/stores/strategy/cocoons.store', () => ({
   useCocoonsStore: () => ({
     cocoons: [],
     isLoading: false,
@@ -27,7 +27,7 @@ vi.mock('../../../src/stores/cocoons.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/stores/silos.store', () => ({
+vi.mock('../../../src/stores/strategy/silos.store', () => ({
   useSilosStore: () => ({
     silos: [],
     theme: null,
@@ -37,7 +37,7 @@ vi.mock('../../../src/stores/silos.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/stores/theme-config.store', () => ({
+vi.mock('../../../src/stores/strategy/theme-config.store', () => ({
   useThemeConfigStore: () => ({
     config: {
       avatar: { sector: '', companySize: '', location: '', budget: '', digitalMaturity: '' },
@@ -63,7 +63,7 @@ vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
 }))
 
 import BrainPhase from '../../../src/components/production/BrainPhase.vue'
-import { useCocoonStrategyStore } from '../../../src/stores/cocoon-strategy.store'
+import { useCocoonStrategyStore } from '../../../src/stores/strategy/cocoon-strategy.store'
 
 const proposedArticleRowStub = {
   name: 'ProposedArticleRow',

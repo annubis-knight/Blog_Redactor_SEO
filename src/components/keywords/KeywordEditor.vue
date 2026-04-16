@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { log } from '@/utils/logger'
-import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
+import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import type { KeywordType } from '../../../shared/types/index.js'
 
 const props = defineProps<{

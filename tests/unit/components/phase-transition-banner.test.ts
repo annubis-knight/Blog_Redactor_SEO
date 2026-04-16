@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { ref, computed, nextTick } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import PhaseTransitionBanner from '@/components/moteur/PhaseTransitionBanner.vue'
-import { useArticleProgressStore } from '@/stores/article-progress.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 
 vi.mock('@/services/api.service', () => ({
   apiGet: vi.fn().mockResolvedValue(null),

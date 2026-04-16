@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useSeoStore } from '@/stores/seo.store'
-import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { useSeoStore } from '@/stores/article/seo.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import NlpTerms from '@/components/panels/NlpTerms.vue'
 import SeoKeywordChip from '@/components/panels/SeoKeywordChip.vue'
 

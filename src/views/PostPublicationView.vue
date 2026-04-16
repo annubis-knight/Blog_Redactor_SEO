@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, computed } from 'vue'
-import { useGscStore } from '@/stores/gsc.store'
+import { useGscStore } from '@/stores/external/gsc.store'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 
 const gscStore = useGscStore()

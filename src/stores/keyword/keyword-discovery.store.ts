@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
-import type { ClassifiedKeyword, KeywordDiscoveryResult, DomainDiscoveryResult, KeywordType } from '../../shared/types/index.js'
+import type { ClassifiedKeyword, KeywordDiscoveryResult, DomainDiscoveryResult, KeywordType } from '@shared/types/index.js'
 
 export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
   const results = ref<ClassifiedKeyword[]>([])

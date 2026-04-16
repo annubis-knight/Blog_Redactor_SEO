@@ -1,6 +1,6 @@
 import { ref } from 'vue'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
 
 /** Derive a human-readable label from the SSE endpoint URL for cost tracking. */

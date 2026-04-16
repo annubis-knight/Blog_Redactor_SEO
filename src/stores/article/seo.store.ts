@@ -6,7 +6,7 @@ import type { Keyword, ArticleKeywords } from '@shared/types/index.js'
 import type { RelatedKeyword } from '@shared/types/dataforseo.types.js'
 import { calculateSeoScore } from '@/utils/seo-calculator'
 import { SEO_SCORE_LEVELS } from '@shared/constants/seo.constants.js'
-import { useEditorStore } from '@/stores/editor.store'
+import { useEditorStore } from '@/stores/article/editor.store'
 
 export const useSeoStore = defineStore('seo', () => {
   const score = ref<SeoScore | null>(null)

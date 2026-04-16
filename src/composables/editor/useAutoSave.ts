@@ -1,5 +1,5 @@
 import { useIntervalFn } from '@vueuse/core'
-import { useEditorStore } from '@/stores/editor.store'
+import { useEditorStore } from '@/stores/article/editor.store'
 import { log } from '@/utils/logger'
 
 export function useAutoSave(articleId: number, intervalMs = 30_000) {

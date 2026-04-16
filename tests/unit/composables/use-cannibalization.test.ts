@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { useCannibalization } from '@/composables/seo/useCannibalization'
-import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 
 vi.mock('@/services/api.service', () => ({
   apiGet: vi.fn(),

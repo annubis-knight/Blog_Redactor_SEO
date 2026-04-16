@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
-import { useCocoonStrategyStore } from '@/stores/cocoon-strategy.store'
-import { useCocoonsStore } from '@/stores/cocoons.store'
-import { useSilosStore } from '@/stores/silos.store'
-import { useThemeConfigStore } from '@/stores/theme-config.store'
+import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
+import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
+import { useSilosStore } from '@/stores/strategy/silos.store'
+import { useThemeConfigStore } from '@/stores/strategy/theme-config.store'
 import type { StrategyStepData, CocoonSuggestRequest, ThemeContext, SubQuestion } from '@shared/types/index.js'
 import StrategyStep from '@/components/strategy/StrategyStep.vue'
 import ContextRecap from '@/components/strategy/ContextRecap.vue'

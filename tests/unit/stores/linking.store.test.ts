@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useLinkingStore } from '../../../src/stores/linking.store'
+import { useLinkingStore } from '../../../src/stores/keyword/linking.store'
 
 vi.mock('../../../src/services/api.service', () => ({
   apiGet: vi.fn(),

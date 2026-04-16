@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useKeywordAuditStore } from '../../../src/stores/keyword-audit.store'
+import { useKeywordAuditStore } from '../../../src/stores/keyword/keyword-audit.store'
 
 describe('useKeywordAuditStore', () => {
   beforeEach(() => {

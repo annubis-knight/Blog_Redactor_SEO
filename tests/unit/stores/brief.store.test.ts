@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useBriefStore, calculateContentLength } from '../../../src/stores/brief.store'
+import { useBriefStore, calculateContentLength } from '../../../src/stores/strategy/brief.store'
 import type { ArticleType } from '../../../shared/types/index'
 
 vi.mock('../../../src/services/api.service', () => ({

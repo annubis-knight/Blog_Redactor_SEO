@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
 import type { DiscoveredKeyword, DiscoverySource, WordGroup, SuggestAllResult, AnalyzedKeyword, AnalysisResult } from '@shared/types/discovery-tab.types'
 import { toRadarKeywords } from '@shared/types/discovery-tab.types'

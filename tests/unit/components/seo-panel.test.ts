@@ -3,8 +3,8 @@ import { ref } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import SeoPanel from '@/components/panels/SeoPanel.vue'
-import { useSeoStore } from '@/stores/seo.store'
-import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { useSeoStore } from '@/stores/article/seo.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import type { SeoScore } from '@shared/types/seo.types.js'
 
 // Mock useCannibalization to avoid real API calls — must return a real ref
@@ -13,7 +13,7 @@ vi.mock('@/composables/seo/useCannibalization', () => ({
 }))
 
 // Mock briefStore
-vi.mock('@/stores/brief.store', () => ({
+vi.mock('@/stores/strategy/brief.store', () => ({
   useBriefStore: () => ({
     briefData: null,
     isRefreshing: false,

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useOutlineStore } from '../../../src/stores/outline.store'
+import { useOutlineStore } from '../../../src/stores/article/outline.store'
 import type { BriefData, Outline } from '../../../shared/types/index'
 
 // Mock useStreaming

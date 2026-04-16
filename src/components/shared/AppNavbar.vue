@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useSilosStore } from '@/stores/silos.store'
+import { useSilosStore } from '@/stores/strategy/silos.store'
 
 const silosStore = useSilosStore()
 

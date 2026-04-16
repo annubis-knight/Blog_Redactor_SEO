@@ -1,7 +1,7 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
 import { apiGet, apiPost, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
 import type {
   IntentScanResult,

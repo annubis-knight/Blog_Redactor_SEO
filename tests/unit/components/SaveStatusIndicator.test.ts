@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
-import { useEditorStore } from '../../../src/stores/editor.store'
+import { useEditorStore } from '../../../src/stores/article/editor.store'
 import SaveStatusIndicator from '../../../src/components/editor/SaveStatusIndicator.vue'
 
 vi.mock('../../../src/composables/editor/useStreaming', () => ({

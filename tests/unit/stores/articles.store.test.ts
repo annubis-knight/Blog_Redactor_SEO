@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useArticlesStore } from '../../../src/stores/articles.store'
+import { useArticlesStore } from '../../../src/stores/article/articles.store'
 import type { Article } from '../../../shared/types/index.js'
 
 vi.mock('../../../src/services/api.service', () => ({

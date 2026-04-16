@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useStrategyStore } from '../../../src/stores/strategy.store'
+import { useStrategyStore } from '../../../src/stores/strategy/strategy.store'
 import type { ArticleStrategy, StrategySuggestResponse } from '../../../shared/types/index.js'
 
 // Mock the API service

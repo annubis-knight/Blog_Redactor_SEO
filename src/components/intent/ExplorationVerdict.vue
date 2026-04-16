@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useIntentVerdict } from '@/composables/intent/useIntentVerdict'
-import { useIntentStore } from '@/stores/intent.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
 
 withDefaults(defineProps<{
   mode?: 'workflow' | 'libre'

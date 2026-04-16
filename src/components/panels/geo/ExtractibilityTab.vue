@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useGeoStore } from '@/stores/geo.store'
+import { useGeoStore } from '@/stores/article/geo.store'
 import QuestionsCard from './QuestionsCard.vue'
 import CapsulesCard from './CapsulesCard.vue'
 import StatsCard from './StatsCard.vue'

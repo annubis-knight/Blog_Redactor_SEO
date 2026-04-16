@@ -30,7 +30,7 @@ beforeEach(() => {
 describe('strategy.store — separated flags', () => {
   // Dynamic import to use fresh module per test
   async function getStore() {
-    const { useStrategyStore } = await import('../../../src/stores/strategy.store')
+    const { useStrategyStore } = await import('../../../src/stores/strategy/strategy.store')
     return useStrategyStore()
   }
 
@@ -98,7 +98,7 @@ describe('strategy.store — separated flags', () => {
 
 describe('gsc.store — separated flags', () => {
   async function getStore() {
-    const { useGscStore } = await import('../../../src/stores/gsc.store')
+    const { useGscStore } = await import('../../../src/stores/external/gsc.store')
     return useGscStore()
   }
 
@@ -144,7 +144,7 @@ describe('gsc.store — separated flags', () => {
 
 describe('keyword-discovery.store — AbortController', () => {
   async function getStore() {
-    const { useKeywordDiscoveryStore } = await import('../../../src/stores/keyword-discovery.store')
+    const { useKeywordDiscoveryStore } = await import('../../../src/stores/keyword/keyword-discovery.store')
     return useKeywordDiscoveryStore()
   }
 
@@ -195,7 +195,7 @@ describe('keyword-discovery.store — AbortController', () => {
 
 describe('brief.store — AbortController', () => {
   async function getStore() {
-    const { useBriefStore } = await import('../../../src/stores/brief.store')
+    const { useBriefStore } = await import('../../../src/stores/strategy/brief.store')
     return useBriefStore()
   }
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useArticleKeywordsStore } from '../../../src/stores/article-keywords.store'
+import { useArticleKeywordsStore } from '../../../src/stores/article/article-keywords.store'
 import type { ArticleKeywords } from '../../../shared/types/index.js'
 
 // Mock the API service

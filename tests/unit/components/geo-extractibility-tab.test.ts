@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import ExtractibilityTab from '@/components/panels/geo/ExtractibilityTab.vue'
 import IndicatorCard from '@/components/panels/indicators/IndicatorCard.vue'
-import { useGeoStore } from '@/stores/geo.store'
+import { useGeoStore } from '@/stores/article/geo.store'
 import type { GeoScore } from '@shared/types/geo.types.js'
 
 function makeGeoScore(overrides: Partial<GeoScore> = {}): GeoScore {

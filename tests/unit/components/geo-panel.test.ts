@@ -2,7 +2,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import GeoPanel from '@/components/panels/GeoPanel.vue'
-import { useGeoStore } from '@/stores/geo.store'
+import { useGeoStore } from '@/stores/article/geo.store'
 import type { GeoScore } from '@shared/types/geo.types.js'
 
 function makeGeoScore(overrides: Partial<GeoScore> = {}): GeoScore {

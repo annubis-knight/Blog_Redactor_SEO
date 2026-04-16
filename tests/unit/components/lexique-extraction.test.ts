@@ -44,7 +44,7 @@ const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
 const mockInitEmpty = vi.fn()
 const mockKeywordsRef = ref<{ articleId: number; capitaine: string; lieutenants: string[]; lexique: string[] } | null>(null)
 
-vi.mock('../../../src/stores/article-keywords.store', () => ({
+vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockKeywordsRef,
     saveKeywords: mockSaveKeywords,

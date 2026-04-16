@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { useNotificationStore } from '@/stores/notification.store'
-import type { NotificationType } from '@/stores/notification.store'
+import { useNotificationStore } from '@/stores/ui/notification.store'
+import type { NotificationType } from '@/stores/ui/notification.store'
 
 const store = useNotificationStore()
 

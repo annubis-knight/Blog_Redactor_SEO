@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import ProgressDots from '@/components/moteur/ProgressDots.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
-import { useArticleProgressStore } from '@/stores/article-progress.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 
 const ALL_CHECKS = [
   'discovery_done', 'radar_done',

@@ -211,7 +211,7 @@ describe('SiloDetailView', () => {
       return null
     })
 
-    const { useSilosStore } = await import('../../../src/stores/silos.store')
+    const { useSilosStore } = await import('../../../src/stores/strategy/silos.store')
     const store = useSilosStore()
     await store.fetchSilos()
 
@@ -240,7 +240,7 @@ describe('SiloDetailView', () => {
       return null
     })
 
-    const { useSilosStore } = await import('../../../src/stores/silos.store')
+    const { useSilosStore } = await import('../../../src/stores/strategy/silos.store')
     const store = useSilosStore()
     await store.fetchSilos()
 
@@ -264,7 +264,7 @@ describe('SiloDetailView', () => {
   it('shows loading spinner when store is loading', async () => {
     mockApiGet.mockImplementation(() => new Promise(() => {})) // never resolves
 
-    const { useSilosStore } = await import('../../../src/stores/silos.store')
+    const { useSilosStore } = await import('../../../src/stores/strategy/silos.store')
     const store = useSilosStore()
     store.fetchSilos() // starts loading, never completes
 
@@ -292,7 +292,7 @@ describe('SiloDetailView', () => {
       return null
     })
 
-    const { useSilosStore } = await import('../../../src/stores/silos.store')
+    const { useSilosStore } = await import('../../../src/stores/strategy/silos.store')
     const store = useSilosStore()
     await store.fetchSilos()
 

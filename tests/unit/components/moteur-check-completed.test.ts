@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
-import { useArticleProgressStore } from '@/stores/article-progress.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 
 vi.mock('@/services/api.service', () => ({
   apiGet: vi.fn().mockResolvedValue(null),

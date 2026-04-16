@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed, watch } from 'vue'
-import { useLocalStore } from '@/stores/local.store'
+import { useLocalStore } from '@/stores/external/local.store'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'

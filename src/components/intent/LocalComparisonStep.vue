@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, computed, watch } from 'vue'
-import { useIntentStore } from '@/stores/intent.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'

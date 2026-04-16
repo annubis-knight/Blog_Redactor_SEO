@@ -8,7 +8,7 @@ const mockIntentReset = vi.fn()
 const mockExploreKeyword = vi.fn()
 const mockExplorationKeyword = { value: '' }
 
-vi.mock('../../../src/stores/intent.store', () => ({
+vi.mock('../../../src/stores/keyword/intent.store', () => ({
   useIntentStore: () => ({
     reset: mockIntentReset,
     exploreKeyword: mockExploreKeyword,
@@ -32,7 +32,7 @@ vi.mock('../../../src/stores/intent.store', () => ({
 
 const mockLocalReset = vi.fn()
 
-vi.mock('../../../src/stores/local.store', () => ({
+vi.mock('../../../src/stores/external/local.store', () => ({
   useLocalStore: () => ({
     reset: mockLocalReset,
     mapsData: null,
@@ -46,7 +46,7 @@ vi.mock('../../../src/stores/local.store', () => ({
 const mockAuditReset = vi.fn()
 const mockFetchAudit = vi.fn()
 
-vi.mock('../../../src/stores/keyword-audit.store', () => ({
+vi.mock('../../../src/stores/keyword/keyword-audit.store', () => ({
   useKeywordAuditStore: () => ({
     $reset: mockAuditReset,
     fetchAudit: mockFetchAudit,
@@ -69,7 +69,7 @@ vi.mock('../../../src/composables/keyword/useKeywordScoring', () => ({
   }),
 }))
 
-vi.mock('../../../src/stores/silos.store', () => ({
+vi.mock('../../../src/stores/strategy/silos.store', () => ({
   useSilosStore: () => ({
     silos: [],
     theme: null,

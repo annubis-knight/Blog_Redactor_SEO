@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import KeywordLevelBadge from './KeywordLevelBadge.vue'
 
 const props = defineProps<{

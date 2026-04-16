@@ -1,5 +1,5 @@
 import { ref, watch, type Ref } from 'vue'
-import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { apiGet } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { CannibalizationWarning } from '@shared/types/seo.types.js'

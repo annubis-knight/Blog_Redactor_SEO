@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useSilosStore } from '../../../src/stores/silos.store'
+import { useSilosStore } from '../../../src/stores/strategy/silos.store'
 import type { Theme, Silo } from '../../../shared/types/index.js'
 
 // Mock the API service

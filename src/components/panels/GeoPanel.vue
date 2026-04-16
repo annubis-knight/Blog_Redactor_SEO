@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useGeoStore } from '@/stores/geo.store'
+import { useGeoStore } from '@/stores/article/geo.store'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'
 import ExtractibilityTab from '@/components/panels/geo/ExtractibilityTab.vue'
 import ReadabilityTab from '@/components/panels/geo/ReadabilityTab.vue'

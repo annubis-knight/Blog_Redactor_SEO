@@ -72,7 +72,7 @@ describe('Router — /labo route', () => {
 
 // --- AppNavbar test ---
 
-vi.mock('../../../src/stores/silos.store', () => ({
+vi.mock('../../../src/stores/strategy/silos.store', () => ({
   useSilosStore: () => ({
     silos: [],
     theme: { nom: 'Test Theme' },

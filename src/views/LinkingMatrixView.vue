@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useLinkingStore } from '@/stores/linking.store'
-import { useCocoonsStore } from '@/stores/cocoons.store'
+import { useLinkingStore } from '@/stores/keyword/linking.store'
+import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 import LinkingMatrix from '@/components/linking/LinkingMatrix.vue'
 import OrphanDetector from '@/components/linking/OrphanDetector.vue'

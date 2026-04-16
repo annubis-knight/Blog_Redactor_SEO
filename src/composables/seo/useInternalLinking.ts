@@ -1,7 +1,7 @@
 import { computed, type Ref, unref, type MaybeRef } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { useLinkingStore } from '@/stores/linking.store'
-import { useEditorStore } from '@/stores/editor.store'
+import { useLinkingStore } from '@/stores/keyword/linking.store'
+import { useEditorStore } from '@/stores/article/editor.store'
 import { log } from '@/utils/logger'
 import type { LinkSuggestion, InternalLink } from '@shared/types/index.js'
 

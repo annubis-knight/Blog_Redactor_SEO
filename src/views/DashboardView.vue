@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { useSilosStore } from '@/stores/silos.store'
+import { useSilosStore } from '@/stores/strategy/silos.store'
 import SiloCard from '@/components/dashboard/SiloCard.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 import SkeletonCard from '@/components/shared/SkeletonCard.vue'

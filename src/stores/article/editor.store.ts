@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { useStreaming, startStreamOnce, type StreamOnceResult } from '@/composables/editor/useStreaming'
 import { apiPost, apiPut } from '@/services/api.service'
 import {
@@ -9,7 +9,7 @@ import {
   splitArticleByH2,
   validateHtmlStructurePreserved,
 } from '@/utils/text-utils'
-import { useOutlineStore } from '@/stores/outline.store'
+import { useOutlineStore } from '@/stores/article/outline.store'
 import type { BriefData, Outline, ApiUsage } from '@shared/types/index.js'
 
 /** Mutate `total` in place by summing tokens + cost from `partial`. */

@@ -7,7 +7,7 @@ import type {
   AuditCacheStatus,
   KeywordType,
   KeywordStatus,
-} from '../../shared/types/index.js'
+} from '@shared/types/index.js'
 import { log } from '@/utils/logger'
 
 export const useKeywordAuditStore = defineStore('keywordAudit', () => {

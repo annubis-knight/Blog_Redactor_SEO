@@ -112,7 +112,7 @@ const mockAddCaptainValidation = vi.fn()
 const mockAddRootKeywordValidation = vi.fn()
 const mockSaveKeywords = vi.fn()
 
-vi.mock('../../../src/stores/article-keywords.store', () => ({
+vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockStoreKeywords.value,
     setCapitaine: mockSetCapitaine,

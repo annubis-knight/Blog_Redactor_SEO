@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { IntentAnalysis, LocalNationalComparison, AutocompleteResult, ExplorationHistoryEntry, ApiUsage } from '@shared/types/index.js'
 
 export const useIntentStore = defineStore('intent', () => {

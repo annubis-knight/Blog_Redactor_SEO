@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useCostLogStore } from '@/stores/cost-log.store'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
 
 const store = useCostLogStore()
 

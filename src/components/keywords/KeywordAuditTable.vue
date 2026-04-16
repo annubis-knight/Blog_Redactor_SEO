@@ -5,8 +5,8 @@ import type { KeywordAuditResult, RedundancyPair, StrategyContextData } from '..
 import { useKeywordScoring } from '@/composables/keyword/useKeywordScoring'
 import { usePainVerdict } from '@/composables/intent/usePainVerdict'
 import { computeAlignmentScore, type AlignmentResult } from '@/composables/keyword/useAlignmentScore'
-import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
-import { useIntentStore } from '@/stores/intent.store'
+import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
 import KeywordAlertBadge from './KeywordAlertBadge.vue'
 
 const props = defineProps<{

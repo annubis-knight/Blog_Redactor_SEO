@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
-import { useIntentStore } from '@/stores/intent.store'
-import { useLocalStore } from '@/stores/local.store'
-import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
+import { useLocalStore } from '@/stores/external/local.store'
+import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import { log } from '@/utils/logger'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'

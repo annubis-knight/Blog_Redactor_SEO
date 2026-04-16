@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
-import { useCocoonStrategyStore } from '../../../src/stores/cocoon-strategy.store'
+import { useCocoonStrategyStore } from '../../../src/stores/strategy/cocoon-strategy.store'
 
 // --- Mocks ---
 vi.mock('../../../src/services/api.service', () => ({
@@ -11,7 +11,7 @@ vi.mock('../../../src/services/api.service', () => ({
   apiDelete: vi.fn(),
 }))
 
-vi.mock('../../../src/stores/cocoons.store', () => ({
+vi.mock('../../../src/stores/strategy/cocoons.store', () => ({
   useCocoonsStore: () => ({
     cocoons: [],
     fetchCocoons: vi.fn(),

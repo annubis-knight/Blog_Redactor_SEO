@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useCocoonsStore } from '../../../src/stores/cocoons.store'
+import { useCocoonsStore } from '../../../src/stores/strategy/cocoons.store'
 import type { Cocoon } from '../../../shared/types/index.js'
 
 // Mock the API service

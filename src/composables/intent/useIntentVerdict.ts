@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { useIntentStore } from '@/stores/intent.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
 
 export interface VerdictItem {
   priority: number

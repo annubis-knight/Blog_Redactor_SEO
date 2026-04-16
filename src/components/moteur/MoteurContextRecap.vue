@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
 import type { Article, ArticleType, ProposedArticle, SelectedArticle } from '@shared/types/index.js'
-import { useArticleProgressStore } from '@/stores/article-progress.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import ProgressDots from './ProgressDots.vue'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
 

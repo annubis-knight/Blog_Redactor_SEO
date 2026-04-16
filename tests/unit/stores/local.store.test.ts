@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useLocalStore } from '../../../src/stores/local.store'
+import { useLocalStore } from '../../../src/stores/external/local.store'
 
 vi.mock('../../../src/services/api.service', () => ({
   apiGet: vi.fn(),

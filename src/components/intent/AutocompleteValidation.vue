@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useIntentStore } from '@/stores/intent.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 
 const props = withDefaults(defineProps<{

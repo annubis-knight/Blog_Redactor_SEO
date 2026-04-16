@@ -1,5 +1,5 @@
 import { computed } from 'vue'
-import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
+import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import type { KeywordAuditResult, KeywordSuggestion } from '@shared/types/index.js'
 import { KEYWORD_SCORE_WEIGHTS } from '@shared/constants/seo.constants.js'
 

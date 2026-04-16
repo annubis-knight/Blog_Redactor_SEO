@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useEditorStore } from '../../../src/stores/editor.store'
+import { useEditorStore } from '../../../src/stores/article/editor.store'
 
 // --- Mocks ---
 

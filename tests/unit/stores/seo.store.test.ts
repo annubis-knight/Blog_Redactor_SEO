@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useSeoStore } from '../../../src/stores/seo.store'
+import { useSeoStore } from '../../../src/stores/article/seo.store'
 import type { Keyword } from '../../../shared/types/index'
 
 describe('seo.store', () => {

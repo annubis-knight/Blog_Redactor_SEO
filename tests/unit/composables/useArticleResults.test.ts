@@ -15,9 +15,9 @@ vi.mock('../../../src/utils/logger', () => ({
 
 import { apiGet } from '../../../src/services/api.service'
 import { useArticleResults } from '../../../src/composables/editor/useArticleResults'
-import { useIntentStore } from '../../../src/stores/intent.store'
-import { useLocalStore } from '../../../src/stores/local.store'
-import { useKeywordDiscoveryStore } from '../../../src/stores/keyword-discovery.store'
+import { useIntentStore } from '../../../src/stores/keyword/intent.store'
+import { useLocalStore } from '../../../src/stores/external/local.store'
+import { useKeywordDiscoveryStore } from '../../../src/stores/keyword/keyword-discovery.store'
 
 const mockApiGet = vi.mocked(apiGet)
 

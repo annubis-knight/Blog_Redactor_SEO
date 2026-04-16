@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
-import { useMoteurBasketStore } from '@/stores/moteur-basket.store'
+import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 
 describe('useMoteurBasketStore', () => {
   let store: ReturnType<typeof useMoteurBasketStore>

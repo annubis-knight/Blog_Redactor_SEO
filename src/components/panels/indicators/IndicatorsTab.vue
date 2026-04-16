@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
-import { useSeoStore } from '@/stores/seo.store'
-import { useEditorStore } from '@/stores/editor.store'
+import { useSeoStore } from '@/stores/article/seo.store'
+import { useEditorStore } from '@/stores/article/editor.store'
 import type { CannibalizationWarning } from '@shared/types/seo.types.js'
 import StructureCard from './StructureCard.vue'
 import DensityCard from './DensityCard.vue'

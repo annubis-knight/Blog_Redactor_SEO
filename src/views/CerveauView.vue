@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useCocoonsStore } from '@/stores/cocoons.store'
+import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import BrainPhase from '@/components/production/BrainPhase.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'

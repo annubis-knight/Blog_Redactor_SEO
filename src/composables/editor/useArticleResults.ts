@@ -1,8 +1,8 @@
 import { ref } from 'vue'
 import { apiGet } from '@/services/api.service'
-import { useIntentStore } from '@/stores/intent.store'
-import { useLocalStore } from '@/stores/local.store'
-import { useKeywordDiscoveryStore } from '@/stores/keyword-discovery.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
+import { useLocalStore } from '@/stores/external/local.store'
+import { useKeywordDiscoveryStore } from '@/stores/keyword/keyword-discovery.store'
 import { log } from '@/utils/logger'
 
 interface CachedResults {

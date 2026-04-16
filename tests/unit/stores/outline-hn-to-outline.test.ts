@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { hnToOutline } from '../../../src/stores/outline.store'
+import { hnToOutline } from '../../../src/stores/article/outline.store'
 import type { ProposeLieutenantsHnNode } from '../../../shared/types/serp-analysis.types'
 
 describe('hnToOutline', () => {

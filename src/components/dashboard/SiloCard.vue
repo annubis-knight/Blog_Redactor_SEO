@@ -2,7 +2,7 @@
 import { ref, nextTick, computed, onMounted, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Silo } from '@shared/types/index.js'
-import { useSilosStore } from '@/stores/silos.store'
+import { useSilosStore } from '@/stores/strategy/silos.store'
 import CocoonCard from './CocoonCard.vue'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
 

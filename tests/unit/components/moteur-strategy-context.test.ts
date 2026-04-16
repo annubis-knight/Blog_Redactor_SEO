@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
-import { useCocoonStrategyStore } from '@/stores/cocoon-strategy.store'
+import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 
 vi.mock('@/services/api.service', () => ({
   apiGet: vi.fn().mockResolvedValue(null),

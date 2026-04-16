@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 // --- Mocks ---
 
-vi.mock('../../../src/stores/intent.store', () => ({
+vi.mock('../../../src/stores/keyword/intent.store', () => ({
   useIntentStore: () => ({
     reset: vi.fn(),
     exploreKeyword: vi.fn(),
@@ -26,7 +26,7 @@ vi.mock('../../../src/stores/intent.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/stores/local.store', () => ({
+vi.mock('../../../src/stores/external/local.store', () => ({
   useLocalStore: () => ({
     reset: vi.fn(),
     mapsData: null,

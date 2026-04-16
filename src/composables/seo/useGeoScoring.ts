@@ -1,7 +1,7 @@
 import { watch } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
-import { useEditorStore } from '@/stores/editor.store'
-import { useGeoStore } from '@/stores/geo.store'
+import { useEditorStore } from '@/stores/article/editor.store'
+import { useGeoStore } from '@/stores/article/geo.store'
 import { log } from '@/utils/logger'
 
 /**

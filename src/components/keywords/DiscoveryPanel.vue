@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { log } from '@/utils/logger'
-import { useKeywordDiscoveryStore } from '@/stores/keyword-discovery.store'
-import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
+import { useKeywordDiscoveryStore } from '@/stores/keyword/keyword-discovery.store'
+import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import { useKeywordScoring } from '@/composables/keyword/useKeywordScoring'
 import type { ClassifiedKeyword } from '../../../shared/types/index.js'
 import ApiCostBadge from '@/components/shared/ApiCostBadge.vue'

@@ -29,7 +29,7 @@ beforeEach(() => {
 
 describe('article-progress.store — FIFO eviction', () => {
   async function getStore() {
-    const { useArticleProgressStore } = await import('../../../src/stores/article-progress.store')
+    const { useArticleProgressStore } = await import('../../../src/stores/article/article-progress.store')
     return useArticleProgressStore()
   }
 

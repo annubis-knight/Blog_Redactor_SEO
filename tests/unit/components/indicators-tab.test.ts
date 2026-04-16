@@ -3,7 +3,7 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import IndicatorsTab from '@/components/panels/indicators/IndicatorsTab.vue'
 import IndicatorCard from '@/components/panels/indicators/IndicatorCard.vue'
-import { useSeoStore } from '@/stores/seo.store'
+import { useSeoStore } from '@/stores/article/seo.store'
 import type { SeoScore, CannibalizationWarning } from '@shared/types/seo.types.js'
 
 function makeSeoScore(overrides: Partial<SeoScore> = {}): SeoScore {

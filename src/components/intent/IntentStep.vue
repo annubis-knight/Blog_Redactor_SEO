@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { useIntentStore } from '@/stores/intent.store'
+import { useIntentStore } from '@/stores/keyword/intent.store'
 import type { SerpModuleType } from '@shared/types/index.js'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'

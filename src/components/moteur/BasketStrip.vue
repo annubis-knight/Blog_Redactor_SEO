@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { BasketKeyword } from '@/stores/moteur-basket.store'
+import type { BasketKeyword } from '@/stores/article/moteur-basket.store'
 
 defineProps<{
   keywords: BasketKeyword[]

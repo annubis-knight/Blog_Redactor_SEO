@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useSilosStore } from '@/stores/silos.store'
+import { useSilosStore } from '@/stores/strategy/silos.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import ProgressBar from '@/components/shared/ProgressBar.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'

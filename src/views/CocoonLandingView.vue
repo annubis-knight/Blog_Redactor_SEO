@@ -1,9 +1,9 @@
 <script setup lang="ts">
 import { onMounted, computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { useCocoonsStore } from '@/stores/cocoons.store'
-import { useArticlesStore } from '@/stores/articles.store'
-import { useKeywordsStore } from '@/stores/keywords.store'
+import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
+import { useArticlesStore } from '@/stores/article/articles.store'
+import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import WorkflowChoice from '@/components/dashboard/WorkflowChoice.vue'
 import AsyncContent from '@/components/shared/AsyncContent.vue'

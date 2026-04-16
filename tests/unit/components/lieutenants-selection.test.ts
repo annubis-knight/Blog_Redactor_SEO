@@ -47,7 +47,7 @@ const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
 const mockSetRichLieutenants = vi.fn()
 const mockSaveRichLieutenantProposals = vi.fn()
 
-vi.mock('../../../src/stores/article-keywords.store', () => ({
+vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockStoreKeywords.value,
     saveKeywords: mockSaveKeywords,

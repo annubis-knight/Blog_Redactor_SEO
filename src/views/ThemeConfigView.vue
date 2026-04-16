@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { useThemeConfigStore } from '@/stores/theme-config.store'
+import { useThemeConfigStore } from '@/stores/strategy/theme-config.store'
 import { apiPost } from '@/services/api.service'
 import type { ThemeConfig } from '@shared/types/index.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
