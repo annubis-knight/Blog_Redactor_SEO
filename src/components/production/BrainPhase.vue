@@ -13,8 +13,8 @@ import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
 import GenerationStepper from '@/components/production/GenerationStepper.vue'
 import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
-import { useArticleProposals } from '@/composables/useArticleProposals'
-import { provideRecapRadioGroup } from '@/composables/useRecapRadioGroup'
+import { useArticleProposals } from '@/composables/editor/useArticleProposals'
+import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 const props = defineProps<{
   cocoonName: string

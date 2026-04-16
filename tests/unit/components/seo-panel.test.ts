@@ -8,7 +8,7 @@ import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import type { SeoScore } from '@shared/types/seo.types.js'
 
 // Mock useCannibalization to avoid real API calls — must return a real ref
-vi.mock('@/composables/useCannibalization', () => ({
+vi.mock('@/composables/seo/useCannibalization', () => ({
   useCannibalization: () => ({ warnings: ref([]), refresh: vi.fn() }),
 }))
 

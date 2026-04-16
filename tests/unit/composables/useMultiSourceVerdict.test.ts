@@ -10,7 +10,7 @@ import {
   computeConsensus,
   generateExplanation,
   isLongTail,
-} from '../../../src/composables/useMultiSourceVerdict'
+} from '../../../src/composables/intent/useMultiSourceVerdict'
 import type { CommunitySignal, AutocompleteSignal } from '../../../shared/types/intent.types'
 
 // --- Helper factories ---

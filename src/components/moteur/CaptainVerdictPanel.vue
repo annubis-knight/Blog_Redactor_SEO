@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import VerdictThermometer from '@/components/moteur/VerdictThermometer.vue'
-import { KPI_COLORS } from '@/composables/useVerdictColors'
+import { KPI_COLORS } from '@/composables/ui/useVerdictColors'
 import type { KpiResult, VerdictLevel, ArticleLevel } from '@shared/types/index.js'
 
 const props = defineProps<{

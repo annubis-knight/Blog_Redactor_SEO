@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockStartStream = vi.fn()
 const mockAbort = vi.fn()
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: vi.fn(() => ({
     chunks: { value: '' },
     isStreaming: { value: false },
@@ -14,7 +14,7 @@ vi.mock('../../../src/composables/useStreaming', () => ({
   })),
 }))
 
-import { useContextualActions } from '../../../src/composables/useContextualActions'
+import { useContextualActions } from '../../../src/composables/editor/useContextualActions'
 
 function createMockEditor() {
   const run = vi.fn()

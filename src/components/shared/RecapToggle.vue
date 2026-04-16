@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useRecapPanel } from '@/composables/useRecapRadioGroup'
+import { useRecapPanel } from '@/composables/ui/useRecapRadioGroup'
 
 const props = withDefaults(defineProps<{
   panelId: string

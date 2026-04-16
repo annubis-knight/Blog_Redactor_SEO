@@ -9,7 +9,7 @@ vi.mock('../../../src/utils/logger', () => ({
 }))
 
 import { apiPost } from '../../../src/services/api.service'
-import { useCapitaineValidation, articleTypeToLevel, extractRoot, extractRoots } from '../../../src/composables/useCapitaineValidation'
+import { useCapitaineValidation, articleTypeToLevel, extractRoot, extractRoots } from '../../../src/composables/keyword/useCapitaineValidation'
 import type { ValidateResponse } from '../../../shared/types/keyword-validate.types'
 
 const mockApiPost = vi.mocked(apiPost)

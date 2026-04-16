@@ -62,7 +62,7 @@ export function createKeywordDiscoveryTabMock() {
 
 /**
  * Ready-to-use vi.mock factory.
- * Usage: vi.mock('../../../src/composables/useKeywordDiscoveryTab', mockKeywordDiscoveryTab)
+ * Usage: vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', mockKeywordDiscoveryTab)
  */
 export const mockKeywordDiscoveryTab = () => ({
   useKeywordDiscoveryTab: () => createKeywordDiscoveryTabMock(),

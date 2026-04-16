@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { useOpportunityScore } from '../../../src/composables/useOpportunityScore'
+import { useOpportunityScore } from '../../../src/composables/keyword/useOpportunityScore'
 import type {
   KeywordAuditResult,
   ContentGapAnalysis,

@@ -8,7 +8,7 @@ vi.mock('@huggingface/transformers', () => ({
 
 // We need to test the composable functions directly
 // Since the composable uses singleton state, we test via the exported function
-import { useNlpAnalysis } from '@/composables/useNlpAnalysis'
+import { useNlpAnalysis } from '@/composables/intent/useNlpAnalysis'
 import { ref } from 'vue'
 
 // Mock onMounted to just call the callback

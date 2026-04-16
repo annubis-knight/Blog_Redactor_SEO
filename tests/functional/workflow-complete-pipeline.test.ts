@@ -23,7 +23,7 @@ vi.mock('../../server/utils/logger', () => ({
 
 import { readCached, slugify } from '../../server/utils/cache'
 import { loadPrompt } from '../../server/utils/prompt-loader'
-import { extractRoots, articleTypeToLevel } from '../../src/composables/useCapitaineValidation'
+import { extractRoots, articleTypeToLevel } from '../../src/composables/keyword/useCapitaineValidation'
 import { checkKeywordComposition } from '../../shared/composition-rules'
 import type { SerpAnalysisResult, SerpCompetitor } from '../../shared/types/serp-analysis.types'
 import type { PaaQuestion } from '../../shared/types/dataforseo.types'

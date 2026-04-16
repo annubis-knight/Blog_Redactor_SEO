@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { ref, nextTick } from 'vue'
-import { useCompositionCheck } from '../../../src/composables/useCompositionCheck'
+import { useCompositionCheck } from '../../../src/composables/seo/useCompositionCheck'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types'
 
 describe('useCompositionCheck', () => {

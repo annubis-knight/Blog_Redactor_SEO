@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 import { log } from '@/utils/logger'
 import { useKeywordAuditStore } from '@/stores/keyword-audit.store'
-import { useKeywordScoring } from '@/composables/useKeywordScoring'
+import { useKeywordScoring } from '@/composables/keyword/useKeywordScoring'
 import type { KeywordSuggestion } from '../../../shared/types/index.js'
 
 const props = defineProps<{

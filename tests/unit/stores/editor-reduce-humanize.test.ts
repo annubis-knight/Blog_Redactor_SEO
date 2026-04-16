@@ -6,7 +6,7 @@ import { useEditorStore } from '../../../src/stores/editor.store'
 
 const mockStartStreamOnce = vi.fn()
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: vi.fn(() => ({
     chunks: { value: '' },
     isStreaming: { value: false },

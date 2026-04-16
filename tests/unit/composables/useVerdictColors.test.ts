@@ -5,7 +5,7 @@ import {
   VERDICT_CONFIG,
   getVerdictColor,
   getKpiColor,
-} from '../../../src/composables/useVerdictColors'
+} from '../../../src/composables/ui/useVerdictColors'
 
 describe('useVerdictColors', () => {
   describe('VERDICT_COLORS', () => {

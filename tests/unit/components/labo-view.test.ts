@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 // --- Mocks ---
 
-vi.mock('../../../src/composables/useCapitaineValidation', () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
   useCapitaineValidation: () => ({
     result: { value: null },
     currentResult: { value: null },
@@ -21,7 +21,7 @@ vi.mock('../../../src/composables/useCapitaineValidation', () => ({
   articleTypeToLevel: () => 'intermediaire',
 }))
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: () => ({
     chunks: { value: '' },
     isStreaming: { value: false },
@@ -33,7 +33,7 @@ vi.mock('../../../src/composables/useStreaming', () => ({
   }),
 }))
 
-vi.mock('../../../src/composables/useKeywordDiscoveryTab', async () => {
+vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', async () => {
   const { mockKeywordDiscoveryTab } = await import('../__mocks__/useKeywordDiscoveryTab.mock')
   return mockKeywordDiscoveryTab()
 })

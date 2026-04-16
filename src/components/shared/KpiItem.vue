@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { getKpiColor } from '@/composables/useVerdictColors'
+import { getKpiColor } from '@/composables/ui/useVerdictColors'
 
 const props = defineProps<{
   label: string

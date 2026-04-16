@@ -13,9 +13,9 @@ vi.mock('../../../src/utils/logger', () => ({
 }))
 
 import { apiGet, apiPost, apiDelete } from '../../../src/services/api.service'
-import { useDiscoveryCache } from '../../../src/composables/useDiscoveryCache'
-import { useRelevanceScoring } from '../../../src/composables/useRelevanceScoring'
-import { useDiscoverySelection } from '../../../src/composables/useDiscoverySelection'
+import { useDiscoveryCache } from '../../../src/composables/keyword/useDiscoveryCache'
+import { useRelevanceScoring } from '../../../src/composables/keyword/useRelevanceScoring'
+import { useDiscoverySelection } from '../../../src/composables/keyword/useDiscoverySelection'
 import type { DiscoveredKeyword } from '../../../shared/types/discovery-tab.types'
 
 describe('useDiscoveryCache', () => {

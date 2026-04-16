@@ -23,7 +23,7 @@ const iaStreaming = {
   abort: vi.fn(),
 }
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: () => iaStreaming,
 }))
 

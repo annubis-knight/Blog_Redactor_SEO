@@ -85,7 +85,7 @@ describe('useKeywordRadar — timer cleanup', () => {
     // Since useKeywordRadar registers onBeforeUnmount, we simulate component lifecycle
     const { createApp, defineComponent, h } = await import('vue')
 
-    const { useKeywordRadar } = await import('../../../src/composables/useResonanceScore')
+    const { useKeywordRadar } = await import('../../../src/composables/keyword/useResonanceScore')
 
     let radarInstance: ReturnType<typeof useKeywordRadar> | null = null
 
@@ -129,11 +129,11 @@ describe('useKeywordRadar — timer cleanup', () => {
 describe('useKeywordDiscoveryTab — relevanceScores bounded', () => {
   it('relevanceScores is bounded to 500 entries max after mergeScores', async () => {
     // Mock all additional dependencies
-    vi.mock('../../../src/composables/useKeywordDiscoveryTab', async (importOriginal) => {
+    vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', async (importOriginal) => {
       return await importOriginal()
     })
 
-    const { useKeywordDiscoveryTab } = await import('../../../src/composables/useKeywordDiscoveryTab')
+    const { useKeywordDiscoveryTab } = await import('../../../src/composables/keyword/useKeywordDiscoveryTab')
 
     // We need a Vue component context for computed refs
     const { createApp, defineComponent, h } = await import('vue')
@@ -171,7 +171,7 @@ describe('useKeywordDiscoveryTab — relevanceScores bounded', () => {
 describe('useNlpAnalysis — cleanup on unmount', () => {
   it('unmount does NOT destroy singleton state (results preserved)', async () => {
     const { createApp, defineComponent, h } = await import('vue')
-    const { useNlpAnalysis } = await import('../../../src/composables/useNlpAnalysis')
+    const { useNlpAnalysis } = await import('../../../src/composables/intent/useNlpAnalysis')
 
     let nlpInstance: ReturnType<typeof useNlpAnalysis> | null = null
 

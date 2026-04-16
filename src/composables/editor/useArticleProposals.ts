@@ -1,6 +1,6 @@
 import { computed, ref, watch, type Ref } from 'vue'
-import { checkKeywordComposition } from '@/composables/useCompositionCheck'
-import { articleTypeToLevel } from '@/composables/useCapitaineValidation'
+import { checkKeywordComposition } from '@/composables/seo/useCompositionCheck'
+import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
 import { useCocoonStrategyStore } from '@/stores/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/cocoons.store'
 import type { ProposedArticle, CocoonSuggestRequest, SuggestedTopic } from '@shared/types/index.js'

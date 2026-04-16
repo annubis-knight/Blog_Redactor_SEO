@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useNlpAnalysis } from '@/composables/useNlpAnalysis'
+import { useNlpAnalysis } from '@/composables/intent/useNlpAnalysis'
 
 const emit = defineEmits<{
   'nlp-activated': []

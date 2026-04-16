@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import { FRENCH_STOPWORDS } from '@/constants/french-nlp'
 import RadarCardLockable from '@/components/intent/RadarCardLockable.vue'
-import type { CarouselEntry } from '@/composables/useRadarCarousel'
+import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
 
 const props = defineProps<{
   entry: CarouselEntry

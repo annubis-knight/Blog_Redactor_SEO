@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, ref, nextTick } from 'vue'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
-import { provideRecapRadioGroup } from '@/composables/useRecapRadioGroup'
+import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 /** Helper: wraps children in a component that provides a radio group */
 function createGroupWrapper(template: string, components: Record<string, any> = {}) {

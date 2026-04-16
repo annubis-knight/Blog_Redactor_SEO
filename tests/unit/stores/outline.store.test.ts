@@ -15,7 +15,7 @@ const mockStreamingState = {
   abort: mockAbort,
 }
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: vi.fn(() => ({ ...mockStreamingState })),
 }))
 

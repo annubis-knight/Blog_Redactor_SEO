@@ -1,4 +1,4 @@
-import type { KeywordAuditResult } from '../../shared/types/index.js'
+import type { KeywordAuditResult } from '@shared/types/index.js'
 
 export type PainVerdict = 'brulante' | 'emergente' | 'froide' | 'neutre'
 

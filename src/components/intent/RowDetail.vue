@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import type { ValidatePainResult, MultiSourceVerdict } from '@shared/types/intent.types.js'
-import { normalizeDataForSeoSignal, normalizeCommunitySignal, normalizeAutocompleteSignal } from '@/composables/useMultiSourceVerdict'
+import { normalizeDataForSeoSignal, normalizeCommunitySignal, normalizeAutocompleteSignal } from '@/composables/intent/useMultiSourceVerdict'
 import SourceBlock from './SourceBlock.vue'
 import DiscussionList from './DiscussionList.vue'
 import AutocompleteChips from './AutocompleteChips.vue'

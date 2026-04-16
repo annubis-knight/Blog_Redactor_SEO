@@ -24,7 +24,7 @@ const mockValidateKeyword = vi.fn()
 const mockNavigateHistory = vi.fn()
 const mockReset = vi.fn()
 
-vi.mock('../../../src/composables/useCapitaineValidation', () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
   useCapitaineValidation: () => ({
     result: mockResult,
     currentResult: mockCurrentResult,
@@ -54,7 +54,7 @@ const mockAiError = ref<string | null>(null)
 const mockAiStartStream = vi.fn()
 const mockAiAbort = vi.fn()
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: () => ({
     chunks: mockAiChunks,
     isStreaming: mockAiIsStreaming,
@@ -87,7 +87,7 @@ const mockCarouselEffectiveVerdict = vi.fn((entry: any) => {
 const mockCarouselReset = vi.fn()
 const mockCarouselAddEntry = vi.fn()
 
-vi.mock('../../../src/composables/useRadarCarousel', () => ({
+vi.mock('../../../src/composables/keyword/useRadarCarousel', () => ({
   useRadarCarousel: () => ({
     entries: mockCarouselEntries,
     currentIndex: mockCarouselCurrentIndex,

@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/cost-log.store'
-import { useStreaming, startStreamOnce, type StreamOnceResult } from '@/composables/useStreaming'
+import { useStreaming, startStreamOnce, type StreamOnceResult } from '@/composables/editor/useStreaming'
 import { apiPost, apiPut } from '@/services/api.service'
 import {
   countWordsFromHtml,

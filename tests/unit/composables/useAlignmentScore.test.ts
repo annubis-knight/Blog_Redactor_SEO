@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { computeAlignmentScore, type AlignmentResult } from '../../../src/composables/useAlignmentScore'
+import { computeAlignmentScore, type AlignmentResult } from '../../../src/composables/keyword/useAlignmentScore'
 import type { StrategyContextData } from '../../../shared/types/index'
 
 function makeCtx(overrides: Partial<StrategyContextData> = {}): StrategyContextData {

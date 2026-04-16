@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { usePainVerdict } from '../../../src/composables/usePainVerdict'
+import { usePainVerdict } from '../../../src/composables/intent/usePainVerdict'
 import type { KeywordAuditResult } from '../../../shared/types/index'
 
 function makeKw(overrides: Partial<KeywordAuditResult> = {}): KeywordAuditResult {

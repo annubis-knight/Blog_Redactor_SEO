@@ -1,4 +1,4 @@
-import type { StrategyContextData } from '../../shared/types/index.js'
+import type { StrategyContextData } from '@shared/types/index.js'
 
 export interface AlignmentResult {
   score: number

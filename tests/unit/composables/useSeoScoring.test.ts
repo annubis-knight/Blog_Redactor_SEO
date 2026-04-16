@@ -5,7 +5,7 @@ import { useSeoStore } from '../../../src/stores/seo.store'
 import type { Keyword, ArticleKeywords } from '../../../shared/types/index'
 
 // Mock useStreaming used by editor store
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: vi.fn(() => ({
     chunks: { value: '' },
     isStreaming: { value: false },

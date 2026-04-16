@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed } from 'vue'
-import { useKeywordDiscoveryTab } from '@/composables/useKeywordDiscoveryTab'
+import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
 import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'

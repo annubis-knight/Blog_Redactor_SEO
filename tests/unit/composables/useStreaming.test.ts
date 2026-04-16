@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useStreaming } from '../../../src/composables/useStreaming'
+import { useStreaming } from '../../../src/composables/editor/useStreaming'
 
 // Helper to create a fake ReadableStream from SSE text
 function createSseStream(events: string): ReadableStream<Uint8Array> {

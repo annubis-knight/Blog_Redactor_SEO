@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent } from 'vue'
-import { useKeyboardShortcuts } from '../../../src/composables/useKeyboardShortcuts'
+import { useKeyboardShortcuts } from '../../../src/composables/ui/useKeyboardShortcuts'
 
 function createTestComponent(shortcuts: Parameters<typeof useKeyboardShortcuts>[0]) {
   return defineComponent({

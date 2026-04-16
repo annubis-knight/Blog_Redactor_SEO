@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useIntentVerdict } from '@/composables/useIntentVerdict'
+import { useIntentVerdict } from '@/composables/intent/useIntentVerdict'
 import { useIntentStore } from '@/stores/intent.store'
 
 withDefaults(defineProps<{

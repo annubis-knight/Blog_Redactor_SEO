@@ -15,7 +15,7 @@ const mockActivate = vi.fn(async () => { nlpState.value = 'active' })
 const mockDeactivate = vi.fn(() => { nlpState.value = 'disabled' })
 const mockCancel = vi.fn(() => { nlpState.value = 'disabled' })
 
-vi.mock('@/composables/useNlpAnalysis', () => ({
+vi.mock('@/composables/intent/useNlpAnalysis', () => ({
   useNlpAnalysis: () => ({
     nlpState,
     downloadProgress,

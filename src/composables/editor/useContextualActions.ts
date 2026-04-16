@@ -1,6 +1,6 @@
 import { ref, getCurrentInstance, onUnmounted } from 'vue'
 import type { Editor } from '@tiptap/core'
-import { useStreaming } from '@/composables/useStreaming'
+import { useStreaming } from '@/composables/editor/useStreaming'
 import { log } from '@/utils/logger'
 import type { ActionType, ActionContext, Article } from '@shared/types/index.js'
 

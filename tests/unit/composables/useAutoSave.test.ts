@@ -14,7 +14,7 @@ vi.mock('@vueuse/core', () => ({
   },
 }))
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: vi.fn(() => ({
     chunks: { value: '' },
     isStreaming: { value: false },
@@ -31,7 +31,7 @@ vi.mock('../../../src/services/api.service', () => ({
 }))
 
 // Import useAutoSave after mocks are set up
-import { useAutoSave } from '../../../src/composables/useAutoSave'
+import { useAutoSave } from '../../../src/composables/editor/useAutoSave'
 
 beforeEach(() => {
   setActivePinia(createPinia())

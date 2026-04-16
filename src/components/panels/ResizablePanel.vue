@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { useResizablePanel } from '@/composables/useResizablePanel'
+import { useResizablePanel } from '@/composables/ui/useResizablePanel'
 
 const { panelWidth, isResizing, onPointerDown } = useResizablePanel()
 </script>

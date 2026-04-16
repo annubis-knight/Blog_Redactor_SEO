@@ -14,7 +14,7 @@ vi.mock('../../../src/utils/logger', () => ({
 }))
 
 import { apiGet } from '../../../src/services/api.service'
-import { useArticleResults } from '../../../src/composables/useArticleResults'
+import { useArticleResults } from '../../../src/composables/editor/useArticleResults'
 import { useIntentStore } from '../../../src/stores/intent.store'
 import { useLocalStore } from '../../../src/stores/local.store'
 import { useKeywordDiscoveryStore } from '../../../src/stores/keyword-discovery.store'

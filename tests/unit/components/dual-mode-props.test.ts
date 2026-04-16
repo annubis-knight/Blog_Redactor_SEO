@@ -37,12 +37,12 @@ vi.mock('../../../src/stores/local.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/composables/useKeywordDiscoveryTab', async () => {
+vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', async () => {
   const { mockKeywordDiscoveryTab } = await import('../__mocks__/useKeywordDiscoveryTab.mock')
   return mockKeywordDiscoveryTab()
 })
 
-vi.mock('../../../src/composables/useResonanceScore', () => ({
+vi.mock('../../../src/composables/keyword/useResonanceScore', () => ({
   useKeywordRadar: () => ({
     generatedKeywords: { value: [] },
     scanResult: { value: null },
@@ -63,21 +63,21 @@ vi.mock('../../../src/composables/useResonanceScore', () => ({
   radarHeatIcon: () => '',
 }))
 
-vi.mock('../../../src/composables/useIntentVerdict', () => ({
+vi.mock('../../../src/composables/intent/useIntentVerdict', () => ({
   useIntentVerdict: () => ({
     verdicts: [],
     topVerdict: null,
   }),
 }))
 
-vi.mock('../../../src/composables/useMultiSourceVerdict', () => ({
+vi.mock('../../../src/composables/intent/useMultiSourceVerdict', () => ({
   useMultiSourceVerdict: () => ({
     verdicts: { value: [] },
     isLoading: { value: false },
   }),
 }))
 
-vi.mock('../../../src/composables/useNlpAnalysis', () => ({
+vi.mock('../../../src/composables/intent/useNlpAnalysis', () => ({
   useNlpAnalysis: () => ({
     enabled: { value: false },
     setEnabled: vi.fn(),

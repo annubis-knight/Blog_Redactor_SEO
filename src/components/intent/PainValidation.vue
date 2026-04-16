@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { ref, watch, computed, toRef } from 'vue'
 import { apiPost } from '@/services/api.service'
-import { useMultiSourceVerdict, type VerdictResult } from '@/composables/useMultiSourceVerdict'
-import { useNlpAnalysis } from '@/composables/useNlpAnalysis'
+import { useMultiSourceVerdict, type VerdictResult } from '@/composables/intent/useMultiSourceVerdict'
+import { useNlpAnalysis } from '@/composables/intent/useNlpAnalysis'
 import type { TranslatedKeyword, ValidatePainResult, PainVerdictCategory } from '@shared/types/intent.types.js'
 import { log } from '@/utils/logger'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'

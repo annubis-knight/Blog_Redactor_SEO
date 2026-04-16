@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import ConfidenceBar from '@/components/intent/ConfidenceBar.vue'
-import { VERDICT_CONFIG } from '@/composables/useVerdictColors'
+import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
 import type { VerdictLevel, KpiResult } from '@shared/types/index.js'
 
 const props = defineProps<{

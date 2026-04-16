@@ -2,7 +2,7 @@
 import { ref, computed, watch, onUnmounted } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { useStreaming } from '@/composables/useStreaming'
+import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article-keywords.store'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import type { SelectedArticle } from '@shared/types/index.js'

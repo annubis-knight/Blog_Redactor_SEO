@@ -8,7 +8,7 @@ import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'
-import { useKeywordScoring } from '@/composables/useKeywordScoring'
+import { useKeywordScoring } from '@/composables/keyword/useKeywordScoring'
 
 // Intention tab
 import ExplorationInput from '@/components/intent/ExplorationInput.vue'

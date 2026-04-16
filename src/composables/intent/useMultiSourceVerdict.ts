@@ -5,7 +5,7 @@ import type {
   MultiSourceVerdict,
   CommunitySignal,
   AutocompleteSignal,
-} from '../../shared/types/intent.types.js'
+} from '@shared/types/intent.types.js'
 import { FRENCH_STOPWORDS } from '@/constants/french-nlp'
 
 // --- Weights ---

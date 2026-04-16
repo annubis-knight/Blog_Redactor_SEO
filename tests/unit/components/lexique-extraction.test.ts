@@ -33,7 +33,7 @@ const aiStreaming = {
   abort: vi.fn(),
 }
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: () => {
     const idx = streamingCallIndex++
     return idx === 0 ? iaStreaming : aiStreaming

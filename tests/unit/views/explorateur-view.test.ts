@@ -62,7 +62,7 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-vi.mock('../../../src/composables/useKeywordScoring', () => ({
+vi.mock('../../../src/composables/keyword/useKeywordScoring', () => ({
   useKeywordScoring: () => ({
     getScoreColor: vi.fn(() => '#000'),
     getScoreLabel: vi.fn(() => 'N/A'),

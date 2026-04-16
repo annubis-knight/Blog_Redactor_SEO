@@ -1,6 +1,6 @@
-import type { KeywordAuditResult } from '../../shared/types/index.js'
-import type { ContentGapAnalysis } from '../../shared/types/index.js'
-import type { LocalNationalComparison } from '../../shared/types/index.js'
+import type { KeywordAuditResult } from '@shared/types/index.js'
+import type { ContentGapAnalysis } from '@shared/types/index.js'
+import type { LocalNationalComparison } from '@shared/types/index.js'
 
 export interface OpportunityScore {
   total: number

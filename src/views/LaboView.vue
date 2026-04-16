@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useKeywordDiscoveryTab } from '@/composables/useKeywordDiscoveryTab'
+import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
 import { log } from '@/utils/logger'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import type { SelectedArticle } from '@shared/types/index.js'

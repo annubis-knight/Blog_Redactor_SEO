@@ -59,7 +59,7 @@ beforeEach(() => {
 describe('useRadarCarousel', () => {
   // Dynamic import to avoid module-level mock timing issues
   async function createCarousel() {
-    const { useRadarCarousel } = await import('../../../src/composables/useRadarCarousel')
+    const { useRadarCarousel } = await import('../../../src/composables/keyword/useRadarCarousel')
     return useRadarCarousel()
   }
 
@@ -250,7 +250,7 @@ describe('useRadarCarousel', () => {
 
   describe('hydrateCardFromValidation', () => {
     it('converts ValidateResponse to RadarCard with correct fields', async () => {
-      const { hydrateCardFromValidation } = await import('../../../src/composables/useRadarCarousel')
+      const { hydrateCardFromValidation } = await import('../../../src/composables/keyword/useRadarCarousel')
 
       const response: ValidateResponse = {
         keyword: 'test keyword',

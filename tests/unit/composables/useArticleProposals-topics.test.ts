@@ -18,15 +18,15 @@ vi.mock('../../../src/stores/cocoons.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/composables/useCompositionCheck', () => ({
+vi.mock('../../../src/composables/seo/useCompositionCheck', () => ({
   checkKeywordComposition: vi.fn(() => ({ allPass: true, warningCount: 0, results: [] })),
 }))
 
-vi.mock('../../../src/composables/useCapitaineValidation', () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
   articleTypeToLevel: vi.fn(() => 'N3'),
 }))
 
-import { useArticleProposals } from '../../../src/composables/useArticleProposals'
+import { useArticleProposals } from '../../../src/composables/editor/useArticleProposals'
 
 function setupComposable() {
   const store = useCocoonStrategyStore()

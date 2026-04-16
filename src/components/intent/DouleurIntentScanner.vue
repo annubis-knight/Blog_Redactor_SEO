@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
-import { useKeywordRadar } from '@/composables/useResonanceScore'
-import { radarHeatIcon } from '@/composables/useResonanceScore'
+import { useKeywordRadar } from '@/composables/keyword/useResonanceScore'
+import { radarHeatIcon } from '@/composables/keyword/useResonanceScore'
 import { log } from '@/utils/logger'
 import RadarCardCheckable from './RadarCardCheckable.vue'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'

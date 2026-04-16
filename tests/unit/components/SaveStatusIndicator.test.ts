@@ -4,7 +4,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useEditorStore } from '../../../src/stores/editor.store'
 import SaveStatusIndicator from '../../../src/components/editor/SaveStatusIndicator.vue'
 
-vi.mock('../../../src/composables/useStreaming', () => ({
+vi.mock('../../../src/composables/editor/useStreaming', () => ({
   useStreaming: vi.fn(() => ({
     chunks: { value: '' },
     isStreaming: { value: false },

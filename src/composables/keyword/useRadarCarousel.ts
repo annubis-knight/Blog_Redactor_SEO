@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
-import { extractRoots } from '@/composables/useCapitaineValidation'
+import { extractRoots } from '@/composables/keyword/useCapitaineValidation'
 import { log } from '@/utils/logger'
 import { computeCombinedScore } from '@shared/scoring.js'
 import { getThresholds, scoreKpi, computeVerdict } from '@shared/kpi-scoring.js'

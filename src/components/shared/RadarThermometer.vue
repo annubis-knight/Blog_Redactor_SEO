@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { radarHeatColor, radarHeatIcon, radarHeatLabel } from '@/composables/useResonanceScore'
+import { radarHeatColor, radarHeatIcon, radarHeatLabel } from '@/composables/keyword/useResonanceScore'
 import ConfidenceBar from '@/components/intent/ConfidenceBar.vue'
 
 const props = withDefaults(defineProps<{

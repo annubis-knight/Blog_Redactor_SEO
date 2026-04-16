@@ -1,5 +1,5 @@
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
-import type { NlpResult, NlpState } from '../../shared/types/intent.types.js'
+import type { NlpResult, NlpState } from '@shared/types/intent.types.js'
 import { log } from '@/utils/logger'
 
 // --- Constants ---

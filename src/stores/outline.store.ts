@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
-import { useStreaming } from '@/composables/useStreaming'
+import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiPut } from '@/services/api.service'
 import type { Outline, OutlineSection, BriefData, ApiUsage } from '@shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
