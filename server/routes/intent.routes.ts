@@ -4,6 +4,10 @@ import { analyzeIntent, compareLocalNational, validateAutocomplete } from '../se
 
 const router = Router()
 
+// Sprint 15.4 — Intent analysis is now purely cross-article (DB-first on
+// keyword_intent_analyses). The articleId param is ignored: two articles
+// testing the same keyword share the same analysis.
+
 /** POST /api/intent/analyze — Analyze SERP structure and classify intent */
 router.post('/intent/analyze', async (req, res) => {
   const { keyword, locationCode } = req.body ?? {}
@@ -16,9 +20,10 @@ router.post('/intent/analyze', async (req, res) => {
   try {
     const result = await analyzeIntent(keyword, locationCode)
     log.info(`Intent result for "${keyword}": ${result.dominantIntent}`, { modules: result.modules.filter(m => m.present).length, scores: result.scores.length })
-    // Forward Claude usage for cost tracking (classification.usage set by classifyIntentWithClaude)
-    const _apiUsage = (result.classification as any)?.usage ?? undefined
-    res.json({ data: { ...result, _apiUsage } })
+    // `usage` remonté au front pour alimenter la pile d'activité (convention unifiée).
+    // On garde aussi `_apiUsage` pour compatibilité avec d'anciens consommateurs.
+    const usage = (result.classification as { usage?: unknown } | undefined)?.usage
+    res.json({ data: { ...result, usage, _apiUsage: usage } })
   } catch (err) {
     log.error(`POST /api/intent/analyze — ${(err as Error).message}`)
     const message = err instanceof Error ? err.message : 'Erreur analyse intention'

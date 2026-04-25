@@ -8,6 +8,7 @@ vi.mock('../../../src/services/api.service', () => ({
   apiGet: vi.fn(),
   apiPut: vi.fn(),
   apiPost: vi.fn(),
+  apiPatch: vi.fn(),
 }))
 
 import { apiGet, apiPut, apiPost } from '../../../src/services/api.service'
@@ -253,8 +254,6 @@ describe('article-keywords.store — saveKeywords', () => {
       lexique: [],
       rootKeywords: [],
       hnStructure: [],
-      richRootKeywords: [],
-      richLieutenants: [],
     })
     expect(store.keywords).toEqual(savedKeywords)
     expect(store.isSaving).toBe(false)

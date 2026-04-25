@@ -6,8 +6,8 @@ import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 
 const ALL_CHECKS = [
-  'discovery_done', 'radar_done',
-  'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
+  'moteur:discovery_done', 'moteur:radar_done',
+  'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
 ]
 
 // --- ProgressDots unit tests ---
@@ -29,8 +29,8 @@ describe('ProgressDots — Rendering', () => {
     const wrapper = mount(ProgressDots, {
       props: {
         completedChecks: [
-          'discovery_done', 'radar_done',
-          'capitaine_locked',
+          'moteur:discovery_done', 'moteur:radar_done',
+          'moteur:capitaine_locked',
         ],
       },
     })
@@ -71,7 +71,7 @@ describe('ProgressDots — Phase grouping', () => {
     // Only Phase ② checks completed
     const wrapper = mount(ProgressDots, {
       props: {
-        completedChecks: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+        completedChecks: ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
       },
     })
 
@@ -87,7 +87,7 @@ describe('ProgressDots — Phase grouping', () => {
 describe('ProgressDots — Accessibility', () => {
   it('has aria-label with progression count', () => {
     const wrapper = mount(ProgressDots, {
-      props: { completedChecks: ['discovery_done', 'radar_done'] },
+      props: { completedChecks: ['moteur:discovery_done', 'moteur:radar_done'] },
     })
 
     const root = wrapper.find('.progress-dots')
@@ -96,7 +96,7 @@ describe('ProgressDots — Accessibility', () => {
 
   it('aria-label counts only valid checks, ignoring unknown ones', () => {
     const wrapper = mount(ProgressDots, {
-      props: { completedChecks: ['discovery_done', 'intent_done', 'unknown_check'] },
+      props: { completedChecks: ['moteur:discovery_done', 'intent_done', 'unknown_check'] },
     })
 
     const root = wrapper.find('.progress-dots')
@@ -123,24 +123,24 @@ describe('ProgressDots — Edge cases', () => {
   it('ignores unknown checks in completedChecks', () => {
     const wrapper = mount(ProgressDots, {
       props: {
-        completedChecks: ['unknown_check', 'intent-analyzed', 'discovery_done'],
+        completedChecks: ['unknown_check', 'intent-analyzed', 'moteur:discovery_done'],
       },
     })
 
     const filled = wrapper.findAll('.progress-dot--filled')
-    // Only 'discovery_done' matches a Moteur check
+    // Only 'moteur:discovery_done' matches a Moteur check
     expect(filled).toHaveLength(1)
   })
 
   it('ignores old checks that no longer exist', () => {
     const wrapper = mount(ProgressDots, {
       props: {
-        completedChecks: ['intent_done', 'audit_done', 'local_done', 'captain_chosen', 'assignment_done', 'discovery_done'],
+        completedChecks: ['intent_done', 'audit_done', 'local_done', 'captain_chosen', 'assignment_done', 'moteur:discovery_done'],
       },
     })
 
     const filled = wrapper.findAll('.progress-dot--filled')
-    // Only 'discovery_done' matches — old checks are ignored
+    // Only 'moteur:discovery_done' matches — old checks are ignored
     expect(filled).toHaveLength(1)
   })
 })
@@ -154,9 +154,9 @@ vi.mock('@/services/api.service', () => ({
 }))
 
 describe('MoteurContextRecap — ProgressDots integration', () => {
-  const proposedArticles = [
-    { title: 'Article Pilier A', type: 'Pilier', accepted: true, suggestedKeyword: 'kw1', suggestedSlug: 'article-pilier-a', suggestedSlugs: [], painPoint: '', dbId: 42, createdInDb: true },
-    { title: 'Article Spécialisé B', type: 'Spécialisé', accepted: true, suggestedKeyword: 'kw2', suggestedSlug: 'article-specialise-b', suggestedSlugs: [], painPoint: '', dbId: 43, createdInDb: true },
+  const suggestedArticles = [
+    { id: 42, title: 'Article Pilier A', type: 'Pilier', slug: 'article-pilier-a', topic: null, status: 'draft', phase: 'generer', completedChecks: [], suggestedKeyword: 'kw1', captainKeywordLocked: null, painPoint: '' },
+    { id: 43, title: 'Article Spécialisé B', type: 'Spécialisé', slug: 'article-specialise-b', topic: null, status: 'draft', phase: 'generer', completedChecks: [], suggestedKeyword: 'kw2', captainKeywordLocked: null, painPoint: '' },
   ]
 
   beforeEach(() => {
@@ -167,12 +167,12 @@ describe('MoteurContextRecap — ProgressDots integration', () => {
   it('renders ProgressDots for each suggested article', () => {
     // Pre-populate store
     const store = useArticleProgressStore()
-    store.progressMap['42'] = { phase: 'generer', completedChecks: ['discovery_done'] } as any
+    store.progressMap['42'] = { phase: 'generer', completedChecks: ['moteur:discovery_done'] } as any
     store.progressMap['43'] = { phase: 'generer', completedChecks: [] } as any
 
     const wrapper = mount(MoteurContextRecap, {
       props: {
-        proposedArticles,
+        suggestedArticles,
         publishedArticles: [],
         selectedSlug: null,
       },
@@ -186,18 +186,18 @@ describe('MoteurContextRecap — ProgressDots integration', () => {
     const store = useArticleProgressStore()
     store.progressMap['42'] = {
       phase: 'valider',
-      completedChecks: ['discovery_done', 'radar_done', 'capitaine_locked'],
+      completedChecks: ['moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked'],
     } as any
 
     const wrapper = mount(MoteurContextRecap, {
       props: {
-        proposedArticles: [proposedArticles[0]],
+        suggestedArticles: [suggestedArticles[0]],
         publishedArticles: [],
         selectedSlug: null,
       },
     })
 
     const dotComponent = wrapper.findComponent(ProgressDots)
-    expect(dotComponent.props('completedChecks')).toEqual(['discovery_done', 'radar_done', 'capitaine_locked'])
+    expect(dotComponent.props('completedChecks')).toEqual(['moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked'])
   })
 })

@@ -1,13 +1,27 @@
 <script setup lang="ts">
 import { ref, computed, watch, onUnmounted } from 'vue'
-import { apiPost } from '@/services/api.service'
+import { apiGet, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
+import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
+import { MOTEUR_LEXIQUE_VALIDATED } from '@shared/constants/workflow-checks.constants.js'
+
+// Sprint 11 — Multi-keyword exploration + DB hydration
+interface LexiqueExplorationEntry {
+  articleId: number
+  sourceKeyword: string
+  tfidfTerms: TfidfResult | null
+  aiRecommendations: LexiqueTermRecommendation[]
+  aiMissingTerms: string[]
+  aiSummary: string | null
+  exploredAt: string
+}
 
 const props = withDefaults(defineProps<{
   selectedArticle: SelectedArticle | null
@@ -35,17 +49,27 @@ const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
 const isLocked = ref(props.initialLocked)
 
+// Sprint 11 (D4) — champ saisie libre pour lancer TF-IDF sur un keyword arbitraire.
+const customKeywordInput = ref('')
+// Keyword source actif pour l'extraction courante (capitaine par défaut).
+const activeSourceKeyword = ref<string>('')
+// DB-hydrated past explorations for this article (displayed as collapsible sections).
+const pastExplorations = ref<LexiqueExplorationEntry[]>([])
+
 // --- IA Upfront Analysis (NOUVEAU) ---
 const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, result: iaRawResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<LexiqueAnalysisResult>()
 const iaResult = computed(() => iaRawResult.value)
 const iaRecommendations = ref<Map<string, LexiqueTermRecommendation>>(new Map())
 
-// --- Legacy AI Panel (streaming text) ---
-const { chunks: aiChunks, isStreaming: aiIsStreaming, error: aiError, startStream: aiStartStream, abort: aiAbort } = useStreaming()
-const aiPanelOpen = ref(true)
+// F5 — La barrière `isCaptaineLocked` ne s'applique qu'au premier passage. Dès que
+// des termes lexique ont été validés une fois, l'onglet reste accessible même si
+// l'utilisateur déverrouille ensuite le Capitaine.
+const hasEverValidated = computed(() =>
+  (articleKeywordsStore.keywords?.lexique?.length ?? 0) > 0,
+)
 
 const canExtract = computed(() =>
-  props.isCaptaineLocked && !!props.captainKeyword && !isLoading.value && !isLocked.value,
+  (props.isCaptaineLocked || hasEverValidated.value) && !!props.captainKeyword && !isLoading.value && !isLocked.value,
 )
 
 // --- Debug log: state on mount ---
@@ -65,9 +89,29 @@ watch(
   { immediate: true },
 )
 
+/** F3 — Ajoute un terme (suggéré par le basket) à la sélection lexique courante. */
+function handleAssistAdd(term: string) {
+  if (isLocked.value) return
+  const next = new Set(selectedTerms.value)
+  next.add(term)
+  selectedTerms.value = next
+  log.info('[LexiqueExtraction] Assist add', { term, total: selectedTerms.value.size })
+}
+
 async function extractLexique() {
   if (!props.captainKeyword || !canExtract.value) return
-  await fetchTfidf()
+  activeSourceKeyword.value = props.captainKeyword
+  await fetchTfidf(props.captainKeyword)
+}
+
+/** Sprint 11 (D4) — TF-IDF sur un keyword arbitraire (hors capitaine verrouillé). */
+async function extractCustomKeyword() {
+  const kw = customKeywordInput.value.trim()
+  if (!kw || isLoading.value) return
+  activeSourceKeyword.value = kw
+  iaRecommendations.value = new Map()
+  await fetchTfidf(kw)
+  customKeywordInput.value = ''
 }
 
 function toggleTerm(term: string) {
@@ -105,13 +149,14 @@ function isIaRecommended(term: string): boolean | null {
 
 // --- IA Upfront Lexique Analysis ---
 function generateLexiqueUpfront() {
-  if (!props.captainKeyword || !tfidfResult.value) return
+  const keyword = activeSourceKeyword.value || props.captainKeyword
+  if (!keyword || !tfidfResult.value) return
   const data = tfidfResult.value
   iaAbort()
   iaRecommendations.value = new Map()
 
   iaStartStream(
-    `/api/keywords/${encodeURIComponent(props.captainKeyword)}/ai-lexique-upfront`,
+    `/api/keywords/${encodeURIComponent(keyword)}/ai-lexique-upfront`,
     {
       level: props.articleLevel,
       allTerms: {
@@ -120,6 +165,7 @@ function generateLexiqueUpfront() {
         optionnel: data.optionnel.map(t => t.term),
       },
       cocoonSlug: props.cocoonSlug || undefined,
+      articleId: props.selectedArticle?.id ?? undefined,
     },
     {
       onDone: (result) => {
@@ -151,8 +197,16 @@ function generateLexiqueUpfront() {
 }
 
 // Auto-trigger IA upfront after TF-IDF results
+// U5 — session guard : ne pas relancer si déjà en cache session (iaRecommendations peuplé)
+// TODO U5 plus complet : persister les iaRecommendations en DB avec exploredAt,
+// et réutiliser via shouldRegenerate(exploredAt). Pour l'instant : cache de session seulement.
 watch(tfidfResult, (res) => {
-  if (res) generateLexiqueUpfront()
+  if (!res) return
+  if (iaRecommendations.value.size > 0) {
+    log.debug('[LexiqueExtraction] Skip IA upfront — session cache already populated', { count: iaRecommendations.value.size })
+    return
+  }
+  generateLexiqueUpfront()
 })
 
 // --- Validate / Lock ---
@@ -165,29 +219,31 @@ async function validateLexique() {
     articleKeywordsStore.initEmpty(id)
   }
   articleKeywordsStore.keywords!.lexique = terms
-  await articleKeywordsStore.saveKeywords(id)
+  await articleKeywordsStore.saveDecisions(id)
 
   isLocked.value = true
-  emit('check-completed', 'lexique_validated')
+  emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
   log.info(`[LexiqueExtraction] Lexique validated with ${terms.length} terms`)
 }
 
 function unlockLexique() {
   isLocked.value = false
-  emit('check-removed', 'lexique_validated')
+  emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
 }
 
-// Fetch TF-IDF
-async function fetchTfidf() {
-  if (!props.captainKeyword) return
+// Fetch TF-IDF — keyword can be overridden (Sprint 11 D4 multi-keyword)
+async function fetchTfidf(keywordOverride?: string) {
+  const keyword = keywordOverride ?? activeSourceKeyword.value ?? props.captainKeyword
+  if (!keyword) return
 
   isLoading.value = true
   error.value = null
 
   try {
-    log.info(`[LexiqueExtraction] Fetching TF-IDF for "${props.captainKeyword}"`)
+    log.info(`[LexiqueExtraction] Fetching TF-IDF for "${keyword}"`)
     const result = await apiPost<TfidfResult>('/serp/tfidf', {
-      keyword: props.captainKeyword,
+      keyword,
+      articleId: props.selectedArticle?.id ?? undefined,
     })
     tfidfResult.value = result
 
@@ -207,12 +263,45 @@ async function fetchTfidf() {
   }
 }
 
-// Auto-restore TF-IDF when captain is locked
+/**
+ * Sprint 11 — Hydrate past explorations from DB (article-scoped) before any
+ * TF-IDF/AI call. When a fresh (<7d) exploration exists for the capitaine,
+ * we restore tfidfResult + iaRecommendations straight from the table and skip
+ * the SERP/AI roundtrips entirely.
+ */
+async function hydrateFromDb() {
+  const id = props.selectedArticle?.id
+  if (!id) return
+  try {
+    const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(`/articles/${id}/explorations`)
+    pastExplorations.value = payload.lexique ?? []
+    log.debug('[LexiqueExtraction] DB hydration', { count: pastExplorations.value.length })
+
+    // Restore the exploration that matches the capitaine, if any.
+    const active = activeSourceKeyword.value || props.captainKeyword || ''
+    const match = pastExplorations.value.find(e => e.sourceKeyword.toLowerCase() === active.toLowerCase())
+    if (match && match.tfidfTerms) {
+      tfidfResult.value = match.tfidfTerms
+      activeSourceKeyword.value = match.sourceKeyword
+      const map = new Map<string, LexiqueTermRecommendation>()
+      for (const rec of match.aiRecommendations) map.set(rec.term.toLowerCase(), rec)
+      iaRecommendations.value = map
+      log.info(`[LexiqueExtraction] Restored from DB for "${match.sourceKeyword}" (${shouldRegenerate(match.exploredAt) ? 'stale' : 'fresh'})`)
+    }
+  } catch (err) {
+    log.warn(`[LexiqueExtraction] DB hydration failed — ${(err as Error).message}`)
+  }
+}
+
+// Auto-restore TF-IDF when captain is locked — prefer DB-first.
 watch(
-  [() => props.isCaptaineLocked, () => props.captainKeyword],
-  ([locked, keyword]) => {
-    if (locked && keyword && !tfidfResult.value && !isLoading.value) {
-      fetchTfidf()
+  [() => props.isCaptaineLocked, () => props.captainKeyword, () => props.selectedArticle?.id],
+  async ([locked, keyword]) => {
+    if (!locked || !keyword) return
+    if (!activeSourceKeyword.value) activeSourceKeyword.value = keyword
+    await hydrateFromDb()
+    if (!tfidfResult.value && !isLoading.value) {
+      await fetchTfidf(keyword)
     }
   },
   { immediate: true },
@@ -226,15 +315,16 @@ watch(
     error.value = null
     selectedTerms.value = new Set()
     iaRecommendations.value = new Map()
+    pastExplorations.value = []
+    activeSourceKeyword.value = ''
+    customKeywordInput.value = ''
     isLocked.value = props.initialLocked
     iaAbort()
-    aiAbort()
   },
 )
 
 onUnmounted(() => {
   iaAbort()
-  aiAbort()
 })
 </script>
 
@@ -252,6 +342,13 @@ onUnmounted(() => {
       <span v-if="articleLevel" class="level-badge">{{ articleLevel }}</span>
     </div>
 
+    <!-- F3 — Suggestions depuis le basket, ajoutées aux termes lexique sélectionnés -->
+    <KeywordAssistPanel
+      context="lexique"
+      :exclude-keywords="Array.from(selectedTerms)"
+      @add="handleAssistAdd"
+    />
+
     <!-- Extract button -->
     <div class="extract-controls">
       <button
@@ -262,6 +359,39 @@ onUnmounted(() => {
       >
         {{ isLoading ? 'Extraction en cours...' : 'Extraire le Lexique' }}
       </button>
+    </div>
+
+    <!-- Sprint 11 (D4) — Multi-keyword exploration + past explorations recap -->
+    <div v-if="selectedArticle?.id" class="multi-keyword-section">
+      <label class="multi-keyword-label">Extraire pour un autre mot-clé</label>
+      <div class="multi-keyword-row">
+        <input
+          v-model="customKeywordInput"
+          type="text"
+          class="multi-keyword-input"
+          :disabled="isLoading || isLocked"
+          placeholder="Ex: coach sportif Paris"
+          @keydown.enter="extractCustomKeyword"
+        />
+        <button
+          type="button"
+          class="btn-secondary"
+          :disabled="!customKeywordInput.trim() || isLoading || isLocked"
+          @click="extractCustomKeyword"
+        >Extraire</button>
+      </div>
+      <div v-if="pastExplorations.length > 0" class="past-explorations">
+        <span class="past-label">Explorations enregistrées ({{ pastExplorations.length }}) —</span>
+        <button
+          v-for="entry in pastExplorations"
+          :key="entry.sourceKeyword"
+          type="button"
+          class="past-chip"
+          :class="{ 'past-chip--active': activeSourceKeyword === entry.sourceKeyword }"
+          :title="`Exploré le ${new Date(entry.exploredAt).toLocaleDateString('fr-FR')}`"
+          @click="() => { activeSourceKeyword = entry.sourceKeyword; tfidfResult = entry.tfidfTerms; const m = new Map(); for (const r of entry.aiRecommendations) m.set(r.term.toLowerCase(), r); iaRecommendations = m }"
+        >{{ entry.sourceKeyword }}</button>
+      </div>
     </div>
 
     <!-- Error -->
@@ -344,33 +474,6 @@ onUnmounted(() => {
         </div>
         <p v-else class="section-empty">Aucun terme optionnel identifie.</p>
       </CollapsableSection>
-
-      <!-- AI Expert Panel (legacy streaming text) -->
-      <div class="ai-panel" data-testid="ai-panel">
-        <button
-          class="ai-panel-toggle"
-          data-testid="ai-panel-toggle"
-          @click="aiPanelOpen = !aiPanelOpen"
-        >
-          <span class="ai-panel-toggle-icon">{{ aiPanelOpen ? '\u25BC' : '\u25B6' }}</span>
-          Avis expert IA — Lexique
-          <span v-if="aiIsStreaming" class="ai-panel-streaming-dot" />
-        </button>
-        <div v-if="aiPanelOpen" class="ai-panel-content" data-testid="ai-panel-content">
-          <div v-if="aiIsStreaming && !aiChunks" class="ai-panel-loading">
-            Analyse lexicale en cours...
-          </div>
-          <div v-else-if="aiError" class="ai-panel-error">
-            {{ aiError }}
-          </div>
-          <div v-else-if="aiChunks" class="ai-panel-text" data-testid="ai-panel-text">
-            {{ aiChunks }}
-          </div>
-          <div v-else class="ai-panel-empty">
-            En attente de l'extraction TF-IDF...
-          </div>
-        </div>
-      </div>
 
       <!-- Validate / Lock (inside results) -->
       <div v-if="!isLocked" class="lexique-lock" data-testid="lexique-lock">
@@ -677,66 +780,6 @@ onUnmounted(() => {
   font-style: italic;
 }
 
-/* --- AI Panel (legacy) --- */
-.ai-panel {
-  margin-top: 0.5rem;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.ai-panel-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  width: 100%;
-  padding: 0.75rem 1rem;
-  background: var(--color-surface, #f8fafc);
-  border: none;
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-text, #1e293b);
-  cursor: pointer;
-  text-align: left;
-}
-
-.ai-panel-toggle-icon {
-  font-size: 0.625rem;
-  color: var(--color-text-muted, #64748b);
-}
-
-.ai-panel-streaming-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: var(--color-primary, #3b82f6);
-  animation: pulse 1s ease infinite;
-}
-
-.ai-panel-content {
-  padding: 1rem;
-  border-top: 1px solid var(--color-border, #e2e8f0);
-}
-
-.ai-panel-loading,
-.ai-panel-empty {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted, #64748b);
-  font-style: italic;
-}
-
-.ai-panel-error {
-  font-size: 0.8125rem;
-  color: var(--color-error, #ef4444);
-}
-
-.ai-panel-text {
-  font-size: 0.8125rem;
-  line-height: 1.6;
-  color: var(--color-text, #1e293b);
-  white-space: pre-wrap;
-}
-
 /* --- Lock/Unlock --- */
 .lexique-lock {
   margin-top: 0.5rem;
@@ -793,5 +836,88 @@ onUnmounted(() => {
 .unlock-btn:hover {
   border-color: var(--color-warning, #f59e0b);
   color: var(--color-warning, #f59e0b);
+}
+
+/* Sprint 11 (D4) — Multi-keyword exploration */
+.multi-keyword-section {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.04));
+  border: 1px dashed var(--color-border, #e2e8f0);
+  border-radius: 8px;
+}
+.multi-keyword-label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #64748b);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.multi-keyword-row {
+  display: flex;
+  gap: 0.5rem;
+}
+.multi-keyword-input {
+  flex: 1;
+  padding: 0.375rem 0.625rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  background: var(--color-background, #ffffff);
+  color: var(--color-text, #1e293b);
+}
+.multi-keyword-input:focus {
+  outline: none;
+  border-color: var(--color-primary, #3b82f6);
+}
+.btn-secondary {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  background: var(--color-surface, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  color: var(--color-text, #1e293b);
+  cursor: pointer;
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--color-primary, #3b82f6);
+  color: var(--color-primary, #3b82f6);
+}
+.btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.past-explorations {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.375rem;
+  align-items: center;
+  font-size: 0.75rem;
+}
+.past-label {
+  color: var(--color-text-muted, #64748b);
+  font-weight: 600;
+}
+.past-chip {
+  padding: 0.25rem 0.625rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 999px;
+  background: var(--color-background, #ffffff);
+  font-size: 0.75rem;
+  cursor: pointer;
+  color: var(--color-text, #1e293b);
+  transition: all 0.15s;
+}
+.past-chip:hover {
+  border-color: var(--color-primary, #3b82f6);
+}
+.past-chip--active {
+  border-color: var(--color-primary, #3b82f6);
+  background: var(--color-primary, #3b82f6);
+  color: white;
+  font-weight: 600;
 }
 </style>

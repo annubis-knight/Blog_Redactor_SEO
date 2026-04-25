@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
+import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
+import type { NavItem } from '@/components/shared/WorkflowNav.vue'
 import { useBriefStore } from '@/stores/strategy/brief.store'
 import { useOutlineStore } from '@/stores/article/outline.store'
 import { useEditorStore } from '@/stores/article/editor.store'
@@ -334,6 +336,46 @@ onMounted(async () => {
     log.warn('[workflow] No saved content found, starting fresh', { articleId: id, error: (err as Error).message })
   }
 })
+
+// --- AppNavbar integration ---
+// Rédaction = 2 linear steps. Step "article" is locked until the brief is
+// completed; we detect that via the article-progress store's check list.
+const workflowNavStore = useWorkflowNavStore()
+
+const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = [
+  { id: 'brief-structure', label: 'Brief & Structure' },
+  { id: 'article',         label: 'Article' },
+]
+
+const redactionNavSteps = computed<NavItem[]>(() => {
+  const id = articleId.value
+  const checks = id ? articleProgressStore.getProgress(id)?.completedChecks ?? [] : []
+  const briefDone = checks.includes('redaction:brief_validated') || checks.includes('redaction:outline_validated')
+  return REDACTION_STEPS.map((s, idx) => ({
+    id: s.id,
+    label: s.label,
+    number: idx + 1,
+    done: s.id === 'brief-structure' ? briefDone : false,
+    // Article step stays locked until the brief has been validated.
+    locked: s.id === 'article' && !briefDone,
+    hint: s.id === 'article' && !briefDone ? 'Validez le brief pour accéder à l\'éditeur' : undefined,
+  }))
+})
+
+watch(
+  [redactionNavSteps, currentStep],
+  ([steps, active]) => {
+    workflowNavStore.setWorkflowNav({
+      workflow: 'redaction',
+      activeId: active,
+      steps,
+      onNavigate: (id: string) => goToStep(id as typeof currentStep.value),
+    })
+  },
+  { immediate: true, deep: true },
+)
+
+onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 </script>
 
 <template>
@@ -383,19 +425,8 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Linear workflow stepper (2 steps) -->
-      <div class="workflow-stepper">
-        <button
-          v-for="step in steps"
-          :key="step.id"
-          class="step-btn"
-          :class="{ active: currentStep === step.id, completed: isStepCompleted(step.id) }"
-          @click="goToStep(step.id)"
-        >
-          <span class="step-number">{{ step.number }}</span>
-          <span class="step-label">{{ step.label }}</span>
-        </button>
-      </div>
+      <!-- Sprint — workflow stepper moved into AppNavbar via workflow-nav store. -->
+
 
       <!-- Slug resolution error -->
       <div v-if="slugResolutionError" class="slug-error">
@@ -634,56 +665,7 @@ onMounted(async () => {
   text-decoration: none;
 }
 
-/* --- Workflow stepper --- */
-.workflow-stepper {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 1.5rem;
-  overflow-x: auto;
-}
-
-.step-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 1rem;
-  border: none;
-  background: var(--color-bg-soft);
-  cursor: pointer;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.step-btn:first-child { border-radius: 6px 0 0 6px; }
-.step-btn:last-child { border-radius: 0 6px 6px 0; }
-
-.step-btn.active {
-  background: var(--color-primary);
-  color: white;
-  font-weight: 600;
-}
-
-.step-btn.completed {
-  background: var(--color-bg-elevated, #e8f5e9);
-  color: var(--color-success);
-}
-
-.step-number {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.5rem;
-  height: 1.5rem;
-  border-radius: 50%;
-  font-size: 0.75rem;
-  font-weight: 700;
-  background: rgba(0,0,0,0.1);
-}
-
-.step-btn.active .step-number { background: rgba(255,255,255,0.3); }
-.step-btn.completed .step-number { background: var(--color-success); color: white; }
+/* --- Workflow stepper moved to AppNavbar (WorkflowNav) — styles dropped. --- */
 
 .workflow-step {
   animation: fadeIn 0.2s ease;

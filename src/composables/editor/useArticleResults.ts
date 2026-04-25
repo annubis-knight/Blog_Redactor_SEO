@@ -5,13 +5,15 @@ import { useLocalStore } from '@/stores/external/local.store'
 import { useKeywordDiscoveryStore } from '@/stores/keyword/keyword-discovery.store'
 import { log } from '@/utils/logger'
 
-interface CachedResults {
-  intent: unknown | null
-  local: unknown | null
-  contentGap: unknown | null
+// Sprint 14 — Response shapes from the split endpoints introduced in Sprint 10.
+interface ExplorationsResponse {
+  intent?: { capitaine: unknown | null; all: unknown[] }
+  local?: { capitaine: { hasLocalPack?: boolean; listings?: unknown[]; reviewGap?: unknown; comparison?: unknown } | null; all: unknown[] }
+  contentGap?: { capitaine: { data?: unknown } | null; all: unknown[] }
+  radar?: { scanResult?: { globalScore: number; heatLevel: string } } | null
+}
+interface ExternalCacheResponse {
   autocomplete: unknown | null
-  comparison: unknown | null
-  radar: { scanResult?: { globalScore: number; heatLevel: string } } | null
 }
 
 export interface ArticleResultsOptions {
@@ -40,15 +42,19 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
     isLoading.value = true
 
     try {
-      const cached = await apiGet<CachedResults>(`/articles/${articleId}/cached-results`)
-      log.debug('[useArticleResults] Cached results received', {
+      // Sprint 14 — split endpoints: DB-scoped explorations + cross-article external cache.
+      const [explorations, external] = await Promise.all([
+        apiGet<ExplorationsResponse>(`/articles/${articleId}/explorations`),
+        apiGet<ExternalCacheResponse>(`/articles/${articleId}/external-cache`).catch(() => ({ autocomplete: null } as ExternalCacheResponse)),
+      ])
+
+      log.debug('[useArticleResults] Split endpoints received', {
         articleId,
-        intent: !!cached.intent,
-        local: !!cached.local,
-        contentGap: !!cached.contentGap,
-        autocomplete: !!cached.autocomplete,
-        comparison: !!cached.comparison,
-        radar: !!cached.radar,
+        intent: !!explorations.intent?.capitaine,
+        local: !!explorations.local?.capitaine,
+        contentGap: !!explorations.contentGap?.capitaine,
+        autocomplete: !!external.autocomplete,
+        radar: !!explorations.radar,
       })
 
       // Guard against race condition: if user switched articles during fetch, discard
@@ -61,24 +67,33 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
       }
 
       // Populate intent store
-      if (cached.intent) {
-        intentStore.intentData = cached.intent as any
+      if (explorations.intent?.capitaine) {
+        intentStore.intentData = explorations.intent.capitaine as any
       }
-      if (cached.comparison) {
-        intentStore.comparisonData = cached.comparison as any
+      if (explorations.local?.capitaine?.comparison) {
+        intentStore.comparisonData = explorations.local.capitaine.comparison as any
       }
-      if (cached.autocomplete) {
-        intentStore.autocompleteData = cached.autocomplete as any
+      if (external.autocomplete) {
+        intentStore.autocompleteData = external.autocomplete as any
       }
 
-      // Populate local store
-      if (cached.local) {
-        localStore.mapsData = cached.local as any
+      // Populate local store — reconstruct MapsResult shape from DB row
+      if (explorations.local?.capitaine) {
+        const lc = explorations.local.capitaine
+        localStore.mapsData = {
+          keyword: '',
+          locationCode: 0,
+          hasLocalPack: !!lc.hasLocalPack,
+          listings: (lc.listings as any[]) ?? [],
+          reviewGap: lc.reviewGap as any,
+          cachedAt: '',
+        } as any
       }
 
       // Notify radar callback
-      if (cached.radar?.scanResult && options.onRadarLoaded) {
-        options.onRadarLoaded(cached.radar.scanResult)
+      const radarScan = explorations.radar?.scanResult
+      if (radarScan && options.onRadarLoaded) {
+        options.onRadarLoaded(radarScan)
       }
     } catch (err) {
       log.warn(`[useArticleResults] Failed to load cached results for articleId=${articleId}: ${(err as Error).message}`)

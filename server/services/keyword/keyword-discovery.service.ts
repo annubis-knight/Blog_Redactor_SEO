@@ -1,4 +1,3 @@
-import { join } from 'path'
 import {
   fetchDataForSeo,
   fetchKeywordOverviewBatch,
@@ -7,7 +6,16 @@ import {
 } from '../external/dataforseo.service.js'
 import { log } from '../../utils/logger.js'
 import { getKeywordsByCocoon } from '../infra/data.service.js'
-import { slugify, getOrFetch } from '../../utils/cache.js'
+import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
+
+async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+  const cached = await getCached<T>(cacheType, key)
+  if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
+  log.debug(`Cache MISS: ${key}`)
+  const data = await fetcher()
+  await setCached(cacheType, key, data, ttlMs)
+  return data
+}
 import type {
   KeywordType,
   RelatedKeyword,
@@ -18,7 +26,7 @@ import type {
 
 const DEFAULT_LOCATION_CODE = 2250 // France
 const DEFAULT_LANGUAGE_CODE = 'fr'
-const DISCOVERY_CACHE_DIR = join(process.cwd(), 'data', 'cache', 'discovery')
+const DISCOVERY_CACHE_DIR = 'keyword-discovery'
 const DISCOVERY_TTL_MS = 24 * 60 * 60 * 1000 // 24h
 
 // --- Classification ---

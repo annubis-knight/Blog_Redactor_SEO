@@ -1,8 +1,11 @@
 # generated: 2026-04-01
+# last_updated: 2026-04-24
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
-# story_location: _bmad-output/implementation-artifacts
+# story_location: _bmad-output/implementation-artifacts/_archive
+#   (déplacé 2026-04-24 — les stories individuelles sont des archives historiques,
+#    voir CLAUDE.md pour le détail)
 
 # STATUS DEFINITIONS:
 # ==================
@@ -32,15 +35,26 @@
 # - Stories can be worked in parallel if team capacity allows
 # - SM typically creates next story after previous one is 'done' to incorporate learnings
 # - Dev moves story to 'review', then runs code-review (fresh context, different LLM recommended)
+#
+# 2026-04-24 UPDATE:
+# ==================
+# Les titres d'épics 1, 6 ont été ajustés pour refléter la structure LIVRÉE :
+# Moteur = 3 phases / 6 onglets (Explorer, Valider, Finalisation), pas 2 phases
+# Epics 11-15 ajoutés rétroactivement pour documenter les chantiers livrés
+# non prévus dans le plan initial du 2026-03-31.
+# Voir _bmad-output/planning-artifacts/epics.md pour le détail.
 
 generated: 2026-04-01
+last_updated: 2026-04-24
 project: BMAD
 project_key: NOKEY
 tracking_system: file-system
-story_location: _bmad-output/implementation-artifacts
+story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
-  # Epic 1 : Moteur structuré en 3 phases ✅
+  # Epic 1 : Moteur structuré en phases (Explorer / Valider / Finalisation) ✅
+  # Note : le plan initial prévoyait 3 phases (Générer/Valider/Assigner).
+  #        L'implémentation finale est 3 phases Explorer/Valider/Finalisation.
   epic-1: done
   1-1-layout-3-phases-navigation-et-selection-article: done
   1-2-phase-generer-discovery-douleur-intent-douleur-avec-verrouillage: done
@@ -48,14 +62,17 @@ development_status:
   1-4-phase-assigner-assignation-avec-gating-souple: done
   epic-1-retrospective: done
 
-  # Epic 2 : Progression automatique et guidage ✅
+  # Epic 2 : Progression automatique et guidage (5 checks moteur:*) ✅
   epic-2: done
   2-1-dots-de-progression-par-article-dans-la-liste: done
   2-2-checks-automatiques-via-emit-check-completed: done
   2-3-bandeaux-de-transition-entre-phases: done
   epic-2-retrospective: done
 
-  # Epic 3 : Pont Cerveau→Moteur ✅
+  # Epic 3 : Pont Cerveau→Moteur (enrichissement prompts + MoteurStrategyContext) ✅
+  # Note : Story 3.3 (indicateur alignement stratégique dans Audit) a été marquée 'done'
+  #        dans le tracking mais n'est pas présente dans le code final (Audit extrait
+  #        vers Explorateur). Voir epics.md pour le détail (backlog).
   epic-3: done
   3-1-contexte-strategique-collapsable-dans-le-moteur: done
   3-2-enrichissement-automatique-des-prompts-ia: done
@@ -63,18 +80,22 @@ development_status:
   epic-3-retrospective: done
 
   # Epic 4 : Cache systématique et persistance ✅
+  # Étendu par Epic 12 (migration PostgreSQL + keyword_metrics cross-article).
   epic-4: done
   4-1-pattern-cache-getorfetch-uniforme-pour-tous-les-services: done
   4-2-rechargement-automatique-des-resultats-par-article: done
   epic-4-retrospective: done
 
-  # Epic 5 : Labo — Recherche libre ✅
+  # Epic 5 : Labo — Recherche libre (composants bimodaux workflow/libre) ✅
   epic-5: done
   5-1-vue-laboview-route-labo-et-acces-navbar-dashboard: done
   5-2-composants-moteur-en-mode-libre-dans-le-labo: done
   epic-5-retrospective: done
 
-  # Epic 6 : Moteur 2 phases + Verdict GO/NO-GO du Capitaine
+  # Epic 6 : Moteur 3 phases + Verdict GO/NO-GO du Capitaine ✅
+  # Note : le plan initial parlait de "2 phases + suppression Phase ③ Assigner".
+  #        L'implémentation finale est "3 phases" avec Phase ③ Finalisation ajoutée
+  #        (voir Epic 11). Les stories 6.1-6.5 couvrent Phase ② Capitaine.
   epic-6: done
   6-1-restructuration-moteur-3-2-phases-navigation-sous-onglets: done
   6-2-scoring-contextuel-verdict-feu-tricolore-route-api-validate: done
@@ -83,7 +104,8 @@ development_status:
   6-5-panel-ia-expert-seo-streaming-lock-unlock-capitaine: done
   epic-6-retrospective: optional
 
-  # Epic 7 : Lieutenants — Analyse SERP des concurrents
+  # Epic 7 : Lieutenants — Analyse SERP des concurrents ✅
+  # Route POST /api/serp/analyze + cascade SERP vers Lexique (zéro re-scraping).
   epic-7: done
   7-1-route-api-serp-analyze-curseur-intelligent-en-tete-capitaine: done
   7-2-sections-depliables-hn-concurrents-paa-et-groupes: done
@@ -91,20 +113,82 @@ development_status:
   7-4-panel-ia-structure-hn-lock-lieutenants: done
   epic-7-retrospective: optional
 
-  # Epic 8 : Lexique TF-IDF + Validation finale
+  # Epic 8 : Lexique TF-IDF + Validation finale ✅
+  # Lecture article_explorations (contenus SERP hérités) → TF-IDF sans nouvelle requête.
   epic-8: done
   8-1-extraction-tfidf-depuis-donnees-serp-3-niveaux-densite: done
   8-2-panel-ia-lexical-validation-finale-articlekeywords: done
   epic-8-retrospective: optional
 
-  # Epic 9 : Dashboard Explorateur — Extraction Intention, Audit, Local
+  # Epic 9 : Explorateur — Extraction Intention, Audit, Local ✅
+  # Route /explorateur (ExplorateurView). Intent/Local découplés du Moteur.
+  # Content Gap est resté dans le Brief (Rédaction), pas dans l'Explorateur.
   epic-9: done
   9-1-vue-explorateurview-route-explorateur-retrait-du-moteur: done
   epic-9-retrospective: optional
 
-  # Epic 10 : Progression 5 checks + Guidage + Labo GO/NO-GO
+  # Epic 10 : Progression 5 checks + Guidage + Labo GO/NO-GO ✅
+  # Checks préfixés : moteur:discovery_done, moteur:radar_done, moteur:capitaine_locked,
+  # moteur:lieutenants_locked, moteur:lexique_validated.
   epic-10: done
   10-1-migration-7-5-checks-dots-de-progression-mis-a-jour: done
   10-2-bandeaux-de-transition-adaptes-au-nouveau-workflow: done
   10-3-labo-mis-a-jour-verdict-go-no-go-en-mode-libre: done
   epic-10-retrospective: optional
+
+  # ===== Epics livrés hors plan initial (ajoutés rétroactivement 2026-04-24) =====
+
+  # Epic 11 : Phase ③ Finalisation — Récap read-only ✅
+  # Onglet débloqué quand les 3 checks Phase ② sont présents.
+  # Composant : FinalisationRecap.vue, redirection vers /cocoon/:id/redaction.
+  epic-11: done
+  11-1-finalisation-recap-read-only-redirection-redaction: done
+  epic-11-retrospective: optional
+
+  # Epic 12 : Migration JSON → PostgreSQL ✅
+  # Backup _backup_pg_20260418.sql, scripts/migrate-slug-to-id.ts,
+  # purge horaire api_cache, articles.completed_checks TEXT[].
+  epic-12: done
+  12-1-schema-db-pool-pg: done
+  12-2-migration-slug-to-id: done
+  12-3-purge-horaire-api-cache: done
+  epic-12-retrospective: optional
+
+  # Epic 13 : Cerveau — Stratégie en 6 étapes ✅
+  # Cible, Douleur, Aiguillage, Angle, Promesse, CTA
+  # avec suggest / deepen / consolidate par étape.
+  epic-13: done
+  13-1-six-etapes-strategy: done
+  13-2-ia-suggest-deepen-consolidate: done
+  epic-13-retrospective: optional
+
+  # Epic 14 : Rédaction — Pipeline complet ✅
+  # Brief → Sommaire streamé → Article streamé → Meta → Éditeur TipTap + SEO scoring live.
+  epic-14: done
+  14-1-brief-sommaire-streame: done
+  14-2-article-streame-meta: done
+  14-3-editeur-tiptap-seo-scoring-live: done
+  14-4-actions-contextuelles: done
+  epic-14-retrospective: optional
+
+  # Epic 15 : Consolidation — Organisation par domaine + Qualité ✅
+  # Refactor stores/composables/services par domaine.
+  # Tooling : oxlint, eslint, prettier, knip, madge, husky, lint-staged.
+  # Purge dead exports (59 re-exports retirés de shared/types/index.ts).
+  epic-15: done
+  15-1-organisation-par-domaine: done
+  15-2-outillage-qualite: done
+  epic-15-retrospective: optional
+
+# ===== Backlog (non livré) =====
+#
+# - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur
+#   (l'Audit originel a été migré vers /explorateur — à reconsidérer dans ce contexte)
+#
+# - Vision Phase 3 (post-MVP) :
+#   * Génération de cocons entiers en un clic
+#   * Suggestions proactives de nouveaux cocons
+#   * Boucle GSC post-publication (exploitation du gsc.store)
+#   * Batch processing multi-articles en parallèle
+#   * Score de complémentarité Capitaine ↔ Lieutenants
+#   * Extension des tests Playwright

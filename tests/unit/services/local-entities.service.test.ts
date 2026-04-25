@@ -1,44 +1,35 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock json-storage before importing the service
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: vi.fn(),
-  writeJson: vi.fn(),
+const mockQuery = vi.fn()
+
+vi.mock('../../../server/db/client', () => ({
+  pool: { query: (...args: unknown[]) => mockQuery(...args) },
+  query: (...args: unknown[]) => mockQuery(...args),
 }))
 
-import { readJson } from '../../../server/utils/json-storage'
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
 
-const mockReadJson = vi.mocked(readJson)
+const MOCK_ENTITIES = [
+  { name: 'Saint-Cyprien', type: 'quartier', aliases: ['St-Cyprien'], region: null },
+  { name: 'Les Carmes', type: 'quartier', aliases: [], region: null },
+  { name: 'Airbus', type: 'entreprise', aliases: [], region: null },
+  { name: 'Thales', type: 'entreprise', aliases: [], region: null },
+  { name: 'Place du Capitole', type: 'lieu', aliases: [], region: null },
+  { name: 'Basilique Saint-Sernin', type: 'lieu', aliases: [], region: null },
+  { name: 'Occitanie', type: 'region', aliases: [], region: null },
+  { name: 'Haute-Garonne', type: 'region', aliases: [], region: null },
+]
 
-const MOCK_ENTITIES_DB = {
-  quartiers: [
-    { name: 'Saint-Cyprien', type: 'quartier' as const, aliases: ['St-Cyprien'] },
-    { name: 'Les Carmes', type: 'quartier' as const },
-  ],
-  entreprises: [
-    { name: 'Airbus', type: 'entreprise' as const },
-    { name: 'Thales', type: 'entreprise' as const },
-  ],
-  lieux: [
-    { name: 'Place du Capitole', type: 'lieu' as const },
-    { name: 'Basilique Saint-Sernin', type: 'lieu' as const },
-  ],
-  regions: [
-    { name: 'Occitanie', type: 'region' as const },
-    { name: 'Haute-Garonne', type: 'region' as const },
-  ],
-}
-
-// Reset module cache between tests so the service's `cachedEntities` is cleared
-beforeEach(async () => {
+beforeEach(() => {
   vi.resetModules()
-  mockReadJson.mockReset()
-  mockReadJson.mockResolvedValue(MOCK_ENTITIES_DB)
+  mockQuery.mockReset()
+  mockQuery.mockResolvedValue({ rows: MOCK_ENTITIES, rowCount: MOCK_ENTITIES.length })
 })
 
 async function importService() {
-  const mod = await import('../../../server/services/infra/local-entities.service')
-  return mod
+  return await import('../../../server/services/infra/local-entities.service')
 }
 
 describe('local-entities.service — getEntities', () => {
@@ -80,17 +71,15 @@ describe('local-entities.service — scoreLocalAnchoring', () => {
 
   it('returns higher score for multiple mentions', async () => {
     const { scoreLocalAnchoring } = await importService()
-    // 3 mentions of same type (entreprise): Airbus + Thales + Airbus again
     const content = 'Airbus est un leader. Thales aussi. Airbus recrute encore.'
     const result = await scoreLocalAnchoring(content)
 
     expect(result.score).toBeGreaterThan(1)
-    expect(result.matches.length).toBeGreaterThanOrEqual(2) // Airbus + Thales
+    expect(result.matches.length).toBeGreaterThanOrEqual(2)
   })
 
   it('returns highest scores for multi-type mentions (quartier + entreprise + lieu)', async () => {
     const { scoreLocalAnchoring } = await importService()
-    // mentions across 3+ types → score should be high
     const content =
       'Le quartier Saint-Cyprien accueille les bureaux de Airbus. ' +
       'La Place du Capitole est un lieu emblematique de la region Occitanie. ' +
@@ -99,7 +88,6 @@ describe('local-entities.service — scoreLocalAnchoring', () => {
 
     const result = await scoreLocalAnchoring(content)
 
-    // 7+ mentions across 4 types → score should be >= 8
     expect(result.score).toBeGreaterThanOrEqual(8)
     expect(result.typesCovered.length).toBeGreaterThanOrEqual(3)
   })
@@ -137,15 +125,12 @@ describe('local-entities.service — scoreLocalAnchoring', () => {
 
   it('generates suggestions when score < 5', async () => {
     const { scoreLocalAnchoring } = await importService()
-    // Only 1 mention → score = 1, which is < 5
     const result = await scoreLocalAnchoring('Airbus est un partenaire.')
 
     expect(result.score).toBeLessThan(5)
     expect(result.suggestions.length).toBeGreaterThan(0)
-    // Suggestions should not include already-matched entities
     const suggestedNames = result.suggestions.map(s => s.entity.name.toLowerCase())
     expect(suggestedNames).not.toContain('airbus')
-    // Each suggestion should have a reason
     for (const suggestion of result.suggestions) {
       expect(suggestion.reason).toBeTruthy()
     }
@@ -153,7 +138,6 @@ describe('local-entities.service — scoreLocalAnchoring', () => {
 
   it('does not generate suggestions when score >= 5', async () => {
     const { scoreLocalAnchoring } = await importService()
-    // Enough mentions across types to get score >= 5
     const content =
       'Saint-Cyprien et Les Carmes sont des quartiers. ' +
       'Airbus et Thales sont des entreprises. ' +

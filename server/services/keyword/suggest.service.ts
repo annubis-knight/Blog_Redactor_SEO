@@ -8,14 +8,21 @@
  * 4. Prepositions (pour, avec, vs...) → 60-100 results
  */
 
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { slugify, getOrFetch } from '../../utils/cache.js'
+import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
 
 const SUGGEST_URL = 'https://suggestqueries.google.com/complete/search'
 const MAX_CONCURRENT = 5
-const CACHE_DIR = join(process.cwd(), 'data', 'cache', 'suggest')
 const CACHE_TTL_MS = 60 * 60 * 1000 // 1h
+
+async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+  const cached = await getCached<T>(cacheType, key)
+  if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
+  log.debug(`Cache MISS: ${key}`)
+  const data = await fetcher()
+  await setCached(cacheType, key, data, ttlMs)
+  return data
+}
 
 /**
  * Split a multi-word seed into sub-queries for better coverage.
@@ -111,7 +118,7 @@ async function withConcurrency<T>(tasks: (() => Promise<T>)[], limit: number): P
 // --- Strategy: Alphabet expansion ---
 
 export async function suggestAlphabet(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
-  return getOrFetch<SuggestItem[]>(CACHE_DIR, `alphabet-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+  return getOrFetch<SuggestItem[]>('suggest', `alphabet-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
     const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
@@ -149,7 +156,7 @@ export async function suggestAlphabet(keyword: string, language = 'fr', country 
 // --- Strategy: Question prefixes ---
 
 export async function suggestQuestions(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
-  return getOrFetch<SuggestItem[]>(CACHE_DIR, `questions-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+  return getOrFetch<SuggestItem[]>('suggest', `questions-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
     const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
@@ -181,7 +188,7 @@ export async function suggestQuestions(keyword: string, language = 'fr', country
 // --- Strategy: Intent modifiers ---
 
 export async function suggestIntents(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
-  return getOrFetch<SuggestItem[]>(CACHE_DIR, `intents-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+  return getOrFetch<SuggestItem[]>('suggest', `intents-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
     const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []
@@ -213,7 +220,7 @@ export async function suggestIntents(keyword: string, language = 'fr', country =
 // --- Strategy: Prepositions ---
 
 export async function suggestPrepositions(keyword: string, language = 'fr', country = 'fr'): Promise<SuggestItem[]> {
-  return getOrFetch<SuggestItem[]>(CACHE_DIR, `prepositions-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
+  return getOrFetch<SuggestItem[]>('suggest', `prepositions-${slugify(keyword)}`, CACHE_TTL_MS, async () => {
     const start = Date.now()
     const seen = new Set<string>()
     const results: SuggestItem[] = []

@@ -1,16 +1,49 @@
 <script setup lang="ts">
-import { computed, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { apiPatch } from '@/services/api.service'
+import { log } from '@/utils/logger'
 import type { SelectedArticle } from '@shared/types/index.js'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
+import {
+  MOTEUR_DISCOVERY_DONE,
+  MOTEUR_RADAR_DONE,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants.js'
 
 const props = defineProps<{
   article: SelectedArticle
 }>()
 
+const emit = defineEmits<{
+  (e: 'title-updated', payload: { id: number; title: string }): void
+}>()
+
 const progressStore = useArticleProgressStore()
 
 const progress = computed(() => progressStore.getProgress(props.article.id))
+
+// --- Inline title editing ---
+const editableTitle = ref(props.article.title)
+
+watch(() => props.article.title, (t) => { editableTitle.value = t })
+
+async function saveTitle() {
+  const trimmed = editableTitle.value.trim()
+  if (!trimmed || trimmed === props.article.title) {
+    editableTitle.value = props.article.title
+    return
+  }
+  try {
+    await apiPatch(`/articles/${props.article.id}`, { title: trimmed })
+    emit('title-updated', { id: props.article.id, title: trimmed })
+    log.info('[SelectedArticlePanel] Title updated', { id: props.article.id, title: trimmed })
+  } catch {
+    editableTitle.value = props.article.title
+  }
+}
 
 const PHASE_LABELS: Record<string, string> = {
   proposed: 'Proposé',
@@ -20,11 +53,11 @@ const PHASE_LABELS: Record<string, string> = {
 }
 
 const CHECK_LABELS: Record<string, string> = {
-  'discovery_done': 'Discovery',
-  'radar_done': 'Radar',
-  'capitaine_locked': 'Capitaine',
-  'lieutenants_locked': 'Lieutenants',
-  'lexique_validated': 'Lexique',
+  [MOTEUR_DISCOVERY_DONE]: 'Discovery',
+  [MOTEUR_RADAR_DONE]: 'Radar',
+  [MOTEUR_CAPITAINE_LOCKED]: 'Capitaine',
+  [MOTEUR_LIEUTENANTS_LOCKED]: 'Lieutenants',
+  [MOTEUR_LEXIQUE_VALIDATED]: 'Lexique',
   'intent-analyzed': 'Intention analysée',
   'local-checked': 'Local vérifié',
   'competitors-analyzed': 'Concurrents analysés',
@@ -46,7 +79,9 @@ watch(() => props.article.id, async (id) => {
 <template>
   <RecapToggle panel-id="selected-article" variant="panel" class="selected-article-panel">
     <template #header>
-      <span class="panel-toggle-label">{{ article.title }}</span>
+      <input v-if="!article.locked" v-model="editableTitle"
+        class="panel-title-input" @blur="saveTitle" @keydown.enter="($event.target as HTMLInputElement).blur()" />
+      <span v-else class="panel-toggle-label">{{ article.title }}</span>
       <span class="panel-type-badge"
         :class="'badge--' + article.type.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')">
         {{ article.type }}
@@ -99,6 +134,23 @@ watch(() => props.article.id, async (id) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.panel-title-input {
+  flex: 1;
+  min-width: 0;
+  font: inherit;
+  font-size: 0.75rem;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  border-bottom: 1px dashed var(--color-border);
+  color: var(--color-text);
+  padding: 0;
+  outline: none;
+}
+.panel-title-input:focus {
+  border-bottom-color: var(--color-primary);
 }
 
 .panel-type-badge {

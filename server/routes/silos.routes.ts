@@ -5,7 +5,7 @@ import { log } from '../utils/logger.js'
 import { getTheme, getSilos, getSiloByName, addCocoonToSilo } from '../services/infra/data.service.js'
 import { getThemeConfig, saveThemeConfig } from '../services/strategy/theme-config.service.js'
 import { themeConfigSchema } from '../../shared/schemas/theme-config.schema.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/claude.service.js'
+import { collectStreamWithUsage } from '../utils/stream-usage.js'
 
 const router = Router()
 
@@ -107,11 +107,7 @@ router.post('/theme/config/parse', async (req, res) => {
       'utf-8',
     )
 
-    let result = ''
-    for await (const chunk of streamChatCompletion(promptTemplate, text, 2048)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) break
-      result += chunk
-    }
+    const { text: result, usage } = await collectStreamWithUsage(promptTemplate, text, 2048)
 
     // Extract JSON from response
     const jsonMatch = result.match(/\{[\s\S]*\}/)
@@ -122,7 +118,8 @@ router.post('/theme/config/parse', async (req, res) => {
 
     const parsed = JSON.parse(jsonMatch[0])
     const config = themeConfigSchema.parse(parsed)
-    res.json({ data: config })
+    // usage remonté séparément pour alimenter la pile d'activité côté front
+    res.json({ data: config, usage })
   } catch (err) {
     log.error(`POST /api/theme/config/parse — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to parse theme description' } })

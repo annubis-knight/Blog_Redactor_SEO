@@ -1,9 +1,6 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { readJson } from '../../utils/json-storage.js'
-import { localEntitiesDbSchema } from '../../../shared/schemas/local-entities.schema.js'
+import { query } from '../../db/client.js'
 import type {
-  LocalEntitiesDb,
   LocalEntity,
   EntityMatch,
   AnchorageScore,
@@ -11,16 +8,16 @@ import type {
   LocalEntityType,
 } from '../../../shared/types/index.js'
 
-const ENTITIES_PATH = join(process.cwd(), 'data', 'local-entities.json')
-
-let cachedEntities: LocalEntity[] | null = null
-
 async function loadEntities(): Promise<LocalEntity[]> {
-  if (cachedEntities) return cachedEntities
-  const raw = await readJson<LocalEntitiesDb>(ENTITIES_PATH)
-  const db = localEntitiesDbSchema.parse(raw)
-  cachedEntities = [...db.quartiers, ...db.entreprises, ...db.lieux, ...db.regions]
-  return cachedEntities
+  const result = await query<{ name: string; type: string; aliases: string[]; region: string | null }>(
+    'SELECT name, type, aliases, region FROM local_entities ORDER BY id',
+  )
+  return result.rows.map((row) => ({
+    name: row.name,
+    type: row.type as LocalEntityType,
+    aliases: row.aliases ?? [],
+    region: row.region ?? undefined,
+  }))
 }
 
 function findMatches(content: string, entities: LocalEntity[]): EntityMatch[] {

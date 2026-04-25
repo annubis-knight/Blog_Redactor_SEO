@@ -1,37 +1,8 @@
 import { ref } from 'vue'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
+import { labelFromUrl } from '@/utils/api-label'
 import type { ApiUsage } from '@shared/types/index.js'
-
-/** Derive a human-readable label from the SSE endpoint URL for cost tracking. */
-const URL_LABELS: [RegExp, string][] = [
-  [/\/generate\/outline/, 'Génération sommaire'],
-  [/\/generate\/article/, 'Génération article'],
-  [/\/generate\/reduce/, 'Réduction article'],
-  [/\/generate\/humanize-section/, 'Humanisation section'],
-  [/\/generate\/action/, 'Action IA'],
-  [/\/generate\/micro-context-suggest/, 'Suggestion micro-contexte'],
-  [/\/generate\/brief-explain/, 'Analyse brief IA'],
-  [/\/keywords\/[^/]+\/ai-lexique-upfront/, 'Pré-analyse lexique'],
-  [/\/keywords\/[^/]+\/ai-lexique/, 'Analyse lexique'],
-  [/\/keywords\/[^/]+\/ai-hn-structure/, 'Structure Hn'],
-  [/\/keywords\/[^/]+\/ai-panel/, 'Analyse IA capitaine'],
-  [/\/keywords\/[^/]+\/propose-lieutenants/, 'Proposition lieutenants'],
-  [/\/strategy\/.*\/suggest/, 'Suggestion stratégie'],
-  [/\/strategy\/.*\/deepen/, 'Approfondissement stratégie'],
-  [/\/strategy\/.*\/consolidate/, 'Consolidation stratégie'],
-  [/\/strategy\/.*\/enrich/, 'Enrichissement stratégie'],
-  [/\/theme\/config\/parse/, 'Parsing thème'],
-  [/\/keywords\/.*\/relevance-score/, 'Score pertinence'],
-  [/\/keywords\/.*\/analyze-discovery/, 'Analyse discovery'],
-]
-
-function labelFromUrl(url: string): string {
-  for (const [re, label] of URL_LABELS) {
-    if (re.test(url)) return label
-  }
-  return url.split('/').pop() ?? 'Appel API'
-}
 
 function pushCostEntry(url: string, usage: ApiUsage): void {
   try {

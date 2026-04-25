@@ -19,6 +19,8 @@ const rawArticleSchema = z.object({
   suggestedKeyword: z.string().nullable().optional(),
   /** Keyword Capitaine locké (miroir de richCaptain.keyword quand richCaptain.status='locked') */
   captainKeywordLocked: z.string().nullable().optional(),
+  /** Pain point issu de la stratégie */
+  painPoint: z.string().nullable().optional(),
   createdAt: z.string().optional(),
   updatedAt: z.string().optional(),
 })
@@ -69,6 +71,7 @@ export const batchCreateArticlesSchema = z.object({
     type: articleTypeSchema,
     slug: z.string().optional(),
     suggestedKeyword: z.string().nullable().optional(),
+    painPoint: z.string().nullable().optional(),
   })).min(1),
 })
 

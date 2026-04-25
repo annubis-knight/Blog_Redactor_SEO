@@ -34,22 +34,22 @@ describe('emitCheckCompleted — helper logic', () => {
 
   it('calls progressStore.addCheck with correct slug and check', () => {
     const emitCheck = createEmitCheckCompleted('mon-article-pilier')
-    emitCheck('discovery_done')
+    emitCheck('moteur:discovery_done')
 
-    expect(addCheckSpy).toHaveBeenCalledWith('mon-article-pilier', 'discovery_done')
+    expect(addCheckSpy).toHaveBeenCalledWith('mon-article-pilier', 'moteur:discovery_done')
   })
 
   it('does nothing when no article is selected', () => {
     const emitCheck = createEmitCheckCompleted(null)
-    emitCheck('discovery_done')
+    emitCheck('moteur:discovery_done')
 
     expect(addCheckSpy).not.toHaveBeenCalled()
   })
 
   it('calls addCheck for each of the 5 standardized checks', () => {
     const checks = [
-      'discovery_done', 'radar_done',
-      'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
+      'moteur:discovery_done', 'moteur:radar_done',
+      'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
     ]
 
     const emitCheck = createEmitCheckCompleted('test-slug')
@@ -94,12 +94,12 @@ describe('MoteurView handlers — check-completed integration', () => {
       handleSendToRadar(keywords: any[]) {
         discoveryRadarKeywords.value = keywords
         activeTab.value = 'radar'
-        emitCheckCompleted('discovery_done')
+        emitCheckCompleted('moteur:discovery_done')
       },
 
       handleRadarScanned(payload: { globalScore: number; heatLevel: string }) {
         radarScanResult.value = payload
-        emitCheckCompleted('radar_done')
+        emitCheckCompleted('moteur:radar_done')
       },
     }
   }
@@ -114,7 +114,7 @@ describe('MoteurView handlers — check-completed integration', () => {
 
     expect(h.activeTab.value).toBe('radar')
     expect(h.discoveryRadarKeywords.value).toHaveLength(1)
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'discovery_done')
+    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'moteur:discovery_done')
   })
 
   it('handleRadarScanned emits radar_done', () => {
@@ -122,7 +122,7 @@ describe('MoteurView handlers — check-completed integration', () => {
     h.handleRadarScanned({ globalScore: 75, heatLevel: 'hot' })
 
     expect(h.radarScanResult.value).toEqual({ globalScore: 75, heatLevel: 'hot' })
-    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'radar_done')
+    expect(addCheckSpy).toHaveBeenCalledWith('test-article', 'moteur:radar_done')
   })
 })
 
@@ -130,7 +130,7 @@ describe('MoteurView handlers — check-completed integration', () => {
 
 describe('Backend — addCheck duplicate prevention', () => {
   it('addCheck does not add duplicate checks', () => {
-    const progress = { phase: 'generer' as const, completedChecks: ['discovery_done'] }
+    const progress = { phase: 'generer' as const, completedChecks: ['moteur:discovery_done'] }
 
     function addCheckLocal(check: string) {
       if (!progress.completedChecks.includes(check)) {
@@ -138,10 +138,10 @@ describe('Backend — addCheck duplicate prevention', () => {
       }
     }
 
-    addCheckLocal('discovery_done') // duplicate
-    addCheckLocal('radar_done')     // new
+    addCheckLocal('moteur:discovery_done') // duplicate
+    addCheckLocal('moteur:radar_done')     // new
 
-    expect(progress.completedChecks).toEqual(['discovery_done', 'radar_done'])
+    expect(progress.completedChecks).toEqual(['moteur:discovery_done', 'moteur:radar_done'])
     expect(progress.completedChecks.length).toBe(2)
   })
 })

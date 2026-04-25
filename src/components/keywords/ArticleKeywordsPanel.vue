@@ -55,7 +55,7 @@ function handleAddLexique() {
 }
 
 async function handleSave() {
-  await store.saveKeywords(props.articleId)
+  await store.saveDecisions(props.articleId)
 }
 
 async function handleSuggestLexique() {

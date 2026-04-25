@@ -343,6 +343,7 @@ export function useArticleProposals(params: {
           type: article.type,
           slug: article.suggestedSlug || undefined,
           suggestedKeyword: article.suggestedKeyword?.trim() || null,
+          painPoint: article.painPoint?.trim() || null,
         }],
       })
       if (created?.[0]?.id) {

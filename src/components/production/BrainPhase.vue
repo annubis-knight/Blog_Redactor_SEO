@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch } from 'vue'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useSilosStore } from '@/stores/strategy/silos.store'
 import { useThemeConfigStore } from '@/stores/strategy/theme-config.store'
+import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
 import type { StrategyStepData, CocoonSuggestRequest, ThemeContext, SubQuestion } from '@shared/types/index.js'
+import type { NavItem } from '@/components/shared/WorkflowNav.vue'
 import StrategyStep from '@/components/strategy/StrategyStep.vue'
 import ContextRecap from '@/components/strategy/ContextRecap.vue'
-import ProgressBar from '@/components/shared/ProgressBar.vue'
 import ProposedArticleRow from '@/components/strategy/ProposedArticleRow.vue'
 import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
@@ -154,9 +155,6 @@ const mergedCocoonArticles = computed(() => {
   return result
 })
 
-const progressPercent = computed(() =>
-  Math.round(((store.strategy?.completedSteps ?? 0) / 6) * 100),
-)
 
 function hasAnyConfigData(cfg: typeof themeConfigStore.config): boolean {
   return !!(cfg.positioning.targetAudience || cfg.positioning.mainPromise || cfg.avatar.sector || cfg.toneOfVoice.style)
@@ -449,43 +447,68 @@ onMounted(async () => {
   }
   await themeConfigStore.fetchConfig()
 })
+
+// --- AppNavbar integration ---
+// Cerveau = 6 linear steps. A step is `done` when its index < currentStep
+// (store.goToStep validates the progression rules internally), and `locked`
+// when it's beyond the highest step the user has reached so far.
+const workflowNavStore = useWorkflowNavStore()
+
+const CERVEAU_STEPS: { id: string; label: string }[] = [
+  { id: 'cible',    label: 'Cible' },
+  { id: 'douleur',  label: 'Douleur' },
+  { id: 'angle',    label: 'Angle' },
+  { id: 'promesse', label: 'Promesse' },
+  { id: 'cta',      label: 'CTA' },
+  { id: 'articles', label: 'Articles' },
+]
+
+const cerveauNavSteps = computed<NavItem[]>(() => {
+  const current = store.currentStep ?? 0
+  const completed = store.strategy?.completedSteps ?? 0
+  return CERVEAU_STEPS.map((s, idx) => ({
+    id: s.id,
+    label: s.label,
+    number: idx + 1,
+    done: idx < completed,
+    // Free navigation to any step already visited; future steps are locked
+    // until the store's completedSteps counter unlocks them.
+    locked: idx > Math.max(current, completed),
+  }))
+})
+
+watch(
+  [cerveauNavSteps, () => store.currentStep],
+  ([steps, currentStep]) => {
+    const activeId = CERVEAU_STEPS[currentStep ?? 0]?.id ?? 'cible'
+    workflowNavStore.setWorkflowNav({
+      workflow: 'cerveau',
+      activeId,
+      steps,
+      onNavigate: (id: string) => {
+        const idx = CERVEAU_STEPS.findIndex(s => s.id === id)
+        if (idx >= 0) store.goToStep(idx)
+      },
+    })
+  },
+  { immediate: true, deep: true },
+)
+
+onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 </script>
 
 <template>
   <div class="brain-phase">
-    <!-- Header with progress -->
-    <div class="brain-header">
-      <div class="brain-header-row">
-        <div>
-          <h3 class="brain-title">Brainstorm stratégique : {{ cocoonName }}</h3>
-          <p class="brain-subtitle">
-            Définissez la direction stratégique de ce cocon avant de rédiger.
-          </p>
-        </div>
-        <button class="btn btn-primary btn-sm" @click="$emit('next')">
-          Continuer vers le Moteur &rarr;
-        </button>
-      </div>
-      <ProgressBar :percent="progressPercent"
-        :color="progressPercent === 100 ? 'var(--color-success)' : 'var(--color-primary)'" />
-    </div>
+    <!-- Sprint — Brainstorm header + progress bar removed. The final "Continuer
+         vers le Moteur" button at the end of step 6 remains the single CTA. -->
 
     <div v-if="store.isLoading" class="brain-loading">
       Chargement de la stratégie...
     </div>
 
     <template v-else-if="store.strategy">
-      <!-- Wizard stepper -->
-      <div class="wizard-stepper">
-        <button v-for="(config, idx) in [...stepConfigs, { key: 'articles', title: 'Articles' }]" :key="config.key"
-          class="wizard-step-btn" :class="{
-            active: store.currentStep === idx,
-            completed: idx < store.currentStep,
-          }" @click="store.goToStep(idx)">
-          <span class="wizard-step-num">{{ idx + 1 }}</span>
-          <span class="wizard-step-label">{{ config.title.split('?')[0]?.split(':')[0]?.trim() }}</span>
-        </button>
-      </div>
+      <!-- Sprint — wizard stepper moved into AppNavbar via workflow-nav store. -->
+
 
       <!-- Context recap (collapsible) -->
       <ContextRecap :theme-name="silosStore.theme?.nom" :theme-description="silosStore.theme?.description"
@@ -708,99 +731,10 @@ onMounted(async () => {
   gap: 1.25rem;
 }
 
-/* --- Header --- */
-.brain-header {
-  padding: 1rem 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-}
-
-.brain-header-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-  gap: 1rem;
-}
-
-.brain-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  margin: 0 0 0.25rem;
-}
-
-.brain-subtitle {
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  margin: 0;
-}
-
 .brain-loading {
   padding: 2rem;
   text-align: center;
   color: var(--color-text-muted);
-}
-
-/* --- Wizard stepper --- */
-.wizard-stepper {
-  display: flex;
-  gap: 2px;
-  overflow-x: auto;
-}
-
-.wizard-step-btn {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.5rem 0.75rem;
-  border: none;
-  background: var(--color-bg-soft);
-  cursor: pointer;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.wizard-step-btn:first-child {
-  border-radius: 6px 0 0 6px;
-}
-
-.wizard-step-btn:last-child {
-  border-radius: 0 6px 6px 0;
-}
-
-.wizard-step-btn.active {
-  background: var(--color-primary);
-  color: white;
-  font-weight: 600;
-}
-
-.wizard-step-btn.completed {
-  background: var(--color-bg-elevated, #e8f5e9);
-  color: var(--color-success);
-}
-
-.wizard-step-num {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.25rem;
-  height: 1.25rem;
-  border-radius: 50%;
-  font-size: 0.6875rem;
-  font-weight: 700;
-  background: rgba(0, 0, 0, 0.1);
-}
-
-.wizard-step-btn.active .wizard-step-num {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-.wizard-step-btn.completed .wizard-step-num {
-  background: var(--color-success);
-  color: white;
 }
 
 /* --- Step content --- */

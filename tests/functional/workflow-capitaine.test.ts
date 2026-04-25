@@ -32,12 +32,12 @@ type Tab = 'discovery' | 'radar' | 'capitaine' | 'lieutenants' | 'lexique'
 function computeSmartTab(completedChecks: string[]): Tab {
   if (completedChecks.length === 0) return 'capitaine'
   if (
-    completedChecks.includes('capitaine_locked')
-    && completedChecks.includes('lieutenants_locked')
-    && completedChecks.includes('lexique_validated')
+    completedChecks.includes('moteur:capitaine_locked')
+    && completedChecks.includes('moteur:lieutenants_locked')
+    && completedChecks.includes('moteur:lexique_validated')
   ) return 'capitaine'
-  if (completedChecks.includes('lieutenants_locked')) return 'lexique'
-  if (completedChecks.includes('capitaine_locked')) return 'lieutenants'
+  if (completedChecks.includes('moteur:lieutenants_locked')) return 'lexique'
+  if (completedChecks.includes('moteur:capitaine_locked')) return 'lieutenants'
   return 'capitaine'
 }
 
@@ -209,33 +209,33 @@ describe('Workflow ② — Capitaine Validation', () => {
     it('lock emits capitaine_locked check', () => {
       // Simulate the flow: user locks the captain
       const checks: string[] = []
-      const lockCaptaine = () => { checks.push('capitaine_locked') }
+      const lockCaptaine = () => { checks.push('moteur:capitaine_locked') }
 
       lockCaptaine()
-      expect(checks).toContain('capitaine_locked')
+      expect(checks).toContain('moteur:capitaine_locked')
     })
 
     it('unlock removes capitaine_locked check', () => {
-      const checks = ['capitaine_locked']
+      const checks = ['moteur:capitaine_locked']
       const unlockCaptaine = () => {
-        const idx = checks.indexOf('capitaine_locked')
+        const idx = checks.indexOf('moteur:capitaine_locked')
         if (idx >= 0) checks.splice(idx, 1)
       }
 
       unlockCaptaine()
-      expect(checks).not.toContain('capitaine_locked')
+      expect(checks).not.toContain('moteur:capitaine_locked')
     })
 
     it('re-lock adds check back', () => {
       const checks: string[] = []
-      checks.push('capitaine_locked')
-      expect(checks).toContain('capitaine_locked')
+      checks.push('moteur:capitaine_locked')
+      expect(checks).toContain('moteur:capitaine_locked')
       // unlock
-      checks.splice(checks.indexOf('capitaine_locked'), 1)
-      expect(checks).not.toContain('capitaine_locked')
+      checks.splice(checks.indexOf('moteur:capitaine_locked'), 1)
+      expect(checks).not.toContain('moteur:capitaine_locked')
       // re-lock
-      checks.push('capitaine_locked')
-      expect(checks).toContain('capitaine_locked')
+      checks.push('moteur:capitaine_locked')
+      expect(checks).toContain('moteur:capitaine_locked')
     })
   })
 
@@ -283,15 +283,15 @@ describe('Workflow ② — Capitaine Validation', () => {
     })
 
     it('capitaine_locked → moves to lieutenants', () => {
-      expect(computeSmartTab(['capitaine_locked'])).toBe('lieutenants')
+      expect(computeSmartTab(['moteur:capitaine_locked'])).toBe('lieutenants')
     })
 
     it('Phase ① checks do not change Phase ② navigation', () => {
-      expect(computeSmartTab(['discovery_done', 'radar_done'])).toBe('capitaine')
+      expect(computeSmartTab(['moteur:discovery_done', 'moteur:radar_done'])).toBe('capitaine')
     })
 
     it('Phase ① + capitaine_locked → lieutenants', () => {
-      expect(computeSmartTab(['discovery_done', 'radar_done', 'capitaine_locked'])).toBe('lieutenants')
+      expect(computeSmartTab(['moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked'])).toBe('lieutenants')
     })
   })
 
@@ -317,7 +317,7 @@ describe('Workflow ② — Capitaine Validation', () => {
 
       // 4. Lock captain
       const checks: string[] = []
-      checks.push('capitaine_locked')
+      checks.push('moteur:capitaine_locked')
 
       // 5. Build send-to-lieutenants payload
       const payload = { keyword: CAPTAIN_KEYWORD, rootKeywords: roots }

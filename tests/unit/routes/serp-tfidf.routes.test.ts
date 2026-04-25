@@ -6,12 +6,15 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-const mockReadCached = vi.fn()
-vi.mock('../../../server/utils/cache', () => ({
-  slugify: vi.fn((text: string) => text.toLowerCase().replace(/\s+/g, '-')),
-  readCached: (...args: unknown[]) => mockReadCached(...args),
-  isFresh: vi.fn().mockReturnValue(true),
-  writeCached: vi.fn(),
+// Sprint 15.5-bis — TF-IDF reads from keyword_metrics.serp_raw_json, not api_cache.
+const mockGetKeywordMetrics = vi.fn()
+const mockUpsertKeywordSerp = vi.fn()
+const mockIsFresh = vi.fn()
+
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
+  upsertKeywordSerp: (...args: unknown[]) => mockUpsertKeywordSerp(...args),
+  isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
 }))
 
 const mockExtractTfidf = vi.fn()
@@ -22,7 +25,6 @@ vi.mock('../../../server/services/keyword/tfidf.service', () => ({
 const mockAnalyze = vi.fn()
 vi.mock('../../../server/services/external/serp-analysis.service', () => ({
   analyzeSerpCompetitors: (...args: unknown[]) => mockAnalyze(...args),
-  CACHE_DIR: '/mock/cache/serp',
 }))
 
 vi.mock('../../../shared/schemas/serp-analysis.schema', () => ({
@@ -67,25 +69,31 @@ const MOCK_TFIDF_RESULT = {
 }
 
 const MOCK_CACHED_SERP = {
-  data: {
-    keyword: 'seo',
-    articleLevel: 'intermediaire',
-    competitors: [
-      { position: 1, title: 'Page 1', url: 'https://example.com', domain: 'example.com', headings: [], textContent: 'seo content' },
-    ],
-    paaQuestions: [],
-    maxScraped: 1,
-    cachedAt: '2026-03-31T00:00:00.000Z',
-    fromCache: false,
-  },
+  keyword: 'seo',
+  articleLevel: 'intermediaire',
+  competitors: [
+    { position: 1, title: 'Page 1', url: 'https://example.com', domain: 'example.com', headings: [], textContent: 'seo content' },
+  ],
+  paaQuestions: [],
+  maxScraped: 1,
   cachedAt: '2026-03-31T00:00:00.000Z',
+  fromCache: false,
 }
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockReadCached.mockResolvedValue(MOCK_CACHED_SERP)
+  // Sprint 15.5-bis — DB returns a keyword_metrics row with serp_raw_json populated.
+  mockGetKeywordMetrics.mockResolvedValue({
+    keyword: 'seo',
+    lang: 'fr',
+    country: 'fr',
+    serpRawJson: MOCK_CACHED_SERP,
+    fetchedAt: new Date().toISOString(),
+  })
+  mockUpsertKeywordSerp.mockResolvedValue(undefined)
+  mockIsFresh.mockReturnValue(true)
   mockExtractTfidf.mockReturnValue(MOCK_TFIDF_RESULT)
-  mockAnalyze.mockResolvedValue(MOCK_CACHED_SERP.data)
+  mockAnalyze.mockResolvedValue(MOCK_CACHED_SERP)
 })
 
 describe('POST /api/serp/tfidf', () => {
@@ -120,8 +128,8 @@ describe('POST /api/serp/tfidf', () => {
     expect(res.status).toHaveBeenCalledWith(400)
   })
 
-  it('returns 404 if cache is absent', async () => {
-    mockReadCached.mockResolvedValue(null)
+  it('returns 404 if keyword_metrics has no serp_raw_json', async () => {
+    mockGetKeywordMetrics.mockResolvedValue(null)
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()
@@ -138,7 +146,7 @@ describe('POST /api/serp/tfidf', () => {
     const res = makeRes()
     await handler(req, res)
     expect(mockExtractTfidf).toHaveBeenCalledWith(
-      MOCK_CACHED_SERP.data.competitors,
+      MOCK_CACHED_SERP.competitors,
       'seo',
     )
   })
@@ -163,7 +171,7 @@ describe('POST /api/serp/tfidf', () => {
   })
 
   it('returns 500 on unexpected error', async () => {
-    mockReadCached.mockRejectedValue(new Error('Disk error'))
+    mockGetKeywordMetrics.mockRejectedValue(new Error('DB error'))
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()

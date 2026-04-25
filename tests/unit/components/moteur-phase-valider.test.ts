@@ -7,7 +7,7 @@ import type { Phase } from '@/components/moteur/MoteurPhaseNavigation.vue'
 const phases: Phase[] = [
   {
     id: 'generer',
-    label: 'Générer',
+    label: 'Explorer',
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: false },

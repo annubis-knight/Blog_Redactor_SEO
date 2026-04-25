@@ -1,5 +1,6 @@
 import { join } from 'path'
 import { readJson, writeJson } from '../../utils/json-storage.js'
+import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
 import { log } from '../../utils/logger.js'
 import type {
   GscToken,
@@ -10,7 +11,7 @@ import type {
 } from '../../../shared/types/index.js'
 
 const TOKEN_PATH = join(process.cwd(), 'data', 'gsc-token.json')
-const CACHE_DIR = join(process.cwd(), 'data', 'cache')
+const GSC_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 1 day
 const GSC_API_BASE = 'https://www.googleapis.com/webmasters/v3'
 const OAUTH_TOKEN_URL = 'https://oauth2.googleapis.com/token'
 
@@ -144,15 +145,6 @@ export async function isConnected(): Promise<boolean> {
 
 // --- Performance data ---
 
-function getPerformanceCachePath(
-  siteUrl: string,
-  startDate: string,
-  endDate: string,
-): string {
-  const key = `${siteUrl}-${startDate}-${endDate}`.replace(/[^a-z0-9-]/gi, '-')
-  return join(CACHE_DIR, `gsc-perf-${key}.json`)
-}
-
 export async function queryPerformance(
   siteUrl: string,
   startDate: string,
@@ -160,16 +152,11 @@ export async function queryPerformance(
   dimensions: string[] = ['query', 'page'],
 ): Promise<GscPerformance> {
   // Check daily cache — max 1 refresh per day
-  const cachePath = getPerformanceCachePath(siteUrl, startDate, endDate)
-  try {
-    const cached = await readJson<GscPerformance>(cachePath)
-    const cachedDate = new Date(cached.cachedAt).toDateString()
-    if (cachedDate === new Date().toDateString()) {
-      log.debug(`GSC queryPerformance: cache hit for ${siteUrl}`, { rows: cached.rows.length })
-      return cached
-    }
-  } catch {
-    /* no cache */
+  const cacheKey = slugify(`${siteUrl}-${startDate}-${endDate}`)
+  const cached = await getCached<GscPerformance>('gsc', cacheKey)
+  if (cached && new Date(cached.cachedAt).toDateString() === new Date().toDateString()) {
+    log.debug(`GSC queryPerformance: cache hit for ${siteUrl}`, { rows: cached.rows.length })
+    return cached
   }
 
   log.info(`GSC queryPerformance: fetching ${siteUrl} (${startDate} → ${endDate})`)
@@ -214,7 +201,7 @@ export async function queryPerformance(
     rows,
     cachedAt: new Date().toISOString(),
   }
-  await writeJson(cachePath, result)
+  await setCached('gsc', cacheKey, result, GSC_CACHE_TTL_MS)
   log.info(`GSC queryPerformance: ${rows.length} rows fetched and cached`)
   return result
 }

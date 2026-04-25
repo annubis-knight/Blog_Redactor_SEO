@@ -21,8 +21,8 @@ const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique'] as
 type Tab = typeof TAB_IDS[number]
 
 const PHASE_CHECKS: Record<string, string[]> = {
-  generer: ['discovery_done', 'radar_done'],
-  valider: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+  generer: ['moteur:discovery_done', 'moteur:radar_done'],
+  valider: ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
 }
 
 const PHASE_NEXT: Record<string, { phaseLabel: string; firstTab: Tab }> = {
@@ -43,12 +43,12 @@ function isPhaseComplete(completedChecks: string[], phaseId: string): boolean {
 function computeSmartTab(completedChecks: string[]): Tab {
   if (completedChecks.length === 0) return 'capitaine'
   if (
-    completedChecks.includes('capitaine_locked')
-    && completedChecks.includes('lieutenants_locked')
-    && completedChecks.includes('lexique_validated')
+    completedChecks.includes('moteur:capitaine_locked')
+    && completedChecks.includes('moteur:lieutenants_locked')
+    && completedChecks.includes('moteur:lexique_validated')
   ) return 'capitaine'
-  if (completedChecks.includes('lieutenants_locked')) return 'lexique'
-  if (completedChecks.includes('capitaine_locked')) return 'lieutenants'
+  if (completedChecks.includes('moteur:lieutenants_locked')) return 'lexique'
+  if (completedChecks.includes('moteur:capitaine_locked')) return 'lieutenants'
   return 'capitaine'
 }
 
@@ -135,14 +135,14 @@ describe('Workflow ① — Phase Générer', () => {
     })
 
     it('Phase ① (generer) requires discovery_done + radar_done', () => {
-      expect(PHASE_CHECKS.generer).toEqual(['discovery_done', 'radar_done'])
+      expect(PHASE_CHECKS.generer).toEqual(['moteur:discovery_done', 'moteur:radar_done'])
     })
 
     it('Phase ② (valider) requires 3 checks', () => {
       expect(PHASE_CHECKS.valider).toEqual([
-        'capitaine_locked',
-        'lieutenants_locked',
-        'lexique_validated',
+        'moteur:capitaine_locked',
+        'moteur:lieutenants_locked',
+        'moteur:lexique_validated',
       ])
     })
 
@@ -245,19 +245,19 @@ describe('Workflow ① — Phase Générer', () => {
     })
 
     it('discovery_done only → Phase ① not complete', () => {
-      expect(isPhaseComplete(['discovery_done'], 'generer')).toBe(false)
+      expect(isPhaseComplete(['moteur:discovery_done'], 'generer')).toBe(false)
     })
 
     it('radar_done only → Phase ① not complete', () => {
-      expect(isPhaseComplete(['radar_done'], 'generer')).toBe(false)
+      expect(isPhaseComplete(['moteur:radar_done'], 'generer')).toBe(false)
     })
 
     it('discovery_done + radar_done → Phase ① complete', () => {
-      expect(isPhaseComplete(['discovery_done', 'radar_done'], 'generer')).toBe(true)
+      expect(isPhaseComplete(['moteur:discovery_done', 'moteur:radar_done'], 'generer')).toBe(true)
     })
 
     it('Phase ② checks do not affect Phase ① completion', () => {
-      expect(isPhaseComplete(['capitaine_locked', 'lieutenants_locked'], 'generer')).toBe(false)
+      expect(isPhaseComplete(['moteur:capitaine_locked', 'moteur:lieutenants_locked'], 'generer')).toBe(false)
     })
   })
 
@@ -266,32 +266,32 @@ describe('Workflow ① — Phase Générer', () => {
   // -----------------------------------------------------------------------
   describe('Step 5 — Phase transition banner', () => {
     it('no banner when Phase ① incomplete', () => {
-      expect(getTransitionBanner(['discovery_done'], 'radar')).toBeNull()
+      expect(getTransitionBanner(['moteur:discovery_done'], 'radar')).toBeNull()
     })
 
     it('shows transition banner when Phase ① complete while on discovery tab', () => {
-      const banner = getTransitionBanner(['discovery_done', 'radar_done'], 'discovery')
+      const banner = getTransitionBanner(['moteur:discovery_done', 'moteur:radar_done'], 'discovery')
       expect(banner).not.toBeNull()
       expect(banner!.firstTab).toBe('capitaine')
       expect(banner!.actionLabel).toContain('Valider')
     })
 
     it('shows transition banner when Phase ① complete while on radar tab', () => {
-      const banner = getTransitionBanner(['discovery_done', 'radar_done'], 'radar')
+      const banner = getTransitionBanner(['moteur:discovery_done', 'moteur:radar_done'], 'radar')
       expect(banner).not.toBeNull()
       expect(banner!.firstTab).toBe('capitaine')
     })
 
     it('no Phase ① banner when user already in Phase ②', () => {
       // User is on capitaine tab — Phase ② is not complete yet → no banner
-      const banner = getTransitionBanner(['discovery_done', 'radar_done'], 'capitaine')
+      const banner = getTransitionBanner(['moteur:discovery_done', 'moteur:radar_done'], 'capitaine')
       expect(banner).toBeNull()
     })
 
     it('shows completion banner when ALL Phase ② checks done', () => {
       const checks = [
-        'discovery_done', 'radar_done',
-        'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
+        'moteur:discovery_done', 'moteur:radar_done',
+        'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
       ]
       const banner = getTransitionBanner(checks, 'capitaine')
       expect(banner).not.toBeNull()
@@ -306,25 +306,25 @@ describe('Workflow ① — Phase Générer', () => {
   // -----------------------------------------------------------------------
   describe('Step 6 — Smart navigation after Phase ① checks', () => {
     it('Phase ① checks only → smart tab is capitaine', () => {
-      expect(computeSmartTab(['discovery_done', 'radar_done'])).toBe('capitaine')
+      expect(computeSmartTab(['moteur:discovery_done', 'moteur:radar_done'])).toBe('capitaine')
     })
 
     it('Phase ① + capitaine_locked → smart tab is lieutenants', () => {
       expect(computeSmartTab([
-        'discovery_done', 'radar_done', 'capitaine_locked',
+        'moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked',
       ])).toBe('lieutenants')
     })
 
     it('Phase ① + capitaine + lieutenants → smart tab is lexique', () => {
       expect(computeSmartTab([
-        'discovery_done', 'radar_done', 'capitaine_locked', 'lieutenants_locked',
+        'moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked', 'moteur:lieutenants_locked',
       ])).toBe('lexique')
     })
 
     it('all checks → smart tab cycles back to capitaine', () => {
       expect(computeSmartTab([
-        'discovery_done', 'radar_done',
-        'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
+        'moteur:discovery_done', 'moteur:radar_done',
+        'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
       ])).toBe('capitaine')
     })
   })
@@ -342,14 +342,14 @@ describe('Workflow ① — Phase Générer', () => {
     })
 
     it('after discovery → send-to-radar: discovery_done check, move to radar', () => {
-      checks.push('discovery_done')
+      checks.push('moteur:discovery_done')
       activeTab = 'radar'
       expect(currentPhaseId(activeTab)).toBe('generer')
       expect(isPhaseComplete(checks, 'generer')).toBe(false)
     })
 
     it('after radar scanned: radar_done check, Phase ① complete', () => {
-      checks.push('radar_done')
+      checks.push('moteur:radar_done')
       expect(isPhaseComplete(checks, 'generer')).toBe(true)
     })
 

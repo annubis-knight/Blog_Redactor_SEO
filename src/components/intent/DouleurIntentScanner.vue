@@ -2,20 +2,40 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useKeywordRadar } from '@/composables/keyword/useResonanceScore'
 import { radarHeatIcon } from '@/composables/keyword/useResonanceScore'
+import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.store'
 import { log } from '@/utils/logger'
 import RadarCardCheckable from './RadarCardCheckable.vue'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'
+import CpcFilterToggle from '@/components/shared/CpcFilterToggle.vue'
+import { matchesCpcFilter, type CpcFilter } from '@/components/shared/cpc-filter-types'
 import type { RadarKeyword, RadarCard } from '@shared/types/intent.types'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types'
+
+const modifiersStore = useKeywordModifiersStore()
+
+function getModifiersFor(keyword: string) {
+  return modifiersStore.getEffective(null, keyword)
+}
+
+function handleModifierUntag(keyword: string, index: number) {
+  modifiersStore.setModifier(null, keyword, index, null)
+}
+
+function handleModifierCycle(keyword: string, payload: { index: number; next: 'local' | 'persona' | null }) {
+  modifiersStore.setModifier(null, keyword, payload.index, payload.next)
+}
 
 const props = withDefaults(defineProps<{
   pilierKeyword: string
   articleTopic: string
   articleKeyword: string
   articlePainPoint?: string
+  articleLevel?: ArticleLevel
   injectedKeywords?: RadarKeyword[]
   mode?: 'workflow' | 'libre'
 }>(), {
   mode: 'workflow',
+  articleLevel: 'intermediaire',
 })
 
 const emit = defineEmits<{
@@ -47,8 +67,18 @@ const isLoadingCache = ref(false)
 // --- Checkbox selection for sending to Capitaine ---
 const checkedKeywords = ref(new Set<string>())
 
+// Sprint 2.5 — CPC filter (3 états : null / 'with' / 'without').
+const cpcFilter = ref<CpcFilter>(null)
+
+const filteredCards = computed(() => {
+  if (!scanResult.value) return [] as RadarCard[]
+  return scanResult.value.cards.filter(c => matchesCpcFilter(c.kpis.cpc, cpcFilter.value))
+})
+
+// Sprint 2.5 — "Tout" opère sur le filtre courant (visibles uniquement).
 const allChecked = computed(() =>
-  scanResult.value ? checkedKeywords.value.size === scanResult.value.cards.length : false,
+  filteredCards.value.length > 0 &&
+  filteredCards.value.every(c => checkedKeywords.value.has(c.keyword)),
 )
 
 function toggleCheck(keyword: string) {
@@ -60,11 +90,15 @@ function toggleCheck(keyword: string) {
 
 function toggleAllChecked() {
   if (!scanResult.value) return
+  // Sprint 2.5 — toggle opère sur les cartes visibles (filtre CPC respecté).
+  const visible = filteredCards.value
+  const next = new Set(checkedKeywords.value)
   if (allChecked.value) {
-    checkedKeywords.value = new Set()
+    for (const c of visible) next.delete(c.keyword)
   } else {
-    checkedKeywords.value = new Set(scanResult.value.cards.map(c => c.keyword))
+    for (const c of visible) next.add(c.keyword)
   }
+  checkedKeywords.value = next
 }
 
 function sendToCaptain() {
@@ -78,7 +112,11 @@ function sendToCaptain() {
 const broadKeyword = ref(props.pilierKeyword)
 const specificTopic = ref(props.articleTopic || props.articleKeyword || props.pilierKeyword)
 const painPoint = ref(props.articlePainPoint || '')
-const depth = ref(1)
+// Sprint 2.1 — Depth locked at N+2 (deeper PAA tree).
+// Why: the N+1/N+2 toggle was causing confusion (user thought it might
+// trigger a keyword regeneration that would overwrite Discovery data).
+// Product decision is N+2 everywhere.
+const depth = ref(2)
 
 // Phase tracking
 type Phase = 'input' | 'keywords' | 'scanning' | 'results'
@@ -169,7 +207,13 @@ async function handleGenerate() {
 async function handleScan() {
   if (generatedKeywords.value.length === 0) return
   log.info(`[DouleurIntent] Scan clicked: ${generatedKeywords.value.length} keywords, depth=${depth.value}`)
-  await scan(broadKeyword.value.trim(), specificTopic.value.trim(), generatedKeywords.value, depth.value, cacheSeed.value || undefined)
+  await scan(
+    broadKeyword.value.trim(),
+    specificTopic.value.trim(),
+    generatedKeywords.value,
+    depth.value,
+    cacheSeed.value ? { seed: cacheSeed.value } : undefined,
+  )
   if (scanResult.value) {
     log.info(`[DouleurIntent] Scan result: score=${scanResult.value.globalScore}`)
     emit('scanned', { globalScore: scanResult.value.globalScore, heatLevel: scanResult.value.heatLevel })
@@ -208,15 +252,8 @@ function handleReset() {
         </div>
       </div>
 
+      <!-- Sprint 2.1 — PAA depth toggle removed (locked at N+2). -->
       <div class="input-row input-row--actions">
-        <div class="input-group input-group--depth">
-          <label class="input-label">Profondeur PAA</label>
-          <div class="depth-toggle">
-            <button class="depth-btn" :class="{ 'depth-btn--active': depth === 1 }" @click="depth = 1">N+1</button>
-            <button class="depth-btn" :class="{ 'depth-btn--active': depth === 2 }" @click="depth = 2">N+2</button>
-          </div>
-        </div>
-
         <button
           v-if="phase === 'input' || phase === 'keywords'"
           class="btn-action"
@@ -238,7 +275,7 @@ function handleReset() {
 
     <!-- Cache indicator -->
     <div
-      v-if="radarCacheStatus?.cached && phase === 'input'"
+      v-if="radarCacheStatus?.exists && phase === 'input'"
       class="cache-indicator"
     >
       <div class="cache-indicator__info">
@@ -330,9 +367,13 @@ function handleReset() {
         :verdict="scanResult.verdict"
       />
 
-      <!-- Autocomplete section (full-width) -->
-      <div v-if="scanResult.autocomplete.totalCount > 0" class="autocomplete-section">
-        <h4 class="section-title">Autocomplete ({{ scanResult.autocomplete.totalCount }})</h4>
+      <!-- Autocomplete section (collapsed by default — Sprint 2.3).
+           Why: too tall, pushed the radar cards (the real value) off-screen. -->
+      <details v-if="scanResult.autocomplete.totalCount > 0" class="autocomplete-section">
+        <summary class="autocomplete-summary">
+          <h4 class="section-title section-title--inline">Autocomplete ({{ scanResult.autocomplete.totalCount }})</h4>
+          <span class="autocomplete-hint">Cliquer pour d&eacute;ployer</span>
+        </summary>
         <div class="auto-groups">
           <div v-for="(group, gIdx) in autoGroups" :key="'ag-' + gIdx" class="auto-group">
             <span class="auto-group-label">
@@ -347,12 +388,15 @@ function handleReset() {
             </div>
           </div>
         </div>
-      </div>
+      </details>
 
       <!-- Keyword cards with checkboxes -->
       <div class="radar-cards">
         <div class="radar-cards-header">
-          <h4 class="section-title">Resultats par mot-cle ({{ scanResult.cards.length }})</h4>
+          <h4 class="section-title">
+            Resultats par mot-cle ({{ filteredCards.length }}<template v-if="filteredCards.length !== scanResult.cards.length"> / {{ scanResult.cards.length }}</template>)
+          </h4>
+          <CpcFilterToggle v-model="cpcFilter" />
           <label class="check-all-toggle" @click.stop>
             <input
               type="checkbox"
@@ -363,11 +407,16 @@ function handleReset() {
           </label>
         </div>
         <RadarCardCheckable
-          v-for="card in scanResult.cards"
+          v-for="card in filteredCards"
           :key="card.keyword"
           :card="card"
           :checked="checkedKeywords.has(card.keyword)"
+          display-mode="kpi"
+          :article-level="props.articleLevel"
+          :modifiers="getModifiersFor(card.keyword)"
           @update:checked="toggleCheck(card.keyword)"
+          @modifier-untag="(i: number) => handleModifierUntag(card.keyword, i)"
+          @modifier-cycle="(p: { index: number; next: 'local' | 'persona' | null }) => handleModifierCycle(card.keyword, p)"
         />
         <button
           v-if="checkedKeywords.size > 0"
@@ -705,6 +754,27 @@ function handleReset() {
   text-transform: uppercase;
   letter-spacing: 0.03em;
 }
+
+/* Sprint 2.3 — collapsible autocomplete details */
+.section-title--inline { margin: 0; }
+.autocomplete-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.autocomplete-summary::-webkit-details-marker { display: none; }
+.autocomplete-summary::before {
+  content: '\25b8';
+  margin-right: 0.5rem;
+  color: var(--color-text-muted);
+  transition: transform 0.15s;
+}
+.autocomplete-section[open] .autocomplete-summary::before { transform: rotate(90deg); }
+.autocomplete-hint { font-size: 0.75rem; color: var(--color-text-muted); }
+.autocomplete-section[open] .autocomplete-summary { margin-bottom: 0.75rem; }
 
 .auto-groups {
   display: flex;

@@ -87,7 +87,6 @@ Pour chaque lieutenant propose, fournis :
 - **keyword** : le mot-cle lieutenant (formulation naturelle, 2-5 mots, recherchable sur Google)
 - **reasoning** : explication concise de pourquoi ce lieutenant est pertinent ET quelle donnee source le justifie
 - **sources** : d'ou vient cette proposition (un ou plusieurs parmi : "paa", "serp", "group", "root", "content-gap"). "root" = derive des donnees SERP des mots-cles racine (poids reduit). N'utilise "content-gap" que si tu peux justifier le gap par comparaison avec les concurrents reels listes.
-- **aiConfidence** : ta confiance dans cette proposition ("fort" = base sur des donnees reelles, "moyen" = infere a partir du contexte, "faible" = suggestion exploratoire)
 - **suggestedHnLevel** : niveau de heading recommande (2 = H2, 3 = H3)
 - **score** : score de qualite de 0 a 100 base sur les criteres de scoring ci-dessous. Ce score servira au filtrage automatique post-generation.
 
@@ -121,7 +120,7 @@ Identifie ce que les concurrents reels (listes ci-dessus) n'ont PAS couvert — 
 - Filtre les headings de navigation ("Nous contacter", "A propos"), noms d'agences, temoignages clients
 - Filtre les mots-cles "academiques" hors cible (ex: "definition", "expose") qui attirent un public non pertinent
 - Chaque lieutenant doit etre unique et apporter un angle distinct
-- Si les donnees sont insuffisantes (0 PAA, 0 heading recurrent), REDUIS le nombre de lieutenants et mets la majorite en confiance "faible"
+- Si les donnees sont insuffisantes (0 PAA, 0 heading recurrent), REDUIS le nombre de lieutenants et attribue des scores bas (<40)
 
 ## Format de reponse
 
@@ -134,7 +133,6 @@ Reponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni apres. Le JSON
       "keyword": "mot-cle lieutenant",
       "reasoning": "explication courte AVEC reference aux donnees sources",
       "sources": ["paa", "serp"],
-      "aiConfidence": "fort",
       "suggestedHnLevel": 2,
       "score": 82
     }

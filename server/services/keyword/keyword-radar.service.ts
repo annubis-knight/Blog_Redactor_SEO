@@ -1,5 +1,5 @@
-import Anthropic from '@anthropic-ai/sdk'
-import { calculateCost, type ApiUsage } from '../external/claude.service.js'
+import { classifyWithTool } from '../external/ai-provider.service.js'
+import type { ApiUsage } from '../external/claude.service.js'
 import { log } from '../../utils/logger.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { fetchKeywordOverviewBatch, fetchSearchIntentBatch } from '../external/dataforseo.service.js'
@@ -43,41 +43,55 @@ export async function generateRadarKeywords(
 ): Promise<KeywordRadarGenerateResult> {
   const prompt = await loadPrompt('intent-keywords', { title, keyword, painPoint }, cocoonSlug ? { cocoonSlug } : undefined)
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
   const model = process.env.HAIKU_MODEL || 'claude-haiku-4-5-20251001'
+  log.info(`[Radar] Generating keywords for "${keyword}"`)
 
-  log.info(`[Radar] Generating keywords via ${model} for "${keyword}"`)
+  interface RadarPayload { keywords: { keyword: string; reasoning: string }[] }
 
-  const response = await client.messages.create({
-    model,
-    max_tokens: 1024,
-    system: 'Tu es un expert SEO. Réponds UNIQUEMENT en JSON valide, sans markdown ni commentaires.',
-    messages: [{ role: 'user', content: prompt }],
-  })
-
-  const radarUsage: ApiUsage = {
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
+  let keywords: RadarKeyword[] = []
+  let radarUsage: ApiUsage = {
+    inputTokens: 0,
+    outputTokens: 0,
     cacheReadTokens: 0,
     cacheCreationTokens: 0,
     model,
-    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
+    estimatedCost: 0,
   }
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
-  const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-  log.info(`[Radar] Haiku call done`, { keyword, inputTokens: radarUsage.inputTokens, outputTokens: radarUsage.outputTokens, cost: `$${radarUsage.estimatedCost.toFixed(4)}` })
 
-  let keywords: RadarKeyword[] = []
   try {
-    const parsed = JSON.parse(cleaned)
-    keywords = (parsed.keywords ?? []).map((k: { keyword?: string; reasoning?: string }) => ({
-      keyword: (k.keyword ?? '').trim(),
-      reasoning: (k.reasoning ?? '').trim(),
-    })).filter((k: RadarKeyword) => k.keyword.length > 0)
-    log.debug(`[Radar] Parsed ${keywords.length} keywords from Haiku response`)
+    const { result, usage } = await classifyWithTool<RadarPayload>(
+      'Tu es un expert SEO. Réponds UNIQUEMENT en JSON valide, sans markdown ni commentaires.',
+      prompt,
+      {
+        name: 'generate_radar_keywords',
+        description: 'Génère une liste de mots-clés pertinents pour la résonance SERP.',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            keywords: {
+              type: 'array',
+              items: {
+                type: 'object',
+                properties: {
+                  keyword: { type: 'string' },
+                  reasoning: { type: 'string' },
+                },
+                required: ['keyword', 'reasoning'],
+              },
+            },
+          },
+          required: ['keywords'],
+        },
+      },
+      { model, maxTokens: 1024 },
+    )
+    radarUsage = usage
+    keywords = (result.keywords ?? [])
+      .map(k => ({ keyword: (k.keyword ?? '').trim(), reasoning: (k.reasoning ?? '').trim() }))
+      .filter(k => k.keyword.length > 0)
+    log.info(`[Radar] AI call done`, { keyword, parsed: keywords.length, inputTokens: radarUsage.inputTokens, outputTokens: radarUsage.outputTokens, cost: `$${radarUsage.estimatedCost.toFixed(4)}` })
   } catch (err) {
-    log.warn(`[Radar] Failed to parse Haiku response: ${(err as Error).message}`)
-    log.debug(`[Radar] Raw cleaned text: ${cleaned.slice(0, 200)}...`)
+    log.warn(`[Radar] AI call failed: ${(err as Error).message}`)
   }
 
   // Deduplicate by normalized keyword
@@ -193,12 +207,15 @@ export async function scanRadarKeywords(
   specificTopic: string,
   keywords: RadarKeyword[],
   depth: number = 1,
+  painPoint?: string,
 ): Promise<KeywordRadarScanResult> {
   const effectiveDepth = Math.min(Math.max(depth, 1), 2)
   const keywordStrings = keywords.map(k => k.keyword)
   const topicWords = extractTopicWords(specificTopic)
+  const painPointTrim = painPoint?.trim() ?? ''
+  const hasPain = painPointTrim.length >= 10
 
-  log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${effectiveDepth}`)
+  log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${effectiveDepth}${hasPain ? ' | pain-aware' : ''}`)
 
   // Phase 1: Parallel fetch — autocomplete, keyword overview, intent, PAA per keyword
   // Autocomplete uses specificTopic (article subject) instead of broadKeyword (silo name)
@@ -236,6 +253,31 @@ export async function scanRadarKeywords(
   const cachedCount = Array.from(paaResults.values()).filter(r => r.fromCache).length
   log.info(`[Radar] PAA fetch done: ${paaResults.size} keywords (${cachedCount} cached, ${paaResults.size - cachedCount} fresh)`)
 
+  // QW3 — Pain alignment: one batch of embeddings (painPoint vs keyword+reasoning)
+  // Gracefully degrades if painPoint is absent/too short or if embedding fails.
+  const painAlignmentMap = new Map<string, number>()
+  if (hasPain) {
+    const kwTexts = keywords.map(k =>
+      k.reasoning?.trim() ? `${k.keyword} — ${k.reasoning}` : k.keyword,
+    )
+    try {
+      const sims = await computeSemanticScores(painPointTrim, kwTexts)
+      if (sims) {
+        for (let i = 0; i < keywords.length; i++) {
+          // sim is in [-1, 1] for normalized vectors but e5 stays mostly in [0, 1].
+          // Clamp then map to 0-100.
+          const s = Math.max(0, Math.min(1, sims[i]))
+          painAlignmentMap.set(keywords[i].keyword, Math.round(s * 100))
+        }
+        log.info(`[Radar] Pain alignment computed for ${painAlignmentMap.size} keywords`)
+      } else {
+        log.warn(`[Radar] Pain alignment skipped: embeddings unavailable`)
+      }
+    } catch (err) {
+      log.warn(`[Radar] Pain alignment failed: ${(err as Error).message}`)
+    }
+  }
+
   // Phase 2: Match resonance for autocomplete items
   const autoSuggestions = autocompleteResult.suggestions.map(s => ({
     text: s.text,
@@ -243,6 +285,25 @@ export async function scanRadarKeywords(
     position: s.position,
   }))
   log.debug(`[Radar] Autocomplete: ${autoSuggestions.length} suggestions for "${specificTopic}"`)
+
+  // Étape 3B — moyenne embedding autocomplete × douleur (unique, partagée par toutes les cards)
+  let autocompletePainAlignmentAvg: number | null = null
+  if (hasPain && autoSuggestions.length > 0) {
+    try {
+      const texts = autoSuggestions.map(s => s.text)
+      const sims = await computeSemanticScores(painPointTrim, texts)
+      if (sims) {
+        const avg = sims.reduce((a, b) => a + Math.max(0, Math.min(1, b)), 0) / sims.length
+        autocompletePainAlignmentAvg = Math.round(avg * 100)
+        log.info(`[Radar] Autocomplete pain alignment computed: avg=${autocompletePainAlignmentAvg}`)
+      }
+    } catch (err) {
+      log.warn(`[Radar] Autocomplete pain alignment failed: ${(err as Error).message}`)
+    }
+  }
+
+  // Étape 3A — stockage moyenne PAA × douleur par keyword (alimenté dans la boucle)
+  const paaPainAlignmentByKw = new Map<string, number>()
 
   // Phase 3: Build cards
   const cards: RadarCard[] = []
@@ -299,6 +360,22 @@ export async function scanRadarKeywords(
           }
         }
       }
+
+      // QW5 — PAA painAlignment (independant du match lexical)
+      if (hasPain) {
+        const painSims = await computeSemanticScores(painPointTrim, paaTexts)
+        if (painSims) {
+          for (let i = 0; i < paaItems.length; i++) {
+            const s = painSims[i]
+            if (s >= 0.6) paaItems[i].painAlignment = 'aligned'
+            else if (s >= 0.35) paaItems[i].painAlignment = 'partial'
+            else paaItems[i].painAlignment = 'off'
+          }
+          // Étape 3A : moyenne numérique pour alimenter computeCombinedScore
+          const avg = painSims.reduce((a, b) => a + Math.max(0, Math.min(1, b)), 0) / painSims.length
+          paaPainAlignmentByKw.set(kw.keyword, Math.round(avg * 100))
+        }
+      }
     }
 
     // Count autocomplete matches for this keyword's topic
@@ -312,6 +389,8 @@ export async function scanRadarKeywords(
       ? Math.round((semanticScores.reduce((a, b) => a + b, 0) / semanticScores.length) * 1000) / 1000
       : null
 
+    const painAlignmentScore = painAlignmentMap.get(kw.keyword)
+
     const kpis: RadarKeywordKpis = {
       searchVolume: overview?.searchVolume ?? 0,
       difficulty: overview?.difficulty ?? 0,
@@ -324,9 +403,16 @@ export async function scanRadarKeywords(
       paaWeightedScore: Math.round(computePaaWeightedScore(paaItems) * 100) / 100,
       paaTotal: paaItems.length,
       avgSemanticScore,
+      painAlignmentScore,
     }
 
-    const scoreBreakdown = computeCombinedScore(kpis)
+    // Étapes 3A/3B — enrichir avec les signaux "pertinence × douleur"
+    const paaPainAvg = paaPainAlignmentByKw.get(kw.keyword)
+    const scoreBreakdown = computeCombinedScore({
+      ...kpis,
+      paaPainAlignmentAvg: paaPainAvg,
+      autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? undefined,
+    })
     log.debug(`[Radar] Card "${kw.keyword}": score=${scoreBreakdown.total}, PAA=${kpis.paaMatchCount}/${kpis.paaTotal}, vol=${kpis.searchVolume}, intent=${kpis.intentTypes.join(',') || 'unknown'}`)
 
     cards.push({

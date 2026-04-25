@@ -15,6 +15,8 @@ export interface SerpCompetitor {
   headings: HnNode[]
   textContent: string // Raw text for TF-IDF (Epic 8)
   fetchError?: string // If the HTML fetch failed
+  /** Sprint 4.4 — heuristic blog-vs-institutional classification from URL/domain. */
+  isBlog?: boolean
 }
 
 export interface LieutenantCandidate {
@@ -47,7 +49,6 @@ export interface ProposedLieutenant {
   keyword: string
   reasoning: string
   sources: ('paa' | 'serp' | 'group' | 'root' | 'content-gap')[]
-  aiConfidence: 'fort' | 'moyen' | 'faible'
   suggestedHnLevel: 2 | 3
   score: number // 0-100, AI-generated quality score for filtering
 }

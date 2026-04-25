@@ -14,7 +14,7 @@ vi.mock('../../../server/services/strategy/strategy.service', () => ({
   saveStrategy: mockSaveStrategy,
 }))
 
-vi.mock('../../../server/services/external/claude.service', () => ({
+vi.mock('../../../server/services/external/ai-provider.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
 }))
@@ -220,6 +220,7 @@ describe('POST /strategy/:id/suggest', () => {
   it('returns 500 when Claude API fails', async () => {
     mockReadFile.mockResolvedValueOnce('{{articleTitle}} {{cocoonName}} {{siloName}} {{step}} {{stepDescription}} {{currentInput}} {{#existingArticles}}{{existingArticles}}{{/existingArticles}}')
     mockStreamChatCompletion.mockImplementationOnce(async function* () {
+      if (false) yield ''
       throw new Error('Claude API error')
     })
 

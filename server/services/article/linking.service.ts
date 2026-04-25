@@ -1,6 +1,5 @@
-import { join } from 'path'
+import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
-import { readJson, writeJson } from '../../utils/json-storage.js'
 import { loadArticlesDb } from '../infra/data.service.js'
 import type {
   InternalLink,
@@ -11,9 +10,6 @@ import type {
   CrossCocoonOpportunity,
 } from '../../../shared/types/linking.types.js'
 import type { ArticleType } from '../../../shared/types/index.js'
-
-const LINKS_DIR = join(process.cwd(), 'data', 'links')
-const MATRIX_PATH = join(LINKS_DIR, 'linking-matrix.json')
 
 const DEFAULT_MATRIX: LinkingMatrix = {
   links: [],
@@ -37,41 +33,56 @@ export function isValidHierarchyLink(sourceType: ArticleType, targetType: Articl
   return distance <= 2
 }
 
-/** Load the linking matrix from disk, or return empty default */
+/** Load the linking matrix from PG */
 export async function getMatrix(): Promise<LinkingMatrix> {
-  try {
-    return await readJson<LinkingMatrix>(MATRIX_PATH)
-  } catch {
-    return { ...DEFAULT_MATRIX, links: [] }
+  const res = await pool.query(
+    `SELECT source_id as "sourceId", target_id as "targetId", position, anchor_text as "anchorText"
+     FROM internal_links ORDER BY source_id, target_id`
+  )
+  const updatedRes = await pool.query(`SELECT MAX(validated_at) as last FROM internal_links`)
+  return {
+    links: res.rows as InternalLink[],
+    updatedAt: updatedRes.rows[0]?.last ? (updatedRes.rows[0].last as Date).toISOString() : null,
   }
 }
 
-/** Save the full linking matrix to disk atomically */
+/** Save the full linking matrix (replace all) */
 export async function saveMatrix(matrix: LinkingMatrix): Promise<LinkingMatrix> {
-  const updated: LinkingMatrix = {
-    ...matrix,
-    updatedAt: new Date().toISOString(),
+  const client = await pool.connect()
+  try {
+    await client.query('BEGIN')
+    await client.query('DELETE FROM internal_links')
+    for (const link of matrix.links) {
+      await client.query(
+        `INSERT INTO internal_links (source_id, target_id, position, anchor_text)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (source_id, target_id, position) DO UPDATE
+         SET anchor_text = EXCLUDED.anchor_text`,
+        [link.sourceId, link.targetId, link.position ?? null, link.anchorText ?? '']
+      )
+    }
+    await client.query('COMMIT')
+  } catch (err) {
+    await client.query('ROLLBACK')
+    throw err
+  } finally {
+    client.release()
   }
-  await writeJson(MATRIX_PATH, updated)
-  return updated
+  return { ...matrix, updatedAt: new Date().toISOString() }
 }
 
 /** Add or update links in the matrix */
 export async function upsertLinks(newLinks: InternalLink[]): Promise<LinkingMatrix> {
-  const matrix = await getMatrix()
-
   for (const link of newLinks) {
-    const existingIndex = matrix.links.findIndex(
-      (l) => l.sourceId === link.sourceId && l.targetId === link.targetId && l.position === link.position,
+    await pool.query(
+      `INSERT INTO internal_links (source_id, target_id, position, anchor_text)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (source_id, target_id, position) DO UPDATE
+       SET anchor_text = EXCLUDED.anchor_text`,
+      [link.sourceId, link.targetId, link.position ?? null, link.anchorText ?? '']
     )
-    if (existingIndex >= 0) {
-      matrix.links[existingIndex] = link
-    } else {
-      matrix.links.push(link)
-    }
   }
-
-  return saveMatrix(matrix)
+  return getMatrix()
 }
 
 /** Get links for a specific article (as source or target) */
@@ -154,27 +165,21 @@ export async function suggestLinks(articleId: number, content: string): Promise<
 /** Detect orphan articles (no incoming links) */
 export async function detectOrphans(): Promise<OrphanArticle[]> {
   log.debug('Detecting orphan articles')
-  const cocoons = await loadArticlesDb()
-  const matrix = await getMatrix()
-
-  const targetsWithIncoming = new Set(matrix.links.map((l) => l.targetId))
-  const orphans: OrphanArticle[] = []
-
-  for (const cocoon of cocoons) {
-    for (const article of cocoon.articles) {
-      if (!targetsWithIncoming.has(article.id)) {
-        orphans.push({
-          id: article.id,
-          slug: article.slug,
-          title: article.title,
-          cocoonName: cocoon.name,
-          type: article.type,
-        })
-      }
-    }
-  }
-
-  return orphans
+  const res = await pool.query(`
+    SELECT a.id, a.slug, a.titre as title, a.type, c.nom as cocoon_name
+    FROM articles a
+    LEFT JOIN internal_links il ON il.target_id = a.id
+    JOIN cocoons c ON c.id = a.cocoon_id
+    WHERE il.id IS NULL AND a.cocoon_id IS NOT NULL
+    ORDER BY a.id
+  `)
+  return res.rows.map(r => ({
+    id: r.id,
+    slug: r.slug,
+    title: r.title,
+    cocoonName: r.cocoon_name,
+    type: r.type,
+  }))
 }
 
 /** Check anchor text diversity -- flag anchors used more than 3 times */

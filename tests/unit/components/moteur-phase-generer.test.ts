@@ -86,7 +86,7 @@ import type { Phase } from '@/components/moteur/MoteurPhaseNavigation.vue'
 const unlockedPhases: Phase[] = [
   {
     id: 'generer',
-    label: 'Générer',
+    label: 'Explorer',
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: false },
@@ -117,7 +117,7 @@ const unlockedPhases: Phase[] = [
 const lockedPhases: Phase[] = [
   {
     id: 'generer',
-    label: 'Générer',
+    label: 'Explorer',
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: true },

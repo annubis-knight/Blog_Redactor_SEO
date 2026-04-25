@@ -21,7 +21,10 @@ describe('CaptainInput', () => {
     expect(wrapper.emitted('submit')!.length).toBe(1)
   })
 
-  it('affiche les warnings de composition', () => {
+  // Sprint 16 — composition-warnings messages are no longer rendered inside
+  // CaptainInput (surfaced via an icon in CaptainCarousel header with a hover
+  // tooltip instead). Props are kept for backward compat but do not render.
+  it('accepte les props compositionWarnings/compositionAllPass sans erreur', () => {
     const wrapper = mount(CaptainInput, {
       props: {
         ...baseProps,
@@ -33,10 +36,7 @@ describe('CaptainInput', () => {
       },
     })
 
-    const warnings = wrapper.find('[data-testid="composition-warnings"]')
-    expect(warnings.exists()).toBe(true)
-    expect(wrapper.text()).toContain('Mot trop court')
-    expect(wrapper.text()).toContain('Mot composé détecté')
+    expect(wrapper.find('[data-testid="keyword-input"]').exists()).toBe(true)
   })
 
   it('désactive le bouton quand disabled', () => {
@@ -79,17 +79,17 @@ describe('CaptainVerdictPanel', () => {
     articleLevel: 'intermediaire' as const,
   }
 
-  it('affiche le thermomètre au bon niveau', () => {
+  it('affiche la VerdictBar avec le bon verdict', () => {
     const wrapper = shallowMount(CaptainVerdictPanel, { props: baseProps })
-    const thermo = wrapper.findComponent({ name: 'VerdictThermometer' })
-    expect(thermo.exists()).toBe(true)
-    expect(thermo.props('verdict')).toBe('GO')
+    const bar = wrapper.findComponent({ name: 'VerdictBar' })
+    expect(bar.exists()).toBe(true)
+    expect(bar.props('verdict')).toBe('GO')
   })
 
   it('affiche les KPIs', () => {
     const wrapper = mount(CaptainVerdictPanel, {
       props: baseProps,
-      global: { stubs: { VerdictThermometer: true } },
+      global: { stubs: { VerdictBar: true } },
     })
 
     expect(wrapper.find('[data-testid="kpi-volume"]').exists()).toBe(true)
@@ -99,7 +99,7 @@ describe('CaptainVerdictPanel', () => {
     expect(wrapper.text()).toContain('KD')
   })
 
-  it('affiche NO-GO avec le message', () => {
+  it('propage NO-GO + message à la VerdictBar', () => {
     const wrapper = mount(CaptainVerdictPanel, {
       props: {
         ...baseProps,
@@ -107,19 +107,19 @@ describe('CaptainVerdictPanel', () => {
         verdictLabel: 'NO-GO',
         noGoMessage: 'Volume trop faible',
       },
-      global: { stubs: { VerdictThermometer: true } },
     })
 
-    const nogo = wrapper.find('[data-testid="nogo-feedback"]')
-    expect(nogo.exists()).toBe(true)
-    expect(nogo.text()).toContain('Volume trop faible')
+    const bar = wrapper.findComponent({ name: 'VerdictBar' })
+    expect(bar.exists()).toBe(true)
+    expect(bar.props('verdict')).toBe('NO-GO')
+    expect(bar.props('noGoMessage')).toBe('Volume trop faible')
   })
 
   it('affiche le slot root-zone', () => {
     const wrapper = mount(CaptainVerdictPanel, {
       props: baseProps,
       slots: { 'root-zone': '<div data-testid="root-zone-slot">Root zone content</div>' },
-      global: { stubs: { VerdictThermometer: true } },
+      global: { stubs: { VerdictBar: true } },
     })
 
     expect(wrapper.find('[data-testid="root-zone-slot"]').exists()).toBe(true)

@@ -11,12 +11,6 @@ defineEmits<{
   'update:checked': [value: boolean]
 }>()
 
-function confidenceBadge(c: string) {
-  if (c === 'fort') return 'lt-badge--fort'
-  if (c === 'moyen') return 'lt-badge--moyen'
-  return 'lt-badge--faible'
-}
-
 const VALID_SOURCES = new Set(['serp', 'paa', 'group', 'root', 'content-gap'])
 
 function sourceBadge(s: string) {
@@ -52,9 +46,6 @@ function sourceBadge(s: string) {
           class="lt-source"
           :class="sourceBadge(s)"
         >{{ s }}</span>
-        <span class="lt-badge" :class="confidenceBadge(lieutenant.aiConfidence)">
-          {{ lieutenant.aiConfidence }}
-        </span>
       </div>
     </div>
   </div>
@@ -186,16 +177,4 @@ function sourceBadge(s: string) {
 .lt-source--root { background: var(--color-badge-purple-bg, #f3e8ff); color: #7c3aed; }
 .lt-source--content-gap { background: var(--color-badge-red-bg, #fef2f2); color: #dc2626; }
 
-.lt-badge {
-  display: inline-block;
-  padding: 0.0625rem 0.3125rem;
-  font-size: 0.5625rem;
-  font-weight: 600;
-  text-transform: capitalize;
-  border-radius: 3px;
-}
-
-.lt-badge--fort { background: var(--color-success, #22c55e); color: white; }
-.lt-badge--moyen { background: var(--color-warning, #f59e0b); color: white; }
-.lt-badge--faible { background: var(--color-border); color: var(--color-text-muted); }
 </style>

@@ -1,7 +1,9 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { slugify } from '../external/dataforseo.service.js'
-import { readCached, writeCached, isFresh } from '../../utils/cache.js'
+import {
+  getKeywordMetrics,
+  upsertKeywordAutocomplete,
+  isKeywordMetricsFresh,
+} from './keyword-metrics.service.js'
 
 // --- Types (local until Story 25.2 moves them to shared/types) ---
 
@@ -12,11 +14,9 @@ export interface AutocompleteSignal {
   position: number | null
 }
 
-// --- Cache ---
-
-const CACHE_DIR = join(process.cwd(), 'data', 'cache', 'autocomplete')
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 24h
-const CACHE_TTL_EMPTY_MS = 30 * 60 * 1000 // 30min for empty results — retry sooner
+// Sprint 15.3 — Storage moved from api_cache[autocomplete] to the
+// `keyword_metrics` table (cross-article, keyed by keyword + lang + country).
+// Freshness: 1 day for non-empty, 30 min for empty (retry sooner).
 
 // --- Empty signal ---
 
@@ -58,13 +58,21 @@ export async function fetchAutocomplete(
   lang = 'fr',
   country = 'fr',
 ): Promise<AutocompleteSignal> {
-  // Check cache first (dynamic TTL: 24h normal, 30min empty)
-  const cached = await readCached<AutocompleteSignal>(CACHE_DIR, slugify(keyword))
-  if (cached) {
-    const ttl = cached.data.suggestionsCount === 0 ? CACHE_TTL_EMPTY_MS : CACHE_TTL_MS
-    if (isFresh(cached.cachedAt, ttl)) {
-      log.debug(`Autocomplete cache hit for "${keyword}" (${cached.data.suggestionsCount} suggestions)`)
-      return cached.data
+  // Sprint 15.3 — DB-first on keyword_metrics (cross-article, keyed by lang+country).
+  const existing = await getKeywordMetrics(keyword, lang, country)
+  if (existing && existing.autocompleteSource) {
+    const ttlDays = existing.autocompleteSuggestions.length === 0 ? 0.02 : 1 // 30 min vs 24 h
+    if (isKeywordMetricsFresh(existing.fetchedAt, ttlDays)) {
+      log.debug(`Autocomplete DB hit for "${keyword}" (${existing.autocompleteSuggestions.length} suggestions)`)
+      const suggestions = existing.autocompleteSuggestions.map(s => s.text)
+      const keywordLower = keyword.toLowerCase()
+      const positionIndex = suggestions.findIndex(s => s.toLowerCase() === keywordLower)
+      return {
+        suggestionsCount: suggestions.length,
+        suggestions,
+        hasKeyword: positionIndex >= 0,
+        position: positionIndex >= 0 ? positionIndex + 1 : null,
+      }
     }
   }
 
@@ -137,8 +145,14 @@ export async function fetchAutocomplete(
       position: positionIndex >= 0 ? positionIndex + 1 : null,
     }
 
-    // Write to cache
-    await writeCached(CACHE_DIR, slugify(keyword), signal)
+    // Sprint 15.3 — persist in keyword_metrics.autocomplete_* instead of api_cache
+    await upsertKeywordAutocomplete(
+      keyword,
+      signal.suggestions.map((text, idx) => ({ text, position: idx + 1 })),
+      'google',
+      lang,
+      country,
+    )
 
     log.info(`Autocomplete done for "${keyword}"`, {
       count: signal.suggestionsCount,

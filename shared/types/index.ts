@@ -24,12 +24,14 @@ export type {
   ArticleKeywords,
   RawArticleKeywordsDb,
   CaptainValidationEntry,
+  RichCaptain,
   RichRootKeyword,
   RichLieutenant,
 } from './keyword.types.js'
 
 export type {
   ApiUsage,
+  DbOp,
 } from './api.types.js'
 
 export type {
@@ -131,7 +133,6 @@ export type {
 
 export type {
   ArticleProgress,
-  SemanticTerm,
   SelectedArticle,
 } from './article-progress.types.js'
 

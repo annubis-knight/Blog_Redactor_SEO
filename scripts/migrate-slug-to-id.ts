@@ -25,7 +25,6 @@ const FILES = {
   progress: join(DATA_DIR, 'article-progress.json'),
   statuses: join(DATA_DIR, 'article-statuses.json'),
   microContext: join(DATA_DIR, 'article-micro-context.json'),
-  semanticFields: join(DATA_DIR, 'article-semantic-fields.json'),
   hierarchy: join(DATA_DIR, 'hierarchy.json'),
 } as const
 
@@ -281,33 +280,8 @@ async function main() {
   console.log()
 
   // ------------------------------------------------------------------
-  // Step 6: Update article-semantic-fields.json
+  // Step 6: (removed) article-semantic-fields.json — table dropped in migration 005
   // ------------------------------------------------------------------
-  console.log('[Step 6] Update article-semantic-fields.json (slug keys -> id keys)')
-  const semanticFieldsDb = await readJson<Record<string, unknown>>(FILES.semanticFields)
-  const semanticKeys = Object.keys(semanticFieldsDb).filter((k) => k !== '_schemaVersion')
-  let newSemanticFieldsDb: Record<string, unknown>
-
-  if (semanticKeys.length === 0) {
-    console.log('  (empty object — nothing to remap)')
-    newSemanticFieldsDb = {}
-  } else {
-    newSemanticFieldsDb = {}
-    for (const [slug, value] of Object.entries(semanticFieldsDb)) {
-      if (slug === '_schemaVersion') continue
-      const id = slugToId.get(slug)
-      if (id !== undefined) {
-        newSemanticFieldsDb[String(id)] = value
-        console.log(`  "${slug}" -> "${id}"`)
-      } else {
-        console.log(`  WARNING: no mapping for slug "${slug}" — keeping as-is`)
-        newSemanticFieldsDb[slug] = value
-      }
-    }
-  }
-
-  ;(newSemanticFieldsDb as Record<string, unknown>)._schemaVersion = 1
-  console.log()
 
   // ------------------------------------------------------------------
   // Step 7: Rename files in data/articles/ from {slug}.json to {id}.json
@@ -437,7 +411,6 @@ async function main() {
     { label: 'article-progress.json', path: FILES.progress, data: newProgressDb },
     { label: 'article-statuses.json', path: FILES.statuses, data: newStatusesDb },
     { label: 'article-micro-context.json', path: FILES.microContext, data: microContextDb },
-    { label: 'article-semantic-fields.json', path: FILES.semanticFields, data: newSemanticFieldsDb },
   ]
 
   for (const w of writes) {

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import type { Article, ArticleType, ProposedArticle, SelectedArticle } from '@shared/types/index.js'
+import type { Article, ArticleType, SelectedArticle } from '@shared/types/index.js'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import ProgressDots from './ProgressDots.vue'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
@@ -8,7 +8,7 @@ import RecapToggle from '@/components/shared/RecapToggle.vue'
 const progressStore = useArticleProgressStore()
 
 const props = withDefaults(defineProps<{
-  proposedArticles: ProposedArticle[]
+  suggestedArticles: Article[]
   publishedArticles: Article[]
   selectedSlug: string | null
   capitainesMap?: Record<string, string>
@@ -24,31 +24,31 @@ const emit = defineEmits<{
 
 const TYPE_ORDER: ArticleType[] = ['Pilier', 'Intermédiaire', 'Spécialisé']
 
-const acceptedArticles = computed(() =>
-  props.proposedArticles.filter(a => a.accepted),
-)
+interface GroupedArticle {
+  id: number; slug: string; title: string; keyword: string
+  keywordLocked: boolean; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string
+}
 
 interface GroupedArticles {
   type: ArticleType
-  articles: { id: number; slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }[]
+  articles: GroupedArticle[]
 }
 
 const suggestedGroups = computed<GroupedArticles[]>(() => {
   const groups: GroupedArticles[] = []
   for (const type of TYPE_ORDER) {
-    const matching = acceptedArticles.value
+    const matching = props.suggestedArticles
       .filter(a => a.type === type)
-      .map(a => {
-        return {
-          id: a.dbId ?? 0,
-          slug: a.suggestedSlug,
-          title: a.title,
-          keyword: a.suggestedKeyword,
-          type: a.type,
-          source: 'proposed' as const,
-          painPoint: a.painPoint || undefined,
-        }
-      })
+      .map(a => ({
+        id: a.id,
+        slug: a.slug,
+        title: a.title,
+        keyword: a.captainKeywordLocked ?? a.suggestedKeyword ?? '',
+        keywordLocked: !!a.captainKeywordLocked,
+        type: a.type,
+        source: 'proposed' as const,
+        painPoint: a.painPoint || undefined,
+      }))
     if (matching.length) groups.push({ type, articles: matching })
   }
   return groups
@@ -58,14 +58,13 @@ const publishedGroups = computed<GroupedArticles[]>(() => {
   const groups: GroupedArticles[] = []
   for (const type of TYPE_ORDER) {
     const matching = props.publishedArticles
-      .filter(a => a.type === type && a.status === 'publié')
+      .filter(a => a.type === type)
       .map(a => ({
         id: a.id,
         slug: a.slug,
         title: a.title,
-        // Canonical keyword for display: locked Capitaine in priority, otherwise suggestion from strategy.
-        // Both fields now live directly in BDD — no secondary fetch needed (see data.service.ts mirror logic).
         keyword: a.captainKeywordLocked ?? a.suggestedKeyword ?? '',
+        keywordLocked: !!a.captainKeywordLocked,
         type: a.type,
         source: 'published' as const,
       }))
@@ -121,7 +120,7 @@ function hasCannibalization(slug: string): boolean {
   )
 }
 
-function toggleArticle(article: { id: number; slug: string; title: string; keyword: string; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string }) {
+function toggleArticle(article: GroupedArticle) {
   if (props.readonly) return
   if (isSelected(article.slug)) {
     emit('select', null)
@@ -143,7 +142,7 @@ function toggleArticle(article: { id: number; slug: string; title: string; keywo
 <template>
   <div class="moteur-recap-group">
     <!-- Panel 1: Articles suggérés -->
-    <RecapToggle v-if="acceptedArticles.length > 0" panel-id="suggested-articles" :label="`Articles suggérés (${acceptedArticles.length})`">
+    <RecapToggle v-if="suggestedArticles.length > 0" panel-id="suggested-articles" :label="`Articles suggérés (${suggestedArticles.length})`">
       <div v-for="group in suggestedGroups" :key="group.type" class="tree-group">
         <div class="tree-type">
           <span class="tree-type-badge"
@@ -163,16 +162,16 @@ function toggleArticle(article: { id: number; slug: string; title: string; keywo
               <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
             <ProgressDots :completed-checks="getChecks(art.id)" />
-            <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
+            <span v-if="art.keyword" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ art.keyword }}</span>
           </button>
         </div>
       </div>
     </RecapToggle>
 
     <!-- Panel 2: Articles publiés -->
-    <RecapToggle v-if="publishedArticles.length > 0" panel-id="published-articles">
+    <RecapToggle v-if="publishedGroups.length > 0" panel-id="published-articles">
       <template #header>
-        <span class="recap-toggle-label">Articles publiés ({{ publishedArticles.filter(a => a.status === 'publié').length }})</span>
+        <span class="recap-toggle-label">Articles publiés ({{ publishedArticles.length }})</span>
         <svg class="recap-lock-icon" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
           <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
@@ -198,7 +197,7 @@ function toggleArticle(article: { id: number; slug: string; title: string; keywo
               <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
             </svg>
             <ProgressDots :completed-checks="getChecks(art.id)" />
-            <span v-if="art.keyword" class="tree-article-keyword">{{ art.keyword }}</span>
+            <span v-if="art.keyword" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ art.keyword }}</span>
             <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
               <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
@@ -356,5 +355,10 @@ function toggleArticle(article: { id: number; slug: string; title: string; keywo
 
 .warning-cannibal {
   flex-shrink: 0;
+}
+
+.tree-article-keyword.is-suggested {
+  border-style: dashed;
+  opacity: 0.7;
 }
 </style>

@@ -17,13 +17,13 @@ describe('PhaseTransitionBanner — Rendering', () => {
   it('renders the message and action button', () => {
     const wrapper = mount(PhaseTransitionBanner, {
       props: {
-        message: 'Phase Générer complète — passer à Valider ?',
+        message: 'Phase Explorer complète — passer à Valider ?',
         actionLabel: 'Passer à Valider',
       },
     })
 
     expect(wrapper.find('.phase-transition-message').text()).toBe(
-      'Phase Générer complète — passer à Valider ?',
+      'Phase Explorer complète — passer à Valider ?',
     )
     expect(wrapper.find('.phase-transition-btn').text()).toContain('Passer à Valider')
   })
@@ -94,8 +94,8 @@ describe('PhaseTransitionBanner — Events', () => {
 // --- MoteurView integration logic tests ---
 
 const PHASE_CHECKS: Record<string, string[]> = {
-  generer: ['discovery_done', 'radar_done'],
-  valider: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+  generer: ['moteur:discovery_done', 'moteur:radar_done'],
+  valider: ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
 }
 
 const PHASE_NEXT: Record<string, { phaseLabel: string; firstTab: string }> = {
@@ -168,17 +168,17 @@ function createBannerHarness(slug: string | null, completedChecks: string[], act
 
 describe('Phase transition — phaseComplete computed', () => {
   it('returns true when all checks of Phase ① are completed', () => {
-    const h = createBannerHarness('test-article', ['discovery_done', 'radar_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done', 'moteur:radar_done'], 'discovery')
     expect(h.isCurrentPhaseComplete.value).toBe(true)
   })
 
   it('returns false when some checks of Phase ① are missing', () => {
-    const h = createBannerHarness('test-article', ['discovery_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done'], 'discovery')
     expect(h.isCurrentPhaseComplete.value).toBe(false)
   })
 
   it('returns true when all checks of Phase ② are completed', () => {
-    const h = createBannerHarness('test-article', ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'], 'capitaine')
+    const h = createBannerHarness('test-article', ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'], 'capitaine')
     expect(h.isCurrentPhaseComplete.value).toBe(true)
   })
 
@@ -190,7 +190,7 @@ describe('Phase transition — phaseComplete computed', () => {
 
 describe('Phase transition — banner visibility', () => {
   it('shows banner when Phase ① Générer is complete', () => {
-    const h = createBannerHarness('test-article', ['discovery_done', 'radar_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done', 'moteur:radar_done'], 'discovery')
     expect(h.showTransitionBanner.value).toBe(true)
     expect(h.transitionBanner.value?.actionLabel).toBe('Passer à Valider')
   })
@@ -198,7 +198,7 @@ describe('Phase transition — banner visibility', () => {
   it('shows completion banner when Phase ② Valider is complete', () => {
     const h = createBannerHarness(
       'test-article',
-      ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+      ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
       'capitaine',
     )
     expect(h.showTransitionBanner.value).toBe(true)
@@ -211,7 +211,7 @@ describe('Phase transition — banner visibility', () => {
   it('completion banner can be dismissed', () => {
     const h = createBannerHarness(
       'test-article',
-      ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+      ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
       'capitaine',
     )
     expect(h.showTransitionBanner.value).toBe(true)
@@ -221,12 +221,12 @@ describe('Phase transition — banner visibility', () => {
   })
 
   it('does NOT show banner when phase is incomplete', () => {
-    const h = createBannerHarness('test-article', ['discovery_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done'], 'discovery')
     expect(h.showTransitionBanner.value).toBe(false)
   })
 
   it('does NOT show banner when dismissed', () => {
-    const h = createBannerHarness('test-article', ['discovery_done', 'radar_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done', 'moteur:radar_done'], 'discovery')
     expect(h.showTransitionBanner.value).toBe(true)
 
     h.bannerDismissed.value = true
@@ -236,7 +236,7 @@ describe('Phase transition — banner visibility', () => {
 
 describe('Phase transition — bannerDismissed reset', () => {
   it('resets bannerDismissed when phase changes', async () => {
-    const h = createBannerHarness('test-article', ['discovery_done', 'radar_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done', 'moteur:radar_done'], 'discovery')
 
     h.bannerDismissed.value = true
     expect(h.bannerDismissed.value).toBe(true)
@@ -251,7 +251,7 @@ describe('Phase transition — bannerDismissed reset', () => {
   })
 
   it('resets bannerDismissed when article changes', async () => {
-    const h = createBannerHarness('test-article', ['discovery_done', 'radar_done'], 'discovery')
+    const h = createBannerHarness('test-article', ['moteur:discovery_done', 'moteur:radar_done'], 'discovery')
 
     h.bannerDismissed.value = true
     h.selectedArticle.value = { slug: 'other-article' } as any

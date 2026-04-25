@@ -1,7 +1,6 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { readJson, writeJson } from '../../utils/json-storage.js'
-import { slugify as cacheSlugify, readCached, writeCached, isFresh } from '../../utils/cache.js'
+import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
+import { costGuard, CostBudgetError } from './dataforseo-cost-guard.js'
 import type {
   SerpResult,
   PaaQuestion,
@@ -24,26 +23,55 @@ import {
 const DEFAULT_LOCATION_CODE = 2250 // France
 const DEFAULT_LANGUAGE_CODE = 'fr'
 const MAX_RETRIES = 3
+const MAX_RETRIES_50000 = 1 // 50000 = DataForSEO internal error; retry once only to avoid runaway cost
 const INITIAL_RETRY_DELAY_MS = 1000
 const AUDIT_INTER_REQUEST_DELAY_MS = 200
 const KEYWORD_OVERVIEW_BATCH_MAX = 700
 const SEARCH_INTENT_BATCH_MAX = 1000
 
-const CACHE_DIR = join(process.cwd(), 'data', 'cache')
+const CACHE_TYPE = 'dataforseo'
+
+/** Marker error thrown when DataForSEO returns 429 (quota / rate limit) after all retries. */
+export class DataForSeoQuotaError extends Error {
+  constructor(message = 'DataForSEO quota exceeded') {
+    super(message)
+    this.name = 'DataForSeoQuotaError'
+  }
+}
+
+// Re-export so callers can distinguish a budget trip from a real API quota trip.
+export { CostBudgetError }
 
 // --- Sandbox / Production URL ---
 
-/** Returns true when running against the DataForSEO sandbox */
+/**
+ * Sandbox detection — EXPLICIT opt-in only.
+ *
+ * Why: previously we inferred sandbox from NODE_ENV. `npm run dev:server` does
+ * NOT set NODE_ENV, so the inference silently failed and dev traffic hit the
+ * paid production API. Now the ONLY way to enable sandbox is
+ * `DATAFORSEO_SANDBOX=true` in `.env`.
+ */
 export function isSandbox(): boolean {
-  return process.env.DATAFORSEO_SANDBOX === 'true' ||
-    (process.env.NODE_ENV === 'development' && process.env.DATAFORSEO_SANDBOX !== 'false')
+  return process.env.DATAFORSEO_SANDBOX === 'true'
 }
 
-/** Returns sandbox URL in dev mode (free & unlimited), production URL otherwise */
+let baseUrlLogged = false
+
+/** Returns sandbox URL when DATAFORSEO_SANDBOX=true, production URL otherwise */
 export function getBaseUrl(): string {
-  return isSandbox()
+  const url = isSandbox()
     ? 'https://sandbox.dataforseo.com/v3'
     : 'https://api.dataforseo.com/v3'
+  if (!baseUrlLogged) {
+    baseUrlLogged = true
+    if (isSandbox()) {
+      log.info('DataForSEO: using SANDBOX (free, fake data)')
+    } else {
+      log.warn('DataForSEO: using PRODUCTION — calls will be billed. Set DATAFORSEO_SANDBOX=true in .env to switch.')
+    }
+  }
+  return url
 }
 
 // --- Auth ---
@@ -57,19 +85,20 @@ export function getAuthHeader(): string {
   return `Basic ${Buffer.from(`${login}:${password}`).toString('base64')}`
 }
 
-// --- Slugify (re-export from cache utility) ---
+// --- Slugify (re-export for external consumers) ---
 
-export { slugify } from '../../utils/cache.js'
+export { slugify } from '../../db/cache-helpers.js'
 
-// --- Cache (using unified cache utility) ---
+// --- Cache ---
+
+const DATAFORSEO_CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
 
 export async function readCache(keyword: string): Promise<DataForSeoCacheEntry | null> {
-  const entry = await readCached<DataForSeoCacheEntry>(CACHE_DIR, cacheSlugify(keyword))
-  return entry ? entry.data : null
+  return getCached<DataForSeoCacheEntry>(CACHE_TYPE, slugify(keyword))
 }
 
 async function writeCache(data: DataForSeoCacheEntry): Promise<void> {
-  await writeCached(CACHE_DIR, cacheSlugify(data.keyword), data)
+  await setCached(CACHE_TYPE, slugify(data.keyword), data, DATAFORSEO_CACHE_TTL_MS)
 }
 
 // --- Retry with backoff ---
@@ -82,7 +111,10 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
   const url = `${getBaseUrl()}${endpoint}`
   const auth = getAuthHeader()
 
+  await costGuard.reserve(endpoint, body)
+
   let lastError: Error | null = null
+  let count50000 = 0
 
   log.debug(`DataForSEO request → ${endpoint}`, { url, bodyItems: body.length })
 
@@ -90,7 +122,7 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
+      const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 500)
       log.warn(`DataForSEO retry ${attempt}/${MAX_RETRIES} for ${endpoint}`, { delay, ms: Date.now() - start })
       await sleep(delay)
     }
@@ -107,9 +139,13 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
     if (response.ok) {
       const json = await response.json() as { status_code: number; tasks: Array<{ status_code: number; result: T[] }> }
       if (json.status_code !== 20000) {
-        // Retry on transient API-level errors (50000 = internal server error)
         if (json.status_code >= 50000 && json.status_code < 60000) {
-          log.warn(`DataForSEO API transient error ${json.status_code} for ${endpoint}, will retry`, { attempt })
+          count50000++
+          if (count50000 > MAX_RETRIES_50000) {
+            log.error(`DataForSEO API 50000 error persisted for ${endpoint} — giving up (saves credits)`, { retries: count50000 })
+            throw new Error(`DataForSEO error: status ${json.status_code} (persistent, aborted after ${count50000} attempts)`)
+          }
+          log.warn(`DataForSEO API transient error ${json.status_code} for ${endpoint}, will retry`, { attempt, count50000 })
           lastError = new Error(`DataForSEO error: status ${json.status_code}`)
           continue
         }
@@ -120,24 +156,25 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
         log.warn(`DataForSEO empty result for ${endpoint}`, { ms: Date.now() - start })
         throw new Error('DataForSEO: empty result')
       }
+      costGuard.commit(endpoint, body)
       log.debug(`DataForSEO response OK ← ${endpoint}`, { ms: Date.now() - start, resultCount: json.tasks[0].result.length })
       return json.tasks[0].result[0] as T
     }
 
-    // Retry on 429 (rate limit), 503 (service unavailable), and 500 (server error)
     if (response.status === 429 || response.status === 500 || response.status === 503) {
       log.warn(`DataForSEO HTTP ${response.status} for ${endpoint}, will retry`, { attempt, ms: Date.now() - start })
       lastError = new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
       continue
     }
 
-    // Non-retryable errors
     log.error(`DataForSEO HTTP ${response.status} for ${endpoint}`, { ms: Date.now() - start, status: response.status })
     throw new Error(`DataForSEO HTTP ${response.status}: ${response.statusText}`)
   }
 
-  // All retries exhausted for retryable error
   log.error(`DataForSEO max retries exceeded for ${endpoint}`, { ms: Date.now() - start, retries: MAX_RETRIES })
+  if (lastError?.message.includes('HTTP 429')) {
+    throw new DataForSeoQuotaError(`DataForSEO quota atteint pour ${endpoint}`)
+  }
   throw lastError ?? new Error('DataForSEO: max retries exceeded')
 }
 
@@ -146,7 +183,10 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
   const url = `${getBaseUrl()}${endpoint}`
   const auth = getAuthHeader()
 
+  await costGuard.reserve(endpoint, body)
+
   let lastError: Error | null = null
+  let count50000 = 0
 
   log.debug(`DataForSEO batch request → ${endpoint}`, { url, bodyItems: body.length })
 
@@ -154,7 +194,7 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
 
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
     if (attempt > 0) {
-      const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1)
+      const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 500)
       log.warn(`DataForSEO batch retry ${attempt}/${MAX_RETRIES} for ${endpoint}`, { delay, ms: Date.now() - start })
       await sleep(delay)
     }
@@ -171,9 +211,13 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
     if (response.ok) {
       const json = await response.json() as { status_code: number; tasks: Array<{ status_code: number; result: T[] }> }
       if (json.status_code !== 20000) {
-        // Retry on transient API-level errors (50000 = internal server error)
         if (json.status_code >= 50000 && json.status_code < 60000) {
-          log.warn(`DataForSEO batch API transient error ${json.status_code} for ${endpoint}, will retry`, { attempt })
+          count50000++
+          if (count50000 > MAX_RETRIES_50000) {
+            log.error(`DataForSEO batch 50000 error persisted for ${endpoint} — giving up (saves credits)`, { retries: count50000 })
+            throw new Error(`DataForSEO error: status ${json.status_code} (persistent, aborted after ${count50000} attempts)`)
+          }
+          log.warn(`DataForSEO batch API transient error ${json.status_code} for ${endpoint}, will retry`, { attempt, count50000 })
           lastError = new Error(`DataForSEO error: status ${json.status_code}`)
           continue
         }
@@ -181,6 +225,7 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
         throw new Error(`DataForSEO error: status ${json.status_code}`)
       }
       const results = json.tasks?.[0]?.result ?? []
+      costGuard.commit(endpoint, body)
       log.debug(`DataForSEO batch response OK ← ${endpoint}`, { ms: Date.now() - start, resultCount: results.length })
       return results
     }
@@ -196,6 +241,9 @@ async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[]): Promi
   }
 
   log.error(`DataForSEO batch max retries exceeded for ${endpoint}`, { ms: Date.now() - start, retries: MAX_RETRIES })
+  if (lastError?.message.includes('HTTP 429')) {
+    throw new DataForSeoQuotaError(`DataForSEO quota atteint pour ${endpoint}`)
+  }
   throw lastError ?? new Error('DataForSEO: max retries exceeded')
 }
 
@@ -530,11 +578,33 @@ export async function fetchSearchIntentBatch(
 // --- Orchestrator ---
 
 export async function getBrief(keyword: string, forceRefresh = false): Promise<DataForSeoCacheEntry & { fromCache: boolean }> {
-  // Check cache first
+  // Sprint 15.8 — check keyword_metrics first (cross-article DB).
   if (!forceRefresh) {
+    const { getKeywordMetrics, isKeywordMetricsFresh } = await import('../keyword/keyword-metrics.service.js')
+    const metrics = await getKeywordMetrics(keyword)
+    if (metrics && isKeywordMetricsFresh(metrics.fetchedAt) && metrics.searchVolume !== null) {
+      log.debug(`DB-first hit for brief "${keyword}"`)
+      // Rebuild a minimal DataForSeoCacheEntry from keyword_metrics (shape matches PaaQuestion[]).
+      return {
+        keyword,
+        serp: (metrics.serpRawJson as any)?.competitors ?? [],
+        paa: metrics.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? null })),
+        relatedKeywords: [],
+        keywordData: {
+          searchVolume: metrics.searchVolume ?? 0,
+          difficulty: metrics.keywordDifficulty ?? 0,
+          cpc: metrics.cpc ?? 0,
+          competition: metrics.competition ?? 0,
+          monthlySearches: [],
+        },
+        cachedAt: metrics.fetchedAt,
+        fromCache: true,
+      }
+    }
+    // Legacy fallback: old api_cache[dataforseo] entries still readable.
     const cached = await readCache(keyword)
     if (cached) {
-      log.debug(`Cache hit for "${keyword}"`)
+      log.debug(`Legacy api_cache hit for "${keyword}"`)
       return { ...cached, fromCache: true }
     }
   }
@@ -573,7 +643,24 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
     cachedAt: new Date().toISOString(),
   }
 
-  // Write to cache
+  // Sprint 15.8 — mirror the brief into keyword_metrics so other workflows benefit.
+  try {
+    const { upsertKeywordKpis, upsertKeywordPaa } = await import('../keyword/keyword-metrics.service.js')
+    await upsertKeywordKpis(keyword, {
+      searchVolume: keywordData.searchVolume,
+      keywordDifficulty: keywordData.difficulty,
+      cpc: keywordData.cpc,
+      competition: keywordData.competition,
+    })
+    if (paa.length > 0) {
+      // paa already has shape { question, answer } from dataforseo.types.PaaQuestion
+      await upsertKeywordPaa(keyword, paa.map(q => ({ question: q.question, answer: q.answer })))
+    }
+  } catch (err) {
+    log.warn(`brief: DB-first persist failed — ${(err as Error).message}`)
+  }
+
+  // Keep the legacy api_cache write for now (will be removed in Sprint 15.10).
   await writeCache(entry)
 
   log.info(`SEO brief done for "${keyword}"`, {
@@ -600,7 +687,7 @@ export function getMinRefreshHours(): number {
 /** Check if cache is still fresh enough based on min refresh hours */
 export function isCacheFresh(cachedAt: string): boolean {
   const minHours = getMinRefreshHours()
-  return isFresh(cachedAt, minHours * 60 * 60 * 1000)
+  return new Date(cachedAt).getTime() + minHours * 60 * 60 * 1000 > Date.now()
 }
 
 /** Compute composite score (0-100) for a keyword based on DataForSEO metrics */

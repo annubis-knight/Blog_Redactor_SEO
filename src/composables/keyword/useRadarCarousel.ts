@@ -16,8 +16,11 @@ export interface CarouselEntry {
   error: string | null
   rootVariants: Map<string, KeywordRootVariant>
   isLoadingRoots: boolean
-  activeWordCount: number
+  /** F4 — indices des mots actifs dans `originalCard.keyword.split(/\s+/)`. Ordre croissant. */
+  activeWordIndices: number[]
   failedRoots: string[]
+  /** Combinaisons en cours de validation async (user-triggered via word-toggle). */
+  pendingVariants: Set<string>
 }
 
 /** Convert a ValidateResponse into a fully hydrated RadarCard */
@@ -64,6 +67,7 @@ export function hydrateCardFromValidation(keyword: string, response: ValidateRes
 }
 
 function createEntry(card: RadarCard): CarouselEntry {
+  const wordCount = card.keyword.trim().split(/\s+/).length
   return {
     card,
     originalCard: card,
@@ -72,8 +76,9 @@ function createEntry(card: RadarCard): CarouselEntry {
     error: null,
     rootVariants: new Map(),
     isLoadingRoots: false,
-    activeWordCount: card.keyword.trim().split(/\s+/).length,
+    activeWordIndices: Array.from({ length: wordCount }, (_, i) => i),
     failedRoots: [],
+    pendingVariants: new Set(),
   }
 }
 
@@ -127,7 +132,7 @@ export function useRadarCarousel() {
     }
   }
 
-  async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string) {
+  async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number) {
     const thisVersion = ++loadVersion
     entries.value = cards.map(createEntry)
     currentIndex.value = 0
@@ -137,7 +142,7 @@ export function useRadarCarousel() {
         try {
           const response = await apiPost<ValidateResponse>(
             `/keywords/${encodeURIComponent(card.keyword)}/validate`,
-            { level, articleTitle },
+            { level, articleTitle, ...(articleId ? { articleId } : {}) },
           )
           if (thisVersion !== loadVersion) return
           patch(i, { validation: response, originalCard: card, isLoading: false })
@@ -178,13 +183,13 @@ export function useRadarCarousel() {
   }
 
   /** Add a single keyword as a new carousel entry and validate it */
-  async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string) {
+  async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string, articleId?: number) {
     const thisVersion = ++loadVersion
     // Build a minimal RadarCard for a manually-entered keyword
     const card: RadarCard = {
       keyword,
       combinedScore: 0,
-      scoreBreakdown: { paaMatchScore: 0, resonanceBonus: 0, opportunityScore: 0, intentValueScore: 0, cpcScore: 0, total: 0 },
+      scoreBreakdown: { paaMatchScore: 0, resonanceBonus: 0, opportunityScore: 0, intentValueScore: 0, cpcScore: 0, painAlignmentScore: 0, total: 0 },
       kpis: { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, paaTotal: 0, paaMatchCount: 0, paaWeightedScore: 0, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, avgSemanticScore: null },
       paaItems: [],
       reasoning: '',
@@ -199,7 +204,7 @@ export function useRadarCarousel() {
     try {
       const response = await apiPost<ValidateResponse>(
         `/keywords/${encodeURIComponent(keyword)}/validate`,
-        { level, articleTitle },
+        { level, articleTitle, ...(articleId ? { articleId } : {}) },
       )
       if (thisVersion !== loadVersion) return
       const hydratedCard = hydrateCardFromValidation(keyword, response)
@@ -211,6 +216,78 @@ export function useRadarCarousel() {
       if (thisVersion !== loadVersion) return
       patch(entryIndex, { error: (err as Error).message, isLoading: false })
       log.warn('[useRadarCarousel] addEntry failed', { keyword, error: (err as Error).message })
+    }
+  }
+
+  /**
+   * Validate an arbitrary sub-keyword and attach it as a root variant of an existing entry,
+   * without creating a new carousel slot. Activates rootVariants so KeywordWords becomes
+   * interactive for the new combination, and swaps the displayed card to show its KPIs.
+   * Throws on API error so the caller can restore activeWordIndices + show a toast.
+   */
+  async function addRootVariantToEntry(
+    entryIndex: number,
+    newRootKeyword: string,
+    activeIndices: number[],
+    level: ArticleLevel,
+    articleTitle?: string,
+    articleId?: number,
+  ): Promise<void> {
+    const entry = entries.value[entryIndex]
+    if (!entry) throw new Error('Entry introuvable')
+
+    if (entry.rootVariants.has(newRootKeyword)) {
+      const existing = entry.rootVariants.get(newRootKeyword)!
+      entries.value[entryIndex] = {
+        ...entry,
+        card: existing.card,
+        validation: existing.validation,
+        activeWordIndices: activeIndices,
+      }
+      return
+    }
+
+    const pending = new Set(entry.pendingVariants)
+    pending.add(newRootKeyword)
+    patch(entryIndex, { pendingVariants: pending, activeWordIndices: activeIndices })
+
+    const thisVersion = loadVersion
+
+    try {
+      const response = await apiPost<ValidateResponse>(
+        `/keywords/${encodeURIComponent(newRootKeyword)}/validate`,
+        { level, articleTitle, ...(articleId ? { articleId } : {}) },
+      )
+      if (thisVersion !== loadVersion) return
+
+      const current = entries.value[entryIndex]
+      if (!current) return
+
+      const variantCard = hydrateCardFromValidation(newRootKeyword, response)
+      const variants = new Map(current.rootVariants)
+      variants.set(newRootKeyword, { keyword: newRootKeyword, card: variantCard, validation: response })
+
+      const nextPending = new Set(current.pendingVariants)
+      nextPending.delete(newRootKeyword)
+
+      entries.value[entryIndex] = {
+        ...current,
+        rootVariants: variants,
+        pendingVariants: nextPending,
+        card: variantCard,
+        validation: response,
+        activeWordIndices: activeIndices,
+      }
+
+      log.info('[useRadarCarousel] Root variant added in-place', { parent: current.originalCard.keyword, variant: newRootKeyword })
+    } catch (err) {
+      const current = entries.value[entryIndex]
+      if (current) {
+        const nextPending = new Set(current.pendingVariants)
+        nextPending.delete(newRootKeyword)
+        patch(entryIndex, { pendingVariants: nextPending })
+      }
+      throw err
     }
   }
 
@@ -264,8 +341,9 @@ export function useRadarCarousel() {
         error: null,
         rootVariants,
         isLoadingRoots: false,
-        activeWordCount: h.keyword.trim().split(/\s+/).length,
+        activeWordIndices: Array.from({ length: h.keyword.trim().split(/\s+/).length }, (_, i) => i),
         failedRoots: [],
+        pendingVariants: new Set(),
       } satisfies CarouselEntry
     })
 
@@ -287,6 +365,7 @@ export function useRadarCarousel() {
     count,
     loadCards,
     addEntry,
+    addRootVariantToEntry,
     restoreFromHistory,
     next,
     prev,

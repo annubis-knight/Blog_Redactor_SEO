@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import { marked } from 'marked'
 import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
-defineProps<{
+marked.setOptions({ breaks: true, gfm: true })
+
+const props = defineProps<{
   iaIsStreaming: boolean
   iaChunks: string
   iaError: string | null
@@ -25,6 +28,11 @@ const showEliminated = ref(false)
 function isCardSelected(keyword: string, selected: Map<string, ProposedLieutenant>): boolean {
   return selected.has(keyword)
 }
+
+// Sprint 4.3 — render contentGapInsights as markdown (same pipeline as Captain AI panel).
+const parsedInsights = computed(() =>
+  props.contentGapInsights ? (marked.parse(props.contentGapInsights) as string) : '',
+)
 </script>
 
 <template>
@@ -83,7 +91,8 @@ function isCardSelected(keyword: string, selected: Map<string, ProposedLieutenan
       </div>
 
       <div v-if="contentGapInsights" class="content-gap-section">
-        <strong>Failles de contenu :</strong> {{ contentGapInsights }}
+        <strong>Failles de contenu</strong>
+        <div class="content-gap-md ai-markdown" v-safe-html="parsedInsights" />
       </div>
     </template>
 
@@ -161,6 +170,24 @@ function isCardSelected(keyword: string, selected: Map<string, ProposedLieutenan
   border-radius: 6px;
   line-height: 1.5;
 }
+/* Sprint 4.3 — markdown styles for content-gap insights */
+.content-gap-md { margin-top: 0.25rem; }
+.content-gap-md :deep(h1),
+.content-gap-md :deep(h2),
+.content-gap-md :deep(h3) {
+  margin: 0.5rem 0 0.25rem;
+  font-size: 0.875rem;
+  font-weight: 700;
+}
+.content-gap-md :deep(h3) { font-size: 0.8125rem; }
+.content-gap-md :deep(p) { margin: 0.25rem 0; }
+.content-gap-md :deep(ul),
+.content-gap-md :deep(ol) {
+  margin: 0.25rem 0;
+  padding-left: 1.25rem;
+}
+.content-gap-md :deep(li) { margin-bottom: 0.125rem; }
+.content-gap-md :deep(strong) { font-weight: 700; }
 
 .eliminated-section { margin-top: 0.5rem; }
 

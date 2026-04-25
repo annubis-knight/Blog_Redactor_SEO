@@ -6,13 +6,6 @@ export interface ArticleProgress {
   checkTimestamps?: Record<string, string>  // { checkName: ISO timestamp }
 }
 
-export interface SemanticTerm {
-  term: string
-  source: 'competitor' | 'dataforseo' | 'autocomplete' | 'paa' | 'manual'
-  occurrences: number
-  targetCount: number
-}
-
 export interface SelectedArticle {
   id: number
   slug: string

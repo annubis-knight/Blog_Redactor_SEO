@@ -1,56 +1,59 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockReadJson, mockWriteJson, mockGetArticleById } = vi.hoisted(() => ({
-  mockReadJson: vi.fn(),
-  mockWriteJson: vi.fn(),
-  mockGetArticleById: vi.fn(),
+const mockQuery = vi.fn()
+vi.mock('../../../server/db/client', () => ({
+  pool: { query: (...args: unknown[]) => mockQuery(...args) },
 }))
 
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: mockReadJson,
-  writeJson: mockWriteJson,
-}))
-
-vi.mock('../../../server/services/infra/data.service', () => ({
-  getArticleById: mockGetArticleById,
+vi.mock('../../../server/utils/logger', () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
 import { getArticleContent, saveArticleContent } from '../../../server/services/article/article-content.service'
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockWriteJson.mockResolvedValue(undefined)
-  mockGetArticleById.mockResolvedValue({
-    article: { id: 1, slug: 'test-slug', title: 'Test Article' },
-    cocoonName: 'Test Cocoon',
-  })
 })
 
 describe('article-content.service', () => {
   describe('getArticleContent', () => {
-    it('returns stored content when file exists', async () => {
-      const stored = {
-        outline: '{"sections":[]}',
-        content: '<p>Hello</p>',
-        metaTitle: 'Title',
-        metaDescription: 'Desc',
-        seoScore: 80,
-        geoScore: 70,
-        updatedAt: '2026-03-06T00:00:00.000Z',
-      }
-      mockReadJson.mockResolvedValueOnce(stored)
+    it('returns stored content when row exists', async () => {
+      // article_content SELECT
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ outline: { sections: [] }, content: '<p>Hello</p>', updated_at: new Date('2026-03-06') }],
+        rowCount: 1,
+      })
+      // articles SELECT (meta)
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ meta_title: 'Title', meta_description: 'Desc', seo_score: 80, geo_score: 70 }],
+        rowCount: 1,
+      })
 
       const result = await getArticleContent(1)
 
-      expect(result).toEqual({
-        ...stored,
-        outline: { sections: [] },
-      })
+      expect(result.outline).toEqual({ sections: [] })
+      expect(result.content).toBe('<p>Hello</p>')
+      expect(result.metaTitle).toBe('Title')
+      expect(result.metaDescription).toBe('Desc')
+      expect(result.seoScore).toBe(80)
+      expect(result.geoScore).toBe(70)
     })
 
-    it('returns default content when file does not exist', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    it('normalizes outline from JSON string', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ outline: '{"sections":[]}', content: null, updated_at: null }],
+        rowCount: 1,
+      })
+      mockQuery.mockResolvedValueOnce({ rows: [{}], rowCount: 1 })
+
+      const result = await getArticleContent(1)
+
+      expect(result.outline).toEqual({ sections: [] })
+    })
+
+    it('returns default content when no row exists', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 
       const result = await getArticleContent(99)
 
@@ -61,51 +64,58 @@ describe('article-content.service', () => {
   })
 
   describe('saveArticleContent', () => {
-    it('merges updates with existing content', async () => {
-      mockReadJson.mockResolvedValueOnce({
-        outline: '{"sections":[]}',
-        content: null,
-        metaTitle: null,
-        metaDescription: null,
-        seoScore: null,
-        geoScore: null,
-        updatedAt: '2026-03-05T00:00:00.000Z',
+    it('upserts outline and content into article_content', async () => {
+      // UPSERT article_content
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // getArticleContent: article_content SELECT
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ outline: { sections: [] }, content: '<p>New</p>', updated_at: new Date() }],
+        rowCount: 1,
+      })
+      // getArticleContent: articles SELECT
+      mockQuery.mockResolvedValueOnce({ rows: [{}], rowCount: 1 })
+
+      const result = await saveArticleContent(1, { content: '<p>New</p>' })
+
+      expect(result.content).toBe('<p>New</p>')
+      expect(mockQuery.mock.calls[0][0]).toContain('article_content')
+    })
+
+    it('updates meta fields in articles table', async () => {
+      // UPDATE articles (no outline/content → skip article_content)
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // getArticleContent: article_content SELECT
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ outline: null, content: null, updated_at: new Date() }],
+        rowCount: 1,
+      })
+      // getArticleContent: articles SELECT
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ meta_title: 'New Title', meta_description: null, seo_score: 90, geo_score: null }],
+        rowCount: 1,
       })
 
-      await saveArticleContent(1, { content: '<p>New</p>' })
+      const result = await saveArticleContent(1, { metaTitle: 'New Title', seoScore: 90 })
 
-      expect(mockWriteJson).toHaveBeenCalledWith(
-        expect.stringMatching(/test-slug\.json$/),
-        expect.objectContaining({
-          outline: { sections: [] },
-          content: '<p>New</p>',
-          updatedAt: expect.any(String),
-        }),
-      )
+      expect(result.metaTitle).toBe('New Title')
+      expect(result.seoScore).toBe(90)
+      expect(mockQuery.mock.calls[0][0]).toContain('UPDATE articles')
     })
 
-    it('creates new file when none exists', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    it('returns updatedAt from getArticleContent after save', async () => {
+      // UPSERT
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // getArticleContent: article_content
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ outline: null, content: null, updated_at: new Date('2026-04-19') }],
+        rowCount: 1,
+      })
+      // getArticleContent: articles
+      mockQuery.mockResolvedValueOnce({ rows: [{}], rowCount: 1 })
 
-      await saveArticleContent(2, { outline: '{"sections":[]}' })
-
-      expect(mockWriteJson).toHaveBeenCalledWith(
-        expect.stringMatching(/test-slug\.json$/),
-        expect.objectContaining({
-          outline: { sections: [] },
-          content: null,
-          updatedAt: expect.any(String),
-        }),
-      )
-    })
-
-    it('sets updatedAt timestamp', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
-      const result = await saveArticleContent(1, {})
+      const result = await saveArticleContent(1, { content: '<p>X</p>' })
 
       expect(result.updatedAt).not.toBeNull()
-      expect(new Date(result.updatedAt!).getTime()).toBeGreaterThan(0)
     })
   })
 })

@@ -34,3 +34,11 @@ export interface ApiUsage {
   model: string
   estimatedCost: number
 }
+
+/** DB CRUD telemetry event — surfaced to the activity pile to make persistence visible. */
+export interface DbOp {
+  operation: 'insert' | 'update' | 'delete' | 'upsert' | 'select'
+  table: string
+  rowCount: number
+  ms: number
+}

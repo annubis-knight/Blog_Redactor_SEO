@@ -10,9 +10,7 @@ vi.mock('../../../src/services/api.service', () => ({
   apiPost: (...args: unknown[]) => mockApiPost(...args),
 }))
 
-// --- Two useStreaming instances: index 0 = IA upfront, index 1 = legacy AI panel ---
-let streamingCallIndex = 0
-
+// --- Single useStreaming instance = IA upfront (legacy AI panel removed in Sprint 7 P4) ---
 const iaStreaming = {
   chunks: ref(''),
   isStreaming: ref(false),
@@ -23,24 +21,12 @@ const iaStreaming = {
   abort: vi.fn(),
 }
 
-const aiStreaming = {
-  chunks: ref(''),
-  isStreaming: ref(false),
-  error: ref<string | null>(null),
-  result: ref(null),
-  usage: ref(null),
-  startStream: vi.fn(),
-  abort: vi.fn(),
-}
-
 vi.mock('../../../src/composables/editor/useStreaming', () => ({
-  useStreaming: () => {
-    const idx = streamingCallIndex++
-    return idx === 0 ? iaStreaming : aiStreaming
-  },
+  useStreaming: () => iaStreaming,
 }))
 
 const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
+const mockSaveDecisions = vi.fn().mockResolvedValue(undefined)
 const mockInitEmpty = vi.fn()
 const mockKeywordsRef = ref<{ articleId: number; capitaine: string; lieutenants: string[]; lexique: string[] } | null>(null)
 
@@ -48,12 +34,32 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockKeywordsRef,
     saveKeywords: mockSaveKeywords,
+    saveDecisions: mockSaveDecisions,
     initEmpty: mockInitEmpty,
   }),
 }))
 
 vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+// F3 — Mock du store basket (utilisé par KeywordAssistPanel)
+vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
+  useMoteurBasketStore: () => ({
+    keywords: [],
+    keywordStrings: [],
+    count: 0,
+    isEmpty: true,
+    bestKeyword: null,
+    validatedKeywords: [],
+    articleId: null,
+    setArticle: vi.fn(),
+    addKeywords: vi.fn(),
+    removeKeyword: vi.fn(),
+    markValidated: vi.fn(),
+    clear: vi.fn(),
+    $reset: vi.fn(),
+  }),
 }))
 
 const MOCK_TFIDF_RESULT = {
@@ -121,15 +127,11 @@ function mountComponent(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  streamingCallIndex = 0
   mockApiPost.mockResolvedValue(MOCK_TFIDF_RESULT)
   iaStreaming.chunks.value = ''
   iaStreaming.isStreaming.value = false
   iaStreaming.error.value = null
   iaStreaming.result.value = null
-  aiStreaming.chunks.value = ''
-  aiStreaming.isStreaming.value = false
-  aiStreaming.error.value = null
   mockKeywordsRef.value = null
 })
 
@@ -189,7 +191,8 @@ describe('LexiqueExtraction', () => {
     it('calls apiPost with correct params on click', async () => {
       const wrapper = mountComponent()
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
-      expect(mockApiPost).toHaveBeenCalledWith('/serp/tfidf', { keyword: 'seo' })
+      // Sprint 11 — request carries articleId for DB-first persistence (lexique_explorations).
+      expect(mockApiPost).toHaveBeenCalledWith('/serp/tfidf', { keyword: 'seo', articleId: 1 })
     })
 
     it('shows loading text while extracting', async () => {
@@ -415,14 +418,12 @@ describe('LexiqueExtraction', () => {
       await nextTick()
 
       iaStreaming.abort.mockClear()
-      aiStreaming.abort.mockClear()
       await wrapper.setProps({
         selectedArticle: { slug: 'other', keyword: 'autre', title: 'Autre', type: 'Support', painPoint: '' },
       })
       await nextTick()
 
       expect(iaStreaming.abort).toHaveBeenCalled()
-      expect(aiStreaming.abort).toHaveBeenCalled()
     })
   })
 
@@ -711,61 +712,6 @@ describe('LexiqueExtraction', () => {
     })
   })
 
-  describe('AI Panel (legacy)', () => {
-    async function mountWithResults() {
-      const wrapper = mountComponent()
-      await wrapper.find('[data-testid="btn-extract"]').trigger('click')
-      await nextTick()
-      await nextTick()
-      return wrapper
-    }
-
-    it('renders AI panel after extraction', async () => {
-      const wrapper = await mountWithResults()
-      expect(wrapper.find('[data-testid="ai-panel"]').exists()).toBe(true)
-    })
-
-    it('toggles AI panel open/closed', async () => {
-      const wrapper = await mountWithResults()
-      expect(wrapper.find('[data-testid="ai-panel-content"]').exists()).toBe(true)
-
-      await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
-      expect(wrapper.find('[data-testid="ai-panel-content"]').exists()).toBe(false)
-
-      await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
-      expect(wrapper.find('[data-testid="ai-panel-content"]').exists()).toBe(true)
-    })
-
-    it('shows streaming dot when streaming', async () => {
-      const wrapper = await mountWithResults()
-      aiStreaming.isStreaming.value = true
-      await nextTick()
-      expect(wrapper.find('.ai-panel-streaming-dot').exists()).toBe(true)
-    })
-
-    it('shows AI chunks text', async () => {
-      const wrapper = await mountWithResults()
-      aiStreaming.chunks.value = 'Analyse lexicale complète'
-      await nextTick()
-      expect(wrapper.find('[data-testid="ai-panel-text"]').text()).toContain('Analyse lexicale complète')
-    })
-
-    it('shows AI error', async () => {
-      const wrapper = await mountWithResults()
-      aiStreaming.error.value = 'Erreur API'
-      await nextTick()
-      expect(wrapper.find('.ai-panel-error').text()).toContain('Erreur API')
-    })
-
-    it('shows loading state when streaming without chunks', async () => {
-      const wrapper = await mountWithResults()
-      aiStreaming.isStreaming.value = true
-      aiStreaming.chunks.value = ''
-      await nextTick()
-      expect(wrapper.find('.ai-panel-loading').exists()).toBe(true)
-    })
-  })
-
   describe('Validate / Lock', () => {
     async function mountWithResults(overrides: Record<string, unknown> = {}) {
       const wrapper = mountComponent(overrides)
@@ -805,7 +751,7 @@ describe('LexiqueExtraction', () => {
       await nextTick()
 
       expect(wrapper.emitted('check-completed')).toBeDefined()
-      expect(wrapper.emitted('check-completed')![0]).toEqual(['lexique_validated'])
+      expect(wrapper.emitted('check-completed')![0]).toEqual(['moteur:lexique_validated'])
     })
 
     it('saves keywords to store on validate', async () => {
@@ -814,7 +760,7 @@ describe('LexiqueExtraction', () => {
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
 
-      expect(mockSaveKeywords).toHaveBeenCalledWith(1)
+      expect(mockSaveDecisions).toHaveBeenCalledWith(1)
     })
 
     it('shows locked state after validation', async () => {
@@ -860,7 +806,7 @@ describe('LexiqueExtraction', () => {
       await nextTick()
 
       expect(wrapper.emitted('check-removed')).toBeDefined()
-      expect(wrapper.emitted('check-removed')![0]).toEqual(['lexique_validated'])
+      expect(wrapper.emitted('check-removed')![0]).toEqual(['moteur:lexique_validated'])
       expect(wrapper.find('[data-testid="locked-state"]').exists()).toBe(false)
     })
   })

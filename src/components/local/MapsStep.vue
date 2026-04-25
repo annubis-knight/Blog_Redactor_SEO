@@ -7,9 +7,11 @@ import ScoreGauge from '@/components/shared/ScoreGauge.vue'
 
 const props = withDefaults(defineProps<{
   keyword: string
+  articleId?: number | null
   mode?: 'workflow' | 'libre'
 }>(), {
   mode: 'workflow',
+  articleId: null,
 })
 
 const emit = defineEmits<{
@@ -37,13 +39,13 @@ const gapColor = computed(() => {
 
 watch(() => props.keyword, (newKw) => {
   if (newKw) {
-    localStore.analyzeMaps(newKw)
+    localStore.analyzeMaps(newKw, undefined, props.articleId ?? undefined)
   }
 })
 
 onMounted(() => {
   if (!localStore.mapsData && props.keyword) {
-    localStore.analyzeMaps(props.keyword)
+    localStore.analyzeMaps(props.keyword, undefined, props.articleId ?? undefined)
   }
 })
 </script>
@@ -60,7 +62,7 @@ onMounted(() => {
     <ErrorMessage
       v-if="localStore.mapsError && !localStore.isAnalyzingMaps"
       :message="localStore.mapsError"
-      @retry="localStore.analyzeMaps(keyword)"
+      @retry="localStore.analyzeMaps(keyword, undefined, articleId ?? undefined)"
     />
 
     <template v-if="mapsData && !localStore.isAnalyzingMaps">

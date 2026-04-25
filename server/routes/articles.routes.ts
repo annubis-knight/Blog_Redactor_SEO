@@ -1,11 +1,10 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleById, getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleCheck } from '../services/infra/data.service.js'
+import { getArticleById, getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleCheck, getArticleKeywords } from '../services/infra/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article/article-content.service.js'
-import { getField, saveField, addTerms } from '../services/keyword/semantic-field.service.js'
 import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
-import { articleProgressSchema, addCheckSchema, saveSemanticFieldSchema, addSemanticTermsSchema } from '../../shared/schemas/article-progress.schema.js'
+import { articleProgressSchema, addCheckSchema } from '../../shared/schemas/article-progress.schema.js'
 
 const router = Router()
 
@@ -231,12 +230,72 @@ router.put('/articles/:id/micro-context', async (req, res) => {
       angle: parsed.data.angle,
       tone: parsed.data.tone,
       directives: parsed.data.directives,
+      targetWordCount: parsed.data.targetWordCount,
       updatedAt: new Date().toISOString(),
     })
     res.json({ data: saved })
   } catch (err) {
     log.error(`PUT /api/articles/${id}/micro-context — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save micro-context' } })
+  }
+})
+
+// --- Recommend target word count (SERP avg + base type + HN → IA conseil) ---
+
+router.post('/articles/:id/recommend-word-count', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+
+  try {
+    const result = await getArticleById(id)
+    if (!result) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article ${id} not found` } })
+      return
+    }
+    const articleType = result.article.type as 'Pilier' | 'Intermédiaire' | 'Spécialisé'
+
+    // 1. Récupère le sommaire HN persisté (depuis article_keywords.hn_structure)
+    const { data: articleKeywords } = await getArticleKeywords(id)
+    const hnRaw = articleKeywords?.hnStructure ?? []
+    // Le sommaire est stocké en JSON libre — on essaie d'extraire { level, title }
+    const hnStructure = Array.isArray(hnRaw)
+      ? (hnRaw as unknown[])
+          .filter((h): h is { level: string; title: string } =>
+            typeof h === 'object' && h !== null && 'level' in h && 'title' in h
+          )
+          .filter(h => ['H1', 'H2', 'H3'].includes(h.level))
+          .map(h => ({ level: h.level as 'H1' | 'H2' | 'H3', title: h.title }))
+      : []
+
+    // 2. Récupère la moyenne SERP des concurrents — depuis content_gap_analysis si dispo
+    let competitorsAvgWordCount: number | null = null
+    const capitaineKw = articleKeywords?.capitaine
+    if (capitaineKw) {
+      const { getKeywordMetrics } = await import('../services/keyword/keyword-metrics.service.js')
+      const metrics = await getKeywordMetrics(capitaineKw)
+      const cga = metrics?.contentGapAnalysis as { averageWordCount?: number } | null | undefined
+      if (cga && typeof cga.averageWordCount === 'number' && cga.averageWordCount > 0) {
+        competitorsAvgWordCount = cga.averageWordCount
+      }
+    }
+
+    // 3. Calcul + IA
+    const { recommendTargetWordCount } = await import('../services/article/target-word-count.service.js')
+    const recommendation = await recommendTargetWordCount({
+      articleType,
+      competitorsAvgWordCount,
+      hnStructure,
+      articleTitle: result.article.title,
+      capitaineKeyword: capitaineKw ?? undefined,
+    })
+
+    res.json({ data: recommendation })
+  } catch (err) {
+    log.error(`POST /api/articles/${id}/recommend-word-count — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to compute recommended word count' } })
   }
 })
 
@@ -318,66 +377,6 @@ router.post('/articles/:id/progress/uncheck', async (req, res) => {
   } catch (err) {
     log.error(`POST /api/articles/${id}/progress/uncheck — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to remove check' } })
-  }
-})
-
-// --- Semantic Field ---
-
-router.get('/articles/:id/semantic-field', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) {
-    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
-    return
-  }
-
-  try {
-    const field = await getField(String(id))
-    res.json({ data: field })
-  } catch (err) {
-    log.error(`GET /api/articles/${id}/semantic-field — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to get semantic field' } })
-  }
-})
-
-router.put('/articles/:id/semantic-field', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) {
-    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
-    return
-  }
-
-  const parsed = saveSemanticFieldSchema.safeParse(req.body)
-  if (!parsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.message } })
-    return
-  }
-  try {
-    const field = await saveField(String(id), parsed.data.terms)
-    res.json({ data: field })
-  } catch (err) {
-    log.error(`PUT /api/articles/${id}/semantic-field — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save semantic field' } })
-  }
-})
-
-router.post('/articles/:id/semantic-field/add', async (req, res) => {
-  const id = parseInt(req.params.id, 10)
-  if (isNaN(id)) {
-    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
-    return
-  }
-
-  const parsed = addSemanticTermsSchema.safeParse(req.body)
-  if (!parsed.success) {
-    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.message } })
-    return
-  }
-  try {
-    const field = await addTerms(String(id), parsed.data.terms)
-    res.json({ data: field })
-  } catch (err) {
-    log.error(`POST /api/articles/${id}/semantic-field/add — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to add terms' } })
   }
 })
 

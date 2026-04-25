@@ -53,7 +53,6 @@ const richLieutenantSchema = z.object({
   status: z.enum(['suggested', 'locked', 'eliminated']),
   reasoning: z.string(),
   sources: z.array(z.enum(['paa', 'serp', 'group', 'root', 'content-gap'])),
-  aiConfidence: z.enum(['fort', 'moyen', 'faible']),
   suggestedHnLevel: z.union([z.literal(2), z.literal(3)]),
   score: z.number(),
   kpis: z.array(kpiSummarySchema).nullable(),

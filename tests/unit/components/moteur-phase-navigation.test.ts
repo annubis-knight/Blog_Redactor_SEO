@@ -6,7 +6,7 @@ import type { Phase } from '@/components/moteur/MoteurPhaseNavigation.vue'
 const phases: Phase[] = [
   {
     id: 'generer',
-    label: 'Générer',
+    label: 'Explorer',
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: false },
@@ -35,7 +35,7 @@ describe('MoteurPhaseNavigation', () => {
     expect(groups).toHaveLength(2)
 
     const labels = wrapper.findAll('.phase-label')
-    expect(labels[0].text()).toBe('Générer')
+    expect(labels[0].text()).toBe('Explorer')
     expect(labels[1].text()).toBe('Valider')
   })
 
@@ -168,7 +168,7 @@ describe('MoteurPhaseNavigation', () => {
     const lockedPhases: Phase[] = [
       {
         id: 'generer',
-        label: 'Générer',
+        label: 'Explorer',
         number: 1,
         tabs: [
           { id: 'discovery', label: 'Discovery', optional: true, locked: true },
@@ -194,7 +194,7 @@ describe('MoteurPhaseNavigation', () => {
     const lockedPhases: Phase[] = [
       {
         id: 'generer',
-        label: 'Générer',
+        label: 'Explorer',
         number: 1,
         tabs: [
           { id: 'discovery', label: 'Discovery', optional: true, locked: true },

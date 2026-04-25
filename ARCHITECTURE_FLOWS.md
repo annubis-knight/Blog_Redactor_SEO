@@ -1,6 +1,7 @@
 # Blog Redactor SEO — Architecture & Flow Diagrams
 
-> Document généré automatiquement — Vue d'ensemble complète des flux, composants, stores et données du projet.
+> Vue d'ensemble des flux, composants, stores et données du projet.
+> Dernière mise à jour : 2026-04-24
 
 ---
 
@@ -17,8 +18,9 @@
 9. [Keyword Matching (NLP Français)](#9-keyword-matching-nlp-français)
 10. [Streaming & Génération IA](#10-streaming--génération-ia)
 11. [Linking Interne](#11-linking-interne)
-12. [Hiérarchie des composants](#12-hiérarchie-des-composants)
-13. [Référence des Inputs/Outputs](#13-référence-des-inputsoutputs)
+12. [Cache multi-niveau](#12-cache-multi-niveau)
+13. [Hiérarchie des composants](#13-hiérarchie-des-composants)
+14. [Référence des Inputs/Outputs](#14-référence-des-inputsoutputs)
 
 ---
 
@@ -26,21 +28,37 @@
 
 ```mermaid
 graph TB
-    subgraph Frontend["🖥️ Frontend Vue 3 + TypeScript"]
+    subgraph Frontend["🖥️ Frontend Vue 3.5 + TypeScript"]
         direction TB
-        Views["Views (11)"]
-        Components["Components (100+)"]
-        Composables["Composables (24+)"]
-        Stores["Pinia Stores (18)"]
-        Utils["Utilities (5)"]
-        Types["Shared Types (40+)"]
+        Views["Views (15)"]
+        Components["Components (100+, 17 dossiers)"]
+        Composables["Composables (30+, 5 domaines)"]
+        Stores["Pinia Stores (22, 5 domaines)"]
+        Utils["Utilities"]
+        Types["Shared Types (20+)"]
     end
 
-    subgraph Backend["⚙️ Backend API"]
-        REST["/api/* REST Endpoints"]
-        SSE["SSE Streaming Endpoints"]
-        DFSEO["DataForSEO Integration"]
+    subgraph Backend["⚙️ Backend Express 5"]
+        REST["/api/* REST Endpoints (24 modules)"]
+        SSE["SSE Streaming (génération, AI panels)"]
+        Services["Services (42, 7 domaines)"]
+        Prompts["Prompts IA (45 .md)"]
+    end
+
+    subgraph DataLayer["🗄️ Data Layer"]
+        PG["PostgreSQL (pg 8.20)"]
+        ApiCache["api_cache (TTL)"]
+        KwMetrics["keyword_metrics (cross-article)"]
+    end
+
+    subgraph External["🌐 APIs Externes"]
+        Claude["Anthropic Claude"]
+        Gemini["Google GenAI"]
+        OpenRouter["OpenRouter"]
+        Mock["Mock Provider"]
+        DFSEO["DataForSEO"]
         GSC["Google Search Console"]
+        Autocomplete["Google Autocomplete"]
     end
 
     Views --> Components
@@ -49,25 +67,40 @@ graph TB
     Components --> Composables
     Stores --> REST
     Stores --> SSE
-    REST --> DFSEO
-    REST --> GSC
+    REST --> Services
+    Services --> PG
+    Services --> ApiCache
+    Services --> KwMetrics
+    Services --> Claude
+    Services --> Gemini
+    Services --> OpenRouter
+    Services --> Mock
+    Services --> DFSEO
+    Services --> GSC
+    Services --> Autocomplete
     Utils -.-> Stores
     Types -.-> Stores
     Types -.-> Components
+    Prompts -.-> Services
 ```
 
 ### Stack technique
 
 | Couche | Technologie |
 |--------|-------------|
-| Framework | Vue 3 (Composition API) |
-| State | Pinia 2 |
-| Router | Vue Router 4 |
-| Éditeur | TipTap 2 + Extensions custom |
+| Framework | Vue 3.5 (Composition API) |
+| State | Pinia 3 |
+| Router | Vue Router 5 |
+| Éditeur | TipTap 3 (core + starter-kit + link + placeholder + vue-3) |
 | Streaming | Server-Sent Events (SSE) |
-| NLP | Matching français custom (suffixes) |
-| API | REST + SSE vers backend Node.js |
-| Données SEO | DataForSEO, Google Search Console |
+| NLP | Matching français custom (suffixes) + HuggingFace Transformers |
+| API | REST + SSE vers backend Express 5 |
+| DB | PostgreSQL (pg 8.20) |
+| Validation | Zod 4 (schemas partagés `shared/schemas/`) |
+| IA | Anthropic Claude, Google GenAI (Gemini), OpenRouter, Mock |
+| Données SEO | DataForSEO, Google Search Console, Autocomplete |
+| Tests | Vitest 4 (unit) + Playwright (browser) |
+| Qualité | oxlint + eslint + prettier + knip + madge + husky + lint-staged |
 
 ---
 
@@ -83,20 +116,21 @@ graph LR
         TC[ThemeConfigView]
     end
 
-    subgraph Silo["/silo/:siloId"]
+    subgraph SiloSub["/silo/:siloId"]
         SD[SiloDetailView]
     end
 
     subgraph Cocoon["Cocoon Routes"]
-        CL["/cocoon/:id<br>CocoonLandingView"]
-        CV["/cocoon/:id/cerveau<br>CerveauView"]
-        MV["/cocoon/:id/moteur<br>MoteurView"]
-        RV["/cocoon/:id/redaction<br>RedactionView"]
+        CL["/cocoon/:cocoonId<br>CocoonLandingView"]
+        CV["/cocoon/:cocoonId/cerveau<br>CerveauView"]
+        MV["/cocoon/:cocoonId/moteur<br>MoteurView (6 onglets)"]
+        RV["/cocoon/:cocoonId/redaction<br>RedactionView"]
     end
 
     subgraph Article["Article Routes"]
-        AW["/cocoon/:id/article/:slug<br>ArticleWorkflowView"]
-        AE["/article/:slug/editor<br>ArticleEditorView"]
+        AW["/cocoon/:cocoonId/article/:articleId<br>ArticleWorkflowView"]
+        AE["/article/:articleId/editor<br>ArticleEditorView"]
+        AP["/article/:articleId/preview<br>ArticlePreviewView (no navbar)"]
     end
 
     subgraph Tools["Outils"]
@@ -104,6 +138,10 @@ graph LR
         EX["/explorateur<br>ExplorateurView"]
         LK["/linking<br>LinkingMatrixView"]
         PP["/post-publication<br>PostPublicationView"]
+    end
+
+    subgraph Catch["404"]
+        NF["NotFoundView"]
     end
 
     D -->|"Sélection silo"| SD
@@ -114,76 +152,85 @@ graph LR
     CL -->|"Phase Rédaction"| RV
     RV -->|"Sélection article"| AW
     AW -->|"Éditeur avancé"| AE
+    AE -->|"Preview publique"| AP
     D -->|"Outils"| LB
     D -->|"Outils"| EX
     D -->|"Outils"| LK
     D -->|"Outils"| PP
 ```
 
-### Détail des 13 routes
+### Détail des 14 routes (+ redirects legacy + 404)
 
 | Route | Vue | Store principal | Rôle |
 |-------|-----|-----------------|------|
-| `/` | DashboardView | silosStore | Tableau de bord principal |
-| `/config` | ThemeConfigView | themeConfigStore | Configuration thème/audience |
-| `/silo/:siloId` | SiloDetailView | silosStore | Détail d'un silo |
-| `/cocoon/:id` | CocoonLandingView | cocoonsStore | Landing cocoon |
-| `/cocoon/:id/cerveau` | CerveauView | cocoonStrategyStore | Stratégie Brain-First |
-| `/cocoon/:id/moteur` | MoteurView | keywordDiscoveryStore + basket | Moteur de mots-clés |
-| `/cocoon/:id/redaction` | RedactionView | articlesStore | Liste articles + création |
-| `/cocoon/:id/article/:slug` | ArticleWorkflowView | briefStore + outlineStore + editorStore | Workflow article complet |
-| `/article/:slug/editor` | ArticleEditorView | editorStore + seoStore | Éditeur TipTap avancé |
-| `/labo` | LaboView | keywordAuditStore | Audit santé mots-clés |
-| `/explorateur` | ExplorateurView | intentStore | Exploration d'intentions |
-| `/linking` | LinkingMatrixView | linkingStore | Matrice de liens internes |
-| `/post-publication` | PostPublicationView | gscStore | Suivi post-publication |
+| `/` | DashboardView (eager) | silos (strategy/) | Tableau de bord |
+| `/config` | ThemeConfigView | theme-config (strategy/) | Configuration thème |
+| `/silo/:siloId` | SiloDetailView | silos (strategy/) | Détail silo |
+| `/cocoon/:cocoonId` | CocoonLandingView | cocoons (strategy/) | Landing cocon |
+| `/cocoon/:cocoonId/cerveau` | CerveauView | cocoon-strategy, strategy (strategy/) | Stratégie Brain-First |
+| `/cocoon/:cocoonId/moteur` | MoteurView | keyword-discovery, moteur-basket (article/), intent (keyword/) | Moteur mots-clés 6 onglets |
+| `/cocoon/:cocoonId/redaction` | RedactionView | articles (article/) | Liste & création articles |
+| `/cocoon/:cocoonId/article/:articleId` | ArticleWorkflowView | brief (strategy/), outline + editor (article/) | Workflow article complet |
+| `/article/:articleId/editor` | ArticleEditorView | editor + seo (article/) | Éditeur TipTap avancé |
+| `/article/:articleId/preview` | ArticlePreviewView | editor (article/) | Preview publique (hideNavbar) |
+| `/labo` | LaboView | keyword-audit (keyword/) | Recherche libre |
+| `/explorateur` | ExplorateurView | intent (keyword/) | Exploration intentions/local |
+| `/linking` | LinkingMatrixView | linking (keyword/) | Matrice liens internes |
+| `/post-publication` | PostPublicationView | gsc (external/) | Suivi GSC post-publication |
+| `/:pathMatch(.*)*` | NotFoundView (eager) | — | 404 |
+
+**Redirects legacy** : `/theme/:themeId` et `/theme/:themeId/*` → équivalent `/cocoon/:cocoonId/*`.
+
+**Router guards :**
+- `beforeEach` rejette les params `cocoonId/articleId/siloId/themeId` vides/whitespace vers `not-found`
+- `onError` gère les chunk loading errors (reload avec compteur sessionStorage, fallback `/`)
 
 ---
 
 ## 3. Stores & Stockage de données
 
-### 3.1 Cartographie complète des stores
+### 3.1 Cartographie des stores par domaine
 
 ```mermaid
 graph TB
-    subgraph Core["🗄️ Stores Données Core"]
-        silos["silosStore<br>─────────<br>theme, silos[]<br>totalArticles, totalCocoons<br>globalCompletion"]
-        cocoons["cocoonsStore<br>─────────<br>cocoons[], totalArticles"]
-        articles["articlesStore<br>─────────<br>articles[], cocoonId"]
-        keywords["keywordsStore<br>─────────<br>keywords[]"]
+    subgraph Article["📝 stores/article/ (8 stores)"]
+        articles["articles.store"]
+        editor["editor.store"]
+        basket["moteur-basket.store"]
+        outline["outline.store"]
+        seo["seo.store"]
+        artKw["article-keywords.store"]
+        artProg["article-progress.store"]
+        geo["geo.store"]
     end
 
-    subgraph ArticleContent["📝 Stores Contenu Article"]
-        brief["briefStore<br>─────────<br>briefData, pilierKeyword<br>dataForSeoFromCache"]
-        outline["outlineStore<br>─────────<br>outline, streamedText<br>isValidated, lastApiUsage"]
-        editor["editorStore<br>─────────<br>content, metaTitle<br>metaDescription, isDirty<br>sectionProgress"]
-        artKw["articleKeywordsStore<br>─────────<br>capitaine, lieutenants[]<br>lexique[]"]
-        artProg["articleProgressStore<br>─────────<br>progressMap, semanticMap"]
+    subgraph Keyword["🔍 stores/keyword/ (5 stores)"]
+        keywords["keywords.store"]
+        kwDisc["keyword-discovery.store"]
+        kwAudit["keyword-audit.store"]
+        intent["intent.store"]
+        linking["linking.store"]
     end
 
-    subgraph Strategy["🧠 Stores Stratégie"]
-        strat["strategyStore<br>─────────<br>strategy, currentStep (0-5)<br>steps[6]"]
-        cocStrat["cocoonStrategyStore<br>─────────<br>strategy, strategicContext<br>currentStep"]
+    subgraph Strategy["🧠 stores/strategy/ (6 stores)"]
+        silos["silos.store"]
+        cocoons["cocoons.store"]
+        cocStrat["cocoon-strategy.store"]
+        strat["strategy.store"]
+        brief["brief.store"]
+        theme["theme-config.store"]
     end
 
-    subgraph SEO["📊 Stores SEO & Scoring"]
-        seo["seoStore<br>─────────<br>score, scoreLevel<br>hasIssues"]
-        geo["geoStore<br>─────────<br>geoData, geoScore"]
+    subgraph External["🌐 stores/external/ (2 stores)"]
+        gsc["gsc.store"]
+        local["local.store"]
     end
 
-    subgraph Discovery["🔍 Stores Discovery & Intent"]
-        intent["intentStore<br>─────────<br>intentData, comparisonData<br>autocompleteData<br>explorationHistory"]
-        kwDisc["keywordDiscoveryStore<br>─────────<br>results[], filters<br>apiCost"]
-        kwAudit["keywordAuditStore<br>─────────<br>results[], redundancies[]<br>cacheStatus"]
-        basket["moteurBasketStore<br>─────────<br>keywords[], articleSlug<br>bestKeyword"]
-    end
-
-    subgraph Linking["🔗 Stores Linking"]
-        linking["linkingStore<br>─────────<br>matrix, suggestions[]<br>orphans[], anchorAlerts[]<br>crossCocoonOpportunities[]"]
-    end
-
-    subgraph PostPub["📈 Stores Post-Publication"]
-        gsc["gscStore<br>─────────<br>GSC performance data"]
+    subgraph UI["🎨 stores/ui/ (4 stores)"]
+        notif["notification.store"]
+        cost["cost-log.store"]
+        captTrig["captain-trigger.store"]
+        wfNav["workflow-nav.store"]
     end
 
     silos --> cocoons
@@ -199,9 +246,10 @@ graph TB
     kwDisc --> basket
     basket --> artKw
     editor --> linking
+    articles --> artProg
 ```
 
-### 3.2 Flux de données entre stores
+### 3.2 Flux de données entre stores (exemple Success Path)
 
 ```mermaid
 sequenceDiagram
@@ -213,123 +261,101 @@ sequenceDiagram
     participant outlineStore
     participant editorStore
     participant seoStore
-    participant API
+    participant API as Express API
+    participant PG as PostgreSQL
 
     User->>silosStore: fetchSilos()
     silosStore->>API: GET /api/silos + /api/theme
-    API-->>silosStore: theme + silos[]
+    API->>PG: SELECT * FROM silos + theme_config
+    PG-->>API: rows
+    API-->>silosStore: { data: { theme, silos[] } }
 
     User->>cocoonsStore: fetchCocoons()
     cocoonsStore->>API: GET /api/cocoons
-    API-->>cocoonsStore: cocoons[]
+    API->>PG: SELECT * FROM cocoons
+    PG-->>cocoonsStore: cocoons[]
 
-    User->>articlesStore: fetchArticlesByCocoon(id)
+    User->>articlesStore: fetchArticlesByCocoon(cocoonId)
     articlesStore->>API: GET /api/articles?cocoon=id
-    API-->>articlesStore: articles[]
+    API->>PG: SELECT * FROM articles WHERE cocoon_id=?
+    PG-->>articlesStore: articles[]
 
-    User->>briefStore: fetchBrief(slug)
-    briefStore->>API: GET /api/articles/:slug + keywords + DataForSEO
-    API-->>briefStore: briefData (article + keywords + SERP)
+    User->>briefStore: fetchBrief(articleId)
+    briefStore->>API: GET /api/articles/:id + keywords + DataForSEO
+    API->>PG: SELECT article + article_keywords + keyword_metrics
+    API-->>briefStore: briefData
 
     User->>outlineStore: generateOutline(briefData)
     outlineStore->>API: POST /api/generate/outline (SSE)
-    API-->>outlineStore: streaming chunks → outline
+    API-->>outlineStore: streaming chunks
 
     User->>editorStore: generateArticle(briefData, outline)
     editorStore->>API: POST /api/generate/article (SSE)
-    API-->>editorStore: streaming chunks → content
+    API-->>editorStore: streaming chunks
 
-    editorStore->>seoStore: recalculate(content, keywords, meta...)
-    Note over seoStore: Calcul score SEO en temps réel
+    editorStore->>seoStore: recalculate(content, kw, meta...)
+    Note over seoStore: Calcul SEO client-side, 300ms debounce
 ```
 
-### 3.3 Détail des actions par store
+### 3.3 Actions clés par store (échantillon)
 
-#### silosStore
+#### silos.store (strategy/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
 | `fetchSilos()` | — | `theme`, `silos[]` | GET `/api/silos` + `/api/theme` |
-| `addCocoon(siloName, cocoonName)` | string, string | cocoon ajouté | POST `/api/cocoons` |
+| `addCocoon(siloName, cocoonName)` | string, string | cocoon créé | POST `/api/cocoons` |
 
-#### briefStore
+#### article-progress.store (article/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `fetchBrief(slug)` | slug | `briefData` (article+kw+SERP) | GET multi-parallel |
-| `refreshDataForSeo()` | — | SERP data rafraîchi | POST forceRefresh |
+| `fetchProgress(articleId)` | string | ArticleProgress | GET `/api/articles/:id/progress` |
+| `addCheck(articleId, check)` | string, `WorkflowCheck` | check ajouté | POST `/api/articles/:id/progress/check` |
 
-#### outlineStore
+#### brief.store (strategy/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `generateOutline(briefData)` | BriefData | outline (streamed) | POST `/api/generate/outline` SSE |
-| `addSection(afterId, level)` | string, number | section ajoutée | local |
-| `removeSection(id)` | string | section supprimée | local |
-| `validateOutline(slug)` | slug | isValidated=true | POST `/api/outlines/:slug/validate` |
+| `fetchBrief(articleId)` | string | briefData (article + kw + SERP) | GET multi-parallel |
+| `refreshDataForSeo()` | — | SERP rafraîchi | POST forceRefresh |
 
-#### editorStore
+#### outline.store (article/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `generateArticle(briefData, outline)` | BriefData, Outline | content (streamed) | POST `/api/generate/article` SSE |
-| `generateMeta(slug, kw, title, content)` | 4 strings | metaTitle + metaDescription | POST `/api/generate/meta` |
-| `saveArticle(slug)` | slug | sauvegardé | PUT `/api/articles/:slug` |
-| `setContent(html)` | string | content + isDirty | local |
+| `generateOutline(briefData)` | BriefData | outline (streamé) | POST `/api/generate/outline` SSE |
+| `validateOutline(articleId)` | string | isValidated=true | PUT outline |
 
-#### seoStore
+#### editor.store (article/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `recalculate(content, keywords, meta...)` | 8 params | SeoScore complet | local (calcul côté client) |
-| `reset()` | — | score remis à zéro | local |
+| `generateArticle(briefData, outline)` | BriefData, Outline | content (streamé) | POST `/api/generate/article` SSE |
+| `generateMeta(...)` | 4 strings | metaTitle + metaDescription | POST `/api/generate/meta` |
+| `saveArticle(articleId)` | string | persisté | PUT `/api/articles/:id` |
 
-#### strategyStore
+#### intent.store (keyword/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `fetchStrategy(slug)` | slug | ArticleStrategy | GET `/api/strategies/:slug` |
-| `requestSuggestion(slug, request)` | slug, obj | suggestion IA | POST `/api/strategies/suggest` |
-| `requestDeepen(slug, request)` | slug, obj | subQuestions[] | POST `/api/strategies/deepen` |
-| `requestConsolidate(slug, request)` | slug, obj | answer consolidée | POST `/api/strategies/consolidate` |
-| `saveStrategy(slug)` | slug | persisté | PUT `/api/strategies/:slug` |
+| `analyzeIntent(keyword, location?)` | string, number? | IntentAnalysis | POST `/api/intent/analyze` |
+| `compareLocalNational(keyword)` | string | LocalNationalComparison | POST `/api/keywords/compare-local` |
+| `validateAutocomplete(keyword, prefixes?)` | string, string[]? | AutocompleteResult | POST `/api/keywords/autocomplete` |
 
-#### articleKeywordsStore
-| Action | Input | Output | API |
-|--------|-------|--------|-----|
-| `fetchKeywords(slug)` | slug | ArticleKeywords | GET `/api/article-keywords/:slug` |
-| `saveKeywords(slug)` | slug | persisté | PUT `/api/article-keywords/:slug` |
-| `suggestLexique(slug, title, cocoon)` | 3 strings | lexique[] suggéré | POST `/api/keywords/suggest-lexique` |
-
-#### intentStore
-| Action | Input | Output | API |
-|--------|-------|--------|-----|
-| `analyzeIntent(keyword, location?)` | string, number? | IntentAnalysis | POST `/intent/analyze` |
-| `compareLocalNational(keyword)` | string | LocalNationalComparison | POST `/keywords/compare-local` |
-| `validateAutocomplete(keyword, prefixes?)` | string, string[]? | AutocompleteResult | POST `/keywords/autocomplete` |
-| `exploreKeyword(keyword, prefixes?)` | string, string[]? | autocomplete + intent | combo des 2 ci-dessus |
-
-#### keywordDiscoveryStore
+#### keyword-discovery.store (keyword/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
 | `discoverFromSeed(keyword, max?)` | string, number? | ClassifiedKeyword[] | POST `/api/keywords/discover` |
 | `discoverFromDomain(domain, max?)` | string, number? | DomainDiscoveryResult | POST `/api/keywords/discover-domain` |
 
-#### moteurBasketStore
-| Action | Input | Output | API |
-|--------|-------|--------|-----|
-| `addKeywords(keywords)` | BasketKeyword[] | ajout dédupliqué | local |
-| `markValidated(keyword, score?)` | string, number? | marqué validé | local |
-| `setArticle(slug)` | slug | reset basket | local |
+#### moteur-basket.store (article/)
+| Action | Input | Output |
+|--------|-------|--------|
+| `addKeywords(keywords)` | BasketKeyword[] | dédupliqué |
+| `markValidated(keyword, score?)` | string, number? | marqué |
+| `setArticle(articleId)` | string | reset basket |
 
-#### linkingStore
+#### linking.store (keyword/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `fetchMatrix()` | — | matrix + orphans + alerts | GET `/links/matrix` |
-| `fetchSuggestions(slug, content)` | string, string | suggestions[] | POST `/links/suggest` |
-| `saveLinks(links)` | InternalLink[] | persisté | PUT `/links` |
-
-#### articleProgressStore
-| Action | Input | Output | API |
-|--------|-------|--------|-----|
-| `fetchProgress(slug)` | slug | ArticleProgress | GET `/api/progress/:slug` |
-| `saveProgress(slug, progress)` | slug, obj | persisté | PUT `/api/progress/:slug` |
-| `addCheck(slug, check)` | slug, string | check ajouté | local + persist |
-| `fetchSemanticField(slug)` | slug | SemanticTerm[] | GET `/api/semantic/:slug` |
+| `fetchMatrix()` | — | matrix + orphans + alerts | GET `/api/links/matrix` |
+| `fetchSuggestions(articleId, content)` | string, string | suggestions[] | POST `/api/links/suggest` |
+| `saveLinks(links)` | InternalLink[] | persisté | PUT `/api/links` |
 
 ---
 
@@ -337,38 +363,39 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph Phase1["Phase 0 — Configuration"]
-        CONFIG["⚙️ ThemeConfigView<br>────────<br>Nom du thème<br>Description<br>Audience cible<br>Style de communication"]
+    subgraph Phase0["Phase 0 — Configuration"]
+        CONFIG["⚙️ ThemeConfigView<br>Nom du thème / Audience / Style"]
     end
 
-    subgraph Phase2["Phase 1 — Planification"]
-        DASH["📊 Dashboard<br>────────<br>Vue d'ensemble silos<br>KPIs globaux"]
-        SILO["📁 Silo Detail<br>────────<br>Cocoons du silo<br>Stats par cocoon"]
-        COCOON["🎯 Cocoon Landing<br>────────<br>Articles du cocoon<br>Phase navigation"]
+    subgraph Phase1["Phase 1 — Planification"]
+        DASH["📊 Dashboard<br>Vue silos + KPIs"]
+        SILO["📁 SiloDetailView<br>Cocoons du silo"]
+        COCOON["🎯 CocoonLandingView<br>Portes : Cerveau / Moteur / Rédaction"]
     end
 
-    subgraph Phase3["Phase 2 — Stratégie"]
-        BRAIN["🧠 Cerveau (Brain)<br>────────<br>6 étapes stratégiques<br>IA suggestion/approfondissement"]
+    subgraph Phase2["Phase 2 — Stratégie (Cerveau)"]
+        BRAIN["🧠 CerveauView<br>6 étapes : Cible, Douleur, Aiguillage,<br>Angle, Promesse, CTA"]
     end
 
-    subgraph Phase4["Phase 3 — Mots-clés"]
-        MOTEUR["⚡ Moteur<br>────────<br>① Générer (Discovery + Radar)<br>② Valider (Capitaine + Lt + Lexique)"]
+    subgraph Phase3["Phase 3 — Mots-clés (Moteur)"]
+        MOTEUR["⚡ MoteurView — 6 onglets<br>① Explorer: Discovery + Radar<br>② Valider: Capitaine → Lieutenants → Lexique<br>③ Finalisation: récap read-only"]
     end
 
-    subgraph Phase5["Phase 4 — Rédaction"]
-        REDAC["✍️ Rédaction<br>────────<br>Liste articles<br>Création articles"]
-        WORKFLOW["📋 Article Workflow<br>────────<br>Step 1: Brief & Structure<br>Step 2: Article & Meta"]
-        EDITOR["📝 Article Editor<br>────────<br>TipTap rich editor<br>SEO scoring live"]
+    subgraph Phase4["Phase 4 — Rédaction"]
+        REDAC["✍️ RedactionView<br>Liste & création articles"]
+        WORKFLOW["📋 ArticleWorkflowView<br>Brief + Outline + Article"]
+        EDITOR["📝 ArticleEditorView<br>TipTap + SEO scoring live"]
+        PREVIEW["👁️ ArticlePreviewView<br>Rendu public (no navbar)"]
     end
 
-    subgraph Phase6["Phase 5 — Post-Publication"]
-        POSTPUB["📈 Post-Publication<br>────────<br>Google Search Console<br>Suivi performances"]
+    subgraph Phase5["Phase 5 — Post-Publication"]
+        POSTPUB["📈 PostPublicationView<br>GSC — performances mots-clés"]
     end
 
     subgraph Tools["Outils transversaux"]
-        LABO["🔬 Labo — Audit keywords"]
-        EXPLO["🔍 Explorateur — Intent analysis"]
-        LINK["🔗 Linking — Matrice liens internes"]
+        LABO["🔬 Labo — Verdict libre"]
+        EXPLO["🔍 Explorateur — Intent + local"]
+        LINK["🔗 Linking — Matrice liens"]
     end
 
     CONFIG --> DASH
@@ -379,7 +406,8 @@ graph TB
     MOTEUR --> REDAC
     REDAC --> WORKFLOW
     WORKFLOW --> EDITOR
-    EDITOR --> POSTPUB
+    EDITOR --> PREVIEW
+    PREVIEW --> POSTPUB
 
     DASH -.-> LABO
     DASH -.-> EXPLO
@@ -393,12 +421,12 @@ graph TB
 ```mermaid
 graph TB
     subgraph BrainWorkflow["🧠 Brain-First — 6 Étapes"]
-        S0["Étape 0 — CIBLE<br>────────<br>Input: description audience<br>IA: suggestion cible<br>Output: cible validée"]
-        S1["Étape 1 — DOULEUR<br>────────<br>Input: problème résolu<br>IA: suggestion douleur<br>Output: douleur validée"]
-        S2["Étape 2 — AIGUILLAGE<br>────────<br>Input: type article + position<br>IA: suggestion type/parent/enfants<br>Output: aiguillage validé"]
-        S3["Étape 3 — ANGLE<br>────────<br>Input: perspective choisie<br>IA: suggestion angle<br>Output: angle validé"]
-        S4["Étape 4 — PROMESSE<br>────────<br>Input: bénéfice principal<br>IA: suggestion promesse<br>Output: promesse validée"]
-        S5["Étape 5 — CTA<br>────────<br>Input: call-to-action<br>IA: suggestion CTA<br>Output: CTA validé"]
+        S0["Étape 0 — CIBLE<br>Input: description audience<br>IA: suggest/deepen/consolidate<br>Output: cible validée"]
+        S1["Étape 1 — DOULEUR<br>Input: problème résolu<br>IA: suggestion<br>Output: douleur validée"]
+        S2["Étape 2 — AIGUILLAGE<br>Input: type article + position<br>IA: suggestion type/parent/enfants<br>Output: aiguillage validé"]
+        S3["Étape 3 — ANGLE<br>Input: perspective<br>IA: suggestion<br>Output: angle validé"]
+        S4["Étape 4 — PROMESSE<br>Input: bénéfice<br>IA: suggestion<br>Output: promesse validée"]
+        S5["Étape 5 — CTA<br>Input: call-to-action<br>IA: suggestion<br>Output: CTA validé"]
     end
 
     S0 --> S1 --> S2 --> S3 --> S4 --> S5
@@ -406,9 +434,9 @@ graph TB
     subgraph StepDetail["Détail d'une étape"]
         direction LR
         INPUT["📝 Input utilisateur"]
-        SUGGEST["🤖 IA Suggestion"]
-        DEEPEN["🔍 Approfondissement<br>(sub-questions)"]
-        CONSOLIDATE["📋 Consolidation<br>des sous-réponses"]
+        SUGGEST["🤖 IA Suggestion<br>(strategy-suggest.md)"]
+        DEEPEN["🔍 Approfondissement<br>(strategy-deepen.md)<br>sub-questions"]
+        CONSOLIDATE["📋 Consolidation<br>(strategy-consolidate.md)"]
         VALIDATE["✅ Validation"]
 
         INPUT --> SUGGEST
@@ -417,10 +445,10 @@ graph TB
         CONSOLIDATE --> VALIDATE
     end
 
-    subgraph StrategyData["Données stratégie"]
-        direction LR
-        CTX["getPreviousAnswers()<br>contexte cumulatif"]
-        SAVE["saveStrategy(slug)<br>PUT /api/strategies/:slug"]
+    subgraph Checks["Checks Cerveau"]
+        C1["cerveau:strategy_defined"]
+        C2["cerveau:hierarchy_built"]
+        C3["cerveau:articles_proposed"]
     end
 ```
 
@@ -432,31 +460,30 @@ sequenceDiagram
     participant StrategyStep
     participant strategyStore
     participant API
+    participant PG
 
-    User->>StrategyStep: Saisie input (texte libre)
+    User->>StrategyStep: Saisie input libre
     StrategyStep->>strategyStore: updateStep(input)
 
     User->>StrategyStep: Clic "Suggestion IA"
     StrategyStep->>strategyStore: requestSuggestion(slug, {step, input, context})
-    strategyStore->>API: POST /api/strategies/suggest
-    API-->>strategyStore: suggestion texte
-    strategyStore-->>StrategyStep: affiche suggestion
+    strategyStore->>API: POST /api/strategy/suggest
+    API-->>strategyStore: suggestion
 
     User->>StrategyStep: Clic "Approfondir"
     StrategyStep->>strategyStore: requestDeepen(slug, {step, input})
-    strategyStore->>API: POST /api/strategies/deepen
+    strategyStore->>API: POST /api/strategy/deepen
     API-->>strategyStore: subQuestions[]
-    strategyStore-->>StrategyStep: affiche sous-questions
 
     User->>StrategyStep: Répond aux sous-questions
     StrategyStep->>strategyStore: requestConsolidate(slug, {subAnswers})
-    strategyStore->>API: POST /api/strategies/consolidate
+    strategyStore->>API: POST /api/strategy/consolidate
     API-->>strategyStore: réponse consolidée
 
     User->>StrategyStep: Clic "Valider"
     StrategyStep->>strategyStore: validateStep()
-    strategyStore->>strategyStore: nextStep()
-    strategyStore->>API: PUT /api/strategies/:slug
+    strategyStore->>API: PUT /api/strategy/:cocoonId
+    API->>PG: UPDATE strategies SET ...
 ```
 
 ---
@@ -465,57 +492,69 @@ sequenceDiagram
 
 ```mermaid
 graph TB
-    subgraph Phase1["Phase ① GÉNÉRER"]
+    subgraph Phase1["Phase ① EXPLORER (toujours accessible)"]
         direction TB
-        SEED["🌱 Discovery par Seed<br>────────<br>Input: mot-clé seed<br>API: POST /api/keywords/discover<br>Output: ClassifiedKeyword[]"]
-        DOMAIN["🌐 Discovery par Domaine<br>────────<br>Input: URL domaine<br>API: POST /api/keywords/discover-domain<br>Output: DomainDiscoveryResult"]
-        PAIN["💊 Pain Translator<br>────────<br>Input: douleur (stratégie)<br>Output: keywords douleur-driven"]
-        RADAR["📡 Radar<br>────────<br>Input: keywords découverts<br>Output: radar cards (checkable)"]
-        BASKET["🧺 Basket<br>────────<br>Agrège sources<br>Déduplique<br>Track source origin"]
+        SEED["🌱 KeywordDiscoveryTab<br>POST /api/keywords/discover<br>+ discover-domain<br>→ moteur:discovery_done"]
+        RADAR["📡 DouleurIntentScanner<br>Radar intent-scan<br>→ moteur:radar_done"]
+        BASKET["🧺 BasketStrip<br>Agrège + déduplique"]
 
         SEED --> BASKET
-        DOMAIN --> BASKET
-        PAIN --> BASKET
         RADAR --> BASKET
     end
 
-    subgraph Phase2["Phase ② VALIDER"]
+    subgraph Phase2["Phase ② VALIDER (verrouillage séquentiel)"]
         direction TB
-        CAPT["👑 Capitaine<br>────────<br>Input: basket keywords<br>Validation: intent + volume + difficulté<br>Output: 1 keyword principal"]
-        LT["🎖️ Lieutenants<br>────────<br>Input: basket restant<br>Sélection: 3-5 keywords secondaires<br>Output: lieutenants[]"]
-        LEX["📚 Lexique<br>────────<br>Input: capitaine + lieutenants<br>IA: POST /api/keywords/suggest-lexique<br>Output: termes LSI/sémantiques"]
+        CAPT["👑 CaptainValidation<br>─────<br>POST /api/keywords/:kw/validate<br>6 KPIs contextuels<br>Feu tricolore GO/ORANGE/NO-GO<br>Panel IA streaming SSE<br>→ moteur:capitaine_locked"]
+        LT["🎖️ LieutenantsSelection<br>─────<br>POST /api/serp/analyze<br>Hn + PAA + Groupes<br>Badges [SERP] [PAA] [Groupe]<br>→ moteur:lieutenants_locked"]
+        LEX["📚 LexiqueExtraction<br>─────<br>POST /api/serp/tfidf<br>(contenus SERP hérités, ZÉRO requête)<br>Obligatoire / Différenciateur / Optionnel<br>→ moteur:lexique_validated"]
 
-        CAPT --> LT --> LEX
+        CAPT -.->|unlock| LT
+        LT -.->|unlock| LEX
     end
 
-    subgraph Result["Phase ③ RÉSULTAT"]
-        SAVE["💾 articleKeywordsStore.saveKeywords(slug)<br>────────<br>Output: ArticleKeywords {<br>  capitaine, lieutenants[],<br>  lexique[], hnStructure?<br>}"]
+    subgraph Phase3["Phase ③ FINALISATION"]
+        FINAL["✅ FinalisationRecap<br>─────<br>Read-only, débloqué quand<br>les 3 checks Phase ② OK<br>Écriture ArticleKeywords<br>(capitaine + lieutenants + lexique)"]
     end
 
     BASKET --> CAPT
-    LEX --> SAVE
+    LEX --> FINAL
+    FINAL --> REDAC["→ RedactionView"]
+```
+
+### Les 5 checks Moteur
+
+```mermaid
+graph LR
+    C1["moteur:discovery_done"] --> C2["moteur:radar_done"] --> C3["moteur:capitaine_locked"] --> C4["moteur:lieutenants_locked"] --> C5["moteur:lexique_validated"]
+
+    C1 -.->|"Phase ①"| EXP[Explorer]
+    C2 -.->|"Phase ①"| EXP
+    C3 -.->|"Phase ②"| VAL[Valider]
+    C4 -.->|"Phase ②"| VAL
+    C5 -.->|"Phase ②"| VAL
+    VAL -.->|"3/3 done"| FINAL[Phase ③ Finalisation débloquée]
 ```
 
 ### Filtres Discovery
 
 ```mermaid
 graph LR
-    subgraph Filters["🔧 Filtres keywordDiscoveryStore"]
+    subgraph Filters["🔧 Filtres keyword-discovery.store"]
         TYPE["typeFilter<br>Pilier | Moyenne | Longue"]
         INTENT["intentFilter<br>info | transactional | nav"]
-        VOL["minVolume<br>seuil volume"]
-        DIFF["maxDifficulty<br>seuil difficulté"]
-        SCORE["minScore<br>score composite min"]
+        VOL["minVolume"]
+        DIFF["maxDifficulty"]
+        SCORE["minScore (composite)"]
     end
 
     RAW["results[] bruts"] --> TYPE --> INTENT --> VOL --> DIFF --> SCORE --> FILTERED["filteredResults (computed)"]
 ```
 
-### Basket — Flux détaillé
+### Basket — Cycle de vie
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Empty: setArticle(slug)
+    [*] --> Empty: setArticle(articleId)
     Empty --> HasKeywords: addKeywords(kw[])
     HasKeywords --> HasKeywords: addKeywords(more)
     HasKeywords --> HasKeywords: removeKeyword(kw)
@@ -530,6 +569,39 @@ stateDiagram-v2
     }
 ```
 
+### Cascade SERP (un scraping, deux usages)
+
+```mermaid
+sequenceDiagram
+    participant LT as LieutenantsSelection
+    participant SerpSvc as serp-analysis.service
+    participant Cache as api_cache
+    participant DFSEO as DataForSEO
+    participant PG as article_explorations
+    participant LEX as LexiqueExtraction
+    participant TfidfSvc as tfidf.service
+
+    LT->>SerpSvc: POST /api/serp/analyze (keyword, topN)
+    SerpSvc->>Cache: check cache (hash)
+    alt Cache HIT
+        Cache-->>SerpSvc: rawContents cached
+    else Cache MISS
+        SerpSvc->>DFSEO: scrape top N
+        DFSEO-->>SerpSvc: HTML contents
+        SerpSvc->>Cache: write (TTL)
+        SerpSvc->>PG: persist article_explorations
+    end
+    SerpSvc-->>LT: { hnData, paaData, groupCrossData, rawContents }
+
+    Note over LT,LEX: User verrouille Lieutenants → émet moteur:lieutenants_locked
+
+    LEX->>TfidfSvc: POST /api/serp/tfidf (articleId)
+    TfidfSvc->>PG: lire rawContents depuis article_explorations
+    PG-->>TfidfSvc: contents[]
+    TfidfSvc->>TfidfSvc: extraction TF-IDF (3 niveaux)
+    TfidfSvc-->>LEX: { obligatoire[], differenciateur[], optionnel[] }
+```
+
 ---
 
 ## 7. Workflow Article (Rédaction)
@@ -537,53 +609,62 @@ stateDiagram-v2
 ```mermaid
 graph TB
     subgraph Step1["Step 1 — BRIEF & STRUCTURE"]
-        FETCH["📥 fetchBrief(slug)<br>────────<br>Fetch parallèle:<br>• Article data<br>• Keywords<br>• DataForSEO (SERP)"]
-        BRIEF_DATA["briefData<br>────────<br>article: Article<br>keywords: Keyword[]<br>dataForSeo: SerpData<br>contentLengthRecommendation"]
-        GEN_OUTLINE["🤖 generateOutline(briefData)<br>────────<br>POST /api/generate/outline<br>Streaming SSE"]
-        EDIT_OUTLINE["✏️ OutlineEditor<br>────────<br>addSection / removeSection<br>updateSection / reorder<br>drag & drop"]
-        VALIDATE["✅ validateOutline(slug)<br>────────<br>Verrouille le plan"]
+        FETCH["📥 fetchBrief(articleId)<br>GET /api/articles/:id + keywords + DataForSEO"]
+        BRIEF_DATA["briefData<br>{ article, keywords[], dataForSeo, contentLengthRecommendation }"]
+        GEN_OUTLINE["🤖 generateOutline(briefData)<br>POST /api/generate/outline (SSE)"]
+        EDIT_OUTLINE["✏️ OutlineEditor<br>add/remove/update/reorder"]
+        VALIDATE["✅ validateOutline(articleId)<br>→ redaction:outline_validated"]
 
-        FETCH --> BRIEF_DATA
-        BRIEF_DATA --> GEN_OUTLINE
-        GEN_OUTLINE --> EDIT_OUTLINE
-        EDIT_OUTLINE --> VALIDATE
+        FETCH --> BRIEF_DATA --> GEN_OUTLINE --> EDIT_OUTLINE --> VALIDATE
     end
 
     subgraph Step2["Step 2 — ARTICLE"]
-        GEN_ARTICLE["🤖 generateArticle(briefData, outline)<br>────────<br>POST /api/generate/article<br>Streaming SSE<br>sectionProgress tracking"]
-        EDITOR["📝 TipTap Editor<br>────────<br>Rich text editing<br>Extensions: content-valeur,<br>content-reminder, answer-capsule,<br>internal-link"]
-        GEN_META["🏷️ generateMeta(slug, kw, title, content)<br>────────<br>POST /api/generate/meta<br>Output: metaTitle + metaDescription"]
-        SEO_LIVE["📊 SEO Score Live<br>────────<br>useSeoScoring watcher<br>300ms debounce<br>requestIdleCallback"]
-        SAVE_ART["💾 saveArticle(slug)<br>────────<br>PUT /api/articles/:slug<br>+ autoSave every 30s"]
+        GEN_ARTICLE["🤖 generateArticle(briefData, outline)<br>POST /api/generate/article (SSE)<br>sectionProgress tracking"]
+        EDITOR["📝 TipTap Editor (ArticleEditor)<br>Extensions : link, placeholder, starter-kit"]
+        GEN_META["🏷️ generateMeta<br>POST /api/generate/meta"]
+        SEO_LIVE["📊 SEO Score Live<br>useSeoScoring watcher<br>300ms debounce + requestIdleCallback"]
+        SAVE_ART["💾 saveArticle(articleId)<br>PUT /api/articles/:id<br>autoSave (useAutoSave)"]
+        ACTIONS["⚡ Actions contextuelles<br>useContextualActions<br>server/prompts/actions/*.md"]
 
         GEN_ARTICLE --> EDITOR
         EDITOR --> GEN_META
         EDITOR --> SEO_LIVE
         EDITOR --> SAVE_ART
+        EDITOR --> ACTIONS
     end
 
     VALIDATE --> GEN_ARTICLE
+
+    subgraph Checks["Checks Rédaction"]
+        RC1["redaction:brief_validated"]
+        RC2["redaction:outline_validated"]
+        RC3["redaction:content_written"]
+        RC4["redaction:seo_validated"]
+        RC5["redaction:published"]
+    end
 ```
 
-### Article Workflow — Vue complète des panneaux
+### ArticleWorkflowView — Panneaux
 
 ```mermaid
 graph LR
-    subgraph MainContent["Zone Principale"]
-        BRIEF_PANEL["Brief Panel<br>────<br>Keywords, DataForSEO<br>ContentGap, Recommandations"]
-        OUTLINE_PANEL["Outline Panel<br>────<br>Plan éditable<br>Génération / Validation"]
-        ARTICLE_PANEL["Article Panel<br>────<br>Éditeur TipTap<br>Génération streamée"]
+    subgraph MainContent["Zone principale"]
+        BRIEF_PANEL["Brief Panel<br>KeywordList, DataForSeoPanel,<br>ContentRecommendation"]
+        OUTLINE_PANEL["Outline Panel<br>OutlineDisplay / OutlineEditor"]
+        ARTICLE_PANEL["Article Panel<br>ArticleEditor (TipTap)<br>ArticleStreamDisplay"]
     end
 
-    subgraph SidePanels["Panneaux Latéraux"]
-        SEO_PANEL["SeoPanel (3 onglets)<br>────<br>① KeywordsTab<br>② IndicatorsTab<br>③ SerpDataTab"]
-        GEO_PANEL["GeoPanel<br>────<br>Scoring géographique"]
-        LINK_PANEL["LinkSuggestions<br>────<br>Suggestions liens internes"]
+    subgraph SidePanels["Panneaux latéraux"]
+        SEO_PANEL["SeoPanel<br>① Keywords<br>② Indicators<br>③ SerpData"]
+        GEO_PANEL["GeoPanel<br>Scoring géographique"]
+        LINK_PANEL["LinkSuggestions<br>Suggestions liens internes"]
+        ALERTS["ParagraphAlerts + JargonAlerts"]
     end
 
     ARTICLE_PANEL --> SEO_PANEL
     ARTICLE_PANEL --> GEO_PANEL
     ARTICLE_PANEL --> LINK_PANEL
+    ARTICLE_PANEL --> ALERTS
 ```
 
 ---
@@ -593,25 +674,25 @@ graph LR
 ```mermaid
 graph TB
     subgraph Trigger["🔄 Déclencheur"]
-        CONTENT["editorStore.content change"]
+        CONTENT["editor.store.content change"]
         META["metaTitle / metaDescription change"]
     end
 
-    subgraph Composable["useSeoScoring()"]
+    subgraph Composable["useSeoScoring() (composables/seo/)"]
         WATCH["watch() — 300ms debounce"]
         IDLE["requestIdleCallback<br>(non-bloquant)"]
     end
 
-    subgraph Calculation["calculateSeoScore()"]
+    subgraph Calculation["calculateSeoScore() (shared/scoring.ts)"]
         direction TB
-        STRIP["stripHtml(content)<br>→ plainText"]
-        WORDS["countWords(text)<br>→ wordCount"]
-        PREPARE["prepareText(text)<br>→ PreparedText"]
-        DENSITY["calculateKeywordDensity()<br>pour chaque keyword<br>→ KeywordDensity[]"]
+        STRIP["stripHtml(content) → plainText"]
+        WORDS["countWords → wordCount"]
+        PREPARE["prepareText → PreparedText"]
+        DENSITY["calculateKeywordDensity()<br>→ KeywordDensity[]"]
         HEADINGS["validateHeadingHierarchy()<br>→ HeadingValidation"]
         META_ANAL["analyzeMetaTags()<br>→ MetaTagAnalysis"]
         CHECKLIST["buildChecklist()<br>→ SeoCheckItem[]"]
-        GLOBAL["calculateGlobalScore()<br>6 facteurs pondérés<br>→ score 0-100"]
+        GLOBAL["calculateGlobalScore()<br>6 facteurs pondérés"]
 
         STRIP --> WORDS
         STRIP --> PREPARE
@@ -624,23 +705,22 @@ graph TB
         CHECKLIST --> GLOBAL
     end
 
-    subgraph Output["📊 Résultat"]
-        SCORE["SeoScore {<br>  global: number,<br>  wordCount: number,<br>  keywordDensities: [],<br>  headingValidation: {},<br>  metaAnalysis: {},<br>  checklist: [],<br>  nlpTerms?: []<br>}"]
-        LEVEL["scoreLevel<br>good (≥75) | fair (≥50) | poor"]
+    subgraph Output["📊 Résultat (seo.store)"]
+        SCORE["SeoScore {<br>  global, wordCount, keywordDensities,<br>  headingValidation, metaAnalysis,<br>  checklist, nlpTerms?<br>}"]
+        LEVEL["scoreLevel<br>good ≥75 / fair ≥50 / poor"]
     end
 
     CONTENT --> WATCH
     META --> WATCH
     WATCH --> IDLE
     IDLE --> STRIP
-    GLOBAL --> SCORE
-    SCORE --> LEVEL
+    GLOBAL --> SCORE --> LEVEL
 ```
 
 ### Pondération du score global
 
 ```mermaid
-pie title SEO_SCORE_WEIGHTS
+pie title SEO_SCORE_WEIGHTS (indicatif)
     "Keyword Pilier (densité)" : 30
     "Keywords secondaires" : 15
     "Meta tags" : 20
@@ -649,21 +729,21 @@ pie title SEO_SCORE_WEIGHTS
     "Checklist items" : 10
 ```
 
-### SeoPanel — Onglets & Sous-composants
+### Panels SEO indicateurs
 
 ```mermaid
 graph TB
-    subgraph SeoPanel["SeoPanel.vue"]
-        TAB1["① KeywordsTab<br>────<br>SeoKeywordChip[]<br>Densités par keyword"]
-        TAB2["② IndicatorsTab<br>────<br>StructureCard (H1/H2/H3)<br>MetaCard (title/desc)<br>DensityCard (densités)<br>AlertsCard (erreurs)"]
-        TAB3["③ SerpDataTab<br>────<br>Données DataForSEO<br>PAA Questions<br>Related Keywords"]
+    subgraph SeoPanel["SeoPanel (panels/)"]
+        TAB1["① KeywordsTab<br>SeoKeywordChip[]"]
+        TAB2["② IndicatorsTab<br>StructureCard + MetaCard + DensityCard + AlertsCard"]
+        TAB3["③ SerpDataTab<br>DataForSEO + PAA + Related"]
     end
 
-    subgraph Indicators["indicators/"]
-        STRUCT["StructureCard.vue<br>H1 count, H2 count, H3 count<br>Validation errors"]
-        META_C["MetaCard.vue<br>Title length bar<br>Description length bar<br>Keyword presence"]
-        DENS_C["DensityCard.vue<br>Density bars par keyword<br>Target range visual"]
-        ALERT_C["AlertsCard.vue<br>Checklist issues<br>Warnings, errors"]
+    subgraph Indicators["panels/indicators/"]
+        STRUCT["StructureCard (H1/H2/H3)"]
+        META_C["MetaCard"]
+        DENS_C["DensityCard"]
+        ALERT_C["AlertsCard"]
     end
 
     TAB2 --> STRUCT
@@ -683,36 +763,36 @@ graph TB
         KW["Mot-clé cible"]
     end
 
-    subgraph Prepare["prepareText(text)"]
+    subgraph Prepare["prepareText(text) — shared/html-utils.ts"]
         STRIP_HTML["Strip HTML tags"]
-        LOWER["toLowerCase()"]
+        LOWER["toLowerCase"]
         TOKENIZE["Split en tokens"]
         NORMALIZE["normalizeFrench() par token"]
-        PREPARED["PreparedText {<br>  raw, lowercase,<br>  words[], normalized[]<br>}"]
+        PREPARED["PreparedText { raw, lowercase, words[], normalized[] }"]
 
         STRIP_HTML --> LOWER --> TOKENIZE --> NORMALIZE --> PREPARED
     end
 
     subgraph Match["matchKeywordPrepared(prepared, keyword)"]
         direction TB
-        L1["🎯 Layer 1 — EXACT<br>────────<br>Substring match<br>dans lowercase text<br>Score: 1.0"]
-        L2["🧠 Layer 2 — SEMANTIC<br>────────<br>Tokenize keyword<br>Remove stop words<br>Normalize FR suffixes<br>Proximity window search<br>Score: 0.5-0.9"]
-        L3["📍 Layer 3 — PARTIAL<br>────────<br>Count token matches<br>anywhere in text<br>Score: ratio × 0.5"]
+        L1["🎯 Layer 1 — EXACT<br>Substring match lowercase<br>Score: 1.0"]
+        L2["🧠 Layer 2 — SEMANTIC<br>Tokenize + stop words + suffixes FR<br>Proximity window<br>Score: 0.5-0.9"]
+        L3["📍 Layer 3 — PARTIAL<br>Count token matches<br>Score: ratio × 0.5"]
 
         L1 -->|"miss"| L2
         L2 -->|"miss"| L3
     end
 
     subgraph FrenchNLP["normalizeFrench()"]
-        PH1["Phase 1: Suffixes flexionnels<br>-s, -x, -e (pluriel/féminin)"]
-        PH2["Phase 2: Suffixes dérivationnels<br>-tion, -ment, -er, -ir, -eur,<br>-eux, -able, -ique, -iste..."]
-        PH3["Phase 3: Voyelle finale<br>après dérivation"]
+        PH1["Phase 1: Suffixes flexionnels<br>-s, -x, -e"]
+        PH2["Phase 2: Suffixes dérivationnels<br>-tion, -ment, -er, -ir, -eur, -eux, -able, -ique, -iste..."]
+        PH3["Phase 3: Voyelle finale"]
 
         PH1 --> PH2 --> PH3
     end
 
     subgraph Output["KeywordMatchResult"]
-        RES["{<br>  detected: boolean,<br>  score: 0-1,<br>  method: 'exact'|'semantic'|'partial',<br>  occurrences: number<br>}"]
+        RES["{ detected, score, method, occurrences }"]
     end
 
     TEXT --> STRIP_HTML
@@ -739,15 +819,18 @@ graph TB
 ```mermaid
 sequenceDiagram
     participant UI as Component
-    participant Store as outlineStore / editorStore
+    participant Store as outline.store / editor.store
     participant Hook as useStreaming()
     participant API as Backend SSE
+    participant AI as ai-provider<br>(Claude / Gemini / OpenRouter / Mock)
 
     UI->>Store: generateOutline(briefData) / generateArticle(briefData, outline)
     Store->>Hook: startStream(url, body, callbacks)
     Hook->>API: POST /api/generate/outline (ou /article)
+    API->>AI: prompt enrichi via loadPrompt()
 
     loop Chunks SSE
+        AI-->>API: stream
         API-->>Hook: event: chunk {text}
         Hook->>Hook: chunks.push(text)
         Hook-->>Store: onChunk(text)
@@ -757,20 +840,15 @@ sequenceDiagram
     opt Section tracking (article only)
         API-->>Hook: event: section_start {title}
         Hook-->>Store: onSectionStart(title)
-        Store->>Store: sectionProgress.update()
-
         API-->>Hook: event: section_done {title}
         Hook-->>Store: onSectionDone(title)
     end
 
     API-->>Hook: event: usage {inputTokens, outputTokens, cost}
-    Hook-->>Store: onUsage(usage)
-    Store->>Store: lastApiUsage = usage
-
+    Hook-->>Store: onUsage(usage) → cost-log.store
     API-->>Hook: event: done {result}
     Hook-->>Store: onDone(result)
     Store->>Store: content = result / outline = parse(result)
-    Store->>Store: isGenerating = false
 ```
 
 ### useStreaming — État interne
@@ -790,10 +868,32 @@ stateDiagram-v2
     state Streaming {
         [*] --> ReceivingChunks
         ReceivingChunks --> SectionStart: section_start event
-        SectionStart --> ReceivingChunks: continue
+        SectionStart --> ReceivingChunks
         ReceivingChunks --> SectionDone: section_done event
-        SectionDone --> ReceivingChunks: continue
+        SectionDone --> ReceivingChunks
     }
+```
+
+### Multi-provider IA
+
+```mermaid
+graph LR
+    PROMPT["loadPrompt(name, vars)<br>server/utils/prompt-loader.ts"]
+    ROUTE["/api/generate/*<br>/api/keywords/:kw/ai-panel"]
+    PROVIDER["ai-provider.service<br>(external/)"]
+
+    subgraph Providers["Providers"]
+        CLAUDE["claude.service<br>Anthropic SDK"]
+        GEMINI["gemini.service<br>Google GenAI"]
+        OPENR["openrouter.service<br>OpenRouter"]
+        MOCK["mock.service<br>(dev/tests)"]
+    end
+
+    PROMPT --> ROUTE --> PROVIDER
+    PROVIDER -->|env AI_PROVIDER=claude| CLAUDE
+    PROVIDER -->|env AI_PROVIDER=gemini| GEMINI
+    PROVIDER -->|env AI_PROVIDER=openrouter| OPENR
+    PROVIDER -->|NODE_ENV=test ou mock| MOCK
 ```
 
 ---
@@ -802,24 +902,24 @@ stateDiagram-v2
 
 ```mermaid
 graph TB
-    subgraph Analysis["Analyse linkingStore"]
-        FETCH_MATRIX["fetchMatrix()<br>GET /links/matrix<br>────<br>Output:<br>• matrix (liens existants)<br>• orphans[] (articles isolés)<br>• anchorAlerts[] (diversité)<br>• crossCocoonOpportunities[]"]
+    subgraph Analysis["Analyse linking.store (keyword/)"]
+        FETCH_MATRIX["fetchMatrix()<br>GET /api/links/matrix<br>→ matrix, orphans[], anchorAlerts[],<br>  crossCocoonOpportunities[]"]
     end
 
     subgraph Suggestions["Suggestions"]
-        FETCH_SUG["fetchSuggestions(slug, content)<br>POST /links/suggest<br>────<br>Input: article slug + content HTML<br>Output: LinkSuggestion[] {<br>  targetSlug, anchorText, context<br>}"]
+        FETCH_SUG["fetchSuggestions(articleId, content)<br>POST /api/links/suggest<br>→ LinkSuggestion[]"]
     end
 
     subgraph Actions["Actions"]
-        SAVE["saveLinks(links)<br>PUT /links<br>────<br>Persiste les liens validés"]
+        SAVE["saveLinks(links)<br>PUT /api/links"]
     end
 
-    subgraph Components["Composants"]
-        MATRIX_C["LinkingMatrix.vue<br>Matrice visuelle N×N"]
-        ORPHAN_C["OrphanDetector.vue<br>Articles sans liens"]
-        ANCHOR_C["AnchorDiversityPanel.vue<br>Alertes ancres répétitives"]
-        CROSS_C["CrossCocoonPanel.vue<br>Opportunités inter-cocoon"]
-        SUG_C["LinkSuggestions.vue<br>Suggestions contextuelles"]
+    subgraph Components["Composants (linking/)"]
+        MATRIX_C["LinkingMatrix.vue — matrice N×N"]
+        ORPHAN_C["OrphanDetector.vue — articles isolés"]
+        ANCHOR_C["AnchorDiversityPanel.vue — ancres répétitives"]
+        CROSS_C["CrossCocoonPanel.vue — opportunités inter-cocon"]
+        SUG_C["LinkSuggestions.vue — suggestions contextuelles"]
     end
 
     FETCH_MATRIX --> MATRIX_C
@@ -832,7 +932,50 @@ graph TB
 
 ---
 
-## 12. Hiérarchie des composants
+## 12. Cache multi-niveau
+
+```mermaid
+graph TB
+    CALL["Appel service (ex: keyword-validate)"]
+
+    subgraph L1["Niveau 1 — keyword_metrics (cross-article, permanent)"]
+        KM["SELECT * FROM keyword_metrics WHERE keyword=?"]
+    end
+
+    subgraph L2["Niveau 2 — api_cache (par requête, TTL)"]
+        AC["SELECT value FROM api_cache WHERE key=? AND expires_at > NOW()"]
+    end
+
+    subgraph L3["Niveau 3 — API externe"]
+        DFSEO_CALL["DataForSEO / Autocomplete / Claude / etc."]
+        GUARD["dataforseo-cost-guard<br>vérifie quota mensuel"]
+    end
+
+    subgraph Write["Écriture"]
+        WRITE_KM["INSERT/UPDATE keyword_metrics"]
+        WRITE_AC["INSERT api_cache (TTL)"]
+    end
+
+    subgraph Purge["Purge horaire"]
+        PURGE["setInterval 1h :<br>DELETE FROM api_cache<br>WHERE expires_at < NOW()"]
+    end
+
+    CALL --> KM
+    KM -->|HIT| RETURN["Retour direct"]
+    KM -->|MISS| AC
+    AC -->|HIT| RETURN
+    AC -->|MISS| GUARD
+    GUARD --> DFSEO_CALL
+    DFSEO_CALL --> WRITE_KM
+    DFSEO_CALL --> WRITE_AC
+    WRITE_AC -.-> PURGE
+```
+
+**Effet clé :** un mot-clé utilisé dans 3 articles = **1 seul appel DataForSEO** grâce à `keyword_metrics`.
+
+---
+
+## 13. Hiérarchie des composants
 
 ```mermaid
 graph TB
@@ -847,110 +990,165 @@ graph TB
         SILO_V["SiloDetailView"]
         COCOON_V["CocoonLandingView"]
 
-        DASH_V --> SILO_CARD["SiloCard"]
-        SILO_V --> COCOON_CARD["CocoonCard"]
-        COCOON_V --> ART_CARD["ArticleCard"]
+        DASH_V --> SILO_CARD["components/dashboard/SiloCard"]
+        SILO_V --> COCOON_CARD["components/dashboard/CocoonCard"]
+        COCOON_V --> ART_CARD["components/dashboard/ArticleCard"]
+        COCOON_V --> WF_CHOICE["WorkflowChoice"]
     end
 
     subgraph StratViews["Pages Stratégie"]
         CERV_V["CerveauView"]
-        CERV_V --> STRAT_WIZ["StrategyWizard"]
-        STRAT_WIZ --> STRAT_STEP["StrategyStep"]
-        STRAT_WIZ --> AIGU_STEP["AiguillageStep"]
-        STRAT_WIZ --> CTA_STEP["CtaStep"]
+        CERV_V --> STRAT_STEP["components/strategy/StrategyStep"]
         STRAT_STEP --> SUBQ["SubQuestionCard"]
+        STRAT_STEP --> CTX_RECAP["ContextRecap"]
+        CERV_V --> PROP_ART["ProposedArticleRow"]
     end
 
-    subgraph MoteurViews["Pages Moteur"]
+    subgraph MoteurViews["Pages Moteur — 6 onglets"]
         MOT_V["MoteurView"]
-        MOT_V --> DISC_TAB["KeywordDiscoveryTab"]
-        MOT_V --> CAPT_VAL["CaptainValidation"]
-        MOT_V --> LT_SEL["LieutenantsSelection"]
-        MOT_V --> LEX_EXT["LexiqueExtraction"]
+        MOT_V --> SEL_ART["SelectedArticlePanel"]
+        MOT_V --> MCTX["MoteurContextRecap + MoteurStrategyContext"]
         MOT_V --> BASKET_S["BasketStrip"]
-        MOT_V --> PHASE_NAV["MoteurPhaseNavigation"]
+        MOT_V --> TAB_CACHE["TabCachePanel"]
+        MOT_V --> PTB["PhaseTransitionBanner"]
+        MOT_V --> DOTS["ProgressDots"]
+
+        subgraph P1["Phase ① Explorer"]
+            DISC_TAB["KeywordDiscoveryTab"]
+            DOULEUR["intent/DouleurIntentScanner"]
+        end
+
+        subgraph P2["Phase ② Valider"]
+            CAPT_VAL["CaptainValidation"]
+            LT_SEL["LieutenantsSelection"]
+            LEX_EXT["LexiqueExtraction"]
+
+            CAPT_VAL --> CAPT_IN["CaptainInput"]
+            CAPT_VAL --> CAPT_CAR["CaptainCarousel"]
+            CAPT_VAL --> CAPT_VERD["CaptainVerdictPanel"]
+            CAPT_VAL --> CAPT_AI["CaptainAiPanel"]
+            CAPT_VAL --> CAPT_LOCK["CaptainLockPanel"]
+            CAPT_VAL --> CAPT_WORDS["CaptainInteractiveWords"]
+            CAPT_VAL --> VBAR["VerdictBar"]
+            CAPT_VAL --> THERMO["shared/RadarThermometer"]
+
+            LT_SEL --> LT_SERP["LieutenantSerpAnalysis"]
+            LT_SEL --> LT_H2["LieutenantH2Structure"]
+            LT_SEL --> LT_PROP["LieutenantProposals"]
+            LT_SEL --> LT_CARD["LieutenantCard"]
+            LT_SEL --> UNLOCK["UnlockLieutenantsModal"]
+        end
+
+        subgraph P3["Phase ③ Finalisation"]
+            FINAL_R["FinalisationRecap"]
+        end
+
+        MOT_V --> P1
+        MOT_V --> P2
+        MOT_V --> P3
     end
 
     subgraph ArticleViews["Pages Article"]
         ART_WF["ArticleWorkflowView"]
         ART_ED["ArticleEditorView"]
+        ART_PV["ArticlePreviewView"]
 
-        ART_WF --> OUTLINE_ED["OutlineEditor"]
-        ART_WF --> ART_STREAM["ArticleStreamDisplay"]
-        ART_WF --> SEO_P["SeoPanel"]
-        ART_WF --> GEO_P["GeoPanel"]
-        ART_WF --> LINK_S["LinkSuggestions"]
+        ART_WF --> OUTLINE_ED["outline/OutlineEditor"]
+        ART_WF --> OUTLINE_DISP["outline/OutlineDisplay"]
+        ART_WF --> ART_STREAM["article/ArticleStreamDisplay"]
+        ART_WF --> ART_META["article/ArticleMetaDisplay"]
+        ART_WF --> SEO_P["panels/SeoPanel"]
+        ART_WF --> GEO_P["panels/geo/GeoPanel"]
+        ART_WF --> LINK_S["linking/LinkSuggestions"]
 
-        ART_ED --> TIPTAP["ArticleEditor (TipTap)"]
-        ART_ED --> TOOLBAR["EditorToolbar"]
-        ART_ED --> BUBBLE["EditorBubbleMenu"]
-        ART_ED --> SAVE_IND["SaveStatusIndicator"]
+        ART_ED --> TIPTAP["editor/ArticleEditor (TipTap)"]
+        ART_ED --> TOOLBAR["editor/EditorToolbar"]
+        ART_ED --> BUBBLE["editor/EditorBubbleMenu"]
     end
 
-    subgraph SharedUI["Composants Partagés"]
+    subgraph Tools["Outils"]
+        LABO_V["LaboView (mode libre)"]
+        EXPL_V["ExplorateurView"]
+        LINK_V["LinkingMatrixView"]
+        PP_V["PostPublicationView"]
+    end
+
+    subgraph SharedUI["shared/"]
         GAUGE["ScoreGauge"]
-        BADGE["StatusBadge"]
-        KW_BADGE["KeywordBadge"]
+        BADGE["StatusBadge, KeywordBadge"]
         PROGRESS["ProgressBar"]
         SPINNER["LoadingSpinner"]
         COLLAPSE["CollapsableSection"]
-        ASYNC["AsyncContent"]
+        ASYNC["AsyncContent + SkeletonLoader"]
         COST["ApiCostBadge"]
+        BREAD["Breadcrumb"]
+        WF_NAV["WorkflowNav"]
+        KPI["KpiRow + KpiItem"]
+        RECAP["RecapToggle"]
+        BASKET_FLOAT["BasketFloatingPanel"]
     end
 
     ROUTER --> DashViews
     ROUTER --> StratViews
     ROUTER --> MoteurViews
     ROUTER --> ArticleViews
+    ROUTER --> Tools
 ```
 
 ---
 
-## 13. Référence des Inputs/Outputs
+## 14. Référence des Inputs/Outputs
 
-### Composables — Signatures complètes
+### Composables — Signatures principales
 
-| Composable | Input | Output | Effet de bord |
-|-----------|-------|--------|---------------|
-| `useSeoScoring(kw, target?, related?, artKw?, slug?)` | keywords[], number?, Keyword[]?, ArticleKeywords?, string? | `{ seoStore }` | Watch editorStore → recalculate |
-| `useStreaming<T>()` | — | `{ chunks, isStreaming, error, result, usage, startStream(), abort() }` | SSE connection |
-| `useAutoSave(slug, interval?)` | string, number? | `{ pause(), resume(), isActive }` | setInterval → saveArticle |
-| `useCannibalization(slug, cocoon)` | string, string | `{ warnings[], refresh() }` | Fetch capitaine map |
-| `useInternalLinking(slug)` | string | `{ suggestions[], isSuggesting, requestSuggestions(), dismissSuggestion() }` | API call |
-| `usePanelToggle(default?)` | string? | `{ activePanel, toggle(), showSeoPanel, showGeoPanel, ... }` | — |
-| `useIntentVerdict()` | — | `{ verdicts[], topVerdict }` | Watch intentStore |
-| `useKeywordDiscoveryTab()` | — | `{ hasResults, cacheStatus, wordGroups, reset() }` | Watch discoveryStore |
-| `useArticleResults(onRadarLoaded?)` | callback? | `{ clearResults(), loadCachedResults() }` | Cache management |
-| `useResizablePanel()` | — | `{ width, height, startResize() }` | Mouse event listeners |
+| Composable (domaine) | Input | Output | Effet de bord |
+|----------------------|-------|--------|---------------|
+| `useSeoScoring(kw, target?, related?, artKw?, articleId?)` (seo/) | keywords[], number?, Keyword[]?, ArticleKeywords?, string? | `{ seoStore }` | Watch editor.store → recalculate |
+| `useStreaming<T>()` (editor/) | — | `{ chunks, isStreaming, error, result, usage, startStream(), abort() }` | SSE connection |
+| `useAutoSave(articleId, interval?)` (editor/) | string, number? | `{ pause(), resume(), isActive }` | setInterval → saveArticle |
+| `useCannibalization(articleId, cocoon)` (seo/) | string, string | `{ warnings[], refresh() }` | Fetch capitaines map |
+| `useInternalLinking(articleId)` (seo/) | string | `{ suggestions[], isSuggesting, requestSuggestions(), dismissSuggestion() }` | API call |
+| `usePanelToggle(default?)` (ui/) | string? | `{ activePanel, toggle(), showSeoPanel, ... }` | — |
+| `useIntentVerdict()` (intent/) | — | `{ verdicts[], topVerdict }` | Watch intent.store |
+| `useKeywordDiscoveryTab()` (keyword/) | — | `{ hasResults, cacheStatus, wordGroups, reset() }` | Watch keyword-discovery.store |
+| `useCapitaineValidation()` (keyword/) | params verdict | `{ verdict, kpis, isValidating, validate() }` | API call /api/keywords/:kw/validate |
+| `useKeywordScoring()` (keyword/) | kpis, level | `{ score, zones, thresholds }` | — |
+| `useArticleResults(onRadarLoaded?)` (editor/) | callback? | `{ clearResults(), loadCachedResults() }` | Cache management |
+| `useResizablePanel()` (ui/) | — | `{ width, height, startResize() }` | Mouse event listeners |
+| `useCompositionCheck()` (seo/) | content | `{ alerts[] }` | Analyse composition |
 
-### Utilitaires — Fonctions exportées
+### Utilitaires shared — Fonctions exportées
 
 | Fonction | Input | Output |
 |----------|-------|--------|
 | `countWords(text)` | string | number |
 | `calculateKeywordDensity(html, keyword, prepared?)` | string, string, PreparedText? | KeywordDensity |
 | `validateHeadingHierarchy(html)` | string | HeadingValidation |
-| `calculateSeoScore(content, kw, meta, desc, ...)` | 8 params | SeoScore |
+| `calculateSeoScore(...)` | 8 params | SeoScore |
 | `normalizeFrench(word)` | string | string |
 | `prepareText(text)` | string | PreparedText |
 | `matchKeywordPrepared(prepared, keyword)` | PreparedText, string | KeywordMatchResult |
 | `matchKeyword(text, keyword)` | string, string | KeywordMatchResult |
+| `computeKpiScore(kpi, value, level)` (shared/kpi-scoring.ts) | name, number, ArticleLevel | `'green'\|'orange'\|'red'\|'bonus'` |
 
 ### Types principaux — Champs clés
 
 | Type | Champs clés |
 |------|-------------|
-| `Article` | title, type (Pilier\|Intermédiaire\|Spécialisé), slug, topic, status |
+| `Article` | id, title, type (Pilier\|Intermédiaire\|Spécialisé), slug, topic, status, cocoonId, completedChecks |
 | `Keyword` | keyword, cocoonName, type, status (suggested\|validated\|rejected) |
-| `ArticleKeywords` | articleSlug, capitaine, lieutenants[], lexique[], hnStructure? |
+| `ArticleKeywords` | articleId, capitaine, lieutenants[], lexique[], hnStructure? |
 | `BriefData` | article, keywords[], dataForSeo?, contentLengthRecommendation |
 | `Outline` | sections: OutlineSection[] { id, level, title, annotation } |
 | `SeoScore` | global (0-100), wordCount, keywordDensities[], headingValidation, metaAnalysis, checklist[] |
-| `ArticleStrategy` | slug, cible, douleur, aiguillage, angle, promesse, cta, completedSteps |
+| `CocoonStrategy` | cocoonId, cible, douleur, aiguillage, angle, promesse, cta, completedSteps |
 | `IntentAnalysis` | keyword, modules[], scores[], dominantIntent, topOrganicResults[], paaQuestions[] |
 | `ClassifiedKeyword` | keyword, type, intent, searchVolume, difficulty, compositeScore |
 | `LinkingMatrix` | links[], orphans[], anchorAlerts[], crossCocoonOpportunities[] |
 | `KeywordMatchResult` | detected, score (0-1), method (exact\|semantic\|partial), occurrences |
+| `CaptainVerdict` | overall (GO\|ORANGE\|NO_GO), kpis: { volume, kd, cpc, paa, intent, autocomplete }, reasons[] |
+| `SerpAnalysisResult` | hnData[], paaData[], groupCrossData[], rawContents[] |
+| `WorkflowCheck` | `moteur:*` \| `cerveau:*` \| `redaction:*` (constantes dans shared/constants/workflow-checks.constants.ts) |
 
 ---
 
@@ -958,31 +1156,59 @@ graph TB
 
 | Méthode | Endpoint | Store | Description |
 |---------|----------|-------|-------------|
-| GET | `/api/theme` | silosStore | Config thème |
-| GET | `/api/silos` | silosStore | Liste silos |
-| GET | `/api/cocoons` | cocoonsStore | Liste cocoons |
-| GET | `/api/articles?cocoon=id` | articlesStore | Articles d'un cocoon |
-| GET | `/api/articles/:slug` | briefStore | Détail article |
-| PUT | `/api/articles/:slug` | editorStore | Sauvegarde article |
-| POST | `/api/generate/outline` | outlineStore | Génération plan (SSE) |
-| POST | `/api/generate/article` | editorStore | Génération article (SSE) |
-| POST | `/api/generate/meta` | editorStore | Génération meta tags |
-| GET | `/api/article-keywords/:slug` | articleKeywordsStore | Keywords d'un article |
-| PUT | `/api/article-keywords/:slug` | articleKeywordsStore | Sauvegarde keywords |
-| POST | `/api/keywords/discover` | keywordDiscoveryStore | Discovery par seed |
-| POST | `/api/keywords/discover-domain` | keywordDiscoveryStore | Discovery par domaine |
-| POST | `/api/keywords/suggest-lexique` | articleKeywordsStore | Suggestion LSI |
-| POST | `/api/keywords/audit` | keywordAuditStore | Audit keywords |
-| POST | `/intent/analyze` | intentStore | Analyse intention |
-| POST | `/keywords/compare-local` | intentStore | Comparaison local/national |
-| POST | `/keywords/autocomplete` | intentStore | Validation autocomplete |
-| GET | `/api/strategies/:slug` | strategyStore | Fetch stratégie |
-| PUT | `/api/strategies/:slug` | strategyStore | Sauvegarde stratégie |
-| POST | `/api/strategies/suggest` | strategyStore | Suggestion IA |
-| POST | `/api/strategies/deepen` | strategyStore | Approfondissement |
-| POST | `/api/strategies/consolidate` | strategyStore | Consolidation |
-| GET | `/links/matrix` | linkingStore | Matrice liens |
-| POST | `/links/suggest` | linkingStore | Suggestions liens |
-| PUT | `/links` | linkingStore | Sauvegarde liens |
-| GET | `/api/progress/:slug` | articleProgressStore | Progress article |
-| PUT | `/api/progress/:slug` | articleProgressStore | Sauvegarde progress |
+| GET | `/api/health` | — | Health check |
+| GET | `/api/theme` | theme-config | Config thème |
+| GET | `/api/silos` | silos | Liste silos |
+| GET | `/api/cocoons` | cocoons | Liste cocons |
+| GET | `/api/cocoons/:id/capitaines` | — | Map capitaines du cocon (cannibalization) |
+| GET | `/api/articles?cocoon=id` | articles | Articles d'un cocon |
+| GET | `/api/articles/:id` | brief | Détail article |
+| PUT | `/api/articles/:id` | editor | Sauvegarde article |
+| GET | `/api/articles/:id/progress` | article-progress | Progress article |
+| POST | `/api/articles/:id/progress/check` | article-progress | Ajoute un check |
+| POST | `/api/generate/outline` | outline | Génération plan (SSE) |
+| POST | `/api/generate/article` | editor | Génération article (SSE) |
+| POST | `/api/generate/meta` | editor | Génération meta tags |
+| POST | `/api/generate/reduce-section` | editor | Réduction de section |
+| GET | `/api/article-keywords/:id` | article-keywords | Keywords d'un article |
+| PUT | `/api/article-keywords/:id` | article-keywords | Sauvegarde keywords |
+| POST | `/api/keywords/discover` | keyword-discovery | Discovery par seed |
+| POST | `/api/keywords/discover-domain` | keyword-discovery | Discovery par domaine |
+| POST | `/api/keywords/suggest-lexique` | article-keywords | Suggestion LSI |
+| POST | `/api/keywords/audit` | keyword-audit | Audit keywords |
+| POST | `/api/keywords/:keyword/validate` | — | Verdict GO/NO-GO Capitaine |
+| POST | `/api/keywords/:keyword/ai-panel` | — | Panel IA Capitaine (SSE) |
+| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn recommandée |
+| POST | `/api/keywords/:keyword/propose-lieutenants` | — | Propositions Lieutenants |
+| GET | `/api/keywords/:keyword/usage` | — | Usage du mot-clé |
+| GET | `/api/keywords/:keyword/metrics` | — | Métriques (keyword_metrics) |
+| POST | `/api/keywords/:keyword/intent-for-article` | — | Intent contextualisé article |
+| POST | `/api/keywords/intent-scan` | — | Radar intent |
+| POST | `/api/keywords/intent-scan/radar/generate` | — | Génération radar |
+| POST | `/api/keywords/intent-scan/radar/scan` | — | Scan radar |
+| POST | `/api/keywords/compare-local` | intent | Comparaison local/national |
+| POST | `/api/keywords/autocomplete` | intent | Validation autocomplete |
+| POST | `/api/intent/analyze` | intent | Analyse intention SERP |
+| POST | `/api/serp/analyze` | — | Scraping SERP top N |
+| POST | `/api/serp/tfidf` | — | TF-IDF contenus SERP |
+| POST | `/api/paa/batch` | — | PAA batch |
+| GET | `/api/strategy/:cocoonId` | cocoon-strategy | Fetch stratégie |
+| PUT | `/api/strategy/:cocoonId` | cocoon-strategy | Sauvegarde stratégie |
+| POST | `/api/strategy/suggest` | strategy | Suggestion IA |
+| POST | `/api/strategy/deepen` | strategy | Approfondissement |
+| POST | `/api/strategy/consolidate` | strategy | Consolidation |
+| GET | `/api/links/matrix` | linking | Matrice liens |
+| POST | `/api/links/suggest` | linking | Suggestions liens |
+| PUT | `/api/links` | linking | Sauvegarde liens |
+| POST | `/api/local/*` | local | Local SEO (maps, score, entities) |
+| POST | `/api/content-gap/*` | — | Content gap |
+| GET | `/api/gsc/auth` | gsc | OAuth2 GSC |
+| GET | `/api/gsc/callback` | gsc | Callback OAuth2 |
+| GET | `/api/gsc/status` | gsc | Statut connexion |
+| POST | `/api/export/*` | — | Export HTML |
+| GET | `/api/discovery-cache/*` | — | Cache Discovery (check/load/save) |
+| GET | `/api/radar-cache/*` | — | Cache Radar (check/load/save) |
+| GET | `/api/radar-exploration/*` | — | Exploration Radar |
+| GET | `/api/articles/:id/explorations` | — | Explorations d'un article |
+| GET | `/api/dataforseo/brief` | brief | Données SERP DataForSEO |
+| GET | `/api/dataforseo/cost-status` | cost-log | Statut quota DataForSEO |

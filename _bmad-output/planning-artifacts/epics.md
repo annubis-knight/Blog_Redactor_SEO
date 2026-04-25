@@ -3,1033 +3,766 @@ stepsCompleted: ['step-01-validate-prerequisites', 'step-02-design-epics', 'step
 inputDocuments:
   - '_bmad-output/planning-artifacts/prd.md'
   - '_bmad-output/planning-artifacts/architecture.md'
-  - '_bmad-output/brainstorming/brainstorming-session-2026-03-31.md'
-previousEpicsVersion: 'Epics 1-5 implémentés (commit c21a56e) — basés sur PRD pré-brainstorming 2026-03-31'
-updateReason: 'Alignement avec PRD et Architecture mis à jour post-brainstorming 2026-03-31 — Phase ② Valider restructurée en 3 sous-onglets (Capitaine/Lieutenants/Lexique), extraction Intention/Audit/Local vers Dashboard, suppression Phase ③ Assigner'
+previousEpicsVersion: 'Epics 1-10 livrés — alignés sur PRD post-brainstorming 2026-03-31 (2 phases, suppression Phase ③ Assigner)'
+lastUpdated: '2026-04-24'
+updateReason: 'Alignement avec l''état réel livré : Moteur est en 6 onglets / 3 phases (Explorer, Valider, Finalisation) — pas 2 phases. Phase ③ Finalisation AJOUTÉE post-brainstorming comme récap read-only. Migration PostgreSQL faite. Réorganisation par domaine. Checks workflow préfixés moteur:* / cerveau:* / redaction:*.'
 ---
 
-# Blog Redactor SEO - Epic Breakdown (Mise à jour post-brainstorming 2026-03-31)
+# Blog Redactor SEO — Epic Breakdown (État livré — mise à jour 2026-04-24)
 
 ## Overview
 
-Ce document fournit le découpage complet en epics et stories pour Blog Redactor SEO. Il intègre les changements majeurs issus du brainstorming du 2026-03-31 : restructuration du Moteur en 2 phases (suppression Phase ③ Assigner), workflow GO/NO-GO en 3 sous-onglets séquentiels (Capitaine/Lieutenants/Lexique), extraction Intention/Audit/Local vers Dashboard indépendant.
+Ce document reflète l'**état livré** du projet Blog Redactor SEO au 2026-04-24. Les Epics 1 à 10 initialement planifiés autour du brainstorming du 2026-03-31 sont tous **livrés**, mais la structure finale du Moteur diffère légèrement du plan initial :
 
-**Contexte :** Les Epics 1-5 originaux ont été implémentés (commit c21a56e, 1222 tests). Les nouveaux epics couvrent les fonctionnalités manquantes introduites par la mise à jour du PRD.
+- **Le Moteur est en 3 phases / 6 onglets** (pas 2 phases). Phase ③ Finalisation a été ajoutée comme récap read-only débloqué quand les 3 verrouillages de Phase ② sont faits.
+- **La persistance est PostgreSQL** (pg 8.20), pas des fichiers JSON. La migration a été faite (`scripts/migrate-slug-to-id.ts`, backup `_backup_pg_20260418.sql`).
+- **Les articles sont identifiés par id** (pas slug). Les routes sont `/cocoon/:cocoonId/article/:articleId`.
+- **Les checks sont préfixés par workflow** : `moteur:*`, `cerveau:*`, `redaction:*`, centralisés dans `shared/constants/workflow-checks.constants.ts`.
+- **Multi-provider IA** : `ai-provider.service` orchestre Claude / Gemini / OpenRouter / Mock.
+- **Cache multi-niveau** : `keyword_metrics` (cross-article permanent) + `api_cache` (TTL).
+
+Des epics complémentaires ont été livrés en Phase 2 de consolidation (organisation par domaine, tooling qualité, husky). Les épics décrits ci-dessous documentent le **périmètre tel qu'il existe** dans le code.
 
 ## Requirements Inventory
 
-### Functional Requirements
+### Functional Requirements (60 FRs — alignés sur prd.md à jour)
 
-- FR1 : L'utilisateur peut voir les onglets du Moteur organisés en 2 phases visuelles (Générer, Valider)
-- FR2 : L'utilisateur peut naviguer librement entre les 2 phases et tous les onglets sans aucun blocage
-- FR3 : L'utilisateur doit sélectionner un article avant d'utiliser le Moteur (toggle article obligatoire)
-- FR4 : L'utilisateur peut voir l'onglet Local qui fusionne les anciens onglets Local/National et Maps & GBP en deux sections dans un même onglet
-- FR5 : Le Content Gap n'apparaît pas dans le Moteur (retiré car déjà dans le Brief)
-- FR6 : L'utilisateur peut lancer une analyse Discovery (IA) pour produire des mots-clés candidats
-- FR7 : L'utilisateur peut lancer un scan Douleur Intent (radar) pour détecter les résonances
-- FR8 : L'utilisateur peut traduire une douleur client en mots-clés candidats via l'onglet Douleur
-- FR9 : Les onglets Discovery et Douleur Intent sont optionnels et se verrouillent si des mots-clés sont déjà validés
-- FR10 : Le mot-clé Capitaine arrive pré-rempli depuis la Phase Cerveau ou la Phase ① Générer. L'utilisateur peut saisir un mot-clé alternatif et naviguer dans l'historique via un slider
-- FR11 : Le système affiche un feu tricolore GO/ORANGE/NO-GO avec un score global calculé à partir de 6 KPIs : Volume, KD, CPC, PAA pertinence, Intent match, Autocomplete
-- FR12 : Les seuils de chaque KPI sont contextuels selon le niveau d'article (Pilier/Intermédiaire/Spécifique). Par exemple Volume VERT : >1000 (Pilier), >200 (Intermédiaire), >30 (Spécifique)
-- FR13 : Le CPC est un KPI asymétrique : CPC > 2€ = bonus vert, CPC 0-2€ = neutre, jamais de rouge
-- FR14 : Si tous les signaux sont à zéro (volume=0 ET PAA=0 ET autocomplete=0), le verdict est NO-GO automatique avec raison "Aucun signal détecté"
-- FR15 : Pour les mots-clés longue traîne (3+ mots) avec données faibles, le système découpe automatiquement en racine(s) et affiche les KPIs de la racine en section "Analyse racine" — le verdict reste sur le mot-clé original
-- FR16 : Chaque KPI est affiché avec une barre de progression et les zones vert/orange/rouge visibles. Les seuils appliqués sont visibles au survol (tooltip)
-- FR17 : Un panel IA expert SEO s'auto-génère en streaming dès que les KPIs sont disponibles. Le panel est dépliable et ne touche JAMAIS au feu tricolore (complément d'information uniquement)
-- FR18 : L'utilisateur peut forcer GO sur un verdict ORANGE ou ROUGE (libre arbitre total)
-- FR19 : Le NO-GO explique POURQUOI et oriente — trois catégories : "Trop longue traîne" / "KPIs faibles" / "Hors sujet"
-- FR20 : L'utilisateur verrouille le Capitaine via un bouton "Valider ce Capitaine" — le verrouillage débloque le sous-onglet Lieutenants. Un mécanisme lock/unlock (cadenas) permet de déverrouiller
-- FR21 : Le sous-onglet affiche le Capitaine verrouillé et le niveau d'article en en-tête
-- FR22 : L'utilisateur lance l'analyse SERP via un bouton "Analyser SERP" — scraping des top 3-10 résultats (curseur configurable, défaut 10)
-- FR23 : Le scraping SERP alimente 3 sections dépliables : Structure Hn concurrents (H2 fréquents avec % récurrence), PAA associés (N+2 de pertinence), Groupes de mots-clés (issus de la Phase Cerveau)
-- FR24 : Les candidats Lieutenants sont présentés avec des badges de provenance multi-source [SERP] [PAA] [Groupe] et un badge de pertinence (Fort/Moyen/Faible) basé sur la complémentarité avec le Capitaine
-- FR25 : L'utilisateur sélectionne les Lieutenants via checkboxes. Un compteur indique le nombre recommandé selon le niveau : Pilier 5-8, Intermédiaire 3-5, Spécifique 1-3
-- FR26 : Le curseur SERP est intelligent : sous le défaut = filtre local instantané, au-dessus du défaut = scraping complémentaire
-- FR27 : Un panel IA dépliable recommande une structure Hn avec les Lieutenants sélectionnés
-- FR28 : L'utilisateur verrouille les Lieutenants via "Valider les Lieutenants" — le verrouillage débloque le sous-onglet Lexique
-- FR29 : Le Lexique est extrait par analyse TF-IDF des contenus SERP déjà scrapés à l'étape Lieutenants — aucune nouvelle requête API
-- FR30 : Les termes sont classés en 3 niveaux : Obligatoire (70%+ des concurrents), Différenciateur (30-70%), Optionnel (<30%) — avec densité de récurrence par page (ex: ×4.2/page)
-- FR31 : L'utilisateur valide les termes via checkboxes. Les termes Obligatoires sont pré-cochés
-- FR32 : Un panel IA dépliable fournit une analyse lexicale expert avec recommandations
-- FR33 : L'utilisateur valide le Lexique via "Valider le Lexique" — les résultats finaux (capitaine, lieutenants[], lexique[]) sont écrits dans le store ArticleKeywords
-- FR34 : Aucune action automatique au changement de sous-onglet — l'utilisateur déclenche tout manuellement
-- FR35 : Les KPIs bruts sont TOUJOURS visibles — libre arbitre > algorithme
-- FR36 : La persistance des résultats suit le pattern cache TTL existant avec possibilité de refresh
-- FR37 : Les onglets Intention (SERP intent), Audit (cocon complet) et Local (local vs national + Maps) sont retirés de la Phase ② Valider du Moteur
-- FR38 : Ces fonctionnalités sont accessibles dans une vue Dashboard indépendante, découplée du workflow de validation
-- FR39 : Les phase checks du Moteur sont modifiés : `capitaine_locked + lieutenants_locked + lexique_validated` remplacent `intent_done + audit_done + local_done`
-- FR40 : L'utilisateur peut voir des dots de progression (●/○) à côté de chaque article dans la liste du Moteur
-- FR41 : Le système coche automatiquement les étapes complétées : Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Lexique validé
-- FR42 : Un bandeau de suggestion apparaît quand tous les checks d'une phase sont complétés pour l'article en cours
-- FR43 : L'utilisateur peut ignorer le bandeau et rester dans la phase actuelle
-- FR44 : L'utilisateur peut voir un résumé du contexte stratégique du Cerveau (cible, angle, promesse) dans une section collapsable en haut du Moteur
-- FR45 : Le système injecte automatiquement le contexte stratégique du Cerveau dans les prompts IA du Moteur (Discovery, PainTranslator, Panel IA Capitaine) sans action utilisateur
-- FR46 : L'utilisateur peut accéder au Labo depuis la Navbar et le Dashboard
-- FR47 : L'utilisateur peut utiliser les mêmes composants que le Moteur (Discovery, Douleur Intent, verdict GO/NO-GO Capitaine) en mode recherche libre — sans sélectionner d'article ni de cocon
-- FR48 : L'utilisateur peut saisir un mot-clé libre dans le Labo et lancer les analyses disponibles
-- FR49 : Le système sauvegarde les résultats de chaque service (Discovery, Validation Capitaine, SERP Lieutenants, Lexique TF-IDF) pour chaque article
-- FR50 : Le système recharge automatiquement les résultats sauvegardés quand l'utilisateur revient sur un article
-- FR51 : Le système ne relance pas un appel API si un résultat valide existe déjà en cache pour la même requête
+**Moteur — Structure 3 phases / 6 onglets :**
+- FR1 : 3 phases visuelles : Phase ① Explorer, Phase ② Valider, Phase ③ Finalisation
+- FR2 : Navigation libre entre tous les onglets sans blocage dur
+- FR3 : Sélection d'un article obligatoire avant les actions du Moteur
+- FR4 : Content Gap, Intention, Audit, Local ne font PAS partie du Moteur (extraits)
 
-### NonFunctional Requirements
+**Moteur — Phase ① Explorer (toujours accessible) :**
+- FR5 : Onglet Discovery (IA) → émet `moteur:discovery_done`
+- FR6 : Onglet Radar (Douleur Intent) → émet `moteur:radar_done`
+- FR7 : Phase ① accessible en permanence, pas de verrouillage
 
-- NFR1 : Les réponses API locales (hors appels externes) sont retournées en < 200ms
-- NFR2 : Le streaming SSE (Claude) affiche le premier token en < 2s
-- NFR3 : Le chargement d'une vue (changement de route) se fait en < 500ms
-- NFR4 : Le cache hit rate DataForSEO atteint > 90% après première utilisation d'un mot-clé
-- NFR5 : Aucun appel API externe n'est effectué si un résultat valide existe en cache
-- NFR6 : Les résultats de tous les services sont persistés sur disque (fichiers JSON) et survivent au redémarrage de l'app
-- NFR7 : La taille maximale d'un fichier JSON en mémoire est de 5MB (limite Express actuelle)
-- NFR8 : Les composants du Moteur fonctionnent en deux modes : contextualisé (article sélectionné, seuils adaptatifs selon le niveau) et libre (Labo, seuils par défaut "Intermédiaire")
-- NFR9 : L'enrichissement des prompts IA par le contexte du Cerveau est optionnel — si aucune stratégie n'existe pour le cocon, les prompts fonctionnent sans enrichissement
-- NFR10 : Le store `article-progress` avec `completedChecks[]` est la source unique de vérité pour la progression par article. Les checks sont : `capitaine_locked`, `lieutenants_locked`, `lexique_validated`
-- NFR11 : Le scraping SERP ne se fait qu'UNE fois (sous-onglet Lieutenants) et les données cascadent vers le Lexique — zéro requête dupliquée
-- NFR12 : Les seuils de scoring du feu tricolore sont configurables et stockés de façon transparente (visibles au survol)
-- NFR13 : Les composants réutilisés entre Moteur et Labo ne sont pas dupliqués — un seul composant avec un prop de mode (contextualisé / libre)
-- NFR14 : Les prompts IA restent dans des fichiers `.md` séparés — l'enrichissement stratégique est un pré-processing en amont, pas une modification du prompt source
+**Moteur — Phase ② Valider — Capitaine :**
+- FR8 : Capitaine pré-rempli depuis Cerveau ou Phase ① ; input alternatif + historique slider
+- FR9 : Feu tricolore GO/ORANGE/NO-GO + 6 KPIs (Volume, KD, CPC, PAA, Intent, Autocomplete)
+- FR10 : Seuils contextuels par niveau article (Pilier/Intermédiaire/Spécifique)
+- FR11 : CPC asymétrique (> 2€ bonus vert, jamais rouge)
+- FR12 : NO-GO auto si volume=0 ET PAA=0 ET autocomplete=0
+- FR13 : Découpage automatique en racine(s) pour longue traîne
+- FR14 : KPIs avec barres + zones vert/orange/rouge + seuils visibles au survol
+- FR15 : Panel IA expert SEO en streaming SSE — ne touche pas au verdict
+- FR16 : Utilisateur peut forcer GO (libre arbitre)
+- FR17 : NO-GO orienté en 3 catégories (trop longue traîne / KPIs faibles / hors sujet)
+- FR18 : Verrouillage → `moteur:capitaine_locked` ; lock/unlock (cadenas)
 
-### Additional Requirements
+**Moteur — Phase ② Valider — Lieutenants :**
+- FR19 : En-tête : Capitaine verrouillé + niveau article
+- FR20 : Bouton "Analyser SERP" avec curseur 3-10 (défaut 10)
+- FR21 : 3 sections dépliables (Hn concurrents, PAA N+2, Groupes croisés du Cerveau)
+- FR22 : Candidats avec badges multi-source [SERP] [PAA] [Groupe] + pertinence Fort/Moyen/Faible
+- FR23 : Sélection checkbox + compteur recommandé selon niveau
+- FR24 : Curseur SERP intelligent (sous défaut = filtre local, au-dessus = scraping complémentaire)
+- FR25 : Panel IA dépliable (structure Hn recommandée)
+- FR26 : Verrouillage → `moteur:lieutenants_locked`
 
-- Brownfield : la restructuration préserve les composants internes existants — seuls les wrappers (MoteurView) et le système de progression changent
-- Pattern dual-mode : prop `mode: 'workflow' | 'libre'` sur chaque composant Moteur réutilisé dans le Labo
-- 5 checks standardisés : `discovery_done`, `radar_done`, `capitaine_locked`, `lieutenants_locked`, `lexique_validated`
-- Emit `check-completed` : chaque composant Moteur émet un événement quand il produit un résultat en mode workflow
-- Pattern cache étendu : `getOrFetch<T>()` uniforme pour tous les services API externes
-- Enrichissement prompts : `loadPrompt()` injecte `{{strategy_context}}` — remplacé par string vide si pas de stratégie
-- 7 nouvelles routes API : `POST /api/keywords/:keyword/validate`, `GET /api/keywords/:keyword/roots`, `POST /api/serp/analyze`, `POST /api/serp/tfidf`, `POST /api/keywords/:keyword/ai-panel`, `POST /api/articles/:slug/progress/check`, `GET /api/cocoons/:id/strategy/context`
-- Scoring contextuel : `ThresholdConfig` par niveau article (Pilier/Intermédiaire/Spécifique) avec seuils transparents
-- Cascade SERP : un seul scraping (Lieutenants) alimente Lieutenants + Lexique (TF-IDF) — zéro requête dupliquée
-- Curseur SERP intelligent : sous défaut (10) = filtre local instantané, au-dessus = scraping complémentaire
-- Verrouillage séquentiel souple : Capitaine → Lieutenants → Lexique (navigation libre maintenue, consultation sans action)
-- Enforcement guidelines : utiliser apiGet/apiPost (jamais fetch), envelopper réponses dans { data: T }, composition API Pinia, tests dans tests/unit/ miroir, logger (jamais console.log), loadPrompt() (jamais strings inline), readJson/writeJson (jamais fs directement)
-- Anti-patterns : pas de JSON sans schema Zod, pas d'appel API sans vérifier cache, pas de duplication composant Moteur/Labo, pas de gating dur (navigation libre), pas de modification de prompt .md (pré-processing)
+**Moteur — Phase ② Valider — Lexique :**
+- FR27 : TF-IDF extrait des contenus SERP déjà scrapés — ZÉRO nouvelle requête
+- FR28 : 3 niveaux (Obligatoire ≥70%, Différenciateur 30-70%, Optionnel <30%) + densité récurrence/page
+- FR29 : Checkboxes — Obligatoires pré-cochés
+- FR30 : Panel IA dépliable (analyse lexicale expert)
+- FR31 : Verrouillage → `moteur:lexique_validated` → écriture finale dans ArticleKeywords
+
+**Moteur — Phase ③ Finalisation :**
+- FR32 : Onglet Finalisation read-only, débloqué quand les 3 checks Phase ② sont ✓
+- FR33 : `FinalisationRecap.vue` affiche Capitaine + Lieutenants + Lexique validés
+- FR34 : Lien « Passer à la Rédaction » vers `/cocoon/:id/redaction`
+
+**Règles transversales Phase ② :**
+- FR35 : Aucune action automatique au changement d'onglet
+- FR36 : KPIs bruts toujours visibles (libre arbitre > algorithme)
+- FR37 : Persistance via `api_cache` (TTL) + `keyword_metrics` (cross-article permanent)
+
+**Dashboard & Explorateur (hors Moteur) :**
+- FR38 : ExplorateurView (`/explorateur`) : analyse d'intention SERP, comparaison local/national, autocomplete
+- FR39 : Signaux Local/Maps/GBP accessibles via Explorateur et composants `local/`
+
+**Progression et guidage invisible :**
+- FR40 : Dots de progression (●/○) à côté de chaque article dans la liste du Moteur
+- FR41 : 5 checks `moteur:*` ajoutés automatiquement : `discovery_done`, `radar_done`, `capitaine_locked`, `lieutenants_locked`, `lexique_validated`
+- FR42 : Bandeau de suggestion (`PhaseTransitionBanner`) entre phases
+- FR43 : L'utilisateur peut ignorer le bandeau
+
+**Pont Cerveau→Moteur :**
+- FR44 : `MoteurStrategyContext` collapsable (cible, angle, promesse, douleur, CTA)
+- FR45 : Injection `{{strategy_context}}` dans les prompts `.md`
+
+**Labo — Recherche libre :**
+- FR46 : Labo accessible depuis Navbar (`/labo`)
+- FR47 : Réutilise les composants Moteur en mode `libre` — pas de sélection article/cocon
+- FR48 : Champ libre + verdict Capitaine avec seuils par défaut Intermédiaire
+
+**Cache et persistance :**
+- FR49 : Consultation `api_cache` avant tout appel externe (clé = hash requête + TTL)
+- FR50 : Métriques mot-clé partagées via `keyword_metrics` (cross-article)
+- FR51 : Rechargement automatique à la reprise — pas de re-call API
+- FR52 : Purge horaire : `DELETE FROM api_cache WHERE expires_at < NOW()`
+
+**Stratégie (Cerveau) :**
+- FR53 : Cerveau en 6 étapes (Cible, Douleur, Aiguillage, Angle, Promesse, CTA)
+- FR54 : Chaque étape : input → suggestion IA → approfondissement → consolidation → validation
+
+**Rédaction :**
+- FR55 : Brief généré à partir de l'article + keywords + SERP
+- FR56 : Sommaire streamé via SSE
+- FR57 : Article streamé section par section
+- FR58 : Meta title + meta description générés
+- FR59 : Éditeur TipTap avec SEO scoring live
+- FR60 : Actions contextuelles sur sélection
+
+### Non-Functional Requirements
+
+- NFR1 : Réponses API locales (hors appels externes) < 200ms
+- NFR2 : SSE premier token < 2s
+- NFR3 : Chargement d'une vue (lazy) < 500ms
+- NFR4 : Cache hit DataForSEO > 90% (grâce à `keyword_metrics`)
+- NFR5 : Pas d'appel externe si `api_cache` ou `keyword_metrics` valide
+- NFR6 : Persistance PostgreSQL — survit au redémarrage
+- NFR7 : Body JSON max 5MB
+- NFR8 : Composants Moteur bimodaux (workflow/libre)
+- NFR9 : Enrichissement prompts optionnel — string vide si pas de stratégie
+- NFR10 : `articles.completed_checks` TEXT[] source unique ; checks Moteur `moteur:*`
+- NFR11 : Scraping SERP unique (Lieutenants) — cascade vers Lexique (TF-IDF)
+- NFR12 : Seuils scoring dans `shared/kpi-scoring.ts` + tooltip transparents
+- NFR13 : Pas de duplication composants — prop `mode: 'workflow' | 'libre'`
+- NFR14 : Prompts `.md` séparés — enrichissement via `loadPrompt()`
+- NFR15 : Organisation par domaine (stores/composables/services)
+- NFR16 : Tests Vitest miroir + Playwright browser
+- NFR17 : Tooling qualité (oxlint, eslint, prettier, knip, madge, husky)
 
 ### FR Coverage Map
 
-| FR | Epic | Description |
-|----|------|-------------|
-| FR1 | Epic 6 | 2 phases visuelles (Générer, Valider) |
-| FR2 | Epic 6 | Navigation libre entre 2 phases |
-| FR3 | ~~Déjà fait~~ | Sélection article obligatoire |
-| FR4 | Epic 9 | Local fusionné déplacé vers Dashboard |
-| FR5 | ~~Déjà fait~~ | Retrait Content Gap |
-| FR6 | ~~Déjà fait~~ | Discovery IA |
-| FR7 | ~~Déjà fait~~ | Scan Douleur Intent |
-| FR8 | ~~Déjà fait~~ | Traduction douleur → mots-clés |
-| FR9 | ~~Déjà fait~~ | Verrouillage conditionnel Discovery/Douleur |
-| FR10 | Epic 6 | Capitaine pré-rempli + input alternatif + historique slider |
-| FR11 | Epic 6 | Feu tricolore GO/ORANGE/NO-GO + 6 KPIs |
-| FR12 | Epic 6 | Seuils contextuels par niveau article |
-| FR13 | Epic 6 | CPC asymétrique |
-| FR14 | Epic 6 | NO-GO automatique si zéro signal |
-| FR15 | Epic 6 | Découpage racine longue traîne |
-| FR16 | Epic 6 | Barres progression + tooltip seuils |
-| FR17 | Epic 6 | Panel IA expert SEO streaming |
-| FR18 | Epic 6 | Forcer GO (libre arbitre) |
-| FR19 | Epic 6 | Feedback NO-GO orienté (3 catégories) |
-| FR20 | Epic 6 | Lock/unlock Capitaine + débloque Lieutenants |
-| FR21 | Epic 7 | En-tête Capitaine verrouillé + niveau article |
-| FR22 | Epic 7 | Bouton "Analyser SERP" + curseur 3-10 |
-| FR23 | Epic 7 | 3 sections dépliables (Hn, PAA, Groupes) |
-| FR24 | Epic 7 | Badges provenance [SERP][PAA][Groupe] + pertinence |
-| FR25 | Epic 7 | Sélection checkbox + compteur recommandé |
-| FR26 | Epic 7 | Curseur SERP intelligent |
-| FR27 | Epic 7 | Panel IA structure Hn |
-| FR28 | Epic 7 | Lock Lieutenants → débloque Lexique |
-| FR29 | Epic 8 | TF-IDF sur données SERP héritées |
-| FR30 | Epic 8 | 3 niveaux (Obligatoire/Différenciateur/Optionnel) + densité/page |
-| FR31 | Epic 8 | Checkbox + pré-cochage obligatoires |
-| FR32 | Epic 8 | Panel IA lexical |
-| FR33 | Epic 8 | Validation finale → ArticleKeywords store |
-| FR34 | Epic 6 | Pas d'action auto au changement sous-onglet |
-| FR35 | Epic 6 | KPIs bruts toujours visibles |
-| FR36 | Epic 6 | Cache TTL + refresh |
-| FR37 | Epic 9 | Intention/Audit/Local retirés du Moteur |
-| FR38 | Epic 9 | Vue Dashboard indépendante |
-| FR39 | Epic 10 | Checks modifiés (capitaine_locked, lieutenants_locked, lexique_validated) |
-| FR40 | Epic 10 | Dots progression (●/○) 5 checks |
-| FR41 | Epic 10 | Checks automatiques (5 étapes) |
-| FR42 | Epic 10 | Bandeaux transition adaptés |
-| FR43 | Epic 10 | Ignorer le bandeau |
-| FR44 | ~~Déjà fait~~ | Contexte stratégique collapsable |
-| FR45 | ~~Déjà fait~~ | Enrichissement prompts IA |
-| FR46 | Epic 10 | Labo accessible Navbar/Dashboard |
-| FR47 | Epic 10 | Verdict GO/NO-GO en mode libre |
-| FR48 | Epic 10 | Saisie mot-clé libre dans le Labo |
-| FR49 | ~~Déjà fait~~ | Cache systématique par service |
-| FR50 | ~~Déjà fait~~ | Rechargement automatique résultats |
-| FR51 | ~~Déjà fait~~ | Pas de re-call API si cache valide |
+| FR | Epic | Description | Statut |
+|----|------|-------------|--------|
+| FR1-FR4 | Epic 6 | Moteur 3 phases / 6 onglets | ✅ Livré |
+| FR5-FR7 | Epic 1 | Phase ① Explorer (Discovery + Radar) | ✅ Livré |
+| FR8-FR18 | Epic 6 | Capitaine verdict GO/NO-GO | ✅ Livré |
+| FR19-FR26 | Epic 7 | Lieutenants SERP | ✅ Livré |
+| FR27-FR31 | Epic 8 | Lexique TF-IDF | ✅ Livré |
+| FR32-FR34 | Epic 11 | Phase ③ Finalisation | ✅ Livré (post-plan initial) |
+| FR35-FR37 | Epic 6 | Règles transversales | ✅ Livré |
+| FR38-FR39 | Epic 9 | Explorateur + Dashboard | ✅ Livré |
+| FR40-FR43 | Epic 10 | Dots + checks + bandeaux | ✅ Livré |
+| FR44-FR45 | Epic 3 | Pont Cerveau→Moteur | ✅ Livré |
+| FR46-FR48 | Epic 5 | Labo mode libre | ✅ Livré |
+| FR49-FR52 | Epic 4 + Epic 12 | Cache + PostgreSQL | ✅ Livré |
+| FR53-FR54 | Epic 13 | Cerveau 6 étapes | ✅ Livré |
+| FR55-FR60 | Epic 14 | Rédaction pipeline | ✅ Livré |
 
-## Epics précédents (1-5) — Implémentés
+---
 
-### Epic 1 : Moteur structuré en 3 phases ✅
-L'utilisateur navigue dans un Moteur organisé en 3 phases visuelles claires (Générer, Valider, Assigner) avec fusion Local+Maps, retrait Content Gap, et message inline dans l'Assignation.
-**Statut :** Implémenté (commit c21a56e) — sera refactoré par Epic 6
+## Epics livrés (vue synthétique)
+
+### Epic 1 : Moteur structuré en phases ✅
+Navigation du Moteur en phases visuelles claires. L'implémentation finale est en **3 phases** (Explorer, Valider, Finalisation), pas 2 comme initialement prévu — Phase ③ Finalisation ajoutée comme récap read-only.
+**Statut :** Livré.
 
 ### Epic 2 : Progression automatique et guidage ✅
-L'utilisateur voit sa progression par article (dots ●/○) dans la liste et reçoit des suggestions de transition quand une phase est complète.
-**Statut :** Implémenté — sera mis à jour par Epic 10 (7→5 checks)
+Dots ●/○ par article, suggestions de transition quand une phase est complète. Implémenté avec les 5 checks `moteur:*` (préfixés par workflow).
+**Statut :** Livré.
 
 ### Epic 3 : Pont Cerveau→Moteur ✅
-Le contexte stratégique du Cerveau (cible, angle, promesse) est visible dans le Moteur et enrichit silencieusement tous les prompts IA.
-**Statut :** Implémenté — Story 3.3 (indicateur alignement) retirée du nouveau PRD
+Contexte stratégique visible (`MoteurStrategyContext`) et injecté dans tous les prompts IA via `{{strategy_context}}`.
+**Statut :** Livré. Story 3.3 (indicateur alignement stratégique) non implémentée — reste en backlog.
 
 ### Epic 4 : Cache systématique et persistance ✅
-L'utilisateur retrouve tous ses résultats à la reprise d'un article sans re-appels API.
-**Statut :** Implémenté — le pattern sera étendu aux nouveaux services (Capitaine, SERP, TF-IDF)
+Pattern cache étendu à tous les services externes. Cache à deux niveaux : `api_cache` (TTL) + `keyword_metrics` (cross-article permanent).
+**Statut :** Livré.
 
 ### Epic 5 : Labo — Recherche libre ✅
-L'utilisateur vérifie un mot-clé hors workflow (sans article ni cocon) depuis une vue dédiée accessible dans la Navbar.
-**Statut :** Implémenté — sera mis à jour par Epic 10 (composants GO/NO-GO)
+Vue `/labo` utilisant les mêmes composants que le Moteur en mode `libre`.
+**Statut :** Livré.
 
-## Nouveaux Epics (6-10)
+### Epic 6 : Moteur 3 phases + Verdict GO/NO-GO du Capitaine ✅
+6 KPIs contextuels, feu tricolore GO/ORANGE/NO-GO, seuils par niveau article, panel IA streaming, lock/unlock.
+**Statut :** Livré.
 
-### Epic 6 : Moteur 2 phases + Verdict GO/NO-GO du Capitaine
-L'utilisateur valide la viabilité de son mot-clé principal via un verdict clair (feu tricolore GO/ORANGE/NO-GO) avec 6 KPIs contextuels adaptés au niveau d'article (Pilier/Intermédiaire/Spécifique). Le Moteur passe de 3 à 2 phases visuelles. Le sous-onglet Capitaine est le cœur du workflow de validation.
-**FRs covered:** FR1, FR2, FR10, FR11, FR12, FR13, FR14, FR15, FR16, FR17, FR18, FR19, FR20, FR34, FR35, FR36
+### Epic 7 : Lieutenants — Analyse SERP ✅
+Scraping SERP top 3-10, Hn + PAA + Groupes, badges multi-source, sélection avec compteur recommandé.
+**Statut :** Livré.
 
-### Epic 7 : Lieutenants — Analyse SERP des concurrents
-L'utilisateur identifie ses mots-clés secondaires (H2/H3) en analysant la SERP réelle des concurrents top 3-10, avec des candidats présentés par badges de pertinence et provenance multi-source. Un seul scraping alimente Hn, PAA et Groupes.
-**FRs covered:** FR21, FR22, FR23, FR24, FR25, FR26, FR27, FR28
+### Epic 8 : Lexique TF-IDF + Validation finale ✅
+TF-IDF sur contenus SERP hérités (zéro requête), 3 niveaux, validation finale dans ArticleKeywords.
+**Statut :** Livré.
 
-### Epic 8 : Lexique TF-IDF + Validation finale
-L'utilisateur extrait le champ lexical sémantique des concurrents par TF-IDF (zéro requête supplémentaire), valide les termes en 3 niveaux (Obligatoire/Différenciateur/Optionnel), puis verrouille l'ensemble complet (capitaine + lieutenants + lexique) prêt pour la rédaction.
-**FRs covered:** FR29, FR30, FR31, FR32, FR33
+### Epic 9 : Explorateur (Intention / Audit / Local) ✅
+`ExplorateurView` (`/explorateur`) découplé du Moteur pour les analyses hors workflow de validation.
+**Statut :** Livré.
 
-### Epic 9 : Dashboard Explorateur — Extraction Intention, Audit, Local
-L'utilisateur consulte les outils Intention (SERP intent), Audit (cocon complet) et Local (local vs national + Maps) dans un espace indépendant, découplé du workflow de validation du Moteur.
-**FRs covered:** FR4, FR37, FR38
+### Epic 10 : Progression 5 checks + Guidage + Labo GO/NO-GO ✅
+5 dots, bandeaux de transition, verdict Capitaine disponible en mode libre dans le Labo.
+**Statut :** Livré.
 
-### Epic 10 : Progression 5 checks + Guidage + Labo GO/NO-GO
-L'utilisateur voit sa progression par article mise à jour (5 dots : discovery, radar, capitaine, lieutenants, lexique), reçoit des bandeaux de transition adaptés, et peut utiliser le verdict GO/NO-GO Capitaine en mode libre dans le Labo.
-**FRs covered:** FR39, FR40, FR41, FR42, FR43, FR46, FR47, FR48
+### Epic 11 : Phase ③ Finalisation (ajout post-plan initial) ✅
+Onglet read-only affichant le récap des 3 verrouillages de Phase ②, lien vers la Rédaction.
+**Statut :** Livré.
+
+### Epic 12 : Migration PostgreSQL ✅
+Migration des fichiers JSON locaux vers PostgreSQL (pg 8.20). `scripts/migrate-slug-to-id.ts`, backup `_backup_pg_20260418.sql`, archivage de l'ancien JSON dans `data/_archive/`.
+**Statut :** Livré.
+
+### Epic 13 : Cerveau — Stratégie en 6 étapes ✅
+Cible, Douleur, Aiguillage, Angle, Promesse, CTA. Chaque étape avec suggestion IA, approfondissement, consolidation, validation.
+**Statut :** Livré.
+
+### Epic 14 : Rédaction — Pipeline complet ✅
+Brief → Sommaire streamé → Article streamé section par section → Meta → Éditeur TipTap avec SEO scoring live + actions contextuelles.
+**Statut :** Livré.
+
+### Epic 15 : Consolidation — Organisation par domaine + Qualité ✅
+Refactor stores (5 domaines), composables (5 domaines), services (7 domaines). Purge des exports morts, husky + lint-staged, knip, madge.
+**Statut :** Livré (commits récents).
 
 ---
 
 ## Epic 1 : Moteur structuré en 3 phases
 
-L'utilisateur navigue dans un Moteur organisé en 3 phases visuelles claires (Générer, Valider, Assigner) avec fusion Local+Maps, retrait Content Gap, et message inline dans l'Assignation. Les composants internes des onglets existants sont préservés — seul le wrapper MoteurView et la navigation changent.
+L'utilisateur navigue dans un Moteur organisé en 3 phases visuelles claires : Phase ① Explorer, Phase ② Valider, Phase ③ Finalisation. Les composants internes sont préservés — seul le wrapper `MoteurView` et la navigation structurent les phases.
 
-### Story 1.1 : Layout 3 phases, navigation et sélection article
+### Story 1.1 : Layout 3 phases + navigation + sélection article ✅
 
 As a consultant SEO,
 I want le Moteur organisé en 3 phases visuelles avec navigation libre et sélection d'article obligatoire,
-So that je comprends immédiatement la structure du workflow sans me perdre dans 10 onglets plats.
+So that je comprends immédiatement la structure du workflow.
 
-**Acceptance Criteria:**
+**Acceptance Criteria (livrés) :**
 
-**Given** l'utilisateur accède à la vue Moteur
-**When** il arrive sur la page
-**Then** il voit 3 groupes de phases visuellement distincts : ① Générer, ② Valider, ③ Assigner
-**And** chaque phase affiche les noms de ses onglets
+- L'utilisateur voit 3 groupes de phases : ① Explorer, ② Valider, ③ Finalisation
+- Navigation libre entre toutes les phases sans blocage
+- Sans article sélectionné, les actions ne sont pas accessibles (message invite à sélectionner)
+- Avec un article sélectionné, Phase ① Explorer est affichée par défaut
 
-**Given** l'utilisateur est sur la Phase ① Générer
-**When** il clique sur la Phase ② Valider ou ③ Assigner
-**Then** il navigue directement vers la phase choisie sans aucun blocage
-**And** il peut revenir à n'importe quelle phase à tout moment
-
-**Given** l'utilisateur arrive sur le Moteur sans article sélectionné
-**When** il n'a pas encore choisi d'article via le SelectedArticlePanel
-**Then** les onglets du Moteur ne sont pas accessibles
-**And** un message invite à sélectionner un article
-
-**Given** l'utilisateur sélectionne un article dans le SelectedArticlePanel
-**When** l'article est sélectionné
-**Then** tous les onglets des 3 phases deviennent accessibles
-**And** la Phase ① Générer est affichée par défaut
-
-### Story 1.2 : Phase ① Générer — Discovery, Douleur Intent, Douleur avec verrouillage
+### Story 1.2 : Phase ① Explorer — Discovery + Radar ✅
 
 As a consultant SEO,
-I want les onglets Discovery, Douleur Intent et Douleur regroupés dans la Phase Générer avec verrouillage intelligent,
-So that je sais quels outils utiliser pour trouver des mots-clés candidats et je ne perds pas de temps si j'ai déjà des mots-clés validés.
+I want les onglets Discovery et Radar (Douleur Intent) regroupés dans la Phase Explorer toujours accessible,
+So that je peux lancer des recherches continues quelle que soit l'avancée du workflow.
 
-**Acceptance Criteria:**
+**Acceptance Criteria (livrés) :**
 
-**Given** un article est sélectionné et aucun mot-clé n'est encore validé
-**When** l'utilisateur ouvre la Phase ① Générer
-**Then** les onglets Discovery (FR6), Douleur Intent (FR7) et Douleur (FR8) sont tous accessibles
-**And** l'utilisateur peut lancer une analyse Discovery IA
-**And** l'utilisateur peut lancer un scan Douleur Intent (radar)
-**And** l'utilisateur peut traduire une douleur en mots-clés candidats
+- Phase ① Explorer contient 2 onglets : Discovery (IA) et Radar (Douleur Intent)
+- Discovery lance une analyse produisant des `ClassifiedKeyword[]` → émet `moteur:discovery_done`
+- Radar lance un scan intent → émet `moteur:radar_done`
+- Les deux onglets restent accessibles en permanence, même après verrouillage du Capitaine
+- Les composants existants (`KeywordDiscoveryTab`, `DouleurIntentScanner`) fonctionnent
 
-**Given** un article est sélectionné et des mots-clés sont déjà validés pour cet article
-**When** l'utilisateur ouvre la Phase ① Générer
-**Then** les onglets Discovery et Douleur Intent affichent un état verrouillé avec un message explicatif
-**And** l'onglet Douleur reste accessible (traduction libre)
-
-**Given** l'utilisateur lance Discovery IA
-**When** l'analyse se termine avec des résultats
-**Then** les mots-clés candidats sont affichés
-**And** les composants internes existants (KeywordDiscoveryTab, DouleurIntentScanner, PainTranslator) fonctionnent comme avant
-
-### Story 1.3 : Phase ② Valider — Validation, Exploration, Audit, Local fusionné + retrait Content Gap
+### Story 1.3 : Phase ② Valider — 3 onglets séquentiels ✅
 
 As a consultant SEO,
-I want les onglets de validation regroupés dans la Phase Valider avec Local fusionné et sans Content Gap,
-So that je valide mes mots-clés candidats avec toutes les données disponibles dans un espace épuré.
+I want la Phase Valider organisée en 3 onglets séquentiels (Capitaine → Lieutenants → Lexique) avec gating souple,
+So that je valide mes mots-clés étape par étape sans être bloqué dans la navigation.
 
-**Acceptance Criteria:**
+**Acceptance Criteria (livrés) :**
 
-**Given** un article est sélectionné
-**When** l'utilisateur ouvre la Phase ② Valider
-**Then** il voit 4 onglets : Validation, Exploration, Audit, Local
-**And** le Content Gap n'apparaît PAS dans le Moteur
+- Phase ② Valider contient 3 onglets : Capitaine, Lieutenants, Lexique
+- Capitaine est actif par défaut
+- Navigation libre vers les 3 onglets (pas de blocage dur)
+- Lieutenants et Lexique affichent un message si leur prérequis n'est pas verrouillé (gating souple, consultation autorisée)
 
-**Given** l'utilisateur ouvre l'onglet Validation
-**When** il lance la vérification
-**Then** la Validation multi-sources (FR10) fonctionne comme avant avec les composants existants
-
-**Given** l'utilisateur ouvre l'onglet Exploration
-**When** il lance l'analyse
-**Then** l'Exploration SERP + autocomplete (FR11) fonctionne comme avant
-
-**Given** l'utilisateur ouvre l'onglet Audit
-**When** il consulte les données d'un mot-clé
-**Then** les données DataForSEO (volume, difficulté, CPC) s'affichent (FR12)
-
-**Given** l'utilisateur ouvre l'onglet Local
-**When** l'onglet s'affiche
-**Then** il voit deux sections dans un même onglet : ① Comparaison Local/National (ex-LocalComparisonStep) et ② Maps & GBP (ex-MapsStep)
-**And** les deux sections fonctionnent comme avant dans leurs composants internes respectifs
-
-### Story 1.4 : Phase ③ Assigner — Assignation avec gating souple
+### Story 1.4 : Phase ③ Finalisation — Récap read-only ✅
 
 As a consultant SEO,
-I want l'onglet Assignation dans la Phase Assigner avec un message d'aide si je n'ai pas de capitaine validé,
-So that je suis guidé vers l'Audit si nécessaire au lieu d'être bloqué.
+I want un onglet Finalisation read-only qui résume mes validations et me dirige vers la Rédaction,
+So that j'ai une vue finale claire avant de passer à la rédaction.
 
-**Acceptance Criteria:**
+**Acceptance Criteria (livrés) :**
 
-**Given** un article est sélectionné et au moins un mot-clé est validé comme capitaine dans l'Audit
-**When** l'utilisateur ouvre la Phase ③ Assigner
-**Then** l'onglet Assignation affiche l'interface habituelle (KeywordEditor)
-**And** l'utilisateur peut définir le capitaine, les lieutenants et le lexique (FR14)
-
-**Given** un article est sélectionné mais aucun mot-clé n'est validé comme capitaine
-**When** l'utilisateur ouvre la Phase ③ Assigner
-**Then** un message explicatif (AssignmentGate) s'affiche : "Aucun mot-clé capitaine validé"
-**And** le message contient un lien cliquable vers l'onglet Audit (Phase ② Valider)
-**And** la navigation n'est PAS bloquée — l'utilisateur peut quand même accéder à l'Assignation
-
-**Given** l'utilisateur clique sur le lien vers l'Audit dans le message AssignmentGate
-**When** la navigation se fait
-**Then** l'utilisateur est redirigé vers l'onglet Audit dans la Phase ② Valider
+- L'onglet Finalisation est accessible en navigation
+- Quand les 3 checks Phase ② (`capitaine_locked`, `lieutenants_locked`, `lexique_validated`) sont tous présents, l'onglet passe de "en attente" à "disponible"
+- `FinalisationRecap.vue` affiche : Capitaine, Lieutenants, Lexique validés
+- Un bouton/lien redirige vers `/cocoon/:cocoonId/redaction`
 
 ---
 
 ## Epic 2 : Progression automatique et guidage
 
-L'utilisateur voit sa progression par article (dots ●/○) dans la liste du Moteur et reçoit des suggestions de transition quand une phase est complète. Le store `article-progress` avec `completedChecks[]` est la source unique de vérité (NFR10).
+L'utilisateur voit sa progression par article (dots ●/○) dans la liste du Moteur. Source unique de vérité : `articles.completed_checks` TEXT[] (NFR10).
 
-### Story 2.1 : Dots de progression par article dans la liste
+### Story 2.1 : Dots de progression par article dans la liste ✅
 
-As a consultant SEO,
-I want voir des dots de progression (●/○) à côté de chaque article dans la liste du Moteur,
-So that je sais immédiatement quels articles sont avancés et lesquels restent à traiter.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- Dots ● (remplis) / ○ (vides) à côté du nom de chaque article
+- Total : 5 dots (un par check `moteur:*`)
+- Article sans check → 5 dots vides (`○○○○○`)
+- Article avec 3 checks → 3 dots pleins + 2 vides (`●●●○○`)
+- Dots groupés visuellement par phase (2 Explorer + 3 Valider)
 
-**Given** l'utilisateur est sur le Moteur avec la liste des articles affichée
-**When** un article a des checks complétés dans article-progress (completedChecks[])
-**Then** des dots ● (remplis) et ○ (vides) s'affichent à côté du nom de l'article
-**And** le nombre total de dots est 7 (un par check standardisé)
+### Story 2.2 : Checks automatiques via emit `check-completed` ✅
 
-**Given** un article n'a aucun check complété
-**When** il s'affiche dans la liste
-**Then** 7 dots vides (○○○○○○○) apparaissent
+**Acceptance Criteria (livrés) :**
 
-**Given** un article a 4 checks complétés sur 7
-**When** il s'affiche dans la liste
-**Then** 4 dots remplis et 3 vides (●●●●○○○) apparaissent
-**And** les dots sont groupés visuellement par phase (2 Générer + 3 Valider + 2 Assigner)
+- Chaque composant Moteur en mode `workflow` émet `check-completed` avec la constante appropriée
+- `MoteurView` intercepte et appelle `progressStore.addCheck(articleId, check)`
+- Backend persiste via `POST /api/articles/:articleId/progress/check`
+- Pas de doublon : `completed_checks` utilise `array_append DISTINCT` côté DB
+- Constantes : `MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED` (dans `shared/constants/workflow-checks.constants.ts`)
 
-### Story 2.2 : Checks automatiques via emit check-completed
+### Story 2.3 : Bandeaux de transition entre phases ✅
 
-As a consultant SEO,
-I want que le système coche automatiquement les étapes quand un onglet produit un résultat,
-So that ma progression se met à jour sans action manuelle de ma part.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
-
-**Given** un article est sélectionné et l'utilisateur est dans le Moteur
-**When** Discovery IA termine son analyse avec des résultats
-**Then** le composant émet `check-completed` avec la valeur `discovery_done`
-**And** MoteurView intercepte l'événement et appelle `progressStore.addCheck(slug, 'discovery_done')`
-**And** le backend persiste le check via `POST /api/articles/:slug/progress/check`
-
-**Given** un check est déjà complété pour un article (ex: `discovery_done`)
-**When** l'utilisateur relance Discovery pour le même article
-**Then** le check n'est PAS ajouté en doublon dans completedChecks[]
-
-**Given** les 7 checks standardisés sont : `discovery_done`, `radar_done`, `intent_done`, `audit_done`, `local_done`, `captain_chosen`, `assignment_done`
-**When** chaque onglet correspondant produit un résultat
-**Then** le check correspondant est émis et persisté
-**And** les dots de progression (Story 2.1) se mettent à jour en temps réel
-
-**Given** la route backend `POST /api/articles/:slug/progress/check` reçoit un check
-**When** le check est valide (fait partie des 7 standardisés)
-**Then** le check est ajouté à `completedChecks[]` dans `data/article-progress.json`
-**And** la réponse est `{ data: { slug, completedChecks } }`
-
-### Story 2.3 : Bandeaux de transition entre phases
-
-As a consultant SEO,
-I want un bandeau de suggestion quand tous les checks d'une phase sont complétés,
-So that je sais quand passer à la phase suivante sans être bloqué si je veux rester.
-
-**Acceptance Criteria:**
-
-**Given** l'article en cours a tous les checks de la Phase ① Générer complétés (`discovery_done` + `radar_done`)
-**When** l'utilisateur est dans la Phase ① Générer
-**Then** un bandeau PhaseTransitionBanner s'affiche : "Phase Générer complète — passer à Valider ?"
-**And** le bandeau contient un bouton pour naviguer vers la Phase ② Valider
-
-**Given** l'article en cours a tous les checks de la Phase ② Valider complétés (`intent_done` + `audit_done` + `local_done`)
-**When** l'utilisateur est dans la Phase ② Valider
-**Then** un bandeau s'affiche : "Phase Valider complète — passer à Assigner ?"
-
-**Given** un bandeau de transition est affiché
-**When** l'utilisateur clique sur le bouton de navigation
-**Then** il est redirigé vers la phase suivante
-
-**Given** un bandeau de transition est affiché
-**When** l'utilisateur l'ignore et continue à travailler dans la phase actuelle
-**Then** le bandeau reste visible mais ne bloque rien
-**And** l'utilisateur peut fermer/réduire le bandeau
+- Tous les checks Explorer présents (`discovery_done` + `radar_done`) → bandeau "Phase Explorer complète — passer à Valider ?"
+- Tous les checks Valider présents (capitaine + lieutenants + lexique) → bandeau "Validation complète — Phase Finalisation débloquée"
+- Bandeau avec bouton de navigation vers la phase suivante
+- L'utilisateur peut ignorer / fermer le bandeau — pas de blocage
 
 ---
 
 ## Epic 3 : Pont Cerveau→Moteur
 
-Le contexte stratégique du Cerveau (cible, angle, promesse) est visible dans le Moteur et enrichit silencieusement tous les prompts IA. L'enrichissement est optionnel (NFR9) — si pas de stratégie, les prompts fonctionnent normalement.
+Le contexte stratégique du Cerveau est visible dans le Moteur et enrichit silencieusement tous les prompts IA. Enrichissement optionnel (NFR9).
 
-### Story 3.1 : Contexte stratégique collapsable dans le Moteur
+### Story 3.1 : Contexte stratégique collapsable dans le Moteur ✅
 
-As a consultant SEO,
-I want voir un résumé du contexte stratégique du Cerveau (cible, angle, promesse) en haut du Moteur,
-So that je garde ma stratégie en tête pendant la recherche de mots-clés.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- `MoteurStrategyContext` collapsable en haut du Moteur
+- Affiche cible, angle, promesse, douleur, CTA du cocon
+- Collapsé par défaut
+- Si pas de stratégie définie pour le cocon, la section ne s'affiche pas
+- Route : `GET /api/strategy/:cocoonId` (table `strategies` en DB)
 
-**Given** un article est sélectionné dans un cocon qui a une stratégie définie dans le Cerveau
-**When** l'utilisateur est sur le Moteur
-**Then** une section collapsable MoteurContextRecap s'affiche en haut, montrant : cible, angle, promesse du cocon
-**And** la section est fermée par défaut (collapsée)
+### Story 3.2 : Enrichissement automatique des prompts IA ✅
 
-**Given** un article est sélectionné dans un cocon qui n'a PAS de stratégie définie
-**When** l'utilisateur est sur le Moteur
-**Then** la section MoteurContextRecap ne s'affiche PAS (pas de section vide)
+**Acceptance Criteria (livrés) :**
 
-**Given** la route backend `GET /api/cocoons/:id/strategy/context` est appelée
-**When** une stratégie existe pour le cocon
-**Then** la réponse contient `{ data: { cible, angle, promesse, ... } }`
+- `loadPrompt()` injecte `{{strategy_context}}` si `cocoonId` fourni et stratégie existe
+- Si pas de stratégie ou pas de `cocoonId`, `{{strategy_context}}` → string vide
+- Les fichiers `.md` ne sont pas modifiés — enrichissement en pré-processing
+- Prompts concernés : `intent-keywords.md`, `pain-translate.md`, `capitaine-ai-panel.md`, `propose-lieutenants.md`, `lieutenants-hn-structure.md`, `lexique-ai-panel.md`
 
-**Given** la route backend `GET /api/cocoons/:id/strategy/context` est appelée
-**When** aucune stratégie n'existe pour le cocon
-**Then** la réponse contient `{ data: null }`
+### Story 3.3 : Indicateur d'alignement stratégique dans l'Audit ⏸️
 
-### Story 3.2 : Enrichissement automatique des prompts IA
-
-As a consultant SEO,
-I want que le contexte stratégique du Cerveau soit injecté automatiquement dans les prompts IA du Moteur,
-So that les suggestions IA (Discovery, PainTranslator, etc.) sont alignées avec ma stratégie sans action de ma part.
-
-**Acceptance Criteria:**
-
-**Given** un prompt IA est chargé via `loadPrompt()` avec un `cocoonId` fourni
-**When** une stratégie existe pour ce cocon dans `data/strategies/`
-**Then** la variable `{{strategy_context}}` dans le prompt est remplacée par le résumé stratégique (cible, angle, promesse)
-**And** le prompt enrichi est envoyé à Claude API
-
-**Given** un prompt IA est chargé via `loadPrompt()` avec un `cocoonId` fourni
-**When** aucune stratégie n'existe pour ce cocon
-**Then** la variable `{{strategy_context}}` est remplacée par une string vide
-**And** le prompt fonctionne normalement sans enrichissement (NFR9)
-
-**Given** un prompt IA est chargé via `loadPrompt()` sans `cocoonId` (ex: depuis le Labo)
-**When** le prompt est traité
-**Then** `{{strategy_context}}` est remplacé par une string vide
-**And** aucun appel au service de stratégie n'est effectué
-
-**Given** les prompts `.md` dans `server/prompts/`
-**When** l'enrichissement est implémenté
-**Then** les fichiers `.md` sources ne sont PAS modifiés — l'enrichissement est un pré-processing en amont (NFR12)
-
-### Story 3.3 : Indicateur d'alignement stratégique dans l'Audit
-
-As a consultant SEO,
-I want voir un indicateur d'alignement stratégique pour chaque mot-clé dans l'Audit,
-So that je sais immédiatement quels mots-clés correspondent à ma stratégie de cocon.
-
-**Acceptance Criteria:**
-
-**Given** l'utilisateur est dans l'onglet Audit avec des données DataForSEO affichées
-**When** une stratégie existe pour le cocon de l'article en cours
-**Then** une colonne "Alignement" s'affiche dans le KeywordAuditTable
-**And** chaque mot-clé affiche un score/indicateur basé sur le matching textuel avec la cible et la localisation de la stratégie
-
-**Given** l'utilisateur est dans l'Audit et aucune stratégie n'existe pour le cocon
-**When** le tableau s'affiche
-**Then** la colonne "Alignement" ne s'affiche PAS (pas de colonne vide)
-
-**Given** un mot-clé contient des termes qui matchent la cible de la stratégie
-**When** l'indicateur d'alignement est calculé
-**Then** le score est plus élevé (ex: badge vert ou score numérique)
-**And** le calcul est un matching textuel simple (pas d'appel IA)
+**Statut :** NON IMPLÉMENTÉE — reste en backlog.
+L'Audit a été extrait vers l'Explorateur, cette story peut être reconsidérée dans ce contexte.
 
 ---
 
-## Epic 4 : Cache systématique et persistance
+## Epic 4 : Cache systématique + persistance PostgreSQL
 
-L'utilisateur retrouve tous ses résultats à la reprise d'un article sans re-appels API. Le pattern cache `getOrFetch<T>()` est étendu uniformément à tous les services API externes (NFR5, NFR6).
+L'utilisateur retrouve tous ses résultats à la reprise d'un article. Pattern cache multi-niveau : `keyword_metrics` (cross-article permanent) + `api_cache` (TTL).
 
-### Story 4.1 : Pattern cache getOrFetch uniforme pour tous les services
+### Story 4.1 : Cache multi-niveau uniforme ✅
 
-As a consultant SEO,
-I want que tous les résultats d'API externes soient cachés automatiquement,
-So that je ne paie jamais deux fois pour la même requête et que l'app reste rapide.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- `keyword_metrics` (table DB) : métriques partagées entre articles (Volume, KD, CPC, PAA) — consultées AVANT tout autre cache
+- `api_cache` (table DB) : cache TTL par requête hashée (consulté après `keyword_metrics`)
+- Services concernés : `dataforseo.service`, `serp-analysis.service`, `autocomplete.service`, `paa-cache.service`, `discovery-cache.service`, `radar-cache.service`
+- `dataforseo-cost-guard` contrôle le quota mensuel avant tout appel DataForSEO
+- Purge horaire automatique : `DELETE FROM api_cache WHERE expires_at < NOW()` (job dans `server/index.ts`)
 
-**Given** le pattern cache DataForSEO existant dans `dataforseo.service.ts`
-**When** le pattern `getOrFetch<T>()` est extrait et uniformisé
-**Then** une fonction utilitaire est disponible pour tous les services backend
+### Story 4.2 : Rechargement automatique par article ✅
 
-**Given** un service (Discovery, Intent, Validation, Local, Autocomplete) reçoit une requête
-**When** un résultat valide existe déjà en cache (fichier JSON sur disque) pour la même clé
-**Then** le résultat est retourné depuis le cache sans appel API externe (NFR5)
-**And** la réponse est retournée en < 200ms (NFR1)
+**Acceptance Criteria (livrés) :**
 
-**Given** un service reçoit une requête sans résultat en cache
-**When** l'appel API externe est effectué et retourne un résultat
-**Then** le résultat est sauvegardé sur disque (fichier JSON) via `writeJson()` (NFR6)
-**And** les prochaines requêtes identiques utiliseront le cache
+- Sélection d'un article → `article-progress.store` charge les checks depuis DB
+- Les composants Moteur réhydratent leurs états à partir des caches DB
+- Aucun re-call API si cache valide
+- Changement d'article → reset des stores et rechargement du nouvel article
 
-**Given** l'application est redémarrée
-**When** un service reçoit une requête pour une clé déjà cachée
-**Then** le résultat est rechargé depuis le fichier JSON sur disque
-**And** aucun appel API externe n'est effectué
+### Story 4.3 : Migration JSON → PostgreSQL ✅ (epic étendu)
 
-### Story 4.2 : Rechargement automatique des résultats par article
+**Acceptance Criteria (livrés) :**
 
-As a consultant SEO,
-I want que tous les résultats se rechargent automatiquement quand je reviens sur un article,
-So that je reprends exactement là où je m'étais arrêté sans manipulation.
-
-**Acceptance Criteria:**
-
-**Given** un article a des résultats sauvegardés (Discovery, Audit, Validation, Local, Intent)
-**When** l'utilisateur sélectionne cet article dans le Moteur
-**Then** tous les stores frontend se peuplent automatiquement avec les données cachées
-**And** les composants affichent les résultats sans re-appels API
-
-**Given** un article n'a aucun résultat sauvegardé
-**When** l'utilisateur le sélectionne
-**Then** les stores sont dans leur état initial (vides)
-**And** l'utilisateur peut lancer les analyses normalement
-
-**Given** l'utilisateur change d'article dans le Moteur
-**When** un nouvel article est sélectionné
-**Then** les résultats de l'ancien article sont remplacés par ceux du nouvel article (ou vidés si aucun cache)
-**And** les dots de progression reflètent l'état du nouvel article
+- Toutes les données chaudes en DB (articles, cocoons, silos, keywords, strategies, api_cache, keyword_metrics, article_explorations…)
+- Script de migration `scripts/migrate-slug-to-id.ts` (slug → id)
+- Backup SQL initial : `_backup_pg_20260418.sql`
+- Archives JSON déplacées vers `data/_archive/`
+- Plus aucun fichier JSON de données chaudes en racine `data/`
 
 ---
 
 ## Epic 5 : Labo — Recherche libre
 
-L'utilisateur vérifie un mot-clé hors workflow (sans article ni cocon) depuis une vue dédiée. Les composants sont les mêmes que le Moteur avec `mode='libre'` (NFR8, NFR11).
+`/labo` utilise les mêmes composants que le Moteur en mode `libre`. Pattern dual-mode via prop (NFR13).
 
-### Story 5.1 : Vue LaboView, route /labo et accès Navbar/Dashboard
+### Story 5.1 : Vue LaboView + route `/labo` ✅
 
-As a consultant SEO,
-I want accéder au Labo depuis la Navbar et le Dashboard pour faire de la recherche libre,
-So that je vérifie une intuition sur un mot-clé en quelques clics sans casser mon workflow.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- Route `/labo` enregistrée dans `src/router/index.ts` (lazy-loaded)
+- Accessible depuis la Navbar
+- Champ de saisie de mot-clé libre
+- Pas de sélection article/cocon requise
 
-**Given** l'utilisateur est n'importe où dans l'application
-**When** il clique sur "Labo" dans la Navbar
-**Then** il est redirigé vers la route `/labo`
-**And** la vue LaboView s'affiche avec un champ de saisie de mot-clé libre
+### Story 5.2 : Composants Moteur en mode libre ✅
 
-**Given** l'utilisateur est sur le Dashboard
-**When** il clique sur le lien/bouton d'accès au Labo
-**Then** il est redirigé vers `/labo`
+**Acceptance Criteria (livrés) :**
 
-**Given** l'utilisateur est sur le Labo
-**When** il saisit un mot-clé dans le champ libre (ex: "erp cloud pme")
-**Then** le mot-clé est prêt à être utilisé comme entrée pour les composants d'analyse
-**And** aucune sélection d'article ou de cocon n'est requise
-
-**Given** la route `/labo` est configurée dans Vue Router
-**When** l'utilisateur accède directement à `/labo`
-**Then** LaboView se charge en lazy loading (< 500ms — NFR3)
-
-### Story 5.2 : Composants Moteur en mode libre dans le Labo
-
-As a consultant SEO,
-I want utiliser les mêmes outils que le Moteur (Discovery, Douleur Intent, Exploration, Audit, Local) en mode libre dans le Labo,
-So that j'ai les mêmes capacités d'analyse sans le contexte d'un article.
-
-**Acceptance Criteria:**
-
-**Given** l'utilisateur est dans le Labo avec un mot-clé saisi
-**When** il lance Discovery, Douleur Intent, Exploration, Audit ou Local
-**Then** chaque composant fonctionne avec `mode='libre'` et `keywordQuery` comme entrée
-**And** aucun `articleSlug` ni `cocoonId` n'est passé aux composants
-
-**Given** un composant est en `mode='libre'`
-**When** il produit un résultat
-**Then** il n'émet PAS `check-completed` (pas de progression en mode libre)
-**And** les résultats ne sont PAS persistés en cache lié à un article
-
-**Given** un composant est en `mode='libre'`
-**When** il a besoin d'appeler une API
-**Then** il utilise le même service backend que le mode workflow
-**And** il n'y a PAS de composant dupliqué entre Moteur et Labo (NFR11)
-
-**Given** les composants du Moteur existants
-**When** ils sont adaptés pour le dual-mode
-**Then** ils acceptent une prop `mode: 'workflow' | 'libre'` (NFR8)
-**And** en mode `workflow`, ils utilisent `articleSlug` et émettent `check-completed`
-**And** en mode `libre`, ils utilisent `keywordQuery` et n'émettent pas de check
+- Chaque composant Moteur réutilisable accepte `mode: 'workflow' | 'libre'`
+- En mode `libre` : utilise `keywordQuery` comme entrée
+- En mode `libre` : pas d'émission `check-completed`, pas de persistance cache-article
+- Seuils par défaut = niveau "Intermédiaire" (NFR8)
 
 ---
 
-## Epic 6 : Moteur 2 phases + Verdict GO/NO-GO du Capitaine
+## Epic 6 : Moteur 3 phases + Verdict GO/NO-GO du Capitaine
 
-L'utilisateur valide la viabilité de son mot-clé principal via un verdict clair (feu tricolore GO/ORANGE/NO-GO) avec 6 KPIs contextuels adaptés au niveau d'article (Pilier/Intermédiaire/Spécifique). Le Moteur passe de 3 à 2 phases visuelles. Le sous-onglet Capitaine est le cœur du workflow de validation.
+Verdict feu tricolore (GO/ORANGE/NO-GO) + 6 KPIs contextuels par niveau article. Sous-onglet Capitaine = cœur du workflow de validation.
 
-### Story 6.1 : Restructuration Moteur 3→2 phases + navigation sous-onglets
+### Story 6.1 : Restructuration Moteur + navigation sous-onglets ✅
 
-As a consultant SEO,
-I want le Moteur restructuré en 2 phases (Générer, Valider) avec 3 sous-onglets séquentiels dans Valider (Capitaine, Lieutenants, Lexique),
-So that le workflow est aligné avec la logique GO/NO-GO et la Phase ③ Assigner ne pollue plus la navigation.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- Moteur en 3 phases visuelles : Explorer, Valider, Finalisation
+- Phase ② Valider contient 3 onglets (Capitaine, Lieutenants, Lexique)
+- Navigation libre (gating souple)
+- Aucune action automatique au changement d'onglet (FR35)
 
-**Given** l'utilisateur accède à la vue Moteur
-**When** il arrive sur la page
-**Then** il voit 2 groupes de phases visuellement distincts : ① Générer, ② Valider
-**And** la Phase ③ Assigner n'existe plus
+### Story 6.2 : Scoring contextuel + verdict feu tricolore + route API validate ✅
 
-**Given** l'utilisateur ouvre la Phase ② Valider
-**When** il clique dessus
-**Then** il voit 3 sous-onglets : Capitaine, Lieutenants, Lexique
-**And** le sous-onglet Capitaine est actif par défaut
+**Acceptance Criteria (livrés) :**
 
-**Given** l'utilisateur est sur le sous-onglet Capitaine
-**When** il clique sur Lieutenants ou Lexique
-**Then** il navigue librement vers le sous-onglet choisi sans blocage (FR2, FR34)
-**And** aucune action automatique ne se déclenche au changement de sous-onglet (FR34)
+- Route `POST /api/keywords/:keyword/validate` lance en parallèle : DataForSEO + Autocomplete + PAA + racine si longue traîne
+- Retourne 6 KPIs bruts + verdict GO/ORANGE/NO-GO + seuils appliqués
+- Seuils par niveau dans `shared/kpi-scoring.ts` (Pilier : Volume >1000, KD <40 ; Spécifique : Volume >30, KD <20)
+- GO : ≥4/6 verts, AUCUN rouge sur Volume/KD, PAA non-rouge
+- NO-GO auto si volume=0 ET PAA=0 ET autocomplete=0 (FR12)
+- CPC asymétrique : >2€ bonus, 0-2€ neutre, jamais rouge (FR11)
+- Cache via `keyword_metrics` cross-article (NFR5)
 
-**Given** le sous-onglet Lieutenants nécessite un Capitaine verrouillé pour agir
-**When** le Capitaine n'est PAS verrouillé et l'utilisateur ouvre Lieutenants
-**Then** le sous-onglet s'affiche en lecture seule avec un message explicatif (gating souple)
-**And** l'utilisateur peut consulter mais pas lancer d'actions
+### Story 6.3 : Interface Capitaine — Thermomètre + KPIs + tooltip seuils ✅
 
-### Story 6.2 : Scoring contextuel + Verdict feu tricolore + route API validate
+**Acceptance Criteria (livrés) :**
 
-As a consultant SEO,
-I want un feu tricolore GO/ORANGE/NO-GO calculé à partir de 6 KPIs (Volume, KD, CPC, PAA, Intent, Autocomplete) avec des seuils adaptés au niveau de mon article,
-So that je sais immédiatement si mon mot-clé est viable sans avoir à interpréter les données brutes moi-même.
+- `CaptainValidation.vue` orchestre l'affichage
+- `RadarThermometer` + `VerdictBar` pour le feu tricolore
+- 6 barres KPI avec zones vert/orange/rouge (`CaptainVerdictPanel`)
+- Tooltip au survol : seuils appliqués pour le niveau courant (FR14)
+- Valeurs numériques brutes toujours visibles à côté des barres (FR36)
+- Feedback NO-GO en 3 catégories (FR17)
 
-**Acceptance Criteria:**
+### Story 6.4 : Input alternatif + historique + découpage racine + forcer GO ✅
 
-**Given** un mot-clé Capitaine est soumis avec un niveau d'article (Pilier/Intermédiaire/Spécifique)
-**When** la route `POST /api/keywords/:keyword/validate` est appelée
-**Then** elle lance en parallèle : DataForSEO (volume, KD, CPC), Autocomplete, PAA
-**And** elle retourne les 6 KPIs bruts + le verdict (GO/ORANGE/NO-GO) + les seuils appliqués
+**Acceptance Criteria (livrés) :**
 
-**Given** le niveau d'article est "Pilier"
-**When** le scoring est calculé
-**Then** les seuils sont : Volume VERT >1000, KD VERT <40, CPC bonus >2€ (FR12)
-**And** le verdict GO nécessite ≥4/6 verts, AUCUN rouge sur Volume ou KD, PAA non-rouge
+- `CaptainInput` accepte un mot-clé alternatif
+- `CaptainCarousel` permet de naviguer dans l'historique des tests
+- Pas de re-call API pour la navigation historique (résultats en cache)
+- `CaptainInteractiveWords` affiche "Analyse racine" pour longue traîne (3+ mots, données faibles)
+- Le verdict reste sur le mot-clé ORIGINAL (racine = information complémentaire)
+- Bouton "Forcer GO" pour outrepasser le verdict ORANGE/NO-GO (FR16)
 
-**Given** le niveau d'article est "Spécifique"
-**When** le scoring est calculé
-**Then** les seuils sont : Volume VERT >30, KD VERT <20 (FR12)
+### Story 6.5 : Panel IA expert SEO streaming + lock/unlock Capitaine ✅
 
-**Given** volume=0 ET PAA=0 ET autocomplete=0
-**When** le scoring est calculé
-**Then** le verdict est NO-GO automatique avec raison "Aucun signal détecté" (FR14)
+**Acceptance Criteria (livrés) :**
 
-**Given** CPC = 0.5€
-**When** le scoring CPC est calculé
-**Then** le KPI CPC est "neutre" (ni vert, ni rouge — FR13)
-
-**Given** CPC = 3.2€
-**When** le scoring CPC est calculé
-**Then** le KPI CPC est "bonus vert" (FR13)
-
-**Given** un résultat valide existe en cache pour ce mot-clé + niveau
-**When** la même requête est envoyée
-**Then** le résultat est retourné depuis le cache sans appel API externe (NFR5)
-
-### Story 6.3 : Interface Capitaine — Thermomètre, KPIs, barres et tooltip seuils
-
-As a consultant SEO,
-I want voir le thermomètre avec le feu tricolore, chaque KPI avec une barre de progression colorée (vert/orange/rouge), et les seuils appliqués au survol,
-So that je comprends visuellement pourquoi le verdict est tel qu'il est et je peux vérifier les seuils.
-
-**Acceptance Criteria:**
-
-**Given** un mot-clé a été validé et les KPIs sont disponibles
-**When** le sous-onglet Capitaine s'affiche
-**Then** le thermomètre (RadarThermometer) affiche le score global et le feu tricolore GO/ORANGE/NO-GO
-**And** chaque KPI (Volume, KD, CPC, PAA, Intent, Autocomplete) est affiché avec une barre de progression (FR16)
-**And** les zones vert/orange/rouge sont visibles sur chaque barre
-
-**Given** l'utilisateur survole un KPI
-**When** le tooltip s'affiche
-**Then** il montre les seuils appliqués pour le niveau d'article courant (ex: "Volume — Pilier : VERT >1000, ORANGE 200-999, ROUGE <200") (FR16, NFR12)
-
-**Given** les KPIs bruts sont disponibles
-**When** l'interface s'affiche
-**Then** les valeurs numériques brutes sont TOUJOURS visibles à côté des barres (FR35)
-**And** le verdict ne masque jamais les données sources
-
-**Given** le verdict est NO-GO
-**When** l'interface affiche le feedback
-**Then** une des trois catégories est affichée : "Trop longue traîne" / "KPIs faibles" / "Hors sujet" avec explication (FR19)
-
-### Story 6.4 : Input alternatif, historique slider, découpage racine, forcer GO
-
-As a consultant SEO,
-I want pouvoir tester un mot-clé alternatif, naviguer dans l'historique de mes tests, voir l'analyse racine pour les mots-clés longue traîne, et forcer GO si je le souhaite,
-So that j'ai le contrôle total sur le choix de mon Capitaine sans être prisonnier de l'algorithme.
-
-**Acceptance Criteria:**
-
-**Given** l'utilisateur est sur le sous-onglet Capitaine
-**When** il saisit un mot-clé alternatif dans le champ input et lance la recherche
-**Then** le mot-clé alternatif est analysé (route validate) et les résultats s'affichent (FR10)
-**And** le mot-clé précédent est ajouté à l'historique
-
-**Given** l'utilisateur a testé 3 mots-clés
-**When** il utilise le slider d'historique
-**Then** il peut naviguer entre les 3 résultats sans re-appel API (FR10)
-**And** les KPIs et le verdict se mettent à jour instantanément
-
-**Given** un mot-clé est longue traîne (3+ mots) avec données faibles (volume < seuil orange)
-**When** les résultats s'affichent
-**Then** une section "Analyse racine" apparaît avec les KPIs de la racine découpée (FR15)
-**And** la route `GET /api/keywords/:keyword/roots` retourne la/les racine(s)
-**And** le verdict reste sur le mot-clé ORIGINAL, pas la racine
-
-**Given** le verdict est ORANGE ou NO-GO
-**When** l'utilisateur clique sur "Forcer GO"
-**Then** le verdict passe à GO (FR18)
-**And** l'action est visuelle (badge "Forcé" ou indicateur)
-
-### Story 6.5 : Panel IA expert SEO streaming + Lock/unlock Capitaine
-
-As a consultant SEO,
-I want un panel IA expert qui s'auto-génère en streaming avec des conseils contextuels, et pouvoir verrouiller/déverrouiller mon Capitaine,
-So that j'ai un avis complémentaire avant de décider, et je peux changer d'avis après verrouillage.
-
-**Acceptance Criteria:**
-
-**Given** les KPIs du mot-clé sont disponibles
-**When** le sous-onglet Capitaine s'affiche
-**Then** le panel IA se charge automatiquement en streaming SSE via `POST /api/keywords/:keyword/ai-panel` (FR17)
-**And** le premier token apparaît en < 2s (NFR2)
-
-**Given** le panel IA est affiché
-**When** l'utilisateur regarde le contenu
-**Then** le panel est dépliable et ne modifie JAMAIS le feu tricolore (FR17)
-**And** le contenu est un avis d'expert SEO contextuel (pas un résumé des KPIs)
-
-**Given** l'utilisateur est satisfait du mot-clé Capitaine
-**When** il clique sur "Valider ce Capitaine"
-**Then** le Capitaine est verrouillé (cadenas visible) (FR20)
-**And** le sous-onglet Lieutenants est débloqué pour les actions
-**And** l'événement `check-completed` est émis avec `capitaine_locked`
-
-**Given** le Capitaine est verrouillé
-**When** l'utilisateur clique sur le cadenas (unlock)
-**Then** le Capitaine est déverrouillé (FR20)
-**And** le sous-onglet Lieutenants repasse en gating souple (consultation uniquement)
+- `CaptainAiPanel` se charge automatiquement en streaming SSE via `POST /api/keywords/:keyword/ai-panel`
+- Premier token < 2s (NFR2)
+- Panel dépliable, ne modifie jamais le feu tricolore (FR15)
+- `CaptainLockPanel` : bouton "Valider ce Capitaine" → émet `moteur:capitaine_locked`
+- Cadenas unlock pour déverrouiller (Lieutenants repasse en gating souple)
+- Prompt : `capitaine-ai-panel.md`
 
 ---
 
 ## Epic 7 : Lieutenants — Analyse SERP des concurrents
 
-L'utilisateur identifie ses mots-clés secondaires (H2/H3) en analysant la SERP réelle des concurrents top 3-10, avec des candidats présentés par badges de pertinence et provenance multi-source. Un seul scraping alimente Hn, PAA et Groupes. Les données SERP brutes sont conservées pour le Lexique (Epic 8).
+Un seul scraping SERP (top 3-10) alimente Hn, PAA, Groupes. Données brutes conservées pour le Lexique (cascade zero-duplication).
 
-### Story 7.1 : Route API SERP analyze + curseur intelligent + en-tête Capitaine
+### Story 7.1 : Route SERP analyze + curseur intelligent + en-tête Capitaine ✅
 
-As a consultant SEO,
-I want voir mon Capitaine verrouillé en en-tête du sous-onglet Lieutenants, lancer l'analyse SERP via un bouton, et configurer le nombre de résultats à scraper,
-So that j'analyse la concurrence réelle de mon mot-clé principal avec le niveau de profondeur que je choisis.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- `LieutenantsSelection.vue` affiche Capitaine verrouillé + niveau article en en-tête
+- Curseur SERP 3-10 (défaut 10)
+- Bouton "Analyser SERP" → `POST /api/serp/analyze`
+- Scraping via `serp-analysis.service` (DataForSEO)
+- Résultats persistés dans `api_cache` + `article_explorations` (contenus bruts)
+- Curseur sous le défaut → filtre local instantané
+- Curseur au-dessus du précédent max → scraping complémentaire
 
-**Given** l'utilisateur ouvre le sous-onglet Lieutenants avec un Capitaine verrouillé
-**When** le sous-onglet s'affiche
-**Then** l'en-tête montre le Capitaine verrouillé et le niveau d'article (FR21)
-**And** un curseur SERP est disponible (3-10, défaut 10) (FR22)
-**And** un bouton "Analyser SERP" est visible
+### Story 7.2 : Sections dépliables Hn / PAA / Groupes ✅
 
-**Given** l'utilisateur clique sur "Analyser SERP" avec le curseur à 10
-**When** la route `POST /api/serp/analyze` est appelée
-**Then** le scraping des top 10 résultats est lancé
-**And** les résultats sont persistés en cache (NFR5, NFR11)
-**And** les données brutes (HTML contenus) sont conservées pour le TF-IDF du Lexique
+**Acceptance Criteria (livrés) :**
 
-**Given** les résultats SERP sont affichés pour 10 résultats
-**When** l'utilisateur réduit le curseur à 5
-**Then** les résultats sont filtrés localement instantanément sans re-scraping (FR26)
+- `LieutenantSerpAnalysis` + `LieutenantH2Structure` affichent 3 sections dépliables
+- Hn concurrents : H2 fréquents avec % récurrence, triés décroissant
+- PAA associés : N+2 de pertinence
+- Groupes : issus de la Phase Cerveau (cluster de termes)
 
-**Given** les résultats SERP sont affichés pour 10 résultats
-**When** l'utilisateur augmente le curseur à 10 (ou au-dessus du précédent max)
-**Then** un scraping complémentaire est lancé pour les résultats manquants (FR26)
+### Story 7.3 : Candidats Lieutenants avec badges + sélection checkbox + compteur ✅
 
-### Story 7.2 : Sections dépliables Hn concurrents, PAA et Groupes
+**Acceptance Criteria (livrés) :**
 
-As a consultant SEO,
-I want voir la structure Hn des concurrents, les PAA associés et les groupes de mots-clés dans des sections dépliables,
-So that je comprends comment la SERP est structurée et quels sujets couvrir pour mes H2/H3.
+- `LieutenantProposals` + `LieutenantCard` : badges multi-source [SERP] [PAA] [Groupe]
+- Badge de pertinence : Fort / Moyen / Faible (basé sur complémentarité avec Capitaine)
+- Sélection checkbox
+- Compteur recommandé par niveau : Pilier 5-8, Intermédiaire 3-5, Spécifique 1-3
+- Compteur mis à jour en temps réel (ex: "4/5 recommandés")
 
-**Acceptance Criteria:**
+### Story 7.4 : Panel IA structure Hn + lock Lieutenants ✅
 
-**Given** l'analyse SERP est terminée
-**When** les résultats s'affichent
-**Then** 3 sections dépliables apparaissent : Structure Hn concurrents, PAA associés, Groupes de mots-clés (FR23)
+**Acceptance Criteria (livrés) :**
 
-**Given** la section "Structure Hn concurrents" est ouverte
-**When** les données s'affichent
-**Then** les H2 les plus fréquents sont listés avec leur % de récurrence (ex: "Causes de la douleur" 9/10) (FR23)
-**And** les H2 sont triés par fréquence décroissante
-
-**Given** la section "PAA associés" est ouverte
-**When** les données s'affichent
-**Then** les PAA sont listés avec leur score de pertinence N+2 (FR23)
-
-**Given** la section "Groupes de mots-clés" est ouverte
-**When** les données s'affichent
-**Then** les groupes issus de la Phase Cerveau sont affichés avec le nombre de termes par cluster (FR23)
-
-### Story 7.3 : Candidats Lieutenants avec badges + sélection checkbox + compteur
-
-As a consultant SEO,
-I want voir les candidats Lieutenants avec leurs badges de provenance et pertinence, les sélectionner via checkboxes avec un compteur recommandé,
-So that je choisis mes mots-clés secondaires en connaissance de cause et avec un guidage clair.
-
-**Acceptance Criteria:**
-
-**Given** l'analyse SERP est terminée
-**When** la section de sélection des Lieutenants s'affiche
-**Then** les candidats sont présentés avec des badges multi-source : [SERP], [PAA], [Groupe] (FR24)
-**And** chaque candidat a un badge de pertinence : Fort, Moyen, Faible (FR24)
-**And** la pertinence est basée sur la complémentarité avec le Capitaine
-
-**Given** le niveau d'article est "Intermédiaire"
-**When** la section s'affiche
-**Then** un compteur indique "3-5 recommandés" (FR25)
-
-**Given** le niveau d'article est "Pilier"
-**When** la section s'affiche
-**Then** un compteur indique "5-8 recommandés" (FR25)
-
-**Given** l'utilisateur sélectionne des Lieutenants via checkboxes
-**When** il coche/décoche des candidats
-**Then** le compteur se met à jour en temps réel (ex: "4/5 recommandés") (FR25)
-
-### Story 7.4 : Panel IA structure Hn + Lock Lieutenants
-
-As a consultant SEO,
-I want un panel IA qui recommande une structure Hn avec mes Lieutenants sélectionnés, et pouvoir verrouiller mes Lieutenants,
-So that j'ai une proposition de plan concrète et je peux passer au Lexique.
-
-**Acceptance Criteria:**
-
-**Given** des Lieutenants sont sélectionnés
-**When** le panel IA dépliable est ouvert
-**Then** il affiche une structure Hn recommandée utilisant les Lieutenants sélectionnés (FR27)
-**And** le panel se charge en streaming SSE
-
-**Given** l'utilisateur est satisfait de sa sélection de Lieutenants
-**When** il clique sur "Valider les Lieutenants"
-**Then** les Lieutenants sont verrouillés (FR28)
-**And** le sous-onglet Lexique est débloqué pour les actions
-**And** l'événement `check-completed` est émis avec `lieutenants_locked`
-
-**Given** les Lieutenants sont verrouillés
-**When** l'utilisateur clique sur unlock
-**Then** les Lieutenants sont déverrouillés
-**And** le sous-onglet Lexique repasse en gating souple
+- Panel IA dépliable propose une structure Hn utilisant les Lieutenants sélectionnés
+- Chargement streaming SSE
+- Prompts : `propose-lieutenants.md` + `lieutenants-hn-structure.md`
+- Bouton "Valider les Lieutenants" → émet `moteur:lieutenants_locked`
+- `UnlockLieutenantsModal` pour confirmation lors du déverrouillage
 
 ---
 
 ## Epic 8 : Lexique TF-IDF + Validation finale
 
-L'utilisateur extrait le champ lexical sémantique des concurrents par TF-IDF (zéro requête supplémentaire), valide les termes en 3 niveaux (Obligatoire/Différenciateur/Optionnel), puis verrouille l'ensemble complet (capitaine + lieutenants + lexique) prêt pour la rédaction.
+TF-IDF sur données SERP déjà scrapées. Aucune nouvelle requête API (cascade NFR11).
 
-### Story 8.1 : Extraction TF-IDF depuis données SERP + 3 niveaux + densité
+### Story 8.1 : Extraction TF-IDF + 3 niveaux + densité ✅
 
-As a consultant SEO,
-I want que le champ lexical soit extrait automatiquement des données SERP déjà scrapées avec 3 niveaux de termes et la densité par page,
-So that j'ai un lexique basé sur la réalité compétitive sans requête API supplémentaire.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- `LexiqueExtraction.vue` affiche Capitaine + Lieutenants + niveau article en en-tête
+- `POST /api/serp/tfidf` utilise les contenus SERP de `article_explorations` — ZÉRO nouvelle requête (FR27)
+- `tfidf.service` classe les termes en 3 niveaux : Obligatoire ≥70%, Différenciateur 30-70%, Optionnel <30%
+- Densité récurrence/page affichée (ex: ×4.2/page)
+- Obligatoires pré-cochés ; Différenciateurs/Optionnels décochés par défaut
 
-**Given** les Lieutenants sont verrouillés et les données SERP sont disponibles
-**When** l'utilisateur ouvre le sous-onglet Lexique
-**Then** l'en-tête affiche le Capitaine, les Lieutenants sélectionnés et le niveau d'article
+### Story 8.2 : Panel IA lexical + validation finale → ArticleKeywords ✅
 
-**Given** l'utilisateur lance l'extraction TF-IDF
-**When** la route `POST /api/serp/tfidf` est appelée
-**Then** elle utilise les contenus SERP déjà scrapés (Epic 7) — AUCUNE nouvelle requête API (FR29, NFR11)
-**And** les termes sont classés en 3 niveaux (FR30) :
-- Obligatoire : présent chez 70%+ des concurrents
-- Différenciateur : présent chez 30-70%
-- Optionnel : présent chez <30%
-**And** chaque terme affiche sa densité de récurrence par page (ex: ×4.2/page)
+**Acceptance Criteria (livrés) :**
 
-**Given** les termes sont extraits
-**When** ils s'affichent dans l'interface
-**Then** les termes Obligatoires sont pré-cochés (FR31)
-**And** les termes Différenciateurs et Optionnels sont décochés par défaut
-**And** l'utilisateur peut cocher/décocher tous les termes via checkboxes (FR31)
-
-### Story 8.2 : Panel IA lexical + Validation finale → ArticleKeywords
-
-As a consultant SEO,
-I want un panel IA lexical expert et pouvoir valider l'ensemble (capitaine + lieutenants + lexique) pour que tout soit prêt pour la rédaction,
-So that je boucle le workflow Moteur avec un résultat complet et verrouillé.
-
-**Acceptance Criteria:**
-
-**Given** les termes du Lexique sont affichés
-**When** le panel IA dépliable est ouvert
-**Then** il fournit une analyse lexicale expert avec recommandations (FR32)
-**And** le panel se charge en streaming SSE
-
-**Given** l'utilisateur a sélectionné ses termes (checkboxes)
-**When** il clique sur "Valider le Lexique"
-**Then** les résultats finaux sont écrits dans le store ArticleKeywords (FR33) :
-- `capitaine`: le mot-clé principal verrouillé
-- `lieutenants[]`: les mots-clés secondaires verrouillés
-- `lexique[]`: les termes sémantiques sélectionnés
-**And** l'événement `check-completed` est émis avec `lexique_validated`
-**And** les données sont persistées via l'API backend
-
-**Given** le Lexique est validé
-**When** l'utilisateur consulte le sous-onglet Lexique
-**Then** les résultats verrouillés sont affichés en lecture seule
-**And** un mécanisme unlock permet de déverrouiller si nécessaire
+- Panel IA dépliable (streaming SSE)
+- Prompts : `lexique-ai-panel.md`, `lexique-analysis-upfront.md`
+- Bouton "Valider le Lexique" → écriture finale `ArticleKeywords` (capitaine + lieutenants[] + lexique[])
+- Émet `moteur:lexique_validated`
+- Persistance via `PUT /api/article-keywords/:articleId`
+- Mécanisme unlock disponible
 
 ---
 
-## Epic 9 : Dashboard Explorateur — Extraction Intention, Audit, Local
+## Epic 9 : Explorateur (Intention, Audit, Local)
 
-L'utilisateur consulte les outils Intention (SERP intent), Audit (cocon complet) et Local (local vs national + Maps) dans un espace indépendant, découplé du workflow de validation du Moteur.
+L'utilisateur consulte Intention, Audit et Local dans un espace indépendant découplé du workflow de validation.
 
-### Story 9.1 : Vue ExplorateurView, route /explorateur, retrait du Moteur
+### Story 9.1 : Vue ExplorateurView + route `/explorateur` ✅
 
-As a consultant SEO,
-I want que les onglets Intention, Audit et Local soient accessibles dans une vue Dashboard indépendante et retirés du Moteur,
-So that le Moteur ne contient que le workflow GO/NO-GO et je consulte les analyses complémentaires dans un espace dédié.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- Route `/explorateur` enregistrée (lazy-loaded)
+- Accessible depuis la Navbar
+- Contient : analyse d'intention SERP, comparaison local/national, autocomplete
+- Signaux Local/Maps/GBP via composants `local/`
+- Content Gap reste dans le Brief (Rédaction), pas dans l'Explorateur
 
-**Given** l'utilisateur accède à `/explorateur` via la Navbar ou le Dashboard
-**When** la vue ExplorateurView s'affiche
-**Then** il voit 3 onglets : Intention (SERP intent), Audit (cocon complet), Local (local vs national + Maps) (FR38)
-**And** la vue se charge en lazy loading (< 500ms — NFR3)
+### Story 9.2 : Retrait du Moteur ✅
 
-**Given** l'utilisateur est sur la vue Moteur
-**When** il regarde les onglets disponibles
-**Then** les onglets Intention, Audit et Local ne sont PAS présents dans le Moteur (FR37)
-**And** seuls les onglets Phase ① Générer et Phase ② Valider (Capitaine/Lieutenants/Lexique) sont disponibles
+**Acceptance Criteria (livrés) :**
 
-**Given** l'utilisateur ouvre l'onglet Local dans l'Explorateur
-**When** l'onglet s'affiche
-**Then** il voit deux sections : Comparaison Local/National et Maps & GBP (FR4)
-**And** les composants existants (LocalComparisonStep, MapsStep) fonctionnent comme avant
-
-**Given** l'utilisateur ouvre l'onglet Intention
-**When** l'onglet s'affiche
-**Then** les composants existants d'analyse d'intention fonctionnent comme avant
-
-**Given** l'utilisateur ouvre l'onglet Audit
-**When** l'onglet s'affiche
-**Then** les composants existants d'audit DataForSEO fonctionnent comme avant
+- Aucun onglet Intention / Audit / Local / Content Gap dans le Moteur
+- Seuls les onglets Phase ① Explorer, Phase ② Valider (3 sous-onglets), Phase ③ Finalisation sont dans le Moteur
 
 ---
 
 ## Epic 10 : Progression 5 checks + Guidage + Labo GO/NO-GO
 
-L'utilisateur voit sa progression par article mise à jour (5 dots : discovery, radar, capitaine, lieutenants, lexique), reçoit des bandeaux de transition adaptés au nouveau workflow, et peut utiliser le verdict GO/NO-GO Capitaine en mode libre dans le Labo.
+5 dots par article, bandeaux de transition, verdict GO/NO-GO en mode libre dans le Labo.
 
-### Story 10.1 : Migration 7→5 checks + dots de progression mis à jour
+### Story 10.1 : Checks `moteur:*` + dots de progression ✅
 
-As a consultant SEO,
-I want que les dots de progression reflètent les 5 étapes du nouveau workflow (discovery, radar, capitaine, lieutenants, lexique) au lieu des 7 anciens,
-So that ma progression correspond au parcours réel du Moteur restructuré.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- 5 checks `moteur:*` (préfixés par workflow)
+- Stockés dans `articles.completed_checks` TEXT[]
+- `ProgressDots.vue` affiche 5 dots groupés (2 Explorer + 3 Valider)
+- Mise à jour en temps réel à chaque `check-completed`
 
-**Given** le store `article-progress` contient `completedChecks[]`
-**When** les checks sont mis à jour
-**Then** les 5 checks standardisés sont : `discovery_done`, `radar_done`, `capitaine_locked`, `lieutenants_locked`, `lexique_validated` (FR39)
-**And** les anciens checks (`intent_done`, `audit_done`, `local_done`, `captain_chosen`, `assignment_done`) sont supprimés ou migrés
+### Story 10.2 : Bandeaux de transition ✅
 
-**Given** un article est affiché dans la liste du Moteur
-**When** il a des checks complétés
-**Then** des dots ● (remplis) et ○ (vides) s'affichent (FR40)
-**And** le nombre total de dots est 5 (un par check)
-**And** les dots sont groupés par phase : 2 Générer (discovery, radar) + 3 Valider (capitaine, lieutenants, lexique)
+**Acceptance Criteria (livrés) :**
 
-**Given** l'événement `check-completed` est émis par un composant (ex: `capitaine_locked`)
-**When** le check est traité
-**Then** il est ajouté à `completedChecks[]` via `POST /api/articles/:slug/progress/check` (FR41)
-**And** les dots se mettent à jour en temps réel
+- `PhaseTransitionBanner` entre phases
+- Phase ① complète → "Phase Explorer complète — passer à Valider ?"
+- Phase ② complète → "Validation complète — Phase Finalisation débloquée"
+- Ignorable / fermable (FR43)
 
-### Story 10.2 : Bandeaux de transition adaptés au nouveau workflow
+### Story 10.3 : Labo — verdict GO/NO-GO en mode libre ✅
 
-As a consultant SEO,
-I want des bandeaux de suggestion quand tous les checks d'une phase sont complétés,
-So that je sais quand passer à la phase suivante sans être bloqué.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- `CaptainValidation` en mode `libre` dans le Labo
+- Seuils par défaut = Intermédiaire (NFR8)
+- Pas d'émission check-completed en mode libre
+- Pas de persistance cache-article
+- Discovery + Radar disponibles aussi en mode libre
 
-**Given** l'article en cours a les checks `discovery_done` + `radar_done` complétés
-**When** l'utilisateur est dans la Phase ① Générer
-**Then** un bandeau PhaseTransitionBanner s'affiche : "Phase Générer complète — passer à Valider ?" (FR42)
+---
 
-**Given** l'article en cours a les checks `capitaine_locked` + `lieutenants_locked` + `lexique_validated` complétés
-**When** l'utilisateur est dans la Phase ② Valider
-**Then** un bandeau s'affiche : "Validation complète — tous les mots-clés sont prêts pour la rédaction !" (FR42)
+## Epic 11 : Phase ③ Finalisation (ajout post-plan initial)
 
-**Given** un bandeau de transition est affiché
-**When** l'utilisateur l'ignore
-**Then** le bandeau reste visible mais ne bloque rien (FR43)
-**And** l'utilisateur peut fermer/réduire le bandeau
+Onglet read-only affichant le récap des 3 verrouillages Phase ② et redirigeant vers la Rédaction. Cet épic n'était pas dans le plan initial du 2026-03-31 (qui prévoyait 2 phases avec suppression de Phase ③ Assigner) mais a été ajouté pendant l'implémentation.
 
-### Story 10.3 : Labo mis à jour — verdict GO/NO-GO en mode libre
+### Story 11.1 : FinalisationRecap — read-only + redirection Rédaction ✅
 
-As a consultant SEO,
-I want utiliser le verdict GO/NO-GO Capitaine en mode libre dans le Labo,
-So that je vérifie la viabilité d'un mot-clé en quelques clics sans contexte article.
+**Acceptance Criteria (livrés) :**
 
-**Acceptance Criteria:**
+- Onglet Finalisation présent dans la barre de navigation du Moteur (Phase ③)
+- Read-only : aucune action, juste consultation
+- Affiche en récap : Capitaine + Lieutenants[] + Lexique[]
+- Débloqué visuellement quand les 3 checks Phase ② sont ✓
+- Bouton / lien « Passer à la Rédaction » vers `/cocoon/:cocoonId/redaction`
+- Composant : `FinalisationRecap.vue`
 
-**Given** l'utilisateur est sur le Labo
-**When** il saisit un mot-clé libre et lance l'analyse
-**Then** le composant Capitaine s'affiche en `mode='libre'` avec les mêmes KPIs et feu tricolore (FR47)
-**And** les seuils utilisés sont ceux du niveau "Intermédiaire" par défaut (NFR8)
-**And** aucun `articleSlug` ni `cocoonId` n'est requis
+---
 
-**Given** le composant Capitaine est en `mode='libre'`
-**When** il produit un verdict
-**Then** il n'émet PAS `check-completed` (pas de progression en mode libre)
-**And** les résultats ne sont PAS persistés en cache lié à un article
+## Epic 12 : Migration PostgreSQL
 
-**Given** l'utilisateur utilise le Labo
-**When** il accède aussi à Discovery et Douleur Intent en mode libre
-**Then** ces composants existants fonctionnent comme avant en `mode='libre'` (FR47)
-**And** le verdict GO/NO-GO est le nouveau composant principal du Labo (remplace les anciens onglets Exploration/Audit/Local)
+Migration des fichiers JSON locaux vers PostgreSQL pour permettre le cache cross-article (`keyword_metrics`), la purge automatique, et la scalabilité.
+
+### Story 12.1 : Schéma DB + pool pg ✅
+
+**Acceptance Criteria (livrés) :**
+
+- Pool `pg` exporté depuis `server/db/client.ts`
+- Tables : articles, cocoons, silos, keywords, article_keywords, keyword_metrics, api_cache, discovery_cache, radar_cache, paa_cache, article_explorations, strategies, theme_config, local_entities, links, article_micro_context
+- `articles.completed_checks` TEXT[] (checks préfixés `workflow:snake_case`)
+- Health check au démarrage : `pool.query('SELECT 1')`
+
+### Story 12.2 : Migration slug → id ✅
+
+**Acceptance Criteria (livrés) :**
+
+- Script `scripts/migrate-slug-to-id.ts`
+- Routes refactorées : `/cocoon/:cocoonId/article/:articleId` (ex-`:slug`)
+- Backup SQL : `_backup_pg_20260418.sql`
+- Ancien JSON déplacé vers `data/_archive/`
+
+### Story 12.3 : Purge horaire `api_cache` ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `setInterval(..., 60 * 60 * 1000)` dans `server/index.ts`
+- `DELETE FROM api_cache WHERE expires_at < NOW()`
+- Log du nombre d'entrées purgées
+
+---
+
+## Epic 13 : Cerveau — Stratégie en 6 étapes
+
+Workflow de définition de la stratégie du cocon en 6 étapes avec IA à chaque étape.
+
+### Story 13.1 : 6 étapes strategy ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `CerveauView` accessible via `/cocoon/:cocoonId/cerveau`
+- 6 étapes : Cible, Douleur, Aiguillage, Angle, Promesse, CTA
+- Store : `cocoon-strategy.store` + `strategy.store`
+- Persistance en DB (table `strategies`)
+
+### Story 13.2 : IA suggest / deepen / consolidate ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `POST /api/strategy/suggest` — suggestion initiale
+- `POST /api/strategy/deepen` — sous-questions d'approfondissement
+- `POST /api/strategy/consolidate` — consolidation des sous-réponses
+- Prompts : `strategy-suggest.md`, `strategy-deepen.md`, `strategy-consolidate.md`, `strategy-merge.md`, `strategy-enrich.md`
+- Checks Cerveau : `cerveau:strategy_defined`, `cerveau:hierarchy_built`, `cerveau:articles_proposed`
+
+---
+
+## Epic 14 : Rédaction — Pipeline complet
+
+Brief → Sommaire → Article → Meta → Éditeur avec SEO scoring live + actions contextuelles.
+
+### Story 14.1 : Brief + Sommaire streamé ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `briefStore.fetchBrief(articleId)` fetch parallèle (article + keywords + DataForSEO)
+- `POST /api/generate/outline` (SSE) — sommaire streamé
+- Prompt : `generate-outline.md`
+- Éditable via `OutlineEditor`
+- Check : `redaction:brief_validated`, `redaction:outline_validated`
+
+### Story 14.2 : Article streamé + Meta ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `POST /api/generate/article` (SSE) — article streamé section par section
+- `POST /api/generate/meta` — meta title + description
+- `POST /api/generate/reduce-section` — réduction de section
+- Section tracking via events SSE (`section_start`, `section_done`)
+- Check : `redaction:content_written`
+
+### Story 14.3 : Éditeur TipTap + SEO scoring live ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `ArticleEditor.vue` basé sur TipTap 3 (core + starter-kit + link + placeholder + vue-3)
+- `useSeoScoring` watcher : 300ms debounce + `requestIdleCallback`
+- `SeoPanel` avec 3 onglets (Keywords, Indicators, SerpData)
+- `GeoPanel` pour scoring géographique
+- `LinkSuggestions` pour suggestions de liens internes
+- `useAutoSave` : sauvegarde périodique
+- Check : `redaction:seo_validated`, `redaction:published`
+
+### Story 14.4 : Actions contextuelles ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `useContextualActions` : actions sur sélection dans TipTap
+- `EditorBubbleMenu` affiche les actions disponibles
+- Prompts : `server/prompts/actions/*.md` (reformulate, simplify, convert-list, pme-example, keyword-optimize, add-statistic, answer-capsule, question-heading, localize, sources-chiffrees, exemples-reels, ce-quil-faut-retenir)
+
+---
+
+## Epic 15 : Consolidation — Organisation par domaine + Qualité
+
+Refactor d'organisation du code et outillage qualité.
+
+### Story 15.1 : Organisation par domaine ✅
+
+**Acceptance Criteria (livrés) :**
+
+- `src/stores/` organisé en 5 domaines : article, keyword, strategy, external, ui
+- `src/composables/` organisé en 5 domaines : keyword, intent, editor, seo, ui
+- `server/services/` organisé en 7 domaines : keyword, external, intent, article, strategy, infra, queries
+- Barrels d'index pour les types (`shared/types/index.ts`) et schemas (`shared/schemas/index.ts`)
+
+### Story 15.2 : Outillage qualité ✅
+
+**Acceptance Criteria (livrés) :**
+
+- oxlint + eslint (avec `--cache`, `--fix`)
+- Prettier
+- knip (détection de code mort — `npm run check:dead`)
+- madge (détection de cycles — `npm run check:cycles`)
+- husky + lint-staged (pre-commit hook)
+- Vitest 4 (unit) + Playwright (browser)
+- Purge commits : dead exports (`shared/types/index.ts` nettoyé, 59 re-exports purgés), raw* schemas privatisés
+
+---
+
+## Backlog (non livré)
+
+### Story 3.3 : Indicateur d'alignement stratégique dans l'Audit ⏸️
+Indicateur visuel de matching entre mot-clé et stratégie du cocon. Audit ayant été migré vers l'Explorateur, à reconsidérer dans ce contexte.
+
+### Vision Phase 3 (post-MVP)
+- Génération de cocons entiers en un clic (articles + mots-clés + rédaction chaînée)
+- Suggestions proactives de nouveaux cocons basées sur les gaps
+- Boucle GSC post-publication (exploitation du `gsc.store`)
+- Batch processing multi-articles en parallèle
+- Score de complémentarité Capitaine ↔ Lieutenants
+- Extension des tests Playwright
+
+---
+
+## Notes d'alignement
+
+- **Écarts plan initial vs implémenté** :
+  - Plan mars 2026 : « 2 phases (suppression Phase ③ Assigner) » → Réalité avril 2026 : **3 phases** (Phase ③ Finalisation ajoutée comme récap read-only, pas Assigner)
+  - Plan mars 2026 : persistance JSON → Réalité : **PostgreSQL** (migration faite)
+  - Plan mars 2026 : slugs dans les URL → Réalité : **id** (migration faite)
+  - Plan mars 2026 : checks sans préfixe → Réalité : **préfixés par workflow** (`moteur:*`, `cerveau:*`, `redaction:*`)
+  - Plan mars 2026 : 7 routes API nouvelles → Réalité : ~10 routes nouvelles (ai-panel, radar-exploration, article-explorations, keyword-queries ajoutées)
+
+- Les Epics 11-15 ont été identifiés rétroactivement — ils ne figuraient pas dans le plan initial mais correspondent à des chantiers livrés pendant et après la période couverte par les Epics 1-10.

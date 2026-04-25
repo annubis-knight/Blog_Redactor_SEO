@@ -7,9 +7,11 @@ import ScoreGauge from '@/components/shared/ScoreGauge.vue'
 
 const props = withDefaults(defineProps<{
   keyword: string
+  articleId?: number | null
   mode?: 'workflow' | 'libre'
 }>(), {
   mode: 'workflow',
+  articleId: null,
 })
 
 const emit = defineEmits<{
@@ -95,13 +97,13 @@ function formatDelta(delta: number): string {
 
 watch(() => props.keyword, (newKw) => {
   if (newKw) {
-    intentStore.compareLocalNational(newKw)
+    intentStore.compareLocalNational(newKw, props.articleId ?? undefined)
   }
 })
 
 onMounted(() => {
   if (!intentStore.comparisonData && props.keyword) {
-    intentStore.compareLocalNational(props.keyword)
+    intentStore.compareLocalNational(props.keyword, props.articleId ?? undefined)
   }
 })
 </script>
@@ -118,7 +120,7 @@ onMounted(() => {
     <ErrorMessage
       v-if="intentStore.comparisonError && !intentStore.isComparing"
       :message="intentStore.comparisonError"
-      @retry="intentStore.compareLocalNational(keyword)"
+      @retry="intentStore.compareLocalNational(keyword, articleId ?? undefined)"
     />
 
     <!-- No data state -->

@@ -1,16 +1,20 @@
 <script setup lang="ts">
-import { ref, computed, watch, onBeforeUnmount } from 'vue'
-import { useDebounceFn } from '@vueuse/core'
-import { apiPost, apiPut } from '@/services/api.service'
+import { ref, computed, watch } from 'vue'
+import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { hnToOutline } from '@/stores/article/outline.store'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineValidation'
 import { log } from '@/utils/logger'
+import { shouldRegenerate } from '@/utils/ttl-freshness'
+import { isResponseForCurrentArticle } from '@/utils/article-scope'
+import { useCostLogStore } from '@/stores/ui/cost-log.store'
+import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
 import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
 import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
+import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
@@ -44,34 +48,9 @@ const emit = defineEmits<{
 }>()
 
 const articleKeywordsStore = useArticleKeywordsStore()
+const activityLog = useCostLogStore()
 
-// Debounced save: coalesces rafales de mutations (auto-save propositions IA + saveHn)
-// avec garde anti-cross-article. Cohérent avec CaptainValidation pour éviter le spam EPERM.
-let saveRequested = false
-
-function persistIfOwned() {
-  const id = props.selectedArticle?.id
-  if (id && articleKeywordsStore.keywords?.articleId === id) {
-    articleKeywordsStore.saveKeywords(id)
-  }
-}
-
-const debouncedSave = useDebounceFn(() => {
-  saveRequested = false
-  persistIfOwned()
-}, 300)
-
-function requestSave() {
-  saveRequested = true
-  debouncedSave()
-}
-
-onBeforeUnmount(() => {
-  if (saveRequested) {
-    saveRequested = false
-    persistIfOwned()
-  }
-})
+// Direct exploration saves — each event persists to its dedicated table
 
 // --- SERP State (Phase 1) ---
 const sliderValue = ref(10)
@@ -85,6 +64,11 @@ const serpResultsByKeyword = ref<Map<string, SerpAnalysisResult>>(new Map())
 /** SERP progress tracking: "2 / 4" */
 const serpDoneCount = ref(0)
 const serpTotalCount = ref(0)
+// Sprint 4.1 — Keywords waiting to be analyzed, and the one in flight. Used
+// to show skeleton tabs in the SERP analysis area so the user understands
+// what's happening during the long wait.
+const serpPendingKeywords = ref<string[]>([])
+const serpCurrentKeyword = ref<string | null>(null)
 
 /** Active tab for per-keyword competitor URLs */
 const activeSerpTab = ref<string>('')
@@ -142,8 +126,15 @@ const activeHnRecurrence = computed<HnRecurrenceItem[]>(() => {
   return computeHnRecurrenceFrom(result.competitors)
 })
 
+// F5 — La barrière `isCaptaineLocked` ne s'applique qu'au premier passage. Dès que
+// l'IA a généré des propositions pour cet article, l'onglet reste accessible même
+// si l'utilisateur déverrouille ensuite le Capitaine.
+const hasEverAnalyzed = computed(() =>
+  (articleKeywordsStore.keywords?.richLieutenants?.length ?? 0) > 0,
+)
+
 const canAnalyze = computed(() =>
-  props.isCaptaineLocked && !!props.captainKeyword && !isLoading.value,
+  (props.isCaptaineLocked || hasEverAnalyzed.value) && !!props.captainKeyword && !isLoading.value,
 )
 
 /** Root keywords: use props if available, else generate from captain keyword */
@@ -191,7 +182,7 @@ async function saveHnStructure() {
   await apiPut(`/articles/${id}`, { outline })
   // Also keep hnStructure in keywords for backward compat
   articleKeywordsStore.keywords.hnStructure = hnStructure.value
-  await articleKeywordsStore.saveKeywords(id)
+  await articleKeywordsStore.saveDecisions(id)
   hnSaved.value = true
   isSavingHn.value = false
   setTimeout(() => { hnSaved.value = false }, 2000)
@@ -230,20 +221,68 @@ async function lockLieutenants() {
   const selected = Array.from(selectedCards.value.values())
   articleKeywordsStore.setRichLieutenants(selected, eliminatedCards.value)
   articleKeywordsStore.keywords.hnStructure = hnStructure.value
-  await articleKeywordsStore.saveKeywords(id)
+  await articleKeywordsStore.saveDecisions(id)
   // Save outline directly to articles/{id}.json (single source of truth)
   if (hnStructure.value.length > 0) {
     const outline = hnToOutline(hnStructure.value, title)
     await apiPut(`/articles/${id}`, { outline })
   }
   isLocked.value = true
-  emit('check-completed', 'lieutenants_locked')
+  emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
   emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
+
+  // targetWordCount recommendation : la structure HN est maintenant validée
+  // + le SERP a été analysé → contexte max pour un conseil IA pertinent.
+  // Non-bloquant : en cas d'échec, on n'empêche pas le lock.
+  void recommendAndPropagateWordCount(id)
+}
+
+/**
+ * Appelle l'endpoint de recommandation targetWordCount et, si l'utilisateur n'a
+ * pas encore défini sa valeur manuellement, écrit la reco dans article_micro_contexts.
+ * Un toast info est poussé dans l'activity log avec la valeur conseillée.
+ */
+async function recommendAndPropagateWordCount(articleId: number): Promise<void> {
+  try {
+    const reco = await apiPost<{ recommended: number; breakdown: { competitorsAvg: number | null; aiSuggestion: number | null; reasoning: string } }>(
+      `/articles/${articleId}/recommend-word-count`,
+      {},
+    )
+    if (!reco?.recommended) return
+
+    // Lit le micro-context actuel pour ne pas écraser une valeur manuelle
+    const existing = await apiGet<{ targetWordCount?: number; angle?: string; tone?: string; directives?: string } | null>(
+      `/articles/${articleId}/micro-context`,
+    ).catch(() => null)
+
+    const alreadyHasCustomValue = existing?.targetWordCount != null
+    if (!alreadyHasCustomValue) {
+      // On écrit la reco dans le brief. Le PUT exige un `angle` → on met un placeholder
+      // qui sera remplaçable par l'utilisateur.
+      await apiPut(`/articles/${articleId}/micro-context`, {
+        angle: existing?.angle ?? 'Angle à préciser (suggéré lors du lock Lieutenants)',
+        tone: existing?.tone ?? '',
+        directives: existing?.directives ?? '',
+        targetWordCount: reco.recommended,
+      })
+    }
+
+    const detail = reco.breakdown.reasoning
+    activityLog.addMessage(
+      'info',
+      `💡 Longueur conseillée : ${reco.recommended.toLocaleString('fr-FR')} mots`,
+      alreadyHasCustomValue
+        ? `${detail} · Valeur manuelle conservée (${existing?.targetWordCount} mots).`
+        : `${detail} · Modifiable dans la Rédaction.`,
+    )
+  } catch (err) {
+    log.warn(`[LieutenantsSelection] recommend-word-count failed: ${(err as Error).message}`)
+  }
 }
 
 function unlockLieutenants() {
   isLocked.value = false
-  emit('check-removed', 'lieutenants_locked')
+  emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
 }
 
 // --- Analysis step tracking ---
@@ -325,11 +364,18 @@ watch(
 )
 
 // --- Auto-trigger IA proposal after SERP success (skip if lieutenants already locked) ---
+// U5 — règle TTL 7 jours : ne pas relancer l'IA si des propositions fraîches existent déjà en DB
 watch(serpResult, (result) => {
-  if (result && !iaIsStreaming.value && lieutenantCards.value.length === 0 && !isLocked.value) {
-    log.info('[LieutenantsSelection] Auto-triggering IA proposal after SERP')
-    proposeLieutenants()
+  if (!result || iaIsStreaming.value || lieutenantCards.value.length !== 0 || isLocked.value) return
+  const richLts = articleKeywordsStore.keywords?.richLieutenants ?? []
+  const hasFreshProposals = richLts.length > 0 && richLts.every(lt => !shouldRegenerate(lt.exploredAt))
+  if (hasFreshProposals) {
+    log.info('[LieutenantsSelection] Skip IA proposal — DB has fresh proposals', { count: richLts.length })
+    restoreLockedLieutenants()
+    return
   }
+  log.info('[LieutenantsSelection] Auto-triggering IA proposal after SERP')
+  proposeLieutenants()
 })
 
 function refreshSERP() {
@@ -401,21 +447,35 @@ async function analyzeSERP() {
   serpDoneCount.value = 0
   log.info(`[LieutenantsSelection] Multi-SERP analysis: ${allKeywords.length} keywords`, allKeywords)
 
+  // P1 — Surface scan launch in the activity log so the user knows what's happening
+  activityLog.addMessage(
+    'info',
+    `Analyse SERP lancée (${allKeywords.length} mot${allKeywords.length > 1 ? 's' : ''}-clé${allKeywords.length > 1 ? 's' : ''})`,
+    `Scraping ~${allKeywords.length * 10} URLs via DataForSEO. Cela peut prendre quelques secondes.`,
+  )
+
   try {
     const results: SerpAnalysisResult[] = []
+    // Sprint 4.1 — Publish the full queue upfront so the UI can show skeleton
+    // tabs for pending keywords (not just the one currently running).
+    serpPendingKeywords.value = [...allKeywords]
 
     // Analyze each keyword sequentially for visible progress
     for (const kw of allKeywords) {
+      serpCurrentKeyword.value = kw
       const result = await apiPost<SerpAnalysisResult>('/serp/analyze', {
         keyword: kw,
         topN: 10,
         articleLevel: props.articleLevel ?? 'intermediaire',
+        articleId: props.selectedArticle?.id ?? undefined,
       })
       results.push(result)
       serpResultsByKeyword.value = new Map(serpResultsByKeyword.value).set(kw, result)
       serpDoneCount.value++
+      serpPendingKeywords.value = serpPendingKeywords.value.filter(k => k !== kw)
       log.info(`[LieutenantsSelection] SERP ${serpDoneCount.value}/${allKeywords.length}: "${kw}" → ${result.competitors.length} comp, ${result.paaQuestions.length} PAA`)
     }
+    serpCurrentKeyword.value = null
 
     const merged = mergeSerpResults(results)
     serpResult.value = merged
@@ -439,12 +499,13 @@ function restoreLockedLieutenants() {
   const richLts = articleKeywordsStore.keywords?.richLieutenants
   if (richLts && richLts.length > 0) {
     const locked = richLts.filter(lt => lt.status === 'locked')
+    const suggested = richLts.filter(lt => lt.status === 'suggested')
     const eliminated = richLts.filter(lt => lt.status === 'eliminated')
-    lieutenantCards.value = locked.map(lt => ({
+    // Affichage = locked + suggested (propositions IA persistées non encore verrouillées)
+    lieutenantCards.value = [...locked, ...suggested].map(lt => ({
       keyword: lt.keyword,
       reasoning: lt.reasoning,
       sources: lt.sources,
-      aiConfidence: lt.aiConfidence,
       suggestedHnLevel: lt.suggestedHnLevel,
       score: lt.score,
     }))
@@ -452,17 +513,25 @@ function restoreLockedLieutenants() {
       keyword: lt.keyword,
       reasoning: lt.reasoning,
       sources: lt.sources,
-      aiConfidence: lt.aiConfidence,
       suggestedHnLevel: lt.suggestedHnLevel,
       score: lt.score,
     }))
+    // Pré-cocher uniquement les 'locked' (les 'suggested' restent non sélectionnées)
     const selected = new Map<string, ProposedLieutenant>()
-    for (const card of lieutenantCards.value) {
-      selected.set(card.keyword, card)
+    for (const lt of locked) {
+      selected.set(lt.keyword, {
+        keyword: lt.keyword,
+        reasoning: lt.reasoning,
+        sources: lt.sources,
+        suggestedHnLevel: lt.suggestedHnLevel,
+        score: lt.score,
+      })
     }
     selectedCards.value = selected
     emit('lieutenants-updated', Array.from(selected.keys()))
-    log.info('[LieutenantsSelection] Lieutenants restored from rich data', { locked: locked.length, eliminated: eliminated.length })
+    log.info('[LieutenantsSelection] Lieutenants restored from rich data', {
+      locked: locked.length, suggested: suggested.length, eliminated: eliminated.length,
+    })
     return
   }
 
@@ -474,7 +543,6 @@ function restoreLockedLieutenants() {
     keyword: kw,
     reasoning: '',
     sources: [],
-    aiConfidence: 'fort' as const,
     suggestedHnLevel: 2 as const,
     score: 0,
   }))
@@ -486,6 +554,23 @@ function restoreLockedLieutenants() {
   selectedCards.value = selected
   emit('lieutenants-updated', Array.from(selected.keys()))
   log.info('[LieutenantsSelection] Lieutenants restored from flat data', { count: lieutenants.length })
+}
+
+/** F3 — Ajoute un mot-clé (suggéré par le basket) à la liste des propositions lieutenants
+ *  sans lancer de SERP/IA. L'utilisateur pourra ensuite le cocher ou le laisser pour plus tard. */
+function handleAssistAdd(keyword: string) {
+  if (lieutenantCards.value.some(c => c.keyword.toLowerCase() === keyword.toLowerCase())) return
+  lieutenantCards.value = [
+    ...lieutenantCards.value,
+    {
+      keyword,
+      reasoning: 'Proposé depuis votre panier',
+      sources: [],
+      suggestedHnLevel: 2 as const,
+      score: 0,
+    },
+  ]
+  log.info('[LieutenantsSelection] Assist add', { keyword, total: lieutenantCards.value.length })
 }
 
 function proposeLieutenants() {
@@ -570,13 +655,35 @@ function proposeLieutenants() {
         currentStep.value = 'done'
         log.info(`[LieutenantsSelection] Selection complete: ${preSelected.size} pre-selected`)
 
-        // Auto-save rich lieutenant proposals (status='suggested') dès que l'IA répond.
-        // Respecte la règle métier : tout keyword approfondi DOIT être persisté,
-        // même avant que l'utilisateur ne clique "Valider". Guard cross-article.
+        // Auto-save lieutenant explorations directly to lieutenant_explorations table.
+        // Respecte la règle métier : tout keyword approfondi DOIT être persisté.
         const articleId = props.selectedArticle?.id
-        if (articleId && articleKeywordsStore.keywords?.articleId === articleId) {
+        if (articleId && isResponseForCurrentArticle(articleKeywordsStore.keywords?.articleId, articleId)) {
           articleKeywordsStore.saveRichLieutenantProposals(data.selectedLieutenants, data.eliminatedLieutenants)
-          requestSave()
+          // Build RichLieutenant entries for direct DB save
+          const allEntries = [
+            ...data.selectedLieutenants.map(lt => ({
+              keyword: lt.keyword,
+              status: 'suggested' as const,
+              reasoning: lt.reasoning,
+              sources: lt.sources,
+              suggestedHnLevel: lt.suggestedHnLevel,
+              score: lt.score,
+              kpis: null,
+              lockedAt: null,
+            })),
+            ...data.eliminatedLieutenants.map(lt => ({
+              keyword: lt.keyword,
+              status: 'eliminated' as const,
+              reasoning: lt.reasoning,
+              sources: lt.sources,
+              suggestedHnLevel: lt.suggestedHnLevel,
+              score: lt.score,
+              kpis: null,
+              lockedAt: null,
+            })),
+          ]
+          articleKeywordsStore.saveLieutenantExplorationEntries(articleId, allEntries, props.captainKeyword!)
         }
       },
     },
@@ -596,10 +703,17 @@ function proposeLieutenants() {
       <span v-if="articleLevel" class="level-badge">{{ articleLevel }}</span>
     </div>
 
-    <!-- Soft gate if captain not locked -->
-    <div v-if="!isCaptaineLocked" class="soft-gate-message">
+    <!-- F5 — Soft gate uniquement au premier passage (avant toute analyse IA) -->
+    <div v-if="!isCaptaineLocked && !hasEverAnalyzed" class="soft-gate-message">
       <p>Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP.</p>
     </div>
+
+    <!-- F3 — Suggestions depuis le basket, ajoutées comme lieutenants candidats -->
+    <KeywordAssistPanel
+      context="lieutenants"
+      :exclude-keywords="lieutenantCards.map(c => c.keyword)"
+      @add="handleAssistAdd"
+    />
 
     <!-- SERP Analysis: controls, progress, results summary, per-keyword tabs -->
     <LieutenantSerpAnalysis
@@ -615,6 +729,8 @@ function proposeLieutenants() {
       :ia-is-streaming="iaIsStreaming"
       :serp-done-count="serpDoneCount"
       :serp-total-count="serpTotalCount"
+      :serp-pending-keywords="serpPendingKeywords"
+      :serp-current-keyword="serpCurrentKeyword"
       :ia-chunks="iaChunks"
       :current-step="currentStep"
       @analyze="analyzeSERP"
@@ -658,26 +774,30 @@ function proposeLieutenants() {
         @update:active-hn-tab="activeHnTab = $event"
       />
 
-      <!-- PAA -->
-      <CollapsableSection v-if="serpResult" title="PAA associes" :default-open="false">
+      <!-- Sprint 4.6 — PAA section relabeled: clarifies that these are the raw
+           Google questions the AI *consulted* to build its proposal, not extra
+           content to use directly. -->
+      <CollapsableSection v-if="serpResult" title="Sources IA : questions Google (PAA)" :default-open="false">
+        <p class="section-hint">Questions "People Also Ask" scrapees depuis Google pour tes mots-cles. Elles ont deja ete prises en compte par l'IA pour proposer les lieutenants ci-dessus — affichees ici pour transparence.</p>
         <ul v-if="serpResult.paaQuestions.length > 0" class="paa-list">
           <li v-for="paa in serpResult.paaQuestions" :key="paa.question" class="paa-item">
             <div class="paa-question">{{ paa.question }}</div>
             <div v-if="paa.answer" class="paa-answer">{{ paa.answer }}</div>
           </li>
         </ul>
-        <p v-else class="section-empty">Aucune question PAA trouvee.</p>
+        <p v-else class="section-empty">Google n'a renvoye aucune question PAA pour ces mots-cles — c'est normal sur des requetes techniques ou de niche.</p>
       </CollapsableSection>
 
       <!-- Word groups -->
-      <CollapsableSection v-if="serpResult" title="Groupes de mots-cles" :default-open="false">
+      <CollapsableSection v-if="serpResult" title="Sources IA : clusters Discovery" :default-open="false">
+        <p class="section-hint">Regroupements thematiques (par racine commune) calcules a partir des mots-cles trouves dans l'onglet Discovery. Utilises par l'IA pour reperer les sous-themes a traiter.</p>
         <ul v-if="wordGroups.length > 0" class="group-list">
           <li v-for="g in wordGroups" :key="g.normalized" class="group-item">
             <span class="group-word">{{ g.word }}</span>
             <span class="group-count">{{ g.count }} termes</span>
           </li>
         </ul>
-        <p v-else class="section-empty">Lancez d'abord la Decouverte pour voir les groupes thematiques.</p>
+        <p v-else class="section-empty">Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici.</p>
       </CollapsableSection>
 
       <!-- Lock/unlock Lieutenants -->
@@ -860,4 +980,5 @@ function proposeLieutenants() {
 
 /* --- Empty section --- */
 .section-empty { margin: 0; padding: 0.5rem 0; font-size: 0.8125rem; color: var(--color-text-muted); font-style: italic; }
+.section-hint { margin: 0 0 0.5rem; padding: 0.375rem 0.625rem; font-size: 0.75rem; color: var(--color-text-muted); background: var(--color-bg-secondary, #f8fafc); border-left: 2px solid var(--color-border, #e2e8f0); border-radius: 3px; }
 </style>

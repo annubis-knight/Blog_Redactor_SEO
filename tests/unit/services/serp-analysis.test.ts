@@ -6,11 +6,12 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-vi.mock('../../../server/utils/cache', () => ({
-  slugify: vi.fn((text: string) => text.toLowerCase().replace(/\s+/g, '-')),
-  readCached: vi.fn().mockResolvedValue(null),
-  writeCached: vi.fn().mockResolvedValue(undefined),
-  isFresh: vi.fn().mockReturnValue(false),
+const mockGetCached = vi.fn()
+const mockSetCached = vi.fn()
+vi.mock('../../../server/db/cache-helpers', () => ({
+  slugify: (text: string) => text.toLowerCase().replace(/\s+/g, '-'),
+  getCached: (...args: unknown[]) => mockGetCached(...args),
+  setCached: (...args: unknown[]) => mockSetCached(...args),
 }))
 
 vi.mock('../../../server/services/external/dataforseo.service', () => ({
@@ -27,19 +28,15 @@ vi.mock('../../../server/services/external/dataforseo.service', () => ({
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-import { readCached, isFresh, writeCached } from '../../../server/utils/cache'
 import { fetchSerp, fetchPaa } from '../../../server/services/external/dataforseo.service'
 import { extractHeadings, extractTextContent, analyzeSerpCompetitors } from '../../../server/services/external/serp-analysis.service'
 
-const mockReadCached = vi.mocked(readCached)
-const mockIsFresh = vi.mocked(isFresh)
-const mockWriteCached = vi.mocked(writeCached)
 const mockFetchSerp = vi.mocked(fetchSerp)
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockReadCached.mockResolvedValue(null)
-  mockIsFresh.mockReturnValue(false)
+  mockGetCached.mockResolvedValue(null)
+  mockSetCached.mockResolvedValue(undefined)
   mockFetch.mockResolvedValue({
     ok: true,
     text: () => Promise.resolve('<html><body><h1>Title</h1><h2>Section</h2><p>Content text</p></body></html>'),
@@ -107,25 +104,7 @@ describe('extractTextContent', () => {
 })
 
 describe('analyzeSerpCompetitors', () => {
-  it('returns cached result when fresh', async () => {
-    const cachedData = {
-      keyword: 'seo',
-      articleLevel: 'intermediaire' as const,
-      competitors: [],
-      paaQuestions: [],
-      maxScraped: 0,
-      cachedAt: new Date().toISOString(),
-      fromCache: false,
-    }
-    mockReadCached.mockResolvedValue({ data: cachedData, cachedAt: cachedData.cachedAt })
-    mockIsFresh.mockReturnValue(true)
-
-    const result = await analyzeSerpCompetitors('seo', 'intermediaire')
-    expect(result.fromCache).toBe(true)
-    expect(mockFetchSerp).not.toHaveBeenCalled()
-  })
-
-  it('fetches SERP and PAA when cache is stale', async () => {
+  it('fetches SERP and PAA when service is called (cache handled at route level post-Sprint 15.5-bis)', async () => {
     const result = await analyzeSerpCompetitors('seo', 'pilier')
     expect(fetchSerp).toHaveBeenCalledWith('seo')
     expect(fetchPaa).toHaveBeenCalledWith('seo')
@@ -166,15 +145,6 @@ describe('analyzeSerpCompetitors', () => {
     expect(result.competitors[0].headings).toHaveLength(1)
     expect(result.competitors[1].fetchError).toBe('Network error')
     expect(result.competitors[1].headings).toEqual([])
-  })
-
-  it('writes result to cache after fetching', async () => {
-    await analyzeSerpCompetitors('seo', 'intermediaire')
-    expect(mockWriteCached).toHaveBeenCalledWith(
-      expect.stringContaining('serp'),
-      'seo',
-      expect.objectContaining({ keyword: 'seo', competitors: expect.any(Array) }),
-    )
   })
 
   it('sets fromCache to false for fresh results', async () => {

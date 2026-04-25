@@ -1,0 +1,216 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: Type-check + tests unitaires (pas de DB, pas de serveur)
+  # ---------------------------------------------------------------------------
+  unit:
+    name: Type-check + unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npx tsc --noEmit
+
+      - name: Tests unitaires (unit + functional uniquement, pas de DB)
+        run: npx vitest run tests/unit tests/functional --reporter=dot
+        env:
+          AI_PROVIDER: mock
+
+  # ---------------------------------------------------------------------------
+  # Job 2: Tests e2e + integration + contract (DB postgres + serveur dev)
+  # ---------------------------------------------------------------------------
+  integration:
+    name: Integration + e2e (DB + serveur)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: blog_redactor_seo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Prepare .env for CI
+        run: |
+          cat > .env <<'EOF'
+          PORT=3005
+          PG_HOST=localhost
+          PG_PORT=5432
+          PG_USER=postgres
+          PG_PASSWORD=postgres
+          PG_DATABASE=blog_redactor_seo_test
+          AI_PROVIDER=mock
+          MOCK_LATENCY_MS=50
+          DATAFORSEO_SANDBOX=true
+          DATAFORSEO_LOGIN=test
+          DATAFORSEO_PASSWORD=test
+          ANTHROPIC_API_KEY=dummy
+          EOF
+
+      - name: Run DB migrations
+        run: |
+          for f in server/db/migrations/*.sql; do
+            echo "Running migration: $f"
+            PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -f "$f"
+          done
+
+      - name: Seed minimal DB (silos + theme_config)
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test <<'EOF'
+          INSERT INTO silos (nom, description) VALUES
+            ('Stratégie & Visibilité', 'CI test silo')
+          ON CONFLICT DO NOTHING;
+          EOF
+
+      - name: Start dev server (background)
+        run: |
+          nohup node --env-file=.env --import=tsx/esm server/index.ts > server.log 2>&1 &
+          echo $! > server.pid
+          # Wait for server ready
+          for i in {1..30}; do
+            if curl -sf http://localhost:3005/api/health > /dev/null 2>&1; then
+              echo "Server up after ${i}s"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Server did not start"
+          cat server.log
+          exit 1
+
+      - name: Tests contract + integration + e2e
+        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows --reporter=dot
+        env:
+          AI_PROVIDER: mock
+          TEST_BASE_URL: http://localhost:3005/api
+
+      - name: Stop server
+        if: always()
+        run: |
+          if [ -f server.pid ]; then
+            kill $(cat server.pid) || true
+          fi
+
+      - name: Upload server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs
+          path: server.log
+
+  # ---------------------------------------------------------------------------
+  # Job 3: Tests Playwright (browser)
+  # ---------------------------------------------------------------------------
+  browser:
+    name: Browser tests (Playwright)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: integration  # Ne lance pas browser si integration casse (gain de temps)
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: blog_redactor_seo_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Prepare .env for CI
+        run: |
+          cat > .env <<'EOF'
+          PORT=3005
+          PG_HOST=localhost
+          PG_PORT=5432
+          PG_USER=postgres
+          PG_PASSWORD=postgres
+          PG_DATABASE=blog_redactor_seo_test
+          AI_PROVIDER=mock
+          MOCK_LATENCY_MS=50
+          DATAFORSEO_SANDBOX=true
+          DATAFORSEO_LOGIN=test
+          DATAFORSEO_PASSWORD=test
+          ANTHROPIC_API_KEY=dummy
+          EOF
+
+      - name: Run DB migrations
+        run: |
+          for f in server/db/migrations/*.sql; do
+            PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test -f "$f"
+          done
+
+      - name: Seed minimal DB
+        run: |
+          PGPASSWORD=postgres psql -h localhost -U postgres -d blog_redactor_seo_test <<'EOF'
+          INSERT INTO silos (nom, description) VALUES ('Stratégie & Visibilité', 'CI test silo')
+          ON CONFLICT DO NOTHING;
+          EOF
+
+      - name: Run Playwright tests (auto-starts dev servers)
+        run: npx playwright test --reporter=github
+        env:
+          AI_PROVIDER: mock
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/

@@ -54,21 +54,18 @@ describe('article-progress.store — FIFO eviction', () => {
     expect(store.progressMap['slug-50']).toBeDefined()
   })
 
-  it('clearAll() empties both maps', async () => {
+  it('clearAll() empties progressMap', async () => {
     mockApiGet.mockResolvedValue({ slug: 'a', phase: 'brain', completedChecks: [] })
 
     const store = await getStore()
 
     await store.fetchProgress('a')
-    store.semanticMap['a'] = [{ term: 'test', weight: 1, frequency: 1 }] as any
 
     expect(Object.keys(store.progressMap).length).toBe(1)
-    expect(Object.keys(store.semanticMap).length).toBe(1)
 
     store.clearAll()
 
     expect(Object.keys(store.progressMap).length).toBe(0)
-    expect(Object.keys(store.semanticMap).length).toBe(0)
   })
 })
 

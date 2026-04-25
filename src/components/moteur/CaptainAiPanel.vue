@@ -1,16 +1,39 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
+import type { VerdictLevel } from '@shared/types/index.js'
+import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
 
 const props = withDefaults(defineProps<{
   parsedHtml: string
   isStreaming: boolean
   error: string | null
   defaultOpen?: boolean
+  /** Sprint 3.2 — When true, show the regenerate icon. Parent provides the handler via @regenerate. */
+  canRegenerate?: boolean
+  /** Étape 3F — Mini résumé verdict affiché en tête du panel (optionnel). */
+  verdictSummary?: { level: VerdictLevel; label: string; reason?: string } | null
 }>(), {
   defaultOpen: true,
+  canRegenerate: false,
+  verdictSummary: null,
 })
 
+const verdictConfig = computed(() =>
+  props.verdictSummary ? VERDICT_CONFIG[props.verdictSummary.level] : null,
+)
+
+const emit = defineEmits<{
+  (e: 'regenerate'): void
+}>()
+
 const panelOpen = ref(props.defaultOpen)
+
+function handleRegenerateClick(ev: MouseEvent) {
+  ev.stopPropagation()
+  // Lightweight guard: confirm before burning another Claude call.
+  const ok = window.confirm('Regenerer l\'avis expert IA ? Cela consommera un appel Claude.')
+  if (ok) emit('regenerate')
+}
 </script>
 
 <template>
@@ -19,8 +42,37 @@ const panelOpen = ref(props.defaultOpen)
       <span class="ai-panel-toggle-icon">{{ panelOpen ? '\u25BC' : '\u25B6' }}</span>
       Avis expert IA
       <span v-if="isStreaming" class="ai-panel-streaming-dot" />
+      <!-- Sprint 3.2 — regenerate icon. Only visible when parsedHtml exists to
+           avoid double-trigger during initial stream. -->
+      <button
+        v-if="canRegenerate && !isStreaming && parsedHtml"
+        type="button"
+        class="ai-panel-regen"
+        title="Regenerer l'avis"
+        aria-label="Regenerer l'avis"
+        data-testid="ai-panel-regen"
+        @click="handleRegenerateClick"
+      >
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21 12a9 9 0 11-3.3-6.95"/>
+          <path d="M21 4v5h-5"/>
+        </svg>
+      </button>
     </button>
     <div v-if="panelOpen" class="ai-panel-content" data-testid="ai-panel-content">
+      <!-- Étape 3F — Mini bandeau verdict en tête du panel (info, non-bloquant). -->
+      <div
+        v-if="verdictSummary && verdictConfig"
+        class="ai-panel-verdict"
+        data-testid="ai-panel-verdict"
+        :style="{ borderColor: verdictConfig.color, background: verdictConfig.bg }"
+      >
+        <span class="ai-panel-verdict__icon" :aria-hidden="true">{{ verdictConfig.icon }}</span>
+        <span class="ai-panel-verdict__level" :style="{ color: verdictConfig.color }">{{ verdictSummary.level }}</span>
+        <span class="ai-panel-verdict__label">{{ verdictSummary.label }}</span>
+        <span v-if="verdictSummary.reason" class="ai-panel-verdict__reason">· {{ verdictSummary.reason }}</span>
+      </div>
+
       <div v-if="isStreaming && !parsedHtml" class="ai-panel-loading">
         Analyse en cours...
       </div>
@@ -76,6 +128,26 @@ const panelOpen = ref(props.defaultOpen)
   animation: pulse 1s ease infinite;
 }
 
+.ai-panel-regen {
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.ai-panel-regen:hover {
+  background: var(--color-primary, #3b82f6);
+  color: white;
+  border-color: var(--color-primary, #3b82f6);
+}
+
 @keyframes pulse {
   0%, 100% { opacity: 0.4; }
   50% { opacity: 1; }
@@ -84,6 +156,35 @@ const panelOpen = ref(props.defaultOpen)
 .ai-panel-content {
   padding: 1rem;
   border-top: 1px solid var(--color-border, #e2e8f0);
+}
+
+.ai-panel-verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+
+.ai-panel-verdict__icon {
+  font-size: 0.875rem;
+}
+
+.ai-panel-verdict__level {
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.ai-panel-verdict__label {
+  color: var(--color-text, #1e293b);
+}
+
+.ai-panel-verdict__reason {
+  color: var(--color-text-muted, #64748b);
+  font-style: italic;
 }
 
 .ai-panel-loading,

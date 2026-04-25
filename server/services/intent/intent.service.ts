@@ -1,9 +1,32 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { getBaseUrl, getAuthHeader, slugify, isSandbox } from '../external/dataforseo.service.js'
-import { getOrFetch, readCached, writeCached } from '../../utils/cache.js'
-import Anthropic from '@anthropic-ai/sdk'
-import { calculateCost, type ApiUsage } from '../external/claude.service.js'
+import { getBaseUrl, getAuthHeader, isSandbox } from '../external/dataforseo.service.js'
+import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
+import {
+  getKeywordIntentAnalysis,
+  saveKeywordIntentAnalysis,
+  isKeywordIntentFresh,
+} from './keyword-intent-analysis.service.js'
+
+const YEAR_MS = 365 * 24 * 3600 * 1000
+
+async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+  const cached = await getCached<T>(cacheType, key)
+  if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
+  log.debug(`Cache MISS: ${key}`)
+  const data = await fetcher()
+  await setCached(cacheType, key, data, ttlMs === Infinity ? YEAR_MS : ttlMs)
+  return data
+}
+
+async function readCached<T>(cacheType: string, key: string): Promise<{ data: T } | null> {
+  const data = await getCached<T>(cacheType, key)
+  return data ? { data } : null
+}
+
+async function writeCached<T>(cacheType: string, key: string, data: T): Promise<void> {
+  await setCached(cacheType, key, data, YEAR_MS)
+}
+import type { ApiUsage } from '../external/claude.service.js'
 import type {
   IntentAnalysis,
   SerpModule,
@@ -20,7 +43,7 @@ import type {
   CertaintyIndex,
 } from '../../../shared/types/index.js'
 
-const CACHE_DIR = join(process.cwd(), 'data', 'cache')
+const CACHE_DIR = 'intent'
 const SERP_MODULE_TYPES: SerpModuleType[] = ['local_pack', 'featured_snippet', 'people_also_ask', 'video', 'images', 'shopping', 'knowledge_graph', 'top_stories']
 
 const MODULE_SCORES: Record<SerpModuleType, { category: string; score: number; maxScore: number }> = {
@@ -149,69 +172,60 @@ function extractPaaQuestions(serpResult: any): string[] {
 // --- Claude Intent Classification ---
 
 async function classifyIntentWithClaude(keyword: string, modules: SerpModule[], organicResults: OrganicResult[]): Promise<{ type: IntentType; confidence: number; reasoning: string; usage?: ApiUsage }> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
-  const model = process.env.CLAUDE_MODEL || 'claude-sonnet-4-6'
+  const { classifyWithTool } = await import('../external/ai-provider.service.js')
 
   const modulesPresent = modules.filter(m => m.present).map(m => m.type).join(', ')
   const organicSummary = organicResults.map(r => `- ${r.title} (${r.domain})`).join('\n')
 
-  log.debug(`classifyIntentWithClaude start`, { keyword, model, modulesPresent: modulesPresent || 'none' })
+  log.debug(`classifyIntentWithClaude start`, { keyword, modulesPresent: modulesPresent || 'none' })
   const start = Date.now()
 
-  let response: Anthropic.Message
+  interface ClassifyPayload { type: IntentType; confidence: number; reasoning: string }
+
   try {
-    response = await client.messages.create({
-      model,
-      max_tokens: 256,
-      system: 'Tu es un expert SEO. Réponds UNIQUEMENT en JSON valide, sans markdown.',
-      messages: [{
-        role: 'user',
-        content: `Classifie l'intention de recherche pour "${keyword}".
+    const { result, usage } = await classifyWithTool<ClassifyPayload>(
+      'Tu es un expert SEO. Classe l\'intention de recherche avec précision.',
+      `Classifie l'intention de recherche pour "${keyword}".
 
 Modules SERP détectés: ${modulesPresent || 'aucun module spécial'}
 
 Top résultats organiques:
-${organicSummary || 'Aucun résultat'}
-
-Réponds en JSON: {"type": "informational|transactional_local|navigational|mixed", "confidence": 0.0-1.0, "reasoning": "explication courte"}`,
-      }],
-    })
-  } catch (err) {
-    log.error(`classifyIntentWithClaude API call failed`, { keyword, model, ms: Date.now() - start, error: (err as Error).message })
-    throw err
-  }
-
-  const usage: ApiUsage = {
-    inputTokens: response.usage.input_tokens,
-    outputTokens: response.usage.output_tokens,
-    cacheReadTokens: 0,
-    cacheCreationTokens: 0,
-    model,
-    estimatedCost: calculateCost(model, response.usage.input_tokens, response.usage.output_tokens),
-  }
-  log.info(`classifyIntentWithClaude done`, { keyword, ms: Date.now() - start, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
-
-  const text = response.content[0].type === 'text' ? response.content[0].text : ''
-  const cleaned = text.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-
-  try {
-    const parsed = JSON.parse(cleaned)
-    const result = {
-      type: parsed.type ?? 'mixed',
-      confidence: parsed.confidence ?? 0.5,
-      reasoning: parsed.reasoning ?? '',
+${organicSummary || 'Aucun résultat'}`,
+      {
+        name: 'classify_intent',
+        description: 'Classifies the search intent of a keyword based on SERP signals',
+        input_schema: {
+          type: 'object' as const,
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['informational', 'transactional_local', 'navigational', 'mixed'],
+              description: 'Dominant search intent',
+            },
+            confidence: { type: 'number', description: 'Confidence 0.0-1.0' },
+            reasoning: { type: 'string', description: 'Short explanation (1-2 sentences)' },
+          },
+          required: ['type', 'confidence', 'reasoning'],
+        },
+      },
+      { maxTokens: 256 },
+    )
+    log.info(`classifyIntentWithClaude done`, { keyword, ms: Date.now() - start, inputTokens: usage.inputTokens, outputTokens: usage.outputTokens, cost: `$${usage.estimatedCost.toFixed(4)}` })
+    return {
+      type: result.type ?? 'mixed',
+      confidence: result.confidence ?? 0.5,
+      reasoning: result.reasoning ?? '',
       usage,
     }
-    return result
   } catch (err) {
-    log.warn(`classifyIntentWithClaude JSON parse failed, using fallback`, { keyword, rawLength: cleaned.length, error: (err as Error).message })
+    log.warn(`classifyIntentWithClaude failed, using fallback`, { keyword, error: (err as Error).message })
     // Fallback: infer from modules
     const hasLocalPack = modules.some(m => m.type === 'local_pack' && m.present)
     return {
       type: hasLocalPack ? 'transactional_local' : 'informational',
       confidence: 0.3,
       reasoning: 'Classification par défaut basée sur les modules SERP',
-      usage,
+      usage: undefined,
     }
   }
 }
@@ -219,65 +233,70 @@ Réponds en JSON: {"type": "informational|transactional_local|navigational|mixed
 // --- Main orchestrator ---
 
 export async function analyzeIntent(keyword: string, locationCode: number = 2250): Promise<IntentAnalysis> {
-  return getOrFetch<IntentAnalysis>(
-    CACHE_DIR,
-    `intent-${slugify(keyword)}`,
-    Infinity,
-    async () => {
-      log.info(`Analyzing intent for "${keyword}"`, { locationCode })
+  // Sprint 15.4 — DB-first on keyword_intent_analyses (cross-article).
+  const existing = await getKeywordIntentAnalysis(keyword, locationCode)
+  if (existing && isKeywordIntentFresh(existing.fetchedAt)) {
+    log.debug(`intent analysis DB hit for "${keyword}" (fresh <7d)`)
+    return existing
+  }
 
-      const analyzeStart = Date.now()
+  log.info(`Analyzing intent for "${keyword}"`, { locationCode })
+  const analyzeStart = Date.now()
 
-      const serpResult = await fetchSerpAdvanced(keyword, locationCode)
-      log.debug(`SERP Advanced fetched for "${keyword}"`)
+  const serpResult = await fetchSerpAdvanced(keyword, locationCode)
+  log.debug(`SERP Advanced fetched for "${keyword}"`)
 
-      const modules = extractModules(serpResult)
-      const topOrganicResults = extractOrganicResults(serpResult)
-      const paaQuestions = extractPaaQuestions(serpResult)
-      const modulesDetected = modules.filter(m => m.present).map(m => m.type)
-      log.debug(`SERP modules detected for "${keyword}"`, { count: modulesDetected.length, modules: modulesDetected })
+  const modules = extractModules(serpResult)
+  const topOrganicResults = extractOrganicResults(serpResult)
+  const paaQuestions = extractPaaQuestions(serpResult)
+  const modulesDetected = modules.filter(m => m.present).map(m => m.type)
+  log.debug(`SERP modules detected for "${keyword}"`, { count: modulesDetected.length, modules: modulesDetected })
 
-      const scores: IntentScore[] = modules
-        .filter(m => m.present)
-        .map(m => MODULE_SCORES[m.type])
+  const scores: IntentScore[] = modules
+    .filter(m => m.present)
+    .map(m => MODULE_SCORES[m.type])
 
-      if (topOrganicResults.length > 0) {
-        scores.push({
-          category: 'Résultats organiques',
-          score: Math.min(topOrganicResults.length, 5) * 2,
-          maxScore: 10,
-        })
-      }
+  if (topOrganicResults.length > 0) {
+    scores.push({
+      category: 'Résultats organiques',
+      score: Math.min(topOrganicResults.length, 5) * 2,
+      maxScore: 10,
+    })
+  }
 
-      const recommendations: IntentRecommendation[] = modules
-        .filter(m => m.present)
-        .map(m => ({ module: m.type, ...MODULE_RECOMMENDATIONS[m.type] }))
+  const recommendations: IntentRecommendation[] = modules
+    .filter(m => m.present)
+    .map(m => ({ module: m.type, ...MODULE_RECOMMENDATIONS[m.type] }))
 
-      if (recommendations.length === 0 && topOrganicResults.length > 0) {
-        recommendations.push({
-          module: 'featured_snippet',
-          action: 'Aucun module SERP spécial détecté — le terrain est libre pour un article de fond bien structuré visant la position zéro.',
-          priority: 'medium',
-        })
-      }
+  if (recommendations.length === 0 && topOrganicResults.length > 0) {
+    recommendations.push({
+      module: 'featured_snippet',
+      action: 'Aucun module SERP spécial détecté — le terrain est libre pour un article de fond bien structuré visant la position zéro.',
+      priority: 'medium',
+    })
+  }
 
-      log.debug(`Classifying intent with Claude for "${keyword}"`)
-      const classification = await classifyIntentWithClaude(keyword, modules, topOrganicResults)
-      log.info(`Intent analysis complete for "${keyword}"`, { intent: classification.type, confidence: classification.confidence, modulesDetected: modulesDetected.length, organicResults: topOrganicResults.length, paaQuestions: paaQuestions.length, ms: Date.now() - analyzeStart })
+  log.debug(`Classifying intent with Claude for "${keyword}"`)
+  const classification = await classifyIntentWithClaude(keyword, modules, topOrganicResults)
+  log.info(`Intent analysis complete for "${keyword}"`, { intent: classification.type, confidence: classification.confidence, modulesDetected: modulesDetected.length, organicResults: topOrganicResults.length, paaQuestions: paaQuestions.length, ms: Date.now() - analyzeStart })
 
-      return {
-        keyword,
-        modules,
-        scores,
-        dominantIntent: classification.type,
-        classification,
-        recommendations,
-        topOrganicResults,
-        paaQuestions,
-        cachedAt: new Date().toISOString(),
-      }
-    },
-  )
+  const result: IntentAnalysis = {
+    keyword,
+    modules,
+    scores,
+    dominantIntent: classification.type,
+    classification,
+    recommendations,
+    topOrganicResults,
+    paaQuestions,
+    cachedAt: new Date().toISOString(),
+  }
+
+  // Persist cross-article
+  try { await saveKeywordIntentAnalysis(result, locationCode) }
+  catch (err) { log.warn(`intent analysis: DB persist failed — ${(err as Error).message}`) }
+
+  return result
 }
 
 // --- Local vs National Comparison (Epic 12) ---
@@ -328,47 +347,54 @@ async function fetchKeywordOverviewForLocation(keyword: string, locationCode: nu
 }
 
 export async function compareLocalNational(keyword: string): Promise<LocalNationalComparison> {
-  return getOrFetch<LocalNationalComparison>(
-    CACHE_DIR,
-    `local-national-${slugify(keyword)}`,
-    Infinity,
-    async () => {
-      log.info(`Comparing local vs national for "${keyword}"`)
+  // Sprint 15.5 — DB-first on keyword_metrics.local_comparison.
+  const { getKeywordMetrics, upsertKeywordLocalComparison, isKeywordMetricsFresh } =
+    await import('../keyword/keyword-metrics.service.js')
+  const existing = await getKeywordMetrics(keyword)
+  if (existing?.localComparison && isKeywordMetricsFresh(existing.fetchedAt)) {
+    log.debug(`Local comparison DB hit for "${keyword}"`)
+    return existing.localComparison as LocalNationalComparison
+  }
 
-      const compareStart = Date.now()
-      const nationalCode = isSandbox() ? 2250 : 2742
-      const localCode = isSandbox() ? 2250 : 1006157
+  log.info(`Comparing local vs national for "${keyword}"`)
 
-      const [national, local] = await Promise.all([
-        fetchKeywordOverviewForLocation(keyword, nationalCode),
-        fetchKeywordOverviewForLocation(keyword, localCode),
-      ])
-      log.debug(`Local vs national data fetched`, { keyword, ms: Date.now() - compareStart, nationalVolume: national.searchVolume, localVolume: local.searchVolume })
+  const compareStart = Date.now()
+  const nationalCode = isSandbox() ? 2250 : 2742
+  const localCode = isSandbox() ? 2250 : 1006157
 
-      const kdNational = Math.max(national.keywordDifficulty, 1)
-      const opportunityIndex = Math.round((local.searchVolume * (100 - local.keywordDifficulty)) / kdNational)
+  const [national, local] = await Promise.all([
+    fetchKeywordOverviewForLocation(keyword, nationalCode),
+    fetchKeywordOverviewForLocation(keyword, localCode),
+  ])
+  log.debug(`Local vs national data fetched`, { keyword, ms: Date.now() - compareStart, nationalVolume: national.searchVolume, localVolume: local.searchVolume })
 
-      const threshold = parseInt(process.env.LOCAL_OPPORTUNITY_THRESHOLD ?? '60', 10)
-      let alert: OpportunityAlert | null = null
-      if (opportunityIndex >= threshold) {
-        alert = {
-          keyword,
-          index: opportunityIndex,
-          message: `Ce mot-clé est une opportunité locale ! Indice ${opportunityIndex} (seuil: ${threshold})`,
-          type: 'opportunity',
-        }
-      }
+  const kdNational = Math.max(national.keywordDifficulty, 1)
+  const opportunityIndex = Math.round((local.searchVolume * (100 - local.keywordDifficulty)) / kdNational)
 
-      return {
-        keyword,
-        local,
-        national,
-        opportunityIndex,
-        alert,
-        cachedAt: new Date().toISOString(),
-      }
-    },
-  )
+  const threshold = parseInt(process.env.LOCAL_OPPORTUNITY_THRESHOLD ?? '60', 10)
+  let alert: OpportunityAlert | null = null
+  if (opportunityIndex >= threshold) {
+    alert = {
+      keyword,
+      index: opportunityIndex,
+      message: `Ce mot-clé est une opportunité locale ! Indice ${opportunityIndex} (seuil: ${threshold})`,
+      type: 'opportunity',
+    }
+  }
+
+  const result: LocalNationalComparison = {
+    keyword,
+    local,
+    national,
+    opportunityIndex,
+    alert,
+    cachedAt: new Date().toISOString(),
+  }
+
+  try { await upsertKeywordLocalComparison(keyword, result) }
+  catch (err) { log.warn(`Local comparison: DB persist failed — ${(err as Error).message}`) }
+
+  return result
 }
 
 // --- Autocomplete Validation (Epic 13) ---
@@ -411,7 +437,7 @@ async function fetchGoogleAutocomplete(keyword: string): Promise<string[]> {
 export async function validateAutocomplete(keyword: string, prefixes?: string[]): Promise<AutocompleteResult> {
   // Check cache — skip if prefixes provided (expansion = fresh data)
   if (!prefixes || prefixes.length === 0) {
-    const cached = await readCached<AutocompleteResult>(CACHE_DIR, `autocomplete-${slugify(keyword)}`)
+    const cached = await readCached<AutocompleteResult>('autocomplete-intent', `autocomplete-${slugify(keyword)}`)
     if (cached) {
       log.debug(`Autocomplete cache hit for "${keyword}"`)
       return cached.data
@@ -496,7 +522,7 @@ export async function validateAutocomplete(keyword: string, prefixes?: string[])
     cachedAt: new Date().toISOString(),
   }
 
-  await writeCached(CACHE_DIR, `autocomplete-${slugify(keyword)}`, result)
+  await writeCached('autocomplete-intent', `autocomplete-${slugify(keyword)}`, result)
   log.info(`Autocomplete validation done`, { keyword, ms: Date.now() - validateStart, validated, suggestionsCount: result.suggestions.length, certaintyTotal: certaintyIndex.total.toFixed(2) })
   return result
 }

@@ -7,7 +7,7 @@ const { mockStreamChatCompletion, mockLoadPrompt } = vi.hoisted(() => ({
   mockLoadPrompt: vi.fn(),
 }))
 
-vi.mock('../../../server/services/external/claude.service', () => ({
+vi.mock('../../../server/services/external/ai-provider.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
 }))

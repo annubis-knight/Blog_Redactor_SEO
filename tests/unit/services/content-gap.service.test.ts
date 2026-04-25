@@ -2,20 +2,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks (must be declared before imports) ---
+// Sprint 15.5 — content-gap now uses keyword_metrics.content_gap_analysis (DB).
+const mockGetKeywordMetrics = vi.fn()
+const mockUpsertContentGap = vi.fn()
+const mockIsFresh = vi.fn()
 
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: vi.fn(),
-  writeJson: vi.fn(),
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
+  upsertKeywordContentGap: (...args: unknown[]) => mockUpsertContentGap(...args),
+  isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
 }))
 
-vi.mock('../../../server/services/external/dataforseo.service', () => ({
-  slugify: (s: string) =>
-    s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/(^-|-$)/g, ''),
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
 const claudeAnalysisResult = {
@@ -41,11 +40,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }))
 
-import { readJson, writeJson } from '../../../server/utils/json-storage'
 import { analyzeContentGap } from '../../../server/services/article/content-gap.service'
-
-const mockReadJson = vi.mocked(readJson)
-const mockWriteJson = vi.mocked(writeJson)
 
 let mockFetch: ReturnType<typeof vi.fn>
 
@@ -57,14 +52,16 @@ beforeEach(() => {
   mockFetch = vi.fn()
   vi.stubGlobal('fetch', mockFetch)
 
-  // Default: no cache
-  mockReadJson.mockRejectedValue(new Error('no cache'))
-  mockWriteJson.mockResolvedValue(undefined)
+  // Sprint 15.5 — default: no DB row
+  mockGetKeywordMetrics.mockResolvedValue(null)
+  mockUpsertContentGap.mockResolvedValue(undefined)
+  mockIsFresh.mockReturnValue(false)
 
-  // Default Claude response
+  // Default Claude response — classifyWithTool returns tool_use block with input
   mockCreateFn.mockResolvedValue({
-    content: [{ type: 'text', text: JSON.stringify(claudeAnalysisResult) }],
+    content: [{ type: 'tool_use', name: 'analyze_content_gap', input: claudeAnalysisResult }],
     usage: { input_tokens: 100, output_tokens: 50 },
+    stop_reason: 'tool_use',
   })
 })
 
@@ -82,7 +79,7 @@ function setupTavilyMock() {
 }
 
 describe('content-gap.service — analyzeContentGap', () => {
-  it('returns cached data when available', async () => {
+  it('returns DB-first data when keyword_metrics.content_gap_analysis is fresh', async () => {
     const cached = {
       keyword: 'seo local toulouse',
       competitors: [],
@@ -92,14 +89,17 @@ describe('content-gap.service — analyzeContentGap', () => {
       localEntitiesFromCompetitors: [],
       cachedAt: '2026-01-01T00:00:00Z',
     }
-    mockReadJson.mockResolvedValueOnce({
-      data: cached,
-      cachedAt: cached.cachedAt,
+    mockGetKeywordMetrics.mockResolvedValueOnce({
+      contentGapAnalysis: cached,
+      fetchedAt: new Date().toISOString(),
     })
+    mockIsFresh.mockReturnValueOnce(true)
 
     const result = await analyzeContentGap('seo local toulouse')
 
-    expect(result).toEqual(cached)
+    // Themes are recomputed per call (presentInArticle flag), but content is from DB.
+    expect(result.keyword).toEqual(cached.keyword)
+    expect(result.competitors).toEqual(cached.competitors)
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
@@ -185,15 +185,15 @@ describe('content-gap.service — analyzeContentGap', () => {
     expect(result.averageWordCount).toBe(1350)
   })
 
-  it('writes result to cache', async () => {
+  it('persists result to keyword_metrics.content_gap_analysis', async () => {
     setupTavilyMock()
 
     const result = await analyzeContentGap('seo local toulouse')
 
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
-    const [path, wrappedData] = mockWriteJson.mock.calls[0]
-    expect(path).toContain('content-gap-')
-    expect(wrappedData.data).toEqual(result)
+    expect(mockUpsertContentGap).toHaveBeenCalledTimes(1)
+    const [keyword, analysis] = mockUpsertContentGap.mock.calls[0]
+    expect(keyword).toBe('seo local toulouse')
+    expect(analysis).toEqual(result)
     expect(result.cachedAt).toBeDefined()
   })
 

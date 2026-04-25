@@ -4,14 +4,33 @@ import { log } from '@/utils/logger'
 import { apiGet, apiPost } from '@/services/api.service'
 import type { Article, ArticleType, Keyword, DataForSeoCacheEntry, BriefData } from '@shared/types/index.js'
 
-/** Calculate content length recommendation based on article type */
+/**
+ * Recommandation synchrone fallback basée sur le type d'article. Utilisée tant
+ * que la recommandation IA côté serveur n'a pas répondu (ou en offline).
+ * Valeurs = midpoints des bornes TYPE_BASE de target-word-count.service.ts.
+ */
 export function calculateContentLength(articleType: ArticleType): number {
   const baseByType: Record<string, number> = {
-    'Pilier': 2500,
-    'Intermédiaire': 1800,
-    'Spécialisé': 1200,
+    'Pilier': 2650,
+    'Intermédiaire': 1850,
+    'Spécialisé': 1150,
   }
   return baseByType[articleType] ?? 1500
+}
+
+/**
+ * Appelle l'endpoint serveur pour obtenir une recommandation contextualisée :
+ * prend en compte SERP avg + sommaire HN + type d'article, via IA.
+ * Fallback sur le calcul heuristique si l'endpoint échoue.
+ */
+async function fetchContentLengthRecommendation(articleId: number, articleType: ArticleType): Promise<number> {
+  try {
+    const res = await apiPost<{ recommended: number }>(`/articles/${articleId}/recommend-word-count`, {})
+    if (res?.recommended && res.recommended > 0) return res.recommended
+  } catch (err) {
+    log.warn(`[brief.store] recommend-word-count failed, fallback heuristique: ${(err as Error).message}`)
+  }
+  return calculateContentLength(articleType)
 }
 
 export const useBriefStore = defineStore('brief', () => {
@@ -69,9 +88,19 @@ export const useBriefStore = defineStore('brief', () => {
       if (id !== currentId.value) return
 
       // 4. Calculate content length recommendation
-      const contentLengthRecommendation = calculateContentLength(article.type)
+      // On affiche d'abord l'heuristique synchrone (pas de flicker), puis on remplace
+      // par la recommandation IA dès qu'elle arrive. Si l'endpoint IA échoue, on
+      // garde l'heuristique.
+      const heuristicRecommendation = calculateContentLength(article.type)
+      briefData.value = { article: articleWithCocoon, keywords, dataForSeo, contentLengthRecommendation: heuristicRecommendation }
 
-      briefData.value = { article: articleWithCocoon, keywords, dataForSeo, contentLengthRecommendation }
+      // Appel IA non-bloquant — met à jour briefData quand la réponse arrive
+      void fetchContentLengthRecommendation(id, article.type).then(aiReco => {
+        if (id !== currentId.value) return
+        if (briefData.value && aiReco !== briefData.value.contentLengthRecommendation) {
+          briefData.value = { ...briefData.value, contentLengthRecommendation: aiReco }
+        }
+      })
       log.info(`Brief loaded for article ${id}`, { keywords: keywords.length, hasDataForSeo: !!dataForSeo })
     } catch (err) {
       if ((err as Error).name === 'AbortError') return

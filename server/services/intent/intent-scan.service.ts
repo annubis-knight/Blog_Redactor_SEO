@@ -2,7 +2,7 @@ import { log } from '../../utils/logger.js'
 import { fetchAutocomplete, type AutocompleteSignal } from '../keyword/autocomplete.service.js'
 import { fetchDataForSeo, fetchKeywordOverview } from '../external/dataforseo.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
-import type { IntentScanResult, ResonanceItem, ResonanceMatch, RadarMatchQuality } from '../../../shared/types/intent.types.js'
+import type { IntentScanResult, ResonanceItem, ResonanceMatch, RadarMatchQuality, RadarPainAlignment } from '../../../shared/types/intent.types.js'
 
 export interface SerpAdvancedRawResult {
   items: Array<{
@@ -184,21 +184,37 @@ export function matchResonanceDetailed(
 
 /**
  * Compute a weighted PAA score based on match quality.
- * Barème: none=0, partial+stem/semantic=0.25, partial+exact=0.5,
- *         total+stem/semantic=1.0, total+exact=2.0
+ * Topic barème: none=0, partial+stem/semantic=0.25, partial+exact=0.5,
+ *               total+stem/semantic=1.0, total+exact=2.0
+ * QW5 — Quand un `painAlignment` est fourni sur l'item, le score combine titre/douleur
+ * 50/50 : painScore { aligned=2.0, partial=0.5, off=0 }.
+ * Si painAlignment absent (pas de painPoint pour l'article), le score dégénère sur le barème topic seul.
  */
+function topicWeight(item: { match: ResonanceMatch; matchQuality?: RadarMatchQuality }): number {
+  if (item.match === 'none') return 0
+  const quality = item.matchQuality ?? 'stem'
+  if (item.match === 'total') return quality === 'exact' ? 2.0 : 1.0
+  return quality === 'exact' ? 0.5 : 0.25
+}
+
+function painWeight(alignment: RadarPainAlignment | undefined): number | null {
+  if (!alignment) return null
+  if (alignment === 'aligned') return 2.0
+  if (alignment === 'partial') return 0.5
+  return 0
+}
+
 export function computePaaWeightedScore(
-  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality }>,
+  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality; painAlignment?: RadarPainAlignment }>,
 ): number {
   let sum = 0
   for (const item of items) {
-    if (item.match === 'none') continue
-    const quality = item.matchQuality ?? 'stem'
-    if (item.match === 'total') {
-      sum += quality === 'exact' ? 2.0 : 1.0
+    const topic = topicWeight(item)
+    const pain = painWeight(item.painAlignment)
+    if (pain === null) {
+      sum += topic
     } else {
-      // partial
-      sum += quality === 'exact' ? 0.5 : 0.25
+      sum += 0.5 * topic + 0.5 * pain
     }
   }
   return sum

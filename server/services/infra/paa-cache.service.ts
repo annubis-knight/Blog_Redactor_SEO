@@ -1,98 +1,48 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { readJson, writeJson } from '../../utils/json-storage.js'
-import { slugify } from '../external/dataforseo.service.js'
+import {
+  getKeywordMetrics,
+  upsertKeywordPaa,
+  isKeywordMetricsFresh,
+} from '../keyword/keyword-metrics.service.js'
 import type { PaaCacheEntry } from '../../../shared/types/intent.types.js'
 
-const PAA_CACHE_DIR = join(process.cwd(), 'data', 'cache', 'paa')
-const REVERSE_INDEX_PATH = join(PAA_CACHE_DIR, '_reverse-index.json')
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000       // 24h for non-empty
-const CACHE_TTL_EMPTY_MS = 30 * 60 * 1000       // 30min for empty results
-
-function getCachePath(keyword: string): string {
-  return join(PAA_CACHE_DIR, `${slugify(keyword)}.json`)
-}
-
-function normalize(s: string): string {
-  return s
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9 ]/g, ' ')
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-// --- Forward index: keyword → PAA items ---
+// Sprint 15.3 — PAA storage moved to `keyword_metrics.paa_questions`.
+// Same keyword = same PAA regardless of article: Google's PAA depends only on
+// the search query. Freshness: 1 day for non-empty, 30 min for empty.
 
 export async function readPaaCache(keyword: string, requiredDepth: number = 1): Promise<PaaCacheEntry | null> {
-  try {
-    const entry = await readJson<PaaCacheEntry>(getCachePath(keyword))
-    const age = Date.now() - new Date(entry.cachedAt).getTime()
-    const ttl = entry.isEmpty ? CACHE_TTL_EMPTY_MS : CACHE_TTL_MS
+  const metrics = await getKeywordMetrics(keyword)
+  if (!metrics || metrics.paaQuestions.length === 0) return null
 
-    if (age >= ttl) {
-      log.debug(`PAA cache expired for "${keyword}"`)
-      return null
-    }
-
-    // If cached at lower depth than requested, treat as miss
-    const cachedDepth = entry.maxDepth ?? 1
-    if (cachedDepth < requiredDepth) {
-      log.debug(`PAA cache depth mismatch for "${keyword}": cached=${cachedDepth}, requested=${requiredDepth}`)
-      return null
-    }
-
-    log.debug(`PAA cache hit for "${keyword}" (${entry.paaItems.length} questions, depth=${cachedDepth})`)
-    return entry
-  } catch {
+  // Freshness check: 1 day for non-empty (always the case here given the guard above).
+  if (!isKeywordMetricsFresh(metrics.fetchedAt, 1)) {
+    log.debug(`PAA DB hit but stale for "${keyword}"`)
     return null
+  }
+
+  const maxCachedDepth = Math.max(...metrics.paaQuestions.map(q => q.depth ?? 1), 1)
+  if (maxCachedDepth < requiredDepth) {
+    log.debug(`PAA DB depth mismatch for "${keyword}": stored=${maxCachedDepth}, requested=${requiredDepth}`)
+    return null
+  }
+
+  log.debug(`PAA DB hit for "${keyword}" (${metrics.paaQuestions.length} questions, depth=${maxCachedDepth})`)
+  return {
+    keyword,
+    paaItems: metrics.paaQuestions.map(q => ({
+      question: q.question,
+      answer: q.answer ?? undefined,
+      depth: q.depth ?? 1,
+      parentQuestion: q.parentQuestion,
+    })),
+    maxDepth: maxCachedDepth,
+    isEmpty: false,
+    cachedAt: metrics.fetchedAt,
   }
 }
 
 export async function writePaaCache(entry: PaaCacheEntry): Promise<void> {
-  await writeJson(getCachePath(entry.keyword), entry)
-  log.debug(`PAA cache written for "${entry.keyword}" (${entry.paaItems.length} questions)`)
-
-  // Update reverse index
-  const questions = entry.paaItems.map(p => p.question)
-  await updateReverseIndex(entry.keyword, questions)
-}
-
-// --- Reverse index: question → keywords ---
-
-interface ReverseIndex {
-  entries: Record<string, { keywords: string[]; lastSeenAt: string }>
-}
-
-async function readReverseIndex(): Promise<ReverseIndex> {
-  try {
-    return await readJson<ReverseIndex>(REVERSE_INDEX_PATH)
-  } catch {
-    return { entries: {} }
-  }
-}
-
-async function updateReverseIndex(keyword: string, questions: string[]): Promise<void> {
-  const index = await readReverseIndex()
-  const now = new Date().toISOString()
-  const kwLower = keyword.toLowerCase()
-
-  for (const q of questions) {
-    const key = normalize(q)
-    if (!key) continue
-
-    if (!index.entries[key]) {
-      index.entries[key] = { keywords: [kwLower], lastSeenAt: now }
-    } else {
-      if (!index.entries[key].keywords.includes(kwLower)) {
-        index.entries[key].keywords.push(kwLower)
-      }
-      index.entries[key].lastSeenAt = now
-    }
-  }
-
-  await writeJson(REVERSE_INDEX_PATH, index)
-  log.debug(`[PAA Cache] Reverse index updated: ${questions.length} questions mapped to "${keyword}"`)
+  await upsertKeywordPaa(entry.keyword, entry.paaItems)
+  log.debug(`PAA DB written for "${entry.keyword}" (${entry.paaItems.length} questions)`)
 }
 

@@ -36,13 +36,9 @@ const cocoonSlug = computed(() =>
     .replace(/^-|-$/g, ''),
 )
 
-const proposedArticles = computed(() =>
-  strategyStore.strategy?.proposedArticles ?? [],
-)
-
-const publishedArticles = computed(() =>
-  cocoon.value?.articles ?? [],
-)
+const allArticles = computed(() => cocoon.value?.articles ?? [])
+const suggestedArticles = computed(() => allArticles.value.filter(a => a.status !== 'publié'))
+const publishedArticles = computed(() => allArticles.value.filter(a => a.status === 'publié'))
 
 const breadcrumbItems = computed(() => [
   { label: 'Dashboard', to: '/' },
@@ -96,8 +92,8 @@ onMounted(() => {
 
     <!-- Context Recap: proposed + published articles (readonly) -->
     <MoteurContextRecap
-      v-if="proposedArticles.length > 0 || publishedArticles.length > 0"
-      :proposed-articles="proposedArticles"
+      v-if="suggestedArticles.length > 0 || publishedArticles.length > 0"
+      :suggested-articles="suggestedArticles"
       :published-articles="publishedArticles"
       :selected-slug="null"
       :readonly="true"

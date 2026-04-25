@@ -1,5 +1,5 @@
 import { ref, computed, onBeforeUnmount } from 'vue'
-import { apiGet, apiPost, apiDelete } from '@/services/api.service'
+import { apiGet, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
@@ -10,22 +10,27 @@ import type {
   RadarKeyword,
 } from '@shared/types/intent.types.js'
 
-export interface RadarCacheStatus {
-  cached: boolean
-  cachedAt?: string
+// Sprint 9 — DB-first radar exploration (per-article, replaces api_cache[radar]).
+export interface RadarExplorationStatus {
+  exists: boolean
+  scannedAt?: string
   keywordCount?: number
   globalScore?: number
   heatLevel?: string
+  isFresh?: boolean
 }
 
-interface RadarCacheData {
+interface RadarExplorationData {
+  articleId: number
   seed: string
   context: { broadKeyword: string; specificTopic: string; painPoint: string; depth: number }
   generatedKeywords: RadarKeyword[]
   scanResult: KeywordRadarScanResult
-  cachedAt: string
-  expiresAt: string
+  scannedAt: string
 }
+
+// Legacy alias kept for the libre mode (no articleId yet) — falls back to api_cache[radar].
+export type RadarCacheStatus = RadarExplorationStatus
 
 export function useResonanceScore() {
   const result = ref<IntentScanResult | null>(null)
@@ -148,31 +153,70 @@ export function useKeywordRadar() {
   const isScanning = ref(false)
   const error = ref<string | null>(null)
   const scanProgress = ref({ phase: '', scanned: 0, total: 0 })
-  const radarCacheStatus = ref<RadarCacheStatus | null>(null)
+  const radarCacheStatus = ref<RadarExplorationStatus | null>(null)
   let _progressTimer: ReturnType<typeof setInterval> | null = null
   let _lastScanContext: { broadKeyword: string; specificTopic: string; painPoint: string; depth: number } | null = null
 
   const heatColor = computed(() => radarHeatColor(scanResult.value?.heatLevel ?? null))
   const heatLabel = computed(() => radarHeatLabel(scanResult.value?.heatLevel ?? null))
 
-  async function checkRadarCacheFn(seed: string) {
+  /**
+   * Sprint 9 — DB-first radar: when articleId is provided we read from
+   * `radar_explorations`; otherwise (libre mode) we still fall back to the
+   * legacy api_cache seed-based lookup.
+   */
+  async function checkRadarCacheFn(seedOrArticleId: string | number) {
     try {
-      radarCacheStatus.value = await apiGet<RadarCacheStatus>(`/radar-cache/check?seed=${encodeURIComponent(seed)}`)
-      log.debug('[Radar] Cache check', { seed, cached: radarCacheStatus.value.cached })
+      if (typeof seedOrArticleId === 'number') {
+        const status = await apiGet<RadarExplorationStatus>(
+          `/articles/${seedOrArticleId}/radar-exploration/status`,
+        )
+        radarCacheStatus.value = status
+        log.debug('[Radar] DB status', { articleId: seedOrArticleId, exists: status.exists })
+      } else {
+        // Legacy libre-mode fallback
+        const cached = await apiGet<{ cached: boolean } & RadarExplorationStatus>(
+          `/radar-cache/check?seed=${encodeURIComponent(seedOrArticleId)}`,
+        )
+        radarCacheStatus.value = {
+          exists: cached.cached,
+          scannedAt: cached.scannedAt,
+          keywordCount: cached.keywordCount,
+          globalScore: cached.globalScore,
+          heatLevel: cached.heatLevel,
+          isFresh: cached.isFresh,
+        }
+      }
     } catch (err) {
       log.warn(`[Radar] Cache check failed: ${(err as Error).message}`)
-      radarCacheStatus.value = { cached: false }
+      radarCacheStatus.value = { exists: false }
     }
   }
 
-  async function loadFromRadarCache(seed: string): Promise<boolean> {
+  async function loadFromRadarCache(seedOrArticleId: string | number): Promise<boolean> {
     try {
-      const cached = await apiGet<RadarCacheData | null>(`/radar-cache/load?seed=${encodeURIComponent(seed)}`)
+      if (typeof seedOrArticleId === 'number') {
+        const data = await apiGet<RadarExplorationData | null>(
+          `/articles/${seedOrArticleId}/radar-exploration`,
+        )
+        if (data) {
+          generatedKeywords.value = data.generatedKeywords
+          scanResult.value = data.scanResult
+          _lastScanContext = data.context
+          log.info(`[Radar] Loaded from DB: ${data.generatedKeywords.length} keywords, score=${data.scanResult.globalScore}`)
+          return true
+        }
+        return false
+      }
+      // Legacy libre-mode fallback
+      const cached = await apiGet<(RadarExplorationData & { cachedAt?: string }) | null>(
+        `/radar-cache/load?seed=${encodeURIComponent(seedOrArticleId)}`,
+      )
       if (cached) {
         generatedKeywords.value = cached.generatedKeywords
         scanResult.value = cached.scanResult
         _lastScanContext = cached.context
-        log.info(`[Radar] Loaded from cache: ${cached.generatedKeywords.length} keywords, score=${cached.scanResult.globalScore}`)
+        log.info(`[Radar] Loaded from api_cache: ${cached.generatedKeywords.length} keywords`)
         return true
       }
       return false
@@ -182,24 +226,26 @@ export function useKeywordRadar() {
     }
   }
 
-  async function _saveToCache(seed: string) {
+  async function _saveToExploration(articleId: number, seed: string) {
     if (!scanResult.value || !_lastScanContext) return
     try {
-      await apiPost('/radar-cache/save', {
+      await apiPost(`/articles/${articleId}/radar-exploration`, {
         seed,
         context: _lastScanContext,
         generatedKeywords: generatedKeywords.value,
         scanResult: scanResult.value,
       })
       radarCacheStatus.value = {
-        cached: true,
+        exists: true,
+        scannedAt: new Date().toISOString(),
         keywordCount: generatedKeywords.value.length,
         globalScore: scanResult.value.globalScore,
         heatLevel: scanResult.value.heatLevel,
+        isFresh: true,
       }
-      log.info(`[Radar] Saved to cache: "${seed}"`)
+      log.info(`[Radar] Saved DB exploration for article ${articleId}`)
     } catch (err) {
-      log.warn(`[Radar] Cache save failed: ${(err as Error).message}`)
+      log.warn(`[Radar] DB save failed: ${(err as Error).message}`)
     }
   }
 
@@ -267,11 +313,22 @@ export function useKeywordRadar() {
     scanProgress.value = { phase: '', scanned: 0, total: 0 }
   }
 
-  async function scan(broadKeyword: string, specificTopic: string, keywords: RadarKeyword[], depth: number = 1, seed?: string) {
+  async function scan(
+    broadKeyword: string,
+    specificTopic: string,
+    keywords: RadarKeyword[],
+    depth: number = 1,
+    opts?: { seed?: string; articleId?: number; painPoint?: string },
+  ) {
     isScanning.value = true
     error.value = null
     scanResult.value = null
-    _lastScanContext = { broadKeyword, specificTopic, painPoint: '', depth }
+    _lastScanContext = {
+      broadKeyword,
+      specificTopic,
+      painPoint: opts?.painPoint ?? _lastScanContext?.painPoint ?? '',
+      depth,
+    }
     log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${depth}`)
 
     _startProgressEstimation(keywords.length)
@@ -282,12 +339,25 @@ export function useKeywordRadar() {
         specificTopic,
         keywords,
         depth,
+        painPoint: opts?.painPoint,
       })
       log.info(`[Radar] Scan complete: score=${scanResult.value.globalScore}, heat=${scanResult.value.heatLevel}`)
 
-      // Auto-save to cache
-      if (seed) {
-        _saveToCache(seed)
+      // Sprint 9 — prefer DB persistence when articleId is known; fallback to legacy cache.
+      if (opts?.articleId && opts.seed) {
+        _saveToExploration(opts.articleId, opts.seed)
+      } else if (opts?.seed) {
+        // Legacy libre-mode fallback
+        try {
+          await apiPost('/radar-cache/save', {
+            seed: opts.seed,
+            context: _lastScanContext,
+            generatedKeywords: generatedKeywords.value,
+            scanResult: scanResult.value,
+          })
+        } catch (err) {
+          log.warn(`[Radar] Legacy cache save failed: ${(err as Error).message}`)
+        }
       }
     } catch (err) {
       error.value = (err as Error).message

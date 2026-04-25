@@ -1,12 +1,9 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { slugify, readCached, writeCached, isFresh } from '../../utils/cache.js'
 import { fetchSerp, fetchPaa } from './dataforseo.service.js'
 import type { SerpCompetitor, SerpAnalysisResult, HnNode } from '../../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 
-export const CACHE_DIR = join(process.cwd(), 'data', 'cache', 'serp')
-const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000 // 7 days
+// Sprint 15.5-bis — SERP results now stored in keyword_metrics.serp_raw_json (cross-article).
 
 const FETCH_TIMEOUT_MS = 10_000
 const USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; +https://example.com)'
@@ -98,6 +95,64 @@ async function fetchPageHtml(url: string): Promise<string> {
 }
 
 // ---------------------------------------------------------------------------
+// Sprint 4.4 — Blog classification heuristic.
+// No extra API call: purely URL/domain patterns. This is cheap and fast; the
+// user can later ask for an AI-driven refinement for borderline cases.
+// ---------------------------------------------------------------------------
+
+const BLOG_URL_PATTERNS = [
+  /\/blog\//i,
+  /\/articles?\//i,
+  /\/news\//i,
+  /\/insights?\//i,
+  /\/magazine\//i,
+  /\/journal\//i,
+  /\/ressources?\//i,
+  /\/guide\//i,
+  /\/tutoriels?\//i,
+]
+
+const KNOWN_BLOG_DOMAINS = new Set([
+  'medium.com',
+  'dev.to',
+  'hashnode.com',
+  'substack.com',
+  'wordpress.com',
+  'blogger.com',
+  'tumblr.com',
+])
+
+const INSTITUTIONAL_DOMAIN_SUFFIXES = ['.gouv.fr', '.gov', '.edu', '.europa.eu']
+const INSTITUTIONAL_DOMAINS = new Set([
+  'wikipedia.org',
+  'fr.wikipedia.org',
+  'linkedin.com',
+  'pagesjaunes.fr',
+  'societe.com',
+  'infogreffe.fr',
+])
+
+function classifyIsBlog(url: string, domain: string, headings: HnNode[]): boolean {
+  const domLower = domain.toLowerCase()
+  // Institutional / directory sites → not a blog.
+  if (INSTITUTIONAL_DOMAINS.has(domLower)) return false
+  if (INSTITUTIONAL_DOMAIN_SUFFIXES.some(s => domLower.endsWith(s))) return false
+
+  // Obvious blog platforms.
+  if (KNOWN_BLOG_DOMAINS.has(domLower)) return true
+  if (domLower.endsWith('.substack.com')) return true
+
+  // URL path patterns.
+  if (BLOG_URL_PATTERNS.some(rx => rx.test(url))) return true
+
+  // Strong secondary signal: many H2 headings suggest long-form editorial content.
+  const h2Count = headings.filter(h => h.level === 2).length
+  if (h2Count >= 5) return true
+
+  return false
+}
+
+// ---------------------------------------------------------------------------
 // Core analysis function
 // ---------------------------------------------------------------------------
 
@@ -105,15 +160,9 @@ export async function analyzeSerpCompetitors(
   keyword: string,
   articleLevel: ArticleLevel,
 ): Promise<SerpAnalysisResult> {
-  const cacheKey = slugify(keyword)
-
-  // Check cache first
-  const cached = await readCached<SerpAnalysisResult>(CACHE_DIR, cacheKey)
-  if (cached && isFresh(cached.cachedAt, CACHE_TTL_MS)) {
-    log.debug(`SERP cache hit for "${keyword}"`)
-    return { ...cached.data, fromCache: true }
-  }
-
+  // Sprint 15.5-bis — DB-first check is now performed in the route itself
+  // (`/serp/analyze`) via keyword_metrics.serp_raw_json. This service only handles
+  // the external fetch path.
   log.info(`Analyzing SERP competitors for "${keyword}" (level: ${articleLevel})`)
   const totalStart = Date.now()
 
@@ -132,7 +181,8 @@ export async function analyzeSerpCompetitors(
         const html = await fetchPageHtml(sr.url)
         const headings = extractHeadings(html)
         const textContent = extractTextContent(html)
-        log.debug('Competitor scraped', { url: sr.url, htmlSize: html.length, headings: headings.length, textSize: textContent.length })
+        const isBlog = classifyIsBlog(sr.url, sr.domain, headings)
+        log.debug('Competitor scraped', { url: sr.url, htmlSize: html.length, headings: headings.length, textSize: textContent.length, isBlog })
         return {
           position: sr.position,
           title: sr.title,
@@ -140,9 +190,12 @@ export async function analyzeSerpCompetitors(
           domain: sr.domain,
           headings,
           textContent,
+          isBlog,
         }
       } catch (err) {
         log.warn(`Failed to fetch ${sr.url}: ${(err as Error).message}`)
+        // Even on fetch error, we can still classify based on URL/domain alone.
+        const isBlog = classifyIsBlog(sr.url, sr.domain, [])
         return {
           position: sr.position,
           title: sr.title,
@@ -151,6 +204,7 @@ export async function analyzeSerpCompetitors(
           headings: [],
           textContent: '',
           fetchError: (err as Error).message,
+          isBlog,
         }
       }
     }),
@@ -170,9 +224,7 @@ export async function analyzeSerpCompetitors(
     fromCache: false,
   }
 
-  // Write to cache (includes raw textContent for TF-IDF cascade — NFR11)
-  await writeCached(CACHE_DIR, cacheKey, result)
-
+  // Sprint 15.5-bis — persistence handled by caller via upsertKeywordSerp().
   log.info(`SERP analysis done for "${keyword}": ${competitors.length} competitors, ${paaQuestions.length} PAA`, { ms: Date.now() - totalStart })
 
   return result

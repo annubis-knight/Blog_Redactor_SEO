@@ -8,6 +8,18 @@ vi.mock('../../../server/utils/json-storage', () => ({
   writeJson: vi.fn(),
 }))
 
+const mockGetCached = vi.fn()
+const mockSetCached = vi.fn()
+vi.mock('../../../server/db/cache-helpers', () => ({
+  getCached: (...args: unknown[]) => mockGetCached(...args),
+  setCached: (...args: unknown[]) => mockSetCached(...args),
+  slugify: (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+}))
+
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
 import { readJson, writeJson } from '../../../server/utils/json-storage'
 import {
   getAuthUrl,
@@ -37,6 +49,8 @@ beforeEach(() => {
   vi.stubGlobal('fetch', mockFetch)
 
   mockWriteJson.mockResolvedValue(undefined)
+  mockGetCached.mockReset()
+  mockSetCached.mockResolvedValue(undefined)
 })
 
 // --- OAuth ---
@@ -128,7 +142,7 @@ describe('gsc.service — queryPerformance', () => {
       rows: [{ keys: ['seo', 'https://propulsite.fr/seo'], clicks: 10, impressions: 100, ctr: 0.1, position: 5 }],
       cachedAt: new Date().toISOString(), // today
     }
-    mockReadJson.mockResolvedValueOnce(cachedPerf)
+    mockGetCached.mockResolvedValueOnce(cachedPerf)
 
     const result = await queryPerformance('https://propulsite.fr', '2026-01-01', '2026-03-01')
 
@@ -137,9 +151,9 @@ describe('gsc.service — queryPerformance', () => {
   })
 
   it('fetches from GSC API on cache miss', async () => {
-    // First readJson call: cache miss (for performance cache)
-    mockReadJson.mockRejectedValueOnce(new Error('no cache'))
-    // Second readJson call: load token (for getValidToken)
+    // getCached returns null: cache miss for performance
+    mockGetCached.mockResolvedValueOnce(null)
+    // readJson: load token (for getValidToken)
     mockReadJson.mockResolvedValueOnce(mockToken)
 
     mockFetch.mockResolvedValueOnce({
@@ -170,12 +184,12 @@ describe('gsc.service — queryPerformance', () => {
     expect(result.rows[0].position).toBe(8.3)
     expect(result.siteUrl).toBe('https://propulsite.fr')
 
-    // Verify result was cached
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
+    // Verify result was cached via setCached
+    expect(mockSetCached).toHaveBeenCalledTimes(1)
   })
 
   it('handles API error', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('no cache'))
+    mockGetCached.mockResolvedValueOnce(null)
     mockReadJson.mockResolvedValueOnce(mockToken)
 
     mockFetch.mockResolvedValueOnce({
@@ -193,8 +207,9 @@ describe('gsc.service — queryPerformance', () => {
 
 describe('gsc.service — analyzeKeywordGap', () => {
   it('classifies targeted-matched, targeted-not-indexed, and discovered keywords', async () => {
-    // Cache miss for performance, then token for getValidToken
-    mockReadJson.mockRejectedValueOnce(new Error('no cache'))
+    // getCached returns null: cache miss for performance
+    mockGetCached.mockResolvedValueOnce(null)
+    // readJson: load token (for getValidToken)
     mockReadJson.mockResolvedValueOnce(mockToken)
 
     mockFetch.mockResolvedValueOnce({
@@ -242,7 +257,7 @@ describe('gsc.service — analyzeKeywordGap', () => {
   })
 
   it('handles empty GSC data', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('no cache'))
+    mockGetCached.mockResolvedValueOnce(null)
     mockReadJson.mockResolvedValueOnce(mockToken)
 
     mockFetch.mockResolvedValueOnce({

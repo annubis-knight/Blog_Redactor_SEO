@@ -3,6 +3,7 @@ import { z } from 'zod/v4'
 import { log } from '../utils/logger.js'
 import { fetchPaa } from '../services/external/dataforseo.service.js'
 import type { PaaQuestion } from '../../shared/types/dataforseo.types.js'
+import { respondWithError } from '../utils/api-error.js'
 
 const router = Router()
 
@@ -54,7 +55,7 @@ router.post('/paa/batch', async (req, res) => {
       return
     }
     log.error(`POST /api/paa/batch — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to fetch PAA batch' } })
+    respondWithError(res, err, { message: 'Failed to fetch PAA batch' })
   }
 })
 

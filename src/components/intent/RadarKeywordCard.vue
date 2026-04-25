@@ -1,22 +1,38 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import type { RadarCard, RadarIntentType, RadarPaaItem } from '@shared/types/intent.types.js'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
+import type { ModifierKind } from '@shared/utils/keyword-modifiers'
+import { computeKpiScore } from '@shared/scoring-kpi.js'
 import KeywordWords from './KeywordWords.vue'
 
 export interface InteractiveWordsProps {
   words: string[]
-  activeCount: number
-  minActiveCount: number
+  activeIndices: number[]
   loading: boolean
 }
 
-const props = defineProps<{
+export type RadarDisplayMode = 'kpi' | 'relevance'
+
+const props = withDefaults(defineProps<{
   card: RadarCard
   interactiveWords?: InteractiveWordsProps
-}>()
+  displayMode?: RadarDisplayMode
+  articleLevel?: ArticleLevel
+  /** Tableau aligné sur les mots du keyword pour coloration visuelle. */
+  modifiers?: (ModifierKind | null)[]
+  /** Si true, un clic sur un mot cycle son tag local/persona/null (au lieu du toggle actif/inactif). */
+  manualTagMode?: boolean
+}>(), {
+  displayMode: 'kpi',
+  articleLevel: 'intermediaire',
+  manualTagMode: false,
+})
 
 const emit = defineEmits<{
-  'word-toggle': [activeCount: number]
+  'word-toggle': [activeIndices: number[]]
+  'modifier-untag': [index: number]
+  'modifier-cycle': [payload: { index: number; next: ModifierKind | null }]
 }>()
 
 const expanded = ref(false)
@@ -98,40 +114,100 @@ const intentBadges = computed(() =>
 const CIRCLE_RADIUS = 30
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS
 
+const kpiBreakdown = computed(() =>
+  props.displayMode === 'kpi' ? computeKpiScore(props.card.kpis, props.articleLevel) : null,
+)
+
+const displayedScore = computed(() => {
+  if (props.displayMode === 'kpi' && kpiBreakdown.value) return kpiBreakdown.value.total
+  return props.card.combinedScore
+})
+
+const scoreLabel = computed(() =>
+  props.displayMode === 'kpi' ? 'Score KPI' : 'Score pertinence',
+)
+
 const scoreColor = computed(() => {
-  const t = props.card.combinedScore / 100
-  // red→orange→green interpolation via HSL: 0° (red) → 120° (green)
+  const t = displayedScore.value / 100
   const hue = Math.round(t * 120)
   return `hsl(${hue}, 70%, 45%)`
 })
 
 const scoreDashoffset = computed(() => {
-  const t = props.card.combinedScore / 100
+  const t = displayedScore.value / 100
   return CIRCLE_CIRCUMFERENCE * (1 - t)
 })
 
 const showTooltip = ref(false)
 
-const breakdownRows = computed(() => [
-  { label: 'PAA Matches', desc: 'Points ponderes selon exact/stem/semantique', value: props.card.scoreBreakdown.paaMatchScore, weight: '30%' },
-  { label: 'Resonance', desc: 'Autocomplete matches + score semantique moyen', value: props.card.scoreBreakdown.resonanceBonus, weight: '15%' },
-  { label: 'Opportunite', desc: 'Volume × (1 - difficulte), potentiel de trafic', value: props.card.scoreBreakdown.opportunityScore, weight: '25%' },
-  { label: 'Intent', desc: 'Valeur de l\'intention: commercial > transactionnel > info', value: props.card.scoreBreakdown.intentValueScore, weight: '15%' },
-  { label: 'CPC', desc: 'Cout par clic — indique la valeur commerciale du mot-cle', value: props.card.scoreBreakdown.cpcScore, weight: '15%' },
-])
+interface BreakdownRow {
+  label: string
+  desc: string
+  value: number
+  weight: string
+  rawLabel?: string
+}
+
+const breakdownRows = computed<BreakdownRow[]>(() => {
+  if (props.displayMode === 'kpi' && kpiBreakdown.value) {
+    const LABEL_DESC: Record<string, string> = {
+      volume:       'Volume de recherche mensuel',
+      kd:           'Keyword Difficulty — concurrence SEO',
+      cpc:          'Coût par clic — valeur commerciale',
+      intent:       'Type d\'intention (commercial > transactionnel > info)',
+      paa:          'Points PAA pondérés selon exact/stem/sémantique',
+      autocomplete: 'Nombre de matches autocomplete',
+    }
+    const pct = (w: number) => `${Math.round(w * 100)}%`
+    return kpiBreakdown.value.components.map(c => ({
+      label: c.label,
+      desc: LABEL_DESC[c.name] ?? '',
+      value: c.normalized,
+      weight: pct(c.weight),
+      rawLabel: c.rawLabel,
+    }))
+  }
+  return [
+    { label: 'PAA Matches', desc: 'Points ponderes selon exact/stem/semantique', value: props.card.scoreBreakdown.paaMatchScore, weight: '25%' },
+    { label: 'Resonance', desc: 'Autocomplete matches + score semantique moyen', value: props.card.scoreBreakdown.resonanceBonus, weight: '15%' },
+    { label: 'Opportunite', desc: 'Volume × (1 - difficulte), potentiel de trafic', value: props.card.scoreBreakdown.opportunityScore, weight: '20%' },
+    { label: 'Intent', desc: 'Valeur de l\'intention: commercial > transactionnel > info', value: props.card.scoreBreakdown.intentValueScore, weight: '10%' },
+    { label: 'CPC', desc: 'Cout par clic — indique la valeur commerciale du mot-cle', value: props.card.scoreBreakdown.cpcScore, weight: '10%' },
+    { label: 'Douleur', desc: 'Alignement semantique entre le mot-cle et la douleur de l\'article', value: props.card.scoreBreakdown.painAlignmentScore, weight: '20%' },
+  ]
+})
+
+// QW4 — Cards dont l'alignement avec la douleur est faible sont grisees mais restent actives.
+// Le seuil 35 cible les keywords que "personne ne taperait en vivant cette douleur".
+// kpis.painAlignmentScore est undefined si pas de painPoint => pas de grisage.
+const OFF_PAIN_THRESHOLD = 35
+const isOffPain = computed(() => {
+  const s = props.card.kpis.painAlignmentScore
+  return typeof s === 'number' && s < OFF_PAIN_THRESHOLD
+})
 
 function formatVolume(v: number): string {
   if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
   return String(v)
 }
 
-function matchLabel(paa: RadarPaaItem): string {
+function baseMatchLabel(paa: RadarPaaItem): string {
   if (paa.match === 'total') return paa.matchQuality === 'exact' ? 'Exact' : paa.matchQuality === 'semantic' ? 'Semantique' : 'Match'
   if (paa.match === 'partial') return paa.matchQuality === 'exact' ? 'Partiel exact' : paa.matchQuality === 'semantic' ? 'Sem. partiel' : 'Partiel'
   return 'Hors sujet'
 }
 
+function matchLabel(paa: RadarPaaItem): string {
+  const base = baseMatchLabel(paa)
+  if (paa.painAlignment === 'off') return `${base} · hors-douleur`
+  if (paa.painAlignment === 'aligned' && paa.match === 'total') return `${base} · douleur`
+  return base
+}
+
+// QW5 — Combine lexical match + painAlignment. Une PAA "total+exact" mais "off-pain"
+// est downgradee visuellement a un badge partiel pour refleter la dissonance.
 function badgeClass(paa: RadarPaaItem): string {
+  if (paa.painAlignment === 'off' && paa.match === 'total') return 'badge--partial'
   if (paa.match === 'total') return 'badge--total'
   if (paa.match === 'partial') return 'badge--partial'
   return 'badge--none'
@@ -139,6 +215,7 @@ function badgeClass(paa: RadarPaaItem): string {
 
 // EXACT badge → green border, MATCH/PARTIEL → subtle gray border, rest → no border
 function itemBorderClass(paa: RadarPaaItem): string {
+  if (paa.painAlignment === 'off' && paa.match === 'total') return 'paa-item--match'
   if (paa.match === 'total' && paa.matchQuality === 'exact') return 'paa-item--exact'
   if (paa.match === 'total') return 'paa-item--match'
   return ''
@@ -148,7 +225,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
 </script>
 
 <template>
-  <div class="radar-card" :class="{ expanded }">
+  <div class="radar-card" :class="{ expanded, 'radar-card--off-pain': isOffPain }">
     <!-- Single-row header -->
     <div class="radar-card__header" @click="expanded = !expanded">
       <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }">&#9654;</span>
@@ -157,12 +234,28 @@ function itemBorderClass(paa: RadarPaaItem): string {
         v-if="interactiveWords"
         class="radar-card__keyword"
         :words="interactiveWords.words"
-        :active-count="interactiveWords.activeCount"
-        :min-active-count="interactiveWords.minActiveCount"
+        :active-indices="interactiveWords.activeIndices"
         :loading="interactiveWords.loading"
-        @update:active-count="emit('word-toggle', $event)"
+        :modifiers="modifiers"
+        :manual-tag-mode="manualTagMode"
+        @update:active-indices="emit('word-toggle', $event)"
+        @modifier-untag="emit('modifier-untag', $event)"
+        @modifier-cycle="emit('modifier-cycle', $event)"
       />
-      <span v-else class="radar-card__keyword">{{ card.keyword }}</span>
+      <span v-else class="radar-card__keyword">
+        <template v-if="modifiers">
+          <span
+            v-for="(word, i) in card.keyword.split(/\s+/)"
+            :key="`${word}-${i}`"
+            class="radar-card__keyword-word"
+            :class="{
+              'radar-card__keyword-word--modifier-local': modifiers[i] === 'local',
+              'radar-card__keyword-word--modifier-persona': modifiers[i] === 'persona',
+            }"
+          >{{ word }}{{ i < card.keyword.split(/\s+/).length - 1 ? ' ' : '' }}</span>
+        </template>
+        <template v-else>{{ card.keyword }}</template>
+      </span>
 
       <!-- Intent badges (SVG) -->
       <div v-if="intentBadges.length > 0" class="radar-card__intents">
@@ -201,9 +294,11 @@ function itemBorderClass(paa: RadarPaaItem): string {
             stroke-linecap="round" :stroke-dasharray="CIRCLE_CIRCUMFERENCE" :stroke-dashoffset="scoreDashoffset"
             transform="rotate(-90 34 34)" />
         </svg>
-        <span class="score-ring__value" :style="{ color: scoreColor }">{{ card.combinedScore }}</span>
+        <span class="score-ring__value" :style="{ color: scoreColor }">{{ displayedScore }}</span>
+        <span class="score-ring__label">{{ scoreLabel }}</span>
         <Transition name="tooltip-fade">
           <div v-if="showTooltip" class="score-tooltip" @click.stop>
+            <div class="tooltip-header">{{ scoreLabel }}</div>
             <div v-for="(row, i) in breakdownRows" :key="'tt-' + i" class="tooltip-row">
               <span class="tooltip-label">{{ row.label }} <span class="tooltip-weight">({{ row.weight }})</span></span>
               <span class="tooltip-desc">{{ row.desc }}</span>
@@ -211,7 +306,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
             </div>
             <div class="tooltip-total">
               <span>Total</span>
-              <span>{{ card.scoreBreakdown.total }}/100</span>
+              <span>{{ displayedScore }}/100</span>
             </div>
           </div>
         </Transition>
@@ -295,6 +390,16 @@ function itemBorderClass(paa: RadarPaaItem): string {
   border-color: var(--color-primary);
 }
 
+/* QW4 — Carte "hors-douleur" : grisee mais entierement cliquable. */
+.radar-card--off-pain {
+  opacity: 0.55;
+  transition: opacity 0.2s;
+}
+
+.radar-card--off-pain:hover {
+  opacity: 0.85;
+}
+
 /* --- Header: single row --- */
 .radar-card__header {
   display: flex;
@@ -316,6 +421,16 @@ function itemBorderClass(paa: RadarPaaItem): string {
 
 .chevron--open {
   transform: rotate(90deg);
+}
+
+.radar-card__keyword-word--modifier-local {
+  color: #0891b2;
+  font-style: italic;
+}
+
+.radar-card__keyword-word--modifier-persona {
+  color: #c2410c;
+  font-style: italic;
 }
 
 .radar-card__keyword {
@@ -403,6 +518,19 @@ function itemBorderClass(paa: RadarPaaItem): string {
   line-height: 1;
 }
 
+.score-ring__label {
+  position: absolute;
+  left: 50%;
+  top: calc(100% + 2px);
+  transform: translateX(-50%);
+  font-size: 0.625rem;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
 /* --- Body --- */
 .radar-card__body {
   padding: 0 16px 14px;
@@ -429,6 +557,15 @@ function itemBorderClass(paa: RadarPaaItem): string {
   border-radius: 8px;
   padding: 12px 14px;
   box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
+}
+
+.tooltip-header {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: var(--color-text);
+  padding-bottom: 6px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--color-border);
 }
 
 .tooltip-row {

@@ -44,21 +44,59 @@ const mockStoreKeywords = ref<{
   richLieutenants: [],
 })
 const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
+const mockSaveDecisions = vi.fn().mockResolvedValue(undefined)
 const mockSetRichLieutenants = vi.fn()
 const mockSaveRichLieutenantProposals = vi.fn()
+const mockSaveLieutenantExplorationEntries = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockStoreKeywords.value,
     saveKeywords: mockSaveKeywords,
+    saveDecisions: mockSaveDecisions,
     setRichLieutenants: mockSetRichLieutenants,
     saveRichLieutenantProposals: mockSaveRichLieutenantProposals,
+    saveLieutenantExplorationEntries: mockSaveLieutenantExplorationEntries,
   }),
 }))
 
 // --- Mock logger ---
 vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+// Sprint 7 P1 — Mock du store pile de messages (utilisé pour logs scan SERP)
+vi.mock('../../../src/stores/ui/cost-log.store', () => ({
+  useCostLogStore: () => ({
+    entries: [],
+    isCollapsed: true,
+    totalCost: 0,
+    entryCount: 0,
+    addEntry: vi.fn(),
+    addMessage: vi.fn(),
+    removeEntry: vi.fn(),
+    clearAll: vi.fn(),
+    toggleCollapsed: vi.fn(),
+  }),
+}))
+
+// F3 — Mock du store basket (utilisé par KeywordAssistPanel)
+vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
+  useMoteurBasketStore: () => ({
+    keywords: [],
+    keywordStrings: [],
+    count: 0,
+    isEmpty: true,
+    bestKeyword: null,
+    validatedKeywords: [],
+    articleId: null,
+    setArticle: vi.fn(),
+    addKeywords: vi.fn(),
+    removeKeyword: vi.fn(),
+    markValidated: vi.fn(),
+    clear: vi.fn(),
+    $reset: vi.fn(),
+  }),
 }))
 
 // --- Test data ---
@@ -102,7 +140,6 @@ function makeProposedLieutenant(overrides: Partial<ProposedLieutenant> = {}): Pr
   return {
     keyword: 'causes seo',
     reasoning: 'Test reasoning',
-    aiConfidence: 'fort',
     sources: ['serp', 'paa'],
     suggestedHnLevel: 2,
     score: 82,
@@ -111,13 +148,13 @@ function makeProposedLieutenant(overrides: Partial<ProposedLieutenant> = {}): Pr
 }
 
 const MOCK_CARDS: ProposedLieutenant[] = [
-  makeProposedLieutenant({ keyword: 'causes seo', aiConfidence: 'fort', score: 90, sources: ['serp', 'paa'] }),
-  makeProposedLieutenant({ keyword: 'solutions seo', aiConfidence: 'moyen', score: 72, sources: ['serp'] }),
-  makeProposedLieutenant({ keyword: 'outils seo', aiConfidence: 'faible', score: 55, sources: ['group'] }),
+  makeProposedLieutenant({ keyword: 'causes seo', score: 90, sources: ['serp', 'paa'] }),
+  makeProposedLieutenant({ keyword: 'solutions seo', score: 72, sources: ['serp'] }),
+  makeProposedLieutenant({ keyword: 'outils seo', score: 55, sources: ['group'] }),
 ]
 
 const MOCK_ELIMINATED: ProposedLieutenant[] = [
-  makeProposedLieutenant({ keyword: 'seo avancé', aiConfidence: 'faible', score: 30, sources: ['root'] }),
+  makeProposedLieutenant({ keyword: 'seo avancé', score: 30, sources: ['root'] }),
 ]
 
 const MOCK_IA_RESULT: FilteredProposeLieutenantsResult = {
@@ -141,7 +178,6 @@ const LieutenantCardStub = {
       <input type="checkbox" :checked="checked" :disabled="disabled" class="stub-checkbox" @change="$emit('update:checked', !checked)" />
       <span class="stub-keyword">{{ lieutenant.keyword }}</span>
       <span class="stub-score">{{ lieutenant.score }}</span>
-      <span class="stub-confidence">{{ lieutenant.aiConfidence }}</span>
     </div>
   `,
 }
@@ -320,6 +356,8 @@ describe('LieutenantsSelection', () => {
         keyword: 'seo local',
         topN: 10,
         articleLevel: 'intermediaire',
+        // Sprint 13 — optional articleId piped through for DB-first serp_explorations persistence.
+        articleId: expect.anything(),
       })
     })
 
@@ -715,43 +753,16 @@ describe('LieutenantsSelection', () => {
       }
     })
 
-    it('passes lieutenant prop with score and confidence', async () => {
+    it('passes lieutenant prop with score', async () => {
       const w = await mountWithCards()
       const stubs = w.findAllComponents({ name: 'LieutenantCard' })
       const causesStub = stubs.find(s => s.props('lieutenant').keyword === 'causes seo')
       expect(causesStub!.props('lieutenant').score).toBe(90)
-      expect(causesStub!.props('lieutenant').aiConfidence).toBe('fort')
-    })
-
-    it('shows stub-confidence for each card', async () => {
-      const w = await mountWithCards()
-      const confidences = w.findAll('.stub-confidence')
-      expect(confidences).toHaveLength(3)
     })
   })
 
-  // --- IA confidence data passed to LieutenantCard ---
-  describe('IA confidence data', () => {
-    it('passes fort confidence to LieutenantCard', async () => {
-      const w = await mountWithCards()
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      const fortCard = stubs.find(s => s.props('lieutenant').keyword === 'causes seo')
-      expect(fortCard!.props('lieutenant').aiConfidence).toBe('fort')
-    })
-
-    it('passes moyen confidence to LieutenantCard', async () => {
-      const w = await mountWithCards()
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      const moyenCard = stubs.find(s => s.props('lieutenant').keyword === 'solutions seo')
-      expect(moyenCard!.props('lieutenant').aiConfidence).toBe('moyen')
-    })
-
-    it('passes faible confidence to LieutenantCard', async () => {
-      const w = await mountWithCards()
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      const faibleCard = stubs.find(s => s.props('lieutenant').keyword === 'outils seo')
-      expect(faibleCard!.props('lieutenant').aiConfidence).toBe('faible')
-    })
+  // --- Score data passed to LieutenantCard ---
+  describe('Score data', () => {
 
     it('passes score to each LieutenantCard', async () => {
       const w = await mountWithCards()
@@ -941,11 +952,11 @@ describe('LieutenantsSelection', () => {
       expect((btn.element as HTMLButtonElement).disabled).toBe(false)
     })
 
-    it('calls saveKeywords on the store when locking', async () => {
+    it('calls saveDecisions on the store when locking', async () => {
       const w = await mountWithCards()
       await w.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
-      expect(mockSaveKeywords).toHaveBeenCalledWith(1)
+      expect(mockSaveDecisions).toHaveBeenCalledWith(1)
     })
 
     it('writes lieutenants to store keywords before saving', async () => {
@@ -963,7 +974,7 @@ describe('LieutenantsSelection', () => {
       await w.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
       expect(w.emitted('check-completed')).toBeTruthy()
-      expect(w.emitted('check-completed')![0][0]).toBe('lieutenants_locked')
+      expect(w.emitted('check-completed')![0][0]).toBe('moteur:lieutenants_locked')
     })
 
     it('shows locked state after locking', async () => {
@@ -988,7 +999,7 @@ describe('LieutenantsSelection', () => {
       await w.find('[data-testid="unlock-btn"]').trigger('click')
       await nextTick()
       expect(w.emitted('check-removed')).toBeTruthy()
-      expect(w.emitted('check-removed')![0][0]).toBe('lieutenants_locked')
+      expect(w.emitted('check-removed')![0][0]).toBe('moteur:lieutenants_locked')
     })
 
     it('unlocks after clicking unlock button', async () => {
@@ -1119,27 +1130,21 @@ describe('LieutenantsSelection', () => {
       expect(mockSetRichLieutenants).not.toHaveBeenCalled()
     })
 
-    it('debounces the saveKeywords call after proposal auto-save', async () => {
-      vi.useFakeTimers()
-      try {
-        const w = await mountWithResults()
-        ;(w.vm as any).proposeLieutenants()
-        await nextTick()
+    it('calls saveLieutenantExplorationEntries directly after proposal auto-save', async () => {
+      const w = await mountWithResults()
+      ;(w.vm as any).proposeLieutenants()
+      await nextTick()
 
-        const options = iaStreaming.startStream.mock.calls[0][2] as { onDone: (data: FilteredProposeLieutenantsResult) => void }
-        options.onDone(MOCK_IA_RESULT)
-        await nextTick()
+      const options = iaStreaming.startStream.mock.calls[0][2] as { onDone: (data: FilteredProposeLieutenantsResult) => void }
+      options.onDone(MOCK_IA_RESULT)
+      await nextTick()
 
-        // Before debounce window expires: saveKeywords not yet called
-        expect(mockSaveKeywords).not.toHaveBeenCalled()
-
-        // Advance past the 300ms debounce window
-        await vi.advanceTimersByTimeAsync(350)
-
-        expect(mockSaveKeywords).toHaveBeenCalledWith(ARTICLE.id)
-      } finally {
-        vi.useRealTimers()
-      }
+      // Direct save to lieutenant_explorations — no debounce
+      expect(mockSaveLieutenantExplorationEntries).toHaveBeenCalledWith(
+        ARTICLE.id,
+        expect.any(Array),
+        'seo local',
+      )
     })
 
     it('skips auto-save when selectedArticle.id differs from store articleId (cross-article guard)', async () => {
@@ -1157,7 +1162,7 @@ describe('LieutenantsSelection', () => {
 
       // Guard must prevent persistence when articleId mismatch
       expect(mockSaveRichLieutenantProposals).not.toHaveBeenCalled()
-      expect(mockSaveKeywords).not.toHaveBeenCalled()
+      expect(mockSaveLieutenantExplorationEntries).not.toHaveBeenCalled()
     })
   })
 })

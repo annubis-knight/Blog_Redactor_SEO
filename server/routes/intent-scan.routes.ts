@@ -52,7 +52,9 @@ router.post('/keywords/radar/generate', async (req, res) => {
   try {
     const result = await generateRadarKeywords(title, keyword, painPoint, cocoonSlug)
     log.info(`Radar generate done: ${result.keywords.length} keywords in ${Date.now() - startGen}ms`)
-    res.json({ data: result })
+    // Alias `usage` pour la pile d'activité (convention unifiée avec apiPost::pushUsageIfPresent)
+    const usage = (result as { _apiUsage?: unknown })._apiUsage
+    res.json({ data: { ...result, usage } })
   } catch (err) {
     log.error(`POST /api/keywords/radar/generate — ${(err as Error).message}`)
     const message = err instanceof Error ? err.message : 'Erreur génération radar'
@@ -62,7 +64,7 @@ router.post('/keywords/radar/generate', async (req, res) => {
 
 /** POST /api/keywords/radar/scan — Scan keywords with PAA, overview, intent */
 router.post('/keywords/radar/scan', async (req, res) => {
-  const { broadKeyword, specificTopic, keywords, depth } = req.body ?? {}
+  const { broadKeyword, specificTopic, keywords, depth, painPoint } = req.body ?? {}
   if (!broadKeyword || typeof broadKeyword !== 'string') {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'broadKeyword is required' } })
     return
@@ -77,12 +79,13 @@ router.post('/keywords/radar/scan', async (req, res) => {
   }
 
   const effectiveDepth = typeof depth === 'number' ? depth : 1
+  const painPointClean = typeof painPoint === 'string' ? painPoint.trim() : ''
 
-  log.info(`Radar scan: ${keywords.length} keywords, depth=${effectiveDepth}`)
+  log.info(`Radar scan: ${keywords.length} keywords, depth=${effectiveDepth}${painPointClean ? ` | pain="${painPointClean.slice(0, 60)}"` : ''}`)
   log.debug(`Radar scan params:`, { broadKeyword, specificTopic, keywordCount: keywords.length, depth: effectiveDepth })
   const startScan = Date.now()
   try {
-    const result = await scanRadarKeywords(broadKeyword, specificTopic, keywords, effectiveDepth)
+    const result = await scanRadarKeywords(broadKeyword, specificTopic, keywords, effectiveDepth, painPointClean || undefined)
     log.info(`Radar scan done: ${result.cards.length} cards, score=${result.globalScore}, heat=${result.heatLevel} in ${Date.now() - startScan}ms`)
     res.json({ data: result })
   } catch (err) {

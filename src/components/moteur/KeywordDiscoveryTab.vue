@@ -1,13 +1,17 @@
 <script setup lang="ts">
-import { ref, watch, computed } from 'vue'
+import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
+import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
+import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
 import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
 import type { DiscoveryContext } from '@shared/types/discovery-cache.types'
+import type { ArticleType } from '@shared/types/article.types.js'
 
 const props = withDefaults(defineProps<{
   pilierKeyword: string
+  articleId?: number | null
   articleTitle?: string
   articleKeyword?: string
   articlePainPoint?: string
@@ -97,6 +101,25 @@ function toggleCollapsed(key: string) {
   collapsed.value[key] = !isCollapsed(key)
 }
 
+// P3 — Pagination simple : une liste de plus de VISIBLE_THRESHOLD items est
+// rendue tronquée jusqu'à clic explicite sur « Tout afficher ». Évite le DOM
+// lourd sur les gros secteurs (SEO local, e-commerce) sans dépendance externe.
+const VISIBLE_THRESHOLD = 100
+const expandedSections = ref<Record<string, boolean>>({})
+
+function isSectionExpanded(key: string): boolean {
+  return expandedSections.value[key] ?? false
+}
+
+function toggleSectionExpanded(key: string) {
+  expandedSections.value[key] = !isSectionExpanded(key)
+}
+
+function visibleItems<T>(list: T[], key: string): T[] {
+  if (list.length <= VISIBLE_THRESHOLD || isSectionExpanded(key)) return list
+  return list.slice(0, VISIBLE_THRESHOLD)
+}
+
 // Single watcher: article keyword change → pre-fill, pilier change → full reset
 watch(
   [() => props.pilierKeyword, () => props.articleKeyword],
@@ -141,6 +164,31 @@ function handleToggleSource(source: DiscoverySource) {
     selectAllInSource(source)
   }
 }
+
+// Sprint 1.4 / Sprint 16-refinement — pre-validate clicked keywords to the
+// Capitaine tab with a 5s window. The countdown is rendered globally as a toast
+// (Gmail-style) via CaptainTriggerToast so the user sees it and can cancel
+// either by re-clicking the keyword OR by clicking "Annuler" in the toast.
+const captainTrigger = useCaptainTriggerStore()
+function handleKeywordClick(keyword: string) {
+  const alreadySelected = isSelected(keyword)
+  toggleSelect(keyword)
+  const articleId = props.articleId
+  if (!articleId) return
+  // After toggle: if now selected → schedule validation; if deselected → cancel.
+  if (!alreadySelected) {
+    captainTrigger.schedule(
+      keyword,
+      articleId,
+      articleTypeToLevel((props.articleType as ArticleType) ?? 'Intermédiaire'),
+    )
+  } else {
+    captainTrigger.cancel(keyword)
+  }
+}
+// Do NOT cancelAll on unmount — the user may just be switching tabs.
+// The store is global and the toast continues to show the countdown.
+onBeforeUnmount(() => {})
 
 function handleSendToRadar() {
   const keywords = getRadarKeywords()
@@ -278,12 +326,12 @@ function handleToggleAnalysisSelectAll() {
           <span v-if="props.articlePainPoint"> · Douleur : {{ props.articlePainPoint }}</span>
         </p>
 
-        <!-- Cache indicator -->
+        <!-- Cache indicator (Sprint 15.6 — DB-first keyword_discoveries, TTL 30j applicatif) -->
         <div v-if="cacheStatus?.cached && !hasDiscovered" class="cache-indicator">
           <span class="cache-indicator__badge">
-            Resultats en cache
+            Derniere analyse
             <span v-if="cacheStatus.cachedAt" class="cache-indicator__date">
-              ({{ new Date(cacheStatus.cachedAt).toLocaleDateString('fr-FR') }})
+              du {{ new Date(cacheStatus.cachedAt).toLocaleDateString('fr-FR') }}
             </span>
             <span v-if="cacheStatus.keywordCount" class="cache-indicator__kw">
               · {{ cacheStatus.keywordCount }} mots-cles
@@ -296,7 +344,7 @@ function handleToggleAnalysisSelectAll() {
             {{ cacheLoading ? 'Chargement...' : 'Charger' }}
           </button>
           <button class="cache-indicator__clear" @click="handleClearCache">
-            Relancer
+            Rafraichir
           </button>
         </div>
       </div>
@@ -351,13 +399,10 @@ function handleToggleAnalysisSelectAll() {
       <!-- Error -->
       <p v-if="error" class="discovery-error">{{ error }}</p>
 
-      <!-- Source sections -->
-      <div v-if="hasDiscovered" class="discovery-sources">
+      <!-- U1 — Source sections : toujours affichées, même vides avec placeholder -->
+      <div class="discovery-sources">
         <template v-for="section in sections" :key="section.key">
-          <section
-            v-if="section.loading || section.list.length > 0"
-            class="source-section"
-          >
+          <section class="source-section">
             <div class="source-header" @click="toggleCollapsed(section.key)">
               <span class="source-header__chevron" :class="{ 'source-header__chevron--open': !isCollapsed(section.key) }">▸</span>
               <span class="source-header__icon">{{ section.icon }}</span>
@@ -366,7 +411,7 @@ function handleToggleAnalysisSelectAll() {
                 <template v-if="section.loading">
                   <span class="spinner-small" />
                 </template>
-                <template v-else>
+                <template v-else-if="section.list.length > 0">
                   ({{ filteredList(section.list).length }}<template v-if="filteredList(section.list).length !== section.list.length">/{{ section.list.length }}</template>)
                 </template>
               </span>
@@ -385,7 +430,7 @@ function handleToggleAnalysisSelectAll() {
             </div>
             <ul v-if="!isCollapsed(section.key) && filteredList(section.list).length > 0" class="source-list">
               <li
-                v-for="kw in filteredList(section.list)"
+                v-for="kw in visibleItems(filteredList(section.list), section.key)"
                 :key="section.key + '-' + kw.keyword"
                 class="source-item"
                 :class="{
@@ -393,13 +438,13 @@ function handleToggleAnalysisSelectAll() {
                   'source-item--multi': isMultiSource(kw.keyword),
                   'source-item--irrelevant': !isRelevant(kw.keyword),
                 }"
-                @click="toggleSelect(kw.keyword)"
+                @click="handleKeywordClick(kw.keyword)"
               >
                 <input
                   type="checkbox"
                   :checked="isSelected(kw.keyword)"
                   @click.stop
-                  @change="toggleSelect(kw.keyword)"
+                  @change="handleKeywordClick(kw.keyword)"
                 />
                 <span
                   class="source-item__keyword"
@@ -415,12 +460,30 @@ function handleToggleAnalysisSelectAll() {
                 </span>
               </li>
             </ul>
+            <!-- P3 — Bouton « Tout afficher » si la liste est tronquée -->
+            <button
+              v-if="!isCollapsed(section.key) && filteredList(section.list).length > VISIBLE_THRESHOLD"
+              type="button"
+              class="source-list__expand-btn"
+              @click="toggleSectionExpanded(section.key)"
+            >
+              <template v-if="isSectionExpanded(section.key)">Réduire la liste</template>
+              <template v-else>Afficher tout ({{ filteredList(section.list).length - VISIBLE_THRESHOLD }} de plus)</template>
+            </button>
+            <!-- Placeholder quand la section est vide et pas en loading -->
+            <p
+              v-else-if="!isCollapsed(section.key) && !section.loading && section.list.length === 0"
+              class="source-section__placeholder"
+            >
+              <template v-if="!hasDiscovered">Saisissez un mot-clé pour découvrir les suggestions.</template>
+              <template v-else>Aucun résultat dans cette source.</template>
+            </p>
           </section>
         </template>
 
-        <!-- Empty state -->
+        <!-- Empty state global : aucune source n'a rien trouvé après découverte -->
         <p
-          v-if="!isAnyLoading && !hasResults"
+          v-if="hasDiscovered && !isAnyLoading && !hasResults"
           class="discovery-empty"
         >
           Aucun mot-clé trouvé. Essayez un autre mot-clé racine.
@@ -790,6 +853,15 @@ function handleToggleAnalysisSelectAll() {
   overflow: hidden;
 }
 
+.source-section__placeholder {
+  margin: 0;
+  padding: 12px 16px;
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--color-text-muted, #64748b);
+  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.03));
+}
+
 .source-header {
   display: flex;
   align-items: center;
@@ -854,6 +926,25 @@ function handleToggleAnalysisSelectAll() {
   padding: 0;
   max-height: 300px;
   overflow-y: auto;
+}
+
+.source-list__expand-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.25rem;
+  padding: 0.375rem 0.5rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted, #64748b);
+  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.04));
+  border: 1px dashed var(--color-border, #e2e8f0);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.source-list__expand-btn:hover {
+  background: var(--color-surface, #f8fafc);
+  color: var(--color-primary, #3b82f6);
 }
 
 .source-item {

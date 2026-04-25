@@ -2,43 +2,39 @@
 stepsCompleted: ['step-01-init', 'step-02-discovery', 'step-02b-vision', 'step-02c-executive-summary', 'step-03-success', 'step-04-journeys', 'step-05-domain', 'step-06-innovation', 'step-07-project-type', 'step-08-scoping', 'step-09-functional', 'step-10-nonfunctional', 'step-11-polish', 'step-12-complete']
 inputDocuments:
   - '_bmad-output/brainstorming/brainstorming-session-2026-03-28.md'
-  - '_bmad-output/brainstorming/brainstorming-session-2026-03-31.md'
-documentCounts:
-  briefs: 0
-  research: 0
-  brainstorming: 2
-  projectDocs: 0
+workflowType: 'prd'
+completedAt: '2026-03-31'
+lastUpdated: '2026-04-24'
+updateReason: 'Alignement avec l''état réel du projet : Moteur en 6 onglets (pas 2 phases/3 sous-onglets), PostgreSQL remplace les fichiers JSON, routes/stores/services/composables réorganisés en subfolders, Cerveau et Rédaction opérationnels, Finalisation ajoutée'
 classification:
   projectType: 'web_app'
   domain: 'SEO Content Production Tool'
   complexity: 'medium'
   projectContext: 'brownfield'
-workflowType: 'prd'
-completedAt: '2026-03-31'
-lastUpdated: '2026-03-31'
-updateReason: 'Alignement Phase ② Valider avec brainstorming GO/NO-GO du 2026-03-31'
 ---
 
 # Product Requirements Document - Blog Redactor SEO
 
 **Author:** Utilisateur
-**Date:** 2026-03-30
+**Date:** 2026-03-30 — mis à jour 2026-04-24
 
 ## Executive Summary
 
-Blog Redactor SEO est un outil de production de contenu SEO conçu pour un consultant solo expert. L'application couvre le cycle complet : stratégie de cocon sémantique (Cerveau), recherche et validation de mots-clés (Moteur), puis rédaction assistée par IA (Rédaction). L'utilisateur cible est un professionnel SEO qui veut passer de "j'ai un cocon à remplir" à "article publié avec des mots-clés validés" de façon quasi-instantanée, sans se noyer dans la complexité des données sous-jacentes.
+Blog Redactor SEO est un outil de production de contenu SEO pour un consultant solo expert. L'application couvre le cycle complet : stratégie de cocon sémantique (**Cerveau**), validation de mots-clés sur 6 onglets (**Moteur**), puis rédaction assistée par IA (**Rédaction**). L'objectif est de passer de « j'ai un cocon à remplir » à « article publié avec des mots-clés validés » rapidement, sans se noyer dans la complexité.
 
-Le projet est en phase d'évolution majeure : le pipeline Cerveau → Rédaction est fonctionnel (stratégie 6 étapes, brief SEO, génération de sommaire/article, éditeur TipTap avec actions contextuelles). Le périmètre de ce PRD porte sur la restructuration du **Moteur** (passage de 10 onglets plats à 2 phases — Générer, Valider), où la **Phase ② Valider** devient un workflow GO/NO-GO en 3 sous-onglets séquentiels (Capitaine → Lieutenants → Lexique) avec feu tricolore contextuel selon le niveau d'article. Les onglets Intention, Audit et Local sont **extraits vers une vue Dashboard** indépendante. Le PRD couvre aussi la création du **Labo** (espace de recherche libre hors workflow), l'ajout d'un système de **guidage invisible** (progression par article, checks automatiques, bandeaux de transition), et le **pont Cerveau→Moteur** (contexte stratégique accessible et injection dans les prompts IA).
+Le pipeline Cerveau → Moteur → Rédaction est aujourd'hui fonctionnel. Le **Moteur** est structuré en 3 phases et 6 onglets : Phase ① Explorer (Discovery, Radar), Phase ② Valider (Capitaine, Lieutenants, Lexique) avec verrouillage séquentiel, et Phase ③ Finalisation (récap read-only débloqué quand les 3 verrouillages de la Phase ② sont faits). La persistance est assurée par **PostgreSQL** (migration réalisée depuis les fichiers JSON historiques). Le frontend et le backend sont organisés en sous-dossiers par domaine (stores et composables en 5 domaines, services backend en 7 domaines).
+
+Le PRD couvre les exigences actuelles : workflow de validation à 6 onglets, ponts Cerveau→Moteur (contexte stratégique injecté dans les prompts IA), extraction Intention/Audit/Local vers Dashboard et Explorateur indépendants, **Labo** pour recherche libre, système de progression à 5 checks `moteur:*` stockés dans `articles.completed_checks` TEXT[].
 
 ### Ce qui rend ce produit unique
 
-1. **Verdict GO/NO-GO qui donne confiance** — Workflow séquentiel en 3 sous-onglets (Capitaine → Lieutenants → Lexique) avec feu tricolore contextuel selon le niveau d'article (Pilier/Intermédiaire/Spécifique). Seuils transparents au survol, l'IA conseille mais ne touche jamais au verdict, l'utilisateur garde le libre arbitre total (forcer GO, input alternatif). Un seul scraping SERP alimente les Lieutenants ET le Lexique.
+1. **Verdict GO/NO-GO qui donne confiance** — Trois onglets séquentiels (Capitaine → Lieutenants → Lexique) avec feu tricolore contextuel selon le niveau d'article (Pilier/Intermédiaire/Spécifique). Seuils transparents au survol, l'IA conseille sans toucher au verdict, l'utilisateur garde le libre arbitre (forcer GO, saisir un alternatif).
 
-2. **Sophistication invisible** — Machine complexe en back, simple en front. L'app note la progression silencieusement, coche les étapes en arrière-plan, suggère la suite sans jamais bloquer la navigation.
+2. **Sophistication invisible** — Machine complexe en back (PostgreSQL, cache multi-niveau, cache SERP cross-article par `keyword_metrics`), simple en front. Progression cochée en arrière-plan, suggestions sans jamais bloquer la navigation.
 
-3. **Outil taillé sur mesure** — Adapté au workflow du consultant : ordre Cerveau→Moteur→Rédaction, structure en silos/cocons/articles, intégration de la stratégie dans chaque décision IA.
+3. **Outil taillé sur mesure** — Adapté au workflow du consultant : ordre Cerveau→Moteur→Rédaction, hiérarchie silos/cocons/articles, injection stratégique dans les décisions IA.
 
-L'insight fondamental : le problème n'est pas de générer du contenu — c'est d'avoir *confiance* dans le mot-clé et la structure *avant* de rédiger. La rédaction devient alors la partie facile.
+L'insight fondamental : le problème n'est pas de générer du contenu — c'est d'avoir *confiance* dans le mot-clé et la structure *avant* de rédiger.
 
 ## Project Classification
 
@@ -46,40 +42,40 @@ L'insight fondamental : le problème n'est pas de générer du contenu — c'est
 |---------|--------|
 | **Type** | Web App — SPA Vue 3 + API Express |
 | **Domaine** | Outil de production de contenu SEO |
-| **Complexité** | Moyenne — orchestration de workflows, intégrations API multiples, pas de contraintes réglementaires |
-| **Contexte** | Brownfield — 75+ composants, 20 stores Pinia, 27 services, 11 vues |
-| **Stack** | Vue 3, Pinia, TipTap, Express 5, Claude API (Anthropic SDK), DataForSEO, Zod, Vitest |
+| **Complexité** | Moyenne — orchestration de workflows, intégrations API multiples |
+| **Contexte** | Brownfield — 100+ composants, 22 stores Pinia (5 domaines), 42 services backend (7 domaines), 15 vues |
+| **Stack** | Vue 3.5, Pinia 3, TipTap 3, Express 5, PostgreSQL (pg 8), Anthropic SDK, Google GenAI, HuggingFace Transformers, DataForSEO, Zod 4, Vitest 4, Playwright |
 | **Usage** | Local, desktop, utilisateur unique |
 
 ## Success Criteria
 
 ### User Success
 
-- **Facilité = Qualité** — La simplicité d'utilisation est au même niveau que la qualité des mots-clés validés et des textes produits. L'un ne sacrifie jamais l'autre.
+- **Facilité = Qualité** — La simplicité d'utilisation est au même niveau que la qualité des mots-clés validés et des textes produits.
 - **Guidage naturel** — L'utilisateur sait toujours où il en est dans le workflow (dots de progression, bandeaux de transition) sans documentation.
-- **Confiance avant rédaction** — Le feu tricolore GO/NO-GO donne un verdict clair sur le Capitaine. Les Lieutenants sont choisis sur la base des données SERP réelles. Le Lexique est extrait des concurrents. Au moment de rédiger, tout est verrouillé et validé.
-- **Recherche libre accessible** — Le Labo permet de vérifier une intuition sur un mot-clé en quelques clics, sans contexte article/cocon.
+- **Confiance avant rédaction** — Le feu tricolore GO/NO-GO donne un verdict clair sur le Capitaine. Les Lieutenants proviennent de données SERP réelles. Le Lexique est extrait des concurrents. Au moment de rédiger, tout est verrouillé et validé.
+- **Recherche libre accessible** — Le Labo permet de vérifier une intuition en quelques clics, sans contexte article/cocon.
 
 ### Business Success
 
-- **Workflow bout-en-bout** — Le chemin Cerveau → Moteur (2 phases : Générer, Valider) → Rédaction fonctionne pour tout article d'un cocon.
-- **Réduction du temps de production** — Le temps entre "je choisis un article" et "article rédigé avec mots-clés validés" diminue significativement vs. le workflow actuel (10 onglets plats). L'onglet Valider est celui où l'on passe le MOINS de temps possible.
-- **Autonomie complète** — L'outil couvre 100% du workflow sans basculer vers un outil externe.
+- **Workflow bout-en-bout** — Le chemin Cerveau → Moteur (6 onglets) → Rédaction fonctionne pour tout article d'un cocon.
+- **Réduction du temps de production** — La Phase ② Valider est celle où l'on passe le MOINS de temps possible grâce au cache SERP cross-article.
+- **Autonomie complète** — L'outil couvre 100% du workflow sans outil externe.
 
 ### Technical Success
 
-- **Zéro appel API redondant** — Résultats DataForSEO, Claude, autocomplete et intent cachés et réutilisés.
-- **Persistance des résultats** — Chaque résultat de service est sauvegardé et rechargé automatiquement à la reprise.
-- **Réactivité** — Pas de lag visible. Appels longs en streaming ou asynchrones avec feedback visuel.
+- **Zéro appel API redondant** — Résultats DataForSEO, Claude/Gemini, autocomplete et intent cachés (table `api_cache` + table `keyword_metrics` cross-article).
+- **Persistance PostgreSQL** — Articles, keywords, progress, strategies, cache en base. Purge horaire des entrées `api_cache` expirées.
+- **Réactivité** — Pas de lag visible. Appels longs en streaming SSE (Claude) avec feedback visuel.
 
 ### Indicateurs mesurables
 
 | Indicateur | Cible |
 |-----------|-------|
-| Appels API redondants | 0 (cache systématique) |
-| Phases du Moteur identifiables | 2 phases visuelles (Générer, Valider) + 3 sous-onglets séquentiels dans Valider |
-| Progression par article | Dots automatiques sur chaque article |
-| Persistance des résultats | 100% (rechargement sans re-call) |
+| Appels API redondants | 0 (cache `api_cache` + `keyword_metrics`) |
+| Phases du Moteur identifiables | 3 phases visuelles (Explorer, Valider, Finalisation) sur 6 onglets |
+| Progression par article | 5 checks `moteur:*` automatiquement écrits dans `articles.completed_checks` |
+| Persistance | 100% PostgreSQL (pas de fichier JSON côté chaud) |
 | Workflow sans outil externe | Oui |
 
 ## User Journeys
@@ -91,261 +87,264 @@ L'insight fondamental : le problème n'est pas de générer du contenu — c'est
 **Parcours :**
 1. **Dashboard** → Silo "Solutions Digitales" → Cocon "CRM pour PME"
 2. **Cocoon Landing** → 3 portes : Cerveau (fait), **Moteur** (à faire), Rédaction
-3. **Moteur ① Générer** → Sélection de l'article. Discovery lance l'analyse IA, Douleur Intent scanne les résonances. Dots : ●●○○○○
-4. **Moteur ② Valider — Capitaine** → Le mot-clé arrive pré-rempli depuis la Phase Cerveau. Thermomètre + KPIs contextuels (Volume, KD, CPC, PAA, Intent, Autocomplete) → feu tricolore GO/ORANGE/NO-GO. Panel IA expert en streaming. Verdict : GO vert. Verrouillage du Capitaine "crm pme". Dots : ●●●○○○
-5. **Moteur ② Valider — Lieutenants** → Bouton "Analyser SERP" → scraping top 10. Hn concurrents, PAA associés, groupes croisés → candidats avec badges pertinence [SERP] [PAA] [Groupe]. Sélection de 4 Lieutenants. Dots : ●●●●○○
-6. **Moteur ② Valider — Lexique** → TF-IDF extrait des données SERP déjà scrapées (zéro requête supplémentaire). 3 niveaux : Obligatoire/Différenciateur/Optionnel avec densité récurrence/page. Checkbox pré-cochées pour les obligatoires. Dots : ●●●●●●
-7. **Rédaction** → Brief enrichi → Sommaire → Article en streaming → Éditeur TipTap
-8. **Résultat** → Article rédigé, mots-clés validés, export HTML
+3. **Moteur — Phase ① Explorer**
+   - **Discovery** : analyse IA des mots-clés candidats (dot `moteur:discovery_done`)
+   - **Radar** : scan Douleur Intent pour détecter les résonances (dot `moteur:radar_done`)
+4. **Moteur — Phase ② Valider — Capitaine** → Le mot-clé arrive pré-rempli depuis Discovery. Thermomètre + KPIs contextuels (Volume, KD, CPC, PAA, Intent, Autocomplete) → feu tricolore GO/ORANGE/NO-GO. Panel IA expert en streaming SSE. Verdict GO → verrouillage Capitaine (dot `moteur:capitaine_locked`).
+5. **Moteur — Phase ② Valider — Lieutenants** → Bouton "Analyser SERP" → scraping top 10 via DataForSEO. Hn concurrents, PAA associés, groupes croisés. Sélection de 4 Lieutenants (dot `moteur:lieutenants_locked`).
+6. **Moteur — Phase ② Valider — Lexique** → TF-IDF extrait des données SERP déjà scrapées (zéro requête supplémentaire). 3 niveaux : Obligatoire/Différenciateur/Optionnel (dot `moteur:lexique_validated`).
+7. **Moteur — Phase ③ Finalisation** → Récap read-only des 3 verrouillages. Bouton « Passer à la rédaction ».
+8. **Rédaction** → Brief enrichi → Sommaire streamé → Article streamé → Éditeur TipTap avec SEO scoring live.
+9. **Résultat** → Article rédigé, mots-clés validés, export HTML.
 
-**Émotion :** "Le feu vert m'a donné confiance. Trois sous-onglets, un seul scraping SERP, et j'avais capitaine, lieutenants et lexique en 5 minutes."
+**Émotion :** « Les 6 onglets du Moteur m'ont guidé sans friction. Un seul scraping SERP alimentait Lieutenants et Lexique. »
 
 ### Journey 2 : Vérification au Labo (Recherche libre)
 
-**Contexte :** Intuition sur le mot-clé "erp cloud pme". Vérification rapide avant intégration dans un cocon.
+**Contexte :** Intuition sur « erp cloud pme ». Vérification rapide avant intégration.
 
 **Parcours :**
-1. **Navbar** → Clic sur **Labo**
-2. **Labo** → Mêmes composants que le Moteur en mode recherche libre — pas de contexte article ni cocon, juste un champ libre. Tape "erp cloud pme", lance le verdict GO/NO-GO (thermomètre + KPIs) : volume 1200, KD 42, feu ORANGE
-3. **Exploration rapide** → Vérifie l'autocomplete, PAA, intention — signaux positifs
-4. **Décision** → Mot-clé prometteur, retour au travail en cours
+1. **Navbar** → **Labo**
+2. **Labo** → Champ libre. Saisit « erp cloud pme », lance le verdict Capitaine en mode `libre` (seuils par défaut = Intermédiaire). Thermomètre + KPIs : volume 1200, KD 42, feu ORANGE.
+3. **Exploration rapide** → Autocomplete, PAA, intention.
+4. **Décision** → Mot-clé prometteur, retour au travail.
 
-**Émotion :** "J'ai vérifié en 2 minutes sans casser mon workflow."
+**Émotion :** « J'ai vérifié en 2 minutes sans casser mon workflow. »
 
 ### Journey 3 : Reprise d'un article en cours
 
-**Contexte :** Article commencé la semaine dernière. Dots : ●●●○○○○.
+**Contexte :** Article commencé la semaine dernière. Checks : Discovery + Radar faits.
 
 **Parcours :**
-1. **Moteur** → Sélection de l'article. Dots montrent Discovery et Douleur Intent faits
-2. **Cache** → Tous les résultats rechargés, aucun re-call API
-3. **Phase ② Valider** → Reprise exactement là où il s'était arrêté
-4. **Contexte** → Stratégie du Cerveau toujours accessible (collapsable), prompts IA enrichis
+1. **Moteur** → Sélection de l'article. Les dots montrent Discovery et Radar faits.
+2. **Cache multi-niveau** → `api_cache` + `keyword_metrics` cross-article. Aucun re-call API.
+3. **Phase ② Valider** → Reprise exactement là où il s'était arrêté.
+4. **Contexte** → Stratégie du Cerveau toujours accessible (composant `MoteurStrategyContext`), prompts IA enrichis via `{{strategy_context}}`.
 
-**Émotion :** "Tout est resté là où je l'avais laissé."
-
-### Capabilities révélées par les journeys
+### Capabilities révélées
 
 | Journey | Capabilities |
 |---------|-------------|
-| Success Path | Moteur 2 phases, validation GO/NO-GO en 3 sous-onglets séquentiels, feu tricolore contextuel, SERP comme fondation unique, dots progression, bandeaux transition, pipeline bout-en-bout, enrichissement prompts IA |
-| Labo | Verdict GO/NO-GO en mode libre (sans article/cocon), accessible partout |
-| Reprise | Cache systématique, persistance résultats, rechargement article-progress |
+| Success Path | Moteur 3 phases / 6 onglets, validation GO/NO-GO, feu tricolore contextuel, SERP unique, dots progression, Finalisation, pipeline bout-en-bout, enrichissement prompts IA |
+| Labo | Verdict GO/NO-GO en mode libre (sans article/cocon) |
+| Reprise | Cache `api_cache` + `keyword_metrics` cross-article, persistance PostgreSQL |
 
 ## Innovation & Novel Patterns
 
 ### Sophistication invisible
 
-Pattern innovant central. Contrairement aux outils SEO qui soit cachent la complexité (perdant en puissance), soit l'exposent (perdant en utilisabilité), Blog Redactor SEO fait les deux simultanément :
-
-- Traque la progression silencieusement (checks auto en arrière-plan)
-- Suggère la suite sans bloquer (bandeaux de transition, messages inline)
+- Traque la progression silencieusement via `articles.completed_checks` TEXT[]
+- Suggère la suite sans bloquer (bandeaux de transition `PhaseTransitionBanner`)
 - Enrichit les prompts IA avec le contexte stratégique sans que l'utilisateur le voie
 - Navigation libre à 100% — aucun gating dur
 
-Pattern inspiré des jeux vidéo (progression invisible, tutoriels non-intrusifs) appliqué à un outil de productivité professionnel.
-
 ### Pont Cerveau→Moteur
 
-Injection automatique du contexte stratégique (cible, angle, promesse) dans les prompts IA. La stratégie définie en amont influence silencieusement toutes les suggestions IA en aval.
+Injection automatique du contexte stratégique (cible, angle, promesse, douleur, CTA) dans les prompts IA via `{{strategy_context}}` dans les templates `.md`.
+
+### Cache multi-niveau cross-article
+
+La table `keyword_metrics` stocke Volume/KD/CPC/PAA par mot-clé de façon partagée entre tous les articles — un même mot-clé réutilisé dans 3 articles ne fait qu'un seul appel DataForSEO.
 
 ### Risques et mitigations
 
 | Risque | Mitigation |
 |--------|-----------|
-| Guidage trop discret | Dots de progression visibles dans la liste articles — premier signal fort |
-| Enrichissement prompts dégrade la qualité IA | Contexte injecté comme additionnel, pas comme contrainte — fallback = prompt standard |
-| Navigation libre → étapes sautées | Message inline dans l'Assignation rattrape le cas critique (pas de capitaine validé) |
+| Guidage trop discret | Dots visibles dans liste articles — signal fort |
+| Enrichissement prompts dégrade l'IA | Contexte injecté comme additionnel, fallback = prompt standard (NFR) |
+| Navigation libre → étapes sautées | Message inline dans Capitaine si signal manquant |
+| Migration JSON → PostgreSQL | Scripts `scripts/migrate-slug-to-id.ts` + backup `_backup_pg_20260418.sql` |
 
 ## Web App — Exigences spécifiques
 
-SPA Vue 3 + backend Express, usage local/desktop, utilisateur unique. Pas de déploiement cloud, pas de multi-utilisateur, pas de SEO sur l'app elle-même.
+SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de déploiement cloud, pas de multi-utilisateur, pas de SEO sur l'app elle-même.
 
 **Architecture existante :**
-- Frontend : Vue 3 + Vue Router + Pinia (20 stores) + TipTap
-- Backend : Express 5, port 3005, CORS localhost
+- Frontend : Vue 3.5 + Vue Router 5 + Pinia 3 (22 stores en 5 domaines) + TipTap 3
+- Backend : Express 5.2, port 3005, CORS localhost only
 - Communication : REST API + SSE streaming
-- Validation : Zod schemas partagés front/back
-- Data : fichiers JSON locaux
-- APIs externes : Claude (Anthropic SDK), DataForSEO, Google Autocomplete, Hugging Face Transformers
+- Validation : Zod 4 schemas partagés front/back (`shared/schemas/`)
+- Data : **PostgreSQL** (pg 8.20) — tables articles, keywords, cocoons, strategies, api_cache, keyword_metrics, article_explorations…
+- APIs externes : Anthropic Claude, Google GenAI, OpenRouter, HuggingFace Transformers, DataForSEO, Google Autocomplete, GSC
 
 **Contraintes brownfield :**
-- Réutiliser les 75+ composants existants au maximum (Labo = mêmes composants que Moteur en mode libre)
-- Store `article-progress` existe mais n'est pas exploité — fondation des checks automatiques
-- Cache DataForSEO en place — étendre aux autres services
-- Prompts IA dans des fichiers `.md` séparés — enrichissement par le Cerveau = pré-processing
+- Réutiliser les 100+ composants existants — Labo utilise les mêmes composants que Moteur en mode `libre`
+- Store `article-progress` (dans `stores/article/`) exploite `articles.completed_checks` TEXT[]
+- Cache DataForSEO centralisé (table `api_cache`) + cache cross-article (`keyword_metrics`)
+- Prompts IA dans `server/prompts/*.md` — enrichissement via `loadPrompt()` et variables `{{...}}`
 
 ## Project Scoping & Phased Development
 
-### Stratégie MVP
+### Stratégie
 
-**Approche : Problem-Solving MVP** — Le minimum qui fait que le workflow Moteur fonctionne de bout en bout pour un article, avec des mots-clés validés et un résultat concret.
+**Le MVP est livré.** Le Moteur en 6 onglets est fonctionnel, Cerveau et Rédaction opérationnels, PostgreSQL en production, cache multi-niveau en place, Labo et Explorateur disponibles.
 
-**Ressources :** Développeur solo. Pas de contrainte d'équipe.
+### Phase actuelle — Consolidation & qualité
 
-### Phase 1 — MVP : Le socle Capitaine
+| Chantier | Statut |
+|----------|--------|
+| Moteur 6 onglets (3 phases) | ✅ Livré |
+| Verdict GO/NO-GO Capitaine avec seuils contextuels | ✅ Livré |
+| Scraping SERP unique cascade Lieutenants→Lexique TF-IDF | ✅ Livré |
+| 5 checks `moteur:*` automatiques | ✅ Livré |
+| Enrichissement prompts Cerveau→Moteur | ✅ Livré |
+| Labo & Explorateur découplés | ✅ Livré |
+| Migration PostgreSQL | ✅ Livré |
+| Refactor stores / composables / services par domaine | ✅ Livré |
+| Purge dead exports, husky + lint-staged | ✅ Livré |
 
-**Journeys supportés :** Success Path + Reprise de travail
-
-| # | Feature | Justification | Dépendances |
-|---|---------|---------------|-------------|
-| 1 | Moteur en 2 phases visuelles (Générer, Valider) | Le Moteur passe de 10 onglets plats à 2 phases claires | Aucune |
-| 2 | Sous-onglet Capitaine — Thermomètre + KPIs contextuels + feu tricolore GO/ORANGE/NO-GO | Cœur du verdict de viabilité mot-clé | Feature 1 |
-| 3 | Seuils contextuels par niveau article (Pilier/Intermédiaire/Spécifique) avec tooltip au survol | L'intelligence est dans le verdict, pas dans l'affichage | Feature 2 |
-| 4 | Panel IA expert SEO en streaming (dépliable, ne touche jamais au verdict) | Complément d'information, confiance utilisateur | Feature 2 |
-| 5 | Input alternatif + historique slider + mécanisme lock/unlock du Capitaine | L'utilisateur garde le contrôle total | Feature 2 |
-| 6 | Découpage automatique en racine(s) pour les mots-clés longue traîne | Enrichissement des données faibles sans remplacer le verdict | Feature 2 |
-| 7 | Feedback NO-GO orienté (3 catégories : Trop longue traîne / KPIs faibles / Hors sujet) | Le NO-GO n'est pas un mur, c'est un GPS | Feature 2 |
-| 8 | Dots de progression par article | Premier signal de sophistication invisible | Aucune |
-| 9 | Checks automatiques sur article-progress (`capitaine_locked`, `lieutenants_locked`, `lexique_validated`) | Fondation du guidage — les dots se remplissent | Feature 8 |
-| 10 | Enrichissement prompts IA (Cerveau→Moteur) | Qualité des suggestions IA — invisible | Aucune |
-
-### Phase 2 — Growth : Lieutenants + Lexique + Dashboard
-
-| # | Feature | Dépendances |
-|---|---------|-------------|
-| 11 | Sous-onglet Lieutenants — bouton "Analyser SERP", Hn concurrents, PAA, Groupes croisés, badges pertinence, sélection checkbox | Feature 5 (Capitaine verrouillé) |
-| 12 | Curseur SERP intelligent (3-10, défaut 10) : sous défaut = filtre local, au-dessus = scraping complémentaire | Feature 11 |
-| 13 | Sous-onglet Lexique — TF-IDF des données SERP, 3 niveaux (Obligatoire/Différenciateur/Optionnel), densité/page, checkbox pré-cochées | Feature 11 (données SERP héritées) |
-| 14 | Extraction Intention/Audit/Local vers vue Dashboard indépendante | Aucune |
-| 15 | Bandeaux de transition entre phases | Feature 9 |
-| 16 | Contexte stratégique collapsable dans le Moteur | Aucune |
-| 17 | Vue Labo (`/labo`) — mêmes composants en mode recherche libre | Aucune |
-
-### Phase 3 — Vision
+### Phase à venir — Vision
 
 - Génération de cocons entiers en un clic (articles + mots-clés + rédaction chaînée)
 - Suggestions proactives de nouveaux cocons basées sur les gaps de contenu
-- Boucle GSC post-publication (le mot-clé ranke-t-il ?)
-- Batch processing multi-articles en parallèle
-- Score de complémentarité Capitaine ↔ Lieutenants (couverture complète vs. mots-clés isolés)
+- Boucle GSC post-publication (le mot-clé ranke-t-il ?) — store `gscStore` présent, exploitation à étendre
+- Batch processing multi-articles
+- Score de complémentarité Capitaine ↔ Lieutenants
 
 ### Risques du projet
 
 | Type | Risque | Mitigation |
 |------|--------|-----------|
-| Technique | Restructuration casse les composants existants | Composants internes inchangés — seul le wrapper MoteurView change |
-| Technique | Checks automatiques difficiles à brancher | Store `article-progress` existe déjà avec `completedChecks[]` — modification des noms de checks |
-| Technique | Enrichissement prompts altère la qualité | Injection en contexte additionnel — facile à A/B tester |
-| Technique | Scraping SERP top 10 = temps de réponse long | Curseur 3-10 permet de réduire ; cache TTL persiste les résultats |
-| UX | Flux séquentiel (Capitaine → Lieutenants → Lexique) ajoute de la friction | Navigation libre maintenue — le verrouillage est un gating souple, l'utilisateur peut toujours consulter les sous-onglets |
-| Scope | Lieutenants + Lexique retardent le MVP | Explicitement Phase 2 — le Capitaine seul couvre le verdict GO/NO-GO |
-| Data | Seuils de scoring trop stricts ou trop laxistes | Seuils ajustables à l'implémentation avec données réelles — tooltip transparent |
+| Technique | Dette de l'ancien système JSON | Archive dans `data/_archive/` + backup SQL |
+| Technique | Scraping SERP long | Curseur 3-10 + cache persistent (api_cache + keyword_metrics) |
+| UX | Flux séquentiel ajoute de la friction | Navigation libre maintenue — verrouillage = gating souple |
+| Data | Seuils de scoring trop stricts | Seuils tooltip transparents, ajustables |
 
 ## Functional Requirements
 
-### Moteur — Restructuration en 3 phases
+### Moteur — Structure 3 phases / 6 onglets
 
-- FR1 : L'utilisateur peut voir les onglets du Moteur organisés en 3 phases visuelles (Générer, Valider, Assigner)
-- FR2 : L'utilisateur peut naviguer librement entre les 3 phases et tous les onglets sans aucun blocage
-- FR3 : L'utilisateur doit sélectionner un article avant d'utiliser le Moteur (toggle article obligatoire)
-- FR4 : L'utilisateur peut voir l'onglet Local qui fusionne les anciens onglets Local/National et Maps & GBP en deux sections dans un même onglet
-- FR5 : Le Content Gap n'apparaît pas dans le Moteur (retiré car déjà dans le Brief)
+- FR1 : Les onglets du Moteur sont organisés en 3 phases visuelles : Phase ① Explorer, Phase ② Valider, Phase ③ Finalisation
+- FR2 : L'utilisateur peut naviguer librement entre tous les onglets sans blocage dur
+- FR3 : L'utilisateur doit sélectionner un article avant d'utiliser les actions du Moteur
+- FR4 : Les onglets Intention, Audit, Local et Content Gap ne font PAS partie du Moteur (extraits vers Dashboard/Explorateur/Brief)
 
-### Moteur — Phase ① Générer
+### Moteur — Phase ① Explorer
 
-- FR6 : L'utilisateur peut lancer une analyse Discovery (IA) pour produire des mots-clés candidats
-- FR7 : L'utilisateur peut lancer un scan Douleur Intent (radar) pour détecter les résonances
-- FR8 : L'utilisateur peut traduire une douleur client en mots-clés candidats via l'onglet Douleur
-- FR9 : Les onglets Discovery et Douleur Intent sont optionnels et se verrouillent si des mots-clés sont déjà validés
+- FR5 : Onglet **Discovery** — analyse IA produisant des mots-clés candidats (émet `moteur:discovery_done`)
+- FR6 : Onglet **Radar** — scan Douleur Intent détectant les résonances (émet `moteur:radar_done`)
+- FR7 : Phase ① accessible en permanence (pas de verrouillage), permet la recherche continue
 
-### Moteur — Phase ② Valider (workflow GO/NO-GO en 3 sous-onglets)
+### Moteur — Phase ② Valider
 
-**Architecture :** Un seul onglet de validation avec 3 sous-onglets séquentiels. Chaque sous-onglet verrouille ses résultats avant de débloquer le suivant. Le mot-clé arrive pré-rempli depuis la Phase ① Générer. L'utilisateur ne saisit rien sauf s'il veut tester un alternatif.
+Architecture : 3 onglets séquentiels. Chaque onglet verrouille ses résultats avant de débloquer le suivant (gating souple — la consultation reste libre). Le mot-clé arrive pré-rempli depuis Phase ① ou Cerveau.
 
-#### Sous-onglet Capitaine (mot-clé principal)
+#### Onglet Capitaine (mot-clé principal)
 
-- FR10 : Le mot-clé Capitaine arrive pré-rempli depuis la Phase Cerveau ou la Phase ① Générer. L'utilisateur peut saisir un mot-clé alternatif et naviguer dans l'historique via un slider
-- FR11 : Le système affiche un feu tricolore GO/ORANGE/NO-GO avec un score global calculé à partir de 6 KPIs : Volume, KD, CPC, PAA pertinence, Intent match, Autocomplete
-- FR12 : Les seuils de chaque KPI sont contextuels selon le niveau d'article (Pilier/Intermédiaire/Spécifique). Par exemple Volume VERT : >1000 (Pilier), >200 (Intermédiaire), >30 (Spécifique)
-- FR13 : Le CPC est un KPI asymétrique : CPC > 2€ = bonus vert, CPC 0-2€ = neutre, jamais de rouge
-- FR14 : Si tous les signaux sont à zéro (volume=0 ET PAA=0 ET autocomplete=0), le verdict est NO-GO automatique avec raison "Aucun signal détecté"
-- FR15 : Pour les mots-clés longue traîne (3+ mots) avec données faibles, le système découpe automatiquement en racine(s) et affiche les KPIs de la racine en section "Analyse racine" — le verdict reste sur le mot-clé original
-- FR16 : Chaque KPI est affiché avec une barre de progression et les zones vert/orange/rouge visibles. Les seuils appliqués sont visibles au survol (tooltip)
-- FR17 : Un panel IA expert SEO s'auto-génère en streaming dès que les KPIs sont disponibles. Le panel est dépliable et ne touche JAMAIS au feu tricolore (complément d'information uniquement)
-- FR18 : L'utilisateur peut forcer GO sur un verdict ORANGE ou ROUGE (libre arbitre total)
-- FR19 : Le NO-GO explique POURQUOI et oriente — trois catégories : "Trop longue traîne" / "KPIs faibles" / "Hors sujet"
-- FR20 : L'utilisateur verrouille le Capitaine via un bouton "Valider ce Capitaine" — le verrouillage débloque le sous-onglet Lieutenants. Un mécanisme lock/unlock (cadenas) permet de déverrouiller
+- FR8 : Le Capitaine arrive pré-rempli ; l'utilisateur peut saisir un alternatif et naviguer dans l'historique via un slider
+- FR9 : Feu tricolore GO/ORANGE/NO-GO calculé à partir de 6 KPIs : Volume, KD, CPC, PAA pertinence, Intent match, Autocomplete
+- FR10 : Seuils contextuels par niveau article (Pilier/Intermédiaire/Spécifique)
+- FR11 : CPC asymétrique : > 2€ = bonus vert, 0-2€ = neutre, jamais rouge
+- FR12 : NO-GO automatique si volume=0 ET PAA=0 ET autocomplete=0
+- FR13 : Pour longue traîne (3+ mots) avec données faibles, découpage en racine(s) en section "Analyse racine" — le verdict reste sur le mot-clé original
+- FR14 : Chaque KPI affiché avec barre de progression et zones vert/orange/rouge ; seuils visibles au survol (tooltip)
+- FR15 : Panel IA expert SEO (`CaptainAiPanel`) en streaming SSE — ne touche JAMAIS au feu tricolore
+- FR16 : L'utilisateur peut forcer GO sur ORANGE ou ROUGE (libre arbitre)
+- FR17 : NO-GO orienté en 3 catégories : "Trop longue traîne" / "KPIs faibles" / "Hors sujet"
+- FR18 : Verrouillage via "Valider ce Capitaine" → émet `moteur:capitaine_locked`, débloque Lieutenants. Lock/unlock (cadenas).
 
-#### Sous-onglet Lieutenants (mots-clés secondaires H2/H3)
+#### Onglet Lieutenants (H2/H3)
 
-- FR21 : Le sous-onglet affiche le Capitaine verrouillé et le niveau d'article en en-tête
-- FR22 : L'utilisateur lance l'analyse SERP via un bouton "Analyser SERP" — scraping des top 3-10 résultats (curseur configurable, défaut 10)
-- FR23 : Le scraping SERP alimente 3 sections dépliables : Structure Hn concurrents (H2 fréquents avec % récurrence), PAA associés (N+2 de pertinence), Groupes de mots-clés (issus de la Phase Cerveau)
-- FR24 : Les candidats Lieutenants sont présentés avec des badges de provenance multi-source [SERP] [PAA] [Groupe] et un badge de pertinence (Fort/Moyen/Faible) basé sur la complémentarité avec le Capitaine
-- FR25 : L'utilisateur sélectionne les Lieutenants via checkboxes. Un compteur indique le nombre recommandé selon le niveau : Pilier 5-8, Intermédiaire 3-5, Spécifique 1-3
-- FR26 : Le curseur SERP est intelligent : sous le défaut = filtre local instantané, au-dessus du défaut = scraping complémentaire
-- FR27 : Un panel IA dépliable recommande une structure Hn avec les Lieutenants sélectionnés
-- FR28 : L'utilisateur verrouille les Lieutenants via "Valider les Lieutenants" — le verrouillage débloque le sous-onglet Lexique
+- FR19 : Affiche Capitaine verrouillé + niveau article en en-tête
+- FR20 : Bouton "Analyser SERP" — scraping top 3-10 via DataForSEO (curseur configurable, défaut 10)
+- FR21 : 3 sections dépliables : Hn concurrents (% récurrence), PAA N+2, Groupes croisés (Cerveau)
+- FR22 : Candidats avec badges multi-source [SERP] [PAA] [Groupe] + pertinence Fort/Moyen/Faible
+- FR23 : Sélection checkbox + compteur recommandé (Pilier 5-8, Intermédiaire 3-5, Spécifique 1-3)
+- FR24 : Curseur SERP intelligent : sous le défaut = filtre local, au-dessus = scraping complémentaire
+- FR25 : Panel IA dépliable recommande structure Hn (`propose-lieutenants.md`, `lieutenants-hn-structure.md`)
+- FR26 : "Valider les Lieutenants" → émet `moteur:lieutenants_locked`, débloque Lexique
 
-#### Sous-onglet Lexique (termes sémantiques LSI)
+#### Onglet Lexique (LSI)
 
-- FR29 : Le Lexique est extrait par analyse TF-IDF des contenus SERP déjà scrapés à l'étape Lieutenants — aucune nouvelle requête API
-- FR30 : Les termes sont classés en 3 niveaux : Obligatoire (70%+ des concurrents), Différenciateur (30-70%), Optionnel (<30%) — avec densité de récurrence par page (ex: ×4.2/page)
-- FR31 : L'utilisateur valide les termes via checkboxes. Les termes Obligatoires sont pré-cochés
-- FR32 : Un panel IA dépliable fournit une analyse lexicale expert avec recommandations
-- FR33 : L'utilisateur valide le Lexique via "Valider le Lexique" — les résultats finaux (capitaine, lieutenants[], lexique[]) sont écrits dans le store ArticleKeywords
+- FR27 : Lexique extrait par TF-IDF des contenus SERP déjà scrapés — ZÉRO nouvelle requête
+- FR28 : 3 niveaux : Obligatoire (70%+), Différenciateur (30-70%), Optionnel (<30%) — densité récurrence/page
+- FR29 : Checkboxes par terme, Obligatoires pré-cochés
+- FR30 : Panel IA dépliable (`lexique-ai-panel.md`, `lexique-analysis-upfront.md`)
+- FR31 : "Valider le Lexique" → émet `moteur:lexique_validated`, écriture finale dans ArticleKeywords (capitaine + lieutenants + lexique)
 
-#### Règles transversales Phase ②
+### Moteur — Phase ③ Finalisation
 
-- FR34 : Aucune action automatique au changement de sous-onglet — l'utilisateur déclenche tout manuellement
-- FR35 : Les KPIs bruts sont TOUJOURS visibles — libre arbitre > algorithme
-- FR36 : La persistance des résultats suit le pattern cache TTL existant avec possibilité de refresh
+- FR32 : Onglet **Finalisation** read-only, débloqué quand les 3 checks Phase ② sont ✓
+- FR33 : Affiche récap (`FinalisationRecap`) : Capitaine + Lieutenants + Lexique validés
+- FR34 : Lien « Passer à la Rédaction » vers `/cocoon/:id/redaction`
 
-### Extraction vers Dashboard (Intention, Audit, Local)
+### Règles transversales Phase ②
 
-- FR37 : Les onglets Intention (SERP intent), Audit (cocon complet) et Local (local vs national + Maps) sont retirés de la Phase ② Valider du Moteur
-- FR38 : Ces fonctionnalités sont accessibles dans une vue Dashboard indépendante, découplée du workflow de validation
-- FR39 : Les phase checks du Moteur sont modifiés : `capitaine_locked + lieutenants_locked + lexique_validated` remplacent `intent_done + audit_done + local_done`
+- FR35 : Aucune action automatique au changement d'onglet — l'utilisateur déclenche tout manuellement
+- FR36 : Les KPIs bruts sont TOUJOURS visibles — libre arbitre > algorithme
+- FR37 : Persistance via `api_cache` (TTL) + `keyword_metrics` (cross-article permanent)
+
+### Dashboard & Explorateur (hors Moteur)
+
+- FR38 : L'**Explorateur** (`/explorateur`, `ExplorateurView`) accueille l'analyse d'intention SERP, comparaison local/national, autocomplete
+- FR39 : Les signaux Local/Maps/GBP sont accessibles via l'Explorateur et les composants `local/` (pas dans le Moteur)
 
 ### Progression et guidage invisible
 
-- FR40 : L'utilisateur peut voir des dots de progression (●/○) à côté de chaque article dans la liste du Moteur
-- FR41 : Le système coche automatiquement les étapes complétées : Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Lexique validé
-- FR42 : Un bandeau de suggestion apparaît quand tous les checks d'une phase sont complétés pour l'article en cours
-- FR43 : L'utilisateur peut ignorer le bandeau et rester dans la phase actuelle
+- FR40 : Dots de progression (●/○) à côté de chaque article dans la liste du Moteur
+- FR41 : Les 5 checks sont ajoutés automatiquement : `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:lexique_validated`
+- FR42 : Bandeau de suggestion (`PhaseTransitionBanner`) entre phases
+- FR43 : L'utilisateur peut ignorer le bandeau
 
 ### Pont Cerveau→Moteur
 
-- FR44 : L'utilisateur peut voir un résumé du contexte stratégique du Cerveau (cible, angle, promesse) dans une section collapsable en haut du Moteur
-- FR45 : Le système injecte automatiquement le contexte stratégique du Cerveau dans les prompts IA du Moteur (Discovery, PainTranslator, Panel IA Capitaine) sans action utilisateur
+- FR44 : Résumé du contexte stratégique Cerveau dans `MoteurStrategyContext` (collapsable) — cible, angle, promesse, douleur, CTA
+- FR45 : Injection automatique via `{{strategy_context}}` dans les prompts `.md` concernés (Discovery, Pain Translate, Capitaine AI Panel, Propose Lieutenants, Lexique AI Panel)
 
 ### Labo — Recherche libre
 
-- FR46 : L'utilisateur peut accéder au Labo depuis la Navbar et le Dashboard
-- FR47 : L'utilisateur peut utiliser les mêmes composants que le Moteur (Discovery, Douleur Intent, verdict GO/NO-GO Capitaine) en mode recherche libre — sans sélectionner d'article ni de cocon
-- FR48 : L'utilisateur peut saisir un mot-clé libre dans le Labo et lancer les analyses disponibles
+- FR46 : Labo accessible depuis Navbar (`/labo`)
+- FR47 : Réutilise les composants Moteur en mode `libre` — pas de sélection article/cocon
+- FR48 : Champ de recherche libre + verdict Capitaine avec seuils par défaut Intermédiaire
 
 ### Cache et persistance
 
-- FR49 : Le système sauvegarde les résultats de chaque service (Discovery, Validation Capitaine, SERP Lieutenants, Lexique TF-IDF) pour chaque article
-- FR50 : Le système recharge automatiquement les résultats sauvegardés quand l'utilisateur revient sur un article
-- FR51 : Le système ne relance pas un appel API si un résultat valide existe déjà en cache pour la même requête
+- FR49 : Chaque service externe consulte d'abord `api_cache` (clé = request hash + TTL)
+- FR50 : Les métriques mot-clé (Volume, KD, CPC, PAA) sont stockées dans `keyword_metrics` (partagé entre articles)
+- FR51 : Rechargement automatique des résultats à la reprise — pas de re-call API
+- FR52 : Purge horaire : `DELETE FROM api_cache WHERE expires_at < NOW()` (job dans `server/index.ts`)
+
+### Stratégie (Cerveau) — fonctionnel
+
+- FR53 : Cerveau en 6 étapes : Cible, Douleur, Aiguillage, Angle, Promesse, CTA
+- FR54 : Chaque étape : input utilisateur → suggestion IA (`strategy-suggest.md`) → approfondissement (`strategy-deepen.md`) → consolidation (`strategy-consolidate.md`) → validation
+
+### Rédaction — fonctionnel
+
+- FR55 : Brief généré à partir de l'article + keywords + SERP
+- FR56 : Sommaire streamé via SSE (`generate-outline.md`)
+- FR57 : Article streamé section par section (`generate-article.md`, `generate-article-section.md`)
+- FR58 : Meta title + meta description générés (`generate-meta.md`)
+- FR59 : Éditeur TipTap avec SEO scoring live (300ms debounce, `requestIdleCallback`)
+- FR60 : Actions contextuelles sur sélection (`server/prompts/actions/*.md`) : reformulate, simplify, convert-list, etc.
 
 ## Non-Functional Requirements
 
 ### Performance
 
-- NFR1 : Les réponses API locales (hors appels externes) sont retournées en < 200ms
-- NFR2 : Le streaming SSE (Claude) affiche le premier token en < 2s
-- NFR3 : Le chargement d'une vue (changement de route) se fait en < 500ms
-- NFR4 : Le cache hit rate DataForSEO atteint > 90% après première utilisation d'un mot-clé
+- NFR1 : Réponses API locales (hors appels externes) en < 200ms
+- NFR2 : Streaming SSE (Claude) premier token en < 2s
+- NFR3 : Chargement d'une vue (changement de route lazy) en < 500ms
+- NFR4 : Cache hit rate DataForSEO > 90% après première utilisation d'un mot-clé (grâce à `keyword_metrics`)
 
 ### Optimisation des coûts
 
-- NFR5 : Aucun appel API externe n'est effectué si un résultat valide existe en cache
-- NFR6 : Les résultats de tous les services sont persistés sur disque (fichiers JSON) et survivent au redémarrage de l'app
-- NFR7 : La taille maximale d'un fichier JSON en mémoire est de 5MB (limite Express actuelle)
+- NFR5 : Aucun appel API externe si résultat valide en `api_cache` ou `keyword_metrics`
+- NFR6 : Persistance PostgreSQL — survit au redémarrage
+- NFR7 : Taille max body JSON : 5MB (`express.json({ limit: '5mb' })`)
 
 ### Intégration
 
-- NFR8 : Les composants du Moteur fonctionnent en deux modes : contextualisé (article sélectionné, seuils adaptatifs selon le niveau) et libre (Labo, seuils par défaut "Intermédiaire")
-- NFR9 : L'enrichissement des prompts IA par le contexte du Cerveau est optionnel — si aucune stratégie n'existe pour le cocon, les prompts fonctionnent sans enrichissement
-- NFR10 : Le store `article-progress` avec `completedChecks[]` est la source unique de vérité pour la progression par article. Les checks sont : `capitaine_locked`, `lieutenants_locked`, `lexique_validated`
-- NFR11 : Le scraping SERP ne se fait qu'UNE fois (sous-onglet Lieutenants) et les données cascadent vers le Lexique — zéro requête dupliquée
-- NFR12 : Les seuils de scoring du feu tricolore sont configurables et stockés de façon transparente (visibles au survol)
+- NFR8 : Composants Moteur bimodaux : contextualisé (article sélectionné, seuils adaptatifs) et libre (Labo, seuils Intermédiaire par défaut)
+- NFR9 : Enrichissement prompts optionnel — sans stratégie, `{{strategy_context}}` = string vide
+- NFR10 : `articles.completed_checks` TEXT[] = source unique de vérité pour la progression. Checks Moteur : `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:lexique_validated`
+- NFR11 : Scraping SERP UNE fois (Lieutenants) → cascade vers Lexique (TF-IDF sur contenus hérités) — zéro doublon
+- NFR12 : Seuils de scoring configurables dans `shared/kpi-scoring.ts` / `shared/scoring.ts` et visibles au survol
 
 ### Maintenabilité
 
-- NFR13 : Les composants réutilisés entre Moteur et Labo ne sont pas dupliqués — un seul composant avec un prop de mode (contextualisé / libre)
-- NFR14 : Les prompts IA restent dans des fichiers `.md` séparés — l'enrichissement stratégique est un pré-processing en amont, pas une modification du prompt source
+- NFR13 : Pas de duplication composants entre Moteur et Labo — prop `mode: 'workflow' | 'libre'`
+- NFR14 : Prompts IA dans `server/prompts/*.md` — enrichissement par `loadPrompt()` avec variables `{{...}}`
+- NFR15 : Organisation par domaine : `stores/{article,keyword,strategy,external,ui}/`, `composables/{keyword,intent,editor,seo,ui}/`, `services/{keyword,external,intent,article,strategy,infra,queries}/`
+- NFR16 : Tests Vitest en miroir dans `tests/unit/`, tests navigateur Playwright (`test:browser`)
+- NFR17 : Tooling qualité : oxlint + eslint + prettier + knip (dead code) + madge (cycles) + husky pre-commit + lint-staged

@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/claude.service.js'
+import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../services/external/claude.service.js'
+import { parseAiJson } from '../utils/ai-json-parser.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
-import { getCocoonExistingLieutenants } from '../services/infra/data.service.js'
+import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
+import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
 
@@ -152,121 +154,6 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
   }
 })
 
-/** Attempt to repair truncated JSON by closing open brackets/braces */
-function repairTruncatedJson(json: string): string {
-  let repaired = json.trim()
-  // Remove trailing comma before we close
-  repaired = repaired.replace(/,\s*$/, '')
-  // Remove incomplete key-value pair at the end (e.g. `"key": "incomplete...`)
-  repaired = repaired.replace(/,?\s*"[^"]*":\s*"[^"]*$/, '')
-  // Remove trailing incomplete object using brace-depth awareness:
-  // walk backwards to find the last point where all nested braces are balanced
-  repaired = trimIncompleteTrailingObject(repaired)
-
-  // Count open/close brackets and braces
-  let openBraces = 0, openBrackets = 0
-  let inString = false, escape = false
-  for (const ch of repaired) {
-    if (escape) { escape = false; continue }
-    if (ch === '\\') { escape = true; continue }
-    if (ch === '"') { inString = !inString; continue }
-    if (inString) continue
-    if (ch === '{') openBraces++
-    else if (ch === '}') openBraces--
-    else if (ch === '[') openBrackets++
-    else if (ch === ']') openBrackets--
-  }
-
-  // Close any unclosed string
-  if (inString) repaired += '"'
-  // Close remaining brackets/braces (clamp negatives to 0)
-  openBrackets = Math.max(0, openBrackets)
-  openBraces = Math.max(0, openBraces)
-  while (openBrackets > 0) { repaired += ']'; openBrackets-- }
-  while (openBraces > 0) { repaired += '}'; openBraces-- }
-
-  return repaired
-}
-
-/** Trim an incomplete trailing object from JSON arrays by tracking brace depth */
-function trimIncompleteTrailingObject(json: string): string {
-  // Find last comma at depth 1 (array level) — everything after is potentially incomplete
-  let depth = 0, inStr = false, esc = false, lastCommaAtDepth1 = -1
-  for (let i = 0; i < json.length; i++) {
-    const ch = json[i]
-    if (esc) { esc = false; continue }
-    if (ch === '\\') { esc = true; continue }
-    if (ch === '"') { inStr = !inStr; continue }
-    if (inStr) continue
-    if (ch === '{' || ch === '[') depth++
-    else if (ch === '}' || ch === ']') depth--
-    else if (ch === ',' && depth === 1) lastCommaAtDepth1 = i
-  }
-  // If depth ended > 1 and we have a comma at array-level, trim the incomplete trailing element
-  if (depth > 1 && lastCommaAtDepth1 > 0) {
-    return json.slice(0, lastCommaAtDepth1)
-  }
-  return json
-}
-
-/** Extract balanced JSON object from text — finds first '{' and its matching '}' */
-function extractBalancedJson(text: string): string | null {
-  const start = text.indexOf('{')
-  if (start < 0) return null
-  let depth = 0, inStr = false, esc = false
-  for (let i = start; i < text.length; i++) {
-    const ch = text[i]
-    if (esc) { esc = false; continue }
-    if (ch === '\\') { esc = true; continue }
-    if (ch === '"') { inStr = !inStr; continue }
-    if (inStr) continue
-    if (ch === '{') depth++
-    else if (ch === '}') {
-      depth--
-      if (depth === 0) return text.slice(start, i + 1)
-    }
-  }
-  return null // unbalanced
-}
-
-/** Parse JSON from AI output — try direct parse, regex fallback, then truncation repair */
-function parseAiJson<T>(content: string): T {
-  // 1. Direct parse
-  try {
-    const result = JSON.parse(content) as T
-    log.debug('parseAiJson: direct parse succeeded', { contentChars: content.length })
-    return result
-  } catch (err) { /* continue */ }
-
-  // 2. Extract JSON block using balanced brace matching (avoids greedy regex issues)
-  const extracted = extractBalancedJson(content)
-  if (extracted) {
-    try {
-      const result = JSON.parse(extracted) as T
-      log.debug('parseAiJson: balanced extraction succeeded', { extractedChars: extracted.length, originalChars: content.length })
-      return result
-    } catch (err) { /* continue */ }
-  }
-
-  // 3. Repair truncated JSON (AI hit maxTokens)
-  const jsonStart = content.indexOf('{')
-  if (jsonStart >= 0) {
-    const truncated = content.slice(jsonStart)
-    const repaired = repairTruncatedJson(truncated)
-    log.warn(`parseAiJson: repairing truncated JSON (${truncated.length} → ${repaired.length} chars)`)
-    try {
-      const result = JSON.parse(repaired) as T
-      log.info('parseAiJson: repaired JSON parse succeeded', { repairedChars: repaired.length })
-      return result
-    } catch (err) {
-      log.error('parseAiJson: repaired JSON parse failed', { error: (err as Error).message, repairedChars: repaired.length })
-    }
-  }
-
-  log.error('parseAiJson: no valid JSON found', { contentChars: content.length, contentPreview: content.slice(0, 200) })
-  throw new Error('No valid JSON found in AI response')
-}
-
 /** Max selected lieutenants per article level (post-AI filtering) */
 const MAX_SELECTED: Record<ArticleLevel, number> = {
   pilier: 5,
@@ -409,6 +296,39 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
       eliminated: filtered.eliminatedLieutenants.length,
       totalMs: Date.now() - startTotal,
     })
+
+    // E2 — Persist lieutenant proposals server-side BEFORE notifying the client.
+    // Guarantees that even if the client connection drops after this point,
+    // the generated data survives in the DB.
+    try {
+      const dbEntries: Pick<RichLieutenant, 'keyword' | 'status' | 'reasoning' | 'sources' | 'suggestedHnLevel' | 'score' | 'kpis' | 'lockedAt'>[] = [
+        ...filtered.selectedLieutenants.map(lt => ({
+          keyword: lt.keyword,
+          status: 'suggested' as const,
+          reasoning: lt.reasoning,
+          sources: lt.sources,
+          suggestedHnLevel: lt.suggestedHnLevel,
+          score: lt.score,
+          kpis: null,
+          lockedAt: null,
+        })),
+        ...filtered.eliminatedLieutenants.map(lt => ({
+          keyword: lt.keyword,
+          status: 'eliminated' as const,
+          reasoning: lt.reasoning,
+          sources: lt.sources,
+          suggestedHnLevel: lt.suggestedHnLevel,
+          score: lt.score,
+          kpis: null,
+          lockedAt: null,
+        })),
+      ]
+      await saveLieutenantExplorations(Number(articleId), dbEntries as RichLieutenant[], keyword)
+      log.debug(`propose-lieutenants DB persist done`, { articleId, count: dbEntries.length })
+    } catch (persistErr) {
+      log.error(`propose-lieutenants DB persist failed — ${(persistErr as Error).message}`, { articleId, keyword })
+    }
+
     res.write(`event: done\ndata: ${JSON.stringify({ outline: filtered, metadata: { keyword, level }, usage })}\n\n`)
     res.end()
   } catch (err) {
@@ -500,7 +420,7 @@ router.post('/keywords/:keyword/ai-lexique', async (req, res) => {
  */
 router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  const { level, allTerms, cocoonSlug } = req.body
+  const { level, allTerms, cocoonSlug, articleId } = req.body
 
   if (!keyword || !level) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword and level are required' } })
@@ -564,6 +484,19 @@ router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
       expectedTerms: totalTerms,
       totalMs: Date.now() - startTotal,
     })
+
+    // Sprint 11 — persist IA recommendations in lexique_explorations BEFORE emitting done
+    // (E2 pattern: if client disconnects on done, DB still has the data).
+    const articleIdNum = Number(articleId)
+    if (Number.isInteger(articleIdNum) && articleIdNum > 0) {
+      try {
+        const { saveLexiqueAi } = await import('../services/keyword/lexique-exploration.service.js')
+        await saveLexiqueAi(articleIdNum, keyword, parsed)
+      } catch (err) {
+        log.warn(`lexique-ai: DB persist failed — ${(err as Error).message}`)
+      }
+    }
+
     res.write(`event: done\ndata: ${JSON.stringify({ outline: parsed, metadata: { keyword, level }, usage })}\n\n`)
     res.end()
   } catch (err) {

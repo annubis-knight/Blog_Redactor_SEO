@@ -1,16 +1,42 @@
-import { describe, it, expect, vi, beforeEach, type Mock } from 'vitest'
+// @vitest-environment node
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks ---
+// Sprint 15.4 — intent now reads keyword_intent_analyses DB table, not api_cache.
+const mockGetCached = vi.fn()   // still used by compareLocalNational / validateAutocomplete (api_cache)
+const mockSetCached = vi.fn()
+const mockGetKeywordIntent = vi.fn()
+const mockSaveKeywordIntent = vi.fn()
+const mockIsKeywordIntentFresh = vi.fn()
 
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: vi.fn(),
-  writeJson: vi.fn(),
+vi.mock('../../../server/db/cache-helpers', () => ({
+  getCached: (...args: unknown[]) => mockGetCached(...args),
+  setCached: (...args: unknown[]) => mockSetCached(...args),
+  slugify: (s: string) => s.toLowerCase().replace(/\s+/g, '-'),
+}))
+
+vi.mock('../../../server/services/intent/keyword-intent-analysis.service', () => ({
+  getKeywordIntentAnalysis: (...args: unknown[]) => mockGetKeywordIntent(...args),
+  saveKeywordIntentAnalysis: (...args: unknown[]) => mockSaveKeywordIntent(...args),
+  isKeywordIntentFresh: (...args: unknown[]) => mockIsKeywordIntentFresh(...args),
+}))
+
+// Sprint 15.5 — compareLocalNational uses keyword_metrics.local_comparison
+const mockGetKeywordMetrics = vi.fn()
+const mockUpsertLocalComparison = vi.fn()
+const mockIsMetricsFresh = vi.fn()
+
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
+  upsertKeywordLocalComparison: (...args: unknown[]) => mockUpsertLocalComparison(...args),
+  isKeywordMetricsFresh: (...args: unknown[]) => mockIsMetricsFresh(...args),
 }))
 
 const { mockClaudeCreate } = vi.hoisted(() => ({
   mockClaudeCreate: vi.fn().mockResolvedValue({
-    content: [{ type: 'text', text: '{"type":"transactional_local","confidence":0.85,"reasoning":"Local pack present"}' }],
+    content: [{ type: 'tool_use', name: 'classify_intent', input: { type: 'transactional_local', confidence: 0.85, reasoning: 'Local pack present' } }],
     usage: { input_tokens: 100, output_tokens: 50 },
+    stop_reason: 'tool_use',
   }),
 }))
 
@@ -23,16 +49,23 @@ vi.mock('@anthropic-ai/sdk', () => {
   }
 })
 
-import { readJson, writeJson } from '../../../server/utils/json-storage'
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
+  getBaseUrl: () => 'https://sandbox.dataforseo.com/v3',
+  getAuthHeader: () => 'Basic dGVzdDp0ZXN0',
+  isSandbox: () => true,
+}))
+
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
+
 import { analyzeIntent, compareLocalNational, validateAutocomplete } from '../../../server/services/intent/intent.service'
 import type { IntentAnalysis, LocalNationalComparison, AutocompleteResult } from '../../../shared/types/index'
 
-const mockReadJson = readJson as Mock
-const mockWriteJson = writeJson as Mock
-
 // --- Helpers ---
-
-const mockFetch = vi.fn()
 
 function makeDfsResponse(result: unknown, statusCode = 20000) {
   return {
@@ -115,12 +148,14 @@ function makeCachedAutocomplete(keyword: string): AutocompleteResult {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  vi.stubGlobal('fetch', mockFetch)
-  vi.stubEnv('DATAFORSEO_LOGIN', 'test-login')
-  vi.stubEnv('DATAFORSEO_PASSWORD', 'test-password')
+  mockSetCached.mockResolvedValue(undefined)
+  mockGetKeywordIntent.mockResolvedValue(null)
+  mockSaveKeywordIntent.mockResolvedValue(undefined)
+  mockIsKeywordIntentFresh.mockReturnValue(false)
+  mockGetKeywordMetrics.mockResolvedValue(null)
+  mockUpsertLocalComparison.mockResolvedValue(undefined)
+  mockIsMetricsFresh.mockReturnValue(false)
   vi.stubEnv('ANTHROPIC_API_KEY', 'test-anthropic-key')
-  vi.stubEnv('DATAFORSEO_SANDBOX', 'true')
-  mockWriteJson.mockResolvedValue(undefined)
 })
 
 // ============================================================
@@ -128,9 +163,11 @@ beforeEach(() => {
 // ============================================================
 
 describe('analyzeIntent', () => {
-  it('returns cached result on cache hit', async () => {
-    const cached = makeCachedIntentAnalysis('plombier toulouse')
-    mockReadJson.mockResolvedValueOnce({ data: cached, cachedAt: cached.cachedAt })
+  it('returns DB-first result when keyword_intent_analyses row is fresh', async () => {
+    // Sprint 15.4 — intent DB-first
+    const cached = { ...makeCachedIntentAnalysis('plombier toulouse'), fetchedAt: new Date().toISOString(), locationCode: 2250 }
+    mockGetKeywordIntent.mockResolvedValueOnce(cached)
+    mockIsKeywordIntentFresh.mockReturnValueOnce(true)
 
     const result = await analyzeIntent('plombier toulouse')
 
@@ -138,33 +175,31 @@ describe('analyzeIntent', () => {
     expect(mockFetch).not.toHaveBeenCalled()
   })
 
-  it('calls SERP Advanced + Claude on cache miss and caches result', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+  it('calls SERP Advanced + Claude on DB miss and saves result', async () => {
+    mockGetKeywordIntent.mockResolvedValueOnce(null)
 
     const serpResult = makeSerpResult(['local_pack', 'organic', 'people_also_ask', 'organic'])
     mockFetch.mockResolvedValueOnce(makeDfsResponse(serpResult))
 
     const result = await analyzeIntent('plombier toulouse')
 
-    // Verify SERP Advanced was called
     expect(mockFetch).toHaveBeenCalledTimes(1)
     const [url, opts] = mockFetch.mock.calls[0]
     expect(url).toContain('/serp/google/organic/live/advanced')
     expect(JSON.parse(opts.body)[0].keyword).toBe('plombier toulouse')
 
-    // Verify classification from Claude mock
     expect(result.dominantIntent).toBe('transactional_local')
     expect(result.classification.confidence).toBe(0.85)
     expect(result.keyword).toBe('plombier toulouse')
 
-    // Verify cache write (CacheEntry format: { data: ..., cachedAt: ... })
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
-    expect(mockWriteJson.mock.calls[0][1].data.keyword).toBe('plombier toulouse')
+    // Verify DB save (Sprint 15.4)
+    expect(mockSaveKeywordIntent).toHaveBeenCalledTimes(1)
+    const [savedResult, savedLocationCode] = mockSaveKeywordIntent.mock.calls[0]
+    expect(savedResult.keyword).toBe('plombier toulouse')
+    expect(savedLocationCode).toBe(2250)
   })
 
   it('extracts SERP modules correctly', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
     const serpResult = makeSerpResult([
       'local_pack', 'featured_snippet', 'organic', 'video', 'images', 'organic',
     ])
@@ -185,8 +220,6 @@ describe('analyzeIntent', () => {
   })
 
   it('extracts top organic results (max 5)', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
     const serpResult = makeSerpResult([
       'organic', 'organic', 'organic', 'organic', 'organic', 'organic', 'organic',
     ])
@@ -199,8 +232,6 @@ describe('analyzeIntent', () => {
   })
 
   it('generates scores and recommendations for present modules', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
     const serpResult = makeSerpResult(['local_pack', 'people_also_ask', 'organic'])
     mockFetch.mockResolvedValueOnce(makeDfsResponse(serpResult))
 
@@ -218,8 +249,6 @@ describe('analyzeIntent', () => {
   })
 
   it('falls back to module-based classification when Claude returns invalid JSON', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
     // Override Claude to return invalid JSON for this test
     mockClaudeCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: 'NOT VALID JSON' }],
@@ -238,8 +267,6 @@ describe('analyzeIntent', () => {
   })
 
   it('falls back to informational when Claude returns invalid JSON and no local_pack', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
     mockClaudeCreate.mockResolvedValueOnce({
       content: [{ type: 'text', text: '---broken---' }],
       usage: { input_tokens: 100, output_tokens: 50 },
@@ -260,9 +287,10 @@ describe('analyzeIntent', () => {
 // ============================================================
 
 describe('compareLocalNational', () => {
-  it('returns cached result on cache hit', async () => {
+  it('returns DB-first result when keyword_metrics.local_comparison is fresh', async () => {
     const cached = makeCachedComparison('plombier toulouse')
-    mockReadJson.mockResolvedValueOnce({ data: cached, cachedAt: cached.cachedAt })
+    mockGetKeywordMetrics.mockResolvedValueOnce({ localComparison: cached, fetchedAt: new Date().toISOString() })
+    mockIsMetricsFresh.mockReturnValueOnce(true)
 
     const result = await compareLocalNational('plombier toulouse')
 
@@ -271,8 +299,6 @@ describe('compareLocalNational', () => {
   })
 
   it('makes parallel requests for national and local keyword overview', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
     const nationalResult = makeKwOverviewResult(5000, 60, 1.2, 0.7)
     const localResult = makeKwOverviewResult(200, 25, 0.4, 0.2)
 
@@ -284,8 +310,7 @@ describe('compareLocalNational', () => {
 
     expect(mockFetch).toHaveBeenCalledTimes(2)
 
-    // In sandbox mode (DATAFORSEO_SANDBOX=true), both calls use 2250
-    // In production they would use 2742 (France) and 1006157 (Toulouse)
+    // In sandbox mode (isSandbox() = true), both calls use 2250
     const body0 = JSON.parse(mockFetch.mock.calls[0][1].body)
     const body1 = JSON.parse(mockFetch.mock.calls[1][1].body)
     expect(body0[0].location_code).toBe(2250)
@@ -296,9 +321,7 @@ describe('compareLocalNational', () => {
     expect(result.local.searchVolume).toBe(200)
   })
 
-  it('calculates opportunity index correctly', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
-
+  it('calculates opportunity index and persists to keyword_metrics.local_comparison', async () => {
     // local volume=200, local KD=25, national KD=60
     // opportunityIndex = round((200 * (100 - 25)) / 60) = round(15000 / 60) = 250
     const nationalResult = makeKwOverviewResult(5000, 60)
@@ -311,11 +334,12 @@ describe('compareLocalNational', () => {
     const result = await compareLocalNational('plombier toulouse')
 
     expect(result.opportunityIndex).toBe(250)
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
+    expect(mockUpsertLocalComparison).toHaveBeenCalledTimes(1)
+    const [keyword] = mockUpsertLocalComparison.mock.calls[0]
+    expect(keyword).toBe('plombier toulouse')
   })
 
   it('generates alert when opportunity index >= threshold', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
     vi.stubEnv('LOCAL_OPPORTUNITY_THRESHOLD', '60')
 
     // opportunityIndex = round((200 * 75) / 60) = 250 >= 60
@@ -335,7 +359,6 @@ describe('compareLocalNational', () => {
   })
 
   it('does not generate alert when opportunity index < threshold', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
     vi.stubEnv('LOCAL_OPPORTUNITY_THRESHOLD', '500')
 
     // opportunityIndex = round((10 * (100 - 80)) / 90) = round(200 / 90) = 2
@@ -360,7 +383,8 @@ describe('compareLocalNational', () => {
 describe('validateAutocomplete', () => {
   it('returns cached result on cache hit', async () => {
     const cached = makeCachedAutocomplete('plombier toulouse')
-    mockReadJson.mockResolvedValueOnce({ data: cached, cachedAt: cached.cachedAt })
+    // getCached returns data directly → readCached wraps it as { data }
+    mockGetCached.mockResolvedValueOnce(cached)
 
     const result = await validateAutocomplete('plombier toulouse')
 
@@ -369,7 +393,7 @@ describe('validateAutocomplete', () => {
   })
 
   it('fetches autocomplete and validates keyword existence', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    mockGetCached.mockResolvedValueOnce(null) // cache miss for readCached
 
     const autocompleteItems = makeAutocompleteResult([
       'plombier toulouse', 'plombier toulouse pas cher', 'plombier toulouse urgence',
@@ -392,7 +416,7 @@ describe('validateAutocomplete', () => {
   })
 
   it('returns validated=false when keyword is not in autocomplete results', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    mockGetCached.mockResolvedValueOnce(null)
 
     // Use suggestions with NO word overlap with "consultant seo toulouse"
     const autocompleteItems = makeAutocompleteResult([
@@ -415,7 +439,7 @@ describe('validateAutocomplete', () => {
   })
 
   it('fetches autocomplete for prefixes and deduplicates suggestions', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    // When prefixes are provided, cache is skipped entirely — no getCached mock needed
 
     // Main keyword fetch
     const mainResult = makeAutocompleteResult([
@@ -447,7 +471,7 @@ describe('validateAutocomplete', () => {
   })
 
   it('calculates certainty index with all three dimensions', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    mockGetCached.mockResolvedValueOnce(null)
 
     const autocompleteItems = makeAutocompleteResult([
       'plombier toulouse urgence',
@@ -474,7 +498,7 @@ describe('validateAutocomplete', () => {
   })
 
   it('limits suggestions to 20 items', async () => {
-    mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    mockGetCached.mockResolvedValueOnce(null)
 
     const manySuggestions = Array.from({ length: 30 }, (_, i) => `suggestion ${i}`)
     const autocompleteItems = makeAutocompleteResult(manySuggestions)
@@ -489,6 +513,7 @@ describe('validateAutocomplete', () => {
     const result = await validateAutocomplete('suggestion')
 
     expect(result.suggestions).toHaveLength(20)
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
+    expect(mockSetCached).toHaveBeenCalledTimes(1)
+    expect(mockSetCached.mock.calls[0][0]).toBe('autocomplete-intent')
   })
 })

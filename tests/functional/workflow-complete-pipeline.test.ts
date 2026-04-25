@@ -14,14 +14,50 @@
  * Article: "Création de site web sur mesure à Toulouse..."
  */
 import { describe, it, expect, vi, beforeAll } from 'vitest'
-import { join } from 'path'
 
 // --- Mock logger to avoid console noise ---
 vi.mock('../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-import { readCached, slugify } from '../../server/utils/cache'
+// --- Mock cache-helpers with synthetic SERP data ---
+const SYNTHETIC_SERP_DATA: Record<string, any> = {
+  'creation-site-web-entreprises-toulouse': {
+    keyword: 'creation site web entreprises Toulouse',
+    articleLevel: 'pilier',
+    competitors: [
+      { position: 1, title: 'Création site web Toulouse', url: 'https://a.com', domain: 'a.com', headings: [{ level: 1, text: 'Création de site web' }, { level: 2, text: 'Pourquoi choisir nous' }], textContent: 'creation site web toulouse' },
+      { position: 2, title: 'Agence web Toulouse', url: 'https://b.com', domain: 'b.com', headings: [{ level: 1, text: 'Agence web' }, { level: 2, text: 'Nos services' }, { level: 2, text: 'Pourquoi choisir nous' }], textContent: 'agence web toulouse' },
+      { position: 3, title: 'Développement web', url: 'https://c.com', domain: 'c.com', headings: [{ level: 1, text: 'Développement web' }, { level: 2, text: 'Nos services' }], textContent: 'developpement web' },
+    ],
+    paaQuestions: [
+      { question: 'Comment créer un site web ?', answer: 'En faisant appel à une agence' },
+      { question: 'Combien coûte un site web ?', answer: 'Entre 1000 et 10000 euros' },
+    ],
+    maxScraped: 3,
+    cachedAt: new Date().toISOString(),
+    fromCache: false,
+  },
+  'creation-site-web-entreprises': {
+    keyword: 'creation site web entreprises',
+    articleLevel: 'pilier',
+    competitors: [
+      { position: 1, title: 'Création site pour entreprises', url: 'https://d.com', domain: 'd.com', headings: [{ level: 1, text: 'Création site' }, { level: 2, text: 'Nos services' }], textContent: 'creation site entreprises' },
+    ],
+    paaQuestions: [{ question: 'Quel budget pour un site ?', answer: '1000 euros minimum' }],
+    maxScraped: 1,
+    cachedAt: new Date().toISOString(),
+    fromCache: false,
+  },
+}
+
+vi.mock('../../server/db/cache-helpers', () => ({
+  slugify: (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+  getCached: vi.fn((_cacheType: string, key: string) => Promise.resolve(SYNTHETIC_SERP_DATA[key] ?? null)),
+  setCached: vi.fn(),
+}))
+
+import { getCached, slugify } from '../../server/db/cache-helpers'
 import { loadPrompt } from '../../server/utils/prompt-loader'
 import { extractRoots, articleTypeToLevel } from '../../src/composables/keyword/useCapitaineValidation'
 import { checkKeywordComposition } from '../../shared/composition-rules'
@@ -34,7 +70,6 @@ import type { PaaQuestion } from '../../shared/types/dataforseo.types'
 const CAPTAIN_KEYWORD = 'creation site web entreprises Toulouse'
 const ARTICLE_LEVEL = 'pilier' as const
 const ARTICLE_TYPE = 'Pilier'
-const SERP_CACHE_DIR = join(process.cwd(), 'data', 'cache', 'serp')
 
 // Root keywords from Captain's extractRoots
 const ROOT_KEYWORDS = extractRoots(CAPTAIN_KEYWORD)
@@ -48,12 +83,12 @@ type Tab = 'discovery' | 'radar' | 'capitaine' | 'lieutenants' | 'lexique'
 function computeSmartTab(completedChecks: string[]): Tab {
   if (completedChecks.length === 0) return 'capitaine'
   if (
-    completedChecks.includes('capitaine_locked')
-    && completedChecks.includes('lieutenants_locked')
-    && completedChecks.includes('lexique_validated')
+    completedChecks.includes('moteur:capitaine_locked')
+    && completedChecks.includes('moteur:lieutenants_locked')
+    && completedChecks.includes('moteur:lexique_validated')
   ) return 'capitaine'
-  if (completedChecks.includes('lieutenants_locked')) return 'lexique'
-  if (completedChecks.includes('capitaine_locked')) return 'lieutenants'
+  if (completedChecks.includes('moteur:lieutenants_locked')) return 'lexique'
+  if (completedChecks.includes('moteur:capitaine_locked')) return 'lieutenants'
   return 'capitaine'
 }
 
@@ -167,7 +202,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
     })
 
     it('lock captain → smart tab moves to lieutenants', () => {
-      completedChecks.push('capitaine_locked')
+      completedChecks.push('moteur:capitaine_locked')
       expect(computeSmartTab(completedChecks)).toBe('lieutenants')
     })
 
@@ -192,9 +227,9 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
       const allKeywords = [CAPTAIN_KEYWORD, ...ROOT_KEYWORDS]
       for (const kw of allKeywords) {
         const cacheKey = slugify(kw)
-        const cached = await readCached<SerpAnalysisResult>(SERP_CACHE_DIR, cacheKey)
+        const cached = await getCached<SerpAnalysisResult>('serp', cacheKey)
         if (cached) {
-          serpResults.push({ ...cached.data, fromCache: true })
+          serpResults.push({ ...cached, fromCache: true })
         }
       }
     })
@@ -265,7 +300,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
     })
 
     it('lock lieutenants → smart tab moves to lexique', () => {
-      completedChecks.push('lieutenants_locked')
+      completedChecks.push('moteur:lieutenants_locked')
       expect(computeSmartTab(completedChecks)).toBe('lexique')
     })
   })
@@ -334,10 +369,10 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
   // -----------------------------------------------------------------------
   describe('Phase D — Full pipeline completion', () => {
     it('complete lexique_validated → all Phase ② checks done', () => {
-      completedChecks.push('lexique_validated')
-      expect(completedChecks).toContain('capitaine_locked')
-      expect(completedChecks).toContain('lieutenants_locked')
-      expect(completedChecks).toContain('lexique_validated')
+      completedChecks.push('moteur:lexique_validated')
+      expect(completedChecks).toContain('moteur:capitaine_locked')
+      expect(completedChecks).toContain('moteur:lieutenants_locked')
+      expect(completedChecks).toContain('moteur:lexique_validated')
     })
 
     it('all checks → smart tab cycles back to capitaine (review)', () => {
@@ -345,13 +380,13 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
     })
 
     it('Phase ② is complete', () => {
-      const PHASE_CHECKS = ['capitaine_locked', 'lieutenants_locked', 'lexique_validated']
+      const PHASE_CHECKS = ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated']
       expect(PHASE_CHECKS.every(c => completedChecks.includes(c))).toBe(true)
     })
 
     it('completion banner has no action (final state)', () => {
       const PHASE_CHECKS_MAP: Record<string, string[]> = {
-        valider: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
+        valider: ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
       }
       const isComplete = PHASE_CHECKS_MAP.valider.every(c => completedChecks.includes(c))
       expect(isComplete).toBe(true)
@@ -410,8 +445,8 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
     it('all tabs share article-progress store checks', () => {
       const validChecks = [
-        'discovery_done', 'radar_done',
-        'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
+        'moteur:discovery_done', 'moteur:radar_done',
+        'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
       ]
       for (const check of completedChecks) {
         expect(validChecks).toContain(check)

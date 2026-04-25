@@ -1,10 +1,14 @@
-import { join } from 'path'
 import { log } from '../../utils/logger.js'
-import { getBaseUrl, getAuthHeader, slugify } from '../external/dataforseo.service.js'
-import { getOrFetch } from '../../utils/cache.js'
+import { getBaseUrl, getAuthHeader } from '../external/dataforseo.service.js'
+import {
+  getKeywordMetrics,
+  upsertKeywordLocalAnalysis,
+  isKeywordMetricsFresh,
+} from '../keyword/keyword-metrics.service.js'
 import type { MapsResult, GbpListing, ReviewGap } from '../../../shared/types/index.js'
 
-const CACHE_DIR = join(process.cwd(), 'data', 'cache')
+// Sprint 15.5 — local SEO maps analysis moved from api_cache[local-seo] to
+// keyword_metrics.local_analysis (cross-article, JSONB column).
 
 async function fetchGoogleMaps(keyword: string, locationCode: number = 1006157): Promise<any> {
   const url = `${getBaseUrl()}/serp/google/maps/live/advanced`
@@ -74,44 +78,49 @@ function calculateReviewGap(listings: GbpListing[]): ReviewGap {
 }
 
 export async function analyzeMaps(keyword: string, locationCode: number = 1006157): Promise<MapsResult> {
-  return getOrFetch<MapsResult>(
-    CACHE_DIR,
-    `maps-${slugify(keyword)}`,
-    Infinity,
-    async () => {
-      log.info(`Analyzing Google Maps for "${keyword}"`, { locationCode })
-      const totalStart = Date.now()
+  // Sprint 15.5 — DB-first on keyword_metrics.local_analysis.
+  const existing = await getKeywordMetrics(keyword)
+  if (existing?.localAnalysis && isKeywordMetricsFresh(existing.fetchedAt)) {
+    log.debug(`Maps DB hit for "${keyword}"`)
+    return existing.localAnalysis as MapsResult
+  }
 
-      let mapsResult: any
-      try {
-        mapsResult = await fetchGoogleMaps(keyword, locationCode)
-      } catch (err) {
-        log.error('Maps analysis failed', { keyword, locationCode, error: (err as Error).message, ms: Date.now() - totalStart })
-        throw err
-      }
+  log.info(`Analyzing Google Maps for "${keyword}"`, { locationCode })
+  const totalStart = Date.now()
 
-      const listings = extractListings(mapsResult)
-      const reviewGap = calculateReviewGap(listings)
-      const hasLocalPack = listings.length > 0
+  let mapsResult: any
+  try {
+    mapsResult = await fetchGoogleMaps(keyword, locationCode)
+  } catch (err) {
+    log.error('Maps analysis failed', { keyword, locationCode, error: (err as Error).message, ms: Date.now() - totalStart })
+    throw err
+  }
 
-      log.info('Maps analysis done', {
-        keyword,
-        hasLocalPack,
-        listingCount: listings.length,
-        avgRating: listings.length > 0 ? +(listings.reduce((s, l) => s + (l.rating ?? 0), 0) / listings.length).toFixed(1) : null,
-        reviewGap: reviewGap.gap,
-        avgCompetitorReviews: reviewGap.averageCompetitorReviews,
-        ms: Date.now() - totalStart,
-      })
+  const listings = extractListings(mapsResult)
+  const reviewGap = calculateReviewGap(listings)
+  const hasLocalPack = listings.length > 0
 
-      return {
-        keyword,
-        locationCode,
-        hasLocalPack,
-        listings,
-        reviewGap,
-        cachedAt: new Date().toISOString(),
-      }
-    },
-  )
+  log.info('Maps analysis done', {
+    keyword,
+    hasLocalPack,
+    listingCount: listings.length,
+    avgRating: listings.length > 0 ? +(listings.reduce((s, l) => s + (l.rating ?? 0), 0) / listings.length).toFixed(1) : null,
+    reviewGap: reviewGap.gap,
+    avgCompetitorReviews: reviewGap.averageCompetitorReviews,
+    ms: Date.now() - totalStart,
+  })
+
+  const result: MapsResult = {
+    keyword,
+    locationCode,
+    hasLocalPack,
+    listings,
+    reviewGap,
+    cachedAt: new Date().toISOString(),
+  }
+
+  try { await upsertKeywordLocalAnalysis(keyword, result) }
+  catch (err) { log.warn(`Maps: DB persist failed — ${(err as Error).message}`) }
+
+  return result
 }

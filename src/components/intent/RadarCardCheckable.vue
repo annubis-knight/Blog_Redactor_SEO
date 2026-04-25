@@ -1,15 +1,22 @@
 <script setup lang="ts">
 import type { RadarCard } from '@shared/types/intent.types.js'
-import RadarKeywordCard from './RadarKeywordCard.vue'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
+import type { ModifierKind } from '@shared/utils/keyword-modifiers'
+import RadarKeywordCard, { type RadarDisplayMode } from './RadarKeywordCard.vue'
 
 defineProps<{
   card: RadarCard
   checked: boolean
   disabled?: boolean
+  displayMode?: RadarDisplayMode
+  articleLevel?: ArticleLevel
+  modifiers?: (ModifierKind | null)[]
 }>()
 
 defineEmits<{
   'update:checked': [value: boolean]
+  'modifier-untag': [index: number]
+  'modifier-cycle': [payload: { index: number; next: ModifierKind | null }]
 }>()
 </script>
 
@@ -25,7 +32,14 @@ defineEmits<{
       />
     </label>
     <div class="radar-card-checkable__content">
-      <RadarKeywordCard :card="card" />
+      <RadarKeywordCard
+        :card="card"
+        :display-mode="displayMode"
+        :article-level="articleLevel"
+        :modifiers="modifiers"
+        @modifier-untag="$emit('modifier-untag', $event)"
+        @modifier-cycle="$emit('modifier-cycle', $event)"
+      />
     </div>
   </div>
 </template>

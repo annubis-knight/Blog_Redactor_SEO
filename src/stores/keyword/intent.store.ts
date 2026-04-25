@@ -54,12 +54,12 @@ export const useIntentStore = defineStore('intent', () => {
     }
   }
 
-  async function analyzeIntent(keyword: string, locationCode?: number) {
+  async function analyzeIntent(keyword: string, locationCode?: number, articleId?: number | null) {
     isAnalyzingIntent.value = true
     intentError.value = null
-    log.info(`[intent] analyzeIntent "${keyword}"`, locationCode ? { locationCode } : undefined)
+    log.info(`[intent] analyzeIntent "${keyword}"`, { locationCode, articleId })
     try {
-      const raw = await apiPost<IntentAnalysis & { _apiUsage?: ApiUsage }>('/intent/analyze', { keyword, locationCode })
+      const raw = await apiPost<IntentAnalysis & { _apiUsage?: ApiUsage }>('/intent/analyze', { keyword, locationCode, articleId })
       if (raw._apiUsage) {
         try { useCostLogStore().addEntry('Classification intention', raw._apiUsage) } catch { /* noop */ }
       }
@@ -73,12 +73,12 @@ export const useIntentStore = defineStore('intent', () => {
     }
   }
 
-  async function compareLocalNational(keyword: string) {
+  async function compareLocalNational(keyword: string, articleId?: number | null) {
     isComparing.value = true
     comparisonError.value = null
-    log.info(`[intent] compareLocalNational "${keyword}"`)
+    log.info(`[intent] compareLocalNational "${keyword}"`, { articleId })
     try {
-      comparisonData.value = await apiPost<LocalNationalComparison>('/keywords/compare-local', { keyword })
+      comparisonData.value = await apiPost<LocalNationalComparison>('/keywords/compare-local', { keyword, articleId })
       // Cache for keyword switcher (Epic 23)
       if (comparisonData.value) {
         localComparisons.value.set(keyword, comparisonData.value)

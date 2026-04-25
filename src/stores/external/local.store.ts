@@ -23,12 +23,12 @@ export const useLocalStore = defineStore('local', () => {
   const hasSuggestions = computed(() => (anchorageScore.value?.suggestions.length ?? 0) > 0)
 
   // Actions
-  async function analyzeMaps(keyword: string, locationCode?: number) {
+  async function analyzeMaps(keyword: string, locationCode?: number, articleId?: number | null) {
     isAnalyzingMaps.value = true
     mapsError.value = null
-    log.info(`[local] analyzeMaps "${keyword}"`)
+    log.info(`[local] analyzeMaps "${keyword}"`, { articleId })
     try {
-      mapsData.value = await apiPost<MapsResult>('/local/maps', { keyword, locationCode })
+      mapsData.value = await apiPost<MapsResult>('/local/maps', { keyword, locationCode, articleId })
       log.debug(`[local] maps done`, { hasLocalPack: mapsData.value?.hasLocalPack, listings: mapsData.value?.listings?.length })
     } catch (err) {
       mapsError.value = err instanceof Error ? err.message : 'Erreur analyse Maps'

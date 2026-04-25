@@ -1,27 +1,25 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-
-const MOTEUR_CHECKS = [
-  // Phase ① Générer (2 checks)
-  'discovery_done',
-  'radar_done',
-  // Phase ② Valider (3 checks)
-  'capitaine_locked',
-  'lieutenants_locked',
-  'lexique_validated',
-] as const
+import {
+  MOTEUR_CHECKS,
+  MOTEUR_DISCOVERY_DONE,
+  MOTEUR_RADAR_DONE,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants.js'
 
 const PHASE_GROUPS = [
-  { checks: ['discovery_done', 'radar_done'], label: 'Générer' },
-  { checks: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'], label: 'Valider' },
+  { checks: [MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE], label: 'Explorer' },
+  { checks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED], label: 'Valider' },
 ] as const
 
 const CHECK_TOOLTIPS: Record<string, string> = {
-  'discovery_done': 'Discovery',
-  'radar_done': 'Radar',
-  'capitaine_locked': 'Capitaine',
-  'lieutenants_locked': 'Lieutenants',
-  'lexique_validated': 'Lexique',
+  [MOTEUR_DISCOVERY_DONE]: 'Discovery',
+  [MOTEUR_RADAR_DONE]: 'Radar',
+  [MOTEUR_CAPITAINE_LOCKED]: 'Capitaine',
+  [MOTEUR_LIEUTENANTS_LOCKED]: 'Lieutenants',
+  [MOTEUR_LEXIQUE_VALIDATED]: 'Lexique',
 }
 
 const props = defineProps<{

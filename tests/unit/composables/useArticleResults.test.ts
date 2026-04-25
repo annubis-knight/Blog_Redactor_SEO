@@ -49,58 +49,68 @@ describe('useArticleResults', () => {
     })
   })
 
-  describe('loadCachedResults', () => {
-    it('calls apiGet with correct URL and populates stores', async () => {
+  describe('loadCachedResults (Sprint 14 — split endpoints)', () => {
+    // Helper that answers /articles/:id/explorations and /articles/:id/external-cache
+    // with the provided payloads. The composable issues both requests in parallel.
+    function mockSplit(explorations: any, external: any = { autocomplete: null }) {
+      mockApiGet.mockImplementation((path: string) => {
+        if (path.endsWith('/explorations')) return Promise.resolve(explorations)
+        if (path.endsWith('/external-cache')) return Promise.resolve(external)
+        return Promise.resolve(null)
+      })
+    }
+
+    it('calls both split endpoints and populates stores', async () => {
       const intentStore = useIntentStore()
       const localStore = useLocalStore()
 
-      const cachedData = {
-        intent: { dominantIntent: 'informational', modules: [] },
-        local: { hasLocalPack: true, listings: [] },
-        contentGap: null,
-        autocomplete: { suggestions: ['a', 'b'] },
-        comparison: { localVolume: 100, nationalVolume: 500 },
+      const explorations = {
+        intent: { capitaine: { dominantIntent: 'informational', modules: [] }, all: [] },
+        local: {
+          capitaine: {
+            hasLocalPack: true,
+            listings: [],
+            reviewGap: null,
+            comparison: { localVolume: 100, nationalVolume: 500 },
+          },
+          all: [],
+        },
+        contentGap: { capitaine: null, all: [] },
+        radar: null,
       }
-
-      mockApiGet.mockResolvedValue(cachedData)
+      const external = { autocomplete: { suggestions: ['a', 'b'] } }
+      mockSplit(explorations, external)
 
       const { loadCachedResults, isLoading } = useArticleResults()
-
       const promise = loadCachedResults(1)
-
-      // isLoading should be true during fetch
       expect(isLoading.value).toBe(true)
-
       await promise
-
       expect(isLoading.value).toBe(false)
-      expect(mockApiGet).toHaveBeenCalledWith('/articles/1/cached-results')
 
-      // Stores should be populated
-      expect(intentStore.intentData).toEqual(cachedData.intent)
-      expect(intentStore.comparisonData).toEqual(cachedData.comparison)
-      expect(intentStore.autocompleteData).toEqual(cachedData.autocomplete)
-      expect(localStore.mapsData).toEqual(cachedData.local)
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/1/explorations')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/1/external-cache')
+
+      expect(intentStore.intentData).toEqual(explorations.intent.capitaine)
+      expect(intentStore.comparisonData).toEqual(explorations.local.capitaine.comparison)
+      expect(intentStore.autocompleteData).toEqual(external.autocomplete)
+      expect(localStore.mapsData?.hasLocalPack).toBe(true)
     })
 
     it('calls correct URL with numeric id', async () => {
-      mockApiGet.mockResolvedValue({
-        intent: null, local: null, contentGap: null, autocomplete: null, comparison: null,
-      })
+      mockSplit({ intent: { capitaine: null, all: [] }, local: { capitaine: null, all: [] }, contentGap: { capitaine: null, all: [] }, radar: null })
 
       const { loadCachedResults } = useArticleResults()
       await loadCachedResults(42)
 
-      expect(mockApiGet).toHaveBeenCalledWith('/articles/42/cached-results')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/42/explorations')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/42/external-cache')
     })
 
     it('does not populate stores when all values are null', async () => {
       const intentStore = useIntentStore()
       const localStore = useLocalStore()
 
-      mockApiGet.mockResolvedValue({
-        intent: null, local: null, contentGap: null, autocomplete: null, comparison: null,
-      })
+      mockSplit({ intent: { capitaine: null, all: [] }, local: { capitaine: null, all: [] }, contentGap: { capitaine: null, all: [] }, radar: null })
 
       const { loadCachedResults } = useArticleResults()
       await loadCachedResults(99)
@@ -126,41 +136,38 @@ describe('useArticleResults', () => {
     it('guards against race condition — discards stale results', async () => {
       const intentStore = useIntentStore()
 
-      // First call will resolve slowly
+      // First /explorations resolves slowly; external-cache resolves immediately.
       let resolveFirst!: (value: any) => void
-      const firstPromise = new Promise(resolve => { resolveFirst = resolve })
-      mockApiGet.mockReturnValueOnce(firstPromise as any)
-
-      // Second call resolves immediately
-      const secondData = {
-        intent: { dominantIntent: 'navigational' },
-        local: null, contentGap: null, autocomplete: null, comparison: null,
-      }
-      mockApiGet.mockResolvedValueOnce(secondData)
+      mockApiGet.mockImplementation((path: string) => {
+        if (path === '/articles/1/explorations') return new Promise(resolve => { resolveFirst = resolve })
+        if (path === '/articles/2/explorations') return Promise.resolve({
+          intent: { capitaine: { dominantIntent: 'navigational' }, all: [] },
+          local: { capitaine: null, all: [] },
+          contentGap: { capitaine: null, all: [] },
+          radar: null,
+        })
+        return Promise.resolve({ autocomplete: null })
+      })
 
       const { loadCachedResults, currentArticleId } = useArticleResults()
 
-      // Start first load
       const p1 = loadCachedResults(1)
-
-      // Immediately start second load (simulating user switching articles)
       const p2 = loadCachedResults(2)
-
-      // Second load completes first
       await p2
 
       expect(currentArticleId.value).toBe(2)
-      expect(intentStore.intentData).toEqual(secondData.intent)
+      expect(intentStore.intentData).toEqual({ dominantIntent: 'navigational' })
 
-      // Now resolve the first call — its results should be discarded
       resolveFirst({
-        intent: { dominantIntent: 'informational' },
-        local: null, contentGap: null, autocomplete: null, comparison: null,
+        intent: { capitaine: { dominantIntent: 'informational' }, all: [] },
+        local: { capitaine: null, all: [] },
+        contentGap: { capitaine: null, all: [] },
+        radar: null,
       })
       await p1
 
-      // Store should still have the second article's data
-      expect(intentStore.intentData).toEqual(secondData.intent)
+      // Store should still have the second article's data (guard dropped the stale write).
+      expect(intentStore.intentData).toEqual({ dominantIntent: 'navigational' })
     })
   })
 })

@@ -224,6 +224,8 @@ export type RadarIntentType = 'informational' | 'commercial' | 'transactional' |
 
 export type RadarMatchQuality = 'exact' | 'stem' | 'semantic'
 
+export type RadarPainAlignment = 'aligned' | 'partial' | 'off'
+
 export interface RadarPaaItem {
   question: string
   answer?: string
@@ -232,6 +234,8 @@ export interface RadarPaaItem {
   match: ResonanceMatch
   matchQuality?: RadarMatchQuality
   semanticScore?: number
+  /** QW5 — alignement de la PAA avec le painPoint de l'article (indep. du match lexical). */
+  painAlignment?: RadarPainAlignment
 }
 
 export interface RadarKeywordKpis {
@@ -246,6 +250,9 @@ export interface RadarKeywordKpis {
   paaWeightedScore: number
   paaTotal: number
   avgSemanticScore: number | null
+  /** Score 0-100 d'alignement sémantique entre le painPoint et le keyword+reasoning.
+   *  Absent si pas de painPoint ou si l'embedding a échoué → traité comme neutre (50) par le scoring. */
+  painAlignmentScore?: number
 }
 
 export interface RadarCombinedScoreBreakdown {
@@ -254,6 +261,8 @@ export interface RadarCombinedScoreBreakdown {
   opportunityScore: number
   intentValueScore: number
   cpcScore: number
+  /** Composante QW3 : alignement du keyword avec le painPoint (50 = neutre si absent). */
+  painAlignmentScore: number
   total: number
 }
 

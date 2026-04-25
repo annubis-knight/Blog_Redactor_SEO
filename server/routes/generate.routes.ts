@@ -8,7 +8,7 @@ import {
   generateReduceSectionRequestSchema,
   generateHumanizeSectionRequestSchema,
 } from '../../shared/schemas/generate.schema.js'
-import { streamChatCompletion, USAGE_SENTINEL, WEB_SEARCH_TOOL } from '../services/external/claude.service.js'
+import { streamChatCompletion, USAGE_SENTINEL, WEB_SEARCH_TOOL } from '../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../services/external/claude.service.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getStrategy } from '../services/strategy/strategy.service.js'
@@ -155,7 +155,7 @@ router.post('/generate/outline', async (req, res) => {
 
     const articleId = parsed.data.articleId
     const strategy = await getStrategy(articleId)
-    const articleKw = await getArticleKeywords(articleId)
+    const { data: articleKw } = await getArticleKeywords(articleId)
     const microCtx = await loadArticleMicroContext(articleId)
 
     const microContextBlock = microCtx && microCtx.angle
@@ -440,7 +440,7 @@ router.post('/generate/article', async (req, res) => {
 
     const articleId = parsed.data.articleId
     const strategy = await getStrategy(articleId)
-    const articleKw = await getArticleKeywords(articleId)
+    const { data: articleKw } = await getArticleKeywords(articleId)
     const microCtx = await loadArticleMicroContext(articleId)
     const microContextBlock = buildMicroContextBlock(microCtx)
 

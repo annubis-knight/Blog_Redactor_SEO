@@ -3,11 +3,24 @@ import { log } from '../utils/logger.js'
 import { getStrategy, saveStrategy } from '../services/strategy/strategy.service.js'
 import { getCocoonStrategy, saveCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
 import { strategySuggestRequestSchema, batchStrategyStatusRequestSchema, cocoonSuggestRequestSchema, strategyDeepenRequestSchema, strategyConsolidateRequestSchema, strategyEnrichRequestSchema } from '../../shared/schemas/strategy.schema.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/claude.service.js'
+import { collectStreamWithUsage as collectStream } from '../utils/stream-usage.js'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 
 const router = Router()
+
+/**
+ * Adaptateur pour conserver le nom `suggestion` utilisé dans les destructurations
+ * des routes ci-dessous. Délègue au helper partagé `collectStreamWithUsage`.
+ */
+async function collectStreamWithUsage(
+  systemPrompt: string,
+  userPrompt: string,
+  maxTokens = 1024,
+) {
+  const { text, usage } = await collectStream(systemPrompt, userPrompt, maxTokens)
+  return { suggestion: text, usage }
+}
 
 /** Build a markdown block from themeContext for prompt injection */
 function buildThemeContextBlock(tc: Record<string, unknown> | undefined): string {
@@ -217,16 +230,11 @@ router.post('/strategy/:id/suggest', async (req, res) => {
 
     log.debug('suggest prompt built', { id, step: parsed.step, promptChars: prompt.length })
 
-    // Collect the streamed response into a single string
-    const startAi = Date.now()
-    let suggestion = ''
-    for await (const chunk of streamChatCompletion(prompt, userMessage, 1024)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) break
-      suggestion += chunk
-    }
+    // Collect the streamed response into a single string + extract usage from sentinel
+    const { suggestion, usage } = await collectStreamWithUsage(prompt, userMessage, 1024)
 
-    log.info('suggest done', { id, step: parsed.step, isMerge, suggestionChars: suggestion.length, ms: Date.now() - startAi })
-    res.json({ data: { suggestion } })
+    log.info('suggest done', { id, step: parsed.step, isMerge, suggestionChars: suggestion.length })
+    res.json({ data: { suggestion, usage } })
   } catch (err) {
     log.error(`POST /api/strategy/${id}/suggest — ${(err as Error).message}`, { id })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate suggestion' } })
@@ -433,15 +441,10 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
 
     log.debug('cocoon suggest prompt built', { cocoonSlug: req.params.cocoonSlug, step: parsed.step, promptChars: prompt.length, maxTokens })
 
-    const startAi = Date.now()
-    let suggestion = ''
-    for await (const chunk of streamChatCompletion(prompt, userMessage, maxTokens)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) break
-      suggestion += chunk
-    }
+    const { suggestion, usage } = await collectStreamWithUsage(prompt, userMessage, maxTokens)
 
-    log.info('cocoon suggest done', { cocoonSlug: req.params.cocoonSlug, step: parsed.step, isMerge, suggestionChars: suggestion.length, ms: Date.now() - startAi })
-    res.json({ data: { suggestion } })
+    log.info('cocoon suggest done', { cocoonSlug: req.params.cocoonSlug, step: parsed.step, isMerge, suggestionChars: suggestion.length })
+    res.json({ data: { suggestion, usage } })
   } catch (err) {
     log.error(`POST /api/strategy/cocoon/${req.params.cocoonSlug}/suggest — ${(err as Error).message}`, { cocoonSlug: req.params.cocoonSlug, step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to generate cocoon suggestion' } })
@@ -480,22 +483,17 @@ async function handleDeepen(req: import('express').Request, res: import('express
       .replace('{{previousAnswers}}', prevBlock || 'Aucune étape validée.')
       .replace('{{contextBlock}}', themeBlock || 'Pas de contexte supplémentaire.')
 
-    const startAi = Date.now()
-    let result = ''
-    for await (const chunk of streamChatCompletion(prompt, `Génère une sous-question pour l'étape "${parsed.step}"`, 512)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) break
-      result += chunk
-    }
-    log.debug('deepen AI done', { step: parsed.step, resultChars: result.length, ms: Date.now() - startAi })
+    const { suggestion: result, usage } = await collectStreamWithUsage(prompt, `Génère une sous-question pour l'étape "${parsed.step}"`, 512)
+    log.debug('deepen AI done', { step: parsed.step, resultChars: result.length })
 
     const jsonMatch = result.match(/\{[\s\S]*\}/)
     if (jsonMatch) {
       const obj = JSON.parse(jsonMatch[0])
       log.info('deepen parsed JSON sub-question', { step: parsed.step })
-      res.json({ data: { question: obj.question, description: obj.description } })
+      res.json({ data: { question: obj.question, description: obj.description, usage } })
     } else {
       log.warn('deepen fallback — no JSON found, using raw text', { step: parsed.step, resultChars: result.length })
-      res.json({ data: { question: result.trim(), description: '' } })
+      res.json({ data: { question: result.trim(), description: '', usage } })
     }
   } catch (err) {
     log.error(`${label} — ${(err as Error).message}`, { step: req.body?.step })
@@ -524,15 +522,10 @@ async function handleConsolidate(req: import('express').Request, res: import('ex
       .replace('{{subAnswers}}', subAnswersBlock)
       .replace('{{contextBlock}}', themeBlock || 'Pas de contexte supplémentaire.')
 
-    const startAi = Date.now()
-    let consolidated = ''
-    for await (const chunk of streamChatCompletion(prompt, `Consolide les réponses pour l'étape "${parsed.step}"`, 1024)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) break
-      consolidated += chunk
-    }
+    const { suggestion: consolidated, usage } = await collectStreamWithUsage(prompt, `Consolide les réponses pour l'étape "${parsed.step}"`, 1024)
 
-    log.info('consolidate done', { step: parsed.step, consolidatedChars: consolidated.length, ms: Date.now() - startAi })
-    res.json({ data: { consolidated } })
+    log.info('consolidate done', { step: parsed.step, consolidatedChars: consolidated.length })
+    res.json({ data: { consolidated, usage } })
   } catch (err) {
     log.error(`${label} — ${(err as Error).message}`, { step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to consolidate answers' } })
@@ -565,15 +558,10 @@ async function handleEnrich(req: import('express').Request, res: import('express
       .replace('{{subAnswer}}', parsed.subAnswer)
       .replace('{{contextBlock}}', contextLines.join('\n'))
 
-    const startAi = Date.now()
-    let enriched = ''
-    for await (const chunk of streamChatCompletion(prompt, `Enrichis le texte validé avec la sous-réponse pour l'étape "${parsed.step}"`, 1024)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) break
-      enriched += chunk
-    }
+    const { suggestion: enriched, usage } = await collectStreamWithUsage(prompt, `Enrichis le texte validé avec la sous-réponse pour l'étape "${parsed.step}"`, 1024)
 
-    log.info('enrich done', { step: parsed.step, enrichedChars: enriched.length, ms: Date.now() - startAi })
-    res.json({ data: { enriched } })
+    log.info('enrich done', { step: parsed.step, enrichedChars: enriched.length })
+    res.json({ data: { enriched, usage } })
   } catch (err) {
     log.error(`${label} — ${(err as Error).message}`, { step: req.body?.step })
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to enrich answer' } })

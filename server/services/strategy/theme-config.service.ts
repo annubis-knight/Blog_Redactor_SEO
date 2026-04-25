@@ -1,11 +1,7 @@
-import { join } from 'path'
-import { readFile, writeFile, mkdir } from 'fs/promises'
+import { pool } from '../../db/client.js'
 import { themeConfigSchema } from '../../../shared/schemas/theme-config.schema.js'
 import { log } from '../../utils/logger.js'
 import type { ThemeConfig } from '../../../shared/types/index.js'
-
-const DATA_DIR = join(process.cwd(), 'data')
-const CONFIG_FILE = join(DATA_DIR, 'theme-config.json')
 
 const DEFAULT_CONFIG: ThemeConfig = {
   avatar: {
@@ -33,21 +29,21 @@ const DEFAULT_CONFIG: ThemeConfig = {
 }
 
 export async function getThemeConfig(): Promise<ThemeConfig> {
-  try {
-    const raw = await readFile(CONFIG_FILE, 'utf-8')
-    const parsed = JSON.parse(raw)
-    log.debug('getThemeConfig: loaded')
-    return themeConfigSchema.parse(parsed)
-  } catch {
+  const res = await pool.query(`SELECT data FROM theme_config WHERE id = 1`)
+  if (res.rows.length === 0) {
     log.warn('getThemeConfig: not found, using defaults')
     return { ...DEFAULT_CONFIG }
   }
+  log.debug('getThemeConfig: loaded')
+  return themeConfigSchema.parse(res.rows[0].data)
 }
 
 export async function saveThemeConfig(config: ThemeConfig): Promise<ThemeConfig> {
   const validated = themeConfigSchema.parse(config)
-  await mkdir(DATA_DIR, { recursive: true })
-  await writeFile(CONFIG_FILE, JSON.stringify(validated, null, 2), 'utf-8')
+  await pool.query(`
+    INSERT INTO theme_config (id, data) VALUES (1, $1)
+    ON CONFLICT (id) DO UPDATE SET data = EXCLUDED.data
+  `, [JSON.stringify(validated)])
   log.info('saveThemeConfig: saved')
   return validated
 }

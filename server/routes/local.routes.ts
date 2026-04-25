@@ -3,6 +3,8 @@ import { log } from '../utils/logger.js'
 import { analyzeMaps } from '../services/strategy/local-seo.service.js'
 import { scoreLocalAnchoring, getEntities } from '../services/infra/local-entities.service.js'
 
+// Sprint 15.5 — /local/maps is now cross-article (DB-first on keyword_metrics.local_analysis).
+
 const router = Router()
 
 /** POST /api/local/maps — Analyze Google Maps SERP for a keyword */

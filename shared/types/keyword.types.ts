@@ -52,6 +52,7 @@ export interface CaptainValidationEntry {
   rootKeywords: string[]                    // root variant names tested with this keyword
   paaQuestions?: PaaQuestionValidate[]
   aiPanelMarkdown?: string | null           // AI-generated analysis per keyword
+  exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
 }
 
 /** Rich captain object with validation history and AI panel content */
@@ -82,11 +83,11 @@ export interface RichLieutenant {
   status: LieutenantKeywordStatus
   reasoning: string
   sources: ('paa' | 'serp' | 'group' | 'root' | 'content-gap')[]
-  aiConfidence: 'fort' | 'moyen' | 'faible'
   suggestedHnLevel: 2 | 3
   score: number                             // 0-100 AI quality score
   kpis: KpiSummary[] | null                 // null if not individually validated
   lockedAt: string | null
+  exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
 }
 
 // ---- Article keywords ----

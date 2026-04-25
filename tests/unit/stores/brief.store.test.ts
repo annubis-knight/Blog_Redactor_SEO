@@ -52,7 +52,7 @@ describe('brief.store — fetchBrief', () => {
     expect(store.briefData!.article.cocoonName).toBe('Test Cocoon')
     expect(store.briefData!.keywords).toHaveLength(3)
     expect(store.briefData!.dataForSeo).toEqual(mockDataForSeo)
-    expect(store.briefData!.contentLengthRecommendation).toBe(2500) // Pilier
+    expect(store.briefData!.contentLengthRecommendation).toBe(2650) // Pilier midpoint (1800-3500)
     expect(store.isLoading).toBe(false)
     expect(store.error).toBeNull()
   })
@@ -90,7 +90,12 @@ describe('brief.store — fetchBrief', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(mockApiPost).not.toHaveBeenCalled()
+    // DataForSEO skip confirmé (dataForSeo = null). Note : /recommend-word-count
+    // peut être appelé en parallèle mais ne concerne pas DataForSEO.
+    const dataForSeoCalls = mockApiPost.mock.calls.filter(
+      ([path]) => typeof path === 'string' && path.startsWith('/dataforseo/'),
+    )
+    expect(dataForSeoCalls.length).toBe(0)
     expect(store.briefData!.dataForSeo).toBeNull()
   })
 
@@ -182,17 +187,20 @@ describe('brief.store — refreshDataForSeo', () => {
   })
 })
 
-describe('calculateContentLength', () => {
-  it('returns 2500 for Pilier', () => {
-    expect(calculateContentLength('Pilier')).toBe(2500)
+describe('calculateContentLength (fallback heuristique)', () => {
+  // Ces valeurs sont les midpoints des bornes TYPE_BASE définies dans
+  // target-word-count.service.ts. Elles servent de fallback synchrone tant
+  // que la recommandation IA serveur n'a pas répondu.
+  it('returns 2650 for Pilier (midpoint 1800-3500)', () => {
+    expect(calculateContentLength('Pilier')).toBe(2650)
   })
 
-  it('returns 1800 for Intermédiaire', () => {
-    expect(calculateContentLength('Intermédiaire')).toBe(1800)
+  it('returns 1850 for Intermédiaire (midpoint 1200-2500)', () => {
+    expect(calculateContentLength('Intermédiaire')).toBe(1850)
   })
 
-  it('returns 1200 for Spécialisé', () => {
-    expect(calculateContentLength('Spécialisé')).toBe(1200)
+  it('returns 1150 for Spécialisé (midpoint 800-1500)', () => {
+    expect(calculateContentLength('Spécialisé')).toBe(1150)
   })
 
   it('returns 1500 for unknown type', () => {

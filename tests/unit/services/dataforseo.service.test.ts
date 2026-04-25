@@ -1,9 +1,30 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock json-storage before importing the service
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: vi.fn(),
-  writeJson: vi.fn(),
+// Mock cache-helpers (replaces json-storage for caching)
+const mockGetCached = vi.fn()
+const mockSetCached = vi.fn()
+
+// Sprint 15.8 — keyword_metrics service now read in getBrief
+const mockGetKeywordMetrics = vi.fn()
+const mockIsKeywordMetricsFresh = vi.fn()
+const mockUpsertKeywordKpis = vi.fn()
+const mockUpsertKeywordPaa = vi.fn()
+
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
+  isKeywordMetricsFresh: (...args: unknown[]) => mockIsKeywordMetricsFresh(...args),
+  upsertKeywordKpis: (...args: unknown[]) => mockUpsertKeywordKpis(...args),
+  upsertKeywordPaa: (...args: unknown[]) => mockUpsertKeywordPaa(...args),
+}))
+
+vi.mock('../../../server/db/cache-helpers', () => ({
+  getCached: (...args: unknown[]) => mockGetCached(...args),
+  setCached: (...args: unknown[]) => mockSetCached(...args),
+  slugify: (text: string) => text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+}))
+
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
 // Mock global fetch
@@ -14,7 +35,6 @@ vi.stubGlobal('fetch', mockFetch)
 vi.stubEnv('DATAFORSEO_LOGIN', 'test_login')
 vi.stubEnv('DATAFORSEO_PASSWORD', 'test_password')
 
-import { readJson, writeJson } from '../../../server/utils/json-storage'
 import {
   getAuthHeader,
   getBaseUrl,
@@ -38,13 +58,20 @@ import {
   getAuditCacheStatus,
 } from '../../../server/services/external/dataforseo.service'
 
-const mockReadJson = vi.mocked(readJson)
-const mockWriteJson = vi.mocked(writeJson)
-
 beforeEach(() => {
   mockFetch.mockReset()
-  mockReadJson.mockReset()
-  mockWriteJson.mockReset()
+  mockGetCached.mockReset()
+  mockSetCached.mockReset()
+  mockSetCached.mockResolvedValue(undefined)
+  // Sprint 15.8 — default: no keyword_metrics row (force legacy fallback path).
+  mockGetKeywordMetrics.mockReset()
+  mockIsKeywordMetricsFresh.mockReset()
+  mockUpsertKeywordKpis.mockReset()
+  mockUpsertKeywordPaa.mockReset()
+  mockGetKeywordMetrics.mockResolvedValue(null)
+  mockIsKeywordMetricsFresh.mockReturnValue(false)
+  mockUpsertKeywordKpis.mockResolvedValue(undefined)
+  mockUpsertKeywordPaa.mockResolvedValue(undefined)
 })
 
 // --- Helper: create a DataForSEO-shaped response (single result) ---
@@ -112,15 +139,15 @@ describe('dataforseo.service — slugify', () => {
 })
 
 describe('dataforseo.service — readCache', () => {
-  it('returns cached data when file exists', async () => {
+  it('returns cached data when entry exists', async () => {
     const cached = { keyword: 'test', serp: [], paa: [], relatedKeywords: [], keywordData: {}, cachedAt: '2026-01-01T00:00:00Z' }
-    mockReadJson.mockResolvedValue({ data: cached, cachedAt: cached.cachedAt })
+    mockGetCached.mockResolvedValue(cached)
     const result = await readCache('test')
     expect(result).toEqual(cached)
   })
 
-  it('returns null when cache file does not exist', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
+  it('returns null when no cache entry exists', async () => {
+    mockGetCached.mockResolvedValue(null)
     const result = await readCache('nonexistent')
     expect(result).toBeNull()
   })
@@ -149,14 +176,14 @@ describe('dataforseo.service — fetchDataForSeo', () => {
     await expect(fetchDataForSeo('/test', [{}])).rejects.toThrow('DataForSEO HTTP 400')
   })
 
-  it('retries on HTTP 429 and eventually throws', async () => {
+  it('retries on HTTP 429 and eventually throws DataForSeoQuotaError', async () => {
     vi.useFakeTimers()
     try {
       mockFetch.mockResolvedValue({ ok: false, status: 429, statusText: 'Too Many Requests' })
 
       const promise = fetchDataForSeo('/test', [{}])
       // Register rejection handler BEFORE advancing timers to avoid unhandled rejection
-      const assertion = expect(promise).rejects.toThrow('DataForSEO HTTP 429')
+      const assertion = expect(promise).rejects.toThrow('DataForSEO quota atteint')
       await vi.runAllTimersAsync()
       await assertion
 
@@ -309,7 +336,7 @@ describe('dataforseo.service — getBrief', () => {
   }
 
   it('returns cached data without calling fetch', async () => {
-    mockReadJson.mockResolvedValue({ data: mockCached, cachedAt: mockCached.cachedAt })
+    mockGetCached.mockResolvedValue(mockCached)
 
     const result = await getBrief('test keyword')
 
@@ -318,8 +345,7 @@ describe('dataforseo.service — getBrief', () => {
   })
 
   it('calls all 4 endpoints on cache miss', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetCached.mockResolvedValue(null)
 
     // Mock 4 fetch calls (serp, paa, related, keyword)
     mockFetch
@@ -338,12 +364,12 @@ describe('dataforseo.service — getBrief', () => {
     expect(result.keywordData.searchVolume).toBe(500)
     expect(result.cachedAt).toBeDefined()
     // Verify cache was written
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
+    expect(mockSetCached).toHaveBeenCalledTimes(1)
+    expect(mockSetCached.mock.calls[0][0]).toBe('dataforseo')
   })
 
   it('ignores cache when forceRefresh is true', async () => {
-    mockReadJson.mockResolvedValue({ data: mockCached, cachedAt: mockCached.cachedAt })
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetCached.mockResolvedValue(mockCached)
 
     // Mock 4 fetch calls
     mockFetch
@@ -669,7 +695,7 @@ describe('dataforseo.service — auditCocoonKeywords', () => {
       keywordData: { searchVolume: 2400, difficulty: 45, cpc: 2.5, competition: 0.6, monthlySearches: [2400] },
       cachedAt: new Date().toISOString(),
     }
-    mockReadJson.mockResolvedValue({ data: freshCache, cachedAt: freshCache.cachedAt })
+    mockGetCached.mockResolvedValue(freshCache)
 
     const results = await auditCocoonKeywords([makeKeyword('refonte site web')])
     expect(results).toHaveLength(1)
@@ -687,8 +713,7 @@ describe('dataforseo.service — auditCocoonKeywords', () => {
     process.env.DATAFORSEO_MIN_REFRESH_HOURS = '24'
 
     // Cache miss
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetCached.mockResolvedValue(null)
 
     // Batch overview (call 1)
     mockFetch.mockResolvedValueOnce(
@@ -730,7 +755,8 @@ describe('dataforseo.service — auditCocoonKeywords', () => {
     // 3 fetch calls: batchOverview + batchIntent + relatedKeywords
     expect(mockFetch).toHaveBeenCalledTimes(3)
     // Cache was written
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
+    expect(mockSetCached).toHaveBeenCalledTimes(1)
+    expect(mockSetCached.mock.calls[0][0]).toBe('dataforseo')
 
     if (origHours !== undefined) process.env.DATAFORSEO_MIN_REFRESH_HOURS = origHours
     else delete process.env.DATAFORSEO_MIN_REFRESH_HOURS
@@ -748,9 +774,8 @@ describe('dataforseo.service — auditCocoonKeywords', () => {
       keywordData: { searchVolume: 100, difficulty: 10, cpc: 0.5, competition: 0.2, monthlySearches: [] },
       cachedAt: new Date().toISOString(),
     }
-    // readCache returns fresh data
-    mockReadJson.mockResolvedValue({ data: freshCache, cachedAt: freshCache.cachedAt })
-    mockWriteJson.mockResolvedValue(undefined)
+    // readCache returns fresh data but forceRefresh bypasses it
+    mockGetCached.mockResolvedValue(freshCache)
 
     // But with forceRefresh, it should still fetch
     mockFetch
@@ -779,9 +804,9 @@ describe('dataforseo.service — getAuditCacheStatus', () => {
     process.env.DATAFORSEO_MIN_REFRESH_HOURS = '24'
 
     const freshCachedAt = new Date().toISOString()
-    mockReadJson
-      .mockResolvedValueOnce({ data: { keyword: 'kw1', serp: [], paa: [], relatedKeywords: [], keywordData: {}, cachedAt: freshCachedAt }, cachedAt: freshCachedAt })
-      .mockRejectedValueOnce(new Error('ENOENT'))
+    mockGetCached
+      .mockResolvedValueOnce({ keyword: 'kw1', serp: [], paa: [], relatedKeywords: [], keywordData: {}, cachedAt: freshCachedAt })
+      .mockResolvedValueOnce(null)
 
     const status = await getAuditCacheStatus([
       { keyword: 'kw1', type: 'Pilier' as const, cocoonName: 'test' },

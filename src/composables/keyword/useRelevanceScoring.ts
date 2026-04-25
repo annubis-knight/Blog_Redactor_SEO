@@ -5,8 +5,14 @@ import type { DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 
 const RELEVANCE_THRESHOLD = 0.5
 const MAX_RELEVANCE_SCORES = 500
-const SCORE_BATCH_SIZE = 40
-const SCORE_CONCURRENCY = 3
+// Sprint 1.1 — Batch size raised from 40 to 120 to cut Claude calls by ~3x.
+// Why: Claude handles a numbered list of 120 items well; the prompt is short,
+// the bottleneck was call count not input tokens. Also raises concurrency to 4.
+const SCORE_BATCH_SIZE = 120
+const SCORE_CONCURRENCY = 4
+// Skip the strict pass-2 when pass-1 only filtered out <10% of keywords —
+// the strict check is redundant on cohesive topics and was doubling cost.
+const STRICT_PASS_TRIGGER_RATIO = 0.10
 
 function normalizeToken(str: string): string {
   return str.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
@@ -159,11 +165,20 @@ export function useRelevanceScoring(deps: RelevanceScoringDeps) {
         .filter(([_, score]) => score >= RELEVANCE_THRESHOLD)
         .map(([kw]) => kw)
 
-      if (relevant.length > 0) {
+      // Sprint 1.1 — Only run the strict pass-2 if pass-1 filtered out at
+      // least STRICT_PASS_TRIGGER_RATIO of keywords. Cohesive topics where
+      // pass-1 rejects almost nothing don't benefit from the strict recheck
+      // and the extra call is pure cost.
+      const pass1Rejected = unscored.length - relevant.length
+      const pass1RejectRatio = unscored.length > 0 ? pass1Rejected / unscored.length : 0
+
+      if (relevant.length > 0 && pass1RejectRatio >= STRICT_PASS_TRIGGER_RATIO) {
         scoringProgress.value = { scored: 0, total: relevant.length, pass: 2 }
         await scoreBatchesConcurrently(seed, relevant, true, 2)
         const downgraded = relevant.filter(kw => (relevanceScores.value.get(kw) ?? 1) < RELEVANCE_THRESHOLD)
         log.info(`Relevance pass-2 (strict): ${relevant.length} re-checked, ${downgraded.length} downgraded`)
+      } else if (relevant.length > 0) {
+        log.info(`Relevance pass-2 skipped: pass-1 reject ratio ${(pass1RejectRatio * 100).toFixed(1)}% below threshold ${(STRICT_PASS_TRIGGER_RATIO * 100).toFixed(0)}%`)
       }
     } catch (err) {
       log.warn(`Relevance scoring failed: ${(err as Error).message}`)

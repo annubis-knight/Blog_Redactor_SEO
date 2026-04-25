@@ -111,6 +111,9 @@ const mockLockCaptain = vi.fn()
 const mockAddCaptainValidation = vi.fn()
 const mockAddRootKeywordValidation = vi.fn()
 const mockSaveKeywords = vi.fn()
+const mockSaveDecisions = vi.fn()
+const mockSaveCaptainExplorationEntry = vi.fn()
+const mockSaveCaptainExplorationAiPanel = vi.fn()
 
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
@@ -122,11 +125,33 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     updateCaptainValidationAiPanel: vi.fn(),
     setRootKeywords: vi.fn(),
     saveKeywords: mockSaveKeywords,
+    saveDecisions: mockSaveDecisions,
+    saveCaptainExplorationEntry: mockSaveCaptainExplorationEntry,
+    saveCaptainExplorationAiPanel: mockSaveCaptainExplorationAiPanel,
   }),
 }))
 
 vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
+// F3 — Mock du store basket (utilisé par KeywordAssistPanel, sous-composant de CaptainValidation)
+vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
+  useMoteurBasketStore: () => ({
+    keywords: [],
+    keywordStrings: [],
+    count: 0,
+    isEmpty: true,
+    bestKeyword: null,
+    validatedKeywords: [],
+    articleId: null,
+    setArticle: vi.fn(),
+    addKeywords: vi.fn(),
+    removeKeyword: vi.fn(),
+    markValidated: vi.fn(),
+    clear: vi.fn(),
+    $reset: vi.fn(),
+  }),
 }))
 
 const mockArticle: SelectedArticle = {
@@ -298,7 +323,7 @@ describe('CaptainValidation', () => {
       await input.setValue('seo alternatif')
       await wrapper.find('.keyword-input-btn').trigger('click')
 
-      expect(mockCarouselAddEntry).toHaveBeenCalledWith('seo alternatif', 'pilier', 'Test Article')
+      expect(mockCarouselAddEntry).toHaveBeenCalledWith('seo alternatif', 'pilier', 'Test Article', 1)
     })
 
     it('calls carousel.addEntry on Enter key', async () => {
@@ -309,7 +334,7 @@ describe('CaptainValidation', () => {
       await input.setValue('seo enter')
       await input.trigger('keyup.enter')
 
-      expect(mockCarouselAddEntry).toHaveBeenCalledWith('seo enter', 'pilier', 'Test Article')
+      expect(mockCarouselAddEntry).toHaveBeenCalledWith('seo enter', 'pilier', 'Test Article', 1)
     })
   })
 
@@ -399,7 +424,7 @@ describe('CaptainValidation', () => {
       await nextTick()
 
       await wrapper.find('.suggested-chip').trigger('click')
-      expect(mockValidateKeyword).toHaveBeenCalledWith('refonte site web', 'pilier', 'Test Article')
+      expect(mockValidateKeyword).toHaveBeenCalledWith('refonte site web', 'pilier', 'Test Article', undefined)
     })
   })
 
@@ -539,7 +564,7 @@ describe('CaptainValidation', () => {
       await nextTick()
 
       expect(wrapper.emitted('check-completed')).toBeTruthy()
-      expect(wrapper.emitted('check-completed')![0]).toEqual(['capitaine_locked'])
+      expect(wrapper.emitted('check-completed')![0]).toEqual(['moteur:capitaine_locked'])
     })
 
     it('persists keyword to store on lock', async () => {
@@ -552,7 +577,7 @@ describe('CaptainValidation', () => {
 
       expect(mockLockCaptain).toHaveBeenCalled()
       expect(mockLockCaptain.mock.calls[0][0]).toBe('seo local')
-      expect(mockSaveKeywords).toHaveBeenCalledWith(1)
+      expect(mockSaveDecisions).toHaveBeenCalledWith(1)
     })
 
     it('shows locked state after locking', async () => {
@@ -591,7 +616,7 @@ describe('CaptainValidation', () => {
       await nextTick()
 
       expect(wrapper.emitted('check-removed')).toBeTruthy()
-      expect(wrapper.emitted('check-removed')![0]).toEqual(['capitaine_locked'])
+      expect(wrapper.emitted('check-removed')![0]).toEqual(['moteur:capitaine_locked'])
     })
 
     it('reverts to unlocked state after unlock', async () => {
@@ -687,7 +712,7 @@ describe('CaptainValidation', () => {
       await input.setValue('seo alternatif')
       await wrapper.find('.keyword-input-btn').trigger('click')
 
-      expect(mockCarouselAddEntry).toHaveBeenCalledWith('seo alternatif', 'pilier', 'Test Article')
+      expect(mockCarouselAddEntry).toHaveBeenCalledWith('seo alternatif', 'pilier', 'Test Article', 1)
     })
   })
 
@@ -777,7 +802,7 @@ describe('CaptainValidation', () => {
         error: null,
         rootVariants: new Map(),
         isLoadingRoots: false,
-        activeWordCount: card.keyword.trim().split(/\s+/).length,
+        activeWordIndices: Array.from({ length: card.keyword.trim().split(/\s+/).length }, (_, i) => i),
         failedRoots: [],
         ...overrides,
       }
@@ -976,7 +1001,7 @@ describe('CaptainValidation', () => {
       expect(wrapper.emitted('validated')).toBeTruthy()
       expect(wrapper.emitted('validated')![0]).toEqual(['seo local'])
       expect(wrapper.emitted('check-completed')).toBeTruthy()
-      expect(wrapper.emitted('check-completed')![0]).toEqual(['capitaine_locked'])
+      expect(wrapper.emitted('check-completed')![0]).toEqual(['moteur:capitaine_locked'])
       expect(mockLockCaptain).toHaveBeenCalled()
       expect(mockLockCaptain.mock.calls[0][0]).toBe('seo local')
     })
@@ -1016,7 +1041,7 @@ describe('CaptainValidation', () => {
       await nextTick()
 
       expect(wrapper.emitted('check-removed')).toBeTruthy()
-      expect(wrapper.emitted('check-removed')![0]).toEqual(['capitaine_locked'])
+      expect(wrapper.emitted('check-removed')![0]).toEqual(['moteur:capitaine_locked'])
       expect(wrapper.find('[data-testid="carousel-lock-btn"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="carousel-locked-state"]').exists()).toBe(false)
     })
@@ -1048,7 +1073,7 @@ describe('CaptainValidation', () => {
       await input.setValue('nouveau mot cle')
       await wrapper.find('.keyword-input-btn').trigger('click')
 
-      expect(mockCarouselAddEntry).toHaveBeenCalledWith('nouveau mot cle', 'pilier', 'Test Article')
+      expect(mockCarouselAddEntry).toHaveBeenCalledWith('nouveau mot cle', 'pilier', 'Test Article', 1)
     })
 
     it('manual input calls carousel.addEntry even when carousel is empty', async () => {
@@ -1059,7 +1084,7 @@ describe('CaptainValidation', () => {
       await input.setValue('first keyword')
       await wrapper.find('.keyword-input-btn').trigger('click')
 
-      expect(mockCarouselAddEntry).toHaveBeenCalledWith('first keyword', 'pilier', 'Test Article')
+      expect(mockCarouselAddEntry).toHaveBeenCalledWith('first keyword', 'pilier', 'Test Article', 1)
     })
 
     it('shows carousel PAA questions when paaQuestions present in validation', async () => {
@@ -1155,7 +1180,7 @@ describe('CaptainValidation', () => {
         error: null,
         rootVariants: new Map(),
         isLoadingRoots: false,
-        activeWordCount: card.keyword.trim().split(/\s+/).length,
+        activeWordIndices: Array.from({ length: card.keyword.trim().split(/\s+/).length }, (_, i) => i),
         failedRoots: [],
         ...overrides,
       }
@@ -1199,7 +1224,7 @@ describe('CaptainValidation', () => {
       expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web entreprise')
     })
 
-    it('renders interactive keyword words when rootVariants are present', async () => {
+    it('renders interactive keyword words when rootVariants are present (F4 — all active by default)', async () => {
       mockCarouselEntries.value = [
         makeCarouselEntryLocal(longTailCard, longTailValidation, {
           rootVariants: rootVariantsMap,
@@ -1213,17 +1238,17 @@ describe('CaptainValidation', () => {
       const kwWords = wrapper.findAll('.kw-word')
       expect(kwWords.length).toBe(5)
       expect(kwWords[0].text()).toBe('creation')
-      expect(kwWords[0].classes()).toContain('kw-word--core')
-      expect(kwWords[1].text()).toBe('site')
-      expect(kwWords[1].classes()).toContain('kw-word--core')
+      // F4 : tous les mots sont actifs par défaut (plus de notion de "core")
+      expect(kwWords[0].classes()).toContain('kw-word--active')
+      expect(kwWords[1].classes()).toContain('kw-word--active')
       expect(kwWords[2].classes()).toContain('kw-word--active')
     })
 
-    it('clicking an active word swaps to the corresponding root variant', async () => {
+    it('clicking an active word (last in sequence) swaps to the corresponding root variant', async () => {
       mockCarouselEntries.value = [
         makeCarouselEntryLocal(longTailCard, longTailValidation, {
           rootVariants: rootVariantsMap,
-          activeWordCount: 5,
+          activeWordIndices: [0, 1, 2, 3, 4],
         }),
       ]
       mockCarouselCurrentIndex.value = 0
@@ -1231,19 +1256,18 @@ describe('CaptainValidation', () => {
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
       await nextTick()
 
-      // Click 'entreprise' (index 3, active) → handleWordToggle(3) → activeKeyword = 'creation site web'
+      // Click 'toulouse' (index 4, active) → désactive toulouse → reste "creation site web entreprise" → variant exists
       const kwWords = wrapper.findAll('.kw-word')
-      await kwWords[3].trigger('click')
+      await kwWords[4].trigger('click')
       await nextTick()
 
-      expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web')
+      expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web entreprise')
     })
   })
 
-  describe('debounced save on validation rafales', () => {
-    // These tests exercise the race-condition fix for article-keywords.json:
-    // multiple watchers must coalesce their saves into a single debounced PUT
-    // to prevent EPERM thrash on Windows when the file is held by the IDE.
+  describe('direct save on validation events', () => {
+    // After refactoring: each validation triggers a direct saveCaptainExplorationEntry
+    // call — no more debounce coalescing.
 
     function makeEntry(keyword: string, validation: ValidateResponse | null = null) {
       const card: RadarCard = {
@@ -1267,57 +1291,42 @@ describe('CaptainValidation', () => {
         error: null,
         rootVariants: new Map(),
         isLoadingRoots: false,
-        activeWordCount: keyword.trim().split(/\s+/).length,
+        activeWordIndices: Array.from({ length: keyword.trim().split(/\s+/).length }, (_, i) => i),
         failedRoots: [],
       }
     }
 
     beforeEach(() => {
-      // Ensure store matches article (guard inside debouncedSave)
       mockStoreKeywords.value = { articleId: mockArticle.id, capitaine: null } as any
     })
 
-    it('coalesces a rafale of 3 validations into ONE saveKeywords call', async () => {
-      vi.useFakeTimers()
-      try {
-        mount(CaptainValidation, {
-          props: { selectedArticle: mockArticle, radarCards: [] },
-        })
-        await nextTick()
-        mockSaveKeywords.mockClear()
+    it('each validation triggers a direct saveCaptainExplorationEntry call', async () => {
+      mount(CaptainValidation, {
+        props: { selectedArticle: mockArticle, radarCards: [] },
+      })
+      await nextTick()
+      mockSaveCaptainExplorationEntry.mockClear()
 
-        // Fire 3 validations within the 300ms debounce window
-        mockCarouselEntries.value = [makeEntry('kw-1', { ...fullResult, keyword: 'kw-1' })]
-        await nextTick()
-        mockCarouselEntries.value = [
-          makeEntry('kw-1', { ...fullResult, keyword: 'kw-1' }),
-          makeEntry('kw-2', { ...fullResult, keyword: 'kw-2' }),
-        ]
-        await nextTick()
-        mockCarouselEntries.value = [
-          makeEntry('kw-1', { ...fullResult, keyword: 'kw-1' }),
-          makeEntry('kw-2', { ...fullResult, keyword: 'kw-2' }),
-          makeEntry('kw-3', { ...fullResult, keyword: 'kw-3' }),
-        ]
-        await nextTick()
+      // Fire 3 validations sequentially
+      mockCarouselEntries.value = [makeEntry('kw-1', { ...fullResult, keyword: 'kw-1' })]
+      await nextTick()
+      mockCarouselEntries.value = [
+        makeEntry('kw-1', { ...fullResult, keyword: 'kw-1' }),
+        makeEntry('kw-2', { ...fullResult, keyword: 'kw-2' }),
+      ]
+      await nextTick()
+      mockCarouselEntries.value = [
+        makeEntry('kw-1', { ...fullResult, keyword: 'kw-1' }),
+        makeEntry('kw-2', { ...fullResult, keyword: 'kw-2' }),
+        makeEntry('kw-3', { ...fullResult, keyword: 'kw-3' }),
+      ]
+      await nextTick()
 
-        // Before debounce expires: no save yet
-        expect(mockSaveKeywords).not.toHaveBeenCalled()
-
-        // Advance past the 300ms debounce window
-        await vi.advanceTimersByTimeAsync(350)
-
-        // Exactly ONE save, regardless of how many mutations happened
-        expect(mockSaveKeywords).toHaveBeenCalledTimes(1)
-        expect(mockSaveKeywords).toHaveBeenCalledWith(mockArticle.id)
-      } finally {
-        vi.useRealTimers()
-      }
+      // Each new validation entry triggers a direct save — no debounce
+      expect(mockSaveCaptainExplorationEntry).toHaveBeenCalled()
     })
 
-    it('lockCarouselEntry save stays synchronous (user action, not debounced)', async () => {
-      // User-intentional actions (lock/unlock) must save IMMEDIATELY,
-      // independent of the debounce window.
+    it('lockCarouselEntry calls saveDecisions immediately', async () => {
       const validation = { ...fullResult, keyword: 'kw-sync' }
       mockCarouselEntries.value = [makeEntry('kw-sync', validation)]
 
@@ -1325,18 +1334,15 @@ describe('CaptainValidation', () => {
         props: { selectedArticle: mockArticle, radarCards: [] },
       })
       await nextTick()
-      mockSaveKeywords.mockClear()
+      mockSaveDecisions.mockClear()
 
       // Trigger lockCarouselEntry via the lock panel in carousel mode
       const lockBtn = wrapper.find('[data-testid="carousel-lock-btn"]')
       if (lockBtn.exists()) {
         await lockBtn.trigger('click')
         await nextTick()
-        // Synchronous save: no timer advance needed
-        expect(mockSaveKeywords).toHaveBeenCalledWith(mockArticle.id)
+        expect(mockSaveDecisions).toHaveBeenCalledWith(mockArticle.id)
       } else {
-        // Fallback: simply confirm synchronous API is not replaced by debounce
-        // (the component exposes lockCaptain via saveKeywords direct call path)
         expect(true).toBe(true)
       }
     })

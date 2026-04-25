@@ -7,7 +7,7 @@ import type { Phase } from '@/components/moteur/MoteurPhaseNavigation.vue'
 const phases: Phase[] = [
   {
     id: 'generer',
-    label: 'Générer',
+    label: 'Explorer',
     number: 1,
     tabs: [
       { id: 'discovery', label: 'Discovery', optional: true, locked: false },
@@ -202,10 +202,10 @@ describe('Phase ② Valider — Lock computed logic', () => {
   function createLockComputed(completedChecks: string[]) {
     const progress = ref({ completedChecks })
     const isCaptaineLocked = computed(() =>
-      progress.value.completedChecks.includes('capitaine_locked'),
+      progress.value.completedChecks.includes('moteur:capitaine_locked'),
     )
     const isLieutenantsLocked = computed(() =>
-      progress.value.completedChecks.includes('lieutenants_locked'),
+      progress.value.completedChecks.includes('moteur:lieutenants_locked'),
     )
     return { isCaptaineLocked, isLieutenantsLocked }
   }
@@ -216,17 +216,17 @@ describe('Phase ② Valider — Lock computed logic', () => {
   })
 
   it('isCaptaineLocked is true when check present', () => {
-    const { isCaptaineLocked } = createLockComputed(['capitaine_locked'])
+    const { isCaptaineLocked } = createLockComputed(['moteur:capitaine_locked'])
     expect(isCaptaineLocked.value).toBe(true)
   })
 
   it('isLieutenantsLocked is false when check not present', () => {
-    const { isLieutenantsLocked } = createLockComputed(['capitaine_locked'])
+    const { isLieutenantsLocked } = createLockComputed(['moteur:capitaine_locked'])
     expect(isLieutenantsLocked.value).toBe(false)
   })
 
   it('isLieutenantsLocked is true when check present', () => {
-    const { isLieutenantsLocked } = createLockComputed(['capitaine_locked', 'lieutenants_locked'])
+    const { isLieutenantsLocked } = createLockComputed(['moteur:capitaine_locked', 'moteur:lieutenants_locked'])
     expect(isLieutenantsLocked.value).toBe(true)
   })
 })

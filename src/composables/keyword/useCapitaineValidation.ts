@@ -57,7 +57,7 @@ export function useCapitaineValidation() {
     return result.value
   })
 
-  async function validateKeyword(keyword: string, level: ArticleLevel, articleTitle?: string) {
+  async function validateKeyword(keyword: string, level: ArticleLevel, articleTitle?: string, articlePainPoint?: string) {
     const thisVersion = ++validationVersion
     isLoading.value = true
     error.value = null
@@ -79,6 +79,7 @@ export function useCapitaineValidation() {
         specificTopic: articleTitle ?? keyword,
         keywords: [{ keyword, reasoning: '' }],
         depth: 1,
+        painPoint: articlePainPoint,
       },
     ).then(scanResult => {
       if (thisVersion !== validationVersion) return

@@ -71,11 +71,8 @@ describe('article.schema — rawArticlesDbSchema', () => {
     }
   })
 
-  it('validates the actual BDD_Articles_Blog.json file', async () => {
-    const { readJson } = await import('../../../server/utils/json-storage.js')
-    const { join } = await import('path')
-    const data = await readJson(join(process.cwd(), 'data', 'BDD_Articles_Blog.json'))
-    expect(() => rawArticlesDbSchema.parse(data)).not.toThrow()
+  it.skip('validates the actual BDD_Articles_Blog.json file (migrated to PostgreSQL)', async () => {
+    // JSON files removed after PostgreSQL migration
   })
 })
 
@@ -113,11 +110,8 @@ describe('keyword.schema — rawKeywordsDbSchema', () => {
     }
   })
 
-  it('validates the actual BDD_Mots_Clefs_SEO.json file', async () => {
-    const { readJson } = await import('../../../server/utils/json-storage.js')
-    const { join } = await import('path')
-    const data = await readJson(join(process.cwd(), 'data', 'BDD_Mots_Clefs_SEO.json'))
-    expect(() => rawKeywordsDbSchema.parse(data)).not.toThrow()
+  it.skip('validates the actual BDD_Mots_Clefs_SEO.json file (migrated to PostgreSQL)', async () => {
+    // JSON files removed after PostgreSQL migration
   })
 })
 

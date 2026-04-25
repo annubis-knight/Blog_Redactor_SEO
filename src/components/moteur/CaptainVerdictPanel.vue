@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import VerdictThermometer from '@/components/moteur/VerdictThermometer.vue'
+import VerdictBar from '@/components/moteur/VerdictBar.vue'
 import { KPI_COLORS } from '@/composables/ui/useVerdictColors'
 import type { KpiResult, VerdictLevel, ArticleLevel } from '@shared/types/index.js'
 
@@ -44,17 +44,15 @@ function tooltipText(kpi: KpiResult): string {
 
 <template>
   <div class="captain-verdict-panel">
-    <VerdictThermometer
+    <!-- Single-line bar: verdict + nogo message inline. Fixed height = pas de saut visuel. -->
+    <VerdictBar
       v-if="verdict"
       :verdict="verdict"
       :verdict-label="verdictLabel"
       :kpis="kpis"
       :from-cache="fromCache"
+      :no-go-message="noGoMessage"
     />
-
-    <div v-if="noGoMessage" class="nogo-feedback" data-testid="nogo-feedback">
-      <p>{{ noGoMessage }}</p>
-    </div>
 
     <div class="kpi-row">
       <div class="kpi-grid">
@@ -85,15 +83,6 @@ function tooltipText(kpi: KpiResult): string {
 </template>
 
 <style scoped>
-.nogo-feedback {
-  padding: 0.75rem 1rem;
-  background: var(--color-error-bg, #fef2f2);
-  border-radius: 8px;
-  color: var(--color-error, #ef4444);
-  font-size: 0.875rem;
-  margin-bottom: 1rem;
-}
-
 .kpi-row {
   display: flex;
   justify-content: space-between;

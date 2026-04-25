@@ -1,12 +1,12 @@
 import { Router } from 'express'
-import { log } from '../utils/logger.js'
 import { briefRequestSchema } from '../../shared/schemas/dataforseo.schema.js'
-import { getBrief } from '../services/external/dataforseo.service.js'
+import { getBrief, isSandbox } from '../services/external/dataforseo.service.js'
+import { costGuard } from '../services/external/dataforseo-cost-guard.js'
 
 const router = Router()
 
 /** POST /api/dataforseo/brief — Get SEO brief data for a keyword */
-router.post('/brief', async (req, res) => {
+router.post('/brief', async (req, res, next) => {
   try {
     const parsed = briefRequestSchema.safeParse(req.body)
     if (!parsed.success) {
@@ -20,14 +20,15 @@ router.post('/brief', async (req, res) => {
     const result = await getBrief(keyword, forceRefresh)
     res.json({ data: result })
   } catch (err) {
-    log.error(`POST /api/dataforseo/brief — ${(err as Error).message}`)
-    res.status(502).json({
-      error: {
-        code: 'DATAFORSEO_ERROR',
-        message: err instanceof Error ? err.message : 'Erreur DataForSEO',
-      },
-    })
+    // Delegate to the global error handler so CostBudgetError / DataForSeoQuotaError
+    // get their proper 429 instead of being masked as 502.
+    next(err)
   }
+})
+
+/** GET /api/dataforseo/cost-status — current sliding-window spend */
+router.get('/cost-status', (_req, res) => {
+  res.json({ data: { ...costGuard.getStatus(), sandbox: isSandbox() } })
 })
 
 export default router

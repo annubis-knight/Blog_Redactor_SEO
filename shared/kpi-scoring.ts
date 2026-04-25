@@ -67,12 +67,30 @@ export function scoreKpi(
 
 /**
  * Compute the global verdict from an array of 6 KPI results.
+ *
+ * Niveaux possibles :
+ *  - `GRAY`  : données insuffisantes (volume + PAA + autocomplete absents du signal)
+ *  - `NO-GO` : données présentes mais toutes à zéro (keyword inexistant)
+ *  - `GO`    : ≥4/6 verts, pas de red sur Volume/KD/PAA
+ *  - `ORANGE`: signaux mixtes (fallback)
  */
 export function computeVerdict(kpis: KpiResult[]): ValidateVerdict {
   const volume = kpis.find(k => k.name === 'volume')
   const kd = kpis.find(k => k.name === 'kd')
   const paa = kpis.find(k => k.name === 'paa')
   const autocomplete = kpis.find(k => k.name === 'autocomplete')
+
+  // GRAY : données insuffisantes — aucun des 3 KPI principaux n'est présent dans les résultats.
+  // Distinct du NO-GO (où les KPI existent mais sont à zéro).
+  if (!volume && !paa && !autocomplete) {
+    return {
+      level: 'GRAY',
+      greenCount: 0,
+      totalKpis: kpis.length,
+      reason: 'Données insuffisantes',
+      autoNoGo: false,
+    }
+  }
 
   // Auto NO-GO: volume=0 AND paa=0 AND autocomplete=0
   if (

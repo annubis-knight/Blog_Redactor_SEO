@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
@@ -9,28 +9,36 @@ import { useArticleProgressStore } from '@/stores/article/article-progress.store
 import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
 import { useArticleResults } from '@/composables/editor/useArticleResults'
 import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
-import { apiGet } from '@/services/api.service'
+import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
+import { apiGet, apiDelete } from '@/services/api.service'
 import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import { log } from '@/utils/logger'
-import type { SelectedArticle } from '@shared/types/index.js'
+import type { SelectedArticle, Article } from '@shared/types/index.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 import SelectedArticlePanel from '@/components/moteur/SelectedArticlePanel.vue'
-import MoteurPhaseNavigation from '@/components/moteur/MoteurPhaseNavigation.vue'
-import type { Phase } from '@/components/moteur/MoteurPhaseNavigation.vue'
-import PhaseTransitionBanner from '@/components/moteur/PhaseTransitionBanner.vue'
+import type { NavGroup } from '@/components/shared/WorkflowNav.vue'
+
+// Phase = structure interne (gating, transition banner, smart-tab logic).
+// Conservée même si la nav-app utilise désormais NavGroup.
+interface Phase {
+  id: string
+  label: string
+  number: number
+  tabs: { id: string; label: string; optional?: boolean; locked?: boolean }[]
+}
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
+import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
 import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
 import DouleurIntentScanner from '@/components/intent/DouleurIntentScanner.vue'
-import PainTranslator from '@/components/intent/PainTranslator.vue'
-import type { TranslatedKeyword, RadarKeyword, RadarCard } from '@shared/types/intent.types.js'
+import type { RadarKeyword, RadarCard } from '@shared/types/intent.types.js'
 
 // Phase ② Valider
 import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
@@ -50,6 +58,7 @@ const { clearResults, loadCachedResults } = useArticleResults({
   },
 })
 const basketStore = useMoteurBasketStore()
+const workflowNavStore = useWorkflowNavStore()
 
 provideRecapRadioGroup()
 
@@ -63,6 +72,20 @@ function refreshCapitainesMap() {
   apiGet<Record<string, string>>(`/cocoons/${encodeURIComponent(cocoonName.value)}/capitaines`)
     .then(data => { capitainesMap.value = data })
     .catch(err => { log.warn('[MoteurView] refreshCapitainesMap failed', { error: err }) })
+}
+
+// Sprint — handler du bouton "Vider le cache" intégré au TabCachePanel.
+// Purge les entrées api_cache (autocomplete, PAA, SERP, validate) liées au
+// capitaine de l'article courant. Ne touche pas aux *_explorations (DB persistée).
+async function clearExternalCacheForArticle() {
+  const id = selectedArticle.value?.id
+  if (!id) return
+  try {
+    const res = await apiDelete<{ cleared: number }>(`/articles/${id}/external-cache`)
+    log.info('[MoteurView] external cache cleared', { articleId: id, cleared: res.cleared })
+  } catch (err) {
+    log.warn('[MoteurView] clearExternalCacheForArticle failed', { articleId: id, error: err })
+  }
 }
 
 function emitCheckCompleted(check: string) {
@@ -111,6 +134,26 @@ const proposedArticles = computed(() =>
   strategyStore.strategy?.proposedArticles ?? [],
 )
 
+// Mapping ProposedArticle → Article pour <MoteurContextRecap> qui attend Article[].
+// Les ProposedArticle viennent de la strategy (cocoon-level brainstorm) et ne sont
+// pas encore persistés ; on synthétise les champs Article minimaux que le recap
+// utilise (id/slug/title/type/keyword/painPoint).
+const suggestedArticlesForRecap = computed<Article[]>(() =>
+  proposedArticles.value.map(p => ({
+    id: p.dbId,
+    title: p.title,
+    type: p.type,
+    slug: p.suggestedSlug,
+    topic: null,
+    status: 'à rédiger' as const,
+    phase: 'proposed' as const,
+    completedChecks: [],
+    suggestedKeyword: p.suggestedKeyword || null,
+    captainKeywordLocked: null,
+    painPoint: p.painPoint || null,
+  })),
+)
+
 const publishedArticles = computed(() =>
   cocoon.value?.articles ?? [],
 )
@@ -142,6 +185,21 @@ const activeTab = ref<Tab>('capitaine')
 // Track which tabs have been visited — v-if creates them lazily, v-show keeps them alive
 const visitedTabs = ref<Record<string, boolean>>({ capitaine: true })
 watch(activeTab, (tab) => { visitedTabs.value[tab] = true })
+
+// Sprint 1.3/5.1 — contextual next-tab button. Shows "Continuer vers {TabSuivant}"
+// at the bottom of every tab so the user can chain phases without hunting for a CTA.
+const TAB_LABELS: Record<Tab, string> = {
+  discovery: 'Discovery',
+  radar: 'Radar',
+  capitaine: 'Capitaine',
+  lieutenants: 'Lieutenants',
+  lexique: 'Lexique',
+}
+const nextTab = computed<Tab | null>(() => {
+  const idx = TAB_IDS.indexOf(activeTab.value)
+  if (idx < 0 || idx >= TAB_IDS.length - 1) return null
+  return TAB_IDS[idx + 1] ?? null
+})
 
 const phases = computed<Phase[]>(() => [
   {
@@ -175,60 +233,46 @@ function setActiveTab(tabId: string) {
   }
 }
 
-// --- Phase transition banner ---
-const PHASE_CHECKS: Record<string, string[]> = {
-  generer: ['discovery_done', 'radar_done'],
-  valider: ['capitaine_locked', 'lieutenants_locked', 'lexique_validated'],
-}
+// Sprint 2.4 — PhaseTransitionBanner retiré (PHASE_CHECKS, PHASE_NEXT,
+// currentPhaseId, isCurrentPhaseComplete, bannerDismissed, transitionBanner,
+// showTransitionBanner supprimés). Le bouton bas-de-page "Continuer vers
+// {TabSuivant}" remplace ce banner.
 
-const PHASE_NEXT: Record<string, { phaseLabel: string; firstTab: Tab }> = {
-  generer: { phaseLabel: 'Valider', firstTab: 'capitaine' },
-}
-
-const currentPhaseId = computed(() => {
-  const tab = activeTab.value
-  if (tab === 'discovery' || tab === 'radar') return 'generer'
-  return 'valider'
-})
-
-const isCurrentPhaseComplete = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  const checks = articleProgressStore.getProgress(id)?.completedChecks ?? []
-  const required = PHASE_CHECKS[currentPhaseId.value]
-  if (!required) return false
-  return required.every(c => checks.includes(c))
-})
-
-const bannerDismissed = ref(false)
-
-watch(currentPhaseId, () => { bannerDismissed.value = false })
-watch(() => selectedArticle.value?.id, () => { bannerDismissed.value = false })
-
-const transitionBanner = computed(() => {
-  if (!isCurrentPhaseComplete.value) return null
-
-  const next = PHASE_NEXT[currentPhaseId.value]
-  if (next) {
-    const phase = phases.value.find(p => p.id === currentPhaseId.value)
-    return {
-      message: `Phase ${phase?.label ?? currentPhaseId.value} complète — passer à ${next.phaseLabel} ?`,
-      actionLabel: `Passer à ${next.phaseLabel}`,
-      firstTab: next.firstTab,
-    }
-  }
-
-  // Completion banner — last phase, no next phase
-  return {
-    message: 'Validation complète — tous les mots-clés sont prêts pour la rédaction !',
-    actionLabel: undefined as string | undefined,
-    firstTab: undefined as Tab | undefined,
-  }
-})
-
-const showTransitionBanner = computed(() =>
-  transitionBanner.value !== null && !bannerDismissed.value,
+// --- Publish workflow nav state to AppNavbar (right slot)
+// La navbar globale (AppNavbar) lit `useWorkflowNavStore` et rend la nav.
+// On publie ici l'état de phases/onglets actifs ; on nettoie au unmount.
+const navGroups = computed<NavGroup[]>(() =>
+  phases.value.map(p => ({
+    id: p.id,
+    label: p.label,
+    number: p.number,
+    items: p.tabs.map(t => ({
+      id: t.id,
+      label: t.label,
+      locked: t.locked || !selectedArticle.value,
+      hint: !selectedArticle.value
+        ? 'Sélectionnez un article ci-dessus'
+        : t.locked
+          ? 'Mots-clés déjà validés — onglet verrouillé'
+          : undefined,
+    })),
+  })),
 )
+
+watch(
+  [navGroups, activeTab],
+  ([groups, active]) => {
+    workflowNavStore.setWorkflowNav({
+      workflow: 'moteur',
+      activeId: active,
+      groups,
+      onNavigate: (id: string) => setActiveTab(id),
+    })
+  },
+  { immediate: true, deep: true },
+)
+
+onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 
 function computeSmartTab(articleId: number): Tab {
   const progress = articleProgressStore.getProgress(articleId)
@@ -304,7 +348,6 @@ function handleSelectArticle(article: SelectedArticle | null) {
 const discoveryRadarKeywords = ref<RadarKeyword[]>([])
 const radarScanResult = ref<{ globalScore: number; heatLevel: string } | null>(null)
 const radarCacheStatus = ref<RadarCacheStatus | null>(null)
-const translatedKeywords = ref<TranslatedKeyword[]>([])
 const radarCardsForCaptain = ref<RadarCard[]>([])
 
 function handleCardsSelected(cards: RadarCard[]) {
@@ -337,17 +380,6 @@ function handleKeywordsCleared() {
   log.debug('[MoteurView] Keywords cleared')
   discoveryRadarKeywords.value = []
   radarScanResult.value = null
-}
-
-function handleTranslated(keywords: TranslatedKeyword[]) {
-  translatedKeywords.value = keywords
-
-  // Add to basket
-  basketStore.addKeywords(keywords.map(k => ({
-    keyword: k.keyword,
-    source: 'pain-translator' as const,
-    reasoning: k.reasoning,
-  })))
 }
 
 // --- Soft gating computeds for Phase ② sous-onglets ---
@@ -416,55 +448,64 @@ function handleSendToLieutenants(payload: { keyword: string; rootKeywords: strin
 }
 
 // --- Tab cache entries for unified cache panel ---
-const tabCacheEntries = computed(() => [
+// Le composant TabCachePanel a été refondu pour distinguer la donnée persistée
+// (`dbCount`, dans la table *_explorations) du cache volatile (`cacheCount`, mémoire
+// ou api_cache). On adapte ici les états existants vers ce nouveau format :
+//  - état "locked"/persisté → dbCount = 1
+//  - état "en mémoire seul"  → cacheCount = 1
+//  - sinon                   → 0/0 (rien à afficher)
+const tabCacheEntries = computed<TabCacheEntry[]>(() => [
   {
     tabId: 'discovery',
     tabLabel: 'Discovery',
-    hasCachedData: discoveryHasResults.value || (discoveryCacheStatus.value?.cached ?? false),
-    summary: discoveryCacheStatus.value?.cached
+    dbCount: discoveryCacheStatus.value?.cached ? (discoveryCacheStatus.value.keywordCount ?? 1) : 0,
+    cacheCount: discoveryHasResults.value && !discoveryCacheStatus.value?.cached ? 1 : 0,
+    isCurrentTab: activeTab.value === 'discovery',
+    hint: discoveryCacheStatus.value?.cached
       ? `${discoveryCacheStatus.value.keywordCount ?? '?'} mots-clés`
       : discoveryHasResults.value
         ? 'Résultats en mémoire'
         : undefined,
-    isCurrentTab: activeTab.value === 'discovery',
   },
   {
     tabId: 'radar',
     tabLabel: 'Radar',
-    hasCachedData: radarScanResult.value !== null || (radarCacheStatus.value?.cached ?? false),
-    summary: radarScanResult.value
+    dbCount: radarCacheStatus.value?.exists ? 1 : 0,
+    cacheCount: radarScanResult.value !== null && !radarCacheStatus.value?.exists ? 1 : 0,
+    isCurrentTab: activeTab.value === 'radar',
+    hint: radarScanResult.value
       ? `Score ${radarScanResult.value.globalScore}/100`
-      : radarCacheStatus.value?.cached
+      : radarCacheStatus.value?.exists
         ? `Score ${radarCacheStatus.value.globalScore}/100 (cache)`
         : undefined,
-    isCurrentTab: activeTab.value === 'radar',
   },
   {
     tabId: 'capitaine',
     tabLabel: 'Capitaine',
-    hasCachedData: isCaptaineLocked.value,
-    summary: isCaptaineLocked.value
-      ? `${captainKeyword.value ?? 'verrouillé'}`
-      : undefined,
+    dbCount: isCaptaineLocked.value ? 1 : 0,
+    cacheCount: 0,
     isCurrentTab: activeTab.value === 'capitaine',
+    hint: isCaptaineLocked.value ? `${captainKeyword.value ?? 'verrouillé'}` : undefined,
   },
   {
     tabId: 'lieutenants',
     tabLabel: 'Lieutenants',
-    hasCachedData: isLieutenantsLocked.value,
-    summary: isLieutenantsLocked.value
+    dbCount: isLieutenantsLocked.value ? (articleKeywordsStore.keywords?.lieutenants?.length ?? 1) : 0,
+    cacheCount: 0,
+    isCurrentTab: activeTab.value === 'lieutenants',
+    hint: isLieutenantsLocked.value
       ? `${articleKeywordsStore.keywords?.lieutenants?.length ?? 0} lieutenants`
       : undefined,
-    isCurrentTab: activeTab.value === 'lieutenants',
   },
   {
     tabId: 'lexique',
     tabLabel: 'Lexique',
-    hasCachedData: isLexiqueValidated.value,
-    summary: isLexiqueValidated.value
+    dbCount: isLexiqueValidated.value ? (articleKeywordsStore.keywords?.lexique?.length ?? 1) : 0,
+    cacheCount: 0,
+    isCurrentTab: activeTab.value === 'lexique',
+    hint: isLexiqueValidated.value
       ? `${articleKeywordsStore.keywords?.lexique?.length ?? 0} termes`
       : undefined,
-    isCurrentTab: activeTab.value === 'lexique',
   },
 ])
 
@@ -491,7 +532,6 @@ onMounted(() => {
   resetDiscovery()
   articleKeywordsStore.$reset()
   basketStore.$reset()
-  translatedKeywords.value = []
   discoveryRadarKeywords.value = []
   radarScanResult.value = null
   radarCacheStatus.value = null
@@ -518,7 +558,7 @@ onMounted(() => {
 
       <!-- Context Recap: proposed + published articles -->
       <MoteurContextRecap
-        :proposed-articles="proposedArticles"
+        :suggested-articles="suggestedArticlesForRecap"
         :published-articles="publishedArticles"
         :selected-slug="selectedArticle?.slug ?? null"
         :capitaines-map="capitainesMap"
@@ -536,13 +576,7 @@ onMounted(() => {
         <p class="article-gate-message">Sélectionnez un article ci-dessus pour accéder au Moteur.</p>
       </div>
 
-      <!-- Phase navigation -->
-      <MoteurPhaseNavigation
-        :phases="phases"
-        :active-tab="activeTab"
-        :disabled="!selectedArticle"
-        @update:active-tab="setActiveTab"
-      />
+      <!-- Phase navigation rendue dans la navbar via useWorkflowNavStore (voir setWorkflowNav ci-dessous). -->
 
       <!-- Lock banner for Phase ① Générer -->
       <div
@@ -557,14 +591,8 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Phase transition banner -->
-      <PhaseTransitionBanner
-        v-if="showTransitionBanner"
-        :message="transitionBanner!.message"
-        :action-label="transitionBanner!.actionLabel"
-        @navigate="transitionBanner?.firstTab && setActiveTab(transitionBanner.firstTab)"
-        @dismiss="bannerDismissed = true"
-      />
+      <!-- Sprint 2.4 — PhaseTransitionBanner retiré. Le bouton bas-de-page
+           "Continuer vers {TabSuivant}" remplace ce banner d'attention. -->
 
       <!-- Basket strip (persistent across tabs) -->
       <BasketStrip
@@ -574,21 +602,29 @@ onMounted(() => {
         @clear="basketStore.clear"
       />
 
-      <!-- Unified cache panel (shows which tabs have previous results) -->
+      <!-- Unified cache panel — sticky bottom, toujours visible quand un article est sélectionné.
+           Conditions plus restrictives retirées pour que les `C=0` (caches lus mais vides) restent
+           perceptibles : prouve que la lecture a bien eu lieu. Le bouton "Vider le cache" est intégré
+           dans la carte (visible uniquement quand cacheTotal > 0). -->
       <TabCachePanel
-        v-if="selectedArticle && tabCacheEntries.some(e => e.hasCachedData && !e.isCurrentTab)"
+        v-if="selectedArticle"
         :entries="tabCacheEntries"
         :active-tab="activeTab"
+        :show-clear-cache="true"
+        sticky
         @navigate="setActiveTab"
+        @clear-cache="clearExternalCacheForArticle"
       />
 
       <!-- Tab content (only when article is selected) -->
       <template v-if="selectedArticle">
-        <!-- Phase ① Générer — Discovery (includes PainTranslator) -->
+        <!-- Phase ① Générer — Discovery -->
+        <!-- Sprint 1.2 — PainTranslator retiré du workflow (toujours dispo dans LaboView pour expérimenter). -->
         <div v-if="visitedTabs.discovery" v-show="activeTab === 'discovery'" class="tab-content">
           <KeywordDiscoveryTab
             mode="workflow"
             :pilier-keyword="cocoon?.name ?? pilierKeyword"
+            :article-id="selectedArticle?.id ?? null"
             :article-title="selectedArticle?.title ?? ''"
             :article-keyword="selectedArticle?.keyword ?? ''"
             :article-pain-point="selectedArticle?.painPoint ?? ''"
@@ -597,16 +633,6 @@ onMounted(() => {
             :cocoon-theme="cocoon?.siloName"
             @send-to-radar="handleSendToRadar"
           />
-
-          <!-- Pain Translator section embedded in Discovery -->
-          <CollapsableSection title="Traduction Sémantique" :default-open="false">
-            <PainTranslator
-              mode="workflow"
-              :initial-pain-text="selectedArticle?.painPoint ?? ''"
-              :suggested-keyword="selectedArticle?.keyword ?? ''"
-              @translated="handleTranslated"
-            />
-          </CollapsableSection>
         </div>
 
         <!-- Phase ① Générer — Radar -->
@@ -617,6 +643,7 @@ onMounted(() => {
             :article-topic="selectedArticle?.title ?? ''"
             :article-keyword="selectedArticle?.keyword ?? ''"
             :article-pain-point="selectedArticle?.painPoint ?? ''"
+            :article-level="articleLevelForLieutenants ?? 'intermediaire'"
             :injected-keywords="discoveryRadarKeywords"
             @scanned="handleRadarScanned"
             @keywords-cleared="handleKeywordsCleared"
@@ -676,10 +703,20 @@ onMounted(() => {
       </template>
 
       <!-- Bottom navigation -->
+      <!-- Sprint 1.3/5.1 — contextual next-tab button. Shows the next tab in the
+           phase order; on the last tab (lexique), falls back to a direct link to
+           Redaction. -->
       <div class="bottom-nav">
         <RouterLink :to="`/cocoon/${cocoonId}`" class="btn-back">&larr; Retour au cocon</RouterLink>
-        <RouterLink :to="`/cocoon/${cocoonId}/redaction`" class="btn btn-primary">
-          Continuer vers la Rédaction &rarr;
+        <button
+          v-if="nextTab"
+          type="button"
+          class="btn btn-primary"
+          data-testid="cta-next-tab"
+          @click="setActiveTab(nextTab)"
+        >Continuer vers {{ TAB_LABELS[nextTab] }} &rarr;</button>
+        <RouterLink v-else :to="`/cocoon/${cocoonId}/redaction`" class="btn btn-primary">
+          Continuer vers la R&eacute;daction &rarr;
         </RouterLink>
       </div>
     </template>

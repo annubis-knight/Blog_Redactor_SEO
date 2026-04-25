@@ -1,33 +1,43 @@
+// @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock json-storage before importing the service
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: vi.fn(),
-  writeJson: vi.fn(),
+// --- Mocks ---
+// Sprint 15.5 — local-seo now uses keyword_metrics.local_analysis (DB), not api_cache.
+const mockGetKeywordMetrics = vi.fn()
+const mockUpsertKeywordLocal = vi.fn()
+const mockIsFresh = vi.fn()
+
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
+  upsertKeywordLocalAnalysis: (...args: unknown[]) => mockUpsertKeywordLocal(...args),
+  isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
 }))
 
-// Mock global fetch
+vi.mock('../../../server/services/external/dataforseo.service', () => ({
+  getBaseUrl: () => 'https://sandbox.dataforseo.com/v3',
+  getAuthHeader: () => 'Basic dGVzdDp0ZXN0',
+  isSandbox: () => true,
+}))
+
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-// Set env vars before importing service
-vi.stubEnv('DATAFORSEO_LOGIN', 'test_login')
-vi.stubEnv('DATAFORSEO_PASSWORD', 'test_password')
-
-import { readJson, writeJson } from '../../../server/utils/json-storage'
 import { analyzeMaps } from '../../../server/services/strategy/local-seo.service'
 
-const mockReadJson = vi.mocked(readJson)
-const mockWriteJson = vi.mocked(writeJson)
-
 beforeEach(() => {
-  mockFetch.mockReset()
-  mockReadJson.mockReset()
-  mockWriteJson.mockReset()
+  vi.clearAllMocks()
+  mockGetKeywordMetrics.mockResolvedValue(null)
+  mockUpsertKeywordLocal.mockResolvedValue(undefined)
+  mockIsFresh.mockReturnValue(false)
   delete process.env.MY_GBP_REVIEWS
 })
 
-// --- Helper: build a DataForSEO Maps API response ---
+// --- Helpers ---
+
 function makeMapsResponse(items: any[]) {
   return {
     ok: true,
@@ -62,7 +72,9 @@ describe('local-seo.service — analyzeMaps', () => {
       reviewGap: { averageCompetitorReviews: 200, myReviews: 0, gap: 200, objective: 'Obtenir 200 avis' },
       cachedAt: '2026-01-01T00:00:00Z',
     }
-    mockReadJson.mockResolvedValue({ data: cached, cachedAt: cached.cachedAt })
+    // Sprint 15.5 — DB row with local_analysis populated + fresh
+    mockGetKeywordMetrics.mockResolvedValue({ localAnalysis: cached, fetchedAt: new Date().toISOString() })
+    mockIsFresh.mockReturnValue(true)
 
     const result = await analyzeMaps('plombier toulouse')
 
@@ -71,8 +83,7 @@ describe('local-seo.service — analyzeMaps', () => {
   })
 
   it('calls Maps SERP endpoint on cache miss', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetKeywordMetrics.mockResolvedValue(null)
     mockFetch.mockResolvedValue(makeMapsResponse([makeListing()]))
 
     await analyzeMaps('plombier toulouse', 1006157)
@@ -88,8 +99,7 @@ describe('local-seo.service — analyzeMaps', () => {
   })
 
   it('extracts listings correctly', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetKeywordMetrics.mockResolvedValue(null)
 
     const rawItem = {
       title: 'Chez Paul',
@@ -119,11 +129,9 @@ describe('local-seo.service — analyzeMaps', () => {
   })
 
   it('calculates review gap (average top 5 reviews minus MY_GBP_REVIEWS)', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetKeywordMetrics.mockResolvedValue(null)
     process.env.MY_GBP_REVIEWS = '50'
 
-    // 5 listings with votes_count: 100, 200, 150, 80, 120 → avg = 130
     const items = [
       makeListing({ votes_count: 100 }, 0),
       makeListing({ votes_count: 200 }, 1),
@@ -135,17 +143,14 @@ describe('local-seo.service — analyzeMaps', () => {
 
     const result = await analyzeMaps('plombier toulouse')
 
-    expect(result.reviewGap.averageCompetitorReviews).toBe(130) // (100+200+150+80+120)/5
+    expect(result.reviewGap.averageCompetitorReviews).toBe(130)
     expect(result.reviewGap.myReviews).toBe(50)
-    expect(result.reviewGap.gap).toBe(80) // 130 - 50
+    expect(result.reviewGap.gap).toBe(80)
     expect(result.reviewGap.objective).toContain('80')
   })
 
   it('sets hasLocalPack based on listings presence', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
-
-    // Empty items → hasLocalPack = false
+    mockGetKeywordMetrics.mockResolvedValue(null)
     mockFetch.mockResolvedValue(makeMapsResponse([]))
 
     const result = await analyzeMaps('mot clef obscur')
@@ -154,31 +159,27 @@ describe('local-seo.service — analyzeMaps', () => {
     expect(result.listings).toHaveLength(0)
   })
 
-  it('writes result to cache', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+  it('persists result to keyword_metrics.local_analysis', async () => {
     mockFetch.mockResolvedValue(makeMapsResponse([makeListing()]))
 
     const result = await analyzeMaps('plombier toulouse')
 
-    expect(mockWriteJson).toHaveBeenCalledTimes(1)
-    const [cachePath, wrappedData] = mockWriteJson.mock.calls[0]
-    expect(cachePath).toContain('maps-plombier-toulouse.json')
-    expect(wrappedData.data).toEqual(result)
+    expect(mockUpsertKeywordLocal).toHaveBeenCalledTimes(1)
+    const [keyword, analysis] = mockUpsertKeywordLocal.mock.calls[0]
+    expect(keyword).toBe('plombier toulouse')
+    expect(analysis).toEqual(result)
   })
 
   it('handles API errors', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
+    mockGetKeywordMetrics.mockResolvedValue(null)
     mockFetch.mockResolvedValue({ ok: false, status: 500, statusText: 'Internal Server Error' })
 
     await expect(analyzeMaps('plombier toulouse')).rejects.toThrow('DataForSEO Maps error: 500')
   })
 
   it('limits listings to 20', async () => {
-    mockReadJson.mockRejectedValue(new Error('ENOENT'))
-    mockWriteJson.mockResolvedValue(undefined)
+    mockGetKeywordMetrics.mockResolvedValue(null)
 
-    // Generate 25 raw items
     const items = Array.from({ length: 25 }, (_, i) => makeListing({ title: `Biz ${i + 1}` }, i))
     mockFetch.mockResolvedValue(makeMapsResponse(items))
 

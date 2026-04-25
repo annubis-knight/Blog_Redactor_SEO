@@ -3,6 +3,7 @@ import { useRoute } from 'vue-router'
 import AppNavbar from '@/components/shared/AppNavbar.vue'
 import ToastContainer from '@/components/shared/ToastContainer.vue'
 import CostLogPanel from '@/components/shared/CostLogPanel.vue'
+import CaptainTriggerToast from '@/components/shared/CaptainTriggerToast.vue'
 
 const route = useRoute()
 </script>
@@ -15,6 +16,7 @@ const route = useRoute()
     </main>
     <ToastContainer />
     <CostLogPanel />
+    <CaptainTriggerToast />
   </div>
 </template>
 

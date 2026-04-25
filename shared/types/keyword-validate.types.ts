@@ -16,7 +16,7 @@ export interface KpiResult {
   }
 }
 
-export type VerdictLevel = 'GO' | 'ORANGE' | 'NO-GO'
+export type VerdictLevel = 'GO' | 'ORANGE' | 'NO-GO' | 'GRAY'
 
 export interface ValidateVerdict {
   level: VerdictLevel

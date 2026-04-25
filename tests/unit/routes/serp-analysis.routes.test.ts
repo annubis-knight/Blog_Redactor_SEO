@@ -11,6 +11,17 @@ vi.mock('../../../server/services/external/serp-analysis.service', () => ({
   analyzeSerpCompetitors: (...args: unknown[]) => mockAnalyze(...args),
 }))
 
+// Sprint 15.5-bis — route reads keyword_metrics before falling back to DataForSEO
+const mockGetKeywordMetrics = vi.fn()
+const mockUpsertKeywordSerp = vi.fn()
+const mockIsFresh = vi.fn()
+
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
+  upsertKeywordSerp: (...args: unknown[]) => mockUpsertKeywordSerp(...args),
+  isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
+}))
+
 import router from '../../../server/routes/serp-analysis.routes'
 
 // --- Minimal Express helpers ---
@@ -50,6 +61,9 @@ const MOCK_RESULT = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockAnalyze.mockResolvedValue(MOCK_RESULT)
+  mockGetKeywordMetrics.mockResolvedValue(null)
+  mockUpsertKeywordSerp.mockResolvedValue(undefined)
+  mockIsFresh.mockReturnValue(false)
 })
 
 describe('POST /api/serp/analyze', () => {

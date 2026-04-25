@@ -1,14 +1,13 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-const { mockReadJson, mockWriteJson } = vi.hoisted(() => ({
-  mockReadJson: vi.fn(),
-  mockWriteJson: vi.fn(),
+const mockQuery = vi.fn()
+vi.mock('../../../server/db/client', () => ({
+  pool: { query: (...args: unknown[]) => mockQuery(...args) },
 }))
 
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: mockReadJson,
-  writeJson: mockWriteJson,
+vi.mock('../../../server/utils/logger', () => ({
+  log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
 import { getStrategy, saveStrategy } from '../../../server/services/strategy/strategy.service'
@@ -28,21 +27,23 @@ const validStrategy: ArticleStrategy = {
 
 beforeEach(() => {
   vi.clearAllMocks()
-  mockWriteJson.mockResolvedValue(undefined)
 })
 
 describe('strategy.service', () => {
   describe('getStrategy', () => {
-    it('returns null when file does not exist', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+    it('returns null when no row exists', async () => {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 
       const result = await getStrategy(99)
 
       expect(result).toBeNull()
     })
 
-    it('returns parsed strategy when file exists', async () => {
-      mockReadJson.mockResolvedValueOnce(validStrategy)
+    it('returns parsed strategy when row exists', async () => {
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ data: validStrategy, completed_steps: 1 }],
+        rowCount: 1,
+      })
 
       const result = await getStrategy(1)
 
@@ -50,7 +51,10 @@ describe('strategy.service', () => {
     })
 
     it('returns null when data fails Zod validation', async () => {
-      mockReadJson.mockResolvedValueOnce({ id: 1, completedSteps: 99 })
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ data: { id: 1, completedSteps: 99 }, completed_steps: 99 }],
+        rowCount: 1,
+      })
 
       const result = await getStrategy(1)
 
@@ -60,7 +64,10 @@ describe('strategy.service', () => {
 
   describe('saveStrategy', () => {
     it('saves and returns merged strategy', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+      // getStrategy SELECT → no existing
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      // UPSERT
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
 
       const result = await saveStrategy(1, {
         cible: { input: 'Dirigeants PME', suggestion: null, validated: '' },
@@ -69,18 +76,17 @@ describe('strategy.service', () => {
       expect(result.id).toBe(1)
       expect(result.cible.input).toBe('Dirigeants PME')
       expect(result.completedSteps).toBe(0)
-      expect(mockWriteJson).toHaveBeenCalledWith(
-        expect.stringContaining('1.json'),
-        expect.objectContaining({
-          id: 1,
-          cible: expect.objectContaining({ input: 'Dirigeants PME' }),
-          updatedAt: expect.any(String),
-        }),
-      )
+      expect(mockQuery.mock.calls[1][0]).toContain('article_strategies')
     })
 
     it('merges with existing data', async () => {
-      mockReadJson.mockResolvedValueOnce(validStrategy)
+      // getStrategy SELECT → existing
+      mockQuery.mockResolvedValueOnce({
+        rows: [{ data: validStrategy, completed_steps: 1 }],
+        rowCount: 1,
+      })
+      // UPSERT
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
 
       const result = await saveStrategy(1, {
         douleur: { input: 'Pas de clients en ligne', suggestion: 'Ciblez le SEO local', validated: 'OK' },
@@ -91,11 +97,11 @@ describe('strategy.service', () => {
       expect(result.cible).toEqual(validStrategy.cible)
       expect(result.douleur.input).toBe('Pas de clients en ligne')
       expect(result.completedSteps).toBe(2)
-      expect(mockWriteJson).toHaveBeenCalled()
     })
 
     it('enforces id consistency', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
 
       const result = await saveStrategy(1, { id: 2 } as any)
 
@@ -103,7 +109,7 @@ describe('strategy.service', () => {
     })
 
     it('rejects invalid merged strategy via Zod', async () => {
-      mockReadJson.mockRejectedValueOnce(new Error('ENOENT'))
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 
       await expect(
         saveStrategy(1, { completedSteps: 99 } as any),

@@ -1,6 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
-import { apiGet, apiPut, apiPost } from '@/services/api.service'
+import { apiGet, apiPut, apiPost, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ArticleKeywords, CaptainValidationEntry, RichRootKeyword, RichLieutenant } from '@shared/types/index.js'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
@@ -30,7 +30,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     keywords.value?.richLieutenants?.filter(lt => lt.status === 'eliminated') ?? [],
   )
 
-  // ---- Fetch & save ----
+  // ---- Fetch ----
 
   async function fetchKeywords(id: number) {
     isLoading.value = true
@@ -46,7 +46,9 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  async function saveKeywords(id: number) {
+  // ---- Decision-only save (article_keywords table) ----
+
+  async function saveDecisions(id: number) {
     if (!keywords.value) ensureKeywords(id)
     const kw = keywords.value!
     isSaving.value = true
@@ -58,18 +60,51 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         lexique: kw.lexique,
         rootKeywords: kw.rootKeywords ?? [],
         hnStructure: kw.hnStructure ?? [],
-        ...(kw.richCaptain && { richCaptain: kw.richCaptain }),
-        ...(kw.richRootKeywords && { richRootKeywords: kw.richRootKeywords }),
-        ...(kw.richLieutenants && { richLieutenants: kw.richLieutenants }),
       })
-      log.debug(`[article-keywords] saved for article ${id}`)
+      log.debug(`[article-keywords] decisions saved for article ${id}`)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
-      log.error(`[article-keywords] saveKeywords failed`, { articleId: id, error: error.value })
+      log.error(`[article-keywords] saveDecisions failed`, { articleId: id, error: error.value })
     } finally {
       isSaving.value = false
     }
   }
+
+  /** @deprecated Use saveDecisions() — kept as alias during transition */
+  async function saveKeywords(id: number) {
+    return saveDecisions(id)
+  }
+
+  // ---- Exploration saves (dedicated tables) ----
+
+  async function saveCaptainExplorationEntry(articleId: number, entry: CaptainValidationEntry) {
+    try {
+      await apiPost(`/articles/${articleId}/captain-explorations`, entry)
+      log.debug(`[article-keywords] captain exploration saved`, { keyword: entry.keyword })
+    } catch (err) {
+      log.error(`[article-keywords] saveCaptainExplorationEntry failed`, { articleId, keyword: entry.keyword, error: err })
+    }
+  }
+
+  async function saveCaptainExplorationAiPanel(articleId: number, keyword: string, markdown: string) {
+    try {
+      await apiPatch(`/articles/${articleId}/captain-explorations/ai-panel`, { keyword, markdown })
+      log.debug(`[article-keywords] captain AI panel saved`, { keyword })
+    } catch (err) {
+      log.error(`[article-keywords] saveCaptainExplorationAiPanel failed`, { articleId, keyword, error: err })
+    }
+  }
+
+  async function saveLieutenantExplorationEntries(articleId: number, entries: RichLieutenant[], captainKeyword: string) {
+    try {
+      await apiPost(`/articles/${articleId}/lieutenant-explorations`, { entries, captainKeyword })
+      log.debug(`[article-keywords] lieutenant explorations saved`, { count: entries.length })
+    } catch (err) {
+      log.error(`[article-keywords] saveLieutenantExplorationEntries failed`, { articleId, error: err })
+    }
+  }
+
+  // ---- Misc ----
 
   async function suggestLexique(articleId: number, articleTitle: string, cocoonName: string) {
     if (!keywords.value?.capitaine) return
@@ -219,14 +254,12 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   function saveRichLieutenantProposals(selected: ProposedLieutenant[], eliminated: ProposedLieutenant[]) {
     if (!keywords.value) return
-    const now = new Date().toISOString()
     const rich: RichLieutenant[] = [
       ...selected.map(lt => ({
         keyword: lt.keyword,
         status: 'suggested' as const,
         reasoning: lt.reasoning,
         sources: lt.sources,
-        aiConfidence: lt.aiConfidence,
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
@@ -237,7 +270,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         status: 'eliminated' as const,
         reasoning: lt.reasoning,
         sources: lt.sources,
-        aiConfidence: lt.aiConfidence,
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
@@ -257,7 +289,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         status: 'locked' as const,
         reasoning: lt.reasoning,
         sources: lt.sources,
-        aiConfidence: lt.aiConfidence,
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
@@ -268,7 +299,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         status: 'eliminated' as const,
         reasoning: lt.reasoning,
         sources: lt.sources,
-        aiConfidence: lt.aiConfidence,
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
@@ -321,7 +351,8 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   return {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     captainValidationHistory, lockedLieutenants, eliminatedLieutenants,
-    fetchKeywords, saveKeywords, suggestLexique,
+    fetchKeywords, saveKeywords, saveDecisions, suggestLexique,
+    saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
     setCapitaine, addCaptainValidation, lockCaptain, updateCaptainValidationAiPanel,
     addRootKeywordValidation,
     setRootKeywords, addLieutenant, removeLieutenant,

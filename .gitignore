@@ -38,6 +38,12 @@ coverage
 # Vitest
 __screenshots__/
 
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Vite
 *.timestamp-*-*.mjs
 
@@ -50,3 +56,9 @@ data/cache/
 data/links/
 *.tmp
 *.bak
+
+# Archived JSON files (migrated to PostgreSQL) — local only, ne pas versionner
+data/_archive/
+
+# DB backups (volumineux, à conserver localement uniquement)
+data/_backup_*.sql

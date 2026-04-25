@@ -6,6 +6,12 @@ vi.mock('../../../server/services/external/dataforseo.service', () => ({
   fetchKeywordOverview: vi.fn(),
   fetchPaa: vi.fn(),
   fetchSearchIntentBatch: vi.fn(),
+  DataForSeoQuotaError: class DataForSeoQuotaError extends Error {
+    constructor(message = 'DataForSEO quota exceeded') {
+      super(message)
+      this.name = 'DataForSeoQuotaError'
+    }
+  },
 }))
 
 vi.mock('../../../server/services/keyword/autocomplete.service', () => ({
@@ -21,17 +27,17 @@ vi.mock('../../../server/services/intent/intent-scan.service', () => ({
   computePaaWeightedScore: vi.fn(),
 }))
 
-vi.mock('../../../server/utils/cache', () => ({
-  readCached: vi.fn(),
-  writeCached: vi.fn(),
-  slugify: (s: string) =>
-    s
-      .toLowerCase()
-      .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, '')
-      .replace(/[^a-z0-9]+/g, '-')
-      .replace(/^-|-$/g, ''),
-  isFresh: vi.fn(),
+// Sprint 15.3 — api_cache replaced by keyword_metrics table.
+vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
+  getKeywordMetrics: vi.fn(),
+  upsertKeywordKpis: vi.fn(),
+  upsertKeywordPaa: vi.fn(),
+  isKeywordMetricsFresh: vi.fn(() => false),
+}))
+
+vi.mock('../../../server/services/infra/data.service', () => ({
+  saveCaptainExploration: vi.fn(),
+  getCaptainExplorations: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('../../../server/utils/logger', () => ({
@@ -41,7 +47,7 @@ vi.mock('../../../server/utils/logger', () => ({
 import { fetchKeywordOverview, fetchPaa, fetchSearchIntentBatch } from '../../../server/services/external/dataforseo.service'
 import { fetchAutocomplete } from '../../../server/services/keyword/autocomplete.service'
 import { fetchSerpAdvanced, extractPaaFromSerp, matchResonanceDetailed, extractTopicWords, bestMatch, computePaaWeightedScore } from '../../../server/services/intent/intent-scan.service'
-import { readCached, writeCached, isFresh } from '../../../server/utils/cache'
+import { getKeywordMetrics, upsertKeywordKpis, upsertKeywordPaa, isKeywordMetricsFresh } from '../../../server/services/keyword/keyword-metrics.service'
 
 const mockFetchOverview = vi.mocked(fetchKeywordOverview)
 const mockFetchPaa = vi.mocked(fetchPaa)
@@ -53,9 +59,10 @@ const mockExtractTopicWords = vi.mocked(extractTopicWords)
 const mockBestMatch = vi.mocked(bestMatch)
 const mockComputePaaWeightedScore = vi.mocked(computePaaWeightedScore)
 const mockFetchAutocomplete = vi.mocked(fetchAutocomplete)
-const mockReadCached = vi.mocked(readCached)
-const mockWriteCached = vi.mocked(writeCached)
-const mockIsFresh = vi.mocked(isFresh)
+const mockGetKeywordMetrics = vi.mocked(getKeywordMetrics)
+const mockUpsertKeywordKpis = vi.mocked(upsertKeywordKpis)
+const mockUpsertKeywordPaa = vi.mocked(upsertKeywordPaa)
+const mockIsKeywordMetricsFresh = vi.mocked(isKeywordMetricsFresh)
 
 // --- Minimal Express helpers ---
 function makeReq(keyword: string, body: Record<string, unknown> = {}) {
@@ -109,7 +116,8 @@ const defaultAutocomplete = {
 
 beforeEach(() => {
   vi.resetAllMocks()
-  mockReadCached.mockResolvedValue(null) // No cache by default
+  mockGetKeywordMetrics.mockResolvedValue(null) // No DB row by default → external fetch path
+  mockIsKeywordMetricsFresh.mockReturnValue(false)
   mockFetchOverview.mockResolvedValue(defaultOverview as any)
   mockFetchPaa.mockResolvedValue(defaultPaa as any)
   mockFetchAutocomplete.mockResolvedValue(defaultAutocomplete as any)
@@ -120,7 +128,8 @@ beforeEach(() => {
   mockExtractTopicWords.mockReturnValue(['seo'])
   mockBestMatch.mockReturnValue('none' as any)
   mockComputePaaWeightedScore.mockReturnValue(0)
-  mockWriteCached.mockResolvedValue(undefined)
+  mockUpsertKeywordKpis.mockResolvedValue(undefined)
+  mockUpsertKeywordPaa.mockResolvedValue(undefined)
 })
 
 describe('POST /keywords/:keyword/validate', () => {
@@ -198,22 +207,25 @@ describe('POST /keywords/:keyword/validate', () => {
     })
   })
 
-  // --- AC #7: Cache ---
-  describe('caching', () => {
-    it('returns cached result without calling APIs', async () => {
-      const cachedResponse = {
+  // --- Sprint 15.3 — DB-first on keyword_metrics (replaces api_cache[validate]) ---
+  describe('DB-first keyword_metrics', () => {
+    it('returns DB-first result without calling external APIs when row is fresh', async () => {
+      // Mock fresh DB row (Sprint 15.3)
+      mockGetKeywordMetrics.mockResolvedValue({
         keyword: 'seo',
-        articleLevel: 'pilier',
-        kpis: [],
-        verdict: { level: 'GO', greenCount: 5, totalKpis: 6, autoNoGo: false },
-        fromCache: false,
-        cachedAt: null,
-      }
-      mockReadCached.mockResolvedValue({
-        data: cachedResponse,
-        cachedAt: '2026-03-30T00:00:00.000Z',
-      } as any)
-      mockIsFresh.mockReturnValue(true)
+        lang: 'fr',
+        country: 'fr',
+        searchVolume: 1500,
+        keywordDifficulty: 30,
+        cpc: 2.5,
+        competition: 0.5,
+        intentRaw: 0.85,
+        autocompleteSuggestions: [{ text: 'seo', position: 1 }, { text: 'seo tools', position: 2 }],
+        autocompleteSource: 'google',
+        paaQuestions: [{ question: 'What is SEO?', answer: 'Search engine optimization' }],
+        fetchedAt: new Date().toISOString(),
+      })
+      mockIsKeywordMetricsFresh.mockReturnValue(true)
 
       const handler = getHandler()
       const req = makeReq('seo', { level: 'pilier' })
@@ -222,38 +234,60 @@ describe('POST /keywords/:keyword/validate', () => {
       await handler(req, res)
 
       expect(mockFetchOverview).not.toHaveBeenCalled()
-      expect(mockFetchPaa).not.toHaveBeenCalled()
       expect(mockFetchAutocomplete).not.toHaveBeenCalled()
+      expect(mockFetchSerpAdvanced).not.toHaveBeenCalled()
       const { data } = res.json.mock.calls[0][0]
       expect(data.fromCache).toBe(true)
     })
 
-    it('writes result to cache after fresh fetch', async () => {
+    it('persists KPIs to keyword_metrics after fresh fetch', async () => {
       const handler = getHandler()
       const req = makeReq('seo', { level: 'pilier' })
       const res = makeRes()
 
       await handler(req, res)
 
-      expect(mockWriteCached).toHaveBeenCalledTimes(1)
-      const [dir, key, data] = mockWriteCached.mock.calls[0]
-      expect(key).toBe('seo-pilier')
-      expect(data.keyword).toBe('seo')
+      expect(mockUpsertKeywordKpis).toHaveBeenCalledTimes(1)
+      const [keyword, kpis] = mockUpsertKeywordKpis.mock.calls[0]
+      expect(keyword).toBe('seo')
+      expect(kpis.searchVolume).toBe(1500)
+      expect(kpis.keywordDifficulty).toBe(30)
+      expect(kpis.cpc).toBe(2.5)
     })
 
-    it('uses different cache keys for different levels', async () => {
+    it('recomputes verdict per call (level-sensitive) — DB hit is keyword-scoped', async () => {
+      // Same fresh DB row, called with 2 different levels
+      mockGetKeywordMetrics.mockResolvedValue({
+        keyword: 'seo',
+        lang: 'fr',
+        country: 'fr',
+        searchVolume: 1500,
+        keywordDifficulty: 30,
+        cpc: 2.5,
+        competition: 0.5,
+        intentRaw: 0.85,
+        autocompleteSuggestions: [],
+        autocompleteSource: 'google',
+        paaQuestions: [],
+        fetchedAt: new Date().toISOString(),
+      })
+      mockIsKeywordMetricsFresh.mockReturnValue(true)
+
       const handler = getHandler()
 
       const res1 = makeRes()
       await handler(makeReq('seo', { level: 'pilier' }), res1)
+      const data1 = res1.json.mock.calls[0][0].data
 
       const res2 = makeRes()
       await handler(makeReq('seo', { level: 'specifique' }), res2)
+      const data2 = res2.json.mock.calls[0][0].data
 
-      const key1 = mockWriteCached.mock.calls[0][1]
-      const key2 = mockWriteCached.mock.calls[1][1]
-      expect(key1).toBe('seo-pilier')
-      expect(key2).toBe('seo-specifique')
+      expect(data1.articleLevel).toBe('pilier')
+      expect(data2.articleLevel).toBe('specifique')
+      // Verdicts can differ (level-sensitive thresholds)
+      expect(data1.fromCache).toBe(true)
+      expect(data2.fromCache).toBe(true)
     })
   })
 

@@ -22,6 +22,8 @@ export interface RawArticle {
   suggestedKeyword?: string | null
   /** Keyword Capitaine locké — miroir de richCaptain.keyword quand richCaptain.status === 'locked' */
   captainKeywordLocked?: string | null
+  /** Pain point issu de la stratégie */
+  painPoint?: string | null
   createdAt?: string      // ISO timestamp
   updatedAt?: string      // ISO timestamp
 }
@@ -66,6 +68,8 @@ export interface Article {
   suggestedKeyword: string | null
   /** Keyword Capitaine locké (source canonique pour recap-toggle) */
   captainKeywordLocked: string | null
+  /** Pain point issu de la stratégie */
+  painPoint: string | null
   createdAt?: string      // ISO timestamp
   updatedAt?: string      // ISO timestamp
 }

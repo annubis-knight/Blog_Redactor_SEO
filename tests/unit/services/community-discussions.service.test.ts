@@ -1,9 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-// Mock json-storage before importing the service
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: vi.fn(),
-  writeJson: vi.fn(),
+// Mock cache-helpers before importing the service
+const mockGetCached = vi.fn()
+const mockSetCached = vi.fn()
+vi.mock('../../../server/db/cache-helpers', () => ({
+  getCached: (...args: unknown[]) => mockGetCached(...args),
+  setCached: (...args: unknown[]) => mockSetCached(...args),
+  slugify: (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
 }))
 
 // Mock dataforseo.service — we only need fetchDataForSeo and slugify
@@ -16,18 +19,19 @@ vi.mock('../../../server/services/external/dataforseo.service', () => ({
   ),
 }))
 
-import { readJson, writeJson } from '../../../server/utils/json-storage'
+vi.mock('../../../server/utils/logger', () => ({
+  log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
+}))
+
 import { fetchDataForSeo } from '../../../server/services/external/dataforseo.service'
 import { fetchCommunityDiscussions } from '../../../server/services/intent/community-discussions.service'
 import type { CommunitySignal } from '../../../server/services/intent/community-discussions.service'
 
-const mockReadJson = vi.mocked(readJson)
-const mockWriteJson = vi.mocked(writeJson)
 const mockFetchDfs = vi.mocked(fetchDataForSeo)
 
 beforeEach(() => {
-  mockReadJson.mockReset()
-  mockWriteJson.mockReset()
+  mockGetCached.mockReset()
+  mockSetCached.mockReset()
   mockFetchDfs.mockReset()
 })
 
@@ -62,7 +66,7 @@ function makeEmptySerpResult() {
 
 describe('community-discussions.service — fetchCommunityDiscussions', () => {
   it('sends 3 SERP query variants for a keyword', async () => {
-    mockReadJson.mockRejectedValue(new Error('no cache'))
+    mockGetCached.mockResolvedValue(null)
     mockFetchDfs.mockResolvedValue(makeEmptySerpResult())
 
     await fetchCommunityDiscussions('fuite chauffe-eau')
@@ -78,7 +82,7 @@ describe('community-discussions.service — fetchCommunityDiscussions', () => {
   })
 
   it('deduplicates discussions by URL', async () => {
-    mockReadJson.mockRejectedValue(new Error('no cache'))
+    mockGetCached.mockResolvedValue(null)
 
     const now = new Date().toISOString()
     const discussions = [
@@ -98,7 +102,7 @@ describe('community-discussions.service — fetchCommunityDiscussions', () => {
   })
 
   it('aggregates CommunitySignal correctly (domains, freshness, votes)', async () => {
-    mockReadJson.mockRejectedValue(new Error('no cache'))
+    mockGetCached.mockResolvedValue(null)
 
     const recentDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString() // 1 month ago
     const discussions1 = [
@@ -132,7 +136,7 @@ describe('community-discussions.service — fetchCommunityDiscussions', () => {
   })
 
   it('returns empty signal on timeout without throwing', async () => {
-    mockReadJson.mockRejectedValue(new Error('no cache'))
+    mockGetCached.mockResolvedValue(null)
 
     // Simulate a timeout by making fetchDataForSeo hang
     mockFetchDfs.mockImplementation(() => new Promise((_, reject) => {
@@ -157,10 +161,7 @@ describe('community-discussions.service — fetchCommunityDiscussions', () => {
       topDiscussions: [],
     }
 
-    mockReadJson.mockResolvedValue({
-      data: cachedSignal,
-      cachedAt: new Date().toISOString(), // fresh cache — CacheEntry format
-    })
+    mockGetCached.mockResolvedValue(cachedSignal)
 
     const result = await fetchCommunityDiscussions('cached keyword')
 
@@ -169,7 +170,7 @@ describe('community-discussions.service — fetchCommunityDiscussions', () => {
   })
 
   it('returns empty signal when all SERP calls fail', async () => {
-    mockReadJson.mockRejectedValue(new Error('no cache'))
+    mockGetCached.mockResolvedValue(null)
     mockFetchDfs.mockRejectedValue(new Error('API down'))
 
     const result = await fetchCommunityDiscussions('failing keyword')

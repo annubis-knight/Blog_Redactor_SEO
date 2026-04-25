@@ -1,8 +1,8 @@
 import { Router } from 'express'
-import { join } from 'path'
 import { log } from '../utils/logger.js'
-import { readCached, writeCached, slugify, isFresh } from '../utils/cache.js'
-import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords } from '../services/infra/data.service.js'
+import { respondWithError } from '../utils/api-error.js'
+import { getCached, setCached, slugify } from '../db/cache-helpers.js'
+import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords, saveCaptainExploration, updateCaptainExplorationAiPanel, getCaptainExplorations, saveLieutenantExplorations, getLieutenantExplorations } from '../services/infra/data.service.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
 import { previewMigration, applyMigration } from '../services/keyword/keyword-assignment.service.js'
@@ -11,6 +11,7 @@ import { suggestAll } from '../services/keyword/suggest.service.js'
 import { computeWordGroups } from '../services/keyword/word-groups.service.js'
 import type { ArticleKeywordAssignment } from '../services/keyword/keyword-assignment.service.js'
 import type { Keyword, KeywordStatus } from '../../shared/types/index.js'
+import type { ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
 
 const router = Router()
 
@@ -70,7 +71,7 @@ router.post('/keywords/audit', async (req, res) => {
     res.json({ data: { results, redundancies } })
   } catch (err) {
     log.error(`POST /api/keywords/audit — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'AUDIT_ERROR', message: 'Failed to audit keywords' } })
+    respondWithError(res, err, { code: 'AUDIT_ERROR', message: 'Failed to audit keywords' })
   }
 })
 
@@ -222,15 +223,15 @@ router.get('/articles/:id/keywords', async (req, res) => {
   }
 
   try {
-    const keywords = await getArticleKeywords(id)
-    res.json({ data: keywords })
+    const { data, dbOps } = await getArticleKeywords(id)
+    res.json({ data, dbOps })
   } catch (err) {
     log.error(`GET /api/articles/${id}/keywords — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load article keywords' } })
   }
 })
 
-/** PUT /api/articles/:id/keywords — Save keywords for a specific article */
+/** PUT /api/articles/:id/keywords — Save keyword decisions (capitaine, lieutenants, lexique) */
 router.put('/articles/:id/keywords', async (req, res) => {
   const id = parseInt(req.params.id, 10)
   if (isNaN(id)) {
@@ -239,9 +240,8 @@ router.put('/articles/:id/keywords', async (req, res) => {
   }
 
   try {
-    const { capitaine, lieutenants, lexique, rootKeywords, hnStructure, richCaptain, richRootKeywords, richLieutenants } = req.body as {
-      capitaine: string; lieutenants: string[]; lexique: string[]; rootKeywords?: string[]; hnStructure?: any[]
-      richCaptain?: any; richRootKeywords?: any[]; richLieutenants?: any[]
+    const { capitaine, lieutenants, lexique, rootKeywords, hnStructure } = req.body as {
+      capitaine: string; lieutenants: string[]; lexique: string[]; rootKeywords?: string[]; hnStructure?: ProposeLieutenantsHnNode[]
     }
     if (capitaine === undefined) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'capitaine is required' } })
@@ -253,14 +253,108 @@ router.put('/articles/:id/keywords', async (req, res) => {
       lexique: lexique ?? [],
       rootKeywords: rootKeywords ?? [],
       hnStructure: hnStructure ?? [],
-      ...(richCaptain !== undefined && { richCaptain }),
-      ...(richRootKeywords !== undefined && { richRootKeywords }),
-      ...(richLieutenants !== undefined && { richLieutenants }),
     })
     res.json({ data: saved })
   } catch (err) {
     log.error(`PUT /api/articles/${id}/keywords — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save article keywords' } })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Captain Explorations
+// ---------------------------------------------------------------------------
+
+/** GET /api/articles/:id/captain-explorations — Read all captain keyword explorations */
+router.get('/articles/:id/captain-explorations', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const { data, dbOps } = await getCaptainExplorations(id)
+    res.json({ data, dbOps })
+  } catch (err) {
+    log.error(`GET /api/articles/${id}/captain-explorations — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load captain explorations' } })
+  }
+})
+
+/** POST /api/articles/:id/captain-explorations — Save a captain keyword exploration */
+router.post('/articles/:id/captain-explorations', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const entry = req.body
+    if (!entry.keyword) { res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'keyword is required' } }); return }
+    const dbOps = await saveCaptainExploration(id, entry)
+    res.json({ data: { success: true }, dbOps })
+  } catch (err) {
+    log.error(`POST /api/articles/${id}/captain-explorations — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save captain exploration' } })
+  }
+})
+
+/** PATCH /api/articles/:id/captain-explorations/ai-panel — Update AI panel markdown only */
+router.patch('/articles/:id/captain-explorations/ai-panel', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const { keyword, markdown } = req.body as { keyword: string; markdown: string }
+    if (!keyword || !markdown) { res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'keyword and markdown are required' } }); return }
+    const dbOp = await updateCaptainExplorationAiPanel(id, keyword, markdown)
+    res.json({ data: { success: true }, dbOps: [dbOp] })
+  } catch (err) {
+    log.error(`PATCH /api/articles/${id}/captain-explorations/ai-panel — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to update AI panel' } })
+  }
+})
+
+// ---------------------------------------------------------------------------
+// Lieutenant Explorations
+// ---------------------------------------------------------------------------
+
+/** GET /api/articles/:id/lieutenant-explorations — Read all lieutenant explorations */
+router.get('/articles/:id/lieutenant-explorations', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const { data, dbOps } = await getLieutenantExplorations(id)
+    res.json({ data, dbOps })
+  } catch (err) {
+    log.error(`GET /api/articles/${id}/lieutenant-explorations — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load lieutenant explorations' } })
+  }
+})
+
+/** POST /api/articles/:id/lieutenant-explorations — Save lieutenant explorations (batch) */
+router.post('/articles/:id/lieutenant-explorations', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const { entries, captainKeyword } = req.body as { entries: unknown[]; captainKeyword: string }
+    if (!entries || !Array.isArray(entries)) { res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'entries array is required' } }); return }
+    const dbOp = await saveLieutenantExplorations(id, entries as any[], captainKeyword ?? '')
+    res.json({ data: { success: true }, dbOps: [dbOp] })
+  } catch (err) {
+    log.error(`POST /api/articles/${id}/lieutenant-explorations — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save lieutenant explorations' } })
+  }
+})
+
+/**
+ * POST /api/articles/:id/lieutenants/archive
+ * Sprint 12 (D3) — Flag all non-archived lieutenant rows as 'archived' so they
+ * disappear from the active UI while staying in DB for later audit.
+ */
+router.post('/articles/:id/lieutenants/archive', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const { archiveLieutenantExplorations } = await import('../services/infra/data.service.js')
+    const updated = await archiveLieutenantExplorations(id)
+    res.json({ data: { archived: updated } })
+  } catch (err) {
+    log.error(`POST /api/articles/${id}/lieutenants/archive — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to archive lieutenant explorations' } })
   }
 })
 
@@ -302,7 +396,7 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
     }
 
     const { loadPrompt } = await import('../utils/prompt-loader.js')
-    const { streamChatCompletion, USAGE_SENTINEL } = await import('../services/external/claude.service.js')
+    const { collectStreamWithUsage } = await import('../utils/stream-usage.js')
 
     const cocoonSlug = cocoonName
       ? cocoonName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -314,17 +408,14 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
       cocoonName: cocoonName || '',
     }, cocoonSlug ? { cocoonSlug } : undefined)
 
-    let content = ''
-    for await (const chunk of streamChatCompletion(prompt, `Génère le lexique LSI pour le mot-clé "${capitaine}".`, 1024)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) continue
-      content += chunk
-    }
+    const { text: content, usage } = await collectStreamWithUsage(prompt, `Génère le lexique LSI pour le mot-clé "${capitaine}".`, 1024)
 
     // Parse JSON array from response
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
     const lexique = JSON.parse(cleaned) as string[]
 
-    res.json({ data: { lexique } })
+    // usage remonté au front pour alimenter la pile d'activité
+    res.json({ data: { lexique, usage } })
   } catch (err) {
     log.error(`POST /api/keywords/lexique-suggest — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'SUGGESTION_ERROR', message: 'Failed to suggest lexique' } })
@@ -341,7 +432,7 @@ router.post('/keywords/translate-pain', async (req, res) => {
     }
 
     const { loadPrompt } = await import('../utils/prompt-loader.js')
-    const { streamChatCompletion, USAGE_SENTINEL } = await import('../services/external/claude.service.js')
+    const { collectStreamWithUsage } = await import('../utils/stream-usage.js')
 
     const painCocoonSlug = painCocoonName
       ? painCocoonName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -349,26 +440,23 @@ router.post('/keywords/translate-pain', async (req, res) => {
 
     const prompt = await loadPrompt('pain-translate', {}, painCocoonSlug ? { cocoonSlug: painCocoonSlug } : undefined)
 
-    let content = ''
-    for await (const chunk of streamChatCompletion(prompt, `Traduis cette douleur client en mots-clés SEO : "${painText}"`, 1024)) {
-      if (chunk.startsWith(USAGE_SENTINEL)) continue
-      content += chunk
-    }
+    const { text: content, usage } = await collectStreamWithUsage(prompt, `Traduis cette douleur client en mots-clés SEO : "${painText}"`, 1024)
 
     // Parse JSON from response
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
     const result = JSON.parse(cleaned) as { keywords: Array<{ keyword: string; reasoning: string }> }
 
-    res.json({ data: { keywords: result.keywords } })
+    // usage remonté au front pour alimenter la pile d'activité
+    res.json({ data: { keywords: result.keywords, usage } })
   } catch (err) {
     log.error(`POST /api/keywords/translate-pain — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'TRANSLATION_ERROR', message: 'Failed to translate pain point into keywords' } })
   }
 })
 
-/** POST /api/keywords/validate-pain — Validate translated keywords via multi-source (DataForSEO + Discussions + Autocomplete) */
-const VALIDATION_CACHE_DIR = join(process.cwd(), 'data', 'cache', 'validation')
+const VALIDATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 1 day
 
+/** POST /api/keywords/validate-pain — Validate translated keywords via multi-source (DataForSEO + Discussions + Autocomplete) */
 router.post('/keywords/validate-pain', async (req, res) => {
   try {
     const { keywords } = req.body as { keywords: string[] }
@@ -380,10 +468,10 @@ router.post('/keywords/validate-pain', async (req, res) => {
     // Check cache — key based on sorted keywords
     const sortedKw = [...keywords].sort()
     const cacheKey = slugify(sortedKw.join('-'))
-    const cached = await readCached(VALIDATION_CACHE_DIR, cacheKey)
-    if (cached && isFresh(cached.cachedAt, 24 * 60 * 60 * 1000)) {
+    const cached = await getCached<{ results: unknown[] }>('validation', cacheKey)
+    if (cached && new Date().getTime() - VALIDATION_CACHE_TTL_MS < Date.now()) {
       log.debug(`[validate-pain] Cache hit for ${keywords.length} keywords`)
-      res.json({ data: cached.data })
+      res.json({ data: cached })
       return
     }
 
@@ -429,13 +517,13 @@ router.post('/keywords/validate-pain', async (req, res) => {
     )
 
     // Save to cache
-    await writeCached(VALIDATION_CACHE_DIR, cacheKey, { results })
+    await setCached('validation', cacheKey, { results }, VALIDATION_CACHE_TTL_MS)
     log.debug(`[validate-pain] Cached results for ${keywords.length} keywords`)
 
     res.json({ data: { results } })
   } catch (err) {
     log.error(`POST /api/keywords/validate-pain — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'VALIDATION_ERROR', message: 'Failed to validate keywords' } })
+    respondWithError(res, err, { code: 'VALIDATION_ERROR', message: 'Failed to validate keywords' })
   }
 })
 
@@ -538,7 +626,7 @@ router.post('/keywords/relevance-score', async (req, res) => {
       return
     }
 
-    const { classifyWithTool } = await import('../services/external/claude.service.js')
+    const { classifyWithTool } = await import('../services/external/ai-provider.service.js')
     const { getThemeConfig } = await import('../services/strategy/theme-config.service.js')
 
     // Load business context from theme config
@@ -548,9 +636,19 @@ router.post('/keywords/relevance-score', async (req, res) => {
     if (theme.positioning.targetAudience) contextLines.push(`Audience cible : ${theme.positioning.targetAudience}`)
     if (theme.offerings.services.length > 0) contextLines.push(`Services : ${theme.offerings.services.join(', ')}`)
     if (articleContext?.title) contextLines.push(`Article : ${articleContext.title}`)
-    if (articleContext?.painPoint) contextLines.push(`Problématique : ${articleContext.painPoint}`)
     const businessContext = contextLines.length > 0
       ? `\n\nContexte business du site :\n${contextLines.join('\n')}`
+      : ''
+
+    const painPoint = articleContext?.painPoint?.trim()
+    // Pain point requires at least 10 chars to be meaningful (avoid noisy embeddings/rules on stub values)
+    const hasPainPoint = painPoint && painPoint.length >= 10
+    const painPointRuleSystem = hasPainPoint
+      ? `\n\nPOINT DE DOULEUR DE L'ARTICLE : "${painPoint}"
+Règle éliminatoire : rejette tout mot-clé qu'une personne vivant cette douleur n'a AUCUNE raison de taper dans Google. Un mot-clé peut porter sur le même sujet que le seed tout en étant complètement inadapté à la douleur — dans ce cas, marque-le NON pertinent. Exemple : seed "site web" + douleur "mon site ne convertit plus" → rejette "créer site web gratuit" (la personne a déjà un site, elle cherche à le faire performer).`
+      : ''
+    const painPointBlockUser = hasPainPoint
+      ? `\n\nPOINT DE DOULEUR DE L'ARTICLE : "${painPoint}"`
       : ''
 
     // Build numbered keyword list for the prompt
@@ -565,22 +663,23 @@ Rejette systématiquement :
 - Les homonymies (même mot, contexte différent : "croissance" business vs "croissance" biologique)
 - Les mots-clés géographiques/pays hors contexte (ex: "développement maroc" quand le sujet est business/entreprise)
 - Les mots-clés d'un domaine adjacent mais distinct du secteur d'activité
-- Les mots-clés trop génériques qui ne ciblent pas l'intention du seed`
+- Les mots-clés trop génériques qui ne ciblent pas l'intention du seed
+- Les mots-clés désalignés du point de douleur de l'article (voir règle ci-dessous)${painPointRuleSystem}`
       : `Tu es un expert SEO français. Ta tâche est d'identifier les mots-clés qui ne sont PAS pertinents pour le sujet donné, dans le contexte business décrit.
 
 Règles de classification :
-1. PERTINENT : le mot-clé cible la même intention de recherche ou le même domaine d'expertise que le seed, dans le contexte du secteur d'activité.
-2. NON PERTINENT : le mot-clé partage des mots avec le seed mais dans un contexte complètement différent (homonymie, sens figuré vs littéral, domaine différent du secteur).
+1. PERTINENT : le mot-clé cible la même intention de recherche ou le même domaine d'expertise que le seed, dans le contexte du secteur d'activité, ET s'inscrit dans la douleur de l'article quand elle est fournie.
+2. NON PERTINENT : le mot-clé partage des mots avec le seed mais dans un contexte complètement différent (homonymie, sens figuré vs littéral, domaine différent du secteur), OU il est inadapté à la douleur de l'article.
 
-Sois strict : si le mot-clé serait hors-sujet dans un article traitant du seed pour cette audience, marque-le NON pertinent.`
+Sois strict : si le mot-clé serait hors-sujet dans un article traitant du seed pour cette audience, marque-le NON pertinent.${painPointRuleSystem}`
 
     const userPrompt = strict
-      ? `Sujet : "${seed.trim()}"${businessContext}
+      ? `Sujet : "${seed.trim()}"${businessContext}${painPointBlockUser}
 
 Ces ${keywords.length} mots-clés ont été pré-classés comme pertinents. Vérifie chacun strictement et identifie ceux qui sont en réalité hors-sujet :
 
 ${numberedList}`
-      : `Sujet : "${seed.trim()}"${businessContext}
+      : `Sujet : "${seed.trim()}"${businessContext}${painPointBlockUser}
 
 Voici ${keywords.length} mots-clés. Identifie les indices de ceux qui ne sont PAS pertinents pour ce sujet :
 
@@ -590,7 +689,7 @@ ${numberedList}`
       irrelevant_indices: number[]
     }
 
-    const { result } = await classifyWithTool<ClassifyResult>(
+    const { result, usage } = await classifyWithTool<ClassifyResult>(
       systemPrompt,
       userPrompt,
       {
@@ -617,8 +716,10 @@ ${numberedList}`
       scoreMap[keywords[i].toLowerCase()] = irrelevantSet.has(i) ? 0 : 1
     }
 
-    log.info(`Relevance ${strict ? 'STRICT' : 'pass-1'}: ${keywords.length} kw, ${irrelevantSet.size} irrelevant for "${seed.trim()}"`)
-    res.json({ data: { scores: scoreMap, fallback: false } })
+    const painLogSuffix = hasPainPoint ? ` | pain: "${painPoint.slice(0, 80)}"` : ''
+    log.info(`Relevance ${strict ? 'STRICT' : 'pass-1'}: ${keywords.length} kw, ${irrelevantSet.size} irrelevant for "${seed.trim()}"${painLogSuffix}`)
+    // `usage` est remonté au frontend pour que la pile d'activité affiche le coût de la requête
+    res.json({ data: { scores: scoreMap, fallback: false, usage } })
   } catch (err) {
     log.error(`POST /api/keywords/relevance-score — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'SCORING_ERROR', message: 'Failed to classify keyword relevance' } })
@@ -639,7 +740,7 @@ router.post('/keywords/analyze-discovery', async (req, res) => {
       return
     }
 
-    const { classifyWithTool } = await import('../services/external/claude.service.js')
+    const { classifyWithTool } = await import('../services/external/ai-provider.service.js')
     const { getThemeConfig } = await import('../services/strategy/theme-config.service.js')
 
     // Business context
@@ -651,8 +752,10 @@ router.post('/keywords/analyze-discovery', async (req, res) => {
     if (theme.positioning.mainPromise) contextLines.push(`Promesse : ${theme.positioning.mainPromise}`)
     if (articleContext?.title) contextLines.push(`Article visé : ${articleContext.title}`)
     const businessContext = contextLines.length > 0 ? contextLines.join('\n') : 'Non renseigné'
-    const painPointBlock = articleContext?.painPoint
-      ? `\nPOINT DE DOULEUR CLIENT (critère prioritaire) :\n"${articleContext.painPoint}"\nLes mots-clés qui captent cette douleur ou y apportent une réponse doivent être priorisés.\n`
+    const painPointRaw = articleContext?.painPoint?.trim()
+    const hasPain = painPointRaw && painPointRaw.length >= 10
+    const painPointBlock = hasPain
+      ? `\nPOINT DE DOULEUR CLIENT (critère d'inclusion/exclusion) :\n"${painPointRaw}"\nRègle stricte : ne sélectionne PAS un mot-clé (même pas en priorité "low") si une personne vivant cette douleur n'a aucune raison de le taper dans Google. La priorité "high" reste réservée aux mots-clés qui captent directement la douleur ou y apportent une réponse.\n`
       : ''
 
     // Format keyword list with metadata

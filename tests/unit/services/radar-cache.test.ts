@@ -2,17 +2,15 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks ---
-const mockReadJson = vi.fn()
-const mockWriteJson = vi.fn()
-const mockUnlink = vi.fn()
+const mockGetCached = vi.fn()
+const mockSetCached = vi.fn()
+const mockDeleteCached = vi.fn()
 
-vi.mock('../../../server/utils/json-storage', () => ({
-  readJson: (...args: unknown[]) => mockReadJson(...args),
-  writeJson: (...args: unknown[]) => mockWriteJson(...args),
-}))
-
-vi.mock('fs/promises', () => ({
-  unlink: (...args: unknown[]) => mockUnlink(...args),
+vi.mock('../../../server/db/cache-helpers', () => ({
+  getCached: (...args: unknown[]) => mockGetCached(...args),
+  setCached: (...args: unknown[]) => mockSetCached(...args),
+  deleteCached: (...args: unknown[]) => mockDeleteCached(...args),
+  slugify: (s: string) => s.toLowerCase().replace(/\s+/g, '-'),
 }))
 
 vi.mock('../../../server/utils/logger', () => ({
@@ -39,81 +37,56 @@ const validEntry = {
   expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
 }
 
-const expiredEntry = {
-  ...validEntry,
-  expiresAt: new Date(Date.now() - 1000).toISOString(),
-}
-
-beforeEach(async () => {
-  vi.resetAllMocks()
-  // Clear memory cache between tests to avoid cross-pollution
-  mockUnlink.mockResolvedValue(undefined)
-  await clearRadarCache('refonte site web')
-  await clearRadarCache('refonte-site-web')
-  await clearRadarCache('unknown-keyword')
-  await clearRadarCache('unknown')
-  await clearRadarCache('test keyword')
-  await clearRadarCache('mem-test')
-  mockUnlink.mockReset()
+beforeEach(() => {
+  vi.clearAllMocks()
+  mockSetCached.mockResolvedValue(undefined)
+  mockDeleteCached.mockResolvedValue(undefined)
 })
 
 describe('radar-cache.service', () => {
   describe('checkRadarCache', () => {
-    it('returns cached: false when no file exists', async () => {
-      mockReadJson.mockRejectedValue(new Error('ENOENT'))
+    it('returns cached: false when no entry exists', async () => {
+      mockGetCached.mockResolvedValue(null)
       const status = await checkRadarCache('unknown-keyword')
       expect(status).toEqual({ cached: false })
     })
 
     it('returns cached: true with metadata when file exists and is valid', async () => {
-      mockReadJson.mockResolvedValue(validEntry)
+      mockGetCached.mockResolvedValue(validEntry)
       const status = await checkRadarCache('refonte site web')
       expect(status.cached).toBe(true)
       expect(status.globalScore).toBe(72)
       expect(status.keywordCount).toBe(1)
       expect(status.heatLevel).toBe('chaude')
     })
-
-    it('returns cached: false when entry is expired', async () => {
-      mockReadJson.mockResolvedValue(expiredEntry)
-      const status = await checkRadarCache('refonte site web')
-      expect(status).toEqual({ cached: false })
-    })
   })
 
   describe('loadRadarCache', () => {
-    it('returns null when no file exists', async () => {
-      mockReadJson.mockRejectedValue(new Error('ENOENT'))
+    it('returns null when no entry exists', async () => {
+      mockGetCached.mockResolvedValue(null)
       const data = await loadRadarCache('unknown')
       expect(data).toBeNull()
     })
 
     it('returns entry when file exists and is valid', async () => {
-      mockReadJson.mockResolvedValue(validEntry)
+      mockGetCached.mockResolvedValue(validEntry)
       const data = await loadRadarCache('refonte site web')
       expect(data).toBeTruthy()
       expect(data!.scanResult.globalScore).toBe(72)
       expect(data!.generatedKeywords).toHaveLength(1)
     })
 
-    it('returns null when entry is expired', async () => {
-      mockReadJson.mockResolvedValue(expiredEntry)
-      const data = await loadRadarCache('refonte site web')
-      expect(data).toBeNull()
-    })
-
     it('uses memory cache on second call', async () => {
-      mockReadJson.mockResolvedValue(validEntry)
+      mockGetCached.mockResolvedValue(validEntry)
       await loadRadarCache('refonte site web')
       await loadRadarCache('refonte site web')
-      // Only one disk read — second call hits memory
-      expect(mockReadJson).toHaveBeenCalledTimes(1)
+      // getCached delegates to PG — service calls it each time (no in-memory layer anymore)
+      expect(mockGetCached).toHaveBeenCalledTimes(2)
     })
   })
 
   describe('saveRadarCache', () => {
-    it('writes to disk and returns full entry with timestamps', async () => {
-      mockWriteJson.mockResolvedValue(undefined)
+    it('writes to cache and returns full entry with timestamps', async () => {
       const result = await saveRadarCache({
         seed: 'test keyword',
         context: { broadKeyword: 'test', specificTopic: 'test kw', painPoint: 'pain', depth: 1 },
@@ -122,34 +95,20 @@ describe('radar-cache.service', () => {
       })
       expect(result.cachedAt).toBeTruthy()
       expect(result.expiresAt).toBeTruthy()
-      expect(mockWriteJson).toHaveBeenCalledTimes(1)
-    })
-
-    it('populates memory cache so subsequent load is instant', async () => {
-      mockWriteJson.mockResolvedValue(undefined)
-      await saveRadarCache({
-        seed: 'mem-test',
-        context: { broadKeyword: 'mem', specificTopic: 'test', painPoint: '', depth: 1 },
-        generatedKeywords: [],
-        scanResult: validEntry.scanResult,
-      })
-
-      // Now load — should hit memory, not disk
-      const loaded = await loadRadarCache('mem-test')
-      expect(loaded).toBeTruthy()
-      expect(mockReadJson).not.toHaveBeenCalled()
+      expect(mockSetCached).toHaveBeenCalledTimes(1)
+      expect(mockSetCached.mock.calls[0][0]).toBe('radar')
     })
   })
 
   describe('clearRadarCache', () => {
-    it('deletes file from disk', async () => {
-      mockUnlink.mockResolvedValue(undefined)
+    it('deletes entry from cache', async () => {
       await clearRadarCache('refonte site web')
-      expect(mockUnlink).toHaveBeenCalledTimes(1)
+      expect(mockDeleteCached).toHaveBeenCalledTimes(1)
+      expect(mockDeleteCached.mock.calls[0][0]).toBe('radar')
     })
 
-    it('does not throw if file does not exist', async () => {
-      mockUnlink.mockRejectedValue(new Error('ENOENT'))
+    it('does not throw if entry does not exist', async () => {
+      mockDeleteCached.mockResolvedValue(undefined)
       await expect(clearRadarCache('nonexistent')).resolves.not.toThrow()
     })
   })

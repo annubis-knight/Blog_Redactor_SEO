@@ -9,9 +9,11 @@ import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 
 const props = withDefaults(defineProps<{
   keyword: string
+  articleId?: number | null
   mode?: 'workflow' | 'libre'
 }>(), {
   mode: 'workflow',
+  articleId: null,
 })
 
 const intentStore = useIntentStore()
@@ -68,7 +70,7 @@ const priorityColors: Record<string, string> = {
 }
 
 function handleAnalyze() {
-  intentStore.analyzeIntent(props.keyword)
+  intentStore.analyzeIntent(props.keyword, undefined, props.articleId ?? undefined)
 }
 </script>
 

@@ -10,6 +10,7 @@ import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 
 const props = defineProps<{
   keyword: string
+  articleId?: number | null
 }>()
 
 const emit = defineEmits<{
@@ -70,7 +71,10 @@ async function handleAnalyze() {
   error.value = null
   try {
     log.info('Analyzing content gap', { keyword: props.keyword })
-    const raw = await apiPost<ContentGapAnalysis & { _apiUsage?: ApiUsage }>('/content-gap/analyze', { keyword: props.keyword })
+    const raw = await apiPost<ContentGapAnalysis & { _apiUsage?: ApiUsage }>('/content-gap/analyze', {
+      keyword: props.keyword,
+      articleId: props.articleId ?? undefined,
+    })
     if (raw._apiUsage) {
       try { useCostLogStore().addEntry('Analyse content gap', raw._apiUsage) } catch { /* noop */ }
     }

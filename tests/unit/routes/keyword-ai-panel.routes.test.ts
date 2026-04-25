@@ -477,7 +477,6 @@ function makeLieutenantJson(count = 3) {
     keyword: `lieutenant-${i + 1}`,
     reasoning: `Raison ${i + 1}`,
     sources: ['paa'],
-    aiConfidence: 'fort',
     suggestedHnLevel: 2,
     score: 90 - i * 10,
   }))
