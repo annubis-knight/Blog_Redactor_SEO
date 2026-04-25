@@ -311,6 +311,30 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     log.debug(`[article-keywords] rich lieutenants locked`, { locked: selected.length, eliminated: eliminated.length })
   }
 
+  /**
+   * Archive tous les lieutenants verrouillés (passe le status de 'locked' à
+   * 'archived'). Utilisé quand l'utilisateur déverrouille son Capitaine et
+   * choisit "Les archiver" dans la modale UnlockLieutenantsModal — les
+   * lieutenants conservent leur historique mais ne sont plus considérés
+   * comme actifs pour le nouveau Capitaine.
+   */
+  function archiveLockedLieutenants() {
+    if (!keywords.value?.richLieutenants) return
+    let archived = 0
+    for (const lt of keywords.value.richLieutenants) {
+      if (lt.status === 'locked') {
+        lt.status = 'archived'
+        lt.lockedAt = null
+        archived++
+      }
+    }
+    if (archived > 0) {
+      // Sync flat lieutenants — vide la liste plate (il ne reste plus rien d'actif).
+      keywords.value.lieutenants = []
+      log.info(`[article-keywords] archived ${archived} locked lieutenants`)
+    }
+  }
+
   // ---- Lexique ----
 
   function addLexiqueTerm(value: string) {
@@ -357,6 +381,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     addRootKeywordValidation,
     setRootKeywords, addLieutenant, removeLieutenant,
     saveRichLieutenantProposals, setRichLieutenants,
+    archiveLockedLieutenants,
     addLexiqueTerm, removeLexiqueTerm,
     initEmpty, $reset,
   }

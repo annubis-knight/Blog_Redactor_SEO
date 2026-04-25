@@ -4,6 +4,7 @@ import type { Article, ArticleType, SelectedArticle } from '@shared/types/index.
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import ProgressDots from './ProgressDots.vue'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
+import IconWarning from '@/components/shared/icons/IconWarning.vue'
 
 const progressStore = useArticleProgressStore()
 
@@ -156,11 +157,15 @@ function toggleArticle(article: GroupedArticle) {
             :class="{ selected: !readonly && isSelected(art.slug), 'is-readonly': readonly }" @click="toggleArticle(art)">
             <span class="tree-branch" aria-hidden="true"></span>
             <span class="tree-article-title">{{ art.title }}</span>
-            <svg v-if="hasCannibalization(art.slug)" class="warning-cannibal" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <title>Cannibalisation : un autre article utilise le même capitaine</title>
-              <path d="M8 1.5L1 14h14L8 1.5z" stroke="#f59e0b" stroke-width="1.2" fill="#fef3c7"/>
-              <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
+            <IconWarning
+              v-if="hasCannibalization(art.slug)"
+              class="warning-cannibal"
+              :size="14"
+              filled
+              stroke-color="#f59e0b"
+              fill-color="#fef3c7"
+              title="Cannibalisation : un autre article utilise le même capitaine"
+            />
             <ProgressDots :completed-checks="getChecks(art.id)" />
             <span v-if="art.keyword" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ art.keyword }}</span>
           </button>
@@ -191,11 +196,15 @@ function toggleArticle(article: GroupedArticle) {
             :class="{ selected: !readonly && isSelected(art.slug), locked: true, 'is-readonly': readonly }" @click="toggleArticle(art)">
             <span class="tree-branch" aria-hidden="true"></span>
             <span class="tree-article-title">{{ art.title }}</span>
-            <svg v-if="hasCannibalization(art.slug)" class="warning-cannibal" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <title>Cannibalisation : un autre article utilise le même capitaine</title>
-              <path d="M8 1.5L1 14h14L8 1.5z" stroke="#f59e0b" stroke-width="1.2" fill="#fef3c7"/>
-              <path d="M8 6v4M8 11.5v.5" stroke="#f59e0b" stroke-width="1.3" stroke-linecap="round"/>
-            </svg>
+            <IconWarning
+              v-if="hasCannibalization(art.slug)"
+              class="warning-cannibal"
+              :size="14"
+              filled
+              stroke-color="#f59e0b"
+              fill-color="#fef3c7"
+              title="Cannibalisation : un autre article utilise le même capitaine"
+            />
             <ProgressDots :completed-checks="getChecks(art.id)" />
             <span v-if="art.keyword" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ art.keyword }}</span>
             <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">

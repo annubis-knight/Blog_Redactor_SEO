@@ -4,6 +4,7 @@ import AppNavbar from '@/components/shared/AppNavbar.vue'
 import ToastContainer from '@/components/shared/ToastContainer.vue'
 import CostLogPanel from '@/components/shared/CostLogPanel.vue'
 import CaptainTriggerToast from '@/components/shared/CaptainTriggerToast.vue'
+import BasketFloatingPanel from '@/components/shared/BasketFloatingPanel.vue'
 
 const route = useRoute()
 </script>
@@ -17,6 +18,7 @@ const route = useRoute()
     <ToastContainer />
     <CostLogPanel />
     <CaptainTriggerToast />
+    <BasketFloatingPanel />
   </div>
 </template>
 

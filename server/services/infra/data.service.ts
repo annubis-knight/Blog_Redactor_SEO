@@ -1,5 +1,6 @@
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
+import { measureDb } from '../../utils/db-telemetry.js'
 import { microContextDbSchema } from '../../../shared/schemas/article-micro-context.schema.js'
 import type {
   Article,
@@ -643,39 +644,45 @@ export async function saveCaptainExploration(
   entry: CaptainValidationEntry & { status?: string }
 ): Promise<DbOp[]> {
   const ops: DbOp[] = []
-  const t1 = Date.now()
-  const res = await pool.query(`
-    INSERT INTO captain_explorations (article_id, keyword, status, article_level, root_keywords, ai_panel_markdown, explored_at)
-    VALUES ($1, $2, $3, $4, $5, $6, NOW())
-    ON CONFLICT (article_id, keyword) DO UPDATE
-    SET root_keywords = EXCLUDED.root_keywords,
-        ai_panel_markdown = COALESCE(EXCLUDED.ai_panel_markdown, captain_explorations.ai_panel_markdown),
-        status = EXCLUDED.status,
-        explored_at = NOW()
-  `, [
-    articleId, entry.keyword, entry.status ?? 'suggested', entry.articleLevel,
-    entry.rootKeywords ?? [], entry.aiPanelMarkdown ?? null,
-  ])
-  ops.push({ operation: 'upsert', table: 'captain_explorations', rowCount: res.rowCount ?? 0, ms: Date.now() - t1 })
+
+  // Pattern measureDb : timing automatique + log debug + DbOp prêt à propager.
+  // Évite la duplication `t1 = Date.now() ; pool.query() ; ops.push({ ms: Date.now() - t1 })`
+  // qu'on retrouvait à 12+ endroits dans ce service.
+  ops.push(await measureDb('captain_explorations', 'upsert', async () => {
+    const res = await pool.query(`
+      INSERT INTO captain_explorations (article_id, keyword, status, article_level, root_keywords, ai_panel_markdown, explored_at)
+      VALUES ($1, $2, $3, $4, $5, $6, NOW())
+      ON CONFLICT (article_id, keyword) DO UPDATE
+      SET root_keywords = EXCLUDED.root_keywords,
+          ai_panel_markdown = COALESCE(EXCLUDED.ai_panel_markdown, captain_explorations.ai_panel_markdown),
+          status = EXCLUDED.status,
+          explored_at = NOW()
+    `, [
+      articleId, entry.keyword, entry.status ?? 'suggested', entry.articleLevel,
+      entry.rootKeywords ?? [], entry.aiPanelMarkdown ?? null,
+    ])
+    return res.rowCount ?? 0
+  }))
 
   // UPSERT PAA questions into dedicated table
   if (entry.paaQuestions?.length) {
-    const t2 = Date.now()
-    let paaRows = 0
-    for (const paa of entry.paaQuestions) {
-      const paaRes = await pool.query(`
-        INSERT INTO paa_explorations (article_id, keyword, question, answer, is_match, match_quality, explored_at)
-        VALUES ($1, $2, $3, $4, $5, $6, NOW())
-        ON CONFLICT (article_id, keyword, question) DO UPDATE
-        SET answer = EXCLUDED.answer, is_match = EXCLUDED.is_match,
-            match_quality = EXCLUDED.match_quality, explored_at = NOW()
-      `, [
-        articleId, entry.keyword, paa.question, paa.answer ?? null,
-        paa.match !== 'none', paa.matchQuality ?? null,
-      ])
-      paaRows += paaRes.rowCount ?? 0
-    }
-    ops.push({ operation: 'upsert', table: 'paa_explorations', rowCount: paaRows, ms: Date.now() - t2 })
+    ops.push(await measureDb('paa_explorations', 'upsert', async () => {
+      let paaRows = 0
+      for (const paa of entry.paaQuestions ?? []) {
+        const paaRes = await pool.query(`
+          INSERT INTO paa_explorations (article_id, keyword, question, answer, is_match, match_quality, explored_at)
+          VALUES ($1, $2, $3, $4, $5, $6, NOW())
+          ON CONFLICT (article_id, keyword, question) DO UPDATE
+          SET answer = EXCLUDED.answer, is_match = EXCLUDED.is_match,
+              match_quality = EXCLUDED.match_quality, explored_at = NOW()
+        `, [
+          articleId, entry.keyword, paa.question, paa.answer ?? null,
+          paa.match !== 'none', paa.matchQuality ?? null,
+        ])
+        paaRows += paaRes.rowCount ?? 0
+      }
+      return paaRows
+    }))
   }
   return ops
 }
@@ -683,12 +690,14 @@ export async function saveCaptainExploration(
 export async function updateCaptainExplorationAiPanel(
   articleId: number, keyword: string, markdown: string
 ): Promise<DbOp> {
-  const t = Date.now()
-  const res = await pool.query(`
-    UPDATE captain_explorations SET ai_panel_markdown = $1, explored_at = NOW()
-    WHERE article_id = $2 AND keyword = $3
-  `, [markdown, articleId, keyword])
-  return { operation: 'update', table: 'captain_explorations', rowCount: res.rowCount ?? 0, ms: Date.now() - t }
+  // Pattern measureDb : timing + log debug + DbOp prêt à propager.
+  return measureDb('captain_explorations', 'update', async () => {
+    const res = await pool.query(`
+      UPDATE captain_explorations SET ai_panel_markdown = $1, explored_at = NOW()
+      WHERE article_id = $2 AND keyword = $3
+    `, [markdown, articleId, keyword])
+    return res.rowCount ?? 0
+  })
 }
 
 // ---------------------------------------------------------------------------

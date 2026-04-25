@@ -40,7 +40,7 @@ export interface Keyword {
 export type CaptainKeywordStatus = 'suggested' | 'locked'
 
 /** Lieutenant keyword status: suggested by AI, locked by user, or eliminated */
-export type LieutenantKeywordStatus = 'suggested' | 'locked' | 'eliminated'
+export type LieutenantKeywordStatus = 'suggested' | 'locked' | 'eliminated' | 'archived'
 
 // ---- Rich captain types ----
 

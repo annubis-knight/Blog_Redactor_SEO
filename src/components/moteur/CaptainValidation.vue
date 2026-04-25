@@ -1,9 +1,9 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, nextTick, onUnmounted, onBeforeUnmount } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { marked } from 'marked'
 import { useCapitaineValidation, articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
-import { useCompositionCheck, checkKeywordComposition } from '@/composables/seo/useCompositionCheck'
+import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useRadarCarousel } from '@/composables/keyword/useRadarCarousel'
 import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
 import { useStreaming } from '@/composables/editor/useStreaming'
@@ -15,10 +15,11 @@ import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import RadarKeywordCard from '@/components/intent/RadarKeywordCard.vue'
 import CaptainInput from '@/components/moteur/CaptainInput.vue'
 import CaptainRootsSidebar from '@/components/moteur/CaptainRootsSidebar.vue'
-import CaptainCarousel from '@/components/moteur/CaptainCarousel.vue'
 import CaptainAiPanel from '@/components/moteur/CaptainAiPanel.vue'
 import CaptainLockPanel from '@/components/moteur/CaptainLockPanel.vue'
+import UnlockLieutenantsModal from '@/components/moteur/UnlockLieutenantsModal.vue'
 import CaptainInteractiveWords from '@/components/moteur/CaptainInteractiveWords.vue'
+import CaptainSidePanel from '@/components/moteur/CaptainSidePanel.vue'
 import type { SelectedArticle, KpiResult, VerdictLevel, ValidateVerdict, ValidateResponse, ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard } from '@shared/types/intent.types.js'
 
@@ -275,10 +276,60 @@ function lockCaptaine() {
   }
 }
 
-function unlockCaptaine() {
-  isLocked.value = false
-  log.info('CaptainValidation — Capitaine déverrouillé')
+// État de la modale UnlockLieutenants. Quand l'utilisateur a déjà des
+// Lieutenants verrouillés, déverrouiller le Capitaine est une décision lourde
+// qu'on ne veut pas qu'il fasse par accident. La modale propose 3 choix :
+// "Garder" (les lieutenants sont peut-être encore valides pour le nouveau
+// Capitaine), "Archiver" (les passer en status 'archived'), "Annuler".
+type UnlockSource = 'manual' | 'carousel'
+const pendingUnlock = ref<UnlockSource | null>(null)
+
+const lockedLieutenantCount = computed(() => articleKeywordsStore.lockedLieutenants.length)
+
+function requestUnlock(source: UnlockSource) {
+  if (lockedLieutenantCount.value > 0) {
+    // Trigger modal — defer actual unlock until user choice
+    pendingUnlock.value = source
+    return
+  }
+  // No lieutenants locked → straight unlock
+  performUnlock(source)
+}
+
+function performUnlock(source: UnlockSource) {
+  if (source === 'manual') {
+    isLocked.value = false
+  } else {
+    lockedKeyword.value = null
+    isLocked.value = false
+  }
+  log.info('CaptainValidation — Capitaine déverrouillé', { source })
   if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
+  pendingUnlock.value = null
+}
+
+function handleUnlockKeep() {
+  if (!pendingUnlock.value) return
+  log.info('[CaptainValidation] Unlock — keep lieutenants')
+  performUnlock(pendingUnlock.value)
+}
+
+function handleUnlockArchive() {
+  if (!pendingUnlock.value) return
+  log.info('[CaptainValidation] Unlock — archive lieutenants', { count: lockedLieutenantCount.value })
+  articleKeywordsStore.archiveLockedLieutenants()
+  if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
+  notify.info(`${lockedLieutenantCount.value} lieutenant(s) archivé(s)`)
+  performUnlock(pendingUnlock.value)
+}
+
+function handleUnlockCancel() {
+  log.debug('[CaptainValidation] Unlock cancelled')
+  pendingUnlock.value = null
+}
+
+function unlockCaptaine() {
+  requestUnlock('manual')
 }
 
 function chipVerdictColor(entry: { verdict: { level: VerdictLevel } }): string {
@@ -295,15 +346,44 @@ function handleHistoryClick(index: number) {
   if (history.value[index]) keywordInput.value = history.value[index].keyword
 }
 
-// ===== CAROUSEL =====
+// ===== CAROUSEL (data layer) + RADAR-LIST UI (workflow) =====
 const carousel = useRadarCarousel()
+const carouselEntries = computed(() => carousel.entries.value)
 const lockedKeyword = ref<string | null>(null)
+
+// Sprint 2026-04 — Pointeur de sélection UI pour la liste verticale (mode workflow).
+// Indépendant de carousel.currentIndex (qui sert l'auto-validation interne).
+const selectedIndex = ref<number | null>(null)
+const selectedEntry = computed<CarouselEntry | null>(() => {
+  if (selectedIndex.value === null) return null
+  return carousel.entries.value[selectedIndex.value] ?? null
+})
+const lockedIndex = computed(() => {
+  if (lockedKeyword.value === null) return -1
+  return carousel.entries.value.findIndex(e => e.card.keyword === lockedKeyword.value)
+})
+const lockedEntryExists = computed(() => lockedIndex.value !== -1)
+const selectedIsLocked = computed(() => {
+  if (!selectedEntry.value || !lockedKeyword.value) return false
+  return selectedEntry.value.card.keyword === lockedKeyword.value
+})
+
+// Reset selectedIndex si entries shrink en dessous de l'index pointé
+watch(
+  () => carousel.entries.value.length,
+  (len) => {
+    if (selectedIndex.value !== null && selectedIndex.value >= len) {
+      selectedIndex.value = null
+    }
+  },
+)
 
 let lastAutoValidatedId: number | null = null
 watch(
   () => props.selectedArticle?.id,
   (id, oldId) => {
     if (oldId && id !== oldId) {
+      selectedIndex.value = null
       carousel.reset()
       lockedKeyword.value = null
       lastAutoValidatedId = null
@@ -443,43 +523,27 @@ function abortAllAiStreams() {
   touchAiStreaming()
 }
 
-const carouselCurrentAiStreaming = computed(() => {
-  const kw = carousel.currentEntry.value?.card.keyword
+const selectedAiStreaming = computed(() => {
+  const kw = selectedEntry.value?.card.keyword
   return kw ? carouselAiStreaming.value.has(kw) : false
 })
 
-const carouselCurrentAiError = computed(() => {
-  const kw = carousel.currentEntry.value?.card.keyword
+const selectedAiError = computed(() => {
+  const kw = selectedEntry.value?.card.keyword
   return kw ? carouselAiErrors.value.get(kw) ?? null : null
 })
 
-const carouselParsedMarkdown = computed(() => {
-  const entry = carousel.currentEntry.value
+const selectedParsedMarkdown = computed(() => {
+  const entry = selectedEntry.value
   if (!entry) return ''
   const text = carouselAiCache.value.get(entry.card.keyword)
   if (text) return marked.parse(text) as string
   return ''
 })
 
-// Sprint 3.1 — Find the locked keyword's carousel entry to render its RadarCard
-// in a pinned section above the carousel.
-const lockedCarouselEntry = computed<CarouselEntry | null>(() => {
-  if (!lockedKeyword.value) return null
-  return carousel.entries.value.find(e => e.card.keyword === lockedKeyword.value) ?? null
-})
-
-// Sprint 3.4 — Composition warnings for the keyword currently shown in the
-// carousel header. Surfaced as a small ⚠ icon with hover tooltip.
-const carouselCurrentWarnings = computed<string[]>(() => {
-  const kw = carousel.currentEntry.value?.card.keyword
-  if (!kw) return []
-  const result = checkKeywordComposition(kw, articleLevel.value)
-  return result.results.filter(r => !r.pass && r.severity === 'warning').map(r => r.message)
-})
-
-// Sprint 3.2 — Regenerate the AI panel for the currently-displayed carousel entry.
+// Sprint 2026-04 — Regenerate l'IA pour l'entrée sélectionnée dans la side panel.
 function handleAiRegenerate() {
-  const entry = carousel.currentEntry.value
+  const entry = selectedEntry.value
   if (!entry?.validation) return
   const kw = entry.card.keyword
   log.info('[CaptainValidation] AI panel regenerate requested', { keyword: kw })
@@ -664,8 +728,8 @@ function carouselVerdictLabel(entry: CarouselEntry): string {
 // Étape 3F — Mini résumé verdict injecté dans CaptainAiPanel à la place
 // du CaptainVerdictPanel (qui prenait toute la largeur). On garde l'info
 // d'évaluation mais sans bloc dédié qui étouffait la lecture.
-const carouselVerdictSummary = computed(() => {
-  const entry = carousel.currentEntry.value
+const selectedVerdictSummary = computed(() => {
+  const entry = selectedEntry.value
   if (!entry?.validation) return null
   const level = carouselEffectiveVerdict(entry)
   if (!level) return null
@@ -675,6 +739,12 @@ const carouselVerdictSummary = computed(() => {
     label: getVerdictLabel(v),
     reason: level === 'NO-GO' ? noGoFeedback(v, entry.validation.kpis) : v.reason,
   }
+})
+
+const selectedCanLock = computed(() => {
+  const entry = selectedEntry.value
+  if (!entry) return false
+  return carouselEffectiveVerdict(entry) === 'GO'
 })
 
 const manualVerdictSummary = computed(() => {
@@ -687,59 +757,88 @@ const manualVerdictSummary = computed(() => {
   }
 })
 
-const carouselPaaQuestions = computed(() => {
-  const paa = carousel.currentEntry.value?.validation?.paaQuestions
-  if (!paa) return []
-  return paa.filter(p => p.question?.trim())
-})
-
 const manualPaaQuestions = computed(() => {
   const paa = currentResult.value?.paaQuestions
   if (!paa) return []
   return paa.filter(p => p.question?.trim())
 })
 
-// --- Carousel lock ---
-function lockCarouselEntry() {
-  const entry = carousel.currentEntry.value
-  if (!entry?.validation) return
-  const keyword = entry.card.keyword
-  lockedKeyword.value = keyword
+// --- Sélection / lock / unlock dans la liste verticale ---
+function selectEntry(idx: number) {
+  if (idx < 0 || idx >= carousel.entries.value.length) return
+  selectedIndex.value = idx
+  carousel.goTo(idx)
+}
+
+async function lockEntry(idx: number) {
+  const entry = carousel.entries.value[idx]
+  if (!entry?.validation) {
+    log.debug('[CaptainValidation] lockEntry no-op (entry incomplete)', { idx })
+    return
+  }
+  const newKw = entry.card.keyword
+  const previousKw = lockedKeyword.value
+  const isTransfer = previousKw !== null && previousKw !== newKw
+
+  if (isTransfer) {
+    log.info('CaptainValidation — lock transfert', { from: previousKw, to: newKw })
+    if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
+    await nextTick()
+  }
+
+  selectedIndex.value = idx
+  lockedKeyword.value = newKw
   isLocked.value = true
-  log.info('CaptainValidation — Capitaine verrouillé (carousel)', { keyword })
+
   if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
-  emit('validated', keyword)
-  const aiMarkdown = carouselAiCache.value.get(keyword) ?? null
-  articleKeywordsStore.lockCaptain(keyword, aiMarkdown, props.selectedArticle?.id)
-  const rootKeys = entry ? Array.from(entry.rootVariants.keys()) : []
+  emit('validated', newKw)
+
+  const aiMarkdown = carouselAiCache.value.get(newKw) ?? null
+  articleKeywordsStore.lockCaptain(newKw, aiMarkdown, props.selectedArticle?.id)
+  const rootKeys = Array.from(entry.rootVariants.keys())
   articleKeywordsStore.setRootKeywords(rootKeys)
   if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
 }
 
+function onSidePanelLock() {
+  if (selectedIndex.value !== null) lockEntry(selectedIndex.value)
+}
+
+function unlockEntry() {
+  // Délègue à requestUnlock — déclenche la modale UnlockLieutenants si des
+  // lieutenants verrouillés existent, sinon déverrouille direct.
+  requestUnlock('carousel')
+}
+
 function sendToLieutenants() {
   if (!lockedKeyword.value) return
-  const entry = carousel.currentEntry.value
+  const entry = selectedEntry.value
+    ?? carousel.entries.value[lockedIndex.value]
+    ?? null
   const rootKeywords = entry ? Array.from(entry.rootVariants.keys()) : []
   emit('send-to-lieutenants', { keyword: lockedKeyword.value, rootKeywords })
   log.info('CaptainValidation — Envoyé aux Lieutenants', { keyword: lockedKeyword.value, rootKeywords })
 }
 
-function unlockCarouselEntry() {
-  lockedKeyword.value = null
-  isLocked.value = false
-  log.info('CaptainValidation — Capitaine déverrouillé (carousel)')
-  if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
+function gotoLocked() {
+  if (lockedIndex.value === -1) return
+  const idx = lockedIndex.value
+  selectEntry(idx)
+  nextTick(() => {
+    const el = document.querySelector(`[data-testid="radar-list-item-${idx}"]`)
+    if (el && 'scrollIntoView' in el) {
+      ;(el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
+  })
 }
 
-// --- Interactive words: word-toggle handler ---
-// `activeIndices` est la liste des indices de mots actifs (ordre croissant).
-// On reconstitue la string activeKeyword à partir de ces indices puis on bascule
-// sur la variante racine correspondante (ou la card originale si tous les mots
-// sont actifs).
-function handleWordToggle(activeIndices: number[]) {
-  const entry = carousel.currentEntry.value
+// --- Interactive words: word-toggle handler (par index) ---
+// Bascule sur la variante racine correspondant aux indices actifs (ou la card
+// originale si tous les mots sont actifs). Opère sur l'entrée d'index `idx`
+// passé explicitement par la liste.
+function handleWordToggleAt(idx: number, activeIndices: number[]) {
+  const entry = carousel.entries.value[idx]
   if (!entry) return
-  const idx = carousel.currentIndex.value
   const words = entry.originalCard.keyword.trim().split(/\s+/)
   const sorted = [...activeIndices].sort((a, b) => a - b)
   const activeKeywordStr = sorted.map(i => words[i]).filter(Boolean).join(' ')
@@ -765,15 +864,16 @@ function handleWordToggle(activeIndices: number[]) {
     return
   }
 
-  // Pas de variant pré-validé : on valide à la volée et on enrichit rootVariants
-  // de la carte capitaine courante — on reste sur la même carte du carrousel.
+  // Pas de variant pré-validé : on valide à la volée et on enrichit rootVariants.
   if (activeKeywordStr.split(/\s+/).length < 2) {
     carousel.entries.value[idx] = { ...entry, activeWordIndices: sorted }
     return
   }
 
   const previousActiveIndices = entry.activeWordIndices
-  log.info('[CaptainValidation] handleWordToggle — validating root variant in-place', { parent: entry.originalCard.keyword, variant: activeKeywordStr })
+  log.info('[CaptainValidation] handleWordToggleAt — validating root variant in-place', { parent: entry.originalCard.keyword, variant: activeKeywordStr, idx })
+  // Aligne currentIndex pour cohérence interne du composable (pas critique mais propre)
+  carousel.goTo(idx)
   carousel.addRootVariantToEntry(
     idx,
     activeKeywordStr,
@@ -791,23 +891,24 @@ function handleWordToggle(activeIndices: number[]) {
   })
 }
 
-// --- Root variant switch ---
+// --- Root variant switch (sur l'entrée sélectionnée) ---
 const currentRootVariants = computed(() => {
-  const entry = carousel.currentEntry.value
+  const entry = selectedEntry.value
   if (!entry) return []
   return Array.from(entry.rootVariants.values())
 })
 
 const activeVariantKeyword = computed(() => {
-  const entry = carousel.currentEntry.value
+  const entry = selectedEntry.value
   if (!entry) return ''
   return entry.card.keyword
 })
 
 function switchToVariant(variant: { keyword: string; card: RadarCard; validation: ValidateResponse }) {
-  const entry = carousel.currentEntry.value
+  if (selectedIndex.value === null) return
+  const idx = selectedIndex.value
+  const entry = carousel.entries.value[idx]
   if (!entry) return
-  const idx = carousel.currentIndex.value
   const variantWords = variant.keyword.trim().split(/\s+/)
   carousel.entries.value[idx] = {
     ...entry,
@@ -832,101 +933,86 @@ onUnmounted(() => abortAllAiStreams())
       @submit="handleValidate"
     />
 
-    <!-- Sprint 3.1 — Persistent "locked captain" section pinned above the
-         carousel. Avoids forcing the user to navigate the carousel back to find
-         their lock. Shows the locked card + an unlock button. -->
-    <div
-      v-if="lockedKeyword && lockedCarouselEntry"
-      class="locked-captain-section"
-      data-testid="locked-captain-section"
-    >
-      <div class="locked-captain-header">
-        <span class="locked-captain-badge">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-            <path d="M12 2C9.24 2 7 4.24 7 7v3H6a2 2 0 00-2 2v8a2 2 0 002 2h12a2 2 0 002-2v-8a2 2 0 00-2-2h-1V7c0-2.76-2.24-5-5-5zm-3 5c0-1.66 1.34-3 3-3s3 1.34 3 3v3H9V7z"/>
-          </svg>
-          Capitaine verrouill&eacute;
-        </span>
-        <span class="locked-captain-keyword">{{ lockedKeyword }}</span>
+    <!-- ===== MODE WORKFLOW : Liste verticale + Side Panel sticky ===== -->
+    <div v-if="mode === 'workflow'" class="captain-layout" data-testid="captain-layout">
+      <div class="radar-list" data-testid="radar-list">
+        <div
+          v-if="carouselEntries.length === 0"
+          class="radar-list-empty"
+          data-testid="radar-list-empty"
+        >
+          Aucun mot-cl&eacute; &agrave; valider pour cet article.
+        </div>
+        <div
+          v-for="(entry, idx) in carouselEntries"
+          :key="entry.originalCard.keyword"
+          class="radar-list-item"
+          :class="{
+            'radar-list-item--selected': selectedIndex === idx,
+            'radar-list-item--locked': lockedKeyword === entry.card.keyword,
+          }"
+          :data-testid="`radar-list-item-${idx}`"
+          role="button"
+          tabindex="0"
+          :aria-pressed="selectedIndex === idx"
+          @click="selectEntry(idx)"
+          @keydown.enter.space.prevent="selectEntry(idx)"
+        >
+          <div
+            v-if="entry.isLoading"
+            class="captain-loading"
+            :data-testid="`radar-list-item-${idx}-loading`"
+          >
+            <div class="captain-loading-spinner" />
+            <p>Validation en cours...</p>
+          </div>
+          <div
+            v-else-if="entry.error"
+            class="captain-error"
+            :data-testid="`radar-list-item-${idx}-error`"
+          >
+            <p>Erreur : {{ entry.error }}</p>
+          </div>
+          <CaptainInteractiveWords
+            v-else-if="entry.validation"
+            :entry="entry"
+            :locked-keyword="lockedKeyword"
+            :article-level="articleLevel"
+            :article-id="props.selectedArticle?.id ?? null"
+            @lock="lockEntry(idx)"
+            @unlock="lockedIndex === idx ? unlockEntry() : null"
+            @word-toggle="(indices) => handleWordToggleAt(idx, indices)"
+          />
+        </div>
       </div>
-      <CaptainInteractiveWords
-        :entry="lockedCarouselEntry"
-        :locked-keyword="lockedKeyword"
+
+      <CaptainSidePanel
+        :entry="selectedEntry"
         :article-level="articleLevel"
         :article-id="props.selectedArticle?.id ?? null"
-        @unlock="unlockCarouselEntry"
+        :locked-keyword="lockedKeyword"
+        :parsed-markdown="selectedParsedMarkdown"
+        :ai-is-streaming="selectedAiStreaming"
+        :ai-error="selectedAiError"
+        :verdict-summary="selectedVerdictSummary"
+        :root-variants="currentRootVariants"
+        :is-loading-roots="selectedEntry?.isLoadingRoots ?? false"
+        :failed-roots="selectedEntry?.failedRoots ?? []"
+        :active-variant-keyword="activeVariantKeyword"
+        :locked-entry-exists="lockedEntryExists"
+        :selected-is-locked="selectedIsLocked"
+        :can-lock="selectedCanLock"
+        @lock="onSidePanelLock"
+        @unlock="unlockEntry"
+        @send-to-lieutenants="sendToLieutenants"
+        @switch-variant="switchToVariant"
+        @ai-regenerate="handleAiRegenerate"
+        @goto-locked="gotoLocked"
       />
     </div>
 
-    <!-- ===== CAROUSEL MODE ===== -->
-    <div v-if="carousel.isActive.value" class="carousel-section" data-testid="carousel-section">
-      <CaptainCarousel
-        :current-keyword="carousel.currentEntry.value?.card.keyword ?? ''"
-        :current-index="carousel.currentIndex.value"
-        :count="carousel.count.value"
-        :composition-warnings="carouselCurrentWarnings"
-        @prev="carousel.prev()"
-        @next="carousel.next()"
-      />
-
-      <template v-if="carousel.currentEntry.value">
-        <div v-if="carousel.currentEntry.value.isLoading" class="captain-loading" data-testid="carousel-loading">
-          <div class="captain-loading-spinner" />
-          <p>Validation en cours...</p>
-        </div>
-
-        <div v-else-if="carousel.currentEntry.value.error" class="captain-error" data-testid="carousel-error">
-          <p>Erreur : {{ carousel.currentEntry.value.error }}</p>
-        </div>
-
-        <div v-else-if="carousel.currentEntry.value.validation" class="captain-results" data-testid="carousel-results">
-          <!-- Layout horizontal : carte interactive + sidebar racines à droite -->
-          <div class="captain-card-with-sidebar">
-            <CaptainInteractiveWords
-              class="captain-card-with-sidebar__card"
-              :entry="carousel.currentEntry.value"
-              :locked-keyword="lockedKeyword"
-              :article-level="articleLevel"
-              :article-id="props.selectedArticle?.id ?? null"
-              @lock="lockCarouselEntry"
-              @unlock="unlockCarouselEntry"
-              @word-toggle="handleWordToggle"
-            />
-            <CaptainRootsSidebar
-              :variants="currentRootVariants"
-              :active-keyword="activeVariantKeyword"
-              :is-loading="carousel.currentEntry.value!.isLoadingRoots"
-              :failed-roots="carousel.currentEntry.value!.failedRoots"
-              @select="switchToVariant"
-            />
-          </div>
-
-          <!-- Sprint 3.8 — "Questions associées (PAA)" supprimée (redondante avec le collapse de la RadarCard). -->
-
-          <CaptainAiPanel
-            :parsed-html="carouselParsedMarkdown"
-            :is-streaming="carouselCurrentAiStreaming"
-            :error="carouselCurrentAiError"
-            :verdict-summary="carouselVerdictSummary"
-            :can-regenerate="true"
-            @regenerate="handleAiRegenerate"
-          />
-
-          <CaptainLockPanel
-            :is-locked="lockedKeyword === carousel.currentEntry.value.card.keyword"
-            :can-lock="carouselEffectiveVerdict(carousel.currentEntry.value) === 'GO'"
-            :show-send-to-lieutenants="true"
-            test-id-prefix="carousel-"
-            @lock="lockCarouselEntry"
-            @unlock="unlockCarouselEntry"
-            @send-to-lieutenants="sendToLieutenants"
-          />
-        </div>
-      </template>
-    </div>
-
-    <!-- ===== MANUAL MODE ===== -->
-    <div v-if="!carousel.isActive.value" class="manual-mode">
+    <!-- ===== MODE LIBRE (Labo) : manual-mode conservé tel quel ===== -->
+    <div v-else class="manual-mode">
       <div v-if="history.length > 1" class="history-carousel" data-testid="history-carousel">
         <span class="history-label">Historique ({{ history.length }})</span>
         <div class="history-chips">
@@ -1044,6 +1130,19 @@ onUnmounted(() => abortAllAiStreams())
         />
       </div>
     </div>
+
+    <!-- Modale de protection contre la perte de travail :
+         si l'utilisateur déverrouille le Capitaine alors qu'il a déjà des
+         Lieutenants verrouillés, on lui propose de les Garder, Archiver, ou
+         Annuler le déverrouillage. -->
+    <UnlockLieutenantsModal
+      v-if="pendingUnlock !== null"
+      :lieutenant-count="lockedLieutenantCount"
+      :capitaine-keyword="lockedKeyword ?? currentResult?.keyword ?? ''"
+      @keep="handleUnlockKeep"
+      @archive="handleUnlockArchive"
+      @cancel="handleUnlockCancel"
+    />
   </div>
 </template>
 
@@ -1052,39 +1151,59 @@ onUnmounted(() => abortAllAiStreams())
   padding: 1rem 0;
 }
 
-.carousel-section {
-  margin-bottom: 1rem;
-  overflow-anchor: none;
+/* Sprint 2026-04 — Layout 2 colonnes : liste verticale + side panel sticky. */
+.captain-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: 1rem;
+  align-items: start;
+  margin-top: 1rem;
 }
 
-/* Sprint 3.1 — Pinned locked-captain section above the carousel. */
-.locked-captain-section {
-  margin: 1rem 0;
-  padding: 0.75rem 1rem;
-  background: var(--color-success-bg, #f0fdf4);
-  border: 1.5px solid var(--color-success, #22c55e);
-  border-radius: 10px;
-}
-.locked-captain-header {
+.radar-list {
   display: flex;
-  align-items: center;
-  gap: 0.625rem;
-  margin-bottom: 0.5rem;
+  flex-direction: column;
+  gap: 0.75rem;
+  min-width: 0;
 }
-.locked-captain-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-success, #16a34a);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
+
+.radar-list-empty {
+  padding: 2rem;
+  text-align: center;
+  color: var(--color-text-muted, #64748b);
+  border: 1px dashed var(--color-border, #e2e8f0);
+  border-radius: 10px;
+  font-size: 0.875rem;
 }
-.locked-captain-keyword {
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-text, #1e293b);
+
+.radar-list-item {
+  cursor: pointer;
+  border-radius: 10px;
+  transition: box-shadow 0.15s, outline 0.15s;
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.radar-list-item:hover {
+  outline-color: var(--color-border-strong, #cbd5e1);
+}
+
+.radar-list-item:focus-visible {
+  outline-color: var(--color-primary, #3b82f6);
+}
+
+.radar-list-item--selected {
+  box-shadow: 0 0 0 2px var(--color-primary, #3b82f6);
+}
+
+.radar-list-item--locked {
+  box-shadow: 0 0 0 2px var(--color-success, #22c55e);
+}
+
+.radar-list-item--selected.radar-list-item--locked {
+  box-shadow:
+    0 0 0 2px var(--color-success, #22c55e),
+    0 0 0 4px var(--color-primary, #3b82f6);
 }
 
 .captain-empty,

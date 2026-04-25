@@ -50,7 +50,7 @@ const richRootKeywordSchema = z.object({
 
 const richLieutenantSchema = z.object({
   keyword: z.string().min(1),
-  status: z.enum(['suggested', 'locked', 'eliminated']),
+  status: z.enum(['suggested', 'locked', 'eliminated', 'archived']),
   reasoning: z.string(),
   sources: z.array(z.enum(['paa', 'serp', 'group', 'root', 'content-gap'])),
   suggestedHnLevel: z.union([z.literal(2), z.literal(3)]),

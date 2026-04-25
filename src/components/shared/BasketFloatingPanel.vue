@@ -1,10 +1,34 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { useRoute } from 'vue-router'
 import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import type { BasketKeyword } from '@/stores/article/moteur-basket.store'
 
+/**
+ * Pillule flottante du panier de mots-clés.
+ *
+ * Plus-value : visible en permanence, montre la PROVENANCE de chaque mot-clé
+ * (Discovery / Radar / Pain Translator / etc.) — info que `BasketStrip`
+ * ne donne pas. Précieux pour identifier d'où viennent tes meilleurs candidats.
+ *
+ * Atténuations du bruit visuel par rapport à la version originale :
+ *  - auto-hide complet quand le panier est vide (rien à montrer)
+ *  - auto-hide quand l'utilisateur n'est pas dans le Moteur (le panier est
+ *    spécifique à ce workflow)
+ *  - opacity 0.45 au repos, 1.0 au hover (effet "fantôme")
+ *  - pillule réduite : juste un badge cercle avec le compteur, pas de texte
+ *  - position bottom-right (le CostLogPanel est en bottom-left)
+ */
 const store = useMoteurBasketStore()
+const route = useRoute()
 const isOpen = ref(false)
+
+// Hide complet si panier vide ou hors workflow Moteur (on garde Cerveau/Rédaction
+// propres — le panier n'a de sens qu'en exploration de mots-clés).
+const shouldShow = computed(() => {
+  if (store.isEmpty) return false
+  return route.name === 'moteur'
+})
 
 function toggle() {
   isOpen.value = !isOpen.value
@@ -45,15 +69,15 @@ const groupedKeywords = computed<Group[]>(() => {
 
 <template>
   <Teleport to="body">
-    <div class="basket-float" data-testid="basket-floating-panel">
-      <!-- Collapsed pill -->
+    <div v-if="shouldShow" class="basket-float" data-testid="basket-floating-panel">
+      <!-- Collapsed pill — micro badge cercle, opacity 0.45 au repos -->
       <button
         v-if="!isOpen"
         class="basket-float__pill"
         :aria-label="`Panier : ${store.count} mots-clés`"
+        :title="`Panier : ${store.count} mot${store.count > 1 ? 's' : ''}-clé${store.count > 1 ? 's' : ''}`"
         @click="toggle"
       >
-        <span class="basket-float__pill-icon" aria-hidden="true">&#x1F9FA;</span>
         <span class="basket-float__pill-count">{{ store.count }}</span>
       </button>
 
@@ -108,39 +132,50 @@ const groupedKeywords = computed<Group[]>(() => {
 <style scoped>
 .basket-float {
   position: fixed;
-  bottom: 5.5rem;
-  left: 1.5rem;
+  bottom: 1.25rem;
+  right: 1.25rem;
   z-index: 9997;
   font-family: var(--font-sans, 'Inter', system-ui, sans-serif);
+  /* Opacité atténuée par défaut, passe à 1.0 au hover/focus. */
+  opacity: 0.45;
+  transition: opacity 0.2s ease;
+}
+.basket-float:hover,
+.basket-float:focus-within {
+  opacity: 1;
 }
 
+/* Pillule au repos = micro badge cercle 28px (très discret).
+   Au hover : passe à un badge légèrement plus grand avec étiquette "panier". */
 .basket-float__pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--color-surface, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 999px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  background: var(--color-primary, #2563eb);
+  border: none;
+  border-radius: 50%;
   cursor: pointer;
-  font-size: 0.75rem;
-  color: var(--color-text, #1e293b);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
   transition: all 0.2s ease;
 }
 .basket-float__pill:hover {
-  border-color: var(--color-primary, #2563eb);
-  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.15);
-}
-.basket-float__pill-icon {
-  font-size: 1rem;
+  width: auto;
+  height: auto;
+  padding: 0.375rem 0.75rem;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
 }
 .basket-float__pill-count {
+  font-size: 0.75rem;
   font-weight: 700;
   font-family: var(--font-mono, monospace);
-  color: var(--color-primary, #2563eb);
   min-width: 0.75rem;
   text-align: center;
+  line-height: 1;
 }
 
 .basket-float__panel {

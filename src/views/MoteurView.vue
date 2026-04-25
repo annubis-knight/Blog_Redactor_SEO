@@ -44,8 +44,12 @@ import type { RadarKeyword, RadarCard } from '@shared/types/intent.types.js'
 import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
 import LieutenantsSelection from '@/components/moteur/LieutenantsSelection.vue'
 import LexiqueExtraction from '@/components/moteur/LexiqueExtraction.vue'
+import FinalisationRecap from '@/components/moteur/FinalisationRecap.vue'
+
+import { useRouter } from 'vue-router'
 
 const route = useRoute()
+const router = useRouter()
 const cocoonsStore = useCocoonsStore()
 const keywordsStore = useKeywordsStore()
 const strategyStore = useCocoonStrategyStore()
@@ -200,6 +204,30 @@ const nextTab = computed<Tab | null>(() => {
   if (idx < 0 || idx >= TAB_IDS.length - 1) return null
   return TAB_IDS[idx + 1] ?? null
 })
+
+// --- Finalisation modal ---
+// Affichée comme étape de transition douce entre Moteur (workflow de validation)
+// et Rédaction (production de contenu). Permet à l'utilisateur de relire
+// Capitaine + Lieutenants + Lexique en lecture seule avant de se lancer.
+// Bénéfice SEO : un dernier "ai-je un cluster cohérent ?" avant 2000 mots.
+const showFinalisationModal = ref(false)
+
+function openFinalisationModal() {
+  showFinalisationModal.value = true
+}
+
+function closeFinalisationModal() {
+  showFinalisationModal.value = false
+}
+
+function navigateToRedaction() {
+  showFinalisationModal.value = false
+  if (selectedArticle.value?.id) {
+    router.push(`/cocoon/${cocoonId.value}/redaction?articleId=${selectedArticle.value.id}`)
+  } else {
+    router.push(`/cocoon/${cocoonId.value}/redaction`)
+  }
+}
 
 const phases = computed<Phase[]>(() => [
   {
@@ -704,8 +732,8 @@ onMounted(() => {
 
       <!-- Bottom navigation -->
       <!-- Sprint 1.3/5.1 — contextual next-tab button. Shows the next tab in the
-           phase order; on the last tab (lexique), falls back to a direct link to
-           Redaction. -->
+           phase order; on the last tab (lexique), opens the FinalisationRecap
+           modal as a soft transition between Moteur and Rédaction. -->
       <div class="bottom-nav">
         <RouterLink :to="`/cocoon/${cocoonId}`" class="btn-back">&larr; Retour au cocon</RouterLink>
         <button
@@ -715,11 +743,41 @@ onMounted(() => {
           data-testid="cta-next-tab"
           @click="setActiveTab(nextTab)"
         >Continuer vers {{ TAB_LABELS[nextTab] }} &rarr;</button>
-        <RouterLink v-else :to="`/cocoon/${cocoonId}/redaction`" class="btn btn-primary">
-          Continuer vers la R&eacute;daction &rarr;
-        </RouterLink>
+        <button
+          v-else
+          type="button"
+          class="btn btn-primary"
+          data-testid="cta-finalisation-modal"
+          @click="openFinalisationModal"
+        >Continuer vers la R&eacute;daction &rarr;</button>
       </div>
     </template>
+
+    <!-- Modale Finalisation : récap lecture seule (Capitaine + Lieutenants + Lexique)
+         affichée au moment de quitter le Moteur pour la Rédaction. C'est le seul
+         moment "calme" du workflow où l'utilisateur voit toutes ses décisions
+         ensemble — un point de contrôle stratégique avant de se lancer dans
+         2000 mots de rédaction. -->
+    <div
+      v-if="showFinalisationModal"
+      class="finalisation-backdrop"
+      data-testid="finalisation-backdrop"
+      @click.self="closeFinalisationModal"
+    >
+      <div class="finalisation-modal" role="dialog" aria-modal="true" aria-labelledby="finalisation-title">
+        <button
+          type="button"
+          class="finalisation-modal__close"
+          aria-label="Fermer"
+          data-testid="finalisation-close"
+          @click="closeFinalisationModal"
+        >&times;</button>
+        <FinalisationRecap
+          :selected-article="selectedArticle"
+          @navigate-redaction="navigateToRedaction"
+        />
+      </div>
+    </div>
   </div>
 </template>
 
@@ -876,5 +934,59 @@ onMounted(() => {
 .btn-back:hover {
   color: var(--color-primary);
   text-decoration: none;
+}
+
+/* Finalisation modal — récap avant transition Moteur → Rédaction */
+.finalisation-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  padding: 1rem;
+  animation: finalisation-fade-in 0.2s ease;
+}
+
+.finalisation-modal {
+  position: relative;
+  background: var(--color-background, #ffffff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 12px;
+  padding: 1.5rem 2rem 2rem;
+  max-width: 640px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.32);
+}
+
+.finalisation-modal__close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 50%;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  font-size: 1.5rem;
+  line-height: 1;
+  transition: background 0.15s, color 0.15s;
+}
+.finalisation-modal__close:hover {
+  background: var(--color-bg-soft, #f1f5f9);
+  color: var(--color-text, #1e293b);
+}
+
+@keyframes finalisation-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 </style>
