@@ -1,0 +1,19 @@
+diff --git a/node_modules/knip/dist/typescript/visitors/helpers.js b/node_modules/knip/dist/typescript/visitors/helpers.js
+index 8a0d023..b8c64e0 100644
+--- a/node_modules/knip/dist/typescript/visitors/helpers.js
++++ b/node_modules/knip/dist/typescript/visitors/helpers.js
+@@ -1,10 +1,12 @@
+-import { parseSync, rawTransferSupported, } from 'oxc-parser';
++import { parseSync } from 'oxc-parser';
+ import { DEFAULT_EXTENSIONS, FIX_FLAGS, SYMBOL_TYPE } from "../../constants.js";
+ import { extname } from "../../util/path.js";
+ import { EMPTY_TAGS } from "./jsdoc.js";
++// PATCH local : disable experimentalRawTransfer (crash 2GB ArrayBuffer alloc
++// fail sur Windows). Le parsing standard (binding) est plus lent mais marche.
+ const defaultParseOptions = {
+     sourceType: 'unambiguous',
+-    experimentalRawTransfer: rawTransferSupported(),
++    experimentalRawTransfer: false,
+ };
+ export const parseFile = (filePath, sourceText) => {
+     const ext = extname(filePath);
