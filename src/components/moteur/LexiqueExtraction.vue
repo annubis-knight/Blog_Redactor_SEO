@@ -7,6 +7,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
+import { sortByPainAlignmentJaccard } from '@/utils/pain-point-jaccard'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
@@ -49,6 +50,16 @@ const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
 const isLocked = ref(props.initialLocked)
 
+// S2 — Toggle « Trier par alignement douleur ».
+// OFF par défaut : ordre TF-IDF pur (rien ne change pour l'utilisateur historique).
+// ON : on re-classe les termes par similarité Jaccard avec le painPoint
+// (calcul pur front, pas d'appel API). Voir src/utils/pain-point-jaccard.ts.
+const sortByPainAlignment = ref(false)
+
+function sortTermsByAlignment<T extends { term: string }>(terms: T[]): T[] {
+  return sortByPainAlignmentJaccard(terms, props.selectedArticle?.painPoint, sortByPainAlignment.value)
+}
+
 // Sprint 11 (D4) — champ saisie libre pour lancer TF-IDF sur un keyword arbitraire.
 const customKeywordInput = ref('')
 // Keyword source actif pour l'extraction courante (capitaine par défaut).
@@ -57,7 +68,7 @@ const activeSourceKeyword = ref<string>('')
 const pastExplorations = ref<LexiqueExplorationEntry[]>([])
 
 // --- IA Upfront Analysis (NOUVEAU) ---
-const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, result: iaRawResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<LexiqueAnalysisResult>()
+const { isStreaming: iaIsStreaming, error: iaError, result: iaRawResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<LexiqueAnalysisResult>()
 const iaResult = computed(() => iaRawResult.value)
 const iaRecommendations = ref<Map<string, LexiqueTermRecommendation>>(new Map())
 
@@ -427,10 +438,26 @@ onUnmounted(() => {
         </span>
       </div>
 
+      <!-- S2 — Toggle de tri par alignement avec la douleur de l'article.
+           Désactivé visuellement et fonctionnellement si pas de painPoint sur l'article. -->
+      <div v-if="selectedArticle?.painPoint" class="lexique-sort-toggle" data-testid="lexique-sort-toggle">
+        <label class="lexique-sort-toggle-label">
+          <input
+            type="checkbox"
+            :checked="sortByPainAlignment"
+            @change="sortByPainAlignment = !sortByPainAlignment"
+          />
+          <span>Trier par alignement avec la douleur de l'article</span>
+        </label>
+        <p class="lexique-sort-toggle-hint">
+          Tri TF-IDF classique par d&eacute;faut. Active pour remonter en t&ecirc;te les termes proches de la douleur.
+        </p>
+      </div>
+
       <!-- Obligatoire (70%+) -->
       <CollapsableSection :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire.length} termes`" :default-open="true">
         <div v-if="tfidfResult.obligatoire.length > 0" class="term-list">
-          <div v-for="term in tfidfResult.obligatoire" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
+          <div v-for="term in sortTermsByAlignment(tfidfResult.obligatoire)" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
             <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
             <span class="term-text">{{ term.term }}</span>
             <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
@@ -446,7 +473,7 @@ onUnmounted(() => {
       <!-- Differenciateur (30-70%) -->
       <CollapsableSection :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur.length} termes`" :default-open="true">
         <div v-if="tfidfResult.differenciateur.length > 0" class="term-list">
-          <div v-for="term in tfidfResult.differenciateur" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
+          <div v-for="term in sortTermsByAlignment(tfidfResult.differenciateur)" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
             <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
             <span class="term-text">{{ term.term }}</span>
             <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
@@ -462,7 +489,7 @@ onUnmounted(() => {
       <!-- Optionnel (<30%) -->
       <CollapsableSection :title="`Optionnel (<30%) — ${tfidfResult.optionnel.length} termes`" :default-open="false">
         <div v-if="tfidfResult.optionnel.length > 0" class="term-list">
-          <div v-for="term in tfidfResult.optionnel" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
+          <div v-for="term in sortTermsByAlignment(tfidfResult.optionnel)" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
             <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
             <span class="term-text">{{ term.term }}</span>
             <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
@@ -919,5 +946,29 @@ onUnmounted(() => {
   background: var(--color-primary, #3b82f6);
   color: white;
   font-weight: 600;
+}
+
+/* S2 — Toggle de tri par alignement douleur (cf. tech-spec sprint 2) */
+.lexique-sort-toggle {
+  margin: 0.5rem 0 1rem;
+  padding: 0.5rem 0.75rem;
+  background: var(--color-surface, #f8fafc);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+}
+.lexique-sort-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  color: var(--color-text, #1e293b);
+  font-weight: 500;
+}
+.lexique-sort-toggle-hint {
+  margin: 0.25rem 0 0 1.5rem;
+  font-size: 0.6875rem;
+  color: var(--color-text-muted, #64748b);
+  font-style: italic;
 }
 </style>

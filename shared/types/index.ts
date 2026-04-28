@@ -177,3 +177,17 @@ export type {
 export type {
   ArticleMicroContext,
 } from './article-micro-context.types.js'
+
+export type {
+  ScoreVerdict,
+  MarketScoreResult,
+  RelevanceScoreInput,
+  RelevanceScoreComponentBreakdown,
+  RelevanceScoreBreakdown,
+  RelevanceScoreResult,
+} from './scoring.types.js'
+
+export {
+  SCORE_VERDICT_THRESHOLDS,
+  verdictFromScore,
+} from './scoring.types.js'

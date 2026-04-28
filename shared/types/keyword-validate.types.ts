@@ -1,5 +1,7 @@
 // --- Keyword Validation / Scoring Types (Story 6.2) ---
 
+import type { MarketScoreResult, RelevanceScoreResult } from './scoring.types.js'
+
 export type ArticleLevel = 'pilier' | 'intermediaire' | 'specifique'
 
 export type KpiColor = 'green' | 'orange' | 'red' | 'neutral' | 'bonus'
@@ -41,6 +43,16 @@ export interface ValidateResponse {
   fromCache: boolean
   cachedAt: string | null
   paaQuestions?: PaaQuestionValidate[]
+  /**
+   * Score KPI / Marché (0-100) — calculé à partir de Volume / KD / Intent / PAA / AC / CPC.
+   * Affiché dans l'onglet Radar. Cf. docs/scoring-kpi-vs-relevance.md.
+   */
+  marketScore?: MarketScoreResult
+  /**
+   * Score de Pertinence (0-100) — calculé à partir des signaux d'alignement douleur.
+   * Affiché dans l'onglet Capitaine. `null` si painPoint absent ou cache radar non disponible.
+   */
+  relevanceScore?: RelevanceScoreResult | null
 }
 
 export interface ThresholdConfig {

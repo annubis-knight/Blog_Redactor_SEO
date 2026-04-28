@@ -3,6 +3,11 @@ import { log } from '../utils/logger.js'
 import { fetchKeywordOverview, fetchSearchIntentBatch } from '../services/external/dataforseo.service.js'
 import { respondWithError } from '../utils/api-error.js'
 import { saveCaptainExploration } from '../services/infra/data.service.js'
+import { getRadarExploration } from '../services/infra/radar-exploration.service.js'
+import { computeMarketScore } from '../../shared/scoring-kpi.js'
+import { computeRelevanceScore } from '../../shared/scoring.js'
+import type { RadarKeywordKpis, RadarCard } from '../../shared/types/intent.types.js'
+import type { RelevanceScoreResult } from '../../shared/types/scoring.types.js'
 import type { CaptainValidationEntry } from '../../shared/types/keyword.types.js'
 import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
 import {
@@ -11,7 +16,7 @@ import {
   upsertKeywordPaa,
   isKeywordMetricsFresh,
 } from '../services/keyword/keyword-metrics.service.js'
-import { getThresholds, scoreKpi, computeVerdict, computeIntentScore } from '../services/keyword/keyword-validate.service.js'
+import { getThresholds, scoreKpi, computeVerdict } from '../services/keyword/keyword-validate.service.js'
 import {
   fetchSerpAdvanced,
   extractPaaFromSerp,
@@ -156,6 +161,48 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       matchQuality: matchedPaaItems[idx].matchQuality,
     }))
 
+    // ----- Score KPI / Marché — toujours calculé (séparation KPI vs Pertinence, V1) -----
+    const kpisForMarket: RadarKeywordKpis = {
+      searchVolume: rawVolume ?? 0,
+      difficulty: rawKd ?? 0,
+      cpc: rawCpc ?? 0,
+      competition: rawCompetition ?? 0,
+      intentTypes: [],
+      intentProbability: rawIntentScore,
+      autocompleteMatchCount: autocompletePosition >= 0 ? autocompletePosition + 1 : 0,
+      paaMatchCount: matchedPaaItems.filter(p => p.match !== 'none').length,
+      paaWeightedScore: computePaaWeightedScore(matchedPaaItems),
+      paaTotal: paaQuestionsRaw.length,
+      avgSemanticScore: null,
+    }
+    const marketScore = computeMarketScore(kpisForMarket, articleLevel)
+
+    // ----- Score de Pertinence — opportuniste depuis cache radar -----
+    let relevanceScore: RelevanceScoreResult | null = null
+    if (typeof articleId === 'number' && Number.isFinite(articleId)) {
+      try {
+        const radar = await getRadarExploration(articleId)
+        const matchingCard = radar?.scanResult?.cards?.find((c: RadarCard) => c.keyword === keyword)
+        if (matchingCard) {
+          const k = matchingCard.kpis
+          const hasPainSignal =
+            k.painAlignmentScore != null ||
+            (matchingCard.scoreBreakdown?.paaMatchScore != null && matchingCard.scoreBreakdown.paaMatchScore > 0)
+          if (hasPainSignal) {
+            relevanceScore = computeRelevanceScore({
+              painAlignmentScore: k.painAlignmentScore ?? null,
+              paaPainAlignmentAvg: matchingCard.scoreBreakdown?.paaMatchScore ?? null,
+              autocompletePainAlignmentAvg: matchingCard.scoreBreakdown?.resonanceBonus ?? null,
+              rootsAverageScore: null,
+              intentTypes: k.intentTypes,
+            })
+          }
+        }
+      } catch (lookupErr) {
+        log.warn(`[validate] relevance lookup failed: ${(lookupErr as Error).message}`)
+      }
+    }
+
     const response: ValidateResponse = {
       keyword,
       articleLevel,
@@ -164,6 +211,8 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       fromCache: hitDb,
       cachedAt: hitDb ? (cachedMetrics?.fetchedAt ?? null) : null,
       paaQuestions: paaForResponse.length > 0 ? paaForResponse : undefined,
+      marketScore,
+      relevanceScore,
     }
 
     log.info(`Validate done for "${keyword}": ${verdict.level} (${verdict.greenCount}/${verdict.totalKpis} verts) [hitDb=${hitDb}]`)

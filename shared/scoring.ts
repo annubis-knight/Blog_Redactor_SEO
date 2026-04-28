@@ -1,4 +1,10 @@
 import type { RadarCombinedScoreBreakdown, RadarIntentType } from './types/intent.types.js'
+import {
+  verdictFromScore,
+  type RelevanceScoreInput,
+  type RelevanceScoreResult,
+  type RelevanceScoreBreakdown,
+} from './types/scoring.types.js'
 
 export interface CombinedScoreInput {
   searchVolume: number
@@ -138,5 +144,152 @@ export function computeCombinedScore(input: CombinedScoreInput): RadarCombinedSc
     cpcScore: Math.round(cpcScore),
     painAlignmentScore: Math.round(painAlignmentScore),
     total: Math.min(100, Math.max(0, total)),
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Score de Pertinence — onglet Capitaine (séparation KPI vs Pertinence, 2026-04-28)
+// ---------------------------------------------------------------------------
+
+/**
+ * Pondération cible du Score de Pertinence.
+ *
+ * Réponse à : "Ce mot-clé parle-t-il VRAIMENT de la douleur de mon article ?"
+ * Aucun signal de marché brut (volume / KD / CPC) ici — ils vivent dans `computeMarketScore`.
+ */
+const RELEVANCE_WEIGHTS_TARGET = {
+  painKeyword: 0.30,
+  paaPain:     0.25,
+  acPain:      0.15,
+  roots:       0.20,
+  intentPain:  0.10,
+} as const
+
+type RelevanceIntentType = NonNullable<RelevanceScoreInput['intentTypes']>[number]
+type RelevancePainType = NonNullable<RelevanceScoreInput['painType']>
+
+/**
+ * Mapping qualitatif intent × douleur → score 0-100.
+ * Si pas de painType ou pas d'intentTypes → 50 neutre.
+ */
+function computeIntentPainAlignment(
+  intentTypes: RelevanceIntentType[] | undefined,
+  painType: RelevancePainType | undefined,
+): number {
+  if (!painType || !intentTypes || intentTypes.length === 0) return 50
+
+  const matrix: Record<RelevancePainType, Record<RelevanceIntentType, number>> = {
+    commercial: {
+      commercial:    100,
+      transactional: 80,
+      informational: 30,
+      navigational:  20,
+    },
+    transactional: {
+      transactional: 100,
+      commercial:    80,
+      informational: 30,
+      navigational:  20,
+    },
+    informational: {
+      informational: 100,
+      commercial:    50,
+      transactional: 40,
+      navigational:  30,
+    },
+    navigational: {
+      navigational:  100,
+      commercial:    60,
+      transactional: 50,
+      informational: 40,
+    },
+  }
+
+  return Math.max(...intentTypes.map(t => matrix[painType][t] ?? 50))
+}
+
+/**
+ * Calcule le Score de Pertinence (0-100) — affiché dans l'onglet Capitaine.
+ *
+ * Composantes :
+ *   - Pain alignment keyword            30 %
+ *   - PAA × douleur (qualité)           25 %
+ *   - Autocomplete × douleur (qualité)  15 %
+ *   - Racines (cohérence sémantique)    20 %
+ *   - Intent × douleur                  10 %
+ *
+ * Fallback racines : si `rootsAverageScore` est absent (keyword < 3 mots ou
+ * pas de racines pré-validées), les 20 % sont redistribués proportionnellement
+ * sur les 4 autres composantes.
+ *
+ * Composantes manquantes (paaPain, acPain, painAlignmentScore) → neutralisées à 50.
+ */
+export function computeRelevanceScore(input: RelevanceScoreInput): RelevanceScoreResult {
+  const painKeywordNorm = clampScore(input.painAlignmentScore, 50)
+  const paaPainNorm = clampScore(input.paaPainAlignmentAvg, 50)
+  const acPainNorm = clampScore(input.autocompletePainAlignmentAvg, 50)
+  const intentPainNorm = computeIntentPainAlignment(input.intentTypes, input.painType)
+
+  const hasRoots = input.rootsAverageScore != null
+  const rootsNorm = hasRoots ? clampScore(input.rootsAverageScore, 50) : 0
+
+  const weights: { painKeyword: number; paaPain: number; acPain: number; roots: number; intentPain: number } = {
+    painKeyword: RELEVANCE_WEIGHTS_TARGET.painKeyword,
+    paaPain:     RELEVANCE_WEIGHTS_TARGET.paaPain,
+    acPain:      RELEVANCE_WEIGHTS_TARGET.acPain,
+    roots:       RELEVANCE_WEIGHTS_TARGET.roots,
+    intentPain:  RELEVANCE_WEIGHTS_TARGET.intentPain,
+  }
+  if (!hasRoots) {
+    const remaining = 1 - RELEVANCE_WEIGHTS_TARGET.roots
+    const factor = 1 / remaining
+    weights.painKeyword = RELEVANCE_WEIGHTS_TARGET.painKeyword * factor
+    weights.paaPain     = RELEVANCE_WEIGHTS_TARGET.paaPain * factor
+    weights.acPain      = RELEVANCE_WEIGHTS_TARGET.acPain * factor
+    weights.roots       = 0
+    weights.intentPain  = RELEVANCE_WEIGHTS_TARGET.intentPain * factor
+  }
+
+  const breakdown: RelevanceScoreBreakdown = {
+    painKeyword: makeComponent(weights.painKeyword, painKeywordNorm),
+    paaPain:     makeComponent(weights.paaPain, paaPainNorm),
+    acPain:      makeComponent(weights.acPain, acPainNorm),
+    roots:       makeComponent(weights.roots, rootsNorm),
+    intentPain:  makeComponent(weights.intentPain, intentPainNorm),
+  }
+
+  const total = Math.round(
+    breakdown.painKeyword.contribution +
+    breakdown.paaPain.contribution +
+    breakdown.acPain.contribution +
+    breakdown.roots.contribution +
+    breakdown.intentPain.contribution,
+  )
+
+  const clampedTotal = Math.min(100, Math.max(0, total))
+
+  return {
+    total: clampedTotal,
+    verdict: verdictFromScore(clampedTotal),
+    breakdown,
+    rootsContext: {
+      rootsAverageScore: hasRoots ? rootsNorm : null,
+      fallbackApplied: !hasRoots,
+    },
+  }
+}
+
+export { verdictFromScore }
+
+function clampScore(value: number | null | undefined, fallback: number): number {
+  if (value == null || Number.isNaN(value)) return fallback
+  return Math.max(0, Math.min(100, value))
+}
+
+function makeComponent(weight: number, normalized: number) {
+  return {
+    weight,
+    normalized,
+    contribution: weight * normalized,
   }
 }

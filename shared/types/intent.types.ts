@@ -1,4 +1,5 @@
 import type { ValidateResponse } from './keyword-validate.types.js'
+import type { MarketScoreResult, RelevanceScoreResult } from './scoring.types.js'
 
 // --- SERP Module Detection (Epic 11) ---
 
@@ -274,6 +275,10 @@ export interface RadarCard {
   combinedScore: number
   scoreBreakdown: RadarCombinedScoreBreakdown
   cachedPaa: boolean
+  /** Score KPI / Marché (0-100). Optionnel pour rétro-compatibilité. */
+  marketScore?: MarketScoreResult
+  /** Score de Pertinence (0-100). null si painPoint absent. Optionnel pour rétro-compat. */
+  relevanceScore?: RelevanceScoreResult | null
 }
 
 export interface KeywordRootVariant {

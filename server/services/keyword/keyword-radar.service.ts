@@ -18,7 +18,9 @@ import {
 } from '../intent/intent-scan.service.js'
 import { readPaaCache, writePaaCache } from '../infra/paa-cache.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
-import { computeCombinedScore } from '../../../shared/scoring.js'
+import { computeCombinedScore, computeRelevanceScore } from '../../../shared/scoring.js'
+import { computeMarketScore } from '../../../shared/scoring-kpi.js'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type {
   KeywordRadarGenerateResult,
   RadarKeyword,
@@ -413,7 +415,26 @@ export async function scanRadarKeywords(
       paaPainAlignmentAvg: paaPainAvg,
       autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? undefined,
     })
-    log.debug(`[Radar] Card "${kw.keyword}": score=${scoreBreakdown.total}, PAA=${kpis.paaMatchCount}/${kpis.paaTotal}, vol=${kpis.searchVolume}, intent=${kpis.intentTypes.join(',') || 'unknown'}`)
+
+    // Séparation KPI vs Pertinence (V1) — chaque card embarque les deux scores
+    const radarLevel: ArticleLevel = 'intermediaire'
+    const marketScore = computeMarketScore(kpis, radarLevel)
+    let relevanceScore = null
+    const hasPainSignal = !!painPoint && (
+      painAlignmentScore != null ||
+      paaPainAvg != null ||
+      autocompletePainAlignmentAvg != null
+    )
+    if (hasPainSignal) {
+      relevanceScore = computeRelevanceScore({
+        painAlignmentScore: painAlignmentScore ?? null,
+        paaPainAlignmentAvg: paaPainAvg ?? null,
+        autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? null,
+        rootsAverageScore: null,
+        intentTypes: kpis.intentTypes,
+      })
+    }
+    log.debug(`[Radar] Card "${kw.keyword}": combined=${scoreBreakdown.total}, market=${marketScore.total}, relevance=${relevanceScore?.total ?? 'n/a'}`)
 
     cards.push({
       keyword: kw.keyword,
@@ -423,6 +444,8 @@ export async function scanRadarKeywords(
       combinedScore: scoreBreakdown.total,
       scoreBreakdown,
       cachedPaa: paaData.fromCache,
+      marketScore,
+      relevanceScore,
     })
   }
 

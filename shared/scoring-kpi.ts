@@ -1,6 +1,7 @@
 import type { ArticleLevel } from './types/keyword-validate.types.js'
 import type { RadarIntentType, RadarKeywordKpis } from './types/intent.types.js'
 import { getThresholds, scoreKpi } from './kpi-scoring.js'
+import { verdictFromScore, type MarketScoreResult } from './types/scoring.types.js'
 
 export interface KpiScoreComponent {
   name: 'volume' | 'kd' | 'cpc' | 'intent' | 'paa' | 'autocomplete'
@@ -16,13 +17,27 @@ export interface KpiScoreBreakdown {
   components: KpiScoreComponent[]
 }
 
+/**
+ * Pondération du Score KPI / Marché (cf. docs/scoring-kpi-vs-relevance.md).
+ *
+ *   Volume       30 %   ← cœur du marché
+ *   KD           20 %   ← filtre de difficulté SEO
+ *   Intent       15 %   ← type d'intent (pas l'alignement douleur)
+ *   PAA          10 %   ← QUANTITÉ de questions PAA (pas la qualité)
+ *   Autocomplete 10 %   ← QUANTITÉ de matches (pas la qualité)
+ *   CPC          10 %   ← proxy valeur commerciale
+ *
+ * Total = 95 %, score plafonné à 100. Le 5 % laisse une marge symbolique.
+ * Les signaux d'alignement avec le point de douleur n'apparaissent PAS ici —
+ * ils vivent dans `computeRelevanceScore` (shared/scoring.ts).
+ */
 const WEIGHTS = {
   volume:       0.30,
-  kd:           0.25,
-  cpc:          0.15,
+  kd:           0.20,
   intent:       0.15,
   paa:          0.10,
-  autocomplete: 0.05,
+  autocomplete: 0.10,
+  cpc:          0.10,
 } as const
 
 function normalizeFromColor(color: KpiScoreComponent['color']): number {
@@ -71,4 +86,19 @@ export function computeKpiScore(kpis: RadarKeywordKpis, level: ArticleLevel): Kp
   )
 
   return { total, components }
+}
+
+/**
+ * Score KPI / Marché (0-100) prêt à être consommé par le frontend onglet Radar.
+ *
+ * Wrapper sur `computeKpiScore` qui ajoute un verdict (GO / ORANGE / NOGO).
+ * Le verdict est purement informatif : il NE bloque PAS la progression du moteur.
+ */
+export function computeMarketScore(kpis: RadarKeywordKpis, level: ArticleLevel): MarketScoreResult {
+  const breakdown = computeKpiScore(kpis, level)
+  return {
+    total: breakdown.total,
+    verdict: verdictFromScore(breakdown.total),
+    components: breakdown.components,
+  }
 }

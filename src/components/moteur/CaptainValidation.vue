@@ -80,7 +80,7 @@ onBeforeUnmount(() => {
 })
 
 const {
-  result, currentResult, isLoading, error,
+  currentResult, isLoading, error,
   history, historyIndex, rootResult, isLoadingRoot,
   radarCard, isLoadingRadar,
   validateKeyword, navigateHistory, reset,
@@ -253,6 +253,11 @@ watch(
       `/api/keywords/${encodeURIComponent(res.keyword)}/ai-panel`,
       {
         level: res.articleLevel,
+        articleId: props.selectedArticle?.id,
+        marketScore: res.marketScore,
+        relevanceScore: res.relevanceScore,
+        // Champs legacy conservés pour rétro-compat — le prompt refondu (S1) ne les utilise plus
+        // mais d'autres consommateurs éventuels du body peuvent encore les attendre.
         kpis: res.kpis.map((k: KpiResult) => ({ name: k.name, color: k.color, label: k.label })),
         verdict: { level: res.verdict.level, greenCount: res.verdict.greenCount, totalKpis: res.verdict.totalKpis },
       },
@@ -432,7 +437,7 @@ function touchAiCache() { carouselAiCache.value = new Map(carouselAiCache.value)
 function touchAiStreaming() { carouselAiStreaming.value = new Set(carouselAiStreaming.value) }
 function touchAiErrors() { carouselAiErrors.value = new Map(carouselAiErrors.value) }
 
-function launchAiStream(keyword: string, validation: { keyword: string; articleLevel: string; kpis: KpiResult[]; verdict: { level: string; greenCount: number; totalKpis: number } }, force = false) {
+function launchAiStream(keyword: string, validation: ValidateResponse, force = false) {
   // Sprint 3.2 — `force` allows the regenerate button to bypass the in-memory
   // cache and re-stream from Claude. We also drop the persistedAiPanels guard
   // so the new markdown is re-saved.
@@ -450,6 +455,10 @@ function launchAiStream(keyword: string, validation: { keyword: string; articleL
   const url = `/api/keywords/${encodeURIComponent(validation.keyword)}/ai-panel`
   const body = {
     level: validation.articleLevel,
+    articleId: props.selectedArticle?.id,
+    marketScore: validation.marketScore,
+    relevanceScore: validation.relevanceScore,
+    // Champs legacy conservés pour rétro-compat — cf. S1.
     kpis: validation.kpis.map((k: KpiResult) => ({ name: k.name, color: k.color, label: k.label })),
     verdict: { level: validation.verdict.level, greenCount: validation.verdict.greenCount, totalKpis: validation.verdict.totalKpis },
   }
@@ -547,12 +556,7 @@ function handleAiRegenerate() {
   if (!entry?.validation) return
   const kw = entry.card.keyword
   log.info('[CaptainValidation] AI panel regenerate requested', { keyword: kw })
-  launchAiStream(kw, {
-    keyword: entry.validation.keyword,
-    articleLevel: entry.validation.articleLevel,
-    kpis: entry.validation.kpis,
-    verdict: entry.validation.verdict,
-  }, true)
+  launchAiStream(kw, entry.validation, true)
 }
 
 watch(
@@ -638,12 +642,7 @@ watch(
 
       // Launch AI stream if not cached/streaming
       if (!carouselAiCache.value.has(kw) && !carouselAiStreaming.value.has(kw)) {
-        launchAiStream(kw, {
-          keyword: entry.validation.keyword,
-          articleLevel: entry.validation.articleLevel,
-          kpis: entry.validation.kpis,
-          verdict: entry.validation.verdict,
-        })
+        launchAiStream(kw, entry.validation)
       }
 
       // Persist captain validation entry (once per keyword)
@@ -720,10 +719,6 @@ function carouselEffectiveVerdict(entry: CarouselEntry): VerdictLevel | null {
   return carousel.effectiveVerdict(entry)
 }
 
-function carouselVerdictLabel(entry: CarouselEntry): string {
-  if (!entry.validation) return ''
-  return getVerdictLabel(entry.validation.verdict)
-}
 
 // Étape 3F — Mini résumé verdict injecté dans CaptainAiPanel à la place
 // du CaptainVerdictPanel (qui prenait toute la largeur). On garde l'info

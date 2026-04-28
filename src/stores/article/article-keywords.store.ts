@@ -112,10 +112,12 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     isSuggestingLexique.value = true
     error.value = null
     try {
+      // S2 — articleId transmis pour que le backend récupère le painPoint et l'injecte dans le prompt.
       const result = await apiPost<{ lexique: string[] }>('/keywords/lexique-suggest', {
         capitaine: keywords.value.capitaine,
         articleTitle,
         cocoonName,
+        articleId,
       })
       if (keywords.value) {
         keywords.value.lexique = result.lexique
