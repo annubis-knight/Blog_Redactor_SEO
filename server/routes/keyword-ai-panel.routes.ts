@@ -5,9 +5,26 @@ import type { ApiUsage } from '../services/external/claude.service.js'
 import { parseAiJson } from '../utils/ai-json-parser.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
+import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
+
+/**
+ * Formate un score (number ou objet `{ total, verdict }`) pour l'injection dans un prompt.
+ * Tolérant : retourne `(non disponible)` si le score n'est pas exploitable.
+ */
+function formatScoreForPrompt(score: unknown): string {
+  if (score == null) return '(non disponible)'
+  if (typeof score === 'number') return `${Math.round(score)}/100`
+  if (typeof score === 'object' && score !== null && 'total' in score) {
+    const obj = score as { total?: number; verdict?: string }
+    if (typeof obj.total === 'number') {
+      return obj.verdict ? `${obj.total}/100 (${obj.verdict})` : `${obj.total}/100`
+    }
+  }
+  return '(non disponible)'
+}
 
 const router = Router()
 
@@ -38,7 +55,12 @@ async function consumeStream(
  */
 router.post('/keywords/:keyword/ai-panel', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  const { level, kpis, verdict, cocoonSlug } = req.body
+  // 2026-04-28 — Refonte prompt Capitaine (S1) :
+  // - injection painPoint (depuis articleId si fourni, sinon fallback)
+  // - injection marketScore + relevanceScore (cf. tech-spec score-kpi-pertinence-separation)
+  // Backward-compat : `verdict` et `kpis` legacy continuent d'être acceptés mais ne sont plus injectés
+  // dans le prompt — le nouveau prompt s'appuie sur les deux scores séparés.
+  const { level, articleId, marketScore, relevanceScore, cocoonSlug } = req.body
 
   if (!keyword || !level) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword and level are required' } })
@@ -49,22 +71,16 @@ router.post('/keywords/:keyword/ai-panel', async (req, res) => {
 
   try {
     const startTotal = Date.now()
-    // Build KPI summary for prompt context
-    const kpisSummary = Array.isArray(kpis)
-      ? kpis.map((k: { name: string; color: string; label: string }) => `${k.name}: ${k.label} (${k.color})`).join(', ')
-      : 'KPIs non disponibles'
-
-    const verdictSummary = verdict
-      ? `${verdict.level} (${verdict.greenCount}/${verdict.totalKpis} verts)`
-      : 'Verdict non disponible'
+    const painPoint = await getArticlePainPoint(articleId)
 
     const systemPrompt = await loadPrompt('capitaine-ai-panel', {
       keyword,
       level,
-      verdict: verdictSummary,
-      kpis_summary: kpisSummary,
+      painPoint,
+      marketScore: formatScoreForPrompt(marketScore),
+      relevanceScore: formatScoreForPrompt(relevanceScore),
     }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('ai-panel prompt built', { keyword, promptChars: systemPrompt.length })
+    log.debug('ai-panel prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
     // SSE headers
     res.writeHead(200, {
@@ -101,7 +117,7 @@ router.post('/keywords/:keyword/ai-panel', async (req, res) => {
  */
 router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  const { lieutenants, level, hnStructure, cocoonSlug } = req.body
+  const { lieutenants, level, hnStructure, articleId, cocoonSlug } = req.body
 
   if (!keyword || !level || !Array.isArray(lieutenants) || lieutenants.length === 0) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword, level, and non-empty lieutenants are required' } })
@@ -116,13 +132,16 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
       ? hnStructure.map((h: { level: number; text: string; count: number }) => `H${h.level}: ${h.text} (${h.count}x)`).join('\n')
       : 'Aucune donnee de structure concurrente'
 
+    // S1 — injection painPoint depuis articleId (best-effort)
+    const painPoint = await getArticlePainPoint(articleId)
     const systemPrompt = await loadPrompt('lieutenants-hn-structure', {
       keyword,
       level,
+      painPoint,
       lieutenants: lieutenants.join(', '),
       hn_structure: hnSummary,
     }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0 })
+    log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
     // SSE headers
     res.writeHead(200, {
@@ -251,9 +270,12 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
     }
 
     const startPrompt = Date.now()
+    // S1 — injection painPoint depuis articleId (best-effort, fallback "(non défini)")
+    const painPoint = await getArticlePainPoint(articleId)
     const systemPrompt = await loadPrompt('propose-lieutenants', {
       keyword,
       level,
+      painPoint,
       paa_questions: paaFormatted,
       hn_recurrence: hnFormatted,
       serp_competitors: competitorsFormatted,
@@ -262,7 +284,7 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
       root_keywords: Array.isArray(rootKeywords) && rootKeywords.length > 0 ? rootKeywords.join(', ') : 'Aucune racine disponible',
       existing_lieutenants: existingLieutenants.length > 0 ? existingLieutenants.join(', ') : 'Aucun (premier article du cocon)',
     }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('propose-lieutenants prompt built', { keyword, promptChars: systemPrompt.length, ms: Date.now() - startPrompt })
+    log.debug('propose-lieutenants prompt built', { keyword, promptChars: systemPrompt.length, ms: Date.now() - startPrompt, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
     // SSE headers
     res.writeHead(200, {
@@ -350,7 +372,7 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
  */
 router.post('/keywords/:keyword/ai-lexique', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  const { level, lexiqueTerms, cocoonSlug } = req.body
+  const { level, lexiqueTerms, articleId, cocoonSlug } = req.body
 
   if (!keyword || !level) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword and level are required' } })
@@ -374,14 +396,17 @@ router.post('/keywords/:keyword/ai-lexique', async (req, res) => {
 
   try {
     const startTotal = Date.now()
+    // S1 — injection painPoint depuis articleId (best-effort)
+    const painPoint = await getArticlePainPoint(articleId)
     const systemPrompt = await loadPrompt('lexique-ai-panel', {
       keyword,
       level,
+      painPoint,
       obligatoire_terms: lexiqueTerms.obligatoire?.join(', ') || 'aucun',
       differenciateur_terms: lexiqueTerms.differenciateur?.join(', ') || 'aucun',
       optionnel_terms: lexiqueTerms.optionnel?.join(', ') || 'aucun',
     }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('lexique prompt built', { keyword, promptChars: systemPrompt.length })
+    log.debug('lexique prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
     // SSE headers
     res.writeHead(200, {
@@ -445,14 +470,17 @@ router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
 
   try {
     const startTotal = Date.now()
+    // S1 — injection painPoint depuis articleId (best-effort)
+    const painPoint = await getArticlePainPoint(articleId)
     const systemPrompt = await loadPrompt('lexique-analysis-upfront', {
       keyword,
       level,
+      painPoint,
       obligatoire_terms: allTerms.obligatoire?.join(', ') || 'aucun',
       differenciateur_terms: allTerms.differenciateur?.join(', ') || 'aucun',
       optionnel_terms: allTerms.optionnel?.join(', ') || 'aucun',
     }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('lexique-upfront prompt built', { keyword, promptChars: systemPrompt.length })
+    log.debug('lexique-upfront prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
     // SSE headers
     res.writeHead(200, {

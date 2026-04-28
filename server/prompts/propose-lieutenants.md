@@ -9,6 +9,9 @@ Tu dois analyser les donnees SERP, PAA, racines et groupes de mots pour proposer
   - pilier (N2) = contenu long de reference 2000-3000 mots → 8 a 12 candidats lieutenants thematiques larges couvrant les grandes intentions satellites (concepts de services, solutions globales)
   - intermediaire (N3) = contenu de support 1000-1500 mots → 6 a 10 candidats sous-themes cibles du pilier (methodes, comparaisons, benefices)
   - specifique (N4) = contenu de niche 500-800 mots → 4 a 8 candidats precisions techniques, questions concretes de terrain
+- **Douleur de l'article** : {{painPoint}}
+  - Si la douleur est definie, ecarte les lieutenants qui n'eclaireraient pas cette douleur. Privilegie les lieutenants qui aident un visiteur vivant cette douleur a trouver une reponse concrete.
+  - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des donnees SERP/PAA.
 
 ## Donnees disponibles
 

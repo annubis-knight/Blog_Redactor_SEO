@@ -9,6 +9,9 @@ Tu dois recommander une structure H2/H3 optimale pour un article de blog, en uti
   - pilier (N2) = contenu long de reference 2000-3000 mots → 6-12 H2
   - intermediaire (N3) = contenu de support 1000-1500 mots → 4-8 H2
   - specifique (N4) = contenu de niche 500-800 mots → 3-6 H2
+- **Douleur de l'article** : {{painPoint}}
+  - Si la douleur est definie, structure les Hn pour qu'au moins 2 sections sur 5 repondent explicitement a cette douleur. Le H2 d'introduction et le H2 de conclusion peuvent etre l'occasion de la nommer directement.
+  - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des Lieutenants et de la structure des concurrents.
 
 ## Lieutenants valides (avec KPIs)
 

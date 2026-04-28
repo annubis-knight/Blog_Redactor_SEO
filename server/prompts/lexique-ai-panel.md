@@ -6,6 +6,9 @@ Tu dois analyser le champ lexical extrait par TF-IDF des concurrents SERP et fou
 
 - **Mot-cle principal (Capitaine)** : {{keyword}}
 - **Niveau d'article** : {{level}} (pilier = contenu long de reference, intermediaire = contenu de support, specifique = contenu de niche)
+- **Douleur de l'article** : {{painPoint}}
+  - Si la douleur est definie, favorise les termes que des personnes vivant cette douleur emploieraient naturellement. Identifie les angles morts lexicaux specifiques a cette douleur.
+  - Si la douleur est marquee « (non defini) », analyse classique TF-IDF sans filtre douleur.
 
 ### Termes extraits par niveau
 

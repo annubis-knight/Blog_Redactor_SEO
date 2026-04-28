@@ -4,6 +4,7 @@ Tu es un expert en SEO sémantique et LSI (Latent Semantic Indexing).
 - **Mot-clé principal (Capitaine)** : {{capitaine}}
 - **Article** : {{articleTitle}}
 - **Cocon sémantique** : {{cocoonName}}
+- **Douleur de l'article** : {{painPoint}}
 
 ## Instructions
 
@@ -14,6 +15,7 @@ Ces termes doivent :
 2. Apparaître fréquemment dans les pages web bien positionnées sur ce mot-clé
 3. Enrichir le champ lexical de l'article sans être des synonymes directs
 4. Inclure un mélange de : termes techniques, expressions courantes, entités nommées pertinentes
+5. Si la douleur est définie, favorise les termes qu'une personne vivant cette douleur emploierait naturellement (verbatim, vocabulaire d'usage). Si la douleur est marquée « (non défini) », ignore cette consigne.
 
 ## Format de sortie
 

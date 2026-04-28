@@ -332,7 +332,7 @@ router.post('/articles/:id/lieutenant-explorations', async (req, res) => {
   try {
     const { entries, captainKeyword } = req.body as { entries: unknown[]; captainKeyword: string }
     if (!entries || !Array.isArray(entries)) { res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'entries array is required' } }); return }
-    const dbOp = await saveLieutenantExplorations(id, entries as any[], captainKeyword ?? '')
+    const dbOp = await saveLieutenantExplorations(id, entries as Parameters<typeof saveLieutenantExplorations>[1], captainKeyword ?? '')
     res.json({ data: { success: true }, dbOps: [dbOp] })
   } catch (err) {
     log.error(`POST /api/articles/${id}/lieutenant-explorations — ${(err as Error).message}`)
@@ -389,7 +389,7 @@ router.post('/keywords/migrate/:cocoonName/apply', async (req, res) => {
 /** POST /api/keywords/lexique-suggest — Suggest lexique for an article */
 router.post('/keywords/lexique-suggest', async (req, res) => {
   try {
-    const { capitaine, articleTitle, cocoonName } = req.body as { capitaine: string; articleTitle: string; cocoonName: string }
+    const { capitaine, articleTitle, cocoonName, articleId } = req.body as { capitaine: string; articleTitle: string; cocoonName: string; articleId?: number }
     if (!capitaine) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'capitaine is required' } })
       return
@@ -397,15 +397,20 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
 
     const { loadPrompt } = await import('../utils/prompt-loader.js')
     const { collectStreamWithUsage } = await import('../utils/stream-usage.js')
+    const { getArticlePainPoint } = await import('../services/queries/article-pain-point.service.js')
 
     const cocoonSlug = cocoonName
       ? cocoonName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
       : undefined
 
+    // S1 — injection painPoint depuis articleId (best-effort)
+    const painPoint = await getArticlePainPoint(articleId)
+
     const prompt = await loadPrompt('lexique-suggest', {
       capitaine,
       articleTitle: articleTitle || '',
       cocoonName: cocoonName || '',
+      painPoint,
     }, cocoonSlug ? { cocoonSlug } : undefined)
 
     const { text: content, usage } = await collectStreamWithUsage(prompt, `Génère le lexique LSI pour le mot-clé "${capitaine}".`, 1024)

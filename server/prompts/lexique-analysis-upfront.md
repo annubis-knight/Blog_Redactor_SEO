@@ -6,6 +6,9 @@ Tu dois analyser TOUS les termes TF-IDF extraits des concurrents et donner une r
 
 - **Mot-cle principal (Capitaine)** : {{keyword}}
 - **Niveau d'article** : {{level}} (pilier = contenu long de reference, intermediaire = contenu de support, specifique = contenu de niche)
+- **Douleur de l'article** : {{painPoint}}
+  - Si la douleur est definie, recommande en priorite les termes qu'une personne vivant cette douleur emploierait. Un terme TF-IDF eleve mais hors-sujet par rapport a la douleur peut etre exclu.
+  - Si la douleur est marquee « (non defini) », recommandation classique sur la base TF-IDF.
 
 ### Termes extraits par niveau
 
