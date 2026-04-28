@@ -293,3 +293,117 @@ function makeComponent(weight: number, normalized: number) {
     contribution: weight * normalized,
   }
 }
+
+// ---------------------------------------------------------------------------
+// Score racines — Sprint S4 (gestion fine doublons / divergence / absence)
+// ---------------------------------------------------------------------------
+
+export interface RootScoreInput {
+  /** keyword de la racine + son score relevance individuel (0-100). */
+  keyword: string
+  relevance: number
+}
+
+export interface RootsRelevanceResult {
+  /** Score 0-100 à injecter dans `RelevanceScoreInput.rootsAverageScore`. */
+  total: number
+  /** Nombre de racines avant déduplication. */
+  rootsCount: number
+  /** Nombre de racines uniques après détection des doublons. */
+  uniqueRootsCount: number
+  /** Liste des paires (kw1, kw2) considérées comme doublons. */
+  duplicates: Array<{ a: string; b: string; jaccard: number }>
+}
+
+/** Seuil Jaccard au-delà duquel deux racines sont considérées comme doublons. */
+export const ROOTS_DUPLICATE_THRESHOLD = 0.75
+
+/**
+ * Jaccard lexical entre deux strings normalisées (lowercase, sans accents,
+ * tokens ≥ 4 caractères pour ignorer les stopwords courts).
+ * Sortie ∈ [0, 1].
+ */
+function jaccardLexical(a: string, b: string): number {
+  const tokenize = (s: string) =>
+    s.toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/[^a-z0-9\s]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 4)
+  const setA = new Set(tokenize(a))
+  const setB = new Set(tokenize(b))
+  if (setA.size === 0 || setB.size === 0) return 0
+  let inter = 0
+  for (const w of setA) if (setB.has(w)) inter++
+  return inter / (setA.size + setB.size - inter)
+}
+
+/**
+ * Calcule le Score Racines pour le `relevanceScore` (Sprint S4).
+ *
+ * Trois cas explicites distingués :
+ *   🟢 Cas 1 — racines diverses + fortes : score = moyenne des relevances individuelles
+ *   🟡 Cas 2 — doublons détectés (Jaccard ≥ 0.75) : on déduplique en gardant
+ *               le meilleur scorant de chaque cluster, puis on calcule la moyenne
+ *               sur les uniques. Cela évite de gonfler artificiellement le score
+ *               racines avec des variantes redondantes.
+ *   ⚫ Cas 3 — liste vide : retourne null (le caller laisse `computeRelevanceScore`
+ *               appliquer le fallback de redistribution proportionnelle).
+ *
+ * Stratégie de détection (Piste 3 hybride — décision produit S4-1) :
+ *   - Jaccard lexical d'abord (rapide, pas d'appel embedding).
+ *   - Le seuil ROOTS_DUPLICATE_THRESHOLD vit en constante exportée pour pouvoir
+ *     l'ajuster sans toucher la logique.
+ *
+ * Note : la version V1 ne fait QUE du Jaccard. Une story future pourra ajouter
+ *        un fallback embedding cosine pour les cas Jaccard ∈ [0.5, 0.75]
+ *        (zone d'ambiguïté lexicale).
+ */
+export function computeRootsRelevanceScore(roots: RootScoreInput[]): RootsRelevanceResult | null {
+  if (!roots || roots.length === 0) return null
+
+  // 1. Détection des paires en doublon
+  const duplicates: Array<{ a: string; b: string; jaccard: number }> = []
+  const isDuplicate = new Map<number, number>() // index → index du représentant choisi
+  for (let i = 0; i < roots.length; i++) {
+    const ri = roots[i]!
+    for (let j = i + 1; j < roots.length; j++) {
+      const rj = roots[j]!
+      const sim = jaccardLexical(ri.keyword, rj.keyword)
+      if (sim >= ROOTS_DUPLICATE_THRESHOLD) {
+        duplicates.push({ a: ri.keyword, b: rj.keyword, jaccard: Math.round(sim * 100) / 100 })
+        // On marque j comme doublon de i (ou du représentant de i si déjà mappé)
+        const root = isDuplicate.get(i) ?? i
+        isDuplicate.set(j, root)
+      }
+    }
+  }
+
+  // 2. Pour chaque cluster, on garde la racine avec la meilleure relevance.
+  //    Les racines non-doublon restent telles quelles.
+  const clusterBest = new Map<number, number>() // representant → meilleure relevance vue
+  const seenIndices = new Set<number>()
+  for (let i = 0; i < roots.length; i++) {
+    const rep = isDuplicate.get(i) ?? i
+    seenIndices.add(rep)
+    const current = clusterBest.get(rep)
+    const r = roots[i]!
+    if (current === undefined || r.relevance > current) {
+      clusterBest.set(rep, r.relevance)
+    }
+  }
+
+  // 3. Score = moyenne des bests par cluster (= moyenne sur les uniques).
+  const uniques = Array.from(clusterBest.values())
+  const total = uniques.length === 0
+    ? 0
+    : Math.round(uniques.reduce((sum, v) => sum + v, 0) / uniques.length)
+
+  return {
+    total,
+    rootsCount: roots.length,
+    uniqueRootsCount: uniques.length,
+    duplicates,
+  }
+}
