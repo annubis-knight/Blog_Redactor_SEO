@@ -1,6 +1,7 @@
 import type { RadarCombinedScoreBreakdown, RadarIntentType } from './types/intent.types.js'
 import {
   verdictFromScore,
+  INTENT_MISMATCH_MALUS,
   type RelevanceScoreInput,
   type RelevanceScoreResult,
   type RelevanceScoreBreakdown,
@@ -228,7 +229,22 @@ export function computeRelevanceScore(input: RelevanceScoreInput): RelevanceScor
   const painKeywordNorm = clampScore(input.painAlignmentScore, 50)
   const paaPainNorm = clampScore(input.paaPainAlignmentAvg, 50)
   const acPainNorm = clampScore(input.autocompletePainAlignmentAvg, 50)
-  const intentPainNorm = computeIntentPainAlignment(input.intentTypes, input.painType)
+
+  // S5 — Le nouveau champ `painIntentExpected` prime sur `painType` (legacy
+  // deprecated). On accepte les deux pour la transition.
+  const expectedIntent = input.painIntentExpected ?? input.painType
+  let intentPainNorm = computeIntentPainAlignment(input.intentTypes, expectedIntent)
+
+  // S5 — Malus intégré directement dans la composante `intentPain.normalized`
+  // (et pas en variable séparée). Pattern extensible : si on veut malus sur
+  // d'autres composantes (cannibalisation sur painKeyword, etc.), on adapte
+  // de la même manière le `normalized` de la composante concernée.
+  if (input.intentTypes && input.intentTypes.length > 0 && expectedIntent) {
+    const realMatchesExpected = input.intentTypes.includes(expectedIntent)
+    if (!realMatchesExpected) {
+      intentPainNorm = Math.max(0, intentPainNorm - INTENT_MISMATCH_MALUS)
+    }
+  }
 
   const hasRoots = input.rootsAverageScore != null
   const rootsNorm = hasRoots ? clampScore(input.rootsAverageScore, 50) : 0

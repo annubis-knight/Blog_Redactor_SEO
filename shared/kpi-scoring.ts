@@ -66,7 +66,24 @@ export function scoreKpi(
 }
 
 /**
- * Compute the global verdict from an array of 6 KPI results.
+ * @deprecated Sprint S5 (2026-04-28) — Préférer `marketScore.verdict` issu de
+ * `computeMarketScore` (shared/scoring-kpi.ts) qui produit un verdict basé sur le
+ * Score KPI ajusté avec les nouveaux poids et seuils GO/ORANGE/NOGO unifiés à 70/40.
+ *
+ * Cette fonction est conservée pour rétro-compatibilité avec :
+ *   - les payloads `ValidateResponse.verdict` historiques persistés en DB
+ *   - les consommateurs UI qui lisent `verdict.level` directement (carousel, store)
+ *
+ * Différences entre les deux verdicts :
+ *   - `computeVerdict` (legacy) : règles ad-hoc sur les couleurs des 6 KPI
+ *     (≥4 verts + pas de red Volume/KD/PAA → GO ; red Volume+KD → NO-GO ; etc.).
+ *     Niveaux : 'GO' | 'ORANGE' | 'NO-GO' | 'GRAY'.
+ *   - `marketScore.verdict` (nouveau) : seuils sur le score numérique 0-100
+ *     (≥70 → GO, 40-69 → ORANGE, <40 → NOGO). Niveau `GRAY` non exposé.
+ *
+ * Plan de suppression : story future « cleanup verdict legacy » — supprimer
+ * uniquement quand 0 consommateur en lecture (grep complet du code applicatif
+ * + scripts d'historique).
  *
  * Niveaux possibles :
  *  - `GRAY`  : données insuffisantes (volume + PAA + autocomplete absents du signal)

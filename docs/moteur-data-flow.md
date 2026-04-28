@@ -582,13 +582,43 @@ flowchart TB
 |------|-------------|--------|
 | `SelectedArticle` | id, title, type, cocoonId, keyword | `shared/types/article.types.ts` |
 | `RadarKeyword` | keyword, reasoning | `shared/types/intent.types.ts` |
-| `RadarCard` | combinedScore, paaItems[], kpis, scoreBreakdown | `shared/types/intent.types.ts` |
+| `RadarCard` | combinedScore (legacy), paaItems[], kpis, scoreBreakdown, **marketScore**, **relevanceScore** | `shared/types/intent.types.ts` |
+| `MarketScoreResult` | total, verdict, components[] (Volume/KD/CPC/Intent/PAA/AC) | `shared/types/scoring.types.ts` |
+| `RelevanceScoreResult` | total, verdict, breakdown (painKeyword/paaPain/acPain/roots/intentPain), rootsContext | `shared/types/scoring.types.ts` |
 | `CaptainVerdict` | overall (GO/ORANGE/NO_GO), kpis, reasons[] | `shared/types/keyword-validate.types.ts` |
 | `SerpAnalysisResult` | hnData[], paaData[], groupCrossData[], rawContents[] | `shared/types/serp-analysis.types.ts` |
 | `TfidfResult` | obligatoire[], differenciateur[], optionnel[], density | `shared/types/serp-analysis.types.ts` |
 | `ArticleKeywords` | articleId, capitaine, lieutenants[], lexique[], hnStructure | `shared/schemas/article-keywords.schema.ts` |
 | `ArticleProgress` | articleId, completedChecks[] (TEXT[]) | `shared/types/article-progress.types.ts` |
 | `WorkflowCheck` | `moteur:*` \| `cerveau:*` \| `redaction:*` | `shared/constants/workflow-checks.constants.ts` |
+
+## 13bis. Scoring : KPI Marché vs Pertinence (depuis 2026-04-28)
+
+Deux scores **complémentaires et orthogonaux** sont désormais exposés sur chaque mot-clé :
+
+- **`marketScore` (KPI Marché, 0-100)** — affiché dans l'**onglet Radar**.
+  Composition : Volume 30 % / KD 20 % / Intent type 15 % / PAA quantité 10 % / AC quantité 10 % / CPC 10 %.
+  Aucun signal douleur. Source : `shared/scoring-kpi.ts` → `computeMarketScore()`.
+
+- **`relevanceScore` (Pertinence, 0-100)** — affiché dans l'**onglet Capitaine**.
+  Composition : Pain × Mot-clé 30 % / PAA × Douleur 25 % / AC × Douleur 15 % / Racines 20 % / Intent × Douleur 10 %.
+  Aucun signal de marché brut. Source : `shared/scoring.ts` → `computeRelevanceScore()`.
+
+**Règle d'affichage** : on n'affiche jamais les deux scores en même temps sur la même carte.
+La `RadarKeywordCard` bascule via `displayMode: 'kpi' | 'relevance'`. En mode Capitaine, les KPIs marché bruts (Volume / KD / CPC / Intent / PAA count / AC count) restent visibles dans le **side-panel en lecture seule**.
+
+**Verdict** : `'GO' | 'ORANGE' | 'NOGO'` calculé à partir de chaque score (≥70 / 40-69 / <40). **Purement informatif** — il ne bloque **plus** la progression du moteur (le `can-lock` gating a été retiré).
+
+**Documentation détaillée** : [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md).
+
+**Rétro-compatibilité** : `combinedScore` (mélange marché + douleur, legacy) reste calculé et exposé pour ne pas casser les consommateurs existants (carousel de tri, sidebar racines). À supprimer dans une story future.
+
+**Évolutions Sprints S1-S5 (avril 2026)** :
+- **S1** — `{{painPoint}}` injecté dans 6 prompts du Moteur (capitaine-ai-panel, propose-lieutenants, lieutenants-hn-structure, trio Lexique).
+- **S2** — Onglets Lieutenants / Lexique / Hn transmettent maintenant le painPoint via `articleId` (helper `getArticlePainPoint` côté backend). Toggle « Trier par alignement douleur » dans Lexique (off par défaut, TF-IDF préservé).
+- **S3** — Score PAA cumulatif (formule F1 : `(somme points / (nbPAA × 2.0)) × 100`) au lieu d'une moyenne lissée — exploite la richesse du barème topicWeight × painWeight.
+- **S4** — `computeRootsRelevanceScore` détecte les racines doublon (Jaccard ≥ 0.75) et garde le meilleur scorant de chaque cluster. Évite le gonflage artificiel par variantes redondantes.
+- **S5** — Champ DB `articles.pain_intent_expected` + nouveau `RelevanceScoreInput.painIntentExpected`. Pattern **malus intégré** : `INTENT_MISMATCH_MALUS = -10` soustrait directement de `intentPain.normalized` quand mismatch (pas de variable séparée). Pattern extensible aux autres composantes. `computeVerdict` legacy marqué `@deprecated`.
 
 ## 14. Endpoints clés du Moteur
 
