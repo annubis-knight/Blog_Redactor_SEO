@@ -15,6 +15,7 @@ import {
   fetchAutocompleteMergedGrouped,
   normalize,
   computePaaWeightedScore,
+  computePaaPainAlignmentCumulative,
 } from '../intent/intent-scan.service.js'
 import { readPaaCache, writePaaCache } from '../infra/paa-cache.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
@@ -417,24 +418,31 @@ export async function scanRadarKeywords(
     })
 
     // Séparation KPI vs Pertinence (V1) — chaque card embarque les deux scores
+    // Sprint S3 — `paaPainAlignmentCumulative` remplace la moyenne lissée pour
+    // alimenter computeRelevanceScore. La somme cumulative exploite la richesse
+    // du barème topicWeight × painWeight (cf. computePaaPainAlignmentCumulative).
     const radarLevel: ArticleLevel = 'intermediaire'
     const marketScore = computeMarketScore(kpis, radarLevel)
+    const paaPainCumulative = paaItems.length > 0
+      ? computePaaPainAlignmentCumulative(paaItems)
+      : null
     let relevanceScore = null
     const hasPainSignal = !!painPoint && (
       painAlignmentScore != null ||
-      paaPainAvg != null ||
+      paaPainCumulative != null ||
       autocompletePainAlignmentAvg != null
     )
     if (hasPainSignal) {
       relevanceScore = computeRelevanceScore({
         painAlignmentScore: painAlignmentScore ?? null,
-        paaPainAlignmentAvg: paaPainAvg ?? null,
+        // S3 — formule F1 cumulative (somme points / max théorique × 100)
+        paaPainAlignmentAvg: paaPainCumulative,
         autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? null,
         rootsAverageScore: null,
         intentTypes: kpis.intentTypes,
       })
     }
-    log.debug(`[Radar] Card "${kw.keyword}": combined=${scoreBreakdown.total}, market=${marketScore.total}, relevance=${relevanceScore?.total ?? 'n/a'}`)
+    log.debug(`[Radar] Card "${kw.keyword}": combined=${scoreBreakdown.total}, market=${marketScore.total}, relevance=${relevanceScore?.total ?? 'n/a'}, paaCumulative=${paaPainCumulative ?? 'n/a'}`)
 
     cards.push({
       keyword: kw.keyword,

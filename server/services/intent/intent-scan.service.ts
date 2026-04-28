@@ -220,6 +220,38 @@ export function computePaaWeightedScore(
   return sum
 }
 
+/** Score maximal théorique par PAA (atteint quand match=total+exact ET painAlignment=aligned). */
+export const PAA_MAX_POINTS_PER_ITEM = 2.0
+
+/**
+ * Score de Pertinence cumulatif normalisé sur les PAA — Sprint S3.
+ *
+ * Formule F1 (validée 2026-04-28) :
+ *   score = (somme des points obtenus) / (nbPAA × maxPointsParPAA) × 100
+ *
+ * Exemple concret : 8 PAA dont 3 marquent 2.0 (parfait), 3 marquent 1.25
+ * (mix qualité), 2 marquent 0 (off) → somme 9.75, max 16, score ≈ 61.
+ *
+ * Avantages vs moyenne classique :
+ *   - Exploite la richesse des 5 niveaux topicWeight × 3 niveaux painWeight
+ *     (au lieu de lisser via une moyenne)
+ *   - Comparable entre articles avec N différents (toujours plage 0-100)
+ *
+ * Cas particuliers :
+ *   - Liste vide → 0 (aucun signal exploitable)
+ *   - Aucun item avec painAlignment → on retombe sur la même formule
+ *     mais sur le barème topic seul (la fonction sous-jacente
+ *     `computePaaWeightedScore` gère ce cas)
+ */
+export function computePaaPainAlignmentCumulative(
+  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality; painAlignment?: RadarPainAlignment }>,
+): number {
+  if (items.length === 0) return 0
+  const sum = computePaaWeightedScore(items)
+  const maxPossible = items.length * PAA_MAX_POINTS_PER_ITEM
+  return Math.round((sum / maxPossible) * 100)
+}
+
 export interface PaaExtracted {
   question: string
   answer: string | undefined
