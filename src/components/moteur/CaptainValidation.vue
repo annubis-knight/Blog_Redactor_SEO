@@ -1151,34 +1151,40 @@ onUnmounted(() => abortAllAiStreams())
   font-size: 0.875rem;
 }
 
+/* 2026-04-30 — Refonte UX (demande utilisateur) :
+   - Sélection : effet "bouton enfoncé" au lieu d'une border bleue extérieure.
+     Léger background, ombre interne (creux), translation 1px verticale.
+   - Verrouillage : plus de border verte parent — le seul indicateur reste le
+     bouton cadenas (côté RadarCardLockable) qui passe en vert plein quand actif.
+   - Hover/focus : ombre douce élévée, sans border colorée. */
 .radar-list-item {
   cursor: pointer;
   border-radius: 10px;
-  transition: box-shadow 0.15s, outline 0.15s;
-  outline: 2px solid transparent;
-  outline-offset: 2px;
+  background: transparent;
+  transition: background 0.15s, box-shadow 0.15s, transform 0.1s;
 }
 
 .radar-list-item:hover {
-  outline-color: var(--color-border-strong, #cbd5e1);
+  background: rgba(15, 23, 42, 0.025);
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
 }
 
 .radar-list-item:focus-visible {
-  outline-color: var(--color-primary, #3b82f6);
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: 2px;
 }
 
+/* "Bouton enfoncé" : creux interne + translation verticale + background plus marqué */
 .radar-list-item--selected {
-  box-shadow: 0 0 0 2px var(--color-primary, #3b82f6);
-}
-
-.radar-list-item--locked {
-  box-shadow: 0 0 0 2px var(--color-success, #22c55e);
-}
-
-.radar-list-item--selected.radar-list-item--locked {
+  background: rgba(15, 23, 42, 0.05);
   box-shadow:
-    0 0 0 2px var(--color-success, #22c55e),
-    0 0 0 4px var(--color-primary, #3b82f6);
+    inset 0 2px 4px rgba(15, 23, 42, 0.08),
+    inset 0 0 0 1px rgba(15, 23, 42, 0.06);
+  transform: translateY(1px);
+}
+
+.radar-list-item--selected:hover {
+  background: rgba(15, 23, 42, 0.06);
 }
 
 .captain-empty,

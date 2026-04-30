@@ -96,14 +96,16 @@ function toggleManualTagMode() {
   align-items: center;
   gap: 0.5rem;
   padding: 0.375rem;
-  border: 2px solid transparent;
   border-radius: 8px;
-  transition: border-color 0.15s, background 0.15s;
+  transition: background 0.15s;
 }
 
+/* 2026-04-30 — Plus de border verte (cf. demande UX : doublure visuelle gênante).
+   Le verrouillage est déjà signalé par le bouton cadenas qui passe en vert plein
+   (cf. .radar-card-lockable__toggle.active). On conserve juste un très léger
+   tint de background pour un indice supplémentaire discret. */
 .radar-card-lockable.locked {
-  border-color: var(--color-success, #22c55e);
-  background: var(--color-success-bg, #f0fdf4);
+  background: rgba(34, 197, 94, 0.04);
 }
 
 .radar-card-lockable__actions {
