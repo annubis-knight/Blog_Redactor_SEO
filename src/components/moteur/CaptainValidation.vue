@@ -736,12 +736,6 @@ const selectedVerdictSummary = computed(() => {
   }
 })
 
-const selectedCanLock = computed(() => {
-  const entry = selectedEntry.value
-  if (!entry) return false
-  return carouselEffectiveVerdict(entry) === 'GO'
-})
-
 const manualVerdictSummary = computed(() => {
   if (!currentResult.value || !effectiveVerdict.value) return null
   const v = currentResult.value.verdict
@@ -795,24 +789,10 @@ async function lockEntry(idx: number) {
   if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
 }
 
-function onSidePanelLock() {
-  if (selectedIndex.value !== null) lockEntry(selectedIndex.value)
-}
-
 function unlockEntry() {
   // Délègue à requestUnlock — déclenche la modale UnlockLieutenants si des
   // lieutenants verrouillés existent, sinon déverrouille direct.
   requestUnlock('carousel')
-}
-
-function sendToLieutenants() {
-  if (!lockedKeyword.value) return
-  const entry = selectedEntry.value
-    ?? carousel.entries.value[lockedIndex.value]
-    ?? null
-  const rootKeywords = entry ? Array.from(entry.rootVariants.keys()) : []
-  emit('send-to-lieutenants', { keyword: lockedKeyword.value, rootKeywords })
-  log.info('CaptainValidation — Envoyé aux Lieutenants', { keyword: lockedKeyword.value, rootKeywords })
 }
 
 function gotoLocked() {
@@ -983,9 +963,6 @@ onUnmounted(() => abortAllAiStreams())
 
       <CaptainSidePanel
         :entry="selectedEntry"
-        :article-level="articleLevel"
-        :article-id="props.selectedArticle?.id ?? null"
-        :locked-keyword="lockedKeyword"
         :parsed-markdown="selectedParsedMarkdown"
         :ai-is-streaming="selectedAiStreaming"
         :ai-error="selectedAiError"
@@ -994,12 +971,7 @@ onUnmounted(() => abortAllAiStreams())
         :is-loading-roots="selectedEntry?.isLoadingRoots ?? false"
         :failed-roots="selectedEntry?.failedRoots ?? []"
         :active-variant-keyword="activeVariantKeyword"
-        :locked-entry-exists="lockedEntryExists"
-        :selected-is-locked="selectedIsLocked"
-        :can-lock="selectedCanLock"
-        @lock="onSidePanelLock"
-        @unlock="unlockEntry"
-        @send-to-lieutenants="sendToLieutenants"
+        :show-goto-locked="lockedEntryExists && !selectedIsLocked"
         @switch-variant="switchToVariant"
         @ai-regenerate="handleAiRegenerate"
         @goto-locked="gotoLocked"
