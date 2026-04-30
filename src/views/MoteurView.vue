@@ -32,6 +32,7 @@ import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
+import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
@@ -512,86 +513,29 @@ function handleSendToLieutenants(payload: { keyword: string; rootKeywords: strin
 }
 
 // --- Tab cache entries for unified cache panel ---
-// 2026-04-30 — `dbCount` reflète maintenant le VRAI nombre d'entrées persistées
-// dans les tables *_explorations (via GET /articles/:id/explorations/counts),
-// au lieu d'un flag binaire 0|1 issu de l'état "locked"/"validated".
-// Avant ce fix : un article avec 8 captain_explorations affichait `DB 0` tant
-// que le capitaine n'était pas verrouillé. Maintenant il affichera `DB 8`.
-//
-// `cacheCount` reste un flag mémoire (1 = résultats volatiles non encore persistés).
-// Discovery garde son comportement basé sur discovery_cache (table dédiée).
-const tabCacheEntries = computed<TabCacheEntry[]>(() => [
+// La construction des entrées est déléguée à `buildTabCacheEntries` (utilitaire
+// pur testé), pour pouvoir bloquer toute régression du contrat dbCount = vrais
+// counts DB (cf. fix bea9e4f). Voir tests/unit/utils/tab-cache-entries.test.ts.
+const tabCacheEntries = computed<TabCacheEntry[]>(() => buildTabCacheEntries(
+  explorationCounts.value,
   {
-    tabId: 'discovery',
-    tabLabel: 'Discovery',
-    // Discovery a sa propre table de cache (discovery_cache via discoveryCacheStatus),
-    // le endpoint /explorations/counts ne la couvre pas → on garde la logique existante.
-    dbCount: discoveryCacheStatus.value?.cached ? (discoveryCacheStatus.value.keywordCount ?? 1) : 0,
-    cacheCount: discoveryHasResults.value && !discoveryCacheStatus.value?.cached ? 1 : 0,
-    isCurrentTab: activeTab.value === 'discovery',
-    hint: discoveryCacheStatus.value?.cached
-      ? `${discoveryCacheStatus.value.keywordCount ?? '?'} mots-clés`
-      : discoveryHasResults.value
-        ? 'Résultats en mémoire'
-        : undefined,
+    activeTab: activeTab.value,
+    discoveryCacheStatus: discoveryCacheStatus.value
+      ? { cached: discoveryCacheStatus.value.cached, keywordCount: discoveryCacheStatus.value.keywordCount }
+      : null,
+    discoveryHasResults: discoveryHasResults.value,
+    radarScanResult: radarScanResult.value
+      ? { globalScore: radarScanResult.value.globalScore }
+      : null,
+    radarCacheStatus: radarCacheStatus.value
+      ? { exists: radarCacheStatus.value.exists, globalScore: radarCacheStatus.value.globalScore }
+      : null,
+    isCaptaineLocked: isCaptaineLocked.value,
+    captainKeyword: captainKeyword.value ?? null,
+    lockedLieutenantsCount: articleKeywordsStore.keywords?.lieutenants?.length ?? 0,
+    validatedLexiqueCount: articleKeywordsStore.keywords?.lexique?.length ?? 0,
   },
-  {
-    tabId: 'radar',
-    tabLabel: 'Radar',
-    // Le endpoint compte les keywords générés à l'intérieur de l'unique scan
-    // persisté pour cet article (cf. SQL : SUM(jsonb_array_length(generated_keywords))).
-    dbCount: explorationCounts.value.radar ?? 0,
-    cacheCount: radarScanResult.value !== null && !radarCacheStatus.value?.exists ? 1 : 0,
-    isCurrentTab: activeTab.value === 'radar',
-    hint: radarScanResult.value
-      ? `Score ${radarScanResult.value.globalScore}/100`
-      : radarCacheStatus.value?.exists
-        ? `Score ${radarCacheStatus.value.globalScore}/100 (cache)`
-        : undefined,
-  },
-  {
-    tabId: 'capitaine',
-    tabLabel: 'Capitaine',
-    // Compte vrai des captain_explorations (chaque mot-clé testé = 1 ligne).
-    dbCount: explorationCounts.value.captain ?? 0,
-    cacheCount: 0,
-    isCurrentTab: activeTab.value === 'capitaine',
-    hint: (() => {
-      const n = explorationCounts.value.captain ?? 0
-      if (n === 0) return undefined
-      if (isCaptaineLocked.value && captainKeyword.value) {
-        return `${n} mot-clé${n > 1 ? 's' : ''} testé${n > 1 ? 's' : ''} — verrouillé : ${captainKeyword.value}`
-      }
-      return `${n} mot-clé${n > 1 ? 's' : ''} testé${n > 1 ? 's' : ''}`
-    })(),
-  },
-  {
-    tabId: 'lieutenants',
-    tabLabel: 'Lieutenants',
-    dbCount: explorationCounts.value.lieutenants ?? 0,
-    cacheCount: 0,
-    isCurrentTab: activeTab.value === 'lieutenants',
-    hint: (() => {
-      const n = explorationCounts.value.lieutenants ?? 0
-      if (n === 0) return undefined
-      const locked = articleKeywordsStore.keywords?.lieutenants?.length ?? 0
-      return locked > 0 ? `${n} proposition${n > 1 ? 's' : ''} en base · ${locked} verrouillé${locked > 1 ? 's' : ''}` : `${n} proposition${n > 1 ? 's' : ''} en base`
-    })(),
-  },
-  {
-    tabId: 'lexique',
-    tabLabel: 'Lexique',
-    dbCount: explorationCounts.value.lexique ?? 0,
-    cacheCount: 0,
-    isCurrentTab: activeTab.value === 'lexique',
-    hint: (() => {
-      const n = explorationCounts.value.lexique ?? 0
-      if (n === 0) return undefined
-      const validated = articleKeywordsStore.keywords?.lexique?.length ?? 0
-      return validated > 0 ? `${n} extraction${n > 1 ? 's' : ''} · ${validated} terme${validated > 1 ? 's' : ''} validé${validated > 1 ? 's' : ''}` : `${n} extraction${n > 1 ? 's' : ''}`
-    })(),
-  },
-])
+))
 
 // --- Data loading ---
 async function loadData() {
