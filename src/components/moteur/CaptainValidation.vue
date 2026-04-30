@@ -975,6 +975,7 @@ onUnmounted(() => abortAllAiStreams())
         @switch-variant="switchToVariant"
         @ai-regenerate="handleAiRegenerate"
         @goto-locked="gotoLocked"
+        @close="selectedIndex = null"
       />
     </div>
 
