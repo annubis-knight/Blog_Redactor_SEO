@@ -34,7 +34,8 @@
     - [Flux de données — Lock Capitaine](#116-flux-de-données--lock-capitaine)
     - [Flux de données — Génération article](#117-flux-de-données--génération-article)
     - [Types de cache unifié (`api_cache`)](#118-types-de-cache-unifié-api_cache)
-12. [Mapping UI → Tables DB](#12-mapping-ui--tables-db)
+12. [Couverture de tests par composant](#12-couverture-de-tests-par-composant)
+13. [Mapping UI → Tables DB](#13-mapping-ui--tables-db)
 
 ---
 
@@ -1242,7 +1243,191 @@ flowchart LR
 
 ---
 
-## 12. Mapping UI → Tables DB
+## 12. Couverture de tests par composant
+
+> **Finalité** : recenser pour chaque composant Vue user-facing :
+> - le fichier de tests qui le couvre directement (`mount()` ou `shallowMount()`)
+> - le nombre de tests
+> - les comportements clés couverts
+>
+> Convention : les composants **dumb / atomiques** (icônes, boutons simples,
+> badges) sont volontairement exclus — ils sont testés indirectement via
+> les mounts de leurs parents.
+
+### 12.1 Composants Moteur — radar cards et environnement
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [RadarKeywordCard.vue](../src/components/intent/RadarKeywordCard.vue) | 9 | [radar-keyword-card-display-mode.test.ts](../tests/unit/components/radar-keyword-card-display-mode.test.ts) (3) + [radar-keyword-card-interactions.test.ts](../tests/unit/components/radar-keyword-card-interactions.test.ts) (6) | bascule `displayMode: 'kpi' \| 'relevance'` ; interactions PAA ; expand/collapse |
+| [RadarCardCheckable.vue](../src/components/intent/RadarCardCheckable.vue) | 9 | [radar-card-checkable.test.ts](../tests/unit/components/radar-card-checkable.test.ts) | mode checkbox ; sélection multiple ; emit update:checked |
+| [RadarCardLockable.vue](../src/components/intent/RadarCardLockable.vue) | 10 | [radar-card-lockable.test.ts](../tests/unit/components/radar-card-lockable.test.ts) | mode verrou cadenas ; styles locked sans border verte ; emit update:locked |
+| [RadarThermometer.vue](../src/components/shared/RadarThermometer.vue) | 9 | [radar-thermometer.test.ts](../tests/unit/components/radar-thermometer.test.ts) | jauge globale 0-100 ; modes compact/normal ; KPIs conditionnels ; ConfidenceBar normalisée 0-1 |
+| `dual-mode-props` (cohérence radar) | 12 | [dual-mode-props.test.ts](../tests/unit/components/dual-mode-props.test.ts) | cohérence des props selon le mode KPI vs Pertinence |
+| [CaptainInteractiveWords.vue](../src/components/moteur/CaptainInteractiveWords.vue) | 10 | [captain-interactive-words.test.ts](../tests/unit/components/captain-interactive-words.test.ts) | wrapper interactif ; isLocked dérivé ; emit lock/unlock/word-toggle ; **REGRESSION GUARD** displayMode hardcodé "relevance" |
+| [CaptainSidePanel.vue](../src/components/moteur/CaptainSidePanel.vue) | 7 | [captain-side-panel.test.ts](../tests/unit/components/captain-side-panel.test.ts) | v-if entry → panel absent quand pas de carte ; close croix + click outside ; **REGRESSION GUARD** clic radar-list-item ne ferme pas |
+| [CaptainAiPanel.vue](../src/components/moteur/CaptainAiPanel.vue) | 12 | [captain-ai-panel.test.ts](../tests/unit/components/captain-ai-panel.test.ts) | panel IA SSE markdown ; toggle open/close ; bouton regenerate conditionnel ; confirm() avant emit |
+| [CaptainRootsSidebar.vue](../src/components/moteur/CaptainRootsSidebar.vue) | 10 | [captain-roots-sidebar.test.ts](../tests/unit/components/captain-roots-sidebar.test.ts) | sidebar racines longue-traîne ; moyenne scores ; couleur seuil 65/40 ; mode carousel vs manuel singleRoot |
+| [CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) | 75 | [captain-validation.test.ts](../tests/unit/components/captain-validation.test.ts) | composant racine onglet Capitaine ; validation + carousel + lock workflow complet |
+| [CaptainInput.vue](../src/components/moteur/CaptainInput.vue), [CaptainVerdictPanel.vue](../src/components/moteur/CaptainVerdictPanel.vue), [CaptainLockPanel.vue](../src/components/moteur/CaptainLockPanel.vue) | 13 | [captain-sub-components.test.ts](../tests/unit/components/captain-sub-components.test.ts) | composants atomiques Capitaine ; bouton Lock toujours actif (verdict purement informatif) |
+| [KeywordWords.vue](../src/components/intent/KeywordWords.vue) | 10 | [keyword-words.test.ts](../tests/unit/components/keyword-words.test.ts) | mots cliquables du keyword ; toggle actif/inactif |
+
+### 12.2 Composants Moteur — Lieutenants
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [LieutenantsSelection.vue](../src/components/moteur/LieutenantsSelection.vue) | 111 | [lieutenants-selection.test.ts](../tests/unit/components/lieutenants-selection.test.ts) (94) + [lieutenants-selection.gaps.test.ts](../tests/unit/components/lieutenants-selection.gaps.test.ts) (17) | composant racine onglet Lieutenants ; sélection cards ; lock workflow ; gates |
+| [LieutenantCard.vue](../src/components/moteur/LieutenantCard.vue) | 10 | [lieutenant-card.test.ts](../tests/unit/components/lieutenant-card.test.ts) | carte unitaire ; badges sources avec classe par type ; **REGRESSION GUARD** source inconnue → fallback |
+| [LieutenantSerpAnalysis.vue](../src/components/moteur/LieutenantSerpAnalysis.vue) | 15 | [lieutenant-serp-analysis.test.ts](../tests/unit/components/lieutenant-serp-analysis.test.ts) | analyse SERP top concurrents ; slider 3-10 ; filtre Blogs/Autres toggle on/off ; bouton Refresh masqué si isLocked |
+| [LieutenantProposals.vue](../src/components/moteur/LieutenantProposals.vue) | 11 | [lieutenant-proposals.test.ts](../tests/unit/components/lieutenant-proposals.test.ts) | liste cards IA ; états streaming/error/empty ; eliminated section toggle ; contentGapInsights markdown |
+| [LieutenantH2Structure.vue](../src/components/moteur/LieutenantH2Structure.vue) | 13 | [lieutenant-h2-structure.test.ts](../tests/unit/components/lieutenant-h2-structure.test.ts) | structure Hn IA hiérarchique H2→H3 ; bouton Sauvegarder masqué si isLocked ; tabs keywords si multi-SERP |
+| [SerpDataTab.vue](../src/components/moteur/SerpDataTab.vue) | 14 | [serp-data-tab.test.ts](../tests/unit/components/serp-data-tab.test.ts) | tab data SERP ; affichage concurrents ; PAA ; metrics |
+
+### 12.3 Composants Moteur — Discovery, Radar, Lexique, Finalisation
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [KeywordDiscoveryTab.vue](../src/components/moteur/KeywordDiscoveryTab.vue) | 44 | [keyword-discovery-tab.test.ts](../tests/unit/components/keyword-discovery-tab.test.ts) | onglet 1 du Moteur ; discovery + filtres + cache + classification IA |
+| [DouleurIntentScanner.vue](../src/components/intent/DouleurIntentScanner.vue) | 35 | [douleur-intent-scanner.test.ts](../tests/unit/components/douleur-intent-scanner.test.ts) | onglet Radar ; scan + thermomètre + verdict |
+| [LexiqueExtraction.vue](../src/components/moteur/LexiqueExtraction.vue) | 91 | [lexique-extraction.test.ts](../tests/unit/components/lexique-extraction.test.ts) (64) + [lexique-extraction.gaps.test.ts](../tests/unit/components/lexique-extraction.gaps.test.ts) (18) + [lexique-sort-by-alignment.test.ts](../tests/unit/components/lexique-sort-by-alignment.test.ts) (9) | TF-IDF par sections ; toggle tri par alignement douleur ; IA recommendations ; gates |
+| [FinalisationRecap.vue](../src/components/moteur/FinalisationRecap.vue) | 11 | [finalisation-recap.test.ts](../tests/unit/components/finalisation-recap.test.ts) | gate vers Rédaction ; capitaine + lieutenants + lexique ; emit navigate-redaction |
+
+### 12.4 Composants Moteur — transverses
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [SelectedArticlePanel.vue](../src/components/moteur/SelectedArticlePanel.vue) | 12 | [selected-article-panel.test.ts](../tests/unit/components/selected-article-panel.test.ts) | édition titre inline + PATCH ; mode locked ; badge type ; progression ; painPoint bandeau |
+| [BasketStrip.vue](../src/components/moteur/BasketStrip.vue) | 9 | [basket-strip.test.ts](../tests/unit/components/basket-strip.test.ts) | panier keywords ; chips remove/clear ; validated state ; tooltip reasoning vs source |
+| [TabCachePanel.vue](../src/components/moteur/TabCachePanel.vue) | 12 | [tab-cache-panel.test.ts](../tests/unit/components/tab-cache-panel.test.ts) | comptes DB par onglet ; counts vrais (pas de flags binaires) ; chips navigation |
+| [MoteurContextRecap.vue](../src/components/moteur/MoteurContextRecap.vue) | 5 | [moteur-context-recap-cannibal.test.ts](../tests/unit/components/moteur-context-recap-cannibal.test.ts) + [progress-dots.test.ts](../tests/unit/components/progress-dots.test.ts) | recap contexte ; détection cannibal ; ProgressDots |
+| [MoteurStrategyContext.vue](../src/components/moteur/MoteurStrategyContext.vue) | 13 | [moteur-strategy-context.test.ts](../tests/unit/components/moteur-strategy-context.test.ts) | bridge Cerveau→Moteur ; cible/douleur/angle/promesse/CTA |
+| [PhaseTransitionBanner.vue](../src/components/moteur/PhaseTransitionBanner.vue) | 18 | [phase-transition-banner.test.ts](../tests/unit/components/phase-transition-banner.test.ts) | banner inter-phases ; CTAs ; state transitions |
+| [KeywordAssistPanel.vue](../src/components/moteur/KeywordAssistPanel.vue) | 9 | [keyword-assist-panel.test.ts](../tests/unit/components/keyword-assist-panel.test.ts) | suggestions basket partagées 3 onglets ; libellés selon context ; excludeKeywords case-insensitive ; hide() persistant |
+| [ProgressDots.vue](../src/components/moteur/ProgressDots.vue) | 12 | [progress-dots.test.ts](../tests/unit/components/progress-dots.test.ts) | dots progression workflow Moteur |
+| Smart navigation Moteur | 7 | [moteur-smart-navigation.test.ts](../tests/unit/components/moteur-smart-navigation.test.ts) | logique smart-tab onglet d'arrivée |
+| Moteur check-completed flow | 6 | [moteur-check-completed.test.ts](../tests/unit/components/moteur-check-completed.test.ts) | émission des `MOTEUR_*` checks workflow |
+
+### 12.5 Composants Cerveau
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [BrainPhase.vue](../src/components/production/BrainPhase.vue) | 34 | [brain-article-hierarchy.test.ts](../tests/unit/components/brain-article-hierarchy.test.ts) (11) + [brain-paa-cascade.test.ts](../tests/unit/components/brain-paa-cascade.test.ts) (9) + [brain-smart-add.test.ts](../tests/unit/components/brain-smart-add.test.ts) (14) | wizard 6 étapes ; hiérarchie articles ; PAA cascade ; smart add ; validation par étape |
+| [TopicSuggestions.vue](../src/components/production/TopicSuggestions.vue) | 19 | [topic-suggestions.test.ts](../tests/unit/components/topic-suggestions.test.ts) | suggestions topics ; sélection ; filtres |
+| [ProposedArticleRow.vue](../src/components/production/ProposedArticleRow.vue) | 38 | [proposed-article-row-parent.test.ts](../tests/unit/components/proposed-article-row-parent.test.ts) | ligne article proposé ; hiérarchie parent/enfant ; édition inline ; validation |
+| Production phases (multi-composants) | 21 | [production-phases.test.ts](../tests/unit/components/production-phases.test.ts) | flow 6 phases du wizard ; transitions ; gates |
+
+### 12.6 Composants Rédaction (workflow article)
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [BriefStructureStep.vue](../src/components/workflow/BriefStructureStep.vue) | 8 | [brief-structure-step.test.ts](../tests/unit/components/brief-structure-step.test.ts) | porte d'entrée Rédaction ; brief + outline ; cocoonSlug normalisation NFD ; saveMicroContext + emit ; angle vide → pas brief-validated |
+| [SeoPanel.vue](../src/components/article-editor/SeoPanel.vue) | 13 | [seo-panel.test.ts](../tests/unit/components/seo-panel.test.ts) | analyse SEO ; checks ; recommandations |
+| [GeoPanel.vue](../src/components/article-editor/GeoPanel.vue) | 13 | [geo-panel.test.ts](../tests/unit/components/geo-panel.test.ts) | analyse GEO (extracts/answer engines) |
+| [IndicatorsTab.vue](../src/components/article-editor/IndicatorsTab.vue) | 11 | [indicators-tab.test.ts](../tests/unit/components/indicators-tab.test.ts) | tab indicateurs SEO/GEO ; cards |
+| [ExtractibilityTab.vue](../src/components/article-editor/ExtractibilityTab.vue) | 12 | [geo-extractibility-tab.test.ts](../tests/unit/components/geo-extractibility-tab.test.ts) | analyse extractibilité réponses ; modules SERP |
+| [ArticleEditor.vue](../src/components/article-editor/ArticleEditor.vue) | 3 | [ArticleEditor.test.ts](../tests/unit/components/ArticleEditor.test.ts) + extensions | éditeur TipTap ; sauvegarde |
+| [ArticleActions.vue](../src/components/article-editor/ArticleActions.vue) | 17 | [ArticleActions.test.ts](../tests/unit/components/ArticleActions.test.ts) | actions article ; locked state ; menus |
+| Editor sub-components | 8 | [EditorBubbleMenu.test.ts](../tests/unit/components/EditorBubbleMenu.test.ts) (3) + [EditorToolbar.test.ts](../tests/unit/components/EditorToolbar.test.ts) (2) + [SaveStatusIndicator.test.ts](../tests/unit/components/SaveStatusIndicator.test.ts) (3) | bubble menu ; toolbar ; indicateur sauvegarde |
+
+### 12.7 Composants Linking et post-publication
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [LinkingMatrix.vue](../src/components/linking/LinkingMatrix.vue) | 10 | [linking-matrix.test.ts](../tests/unit/components/linking-matrix.test.ts) | matrice maillage ; agrégation N→M ; same-cocoon vs cross-cocoon ; troncature titres |
+| [OrphanDetector.vue](../src/components/linking/OrphanDetector.vue) | 7 | [orphan-detector.test.ts](../tests/unit/components/orphan-detector.test.ts) | détection orphelins ; RouterLink ; classes type |
+| [AnchorDiversityPanel.vue](../src/components/linking/AnchorDiversityPanel.vue) | 9 | [anchor-diversity-panel.test.ts](../tests/unit/components/anchor-diversity-panel.test.ts) | alertes ancres répétées ; guillemets typographiques ; cibles concaténées |
+
+### 12.8 Composants Intent / Pain Validation
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [PainValidation.vue](../src/components/intent/PainValidation.vue) | 13 | [pain-validation.test.ts](../tests/unit/components/pain-validation.test.ts) | validation pain points ; sources |
+| Pain validation multi-source (10 micro) | 33 | [pain-validation-multi-source.test.ts](../tests/unit/components/pain-validation-multi-source.test.ts) | AutocompleteChips, ConfidenceBar, DiscussionList, LatentAlert, RowDetail, SourceBlock, SourceDots, ValidationRow, ValidationSummary, VerdictBadge |
+| [PainTranslator.vue](../src/components/intent/PainTranslator.vue) | inclus dans epic22-24 | [epic22-24-rendering.test.ts](../tests/unit/components/epic22-24-rendering.test.ts) | traduction pain → keywords |
+| [NlpOptinBanner.vue](../src/components/intent/NlpOptinBanner.vue) | 15 | [nlp-opt-in-banner.test.ts](../tests/unit/components/nlp-opt-in-banner.test.ts) | banner opt-in NLP ; consent ; persist |
+| NlpTerms (composant léger) | 10 | [nlp-terms.test.ts](../tests/unit/components/nlp-terms.test.ts) | termes NLP analysés |
+
+### 12.9 Composants Dashboard / Articles
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [ArticleList.vue](../src/components/dashboard/ArticleList.vue) | 8 | [article-list.test.ts](../tests/unit/components/article-list.test.ts) | 3 colonnes Pilier/Inter/Spec ; ordre stable ; cocoonId transmis |
+| [WorkflowChoice.vue](../src/components/dashboard/WorkflowChoice.vue), [SiloCard.vue](../src/components/dashboard/SiloCard.vue) | 16 | [navigation-restructuring.test.ts](../tests/unit/components/navigation-restructuring.test.ts) | hub navigation 3 phases ; cartes silos |
+| [ArticleCard.vue](../src/components/dashboard/ArticleCard.vue), [KeywordBadge.vue](../src/components/shared/KeywordBadge.vue) | 6 | [cocoon-detail.test.ts](../tests/unit/components/cocoon-detail.test.ts) | carte article ; badge keyword |
+| Dashboard view | 8 | [dashboard.test.ts](../tests/unit/components/dashboard.test.ts) | CocoonCard, ProgressBar, ErrorMessage |
+
+### 12.10 Composants Labo / Explorateur
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| LaboView (intégration) | 15 | [labo-view.test.ts](../tests/unit/components/labo-view.test.ts) | mode libre Labo ; Discovery sans gates |
+| [KeywordListPanel.vue](../src/components/explorer/KeywordListPanel.vue) | 6 | [keyword-list-panel.test.ts](../tests/unit/components/keyword-list-panel.test.ts) | liste explorateur |
+| [KpiRow.vue](../src/components/explorer/KpiRow.vue), [KpiItem.vue](../src/components/explorer/KpiItem.vue) | 10 | [kpi-row.test.ts](../tests/unit/components/kpi-row.test.ts) | rangée KPIs explorateur |
+| Audits UX (KeywordBadge, ScoreGauge, etc.) | 128 | [ux-audit-sprint1.test.ts](../tests/unit/components/ux-audit-sprint1.test.ts) → [-sprint4](../tests/unit/components/ux-audit-sprint4.test.ts) | audits UX cumulés (4 sprints) |
+| ux-audit-sprint3 inclut (ActionMenu, LinkSuggestions, LoadingSpinner, ProgressBar) | 40 | [ux-audit-sprint3.test.ts](../tests/unit/components/ux-audit-sprint3.test.ts) | composants UI partagés |
+
+### 12.11 Composants partagés / utilitaires
+
+| Composant | Tests | Fichier | Couverture |
+|---|---|---|---|
+| [AsyncContent.vue](../src/components/shared/AsyncContent.vue) | 8 | [async-content.test.ts](../tests/unit/components/async-content.test.ts) | wrapper loading/error/empty/content |
+| [ErrorBoundary.vue](../src/components/shared/ErrorBoundary.vue) | 5 | [error-boundary.test.ts](../tests/unit/components/error-boundary.test.ts) | capture erreurs ; fallback UI |
+| Skeletons | 10 | [skeleton-loader.test.ts](../tests/unit/components/skeleton-loader.test.ts) | SkeletonCard, SkeletonText, SkeletonLoader |
+| RecapToggle (recap-radio-group) | 15 | [recap-radio-group.test.ts](../tests/unit/components/recap-radio-group.test.ts) | toggle des panels Recap |
+| ActionMenu, ActionResult | 4 | [ActionMenu.test.ts](../tests/unit/components/ActionMenu.test.ts) + [ActionResult.test.ts](../tests/unit/components/ActionResult.test.ts) | menus contextuels Cerveau |
+
+### 12.12 Tests purs (logique métier hors composants)
+
+Pour rappel, en plus des tests composants, le projet a aussi :
+
+| Fichier | Domaine | Tests |
+|---|---|---|
+| [tests/unit/utils/tab-cache-entries.test.ts](../tests/unit/utils/tab-cache-entries.test.ts) | mapping counts DB → entries TabCachePanel | 14 |
+| [tests/unit/utils/pain-point-jaccard.test.ts](../src/utils/pain-point-jaccard.ts) (via lexique-sort) | similarité Jaccard pour tri Lexique | 9 |
+| [tests/unit/services/article-pain-point.test.ts](../tests/unit/services/article-pain-point.test.ts) | helper backend `getArticlePainPoint` | 7 |
+| [tests/unit/services/paa-pain-cumulative.test.ts](../tests/unit/services/paa-pain-cumulative.test.ts) | scoring PAA cumulatif (formule F1) | 7 |
+| [tests/unit/shared/scoring.test.ts](../tests/unit/shared/scoring.test.ts) | computeRelevanceScore, verdicts, fallback racines | 15+ |
+| [tests/unit/shared/scoring-kpi.test.ts](../tests/unit/shared/scoring-kpi.test.ts) | computeKpiScore avec poids ajustés | 8 |
+| [tests/unit/shared/roots-relevance.test.ts](../tests/unit/shared/roots-relevance.test.ts) | gestion fine racines (Jaccard 0.75) | 8 |
+| [tests/unit/shared/intent-mismatch-malus.test.ts](../tests/unit/shared/intent-mismatch-malus.test.ts) | malus intent mismatch -10 points | 9 |
+| [tests/unit/composables/useResizablePanel.test.ts](../tests/unit/composables/useResizablePanel.test.ts) | drag side-panel ; floor/no max | 14 |
+
+### 12.13 Vue d'ensemble — couverture par workflow
+
+| Workflow | Composants user-facing critiques | Tests directs |
+|---|---|---|
+| **Cerveau** | BrainPhase + TopicSuggestions + ProposedArticleRow | 112 |
+| **Moteur — Discovery** | KeywordDiscoveryTab | 44 |
+| **Moteur — Radar** | DouleurIntentScanner + RadarThermometer + radar cards | 53 |
+| **Moteur — Capitaine** | CaptainValidation + CaptainSidePanel + sub-components + CaptainAi/Roots/Interactive | 116 |
+| **Moteur — Lieutenants** | LieutenantsSelection + LieutenantCard/SerpAnalysis/Proposals/H2Structure + SerpDataTab | 174 |
+| **Moteur — Lexique** | LexiqueExtraction + KeywordAssistPanel | 100 |
+| **Moteur — Finalisation** | FinalisationRecap | 11 |
+| **Moteur — transverses** | SelectedArticlePanel, BasketStrip, TabCachePanel, ContextRecap, StrategyContext, PhaseTransitionBanner, ProgressDots | 88 |
+| **Rédaction** | BriefStructureStep + SeoPanel + GeoPanel + IndicatorsTab + ExtractibilityTab + ArticleEditor | 77 |
+| **Linking** | LinkingMatrix + OrphanDetector + AnchorDiversityPanel | 26 |
+| **Intent / Pain** | PainValidation + multi-source (10 micro) + NlpOptinBanner | 71 |
+| **Dashboard** | ArticleList + WorkflowChoice + ArticleCard | 38 |
+| **Tests purs** | scoring, utils, helpers | 91+ |
+| **Total** | | **~1000+ tests** |
+
+### 12.14 Conventions de nommage
+
+- Fichier de tests : `kebab-case.test.ts` correspondant au composant `PascalCase.vue` (ex: `radar-thermometer.test.ts` ↔ `RadarThermometer.vue`).
+- Suffixe `.gaps.test.ts` quand un fichier complète un test principal (ex: `lexique-extraction.gaps.test.ts`).
+- Suffixe descriptif pour des thèmes croisés (ex: `dual-mode-props.test.ts`, `moteur-check-completed.test.ts`).
+- **REGRESSION GUARD** : commentaire et nom de test explicite quand on bloque une régression d'un bug déjà rencontré (visible dans plusieurs tests S1-S5 et UI Captain).
+
+### 12.15 Comment ajouter un test
+
+1. **Composant macro user-facing** (>100 lignes, logique métier propre) → `tests/unit/components/<kebab>.test.ts`
+2. **Composant atomique / dumb** → couvert indirectement par le mount du parent, **pas de fichier dédié**
+3. **Logique pure extractible** → préférer extraire en `src/utils/` puis tester en pure (pattern `tab-cache-entries`)
+4. **Endpoint API** → `tests/contract-api/<route>.contract.test.ts`
+5. **Workflow inter-tabs** → `tests/integration-tabs/` ou `tests/e2e-workflows/`
+
+---
+
+## 13. Mapping UI → Tables DB
 
 > Pour chaque section visuelle majeure, liste des tables lues / écrites. R = read, W = write, C = cache (api_cache).
 > Utile pour : écrire des fixtures de test, raisonner sur les effets de bord, dessiner des migrations.
