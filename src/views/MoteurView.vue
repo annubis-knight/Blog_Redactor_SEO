@@ -32,7 +32,6 @@ import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
-import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
@@ -92,6 +91,42 @@ async function clearExternalCacheForArticle() {
   }
 }
 
+// 2026-04-30 — Comptes réels des explorations persistées en DB pour le TabCachePanel.
+// L'endpoint GET /articles/:id/explorations/counts existe déjà (cf.
+// server/routes/article-explorations.routes.ts) mais n'était pas consommé par
+// MoteurView, ce qui faisait afficher DB 0 même avec des données réelles.
+// Fix : on fetch au mount, à chaque changement d'article et après chaque check.
+const explorationCounts = ref<{
+  radar?: number
+  captain?: number
+  lieutenants?: number
+  lexique?: number
+}>({})
+
+async function refreshExplorationCounts() {
+  const id = selectedArticle.value?.id
+  if (!id) {
+    explorationCounts.value = {}
+    return
+  }
+  try {
+    const counts = await apiGet<Record<string, number>>(`/articles/${id}/explorations/counts`)
+    explorationCounts.value = counts
+    log.debug('[MoteurView] exploration counts refreshed', { articleId: id, counts })
+  } catch (err) {
+    log.warn('[MoteurView] refreshExplorationCounts failed', { articleId: id, error: err })
+  }
+}
+
+// Watch défensif : si `selectedArticle` mute par un autre chemin que
+// handleSelectArticle (refresh de page, navigation profonde), on rafraîchit
+// quand même les counts. `immediate: true` couvre le cas du mount initial.
+watch(
+  () => selectedArticle.value?.id ?? null,
+  () => { refreshExplorationCounts() },
+  { immediate: true },
+)
+
 function emitCheckCompleted(check: string) {
   const id = selectedArticle.value?.id
   if (!id) return
@@ -99,6 +134,9 @@ function emitCheckCompleted(check: string) {
     log.warn('[MoteurView] addCheck failed', { articleId: id, check, error: err }),
   )
   if (check === 'capitaine_locked') refreshCapitainesMap()
+  // Tab cache : un check signe une mutation côté DB (capitaine validé,
+  // lieutenants verrouillés, lexique validé) → recharger les counts.
+  refreshExplorationCounts()
 }
 
 function handleCheckRemoved(check: string) {
@@ -107,6 +145,7 @@ function handleCheckRemoved(check: string) {
   articleProgressStore.removeCheck(id, check).catch(err =>
     log.warn('[MoteurView] removeCheck failed', { articleId: id, check, error: err }),
   )
+  refreshExplorationCounts()
   if (check === 'capitaine_locked') refreshCapitainesMap()
 }
 
@@ -164,10 +203,6 @@ const publishedArticles = computed(() =>
 
 const pilierKeyword = computed(() =>
   keywordsStore.keywords.find(k => k.type === 'Pilier')?.keyword ?? cocoon.value?.name ?? '',
-)
-
-const activeKeyword = computed(() =>
-  selectedArticle.value?.keyword || pilierKeyword.value,
 )
 
 // Discovery/Radar tabs are only available when keywords are NOT validated
@@ -321,6 +356,7 @@ function handleSelectArticle(article: SelectedArticle | null) {
     activeTab: activeTab.value,
   })
   selectedArticle.value = article
+  // Le watch sur `selectedArticle?.id` (plus haut) déclenche refreshExplorationCounts() automatiquement.
 
   // Navigate to the smart tab (components handle article change via their id watchers)
   const smartTab = article ? computeSmartTab(article.id) : 'capitaine'
@@ -476,16 +512,20 @@ function handleSendToLieutenants(payload: { keyword: string; rootKeywords: strin
 }
 
 // --- Tab cache entries for unified cache panel ---
-// Le composant TabCachePanel a été refondu pour distinguer la donnée persistée
-// (`dbCount`, dans la table *_explorations) du cache volatile (`cacheCount`, mémoire
-// ou api_cache). On adapte ici les états existants vers ce nouveau format :
-//  - état "locked"/persisté → dbCount = 1
-//  - état "en mémoire seul"  → cacheCount = 1
-//  - sinon                   → 0/0 (rien à afficher)
+// 2026-04-30 — `dbCount` reflète maintenant le VRAI nombre d'entrées persistées
+// dans les tables *_explorations (via GET /articles/:id/explorations/counts),
+// au lieu d'un flag binaire 0|1 issu de l'état "locked"/"validated".
+// Avant ce fix : un article avec 8 captain_explorations affichait `DB 0` tant
+// que le capitaine n'était pas verrouillé. Maintenant il affichera `DB 8`.
+//
+// `cacheCount` reste un flag mémoire (1 = résultats volatiles non encore persistés).
+// Discovery garde son comportement basé sur discovery_cache (table dédiée).
 const tabCacheEntries = computed<TabCacheEntry[]>(() => [
   {
     tabId: 'discovery',
     tabLabel: 'Discovery',
+    // Discovery a sa propre table de cache (discovery_cache via discoveryCacheStatus),
+    // le endpoint /explorations/counts ne la couvre pas → on garde la logique existante.
     dbCount: discoveryCacheStatus.value?.cached ? (discoveryCacheStatus.value.keywordCount ?? 1) : 0,
     cacheCount: discoveryHasResults.value && !discoveryCacheStatus.value?.cached ? 1 : 0,
     isCurrentTab: activeTab.value === 'discovery',
@@ -498,7 +538,9 @@ const tabCacheEntries = computed<TabCacheEntry[]>(() => [
   {
     tabId: 'radar',
     tabLabel: 'Radar',
-    dbCount: radarCacheStatus.value?.exists ? 1 : 0,
+    // Le endpoint compte les keywords générés à l'intérieur de l'unique scan
+    // persisté pour cet article (cf. SQL : SUM(jsonb_array_length(generated_keywords))).
+    dbCount: explorationCounts.value.radar ?? 0,
     cacheCount: radarScanResult.value !== null && !radarCacheStatus.value?.exists ? 1 : 0,
     isCurrentTab: activeTab.value === 'radar',
     hint: radarScanResult.value
@@ -510,30 +552,44 @@ const tabCacheEntries = computed<TabCacheEntry[]>(() => [
   {
     tabId: 'capitaine',
     tabLabel: 'Capitaine',
-    dbCount: isCaptaineLocked.value ? 1 : 0,
+    // Compte vrai des captain_explorations (chaque mot-clé testé = 1 ligne).
+    dbCount: explorationCounts.value.captain ?? 0,
     cacheCount: 0,
     isCurrentTab: activeTab.value === 'capitaine',
-    hint: isCaptaineLocked.value ? `${captainKeyword.value ?? 'verrouillé'}` : undefined,
+    hint: (() => {
+      const n = explorationCounts.value.captain ?? 0
+      if (n === 0) return undefined
+      if (isCaptaineLocked.value && captainKeyword.value) {
+        return `${n} mot-clé${n > 1 ? 's' : ''} testé${n > 1 ? 's' : ''} — verrouillé : ${captainKeyword.value}`
+      }
+      return `${n} mot-clé${n > 1 ? 's' : ''} testé${n > 1 ? 's' : ''}`
+    })(),
   },
   {
     tabId: 'lieutenants',
     tabLabel: 'Lieutenants',
-    dbCount: isLieutenantsLocked.value ? (articleKeywordsStore.keywords?.lieutenants?.length ?? 1) : 0,
+    dbCount: explorationCounts.value.lieutenants ?? 0,
     cacheCount: 0,
     isCurrentTab: activeTab.value === 'lieutenants',
-    hint: isLieutenantsLocked.value
-      ? `${articleKeywordsStore.keywords?.lieutenants?.length ?? 0} lieutenants`
-      : undefined,
+    hint: (() => {
+      const n = explorationCounts.value.lieutenants ?? 0
+      if (n === 0) return undefined
+      const locked = articleKeywordsStore.keywords?.lieutenants?.length ?? 0
+      return locked > 0 ? `${n} proposition${n > 1 ? 's' : ''} en base · ${locked} verrouillé${locked > 1 ? 's' : ''}` : `${n} proposition${n > 1 ? 's' : ''} en base`
+    })(),
   },
   {
     tabId: 'lexique',
     tabLabel: 'Lexique',
-    dbCount: isLexiqueValidated.value ? (articleKeywordsStore.keywords?.lexique?.length ?? 1) : 0,
+    dbCount: explorationCounts.value.lexique ?? 0,
     cacheCount: 0,
     isCurrentTab: activeTab.value === 'lexique',
-    hint: isLexiqueValidated.value
-      ? `${articleKeywordsStore.keywords?.lexique?.length ?? 0} termes`
-      : undefined,
+    hint: (() => {
+      const n = explorationCounts.value.lexique ?? 0
+      if (n === 0) return undefined
+      const validated = articleKeywordsStore.keywords?.lexique?.length ?? 0
+      return validated > 0 ? `${n} extraction${n > 1 ? 's' : ''} · ${validated} terme${validated > 1 ? 's' : ''} validé${validated > 1 ? 's' : ''}` : `${n} extraction${n > 1 ? 's' : ''}`
+    })(),
   },
 ])
 
