@@ -21,7 +21,9 @@ Audit demandé par l'utilisateur : *« tous les composants macro ou micro devrai
 
 ---
 
-## ✅ Sprint actuel — 5 composants prioritaires couverts
+## ✅ Macro composants user-facing — gap clos
+
+### Première vague (commit `a6ef74f`) — 5 composants prioritaires
 
 | Composant | Workflow | Tests | Fichier |
 |---|---|---|---|
@@ -31,9 +33,21 @@ Audit demandé par l'utilisateur : *« tous les composants macro ou micro devrai
 | [ArticleList.vue](../../src/components/dashboard/ArticleList.vue) | Rédaction (3 colonnes) | 8 | [article-list.test.ts](../../tests/unit/components/article-list.test.ts) |
 | [OrphanDetector.vue](../../src/components/linking/OrphanDetector.vue) | Linking (SEO orphelins) | 7 | [orphan-detector.test.ts](../../tests/unit/components/orphan-detector.test.ts) |
 
-**Total nouveau** : **47 tests** ajoutés. Tous mockés (zéro crédit API).
+**Total première vague** : **47 tests** ajoutés. Tous mockés (zéro crédit API).
 
-Combinés avec les tests anti-régression de la session précédente (CaptainSidePanel + TabCachePanel + useResizablePanel) → **82 tests** sur les composants Capitaine/Moteur dans cette série.
+### Deuxième vague — 3 macro components additionnels (focus user-facing strict)
+
+| Composant | Workflow | Tests | Fichier |
+|---|---|---|---|
+| [BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue) | Rédaction (porte d'entrée brief + outline) | 8 | [brief-structure-step.test.ts](../../tests/unit/components/brief-structure-step.test.ts) |
+| [LinkingMatrix.vue](../../src/components/linking/LinkingMatrix.vue) | Linking (matrice maillage interne) | 10 | [linking-matrix.test.ts](../../tests/unit/components/linking-matrix.test.ts) |
+| [AnchorDiversityPanel.vue](../../src/components/linking/AnchorDiversityPanel.vue) | Linking (alertes SEO ancres) | 9 | [anchor-diversity-panel.test.ts](../../tests/unit/components/anchor-diversity-panel.test.ts) |
+
+**Total deuxième vague** : **27 tests** ajoutés. Tous mockés.
+
+---
+
+**Total cumulé sur les deux vagues** : **74 tests** sur 8 macro composants user-facing — Moteur (BasketStrip, FinalisationRecap, SelectedArticlePanel) + Rédaction (BriefStructureStep, ArticleList) + Linking (LinkingMatrix, AnchorDiversityPanel, OrphanDetector). Combiné avec les 35 tests anti-régression Capitaine de la session précédente, on atteint **109 tests** focalisés sur les composants user-facing critiques.
 
 ---
 
