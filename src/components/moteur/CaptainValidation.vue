@@ -909,7 +909,7 @@ onUnmounted(() => abortAllAiStreams())
     />
 
     <!-- ===== MODE WORKFLOW : Liste verticale + Side Panel sticky ===== -->
-    <div v-if="mode === 'workflow'" class="captain-layout" data-testid="captain-layout">
+    <div v-if="mode === 'workflow'" class="captain-layout" :class="{ 'captain-layout--solo': !selectedEntry }" data-testid="captain-layout">
       <div class="radar-list" data-testid="radar-list">
         <div
           v-if="carouselEntries.length === 0"
@@ -1119,13 +1119,20 @@ onUnmounted(() => abortAllAiStreams())
   padding: 1rem 0;
 }
 
-/* Sprint 2026-04 — Layout 2 colonnes : liste verticale + side panel sticky. */
+/* Sprint 2026-04 — Layout 2 colonnes : liste verticale + side panel sticky.
+   Quand aucune carte n'est sélectionnée (state --solo), le panel n'est pas
+   rendu (cf. CaptainSidePanel v-if) et la 2e colonne s'efface : la liste
+   reprend toute la largeur disponible. */
 .captain-layout {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 360px;
   gap: 1rem;
   align-items: start;
   margin-top: 1rem;
+}
+
+.captain-layout--solo {
+  grid-template-columns: minmax(0, 1fr);
 }
 
 .radar-list {

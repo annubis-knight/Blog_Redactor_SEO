@@ -78,7 +78,11 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
 </script>
 
 <template>
+  <!-- v-if sur entry : panel masqué tant qu'aucune carte n'est sélectionnée
+       (sinon le drawer vide occupait toute la hauteur de la viewport sans
+       contenu utile, parasitant le layout). -->
   <aside
+    v-if="entry !== null"
     class="captain-side-panel"
     :class="{ 'is-resizing': isResizing }"
     :style="{ width: `${panelWidth}px` }"
@@ -110,14 +114,7 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
         </button>
       </header>
 
-      <!-- État vide : aucune carte sélectionnée → drawer vide volontairement
-           (pas de message ni de bouton parasites — la liste à gauche reste
-           parfaitement lisible et explicite). data-testid conservé pour les
-           tests et l'accessibilité. -->
-      <div v-if="entry === null" class="side-panel-disabled" data-testid="side-panel-empty">
-      </div>
-
-      <div v-else class="side-panel-content" data-testid="side-panel-content">
+      <div class="side-panel-content" data-testid="side-panel-content">
         <header class="side-panel-header">
           <span class="side-panel-keyword" :title="entry.card.keyword">{{ entry.card.keyword }}</span>
           <span
@@ -274,12 +271,6 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
 .side-panel-close:hover {
   background: var(--color-bg-hover, #f1f5f9);
   color: var(--color-text, #1e293b);
-}
-
-/* État vide : volontairement vide. Sert de placeholder pour conserver le
-   data-testid="side-panel-empty" attendu par les tests. */
-.side-panel-disabled {
-  flex: 1;
 }
 
 .side-panel-content {
