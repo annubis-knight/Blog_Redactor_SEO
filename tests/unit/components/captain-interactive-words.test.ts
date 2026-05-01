@@ -24,6 +24,7 @@ const RadarCardLockableStub = {
       :data-locked="locked"
       :data-validating="validating"
       :data-has-iw="interactiveWords ? '1' : '0'"
+      :data-locked-left-words="interactiveWords?.lockedLeftWords ?? '0'"
       :data-display-mode="displayMode"
     >
       <button class="stub-toggle" @click="$emit('update:locked', !locked)">toggle</button>
@@ -102,28 +103,58 @@ describe('CaptainInteractiveWords', () => {
     expect(wrapper.find('.stub-lockable').attributes('data-locked')).toBe('false')
   })
 
-  it('interactiveWords absent quand pas de racines + pas en chargement', () => {
+  // 2026-05-01 — Refonte des règles d'activation :
+  // Avant : interactiveWords présent UNIQUEMENT si racines pré-validées ou en chargement.
+  // Après : interactiveWords présent dès que keyword ≥ 3 mots (cohérence visuelle)
+  //         + 2 premiers mots significatifs sanctuarisés via lockedLeftWords=2.
+
+  it('REGRESSION GUARD : keyword ≥ 3 mots → interactiveWords TOUJOURS présent (même sans racines pré-validées)', () => {
+    // Entry sans rootVariants ni isLoadingRoots — avant le fix : aucun mot cliquable.
+    // Après le fix : mots cliquables fournis avec lockedLeftWords=2.
     const wrapper = mount(CaptainInteractiveWords, {
       props: { entry: makeEntry(), lockedKeyword: null },
-      global: { stubs: { RadarCardLockable: RadarCardLockableStub } },
-    })
-    expect(wrapper.find('.stub-lockable').attributes('data-has-iw')).toBe('0')
-  })
-
-  it('interactiveWords présent quand des racines existent', () => {
-    const variants = new Map()
-    variants.set('agence seo', {} as never)
-    const wrapper = mount(CaptainInteractiveWords, {
-      props: {
-        entry: makeEntry({ rootVariants: variants }),
-        lockedKeyword: null,
-      },
       global: { stubs: { RadarCardLockable: RadarCardLockableStub } },
     })
     expect(wrapper.find('.stub-lockable').attributes('data-has-iw')).toBe('1')
   })
 
-  it('interactiveWords présent quand isLoadingRoots=true', () => {
+  it('keyword < 3 mots → interactiveWords absent (pas de racines à explorer)', () => {
+    const shortKeywordCard = {
+      ...makeEntry().card,
+      keyword: 'agence seo', // 2 mots
+    }
+    const wrapper = mount(CaptainInteractiveWords, {
+      props: {
+        entry: makeEntry({
+          card: shortKeywordCard as never,
+          originalCard: shortKeywordCard as never,
+        }),
+        lockedKeyword: null,
+      },
+      global: { stubs: { RadarCardLockable: RadarCardLockableStub } },
+    })
+    expect(wrapper.find('.stub-lockable').attributes('data-has-iw')).toBe('0')
+  })
+
+  it('keyword 1 mot → interactiveWords absent', () => {
+    const oneWordCard = {
+      ...makeEntry().card,
+      keyword: 'seo',
+    }
+    const wrapper = mount(CaptainInteractiveWords, {
+      props: {
+        entry: makeEntry({
+          card: oneWordCard as never,
+          originalCard: oneWordCard as never,
+        }),
+        lockedKeyword: null,
+      },
+      global: { stubs: { RadarCardLockable: RadarCardLockableStub } },
+    })
+    expect(wrapper.find('.stub-lockable').attributes('data-has-iw')).toBe('0')
+  })
+
+  it('keyword 3+ mots avec racines en chargement → interactiveWords toujours présent', () => {
     const wrapper = mount(CaptainInteractiveWords, {
       props: {
         entry: makeEntry({ isLoadingRoots: true }),
@@ -132,6 +163,16 @@ describe('CaptainInteractiveWords', () => {
       global: { stubs: { RadarCardLockable: RadarCardLockableStub } },
     })
     expect(wrapper.find('.stub-lockable').attributes('data-has-iw')).toBe('1')
+  })
+
+  it('REGRESSION GUARD : lockedLeftWords=2 transmis aux mots interactifs (sanctuarise les 2 premiers significatifs)', () => {
+    // Ancrage de la racine du capitaine. Si quelqu'un retire la valeur 2,
+    // les utilisateurs pourront désactiver les mots porteurs de la racine.
+    const wrapper = mount(CaptainInteractiveWords, {
+      props: { entry: makeEntry(), lockedKeyword: null },
+      global: { stubs: { RadarCardLockable: RadarCardLockableStub } },
+    })
+    expect(wrapper.find('.stub-lockable').attributes('data-locked-left-words')).toBe('2')
   })
 
   it('validating=true quand pendingVariants non vide', () => {

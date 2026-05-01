@@ -36,12 +36,25 @@ const currentWords = computed(() => {
   return props.entry.originalCard.keyword.trim().split(/\s+/)
 })
 
+/**
+ * Configuration des mots interactifs côté Capitaine.
+ * Règles (révision 2026-05-01) :
+ *   1. Capitaine < 3 mots → pas de mots cliquables (pas de racines à explorer).
+ *   2. Capitaine ≥ 3 mots → toujours des mots cliquables, même sans racines
+ *      pré-validées en cache (cohérence visuelle, l'utilisateur n'attend pas
+ *      le pré-chargement pour voir l'interface).
+ *   3. Les 2 premiers mots SIGNIFICATIFS (non-stopwords) sont SANCTUARISÉS
+ *      via `lockedLeftWords: 2` : visuellement non-cliquables, ancrent la
+ *      racine du capitaine. Aligné sur la contrainte d'`extractRoots` qui
+ *      exige déjà ≥ 2 mots significatifs (cf. useCapitaineValidation.ts).
+ */
 const interactiveWordsProps = computed(() => {
-  if (props.entry.rootVariants.size === 0 && !props.entry.isLoadingRoots) return undefined
+  if (currentWords.value.length < 3) return undefined
   return {
     words: currentWords.value,
     activeIndices: props.entry.activeWordIndices,
     loading: props.entry.isLoadingRoots,
+    lockedLeftWords: 2,
   }
 })
 

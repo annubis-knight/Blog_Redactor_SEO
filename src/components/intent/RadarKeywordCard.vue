@@ -10,6 +10,9 @@ export interface InteractiveWordsProps {
   words: string[]
   activeIndices: number[]
   loading: boolean
+  /** Nombre de premiers mots significatifs (non-stopwords) à sanctuariser
+   *  (visuellement non-cliquables). Cf. KeywordWords.vue. */
+  lockedLeftWords?: number
 }
 
 export type RadarDisplayMode = 'kpi' | 'relevance'
@@ -151,11 +154,11 @@ interface BreakdownRow {
 const breakdownRows = computed<BreakdownRow[]>(() => {
   if (props.displayMode === 'kpi' && kpiBreakdown.value) {
     const LABEL_DESC: Record<string, string> = {
-      volume:       'Volume de recherche mensuel',
-      kd:           'Keyword Difficulty — concurrence SEO',
-      cpc:          'Coût par clic — valeur commerciale',
-      intent:       'Type d\'intention (commercial > transactionnel > info)',
-      paa:          'Points PAA pondérés selon exact/stem/sémantique',
+      volume: 'Volume de recherche mensuel',
+      kd: 'Keyword Difficulty — concurrence SEO',
+      cpc: 'Coût par clic — valeur commerciale',
+      intent: 'Type d\'intention (commercial > transactionnel > info)',
+      paa: 'Points PAA pondérés selon exact/stem/sémantique',
       autocomplete: 'Nombre de matches autocomplete',
     }
     const pct = (w: number) => `${Math.round(w * 100)}%`
@@ -230,29 +233,19 @@ function itemBorderClass(paa: RadarPaaItem): string {
     <div class="radar-card__header" @click="expanded = !expanded">
       <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }">&#9654;</span>
 
-      <KeywordWords
-        v-if="interactiveWords"
-        class="radar-card__keyword"
-        :words="interactiveWords.words"
-        :active-indices="interactiveWords.activeIndices"
-        :loading="interactiveWords.loading"
-        :modifiers="modifiers"
+      <KeywordWords v-if="interactiveWords" class="radar-card__keyword" :words="interactiveWords.words"
+        :active-indices="interactiveWords.activeIndices" :loading="interactiveWords.loading" :modifiers="modifiers"
         :manual-tag-mode="manualTagMode"
+        :locked-left-words="interactiveWords.lockedLeftWords ?? 0"
         @update:active-indices="emit('word-toggle', $event)"
-        @modifier-untag="emit('modifier-untag', $event)"
-        @modifier-cycle="emit('modifier-cycle', $event)"
-      />
+        @modifier-untag="emit('modifier-untag', $event)" @modifier-cycle="emit('modifier-cycle', $event)" />
       <span v-else class="radar-card__keyword">
         <template v-if="modifiers">
-          <span
-            v-for="(word, i) in card.keyword.split(/\s+/)"
-            :key="`${word}-${i}`"
-            class="radar-card__keyword-word"
+          <span v-for="(word, i) in card.keyword.split(/\s+/)" :key="`${word}-${i}`" class="radar-card__keyword-word"
             :class="{
               'radar-card__keyword-word--modifier-local': modifiers[i] === 'local',
               'radar-card__keyword-word--modifier-persona': modifiers[i] === 'persona',
-            }"
-          >{{ word }}{{ i < card.keyword.split(/\s+/).length - 1 ? ' ' : '' }}</span>
+            }">{{ word }}{{ i < card.keyword.split(/\s+/).length - 1 ? ' ' : '' }}</span>
         </template>
         <template v-else>{{ card.keyword }}</template>
       </span>
@@ -335,7 +328,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
             <span class="paa-question" @click.stop="node.paa.answer ? toggleAnswer(node.index) : undefined">{{
               node.paa.question }}</span>
             <span v-if="node.paa.semanticScore != null" class="paa-semantic">{{ Math.round(node.paa.semanticScore * 100)
-            }}%</span>
+              }}%</span>
             <span v-if="node.children.length > 0" class="paa-children-count">({{ node.children.length }})</span>
           </div>
 
@@ -384,10 +377,6 @@ function itemBorderClass(paa: RadarPaaItem): string {
 .radar-card:hover {
   border-color: var(--color-border-hover, var(--color-primary));
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-}
-
-.radar-card.expanded {
-  border-color: var(--color-primary);
 }
 
 /* QW4 — Carte "hors-douleur" : grisee mais entierement cliquable. */

@@ -14,6 +14,13 @@ import type { ModifierKind } from '@shared/utils/keyword-modifiers'
  *  - `modifiers?` : liste alignée sur `words` qui indique si chaque mot est
  *                   un modificateur local/persona (pour coloration visuelle).
  *                   Absent → pas de coloration de modificateurs.
+ *  - `lockedLeftWords?` : nombre de premiers mots SIGNIFICATIFS (non-stopwords)
+ *                   à sanctuariser. Ces mots sont visuellement non-cliquables
+ *                   (pas de soulignement, curseur normal) et leur clic est
+ *                   ignoré. Les stopwords ne consomment pas les "slots".
+ *                   Exemple "comment choisir son agence" + lockedLeftWords=2 →
+ *                   "comment" et "choisir" sanctuarisés, "son" ignoré (stopword).
+ *                   Défaut 0 = aucune sanctuarisation.
  *
  * Garde-fou : on ne peut pas désactiver un mot si ça ferait passer le nombre de
  * mots significatifs actifs (non-stopwords) sous la barre de 2.
@@ -28,8 +35,11 @@ const props = withDefaults(defineProps<{
   modifiers?: (ModifierKind | null)[]
   /** Si true, un clic sur un mot cycle son tag modifier (au lieu du toggle actif/inactif). */
   manualTagMode?: boolean
+  /** N premiers mots significatifs (non-stopwords) à sanctuariser. Voir doc ci-dessus. */
+  lockedLeftWords?: number
 }>(), {
   manualTagMode: false,
+  lockedLeftWords: 0,
 })
 
 const emit = defineEmits<{
@@ -66,6 +76,12 @@ function handleModifierClick(index: number, event: MouseEvent): boolean {
   const isManualMode = props.manualTagMode
   const isAltClick = event.altKey && !isManualMode
   if (!isManualMode && !isAltClick) return false
+  // Sanctuarisé : aucun cycle de tag — cohérent avec la règle "non-interactif".
+  if (sanctuaryIndices.value.has(index)) {
+    event.stopPropagation()
+    event.preventDefault()
+    return true
+  }
   event.stopPropagation()
   event.preventDefault()
   const current = modifierOf(index)
@@ -80,6 +96,30 @@ function handleModifierClick(index: number, event: MouseEvent): boolean {
 const MIN_SIGNIFICANT = 2
 
 const activeSet = computed(() => new Set(props.activeIndices))
+
+/**
+ * Indices des N premiers mots significatifs (non-stopwords) à sanctuariser.
+ * Les stopwords ("le", "la", "son", "de"…) ne consomment PAS de slot pour ne
+ * pas pousser la sanctuarisation hors des vrais termes porteurs de sens.
+ */
+const sanctuaryIndices = computed(() => {
+  const set = new Set<number>()
+  if (props.lockedLeftWords <= 0) return set
+  let count = 0
+  for (let i = 0; i < props.words.length; i++) {
+    if (count >= props.lockedLeftWords) break
+    const w = props.words[i]
+    if (w && !FRENCH_STOPWORDS.has(w.toLowerCase())) {
+      set.add(i)
+      count++
+    }
+  }
+  return set
+})
+
+function isSanctuary(index: number): boolean {
+  return sanctuaryIndices.value.has(index)
+}
 
 function isActive(index: number): boolean {
   return activeSet.value.has(index)
@@ -101,6 +141,8 @@ function canDeactivate(index: number): boolean {
 }
 
 function handleClick(index: number) {
+  // Sanctuarisé : aucun toggle possible — le mot est ancré comme racine du capitaine.
+  if (isSanctuary(index)) return
   if (isActive(index)) {
     if (!canDeactivate(index)) return
     const next = props.activeIndices.filter(i => i !== index)
@@ -119,17 +161,19 @@ function handleClick(index: number) {
       :key="`${word}-${i}`"
       class="kw-word"
       :class="{
-        'kw-word--active': isActive(i),
-        'kw-word--inactive': !isActive(i),
-        'kw-word--locked': isActive(i) && !canDeactivate(i),
-        'kw-word--modifier-local': modifierOf(i) === 'local',
-        'kw-word--modifier-persona': modifierOf(i) === 'persona',
+        'kw-word--sanctuary': isSanctuary(i),
+        'kw-word--active': isActive(i) && !isSanctuary(i),
+        'kw-word--inactive': !isActive(i) && !isSanctuary(i),
+        'kw-word--locked': isActive(i) && !canDeactivate(i) && !isSanctuary(i),
+        'kw-word--modifier-local': modifierOf(i) === 'local' && !isSanctuary(i),
+        'kw-word--modifier-persona': modifierOf(i) === 'persona' && !isSanctuary(i),
       }"
       :data-testid="`kw-word-${i}`"
       :data-active="isActive(i)"
       :data-locked="isActive(i) && !canDeactivate(i)"
+      :data-sanctuary="isSanctuary(i)"
       :data-modifier="modifierOf(i) ?? undefined"
-      :title="isActive(i) && !canDeactivate(i) ? 'Minimum 2 mots significatifs requis' : modifierTooltip(modifierOf(i))"
+      :title="isSanctuary(i) ? 'Mot ancré dans la racine du capitaine — non modifiable' : (isActive(i) && !canDeactivate(i) ? 'Minimum 2 mots significatifs requis' : modifierTooltip(modifierOf(i)))"
       @click.stop="handleModifierClick(i, $event) || handleClick(i)"
     >{{ word }}</span>
     <span v-if="loading" class="kw-loading" />
@@ -146,6 +190,20 @@ function handleClick(index: number) {
 
 .kw-word {
   transition: color 0.15s, opacity 0.15s;
+}
+
+/* Sanctuarisé : mot ancré dans la racine du capitaine (les N premiers
+ * significatifs). Visuellement neutre, sans soulignement, curseur normal —
+ * l'utilisateur comprend immédiatement qu'il n'y a pas d'interaction. */
+.kw-word--sanctuary {
+  color: var(--color-text);
+  text-decoration: none;
+  cursor: default;
+  font-weight: 600;
+}
+
+.kw-word--sanctuary:hover {
+  color: var(--color-text);
 }
 
 .kw-word--active {
