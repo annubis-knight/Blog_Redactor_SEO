@@ -1,8 +1,9 @@
-# Améliorations UI/UX du Capitaine — avril 2026
+# Améliorations UI/UX du Capitaine — avril 2026 → mai 2026
 
-> Ce document trace les évolutions UX livrées entre fin avril 2026 sur l'onglet
-> **Capitaine** du Moteur (radar list + side-panel). Chaque amélioration est
-> couverte par des tests anti-régression listés en fin de chaque section.
+> Ce document trace les évolutions UX livrées sur l'onglet
+> **Capitaine** du Moteur (radar list + side-panel + radar cards). Chaque
+> amélioration est couverte par des tests anti-régression listés en fin de
+> chaque section.
 
 ---
 
@@ -163,6 +164,45 @@ Ce bug avait déjà été *« réglé »* en commentaire dans un commit antérie
 
 ---
 
+## 7. Sanctuarisation des 2 premiers mots significatifs sur radar cards
+
+### Avant
+Sur les radar cards de l'onglet Capitaine :
+- **Bug** : `interactiveWords` retournait `undefined` quand il n'y avait ni racines pré-validées ni chargement en cours → certains capitaines n'avaient **aucun mot cliquable** alors que d'autres oui. Incohérence visuelle frustrante.
+- Le seul garde-fou existant côté `KeywordWords` était **réactif** : *« minimum 2 mots significatifs après désactivation »* → l'utilisateur pouvait essayer de cliquer puis être bloqué. Pas préventif.
+
+### Après
+- **Cohérence visuelle** : `interactiveWords` est désormais fourni dès que le keyword a **3 mots ou plus**, indépendamment de l'état du cache des racines. Capitaines < 3 mots restent non-interactifs (pas de racines à explorer, par design).
+- **Sanctuarisation préventive** : les **2 premiers mots significatifs** (non-stopwords) sont marqués `--sanctuary` :
+  - Visuellement : pas de soulignement, curseur normal, font-weight 600
+  - Comportement : tout clic (toggle ou Alt+modifier) est court-circuité
+  - Tooltip : *« Mot ancré dans la racine du capitaine — non modifiable »*
+- **Stopwords ignorés** : les *"de", "le", "la", "son"…* ne consomment pas les slots de sanctuarisation. Pour `"agence de seo a paris"` avec `lockedLeftWords=2`, on sanctuarise *"agence"* (slot 1) puis *"seo"* (slot 2), *"de"* et *"a"* sont skippés.
+
+### Code
+- [src/components/intent/KeywordWords.vue](../src/components/intent/KeywordWords.vue) — nouvelle prop `lockedLeftWords?: number` (défaut 0), computed `sanctuaryIndices`, classe `.kw-word--sanctuary`
+- [src/components/intent/RadarKeywordCard.vue](../src/components/intent/RadarKeywordCard.vue) — interface `InteractiveWordsProps` étendue + transmission au `KeywordWords`
+- [src/components/moteur/CaptainInteractiveWords.vue](../src/components/moteur/CaptainInteractiveWords.vue) — `lockedLeftWords: 2` câblé en dur (cohérent avec la contrainte de `extractRoots` qui exige ≥ 2 mots significatifs)
+
+### Tests
+- [tests/unit/components/keyword-words.test.ts](../tests/unit/components/keyword-words.test.ts) — 10 tests dédiés sanctuarisation :
+  - `lockedLeftWords=0 (défaut) : aucun mot sanctuarisé`
+  - `lockedLeftWords=2 : les 2 premiers mots significatifs ont la classe --sanctuary`
+  - **REGRESSION GUARD** : *« les stopwords ne consomment pas les slots de sanctuarisation »*
+  - `clic sur un mot sanctuarisé → AUCUN emit update:activeIndices`
+  - `clic sur un mot non sanctuarisé → emit normal`
+  - **REGRESSION GUARD** : *« data-sanctuary attribut présent pour debugging/CSS hooks »*
+  - `tooltip explicite sur les mots sanctuarisés`
+  - `lockedLeftWords > nombre de mots significatifs : sanctuarise tout ce qui peut l'être`
+  - `Alt+clic sur un sanctuarisé → événement consommé sans emit modifier-cycle`
+- [tests/unit/components/captain-interactive-words.test.ts](../tests/unit/components/captain-interactive-words.test.ts) — 4 tests dédiés cohérence d'activation :
+  - **REGRESSION GUARD** : *« keyword ≥ 3 mots → interactiveWords TOUJOURS présent (même sans racines pré-validées) »*
+  - `keyword < 3 mots → interactiveWords absent`
+  - `keyword 1 mot → interactiveWords absent`
+  - **REGRESSION GUARD** : *« lockedLeftWords=2 transmis aux mots interactifs »*
+
+---
+
 ## Récap des commits
 
 ```
@@ -173,6 +213,7 @@ bea9e4f  fix(moteur): TabCachePanel affiche le vrai compte DB des explorations
 9a7f49e  fix(captain): masque le side-panel quand aucune carte sélectionnée
 acc127e  style(captain): refonte sélection + verrouillage radar-list-item
 7fe8390  fix(captain): side-panel flottant + redimensionnement sans borne haute
+263b14f  feat(captain): sanctuarisation des 2 premiers mots significatifs sur radar cards
 ```
 
 ## Couverture totale anti-régression
@@ -181,8 +222,10 @@ acc127e  style(captain): refonte sélection + verrouillage radar-list-item
 - **useResizablePanel** : 14 tests (floor min, pas de borne haute, drag dans tous les sens)
 - **buildTabCacheEntries** : 14 tests (vrais counts DB, multi-articles, fallbacks)
 - **Endpoint /explorations/counts** : 4 tests contract (shape, multi-articles, edge cases)
+- **KeywordWords (sanctuarisation)** : 10 tests (--sanctuary, stopwords ignorés, clics court-circuités, tooltip)
+- **CaptainInteractiveWords** : 12 tests (cohérence ≥ 3 mots, lockedLeftWords=2 transmis)
 
-Total : **39 tests** sur ces 6 améliorations. Aucun n'utilise d'appel IA réel — tous sont mockés.
+Total : **53 tests** sur ces 7 améliorations. Aucun n'utilise d'appel IA réel — tous sont mockés.
 
 ## Voir aussi
 
