@@ -1,7 +1,18 @@
 # Moteur Workflow — Diagramme de flux
 
-> Mis à jour : 2026-05-01
+> Mis à jour : 2026-05-02
 > Source de vérité : `src/views/MoteurView.vue` + composants `src/components/moteur/*` + constantes `shared/constants/workflow-checks.constants.ts`
+
+> **2026-05-02 — Unification des Panels IA (Sprints A-F).** Tous les onglets
+> du Moteur partagent désormais une coque visuelle commune (`AiPanel`,
+> `AiPanelHeader`, `AiTriggerButton`, `AiAdviceMarkdown`, `AiSuggestionList`)
+> + le composable `useAiPanel` pour la plomberie streaming. Côté backend,
+> les 4 routes `/keywords/:keyword/ai-*` passent par
+> `server/services/external/ai-panel-runner.service.ts` (contrats SSE
+> préservés). Discovery & Radar reçoivent un panel suggestion **sans appel
+> IA** (tri local : signal × Jaccard douleur pour Discovery, mix
+> marketScore + relevanceScore pour Radar). Tech-spec archivée :
+> `_bmad-output/implementation-artifacts/_archive/tech-spec-moteur-ai-panel-unification.md`.
 
 ## 1. Vue globale du workflow — 3 phases / 6 onglets
 

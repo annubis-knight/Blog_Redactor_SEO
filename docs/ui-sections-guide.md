@@ -220,6 +220,16 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 | ~~**PhaseTransitionBanner**~~ | — | **Retiré en Sprint 16 (§2.4)** : le bouton bas-de-page "Continuer vers {TabSuivant}" remplace avantageusement ce banner d'attention. | — | — |
 | **TabCachePanel (D5)** | `TabCachePanel` | Chips résumés des onglets ayant des données en cache ou des explorations DB. Depuis Sprint 12, les compteurs viennent de `GET /articles/:id/explorations/counts` (UNION ALL sur 8 tables `*_explorations`). Bouton compagnon « Vider cache externe » → `DELETE /articles/:id/external-cache`. **Maj 2026-05-01** : Discovery retiré du panel (modèle de persistance cross-article seed-based, incompatible avec un pilotage par articleId). Le panel affiche désormais 4 chips : Radar, Capitaine, Lieutenants, Lexique. | Au moins un onglet cached OU `count > 0` par type | Nav onglet au clic, purge cache |
 | **TabLoadPrompt (2026-05-01)** | `TabLoadPrompt` | Notification flottante ancrée à droite du TabCachePanel. Apparaît à chaque visite d'un onglet (Radar / Capitaine / Lieutenants / Lexique) où des données existent en DB ou en Cache, et propose deux boutons « Charger DB (n) » / « Charger Cache (n) ». Le chargement déclenche une **fusion sans doublon** dans l'état mémoire (mergers exposés par chaque domaine). Pas d'auto-dismiss : l'utilisateur clique un bouton ou ferme. Le dismiss est local à la visite courante (réapparaît si l'utilisateur navigue puis revient). | `selectedArticle` && onglet courant a `dbCount>0` ou `cacheCount>0` | emit `load-db`, `load-cache`, `dismiss` |
+| **SortToggleBar (2026-05-02)** | `SortToggleBar` + composable `useSortableList` | Barre de tri unifiée présente sur les 4 onglets (Radar, Capitaine, Lieutenants, Lexique). Chips cliquables A-Z + Score (critère adapté à l'onglet, voir tableau ci-dessous) avec cycle desc → asc → neutral. Slot `#filters` pour ajouter des contrôles spécifiques (ex: filtre CPC sur Radar). L'item verrouillé Capitaine reste toujours en tête (`pinnedPredicate`). Mêmes codes visuels que TabCachePanel pour cohérence. | Conteneur de cards de l'onglet | emit `update:modelValue` |
+
+**Critère "Score" par onglet (rappel : voir [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md))** :
+
+| Onglet | Score utilisé pour le tri | Source |
+|---|---|---|
+| Radar (`displayMode='kpi'`) | **Score Marché** (`marketScore.total`) | KPI affiché sur la card |
+| Capitaine (`displayMode='relevance'`) | **Score Pertinence** (`relevanceScore.total`) | KPI affiché sur la card |
+| Lieutenants | **Score IA** (`score`, 0-100) | Score IA de la proposition |
+| Lexique | **Densité** (`density`) + critère bonus **Pertinence douleur** (Jaccard `term × painPoint`, visible si painPoint présent) | TF-IDF + utilitaire `jaccardWithPainPoint` |
 | **BasketStrip** | `BasketStrip` | Panier inline de mots-clés collectés (discovery, radar, pain-translator). Visible en haut de tous les onglets Moteur. | `selectedArticle` && `!basketStore.isEmpty` | Mutation basket + chips |
 | **BasketFloatingPanel (Sprint 9)** | `BasketFloatingPanel` | Panier flottant coin bas-gauche (au-dessus de `CostLogPanel`). Pill avec compteur → panneau latéral slide-in (300 px) groupé par source. Visible en permanence sur tous les onglets Moteur. | Montage `MoteurView` | Mutation basket (remove, clear) |
 | **Navigation bas** | inline | Retour cocon / continuer vers Rédaction | — | Router push |
@@ -1572,3 +1582,37 @@ Pour rappel, en plus des tests composants, le projet a aussi :
   - Les rows legacy `api_cache[intent|local-seo|content-gap|serp|validate|radar]` d'avant Sprint 10 restent en place ; aucun nouvel écrivain ne les alimente. Elles s'éteignent par TTL.
 - **Pile d'activité (Sprint 5)** : `useCostLogStore` (store Pinia, pas de table DB) centralise les logs transverses (appels API coûteux + messages info/warning/error). `CostLogPanel` est monté une fois en `Teleport to="body"` dans `App.vue`, visible sur toutes les vues.
 - **Basket (Sprint 9)** : `moteur-basket` store Pinia, reset sur `setArticle(null)`. Consommé par `BasketStrip` (inline en haut) + `BasketFloatingPanel` (flottant coin bas-gauche) + `KeywordAssistPanel` dans les 3 onglets Capitaine/Lieutenants/Lexique.
+
+## 13. Unification des Panels IA du Moteur (2026-05-02)
+
+> Tech-spec : `_bmad-output/implementation-artifacts/_archive/tech-spec-moteur-ai-panel-unification.md` (archivée).
+
+Les 5 onglets du Moteur qui exposent (ou devraient exposer) un panel IA partagent désormais une **coque visuelle commune** + une **plomberie unifiée**.
+
+### 13.1 Composants partagés
+- `src/components/moteur/ai-panel/AiPanel.vue` — wrapper générique (variants `suggestion` | `advice`)
+- `src/components/moteur/ai-panel/AiPanelHeader.vue` — Sparkles + titre + sous-titre
+- `src/components/moteur/ai-panel/AiTriggerButton.vue` — CTA unifié (variants `primary` | `regen` | `ghost`, prop opt-in `confirmMessage` pour régénération coûteuse)
+- `src/components/moteur/ai-panel/AiPanelSkeleton.vue` — squelette loading
+- `src/components/moteur/ai-panel/AiSuggestionList.vue` — liste cochable (variant suggestion)
+- `src/components/moteur/ai-panel/AiAdviceMarkdown.vue` — markdown sanitisé (variant advice)
+- `src/composables/moteur/useAiPanel.ts` — plomberie streaming (idle/streaming/success/error + isStale TTL)
+
+### 13.2 Panels par onglet
+| Onglet | Composant | Variant | Position | Appel IA |
+| --- | --- | --- | --- | --- |
+| Discovery | `DiscoveryAiPanel.vue` | suggestion | bas de page | **Non** — tri local (signal × Jaccard douleur) |
+| Radar | `RadarAiPanel.vue` | suggestion | bas de page | **Non** — tri local (marketScore + relevanceScore) |
+| Capitaine | `CaptainSidePanel.vue` (utilise `<AiPanel variant="advice">`) | advice | sidepanel droit | Oui — `/keywords/:kw/ai-panel` |
+| Lieutenants | `LieutenantsAiPanel.vue` | suggestion | bas de page (tabs Propositions / Hn) | Oui — propose-lieutenants + ai-hn-structure |
+| Lexique | `LexiqueAiPanel.vue` | suggestion | bas de page (TF-IDF reste en haut) | Oui — `/keywords/:kw/ai-lexique-upfront` |
+
+### 13.3 Backend
+- `server/services/external/ai-panel-runner.service.ts` — runner SSE unifié (writeHead + consumeStream + parser + onSuccess persist + done + error). Contrats SSE préservés au byte près.
+- `server/utils/ai-panel-cache.ts` — wrapper `api_cache` pré-configuré (`cache_type='ai-panel'`), passthrough vers `db/cache-helpers.ts` prêt pour usage futur.
+- 5 routes migrées : `/keywords/:keyword/ai-panel`, `/ai-hn-structure`, `/propose-lieutenants`, `/ai-lexique`, `/ai-lexique-upfront`. 51 tests routes inchangés et verts.
+
+### 13.4 Décisions tranchées
+- **D1** : Capitaine reste en sidepanel (variant advice), exception assumée — pas de doublon bas-de-page.
+- **D2** : couleur d'accent IA = tokens `--color-badge-purple-bg` / `--color-badge-purple-text` déjà présents (pas de nouveau token).
+- **D3** : Discovery & Radar n'introduisent **aucun nouvel appel IA** — tri local sur données existantes (basket, scoring déjà calculé).

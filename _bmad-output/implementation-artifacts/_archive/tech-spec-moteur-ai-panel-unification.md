@@ -2,10 +2,12 @@
 name: Unification des Panels IA du workflow Moteur
 description: Couche UI uniforme pour les panels IA d'analyse/suggestion en bas de chaque onglet, factorisation des composables et fonctions partagées
 type: tech-spec
-status: in-progress
-version: 0.2.0
+status: archived
+version: 1.0.0
 created: 2026-05-02
 last_updated: 2026-05-02
+archived_at: 2026-05-02
+retro: ../retro-moteur-ai-panel-unification.md
 synced_with:
   - docs/ui-sections-guide.md
   - docs/moteur-data-flow.md
@@ -108,6 +110,11 @@ progress:
         - Bumper architecture.md si besoin.
         - Archiver cette tech-spec dans _archive/ avec bandeau ARCHIVED.
 ---
+
+> ⚠️ **ARCHIVED 2026-05-02** — Tech-spec livrée et stable. Voir la rétro
+> [retro-moteur-ai-panel-unification.md](../retro-moteur-ai-panel-unification.md)
+> pour le bilan post-livraison. Source de vérité : le code dans `src/` +
+> `server/` et la section §13 de `docs/ui-sections-guide.md`.
 
 # Tech-spec — Unification des Panels IA du workflow Moteur
 
