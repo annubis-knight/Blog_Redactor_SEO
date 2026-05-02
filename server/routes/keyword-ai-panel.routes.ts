@@ -1,7 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/ai-provider.service.js'
-import type { ApiUsage } from '../services/external/claude.service.js'
+import { runAiPanelStream } from '../services/external/ai-panel-runner.service.js'
 import { parseAiJson } from '../utils/ai-json-parser.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
@@ -9,6 +8,18 @@ import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/ar
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
+
+/**
+ * Sprint E (2026-05-02) — Routes Panels IA refactorisées via
+ * `runAiPanelStream`. Chaque handler ne fait plus que :
+ *   1. valider l'input (Zod-light)
+ *   2. charger les variables (painPoint, contextes)
+ *   3. composer le prompt via `loadPrompt`
+ *   4. déléguer au runner (SSE + stream + done + error)
+ *
+ * Les contrats de réponse SSE sont préservés à l'identique (events `chunk`,
+ * `done`, `error` avec mêmes payloads).
+ */
 
 /**
  * Formate un score (number ou objet `{ total, verdict }`) pour l'injection dans un prompt.
@@ -28,38 +39,13 @@ function formatScoreForPrompt(score: unknown): string {
 
 const router = Router()
 
-/** Consume the async generator, separating content chunks from the usage sentinel */
-async function consumeStream(
-  gen: AsyncGenerator<string>,
-  onChunk: (chunk: string) => void,
-): Promise<{ fullContent: string; usage: ApiUsage | null; chunkCount: number }> {
-  const chunks: string[] = []
-  let usage: ApiUsage | null = null
-  let chunkCount = 0
-  for await (const chunk of gen) {
-    if (chunk.startsWith(USAGE_SENTINEL)) {
-      usage = JSON.parse(chunk.slice(USAGE_SENTINEL.length)) as ApiUsage
-    } else {
-      chunkCount++
-      chunks.push(chunk)
-      onChunk(chunk)
-    }
-  }
-  return { fullContent: chunks.join(''), usage, chunkCount }
-}
-
 /**
  * POST /keywords/:keyword/ai-panel
  * SSE streaming expert SEO analysis panel.
- * Body: { level, kpis, verdict }
+ * Body: { level, articleId?, marketScore?, relevanceScore?, cocoonSlug? }
  */
 router.post('/keywords/:keyword/ai-panel', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  // 2026-04-28 — Refonte prompt Capitaine (S1) :
-  // - injection painPoint (depuis articleId si fourni, sinon fallback)
-  // - injection marketScore + relevanceScore (cf. tech-spec score-kpi-pertinence-separation)
-  // Backward-compat : `verdict` et `kpis` legacy continuent d'être acceptés mais ne sont plus injectés
-  // dans le prompt — le nouveau prompt s'appuie sur les deux scores séparés.
   const { level, articleId, marketScore, relevanceScore, cocoonSlug } = req.body
 
   if (!keyword || !level) {
@@ -69,45 +55,26 @@ router.post('/keywords/:keyword/ai-panel', async (req, res) => {
 
   log.info(`AI panel request for "${keyword}" (${level})`)
 
-  try {
-    const startTotal = Date.now()
-    const painPoint = await getArticlePainPoint(articleId)
+  const painPoint = await getArticlePainPoint(articleId)
+  const systemPrompt = await loadPrompt('capitaine-ai-panel', {
+    keyword,
+    level,
+    painPoint,
+    marketScore: formatScoreForPrompt(marketScore),
+    relevanceScore: formatScoreForPrompt(relevanceScore),
+  }, cocoonSlug ? { cocoonSlug } : undefined)
+  log.debug('ai-panel prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
-    const systemPrompt = await loadPrompt('capitaine-ai-panel', {
-      keyword,
-      level,
-      painPoint,
-      marketScore: formatScoreForPrompt(marketScore),
-      relevanceScore: formatScoreForPrompt(relevanceScore),
-    }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('ai-panel prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
-
-    // SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    })
-
-    const startAi = Date.now()
-    const { fullContent, usage, chunkCount } = await consumeStream(
-      streamChatCompletion(systemPrompt, `Analyse le mot-clé "${keyword}" pour un article de niveau ${level}.`),
-      (chunk) => res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk })}\n\n`),
-    )
-
-    log.info(`AI panel done for "${keyword}"`, { length: fullContent.length, chunkCount, aiMs: Date.now() - startAi, totalMs: Date.now() - startTotal })
-    res.write(`event: done\ndata: ${JSON.stringify({ metadata: { keyword, level }, usage })}\n\n`)
-    res.end()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur lors de la génération du panel IA'
-    log.error(`AI panel failed for "${keyword}" — ${message}`, { keyword, level, cocoonSlug })
-    if (res.headersSent) {
-      res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
-      res.end()
-    } else {
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
-    }
-  }
+  await runAiPanelStream({
+    req,
+    res,
+    keyword,
+    level,
+    systemPrompt,
+    userPrompt: `Analyse le mot-clé "${keyword}" pour un article de niveau ${level}.`,
+    logTag: 'ai-panel',
+    buildDonePayload: (_parsed, usage) => ({ metadata: { keyword, level }, usage }),
+  })
 })
 
 /**
@@ -126,51 +93,32 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
 
   log.info(`AI Hn structure request for "${keyword}" (${level}, ${lieutenants.length} lieutenants)`)
 
-  try {
-    const startTotal = Date.now()
-    const hnSummary = Array.isArray(hnStructure)
-      ? hnStructure.map((h: { level: number; text: string; count: number }) => `H${h.level}: ${h.text} (${h.count}x)`).join('\n')
-      : 'Aucune donnee de structure concurrente'
+  const hnSummary = Array.isArray(hnStructure)
+    ? hnStructure.map((h: { level: number; text: string; count: number }) => `H${h.level}: ${h.text} (${h.count}x)`).join('\n')
+    : 'Aucune donnee de structure concurrente'
 
-    // S1 — injection painPoint depuis articleId (best-effort)
-    const painPoint = await getArticlePainPoint(articleId)
-    const systemPrompt = await loadPrompt('lieutenants-hn-structure', {
-      keyword,
-      level,
-      painPoint,
-      lieutenants: lieutenants.join(', '),
-      hn_structure: hnSummary,
-    }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
+  const painPoint = await getArticlePainPoint(articleId)
+  const systemPrompt = await loadPrompt('lieutenants-hn-structure', {
+    keyword,
+    level,
+    painPoint,
+    lieutenants: lieutenants.join(', '),
+    hn_structure: hnSummary,
+  }, cocoonSlug ? { cocoonSlug } : undefined)
+  log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
-    // SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    })
+  const userPrompt = `Recommande une structure Hn pour un article "${keyword}" de niveau ${level} utilisant ces Lieutenants: ${lieutenants.join(', ')}`
 
-    const userPrompt = `Recommande une structure Hn pour un article "${keyword}" de niveau ${level} utilisant ces Lieutenants: ${lieutenants.join(', ')}`
-
-    const startAi = Date.now()
-    const { fullContent, usage, chunkCount } = await consumeStream(
-      streamChatCompletion(systemPrompt, userPrompt),
-      (chunk) => res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk })}\n\n`),
-    )
-
-    log.info(`AI Hn structure done for "${keyword}"`, { length: fullContent.length, chunkCount, aiMs: Date.now() - startAi, totalMs: Date.now() - startTotal })
-    res.write(`event: done\ndata: ${JSON.stringify({ metadata: { keyword, level }, usage })}\n\n`)
-    res.end()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur lors de la génération de la structure Hn'
-    log.error(`AI Hn structure failed for "${keyword}" — ${message}`, { keyword, level, lieutenantCount: lieutenants.length, cocoonSlug })
-    if (res.headersSent) {
-      res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
-      res.end()
-    } else {
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
-    }
-  }
+  await runAiPanelStream({
+    req,
+    res,
+    keyword,
+    level,
+    systemPrompt,
+    userPrompt,
+    logTag: 'ai-hn-structure',
+    buildDonePayload: (_parsed, usage) => ({ metadata: { keyword, level }, usage }),
+  })
 })
 
 /** Max selected lieutenants per article level (post-AI filtering) */
@@ -197,7 +145,6 @@ function filterLieutenants(parsed: ProposeLieutenantsResult, level: ArticleLevel
 /**
  * POST /keywords/:keyword/propose-lieutenants
  * SSE streaming AI lieutenant proposal.
- * Body: { level, articleId, serpHeadings: { level, text, count }[], paaQuestions: { question, answer? }[], wordGroups?: string[], rootKeywords?: string[] }
  */
 router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
@@ -221,108 +168,87 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
     serpCompetitors: Array.isArray(serpCompetitors) ? serpCompetitors.length : 0,
   })
 
-  try {
-    const startTotal = Date.now()
-    // Anti-cannibalization: get lieutenants already assigned to sibling articles
-    const existingLieutenants = await getCocoonExistingLieutenants(articleId)
-    log.debug('existing lieutenants loaded', { articleId, count: existingLieutenants.length })
+  // Anti-cannibalization: get lieutenants already assigned to sibling articles
+  const existingLieutenants = await getCocoonExistingLieutenants(articleId)
+  log.debug('existing lieutenants loaded', { articleId, count: existingLieutenants.length })
 
-    const validPaa = Array.isArray(paaQuestions)
-      ? paaQuestions.filter((q: { question: string }) => q.question?.trim())
-      : []
-    const paaFormatted = validPaa.length > 0
-      ? validPaa.map((q: { question: string; answer?: string }) => `- ${q.question}${q.answer ? ` → ${q.answer}` : ''}`).join('\n')
-      : 'Aucune PAA disponible pour cette requête.'
+  const validPaa = Array.isArray(paaQuestions)
+    ? paaQuestions.filter((q: { question: string }) => q.question?.trim())
+    : []
+  const paaFormatted = validPaa.length > 0
+    ? validPaa.map((q: { question: string; answer?: string }) => `- ${q.question}${q.answer ? ` → ${q.answer}` : ''}`).join('\n')
+    : 'Aucune PAA disponible pour cette requête.'
 
-    const hnFormatted = Array.isArray(serpHeadings) && serpHeadings.length > 0
-      ? serpHeadings.map((h: { level: number; text: string; count: number; percent?: number }) =>
-          `H${h.level}: "${h.text}" (${h.count}x${h.percent ? `, ${h.percent}%` : ''})`
-        ).join('\n')
-      : 'Aucun heading avec récurrence significative parmi les concurrents (headings tous différents).'
+  const hnFormatted = Array.isArray(serpHeadings) && serpHeadings.length > 0
+    ? serpHeadings.map((h: { level: number; text: string; count: number; percent?: number }) =>
+        `H${h.level}: "${h.text}" (${h.count}x${h.percent ? `, ${h.percent}%` : ''})`
+      ).join('\n')
+    : 'Aucun heading avec récurrence significative parmi les concurrents (headings tous différents).'
 
-    // Format competitor list for context (captain only)
-    const competitorsFormatted = Array.isArray(serpCompetitors) && serpCompetitors.length > 0
-      ? serpCompetitors.map((c: { domain: string; title: string; position: number }) =>
-          `#${c.position} ${c.domain} — "${c.title}"`
-        ).join('\n')
-      : 'Aucune donnée concurrents disponible.'
+  const competitorsFormatted = Array.isArray(serpCompetitors) && serpCompetitors.length > 0
+    ? serpCompetitors.map((c: { domain: string; title: string; position: number }) =>
+        `#${c.position} ${c.domain} — "${c.title}"`
+      ).join('\n')
+    : 'Aucune donnée concurrents disponible.'
 
-    // Format root keywords SERP data (separate, lower weight)
-    let rootSerpFormatted = 'Aucune donnée SERP de mots-clés racine disponible.'
-    if (Array.isArray(rootKeywordsSerpData) && rootKeywordsSerpData.length > 0) {
-      rootSerpFormatted = rootKeywordsSerpData.map((rk: {
-        keyword: string
-        competitors: { domain: string; title: string; position: number }[]
-        hnRecurrence: { level: number; text: string; count: number; percent: number }[]
-        paaQuestions: { question: string; answer?: string }[]
-      }) => {
-        const comps = rk.competitors.length > 0
-          ? rk.competitors.map(c => `  #${c.position} ${c.domain} — "${c.title}"`).join('\n')
-          : '  (aucun concurrent)'
-        const hns = rk.hnRecurrence.length > 0
-          ? rk.hnRecurrence.map(h => `  H${h.level}: "${h.text}" (${h.count}x, ${h.percent}%)`).join('\n')
-          : '  (aucun heading récurrent)'
-        const paas = rk.paaQuestions.length > 0
-          ? rk.paaQuestions.map(q => `  - ${q.question}${q.answer ? ` → ${q.answer}` : ''}`).join('\n')
-          : '  (aucune PAA)'
-        return `#### "${rk.keyword}"\nConcurrents:\n${comps}\nHeadings récurrents:\n${hns}\nPAA:\n${paas}`
-      }).join('\n\n')
-    }
+  let rootSerpFormatted = 'Aucune donnée SERP de mots-clés racine disponible.'
+  if (Array.isArray(rootKeywordsSerpData) && rootKeywordsSerpData.length > 0) {
+    rootSerpFormatted = rootKeywordsSerpData.map((rk: {
+      keyword: string
+      competitors: { domain: string; title: string; position: number }[]
+      hnRecurrence: { level: number; text: string; count: number; percent: number }[]
+      paaQuestions: { question: string; answer?: string }[]
+    }) => {
+      const comps = rk.competitors.length > 0
+        ? rk.competitors.map(c => `  #${c.position} ${c.domain} — "${c.title}"`).join('\n')
+        : '  (aucun concurrent)'
+      const hns = rk.hnRecurrence.length > 0
+        ? rk.hnRecurrence.map(h => `  H${h.level}: "${h.text}" (${h.count}x, ${h.percent}%)`).join('\n')
+        : '  (aucun heading récurrent)'
+      const paas = rk.paaQuestions.length > 0
+        ? rk.paaQuestions.map(q => `  - ${q.question}${q.answer ? ` → ${q.answer}` : ''}`).join('\n')
+        : '  (aucune PAA)'
+      return `#### "${rk.keyword}"\nConcurrents:\n${comps}\nHeadings récurrents:\n${hns}\nPAA:\n${paas}`
+    }).join('\n\n')
+  }
 
-    const startPrompt = Date.now()
-    // S1 — injection painPoint depuis articleId (best-effort, fallback "(non défini)")
-    const painPoint = await getArticlePainPoint(articleId)
-    const systemPrompt = await loadPrompt('propose-lieutenants', {
-      keyword,
-      level,
-      painPoint,
-      paa_questions: paaFormatted,
-      hn_recurrence: hnFormatted,
-      serp_competitors: competitorsFormatted,
-      root_keywords_serp_data: rootSerpFormatted,
-      word_groups: Array.isArray(wordGroups) && wordGroups.length > 0 ? wordGroups.join(', ') : 'Aucun groupe disponible',
-      root_keywords: Array.isArray(rootKeywords) && rootKeywords.length > 0 ? rootKeywords.join(', ') : 'Aucune racine disponible',
-      existing_lieutenants: existingLieutenants.length > 0 ? existingLieutenants.join(', ') : 'Aucun (premier article du cocon)',
-    }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('propose-lieutenants prompt built', { keyword, promptChars: systemPrompt.length, ms: Date.now() - startPrompt, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
+  const painPoint = await getArticlePainPoint(articleId)
+  const systemPrompt = await loadPrompt('propose-lieutenants', {
+    keyword,
+    level,
+    painPoint,
+    paa_questions: paaFormatted,
+    hn_recurrence: hnFormatted,
+    serp_competitors: competitorsFormatted,
+    root_keywords_serp_data: rootSerpFormatted,
+    word_groups: Array.isArray(wordGroups) && wordGroups.length > 0 ? wordGroups.join(', ') : 'Aucun groupe disponible',
+    root_keywords: Array.isArray(rootKeywords) && rootKeywords.length > 0 ? rootKeywords.join(', ') : 'Aucune racine disponible',
+    existing_lieutenants: existingLieutenants.length > 0 ? existingLieutenants.join(', ') : 'Aucun (premier article du cocon)',
+  }, cocoonSlug ? { cocoonSlug } : undefined)
+  log.debug('propose-lieutenants prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
-    // SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    })
+  const userPrompt = `Propose les meilleurs lieutenants pour l'article "${keyword}" de niveau ${level}. Analyse toutes les données fournies et retourne le JSON structuré.`
 
-    const userPrompt = `Propose les meilleurs lieutenants pour l'article "${keyword}" de niveau ${level}. Analyse toutes les données fournies et retourne le JSON structuré.`
-
-    const startAi = Date.now()
-    let chunkCount = 0
-    const { fullContent, usage } = await consumeStream(
-      streamChatCompletion(systemPrompt, userPrompt, 8192),
-      (chunk) => {
-        chunkCount++
-        res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk, chunkIndex: chunkCount })}\n\n`)
-      },
-    )
-    log.debug('propose-lieutenants stream complete', { keyword, chunkCount, contentChars: fullContent.length, aiMs: Date.now() - startAi })
-
-    const parsed = parseAiJson<ProposeLieutenantsResult>(fullContent)
-    if (!Array.isArray(parsed.lieutenants)) {
-      throw new Error('AI response missing lieutenants array')
-    }
-    const filtered = filterLieutenants(parsed, level as ArticleLevel)
-
-    log.info(`AI propose-lieutenants done for "${keyword}"`, {
-      totalGenerated: filtered.totalGenerated,
-      selected: filtered.selectedLieutenants.length,
-      eliminated: filtered.eliminatedLieutenants.length,
-      totalMs: Date.now() - startTotal,
-    })
-
-    // E2 — Persist lieutenant proposals server-side BEFORE notifying the client.
-    // Guarantees that even if the client connection drops after this point,
-    // the generated data survives in the DB.
-    try {
+  await runAiPanelStream<FilteredProposeLieutenantsResult>({
+    req,
+    res,
+    keyword,
+    level,
+    systemPrompt,
+    userPrompt,
+    maxTokens: 8192,
+    logTag: 'propose-lieutenants',
+    parser: (fullContent) => {
+      const parsed = parseAiJson<ProposeLieutenantsResult>(fullContent)
+      if (!Array.isArray(parsed.lieutenants)) {
+        throw new Error('AI response missing lieutenants array')
+      }
+      return filterLieutenants(parsed, level as ArticleLevel)
+    },
+    onSuccess: async (filtered) => {
+      if (!filtered) return
+      // E2 — Persist server-side BEFORE notifying the client. Survit aux
+      // déconnexions client après stream.
       const dbEntries: Pick<RichLieutenant, 'keyword' | 'status' | 'reasoning' | 'sources' | 'suggestedHnLevel' | 'score' | 'kpis' | 'lockedAt'>[] = [
         ...filtered.selectedLieutenants.map(lt => ({
           keyword: lt.keyword,
@@ -347,28 +273,18 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
       ]
       await saveLieutenantExplorations(Number(articleId), dbEntries as RichLieutenant[], keyword)
       log.debug(`propose-lieutenants DB persist done`, { articleId, count: dbEntries.length })
-    } catch (persistErr) {
-      log.error(`propose-lieutenants DB persist failed — ${(persistErr as Error).message}`, { articleId, keyword })
-    }
-
-    res.write(`event: done\ndata: ${JSON.stringify({ outline: filtered, metadata: { keyword, level }, usage })}\n\n`)
-    res.end()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur lors de la proposition de lieutenants IA'
-    log.error(`AI propose-lieutenants failed for "${keyword}" — ${message}`, { keyword, level, articleId, cocoonSlug })
-    if (res.headersSent) {
-      res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
-      res.end()
-    } else {
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
-    }
-  }
+    },
+    buildDonePayload: (filtered, usage) => ({
+      outline: filtered,
+      metadata: { keyword, level },
+      usage,
+    }),
+  })
 })
 
 /**
  * POST /keywords/:keyword/ai-lexique
  * SSE streaming lexical analysis panel for TF-IDF results.
- * Body: { level, lexiqueTerms: { obligatoire?: string[], differenciateur?: string[], optionnel?: string[] }, cocoonSlug? }
  */
 router.post('/keywords/:keyword/ai-lexique', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
@@ -394,54 +310,34 @@ router.post('/keywords/:keyword/ai-lexique', async (req, res) => {
   }
   log.info(`AI lexique analysis request for "${keyword}" (${level})`, termCounts)
 
-  try {
-    const startTotal = Date.now()
-    // S1 — injection painPoint depuis articleId (best-effort)
-    const painPoint = await getArticlePainPoint(articleId)
-    const systemPrompt = await loadPrompt('lexique-ai-panel', {
-      keyword,
-      level,
-      painPoint,
-      obligatoire_terms: lexiqueTerms.obligatoire?.join(', ') || 'aucun',
-      differenciateur_terms: lexiqueTerms.differenciateur?.join(', ') || 'aucun',
-      optionnel_terms: lexiqueTerms.optionnel?.join(', ') || 'aucun',
-    }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('lexique prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
+  const painPoint = await getArticlePainPoint(articleId)
+  const systemPrompt = await loadPrompt('lexique-ai-panel', {
+    keyword,
+    level,
+    painPoint,
+    obligatoire_terms: lexiqueTerms.obligatoire?.join(', ') || 'aucun',
+    differenciateur_terms: lexiqueTerms.differenciateur?.join(', ') || 'aucun',
+    optionnel_terms: lexiqueTerms.optionnel?.join(', ') || 'aucun',
+  }, cocoonSlug ? { cocoonSlug } : undefined)
+  log.debug('lexique prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
-    // SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    })
+  const userPrompt = `Analyse le champ lexical extrait pour l'article "${keyword}" de niveau ${level}.`
 
-    const userPrompt = `Analyse le champ lexical extrait pour l'article "${keyword}" de niveau ${level}.`
-
-    const startAi = Date.now()
-    const { fullContent, usage, chunkCount } = await consumeStream(
-      streamChatCompletion(systemPrompt, userPrompt),
-      (chunk) => res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk })}\n\n`),
-    )
-
-    log.info(`AI lexique analysis done for "${keyword}"`, { length: fullContent.length, chunkCount, aiMs: Date.now() - startAi, totalMs: Date.now() - startTotal })
-    res.write(`event: done\ndata: ${JSON.stringify({ metadata: { keyword, level }, usage })}\n\n`)
-    res.end()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur lors de l\'analyse lexicale IA'
-    log.error(`AI lexique analysis failed for "${keyword}" — ${message}`, { keyword, level, cocoonSlug })
-    if (res.headersSent) {
-      res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
-      res.end()
-    } else {
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
-    }
-  }
+  await runAiPanelStream({
+    req,
+    res,
+    keyword,
+    level,
+    systemPrompt,
+    userPrompt,
+    logTag: 'ai-lexique',
+    buildDonePayload: (_parsed, usage) => ({ metadata: { keyword, level }, usage }),
+  })
 })
 
 /**
  * POST /keywords/:keyword/ai-lexique-upfront
  * SSE streaming upfront lexical analysis — IA recommends per-term before user selection.
- * Body: { level, allTerms: { obligatoire: string[], differenciateur: string[], optionnel: string[] }, cocoonSlug? }
  */
 router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
@@ -468,75 +364,54 @@ router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
   const totalTerms = termCounts.obligatoire + termCounts.differenciateur + termCounts.optionnel
   log.info(`AI lexique upfront request for "${keyword}" (${level})`, { ...termCounts, totalTerms })
 
-  try {
-    const startTotal = Date.now()
-    // S1 — injection painPoint depuis articleId (best-effort)
-    const painPoint = await getArticlePainPoint(articleId)
-    const systemPrompt = await loadPrompt('lexique-analysis-upfront', {
-      keyword,
-      level,
-      painPoint,
-      obligatoire_terms: allTerms.obligatoire?.join(', ') || 'aucun',
-      differenciateur_terms: allTerms.differenciateur?.join(', ') || 'aucun',
-      optionnel_terms: allTerms.optionnel?.join(', ') || 'aucun',
-    }, cocoonSlug ? { cocoonSlug } : undefined)
-    log.debug('lexique-upfront prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
+  const painPoint = await getArticlePainPoint(articleId)
+  const systemPrompt = await loadPrompt('lexique-analysis-upfront', {
+    keyword,
+    level,
+    painPoint,
+    obligatoire_terms: allTerms.obligatoire?.join(', ') || 'aucun',
+    differenciateur_terms: allTerms.differenciateur?.join(', ') || 'aucun',
+    optionnel_terms: allTerms.optionnel?.join(', ') || 'aucun',
+  }, cocoonSlug ? { cocoonSlug } : undefined)
+  log.debug('lexique-upfront prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
-    // SSE headers
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-    })
+  const userPrompt = `Analyse tous les termes TF-IDF pour l'article "${keyword}" de niveau ${level}. Recommande ou exclue chaque terme avec une raison. Retourne le JSON structuré.`
 
-    const userPrompt = `Analyse tous les termes TF-IDF pour l'article "${keyword}" de niveau ${level}. Recommande ou exclue chaque terme avec une raison. Retourne le JSON structuré.`
+  // Scale maxTokens to term count: ~80 tokens/term for JSON object + structure overhead
+  const maxTokens = Math.max(4096, Math.min(16384, totalTerms * 80 + 512))
+  log.debug('lexique-upfront maxTokens', { totalTerms, maxTokens })
 
-    // Scale maxTokens to term count: ~80 tokens/term for JSON object + structure overhead
-    const maxTokens = Math.max(4096, Math.min(16384, totalTerms * 80 + 512))
-    log.debug('lexique-upfront maxTokens', { totalTerms, maxTokens })
-
-    const startAi = Date.now()
-    const { fullContent, usage, chunkCount } = await consumeStream(
-      streamChatCompletion(systemPrompt, userPrompt, maxTokens),
-      (chunk) => res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk })}\n\n`),
-    )
-    log.debug('lexique-upfront stream complete', { keyword, chunkCount, contentChars: fullContent.length, aiMs: Date.now() - startAi })
-
-    const parsed = parseAiJson<LexiqueAnalysisResult>(fullContent)
-
-    const recommendedCount = parsed.recommendations.filter(r => r.aiRecommended).length
-    log.info(`AI lexique upfront done for "${keyword}"`, {
-      recommendations: parsed.recommendations.length,
-      recommended: recommendedCount,
-      excluded: parsed.recommendations.length - recommendedCount,
-      expectedTerms: totalTerms,
-      totalMs: Date.now() - startTotal,
-    })
-
-    // Sprint 11 — persist IA recommendations in lexique_explorations BEFORE emitting done
-    // (E2 pattern: if client disconnects on done, DB still has the data).
-    const articleIdNum = Number(articleId)
-    if (Number.isInteger(articleIdNum) && articleIdNum > 0) {
-      try {
+  await runAiPanelStream<LexiqueAnalysisResult>({
+    req,
+    res,
+    keyword,
+    level,
+    systemPrompt,
+    userPrompt,
+    maxTokens,
+    logTag: 'ai-lexique-upfront',
+    parser: (fullContent) => parseAiJson<LexiqueAnalysisResult>(fullContent),
+    onSuccess: async (parsed) => {
+      if (!parsed) return
+      const recommendedCount = parsed.recommendations.filter(r => r.aiRecommended).length
+      log.info(`AI lexique upfront analysis`, {
+        recommendations: parsed.recommendations.length,
+        recommended: recommendedCount,
+        excluded: parsed.recommendations.length - recommendedCount,
+      })
+      // Sprint 11 — persist IA recommendations in lexique_explorations BEFORE done.
+      const articleIdNum = Number(articleId)
+      if (Number.isInteger(articleIdNum) && articleIdNum > 0) {
         const { saveLexiqueAi } = await import('../services/keyword/lexique-exploration.service.js')
         await saveLexiqueAi(articleIdNum, keyword, parsed)
-      } catch (err) {
-        log.warn(`lexique-ai: DB persist failed — ${(err as Error).message}`)
       }
-    }
-
-    res.write(`event: done\ndata: ${JSON.stringify({ outline: parsed, metadata: { keyword, level }, usage })}\n\n`)
-    res.end()
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Erreur lors de l\'analyse lexicale IA upfront'
-    log.error(`AI lexique upfront failed for "${keyword}" — ${message}`, { keyword, level, totalTerms, cocoonSlug })
-    if (res.headersSent) {
-      res.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`)
-      res.end()
-    } else {
-      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message } })
-    }
-  }
+    },
+    buildDonePayload: (parsed, usage) => ({
+      outline: parsed,
+      metadata: { keyword, level },
+      usage,
+    }),
+  })
 })
 
 export default router
