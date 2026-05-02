@@ -21,12 +21,19 @@ withDefaults(defineProps<{
    * Claude). Propagé tel quel à AiTriggerButton.
    */
   regenConfirmMessage?: string
+  /**
+   * Désactive le CTA (en plus du loading auto pendant 'streaming'). Utile
+   * pour les panels qui dépendent d'un préalable (ex: TF-IDF chargé pour
+   * Lexique).
+   */
+  triggerDisabled?: boolean
 }>(), {
   isStale: false,
   ctaLabel: "Analyser avec l'IA",
   regenLabel: 'Régénérer',
   hideUntilTriggered: false,
   error: null,
+  triggerDisabled: false,
 })
 
 defineEmits<{ (e: 'trigger'): void }>()
@@ -68,6 +75,7 @@ defineEmits<{ (e: 'trigger'): void }>()
       <AiTriggerButton
         :variant="state === 'success' ? 'regen' : 'primary'"
         :loading="state === 'streaming'"
+        :disabled="triggerDisabled"
         :label="state === 'success' ? regenLabel : ctaLabel"
         :confirm-message="state === 'success' ? regenConfirmMessage : undefined"
         @click="$emit('trigger')"

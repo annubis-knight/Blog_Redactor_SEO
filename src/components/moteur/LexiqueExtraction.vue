@@ -7,6 +7,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
+import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
 import { jaccardWithPainPoint } from '@/utils/pain-point-jaccard'
 import { type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
@@ -183,6 +184,18 @@ const selectedByLevel = computed(() => {
     optionnel: tfidfResult.value.optionnel.filter(t => selectedTerms.value.has(t.term)).length,
   }
 })
+
+// Sprint C-2 (2026-05-02) — Stats IA pour le LexiqueAiPanel en bas de page.
+const iaRecommendedCount = computed(() => {
+  let count = 0
+  for (const rec of iaRecommendations.value.values()) {
+    if (rec.aiRecommended) count++
+  }
+  return count
+})
+const iaNotRecommendedCount = computed(
+  () => iaRecommendations.value.size - iaRecommendedCount.value,
+)
 
 // IA recommendation helpers
 function getRecommendation(term: string): LexiqueTermRecommendation | undefined {
@@ -581,6 +594,20 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         </button>
       </div>
     </div>
+
+    <!-- Sprint C-2 (2026-05-02) — Panel IA Lexique en bas de page. Reprend
+         l'analyse upfront (recommandations IA) sous la coque commune. Les
+         badges IA-recommandés restent dans le tableau TF-IDF en haut. -->
+    <LexiqueAiPanel
+      v-if="tfidfResult"
+      :ia-is-streaming="iaIsStreaming"
+      :ia-error="iaError"
+      :recommendations-count="iaRecommendations.size"
+      :recommended-count="iaRecommendedCount"
+      :not-recommended-count="iaNotRecommendedCount"
+      :can-trigger="!!tfidfResult && !iaIsStreaming"
+      @trigger="generateLexiqueUpfront"
+    />
   </div>
 </template>
 

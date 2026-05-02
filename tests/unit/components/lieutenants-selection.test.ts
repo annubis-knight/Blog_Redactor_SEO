@@ -406,8 +406,12 @@ describe('LieutenantsSelection', () => {
   describe('Collapsible sections', () => {
     it('renders CollapsableSections after analysis', async () => {
       const w = await mountWithResults()
+      // Sprint C-1 — Le tab Hn de LieutenantsAiPanel monte la section Hn
+      // concurrents derrière un toggle. Sans clic, seules les sections du
+      // niveau LieutenantsSelection (PAA + Groupes Discovery) sont rendues.
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
-      // The number of sections depends on hnStructure: 0 hnStructure → 3 sections (Hn concurrents, PAA, Groupes)
       expect(sections.length).toBeGreaterThanOrEqual(3)
     })
 
@@ -418,6 +422,10 @@ describe('LieutenantsSelection', () => {
 
     it('Hn concurrents section has correct title', async () => {
       const w = await mountWithResults()
+      // Sprint C-1 — La section Hn vit désormais derrière le tab "Hn" du
+      // LieutenantsAiPanel. On l'active pour que la section soit montée.
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnSection = sections.find(s => s.props('title') === 'Structure Hn concurrents')
       expect(hnSection).toBeDefined()
@@ -439,6 +447,8 @@ describe('LieutenantsSelection', () => {
 
     it('Hn concurrents section is closed by default', async () => {
       const w = await mountWithResults()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnSection = sections.find(s => s.props('title') === 'Structure Hn concurrents')
       expect(hnSection!.props('defaultOpen')).toBe(false)
@@ -506,12 +516,16 @@ describe('LieutenantsSelection', () => {
 
     it('renders hn-recurrence-item elements', async () => {
       const w = await mountWithResults()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       const items = w.findAll('.hn-recurrence-item')
       expect(items.length).toBeGreaterThan(0)
     })
 
     it('displays level tag, text, frequency', async () => {
       const w = await mountWithResults()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       const first = w.findAll('.hn-recurrence-item')[0]
       expect(first.find('.hn-level-tag').exists()).toBe(true)
       expect(first.find('.hn-text').exists()).toBe(true)
@@ -775,30 +789,30 @@ describe('LieutenantsSelection', () => {
   })
 
   // --- Selection counter ---
+  // 2026-05-02 — Le counter est désormais dans la barre de tri (SortToggleBar)
+  // qui affiche `${selected} / ${totalGenerated} sélectionnés`.
   describe('Selection counter', () => {
-    it('shows "0 lieutenant selectionne" when no cards selected', async () => {
+    it('shows "0 / 4 sélectionnés" when no cards selected', async () => {
       const w = await mountWithCards()
-      // Deselect all: set selectedCards to empty
       ;(w.vm as any).selectedCards = new Map()
       await nextTick()
-      const counter = w.find('[data-testid="lieutenant-counter"]')
+      const counter = w.find('[data-testid="sort-toggle-bar"]')
       expect(counter.text()).toContain('0')
-      expect(counter.text()).toContain('selectionne')
+      expect(counter.text()).toContain('s\u00e9lectionn\u00e9s')
     })
 
-    it('shows pre-selected count (all selected lieutenants)', async () => {
+    it('shows pre-selected count', async () => {
       const w = await mountWithCards()
-      const counter = w.find('[data-testid="lieutenant-counter"]')
-      // All 3 selectedLieutenants are pre-selected
+      const counter = w.find('[data-testid="sort-toggle-bar"]')
       expect(counter.text()).toContain('3')
-      expect(counter.text()).toContain('selectionne')
+      expect(counter.text()).toContain('s\u00e9lectionn\u00e9s')
     })
 
-    it('shows total generated count', async () => {
+    it('shows total generated count in countLabel', async () => {
       const w = await mountWithCards()
-      const counter = w.find('[data-testid="lieutenant-counter"]')
+      const counter = w.find('[data-testid="sort-toggle-bar"]')
+      // countLabel is "X / Y sélectionnés" where Y = totalGenerated
       expect(counter.text()).toContain('4')
-      expect(counter.text()).toContain('generes')
     })
   })
 
@@ -835,9 +849,9 @@ describe('LieutenantsSelection', () => {
       const causesStub = stubs.find(s => s.props('lieutenant').keyword === 'causes seo')
       causesStub!.vm.$emit('update:checked', false)
       await nextTick()
-      const counter = w.find('[data-testid="lieutenant-counter"]')
+      const counter = w.find('[data-testid="sort-toggle-bar"]')
       expect(counter.text()).toContain('2')
-      expect(counter.text()).toContain('selectionnes')
+      expect(counter.text()).toContain('s\u00e9lectionn\u00e9s')
     })
 
     it('emits lieutenants-updated on deselection', async () => {
@@ -1053,6 +1067,9 @@ describe('LieutenantsSelection', () => {
       const w = await mountWithResults()
       ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
       await nextTick()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
+      await nextTick()
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
       expect(hnIaSection).toBeDefined()
@@ -1060,6 +1077,8 @@ describe('LieutenantsSelection', () => {
 
     it('does not render hn-structure-section when hnStructure is empty', async () => {
       const w = await mountWithResults()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
       expect(hnIaSection).toBeUndefined()
@@ -1069,6 +1088,9 @@ describe('LieutenantsSelection', () => {
       const w = await mountWithResults()
       ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
       await nextTick()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
+      await nextTick()
       const items = w.findAll('.hn-structure-item')
       expect(items).toHaveLength(2)
     })
@@ -1076,6 +1098,9 @@ describe('LieutenantsSelection', () => {
     it('renders children under parent nodes', async () => {
       const w = await mountWithResults()
       ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
+      await nextTick()
+      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
+      if (hnTab.exists()) await hnTab.trigger('click')
       await nextTick()
       const children = w.findAll('.hn-structure-child')
       expect(children).toHaveLength(1) // Only first node has children

@@ -12,8 +12,7 @@ import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
-import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
-import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
+import LieutenantsAiPanel from '@/components/moteur/LieutenantsAiPanel.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
@@ -745,34 +744,6 @@ function proposeLieutenants() {
     </div>
 
     <div v-if="serpResult || isLocked" class="serp-results">
-      <!-- IA Proposals: streaming, cards, eliminated, content gap -->
-      <LieutenantProposals
-        :ia-is-streaming="iaIsStreaming"
-        :ia-chunks="iaChunks"
-        :ia-error="iaError"
-        :lieutenant-cards="lieutenantCards"
-        :eliminated-cards="eliminatedCards"
-        :total-generated="totalGenerated"
-        :selected-cards="selectedCards"
-        :is-locked="isLocked"
-        :content-gap-insights="contentGapInsights"
-        @toggle="toggleLieutenant"
-        @retry="proposeLieutenants"
-      />
-
-      <!-- HN Structure: IA recommendations + competitor recurrence -->
-      <LieutenantH2Structure
-        :hn-structure="hnStructure"
-        :active-hn-recurrence="activeHnRecurrence"
-        :hn-recurrence="hnRecurrence"
-        :serp-results-by-keyword="serpResultsByKeyword"
-        :active-hn-tab="activeHnTab"
-        :is-locked="isLocked"
-        :hn-saved="hnSaved"
-        :is-saving-hn="isSavingHn"
-        @save-hn="saveHnStructure"
-        @update:active-hn-tab="activeHnTab = $event"
-      />
 
       <!-- Sprint 4.6 — PAA section relabeled: clarifies that these are the raw
            Google questions the AI *consulted* to build its proposal, not extra
@@ -816,6 +787,32 @@ function proposeLieutenants() {
           <button class="unlock-btn" data-testid="unlock-btn" @click="unlockLieutenants">Deverrouiller</button>
         </div>
       </div>
+
+      <!-- Sprint C-1 (2026-05-02) — IA panel unifié, en bas de page après le
+           contenu principal. Regroupe propositions + structure Hn dans deux
+           sections togglables sous la coque purple commune. -->
+      <LieutenantsAiPanel
+        :ia-is-streaming="iaIsStreaming"
+        :ia-chunks="iaChunks"
+        :ia-error="iaError"
+        :lieutenant-cards="lieutenantCards"
+        :eliminated-cards="eliminatedCards"
+        :total-generated="totalGenerated"
+        :selected-cards="selectedCards"
+        :is-locked="isLocked"
+        :content-gap-insights="contentGapInsights"
+        :hn-structure="hnStructure"
+        :active-hn-recurrence="activeHnRecurrence"
+        :hn-recurrence="hnRecurrence"
+        :serp-results-by-keyword="serpResultsByKeyword"
+        :active-hn-tab="activeHnTab"
+        :hn-saved="hnSaved"
+        :is-saving-hn="isSavingHn"
+        @toggle="toggleLieutenant"
+        @retry="proposeLieutenants"
+        @save-hn="saveHnStructure"
+        @update:active-hn-tab="activeHnTab = $event"
+      />
     </div>
   </div>
 </template>
