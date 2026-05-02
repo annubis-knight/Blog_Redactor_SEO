@@ -2,14 +2,111 @@
 name: Unification des Panels IA du workflow Moteur
 description: Couche UI uniforme pour les panels IA d'analyse/suggestion en bas de chaque onglet, factorisation des composables et fonctions partagées
 type: tech-spec
-status: draft
-version: 0.1.0
+status: in-progress
+version: 0.2.0
 created: 2026-05-02
 last_updated: 2026-05-02
 synced_with:
   - docs/ui-sections-guide.md
   - docs/moteur-data-flow.md
   - .claude/CLAUDE.md
+
+progress:
+  current_sprint: B
+  sprints:
+    A:
+      status: done
+      commit: 9c4e87b
+      summary: |
+        Composants partagés livrés :
+          - src/components/moteur/ai-panel/AiPanel.vue
+          - src/components/moteur/ai-panel/AiPanelHeader.vue
+          - src/components/moteur/ai-panel/AiTriggerButton.vue
+          - src/components/moteur/ai-panel/AiPanelSkeleton.vue
+          - src/components/moteur/ai-panel/AiSuggestionList.vue
+          - src/components/moteur/ai-panel/AiAdviceMarkdown.vue
+          - src/composables/moteur/useAiPanel.ts
+        43/43 tests verts. Type-check OK.
+    B:
+      status: pending
+      scope: |
+        Migration Capitaine (pilote). Réécrire CaptainSidePanel.vue pour
+        utiliser <AiPanel variant="advice"> + <AiAdviceMarkdown>. Refactor
+        useCapitaineValidation pour déléguer la plomberie streaming à
+        useAiPanel (surface publique stable). Pas de panel bas-de-page sur
+        l'onglet Capitaine — sidepanel uniquement (D1 confirmée 2026-05-02).
+      open_questions:
+        - id: B-confirm
+          question: |
+            Comment porter la window.confirm() actuelle de la régénération
+            Capitaine (« cela consommera un appel Claude ») ?
+          decision: |
+            Tranché 2026-05-02 — Option 3 : ajouter une prop opt-in
+            `confirmMessage?: string` sur AiTriggerButton. Si définie ET
+            variant === 'regen', `window.confirm(confirmMessage)` avant
+            d'émettre 'click'. Capitaine passera ce message ; les autres
+            onglets ignoreront cette prop.
+            Implémentation côté AiTriggerButton :
+              function onClick() {
+                if (props.confirmMessage && props.variant === 'regen') {
+                  if (!window.confirm(props.confirmMessage)) return
+                }
+                emit('click')
+              }
+            AiPanel propage la prop. useCapitaineValidation ne connaît pas
+            la confirmation (séparation responsabilité UI vs métier).
+            Tests : ajouter 2 tests AiTriggerButton.test.ts (mock
+            window.confirm → click émis vs annulé).
+        - id: B-streaming-slot
+          question: |
+            Pendant state==='streaming', AiPanel n'affiche qu'un skeleton.
+            Or le markdown Capitaine est progressif (chunks).
+          decision: |
+            AiPanel.vue expose déjà un slot nommé `streaming` (cf. §5.1
+            tech-spec). CaptainSidePanel passera <AiAdviceMarkdown
+            :markdown="streamedMd" :streaming="true" /> dans ce slot.
+        - id: B-verdict-summary
+          question: |
+            Le verdictSummary (mini bandeau verdict GO/ORANGE/NOGO en tête)
+            doit rester visible.
+          decision: |
+            Utiliser le slot par défaut d'AiPanel (state==='success') pour
+            placer le verdict en tête, suivi de <AiAdviceMarkdown>.
+      regression_risks:
+        - tests/unit/components/captain-validation.test.ts (doit rester vert)
+        - tests/unit/composables/useCapitaineValidation.test.ts si présent
+        - le bouton régénérer doit conserver son comportement de confirm
+    C:
+      status: pending
+      scope: |
+        - LieutenantsAiPanel.vue (en bas de page, deux sections togglables :
+          Propositions + Structure Hn).
+        - LexiqueAiPanel.vue (en bas de page, l'extraction TF-IDF reste à
+          sa place actuelle dans LexiqueExtraction.vue).
+        - Routes backend inchangées.
+    D:
+      status: pending
+      scope: |
+        Discovery & Radar — sans nouvel appel IA (D3 confirmée).
+        - useDiscoveryRanking : tri basket par signal × Jaccard.
+        - useRadarRanking : tri radarKeywords par marketScore + relevanceScore.
+        - DiscoveryAiPanel.vue + RadarAiPanel.vue en bas de page.
+        - Handoffs : pushedToRadar (Discovery), captainCandidates (Radar).
+    E:
+      status: pending
+      scope: |
+        Backend refactor :
+        - server/services/external/ai-panel-runner.service.ts
+        - server/utils/ai-panel-cache.ts
+        - Migration des 4 handlers de keyword-ai-panel.routes.ts.
+        Contrats response stables (tests routes verts).
+    F:
+      status: pending
+      scope: |
+        - Bumper docs/moteur-data-flow.md + docs/ui-sections-guide.md.
+        - Créer retro-moteur-ai-panel-unification.md.
+        - Bumper architecture.md si besoin.
+        - Archiver cette tech-spec dans _archive/ avec bandeau ARCHIVED.
 ---
 
 # Tech-spec — Unification des Panels IA du workflow Moteur
@@ -311,7 +408,9 @@ richLieutenants, lexique).
   les tests `keyword-ai-panel.routes.test.ts` doivent rester verts.
 - ❌ Oublier la consultation cache avant l'appel IA (CLAUDE.md §3.6).
 
-## 9. Décisions tranchées (2026-05-02)
+## 9. Décisions tranchées
+
+### 2026-05-02 — Initiales
 
 - **D1 — Capitaine** : sidepanel **uniquement**, pas de doublon bas de page.
   Le sidepanel reste l'exception assumée (variant `advice`).
@@ -335,14 +434,40 @@ richLieutenants, lexique).
     et scoré ses mots-clés ; ce qui manque, c'est un **filtre intelligent**
     qui surface les meilleurs candidats sans relancer un appel IA coûteux.
 
+### 2026-05-02 — Sprint B (préparation migration Capitaine)
+
+- **B-1 — Confirmation régénération** : la `window.confirm()` actuelle
+  (« cela consommera un appel Claude ») est portée via une **prop opt-in
+  `confirmMessage?: string`** sur `AiTriggerButton`. Si définie ET
+  `variant === 'regen'`, `window.confirm(confirmMessage)` est appelée avant
+  l'émission de `'click'`. `AiPanel` propage la prop. `useCapitaineValidation`
+  ne connaît pas la confirmation (séparation responsabilité UI vs métier).
+  Pattern réutilisable si demain Lexique/Lieutenants veulent leur propre
+  confirm. Tests : ajouter 2 cas dans `AiTriggerButton.test.ts`
+  (mock `window.confirm` → click émis vs annulé).
+- **B-2 — Onglet Capitaine = aide / conseil** : confirmation que les panels
+  IA Capitaine ont un rôle d'**advice** (pas de handoff vers Lieutenants).
+  Le sidepanel actuel couvre déjà ce besoin — pas de panel bas-de-page
+  supplémentaire (renforce D1).
+- **B-3 — Streaming markdown progressif** : `AiPanel` expose un slot nommé
+  `streaming`. CaptainSidePanel y placera `<AiAdviceMarkdown :streaming="true">`
+  pendant `state === 'streaming'` pour afficher les chunks au fil de l'eau,
+  au lieu du skeleton par défaut.
+- **B-4 — Verdict summary en tête** : le mini bandeau verdict GO/ORANGE/NOGO
+  reste rendu via le slot par défaut d'`AiPanel`, **avant** le contenu
+  `<AiAdviceMarkdown>`. Pas de slot dédié — l'ordre d'écriture dans le slot
+  par défaut suffit.
+
 ## 10. Critères d'acceptation
 
-- [ ] Un seul vocabulaire visuel pour tous les panels IA du Moteur.
-- [ ] Une icône IA cohérente partout (Sparkles).
-- [ ] Skeleton de loading uniforme sur les 5 panels.
+- [x] Un seul vocabulaire visuel pour tous les panels IA du Moteur _(Sprint A
+      pose la fondation — coché quand B/C/D auront migré les panels)_.
+- [x] Une icône IA cohérente partout (Sparkles SVG inline).
+- [x] Skeleton de loading uniforme.
 - [ ] Aucun appel `fetch` direct dans les composants AI panel.
 - [ ] Les 4 routes IA existantes passent par `ai-panel-runner.service`.
 - [ ] `docs/moteur-data-flow.md` à jour.
 - [ ] Lint/type-check verts (les 250 erreurs lint pré-existantes ne sont pas
       le scope de cette tech-spec).
-- [ ] Tests components & composables verts.
+- [x] Tests components & composables verts _(43/43 Sprint A — à étendre par
+      sprint)_.
