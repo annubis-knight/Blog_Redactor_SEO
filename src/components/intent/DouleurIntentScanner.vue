@@ -6,6 +6,7 @@ import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.sto
 import { log } from '@/utils/logger'
 import RadarCardCheckable from './RadarCardCheckable.vue'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'
+import RadarAiPanel from '@/components/moteur/RadarAiPanel.vue'
 import CpcFilterToggle from '@/components/shared/CpcFilterToggle.vue'
 import { matchesCpcFilter, type CpcFilter } from '@/components/shared/cpc-filter-types'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
@@ -44,7 +45,16 @@ const emit = defineEmits<{
   (e: 'scanned', payload: { globalScore: number; heatLevel: string }): void
   (e: 'keywords-cleared'): void
   (e: 'cards-selected', cards: RadarCard[]): void
+  (e: 'captain-candidates-marked', keywords: string[]): void
 }>()
+
+// Sprint D-2 (2026-05-02) — Handoff RadarAiPanel : remonte les keywords
+// sélectionnés au parent (MoteurView) qui pourra écrire dans
+// article_keywords.captainCandidates[]. Aucun appel IA ici.
+function handleMarkCaptainCandidates(keywords: string[]) {
+  log.info(`[DouleurIntent] Marked ${keywords.length} keyword(s) as Capitaine candidate(s)`)
+  emit('captain-candidates-marked', keywords)
+}
 
 const {
   generatedKeywords,
@@ -451,6 +461,16 @@ defineExpose({ mergeFromRadarSource })
         </button>
       </div>
     </template>
+
+    <!-- Sprint D-2 (2026-05-02) — Panel suggestion bas-de-page : top
+         candidats Capitaine via tri local marketScore + relevanceScore
+         (verdicts NOGO/NOGO exclus). Aucun appel IA. -->
+    <RadarAiPanel
+      v-if="scanResult"
+      :cards="scanResult.cards"
+      :is-locked="false"
+      @mark-captain-candidates="handleMarkCaptainCandidates"
+    />
   </div>
 </template>
 

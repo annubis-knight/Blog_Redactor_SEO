@@ -2,7 +2,9 @@
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
 import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
+import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
+import DiscoveryAiPanel from '@/components/moteur/DiscoveryAiPanel.vue'
 import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
@@ -26,6 +28,16 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'send-to-radar', keywords: RadarKeyword[]): void
 }>()
+
+// Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page (sans appel IA).
+const basketStore = useMoteurBasketStore()
+function handlePushToRadar(selectedKeywords: string[]) {
+  if (selectedKeywords.length === 0) return
+  basketStore.markPushedToRadar(selectedKeywords)
+  // Délègue au parent pour la transition vers Radar avec le payload formaté.
+  const payload: RadarKeyword[] = selectedKeywords.map(kw => ({ keyword: kw, reasoning: '' }))
+  emit('send-to-radar', payload)
+}
 
 const {
   suggestAlphabetKw,
@@ -595,6 +607,15 @@ function handleToggleAnalysisSelectAll() {
         </button>
       </div>
     </Transition>
+
+    <!-- Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page : tri local
+         du basket par signal × alignement douleur. Aucun appel IA. -->
+    <DiscoveryAiPanel
+      :basket="basketStore.keywords"
+      :pain-point="props.articlePainPoint"
+      :is-locked="false"
+      @push-to-radar="handlePushToRadar"
+    />
   </div>
 </template>
 
