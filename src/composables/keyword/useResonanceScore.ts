@@ -44,6 +44,7 @@ export function useResonanceScore() {
       case 'chaude': return 'var(--color-warning, #d97706)'
       case 'tiede': return 'var(--color-primary, #3b82f6)'
       case 'froide': return 'var(--color-text-muted, #94a3b8)'
+      default: return 'var(--color-border)'
     }
   })
 
@@ -54,6 +55,7 @@ export function useResonanceScore() {
       case 'chaude': return 'Chaude'
       case 'tiede': return 'Tiede'
       case 'froide': return 'Froide'
+      default: return ''
     }
   })
 
@@ -64,6 +66,7 @@ export function useResonanceScore() {
       case 'chaude': return '🟠'
       case 'tiede': return '🔵'
       case 'froide': return '❄️'
+      default: return ''
     }
   })
 
@@ -223,6 +226,61 @@ export function useKeywordRadar() {
     } catch (err) {
       log.warn(`[Radar] Cache load failed: ${(err as Error).message}`)
       return false
+    }
+  }
+
+  /**
+   * 2026-05-01 — Variante merge-only : fetch un payload Radar et fusionne
+   * dans l'état courant SANS doublon. Utilisé par le TabLoadPrompt pour ne pas
+   * écraser ce que l'utilisateur a déjà en mémoire.
+   *
+   * Clé d'unicité : `keyword` (lowercase trim). En cas de collision sur
+   * `generatedKeywords`, on garde l'entrée mémoire (l'utilisateur peut avoir
+   * édité). Pour `scanResult`, on n'écrase que si la mémoire est vide.
+   *
+   * @returns true si un payload non-vide a été récupéré, false sinon.
+   */
+  async function mergeFromRadarSource(seedOrArticleId: string | number): Promise<boolean> {
+    try {
+      const url = typeof seedOrArticleId === 'number'
+        ? `/articles/${seedOrArticleId}/radar-exploration`
+        : `/radar-cache/load?seed=${encodeURIComponent(seedOrArticleId)}`
+      const data = await apiGet<RadarExplorationData | null>(url)
+      if (!data) return false
+      mergeRadarPayload(data)
+      log.info(`[Radar] Merged ${data.generatedKeywords.length} keywords from ${typeof seedOrArticleId === 'number' ? 'DB' : 'cache'}`)
+      return true
+    } catch (err) {
+      log.warn(`[Radar] Merge load failed: ${(err as Error).message}`)
+      return false
+    }
+  }
+
+  /**
+   * Fusion pure sans I/O : ajoute uniquement les keywords absents de la mémoire,
+   * et adopte `scanResult` si la mémoire est vide. Utilisé par les tests et
+   * par `mergeFromRadarSource`.
+   */
+  function mergeRadarPayload(payload: { generatedKeywords: RadarKeyword[]; scanResult: KeywordRadarScanResult; context?: RadarExplorationData['context'] }) {
+    const seenKeys = new Set(
+      generatedKeywords.value.map(k => k.keyword.trim().toLowerCase()),
+    )
+    const additions: RadarKeyword[] = []
+    for (const incoming of payload.generatedKeywords) {
+      const key = incoming.keyword.trim().toLowerCase()
+      if (!seenKeys.has(key)) {
+        seenKeys.add(key)
+        additions.push(incoming)
+      }
+    }
+    if (additions.length > 0) {
+      generatedKeywords.value = [...generatedKeywords.value, ...additions]
+    }
+    if (!scanResult.value && payload.scanResult) {
+      scanResult.value = payload.scanResult
+    }
+    if (!_lastScanContext && payload.context) {
+      _lastScanContext = payload.context
     }
   }
 
@@ -399,6 +457,8 @@ export function useKeywordRadar() {
     radarCacheStatus,
     checkRadarCache: checkRadarCacheFn,
     loadFromRadarCache,
+    mergeFromRadarSource,
+    mergeRadarPayload,
     generate,
     scan,
     removeKeyword,

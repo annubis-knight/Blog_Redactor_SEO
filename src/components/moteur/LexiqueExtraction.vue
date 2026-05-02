@@ -7,7 +7,9 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
-import { sortByPainAlignmentJaccard } from '@/utils/pain-point-jaccard'
+import { jaccardWithPainPoint } from '@/utils/pain-point-jaccard'
+import { type SortOption } from '@/composables/moteur/useSortableList'
+import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
@@ -50,14 +52,48 @@ const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
 const isLocked = ref(props.initialLocked)
 
-// S2 — Toggle « Trier par alignement douleur ».
-// OFF par défaut : ordre TF-IDF pur (rien ne change pour l'utilisateur historique).
-// ON : on re-classe les termes par similarité Jaccard avec le painPoint
-// (calcul pur front, pas d'appel API). Voir src/utils/pain-point-jaccard.ts.
-const sortByPainAlignment = ref(false)
+// 2026-05-02 — Migration vers la barre de tri unifiée (S2 historique remplacé).
+// Critères :
+//   - "az"        : ordre alphabétique sur le terme
+//   - "density"   : densité TF-IDF (par défaut DESC, plus dense en haut)
+//   - "alignment" : similarité Jaccard term × painPoint (S2 historique)
+// L'ordre TF-IDF par défaut (état neutral) est conservé.
+const lexiqueSortOptions = computed<SortOption[]>(() => {
+  const opts: SortOption[] = [
+    { key: 'az', label: 'A-Z' },
+    { key: 'density', label: 'Densité' },
+  ]
+  if (props.selectedArticle?.painPoint) {
+    opts.push({ key: 'alignment', label: 'Pertinence douleur' })
+  }
+  return opts
+})
 
-function sortTermsByAlignment<T extends { term: string }>(terms: T[]): T[] {
-  return sortByPainAlignmentJaccard(terms, props.selectedArticle?.painPoint, sortByPainAlignment.value)
+const lexiqueSortState = ref<{ key: string | null; direction: 'asc' | 'desc' | 'neutral' }>({
+  key: null,
+  direction: 'neutral',
+})
+
+function getLexiqueValue<T extends { term: string; density?: number; documentFrequency?: number }>(t: T, key: string): string | number | null {
+  if (key === 'az') return t.term
+  if (key === 'density') return t.density ?? t.documentFrequency ?? null
+  if (key === 'alignment') return jaccardWithPainPoint(t.term, props.selectedArticle?.painPoint ?? null)
+  return null
+}
+
+function sortTermsByAlignment<T extends { term: string; density?: number; documentFrequency?: number }>(terms: T[]): T[] {
+  const { key, direction } = lexiqueSortState.value
+  if (!key || direction === 'neutral') return terms
+  const sign = direction === 'desc' ? -1 : 1
+  return [...terms].sort((a, b) => {
+    const va = getLexiqueValue(a, key)
+    const vb = getLexiqueValue(b, key)
+    if (va == null && vb == null) return 0
+    if (va == null) return 1
+    if (vb == null) return -1
+    if (typeof va === 'number' && typeof vb === 'number') return sign * (va - vb)
+    return sign * String(va).localeCompare(String(vb), 'fr', { sensitivity: 'base' })
+  })
 }
 
 // Sprint 11 (D4) — champ saisie libre pour lancer TF-IDF sur un keyword arbitraire.
@@ -337,6 +373,39 @@ watch(
 onUnmounted(() => {
   iaAbort()
 })
+
+/**
+ * 2026-05-01 — Variante merge-only de hydrateFromDb. Récupère les explorations
+ * Lexique persistées et fusionne SANS doublon dans `pastExplorations`. Appelé
+ * par le TabLoadPrompt depuis MoteurView (via defineExpose).
+ *
+ * Clé d'unicité : `sourceKeyword` (lowercase trim).
+ */
+async function mergeFromDb() {
+  const id = props.selectedArticle?.id
+  if (!id) return
+  try {
+    const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(`/articles/${id}/explorations`)
+    const incoming = payload.lexique ?? []
+    const seen = new Set(pastExplorations.value.map(e => e.sourceKeyword.trim().toLowerCase()))
+    const additions: LexiqueExplorationEntry[] = []
+    for (const entry of incoming) {
+      const key = entry.sourceKeyword.trim().toLowerCase()
+      if (!seen.has(key)) {
+        seen.add(key)
+        additions.push(entry)
+      }
+    }
+    if (additions.length > 0) {
+      pastExplorations.value = [...pastExplorations.value, ...additions]
+    }
+    log.info(`[LexiqueExtraction] Merged ${additions.length} explorations from DB (skipped ${incoming.length - additions.length} duplicates)`)
+  } catch (err) {
+    log.warn(`[LexiqueExtraction] DB merge failed — ${(err as Error).message}`)
+  }
+}
+
+defineExpose({ hydrateFromDb, mergeFromDb })
 </script>
 
 <template>
@@ -430,29 +499,17 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- Selection counter -->
-      <div class="selection-counter" data-testid="selection-counter">
-        {{ selectedCount }} terme{{ selectedCount > 1 ? 's' : '' }} selectionne{{ selectedCount > 1 ? 's' : '' }}
-        <span class="counter-detail">
-          ({{ selectedByLevel.obligatoire }}O / {{ selectedByLevel.differenciateur }}D / {{ selectedByLevel.optionnel }}Op)
-        </span>
-      </div>
-
-      <!-- S2 — Toggle de tri par alignement avec la douleur de l'article.
-           Désactivé visuellement et fonctionnellement si pas de painPoint sur l'article. -->
-      <div v-if="selectedArticle?.painPoint" class="lexique-sort-toggle" data-testid="lexique-sort-toggle">
-        <label class="lexique-sort-toggle-label">
-          <input
-            type="checkbox"
-            :checked="sortByPainAlignment"
-            @change="sortByPainAlignment = !sortByPainAlignment"
-          />
-          <span>Trier par alignement avec la douleur de l'article</span>
-        </label>
-        <p class="lexique-sort-toggle-hint">
-          Tri TF-IDF classique par d&eacute;faut. Active pour remonter en t&ecirc;te les termes proches de la douleur.
-        </p>
-      </div>
+      <!-- 2026-05-02 — Barre de tri unifiée (remplace l'ancien toggle "Trier par
+           alignement douleur" qui n'avait qu'un critère booléen). Cohérent avec
+           Radar / Capitaine / Lieutenants. Le compteur multi-niveau (O/D/Op) est
+           absorbé dans le countLabel. -->
+      <SortToggleBar
+        :options="lexiqueSortOptions"
+        :model-value="lexiqueSortState"
+        :count-label="`${selectedCount} terme${selectedCount > 1 ? 's' : ''} (${selectedByLevel.obligatoire}O / ${selectedByLevel.differenciateur}D / ${selectedByLevel.optionnel}Op)`"
+        data-testid="lexique-sort-bar"
+        @update:model-value="(s) => lexiqueSortState = s"
+      />
 
       <!-- Obligatoire (70%+) -->
       <CollapsableSection :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire.length} termes`" :default-open="true">

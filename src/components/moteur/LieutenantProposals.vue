@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, toRef } from 'vue'
 import { marked } from 'marked'
 import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
+import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
+import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -24,6 +26,32 @@ defineEmits<{
 }>()
 
 const showEliminated = ref(false)
+
+// 2026-05-02 — Tri unifié pour la liste de Lieutenants. Score = `score` (IA, 0-100).
+const lieutenantSortOptions: SortOption[] = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'score', label: 'Score IA' },
+]
+const { sorted: sortedLieutenants, sortState: lieutenantSortState } = useSortableList<ProposedLieutenant>({
+  items: toRef(props, 'lieutenantCards'),
+  getValue: (lt, key) => {
+    if (key === 'az') return lt.keyword
+    if (key === 'score') return lt.score ?? null
+    return null
+  },
+})
+// Eliminated cards : trié avec le MÊME critère que la liste principale, pour
+// que le toggle de tri s'applique aux deux sections de manière cohérente.
+const sortedEliminated = computed<ProposedLieutenant[]>(() => {
+  const list = [...props.eliminatedCards]
+  const { key, direction } = lieutenantSortState.value
+  if (!key || direction === 'neutral') return list
+  const sign = direction === 'desc' ? -1 : 1
+  return list.sort((a, b) => {
+    if (key === 'az') return sign * a.keyword.localeCompare(b.keyword, 'fr', { sensitivity: 'base' })
+    return sign * ((a.score ?? 0) - (b.score ?? 0))
+  })
+})
 
 function isCardSelected(keyword: string, selected: Map<string, ProposedLieutenant>): boolean {
   return selected.has(keyword)
@@ -52,18 +80,22 @@ const parsedInsights = computed(() =>
     </div>
 
     <template v-else-if="lieutenantCards.length > 0">
-      <div class="lieutenant-counter" data-testid="lieutenant-counter">
-        {{ selectedCards.size }} lieutenant{{ selectedCards.size > 1 ? 's' : '' }}
-        selectionne{{ selectedCards.size > 1 ? 's' : '' }}
-        sur {{ totalGenerated }} generes par l'IA
-        <span v-if="eliminatedCards.length > 0" class="filter-info">
-          ({{ lieutenantCards.length }} retenus, {{ eliminatedCards.length }} elimines)
+      <SortToggleBar
+        :options="lieutenantSortOptions"
+        :model-value="lieutenantSortState"
+        :count-label="`${selectedCards.size} / ${totalGenerated} sélectionnés`"
+        @update:model-value="(s) => lieutenantSortState = s"
+      />
+
+      <div v-if="eliminatedCards.length > 0" class="lieutenant-counter" data-testid="lieutenant-counter">
+        <span class="filter-info">
+          {{ lieutenantCards.length }} retenus · {{ eliminatedCards.length }} éliminés
         </span>
       </div>
 
       <div class="lieutenant-cards-list" data-testid="lieutenant-cards-list">
         <LieutenantCard
-          v-for="lt in lieutenantCards"
+          v-for="lt in sortedLieutenants"
           :key="lt.keyword"
           :lieutenant="lt"
           :checked="isCardSelected(lt.keyword, selectedCards)"
@@ -79,7 +111,7 @@ const parsedInsights = computed(() =>
         </button>
         <div v-if="showEliminated" class="eliminated-cards-list" data-testid="eliminated-cards-list">
           <LieutenantCard
-            v-for="lt in eliminatedCards"
+            v-for="lt in sortedEliminated"
             :key="lt.keyword"
             :lieutenant="lt"
             :checked="isCardSelected(lt.keyword, selectedCards)"

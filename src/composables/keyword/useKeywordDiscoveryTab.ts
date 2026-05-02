@@ -131,7 +131,7 @@ export function useKeywordDiscoveryTab() {
   function matchesGroupFilter(keyword: string): boolean {
     if (!activeGroupFilter.value) return true
     const target = activeGroupFilter.value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
-    const tokens = keyword.toLowerCase().split(/[\s\-_.,;:!?'"()\[\]{}/\\]+/)
+    const tokens = keyword.toLowerCase().split(/[\s\-_.,;:!?'"()[\]{}/\\]+/)
     return tokens.some(t => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase() === target)
   }
 

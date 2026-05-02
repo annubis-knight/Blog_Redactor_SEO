@@ -6,6 +6,8 @@ import { useCapitaineValidation, articleTypeToLevel } from '@/composables/keywor
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useRadarCarousel } from '@/composables/keyword/useRadarCarousel'
 import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
+import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
+import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -355,6 +357,34 @@ function handleHistoryClick(index: number) {
 const carousel = useRadarCarousel()
 const carouselEntries = computed(() => carousel.entries.value)
 const lockedKeyword = ref<string | null>(null)
+
+// 2026-05-02 — Tri unifié de la radar-list (Capitaine).
+// L'item verrouillé reste TOUJOURS en tête, peu importe le critère choisi.
+// Score = Pertinence (relevanceScore.total) — c'est le score affiché sur les
+// cards en mode `displayMode='relevance'`. Voir docs/scoring-kpi-vs-relevance.md.
+const captainSortOptions: SortOption[] = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'score', label: 'Score Pertinence' },
+]
+const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<CarouselEntry>({
+  items: carouselEntries,
+  getValue: (entry, key) => {
+    if (key === 'az') return entry.card.keyword
+    if (key === 'score') return entry.validation?.relevanceScore?.total ?? null
+    return null
+  },
+  pinnedPredicate: (entry) => lockedKeyword.value !== null && entry.card.keyword === lockedKeyword.value,
+})
+
+/**
+ * Convertit l'index visuel (dans la liste triée) vers l'index brut de
+ * `carousel.entries`. Indispensable pour rester rétro-compatible avec
+ * `selectedIndex`, `lockEntry(idx)`, `lockedIndex`, watchers, qui parlent
+ * tous en index brut.
+ */
+function rawIndexOf(entry: CarouselEntry): number {
+  return carousel.entries.value.findIndex(e => e.originalCard.keyword === entry.originalCard.keyword)
+}
 
 // Sprint 2026-04 — Pointeur de sélection UI pour la liste verticale (mode workflow).
 // Indépendant de carousel.currentIndex (qui sert l'auto-validation interne).
@@ -911,6 +941,12 @@ onUnmounted(() => abortAllAiStreams())
     <!-- ===== MODE WORKFLOW : Liste verticale + Side Panel sticky ===== -->
     <div v-if="mode === 'workflow'" class="captain-layout" data-testid="captain-layout">
       <div class="radar-list" data-testid="radar-list">
+        <SortToggleBar
+          v-if="carouselEntries.length > 0"
+          :options="captainSortOptions"
+          :model-value="captainSortState"
+          @update:model-value="(s) => captainSortState = s"
+        />
         <div
           v-if="carouselEntries.length === 0"
           class="radar-list-empty"
@@ -919,24 +955,24 @@ onUnmounted(() => abortAllAiStreams())
           Aucun mot-cl&eacute; &agrave; valider pour cet article.
         </div>
         <div
-          v-for="(entry, idx) in carouselEntries"
+          v-for="entry in sortedEntries"
           :key="entry.originalCard.keyword"
           class="radar-list-item"
           :class="{
-            'radar-list-item--selected': selectedIndex === idx,
+            'radar-list-item--selected': selectedIndex === rawIndexOf(entry),
             'radar-list-item--locked': lockedKeyword === entry.card.keyword,
           }"
-          :data-testid="`radar-list-item-${idx}`"
+          :data-testid="`radar-list-item-${rawIndexOf(entry)}`"
           role="button"
           tabindex="0"
-          :aria-pressed="selectedIndex === idx"
-          @click="selectEntry(idx)"
-          @keydown.enter.space.prevent="selectEntry(idx)"
+          :aria-pressed="selectedIndex === rawIndexOf(entry)"
+          @click="selectEntry(rawIndexOf(entry))"
+          @keydown.enter.space.prevent="selectEntry(rawIndexOf(entry))"
         >
           <div
             v-if="entry.isLoading"
             class="captain-loading"
-            :data-testid="`radar-list-item-${idx}-loading`"
+            :data-testid="`radar-list-item-${rawIndexOf(entry)}-loading`"
           >
             <div class="captain-loading-spinner" />
             <p>Validation en cours...</p>
@@ -944,7 +980,7 @@ onUnmounted(() => abortAllAiStreams())
           <div
             v-else-if="entry.error"
             class="captain-error"
-            :data-testid="`radar-list-item-${idx}-error`"
+            :data-testid="`radar-list-item-${rawIndexOf(entry)}-error`"
           >
             <p>Erreur : {{ entry.error }}</p>
           </div>
@@ -954,9 +990,9 @@ onUnmounted(() => abortAllAiStreams())
             :locked-keyword="lockedKeyword"
             :article-level="articleLevel"
             :article-id="props.selectedArticle?.id ?? null"
-            @lock="lockEntry(idx)"
-            @unlock="lockedIndex === idx ? unlockEntry() : null"
-            @word-toggle="(indices) => handleWordToggleAt(idx, indices)"
+            @lock="lockEntry(rawIndexOf(entry))"
+            @unlock="lockedIndex === rawIndexOf(entry) ? unlockEntry() : null"
+            @word-toggle="(indices) => handleWordToggleAt(rawIndexOf(entry), indices)"
           />
         </div>
       </div>

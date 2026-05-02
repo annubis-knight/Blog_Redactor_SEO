@@ -46,6 +46,140 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
+  /**
+   * 2026-05-01 — Variante merge-only de fetchKeywords. Récupère le payload DB
+   * (`GET /articles/:id/keywords`) et fusionne avec l'état courant SANS écraser
+   * ce que l'utilisateur a en mémoire. Utilisé par le TabLoadPrompt depuis les
+   * onglets Capitaine et Lieutenants.
+   */
+  async function fetchKeywordsMerge(id: number) {
+    isLoading.value = true
+    error.value = null
+    try {
+      const remote = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`)
+      if (!remote) return
+      if (!keywords.value) {
+        keywords.value = remote
+        return
+      }
+      const local = keywords.value
+      // Capitaine : adopte la valeur DB seulement si la mémoire est vide
+      if (!local.capitaine && remote.capitaine) {
+        local.capitaine = remote.capitaine
+      }
+      // richCaptain : merge validationHistory par keyword
+      if (remote.richCaptain) {
+        if (!local.richCaptain) {
+          local.richCaptain = { ...remote.richCaptain, validationHistory: [...(remote.richCaptain.validationHistory ?? [])] }
+        } else {
+          mergeCaptainHistory(remote.richCaptain.validationHistory ?? [])
+          // aiPanelMarkdown : adopte si mémoire vide
+          if (!local.richCaptain.aiPanelMarkdown && remote.richCaptain.aiPanelMarkdown) {
+            local.richCaptain.aiPanelMarkdown = remote.richCaptain.aiPanelMarkdown
+          }
+        }
+      }
+      // Lieutenants : merge richLieutenants par keyword (status DB le plus récent gagne)
+      if (remote.richLieutenants) {
+        mergeRichLieutenants(remote.richLieutenants)
+      }
+      // Liste plate : union par valeur
+      if (remote.lieutenants) {
+        const seen = new Set(local.lieutenants ?? [])
+        for (const lt of remote.lieutenants) {
+          if (!seen.has(lt)) {
+            seen.add(lt)
+            ;(local.lieutenants ??= []).push(lt)
+          }
+        }
+      }
+      // Lexique : union par valeur
+      if (remote.lexique) {
+        const seen = new Set(local.lexique ?? [])
+        for (const term of remote.lexique) {
+          if (!seen.has(term)) {
+            seen.add(term)
+            ;(local.lexique ??= []).push(term)
+          }
+        }
+      }
+      // rootKeywords : union par valeur
+      if (remote.rootKeywords) {
+        const seen = new Set(local.rootKeywords ?? [])
+        for (const root of remote.rootKeywords) {
+          if (!seen.has(root)) {
+            seen.add(root)
+            ;(local.rootKeywords ??= []).push(root)
+          }
+        }
+      }
+      log.debug(`[article-keywords] merged for article ${id}`)
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Erreur inconnue'
+      log.error(`[article-keywords] fetchKeywordsMerge failed`, { articleId: id, error: error.value })
+    } finally {
+      isLoading.value = false
+    }
+  }
+
+  /**
+   * Append-only merge sur richCaptain.validationHistory. Clé = `id` si présent,
+   * sinon `keyword` lowercased. En cas de collision, conserve l'entrée mémoire
+   * (l'utilisateur a pu l'éditer localement).
+   */
+  function mergeCaptainHistory(incoming: CaptainValidationEntry[]) {
+    if (!keywords.value) return
+    if (!keywords.value.richCaptain) {
+      keywords.value.richCaptain = {
+        keyword: '',
+        status: 'suggested',
+        validationHistory: [],
+        aiPanelMarkdown: null,
+        lockedAt: null,
+      }
+    }
+    const history = keywords.value.richCaptain.validationHistory
+    const keyOf = (e: CaptainValidationEntry): string => e.keyword.trim().toLowerCase()
+    const seen = new Set(history.map(keyOf))
+    for (const entry of incoming) {
+      const key = keyOf(entry)
+      if (!seen.has(key)) {
+        seen.add(key)
+        history.push(entry)
+      }
+    }
+    if (history.length > MAX_VALIDATION_HISTORY) {
+      history.splice(0, history.length - MAX_VALIDATION_HISTORY)
+    }
+  }
+
+  /**
+   * Merge sans doublon des richLieutenants. Clé = `keyword` (lowercase trim).
+   * En cas de collision, le statut DB le plus récent gagne (mesuré par
+   * `lockedAt`). Si l'un des deux est null, on garde celui qui est défini.
+   */
+  function mergeRichLieutenants(incoming: RichLieutenant[]) {
+    if (!keywords.value) return
+    const existing = keywords.value.richLieutenants ?? []
+    const byKey = new Map<string, RichLieutenant>()
+    const keyOf = (lt: RichLieutenant) => lt.keyword.trim().toLowerCase()
+    for (const lt of existing) byKey.set(keyOf(lt), lt)
+    for (const lt of incoming) {
+      const key = keyOf(lt)
+      const current = byKey.get(key)
+      if (!current) {
+        byKey.set(key, lt)
+      } else {
+        const incomingTime = lt.lockedAt ? Date.parse(lt.lockedAt) : 0
+        const currentTime = current.lockedAt ? Date.parse(current.lockedAt) : 0
+        if (incomingTime > currentTime) {
+          byKey.set(key, lt)
+        }
+      }
+    }
+    keywords.value.richLieutenants = Array.from(byKey.values())
+  }
+
   // ---- Decision-only save (article_keywords table) ----
 
   async function saveDecisions(id: number) {
@@ -377,7 +511,8 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   return {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     captainValidationHistory, lockedLieutenants, eliminatedLieutenants,
-    fetchKeywords, saveKeywords, saveDecisions, suggestLexique,
+    fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
+    mergeCaptainHistory, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
     setCapitaine, addCaptainValidation, lockCaptain, updateCaptainValidationAiPanel,
     addRootKeywordValidation,

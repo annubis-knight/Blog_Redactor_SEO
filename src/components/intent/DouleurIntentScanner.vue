@@ -8,6 +8,8 @@ import RadarCardCheckable from './RadarCardCheckable.vue'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'
 import CpcFilterToggle from '@/components/shared/CpcFilterToggle.vue'
 import { matchesCpcFilter, type CpcFilter } from '@/components/shared/cpc-filter-types'
+import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
+import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import type { RadarKeyword, RadarCard } from '@shared/types/intent.types'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
 
@@ -51,11 +53,10 @@ const {
   isScanning,
   scanProgress,
   error,
-  heatColor,
-  heatLabel,
   radarCacheStatus,
   checkRadarCache,
   loadFromRadarCache,
+  mergeFromRadarSource,
   generate,
   scan,
   removeKeyword,
@@ -70,9 +71,22 @@ const checkedKeywords = ref(new Set<string>())
 // Sprint 2.5 — CPC filter (3 états : null / 'with' / 'without').
 const cpcFilter = ref<CpcFilter>(null)
 
-const filteredCards = computed(() => {
-  if (!scanResult.value) return [] as RadarCard[]
-  return scanResult.value.cards.filter(c => matchesCpcFilter(c.kpis.cpc, cpcFilter.value))
+// 2026-05-02 — Tri unifié des radar cards. Score = Score Marché
+// (`marketScore.total`) — c'est le score affiché sur les cards en mode
+// `displayMode='kpi'`. Voir docs/scoring-kpi-vs-relevance.md.
+const radarCards = computed<RadarCard[]>(() => scanResult.value?.cards ?? [])
+const radarSortOptions: SortOption[] = [
+  { key: 'az', label: 'A-Z' },
+  { key: 'score', label: 'Score March\u00e9' },
+]
+const { sorted: filteredCards, sortState: radarSortState } = useSortableList<RadarCard>({
+  items: radarCards,
+  getValue: (card, key) => {
+    if (key === 'az') return card.keyword
+    if (key === 'score') return card.marketScore?.total ?? null
+    return null
+  },
+  filter: (card) => matchesCpcFilter(card.kpis.cpc, cpcFilter.value),
 })
 
 // Sprint 2.5 — "Tout" opère sur le filtre courant (visibles uniquement).
@@ -225,6 +239,12 @@ function handleReset() {
   reset()
   emit('keywords-cleared')
 }
+
+/**
+ * 2026-05-01 — Exposé pour le TabLoadPrompt : permet à MoteurView d'invoquer
+ * le merge depuis DB ou cache sans écraser l'état mémoire.
+ */
+defineExpose({ mergeFromRadarSource })
 </script>
 
 <template>
@@ -392,20 +412,24 @@ function handleReset() {
 
       <!-- Keyword cards with checkboxes -->
       <div class="radar-cards">
-        <div class="radar-cards-header">
-          <h4 class="section-title">
-            Resultats par mot-cle ({{ filteredCards.length }}<template v-if="filteredCards.length !== scanResult.cards.length"> / {{ scanResult.cards.length }}</template>)
-          </h4>
-          <CpcFilterToggle v-model="cpcFilter" />
-          <label class="check-all-toggle" @click.stop>
-            <input
-              type="checkbox"
-              :checked="allChecked"
-              @change="toggleAllChecked"
-            />
-            Tout
-          </label>
-        </div>
+        <SortToggleBar
+          :options="radarSortOptions"
+          :model-value="radarSortState"
+          :count-label="filteredCards.length !== scanResult.cards.length ? `${filteredCards.length} / ${scanResult.cards.length} mots-clés` : `${filteredCards.length} mots-clés`"
+          @update:model-value="(s) => radarSortState = s"
+        >
+          <template #filters>
+            <CpcFilterToggle v-model="cpcFilter" />
+            <label class="check-all-toggle" @click.stop>
+              <input
+                type="checkbox"
+                :checked="allChecked"
+                @change="toggleAllChecked"
+              />
+              Tout
+            </label>
+          </template>
+        </SortToggleBar>
         <RadarCardCheckable
           v-for="card in filteredCards"
           :key="card.keyword"
