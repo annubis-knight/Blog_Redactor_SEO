@@ -50,7 +50,7 @@ const mockReset = vi.fn(() => {
 })
 
 vi.mock('../../../src/composables/keyword/useResonanceScore', async () => {
-  const actual: any = await vi.importActual('../../../src/composables/keyword/useResonanceScore')
+  const actual = await vi.importActual<Record<string, unknown>>('../../../src/composables/keyword/useResonanceScore')
   return {
     ...actual,
     useKeywordRadar: () => ({
@@ -289,9 +289,10 @@ describe('DouleurIntentScanner — phase results', () => {
     expect(thermo.props('keywordsCount')).toBe(3)
   })
 
-  it('header affiche "Resultats par mot-cle (3)"', () => {
+  it('barre de tri affiche le compteur de mots-clés', () => {
     const wrapper = mountScanner()
-    expect(wrapper.find('.radar-cards-header').text()).toContain('3')
+    // 2026-05-02 — Migration vers SortToggleBar (countLabel) au lieu du header textuel
+    expect(wrapper.find('[data-testid="sort-toggle-bar"]').text()).toContain('3 mots-cl\u00e9s')
   })
 
   it('toutes les RadarCardCheckable sont rendues', () => {
