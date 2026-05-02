@@ -483,16 +483,22 @@ describe('CaptainValidation', () => {
 
   // --- AI Panel ---
 
+  // Sprint B (2026-05-02) — Migration vers <AiPanel variant="advice"> +
+  // <AiAdviceMarkdown>. L'ancien CaptainAiPanel (toggle accordion + dot
+  // streaming) a été supprimé : la coque AiPanel est désormais commune à tous
+  // les onglets. Les anciens testid 'ai-panel-toggle' / 'ai-panel-content' ne
+  // s'appliquent plus.
   describe('AI expert panel', () => {
-    it('shows AI panel when results are displayed', async () => {
+    it('shows AiPanel advice when results are displayed', async () => {
       mockResult.value = fullResult
+      mockAiChunks.value = 'Conseil expert'
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
-      expect(wrapper.find('[data-testid="ai-panel"]').exists()).toBe(true)
+      expect(wrapper.find('[data-testid="ai-panel-advice"]').exists()).toBe(true)
     })
 
     it('triggers streaming when currentResult changes', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       mockResult.value = fullResult
       await nextTick()
 
@@ -506,50 +512,38 @@ describe('CaptainValidation', () => {
       )
     })
 
-    it('displays streaming content with markdown', async () => {
+    it('displays streaming content as markdown via AiAdviceMarkdown', async () => {
       mockResult.value = fullResult
       mockAiChunks.value = '**Bold** and *italic*'
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
-      const aiText = wrapper.find('[data-testid="ai-panel-text"]')
-      expect(aiText.html()).toContain('<strong>')
-      expect(aiText.html()).toContain('<em>')
+      const advice = wrapper.find('[data-testid="ai-advice-markdown"]')
+      expect(advice.exists()).toBe(true)
+      expect(advice.html()).toContain('<strong>')
+      expect(advice.html()).toContain('<em>')
     })
 
-    it('shows streaming indicator', async () => {
+    it('shows streaming caret while streaming chunks arrive', async () => {
       mockResult.value = fullResult
       mockAiIsStreaming.value = true
+      mockAiChunks.value = 'Début…'
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
-      expect(wrapper.find('.ai-panel-streaming-dot').exists()).toBe(true)
+      // Le slot streaming d'AiPanel passe :streaming="true" → caret visible.
+      expect(wrapper.html()).toContain('aip-advice__caret')
     })
 
-    it('shows error in AI panel', async () => {
+    it('shows error block in AiPanel when streaming errored', async () => {
       mockResult.value = fullResult
       mockAiError.value = 'Claude API down'
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
-      expect(wrapper.find('.ai-panel-error').text()).toContain('Claude API down')
-    })
-
-    it('can toggle panel open/close', async () => {
-      mockResult.value = fullResult
-      mockAiChunks.value = 'Expert content'
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
-      await nextTick()
-
-      expect(wrapper.find('[data-testid="ai-panel-content"]').exists()).toBe(true)
-
-      await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
-      await nextTick()
-      expect(wrapper.find('[data-testid="ai-panel-content"]').exists()).toBe(false)
-
-      await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
-      await nextTick()
-      expect(wrapper.find('[data-testid="ai-panel-content"]').exists()).toBe(true)
+      const errEl = wrapper.find('[data-testid="ai-panel-error"]')
+      expect(errEl.exists()).toBe(true)
+      expect(errEl.text()).toContain('Claude API down')
     })
   })
 

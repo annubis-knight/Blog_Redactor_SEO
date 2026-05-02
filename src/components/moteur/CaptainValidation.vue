@@ -17,7 +17,10 @@ import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import RadarKeywordCard from '@/components/intent/RadarKeywordCard.vue'
 import CaptainInput from '@/components/moteur/CaptainInput.vue'
 import CaptainRootsSidebar from '@/components/moteur/CaptainRootsSidebar.vue'
-import CaptainAiPanel from '@/components/moteur/CaptainAiPanel.vue'
+import AiPanel from '@/components/moteur/ai-panel/AiPanel.vue'
+import AiAdviceMarkdown from '@/components/moteur/ai-panel/AiAdviceMarkdown.vue'
+import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
+import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import CaptainLockPanel from '@/components/moteur/CaptainLockPanel.vue'
 import UnlockLieutenantsModal from '@/components/moteur/UnlockLieutenantsModal.vue'
 import CaptainInteractiveWords from '@/components/moteur/CaptainInteractiveWords.vue'
@@ -268,6 +271,38 @@ watch(
 )
 
 onUnmounted(() => aiAbort())
+
+// Sprint B (2026-05-02) — État AiPanel pour le mode libre (manual streaming).
+// Mapping props legacy → AiPanelState attendu par <AiPanel>.
+const manualAiState = computed<AiPanelState>(() => {
+  if (aiError.value) return 'error'
+  if (aiIsStreaming.value) return 'streaming'
+  if (parsedMarkdown.value && parsedMarkdown.value.trim().length > 0) return 'success'
+  return 'idle'
+})
+
+const manualVerdictConfig = computed(() => {
+  const v = manualVerdictSummary.value
+  return v ? VERDICT_CONFIG[v.level] : null
+})
+
+// Sprint B — Régénération du panel IA en mode libre (re-stream sur le mot-clé courant).
+function handleManualAiRegenerate() {
+  const kw = currentResult.value?.keyword
+  if (!kw) return
+  aiAbort()
+  aiStartStream(
+    `/api/keywords/${encodeURIComponent(kw)}/ai-panel`,
+    {
+      level: currentResult.value!.articleLevel,
+      articleId: props.selectedArticle?.id,
+      marketScore: currentResult.value!.marketScore,
+      relevanceScore: currentResult.value!.relevanceScore,
+      kpis: currentResult.value!.kpis.map((k: KpiResult) => ({ name: k.name, color: k.color, label: k.label })),
+      verdict: { level: currentResult.value!.verdict.level, greenCount: currentResult.value!.verdict.greenCount, totalKpis: currentResult.value!.verdict.totalKpis },
+    },
+  )
+}
 
 // --- Lock/Unlock (manual mode) ---
 function lockCaptaine() {
@@ -750,7 +785,7 @@ function carouselEffectiveVerdict(entry: CarouselEntry): VerdictLevel | null {
 }
 
 
-// Étape 3F — Mini résumé verdict injecté dans CaptainAiPanel à la place
+// Étape 3F — Mini résumé verdict injecté dans le slot AiPanel à la place
 // du CaptainVerdictPanel (qui prenait toute la largeur). On garde l'info
 // d'évaluation mais sans bloc dédié qui étouffait la lecture.
 const selectedVerdictSummary = computed(() => {
@@ -1119,12 +1154,41 @@ onUnmounted(() => abortAllAiStreams())
           <span v-if="currentResult.fromCache"> — résultat en cache</span>
         </p>
 
-        <CaptainAiPanel
-          :parsed-html="parsedMarkdown"
-          :is-streaming="aiIsStreaming"
+        <AiPanel
+          variant="advice"
+          title="Avis expert IA"
+          subtitle="Analyse Capitaine basée sur les KPIs marché et la pertinence."
+          :state="manualAiState"
           :error="aiError"
-          :verdict-summary="manualVerdictSummary"
-        />
+          regen-confirm-message="Régénérer l'avis expert IA ? Cela consommera un appel Claude."
+          @trigger="handleManualAiRegenerate"
+        >
+          <div
+            v-if="manualVerdictSummary && manualVerdictConfig"
+            class="ai-panel-verdict"
+            data-testid="ai-panel-verdict"
+            :style="{ borderColor: manualVerdictConfig.color, background: manualVerdictConfig.bg }"
+          >
+            <span class="ai-panel-verdict__icon" :aria-hidden="true">{{ manualVerdictConfig.icon }}</span>
+            <span class="ai-panel-verdict__level" :style="{ color: manualVerdictConfig.color }">{{ manualVerdictSummary.level }}</span>
+            <span class="ai-panel-verdict__label">{{ manualVerdictSummary.label }}</span>
+            <span v-if="manualVerdictSummary.reason" class="ai-panel-verdict__reason">· {{ manualVerdictSummary.reason }}</span>
+          </div>
+          <AiAdviceMarkdown :markdown="parsedMarkdown" />
+
+          <template #streaming>
+            <div
+              v-if="manualVerdictSummary && manualVerdictConfig"
+              class="ai-panel-verdict"
+              :style="{ borderColor: manualVerdictConfig.color, background: manualVerdictConfig.bg }"
+            >
+              <span class="ai-panel-verdict__icon" :aria-hidden="true">{{ manualVerdictConfig.icon }}</span>
+              <span class="ai-panel-verdict__level" :style="{ color: manualVerdictConfig.color }">{{ manualVerdictSummary.level }}</span>
+              <span class="ai-panel-verdict__label">{{ manualVerdictSummary.label }}</span>
+            </div>
+            <AiAdviceMarkdown :markdown="parsedMarkdown" :streaming="true" />
+          </template>
+        </AiPanel>
 
         <CaptainLockPanel
           :is-locked="isLocked"
@@ -1409,4 +1473,20 @@ onUnmounted(() => abortAllAiStreams())
   font-size: 0.8125rem;
   color: var(--color-text-muted, #64748b);
 }
+
+/* Mini bandeau verdict en tête du slot AiPanel (Sprint B). */
+.ai-panel-verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+.ai-panel-verdict__icon { font-size: 0.875rem; }
+.ai-panel-verdict__level { font-weight: 700; letter-spacing: 0.02em; }
+.ai-panel-verdict__label { color: var(--color-text, #1e293b); }
+.ai-panel-verdict__reason { color: var(--color-text-muted, #64748b); font-style: italic; }
 </style>

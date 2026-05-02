@@ -15,6 +15,12 @@ withDefaults(defineProps<{
   regenLabel?: string
   /** Cache la carte tant que l'utilisateur n'a pas déclenché. Défaut: false. */
   hideUntilTriggered?: boolean
+  /**
+   * Message de confirmation affiché avant régénération (state==='success' →
+   * variant 'regen'). Opt-in. Utile pour protéger un appel coûteux (ex:
+   * Claude). Propagé tel quel à AiTriggerButton.
+   */
+  regenConfirmMessage?: string
 }>(), {
   isStale: false,
   ctaLabel: "Analyser avec l'IA",
@@ -63,6 +69,7 @@ defineEmits<{ (e: 'trigger'): void }>()
         :variant="state === 'success' ? 'regen' : 'primary'"
         :loading="state === 'streaming'"
         :label="state === 'success' ? regenLabel : ctaLabel"
+        :confirm-message="state === 'success' ? regenConfirmMessage : undefined"
         @click="$emit('trigger')"
       />
     </div>

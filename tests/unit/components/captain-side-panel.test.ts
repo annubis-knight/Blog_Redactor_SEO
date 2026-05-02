@@ -11,7 +11,7 @@
  *
  * Ces tests bloquent toute régression future de ces 5 comportements.
  */
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import CaptainSidePanel from '../../../src/components/moteur/CaptainSidePanel.vue'
@@ -74,10 +74,14 @@ const COMMON_PROPS = {
   showGotoLocked: false,
 }
 
-// Stubs pour les sous-composants lourds (CaptainRootsSidebar, CaptainAiPanel).
+// Stubs pour les sous-composants lourds. Sprint B (2026-05-02) : CaptainAiPanel
+// est remplacé par <AiPanel variant="advice"> + <AiAdviceMarkdown>.
+// On stubbe AiPanel pour les tests UX d'antan (close, click outside, …) qui
+// n'ont rien à faire de l'IA.
 const GLOBAL_STUBS = {
   CaptainRootsSidebar: { template: '<div data-testid="stub-roots" />' },
-  CaptainAiPanel: { template: '<div data-testid="stub-ai-panel" />' },
+  AiPanel: { template: '<div data-testid="stub-ai-panel"><slot /></div>' },
+  AiAdviceMarkdown: { template: '<div data-testid="stub-ai-advice" />' },
 }
 
 describe('CaptainSidePanel — comportements UX (anti-régression)', () => {
@@ -213,5 +217,111 @@ describe('CaptainSidePanel — comportements UX (anti-régression)', () => {
     expect(wrapper.find('[data-testid="side-panel-market-kpis"]').exists()).toBe(true)
     // Volume 1500 doit apparaître (formaté fr-FR : "1 500 rech/m")
     expect(wrapper.text()).toMatch(/1[\s ]500/)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// Sprint B (2026-05-02) — Migration vers <AiPanel variant="advice">.
+// On vérifie la présence du nouveau panel partagé (data-testid='ai-panel-advice')
+// et la présence du markdown advice via <AiAdviceMarkdown>.
+// ---------------------------------------------------------------------------
+
+describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
+  // Pas de stub : on monte le vrai AiPanel + AiAdviceMarkdown pour valider
+  // l'intégration end-to-end (state="success" → markdown rendu).
+  const REAL_STUBS = {
+    CaptainRootsSidebar: { template: '<div data-testid="stub-roots" />' },
+  }
+
+  it('affiche <AiPanel variant="advice"> dans le sidepanel', () => {
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil\n\nFais X.' },
+      global: { stubs: REAL_STUBS },
+    })
+    expect(wrapper.find('[data-testid="ai-panel-advice"]').exists()).toBe(true)
+  })
+
+  it('parsedMarkdown fourni → contenu rendu via <AiAdviceMarkdown>', () => {
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil\n\nFais X.' },
+      global: { stubs: REAL_STUBS },
+    })
+    const advice = wrapper.find('[data-testid="ai-advice-markdown"]')
+    expect(advice.exists()).toBe(true)
+    expect(advice.html()).toContain('Conseil')
+    expect(advice.html()).toContain('Fais X')
+  })
+
+  it('streaming en cours → <AiAdviceMarkdown> dans le slot streaming (caret visible)', () => {
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, parsedMarkdown: 'Début…', aiIsStreaming: true },
+      global: { stubs: REAL_STUBS },
+    })
+    expect(wrapper.find('[data-testid="ai-advice-markdown"]').exists()).toBe(true)
+    // Le caret n'est rendu que si streaming=true a été propagé.
+    expect(wrapper.html()).toContain('aip-advice__caret')
+  })
+
+  it('aiError fourni → bloc d\'erreur affiché (state=error)', () => {
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, aiError: 'API down' },
+      global: { stubs: REAL_STUBS },
+    })
+    const err = wrapper.find('[data-testid="ai-panel-error"]')
+    expect(err.exists()).toBe(true)
+    expect(err.text()).toContain('API down')
+  })
+
+  it('verdictSummary fourni → affiché en tête de slot (avant le markdown)', () => {
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: {
+        ...COMMON_PROPS,
+        entry,
+        parsedMarkdown: '## Conseil',
+        verdictSummary: { level: 'GO', label: 'Très bon', reason: 'Volume fort' },
+      },
+      global: { stubs: REAL_STUBS },
+    })
+    const verdict = wrapper.find('[data-testid="ai-panel-verdict"]')
+    expect(verdict.exists()).toBe(true)
+    expect(verdict.text()).toContain('GO')
+    expect(verdict.text()).toContain('Très bon')
+  })
+
+  it('CTA en mode success → variant regen + confirmMessage propagé', async () => {
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil' },
+      global: { stubs: REAL_STUBS },
+    })
+    expect(wrapper.find('[data-testid="ai-trigger-regen"]').exists()).toBe(true)
+  })
+
+  it('clic régénération + confirm=true → emit ai-regenerate', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil' },
+      global: { stubs: REAL_STUBS },
+    })
+    await wrapper.find('[data-testid="ai-trigger-regen"]').trigger('click')
+    expect(window.confirm).toHaveBeenCalled()
+    expect(wrapper.emitted('ai-regenerate')).toBeTruthy()
+  })
+
+  it('clic régénération + confirm=false → PAS d\'emit ai-regenerate', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const entry = makeEntry('agence seo')
+    const wrapper = mount(CaptainSidePanel, {
+      props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil' },
+      global: { stubs: REAL_STUBS },
+    })
+    await wrapper.find('[data-testid="ai-trigger-regen"]').trigger('click')
+    expect(wrapper.emitted('ai-regenerate')).toBeFalsy()
   })
 })

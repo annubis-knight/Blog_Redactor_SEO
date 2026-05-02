@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import AiTriggerButton from '@/components/moteur/ai-panel/AiTriggerButton.vue'
 
@@ -46,5 +46,47 @@ describe('AiTriggerButton', () => {
     const w = mount(AiTriggerButton, { props: { variant: 'regen', label: 'Régénérer' } })
     expect(w.find('[data-testid="ai-trigger-regen"]').exists()).toBe(true)
     expect(w.text()).toContain('Régénérer')
+  })
+
+  describe('confirmMessage (opt-in, regen variant only)', () => {
+    afterEach(() => vi.restoreAllMocks())
+
+    it('confirmMessage défini + regen + confirm=true → emit click', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      const w = mount(AiTriggerButton, {
+        props: { variant: 'regen', confirmMessage: 'Régénérer ?' },
+      })
+      await w.find('button').trigger('click')
+      expect(window.confirm).toHaveBeenCalledWith('Régénérer ?')
+      expect(w.emitted('click')).toHaveLength(1)
+    })
+
+    it('confirmMessage défini + regen + confirm=false → PAS d\'emit click', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const w = mount(AiTriggerButton, {
+        props: { variant: 'regen', confirmMessage: 'Régénérer ?' },
+      })
+      await w.find('button').trigger('click')
+      expect(window.confirm).toHaveBeenCalled()
+      expect(w.emitted('click')).toBeUndefined()
+    })
+
+    it('confirmMessage défini mais variant=primary → pas de confirm, emit direct', async () => {
+      const spy = vi.spyOn(window, 'confirm')
+      const w = mount(AiTriggerButton, {
+        props: { variant: 'primary', confirmMessage: 'Régénérer ?' },
+      })
+      await w.find('button').trigger('click')
+      expect(spy).not.toHaveBeenCalled()
+      expect(w.emitted('click')).toHaveLength(1)
+    })
+
+    it('pas de confirmMessage + regen → comportement par défaut (pas de confirm)', async () => {
+      const spy = vi.spyOn(window, 'confirm')
+      const w = mount(AiTriggerButton, { props: { variant: 'regen' } })
+      await w.find('button').trigger('click')
+      expect(spy).not.toHaveBeenCalled()
+      expect(w.emitted('click')).toHaveLength(1)
+    })
   })
 })

@@ -2,8 +2,11 @@
 import { computed, ref } from 'vue'
 import { useEventListener } from '@vueuse/core'
 import CaptainRootsSidebar from '@/components/moteur/CaptainRootsSidebar.vue'
-import CaptainAiPanel from '@/components/moteur/CaptainAiPanel.vue'
+import AiPanel from '@/components/moteur/ai-panel/AiPanel.vue'
+import AiAdviceMarkdown from '@/components/moteur/ai-panel/AiAdviceMarkdown.vue'
+import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
 import { useResizablePanel } from '@/composables/ui/useResizablePanel'
+import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
 import type { VerdictLevel, ValidateResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
@@ -45,6 +48,23 @@ const emit = defineEmits<{
   (e: 'goto-locked'): void
   (e: 'close'): void
 }>()
+
+// Sprint B (2026-05-02) — Migration vers <AiPanel variant="advice">.
+// Mapping props legacy → AiPanelState attendu par le composant partagé :
+//   error présent  → 'error'
+//   streaming      → 'streaming'
+//   markdown vide  → 'idle'
+//   markdown rempli (et pas de stream/error) → 'success'
+const aiState = computed<AiPanelState>(() => {
+  if (props.aiError) return 'error'
+  if (props.aiIsStreaming) return 'streaming'
+  if (props.parsedMarkdown && props.parsedMarkdown.trim().length > 0) return 'success'
+  return 'idle'
+})
+
+const verdictConfig = computed(() =>
+  props.verdictSummary ? VERDICT_CONFIG[props.verdictSummary.level] : null,
+)
 
 // Largeur redimensionnable persistée (mêmes bornes/clé localStorage que l'éditeur).
 const { panelWidth, isResizing, onPointerDown } = useResizablePanel()
@@ -174,15 +194,43 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
           @select="$emit('switch-variant', $event)"
         />
 
-        <CaptainAiPanel
-          data-testid="side-panel-ai"
-          :parsed-html="parsedMarkdown"
-          :is-streaming="aiIsStreaming"
+        <AiPanel
+          variant="advice"
+          title="Avis expert IA"
+          subtitle="Analyse Capitaine basée sur les KPIs marché et la pertinence."
+          :state="aiState"
           :error="aiError"
-          :verdict-summary="verdictSummary"
-          :can-regenerate="true"
-          @regenerate="$emit('ai-regenerate')"
-        />
+          regen-confirm-message="Régénérer l'avis expert IA ? Cela consommera un appel Claude."
+          @trigger="$emit('ai-regenerate')"
+        >
+          <!-- Slot par défaut : state==='success'. Verdict en tête puis markdown. -->
+          <div
+            v-if="verdictSummary && verdictConfig"
+            class="ai-panel-verdict"
+            data-testid="ai-panel-verdict"
+            :style="{ borderColor: verdictConfig.color, background: verdictConfig.bg }"
+          >
+            <span class="ai-panel-verdict__icon" :aria-hidden="true">{{ verdictConfig.icon }}</span>
+            <span class="ai-panel-verdict__level" :style="{ color: verdictConfig.color }">{{ verdictSummary.level }}</span>
+            <span class="ai-panel-verdict__label">{{ verdictSummary.label }}</span>
+            <span v-if="verdictSummary.reason" class="ai-panel-verdict__reason">· {{ verdictSummary.reason }}</span>
+          </div>
+          <AiAdviceMarkdown :markdown="parsedMarkdown" />
+
+          <!-- Slot streaming : affiche le markdown progressif au lieu du skeleton. -->
+          <template #streaming>
+            <div
+              v-if="verdictSummary && verdictConfig"
+              class="ai-panel-verdict"
+              :style="{ borderColor: verdictConfig.color, background: verdictConfig.bg }"
+            >
+              <span class="ai-panel-verdict__icon" :aria-hidden="true">{{ verdictConfig.icon }}</span>
+              <span class="ai-panel-verdict__level" :style="{ color: verdictConfig.color }">{{ verdictSummary.level }}</span>
+              <span class="ai-panel-verdict__label">{{ verdictSummary.label }}</span>
+            </div>
+            <AiAdviceMarkdown :markdown="parsedMarkdown" :streaming="true" />
+          </template>
+        </AiPanel>
       </div>
     </div>
   </aside>
@@ -401,4 +449,20 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
   color: var(--color-text-muted, #64748b);
   font-style: italic;
 }
+
+/* Mini bandeau verdict en tête du slot AiPanel (Sprint B). */
+.ai-panel-verdict {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  margin-bottom: 0.75rem;
+  border: 1px solid;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+}
+.ai-panel-verdict__icon { font-size: 0.875rem; }
+.ai-panel-verdict__level { font-weight: 700; letter-spacing: 0.02em; }
+.ai-panel-verdict__label { color: var(--color-text, #1e293b); }
+.ai-panel-verdict__reason { color: var(--color-text-muted, #64748b); font-style: italic; }
 </style>

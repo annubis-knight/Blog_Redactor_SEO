@@ -1,10 +1,17 @@
 <script setup lang="ts">
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
   variant?: 'primary' | 'regen' | 'ghost'
   loading?: boolean
   disabled?: boolean
   label?: string
   loadingLabel?: string
+  /**
+   * Si défini ET variant === 'regen', `window.confirm(confirmMessage)` est
+   * appelé avant d'émettre le click. Permet de protéger une régénération
+   * coûteuse (ex: appel Claude) sans polluer le composable métier avec une
+   * dialog UI. Opt-in : aucun comportement si non passée.
+   */
+  confirmMessage?: string
 }>(), {
   variant: 'primary',
   loading: false,
@@ -13,7 +20,14 @@ withDefaults(defineProps<{
   loadingLabel: 'Analyse en cours…',
 })
 
-defineEmits<{ (e: 'click'): void }>()
+const emit = defineEmits<{ (e: 'click'): void }>()
+
+function onClick() {
+  if (props.confirmMessage && props.variant === 'regen') {
+    if (!window.confirm(props.confirmMessage)) return
+  }
+  emit('click')
+}
 </script>
 
 <template>
@@ -23,7 +37,7 @@ defineEmits<{ (e: 'click'): void }>()
     :class="`aip-cta--${variant}`"
     :disabled="disabled || loading"
     :data-testid="`ai-trigger-${variant}`"
-    @click="$emit('click')"
+    @click="onClick"
   >
     <span class="aip-cta__icon" aria-hidden="true">
       <svg v-if="!loading && variant !== 'regen'" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
