@@ -124,29 +124,38 @@ Effets de bord acceptables : refactor invasif des routes
 
 ## 4. Cartographie par onglet
 
-### 4.1 Discovery (`suggestion`)
+### 4.1 Discovery (`suggestion`) — sans nouvel appel IA
 
 - **Panel actuel** : pas de panel "analyse", uniquement le basket.
 - **Cible** : nouveau composant `<DiscoveryAiPanel>` en bas de page.
-  - Sources : agrège les keywords du basket + contexte article.
-  - CTA : "Suggérer les meilleurs candidats" (Sparkles).
-  - Sortie : top-N keywords cochables + raison (1 ligne par item).
-  - Handoff : bouton "Envoyer dans Radar" → store `moteur-basket` flag `pushedToRadar`.
-- **Backend** : nouvelle route `POST /api/discovery/ai-suggest` + prompt
-  `discovery-ai-suggest.md`.
+  - **Source de données** : `moteur-basket.store` (déjà collecté).
+  - **Logique** : tri local (côté composable) par densité de signal
+    (count d'occurrences dans suggestions alphabét/questions/intentions/
+    prépositions) × similarité pain point (Jaccard, déjà disponible via
+    `src/utils/pain-point-jaccard.ts`).
+  - **CTA** : "Surfacer les meilleurs candidats" (Sparkles).
+  - **Sortie** : top-N (10 par défaut) keywords cochables + raison
+    ("Présent dans 3 sources" / "Aligné douleur").
+  - **Handoff** : bouton "Envoyer dans Radar" → flag `pushedToRadar` dans
+    `moteur-basket.store`.
+- **Backend** : **aucun nouvel endpoint**. Le tri se fait côté front à partir
+  des données déjà chargées. Pas d'appel IA → pas de coût token.
 
-### 4.2 Radar (`suggestion`)
+### 4.2 Radar (`suggestion`) — sans nouvel appel IA
 
 - **Panel actuel** : aucun.
 - **Cible** : `<RadarAiPanel>` en bas de page.
-  - Sources : `radarKeywords` + KPIs + douleur article.
-  - CTA : "Recommander les Capitaines candidats".
-  - Sortie : 1 à 5 keywords cochables (avec score KPI + score pertinence) +
-    raison.
-  - Handoff : bouton "Marquer comme candidats Capitaine" → écriture
-    `article_keywords.captainCandidates[]`.
-- **Backend** : nouvelle route `POST /api/radar/ai-suggest` + prompt
-  `radar-ai-suggest.md`. Pas de tokens IA s'il y a un cache valide.
+  - **Source de données** : `radarKeywords` (déjà scorés via `computeMarketScore`
+    et `computeRelevanceScore`).
+  - **Logique** : tri local par `marketScore.total + relevanceScore.total`,
+    avec filtre verdict ≠ NOGO. Pas d'appel IA.
+  - **CTA** : "Surfacer les Capitaines candidats".
+  - **Sortie** : top 1-5 keywords cochables avec leurs deux scores +
+    1 ligne d'explication (mix scores).
+  - **Handoff** : bouton "Marquer comme candidats Capitaine" → écriture
+    `article_keywords.captainCandidates[]` (champ déjà géré par le store).
+- **Backend** : **aucun nouvel endpoint**. On consomme le scoring déjà
+  calculé.
 
 ### 4.3 Capitaine (`advice` — exception sidepanel)
 
@@ -212,20 +221,20 @@ richLieutenants, lexique).
 
 ### 5.3 Conventions visuelles (CSS)
 
-```css
-:root {
-  --ai-accent: #a855f7;     /* violet doux, distinct du bleu primary */
-  --ai-accent-soft: #f3e8ff;
-  --ai-accent-border: #c084fc;
-}
+> **Décision D2 (2026-05-02)** : on s'aligne sur les tokens `badge-purple-*`
+> déjà présents dans `src/assets/styles/variables.css` (lignes 73-74). Pas de
+> nouveau token couleur — on **réutilise la DA existante**.
 
+```css
 .ai-panel {
   margin-top: 2rem;
   padding: 1.5rem;
-  border-top: 2px solid var(--ai-accent);
-  background: var(--ai-accent-soft);
+  border-top: 2px solid var(--color-badge-purple-text);  /* purple-600 */
+  background: var(--color-badge-purple-bg);              /* purple-100 */
   border-radius: 0 0 8px 8px;
 }
+
+.ai-panel__icon { color: var(--color-badge-purple-text); }
 ```
 
 ### 5.4 Iconographie
@@ -257,11 +266,15 @@ richLieutenants, lexique).
 2. Créer `<LexiqueAiPanel>` (extraction TF-IDF reste, AI down).
 3. Mettre à jour les tests components existants.
 
-### Sprint D — Nouveaux panels Discovery & Radar (2 jours)
+### Sprint D — Nouveaux panels Discovery & Radar (1 jour)
 
-1. Backend : routes `discovery-ai-suggest` + `radar-ai-suggest` + prompts.
-2. Frontend : `<DiscoveryAiPanel>` + `<RadarAiPanel>`.
-3. Tests contract-api + unit composants.
+> Pas d'appel IA — tri local sur données déjà chargées (cf. §4.1, §4.2).
+
+1. Composable `useDiscoveryRanking` : tri basket par signal × pain alignment.
+2. Composable `useRadarRanking` : tri radarKeywords par mix marketScore +
+   relevanceScore.
+3. Frontend : `<DiscoveryAiPanel>` + `<RadarAiPanel>`.
+4. Tests unit composables + components.
 
 ### Sprint E — Refactor backend (1 jour)
 
@@ -298,16 +311,29 @@ richLieutenants, lexique).
   les tests `keyword-ai-panel.routes.test.ts` doivent rester verts.
 - ❌ Oublier la consultation cache avant l'appel IA (CLAUDE.md §3.6).
 
-## 9. Décisions ouvertes
+## 9. Décisions tranchées (2026-05-02)
 
-- **D1** : place exacte du panel sur **Capitaine** vs `CaptainSidePanel`.
-  Garde-t-on **uniquement** le sidepanel, ou ajoute-t-on aussi un panel bas
-  de page pour cohérence ? → décision : sidepanel uniquement (l'utilisateur
-  a accepté l'exception).
-- **D2** : variante de couleur `--ai-accent` à confirmer (violet par défaut,
-  modifiable).
-- **D3** : Discovery panel doit-il aussi cocher des keywords du basket
-  existant, ou en générer de nouveaux via IA ? → à clarifier avant Sprint D.
+- **D1 — Capitaine** : sidepanel **uniquement**, pas de doublon bas de page.
+  Le sidepanel reste l'exception assumée (variant `advice`).
+- **D2 — Couleur d'accent IA** : on **réutilise** les tokens existants
+  `--color-badge-purple-bg` (#f3e8ff) et `--color-badge-purple-text` (#7c3aed)
+  déjà présents dans `src/assets/styles/variables.css` lignes 73-74. Aucun
+  nouveau token CSS à introduire — alignement DA.
+- **D3 — Discovery & Radar (onglets sans panel actuel)** :
+  - Le panel n'est **pas une refonte**, c'est un ajout. On **réutilise les
+    fonctions/données déjà en place** (basket pour Discovery, KPIs/scoring
+    pour Radar).
+  - **Discovery** : le nouveau panel d'analyse coche les keywords **du basket
+    existant** et propose les meilleurs candidats à pousser vers Radar
+    (tri par densité de signal × pertinence pain point). Pas de génération
+    IA nouvelle au-delà de ce qui existe.
+  - **Radar** : le panel coche les radar cards **déjà scorées** et propose
+    les top-N candidats Capitaine (tri par `marketScore + relevanceScore`
+    avec malus douleur). Pas de nouvel appel IA — on consomme le résultat
+    du scoring déjà calculé côté store.
+  - Justification SEO : à ces deux étapes amont, l'utilisateur a déjà collecté
+    et scoré ses mots-clés ; ce qui manque, c'est un **filtre intelligent**
+    qui surface les meilleurs candidats sans relancer un appel IA coûteux.
 
 ## 10. Critères d'acceptation
 
