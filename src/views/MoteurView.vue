@@ -32,6 +32,8 @@ import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
+import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
+import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTabLoadPrompt'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -55,7 +57,7 @@ const keywordsStore = useKeywordsStore()
 const strategyStore = useCocoonStrategyStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const articleProgressStore = useArticleProgressStore()
-const { reset: resetDiscovery, hasResults: discoveryHasResults, cacheStatus: discoveryCacheStatus, checkCacheForSeed, wordGroups: discoveryWordGroups } = useKeywordDiscoveryTab()
+const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroups } = useKeywordDiscoveryTab()
 const { clearResults, loadCachedResults } = useArticleResults({
   onRadarLoaded: (result) => {
     radarScanResult.value = { globalScore: result.globalScore, heatLevel: result.heatLevel }
@@ -520,10 +522,6 @@ const tabCacheEntries = computed<TabCacheEntry[]>(() => buildTabCacheEntries(
   explorationCounts.value,
   {
     activeTab: activeTab.value,
-    discoveryCacheStatus: discoveryCacheStatus.value
-      ? { cached: discoveryCacheStatus.value.cached, keywordCount: discoveryCacheStatus.value.keywordCount }
-      : null,
-    discoveryHasResults: discoveryHasResults.value,
     radarScanResult: radarScanResult.value
       ? { globalScore: radarScanResult.value.globalScore }
       : null,
@@ -536,6 +534,66 @@ const tabCacheEntries = computed<TabCacheEntry[]>(() => buildTabCacheEntries(
     validatedLexiqueCount: articleKeywordsStore.keywords?.lexique?.length ?? 0,
   },
 ))
+
+// --- TabLoadPrompt — notification "Charger DB / Cache" par onglet ---
+// Ancrée à droite du TabCachePanel. Apparaît à chaque visite d'un onglet où
+// des données existent en DB ou Cache. Les loaders délèguent aux mergers
+// exposés par chaque domaine pour garantir l'absence de doublons.
+const radarRef = ref<{ mergeFromRadarSource: (id: string | number) => Promise<boolean> } | null>(null)
+const lexiqueRef = ref<{ mergeFromDb: () => Promise<void>; hydrateFromDb: () => Promise<void> } | null>(null)
+
+const tabLoadPrompt = useTabLoadPrompt({
+  activeTab,
+  selectedArticleId: computed(() => selectedArticle.value?.id ?? null),
+  tabCacheEntries,
+  loaders: {
+    async loadFromDb(tab: LoadPromptTab) {
+      const id = selectedArticle.value?.id
+      if (!id) return false
+      switch (tab) {
+        case 'radar':
+          return radarRef.value ? radarRef.value.mergeFromRadarSource(id) : false
+        case 'capitaine':
+        case 'lieutenants':
+          await articleKeywordsStore.fetchKeywordsMerge(id)
+          return true
+        case 'lexique':
+          if (!lexiqueRef.value) return false
+          await lexiqueRef.value.mergeFromDb()
+          return true
+      }
+      return false
+    },
+    async loadFromCache(tab: LoadPromptTab) {
+      const seed = selectedArticle.value?.keyword || pilierKeyword.value
+      if (!seed) return false
+      switch (tab) {
+        case 'radar':
+          return radarRef.value ? radarRef.value.mergeFromRadarSource(seed) : false
+        // Capitaine, Lieutenants, Lexique n'ont pas de cache séparé de la DB —
+        // leur cacheCount est toujours 0 dans buildTabCacheEntries. On délègue
+        // donc au merger DB pour rester safe si une future refonte change ça.
+        case 'capitaine':
+        case 'lieutenants':
+          if (!selectedArticle.value?.id) return false
+          await articleKeywordsStore.fetchKeywordsMerge(selectedArticle.value.id)
+          return true
+        case 'lexique':
+          if (!lexiqueRef.value) return false
+          await lexiqueRef.value.mergeFromDb()
+          return true
+      }
+      return false
+    },
+  },
+  onLoaded: () => {
+    refreshExplorationCounts()
+  },
+})
+
+// Top-level alias pour exposer current/isLoading directement au template.
+const tabLoadPromptCurrent = tabLoadPrompt.current
+const tabLoadPromptIsLoading = tabLoadPrompt.isLoading
 
 // --- Data loading ---
 async function loadData() {
@@ -634,15 +692,28 @@ onMounted(() => {
            Conditions plus restrictives retirées pour que les `C=0` (caches lus mais vides) restent
            perceptibles : prouve que la lecture a bien eu lieu. Le bouton "Vider le cache" est intégré
            dans la carte (visible uniquement quand cacheTotal > 0). -->
-      <TabCachePanel
-        v-if="selectedArticle"
-        :entries="tabCacheEntries"
-        :active-tab="activeTab"
-        :show-clear-cache="true"
-        sticky
-        @navigate="setActiveTab"
-        @clear-cache="clearExternalCacheForArticle"
-      />
+      <!-- Wrapper sticky : TabCachePanel + TabLoadPrompt côte à côte, solidaires.
+           Le wrapper gère le sticky bottom unique pour les deux composants ;
+           chaque composant ne sait rien de l'autre. -->
+      <div v-if="selectedArticle" class="cache-bar">
+        <TabCachePanel
+          :entries="tabCacheEntries"
+          :active-tab="activeTab"
+          :show-clear-cache="true"
+          @navigate="setActiveTab"
+          @clear-cache="clearExternalCacheForArticle"
+        />
+        <!-- 2026-05-01 — Notification "Charger DB / Cache" pour l'onglet courant.
+             Mêmes codes visuels que le TabCachePanel (extension naturelle). -->
+        <TabLoadPrompt
+          v-if="tabLoadPromptCurrent"
+          :prompt="tabLoadPromptCurrent"
+          :is-loading="tabLoadPromptIsLoading"
+          @load-db="tabLoadPrompt.loadFromDb"
+          @load-cache="tabLoadPrompt.loadFromCache"
+          @dismiss="tabLoadPrompt.dismiss"
+        />
+      </div>
 
       <!-- Tab content (only when article is selected) -->
       <template v-if="selectedArticle">
@@ -666,6 +737,7 @@ onMounted(() => {
         <!-- Phase ① Générer — Radar -->
         <div v-if="visitedTabs.radar" v-show="activeTab === 'radar'" class="tab-content">
           <DouleurIntentScanner
+            ref="radarRef"
             mode="workflow"
             :pilier-keyword="cocoon?.name ?? pilierKeyword"
             :article-topic="selectedArticle?.title ?? ''"
@@ -717,6 +789,7 @@ onMounted(() => {
             <p>Verrouillez d'abord le Capitaine pour débloquer les actions Lexique.</p>
           </div>
           <LexiqueExtraction
+            ref="lexiqueRef"
             :selected-article="selectedArticle"
             :captain-keyword="captainKeyword"
             :article-level="articleLevelForLieutenants"
@@ -787,6 +860,31 @@ onMounted(() => {
   max-width: 1280px;
   margin: 0 auto;
 }
+
+/* --- Sticky cache bar : TabCachePanel + TabLoadPrompt côte à côte ---
+   Le wrapper porte le sticky bottom + fond blanc opaque + ombre. Les enfants
+   gardent leur DA verte (gradient + border-radius) pour rester visuellement
+   solidaires. */
+.cache-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 0.75rem;
+  transform: translateX(-50%);
+  z-index: 50;
+  max-width: min(1200px, calc(100vw - 2rem));
+  display: inline-flex;
+  align-items: stretch;
+  gap: 0.5rem;
+  padding: 0.25rem;
+  background: rgba(255, 255, 255, 0.96);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(8px);
+  opacity: 0.92;
+  transition: opacity 0.15s;
+  pointer-events: auto;
+}
+.cache-bar:hover { opacity: 1; }
 
 /* --- Article gate --- */
 .article-gate {

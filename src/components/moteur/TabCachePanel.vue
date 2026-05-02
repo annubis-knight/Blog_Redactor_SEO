@@ -32,8 +32,6 @@ const props = defineProps<{
   activeTab: string
   /** When true, renders the "Vider cache externe" button inside the green card. */
   showClearCache?: boolean
-  /** When true, renders the panel as a floating sticky bar at the bottom of the viewport. */
-  sticky?: boolean
 }>()
 
 const emit = defineEmits<{
@@ -41,27 +39,16 @@ const emit = defineEmits<{
   'clear-cache': []
 }>()
 
-const ITEM_NOUN = 'entrée'
-
 function hasData(e: TabCacheEntry): boolean {
   return e.dbCount > 0 || e.cacheCount > 0
 }
 
-const dbTotal = computed(() => props.entries.reduce((n, e) => n + e.dbCount, 0))
 const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCount, 0))
-
-function summaryParts(e: TabCacheEntry): { db?: string; cache?: string } {
-  const noun = (n: number) => `${n} ${ITEM_NOUN}${n > 1 ? 's' : ''}`
-  return {
-    db: e.dbCount > 0 ? noun(e.dbCount) : undefined,
-    cache: e.cacheCount > 0 ? noun(e.cacheCount) : undefined,
-  }
-}
 </script>
 
 <template>
-  <div class="tcp" :class="{ 'tcp--sticky': sticky }" data-testid="tab-cache-panel">
-    <!-- Header: global totals + optional clear-cache button -->
+  <div class="tcp" data-testid="tab-cache-panel">
+    <!-- Header: title + optional clear-cache button -->
     <div class="tcp__header">
       <span class="tcp__title">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
@@ -69,20 +56,6 @@ function summaryParts(e: TabCacheEntry): { db?: string; cache?: string } {
         </svg>
         R&eacute;sultats d&eacute;j&agrave; calcul&eacute;s
       </span>
-      <div class="tcp__totals">
-        <span v-if="dbTotal > 0" class="tcp__total tcp__total--db" :title="`${dbTotal} entrée(s) persistée(s) en base de données`">
-          <span class="tcp__total-icon" aria-hidden="true">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v6c0 1.66 4 3 9 3s9-1.34 9-3V5M3 11v6c0 1.66 4 3 9 3s9-1.34 9-3v-6"/></svg>
-          </span>
-          {{ dbTotal }} en base
-        </span>
-        <span v-if="cacheTotal > 0" class="tcp__total tcp__total--cache" :title="`${cacheTotal} entrée(s) en cache volatile`">
-          <span class="tcp__total-icon" aria-hidden="true">
-            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
-          </span>
-          {{ cacheTotal }} en cache
-        </span>
-      </div>
       <button
         v-if="showClearCache && cacheTotal > 0"
         type="button"
@@ -143,28 +116,6 @@ function summaryParts(e: TabCacheEntry): { db?: string; cache?: string } {
   gap: 0.5rem;
 }
 
-/* Sticky mode: flottante en bas de viewport, discrète, compacte.
-   Le `pointer-events: auto` sur .tcp--sticky garantit que les clics fonctionnent
-   même si un wrapper parent a `pointer-events: none`. */
-.tcp--sticky {
-  position: fixed;
-  left: 50%;
-  bottom: 0.75rem;
-  transform: translateX(-50%);
-  z-index: 50;
-  max-width: min(1100px, calc(100vw - 2rem));
-  width: max-content;
-  padding: 0.5rem 0.625rem;
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(22, 163, 74, 0.3);
-  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(8px);
-  opacity: 0.85;
-  transition: opacity 0.15s;
-  pointer-events: auto;
-}
-.tcp--sticky:hover { opacity: 1; }
-
 .tcp__header {
   display: flex;
   align-items: center;
@@ -183,35 +134,8 @@ function summaryParts(e: TabCacheEntry): { db?: string; cache?: string } {
   letter-spacing: 0.03em;
 }
 
-.tcp__totals {
-  display: inline-flex;
-  gap: 0.375rem;
-  margin-left: auto;
-}
-
-.tcp__total {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 2px 8px;
-  border-radius: 999px;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  font-family: var(--font-mono, monospace);
-  cursor: help;
-}
-
-.tcp__total--db {
-  background: #dcfce7;
-  color: #166534;
-}
-.tcp__total--cache {
-  background: #e0e7ff;
-  color: #3730a3;
-}
-.tcp__total-icon { display: inline-flex; }
-
 .tcp__clear {
+  margin-left: auto;
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;

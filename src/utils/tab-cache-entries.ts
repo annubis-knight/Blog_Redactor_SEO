@@ -12,6 +12,10 @@
  *
  * Garde l'invariant : `dbCount` reflète le VRAI nombre d'entrées persistées
  * dans les tables *_explorations, pas un flag d'état métier.
+ *
+ * 2026-05-01 — Discovery retiré du panel : son modèle de persistance est
+ * cross-article (clé `seed`, pas `articleId`), incompatible avec la notif
+ * "Charger depuis DB/Cache" pilotée par l'article courant.
  */
 
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
@@ -32,9 +36,6 @@ export interface ExplorationCounts {
 /** Snapshot de l'état UI nécessaire pour construire les chips. */
 export interface TabCacheUIState {
   activeTab: string
-  // Discovery : sa propre table cache, séparée du endpoint /explorations/counts
-  discoveryCacheStatus: { cached: boolean; keywordCount?: number } | null
-  discoveryHasResults: boolean
   // Radar : le scan est unique (pk article_id) mais on affiche le nombre de keywords générés
   radarScanResult: { globalScore: number } | null
   radarCacheStatus: { exists: boolean; globalScore?: number } | null
@@ -51,7 +52,7 @@ function pluralS(n: number): string {
 }
 
 /**
- * Construit les 5 entrées du TabCachePanel.
+ * Construit les 4 entrées du TabCachePanel (Radar, Capitaine, Lieutenants, Lexique).
  *
  * @param counts Comptes réels DB (résultat de /explorations/counts).
  *               Si l'appel a échoué, passer `{}` — toutes les sources tomberont à 0.
@@ -62,19 +63,6 @@ export function buildTabCacheEntries(
   ui: TabCacheUIState,
 ): TabCacheEntry[] {
   return [
-    {
-      tabId: 'discovery',
-      tabLabel: 'Discovery',
-      // Discovery garde sa logique existante (table discovery_cache séparée).
-      dbCount: ui.discoveryCacheStatus?.cached ? (ui.discoveryCacheStatus.keywordCount ?? 1) : 0,
-      cacheCount: ui.discoveryHasResults && !ui.discoveryCacheStatus?.cached ? 1 : 0,
-      isCurrentTab: ui.activeTab === 'discovery',
-      hint: ui.discoveryCacheStatus?.cached
-        ? `${ui.discoveryCacheStatus.keywordCount ?? '?'} mots-clés`
-        : ui.discoveryHasResults
-          ? 'Résultats en mémoire'
-          : undefined,
-    },
     {
       tabId: 'radar',
       tabLabel: 'Radar',

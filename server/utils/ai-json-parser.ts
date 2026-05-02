@@ -19,7 +19,7 @@ function stripMarkdownWrappers(content: string): string {
   c = c.replace(/^```(?:json|JSON)?\s*\n?/i, '')
   c = c.replace(/\n?```\s*$/i, '')
   // 2. Common preambles before the first { or [
-  const firstStructuralIdx = c.search(/[{\[]/)
+  const firstStructuralIdx = c.search(/[{[]/)
   if (firstStructuralIdx > 0) {
     const before = c.slice(0, firstStructuralIdx).toLowerCase()
     if (/voici|here|below|result|output|json|réponse|response/i.test(before)) {

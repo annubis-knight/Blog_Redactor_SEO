@@ -600,7 +600,7 @@ Blog_Redactor_SEO_rebirth/
 ├── vite.config.ts
 ├── tsconfig.json
 ├── _backup_pg_20260418.sql       # Backup PostgreSQL
-├── ARCHITECTURE_FLOWS.md         # Diagrammes Mermaid
+├── docs/ARCHITECTURE_FLOWS.md    # Diagrammes Mermaid (déplacé 2026-05-01)
 │
 ├── data/                         # Archives seulement (plus de données chaudes)
 │   └── _archive/                 # JSON historiques (articles, BDD_*, strategies/, cache autocomplete)

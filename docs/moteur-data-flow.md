@@ -1,6 +1,6 @@
 # Moteur Workflow — Diagramme de flux
 
-> Mis à jour : 2026-04-24
+> Mis à jour : 2026-05-01
 > Source de vérité : `src/views/MoteurView.vue` + composants `src/components/moteur/*` + constantes `shared/constants/workflow-checks.constants.ts`
 
 ## 1. Vue globale du workflow — 3 phases / 6 onglets
@@ -427,6 +427,43 @@ flowchart TB
 ```
 
 **Effet clé :** un mot-clé utilisé dans N articles = **1 seul appel DataForSEO** grâce à `keyword_metrics`.
+
+## 8bis. Notification "Charger DB / Cache" par onglet — TabLoadPrompt (2026-05-01)
+
+Quand l'utilisateur visite un onglet du Moteur (Radar / Capitaine / Lieutenants / Lexique) où des données existent en DB ou en Cache, une notification flottante apparaît à droite du `TabCachePanel` avec deux boutons « Charger DB » / « Charger Cache ». Discovery est exclu (modèle de persistance cross-article seed-based, incompatible avec un pilotage par articleId).
+
+```mermaid
+flowchart LR
+  USER([Visite onglet]) --> COMPOSABLE[useTabLoadPrompt]
+  COMPOSABLE -->|"current.value (computed)"| PROMPT[TabLoadPrompt.vue]
+  PROMPT -->|"@load-db"| LDB[loadFromDb]
+  PROMPT -->|"@load-cache"| LCACHE[loadFromCache]
+  LDB & LCACHE -->|"par tabId"| MERGERS{{Mergers exposés}}
+  MERGERS -->|"radar"| RM[mergeFromRadarSource → mergeRadarPayload]
+  MERGERS -->|"capitaine / lieutenants"| AKM[fetchKeywordsMerge → mergeCaptainHistory + mergeRichLieutenants]
+  MERGERS -->|"lexique"| LM[mergeFromDb]
+  RM & AKM & LM --> STORE[(État mémoire enrichi sans doublon)]
+  STORE --> COUNTS[refreshExplorationCounts]
+```
+
+**Invariant clé :** l'utilisateur peut cliquer plusieurs fois sans risque — chaque merger applique une union par clé d'unicité et préserve l'état mémoire en cas de collision.
+
+| Onglet | Clé d'unicité | Politique de collision |
+|---|---|---|
+| Radar (`generatedKeywords`) | `keyword` lowercased + trim | Garde l'entrée mémoire |
+| Radar (`scanResult`) | scalaire | Adopte le payload uniquement si la mémoire est vide |
+| Capitaine (`validationHistory`) | `keyword` lowercased | Garde l'entrée mémoire (l'utilisateur peut avoir édité) |
+| Lieutenants (`richLieutenants`) | `keyword` lowercased | `lockedAt` le plus récent gagne |
+| Lexique (`lexique[]`) | valeur string | Union par valeur |
+| Lexique (`pastExplorations`) | `sourceKeyword` lowercased | Garde l'entrée mémoire |
+
+**Contrats :**
+- Le composable `useTabLoadPrompt` ([src/composables/moteur/useTabLoadPrompt.ts](../src/composables/moteur/useTabLoadPrompt.ts)) lit l'état du `TabCachePanel` via `tabCacheEntries` et expose `current` + `loadFromDb` / `loadFromCache` / `dismiss`.
+- Le dismiss est local à la visite courante : il est réinitialisé au changement d'onglet ou d'article.
+- Les mergers sont appelés via :
+  - `useKeywordRadar().mergeFromRadarSource(seedOrArticleId)` — exposé par `DouleurIntentScanner` via `defineExpose`.
+  - `articleKeywordsStore.fetchKeywordsMerge(articleId)` — singleton Pinia, donc accessible directement depuis MoteurView.
+  - `LexiqueExtraction.mergeFromDb()` — exposé via `defineExpose`.
 
 ## 9. Progression — 5 checks moteur
 
