@@ -12,6 +12,12 @@ vi.mock('../../../server/services/external/dataforseo.service', () => ({
       this.name = 'DataForSeoQuotaError'
     }
   },
+  CostBudgetError: class CostBudgetError extends Error {
+    constructor(message = 'Cost budget exceeded') {
+      super(message)
+      this.name = 'CostBudgetError'
+    }
+  },
 }))
 
 vi.mock('../../../server/services/keyword/autocomplete.service', () => ({

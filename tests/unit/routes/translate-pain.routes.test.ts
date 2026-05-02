@@ -127,7 +127,7 @@ describe('POST /keywords/translate-pain', () => {
       1024,
     )
     expect(res.json).toHaveBeenCalledWith({
-      data: { keywords },
+      data: expect.objectContaining({ keywords }),
     })
   })
 
@@ -143,16 +143,16 @@ describe('POST /keywords/translate-pain', () => {
 
     await handler(req, res)
 
-    expect(res.json).toHaveBeenCalledWith({ data: { keywords } })
+    expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ keywords }) })
   })
 
-  it('skips USAGE_SENTINEL chunks', async () => {
+  it('extracts keywords and stops at USAGE_SENTINEL chunk', async () => {
     const keywords = [{ keyword: 'seo toulouse', reasoning: 'local' }]
     mockLoadPrompt.mockResolvedValue('prompt')
     mockStreamChatCompletion.mockReturnValue(
       fakeStream([
-        '__USAGE__{...}',
         JSON.stringify({ keywords }),
+        '__USAGE__{"inputTokens":10,"outputTokens":20}',
       ]),
     )
 
@@ -161,7 +161,7 @@ describe('POST /keywords/translate-pain', () => {
 
     await handler(req, res)
 
-    expect(res.json).toHaveBeenCalledWith({ data: { keywords } })
+    expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ keywords }) })
   })
 
   it('returns 500 on parsing error', async () => {

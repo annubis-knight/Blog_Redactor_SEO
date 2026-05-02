@@ -402,12 +402,12 @@ describe('dataforseo.service — getBaseUrl', () => {
     else delete process.env.DATAFORSEO_SANDBOX
   })
 
-  it('returns sandbox URL in development mode by default', () => {
+  it('returns production URL in development mode when DATAFORSEO_SANDBOX is unset (explicit opt-in only)', () => {
     const origEnv = process.env.NODE_ENV
     const origSandbox = process.env.DATAFORSEO_SANDBOX
     process.env.NODE_ENV = 'development'
     delete process.env.DATAFORSEO_SANDBOX
-    expect(getBaseUrl()).toBe('https://sandbox.dataforseo.com/v3')
+    expect(getBaseUrl()).toBe('https://api.dataforseo.com/v3')
     process.env.NODE_ENV = origEnv
     if (origSandbox !== undefined) process.env.DATAFORSEO_SANDBOX = origSandbox
   })

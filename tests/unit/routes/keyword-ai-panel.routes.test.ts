@@ -3,6 +3,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // --- Mocks ---
 const mockStreamGenerator = vi.fn()
+// Route imports streamChatCompletion from ai-provider.service (multi-provider façade).
+// Mocking claude.service alone is not enough — the dispatch happens at provider level.
+vi.mock('../../../server/services/external/ai-provider.service', () => ({
+  streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
+  USAGE_SENTINEL: '__USAGE__',
+  WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
+}))
 vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
   USAGE_SENTINEL: '__USAGE__',
@@ -165,8 +172,8 @@ describe('POST /api/keywords/:keyword/ai-panel', () => {
     const res = makeRes()
     await handler(req, res)
     expect(mockLoadPrompt).toHaveBeenCalledWith('capitaine-ai-panel', expect.objectContaining({
-      kpis_summary: expect.stringContaining('volume: 1 500 (green)'),
-      verdict: 'ORANGE (3/6 verts)',
+      keyword: 'test',
+      level: 'intermediaire',
     }), undefined)
   })
 

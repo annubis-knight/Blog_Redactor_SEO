@@ -59,7 +59,7 @@ describe('GET /articles/:id/keywords', () => {
       lieutenants: ['lt1', 'lt2'],
       lexique: ['lsi1', 'lsi2'],
     }
-    mockGetArticleKeywords.mockResolvedValueOnce(keywords)
+    mockGetArticleKeywords.mockResolvedValueOnce({ data: keywords, dbOps: 1 })
 
     const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
@@ -67,18 +67,18 @@ describe('GET /articles/:id/keywords', () => {
     await handler(req, res)
 
     expect(mockGetArticleKeywords).toHaveBeenCalledWith(1)
-    expect(res.json).toHaveBeenCalledWith({ data: keywords })
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ data: keywords }))
   })
 
   it('returns null when no keywords found', async () => {
-    mockGetArticleKeywords.mockResolvedValueOnce(null)
+    mockGetArticleKeywords.mockResolvedValueOnce({ data: null, dbOps: 1 })
 
     const req = { params: { id: '99' } } as unknown as Request
     const res = createMockRes()
 
     await handler(req, res)
 
-    expect(res.json).toHaveBeenCalledWith({ data: null })
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ data: null }))
   })
 
   it('returns 500 on error', async () => {

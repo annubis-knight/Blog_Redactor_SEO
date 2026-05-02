@@ -97,7 +97,7 @@ beforeEach(() => {
   vi.resetAllMocks()
   mockLoadPrompt.mockResolvedValue('mock prompt')
   mockGetStrategy.mockResolvedValue(null)
-  mockGetArticleKeywords.mockResolvedValue(null)
+  mockGetArticleKeywords.mockResolvedValue({ data: null, dbOps: [] })
   mockLoadArticleMicroContext.mockResolvedValue(null)
 })
 
@@ -191,7 +191,7 @@ describe('POST /generate/outline', () => {
       lieutenants: ['refonte site internet', 'web design'],
       lexique: ['responsive', 'UX'],
     }
-    mockGetArticleKeywords.mockResolvedValueOnce(articleKw)
+    mockGetArticleKeywords.mockResolvedValueOnce({ data: articleKw, dbOps: [] })
     const outlineJson = '{"sections":[{"id":"h1","level":1,"title":"Test","annotation":null}]}'
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream([outlineJson]))
 
@@ -351,7 +351,7 @@ describe('POST /generate/article (section-by-section)', () => {
       lieutenants: ['refonte site internet'],
       lexique: ['responsive', 'UX'],
     }
-    mockGetArticleKeywords.mockResolvedValueOnce(articleKw)
+    mockGetArticleKeywords.mockResolvedValueOnce({ data: articleKw, dbOps: [] })
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
 
     const req = createArticleReq(validArticleBody)

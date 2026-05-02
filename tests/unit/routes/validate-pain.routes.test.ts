@@ -21,6 +21,18 @@ vi.mock('../../../server/services/external/dataforseo.service', () => ({
   auditCocoonKeywords: vi.fn(),
   getAuditCacheStatus: vi.fn(),
   detectRedundancy: vi.fn(),
+  DataForSeoQuotaError: class DataForSeoQuotaError extends Error {
+    constructor(message = 'DataForSEO quota exceeded') {
+      super(message)
+      this.name = 'DataForSeoQuotaError'
+    }
+  },
+  CostBudgetError: class CostBudgetError extends Error {
+    constructor(message = 'Cost budget exceeded') {
+      super(message)
+      this.name = 'CostBudgetError'
+    }
+  },
 }))
 
 vi.mock('../../../server/services/intent/community-discussions.service', () => ({

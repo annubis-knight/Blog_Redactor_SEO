@@ -324,6 +324,7 @@ describe('article-keywords.store — suggestLexique', () => {
     await store.suggestLexique('design-emotionnel', 'Design émotionnel en web', 'UX Design')
 
     expect(mockApiPost).toHaveBeenCalledWith('/keywords/lexique-suggest', {
+      articleId: 'design-emotionnel',
       capitaine: 'design émotionnel',
       articleTitle: 'Design émotionnel en web',
       cocoonName: 'UX Design',

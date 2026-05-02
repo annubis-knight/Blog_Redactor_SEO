@@ -8,6 +8,9 @@
  *
  * Ces tests bloquent toute régression : si quelqu'un re-câble dbCount sur un
  * flag d'état, les assertions casseront.
+ *
+ * 2026-05-01 — Discovery retiré du panel (modèle de persistance cross-article
+ * incompatible avec la notif "Charger DB/Cache" pilotée par articleId).
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -18,8 +21,6 @@ import {
 
 const EMPTY_UI: TabCacheUIState = {
   activeTab: 'capitaine',
-  discoveryCacheStatus: null,
-  discoveryHasResults: false,
   radarScanResult: null,
   radarCacheStatus: null,
   isCaptaineLocked: false,
@@ -31,14 +32,13 @@ const EMPTY_UI: TabCacheUIState = {
 const EMPTY_COUNTS: ExplorationCounts = {}
 
 describe('buildTabCacheEntries — invariants critiques', () => {
-  it('retourne toujours 5 entrées dans l\'ordre attendu', () => {
+  it('retourne 4 entrées dans l\'ordre attendu (Discovery exclu)', () => {
     const entries = buildTabCacheEntries(EMPTY_COUNTS, EMPTY_UI)
-    expect(entries.map(e => e.tabId)).toEqual(['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique'])
+    expect(entries.map(e => e.tabId)).toEqual(['radar', 'capitaine', 'lieutenants', 'lexique'])
   })
 
-  it('counts vides → tous les dbCount à 0 (sauf discovery qui a sa propre source)', () => {
+  it('counts vides → tous les dbCount à 0', () => {
     const entries = buildTabCacheEntries(EMPTY_COUNTS, EMPTY_UI)
-    expect(entries.find(e => e.tabId === 'discovery')!.dbCount).toBe(0)
     expect(entries.find(e => e.tabId === 'radar')!.dbCount).toBe(0)
     expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(0)
     expect(entries.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(0)
@@ -121,14 +121,9 @@ describe('buildTabCacheEntries — invariants critiques', () => {
     expect(entries.find(e => e.tabId === 'capitaine')!.isCurrentTab).toBe(false)
   })
 
-  it('discovery garde sa logique cache séparée (pas via /explorations/counts)', () => {
-    // Discovery a sa propre table cache → on doit pouvoir afficher des counts
-    // même quand le payload /explorations/counts est vide.
-    const ui: TabCacheUIState = {
-      ...EMPTY_UI,
-      discoveryCacheStatus: { cached: true, keywordCount: 42 },
-    }
-    expect(buildTabCacheEntries(EMPTY_COUNTS, ui).find(e => e.tabId === 'discovery')!.dbCount).toBe(42)
+  it('Discovery est exclu du panel (modèle cross-article seed-based)', () => {
+    const entries = buildTabCacheEntries(EMPTY_COUNTS, EMPTY_UI)
+    expect(entries.find(e => e.tabId === 'discovery')).toBeUndefined()
   })
 
   it('radar : cacheCount=1 quand résultat en mémoire mais pas encore persisté', () => {

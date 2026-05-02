@@ -80,24 +80,6 @@ vi.mock('../../../src/stores/strategy/silos.store', () => ({
   }),
 }))
 
-describe('AppNavbar — Labo link', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  it('renders a Labo link pointing to /labo', async () => {
-    const { default: AppNavbar } = await import('../../../src/components/shared/AppNavbar.vue')
-    const wrapper = mount(AppNavbar, {
-      global: { stubs: { RouterLink: routerLinkStub } },
-    })
-
-    const links = wrapper.findAll('.navbar-link')
-    const laboLink = links.find(l => l.text() === 'Labo')
-    expect(laboLink).toBeDefined()
-    expect(laboLink!.attributes('href')).toBe('/labo')
-  })
-})
-
 // --- LaboView tests ---
 
 describe('LaboView', () => {

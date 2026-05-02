@@ -26,7 +26,7 @@ describe('data.service — getArticleKeywords', () => {
     const { getArticleKeywords } = await importService()
 
     const result = await getArticleKeywords(99)
-    expect(result).toBeNull()
+    expect(result.data).toBeNull()
   })
 
   it('returns matching entry for existing id', async () => {
@@ -51,7 +51,7 @@ describe('data.service — getArticleKeywords', () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 
     const { getArticleKeywords } = await importService()
-    const result = await getArticleKeywords(1)
+    const { data: result } = await getArticleKeywords(1)
 
     expect(result).not.toBeNull()
     expect(result!.articleId).toBe(1)
@@ -87,7 +87,7 @@ describe('data.service — getArticleKeywords', () => {
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 
     const { getArticleKeywords } = await importService()
-    const result = await getArticleKeywords(1)
+    const { data: result } = await getArticleKeywords(1)
 
     expect(result!.richCaptain).toBeDefined()
     expect(result!.richCaptain!.keyword).toBe('captain kw')
@@ -122,7 +122,7 @@ describe('data.service — getArticleKeywords', () => {
     })
 
     const { getArticleKeywords } = await importService()
-    const result = await getArticleKeywords(1)
+    const { data: result } = await getArticleKeywords(1)
 
     expect(result!.richLieutenants).toHaveLength(1)
     expect(result!.richLieutenants![0].keyword).toBe('lt1')

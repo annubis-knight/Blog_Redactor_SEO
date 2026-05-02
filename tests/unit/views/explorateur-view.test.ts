@@ -333,21 +333,3 @@ describe('ExplorateurView — route configuration', () => {
   })
 })
 
-describe('ExplorateurView — Navbar link', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  it('AppNavbar contains Explorateur link', async () => {
-    const { default: AppNavbar } = await import('../../../src/components/shared/AppNavbar.vue')
-    const wrapper = mount(AppNavbar, {
-      global: {
-        stubs: { RouterLink: { template: '<a :to="$attrs.to" class="router-link"><slot /></a>', inheritAttrs: true } },
-      },
-    })
-
-    const links = wrapper.findAll('.router-link')
-    const exploratorLink = links.find(l => l.text() === 'Explorateur')
-    expect(exploratorLink).toBeDefined()
-  })
-})

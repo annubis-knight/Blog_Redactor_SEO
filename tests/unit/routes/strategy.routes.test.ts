@@ -162,7 +162,9 @@ describe('POST /strategy/:id/suggest', () => {
 
     expect(mockStreamChatCompletion).toHaveBeenCalled()
     expect(res.json).toHaveBeenCalledWith({
-      data: { suggestion: 'Ciblez les artisans du BTP en Occitanie.' },
+      data: expect.objectContaining({
+        suggestion: 'Ciblez les artisans du BTP en Occitanie.',
+      }),
     })
   })
 
