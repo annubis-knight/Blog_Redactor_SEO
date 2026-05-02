@@ -328,9 +328,9 @@ describe('LexiqueExtraction', () => {
       await nextTick()
       await nextTick()
 
-      const counter = wrapper.find('[data-testid="selection-counter"]')
+      const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
       // 2 obligatoire pre-checked
-      expect(counter.text()).toContain('2 termes selectionnes')
+      expect(counter.text()).toContain('2 termes sélectionnés')
       expect(counter.text()).toContain('2O')
       expect(counter.text()).toContain('0D')
       expect(counter.text()).toContain('0Op')
@@ -347,7 +347,7 @@ describe('LexiqueExtraction', () => {
       await diffCheckbox.trigger('change')
       await nextTick()
 
-      const counter = wrapper.find('[data-testid="selection-counter"]')
+      const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
       expect(counter.text()).toContain('3 termes selectionnes')
       expect(counter.text()).toContain('1D')
     })
@@ -362,7 +362,7 @@ describe('LexiqueExtraction', () => {
       simulateIaUpfrontDone()
       await nextTick()
 
-      const counter = wrapper.find('[data-testid="selection-counter"]')
+      const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
       // 2 obligatoire + 1 differenciateur (stratégie recommended) = 3
       expect(counter.text()).toContain('3 termes selectionnes')
       expect(counter.text()).toContain('2O')
@@ -645,7 +645,7 @@ describe('LexiqueExtraction', () => {
 
     it('selection counter reflects IA pre-check (obligatoire + recommended differenciateur)', async () => {
       const wrapper = await mountWithIaComplete()
-      const counter = wrapper.find('[data-testid="selection-counter"]')
+      const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
       expect(counter.text()).toContain('3 termes selectionnes')
       expect(counter.text()).toContain('2O')
       expect(counter.text()).toContain('1D')
