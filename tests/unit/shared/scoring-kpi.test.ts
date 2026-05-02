@@ -32,10 +32,10 @@ describe('computeKpiScore', () => {
     expect(r.components.map(c => c.name)).toEqual(['volume', 'kd', 'cpc', 'intent', 'paa', 'autocomplete'])
   })
 
-  it('weights sum to 1', () => {
+  it('weights sum to 0.95 (5% symbolic margin, score capped at 100)', () => {
     const r = computeKpiScore(makeKpis(), 'intermediaire')
     const sum = r.components.reduce((s, c) => s + c.weight, 0)
-    expect(sum).toBeCloseTo(1, 5)
+    expect(sum).toBeCloseTo(0.95, 5)
   })
 
   it('all green → total close to 100', () => {
