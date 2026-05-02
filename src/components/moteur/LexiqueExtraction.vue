@@ -506,7 +506,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       <SortToggleBar
         :options="lexiqueSortOptions"
         :model-value="lexiqueSortState"
-        :count-label="`${selectedCount} terme${selectedCount > 1 ? 's' : ''} (${selectedByLevel.obligatoire}O / ${selectedByLevel.differenciateur}D / ${selectedByLevel.optionnel}Op)`"
+        :count-label="`${selectedCount} terme${selectedCount > 1 ? 's' : ''} sélectionné${selectedCount > 1 ? 's' : ''} (${selectedByLevel.obligatoire}O / ${selectedByLevel.differenciateur}D / ${selectedByLevel.optionnel}Op)`"
         data-testid="lexique-sort-bar"
         @update:model-value="(s) => lexiqueSortState = s"
       />
