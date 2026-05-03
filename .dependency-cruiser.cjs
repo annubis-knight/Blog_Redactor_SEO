@@ -54,6 +54,21 @@ module.exports = {
       from: {},
       to: { dependencyTypes: ['core'], path: '^(punycode|domain|constants|sys)$' },
     },
+    {
+      name: 'score-internal-only-via-index',
+      severity: 'error',
+      comment:
+        "Les modules INTERNES de shared/score/ (types/format/compare/aggregate) " +
+        "ne doivent être importés QUE depuis shared/score/ lui-même. " +
+        "Le code consommateur passe TOUJOURS par shared/score/index.ts " +
+        "(ou son alias `@shared/score`).",
+      from: {
+        pathNot: '^shared/score/',
+      },
+      to: {
+        path: '^shared/score/(types|format|compare|aggregate)\\.ts$',
+      },
+    },
   ],
   options: {
     doNotFollow: {

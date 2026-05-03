@@ -8,6 +8,7 @@ import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/ar
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
+import { compareScores } from '../../shared/score/index.js'
 
 /**
  * Sprint E (2026-05-02) — Routes Panels IA refactorisées via
@@ -131,7 +132,8 @@ const MAX_SELECTED: Record<ArticleLevel, number> = {
 /** Filter AI-generated lieutenants: sort by score desc, split into selected + eliminated */
 function filterLieutenants(parsed: ProposeLieutenantsResult, level: ArticleLevel): FilteredProposeLieutenantsResult {
   const maxKeep = MAX_SELECTED[level] ?? 5
-  const sorted = [...parsed.lieutenants].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+  // null en bas — cohérent avec affichage (CLAUDE.md §2.0)
+  const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score ?? null, b.score ?? null))
 
   return {
     selectedLieutenants: sorted.slice(0, maxKeep),

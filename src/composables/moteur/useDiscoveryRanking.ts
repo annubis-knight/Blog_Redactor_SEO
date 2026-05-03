@@ -42,10 +42,13 @@ export function useDiscoveryRanking(opts: UseDiscoveryRankingOptions) {
     if (list.length === 0) return []
 
     // Normalise le score brut (basket.score est en 0-100 environ).
+    // `?? 0` ici = calcul intermédiaire (normalisation max), pas un fallback d'affichage.
+    // eslint-disable-next-line no-restricted-syntax -- normalisation, pas affichage
     const maxRaw = list.reduce((m, k) => Math.max(m, k.score ?? 0), 0)
     const safeMax = maxRaw > 0 ? maxRaw : 1
 
     const scored: DiscoveryRankedKeyword[] = list.map((kw) => {
+      // eslint-disable-next-line no-restricted-syntax -- normalisation, pas affichage
       const signalScore = (kw.score ?? 0) / safeMax
       const painAlignment = jaccardWithPainPoint(kw.keyword, opts.painPoint.value)
       // Mix 50/50 + bonus Jaccard quadratique pour rendre la douleur

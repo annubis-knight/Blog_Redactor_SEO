@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
+import { compareScores } from '@shared/score'
 import { log } from '@/utils/logger'
 
 export interface BasketKeyword {
@@ -29,7 +30,8 @@ export const useMoteurBasketStore = defineStore('moteurBasket', () => {
 
   const bestKeyword = computed<BasketKeyword | null>(() => {
     if (keywords.value.length === 0) return null
-    const sorted = [...keywords.value].sort((a, b) => (b.score ?? 0) - (a.score ?? 0))
+    // null en bas, descendant — cohérent avec affichage (CLAUDE.md §2.0)
+    const sorted = [...keywords.value].sort((a, b) => compareScores(a.score ?? null, b.score ?? null))
     return sorted.find(k => k.validated) ?? sorted[0] ?? null
   })
 

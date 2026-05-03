@@ -4,6 +4,7 @@ import { marked } from 'marked'
 import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
+import { compareScoresAsc } from '@shared/score'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -49,7 +50,8 @@ const sortedEliminated = computed<ProposedLieutenant[]>(() => {
   const sign = direction === 'desc' ? -1 : 1
   return list.sort((a, b) => {
     if (key === 'az') return sign * a.keyword.localeCompare(b.keyword, 'fr', { sensitivity: 'base' })
-    return sign * ((a.score ?? 0) - (b.score ?? 0))
+    // null en bas peu importe le sens (CLAUDE.md §2.0). Tri inversé via sign.
+    return sign * compareScoresAsc(a.score ?? null, b.score ?? null)
   })
 })
 
