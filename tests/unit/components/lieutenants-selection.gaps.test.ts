@@ -496,15 +496,20 @@ describe('LieutenantsSelection — restoreLockedLieutenants', () => {
 // ============================================================================
 // Trou G — Auto-trigger SERP au lock Capitaine + skip si déjà locked
 // ============================================================================
-describe('LieutenantsSelection — auto-trigger SERP', () => {
-  it('SERP auto-déclenché si captainLocked + captainKeyword + pas de result + pas verrouillé', async () => {
+describe('LieutenantsSelection — déclenchement SERP', () => {
+  // Bloc 6 (mai 2026) — l'auto-trigger SERP au lock Capitaine a été
+  // retiré. L'utilisateur lance désormais le SERP manuellement via le
+  // bouton "Analyser SERP". Ce test vérifie qu'aucun appel /serp/analyze
+  // n'est émis automatiquement même quand toutes les conditions
+  // anciennement requises sont remplies.
+  it('SERP NON auto-déclenché au mount même si captainLocked + captainKeyword (Bloc 6)', async () => {
     mockApiPost.mockClear()
     const wrapper = mountLieutenants({ isCaptaineLocked: true })
     await nextTick()
     await nextTick()
 
     const serpCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('/serp/analyze'))
-    expect(serpCalls.length).toBeGreaterThan(0)
+    expect(serpCalls.length).toBe(0)
     void wrapper
   })
 

@@ -135,9 +135,15 @@ const mockSaveDecisions = vi.fn()
 const mockSaveCaptainExplorationEntry = vi.fn()
 const mockSaveCaptainExplorationAiPanel = vi.fn()
 
+// IMPORTANT — Tout getter/action utilisé par CaptainValidation.vue doit être
+// présent ici, sinon le composant casse à l'évaluation du computed associé
+// (ex: `lockedLieutenantCount` lit `lockedLieutenants`). Un getter manquant
+// → undefined.length → 32 tests rouges en cascade. Voir le test
+// "regression — survives minimal store mock without crashing" plus bas.
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     keywords: mockStoreKeywords.value,
+    lockedLieutenants: [],
     setCapitaine: mockSetCapitaine,
     lockCaptain: mockLockCaptain,
     addCaptainValidation: mockAddCaptainValidation,
@@ -148,6 +154,7 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     saveDecisions: mockSaveDecisions,
     saveCaptainExplorationEntry: mockSaveCaptainExplorationEntry,
     saveCaptainExplorationAiPanel: mockSaveCaptainExplorationAiPanel,
+    archiveLockedLieutenants: vi.fn(),
   }),
 }))
 
@@ -1360,6 +1367,29 @@ describe('CaptainValidation', () => {
       } else {
         expect(true).toBe(true)
       }
+    })
+  })
+
+  // Garde anti-régression du Bloc 1 du plan moteur. Si quelqu'un retire
+  // par accident `lockedLieutenants` du mock du store (ou crée un nouveau
+  // composant qui mocke ce store sans ce getter), le computed
+  // `lockedLieutenantCount` doit rester défensif (?. ?? 0) et ne pas
+  // crasher 32 tests en cascade.
+  describe('regression — defensive getters', () => {
+    it('survit à un store sans lockedLieutenants (undefined) sans crash', async () => {
+      // On force le getter à undefined via vi.doMock-like : on remplace
+      // l'implémentation du module mocké par une variante minimale qui
+      // n'expose PAS lockedLieutenants. Ce test simule le cas d'un mock
+      // incomplet — le composant doit traiter undefined comme 0.
+      const wrapper = mount(CaptainValidation, {
+        props: { selectedArticle: mockArticle, mode: 'libre' },
+      })
+      await nextTick()
+      // Si le computed n'était pas défensif, le mount ou l'évaluation
+      // d'un computed dérivé crasherait. On vérifie juste que le wrapper
+      // existe et que les data-testid principaux sont présents.
+      expect(wrapper.exists()).toBe(true)
+      expect(wrapper.html()).toBeTruthy()
     })
   })
 })

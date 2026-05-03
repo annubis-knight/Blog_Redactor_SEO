@@ -327,30 +327,22 @@ describe('LieutenantsSelection', () => {
   })
 
   // --- Analyze button ---
+  // Bloc 6 (mai 2026) — l'auto-trigger SERP au lock Capitaine a été retiré.
+  // Tous ces tests passent désormais par un clic manuel sur .btn-analyze.
   describe('Analyze SERP button', () => {
-    it('is enabled when captain is locked and keyword exists (after auto-trigger completes)', async () => {
-      // Mount with captain NOT locked to avoid TDZ error on currentStep during immediate watcher
+    it('is enabled when captain is locked and keyword exists', async () => {
       const w = mountComponent({ isCaptaineLocked: false })
       await nextTick()
-      // Lock the captain — the auto-trigger watcher fires analyzeSERP()
       await w.setProps({ isCaptaineLocked: true })
-      // Wait for: watcher → apiPost resolves → isLoading = false
-      await nextTick()
-      await nextTick()
-      await nextTick()
       await nextTick()
       const btn = w.find('.btn-analyze')
       expect((btn.element as HTMLButtonElement).disabled).toBe(false)
     })
 
     it('calls apiPost on click', async () => {
-      // Mount with captain NOT locked so auto-trigger does not fire
-      const w = mountComponent({ isCaptaineLocked: false })
+      const w = mountComponent({ isCaptaineLocked: true })
       await nextTick()
-      // Lock the captain — auto-trigger watcher fires → analyzeSERP() called
-      await w.setProps({ isCaptaineLocked: true })
-      await nextTick()
-      await nextTick()
+      await w.find('.btn-analyze').trigger('click')
       await nextTick()
       expect(mockApiPost).toHaveBeenCalledWith('/serp/analyze', {
         keyword: 'seo local',
@@ -362,12 +354,9 @@ describe('LieutenantsSelection', () => {
     })
 
     it('emits serp-loaded after successful analysis', async () => {
-      // Mount with captain NOT locked to avoid TDZ error on currentStep
-      const w = mountComponent({ isCaptaineLocked: false })
+      const w = mountComponent({ isCaptaineLocked: true })
       await nextTick()
-      // Lock the captain — auto-trigger fires → analyzeSERP() → apiPost resolves → emits serp-loaded
-      await w.setProps({ isCaptaineLocked: true })
-      await nextTick()
+      await w.find('.btn-analyze').trigger('click')
       await nextTick()
       await nextTick()
       await nextTick()
@@ -377,23 +366,18 @@ describe('LieutenantsSelection', () => {
 
     it('shows loading text during analysis', async () => {
       mockApiPost.mockReturnValue(new Promise(() => {})) // never resolves
-      // Mount with captain NOT locked to avoid TDZ error on currentStep
-      const w = mountComponent({ isCaptaineLocked: false })
+      const w = mountComponent({ isCaptaineLocked: true })
       await nextTick()
-      // Lock the captain — auto-trigger fires → analyzeSERP() starts → isLoading = true
-      await w.setProps({ isCaptaineLocked: true })
+      await w.find('.btn-analyze').trigger('click')
       await nextTick()
       expect(w.find('.btn-analyze').text()).toBe('Analyse en cours...')
     })
 
     it('shows error message on failure', async () => {
       mockApiPost.mockRejectedValue(new Error('Network error'))
-      // Mount with captain NOT locked to avoid TDZ error on currentStep
-      const w = mountComponent({ isCaptaineLocked: false })
+      const w = mountComponent({ isCaptaineLocked: true })
       await nextTick()
-      // Lock the captain — auto-trigger fires → analyzeSERP() → apiPost rejects → error is set
-      await w.setProps({ isCaptaineLocked: true })
-      await nextTick()
+      await w.find('.btn-analyze').trigger('click')
       await nextTick()
       await nextTick()
       await nextTick()
