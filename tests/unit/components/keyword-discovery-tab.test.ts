@@ -325,7 +325,8 @@ describe('KeywordDiscoveryTab — clic keyword (captain-trigger toast)', () => {
     await items[0]!.trigger('click')
 
     expect(mockToggleSelect).toHaveBeenCalledWith('mon kw')
-    expect(mockSchedule).toHaveBeenCalledWith('mon kw', 42, 'pilier')
+    // Bloc 5 — schedule reçoit désormais painPoint en 4e arg (depuis props.articlePainPoint)
+    expect(mockSchedule).toHaveBeenCalledWith('mon kw', 42, 'pilier', 'pas assez de clients')
   })
 
   it('clic sur un keyword DÉJÀ sélectionné : toggleSelect + captainTrigger.cancel', async () => {

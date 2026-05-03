@@ -23,6 +23,8 @@ export interface PendingValidation {
   keyword: string
   articleId: number
   articleLevel: ArticleLevel
+  /** Bloc 5 — Optionnel : utilisé par /validate pour calculer relevanceScore. */
+  painPoint?: string
   /** ms epoch when the timeout will fire */
   firesAt: number
 }
@@ -32,12 +34,12 @@ export const useCaptainTriggerStore = defineStore('captain-trigger', () => {
   const timers = new Map<string, ReturnType<typeof setTimeout>>()
   const recentlyFired = ref<string[]>([])
 
-  function schedule(keyword: string, articleId: number, articleLevel: ArticleLevel) {
+  function schedule(keyword: string, articleId: number, articleLevel: ArticleLevel, painPoint?: string) {
     const key = keyword.toLowerCase()
     if (pending.value.has(key)) return
 
     const firesAt = Date.now() + SCHEDULED_MS
-    pending.value = new Map(pending.value).set(key, { keyword, articleId, articleLevel, firesAt })
+    pending.value = new Map(pending.value).set(key, { keyword, articleId, articleLevel, painPoint, firesAt })
 
     const timeoutId = setTimeout(() => {
       timers.delete(key)
@@ -79,7 +81,7 @@ export const useCaptainTriggerStore = defineStore('captain-trigger', () => {
     try {
       const response = await apiPost<ValidateResponse>(
         `/keywords/${encodeURIComponent(entry.keyword)}/validate`,
-        { level: entry.articleLevel },
+        { level: entry.articleLevel, articleId: entry.articleId, ...(entry.painPoint ? { painPoint: entry.painPoint } : {}) },
       )
       const exploration: CaptainValidationEntry = {
         keyword: response.keyword,

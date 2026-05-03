@@ -34,6 +34,7 @@ import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
 import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTabLoadPrompt'
+import { isFinalisationUnlocked, finalisationButtonTitle as buildFinalisationButtonTitle } from '@/composables/moteur/useFinalisationGating'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -220,7 +221,10 @@ const isDiscoveryAllowed = computed(() => {
 })
 
 // --- Phase navigation ---
-const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique'] as const
+// Bloc 2 — 'finalisation' ajouté comme onglet dédié de Phase ③ (cf.
+// docs/moteur-data-flow.md §1). Remplace l'ancienne modale qui s'ouvrait
+// depuis un bouton non gardé.
+const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation'] as const
 type Tab = typeof TAB_IDS[number]
 const activeTab = ref<Tab>('capitaine')
 
@@ -236,6 +240,7 @@ const TAB_LABELS: Record<Tab, string> = {
   capitaine: 'Capitaine',
   lieutenants: 'Lieutenants',
   lexique: 'Lexique',
+  finalisation: 'Finalisation',
 }
 const nextTab = computed<Tab | null>(() => {
   const idx = TAB_IDS.indexOf(activeTab.value)
@@ -243,23 +248,7 @@ const nextTab = computed<Tab | null>(() => {
   return TAB_IDS[idx + 1] ?? null
 })
 
-// --- Finalisation modal ---
-// Affichée comme étape de transition douce entre Moteur (workflow de validation)
-// et Rédaction (production de contenu). Permet à l'utilisateur de relire
-// Capitaine + Lieutenants + Lexique en lecture seule avant de se lancer.
-// Bénéfice SEO : un dernier "ai-je un cluster cohérent ?" avant 2000 mots.
-const showFinalisationModal = ref(false)
-
-function openFinalisationModal() {
-  showFinalisationModal.value = true
-}
-
-function closeFinalisationModal() {
-  showFinalisationModal.value = false
-}
-
 function navigateToRedaction() {
-  showFinalisationModal.value = false
   if (selectedArticle.value?.id) {
     router.push(`/cocoon/${cocoonId.value}/redaction?articleId=${selectedArticle.value.id}`)
   } else {
@@ -285,6 +274,14 @@ const phases = computed<Phase[]>(() => [
       { id: 'capitaine', label: 'Capitaine' },
       { id: 'lieutenants', label: 'Lieutenants' },
       { id: 'lexique', label: 'Lexique' },
+    ],
+  },
+  {
+    id: 'finaliser',
+    label: 'Finaliser',
+    number: 3,
+    tabs: [
+      { id: 'finalisation', label: 'Finalisation' },
     ],
   },
 ])
@@ -344,8 +341,9 @@ function computeSmartTab(articleId: number): Tab {
   const progress = articleProgressStore.getProgress(articleId)
   const checks = progress?.completedChecks ?? []
   if (checks.length === 0) return 'capitaine'
-  // All Phase 2 checks done → back to capitaine (review from start)
-  if (checks.includes('capitaine_locked') && checks.includes('lieutenants_locked') && checks.includes('lexique_validated')) return 'capitaine'
+  // Bloc 2 — tous les verrous Phase ② posés → onglet Finalisation (récap
+  // avant Rédaction). Plus pertinent que de renvoyer sur Capitaine.
+  if (checks.includes('capitaine_locked') && checks.includes('lieutenants_locked') && checks.includes('lexique_validated')) return 'finalisation'
   if (checks.includes('lieutenants_locked')) return 'lexique'
   if (checks.includes('capitaine_locked')) return 'lieutenants'
   return 'capitaine'
@@ -380,9 +378,15 @@ function handleSelectArticle(article: SelectedArticle | null) {
   // Clear previous analysis results then reload cached ones for the new article
   clearResults()
 
-  // Fetch article-level keywords (capitaine, lieutenants, lexique)
+  // Fetch article-level keywords (capitaine, lieutenants, lexique).
+  // Bloc 3 — fetchKeywordsMerge au lieu de fetchKeywords : la variante merge
+  // fusionne sans écraser l'état mémoire et déclenche correctement la
+  // restauration du container Capitaine (validationHistory). fetchKeywords
+  // (replace) provoquait une race condition avec une stub-entry du watcher
+  // CaptainValidation, laissant souvent 0-1 carte affichée alors que la DB
+  // en contenait davantage.
   if (article) {
-    articleKeywordsStore.fetchKeywords(article.id)
+    articleKeywordsStore.fetchKeywordsMerge(article.id)
     loadCachedResults(article.id)
 
     // Check discovery + radar cache for this article's seed keyword
@@ -467,6 +471,18 @@ const isLexiqueValidated = computed(() => {
   if (!id) return false
   return articleProgressStore.getProgress(id)?.completedChecks?.includes('lexique_validated') ?? false
 })
+
+// Bloc 2 — Gating Finalisation/Rédaction. Logique pure extraite dans
+// useFinalisationGating pour être testable unitairement (cf.
+// tests/unit/composables/finalisation-gating.test.ts).
+const finalisationChecksInput = computed(() => ({
+  capitaineLocked: isCaptaineLocked.value,
+  lieutenantsLocked: isLieutenantsLocked.value,
+  lexiqueValidated: isLexiqueValidated.value,
+}))
+
+const finalisationUnlocked = computed(() => isFinalisationUnlocked(finalisationChecksInput.value))
+const finalisationButtonTitle = computed(() => buildFinalisationButtonTitle(finalisationChecksInput.value))
 
 // --- Lieutenants props ---
 const captainKeyword = computed(() =>
@@ -801,12 +817,23 @@ onMounted(() => {
             @check-removed="handleCheckRemoved"
           />
         </div>
+
+        <!-- Phase ③ Finaliser — récap lecture seule (Capitaine + Lieutenants + Lexique)
+             Bloc 2 — onglet dédié remplaçant l'ancienne modale. Toujours
+             accessible via la nav, mais le bouton "Continuer vers la Rédaction"
+             est désactivé tant que les 3 verrous Phase ② ne sont pas posés. -->
+        <div v-if="visitedTabs.finalisation" v-show="activeTab === 'finalisation'" class="tab-content">
+          <FinalisationRecap
+            :selected-article="selectedArticle"
+            @navigate-redaction="navigateToRedaction"
+          />
+        </div>
       </template>
 
       <!-- Bottom navigation -->
-      <!-- Sprint 1.3/5.1 — contextual next-tab button. Shows the next tab in the
-           phase order; on the last tab (lexique), opens the FinalisationRecap
-           modal as a soft transition between Moteur and Rédaction. -->
+      <!-- Bloc 2 — bouton "Continuer vers la Rédaction" sur le dernier onglet
+           (finalisation). Désactivé tant que les 3 checks Phase ② manquent ;
+           le tooltip natif HTML liste ce qui manque encore. -->
       <div class="bottom-nav">
         <RouterLink :to="`/cocoon/${cocoonId}`" class="btn-back">&larr; Retour au cocon</RouterLink>
         <button
@@ -820,37 +847,13 @@ onMounted(() => {
           v-else
           type="button"
           class="btn btn-primary"
-          data-testid="cta-finalisation-modal"
-          @click="openFinalisationModal"
+          data-testid="cta-redaction"
+          :disabled="!finalisationUnlocked"
+          :title="finalisationButtonTitle"
+          @click="navigateToRedaction"
         >Continuer vers la R&eacute;daction &rarr;</button>
       </div>
     </template>
-
-    <!-- Modale Finalisation : récap lecture seule (Capitaine + Lieutenants + Lexique)
-         affichée au moment de quitter le Moteur pour la Rédaction. C'est le seul
-         moment "calme" du workflow où l'utilisateur voit toutes ses décisions
-         ensemble — un point de contrôle stratégique avant de se lancer dans
-         2000 mots de rédaction. -->
-    <div
-      v-if="showFinalisationModal"
-      class="finalisation-backdrop"
-      data-testid="finalisation-backdrop"
-      @click.self="closeFinalisationModal"
-    >
-      <div class="finalisation-modal" role="dialog" aria-modal="true" aria-labelledby="finalisation-title">
-        <button
-          type="button"
-          class="finalisation-modal__close"
-          aria-label="Fermer"
-          data-testid="finalisation-close"
-          @click="closeFinalisationModal"
-        >&times;</button>
-        <FinalisationRecap
-          :selected-article="selectedArticle"
-          @navigate-redaction="navigateToRedaction"
-        />
-      </div>
-    </div>
   </div>
 </template>
 
@@ -1007,6 +1010,14 @@ onMounted(() => {
   text-decoration: none;
 }
 
+/* Bloc 2 — état désactivé du bouton "Continuer vers la Rédaction" quand
+   les 3 verrous Phase ② ne sont pas tous posés. Pattern aligné avec
+   CaptainLockPanel.vue. */
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 /* --- Empty & Navigation --- */
 .empty-state {
   padding: 2rem;
@@ -1034,57 +1045,4 @@ onMounted(() => {
   text-decoration: none;
 }
 
-/* Finalisation modal — récap avant transition Moteur → Rédaction */
-.finalisation-backdrop {
-  position: fixed;
-  inset: 0;
-  background: rgba(15, 23, 42, 0.55);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9998;
-  padding: 1rem;
-  animation: finalisation-fade-in 0.2s ease;
-}
-
-.finalisation-modal {
-  position: relative;
-  background: var(--color-background, #ffffff);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 12px;
-  padding: 1.5rem 2rem 2rem;
-  max-width: 640px;
-  width: 100%;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.32);
-}
-
-.finalisation-modal__close {
-  position: absolute;
-  top: 0.75rem;
-  right: 0.75rem;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  background: transparent;
-  border: none;
-  border-radius: 50%;
-  color: var(--color-text-muted, #64748b);
-  cursor: pointer;
-  font-size: 1.5rem;
-  line-height: 1;
-  transition: background 0.15s, color 0.15s;
-}
-.finalisation-modal__close:hover {
-  background: var(--color-bg-soft, #f1f5f9);
-  color: var(--color-text, #1e293b);
-}
-
-@keyframes finalisation-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
 </style>

@@ -1,10 +1,15 @@
 <script setup lang="ts">
 /**
- * Sprint 12 (D3) — Modal displayed when unlocking the Capitaine while
- * lieutenant_explorations rows already exist. Lets the user decide between
- * keeping them (they may still apply to the new capitaine) or archiving them
- * (status → 'archived'). "Annuler" aborts the unlock.
+ * Modal displayed when unlocking the Capitaine while lieutenant_explorations
+ * rows already exist.
+ *
+ * Bloc 6 (mai 2026) — Simplifiée : 2 boutons au lieu de 3. "Annuler" est
+ * implicite (clic en dehors / Échap). Les Lieutenants verrouillés restent
+ * valides indépendamment du Capitaine, donc l'option par défaut visuellement
+ * mise en avant est "Les garder". "Tout réinitialiser" = ancien "Archiver".
  */
+import { onMounted, onBeforeUnmount } from 'vue'
+
 defineProps<{
   lieutenantCount: number
   capitaineKeyword: string
@@ -15,6 +20,13 @@ const emit = defineEmits<{
   (e: 'archive'): void
   (e: 'cancel'): void
 }>()
+
+function handleEscape(ev: KeyboardEvent) {
+  if (ev.key === 'Escape') emit('cancel')
+}
+
+onMounted(() => { document.addEventListener('keydown', handleEscape) })
+onBeforeUnmount(() => { document.removeEventListener('keydown', handleEscape) })
 </script>
 
 <template>
@@ -23,21 +35,19 @@ const emit = defineEmits<{
       <h3 class="modal-title">Déverrouiller le Capitaine ?</h3>
       <p class="modal-desc">
         Vous avez <strong>{{ lieutenantCount }}</strong> lieutenant{{ lieutenantCount > 1 ? 's' : '' }}
-        testé{{ lieutenantCount > 1 ? 's' : '' }} pour le capitaine actuel
+        verrouillé{{ lieutenantCount > 1 ? 's' : '' }} pour
         <em>« {{ capitaineKeyword }} »</em>.
       </p>
-      <p class="modal-desc">
-        Que souhaitez-vous en faire si vous changez de capitaine&nbsp;?
+      <p class="modal-desc-hint">
+        Ils resteront valides pour le nouveau Capitaine sauf si vous choisissez de tout réinitialiser.
+        Cliquez en dehors ou pressez Échap pour annuler.
       </p>
       <div class="modal-actions">
         <button type="button" class="btn-primary" data-testid="unlock-keep-btn" @click="emit('keep')">
           Les garder
         </button>
         <button type="button" class="btn-secondary" data-testid="unlock-archive-btn" @click="emit('archive')">
-          Les archiver
-        </button>
-        <button type="button" class="btn-ghost" data-testid="unlock-cancel-btn" @click="emit('cancel')">
-          Annuler
+          Tout réinitialiser
         </button>
       </div>
     </div>
@@ -79,6 +89,12 @@ const emit = defineEmits<{
   color: var(--color-primary, #2563eb);
   font-style: normal;
   font-weight: 600;
+}
+.modal-desc-hint {
+  margin: 0 0 0.75rem;
+  font-size: 0.8125rem;
+  line-height: 1.4;
+  color: var(--color-text-muted, #64748b);
 }
 .modal-actions {
   display: flex;

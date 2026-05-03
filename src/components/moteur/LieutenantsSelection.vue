@@ -144,7 +144,7 @@ const resolvedRootKeywords = computed(() => {
 })
 
 // --- IA Proposal State (Phase 2 — NOUVEAU) ---
-const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, result: iaResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<FilteredProposeLieutenantsResult>()
+const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, startStream: iaStartStream, abort: iaAbort } = useStreaming<FilteredProposeLieutenantsResult>()
 const lieutenantCards = ref<ProposedLieutenant[]>([])
 const eliminatedCards = ref<ProposedLieutenant[]>([])
 const totalGenerated = ref(0)
@@ -350,17 +350,50 @@ watch(
   },
 )
 
-// --- Auto-trigger SERP when captain is locked (skip if lieutenants already locked) ---
+// 2026-05-02 — Sync `lieutenantCards` quand `richLieutenants` change (TabLoadPrompt
+// déclenche `mergeRichLieutenants` qui réassigne le tableau côté store).
+// Le merge ajoute de nouveaux items que la liste UI doit refléter pour que le
+// tri puisse les voir. Watcher en `deep: true` pour capter aussi les push
+// éventuels en place.
 watch(
-  [() => props.isCaptaineLocked, () => props.captainKeyword],
-  ([locked, keyword]) => {
-    if (locked && keyword && !serpResult.value && !isLoading.value && !isLocked.value) {
-      log.info('[LieutenantsSelection] Auto-triggering SERP analysis')
-      analyzeSERP()
+  () => articleKeywordsStore.keywords?.richLieutenants,
+  (richLts) => {
+    if (!richLts || richLts.length === 0) return
+    // Recalcule la liste courante depuis le store. Idempotent : si rien n'a
+    // changé visuellement, le rendu Vue ne re-render pas.
+    const locked = richLts.filter(lt => lt.status === 'locked')
+    const suggested = richLts.filter(lt => lt.status === 'suggested')
+    const eliminated = richLts.filter(lt => lt.status === 'eliminated')
+    const nextActive = [...locked, ...suggested].map(lt => ({
+      keyword: lt.keyword,
+      reasoning: lt.reasoning,
+      sources: lt.sources,
+      suggestedHnLevel: lt.suggestedHnLevel,
+      score: lt.score,
+    }))
+    // N'écrase que si la liste mémoire est plus petite (merge ajoute, ne retire jamais).
+    if (nextActive.length > lieutenantCards.value.length) {
+      lieutenantCards.value = nextActive
+      eliminatedCards.value = eliminated.map(lt => ({
+        keyword: lt.keyword,
+        reasoning: lt.reasoning,
+        sources: lt.sources,
+        suggestedHnLevel: lt.suggestedHnLevel,
+        score: lt.score,
+      }))
     }
   },
-  { immediate: true, flush: 'post' },
+  { deep: true },
 )
+
+// Bloc 6 — Auto-trigger SERP supprimé. Le SERP était relancé silencieusement
+// à chaque changement de captainKeyword, ce qui (a) gâchait des crédits API
+// en dehors du contrôle utilisateur et (b) provoquait une pollution
+// cross-keyword si le user changeait de Capitaine pendant qu'un SERP en vol
+// finissait. L'utilisateur déclenche désormais le SERP manuellement via le
+// bouton "Analyser SERP" du sous-composant (@analyze="analyzeSERP" plus bas).
+// Les Lieutenants déjà verrouillés survivent à tout changement de Capitaine
+// (cf. mergeRichLieutenants dans article-keywords.store.ts:156-181).
 
 // --- Auto-trigger IA proposal after SERP success (skip if lieutenants already locked) ---
 // U5 — règle TTL 7 jours : ne pas relancer l'IA si des propositions fraîches existent déjà en DB

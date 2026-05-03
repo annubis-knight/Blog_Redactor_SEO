@@ -23,7 +23,14 @@ export interface CarouselEntry {
   pendingVariants: Set<string>
 }
 
-/** Convert a ValidateResponse into a fully hydrated RadarCard */
+/**
+ * Convert a ValidateResponse into a fully hydrated RadarCard.
+ *
+ * 2026-05-02 — Propage `marketScore` et `relevanceScore` du backend vers la
+ * card. Avant ce fix, ces deux scores étaient perdus, forçant l'UI Capitaine
+ * à fallback sur `combinedScore` (legacy hybride) et brisant la séparation
+ * KPI / Pertinence documentée dans docs/scoring-kpi-vs-relevance.md.
+ */
 export function hydrateCardFromValidation(keyword: string, response: ValidateResponse): RadarCard {
   const kpiMap = Object.fromEntries(response.kpis.map(k => [k.name, k]))
 
@@ -43,7 +50,7 @@ export function hydrateCardFromValidation(keyword: string, response: ValidateRes
     autocompleteMatchCount: kpiMap.autocomplete?.rawValue ?? 0,
   })
 
-  return {
+  const out: RadarCard = {
     keyword,
     kpis: {
       searchVolume: kpiMap.volume?.rawValue ?? 0,
@@ -63,7 +70,21 @@ export function hydrateCardFromValidation(keyword: string, response: ValidateRes
     scoreBreakdown,
     reasoning: '',
     cachedPaa: false,
+    // 2026-05-02 — Scores backend propagés. Onglet Radar consomme `marketScore`,
+    // onglet Capitaine consomme `relevanceScore`. Voir scoring-kpi-vs-relevance.md.
+    marketScore: response.marketScore,
+    relevanceScore: response.relevanceScore ?? null,
   }
+
+  // Log debug pour traçabilité du flux de scoring (à retirer si bruyant en prod).
+  log.debug('[hydrateCardFromValidation]', {
+    keyword,
+    hasMarket: !!response.marketScore,
+    hasRelevance: !!response.relevanceScore,
+    relevanceTotal: response.relevanceScore?.total ?? 'n/a',
+  })
+
+  return out
 }
 
 function createEntry(card: RadarCard): CarouselEntry {
@@ -105,6 +126,8 @@ export function useRadarCarousel() {
     level: ArticleLevel,
     articleTitle: string | undefined,
     thisVersion: number,
+    articleId?: number,
+    painPoint?: string,
   ) {
     const roots = extractRoots(keyword).slice(0, 5)
     if (roots.length === 0 || response.kpis.find(k => k.name === 'volume')?.color === 'green') return
@@ -117,7 +140,7 @@ export function useRadarCarousel() {
         try {
           const rootResponse = await apiPost<ValidateResponse>(
             `/keywords/${encodeURIComponent(rootKw)}/validate`,
-            { level, articleTitle },
+            { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
           )
           if (thisVersion !== loadVersion) return
           const rootCard = hydrateCardFromValidation(rootKw, rootResponse)
@@ -132,7 +155,7 @@ export function useRadarCarousel() {
     }
   }
 
-  async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number) {
+  async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
     entries.value = cards.map(createEntry)
     currentIndex.value = 0
@@ -142,14 +165,14 @@ export function useRadarCarousel() {
         try {
           const response = await apiPost<ValidateResponse>(
             `/keywords/${encodeURIComponent(card.keyword)}/validate`,
-            { level, articleTitle, ...(articleId ? { articleId } : {}) },
+            { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
           )
           if (thisVersion !== loadVersion) return
           patch(i, { validation: response, originalCard: card, isLoading: false })
 
           log.debug('[useRadarCarousel] Validated', { keyword: card.keyword, verdict: response.verdict.level })
 
-          await validateRoots(card.keyword, response, i, level, articleTitle, thisVersion)
+          await validateRoots(card.keyword, response, i, level, articleTitle, thisVersion, articleId, painPoint)
         } catch (err) {
           if (thisVersion !== loadVersion) return
           patch(i, { error: (err as Error).message, isLoading: false })
@@ -183,7 +206,7 @@ export function useRadarCarousel() {
   }
 
   /** Add a single keyword as a new carousel entry and validate it */
-  async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string, articleId?: number) {
+  async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
     // Build a minimal RadarCard for a manually-entered keyword
     const card: RadarCard = {
@@ -204,14 +227,14 @@ export function useRadarCarousel() {
     try {
       const response = await apiPost<ValidateResponse>(
         `/keywords/${encodeURIComponent(keyword)}/validate`,
-        { level, articleTitle, ...(articleId ? { articleId } : {}) },
+        { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
       )
       if (thisVersion !== loadVersion) return
       const hydratedCard = hydrateCardFromValidation(keyword, response)
       patch(entryIndex, { card: hydratedCard, originalCard: hydratedCard, validation: response, isLoading: false })
       log.debug('[useRadarCarousel] addEntry validated', { keyword, verdict: response.verdict.level })
 
-      await validateRoots(keyword, response, entryIndex, level, articleTitle, thisVersion)
+      await validateRoots(keyword, response, entryIndex, level, articleTitle, thisVersion, articleId, painPoint)
     } catch (err) {
       if (thisVersion !== loadVersion) return
       patch(entryIndex, { error: (err as Error).message, isLoading: false })
@@ -232,6 +255,7 @@ export function useRadarCarousel() {
     level: ArticleLevel,
     articleTitle?: string,
     articleId?: number,
+    painPoint?: string,
   ): Promise<void> {
     const entry = entries.value[entryIndex]
     if (!entry) throw new Error('Entry introuvable')
@@ -256,7 +280,7 @@ export function useRadarCarousel() {
     try {
       const response = await apiPost<ValidateResponse>(
         `/keywords/${encodeURIComponent(newRootKeyword)}/validate`,
-        { level, articleTitle, ...(articleId ? { articleId } : {}) },
+        { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
       )
       if (thisVersion !== loadVersion) return
 
@@ -312,10 +336,26 @@ export function useRadarCarousel() {
         fromCache: true,
         cachedAt: null,
         paaQuestions: h.paaQuestions,
+        // 2026-05-02 — Propage les scores hydratés par le backend
+        // (getCaptainExplorations rapatrie depuis radar_explorations).
+        // Sans ça, hydrateCardFromValidation produit relevanceScore=null
+        // et la card Capitaine affiche "—" au reload.
+        marketScore: h.marketScore ?? undefined,
+        relevanceScore: h.relevanceScore ?? null,
       }
+      log.debug('[useRadarCarousel] restoreFromHistory entry', {
+        keyword: h.keyword,
+        hasMarketScore: !!h.marketScore,
+        hasRelevanceScore: !!h.relevanceScore,
+        relevanceTotal: h.relevanceScore?.total ?? 'n/a',
+      })
       const card = hydrateCardFromValidation(h.keyword, response)
 
-      // Restore root variants if available
+      // Restore root variants if available.
+      // Note 2026-05-02 : `RichRootKeyword` n'inclut pas marketScore/relevanceScore
+      // (limitation persistance). Les root cards affichées dans CaptainRootsSidebar
+      // n'ont donc pas de score Pertinence individuel après restore — le ScoreRing
+      // affichera 0. Le scoring backend recalcule à la prochaine validation.
       const rootVariants = new Map<string, KeywordRootVariant>()
       const rootsForKeyword = richRootKeywords?.filter(r => r.parentKeyword === h.keyword) ?? []
       for (const root of rootsForKeyword) {

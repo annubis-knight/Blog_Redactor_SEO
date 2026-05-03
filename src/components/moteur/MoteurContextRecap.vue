@@ -2,6 +2,7 @@
 import { computed, watch } from 'vue'
 import type { Article, ArticleType, SelectedArticle } from '@shared/types/index.js'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { hasCannibalization as hasCannibalizationPure } from '@/composables/moteur/useCannibalizationDetection'
 import ProgressDots from './ProgressDots.vue'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
 import IconWarning from '@/components/shared/icons/IconWarning.vue'
@@ -12,7 +13,11 @@ const props = withDefaults(defineProps<{
   suggestedArticles: Article[]
   publishedArticles: Article[]
   selectedSlug: string | null
-  capitainesMap?: Record<string, string>
+  // Bloc 4 — backend renvoie Record<number, string> (clé = articleId), cf.
+  // server/routes/cocoons.routes.ts:88. Ne PAS indexer par slug (string),
+  // sinon `hasCannibalization` matchait n'importe quoi entre articles
+  // suggérés et publiés (faux positif systématique sur tous les articles).
+  capitainesMap?: Record<number, string>
   readonly?: boolean
 }>(), {
   capitainesMap: () => ({}),
@@ -75,15 +80,20 @@ const publishedGroups = computed<GroupedArticles[]>(() => {
 })
 
 /**
- * Unified slug → captain-keyword map built from tree articles themselves.
- * Falls back to the legacy `capitainesMap` prop for entries still only known via
- * that older fetch path (until MoteurView's separate fetch is fully retired).
+ * Unified articleId → captain-keyword map. Indexée par articleId (number),
+ * cohérent avec le contrat backend (`/cocoons/:name/capitaines`). Le fallback
+ * vers `props.capitainesMap` enrichit pour les articles dont le keyword
+ * n'apparaît pas encore dans la liste suggested/published (ex: article fraîchement
+ * créé puis verrouillé Capitaine).
  */
-const unifiedCapitainesMap = computed<Record<string, string>>(() => {
-  const map: Record<string, string> = {}
-  for (const g of suggestedGroups.value) for (const a of g.articles) if (a.keyword) map[a.slug] = a.keyword
-  for (const g of publishedGroups.value) for (const a of g.articles) if (a.keyword) map[a.slug] = a.keyword
-  for (const [slug, kw] of Object.entries(props.capitainesMap)) if (kw && !map[slug]) map[slug] = kw
+const unifiedCapitainesMap = computed<Record<number, string>>(() => {
+  const map: Record<number, string> = {}
+  for (const g of suggestedGroups.value) for (const a of g.articles) if (a.keyword && a.id > 0) map[a.id] = a.keyword
+  for (const g of publishedGroups.value) for (const a of g.articles) if (a.keyword && a.id > 0) map[a.id] = a.keyword
+  for (const [idStr, kw] of Object.entries(props.capitainesMap)) {
+    const id = Number(idStr)
+    if (kw && Number.isFinite(id) && !map[id]) map[id] = kw
+  }
   return map
 })
 
@@ -112,13 +122,8 @@ watch(
   { immediate: true },
 )
 
-function hasCannibalization(slug: string): boolean {
-  const cap = unifiedCapitainesMap.value[slug]
-  if (!cap) return false
-  const capLower = cap.toLowerCase()
-  return Object.entries(unifiedCapitainesMap.value).some(
-    ([s, c]) => s !== slug && c.toLowerCase() === capLower,
-  )
+function hasCannibalization(articleId: number): boolean {
+  return hasCannibalizationPure(articleId, unifiedCapitainesMap.value)
 }
 
 function toggleArticle(article: GroupedArticle) {
@@ -158,7 +163,7 @@ function toggleArticle(article: GroupedArticle) {
             <span class="tree-branch" aria-hidden="true"></span>
             <span class="tree-article-title">{{ art.title }}</span>
             <IconWarning
-              v-if="hasCannibalization(art.slug)"
+              v-if="hasCannibalization(art.id)"
               class="warning-cannibal"
               :size="14"
               filled
@@ -197,7 +202,7 @@ function toggleArticle(article: GroupedArticle) {
             <span class="tree-branch" aria-hidden="true"></span>
             <span class="tree-article-title">{{ art.title }}</span>
             <IconWarning
-              v-if="hasCannibalization(art.slug)"
+              v-if="hasCannibalization(art.id)"
               class="warning-cannibal"
               :size="14"
               filled

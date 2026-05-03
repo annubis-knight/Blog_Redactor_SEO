@@ -65,10 +65,8 @@ const {
   relevantCount,
   toggleRelevanceFilter,
   isRelevant,
-  getRelevanceScore,
   filteringSuspect,
   // Multi-source
-  SOURCE_COLORS,
   getKeywordSources,
   isMultiSource,
   // Actions
@@ -193,6 +191,7 @@ function handleKeywordClick(keyword: string) {
       keyword,
       articleId,
       articleTypeToLevel((props.articleType as ArticleType) ?? 'Intermédiaire'),
+      props.articlePainPoint || undefined,
     )
   } else {
     captainTrigger.cancel(keyword)
@@ -571,6 +570,17 @@ function handleToggleAnalysisSelectAll() {
           </ul>
         </section>
       </div>
+
+      <!-- Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page : tri local
+           du basket par signal × alignement douleur. Aucun appel IA.
+           Placé dans .discovery-main pour être sous les sections de mots-clés
+           (et non à côté de la sidebar). -->
+      <DiscoveryAiPanel
+        :basket="basketStore.keywords"
+        :pain-point="props.articlePainPoint"
+        :is-locked="false"
+        @push-to-radar="handlePushToRadar"
+      />
     </div>
 
     <!-- Sidebar: Word Groups -->
@@ -607,15 +617,6 @@ function handleToggleAnalysisSelectAll() {
         </button>
       </div>
     </Transition>
-
-    <!-- Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page : tri local
-         du basket par signal × alignement douleur. Aucun appel IA. -->
-    <DiscoveryAiPanel
-      :basket="basketStore.keywords"
-      :pain-point="props.articlePainPoint"
-      :is-locked="false"
-      @push-to-radar="handlePushToRadar"
-    />
   </div>
 </template>
 

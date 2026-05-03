@@ -17,6 +17,7 @@ import {
   isKeywordMetricsFresh,
 } from '../services/keyword/keyword-metrics.service.js'
 import { getThresholds, scoreKpi, computeVerdict } from '../services/keyword/keyword-validate.service.js'
+import { lexicalPainAlignment, avgLexicalPainAlignment } from '../services/keyword/lexical-pain-alignment.js'
 import {
   fetchSerpAdvanced,
   extractPaaFromSerp,
@@ -38,7 +39,16 @@ const VALID_LEVELS: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
 router.post('/keywords/:keyword/validate', async (req, res) => {
   try {
     const keyword = decodeURIComponent(req.params.keyword)
-    const { level, articleTitle, articleId } = req.body as { level?: string; articleTitle?: string; articleId?: number }
+    // Bloc 5 — `painPoint` accepté optionnellement pour permettre le calcul
+    // de `relevanceScore` à la volée même si le scan Radar n'a jamais eu
+    // lieu pour cet article (cas le plus fréquent quand l'utilisateur
+    // attaque directement par Capitaine).
+    const { level, articleTitle, articleId, painPoint } = req.body as {
+      level?: string
+      articleTitle?: string
+      articleId?: number
+      painPoint?: string
+    }
 
     // Validate inputs
     if (!keyword) {
@@ -177,30 +187,76 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
     }
     const marketScore = computeMarketScore(kpisForMarket, articleLevel)
 
-    // ----- Score de Pertinence — opportuniste depuis cache radar -----
+    // ----- Score de Pertinence (Bloc 5 — calcul à la volée) -----
+    // Stratégie en 2 niveaux :
+    //   1. Cache Radar : si une card existe déjà pour cet article + keyword,
+    //      on récupère ses signaux (painAlignment, paaPainAvg, autoPainAvg)
+    //      issus du dernier scan (embeddings sémantiques de qualité).
+    //   2. Fallback lexical : si pas de cache OU painPoint fourni dans le
+    //      body, on recalcule un score lexical (matchResonanceDetailed)
+    //      contre le painPoint et les PAA/autocomplete déjà en DB.
+    //      Déterministe, mock-friendly, < 1 ms.
+    // Si aucun signal exploitable → relevanceScore = null (ScoreRing affichera
+    // "—" + l'utilisateur saura que la donnée brute manque).
     let relevanceScore: RelevanceScoreResult | null = null
+    let cachedKwPainAlignment: number | null = null
+    let cachedPaaPainAvg: number | null = null
+    let cachedAutoPainAvg: number | null = null
+    let cachedIntentTypes: typeof kpisForMarket.intentTypes | undefined
+
     if (typeof articleId === 'number' && Number.isFinite(articleId)) {
       try {
         const radar = await getRadarExploration(articleId)
         const matchingCard = radar?.scanResult?.cards?.find((c: RadarCard) => c.keyword === keyword)
         if (matchingCard) {
           const k = matchingCard.kpis
-          const hasPainSignal =
-            k.painAlignmentScore != null ||
-            (matchingCard.scoreBreakdown?.paaMatchScore != null && matchingCard.scoreBreakdown.paaMatchScore > 0)
-          if (hasPainSignal) {
-            relevanceScore = computeRelevanceScore({
-              painAlignmentScore: k.painAlignmentScore ?? null,
-              paaPainAlignmentAvg: matchingCard.scoreBreakdown?.paaMatchScore ?? null,
-              autocompletePainAlignmentAvg: matchingCard.scoreBreakdown?.resonanceBonus ?? null,
-              rootsAverageScore: null,
-              intentTypes: k.intentTypes,
-            })
-          }
+          cachedKwPainAlignment = k.painAlignmentScore ?? null
+          cachedPaaPainAvg = matchingCard.scoreBreakdown?.paaMatchScore ?? null
+          cachedAutoPainAvg = matchingCard.scoreBreakdown?.resonanceBonus ?? null
+          cachedIntentTypes = k.intentTypes
         }
       } catch (lookupErr) {
-        log.warn(`[validate] relevance lookup failed: ${(lookupErr as Error).message}`)
+        log.warn(`[validate] radar cache lookup failed: ${(lookupErr as Error).message}`)
       }
+    }
+
+    const painPointTrim = (painPoint ?? '').trim()
+    const hasPainPoint = painPointTrim.length >= 10
+    const painWords = hasPainPoint ? extractTopicWords(painPointTrim) : []
+
+    let lexicalKwPainAlignment: number | null = null
+    let lexicalPaaPainAvg: number | null = null
+    let lexicalAutoPainAvg: number | null = null
+
+    if (hasPainPoint && painWords.length > 0) {
+      lexicalKwPainAlignment = lexicalPainAlignment(keyword, painWords)
+      lexicalPaaPainAvg = avgLexicalPainAlignment(
+        paaQuestionsRaw.map(p => (p.answer ? `${p.question} ${p.answer}` : p.question)),
+        painWords,
+      )
+      lexicalAutoPainAvg = avgLexicalPainAlignment(
+        autocompleteSuggestions.map(s => s.text),
+        painWords,
+      )
+    }
+
+    // Sources fusionnées : cache Radar prioritaire (qualité embeddings), fallback lexical sinon.
+    const finalKwPainAlignment = cachedKwPainAlignment ?? lexicalKwPainAlignment
+    const finalPaaPainAvg = cachedPaaPainAvg ?? lexicalPaaPainAvg
+    const finalAutoPainAvg = cachedAutoPainAvg ?? lexicalAutoPainAvg
+    const finalIntentTypes = cachedIntentTypes ?? kpisForMarket.intentTypes
+
+    const hasAnyPainSignal =
+      finalKwPainAlignment != null || finalPaaPainAvg != null || finalAutoPainAvg != null
+
+    if (hasAnyPainSignal) {
+      relevanceScore = computeRelevanceScore({
+        painAlignmentScore: finalKwPainAlignment,
+        paaPainAlignmentAvg: finalPaaPainAvg,
+        autocompletePainAlignmentAvg: finalAutoPainAvg,
+        rootsAverageScore: null,
+        intentTypes: finalIntentTypes,
+      })
     }
 
     const response: ValidateResponse = {

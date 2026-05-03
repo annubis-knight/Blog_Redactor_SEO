@@ -1,7 +1,33 @@
 # Moteur Workflow — Diagramme de flux
 
-> Mis à jour : 2026-05-02
+> Mis à jour : 2026-05-03
 > Source de vérité : `src/views/MoteurView.vue` + composants `src/components/moteur/*` + constantes `shared/constants/workflow-checks.constants.ts`
+
+> **2026-05-03 — Plan de sécurisation Moteur (6 blocs livrés).**
+> 1. **Bloc 1** — Computed défensif `lockedLieutenantCount?.length ?? 0` dans
+>    `CaptainValidation.vue` (réparation de 32 tests cassés).
+> 2. **Bloc 2** — Onglet `'finalisation'` ajouté à `TAB_IDS`, modale
+>    supprimée. Bouton « Continuer vers la Rédaction » désactivé tant que
+>    les 3 verrous Phase ② ne sont pas posés (computed `finalisationUnlocked`
+>    + tooltip natif HTML listant les checks manquants). Logique pure
+>    extraite dans `src/composables/moteur/useFinalisationGating.ts` (testée).
+> 3. **Bloc 3** — `handleSelectArticle` appelle `fetchKeywordsMerge` au lieu
+>    de `fetchKeywords` (race condition stub-entry éliminée — le container
+>    Capitaine se peuple correctement au sélection d'article).
+> 4. **Bloc 4** — Cannibalisation indexée par `articleId` (number), cohérent
+>    avec le contrat backend. Logique pure extraite dans
+>    `src/composables/moteur/useCannibalizationDetection.ts` (testée). Le
+>    badge ⚠️ n'apparaît plus que sur les vrais doublons cocon.
+> 5. **Bloc 5** — La route `POST /keywords/:keyword/validate` accepte
+>    désormais `painPoint?` dans le body et calcule `relevanceScore` à la
+>    volée si le cache Radar est absent. Stratégie 2 niveaux : cache Radar
+>    (qualité embeddings) prioritaire, fallback lexical
+>    (`server/services/keyword/lexical-pain-alignment.ts`, testé)
+>    déterministe et mock-friendly. Aucune nouvelle persistance DB.
+> 6. **Bloc 6** — Auto-trigger SERP supprimé de `LieutenantsSelection.vue`
+>    (l'utilisateur clique « Analyser SERP » manuellement, plus de pollution
+>    cross-keyword). Modale `UnlockLieutenantsModal` simplifiée à 2 boutons
+>    (Garder / Tout réinitialiser ; Échap ou clic-extérieur pour annuler).
 
 > **2026-05-02 — Unification des Panels IA (Sprints A-F).** Tous les onglets
 > du Moteur partagent désormais une coque visuelle commune (`AiPanel`,
@@ -38,8 +64,8 @@ flowchart LR
     LEX["<b>Lexique</b><br/>LexiqueExtraction<br/>TF-IDF (zéro requête)<br/>check: moteur:lexique_validated"]:::validate
   end
 
-  subgraph P3["Phase ③ FINALISATION (read-only)"]
-    FINAL["<b>Finalisation</b><br/>FinalisationRecap<br/>débloqué si 3 checks ② ✓<br/>→ /cocoon/:id/redaction"]:::finalisation
+  subgraph P3["Phase ③ FINALISATION (onglet dédié, read-only)"]
+    FINAL["<b>Finalisation</b><br/>FinalisationRecap<br/>onglet TAB_IDS depuis 2026-05-03<br/>bouton Rédaction grisé si 3 checks ② manquants<br/>→ /cocoon/:id/redaction"]:::finalisation
   end
 
   CTX --> DISC
@@ -252,6 +278,13 @@ flowchart LR
 - L'utilisateur peut forcer GO sur un verdict ORANGE/NO-GO (libre arbitre)
 - Panel IA = conseil uniquement, ne modifie JAMAIS le verdict
 
+**Bloc 5 (2026-05-03) — Score Pertinence à la volée :**
+La route `POST /keywords/:keyword/validate` accepte désormais `painPoint?` dans le body. Le `relevanceScore` est calculé en deux niveaux :
+1. **Cache Radar** (prioritaire) : si une card existe dans `radar_explorations.scan_result.cards` pour cet article + keyword, on récupère ses signaux (painAlignment, paaPainAvg, autoPainAvg) issus du dernier scan (qualité embeddings).
+2. **Fallback lexical** : si pas de cache OU `painPoint` fourni, on recalcule un score lexical via `lexicalPainAlignment`/`avgLexicalPainAlignment` (`server/services/keyword/lexical-pain-alignment.ts`) contre le `painPoint` et les PAA/autocomplete déjà en DB. Déterministe, mock-friendly, < 1 ms.
+
+**Aucune persistance DB ajoutée** : le score reste éphémère, recalculé à chaque rendering. Permet à un article avec painPoint d'afficher un score Pertinence en Capitaine même sans avoir lancé de scan Radar préalable.
+
 ## 5. Phase ② Valider — Lieutenants (cascade SERP)
 
 ```mermaid
@@ -312,6 +345,11 @@ flowchart LR
 **Curseur SERP intelligent :**
 - Sous le défaut (< 10) → **filtre local instantané** sur les résultats déjà scrapés (pas de re-call)
 - Au-dessus du défaut → **scraping complémentaire** pour les résultats manquants
+
+**Bloc 6 (2026-05-03) — SERP manuel uniquement :**
+Le watcher d'auto-trigger SERP au lock Capitaine a été retiré. L'utilisateur déclenche désormais le SERP manuellement via le bouton « Analyser SERP » du sous-composant `LieutenantSerpAnalysis`. Bénéfices : (a) plus de pollution cross-keyword si le user change de Capitaine pendant qu'un SERP est en vol, (b) plus de gaspillage de crédits API en dehors du contrôle utilisateur. Les Lieutenants déjà verrouillés survivent à toute nouvelle analyse (cf. `mergeRichLieutenants` dans `article-keywords.store.ts`).
+
+**Modale `UnlockLieutenantsModal` simplifiée** : 2 boutons (Garder / Tout réinitialiser) au lieu de 3. L'annulation se fait via Échap ou clic-extérieur (listener `keydown` ajouté).
 
 ## 6. Phase ② Valider — Lexique (TF-IDF zéro requête)
 

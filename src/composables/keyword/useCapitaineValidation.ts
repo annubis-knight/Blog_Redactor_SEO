@@ -57,17 +57,24 @@ export function useCapitaineValidation() {
     return result.value
   })
 
-  async function validateKeyword(keyword: string, level: ArticleLevel, articleTitle?: string, articlePainPoint?: string) {
+  async function validateKeyword(
+    keyword: string,
+    level: ArticleLevel,
+    articleTitle?: string,
+    articlePainPoint?: string,
+    articleId?: number,
+  ) {
     const thisVersion = ++validationVersion
     isLoading.value = true
     error.value = null
     rootResult.value = null
     radarCard.value = null
 
-    // Launch validate + radar scan in parallel
+    // Bloc 5 — `painPoint` + `articleId` envoyés à /validate pour permettre
+    // au backend de calculer relevanceScore à la volée même sans cache Radar.
     const validatePromise = apiPost<ValidateResponse>(
       `/keywords/${encodeURIComponent(keyword)}/validate`,
-      { level },
+      { level, articleTitle, articleId, painPoint: articlePainPoint },
     )
 
     // Radar scan: best-effort, non-blocking
@@ -115,7 +122,7 @@ export function useCapitaineValidation() {
         try {
           const rootResponse = await apiPost<ValidateResponse>(
             `/keywords/${encodeURIComponent(root)}/validate`,
-            { level },
+            { level, articleTitle, articleId, painPoint: articlePainPoint },
           )
           if (thisVersion !== validationVersion) return // stale root
           rootResult.value = rootResponse

@@ -129,7 +129,7 @@ function handleValidate() {
   const kw = keywordInput.value.trim()
   if (!kw) return
   log.info('CaptainValidation — validation', { keyword: kw, level: articleLevel.value })
-  carousel.addEntry(kw, articleLevel.value, props.selectedArticle?.title)
+  carousel.addEntry(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
 }
 
 watch(
@@ -156,7 +156,7 @@ watch(
     if (isLocked.value) {
       const currentKw = carousel.currentEntry.value?.card.keyword
       if (currentKw !== persisted) {
-        carousel.addEntry(persisted, articleLevel.value, props.selectedArticle?.title)
+        carousel.addEntry(persisted, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
       }
       lockedKeyword.value = persisted
     }
@@ -326,7 +326,7 @@ function lockCaptaine() {
 type UnlockSource = 'manual' | 'carousel'
 const pendingUnlock = ref<UnlockSource | null>(null)
 
-const lockedLieutenantCount = computed(() => articleKeywordsStore.lockedLieutenants.length)
+const lockedLieutenantCount = computed(() => articleKeywordsStore.lockedLieutenants?.length ?? 0)
 
 function requestUnlock(source: UnlockSource) {
   if (lockedLieutenantCount.value > 0) {
@@ -380,7 +380,7 @@ function chipVerdictColor(entry: { verdict: { level: VerdictLevel } }): string {
 
 function handleSuggestedClick(kw: string) {
   keywordInput.value = kw
-  validateKeyword(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.painPoint ?? undefined)
+  validateKeyword(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.painPoint ?? undefined, props.selectedArticle?.id)
 }
 
 function handleHistoryClick(index: number) {
@@ -395,8 +395,17 @@ const lockedKeyword = ref<string | null>(null)
 
 // 2026-05-02 — Tri unifié de la radar-list (Capitaine).
 // L'item verrouillé reste TOUJOURS en tête, peu importe le critère choisi.
-// Score = Pertinence (relevanceScore.total) — c'est le score affiché sur les
-// cards en mode `displayMode='relevance'`. Voir docs/scoring-kpi-vs-relevance.md.
+//
+// Score = `card.relevanceScore.total` (Score Pertinence STRICT, sans fallback
+// sur combinedScore). Cohérent avec le score affiché par RadarKeywordCard en
+// mode `displayMode='relevance'` après la migration scoring du 2026-05-02.
+//
+// Items sans relevanceScore (painPoint absent ou cache obsolète) → valeur null
+// → toujours en bas du tri (gestion native de useSortableList). Le score
+// affiché sur ces cards est "—", donc l'absence de tri sur ces items est
+// visuellement cohérente.
+//
+// Voir docs/scoring-kpi-vs-relevance.md.
 const captainSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
   { key: 'score', label: 'Score Pertinence' },
@@ -405,7 +414,7 @@ const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<C
   items: carouselEntries,
   getValue: (entry, key) => {
     if (key === 'az') return entry.card.keyword
-    if (key === 'score') return entry.validation?.relevanceScore?.total ?? null
+    if (key === 'score') return entry.card.relevanceScore?.total ?? null
     return null
   },
   pinnedPredicate: (entry) => lockedKeyword.value !== null && entry.card.keyword === lockedKeyword.value,
@@ -486,7 +495,7 @@ watch(
     if (!kw) return
     lastAutoValidatedId = id
     keywordInput.value = kw
-    carousel.addEntry(kw, articleLevel.value, article.title)
+    carousel.addEntry(kw, articleLevel.value, article.title, article.id, article.painPoint ?? undefined)
     if (isLocked.value) lockedKeyword.value = kw
   },
   { immediate: true },
@@ -632,7 +641,7 @@ watch(
       abortAllAiStreams()
       carouselAiCache.value = new Map()
       carouselAiErrors.value = new Map()
-      carousel.loadCards(cards, articleLevel.value, props.selectedArticle?.title)
+      carousel.loadCards(cards, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
     }
   },
   { deep: true, immediate: true },
@@ -644,6 +653,11 @@ const persistedRoots = new Set<string>()
 const persistedAiPanels = new Set<string>()
 
 // Pre-fill sets from existing persisted history AND restore carousel
+//
+// 2026-05-02 — `deep: true` indispensable : `mergeCaptainHistory` (TabLoadPrompt)
+// fait un `history.push(entry)` qui mute le tableau en place. Sans deep, le
+// watcher ne se déclenche pas et le carousel n'est pas rebuild → le tri n'a
+// aucun nouvel item à trier.
 watch(
   () => articleKeywordsStore.keywords?.richCaptain?.validationHistory,
   (history) => {
@@ -687,7 +701,7 @@ watch(
       touchAiCache()
     }
   },
-  { immediate: true },
+  { immediate: true, deep: true },
 )
 
 const toKpiSummary = (kpis: { name: string; rawValue: number }[]) =>
@@ -921,6 +935,7 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
     articleLevel.value,
     props.selectedArticle?.title,
     props.selectedArticle?.id,
+    props.selectedArticle?.painPoint ?? undefined,
   ).catch((err) => {
     log.warn('[CaptainValidation] Root variant validation failed', { variant: activeKeywordStr, error: (err as Error).message })
     notify.error(`Impossible de valider "${activeKeywordStr}"`)
