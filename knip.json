@@ -17,6 +17,7 @@
     "entry": ["tests/setup.ts", "tests/**/*.test.ts"]
   },
   "ignoreDependencies": [
-    "madge"
+    "madge",
+    "@pinia/testing"
   ]
 }
