@@ -1,0 +1,24 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "_comment": "S6 — Tests de mutation. Vérifie que les tests S3 (shared/score/) attrapent vraiment les bugs. Lent (~5-10 min) — ne PAS inclure dans check:health ni en CI bloquante.",
+  "packageManager": "npm",
+  "reporters": ["html", "clear-text", "progress"],
+  "testRunner": "vitest",
+  "testRunnerNodeArgs": [],
+  "vitest": {
+    "configFile": "vitest.stryker.config.ts"
+  },
+  "coverageAnalysis": "perTest",
+  "mutate": [
+    "shared/score/**/*.ts",
+    "!shared/score/**/*.test.ts"
+  ],
+  "thresholds": {
+    "high": 90,
+    "low": 70,
+    "break": 60
+  },
+  "timeoutMS": 30000,
+  "concurrency": 4,
+  "tempDirName": ".stryker-tmp"
+}

@@ -22,6 +22,7 @@
     "check:cycles": "madge --circular --ts-config tsconfig.json --extensions ts shared server",
     "check:arch": "depcruise shared server src --config .dependency-cruiser.cjs --no-progress",
     "check:health": "run-s lint type-check check:cycles check:dead check:arch",
+    "test:mutation": "stryker run",
     "prepare": "husky",
     "postinstall": "patch-package"
   },
@@ -50,6 +51,8 @@
   "devDependencies": {
     "@pinia/testing": "^1.0.3",
     "@playwright/test": "^1.59.1",
+    "@stryker-mutator/core": "^9.6.1",
+    "@stryker-mutator/vitest-runner": "^9.6.1",
     "@tsconfig/node24": "^24.0.4",
     "@types/express": "^5.0.6",
     "@types/jsdom": "^28.0.0",

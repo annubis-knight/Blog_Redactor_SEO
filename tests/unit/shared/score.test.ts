@@ -92,6 +92,12 @@ describe('shared/score:compareScoresAsc (ascending)', () => {
     const sorted = [...scores].sort(compareScoresAsc)
     expect(sorted).toEqual([50, 80, 100, null, null])
   })
+
+  it('returns 0 when both are null (ascending)', () => {
+    // Anti-régression Stryker S6 : sans ce test, le `if (a === null && b === null)`
+    // peut être muté en `if (false)` sans qu'aucun test ne casse.
+    expect(compareScoresAsc(null, null)).toBe(0)
+  })
 })
 
 describe('shared/score:averageScores', () => {

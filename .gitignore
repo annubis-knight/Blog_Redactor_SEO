@@ -47,6 +47,10 @@ __screenshots__/
 # Vite
 *.timestamp-*-*.mjs
 
+# Stryker (tests de mutation — rapports + temp)
+reports/
+.stryker-tmp/
+
 # Environment variables
 .env
 

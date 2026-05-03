@@ -3,8 +3,9 @@ title: 'Stabilisation codebase — quick wins non-invasifs + score unifié'
 slug: 'stabilisation-codebase'
 created: '2026-05-03'
 last_updated: '2026-05-03'
-version: '1.1.0'
-status: 'ready-for-dev'
+version: '2.0.0'
+status: 'delivered'
+delivered: '2026-05-03'
 sprints: 6
 tech_stack:
   - npm scripts (package.json)
