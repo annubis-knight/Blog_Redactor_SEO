@@ -6,5 +6,16 @@
   },
   "categories": {
     "correctness": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["tests/**/*.ts", "**/*.test.ts", "**/__tests__/**"],
+      "rules": {
+        "jest/no-disabled-tests": "off",
+        "vitest/warn-todo": "off",
+        "jest/no-conditional-expect": "off",
+        "jest/expect-expect": "off"
+      }
+    }
+  ]
 }
