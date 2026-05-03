@@ -24,6 +24,8 @@ export interface BrowserCtx {
 }
 
 export const test = base.extend<{ ctx: BrowserCtx }>({
+  // Playwright fixture: the empty destructuring is required by the API
+   
   ctx: async ({}, use, testInfo) => {
     const runId = `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const tagged = (b: string) => `${TEST_PREFIX}${runId}] ${b}`

@@ -1,3 +1,8 @@
+<script lang="ts">
+ 
+export default { name: 'AppBreadcrumb' }
+</script>
+
 <script setup lang="ts">
 export interface BreadcrumbItem {
   label: string

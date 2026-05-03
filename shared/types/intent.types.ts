@@ -272,12 +272,24 @@ export interface RadarCard {
   reasoning: string
   kpis: RadarKeywordKpis
   paaItems: RadarPaaItem[]
+  /**
+   * @deprecated Score legacy hybride (mélange marché + pertinence). Conservé
+   * pour compatibilité avec les payloads radar persistés. NE PAS utiliser
+   * pour de nouveaux affichages : utiliser `marketScore` (Radar) ou
+   * `relevanceScore` (Capitaine) — voir docs/scoring-kpi-vs-relevance.md.
+   */
   combinedScore: number
+  /**
+   * @deprecated Breakdown du score legacy hybride. Pour le breakdown KPI,
+   * utiliser `computeKpiScore(kpis, level)` côté front. Pour le breakdown
+   * Pertinence, utiliser `relevanceScore.breakdown`.
+   */
   scoreBreakdown: RadarCombinedScoreBreakdown
   cachedPaa: boolean
-  /** Score KPI / Marché (0-100). Optionnel pour rétro-compatibilité. */
+  /** Score KPI / Marché (0-100). Source de vérité pour l'onglet Radar. */
   marketScore?: MarketScoreResult
-  /** Score de Pertinence (0-100). null si painPoint absent. Optionnel pour rétro-compat. */
+  /** Score de Pertinence (0-100). Source de vérité pour l'onglet Capitaine.
+   *  `null` si painPoint absent ou aucun signal d'alignement disponible. */
   relevanceScore?: RelevanceScoreResult | null
 }
 

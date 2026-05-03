@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import type { Cocoon, Keyword, ArticleKeywords } from '../../../shared/types/index'
+import type { Cocoon, Keyword } from '../../../shared/types/index'
 
 // Mock data.service before importing the service
 vi.mock('../../../server/services/infra/data.service', () => ({

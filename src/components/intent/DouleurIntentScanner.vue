@@ -11,6 +11,7 @@ import CpcFilterToggle from '@/components/shared/CpcFilterToggle.vue'
 import { matchesCpcFilter, type CpcFilter } from '@/components/shared/cpc-filter-types'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
+import { computeKpiScore } from '@shared/scoring-kpi.js'
 import type { RadarKeyword, RadarCard } from '@shared/types/intent.types'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
 
@@ -81,19 +82,33 @@ const checkedKeywords = ref(new Set<string>())
 // Sprint 2.5 — CPC filter (3 états : null / 'with' / 'without').
 const cpcFilter = ref<CpcFilter>(null)
 
-// 2026-05-02 — Tri unifié des radar cards. Score = Score Marché
-// (`marketScore.total`) — c'est le score affiché sur les cards en mode
-// `displayMode='kpi'`. Voir docs/scoring-kpi-vs-relevance.md.
+// 2026-05-02 — Tri unifié des radar cards.
+//
+// Score = `computeKpiScore(card.kpis, articleLevel).total` — exactement le
+// score affiché par RadarKeywordCard en mode `displayMode='kpi'`. Ce calcul
+// front garantit que "ce que je vois trié = ce que je vois affiché", peu
+// importe l'âge des cards persistées (recalcul à la demande).
+//
+// Voir docs/scoring-kpi-vs-relevance.md pour la séparation KPI / Pertinence.
 const radarCards = computed<RadarCard[]>(() => scanResult.value?.cards ?? [])
 const radarSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
-  { key: 'score', label: 'Score March\u00e9' },
+  { key: 'score', label: 'Score KPI' },
 ]
 const { sorted: filteredCards, sortState: radarSortState } = useSortableList<RadarCard>({
   items: radarCards,
   getValue: (card, key) => {
     if (key === 'az') return card.keyword
-    if (key === 'score') return card.marketScore?.total ?? null
+    if (key === 'score') {
+      try {
+        return computeKpiScore(card.kpis, props.articleLevel ?? 'intermediaire').total
+      } catch {
+        // KPIs incomplets (ne devrait pas arriver) → fallback marketScore backend.
+        // PAS de fallback combinedScore : c'est un score legacy hybride qui
+        // contient des signaux pertinence interdits côté Radar.
+        return card.marketScore?.total ?? null
+      }
+    }
     return null
   },
   filter: (card) => matchesCpcFilter(card.kpis.cpc, cpcFilter.value),

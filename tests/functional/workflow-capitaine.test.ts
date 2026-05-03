@@ -327,7 +327,7 @@ describe('Workflow ② — Capitaine Validation', () => {
       // 6. Smart navigation
       expect(computeSmartTab(checks)).toBe('lieutenants')
 
-      // eslint-disable-next-line no-console
+       
       console.log('\n=== WORKFLOW ② CAPITAINE PIPELINE ===')
       console.log(`Captain: "${CAPTAIN_KEYWORD}" (${level})`)
       console.log(`Composition: ${composition.warningCount} warnings, allPass=${composition.allPass}`)

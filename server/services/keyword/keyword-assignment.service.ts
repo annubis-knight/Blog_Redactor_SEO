@@ -1,4 +1,5 @@
 import { getCocoons, getKeywordsByCocoon, saveArticleKeywords, getArticleKeywordsByCocoon } from '../infra/data.service.js'
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- Keyword/Cocoon kept for type narrowing in future migrations
 import type { ArticleKeywords, Keyword, Cocoon } from '../../../shared/types/index.js'
 import { log } from '../../utils/logger.js'
 

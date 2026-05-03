@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { ref, computed, nextTick } from 'vue'
+import { ref, computed } from 'vue'
 
 // Mock API service before importing composables
 vi.mock('../../../src/services/api.service', () => ({

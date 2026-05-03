@@ -148,7 +148,7 @@ export async function getTheme(): Promise<Theme> {
 }
 
 export async function getSilos(): Promise<Silo[]> {
-  const cocoons = await loadArticlesDb()
+  const _cocoons = await loadArticlesDb()
   const silosRes = await pool.query(`SELECT id, nom, description FROM silos ORDER BY id`)
   const cocoonsRes = await pool.query(`SELECT id, silo_id, nom FROM cocoons ORDER BY id`)
 
@@ -384,7 +384,7 @@ export async function addArticlesToCocoon(
   let nextId = (maxRes.rows[0].max_id as number) + 1
 
   const created: Article[] = []
-  const now = new Date().toISOString()
+  const _now = new Date().toISOString()
 
   for (const article of articles) {
     const slug = article.slug?.trim() || article.title
@@ -611,6 +611,33 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     paaByKeyword.set(p.keyword, list)
   }
 
+  // 2026-05-02 — Hydrate marketScore + relevanceScore depuis radar_explorations.
+  // Les scores ne sont PAS persistés dans captain_explorations (par design :
+  // ils sont calculés, pas saisis). On les rapatrie ici depuis le scan_result
+  // du Radar qui les a déjà calculés. Ainsi, restoreFromHistory côté front
+  // dispose de relevanceScore.total pour l'affichage et le tri Capitaine.
+  // Voir docs/scoring-kpi-vs-relevance.md → Statut de la migration.
+  const t3 = Date.now()
+  const radarRes = await pool.query(
+    `SELECT scan_result FROM radar_explorations WHERE article_id = $1`, [articleId]
+  )
+  ops.push({ operation: 'select', table: 'radar_explorations', rowCount: radarRes.rows.length, ms: Date.now() - t3 })
+  const scoresByKeyword = new Map<string, { marketScore?: unknown; relevanceScore?: unknown }>()
+  if (radarRes.rows[0]?.scan_result) {
+    const scanResult = radarRes.rows[0].scan_result as { cards?: Array<{ keyword: string; marketScore?: unknown; relevanceScore?: unknown | null }> }
+    for (const card of scanResult.cards ?? []) {
+      scoresByKeyword.set(card.keyword, {
+        marketScore: card.marketScore,
+        relevanceScore: card.relevanceScore,
+      })
+    }
+  }
+  log.debug('[captain-explorations] scores lookup', {
+    articleId,
+    scoresFound: scoresByKeyword.size,
+    captainKeywords: res.rows.map(r => r.keyword),
+  })
+
   const data = res.rows.map(t => {
     // Rebuild KPIs from keyword_metrics columns. If the row exists in DB we expose
     // non-null values, otherwise an empty array (the UI will show "missing metrics").
@@ -626,6 +653,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       kpis.push({ name: 'autocomplete', rawValue: autoPos })
       kpis.push({ name: 'paa', rawValue: 0 })
     }
+    const scores = scoresByKeyword.get(t.keyword)
     return {
       keyword: t.keyword,
       kpis,
@@ -634,6 +662,10 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       paaQuestions: paaByKeyword.get(t.keyword) ?? [],
       aiPanelMarkdown: t.ai_panel_markdown ?? null,
       exploredAt: t.explored_at?.toISOString() ?? null,
+      // Scores hydratés depuis radar_explorations (peuvent être absents si la
+      // card n'était pas dans le scan, ex: keyword saisi manuellement par l'utilisateur).
+      marketScore: (scores?.marketScore ?? null) as CaptainValidationEntry['marketScore'],
+      relevanceScore: (scores?.relevanceScore ?? null) as CaptainValidationEntry['relevanceScore'],
     }
   })
   return { data, dbOps: ops }

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import VerdictBadge from '../../../src/components/intent/VerdictBadge.vue'
 import ConfidenceBar from '../../../src/components/intent/ConfidenceBar.vue'

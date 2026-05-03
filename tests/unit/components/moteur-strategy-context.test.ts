@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'

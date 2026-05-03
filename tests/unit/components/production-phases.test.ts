@@ -49,7 +49,7 @@ vi.mock('../../../src/stores/strategy/theme-config.store', () => ({
 import { apiPost, apiGet, apiPut } from '../../../src/services/api.service'
 const mockApiPost = vi.mocked(apiPost)
 const mockApiGet = vi.mocked(apiGet)
-const mockApiPut = vi.mocked(apiPut)
+const _mockApiPut = vi.mocked(apiPut)
 
 const strategyStepStub = {
   name: 'StrategyStep',

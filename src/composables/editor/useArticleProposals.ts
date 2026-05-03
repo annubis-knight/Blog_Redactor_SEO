@@ -3,7 +3,7 @@ import { checkKeywordComposition } from '@/composables/seo/useCompositionCheck'
 import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
-import type { ProposedArticle, CocoonSuggestRequest, SuggestedTopic } from '@shared/types/index.js'
+import type { ProposedArticle, CocoonSuggestRequest } from '@shared/types/index.js'
 import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 
@@ -323,7 +323,7 @@ export function useArticleProposals(params: {
       try {
         await apiDelete(`/articles/${article.dbId}`)
         log.info('Article deleted from DB', { articleId: article.dbId })
-      } catch (err) {
+      } catch {
         log.warn('Article delete failed (may already be removed)', { articleId: article.dbId })
       }
     }

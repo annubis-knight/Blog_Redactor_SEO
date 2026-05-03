@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { defineComponent, h, nextTick } from 'vue'
+import { defineComponent, nextTick } from 'vue'
 import ErrorBoundary from '../../../src/components/shared/ErrorBoundary.vue'
 
 // A child component that throws during render (not setup — render errors are caught by onErrorCaptured)
@@ -8,6 +8,8 @@ const ThrowingChild = defineComponent({
   name: 'ThrowingChild',
   render() {
     throw new Error('Test error')
+     
+    return null
   },
 })
 

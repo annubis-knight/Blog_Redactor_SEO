@@ -200,9 +200,7 @@ router.get('/articles/:id/external-cache', async (req, res) => {
       return
     }
     const key = slugify(keyword)
-    const [autocomplete] = await Promise.all([
-      getCached('autocomplete', key),
-    ])
+    const autocomplete = await getCached('autocomplete', key)
     res.json({
       data: {
         autocomplete: autocomplete ?? null,

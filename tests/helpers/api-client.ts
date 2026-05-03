@@ -22,10 +22,11 @@ export async function apiRequest<T>(
   body?: unknown,
 ): Promise<ApiResponse<T>> {
   const url = path.startsWith('http') ? path : `${BASE_URL}${path}`
+  const hasBody = method !== 'GET' && body !== undefined
   const res = await fetch(url, {
     method,
-    headers: body !== undefined ? { 'Content-Type': 'application/json' } : {},
-    body: body !== undefined ? JSON.stringify(body) : undefined,
+    headers: hasBody ? { 'Content-Type': 'application/json' } : {},
+    ...(hasBody ? { body: JSON.stringify(body) } : {}),
   })
 
   let json: unknown = null

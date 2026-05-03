@@ -9,7 +9,7 @@ import {
 
 const YEAR_MS = 365 * 24 * 3600 * 1000
 
-async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
+async function _getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
   const cached = await getCached<T>(cacheType, key)
   if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
   log.debug(`Cache MISS: ${key}`)
@@ -43,7 +43,7 @@ import type {
   CertaintyIndex,
 } from '../../../shared/types/index.js'
 
-const CACHE_DIR = 'intent'
+const _CACHE_DIR = 'intent'
 const SERP_MODULE_TYPES: SerpModuleType[] = ['local_pack', 'featured_snippet', 'people_also_ask', 'video', 'images', 'shopping', 'knowledge_graph', 'top_stories']
 
 const MODULE_SCORES: Record<SerpModuleType, { category: string; score: number; maxScore: number }> = {

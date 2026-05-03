@@ -35,7 +35,7 @@ const mockEditors: Array<ReturnType<typeof createMockEditor>> = []
 vi.mock('@tiptap/vue-3', () => ({
   useEditor: vi.fn((options: any) => {
     // Determine which section based on call order: toc(0), intro(1), body(2), conclusion(3)
-    const idx = mockEditors.length
+    const _idx = mockEditors.length
     const mock = createMockEditor(options.content || '')
     mockEditors.push(mock)
     if (options.onUpdate) {

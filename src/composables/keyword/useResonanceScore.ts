@@ -262,6 +262,7 @@ export function useKeywordRadar() {
    * par `mergeFromRadarSource`.
    */
   function mergeRadarPayload(payload: { generatedKeywords: RadarKeyword[]; scanResult: KeywordRadarScanResult; context?: RadarExplorationData['context'] }) {
+    // 1) Merge des keywords bruts (chips pré-scan)
     const seenKeys = new Set(
       generatedKeywords.value.map(k => k.keyword.trim().toLowerCase()),
     )
@@ -276,9 +277,34 @@ export function useKeywordRadar() {
     if (additions.length > 0) {
       generatedKeywords.value = [...generatedKeywords.value, ...additions]
     }
-    if (!scanResult.value && payload.scanResult) {
-      scanResult.value = payload.scanResult
+
+    // 2) Merge du scanResult — la SOURCE du v-for sur Radar.
+    // Si la mémoire est vide → adopte le payload tel quel.
+    // Sinon → merge les `cards` par keyword (sans doublon) et garde les
+    // metadata mémoire (globalScore, heatLevel) — le caller verra immédiatement
+    // les nouvelles cartes apparaître dans la liste triée.
+    if (payload.scanResult) {
+      if (!scanResult.value) {
+        scanResult.value = payload.scanResult
+      } else {
+        const seenCardKeys = new Set(
+          scanResult.value.cards.map(c => c.keyword.trim().toLowerCase()),
+        )
+        const cardAdditions = payload.scanResult.cards.filter(c => {
+          const k = c.keyword.trim().toLowerCase()
+          if (seenCardKeys.has(k)) return false
+          seenCardKeys.add(k)
+          return true
+        })
+        if (cardAdditions.length > 0) {
+          scanResult.value = {
+            ...scanResult.value,
+            cards: [...scanResult.value.cards, ...cardAdditions],
+          }
+        }
+      }
     }
+
     if (!_lastScanContext && payload.context) {
       _lastScanContext = payload.context
     }

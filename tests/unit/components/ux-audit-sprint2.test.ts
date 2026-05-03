@@ -183,7 +183,7 @@ describe('SeoPanel indicator sub-components — color tokens', () => {
     resolve(__dirname, '../../../src/components/panels/indicators/indicators-shared.css'),
     'utf-8',
   )
-  const metaVue = readFileSync(
+  const _metaVue = readFileSync(
     resolve(__dirname, '../../../src/components/panels/indicators/MetaCard.vue'),
     'utf-8',
   )

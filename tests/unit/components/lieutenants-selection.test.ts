@@ -629,7 +629,7 @@ describe('LieutenantsSelection', () => {
   // --- IA Proposal ---
   describe('IA proposal', () => {
     it('auto-triggers proposeLieutenants after SERP success', async () => {
-      const w = await mountWithResults()
+      const _w = await mountWithResults()
       await nextTick()
       // The watcher on serpResult should call iaStartStream
       expect(iaStreaming.startStream).toHaveBeenCalledWith(
@@ -643,7 +643,7 @@ describe('LieutenantsSelection', () => {
     })
 
     it('sends correct payload to propose-lieutenants endpoint', async () => {
-      const w = await mountWithResults({ wordGroups: WORD_GROUPS, rootKeywords: ['seo'] })
+      const _w = await mountWithResults({ wordGroups: WORD_GROUPS, rootKeywords: ['seo'] })
       await nextTick()
       expect(iaStreaming.startStream).toHaveBeenCalledWith(
         expect.stringContaining('/api/keywords/seo%20local/propose-lieutenants'),

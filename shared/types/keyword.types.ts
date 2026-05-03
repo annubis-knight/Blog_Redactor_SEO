@@ -1,5 +1,6 @@
 import type { ProposeLieutenantsHnNode } from './serp-analysis.types.js'
 import type { ArticleLevel, PaaQuestionValidate } from './keyword-validate.types.js'
+import type { MarketScoreResult, RelevanceScoreResult } from './scoring.types.js'
 
 /** Lightweight KPI for persistence — only name and raw value */
 export interface KpiSummary {
@@ -53,6 +54,19 @@ export interface CaptainValidationEntry {
   paaQuestions?: PaaQuestionValidate[]
   aiPanelMarkdown?: string | null           // AI-generated analysis per keyword
   exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
+  /**
+   * 2026-05-02 — Score Marché (`computeMarketScore`) et Score Pertinence
+   * (`computeRelevanceScore`) hydratés à la lecture (pas persistés en DB).
+   *
+   * Backend : `getCaptainExplorations` rapatrie ces scores depuis
+   * `radar_explorations.scan_result.cards[k]` (single source of truth) au
+   * moment de servir la liste, pour que `restoreFromHistory` puisse
+   * reconstruire des cards Capitaine avec leur Score Pertinence affichable.
+   *
+   * Voir docs/scoring-kpi-vs-relevance.md → Statut de la migration.
+   */
+  marketScore?: MarketScoreResult | null
+  relevanceScore?: RelevanceScoreResult | null
 }
 
 /** Rich captain object with validation history and AI panel content */

@@ -5,7 +5,6 @@ import {
   computeCompositeScore,
 } from '../external/dataforseo.service.js'
 import { log } from '../../utils/logger.js'
-import { getKeywordsByCocoon } from '../infra/data.service.js'
 import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
 
 async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
@@ -18,7 +17,6 @@ async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetc
 }
 import type {
   KeywordType,
-  RelatedKeyword,
   ClassifiedKeyword,
   KeywordDiscoveryResult,
   DomainDiscoveryResult,

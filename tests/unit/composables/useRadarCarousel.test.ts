@@ -1,5 +1,4 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { nextTick } from 'vue'
 import type { RadarCard } from '../../../shared/types/intent.types'
 import type { ValidateResponse } from '../../../shared/types/index'
 

@@ -32,7 +32,7 @@ const selectedKeyword = ref<string | null>(null)
 const expandedKeyword = ref<string | null>(null)
 
 // NLP analysis composable
-const { nlpState, nlpScoresForVerdict, analyzeKeywords: nlpAnalyze, autoReactivate } = useNlpAnalysis()
+const { nlpState: _nlpState, nlpScoresForVerdict, analyzeKeywords: nlpAnalyze, autoReactivate } = useNlpAnalysis()
 const nlpScoresRef = toRef(() => nlpScoresForVerdict.value)
 
 // Multi-source verdict composable (with optional NLP signals)

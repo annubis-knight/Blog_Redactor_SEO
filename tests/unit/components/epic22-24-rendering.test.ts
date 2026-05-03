@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, VueWrapper } from '@vue/test-utils'
+import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
 // ---- Mocks ----
@@ -272,7 +272,7 @@ describe('ArticleCard — opportunity badge', () => {
 // ===================================================================
 
 import KeywordAuditTable from '../../../src/components/keywords/KeywordAuditTable.vue'
-import type { KeywordAuditResult, RedundancyPair } from '../../../shared/types/index'
+import type { KeywordAuditResult } from '../../../shared/types/index'
 
 function makeKw(overrides: Partial<KeywordAuditResult> = {}): KeywordAuditResult {
   return {

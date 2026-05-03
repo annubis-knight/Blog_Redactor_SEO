@@ -31,7 +31,7 @@ describe('useArticleResults', () => {
     it('resets intent, local, and discovery stores', () => {
       const intentStore = useIntentStore()
       const localStore = useLocalStore()
-      const discoveryStore = useKeywordDiscoveryStore()
+      const _discoveryStore = useKeywordDiscoveryStore()
 
       // Populate stores with some data
       intentStore.intentData = { dominantIntent: 'informational' } as any

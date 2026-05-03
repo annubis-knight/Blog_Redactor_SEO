@@ -479,7 +479,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
       const hnTotal = hnRecurrence?.length ?? 0
       const hnAbove10 = hnRecurrence?.filter(h => h.percent >= 10).length ?? 0
 
-      // eslint-disable-next-line no-console
+       
       console.log('\n=== WORKFLOW ③ FULL PIPELINE ===')
       console.log(`Captain: "${CAPTAIN_KEYWORD}" (${ARTICLE_LEVEL})`)
       console.log(`Roots: ${ROOT_KEYWORDS.join(', ')}`)

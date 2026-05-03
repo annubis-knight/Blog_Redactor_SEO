@@ -183,7 +183,7 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
 
     it('should load at least the captain keyword cache', () => {
       // Root keywords may or may not be cached — captain always is
-      // eslint-disable-next-line no-console
+       
       console.log(`[E2E] Cached keywords loaded: ${serpResults.length}/${[CAPTAIN_KEYWORD, ...ROOT_KEYWORDS].length}`)
       for (const r of serpResults) {
         console.log(`  - "${r.keyword}": ${r.competitors.length} competitors, ${r.paaQuestions.length} PAA`)
@@ -241,7 +241,7 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
       const captainOnly = serpResults[0].competitors.length
       const merged = mergedResult.competitors.length
       const enrichment = merged - captainOnly
-      // eslint-disable-next-line no-console
+       
       console.log(`[E2E] Captain-only: ${captainOnly} competitors → Merged: ${merged} competitors (+${enrichment} from roots)`)
       console.log(`[E2E] PAA: ${mergedResult.paaQuestions.length} unique questions`)
       expect(merged).toBeGreaterThanOrEqual(captainOnly)
@@ -274,7 +274,7 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
 
     it('should report ≥10% recurrence threshold headings', () => {
       const above10 = hnRecurrence.filter(h => h.percent >= 10)
-      // eslint-disable-next-line no-console
+       
       console.log(`[E2E] Headings ≥10%: ${above10.length} (total unique headings: ${hnRecurrence.length})`)
       if (above10.length > 0) {
         for (const h of above10.slice(0, 10)) {
@@ -360,7 +360,7 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
     })
 
     it('should report data quality summary', () => {
-      // eslint-disable-next-line no-console
+       
       console.log(`[E2E] Prompt length: ${prompt.length} chars`)
       console.log(`[E2E] Has PAA data: ${mergedResult.paaQuestions.length > 0}`)
       console.log(`[E2E] Has Hn data: ${hnRecurrence.filter(h => h.percent >= 10).length > 0}`)
@@ -380,7 +380,7 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
       const hnTotal = hnRecurrence?.length ?? 0
       const hnAbove10 = hnRecurrence?.filter(h => h.percent >= 10).length ?? 0
 
-      // eslint-disable-next-line no-console
+       
       console.log('\n=== LIEUTENANT TAB E2E PIPELINE ===')
       console.log(`Captain keyword: "${CAPTAIN_KEYWORD}"`)
       console.log(`Article level: ${ARTICLE_LEVEL}`)

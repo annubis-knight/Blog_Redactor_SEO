@@ -84,11 +84,11 @@ describe('useKeywordRadar — timer cleanup', () => {
 
     const { useKeywordRadar } = await import('../../../src/composables/keyword/useResonanceScore')
 
-    let radarInstance: ReturnType<typeof useKeywordRadar> | null = null
+    let _radarInstance: ReturnType<typeof useKeywordRadar> | null = null
 
     const TestComp = defineComponent({
       setup() {
-        radarInstance = useKeywordRadar()
+        _radarInstance = useKeywordRadar()
         return () => h('div')
       },
     })
@@ -102,7 +102,7 @@ describe('useKeywordRadar — timer cleanup', () => {
     // Since _startProgressEstimation is private, we call scan which triggers it
     // But that requires mocking the API. Instead, verify that on unmount, clearInterval is called.
 
-    const callsBefore = clearIntervalSpy.mock.calls.length
+    const _callsBefore = clearIntervalSpy.mock.calls.length
 
     // Unmount the component
     app.unmount()
@@ -126,7 +126,7 @@ describe('useKeywordRadar — timer cleanup', () => {
 describe('useKeywordDiscoveryTab — relevanceScores bounded', () => {
   it('relevanceScores is bounded to 500 entries max after mergeScores', async () => {
     // Mock all additional dependencies
-    vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', async (importOriginal) => {
+    vi.doMock('../../../src/composables/keyword/useKeywordDiscoveryTab', async (importOriginal) => {
       return await importOriginal()
     })
 

@@ -16,7 +16,7 @@ export type ModifierKind = 'local' | 'persona' | null
  */
 export function detectModifiers(keyword: string): ModifierKind[] {
   const words = keyword.trim().split(/\s+/)
-  const result: ModifierKind[] = new Array(words.length).fill(null)
+  const result: ModifierKind[] = Array.from({ length: words.length }, () => null)
 
   for (let i = 0; i < words.length; i++) {
     const raw = words[i]!

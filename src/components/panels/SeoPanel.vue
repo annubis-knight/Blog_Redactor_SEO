@@ -21,7 +21,7 @@ const props = withDefaults(defineProps<{
 
 const seoStore = useSeoStore()
 const briefStore = useBriefStore()
-const articleKeywordsStore = useArticleKeywordsStore()
+const _articleKeywordsStore = useArticleKeywordsStore()
 
 // Cannibalization detection
 const articleIdRef = computed(() => props.articleId || briefStore.briefData?.article?.id || 0)

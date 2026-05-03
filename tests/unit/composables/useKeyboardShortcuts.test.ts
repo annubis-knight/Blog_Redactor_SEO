@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { defineComponent } from 'vue'
 import { useKeyboardShortcuts } from '../../../src/composables/ui/useKeyboardShortcuts'

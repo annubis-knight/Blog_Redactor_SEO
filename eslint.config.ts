@@ -28,5 +28,34 @@ export default defineConfigWithVueTs(
 
   ...pluginOxlint.buildFromOxlintConfigFile('.oxlintrc.json'),
 
+  // Project-wide rule overrides — voir tech-spec stabilisation-codebase §S1.2
+  {
+    name: 'app/rule-overrides',
+    rules: {
+      // Vue <script setup>: defineProps() retourne `props` qu'on lit via template — faux positif courant
+      // Préfixer par _ pour silencer (ex: const _props = defineProps<...>())
+      '@typescript-eslint/no-unused-vars': [
+        'error',
+        {
+          argsIgnorePattern: '^_',
+          varsIgnorePattern: '^(_|props$|emit$)', // props/emit dans <script setup> Vue
+          caughtErrorsIgnorePattern: '^_',
+          destructuredArrayIgnorePattern: '^_',
+        },
+      ],
+      // `any` en warn — chantier de typage à mener séparément (cf. tech-spec)
+      '@typescript-eslint/no-explicit-any': 'warn',
+    },
+  },
+
+  // Scripts CJS Node : require() autorisé
+  {
+    name: 'app/scripts-cjs',
+    files: ['scripts/**/*.cjs'],
+    rules: {
+      '@typescript-eslint/no-require-imports': 'off',
+    },
+  },
+
   skipFormatting,
 )

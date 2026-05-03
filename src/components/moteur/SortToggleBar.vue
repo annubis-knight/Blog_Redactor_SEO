@@ -76,32 +76,34 @@ function ariaSort(option: SortOption, state: SortState): 'ascending' | 'descendi
 </template>
 
 <style scoped>
-/* Même DA verte que TabCachePanel/TabLoadPrompt pour cohérence visuelle dans le Moteur. */
+/*
+ * 2026-05-02 — Refonte design : sobre, neutre, moderne.
+ * Plus de vert vif (la DA verte est réservée au TabCachePanel/TabLoadPrompt
+ * qui sont des éléments contextuels persistants). Ici on a une barre d'outils
+ * fonctionnelle, donc tons gris neutres avec accent foncé sur l'état actif.
+ */
 .stb {
   display: flex;
   align-items: center;
-  gap: 0.625rem;
-  padding: 0.375rem 0.625rem;
-  background: linear-gradient(180deg, rgba(22, 163, 74, 0.08) 0%, rgba(22, 163, 74, 0.04) 100%);
-  border: 1px solid rgba(22, 163, 74, 0.25);
-  border-radius: 10px;
+  gap: 0.5rem;
+  padding: 0.375rem 0;
+  margin: 0 0 0.5rem 0;
   font-size: 0.8125rem;
   flex-wrap: wrap;
+  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  padding-bottom: 0.5rem;
 }
 
 .stb__count {
-  font-weight: 700;
-  color: #15803d;
   font-size: 0.75rem;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-  margin-right: 0.25rem;
+  color: var(--color-text-muted, #64748b);
+  font-weight: 500;
 }
 
 .stb__chips {
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
+  gap: 0.25rem;
   flex-wrap: wrap;
 }
 
@@ -109,43 +111,41 @@ function ariaSort(option: SortOption, state: SortState): 'ascending' | 'descendi
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  padding: 0.25rem 0.625rem;
-  background: rgba(255, 255, 255, 0.7);
-  border: 1px solid rgba(22, 163, 74, 0.35);
-  border-radius: 9999px;
+  padding: 0.25rem 0.5rem;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
   font-family: inherit;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: #166534;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--color-text-muted, #64748b);
   cursor: pointer;
-  transition: all 0.15s;
+  transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 .stb__chip:hover {
-  background: #fff;
-  border-color: rgba(22, 163, 74, 0.7);
-  transform: translateY(-1px);
+  background: var(--color-bg-soft, #f1f5f9);
+  color: var(--color-text, #1e293b);
 }
 
 .stb__chip--active {
-  background: #166534;
+  background: var(--color-text, #1e293b);
   color: #fff;
-  border-color: #166534;
+  border-color: var(--color-text, #1e293b);
 }
 .stb__chip--active:hover {
-  background: #15803d;
-  border-color: #15803d;
+  background: #0f172a;
   color: #fff;
 }
 
 .stb__chip-arrow {
   font-family: var(--font-mono, monospace);
-  font-size: 0.75rem;
-  opacity: 0.7;
-  min-width: 12px;
+  font-size: 0.6875rem;
+  opacity: 0.5;
+  min-width: 10px;
   text-align: center;
 }
 .stb__chip--active .stb__chip-arrow {
-  opacity: 1;
+  opacity: 0.95;
 }
 
 .stb__filters {
@@ -153,7 +153,7 @@ function ariaSort(option: SortOption, state: SortState): 'ascending' | 'descendi
   align-items: center;
   gap: 0.375rem;
   margin-left: auto;
-  padding-left: 0.5rem;
-  border-left: 1px solid rgba(22, 163, 74, 0.2);
+  padding-left: 0.625rem;
+  border-left: 1px solid var(--color-border, #e2e8f0);
 }
 </style>

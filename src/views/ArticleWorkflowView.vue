@@ -87,7 +87,7 @@ function goToStep(step: typeof currentStep.value) {
   currentStep.value = step
 }
 
-function isStepCompleted(stepId: string): boolean {
+function _isStepCompleted(stepId: string): boolean {
   const stepOrder = steps.map(s => s.id)
   const currentIdx = stepOrder.indexOf(currentStep.value)
   const stepIdx = stepOrder.indexOf(stepId as any)
@@ -137,7 +137,7 @@ const {
 } = useInternalLinking(computed(() => articleId.value ?? 0))
 
 // Scoring composables — watch editorStore.content reactively
-const { seoStore } = useSeoScoring(
+const { seoStore: _seoStore } = useSeoScoring(
   () => keywordsStore.keywords.length > 0 ? keywordsStore.keywords : (briefStore.briefData?.keywords ?? []),
   () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],

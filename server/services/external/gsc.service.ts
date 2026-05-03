@@ -225,7 +225,7 @@ export async function analyzeKeywordGap(
   const articleRows = performance.rows.filter((r) =>
     r.keys.some((k) => k.includes(articleUrl)),
   )
-  const gscKeywords = new Set(
+  const _gscKeywords = new Set(
     articleRows.map((r) => r.keys[0]?.toLowerCase()).filter(Boolean),
   )
   const targetSet = new Set(targetKeywords.map((k) => k.toLowerCase()))

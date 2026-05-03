@@ -224,12 +224,14 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 
 **Critère "Score" par onglet (rappel : voir [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md))** :
 
-| Onglet | Score utilisé pour le tri | Source |
-|---|---|---|
-| Radar (`displayMode='kpi'`) | **Score Marché** (`marketScore.total`) | KPI affiché sur la card |
-| Capitaine (`displayMode='relevance'`) | **Score Pertinence** (`relevanceScore.total`) | KPI affiché sur la card |
-| Lieutenants | **Score IA** (`score`, 0-100) | Score IA de la proposition |
-| Lexique | **Densité** (`density`) + critère bonus **Pertinence douleur** (Jaccard `term × painPoint`, visible si painPoint présent) | TF-IDF + utilitaire `jaccardWithPainPoint` |
+| Onglet | Score utilisé pour le tri | Source des données | Cohérence avec card |
+|---|---|---|---|
+| Radar (`displayMode='kpi'`) | **Score KPI** | `computeKpiScore(card.kpis, articleLevel).total` (recalcul front) | ✅ Identique au score affiché |
+| Capitaine (`displayMode='relevance'`) | **Score Pertinence** | `card.relevanceScore.total` (strict, `null` si painPoint absent) | ✅ Identique au score affiché. `null` → card affiche `—`, item placé en bas du tri |
+| Lieutenants | **Score IA** (`score`, 0-100) | Score IA de la proposition | — |
+| Lexique | **Densité** (`density`) + critère bonus **Pertinence douleur** (Jaccard `term × painPoint`, visible si painPoint présent) | TF-IDF + utilitaire `jaccardWithPainPoint` | — |
+
+**Migration 2026-05-02** : avant cette date, les cards Capitaine affichaient `combinedScore` (legacy hybride) malgré le label "Score pertinence". Maintenant elles affichent strictement `relevanceScore.total`, ou `—` si indisponible. Cf. [scoring-kpi-vs-relevance.md → Statut de la migration](./scoring-kpi-vs-relevance.md#statut-de-la-migration).
 | **BasketStrip** | `BasketStrip` | Panier inline de mots-clés collectés (discovery, radar, pain-translator). Visible en haut de tous les onglets Moteur. | `selectedArticle` && `!basketStore.isEmpty` | Mutation basket + chips |
 | **BasketFloatingPanel (Sprint 9)** | `BasketFloatingPanel` | Panier flottant coin bas-gauche (au-dessus de `CostLogPanel`). Pill avec compteur → panneau latéral slide-in (300 px) groupé par source. Visible en permanence sur tous les onglets Moteur. | Montage `MoteurView` | Mutation basket (remove, clear) |
 | **Navigation bas** | inline | Retour cocon / continuer vers Rédaction | — | Router push |

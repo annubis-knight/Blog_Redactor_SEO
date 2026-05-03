@@ -3,7 +3,7 @@
  * One-shot script: converts relative imports inside moved composables
  * to use the @/ and @shared/ aliases (more robust to relocation).
  */
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()

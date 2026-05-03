@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useBriefStore } from '@/stores/strategy/brief.store'
 import { useOutlineStore } from '@/stores/article/outline.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -74,7 +74,7 @@ async function loadMicroContext() {
       directives.value = data.directives ?? ''
       targetWordCount.value = data.targetWordCount ?? undefined
     }
-  } catch (err) {
+  } catch (_err) {
     log.warn('[BriefStructureStep] No micro-context found', { articleId: props.articleId })
   }
 }

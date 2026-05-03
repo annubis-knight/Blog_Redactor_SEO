@@ -376,7 +376,7 @@ describe('Workflow ① — Phase Générer', () => {
   // -----------------------------------------------------------------------
   describe('Pipeline summary', () => {
     it('logs Phase ① workflow metrics', () => {
-      // eslint-disable-next-line no-console
+       
       console.log('\n=== WORKFLOW ① GÉNÉRER PIPELINE ===')
       console.log('Tabs: discovery → radar')
       console.log('Checks: discovery_done, radar_done')

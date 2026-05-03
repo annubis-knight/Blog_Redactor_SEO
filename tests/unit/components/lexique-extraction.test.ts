@@ -196,8 +196,8 @@ describe('LexiqueExtraction', () => {
     })
 
     it('shows loading text while extracting', async () => {
-      let resolvePromise!: (v: unknown) => void
-      mockApiPost.mockReturnValue(new Promise(r => { resolvePromise = r }))
+      let _resolvePromise!: (v: unknown) => void
+      mockApiPost.mockReturnValue(new Promise(r => { _resolvePromise = r }))
 
       const wrapper = mountComponent()
       wrapper.find('[data-testid="btn-extract"]').trigger('click')

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount, shallowMount } from '@vue/test-utils'
 import CaptainInput from '../../../src/components/moteur/CaptainInput.vue'
 import CaptainVerdictPanel from '../../../src/components/moteur/CaptainVerdictPanel.vue'

@@ -1,4 +1,4 @@
-import { computed, type Ref, unref, type MaybeRef } from 'vue'
+import { computed, unref, type MaybeRef } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { useLinkingStore } from '@/stores/keyword/linking.store'
 import { useEditorStore } from '@/stores/article/editor.store'
@@ -23,7 +23,7 @@ export function useInternalLinking(articleId: MaybeRef<number>) {
   }
 
   function applySuggestion(suggestion: LinkSuggestion, editor: Editor) {
-    const content = editor.getHTML()
+    const _content = editor.getHTML()
     const anchor = suggestion.suggestedAnchor
 
     // Find the anchor text in the editor content

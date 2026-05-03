@@ -1,5 +1,5 @@
 import type { KeywordType, KeywordStatus } from './keyword.types.js'
-import type { RelatedKeyword, KeywordOverview } from './dataforseo.types.js'
+import type { RelatedKeyword } from './dataforseo.types.js'
 
 /** Composite score for a single keyword (0-100) */
 export interface KeywordCompositeScore {

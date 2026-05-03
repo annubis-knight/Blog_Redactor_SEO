@@ -31,7 +31,7 @@ vi.stubGlobal('fetch', mockFetch)
 import { fetchSerp, fetchPaa } from '../../../server/services/external/dataforseo.service'
 import { extractHeadings, extractTextContent, analyzeSerpCompetitors } from '../../../server/services/external/serp-analysis.service'
 
-const mockFetchSerp = vi.mocked(fetchSerp)
+const _mockFetchSerp = vi.mocked(fetchSerp)
 
 beforeEach(() => {
   vi.clearAllMocks()
@@ -105,7 +105,7 @@ describe('extractTextContent', () => {
 
 describe('analyzeSerpCompetitors', () => {
   it('fetches SERP and PAA when service is called (cache handled at route level post-Sprint 15.5-bis)', async () => {
-    const result = await analyzeSerpCompetitors('seo', 'pilier')
+    const _result = await analyzeSerpCompetitors('seo', 'pilier')
     expect(fetchSerp).toHaveBeenCalledWith('seo')
     expect(fetchPaa).toHaveBeenCalledWith('seo')
   })

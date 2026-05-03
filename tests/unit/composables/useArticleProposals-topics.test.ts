@@ -185,7 +185,7 @@ describe('useArticleProposals — topics', () => {
   })
 
   it('watcher auto-generates topics when arriving at step 5 with empty topics', async () => {
-    const { store, composable } = setupComposable()
+    const { store, composable: _composable } = setupComposable()
     store.requestSuggestion = vi.fn().mockResolvedValue('["Auto sujet"]')
     store.saveStrategy = vi.fn()
 
@@ -199,7 +199,7 @@ describe('useArticleProposals — topics', () => {
   })
 
   it('watcher does NOT auto-generate when topics already exist', async () => {
-    const { store, composable } = setupComposable()
+    const { store, composable: _composable } = setupComposable()
     store.strategy!.suggestedTopics = [{ id: '1', topic: 'Existing', checked: true }]
     store.requestSuggestion = vi.fn()
 

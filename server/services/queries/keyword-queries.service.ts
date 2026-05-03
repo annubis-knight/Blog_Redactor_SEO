@@ -10,7 +10,6 @@
  * des JOIN SQL, sans introduire de nouvelles tables.
  */
 import { query } from '../../db/client.js'
-import { log } from '../../utils/logger.js'
 import {
   getKeywordMetrics,
   type KeywordMetrics,
@@ -20,10 +19,6 @@ import {
   getKeywordIntentAnalysis,
   type KeywordIntentAnalysis,
 } from '../intent/keyword-intent-analysis.service.js'
-import {
-  getKeywordDiscovery,
-  type KeywordDiscovery,
-} from '../keyword/keyword-discovery-db.service.js'
 import { getRadarExploration } from '../infra/radar-exploration.service.js'
 import {
   getArticleKeywords,

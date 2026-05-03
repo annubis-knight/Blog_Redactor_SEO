@@ -36,13 +36,21 @@ function handleSelect(variant: KeywordRootVariant) {
   emit('select', variant)
 }
 
-// Étape 3C — Score moyen des racines (information contextuelle).
-// On ne modifie pas le combinedScore back ; on expose ici la moyenne des
-// scores pertinence des racines pour donner à l'utilisateur le signal SEO :
-//   "même si la chaîne exacte est faible, ses racines portent ce score-là".
+// Étape 3C — Score moyen Pertinence des racines (information contextuelle).
+// 2026-05-02 — Migré vers relevanceScore.total (au lieu de combinedScore legacy).
+// Cohérent avec le score Pertinence affiché par la card Capitaine principale.
+// Voir docs/scoring-kpi-vs-relevance.md.
+//
+// Si un variant n'a pas de relevanceScore (painPoint absent), il est traité
+// comme 0 dans la moyenne — c'est honnête : on ne peut pas inventer un score
+// pertinence quand la donnée d'alignement n'existe pas.
+function relevanceTotalOf(v: { card: RadarCard }): number {
+  return v.card.relevanceScore?.total ?? 0
+}
+
 const rootsAverageScore = computed(() => {
   if (!props.variants || props.variants.length === 0) return null
-  const sum = props.variants.reduce((acc, v) => acc + (v.card.combinedScore ?? 0), 0)
+  const sum = props.variants.reduce((acc, v) => acc + relevanceTotalOf(v), 0)
   return Math.round(sum / props.variants.length)
 })
 
@@ -66,7 +74,7 @@ const rootsAverageColor = computed(() => {
         :key="variant.keyword"
         class="roots-sidebar__item"
         :class="{ 'roots-sidebar__item--active': variant.keyword === activeKeyword }"
-        :title="`Score pertinence : ${variant.card.combinedScore}/100 · verdict ${variant.validation.verdict.level}`"
+        :title="variant.card.relevanceScore?.total != null ? `Score Pertinence : ${variant.card.relevanceScore.total}/100 · verdict ${variant.validation.verdict.level}` : `Score Pertinence indisponible · verdict ${variant.validation.verdict.level}`"
         data-testid="root-sidebar-item"
         @click="handleSelect(variant)"
       >
@@ -75,7 +83,7 @@ const rootsAverageColor = computed(() => {
              du verdict catégoriel. Permet de comparer les variants racines
              d'un coup d'oeil sur la même échelle 0-100 que la card principale. -->
         <ScoreRing
-          :value="variant.card.combinedScore"
+          :value="variant.card.relevanceScore?.total ?? 0"
           :size="22"
           :stroke-width="2.5"
         />

@@ -502,13 +502,13 @@ export function calculateSeoScore(
   }
 
   // Lexique presence score (if article keywords available)
-  let lexiquePresenceScore = 50 // neutral default
+  let _lexiquePresenceScore = 50 // neutral default
   if (articleKeywords?.lexique && articleKeywords.lexique.length > 0) {
     const presentCount = articleKeywords.lexique.filter(term => {
       const match = matchKeywordPrepared(prepared, term)
       return match.detected
     }).length
-    lexiquePresenceScore = Math.round((presentCount / articleKeywords.lexique.length) * 100)
+    _lexiquePresenceScore = Math.round((presentCount / articleKeywords.lexique.length) * 100)
   }
 
   // Heading validation

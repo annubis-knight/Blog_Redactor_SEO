@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import TopicSuggestions from '../../../src/components/production/TopicSuggestions.vue'
 import type { SuggestedTopic } from '../../../shared/types/strategy.types'

@@ -9,8 +9,14 @@ import type { RadarCard } from '@shared/types/intent.types'
  * Logique :
  *   - filtre toute carte dont les DEUX verdicts (market + relevance) sont
  *     NOGO (sans potentiel à la fois marché et pertinence) ;
- *   - score final = (marketScore + relevanceScore) / 2 si disponibles,
- *     sinon fallback sur `combinedScore` (legacy) pour rétro-compat.
+ *   - score final = (marketScore + relevanceScore) / 2.
+ *
+ * 2026-05-02 (cleanup pertinence) : fallback `combinedScore` retiré. Les
+ * scores doivent venir explicitement du backend via marketScore /
+ * relevanceScore. Si une donnée est absente, on traite la composante comme 0
+ * (la card sera mécaniquement tirée vers le bas du ranking).
+ *
+ * Voir docs/scoring-kpi-vs-relevance.md.
  */
 export interface RadarRankedCard {
   card: RadarCard
@@ -46,8 +52,10 @@ export function useRadarRanking(opts: UseRadarRankingOptions) {
     const enriched = list
       .filter(c => !isNogoBoth(c))
       .map<RadarRankedCard>((card) => {
-        const marketTotal = card.marketScore?.total ?? card.combinedScore ?? 0
-        const relevanceTotal = card.relevanceScore?.total ?? card.combinedScore ?? 0
+        // 2026-05-02 — Plus de fallback combinedScore (legacy hybride).
+        // Si un score est absent, la card est mécaniquement défavorisée.
+        const marketTotal = card.marketScore?.total ?? 0
+        const relevanceTotal = card.relevanceScore?.total ?? 0
         const finalScore = (marketTotal + relevanceTotal) / 2
         return { card, keyword: card.keyword, marketTotal, relevanceTotal, finalScore }
       })

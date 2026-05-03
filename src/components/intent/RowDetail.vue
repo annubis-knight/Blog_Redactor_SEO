@@ -56,7 +56,7 @@ const sourcesTotal = computed(() => props.verdict.sourcesTotal)
 const showReducedConfidence = computed(() => sourcesAvailable.value < sourcesTotal.value)
 
 // Freshness color class
-const freshnessClass = computed(() => {
+const _freshnessClass = computed(() => {
   const f = props.result.community?.freshness
   if (f === 'recent') return 'freshness--recent'
   if (f === 'moderate') return 'freshness--moderate'

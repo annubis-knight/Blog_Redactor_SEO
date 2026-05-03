@@ -1,9 +1,11 @@
 # Score KPI vs Score de Pertinence — Guide produit & technique
 
-> Mis à jour : **2026-04-28**
+> Mis à jour : **2026-05-02**
 > **Doc complémentaire** : [docs/pain-point-editorial-backbone.md](./pain-point-editorial-backbone.md) — explique pourquoi le painPoint est l'oxygène du score de pertinence et comment il irrigue le pipeline éditorial complet.
 > Source de vérité technique : [shared/scoring.ts](../shared/scoring.ts), [shared/scoring-kpi.ts](../shared/scoring-kpi.ts), [shared/types/scoring.types.ts](../shared/types/scoring.types.ts)
 > Spec d'origine : `_bmad-output/implementation-artifacts/tech-spec-score-kpi-pertinence-separation.md`
+
+> **2026-05-02 — Migration UI terminée.** L'onglet Capitaine affiche désormais `relevanceScore.total` (et plus `combinedScore` legacy). Le champ `combinedScore` du type `RadarCard` est `@deprecated`. Voir section [Statut de la migration](#statut-de-la-migration) ci-dessous.
 
 ---
 
@@ -258,7 +260,7 @@ Parce qu'on veut une mesure **objective** de la puissance SEO, **indépendante d
 Parce qu'on veut savoir si le keyword **mérite** d'être traité éditorialement, indépendamment du marché. Une longue-traîne sans volume mais 100% pertinente vaut mieux qu'un keyword volumique hors-sujet.
 
 **Q. Le `combinedScore` legacy a-t-il toujours du sens ?**
-Oui en transition (rétro-compat). À terme il sera supprimé une fois les consommateurs migrés (carousel de tri, sidebar racines). Voir story future.
+**Non, il est `@deprecated` depuis 2026-05-02.** Aucun composant UI ne doit le lire. Il reste uniquement dans le type `RadarCard` pour rétro-compatibilité avec les payloads radar persistés en DB (tables `radar_explorations.scan_result`). Tout nouveau code doit utiliser `marketScore` (Radar) ou `relevanceScore` (Capitaine). Voir [Statut de la migration](#statut-de-la-migration).
 
 **Q. Comment sont définies les racines ?**
 Décomposition linéaire (troncature progressive depuis la fin du keyword), max 5 racines. Pas de combinatoire. Voir [src/composables/keyword/useCapitaineValidation.ts](../src/composables/keyword/useCapitaineValidation.ts) → `extractRoots()`.
@@ -306,6 +308,69 @@ Chaque malus est :
 3. **Clampé à 0** pour ne jamais produire de valeurs négatives
 
 C'est un pattern qu'on peut systématiser pour transformer le scoring de pertinence en outil de plus en plus fin sans complexifier la fonction principale.
+
+---
+
+## Statut de la migration
+
+### 2026-04-28 — Séparation introduite (backend)
+
+- `computeMarketScore()` et `computeRelevanceScore()` ajoutés dans `shared/scoring-kpi.ts` et `shared/scoring.ts`.
+- Backend `/keywords/radar/scan` et `/keywords/:keyword/validate` retournent désormais `marketScore` et `relevanceScore`.
+- `combinedScore` legacy conservé en parallèle pour rétro-compat.
+
+### 2026-05-02 — Migration UI terminée
+
+**Tous les consommateurs front sont migrés.** Plus aucun code de production ne lit `card.combinedScore` pour afficher un score à l'utilisateur.
+
+**Règle stricte appliquée** :
+
+| Onglet | Score affiché | Source des données | Calcul |
+|---|---|---|---|
+| **Radar** (`displayMode='kpi'`) | Score KPI | `computeKpiScore(card.kpis, articleLevel).total` (recalcul front) | Toujours défini |
+| **Capitaine** (`displayMode='relevance'`) | Score Pertinence | `card.relevanceScore.total` (strict, pas de fallback) | `null` si painPoint absent |
+
+**Affichage si score absent (Capitaine sans painPoint)** : la card affiche `—` au lieu d'un nombre, avec un tooltip *"Score Pertinence indisponible — définis un point de douleur sur l'article et relance la validation pour obtenir le score"*. Le tri Capitaine remonte ces items en bas de liste.
+
+**Fichiers touchés** :
+
+| Fichier | Changement |
+|---|---|
+| [src/composables/keyword/useRadarCarousel.ts](../src/composables/keyword/useRadarCarousel.ts) | `hydrateCardFromValidation` propage `marketScore` + `relevanceScore` (avant ils étaient perdus) |
+| [src/components/intent/RadarKeywordCard.vue](../src/components/intent/RadarKeywordCard.vue) | `displayedScore` strict par mode, plus de fallback `combinedScore`. Affichage `—` si null. Tooltip utilise `relevanceScore.breakdown` en mode `relevance`. |
+| [src/components/moteur/CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) | Tri sur `entry.card.relevanceScore?.total` strict |
+| [src/components/intent/DouleurIntentScanner.vue](../src/components/intent/DouleurIntentScanner.vue) | Tri Radar sur `computeKpiScore(card.kpis, level).total` |
+| [src/composables/moteur/useRadarRanking.ts](../src/composables/moteur/useRadarRanking.ts) | Plus de fallback `combinedScore` dans `marketTotal` / `relevanceTotal` |
+| [src/components/moteur/CaptainRootsSidebar.vue](../src/components/moteur/CaptainRootsSidebar.vue) | Moyenne et tooltip racines basés sur `relevanceScore.total` |
+| [shared/types/intent.types.ts](../shared/types/intent.types.ts) | `RadarCard.combinedScore` et `RadarCard.scoreBreakdown` marqués `@deprecated` |
+
+**Tests anti-régression** :
+- [tests/unit/components/radar-keyword-card-score-separation.test.ts](../tests/unit/components/radar-keyword-card-score-separation.test.ts) — verrouille la séparation stricte des scores par mode
+- [tests/unit/composables/useRadarCarousel-hydrate-scores.test.ts](../tests/unit/composables/useRadarCarousel-hydrate-scores.test.ts) — verrouille la propagation `marketScore`/`relevanceScore` lors de l'hydratation
+
+### 2026-05-02 (suite) — Restoration des scores au reload
+
+**Bug détecté immédiatement après la migration UI** : au reload d'un article (revenir sur l'onglet Capitaine après avoir quitté), les cards affichaient `—` au lieu du Score Pertinence. Pourtant les données étaient bien présentes en backend.
+
+**Cause racine** : `useRadarCarousel.restoreFromHistory()` reconstruit les cards à partir de `CaptainValidationEntry` (DB). Or :
+1. La table `captain_explorations` ne persiste **pas** les scores (par design : ils sont calculés, pas saisis).
+2. La donnée `relevanceScore` existe en revanche dans `radar_explorations.scan_result.cards[k]`.
+3. Le payload `validationHistory` retourné au front ne rapatriait pas ces scores depuis le radar.
+
+**Fix appliqué** :
+
+| Couche | Fichier | Changement |
+|---|---|---|
+| Type partagé | [shared/types/keyword.types.ts](../shared/types/keyword.types.ts) | `CaptainValidationEntry` étendu avec `marketScore?` et `relevanceScore?` (optionnels, hydratés à la lecture) |
+| Backend | [server/services/infra/data.service.ts](../server/services/infra/data.service.ts) (`getCaptainExplorations`) | Lookup unique sur `radar_explorations.scan_result.cards[k]` indexé par keyword. Chaque entry est enrichie avec `marketScore` et `relevanceScore` avant d'être retournée. |
+| Front | [src/composables/keyword/useRadarCarousel.ts](../src/composables/keyword/useRadarCarousel.ts) (`restoreFromHistory`) | Propage `entry.marketScore` et `entry.relevanceScore` dans la `ValidateResponse` reconstruite, qui alimente ensuite `hydrateCardFromValidation`. |
+
+**Limite connue** : si l'utilisateur a validé un keyword Capitaine **sans passer par le Radar** (saisie manuelle), aucune entrée correspondante n'existe dans `radar_explorations.scan_result.cards`. Dans ce cas, `relevanceScore` reste `null` et la card affiche `—`. Pour obtenir le score, l'utilisateur doit passer par Radar (qui calcule le Score Pertinence côté backend) ou re-valider le keyword via le bouton Capitaine.
+
+### Travaux futurs (à scoper si nécessaire)
+
+- **Suppression complète de `combinedScore`** du payload backend (`/keywords/radar/scan`, `/keywords/:kw/validate`) une fois confirmé qu'aucun ancien article persisté ne l'exige. Inclura une migration des `radar_explorations.scan_result`.
+- **Recalcul direct côté backend** au moment du `getCaptainExplorations` quand le keyword est absent du radar (utiliser `computeRelevanceScore` avec les signaux disponibles dans `keyword_metrics`).
 
 ---
 

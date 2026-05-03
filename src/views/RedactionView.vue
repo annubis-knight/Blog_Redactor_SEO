@@ -27,7 +27,7 @@ const cocoon = computed(() =>
   cocoonsStore.cocoons.find(c => c.id === cocoonId.value),
 )
 
-const cocoonSlug = computed(() =>
+const _cocoonSlug = computed(() =>
   (cocoon.value?.name ?? '')
     .toLowerCase()
     .normalize('NFD')

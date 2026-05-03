@@ -10,8 +10,8 @@
  * are already handled by update-services-imports.mjs. We preserve them by skipping
  * any import that resolves to another service.
  */
-import { readFileSync, writeFileSync, readdirSync, statSync } from 'node:fs'
-import { join, relative, extname } from 'node:path'
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs'
+import { join, relative } from 'node:path'
 
 const ROOT = process.cwd()
 const SERVICES_DIR = join(ROOT, 'server/services')
@@ -29,7 +29,7 @@ console.log(`Fixing ${serviceFiles.length} service files...`)
 
 // Match any relative import like "'../X/Y'" (from or export-from, static or dynamic).
 // We capture the full path after the quote to check if it's a sibling-service (skip).
-const REL_PATTERN = /((?:from|export\s*\*\s*from|export\s+\{[^}]*\}\s+from|import)\s*\()?(from\s+|import\s+|import\s*\(\s*|export\s*\*\s*from\s+|export\s+\{[^}]*\}\s+from\s+)?(['"])(\.\.(?:\/[^'"]*))(['"])/g
+const _REL_PATTERN = /((?:from|export\s*\*\s*from|export\s+\{[^}]*\}\s+from|import)\s*\()?(from\s+|import\s+|import\s*\(\s*|export\s*\*\s*from\s+|export\s+\{[^}]*\}\s+from\s+)?(['"])(\.\.(?:\/[^'"]*))(['"])/g
 
 // Simpler regex approach: look for ONLY the specific prefixes that moved files reference upward: ../utils, ../types, ../config, ../middleware, ../repositories, ../../shared, ../prompts, ../schemas
 // That's safer than touching cross-service imports (which we already fixed).

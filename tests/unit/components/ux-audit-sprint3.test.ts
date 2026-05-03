@@ -347,7 +347,7 @@ describe('ArticleEditorView — panel mutual exclusion', () => {
     expect(layoutMatch).not.toBeNull()
 
     // All 3 panels should be after the closing </div> of article-editor-view
-    const panelSection = vue.slice(vue.indexOf('</div><!-- end article-editor-view -->') || vue.indexOf('<Transition name="panel-slide">'))
+    const _panelSection = vue.slice(vue.indexOf('</div><!-- end article-editor-view -->') || vue.indexOf('<Transition name="panel-slide">'))
     expect(vue).toContain('<SeoPanel')
     expect(vue).toContain('<GeoPanel')
     expect(vue).toContain('<LinkSuggestions')

@@ -11,7 +11,7 @@ import type {
 } from '../../../shared/types/linking.types.js'
 import type { ArticleType } from '../../../shared/types/index.js'
 
-const DEFAULT_MATRIX: LinkingMatrix = {
+const _DEFAULT_MATRIX: LinkingMatrix = {
   links: [],
   updatedAt: null,
 }

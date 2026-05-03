@@ -426,7 +426,7 @@ router.post('/generate/article', async (req, res) => {
     return
   }
 
-  const { outline: outlineRaw, keyword, keywords, articleType, articleTitle, cocoonName, topic } = parsed.data
+  const { outline: outlineRaw, keyword, keywords, articleType, articleTitle, cocoonName, topic: _topic } = parsed.data
 
   // Frontend toggle overrides env default; env WEB_SEARCH_ENABLED=false disables globally
   const envDefault = process.env.WEB_SEARCH_ENABLED !== 'false'

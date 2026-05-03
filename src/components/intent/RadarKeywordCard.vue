@@ -121,23 +121,45 @@ const kpiBreakdown = computed(() =>
   props.displayMode === 'kpi' ? computeKpiScore(props.card.kpis, props.articleLevel) : null,
 )
 
-const displayedScore = computed(() => {
-  if (props.displayMode === 'kpi' && kpiBreakdown.value) return kpiBreakdown.value.total
-  return props.card.combinedScore
+/**
+ * 2026-05-02 — Score affiché par mode, **strict** (plus de fallback combinedScore).
+ *
+ * - Mode `kpi` (Radar) : `computeKpiScore(card.kpis, articleLevel).total` —
+ *   recalcul front, source de vérité pour le mode KPI. Toujours défini.
+ *
+ * - Mode `relevance` (Capitaine) : `card.relevanceScore.total` — strictement
+ *   le score Pertinence backend. Peut être `null` si :
+ *     • painPoint absent au moment du scan/validate
+ *     • aucun signal d'alignement (PAA × douleur, autocomplete × douleur, etc.)
+ *
+ * `null` = chiffre indisponible → on affiche "—" au lieu de bricoler avec
+ * combinedScore (legacy hybride qui mélange marché + pertinence et casse la
+ * séparation documentée dans docs/scoring-kpi-vs-relevance.md).
+ */
+const displayedScore = computed<number | null>(() => {
+  if (props.displayMode === 'kpi') {
+    return kpiBreakdown.value?.total ?? null
+  }
+  // Mode 'relevance' : strict, pas de fallback combinedScore.
+  return props.card.relevanceScore?.total ?? null
 })
 
+const hasScore = computed(() => displayedScore.value !== null)
+
 const scoreLabel = computed(() =>
-  props.displayMode === 'kpi' ? 'Score KPI' : 'Score pertinence',
+  props.displayMode === 'kpi' ? 'Score KPI' : 'Score Pertinence',
 )
 
 const scoreColor = computed(() => {
-  const t = displayedScore.value / 100
+  if (!hasScore.value) return 'var(--color-text-muted, #94a3b8)'
+  const t = (displayedScore.value as number) / 100
   const hue = Math.round(t * 120)
   return `hsl(${hue}, 70%, 45%)`
 })
 
 const scoreDashoffset = computed(() => {
-  const t = displayedScore.value / 100
+  if (!hasScore.value) return CIRCLE_CIRCUMFERENCE // arc vide
+  const t = (displayedScore.value as number) / 100
   return CIRCLE_CIRCUMFERENCE * (1 - t)
 })
 
@@ -170,13 +192,38 @@ const breakdownRows = computed<BreakdownRow[]>(() => {
       rawLabel: c.rawLabel,
     }))
   }
+  // 2026-05-02 — Mode `relevance` : breakdown depuis le vrai relevanceScore
+  // (composantes pondérées par computeRelevanceScore côté backend), au lieu
+  // de l'ancien scoreBreakdown legacy. Cohérent avec le total affiché.
+  // Fallback sur scoreBreakdown legacy si relevanceScore absent.
+  const rs = props.card.relevanceScore
+  if (rs?.breakdown) {
+    const RELEVANCE_LABEL_DESC: Record<string, { label: string; desc: string }> = {
+      painKeyword: { label: 'Pain × Mot-clé', desc: 'Le mot-clé évoque-t-il directement la douleur ?' },
+      paaPain: { label: 'PAA × Douleur', desc: 'Sur N PAA, combien parlent réellement de la douleur ?' },
+      acPain: { label: 'Autocomplete × Douleur', desc: 'La SERP réelle valide-t-elle la douleur ?' },
+      roots: { label: 'Racines', desc: 'Les racines sémantiques sont-elles cohérentes ?' },
+      intentPain: { label: 'Intent × Douleur', desc: 'L\'intent matche-t-il le type de douleur attendu ?' },
+    }
+    return Object.entries(rs.breakdown).map(([key, comp]) => {
+      const meta = RELEVANCE_LABEL_DESC[key] ?? { label: key, desc: '' }
+      return {
+        label: meta.label,
+        desc: meta.desc,
+        value: comp.normalized,
+        weight: `${Math.round(comp.weight * 100)}%`,
+      }
+    })
+  }
+  // Fallback legacy (scoreBreakdown). Ne s'affiche que si breakdownRows est
+  // appelé (donc `hasScore=true`), donc on a bien `scoreBreakdown`.
   return [
-    { label: 'PAA Matches', desc: 'Points ponderes selon exact/stem/semantique', value: props.card.scoreBreakdown.paaMatchScore, weight: '25%' },
-    { label: 'Resonance', desc: 'Autocomplete matches + score semantique moyen', value: props.card.scoreBreakdown.resonanceBonus, weight: '15%' },
-    { label: 'Opportunite', desc: 'Volume × (1 - difficulte), potentiel de trafic', value: props.card.scoreBreakdown.opportunityScore, weight: '20%' },
+    { label: 'PAA Matches', desc: 'Points pondérés selon exact/stem/sémantique', value: props.card.scoreBreakdown.paaMatchScore, weight: '25%' },
+    { label: 'Résonance', desc: 'Autocomplete matches + score sémantique moyen', value: props.card.scoreBreakdown.resonanceBonus, weight: '15%' },
+    { label: 'Opportunité', desc: 'Volume × (1 - difficulté), potentiel de trafic', value: props.card.scoreBreakdown.opportunityScore, weight: '20%' },
     { label: 'Intent', desc: 'Valeur de l\'intention: commercial > transactionnel > info', value: props.card.scoreBreakdown.intentValueScore, weight: '10%' },
-    { label: 'CPC', desc: 'Cout par clic — indique la valeur commerciale du mot-cle', value: props.card.scoreBreakdown.cpcScore, weight: '10%' },
-    { label: 'Douleur', desc: 'Alignement semantique entre le mot-cle et la douleur de l\'article', value: props.card.scoreBreakdown.painAlignmentScore, weight: '20%' },
+    { label: 'CPC', desc: 'Coût par clic — indique la valeur commerciale du mot-clé', value: props.card.scoreBreakdown.cpcScore, weight: '10%' },
+    { label: 'Douleur', desc: 'Alignement sémantique entre le mot-clé et la douleur de l\'article', value: props.card.scoreBreakdown.painAlignmentScore, weight: '20%' },
   ]
 })
 
@@ -280,27 +327,40 @@ function itemBorderClass(paa: RadarPaaItem): string {
         </span>
       </div>
 
-      <!-- Score circle + tooltip -->
-      <div class="radar-card__score-ring" @mouseenter.stop="showTooltip = true" @mouseleave.stop="showTooltip = false">
+      <!-- Score circle + tooltip.
+           Si `displayedScore` est null (mode relevance sans painPoint /
+           sans signal d'alignement), on affiche "—" + tooltip explicatif
+           plutôt que de fallback sur combinedScore (legacy hybride). -->
+      <div
+        class="radar-card__score-ring"
+        :class="{ 'radar-card__score-ring--empty': !hasScore }"
+        @mouseenter.stop="showTooltip = true"
+        @mouseleave.stop="showTooltip = false"
+      >
         <svg width="68" height="68" viewBox="0 0 68 68">
           <circle cx="34" cy="34" :r="CIRCLE_RADIUS" fill="none" :stroke="scoreColor" stroke-width="3"
             stroke-linecap="round" :stroke-dasharray="CIRCLE_CIRCUMFERENCE" :stroke-dashoffset="scoreDashoffset"
             transform="rotate(-90 34 34)" />
         </svg>
-        <span class="score-ring__value" :style="{ color: scoreColor }">{{ displayedScore }}</span>
+        <span class="score-ring__value" :style="{ color: scoreColor }">{{ hasScore ? displayedScore : '—' }}</span>
         <span class="score-ring__label">{{ scoreLabel }}</span>
         <Transition name="tooltip-fade">
           <div v-if="showTooltip" class="score-tooltip" @click.stop>
             <div class="tooltip-header">{{ scoreLabel }}</div>
-            <div v-for="(row, i) in breakdownRows" :key="'tt-' + i" class="tooltip-row">
-              <span class="tooltip-label">{{ row.label }} <span class="tooltip-weight">({{ row.weight }})</span></span>
-              <span class="tooltip-desc">{{ row.desc }}</span>
-              <span class="tooltip-val">{{ row.value }}/100</span>
-            </div>
-            <div class="tooltip-total">
-              <span>Total</span>
-              <span>{{ displayedScore }}/100</span>
-            </div>
+            <template v-if="hasScore">
+              <div v-for="(row, i) in breakdownRows" :key="'tt-' + i" class="tooltip-row">
+                <span class="tooltip-label">{{ row.label }} <span class="tooltip-weight">({{ row.weight }})</span></span>
+                <span class="tooltip-desc">{{ row.desc }}</span>
+                <span class="tooltip-val">{{ row.value }}/100</span>
+              </div>
+              <div class="tooltip-total">
+                <span>Total</span>
+                <span>{{ displayedScore }}/100</span>
+              </div>
+            </template>
+            <p v-else class="tooltip-empty">
+              Score Pertinence indisponible. D&eacute;finis un point de douleur sur l'article et relance la validation pour obtenir le score.
+            </p>
           </div>
         </Transition>
       </div>
@@ -601,6 +661,19 @@ function itemBorderClass(paa: RadarPaaItem): string {
   font-size: 0.8125rem;
   font-weight: 700;
   color: var(--color-text);
+}
+
+.tooltip-empty {
+  margin: 0;
+  padding: 6px 4px;
+  font-size: 0.75rem;
+  line-height: 1.45;
+  color: var(--color-text-muted, #64748b);
+}
+
+/* État "score absent" : cercle muet, valeur "—" */
+.radar-card__score-ring--empty .score-ring__label {
+  opacity: 0.7;
 }
 
 .tooltip-fade-enter-active,

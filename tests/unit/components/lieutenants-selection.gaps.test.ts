@@ -394,7 +394,7 @@ describe('LieutenantsSelection — recommendAndPropagateWordCount au lock', () =
     mockApiGet.mockResolvedValue(null) // pas de targetWordCount existant
 
     // Trigger lock via instance
-    const vm = wrapper.vm as unknown as { lockLieutenants: () => Promise<void>; selectedCards: { value: Map<string, unknown> }; serpResult?: unknown }
+    const _vm = wrapper.vm as unknown as { lockLieutenants: () => Promise<void>; selectedCards: { value: Map<string, unknown> }; serpResult?: unknown }
     // Hack : il faut une selectedCard pour que lockLieutenants ne return early
     // On utilise findComponent + emit toggle pour passer par le canal réel
     const proposals = wrapper.findComponent({ name: 'LieutenantProposals' })

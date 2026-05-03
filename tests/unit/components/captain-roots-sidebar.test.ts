@@ -24,6 +24,9 @@ const ScoreRingStub = {
 }
 
 function makeCard(score: number, keyword = 'kw'): RadarCard {
+  // 2026-05-02 — La sidebar Capitaine affiche le Score PERTINENCE des racines
+  // (pas combinedScore legacy). On peuple `relevanceScore.total` avec la même
+  // valeur pour que l'assertion sur `score` reste lisible et explicite.
   return {
     keyword,
     reasoning: '',
@@ -39,6 +42,18 @@ function makeCard(score: number, keyword = 'kw'): RadarCard {
       intentTypes: [], intentProbability: null,
       autocompleteMatchCount: 0, paaMatchCount: 0,
       paaWeightedScore: 0, paaTotal: 0, avgSemanticScore: null,
+    },
+    relevanceScore: {
+      total: score,
+      verdict: score >= 70 ? 'GO' : score >= 40 ? 'ORANGE' : 'NOGO',
+      breakdown: {
+        painKeyword: { weight: 0.3, normalized: score, contribution: 0.3 * score },
+        paaPain: { weight: 0.25, normalized: score, contribution: 0.25 * score },
+        acPain: { weight: 0.15, normalized: score, contribution: 0.15 * score },
+        roots: { weight: 0.2, normalized: score, contribution: 0.2 * score },
+        intentPain: { weight: 0.1, normalized: score, contribution: 0.1 * score },
+      },
+      rootsContext: { rootsAverageScore: null, fallbackApplied: false },
     },
   }
 }

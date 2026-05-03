@@ -114,7 +114,7 @@ const dynamicBlocks: DynamicBlockItem[] = [
   },
 ]
 
-const blocks: BlockItem[] = [...staticBlocks, ...dynamicBlocks]
+const _blocks: BlockItem[] = [...staticBlocks, ...dynamicBlocks]
 
 function onDragStart(e: DragEvent, block: BlockItem) {
   if (!e.dataTransfer) return

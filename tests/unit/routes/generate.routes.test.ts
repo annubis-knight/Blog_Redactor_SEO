@@ -1,4 +1,5 @@
 // @vitest-environment node
+ 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
@@ -276,7 +277,9 @@ describe('POST /generate/article (section-by-section)', () => {
   it('sends SSE error event when Claude API fails after retry', async () => {
     // Section-by-section retries once per section — both attempts must fail
     mockStreamChatCompletion
+       
       .mockReturnValueOnce((async function* () { if (false) yield ''; throw new Error('Claude API error') })())
+       
       .mockReturnValueOnce((async function* () { if (false) yield ''; throw new Error('Claude API error') })())
 
     const req = createArticleReq(validArticleBody)
@@ -429,6 +432,7 @@ describe('POST /generate/meta', () => {
 
   it('returns 500 when Claude API fails', async () => {
     mockStreamChatCompletion.mockImplementationOnce(async function* () {
+       
       if (false) yield ''
       throw new Error('Claude API error')
     })
@@ -1084,6 +1088,7 @@ describe('POST /generate/humanize-section', () => {
 
   it('API error → emits error event + done with fallback', async () => {
     mockStreamChatCompletion.mockImplementationOnce(async function* () {
+       
       if (false) yield ''
       throw new Error('Claude API error')
     })

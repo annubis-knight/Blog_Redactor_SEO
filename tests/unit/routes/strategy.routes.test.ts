@@ -1,4 +1,5 @@
 // @vitest-environment node
+ 
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
@@ -222,6 +223,7 @@ describe('POST /strategy/:id/suggest', () => {
   it('returns 500 when Claude API fails', async () => {
     mockReadFile.mockResolvedValueOnce('{{articleTitle}} {{cocoonName}} {{siloName}} {{step}} {{stepDescription}} {{currentInput}} {{#existingArticles}}{{existingArticles}}{{/existingArticles}}')
     mockStreamChatCompletion.mockImplementationOnce(async function* () {
+       
       if (false) yield ''
       throw new Error('Claude API error')
     })
