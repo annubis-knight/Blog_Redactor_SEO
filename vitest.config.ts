@@ -11,6 +11,7 @@ export default mergeConfig(
         ...configDefaults.exclude,
         'e2e/**',
         'tests/browser-e2e/**',  // tests Playwright (lancés via npm run test:browser)
+        '.stryker-tmp/**',       // sandbox Stryker (mutation testing) — éviter double exécution
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
     },
