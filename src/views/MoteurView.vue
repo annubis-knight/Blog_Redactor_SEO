@@ -399,6 +399,20 @@ function handleSelectArticle(article: SelectedArticle | null) {
     articleKeywordsStore.fetchKeywordsMerge(article.id)
     loadCachedResults(article.id)
 
+    // Sprint 5 (2026-05-04) — friction #6 : auto-load Radar depuis la DB
+    // au sélection d'article. Discovery est exclu (modèle seed-based,
+    // cf. docs/moteur-data-flow.md §8bis). L'utilisateur garde le bouton
+    // manuel via TabLoadPrompt en filet de secours.
+    // Le radarRef peut être null au tout premier mount avant que Vue n'ait
+    // résolu le ref : on attend un nextTick pour être sûr.
+    void Promise.resolve().then(() => {
+      if (radarRef.value && selectedArticle.value?.id === article.id) {
+        radarRef.value.mergeFromRadarSource(article.id).catch((err: unknown) => {
+          log.warn('[MoteurView] auto-load radar failed', { error: (err as Error).message })
+        })
+      }
+    })
+
     // Check discovery + radar cache for this article's seed keyword
     const seed = article.keyword || pilierKeyword.value
     if (seed) {

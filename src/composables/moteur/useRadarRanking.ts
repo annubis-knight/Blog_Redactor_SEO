@@ -23,6 +23,11 @@ export interface RadarRankedCard {
   keyword: string
   marketTotal: number
   relevanceTotal: number
+  /** Sprint 5 (2026-05-04) — true si marketScore réellement présent dans la card.
+   *  Permet à RadarAiPanel d'afficher "—" au lieu de "0" quand absent. */
+  marketTotalAvailable: boolean
+  /** Sprint 5 (2026-05-04) — idem pour relevanceScore. */
+  relevanceTotalAvailable: boolean
   finalScore: number
 }
 
@@ -54,10 +59,20 @@ export function useRadarRanking(opts: UseRadarRankingOptions) {
       .map<RadarRankedCard>((card) => {
         // 2026-05-02 — Plus de fallback combinedScore (legacy hybride).
         // Si un score est absent, la card est mécaniquement défavorisée.
+        // Sprint 5 (2026-05-04) — On distingue "absent" (null/undefined) de
+        // "présent à zéro" pour permettre à l'UI d'afficher "—" quand
+        // approprié au lieu de "0" trompeur.
+        const marketTotalAvailable = card.marketScore?.total != null
+        const relevanceTotalAvailable = card.relevanceScore?.total != null
         const marketTotal = card.marketScore?.total ?? 0
         const relevanceTotal = card.relevanceScore?.total ?? 0
         const finalScore = (marketTotal + relevanceTotal) / 2
-        return { card, keyword: card.keyword, marketTotal, relevanceTotal, finalScore }
+        return {
+          card, keyword: card.keyword,
+          marketTotal, relevanceTotal,
+          marketTotalAvailable, relevanceTotalAvailable,
+          finalScore,
+        }
       })
 
     enriched.sort((a, b) => b.finalScore - a.finalScore)

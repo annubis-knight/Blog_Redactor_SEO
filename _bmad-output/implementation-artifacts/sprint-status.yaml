@@ -52,6 +52,15 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Sprint 5 — Radar UX (mai 2026) ✅
+  # tech-spec: tech-spec-sprint5-radar-ux.md
+  # (#6) auto-load DB Radar au sélection article (Capitaine/Lexique déjà OK).
+  # (#7) scanner-inputs masqué en mode workflow (redondant avec Discovery).
+  # (#8) radar-ai-score-pill : "—" au lieu de "0" quand score absent.
+  # (#9) caduc — mock longue traîne déjà livré au P0.
+  # 7 nouveaux tests verts (5 score-pill + 2 mode workflow/libre).
+  sprint-5-radar-ux: done
+
   # Sprint 4 — Refonte cache-bar + recap-toggle (mai 2026) ✅
   # tech-spec: tech-spec-sprint4-cache-bar-recap-toggle.md
   # (#1) computeSmartTab ne retourne JAMAIS Finalisation : sélection

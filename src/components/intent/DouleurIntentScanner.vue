@@ -375,8 +375,15 @@ defineExpose({ mergeFromRadarSource })
 
 <template>
   <div class="intent-scanner">
-    <!-- Phase 1: Context & Generate -->
-    <div class="scanner-inputs">
+    <!-- Sprint 5 (2026-05-04) — friction #7 : `scanner-inputs` masqué en mode
+         `workflow`. En mode workflow, `broadKeyword` (= cocon), `specificTopic`
+         (= article.title) et `painPoint` (= article.painPoint) sont injectés
+         depuis les props. Ces inputs servaient uniquement au mode `libre`
+         (Labo) où l'utilisateur saisit ses mots-clés à la main. Les afficher
+         en workflow était redondant avec l'onglet Discovery et déstabilisait
+         l'utilisateur (« pourquoi je remplis encore ces champs ? »). -->
+    <!-- Phase 1: Context & Generate (mode libre uniquement) -->
+    <div v-if="mode === 'libre'" class="scanner-inputs">
       <h3 class="scanner-title">Keyword Radar</h3>
       <p class="scanner-desc">
         L'IA genere des mots-cles courts, puis chacun est scanne dans l'ecosysteme Google
