@@ -1,0 +1,129 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders collapsed state (default mode kpi) 1`] = `
+"<div data-v-71e76192="" class="radar-card">
+  <!-- Single-row header -->
+  <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+         (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+         lors d'un clic sur le chevron / score-ring / keyword underliné.
+         Règle : la sidebar ne s'ouvre QUE sur clic dans une zone non-cliquable
+         de la card (= en dehors de ce header). -->
+  <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
+    <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
+    <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
+           fallback fantôme — CLAUDE.md §3.5). -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40€</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
+    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       lors d'un clic sur le score-ring. -->
+    <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
+        <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(96, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="37.6991118430775" transform="rotate(-90 34 34)"></circle>
+      </svg><span data-v-7efb3981="" class="score-ring__value" style="color: rgb(99, 195, 34);">80</span><span data-v-7efb3981="" class="score-ring__label">Score KPI</span>
+      <transition-stub data-v-7efb3981="" name="tooltip-fade" appear="false" persisted="false" css="true">
+        <!--v-if-->
+      </transition-stub>
+    </div>
+  </div><!-- Body (collapsible) -->
+  <!--v-if-->
+</div>"
+`;
+
+exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders expanded state with PAA tree 1`] = `
+"<div data-v-71e76192="" class="radar-card expanded">
+  <!-- Single-row header -->
+  <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+         (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+         lors d'un clic sur le chevron / score-ring / keyword underliné.
+         Règle : la sidebar ne s'ouvre QUE sur clic dans une zone non-cliquable
+         de la card (= en dehors de ce header). -->
+  <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron chevron--open">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
+    <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
+    <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
+           fallback fantôme — CLAUDE.md §3.5). -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40€</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
+    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       lors d'un clic sur le score-ring. -->
+    <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
+        <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(96, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="37.6991118430775" transform="rotate(-90 34 34)"></circle>
+      </svg><span data-v-7efb3981="" class="score-ring__value" style="color: rgb(99, 195, 34);">80</span><span data-v-7efb3981="" class="score-ring__label">Score KPI</span>
+      <transition-stub data-v-7efb3981="" name="tooltip-fade" appear="false" persisted="false" css="true">
+        <!--v-if-->
+      </transition-stub>
+    </div>
+  </div><!-- Body (collapsible) -->
+  <div data-v-71e76192="" class="radar-card__body">
+    <p data-v-71e76192="" class="radar-card__reasoning">Mot-clé pilier pour le cocon SEO local</p>
+    <div data-v-c9781ebd="" data-v-71e76192="" class="paa-tree">
+      <!--v-if-->
+      <div data-v-c9781ebd="" class="paa-node">
+        <!-- Parent PAA -->
+        <div data-v-c9781ebd="" class="paa-item paa-item--exact paa-item--clickable"><span data-v-c9781ebd="" class="paa-tree-chevron paa-tree-chevron--empty"></span><span data-v-c9781ebd="" class="paa-badge badge--total">Exact · douleur</span><span data-v-c9781ebd="" class="paa-question">Comment faire du SEO local pour PME ?</span>
+          <!--v-if-->
+          <!--v-if-->
+        </div><!-- Answer (inline expand) -->
+        <!--v-if-->
+        <!-- Children (collapsible) -->
+        <!--v-if-->
+      </div>
+    </div>
+    <!--v-if-->
+  </div>
+</div>"
+`;
+
+exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance" with displayedScore = null + reason "no-pain" 1`] = `
+"<div data-v-71e76192="" class="radar-card">
+  <!-- Single-row header -->
+  <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+         (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+         lors d'un clic sur le chevron / score-ring / keyword underliné.
+         Règle : la sidebar ne s'ouvre QUE sur clic dans une zone non-cliquable
+         de la card (= en dehors de ce header). -->
+  <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
+    <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
+    <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
+           fallback fantôme — CLAUDE.md §3.5). -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40€</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
+    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       lors d'un clic sur le score-ring. -->
+    <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring radar-card__score-ring--empty"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
+        <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="var(--color-text-muted, #94a3b8)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="188.49555921538757" transform="rotate(-90 34 34)"></circle>
+      </svg><span data-v-7efb3981="" class="score-ring__value" style="color: var(--color-text-muted, #94a3b8);">—</span><span data-v-7efb3981="" class="score-ring__label">Score Pertinence</span>
+      <transition-stub data-v-7efb3981="" name="tooltip-fade" appear="false" persisted="false" css="true">
+        <!--v-if-->
+      </transition-stub>
+    </div>
+  </div><!-- Body (collapsible) -->
+  <!--v-if-->
+</div>"
+`;
+
+exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance" with score = 75 1`] = `
+"<div data-v-71e76192="" class="radar-card">
+  <!-- Single-row header -->
+  <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+         (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+         lors d'un clic sur le chevron / score-ring / keyword underliné.
+         Règle : la sidebar ne s'ouvre QUE sur clic dans une zone non-cliquable
+         de la card (= en dehors de ce header). -->
+  <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
+    <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
+    <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
+           fallback fantôme — CLAUDE.md §3.5). -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40€</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
+    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
+       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       lors d'un clic sur le score-ring. -->
+    <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
+        <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(90, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="47.12388980384689" transform="rotate(-90 34 34)"></circle>
+      </svg><span data-v-7efb3981="" class="score-ring__value" style="color: rgb(115, 195, 34);">75</span><span data-v-7efb3981="" class="score-ring__label">Score Pertinence</span>
+      <transition-stub data-v-7efb3981="" name="tooltip-fade" appear="false" persisted="false" css="true">
+        <!--v-if-->
+      </transition-stub>
+    </div>
+  </div><!-- Body (collapsible) -->
+  <!--v-if-->
+</div>"
+`;
