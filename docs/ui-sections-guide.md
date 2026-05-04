@@ -291,6 +291,20 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 
 **Gate adouci (F5)** : le gate `isCaptaineLocked` ne s'applique qu'au **premier passage**. Dès que `richLieutenants.length > 0` (au moins une analyse IA a eu lieu), l'onglet devient accessible même si le Capitaine est déverrouillé.
 
+> **⚠️ ARCHITECTURE — Verrou anti-régression Sprint C-1** (mis à jour Sprint 1, 2026-05-04)
+>
+> Cet onglet a **3 sections distinctes** :
+>
+> 1. **Container principal n°1 — Propositions Lieutenants** (`LieutenantProposals`). Contient les cards de mots-clés (locked + suggested + eliminated). C'est ici que l'utilisateur sélectionne ses Lieutenants.
+> 2. **Container principal n°2 — Structure Hn** (`LieutenantH2Structure`). Contient à la fois la structure Hn recommandée IA *et* la section "Structure Hn concurrents".
+> 3. **Panel IA (coque purple)** (`LieutenantsAiPanel`). Contient UNIQUEMENT les éléments propres à l'IA : streaming chunk, bouton Régénérer, erreur, content-gap insights.
+>
+> **NE JAMAIS wrapper les containers principaux 1 et 2 dans le panel IA 3.** Sprint C-1 (commit `890b285`, 2026-05-02) avait commis cette erreur : `LieutenantProposals` et `LieutenantH2Structure` se retrouvaient affichés sous l'étiquette "Suggestions IA Lieutenants", brouillant la frontière entre données utilisateur et suggestions IA. Sprint 1 (2026-05-04) a restauré la séparation.
+>
+> **Test verrou anti-régression** : `tests/unit/components/lieutenants-selection-architecture.test.ts` vérifie via assertions DOM que `[data-testid="lieutenants-container"]` et `[data-testid="lieutenant-h2-structure"]` ne sont PAS descendants de `[data-testid="ai-panel-suggestion"]`. Si ce test casse, l'architecture a régressé.
+>
+> **Composant `lieutenants-header` legacy supprimé** : il n'affichait qu'un rappel du Capitaine (redondant avec `MoteurContextRecap`) + un badge level article. Le badge level a migré dans le header de `LieutenantProposals`.
+
 | Section | Composant | Rôle | Déclencheurs | Sorties |
 |---|---|---|---|---|
 | **KeywordAssistPanel (F3)** | `KeywordAssistPanel` (context=`lieutenants`) | Liste minimaliste des mots-clés du basket non encore présents dans les propositions lieutenants. Bouton "Ajouter" par ligne. | Basket non vide | Clic "Ajouter" → push dans `lieutenantCards` avec `reasoning: 'Proposé depuis votre panier'`, sans appel SERP/IA |

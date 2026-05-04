@@ -19,6 +19,9 @@ const props = defineProps<{
   selectedCards: Map<string, ProposedLieutenant>
   isLocked: boolean
   contentGapInsights: string
+  // Sprint 1 (2026-05-04) — badge level article migré depuis le legacy
+  // `lieutenants-header` supprimé. Affiché dans le header de cette section.
+  articleLevel?: 'pilier' | 'intermediaire' | 'specifique' | null
 }>()
 
 defineEmits<{
@@ -67,10 +70,16 @@ const parsedInsights = computed(() =>
 
 <template>
   <div class="ia-proposal-section" data-testid="ia-proposal-section">
-    <h3 class="section-title">
-      Lieutenants proposes par l'IA
-      <span v-if="iaIsStreaming" class="pulse-dot" />
-    </h3>
+    <header class="ia-proposal-header">
+      <h3 class="section-title">
+        Lieutenants proposes par l'IA
+        <span v-if="iaIsStreaming" class="pulse-dot" />
+      </h3>
+      <!-- Badge level migré depuis l'ancien `lieutenants-header` (Sprint 1, 2026-05-04). -->
+      <span v-if="articleLevel" class="level-badge" :title="`Niveau de l'article : ${articleLevel}`">
+        {{ articleLevel }}
+      </span>
+    </header>
 
     <div v-if="iaIsStreaming" class="ia-loading" data-testid="ia-loading">
       <span class="pulse-dot" /> Analyse IA en cours...
@@ -259,4 +268,29 @@ const parsedInsights = computed(() =>
 .eliminated { opacity: 0.7; }
 
 .section-empty { margin: 0; padding: 0.5rem 0; font-size: 0.8125rem; color: var(--color-text-muted); font-style: italic; }
+
+/* Sprint 1 (2026-05-04) — header avec titre + badge level (migré depuis legacy lieutenants-header). */
+.ia-proposal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.ia-proposal-header .section-title {
+  margin: 0;
+}
+
+.ia-proposal-header .level-badge {
+  padding: 0.25rem 0.625rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-primary);
+  background: var(--color-badge-blue-bg, #dbeafe);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
 </style>

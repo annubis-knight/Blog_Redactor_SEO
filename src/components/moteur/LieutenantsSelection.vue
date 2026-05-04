@@ -13,6 +13,13 @@ import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.con
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
 import LieutenantsAiPanel from '@/components/moteur/LieutenantsAiPanel.vue'
+// Sprint 1 (2026-05-04) — restauration imports pré-C-1.
+// Ces deux composants étaient importés ici avant Sprint C-1 puis migrés
+// dans LieutenantsAiPanel. La régression UX a forcé leur retour ici en
+// containers principaux de premier niveau. NE PAS les ré-importer dans
+// LieutenantsAiPanel (test verrou architecture).
+import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
+import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
@@ -726,14 +733,10 @@ function proposeLieutenants() {
 
 <template>
   <div class="lieutenants-selection">
-    <!-- Captain header -->
-    <div class="lieutenants-header">
-      <div class="captain-badge">
-        <span class="captain-icon">&#127894;</span>
-        <span class="captain-keyword">{{ captainKeyword ?? '—' }}</span>
-      </div>
-      <span v-if="articleLevel" class="level-badge">{{ articleLevel }}</span>
-    </div>
+    <!-- Sprint 1 (2026-05-04) — `lieutenants-header` legacy supprimé.
+         Le rappel Capitaine était redondant avec MoteurContextRecap.
+         Le badge "level article" migre dans le header de LieutenantProposals
+         (= container principal n°1) pour rester visible. -->
 
     <!-- F5 — Soft gate uniquement au premier passage (avant toute analyse IA) -->
     <div v-if="!isCaptaineLocked && !hasEverAnalyzed" class="soft-gate-message">
@@ -776,7 +779,57 @@ function proposeLieutenants() {
       <p>{{ error }}</p>
     </div>
 
-    <div v-if="serpResult || isLocked" class="serp-results">
+    <!-- Sprint 1 (2026-05-04) — condition élargie : on monte aussi la section
+         si l'utilisateur a déjà ajouté des cards depuis le basket
+         (`lieutenantCards.length > 0`). Avant, la section n'apparaissait que
+         si SERP ou lock — bloquant l'observation des cards "assist-add". -->
+    <div v-if="serpResult || isLocked || lieutenantCards.length > 0" class="serp-results">
+
+      <!-- ⚠️ ARCHITECTURE — Sprint 1 (2026-05-04)
+           Restauration de l'architecture pré-Sprint C-1 : les containers
+           PRINCIPAUX (LieutenantProposals + LieutenantH2Structure) vivent ici
+           au premier niveau, PAS dans LieutenantsAiPanel.
+
+           Pourquoi : Sprint C-1 (2026-05-02, commit 890b285) avait wrappé
+           ces deux composants dans la coque "Suggestions IA Lieutenants".
+           Conséquence UX : l'utilisateur voyait ses propres données (cards
+           Lieutenants verrouillés, structure Hn validée) sous l'étiquette
+           "Suggestions IA", ce qui brouillait totalement la frontière entre
+           "données utilisateur" et "suggestions IA".
+
+           Test verrou anti-régression :
+             tests/unit/components/lieutenants-selection-architecture.test.ts
+           NE JAMAIS re-wrapper ces composants dans LieutenantsAiPanel. -->
+
+      <!-- Container principal #1 : Propositions Lieutenants (cards + éliminés) -->
+      <LieutenantProposals
+        :ia-is-streaming="iaIsStreaming"
+        :ia-chunks="iaChunks"
+        :ia-error="iaError"
+        :lieutenant-cards="lieutenantCards"
+        :eliminated-cards="eliminatedCards"
+        :total-generated="totalGenerated"
+        :selected-cards="selectedCards"
+        :is-locked="isLocked"
+        :content-gap-insights="contentGapInsights"
+        :article-level="articleLevel"
+        @toggle="toggleLieutenant"
+        @retry="proposeLieutenants"
+      />
+
+      <!-- Container principal #2 : Structure Hn (IA + concurrents intégrés) -->
+      <LieutenantH2Structure
+        :hn-structure="hnStructure"
+        :active-hn-recurrence="activeHnRecurrence"
+        :hn-recurrence="hnRecurrence"
+        :serp-results-by-keyword="serpResultsByKeyword"
+        :active-hn-tab="activeHnTab"
+        :is-locked="isLocked"
+        :hn-saved="hnSaved"
+        :is-saving-hn="isSavingHn"
+        @save-hn="saveHnStructure"
+        @update:active-hn-tab="activeHnTab = $event"
+      />
 
       <!-- Sprint 4.6 — PAA section relabeled: clarifies that these are the raw
            Google questions the AI *consulted* to build its proposal, not extra
@@ -821,30 +874,17 @@ function proposeLieutenants() {
         </div>
       </div>
 
-      <!-- Sprint C-1 (2026-05-02) — IA panel unifié, en bas de page après le
-           contenu principal. Regroupe propositions + structure Hn dans deux
-           sections togglables sous la coque purple commune. -->
+      <!-- Section IA pure — coque purple commune avec les autres onglets.
+           NE contient PAS de cards Lieutenants ni de structure Hn (sinon
+           régression Sprint C-1). Cf. test verrou architecture. -->
       <LieutenantsAiPanel
         :ia-is-streaming="iaIsStreaming"
         :ia-chunks="iaChunks"
         :ia-error="iaError"
-        :lieutenant-cards="lieutenantCards"
-        :eliminated-cards="eliminatedCards"
-        :total-generated="totalGenerated"
-        :selected-cards="selectedCards"
         :is-locked="isLocked"
         :content-gap-insights="contentGapInsights"
-        :hn-structure="hnStructure"
-        :active-hn-recurrence="activeHnRecurrence"
-        :hn-recurrence="hnRecurrence"
-        :serp-results-by-keyword="serpResultsByKeyword"
-        :active-hn-tab="activeHnTab"
-        :hn-saved="hnSaved"
-        :is-saving-hn="isSavingHn"
-        @toggle="toggleLieutenant"
+        :total-generated="totalGenerated"
         @retry="proposeLieutenants"
-        @save-hn="saveHnStructure"
-        @update:active-hn-tab="activeHnTab = $event"
       />
     </div>
   </div>
@@ -863,38 +903,9 @@ function proposeLieutenants() {
   gap: 0.75rem;
 }
 
-/* --- Header --- */
-.lieutenants-header {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.75rem 1rem;
-  background: var(--color-block-success-bg, #f0fdf4);
-  border: 1px solid var(--color-success, #22c55e);
-  border-radius: 8px;
-}
-
-.captain-badge {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-weight: 600;
-  font-size: 0.9375rem;
-}
-
-.captain-icon { font-size: 1.125rem; }
-
-.level-badge {
-  margin-left: auto;
-  padding: 0.25rem 0.625rem;
-  font-size: 0.6875rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
-  color: var(--color-primary);
-  background: var(--color-badge-blue-bg, #dbeafe);
-  border-radius: 999px;
-}
+/* Sprint 1 (2026-05-04) — styles legacy `.lieutenants-header`, `.captain-badge`,
+   `.captain-icon`, `.level-badge` supprimés. Le bloc DOM correspondant a été
+   supprimé du template. Le badge level migré dans LieutenantProposals.vue. */
 
 /* --- Soft gate --- */
 .soft-gate-message {

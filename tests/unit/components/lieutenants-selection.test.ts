@@ -265,21 +265,21 @@ beforeEach(() => {
 })
 
 describe('LieutenantsSelection', () => {
-  // --- Header ---
-  describe('Captain header', () => {
-    it('displays captain keyword', () => {
-      const w = mountComponent()
-      expect(w.find('.captain-keyword').text()).toBe('seo local')
+  // --- Header (Sprint 1, 2026-05-04) ---
+  // Le bloc legacy `.lieutenants-header` (rappel Capitaine + level) a été
+  // supprimé. Le rappel Capitaine était redondant avec MoteurContextRecap.
+  // Le badge level migre dans le header de LieutenantProposals.
+  describe('Article level badge (post-Sprint 1)', () => {
+    it('article level apparaît dans le DOM via LieutenantProposals header', async () => {
+      const w = await mountWithResults({ articleLevel: 'intermediaire' })
+      // Le badge est rendu dans LieutenantProposals (container principal),
+      // pas dans LieutenantsSelection. On vérifie sa présence dans le DOM rendu.
+      expect(w.html().toLowerCase()).toContain('intermediaire')
     })
 
-    it('displays article level badge', () => {
+    it('legacy `.lieutenants-header` n\'existe plus dans le DOM', () => {
       const w = mountComponent()
-      expect(w.find('.level-badge').text()).toBe('intermediaire')
-    })
-
-    it('shows dash when captainKeyword is null', () => {
-      const w = mountComponent({ captainKeyword: null })
-      expect(w.find('.captain-keyword').text()).toContain('—')
+      expect(w.find('.lieutenants-header').exists()).toBe(false)
     })
   })
 
@@ -390,11 +390,10 @@ describe('LieutenantsSelection', () => {
   describe('Collapsible sections', () => {
     it('renders CollapsableSections after analysis', async () => {
       const w = await mountWithResults()
-      // Sprint C-1 — Le tab Hn de LieutenantsAiPanel monte la section Hn
-      // concurrents derrière un toggle. Sans clic, seules les sections du
-      // niveau LieutenantsSelection (PAA + Groupes Discovery) sont rendues.
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
+      // Sprint 1 (2026-05-04) — restauration architecture pré-C-1 :
+      // LieutenantH2Structure est rendu directement (plus besoin de cliquer
+      // un tab interne). Les sections "Hn concurrents" + "PAA" + "Groupes
+      // Discovery" sont toutes accessibles sans interaction préalable.
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       expect(sections.length).toBeGreaterThanOrEqual(3)
     })
@@ -406,10 +405,7 @@ describe('LieutenantsSelection', () => {
 
     it('Hn concurrents section has correct title', async () => {
       const w = await mountWithResults()
-      // Sprint C-1 — La section Hn vit désormais derrière le tab "Hn" du
-      // LieutenantsAiPanel. On l'active pour que la section soit montée.
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
+      // Sprint 1 (2026-05-04) — section Hn rendue directement (plus de tab interne).
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnSection = sections.find(s => s.props('title') === 'Structure Hn concurrents')
       expect(hnSection).toBeDefined()
@@ -431,8 +427,6 @@ describe('LieutenantsSelection', () => {
 
     it('Hn concurrents section is closed by default', async () => {
       const w = await mountWithResults()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnSection = sections.find(s => s.props('title') === 'Structure Hn concurrents')
       expect(hnSection!.props('defaultOpen')).toBe(false)
@@ -500,16 +494,12 @@ describe('LieutenantsSelection', () => {
 
     it('renders hn-recurrence-item elements', async () => {
       const w = await mountWithResults()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
       const items = w.findAll('.hn-recurrence-item')
       expect(items.length).toBeGreaterThan(0)
     })
 
     it('displays level tag, text, frequency', async () => {
       const w = await mountWithResults()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
       const first = w.findAll('.hn-recurrence-item')[0]
       expect(first.find('.hn-level-tag').exists()).toBe(true)
       expect(first.find('.hn-text').exists()).toBe(true)
@@ -1048,11 +1038,9 @@ describe('LieutenantsSelection', () => {
   // --- Hn Structure section (from IA proposal) ---
   describe('Hn structure section', () => {
     it('renders hn-structure-section when hnStructure is populated', async () => {
+      // Sprint 1 (2026-05-04) — section rendue directement (plus de tab interne).
       const w = await mountWithResults()
       ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
-      await nextTick()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
       await nextTick()
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
@@ -1061,8 +1049,6 @@ describe('LieutenantsSelection', () => {
 
     it('does not render hn-structure-section when hnStructure is empty', async () => {
       const w = await mountWithResults()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
       expect(hnIaSection).toBeUndefined()
@@ -1072,9 +1058,6 @@ describe('LieutenantsSelection', () => {
       const w = await mountWithResults()
       ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
       await nextTick()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
-      await nextTick()
       const items = w.findAll('.hn-structure-item')
       expect(items).toHaveLength(2)
     })
@@ -1082,9 +1065,6 @@ describe('LieutenantsSelection', () => {
     it('renders children under parent nodes', async () => {
       const w = await mountWithResults()
       ;(w.vm as any).hnStructure = MOCK_IA_RESULT.hnStructure
-      await nextTick()
-      const hnTab = w.find('[data-testid="lieutenants-tab-hn"]')
-      if (hnTab.exists()) await hnTab.trigger('click')
       await nextTick()
       const children = w.findAll('.hn-structure-child')
       expect(children).toHaveLength(1) // Only first node has children

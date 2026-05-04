@@ -52,6 +52,16 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Sprint 1 — Restauration containers principaux Lieutenants (mai 2026) ✅
+  # tech-spec: tech-spec-sprint1-lieutenants-container-restoration.md
+  # Corrige la régression Sprint C-1 (commit 890b285) qui avait absorbé
+  # LieutenantProposals + LieutenantH2Structure dans LieutenantsAiPanel
+  # (coque purple "Suggestions IA"), brouillant la frontière entre
+  # données utilisateur et suggestions IA. 4 nouveaux tests architecturaux
+  # anti-régression. Suppression `lieutenants-header` legacy + badge level
+  # migré dans LieutenantProposals. 129/129 tests Lieutenants verts.
+  sprint-1-lieutenants-container-restoration: done
+
   # P0 Radar — Suggestions longue-traîne (mai 2026) ✅
   # tech-spec: tech-spec-radar-long-tail-suggestions.md
   # 6 sprints livrés en TDD (combinator + IA + persistance + UI + dédup + E2E)

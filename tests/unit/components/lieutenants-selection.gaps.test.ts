@@ -364,10 +364,15 @@ describe('LieutenantsSelection — hasEverAnalyzed (F5 soft gate)', () => {
 // ============================================================================
 describe('LieutenantsSelection — recommendAndPropagateWordCount au lock', () => {
   it('lock déclenche POST /articles/:id/recommend-word-count en arrière-plan', async () => {
-    // Préparer un état lockable : SERP fait + cards sélectionnées
+    // Préparer un état lockable : SERP fait + cards sélectionnées.
+    // Sprint 1 (2026-05-04) — Bloc 6 a retiré l'auto-trigger SERP au lock
+    // Capitaine, et ma refonte du sprint 1 conditionne le rendu de
+    // LieutenantProposals à `serpResult || isLocked || lieutenantCards.length`.
+    // On force serpResult sur la VM pour monter la section.
     mockApiPost.mockResolvedValueOnce(SERP_RESULT) // SERP captain
-    const wrapper = mountLieutenants()
+    const wrapper = mountLieutenants({ initialLocked: false })
     await nextTick()
+    ;(wrapper.vm as unknown as { serpResult: SerpAnalysisResult }).serpResult = SERP_RESULT
     await nextTick()
     await nextTick()
 

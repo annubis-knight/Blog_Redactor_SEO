@@ -1,116 +1,86 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import AiPanelHeader from '@/components/moteur/ai-panel/AiPanelHeader.vue'
-import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
-import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
-import type { ProposedLieutenant, ProposeLieutenantsHnNode, HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
-import type { SerpAnalysisResult } from '@shared/types/index.js'
 
 /**
- * Sprint C-1 (2026-05-02) — Wrapper bas-de-page qui regroupe les deux panels
- * IA Lieutenants : propositions de mots-clés et structure Hn recommandée.
+ * Sprint 1 (2026-05-04) — Panel IA Lieutenants PUR.
  *
- * Sous la coque visuelle commune (header + couleur purple identique aux autres
- * panels IA du Moteur). Toggle entre les deux sections (l'utilisateur voit
- * l'une à la fois pour éviter la surcharge cognitive).
+ * Histoire : Sprint C-1 (2026-05-02, commit 890b285) avait wrappé
+ * `LieutenantProposals` + `LieutenantH2Structure` dans ce composant pour
+ * "regrouper sous coque commune". Effet pervers : les containers PRINCIPAUX
+ * de l'onglet (cards Lieutenants, structure Hn) se retrouvaient affichés
+ * dans la coque purple "Suggestions IA", brouillant la frontière entre
+ * "données utilisateur" et "suggestions IA".
  *
- * Note : on n'utilise pas <AiPanel> directement car son state machine
- * (idle/streaming/success/error) ne s'aligne pas avec le double sous-état
- * (proposals streaming + Hn streaming). On réutilise AiPanelHeader + tokens
- * CSS purple pour conserver le vocabulaire visuel commun.
+ * Cette refonte (sprint 1, 2026-05-04) restaure la séparation : ce composant
+ * affiche UNIQUEMENT le streaming IA brut + le CTA Régénérer + content-gap
+ * insights. Les containers principaux remontent au niveau de
+ * `LieutenantsSelection.vue` en sections de premier niveau.
+ *
+ * Test verrou anti-régression :
+ *   tests/unit/components/lieutenants-selection-architecture.test.ts
  */
+
 defineProps<{
-  // Props LieutenantProposals
   iaIsStreaming: boolean
   iaChunks: string
   iaError: string | null
-  lieutenantCards: ProposedLieutenant[]
-  eliminatedCards: ProposedLieutenant[]
-  totalGenerated: number
-  selectedCards: Map<string, ProposedLieutenant>
   isLocked: boolean
   contentGapInsights: string
-  // Props LieutenantH2Structure
-  hnStructure: ProposeLieutenantsHnNode[]
-  activeHnRecurrence: HnRecurrenceItem[]
-  hnRecurrence: HnRecurrenceItem[]
-  serpResultsByKeyword: Map<string, SerpAnalysisResult>
-  activeHnTab: string
-  hnSaved: boolean
-  isSavingHn: boolean
+  totalGenerated: number
 }>()
 
 const emit = defineEmits<{
-  toggle: [card: ProposedLieutenant]
   retry: []
-  'save-hn': []
-  'update:activeHnTab': [value: string]
 }>()
-
-type TabKey = 'proposals' | 'hn'
-const activeTab = ref<TabKey>('proposals')
 </script>
 
 <template>
   <section class="lieutenants-ai-panel" data-testid="ai-panel-suggestion">
     <AiPanelHeader
       title="Suggestions IA Lieutenants"
-      subtitle="Propositions de mots-clés et structure Hn recommandée par l'IA."
+      subtitle="Streaming IA brut, régénération et insights de content-gap. Les propositions sélectionnables se trouvent dans la section principale au-dessus."
     />
 
-    <div class="lieutenants-panel-tabs" role="tablist">
-      <button
-        type="button"
-        role="tab"
-        class="lieutenants-tab"
-        :class="{ 'lieutenants-tab--active': activeTab === 'proposals' }"
-        :aria-selected="activeTab === 'proposals'"
-        data-testid="lieutenants-tab-proposals"
-        @click="activeTab = 'proposals'"
-      >
-        Propositions ({{ lieutenantCards.length }})
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="lieutenants-tab"
-        :class="{ 'lieutenants-tab--active': activeTab === 'hn' }"
-        :aria-selected="activeTab === 'hn'"
-        data-testid="lieutenants-tab-hn"
-        @click="activeTab = 'hn'"
-      >
-        Structure Hn ({{ hnStructure.length }})
+    <!-- Erreur IA -->
+    <div v-if="iaError" class="lap__error" role="alert">
+      <p>{{ iaError }}</p>
+      <button type="button" class="lap__retry-btn" data-testid="ai-retry-btn" @click="emit('retry')">
+        Régénérer
       </button>
     </div>
 
-    <LieutenantProposals
-      v-if="activeTab === 'proposals'"
-      :ia-is-streaming="iaIsStreaming"
-      :ia-chunks="iaChunks"
-      :ia-error="iaError"
-      :lieutenant-cards="lieutenantCards"
-      :eliminated-cards="eliminatedCards"
-      :total-generated="totalGenerated"
-      :selected-cards="selectedCards"
-      :is-locked="isLocked"
-      :content-gap-insights="contentGapInsights"
-      @toggle="(card) => emit('toggle', card)"
-      @retry="emit('retry')"
-    />
+    <!-- Streaming brut (pendant que l'IA produit) -->
+    <div v-else-if="iaIsStreaming" class="lap__streaming" aria-live="polite">
+      <div class="lap__pulse" aria-hidden="true"></div>
+      <pre class="lap__chunks">{{ iaChunks }}</pre>
+    </div>
 
-    <LieutenantH2Structure
-      v-else-if="activeTab === 'hn'"
-      :hn-structure="hnStructure"
-      :active-hn-recurrence="activeHnRecurrence"
-      :hn-recurrence="hnRecurrence"
-      :serp-results-by-keyword="serpResultsByKeyword"
-      :active-hn-tab="activeHnTab"
-      :is-locked="isLocked"
-      :hn-saved="hnSaved"
-      :is-saving-hn="isSavingHn"
-      @save-hn="emit('save-hn')"
-      @update:active-hn-tab="(value) => emit('update:activeHnTab', value)"
-    />
+    <!-- Content-gap insights (après génération) -->
+    <div v-else-if="contentGapInsights" class="lap__insights">
+      <h4 class="lap__insights-title">Content-gap détecté</h4>
+      <p class="lap__insights-body">{{ contentGapInsights }}</p>
+    </div>
+
+    <!-- État neutre : invitation à régénérer -->
+    <div v-else class="lap__idle">
+      <p class="lap__idle-hint">
+        <template v-if="totalGenerated > 0">
+          {{ totalGenerated }} proposition{{ totalGenerated > 1 ? 's' : '' }} générée{{ totalGenerated > 1 ? 's' : '' }} par l'IA.
+        </template>
+        <template v-else>
+          Aucune génération IA pour ce Capitaine.
+        </template>
+      </p>
+      <button
+        v-if="!isLocked"
+        type="button"
+        class="lap__retry-btn"
+        data-testid="ai-regen-btn"
+        @click="emit('retry')"
+      >
+        {{ totalGenerated > 0 ? 'Régénérer les suggestions' : 'Lancer une suggestion IA' }}
+      </button>
+    </div>
   </section>
 </template>
 
@@ -122,28 +92,106 @@ const activeTab = ref<TabKey>('proposals')
   background: var(--color-badge-purple-bg);
   border-radius: 0 0 8px 8px;
 }
-.lieutenants-panel-tabs {
+
+.lap__error {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-block-error-bg, #fef2f2);
+  border: 1px solid var(--color-error, #ef4444);
+  border-radius: 6px;
+  color: var(--color-error, #ef4444);
   display: flex;
-  gap: 0.25rem;
-  margin: 1rem 0;
-  border-bottom: 1px solid var(--color-border, #e2e8f0);
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
 }
-.lieutenants-tab {
-  padding: 0.5rem 1rem;
-  background: transparent;
-  border: none;
-  border-bottom: 2px solid transparent;
+
+.lap__streaming {
+  margin-top: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.lap__pulse {
+  width: 100%;
+  height: 4px;
+  background: linear-gradient(90deg, var(--color-badge-purple-text), transparent, var(--color-badge-purple-text));
+  background-size: 200% 100%;
+  border-radius: 2px;
+  animation: lap-pulse 1.5s linear infinite;
+}
+
+@keyframes lap-pulse {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 200% 0%; }
+}
+
+.lap__chunks {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--color-text-muted, #475569);
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.lap__insights {
+  margin-top: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: rgba(255, 255, 255, 0.6);
+  border-radius: 6px;
+}
+
+.lap__insights-title {
+  margin: 0 0 0.375rem 0;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-badge-purple-text);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.lap__insights-body {
+  margin: 0;
   font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--color-text-muted, #64748b);
-  cursor: pointer;
-  transition: color 0.15s, border-color 0.15s;
-}
-.lieutenants-tab:hover {
+  line-height: 1.5;
   color: var(--color-text, #1e293b);
 }
-.lieutenants-tab--active {
-  color: var(--color-badge-purple-text);
-  border-bottom-color: var(--color-badge-purple-text);
+
+.lap__idle {
+  margin-top: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.625rem 1rem;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
 }
+
+.lap__idle-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.lap__retry-btn {
+  padding: 0.375rem 0.875rem;
+  background: var(--color-badge-purple-text);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: filter 0.15s;
+}
+.lap__retry-btn:hover { filter: brightness(0.92); }
 </style>
