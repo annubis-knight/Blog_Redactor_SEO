@@ -1,0 +1,140 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed default state 1`] = `
+"<div data-v-6ebf81e5="" class="proposal-item">
+  <!-- Header row -->
+  <div data-v-6ebf81e5="" class="proposal-header">
+    <div data-v-6ebf81e5="" class="proposal-title-block">
+      <!--v-if--><span data-v-6ebf81e5="" class="proposal-title" title="Comment optimiser le SEO local pour PME">Comment optimiser le SEO local pour PME</span>
+    </div><!-- Composition badge (between title and slider nav) -->
+    <!--v-if-->
+    <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button><span data-v-99771f1f="" class="slider-counter">1/2</span><button data-v-99771f1f="" class="slider-arrow"><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button></div>
+    <!--v-if-->
+    <!-- Header (collapsed only) -->
+    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="3.5" r="1.2" fill="currentColor"></circle>
+          <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
+          <circle cx="8" cy="12.5" r="1.2" fill="currentColor"></circle>
+        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" title="Supprimer cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg></button></div><!-- Kebab dropdown (collapsed only) -->
+    <!--v-if-->
+    <!-- Bottom (expanded only) -->
+    <!--v-if-->
+  </div><!-- Parent selection dropdown -->
+  <!--v-if-->
+  <!-- Slug preview (collapsed only) -->
+  <div data-v-6ebf81e5="" class="collapsed-slug" data-testid="collapsed-slug"> /seo-local-pme</div><!-- Expanded details -->
+  <!--v-if-->
+</div>"
+`;
+
+exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded state with all details 1`] = `
+"<div data-v-6ebf81e5="" class="proposal-item expanded">
+  <!-- Header row -->
+  <div data-v-6ebf81e5="" class="proposal-header">
+    <div data-v-6ebf81e5="" class="proposal-title-block">
+      <div data-v-6ebf81e5="" class="label-with-edit"><span data-v-6ebf81e5="" class="keyword-label">Titre</span><button data-v-6ebf81e5="" class="edit-icon-btn" title="Modifier le titre"><svg data-v-6ebf81e5="" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M9.5 4.5l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+          </svg></button></div><span data-v-6ebf81e5="" class="proposal-title">Comment optimiser le SEO local pour PME</span>
+    </div><!-- Composition badge (between title and slider nav) -->
+    <!--v-if-->
+    <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button><span data-v-99771f1f="" class="slider-counter">1/2</span><button data-v-99771f1f="" class="slider-arrow"><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button></div>
+    <!--v-if-->
+    <!--v-if-->
+  </div><!-- Parent selection dropdown -->
+  <!--v-if-->
+  <!-- Slug preview (collapsed only) -->
+  <!--v-if-->
+  <!-- Expanded details -->
+  <div data-v-6ebf81e5="" class="proposal-details">
+    <div data-v-6ebf81e5="" class="keyword-slider">
+      <div data-v-6ebf81e5="" class="label-with-edit"><span data-v-6ebf81e5="" class="keyword-label">Mot-clé suggéré</span><button data-v-6ebf81e5="" class="edit-icon-btn" title="Modifier le mot-clé"><svg data-v-6ebf81e5="" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M9.5 4.5l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+          </svg></button></div>
+      <div data-v-6ebf81e5="" class="keyword-slider-row"><span data-v-6ebf81e5="" class="keyword-badge keyword-badge--pilier">seo local pme</span>
+        <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg></button><span data-v-99771f1f="" class="slider-counter">1/2</span><button data-v-99771f1f="" class="slider-arrow"><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+              <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            </svg></button></div>
+      </div>
+    </div>
+    <div data-v-6ebf81e5="" class="slug-slider">
+      <div data-v-6ebf81e5="" class="label-with-edit"><span data-v-6ebf81e5="" class="keyword-label">Slug</span><button data-v-6ebf81e5="" class="edit-icon-btn" title="Modifier le slug"><svg data-v-6ebf81e5="" width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M11.5 2.5l2 2-8 8H3.5v-2l8-8z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+            <path d="M9.5 4.5l2 2" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+          </svg></button></div>
+      <div data-v-6ebf81e5="" class="keyword-slider-row"><span data-v-6ebf81e5="" class="keyword-badge keyword-badge--slug" data-testid="slug-badge">seo-local-pme</span>
+        <!--v-if-->
+      </div>
+    </div>
+    <!--v-if-->
+    <div data-v-6ebf81e5="" class="detail-pain-point"><span data-v-6ebf81e5="" class="keyword-label">Douleur</span><span data-v-6ebf81e5="" class="pain-point-text">Manque de visibilité Google Maps</span></div>
+    <p data-v-6ebf81e5="" class="detail-rationale">Article pilier pour le cocon SEO local.</p><!-- Header (collapsed only) -->
+    <!--v-if-->
+    <!-- Kebab dropdown (collapsed only) -->
+    <!--v-if-->
+    <!-- Bottom (expanded only) -->
+    <div data-v-33c5c761="" class="proposal-actions proposal-actions--bottom"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" title="Valider cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg><span data-v-33c5c761="" class="action-label">Valider</span></button>
+      <div data-v-33c5c761="" class="regen-dropdown-wrapper"><button data-v-33c5c761="" class="proposal-action-btn" title="Régénérer" data-testid="regen-dropdown-btn"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+            <path d="M2.5 8a5.5 5.5 0 0 1 9.68-3.5M13.5 8a5.5 5.5 0 0 1-9.68 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+            <path d="M12.5 1v3.5H9M3.5 15v-3.5H7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+          </svg><span data-v-33c5c761="" class="action-label">Régénérer ▾</span></button>
+        <!--v-if-->
+      </div>
+      <!--v-if--><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" title="Supprimer cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg><span data-v-33c5c761="" class="action-label">Supprimer</span></button>
+    </div>
+  </div>
+</div>"
+`;
+
+exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders with composition warnings (badge + tooltip-eligible) 1`] = `
+"<div data-v-6ebf81e5="" class="proposal-item">
+  <!-- Header row -->
+  <div data-v-6ebf81e5="" class="proposal-header">
+    <div data-v-6ebf81e5="" class="proposal-title-block">
+      <!--v-if--><span data-v-6ebf81e5="" class="proposal-title" title="Comment optimiser le SEO local pour PME">Comment optimiser le SEO local pour PME</span>
+    </div><!-- Composition badge (between title and slider nav) --><span data-v-6ebf81e5="" class="composition-badge composition-badge--warn" data-testid="composition-badge-warn">⚠ 3</span>
+    <div data-v-99771f1f="" data-v-6ebf81e5="" class="slider-nav"><button data-v-99771f1f="" class="slider-arrow" disabled=""><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M6.5 1.5L3 5l3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button><span data-v-99771f1f="" class="slider-counter">1/2</span><button data-v-99771f1f="" class="slider-arrow"><svg data-v-99771f1f="" width="10" height="10" viewBox="0 0 10 10" fill="none" aria-hidden="true">
+          <path d="M3.5 1.5L7 5l-3.5 3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button></div>
+    <!--v-if-->
+    <!-- Header (collapsed only) -->
+    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <circle cx="8" cy="3.5" r="1.2" fill="currentColor"></circle>
+          <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
+          <circle cx="8" cy="12.5" r="1.2" fill="currentColor"></circle>
+        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" title="Supprimer cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
+        </svg></button></div><!-- Kebab dropdown (collapsed only) -->
+    <!--v-if-->
+    <!-- Bottom (expanded only) -->
+    <!--v-if-->
+  </div><!-- Parent selection dropdown -->
+  <!--v-if-->
+  <!-- Slug preview (collapsed only) -->
+  <div data-v-6ebf81e5="" class="collapsed-slug" data-testid="collapsed-slug"> /seo-local-pme</div><!-- Expanded details -->
+  <!--v-if-->
+</div>"
+`;

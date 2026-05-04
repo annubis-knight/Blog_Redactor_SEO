@@ -5,6 +5,8 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
 import { computeKpiScore } from '@shared/scoring-kpi.js'
 import KeywordWords from './KeywordWords.vue'
+import RadarCardScoreRing from '@/components/intent/radar-card/RadarCardScoreRing.vue'
+import RadarCardPaaTree from '@/components/intent/radar-card/RadarCardPaaTree.vue'
 
 export interface InteractiveWordsProps {
   words: string[]
@@ -198,7 +200,6 @@ const scoreDashoffset = computed(() => {
   return CIRCLE_CIRCUMFERENCE * (1 - t)
 })
 
-const showTooltip = ref(false)
 
 interface BreakdownRow {
   label: string
@@ -369,111 +370,35 @@ function itemBorderClass(paa: RadarPaaItem): string {
         </span>
       </div>
 
-      <!-- Score circle + tooltip.
-           Si `displayedScore` est null (mode relevance sans painPoint /
-           sans signal d'alignement), on affiche "—" + tooltip explicatif
-           plutôt que de fallback sur combinedScore (legacy hybride). -->
-      <div
-        class="radar-card__score-ring"
-        :class="{ 'radar-card__score-ring--empty': !hasScore }"
-        @mouseenter.stop="showTooltip = true"
-        @mouseleave.stop="showTooltip = false"
-        @click.stop
-      >
-        <svg width="68" height="68" viewBox="0 0 68 68">
-          <circle cx="34" cy="34" :r="CIRCLE_RADIUS" fill="none" :stroke="scoreColor" stroke-width="3"
-            stroke-linecap="round" :stroke-dasharray="CIRCLE_CIRCUMFERENCE" :stroke-dashoffset="scoreDashoffset"
-            transform="rotate(-90 34 34)" />
-        </svg>
-        <span class="score-ring__value" :style="{ color: scoreColor }">{{ hasScore ? displayedScore : '—' }}</span>
-        <span class="score-ring__label">{{ scoreLabel }}</span>
-        <Transition name="tooltip-fade">
-          <div v-if="showTooltip" class="score-tooltip" @click.stop>
-            <div class="tooltip-header">{{ scoreLabel }}</div>
-            <template v-if="hasScore">
-              <div v-for="(row, i) in breakdownRows" :key="'tt-' + i" class="tooltip-row">
-                <span class="tooltip-label">{{ row.label }} <span class="tooltip-weight">({{ row.weight }})</span></span>
-                <span class="tooltip-desc">{{ row.desc }}</span>
-                <span class="tooltip-val">{{ row.value }}/100</span>
-              </div>
-              <div class="tooltip-total">
-                <span>Total</span>
-                <span>{{ displayedScore }}/100</span>
-              </div>
-            </template>
-            <!-- Sprint 2 (2026-05-04) — message diff&eacute;renci&eacute; selon la cause d&eacute;tectable
-                 (cf. computed `relevanceMissingReason`). Avant : message unique qui mentait
-                 quand pain_point &eacute;tait d&eacute;fini en DB mais signaux SERP nuls. -->
-            <p v-else-if="relevanceMissingReason === 'no-pain'" class="tooltip-empty">
-              Score Pertinence indisponible. D&eacute;finis un point de douleur sur l'article et relance la validation pour obtenir le score.
-            </p>
-            <p v-else-if="relevanceMissingReason === 'no-signals'" class="tooltip-empty">
-              Le point de douleur est d&eacute;fini, mais les signaux SERP n'ont rien produit (PAA vides, autocomplete absent ou embedding indisponible). Relance la validation pour r&eacute;essayer.
-            </p>
-            <p v-else-if="relevanceMissingReason === 'long-tail'" class="tooltip-empty">
-              Score Pertinence non applicable aux longues tra&icirc;nes &mdash; utilise plut&ocirc;t le score Pertinence de leur racine dans l'onglet Capitaine.
-            </p>
-            <p v-else class="tooltip-empty">
-              Score Pertinence indisponible.
-            </p>
-          </div>
-        </Transition>
-      </div>
+      <RadarCardScoreRing
+        :displayed-score="displayedScore"
+        :score-color="scoreColor"
+        :score-label="scoreLabel"
+        :breakdown-rows="breakdownRows"
+        :has-score="hasScore"
+        :relevance-missing-reason="relevanceMissingReason"
+        :circle-radius="CIRCLE_RADIUS"
+        :circle-circumference="CIRCLE_CIRCUMFERENCE"
+        :score-dashoffset="scoreDashoffset"
+      />
     </div>
 
     <!-- Body (collapsible) -->
     <div v-if="expanded" class="radar-card__body">
       <p v-if="card.reasoning" class="radar-card__reasoning">{{ card.reasoning }}</p>
 
-      <!-- PAA tree: parent → children -->
-      <div v-if="paaTree.length > 0" class="paa-tree">
-        <div v-if="card.cachedPaa" class="paa-tree__cache-hint">PAA en cache</div>
-        <div v-for="node in paaTree" :key="node.index" class="paa-node">
-          <!-- Parent PAA -->
-          <div class="paa-item" :class="[
-            itemBorderClass(node.paa),
-            { 'paa-item--clickable': !!node.paa.answer || node.children.length > 0 },
-          ]">
-            <span v-if="node.children.length > 0" class="paa-tree-chevron"
-              :class="{ 'paa-tree-chevron--open': expandedParents.has(node.index) }"
-              @click.stop="toggleChildren(node.index)">&#9654;</span>
-            <span v-else class="paa-tree-chevron paa-tree-chevron--empty" />
-
-            <span class="paa-badge" :class="badgeClass(node.paa)">{{ matchLabel(node.paa) }}</span>
-            <span class="paa-question" @click.stop="node.paa.answer ? toggleAnswer(node.index) : undefined">{{
-              node.paa.question }}</span>
-            <span v-if="node.paa.semanticScore != null" class="paa-semantic">{{ Math.round(node.paa.semanticScore * 100)
-              }}%</span>
-            <span v-if="node.children.length > 0" class="paa-children-count">({{ node.children.length }})</span>
-          </div>
-
-          <!-- Answer (inline expand) -->
-          <div v-if="node.paa.answer && expandedPaa.has(node.index)" class="paa-answer" @click.stop>
-            {{ node.paa.answer }}
-          </div>
-
-          <!-- Children (collapsible) -->
-          <div v-if="node.children.length > 0 && expandedParents.has(node.index)" class="paa-children">
-            <div v-for="child in node.children" :key="child.index" class="paa-node paa-node--child">
-              <div class="paa-item" :class="[
-                itemBorderClass(child.paa),
-                { 'paa-item--clickable': !!child.paa.answer },
-              ]" @click.stop="child.paa.answer ? toggleAnswer(child.index) : undefined">
-                <span v-if="child.paa.answer" class="paa-chevron"
-                  :class="{ 'paa-chevron--open': expandedPaa.has(child.index) }">&#9654;</span>
-                <span v-else class="paa-chevron paa-chevron--empty" />
-                <span class="paa-badge" :class="badgeClass(child.paa)">{{ matchLabel(child.paa) }}</span>
-                <span class="paa-question">{{ child.paa.question }}</span>
-                <span v-if="child.paa.semanticScore != null" class="paa-semantic">{{ Math.round(child.paa.semanticScore
-                  * 100) }}%</span>
-              </div>
-              <div v-if="child.paa.answer && expandedPaa.has(child.index)" class="paa-answer" @click.stop>
-                {{ child.paa.answer }}
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
+      <RadarCardPaaTree
+        v-if="paaTree.length > 0"
+        :paa-tree="paaTree"
+        :expanded-paa="expandedPaa"
+        :expanded-parents="expandedParents"
+        :cached-paa="!!card.cachedPaa"
+        :item-border-class="itemBorderClass"
+        :badge-class="badgeClass"
+        :match-label="matchLabel"
+        @toggle-children="toggleChildren"
+        @toggle-answer="toggleAnswer"
+      />
 
       <p v-if="card.paaItems.length === 0" class="radar-card__no-paa">Aucune PAA trouvee</p>
     </div>
@@ -599,42 +524,6 @@ function itemBorderClass(paa: RadarPaaItem): string {
   display: block;
 }
 
-.radar-card__score-ring {
-  position: relative;
-  width: 68px;
-  height: 68px;
-  flex-shrink: 0;
-}
-
-.radar-card__score-ring svg {
-  display: block;
-}
-
-.score-ring__value {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  line-height: 1;
-}
-
-.score-ring__label {
-  position: absolute;
-  left: 50%;
-  top: calc(100% + 2px);
-  transform: translateX(-50%);
-  font-size: 0.625rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  letter-spacing: 0.02em;
-  white-space: nowrap;
-  pointer-events: none;
-}
-
 /* --- Body --- */
 .radar-card__body {
   padding: 0 16px 14px;
@@ -647,248 +536,6 @@ function itemBorderClass(paa: RadarPaaItem): string {
   font-style: italic;
   margin: 12px 0 10px;
   line-height: 1.4;
-}
-
-/* --- Score Tooltip (on ring hover) --- */
-.score-tooltip {
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  width: 380px;
-  z-index: 10;
-  background: var(--color-surface, white);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 12px 14px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
-}
-
-.tooltip-header {
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--color-text);
-  padding-bottom: 6px;
-  margin-bottom: 4px;
-  border-bottom: 1px solid var(--color-border);
-}
-
-.tooltip-row {
-  display: grid;
-  grid-template-columns: 140px 1fr auto;
-  gap: 8px;
-  align-items: baseline;
-  padding: 4px 0;
-  font-size: 0.75rem;
-}
-
-.tooltip-row+.tooltip-row {
-  border-top: 1px solid var(--color-border);
-}
-
-.tooltip-label {
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.tooltip-weight {
-  font-weight: 400;
-  color: var(--color-text-muted);
-}
-
-.tooltip-desc {
-  color: var(--color-text-muted);
-  font-size: 0.6875rem;
-}
-
-.tooltip-val {
-  font-weight: 700;
-  color: var(--color-text);
-  text-align: right;
-  font-variant-numeric: tabular-nums;
-}
-
-.tooltip-total {
-  display: flex;
-  justify-content: space-between;
-  padding-top: 8px;
-  margin-top: 4px;
-  border-top: 2px solid var(--color-border);
-  font-size: 0.8125rem;
-  font-weight: 700;
-  color: var(--color-text);
-}
-
-.tooltip-empty {
-  margin: 0;
-  padding: 6px 4px;
-  font-size: 0.75rem;
-  line-height: 1.45;
-  color: var(--color-text-muted, #64748b);
-}
-
-/* État "score absent" : cercle muet, valeur "—" */
-.radar-card__score-ring--empty .score-ring__label {
-  opacity: 0.7;
-}
-
-.tooltip-fade-enter-active,
-.tooltip-fade-leave-active {
-  transition: opacity 0.15s, transform 0.15s;
-}
-
-.tooltip-fade-enter-from,
-.tooltip-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-4px);
-}
-
-/* --- PAA tree --- */
-.paa-tree {
-  margin-top: 10px;
-}
-
-.paa-tree__cache-hint {
-  font-size: 0.6875rem;
-  color: var(--color-success, #22c55e);
-  opacity: 0.6;
-  margin-bottom: 6px;
-}
-
-.paa-node {
-  margin-bottom: 2px;
-}
-
-.paa-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  font-size: 0.8125rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
-}
-
-.paa-item--exact {
-  border-color: var(--color-success, #22c55e);
-}
-
-.paa-item--match {
-  border-color: var(--color-border);
-}
-
-.paa-item--clickable {
-  cursor: pointer;
-}
-
-.paa-item--clickable:hover {
-  background: rgba(0, 0, 0, 0.02);
-}
-
-/* Tree chevron (parent → children toggle) */
-.paa-tree-chevron {
-  font-size: 8px;
-  color: var(--color-text-muted);
-  width: 14px;
-  flex-shrink: 0;
-  transition: transform 0.15s;
-  display: inline-block;
-  cursor: pointer;
-}
-
-.paa-tree-chevron:hover {
-  color: var(--color-text);
-}
-
-.paa-tree-chevron--open {
-  transform: rotate(90deg);
-}
-
-.paa-tree-chevron--empty {
-  visibility: hidden;
-}
-
-/* Small answer chevron (inside children) */
-.paa-chevron {
-  font-size: 8px;
-  color: var(--color-text-muted);
-  width: 12px;
-  flex-shrink: 0;
-  transition: transform 0.15s;
-  display: inline-block;
-}
-
-.paa-chevron--open {
-  transform: rotate(90deg);
-}
-
-.paa-chevron--empty {
-  visibility: hidden;
-}
-
-.paa-badge {
-  font-size: 0.5625rem;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
-  flex-shrink: 0;
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.badge--total {
-  background: var(--color-success, #22c55e);
-  color: white;
-}
-
-.badge--partial {
-  background: var(--color-warning, #eab308);
-  color: white;
-}
-
-.badge--none {
-  background: var(--color-background-mute, #e2e8f0);
-  color: var(--color-text-muted);
-}
-
-.paa-question {
-  flex: 1;
-  line-height: 1.3;
-  min-width: 0;
-}
-
-.paa-semantic {
-  font-size: 0.625rem;
-  color: var(--color-text-muted);
-  opacity: 0.7;
-  font-variant-numeric: tabular-nums;
-  flex-shrink: 0;
-}
-
-.paa-children-count {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  flex-shrink: 0;
-}
-
-.paa-answer {
-  padding: 4px 10px 6px 34px;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
-/* Indented children block */
-.paa-children {
-  padding-left: 20px;
-  border-left: 1px solid var(--color-border);
-  margin-left: 6px;
-  margin-top: 2px;
-  margin-bottom: 4px;
-}
-
-.paa-node--child .paa-answer {
-  padding-left: 30px;
 }
 
 .radar-card__no-paa {
