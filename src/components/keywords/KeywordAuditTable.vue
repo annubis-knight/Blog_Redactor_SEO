@@ -35,15 +35,22 @@ function hasLocalData(keyword: string): boolean {
   return intentStore.localComparisons.has(keyword) || intentStore.localComparisons.has(keyword + ' Toulouse')
 }
 
-function getLocalVariant(keyword: string): { keyword: string; kd: number; volume: number; delta: number } | null {
+function getLocalVariant(keyword: string): { keyword: string; kd: number | null; volume: number | null; delta: number | null } | null {
   const localKey = keyword + ' Toulouse'
   const comp = intentStore.localComparisons.get(keyword) ?? intentStore.localComparisons.get(localKey)
   if (!comp) return null
+  // KD/Volume restent null si la métrique n'a pas pu être fetchée — l'affichage
+  // doit montrer "—" et le tri pousser ces lignes en bas (pas comme un 0).
+  const localKd = comp.local?.keywordDifficulty ?? null
+  const localVolume = comp.local?.searchVolume ?? null
+  const nationalKd = comp.national?.keywordDifficulty ?? null
+  // delta n'a de sens que si les deux KD sont définis
+  const delta = localKd !== null && nationalKd !== null ? nationalKd - localKd : null
   return {
     keyword: localKey,
-    kd: comp.local?.keywordDifficulty ?? 0,
-    volume: comp.local?.searchVolume ?? 0,
-    delta: (comp.national?.keywordDifficulty ?? 0) - (comp.local?.keywordDifficulty ?? 0),
+    kd: localKd,
+    volume: localVolume,
+    delta,
   }
 }
 
@@ -249,9 +256,9 @@ async function handleDelete(keyword: string) {
               <template v-if="hasLocalData(kw.keyword)">
                 <div class="switcher-info">
                   <strong>{{ getLocalVariant(kw.keyword)?.keyword }}</strong>
-                  <span>KD: {{ getLocalVariant(kw.keyword)?.kd }}/100</span>
-                  <span>Vol: {{ getLocalVariant(kw.keyword)?.volume }}</span>
-                  <span class="switcher-delta">-{{ getLocalVariant(kw.keyword)?.delta }} KD</span>
+                  <span>KD: {{ getLocalVariant(kw.keyword)?.kd ?? '—' }}/100</span>
+                  <span>Vol: {{ getLocalVariant(kw.keyword)?.volume ?? '—' }}</span>
+                  <span class="switcher-delta">{{ getLocalVariant(kw.keyword)?.delta !== null && getLocalVariant(kw.keyword)?.delta !== undefined ? `-${getLocalVariant(kw.keyword)!.delta} KD` : '—' }}</span>
                 </div>
                 <button class="btn-add-local" @click="addLocalVariant(kw.keyword)">
                   + Ajouter la variante locale

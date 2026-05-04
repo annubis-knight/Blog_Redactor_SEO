@@ -18,6 +18,10 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { marked } from 'marked'
 import type { ArticleContent } from '@shared/types/index.js'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import {
+  REDACTION_BRIEF_VALIDATED,
+  REDACTION_OUTLINE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants'
 import { log } from '@/utils/logger'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
@@ -349,8 +353,9 @@ const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = 
 
 const redactionNavSteps = computed<NavItem[]>(() => {
   const id = articleId.value
+   
   const checks = id ? articleProgressStore.getProgress(id)?.completedChecks ?? [] : []
-  const briefDone = checks.includes('redaction:brief_validated') || checks.includes('redaction:outline_validated')
+  const briefDone = checks.includes(REDACTION_BRIEF_VALIDATED) || checks.includes(REDACTION_OUTLINE_VALIDATED)
   return REDACTION_STEPS.map((s, idx) => ({
     id: s.id,
     label: s.label,

@@ -337,6 +337,9 @@ async function fetchKeywordOverviewForLocation(keyword: string, locationCode: nu
   }
 
   log.debug(`fetchKeywordOverviewForLocation done`, { keyword, locationCode, ms: Date.now() - start, volume: item.keyword_info?.search_volume })
+  // Adapter DataForSEO -> LocationMetrics : type legacy impose number non nullable.
+  // TODO[data-flow-discipline] : migrer LocationMetrics vers number | null
+   
   return {
     searchVolume: item.keyword_info?.search_volume ?? 0,
     keywordDifficulty: item.keyword_info?.keyword_difficulty ?? 0,
@@ -344,6 +347,7 @@ async function fetchKeywordOverviewForLocation(keyword: string, locationCode: nu
     competition: item.keyword_info?.competition ?? 0,
     monthlySearches: item.keyword_info?.monthly_searches?.map((m: any) => m.search_volume) ?? [],
   }
+   
 }
 
 export async function compareLocalNational(keyword: string): Promise<LocalNationalComparison> {

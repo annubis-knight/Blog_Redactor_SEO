@@ -106,9 +106,10 @@ describe('local.store', () => {
     expect(store.isScoring).toBe(false)
   })
 
-  it('localScore returns score from anchorageScore', () => {
+  it('localScore returns score from anchorageScore (null si pas calcule)', () => {
     const store = useLocalStore()
-    expect(store.localScore).toBe(0)
+    // Apres fix data-flow-discipline : null tant que pas calcule (pas 0 silencieux)
+    expect(store.localScore).toBeNull()
 
     store.anchorageScore = {
       score: 65,

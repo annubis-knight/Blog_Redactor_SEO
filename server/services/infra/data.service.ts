@@ -643,6 +643,12 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     // non-null values, otherwise an empty array (the UI will show "missing metrics").
     const kpis: Array<{ name: string; rawValue: number }> = []
     if (t.metrics_fetched_at) {
+      // Adapter DB -> KPIs : la garde `metrics_fetched_at` non-null garantit que les
+      // colonnes ont ete fetchees au moins une fois. Les fallbacks ?? 0 sont
+      // defensive coding pour le cas (rare) ou une colonne specifique est null.
+      // TODO[data-flow-discipline] : remonter null jusqu'au front pour distinguer
+      // "0 reel" de "donnee absente"
+       
       kpis.push({ name: 'volume', rawValue: Number(t.search_volume ?? 0) })
       kpis.push({ name: 'kd', rawValue: Number(t.keyword_difficulty ?? 0) })
       kpis.push({ name: 'cpc', rawValue: Number(t.cpc ?? 0) })
@@ -652,6 +658,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       const autoPos = suggestions.find(s => s.text.toLowerCase() === keywordLower)?.position ?? 0
       kpis.push({ name: 'autocomplete', rawValue: autoPos })
       kpis.push({ name: 'paa', rawValue: 0 })
+       
     }
     const scores = scoresByKeyword.get(t.keyword)
     return {

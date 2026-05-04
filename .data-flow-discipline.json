@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "highScorePatterns": ["Score", "Pertinence", "Density", "Difficulty"],
+  "mediumScorePatterns": ["Volume", "Count"],
+  "fallbackOperators": ["??"],
+  "fallbackValues": ["0", "50", "100"],
+  "workflowCheckPrefixes": ["moteur:", "cerveau:", "redaction:"],
+  "fileSizeLimit": 400,
+  "frRegex": "FR-[A-Z]+-[A-Z-]+|FR\\d+",
+  "apiWrapperFunctions": ["apiGet", "apiPost", "apiPut", "apiDelete"],
+  "dataFlowsDir": "docs/data-flows",
+  "brandedTypesPath": "shared/types/branded.ts",
+  "coherenceTestsDir": "tests/unit/coherence",
+  "scanRoots": ["src", "server", "shared"],
+  "ignoreDirs": ["node_modules", "dist", "build", ".git", "coverage", ".next", ".nuxt", "_bmad-output"],
+  "dialect": "vue-pinia-express-postgres-vitest-ts"
+}

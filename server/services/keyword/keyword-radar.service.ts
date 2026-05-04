@@ -394,6 +394,9 @@ export async function scanRadarKeywords(
 
     const painAlignmentScore = painAlignmentMap.get(kw.keyword)
 
+    // Adapter overview DataForSEO -> RadarKeywordKpis : type legacy impose number.
+    // TODO[data-flow-discipline] : migrer RadarKeywordKpis.searchVolume / difficulty / cpc vers number | null
+     
     const kpis: RadarKeywordKpis = {
       searchVolume: overview?.searchVolume ?? 0,
       difficulty: overview?.difficulty ?? 0,
@@ -408,6 +411,7 @@ export async function scanRadarKeywords(
       avgSemanticScore,
       painAlignmentScore,
     }
+     
 
     // Étapes 3A/3B — enrichir avec les signaux "pertinence × douleur"
     const paaPainAvg = paaPainAlignmentByKw.get(kw.keyword)

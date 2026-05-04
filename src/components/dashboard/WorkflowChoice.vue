@@ -43,6 +43,7 @@ defineProps<{
         <p class="choice-desc">
           Exploration, intention, local, concurrents, mots-cl&eacute;s et audit DataForSEO
         </p>
+        <!-- eslint-disable-next-line no-restricted-syntax -- "0 mots-cles" est semantique (vrai etat vide), pas un fallback masquant -->
         <span class="choice-badge">{{ keywordCount ?? 0 }} mots-cl&eacute;s</span>
       </RouterLink>
 

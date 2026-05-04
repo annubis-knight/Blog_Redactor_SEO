@@ -19,7 +19,9 @@ export const useLocalStore = defineStore('local', () => {
   // Computed
   const hasLocalPack = computed(() => mapsData.value?.hasLocalPack ?? false)
   const reviewGap = computed(() => mapsData.value?.reviewGap ?? null)
-  const localScore = computed(() => anchorageScore.value?.score ?? 0)
+  // localScore est null tant que l'ancrage n'a pas ete calcule — l'affichage doit montrer "—"
+  // au lieu de 0, sinon l'utilisateur ne peut pas distinguer "score reel = 0" de "pas calcule".
+  const localScore = computed(() => anchorageScore.value?.score ?? null)
   const hasSuggestions = computed(() => (anchorageScore.value?.suggestions.length ?? 0) > 0)
 
   // Actions

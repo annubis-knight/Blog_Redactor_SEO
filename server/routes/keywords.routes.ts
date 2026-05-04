@@ -500,6 +500,11 @@ router.post('/keywords/validate-pain', async (req, res) => {
 
         // DataForSEO data
         const relatedCount = relatedResult.status === 'fulfilled' ? relatedResult.value.length : 0
+        // Adapter DataForSEO : le contrat de réponse de cet endpoint legacy
+        // expose les KPIs en `number` (pas null). À long terme : migrer vers
+        // `searchVolume: number | null` pour aligner avec keyword_metrics.
+        // TODO[data-flow-discipline] : type ResponseDataforseo doit autoriser null
+         
         const dataforseo = {
           searchVolume: overview?.searchVolume ?? 0,
           difficulty: overview?.difficulty ?? 0,
@@ -507,6 +512,7 @@ router.post('/keywords/validate-pain', async (req, res) => {
           competition: overview?.competition ?? 0,
           relatedCount,
         }
+         
 
         // Community signal
         const community = communityResult.status === 'fulfilled' ? communityResult.value : null

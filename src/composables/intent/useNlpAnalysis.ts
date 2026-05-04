@@ -143,6 +143,7 @@ async function analyzeKeywords(keywords: string[]): Promise<void> {
 
       newResults.set(kw, {
         label: allScores[0]?.label ?? 'information générale',
+         
         confidence: allScores[0]?.score ?? 0,
         allScores,
       })

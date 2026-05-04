@@ -10,7 +10,7 @@ inputDocuments:
 workflowType: 'prd'
 completedAt: '2026-03-31'
 lastUpdated: '2026-05-04'
-updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING).'
+updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1).'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
   - 'docs/ARCHITECTURE_FLOWS.md'
@@ -597,6 +597,16 @@ Curseur SERP intelligent : sous le défaut = filtre local (sur résultats déjà
 
 #### FR-LIE-CHECK
 Émet `moteur:lieutenants_locked` au verrouillage.
+
+#### FR-LIE-AI-FRONTIER
+**Frontière sémantique données utilisateur ↔ suggestions IA** *(ajout 2026-05-04)*. Les containers principaux Lieutenants — `LieutenantProposals` (cards Lieutenants verrouillés et éliminés) et `LieutenantH2Structure` (structure Hn validée) — affichent les **données de l'utilisateur** ; ils représentent ce que l'utilisateur a sélectionné, verrouillé, validé. Ils **ne doivent jamais** être visuellement ou hiérarchiquement absorbés par la coque "Suggestions IA" (`LieutenantsAiPanel`), qui est dédiée aux **propositions générées par l'IA** non encore validées.
+
+La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, si une donnée est la sienne ou une suggestion à valider. Toute fusion future doit être traitée comme une régression bloquante, peu importe son origine (refactor structurel, ajout de feature, restyling, parallélisation).
+
+**Historique** : la régression Sprint C-1 (commit `890b285`, 2026-05-02) avait absorbé `LieutenantProposals` + `LieutenantH2Structure` dans `LieutenantsAiPanel`. La frontière a été restaurée en sprint 1 (2026-05-04). Cette FR formalise l'invariant pour qu'il survive aux refactors.
+
+**Test verrou de référence** : `tests/unit/components/lieutenants-selection-architecture.test.ts` — tout test architectural ajouté dans cette zone DOIT pointer cette FR dans son commentaire de tête.
+**Source :** `src/components/moteur/LieutenantsSelection.vue:735-890`.
 
 ---
 

@@ -174,6 +174,11 @@ export async function persistLongTailSuggestions(
     broadKeyword: existing?.scanResult?.broadKeyword ?? '',
     autocomplete: existing?.scanResult?.autocomplete ?? { suggestions: [], totalCount: 0 },
     cards: existing?.scanResult?.cards ?? [],
+    // globalScore : merge JSONB defensive coding ; la valeur officielle vient du dernier
+    // scan persiste, ce branche n'est atteinte que si scan_result est partiellement vide
+    // (cas de migration de schema ou ecriture concurrente). 0 est ici un placeholder
+    // qui sera ecrase au prochain scan complet.
+     
     globalScore: existing?.scanResult?.globalScore ?? 0,
     heatLevel: existing?.scanResult?.heatLevel ?? 'froide',
     verdict: existing?.scanResult?.verdict ?? '',

@@ -14,7 +14,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  analyzed: [avgWordCount: number]
+  analyzed: [avgWordCount: number | null]
 }>()
 
 const gapData = ref<ContentGapAnalysis | null>(null)
@@ -24,7 +24,11 @@ const error = ref<string | null>(null)
 const themes = computed(() => gapData.value?.themes ?? [])
 const gaps = computed(() => gapData.value?.gaps ?? [])
 const localEntities = computed(() => gapData.value?.localEntitiesFromCompetitors ?? [])
-const avgWordCount = computed(() => gapData.value?.averageWordCount ?? 0)
+// avgWordCount peut etre null si l'analyse n'a pas pu calculer la moyenne
+// (zero competitor trouve ou erreur). On affiche "—" plutot que "0" trompeur.
+const avgWordCount = computed(() => gapData.value?.averageWordCount ?? null)
+// competitorCount = 0 est semantiquement OK ("zero concurrent trouve" est une vraie info).
+ 
 const competitorCount = computed(() => gapData.value?.competitors.length ?? 0)
 
 // Enrichment: PAA not covered by any competitor
@@ -122,7 +126,7 @@ async function handleAnalyze() {
         </div>
         <div class="overview-card">
           <span class="card-label">Mots moyens</span>
-          <span class="card-value">{{ avgWordCount.toLocaleString('fr-FR') }}</span>
+          <span class="card-value">{{ avgWordCount !== null ? avgWordCount.toLocaleString('fr-FR') : '—' }}</span>
         </div>
         <div class="overview-card">
           <span class="card-label">Themes</span>

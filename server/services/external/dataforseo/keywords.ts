@@ -136,6 +136,9 @@ export async function fetchKeywordOverview(
   }
 
   log.debug(`fetchKeywordOverview done`, { keyword, volume: item.keyword_info?.search_volume, difficulty: item.keyword_properties?.keyword_difficulty })
+  // Adapter DataForSEO -> KeywordOverview : le type interne legacy impose number.
+  // TODO[data-flow-discipline] : migrer KeywordOverview.searchVolume / difficulty / cpc vers number | null
+   
   return {
     searchVolume: item.keyword_info?.search_volume ?? 0,
     difficulty: item.keyword_properties?.keyword_difficulty ?? 0,
@@ -145,6 +148,7 @@ export async function fetchKeywordOverview(
     wordsCount: item.keyword_properties?.words_count ?? undefined,
     coreKeyword: item.keyword_properties?.core_keyword ?? undefined,
   }
+   
 }
 
 // --- Batch endpoints (Task 2 & 3) ---
@@ -196,6 +200,9 @@ export async function fetchKeywordOverviewBatch(
       for (const item of items) {
         if (!item?.keyword) continue
         const kwLower = item.keyword.toLowerCase()
+        // Adapter DataForSEO batch -> KeywordOverview : type legacy impose number.
+        // TODO[data-flow-discipline] : migrer vers number | null
+         
         result.set(kwLower, {
           searchVolume: item.keyword_info?.search_volume ?? 0,
           difficulty: item.keyword_properties?.keyword_difficulty ?? 0,
@@ -205,6 +212,7 @@ export async function fetchKeywordOverviewBatch(
           wordsCount: item.keyword_properties?.words_count ?? undefined,
           coreKeyword: item.keyword_properties?.core_keyword ?? undefined,
         })
+         
       }
     } catch (err) {
       log.warn(`Batch keyword overview failed for ${chunk.length} keywords: ${(err as Error).message}`)

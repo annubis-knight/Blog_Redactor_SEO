@@ -19,6 +19,10 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
         serp: (metrics.serpRawJson as any)?.competitors ?? [],
         paa: metrics.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? null })),
         relatedKeywords: [],
+        // Adapter DataForSEO brief : le contrat KeywordOverview legacy impose
+        // searchVolume/difficulty/cpc/competition en `number` non nullable.
+        // TODO[data-flow-discipline] : migrer KeywordOverview vers number | null
+         
         keywordData: {
           searchVolume: metrics.searchVolume ?? 0,
           difficulty: metrics.keywordDifficulty ?? 0,
@@ -26,6 +30,7 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
           competition: metrics.competition ?? 0,
           monthlySearches: [],
         },
+         
         cachedAt: metrics.fetchedAt,
         fromCache: true,
       }
