@@ -141,56 +141,12 @@ afterEach(() => {
 })
 
 // ============================================================================
-// Phase 1 — Inputs et bouton Générer
+// Phase 1 — Inputs Phase 1 : SUPPRIMÉ (mode libre uniquement, hors périmètre).
+// Sprint 5 (friction #7) a masqué les inputs broadKeyword/specificTopic/painPoint
+// en mode workflow. Ces inputs n'existent plus que dans LaboView (mode libre),
+// qui n'est plus une priorité produit. Tests retirés pour éviter de tester
+// du code mort côté workflow.
 // ============================================================================
-describe('DouleurIntentScanner — phase 1 : inputs + générer', () => {
-  it('inputs pré-remplis depuis les props', () => {
-    const wrapper = mountScanner()
-    const inputs = wrapper.findAll('.input-field')
-    // Ordre du template : broadKeyword, specificTopic, painPoint
-    expect((inputs[0]!.element as HTMLInputElement).value).toBe('seo local')
-    // specificTopic = articleTopic || articleKeyword || pilierKeyword
-    expect((inputs[1]!.element as HTMLInputElement).value).toBe('Article test')
-    expect((inputs[2]!.element as HTMLInputElement).value).toBe('pas assez de clients')
-  })
-
-  it('saisie dans broadKeyword met à jour le ref', async () => {
-    const wrapper = mountScanner()
-    const broad = wrapper.findAll('.input-field')[0]!
-    await broad.setValue('cuisine zero dechet')
-    expect((broad.element as HTMLInputElement).value).toBe('cuisine zero dechet')
-  })
-
-  it('clic Générer appelle generate(specificTopic, broadKeyword, painPoint)', async () => {
-    const wrapper = mountScanner()
-    await wrapper.find('.btn-action').trigger('click')
-    expect(mockGenerate).toHaveBeenCalledWith(
-      'Article test',
-      'seo local',
-      'pas assez de clients',
-    )
-  })
-
-  it('si painPoint vide, generate reçoit specificTopic en fallback', async () => {
-    const wrapper = mountScanner({ articlePainPoint: '' })
-    await wrapper.find('.btn-action').trigger('click')
-    expect(mockGenerate).toHaveBeenCalledWith('Article test', 'seo local', 'Article test')
-  })
-
-  it('bouton Générer désactivé si broadKeyword OU specificTopic est vide', async () => {
-    const wrapper = mountScanner({ pilierKeyword: '', articleTopic: '', articleKeyword: '' })
-    const btn = wrapper.find('.btn-action')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-  })
-
-  it('bouton désactivé pendant isGenerating', () => {
-    mockIsGenerating.value = true
-    const wrapper = mountScanner()
-    const btn = wrapper.find('.btn-action')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-    expect(btn.text()).toContain('Generation')
-  })
-})
 
 // ============================================================================
 // Phase 2 — Keywords générés (preview, suppression, scan)
@@ -301,17 +257,10 @@ describe('DouleurIntentScanner — phase results', () => {
     expect(cards.length).toBe(3)
   })
 
-  it('bouton "Nouveau scan" présent en phase results', () => {
-    const wrapper = mountScanner()
-    expect(wrapper.find('.btn-action--secondary').text()).toContain('Nouveau scan')
-  })
-
-  it('clic Nouveau scan → reset', async () => {
-    const wrapper = mountScanner()
-    await wrapper.find('.btn-action--secondary').trigger('click')
-    expect(mockReset).toHaveBeenCalled()
-    expect(wrapper.emitted('keywords-cleared')).toBeTruthy()
-  })
+  // Tests "Nouveau scan" SUPPRIMÉS : le bouton vit dans le bloc inputs masqué
+  // en mode workflow (Sprint 5 friction #7). En workflow, il n'y a pas de
+  // "Nouveau scan" à cliquer — l'utilisateur change d'article ou re-déclenche
+  // depuis Discovery. Mode libre uniquement → hors périmètre.
 
   it('filtre CPC "with" masque les cartes à CPC=0', async () => {
     const wrapper = mountScanner()

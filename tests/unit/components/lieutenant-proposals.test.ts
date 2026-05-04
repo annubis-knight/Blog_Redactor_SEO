@@ -91,19 +91,30 @@ describe('LieutenantProposals', () => {
     expect(wrapper.text()).toContain('proposera des lieutenants')
   })
 
-  it('cards retenues rendues + counter X selectionnés sur Y générés', () => {
+  it('cards retenues rendues + counter affiché si des éliminés existent', () => {
+    // Le compteur `[data-testid="lieutenant-counter"]` n'est rendu QUE si
+    // `eliminatedCards.length > 0` (cf. LieutenantProposals.vue:101). C'est
+    // l'invariant : pas d'info filtre si rien n'a été filtré.
     const cards = [makeLt('agence', 80), makeLt('expert', 70), makeLt('local', 60)]
+    const eliminated = [makeLt('rejet', 30), makeLt('bof', 20)]
     const selected = new Map<string, ProposedLieutenant>()
     selected.set('agence', cards[0])
     selected.set('expert', cards[1])
 
     const wrapper = mount(LieutenantProposals, {
-      props: { ...BASE, lieutenantCards: cards, selectedCards: selected, totalGenerated: 5 },
+      props: {
+        ...BASE,
+        lieutenantCards: cards,
+        eliminatedCards: eliminated,
+        selectedCards: selected,
+        totalGenerated: 5,
+      },
       global: GLOBAL,
     })
     const counter = wrapper.find('[data-testid="lieutenant-counter"]')
-    expect(counter.text()).toContain('2')
-    expect(counter.text()).toContain('5')
+    expect(counter.exists()).toBe(true)
+    expect(counter.text()).toContain('3 retenus')
+    expect(counter.text()).toContain('2 éliminés')
     expect(wrapper.findAll('.stub-lt-card')).toHaveLength(3)
   })
 
@@ -133,7 +144,7 @@ describe('LieutenantProposals', () => {
     })
     expect(w2.find('.filter-info').exists()).toBe(true)
     expect(w2.find('.filter-info').text()).toContain('1 retenus')
-    expect(w2.find('.filter-info').text()).toContain('1 elimines')
+    expect(w2.find('.filter-info').text()).toContain('1 éliminés')
   })
 
   it('cards éliminées masquées par défaut, toggle expand → visibles', async () => {

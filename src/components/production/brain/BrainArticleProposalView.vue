@@ -5,7 +5,10 @@ import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
 import GenerationStepper from '@/components/production/GenerationStepper.vue'
 import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
-import type { ProposedArticle } from '@shared/types/index.js'
+import type { ProposedArticle, SuggestedTopic, CompositionCheckResult } from '@shared/types/index.js'
+import type { ArticleType } from '@shared/types/article.types.js'
+
+export type GenerationPhase = 'idle' | 'structure' | 'paa-queries' | 'paa-fetch' | 'specialises' | 'done' | 'error'
 
 interface ArticleColumnInfo {
   tooltip?: string
@@ -18,32 +21,22 @@ interface SpecGroup {
   articles: Array<ProposedArticle & { originalIndex: number }>
 }
 
-interface CompositionResult {
-  ok: boolean
-  warnings: string[]
-}
-
 interface ArticleWarning {
+  type: string
   message: string
-}
-
-interface SuggestedTopic {
-  title: string
-  slug: string
-  selected: boolean
 }
 
 defineProps<{
   articleColumns: ArticleColumnInfo[]
   groupedSpecArticles: SpecGroup[]
-  compositionResults: Map<number, CompositionResult>
+  compositionResults: Map<number, CompositionCheckResult>
   articleWarnings: Map<number, ArticleWarning[]>
   intermediateTitles: string[]
   globalWarnings: ArticleWarning[]
   truncationWarning: string | null
   generationWarning: string | null
-  generationPhase: string
-  addingArticleType: string | null
+  generationPhase: GenerationPhase
+  addingArticleType: ArticleType | null
   topicsLoading: boolean
   topicsError: string | null
   proposedArticlesCount: number
@@ -54,25 +47,25 @@ defineProps<{
 const emit = defineEmits<{
   (e: 'generate-proposals'): void
   (e: 'validate-articles'): void
-  (e: 'toggle-topic', slug: string): void
-  (e: 'remove-topic', slug: string): void
-  (e: 'add-topic', topic: { title: string; slug: string }): void
+  (e: 'toggle-topic', index: number): void
+  (e: 'remove-topic', index: number): void
+  (e: 'add-topic', topic: string): void
   (e: 'regenerate-topics'): void
   (e: 'update:user-context', ctx: string): void
-  (e: 'add-empty', type: string): void
-  (e: 'add-smart', type: string, hint?: string): void
+  (e: 'add-empty', type: ArticleType): void
+  (e: 'add-smart', type: ArticleType, hint?: string): void
   (e: 'remove-proposed', index: number): void
   (e: 'toggle-accept', index: number): void
   (e: 'regenerate-title', index: number): void
-  (e: 'select-title', payload: { index: number; title: string }): void
+  (e: 'select-title', articleIndex: number, titleIndex: number): void
   (e: 'regenerate-keyword', index: number): void
-  (e: 'select-keyword', payload: { index: number; keyword: string }): void
+  (e: 'select-keyword', articleIndex: number, keywordIndex: number): void
   (e: 'regenerate-slug', index: number): void
-  (e: 'select-slug', payload: { index: number; slug: string }): void
-  (e: 'change-parent', payload: { index: number; parent: string }): void
-  (e: 'edit-title', payload: { index: number; title: string }): void
-  (e: 'edit-keyword', payload: { index: number; keyword: string }): void
-  (e: 'edit-slug', payload: { index: number; slug: string }): void
+  (e: 'select-slug', articleIndex: number, slugIndex: number): void
+  (e: 'change-parent', index: number, parentTitle: string): void
+  (e: 'edit-title', index: number, value: string): void
+  (e: 'edit-keyword', index: number, value: string): void
+  (e: 'edit-slug', index: number, value: string): void
 }>()
 
 const articleSlide = ref(0)
@@ -133,7 +126,7 @@ function onDragEnd() {
   scrollToSlide(el.scrollLeft > maxScroll * 0.3 ? 1 : 0)
 }
 
-function isProcessing(phase: string): boolean {
+function isProcessing(phase: GenerationPhase): boolean {
   return phase !== 'idle' && phase !== 'done' && phase !== 'error'
 }
 </script>
@@ -176,9 +169,9 @@ function isProcessing(phase: string): boolean {
         :loading="topicsLoading"
         :error="topicsError"
         :initially-collapsed="true"
-        @toggle="(slug: string) => emit('toggle-topic', slug)"
-        @remove="(slug: string) => emit('remove-topic', slug)"
-        @add="(topic) => emit('add-topic', topic)"
+        @toggle="(index: number) => emit('toggle-topic', index)"
+        @remove="(index: number) => emit('remove-topic', index)"
+        @add="(topic: string) => emit('add-topic', topic)"
         @regenerate="emit('regenerate-topics')"
         @update:user-context="(ctx: string) => emit('update:user-context', ctx)"
       />
@@ -232,17 +225,17 @@ function isProcessing(phase: string): boolean {
               :article="article" :index="article.originalIndex"
               :composition-result="compositionResults.get(article.originalIndex) ?? null"
               :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
-              @regenerate-title="(i) => emit('regenerate-title', i)"
-              @regenerate-keyword="(i) => emit('regenerate-keyword', i)"
-              @regenerate-slug="(i) => emit('regenerate-slug', i)"
-              @select-keyword="(p) => emit('select-keyword', p)"
-              @select-title="(p) => emit('select-title', p)"
-              @select-slug="(p) => emit('select-slug', p)"
-              @toggle-accept="(i) => emit('toggle-accept', i)"
-              @remove="(i) => emit('remove-proposed', i)"
-              @edit-title="(p) => emit('edit-title', p)"
-              @edit-keyword="(p) => emit('edit-keyword', p)"
-              @edit-slug="(p) => emit('edit-slug', p)" />
+              @regenerate-title="(i: number) => emit('regenerate-title', i)"
+              @regenerate-keyword="(i: number) => emit('regenerate-keyword', i)"
+              @regenerate-slug="(i: number) => emit('regenerate-slug', i)"
+              @select-keyword="(i: number, kIdx: number) => emit('select-keyword', i, kIdx)"
+              @select-title="(i: number, tIdx: number) => emit('select-title', i, tIdx)"
+              @select-slug="(i: number, sIdx: number) => emit('select-slug', i, sIdx)"
+              @toggle-accept="(i: number) => emit('toggle-accept', i)"
+              @remove="(i: number) => emit('remove-proposed', i)"
+              @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
+              @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
+              @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)" />
             <AddArticleMenu
               :is-loading="addingArticleType === 'Pilier'"
               :disabled="addingArticleType !== null"
@@ -263,17 +256,17 @@ function isProcessing(phase: string): boolean {
               :article="article" :index="article.originalIndex"
               :composition-result="compositionResults.get(article.originalIndex) ?? null"
               :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
-              @regenerate-title="(i) => emit('regenerate-title', i)"
-              @regenerate-keyword="(i) => emit('regenerate-keyword', i)"
-              @regenerate-slug="(i) => emit('regenerate-slug', i)"
-              @select-keyword="(p) => emit('select-keyword', p)"
-              @select-title="(p) => emit('select-title', p)"
-              @select-slug="(p) => emit('select-slug', p)"
-              @toggle-accept="(i) => emit('toggle-accept', i)"
-              @remove="(i) => emit('remove-proposed', i)"
-              @edit-title="(p) => emit('edit-title', p)"
-              @edit-keyword="(p) => emit('edit-keyword', p)"
-              @edit-slug="(p) => emit('edit-slug', p)" />
+              @regenerate-title="(i: number) => emit('regenerate-title', i)"
+              @regenerate-keyword="(i: number) => emit('regenerate-keyword', i)"
+              @regenerate-slug="(i: number) => emit('regenerate-slug', i)"
+              @select-keyword="(i: number, kIdx: number) => emit('select-keyword', i, kIdx)"
+              @select-title="(i: number, tIdx: number) => emit('select-title', i, tIdx)"
+              @select-slug="(i: number, sIdx: number) => emit('select-slug', i, sIdx)"
+              @toggle-accept="(i: number) => emit('toggle-accept', i)"
+              @remove="(i: number) => emit('remove-proposed', i)"
+              @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
+              @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
+              @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)" />
             <AddArticleMenu
               :is-loading="addingArticleType === 'Intermédiaire'"
               :disabled="addingArticleType !== null"
@@ -303,18 +296,18 @@ function isProcessing(phase: string): boolean {
                 :composition-result="compositionResults.get(article.originalIndex) ?? null"
                 :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
                 :available-parents="intermediateTitles"
-                @regenerate-title="(i) => emit('regenerate-title', i)"
-                @regenerate-keyword="(i) => emit('regenerate-keyword', i)"
-                @regenerate-slug="(i) => emit('regenerate-slug', i)"
-                @select-keyword="(p) => emit('select-keyword', p)"
-                @select-title="(p) => emit('select-title', p)"
-                @select-slug="(p) => emit('select-slug', p)"
-                @toggle-accept="(i) => emit('toggle-accept', i)"
-                @remove="(i) => emit('remove-proposed', i)"
-                @change-parent="(p) => emit('change-parent', p)"
-                @edit-title="(p) => emit('edit-title', p)"
-                @edit-keyword="(p) => emit('edit-keyword', p)"
-                @edit-slug="(p) => emit('edit-slug', p)" />
+                @regenerate-title="(i: number) => emit('regenerate-title', i)"
+                @regenerate-keyword="(i: number) => emit('regenerate-keyword', i)"
+                @regenerate-slug="(i: number) => emit('regenerate-slug', i)"
+                @select-keyword="(i: number, kIdx: number) => emit('select-keyword', i, kIdx)"
+                @select-title="(i: number, tIdx: number) => emit('select-title', i, tIdx)"
+                @select-slug="(i: number, sIdx: number) => emit('select-slug', i, sIdx)"
+                @toggle-accept="(i: number) => emit('toggle-accept', i)"
+                @remove="(i: number) => emit('remove-proposed', i)"
+                @change-parent="(i: number, p: string) => emit('change-parent', i, p)"
+                @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
+                @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
+                @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)" />
             </div>
             <AddArticleMenu
               :is-loading="addingArticleType === 'Spécialisé'"
