@@ -5,6 +5,7 @@ import { radarHeatIcon } from '@/composables/keyword/useResonanceScore'
 import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.store'
 import { log } from '@/utils/logger'
 import RadarCardCheckable from './RadarCardCheckable.vue'
+import RadarLongTailSuggestions from './RadarLongTailSuggestions.vue'
 import RadarThermometer from '@/components/shared/RadarThermometer.vue'
 import RadarAiPanel from '@/components/moteur/RadarAiPanel.vue'
 import CpcFilterToggle from '@/components/shared/CpcFilterToggle.vue'
@@ -37,9 +38,14 @@ const props = withDefaults(defineProps<{
   articleLevel?: ArticleLevel
   injectedKeywords?: RadarKeyword[]
   mode?: 'workflow' | 'libre'
+  /** Requis pour les suggestions longue-traîne (route POST /articles/:id/...).
+   *  En mode `libre` (LaboView), peut être null → la section longue-traîne
+   *  reste cachée. */
+  articleId?: number | null
 }>(), {
   mode: 'workflow',
   articleLevel: 'intermediaire',
+  articleId: null,
 })
 
 const emit = defineEmits<{
@@ -100,6 +106,9 @@ const { sorted: filteredCards, sortState: radarSortState } = useSortableList<Rad
   getValue: (card, key) => {
     if (key === 'az') return card.keyword
     if (key === 'score') {
+      // kpis === null → card sans KPIs (longue-traîne) : tri en bas via null,
+      // pas de fallback fantôme (CLAUDE.md §3.5).
+      if (!card.kpis) return null
       try {
         return computeKpiScore(card.kpis, props.articleLevel ?? 'intermediaire').total
       } catch {
@@ -111,7 +120,9 @@ const { sorted: filteredCards, sortState: radarSortState } = useSortableList<Rad
     }
     return null
   },
-  filter: (card) => matchesCpcFilter(card.kpis.cpc, cpcFilter.value),
+  // Filtre CPC : les cards sans kpis (longue-traîne) sont toujours laissées
+  // passer (pas de critère CPC à appliquer).
+  filter: (card) => (card.kpis ? matchesCpcFilter(card.kpis.cpc, cpcFilter.value) : true),
 })
 
 // Sprint 2.5 — "Tout" opère sur le filtre courant (visibles uniquement).
@@ -140,11 +151,101 @@ function toggleAllChecked() {
   checkedKeywords.value = next
 }
 
+// --- Long-tail suggestions selection (S4) ---
+// Keywords longue-traine selectionnes par l'utilisateur dans la section
+// RadarLongTailSuggestions. Synchronise via @update:selected-suggestions.
+import type { LongTailSuggestion } from '@shared/types/long-tail.types'
+const longTailSelectedSuggestions = ref<LongTailSuggestion[]>([])
+
+function handleLongTailSelected(selection: LongTailSuggestion[]) {
+  longTailSelectedSuggestions.value = selection
+}
+
+/** Convertit une suggestion longue-traine en RadarCard "vide" (kpis: null,
+ *  source: 'longtail') compatible avec le payload attendu par CaptainValidation. */
+function toRadarCardFromLongTail(s: LongTailSuggestion): RadarCard {
+  return {
+    keyword: s.keyword,
+    reasoning: s.rationale,
+    kpis: null,
+    paaItems: [],
+    combinedScore: 0,
+    scoreBreakdown: {
+      paaMatchScore: 0,
+      resonanceBonus: 0,
+      opportunityScore: 0,
+      intentValueScore: 0,
+      cpcScore: 0,
+      painAlignmentScore: 0,
+      total: 0,
+    },
+    cachedPaa: false,
+    source: 'longtail',
+    preferenceScore: s.preferenceScore,
+    rationale: s.rationale,
+    derivedFromRoots: s.derivedFromRoots,
+  }
+}
+
+function normalizeKeyword(s: string): string {
+  return s.trim().toLowerCase()
+}
+
+/** Compteur unifie : cards racines cochees + longues-traines cochees, dedupliquees. */
+const totalSelectedCount = computed(() => {
+  const seen = new Set<string>()
+  let count = 0
+  if (scanResult.value) {
+    for (const c of scanResult.value.cards) {
+      if (checkedKeywords.value.has(c.keyword)) {
+        const norm = normalizeKeyword(c.keyword)
+        if (!seen.has(norm)) {
+          seen.add(norm)
+          count++
+        }
+      }
+    }
+  }
+  for (const s of longTailSelectedSuggestions.value) {
+    const norm = normalizeKeyword(s.keyword)
+    if (!seen.has(norm)) {
+      seen.add(norm)
+      count++
+    }
+  }
+  return count
+})
+
 function sendToCaptain() {
-  if (!scanResult.value || checkedKeywords.value.size === 0) return
-  const selected = scanResult.value.cards.filter(c => checkedKeywords.value.has(c.keyword))
-  log.info(`[DouleurIntent] Send ${selected.length} cards to Capitaine`)
-  emit('cards-selected', selected)
+  // CTA unifie : cards racines cochees + longues-traines cochees, dedupliquees
+  // par keyword normalise. Card racine prime sur longue-traine (KPIs > pas KPIs).
+  const racines = scanResult.value
+    ? scanResult.value.cards.filter(c => checkedKeywords.value.has(c.keyword))
+    : []
+  const longues = longTailSelectedSuggestions.value.map(toRadarCardFromLongTail)
+
+  if (racines.length === 0 && longues.length === 0) return
+
+  const seen = new Set<string>()
+  const merged: RadarCard[] = []
+  // Racines d'abord (priorité KPIs)
+  for (const c of racines) {
+    const norm = normalizeKeyword(c.keyword)
+    if (!seen.has(norm)) {
+      seen.add(norm)
+      merged.push(c)
+    }
+  }
+  for (const c of longues) {
+    const norm = normalizeKeyword(c.keyword)
+    if (!seen.has(norm)) {
+      seen.add(norm)
+      merged.push(c)
+    }
+  }
+
+  log.info(`[DouleurIntent] Send ${merged.length} cards to Capitaine (${racines.length} racines + ${longues.length} longues-traines, ${racines.length + longues.length - merged.length} doublons evites)`)
+  emit('cards-selected', merged)
 }
 
 // Editable fields
@@ -408,7 +509,7 @@ defineExpose({ mergeFromRadarSource })
         :heat-level="scanResult.heatLevel"
         :keywords-count="scanResult.cards.length"
         :autocomplete-count="scanResult.autocomplete.totalCount"
-        :paa-total="scanResult.cards.reduce((s, c) => s + c.kpis.paaTotal, 0)"
+        :paa-total="scanResult.cards.reduce((s, c) => s + (c.kpis?.paaTotal ?? 0), 0)"
         :verdict="scanResult.verdict"
       />
 
@@ -467,12 +568,25 @@ defineExpose({ mergeFromRadarSource })
           @modifier-untag="(i: number) => handleModifierUntag(card.keyword, i)"
           @modifier-cycle="(p: { index: number; next: 'local' | 'persona' | null }) => handleModifierCycle(card.keyword, p)"
         />
+
+        <!-- S4 — Section longue-traîne : sous le container principal des
+             cards racines, optionnelle, déclenchée manuellement. Visible
+             seulement si articleId disponible (workflow) et >= 2 racines. -->
+        <RadarLongTailSuggestions
+          v-if="props.articleId"
+          :article-id="props.articleId"
+          :article-title="props.articleTopic"
+          :article-pain-point="painPoint"
+          :radar-keywords="scanResult.cards.map(c => ({ keyword: c.keyword }))"
+          @update:selected-suggestions="handleLongTailSelected"
+        />
+
         <button
-          v-if="checkedKeywords.size > 0"
+          v-if="totalSelectedCount > 0"
           class="btn-send-captain"
           @click="sendToCaptain"
         >
-          Envoyer au Capitaine ({{ checkedKeywords.size }})
+          Envoyer au Capitaine ({{ totalSelectedCount }})
         </button>
       </div>
     </template>

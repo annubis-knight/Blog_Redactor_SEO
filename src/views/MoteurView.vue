@@ -422,8 +422,20 @@ const radarCacheStatus = ref<RadarCacheStatus | null>(null)
 const radarCardsForCaptain = ref<RadarCard[]>([])
 
 function handleCardsSelected(cards: RadarCard[]) {
-  log.info(`[MoteurView] Send ${cards.length} radar cards to Capitaine`)
-  radarCardsForCaptain.value = cards
+  // S4 — Dédup défensive (2e niveau) : si le payload contient des doublons
+  // (régression upstream possible), on les écrase ici. Card avec kpis non-null
+  // (racine) prime sur card kpis null (longue-traîne).
+  const seen = new Map<string, RadarCard>()
+  for (const c of cards) {
+    const norm = c.keyword.trim().toLowerCase()
+    const existing = seen.get(norm)
+    if (!existing || (existing.kpis === null && c.kpis !== null)) {
+      seen.set(norm, c)
+    }
+  }
+  const deduped = Array.from(seen.values())
+  log.info(`[MoteurView] Send ${deduped.length} radar cards to Capitaine (dedup ${cards.length - deduped.length})`)
+  radarCardsForCaptain.value = deduped
   activeTab.value = 'capitaine'
 }
 
@@ -756,6 +768,7 @@ onMounted(() => {
             ref="radarRef"
             mode="workflow"
             :pilier-keyword="cocoon?.name ?? pilierKeyword"
+            :article-id="selectedArticle?.id ?? null"
             :article-topic="selectedArticle?.title ?? ''"
             :article-keyword="selectedArticle?.keyword ?? ''"
             :article-pain-point="selectedArticle?.painPoint ?? ''"
