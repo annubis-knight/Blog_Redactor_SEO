@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, toRef } from 'vue'
 import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { hnToOutline } from '@/stores/article/outline.store'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineValidation'
+import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { isResponseForCurrentArticle } from '@/utils/article-scope'
@@ -21,7 +22,7 @@ import LieutenantsAiPanel from '@/components/moteur/LieutenantsAiPanel.vue'
 import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
 import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
-import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
+import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
 import type { FilteredProposeLieutenantsResult, ProposedLieutenant, ProposeLieutenantsHnNode, HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
@@ -58,70 +59,43 @@ const activityLog = useCostLogStore()
 
 // Direct exploration saves — each event persists to its dedicated table
 
-// --- SERP State (Phase 1) ---
-const sliderValue = ref(10)
-const isLoading = ref(false)
-const error = ref<string | null>(null)
-const serpResult = ref<SerpAnalysisResult | null>(null)
-
-/** Individual SERP results keyed by keyword — preserves per-keyword data for display */
-const serpResultsByKeyword = ref<Map<string, SerpAnalysisResult>>(new Map())
-
-/** SERP progress tracking: "2 / 4" */
-const serpDoneCount = ref(0)
-const serpTotalCount = ref(0)
-// Sprint 4.1 — Keywords waiting to be analyzed, and the one in flight. Used
-// to show skeleton tabs in the SERP analysis area so the user understands
-// what's happening during the long wait.
-const serpPendingKeywords = ref<string[]>([])
-const serpCurrentKeyword = ref<string | null>(null)
-
-/** Active tab for per-keyword competitor URLs */
-const activeSerpTab = ref<string>('')
-const activeSerpTabResult = computed(() => {
-  if (!activeSerpTab.value) return null
-  return serpResultsByKeyword.value.get(activeSerpTab.value) ?? null
-})
-
 /** Active tab for Structure Hn concurrents — '__all__' = merged view */
 const activeHnTab = ref<string>('__all__')
 
-const displayedCompetitors = computed(() => {
-  if (!serpResult.value) return []
-  return serpResult.value.competitors.slice(0, sliderValue.value)
-})
+// --- SERP State (Vague 3 — extracted to useLieutenantsSerp) ---
+// canAnalyze + resolvedRootKeywords sont définis plus bas (dépendent de
+// hasEverAnalyzed et du captainKeyword props) → on les passe en Ref via toRef
+// quand le composable est appelé après leurs définitions. Pour éviter le
+// chicken-and-egg, on passe des refs `computed` qui se résolvent à l'usage.
+const canAnalyzeRef = computed(() => canAnalyze.value)
+const resolvedRootKeywordsRef = computed(() => resolvedRootKeywords.value)
+const captainKeywordRef = toRef(props, 'captainKeyword')
+const articleLevelRef = toRef(props, 'articleLevel')
+const selectedArticleIdRef = computed(() => props.selectedArticle?.id ?? undefined)
 
-/** Compute Hn recurrence from a list of competitors */
-function computeHnRecurrenceFrom(comps: SerpCompetitor[]): HnRecurrenceItem[] {
-  const valid = comps.filter(c => !c.fetchError)
-  const total = valid.length
-  if (total === 0) return []
-
-  const freqMap = new Map<string, { level: number; text: string; count: number }>()
-
-  for (const comp of valid) {
-    const seen = new Set<string>()
-    for (const h of comp.headings) {
-      const key = `${h.level}:${h.text.toLowerCase().trim()}`
-      if (seen.has(key)) continue
-      seen.add(key)
-
-      const existing = freqMap.get(key)
-      if (existing) {
-        existing.count++
-      } else {
-        freqMap.set(key, { level: h.level, text: h.text, count: 1 })
-      }
-    }
-  }
-
-  return Array.from(freqMap.values())
-    .map(item => ({ ...item, total, percent: Math.round(item.count / total * 100) }))
-    .sort((a, b) => b.percent - a.percent || a.level - b.level)
-}
-
-const hnRecurrence = computed<HnRecurrenceItem[]>(() => {
-  return computeHnRecurrenceFrom(displayedCompetitors.value)
+const {
+  sliderValue,
+  isLoading,
+  error,
+  serpResult,
+  serpResultsByKeyword,
+  serpDoneCount,
+  serpTotalCount,
+  serpPendingKeywords,
+  serpCurrentKeyword,
+  activeSerpTab,
+  activeSerpTabResult,
+  displayedCompetitors,
+  hnRecurrence,
+  analyzeSERP,
+  computeHnRecurrenceFrom,
+} = useLieutenantsSerp({
+  captainKeyword: captainKeywordRef,
+  articleLevel: articleLevelRef,
+  selectedArticleId: selectedArticleIdRef,
+  canAnalyze: canAnalyzeRef,
+  resolvedRootKeywords: resolvedRootKeywordsRef,
+  activityLog,
 })
 
 /** Hn recurrence for the active tab — '__all__' uses merged data, otherwise per-keyword */
@@ -418,6 +392,8 @@ watch(serpResult, (result) => {
 })
 
 function refreshSERP() {
+  // Reset SERP state via composable + IA state au parent (toujours ici car
+  // useLieutenantsIa pas encore extrait — sera Bloc J.B).
   serpResult.value = null
   error.value = null
   currentStep.value = 'idle'
@@ -428,104 +404,21 @@ function refreshSERP() {
   hnStructure.value = []
   contentGapInsights.value = ''
   emit('lieutenants-updated', [])
-  analyzeSERP()
+  void analyzeSERPWithStep()
 }
 
-/** Merge multiple SerpAnalysisResult — dedup competitors by URL, PAA by question */
-function mergeSerpResults(results: SerpAnalysisResult[]): SerpAnalysisResult {
-  if (results.length === 1) return results[0]!
-
-  const base = results[0]!
-  const seenUrls = new Set<string>()
-  const mergedCompetitors: SerpCompetitor[] = []
-  const seenPaa = new Set<string>()
-  const mergedPaa: PaaQuestion[] = []
-
-  for (const r of results) {
-    for (const c of r.competitors) {
-      if (!seenUrls.has(c.url)) {
-        seenUrls.add(c.url)
-        mergedCompetitors.push(c)
-      }
-    }
-    for (const p of r.paaQuestions) {
-      const key = p.question.toLowerCase().trim()
-      if (!seenPaa.has(key)) {
-        seenPaa.add(key)
-        mergedPaa.push(p)
-      }
-    }
-  }
-
-  return {
-    ...base,
-    competitors: mergedCompetitors,
-    paaQuestions: mergedPaa,
-    maxScraped: mergedCompetitors.length,
-  }
-}
-
-async function analyzeSERP() {
-  if (!props.captainKeyword || !canAnalyze.value) return
-
-  isLoading.value = true
-  error.value = null
+// (analyzeSERP + mergeSerpResults moved to useLieutenantsSerp composable above)
+//
+// Wrapper local : positionne `currentStep='serp'` puis délègue au composable.
+// L'émission `serp-loaded` reste au parent car elle dépend du contrat avec
+// MoteurView (event).
+async function analyzeSERPWithStep(): Promise<void> {
   currentStep.value = 'serp'
-  serpResultsByKeyword.value = new Map()
-
-  // Build list of keywords: captain + root keywords (deduped)
-  const allKeywords = [props.captainKeyword]
-  const captainLower = props.captainKeyword.toLowerCase().trim()
-  for (const rk of resolvedRootKeywords.value) {
-    if (rk.toLowerCase().trim() !== captainLower && !allKeywords.includes(rk)) {
-      allKeywords.push(rk)
-    }
-  }
-
-  serpTotalCount.value = allKeywords.length
-  serpDoneCount.value = 0
-  log.info(`[LieutenantsSelection] Multi-SERP analysis: ${allKeywords.length} keywords`, allKeywords)
-
-  // P1 — Surface scan launch in the activity log so the user knows what's happening
-  activityLog.addMessage(
-    'info',
-    `Analyse SERP lancée (${allKeywords.length} mot${allKeywords.length > 1 ? 's' : ''}-clé${allKeywords.length > 1 ? 's' : ''})`,
-    `Scraping ~${allKeywords.length * 10} URLs via DataForSEO. Cela peut prendre quelques secondes.`,
-  )
-
-  try {
-    const results: SerpAnalysisResult[] = []
-    // Sprint 4.1 — Publish the full queue upfront so the UI can show skeleton
-    // tabs for pending keywords (not just the one currently running).
-    serpPendingKeywords.value = [...allKeywords]
-
-    // Analyze each keyword sequentially for visible progress
-    for (const kw of allKeywords) {
-      serpCurrentKeyword.value = kw
-      const result = await apiPost<SerpAnalysisResult>('/serp/analyze', {
-        keyword: kw,
-        topN: 10,
-        articleLevel: props.articleLevel ?? 'intermediaire',
-        articleId: props.selectedArticle?.id ?? undefined,
-      })
-      results.push(result)
-      serpResultsByKeyword.value = new Map(serpResultsByKeyword.value).set(kw, result)
-      serpDoneCount.value++
-      serpPendingKeywords.value = serpPendingKeywords.value.filter(k => k !== kw)
-      log.info(`[LieutenantsSelection] SERP ${serpDoneCount.value}/${allKeywords.length}: "${kw}" → ${result.competitors.length} comp, ${result.paaQuestions.length} PAA`)
-    }
-    serpCurrentKeyword.value = null
-
-    const merged = mergeSerpResults(results)
-    serpResult.value = merged
-    emit('serp-loaded', merged)
-    log.info(`[LieutenantsSelection] Multi-SERP merged: ${merged.competitors.length} competitors, ${merged.paaQuestions.length} PAA`)
-  } catch (err) {
-    error.value = err instanceof Error ? err.message : 'Erreur inconnue'
+  await analyzeSERP()
+  if (serpResult.value) {
+    emit('serp-loaded', serpResult.value)
+  } else if (error.value) {
     currentStep.value = 'idle'
-    log.error(`[LieutenantsSelection] SERP analysis failed`, { error: error.value })
-  } finally {
-    isLoading.value = false
   }
 }
 
@@ -768,7 +661,7 @@ function proposeLieutenants() {
       :serp-current-keyword="serpCurrentKeyword"
       :ia-chunks="iaChunks"
       :current-step="currentStep"
-      @analyze="analyzeSERP"
+      @analyze="analyzeSERPWithStep"
       @refresh="refreshSERP"
       @update:slider-value="sliderValue = $event"
       @update:active-serp-tab="activeSerpTab = $event"
