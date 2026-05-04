@@ -10,7 +10,7 @@ inputDocuments:
 workflowType: 'prd'
 completedAt: '2026-03-31'
 lastUpdated: '2026-05-04'
-updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code.'
+updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor).'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
   - 'docs/ARCHITECTURE_FLOWS.md'
@@ -964,6 +964,86 @@ Vérification connexion PostgreSQL au startup (`server/index.ts:94-113`).
 
 #### FR-INFRA-COST-LOG-STORE
 Store front `useCostLogStore` accumule activity log entries (API usage + DB ops + messages) injectées par `apiGet/apiPost/...`.
+
+---
+
+### 8.15 — Composants UI partagés (FR-UI)
+
+> **Pourquoi cette section ?**
+> Les §8.4 → §8.10 documentent les FR **par onglet / par workflow** (Discovery, Radar, Capitaine, Lieutenants, Rédaction…). Or certains composants UI sont **partagés cross-onglets** (ex : `RadarKeywordCard` consommé par Radar **et** Capitaine, panels IA répliquant un même pattern visuel/comportemental sur 6 onglets, sous-composants article partagés Workflow/Editor). Quand un refactor touche un de ces composants partagés, les FR métier dispersées ne suffisent pas pour valider la non-régression : il faut une vue **"composant macro" → invariants partagés**.
+>
+> **Règle :** ces FR-UI **ne dupliquent pas** les FR métier — elles **référencent** les FR-DIS / FR-RAD / FR-CAP / FR-LIE / FR-LEX / FR-RED / FR-CER / FR-MOT existantes via "voir aussi". Elles formalisent uniquement l'invariant **partagé** (forme + comportement transverse) que les FR métier individuelles ne capturent pas.
+
+#### FR-UI-RADAR-CARD
+**Composant :** `src/components/intent/RadarKeywordCard.vue` (master) + `RadarCardScoreRing.vue` + `RadarCardPaaTree.vue` (sous-composants V2) + wrappers `RadarCardCheckable.vue` / `RadarCardLockable.vue`.
+
+**Contextes consommateurs (3) :**
+1. **Onglet Radar (mode KPI)** — `RadarCardCheckable` dans `KeywordRadarTab` → tri par volume/CPC/intention, sélection multi-card.
+2. **Onglet Capitaine (mode Pertinence)** — `RadarCardLockable` dans `CaptainRadarList` → score sémantique + side-panel détails.
+3. **Onglet Labo (mode libre)** — `RadarKeywordCard` direct dans `LaboView` → affichage diagnostique sans workflow.
+
+**Invariants partagés (cross-contextes) :**
+- **Bimodalité `displayMode: 'kpi' | 'relevance'`** — la prop pilote l'affichage du score (chiffre KPI vs ring SVG Pertinence) sans dupliquer le composant. Voir aussi `FR-RAD-SCORING-BIMODAL`.
+- **Score ring SVG + tooltip contextuel 4 messages** (mode Pertinence) : voir aussi `FR-RAD-SCORE-RING-TOOLTIP`.
+- **Arbre PAA récursif parent → children** (mode Pertinence) : voir aussi `FR-RAD-PAA-TREE`.
+- **Wrappers Checkable / Lockable** : ajoutent uniquement le mécanisme d'état (sélection workflow vs verrouillage) sans toucher le rendu de la carte.
+
+**Invariant architectural :** toute modification visuelle ou comportementale de la carte radar doit préserver les 3 contextes consommateurs. Une régression sur un seul contexte = échec, même si les 2 autres passent.
+
+#### FR-UI-AI-PANELS-PATTERN
+**Infrastructure factorisée :** `src/components/moteur/ai-panel/` (`AiPanel.vue`, `AiPanelHeader.vue`, `AiPanelSkeleton.vue`, `AiSuggestionList.vue`, `AiAdviceMarkdown.vue`, `AiTriggerButton.vue`).
+
+**Panels consommateurs (6) :**
+| Panel | Onglet | Variant | FR métier |
+|---|---|---|---|
+| `DiscoveryAiPanel` | Discovery | `suggestion` | FR-DIS-AI-WORDS |
+| `RadarAiPanel` | Radar | `suggestion` | FR-RAD-AI-LONGTAIL |
+| `CaptainAiPanel` (intégré `CaptainSidePanel`) | Capitaine | `advice` | FR-CAP-AI-VALIDATION |
+| `LexiqueAiPanel` | Lexique | `suggestion` | FR-LEX-AI-MULTIKW |
+| `LieutenantsAiPanel` | Lieutenants | `advice` | FR-LIE-AI-PROPOSALS, FR-LIE-AI-FRONTIER |
+| `ArticleWorkflowIaBrief` (Rédaction Workflow) | Rédaction | `advice` | FR-RED-IA-BRIEF |
+
+**Pattern partagé (props `AiPanel`) :**
+- `variant: 'suggestion' | 'advice'` — pilote rendu (liste ajoutables vs markdown narratif).
+- `state: AiPanelState` — état SSE streaming (`idle | loading | streaming | done | error`).
+- `error`, `isStale`, `ctaLabel`, `regenLabel`, `hideUntilTriggered`, `regenConfirmMessage` — props optionnelles partagées.
+- **SSE streaming + parse `marked.js` incrémental** pour le markdown advice.
+- **Bouton régénération** avec confirmation optionnelle.
+- **État empty** factorisé (`AiPanelSkeleton`).
+
+**Invariant architectural :** toute évolution du pattern AI (nouveau state, nouvelle prop, nouveau comportement de stream) se fait dans `src/components/moteur/ai-panel/` — **jamais en dupliquant** dans un panel consommateur. Les 6 panels consommateurs sont des **enveloppes minces** (fetch + state local) au-dessus d'`AiPanel`.
+
+#### FR-UI-ARTICLE-SHARED
+**Sous-composants partagés Workflow/Editor (V4 + V5 du chantier décou­page monstres Vue) :**
+
+| Composant | Rôle | Consommateurs | FR métier |
+|---|---|---|---|
+| `ArticlePanelsToolbar.vue` | Toggles SEO/GEO/Maillage/Blocs (`role="toolbar"`, `aria-pressed`) | `ArticleEditorView`, `ArticleWorkflowView` | FR-RED-PANELS-TOOLBAR |
+| `ArticlePanelsResizable.vue` | Container resizable wrapper SeoPanel/GeoPanel/LinkSuggestions | `ArticleEditorView`, `ArticleWorkflowView` | FR-RED-PANELS-RESIZABLE |
+| `SectionProgressBar.vue` (atomique) | Barre progression % par section/global | `ArticleWorkflowView`, `ArticleEditorView` | FR-RED-PROGRESS-BAR |
+| `ArticleCostBadges.vue` | Badges coût IA (tokens + €) | `ArticleEditorView`, `ArticleWorkflowView` | FR-RED-COST-BADGES |
+| `ArticleWordCountBar.vue` | Compteur mots + cible | `ArticleEditorView` | FR-RED-WORDCOUNT |
+| `ArticleEditorActionOverlays.vue` | Overlays erreurs actions (tokens `--color-error*`) | `ArticleEditorView` | FR-RED-ACTION-OVERLAYS |
+
+**Composable partagé :** `useArticleGeneration` (V3) — orchestre génération article (SSE stream + persistance + cost log) appelé par `ArticleEditorView` ET `ArticleWorkflowView` (mode workflow).
+
+**Invariant architectural :** la frontière `ArticleEditorView` ↔ `ArticleWorkflowView` ne doit pas dériver — toute fonctionnalité éditeur partagée passe par un sous-composant ou un composable de cette liste, jamais par duplication. Les tokens couleur (`--color-error*`, `--color-bg-elevated`, etc.) sont vérifiés par les tests `tests/unit/components/ux-audit-sprint2.test.ts`.
+
+#### FR-UI-MOTEUR-SHARED
+**Briques partagées Moteur (cross-onglets ②/③/④) :**
+
+| Composant | Rôle | Onglets consommateurs | FR métier |
+|---|---|---|---|
+| `CollapsableSection` (atomique global) | Section pliable header/body | Discovery, Radar, Capitaine, Lieutenants, Lexique | (transversal) |
+| `TabCachePanel.vue` | Panel cache (counts DB explorations + bouton vider) | Discovery, Radar | FR-DIS-CACHE-PANEL, FR-MOT-CACHE-CLEAR |
+| `TabLoadPrompt.vue` | Prompt "charger données existantes" | Discovery, Radar, Capitaine | FR-MOT-LOAD-PROMPT |
+| `BasketStrip.vue` | Strip mots-clés sélectionnés (cross-onglet) | Discovery, Radar | FR-DIS-BASKET, FR-RAD-BASKET |
+| `KeywordAssistPanel.vue` | Panel assistance contextuelle (actions globales) | Discovery, Radar, Capitaine | FR-MOT-ASSIST-PANEL |
+| `MoteurContextRecap.vue` | Recap contexte stratégie (cocoon + capitaine) | tous onglets Moteur | FR-MOT-CONTEXT-RECAP |
+| `PhaseTransitionBanner.vue` | Bannière transition Phase ② → ③ | Capitaine, Lieutenants | FR-MOT-PHASE-TRANSITION |
+| `ProgressDots.vue` | Indicateur progression onglets | MoteurView (header) | FR-MOT-PROGRESS-DOTS |
+
+**Invariant architectural :** ces briques sont **partagées** entre les onglets Moteur — toute modification doit être validée sur tous les onglets consommateurs. Les FR métier (FR-DIS-*, FR-RAD-*, FR-CAP-*, FR-MOT-*) capturent les comportements individuels ; cette FR-UI-MOTEUR-SHARED capture le **fait que la brique est partagée** et que sa cohérence cross-onglets est un invariant en soi.
 
 ---
 
