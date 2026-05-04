@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import { ref, computed, watch, onUnmounted } from 'vue'
+import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { apiGet, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
-import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useLexiqueIa } from '@/composables/lexique/useLexiqueIa'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
 import LexiqueTermsList from '@/components/moteur/lexique/LexiqueTermsList.vue'
@@ -14,7 +14,7 @@ import { type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
-import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
+import type { TfidfResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
 import { MOTEUR_LEXIQUE_VALIDATED } from '@shared/constants/workflow-checks.constants.js'
 
 // Sprint 11 — Multi-keyword exploration + DB hydration
@@ -105,10 +105,32 @@ const activeSourceKeyword = ref<string>('')
 // DB-hydrated past explorations for this article (displayed as collapsible sections).
 const pastExplorations = ref<LexiqueExplorationEntry[]>([])
 
-// --- IA Upfront Analysis (NOUVEAU) ---
-const { isStreaming: iaIsStreaming, error: iaError, result: iaRawResult, startStream: iaStartStream, abort: iaAbort } = useStreaming<LexiqueAnalysisResult>()
-const iaResult = computed(() => iaRawResult.value)
-const iaRecommendations = ref<Map<string, LexiqueTermRecommendation>>(new Map())
+// --- IA Upfront Analysis (Vague 5 — extracted to useLexiqueIa) ---
+const captainKeywordRef = toRef(props, 'captainKeyword')
+const articleLevelRef = toRef(props, 'articleLevel')
+const cocoonSlugRef = toRef(props, 'cocoonSlug')
+const selectedArticleIdRef = computed(() => props.selectedArticle?.id ?? undefined)
+
+const {
+  iaIsStreaming,
+  iaError,
+  iaResult,
+  iaRecommendations,
+  iaRecommendedCount,
+  iaNotRecommendedCount,
+  iaAbort,
+  getRecommendation,
+  isIaRecommended,
+  generateLexiqueUpfront,
+} = useLexiqueIa({
+  tfidfResult,
+  selectedTerms,
+  activeSourceKeyword,
+  captainKeyword: captainKeywordRef,
+  articleLevel: articleLevelRef,
+  cocoonSlug: cocoonSlugRef,
+  selectedArticleId: selectedArticleIdRef,
+})
 
 // F5 — La barrière `isCaptaineLocked` ne s'applique qu'au premier passage. Dès que
 // des termes lexique ont été validés une fois, l'onglet reste accessible même si
@@ -186,76 +208,8 @@ const selectedByLevel = computed(() => {
   }
 })
 
-// Sprint C-2 (2026-05-02) — Stats IA pour le LexiqueAiPanel en bas de page.
-const iaRecommendedCount = computed(() => {
-  let count = 0
-  for (const rec of iaRecommendations.value.values()) {
-    if (rec.aiRecommended) count++
-  }
-  return count
-})
-const iaNotRecommendedCount = computed(
-  () => iaRecommendations.value.size - iaRecommendedCount.value,
-)
-
-// IA recommendation helpers
-function getRecommendation(term: string): LexiqueTermRecommendation | undefined {
-  return iaRecommendations.value.get(term.toLowerCase())
-}
-
-function isIaRecommended(term: string): boolean | null {
-  const rec = getRecommendation(term)
-  return rec ? rec.aiRecommended : null
-}
-
-// --- IA Upfront Lexique Analysis ---
-function generateLexiqueUpfront() {
-  const keyword = activeSourceKeyword.value || props.captainKeyword
-  if (!keyword || !tfidfResult.value) return
-  const data = tfidfResult.value
-  iaAbort()
-  iaRecommendations.value = new Map()
-
-  iaStartStream(
-    `/api/keywords/${encodeURIComponent(keyword)}/ai-lexique-upfront`,
-    {
-      level: props.articleLevel,
-      allTerms: {
-        obligatoire: data.obligatoire.map(t => t.term),
-        differenciateur: data.differenciateur.map(t => t.term),
-        optionnel: data.optionnel.map(t => t.term),
-      },
-      cocoonSlug: props.cocoonSlug || undefined,
-      articleId: props.selectedArticle?.id ?? undefined,
-    },
-    {
-      onDone: (result) => {
-        log.info(`[LexiqueExtraction] IA upfront: ${result.recommendations.length} recommendations`)
-        // Build lookup map
-        const map = new Map<string, LexiqueTermRecommendation>()
-        for (const rec of result.recommendations) {
-          map.set(rec.term.toLowerCase(), rec)
-        }
-        iaRecommendations.value = map
-
-        // Pre-check: all obligatoire + differenciateur where aiRecommended
-        if (tfidfResult.value) {
-          const preChecked = new Set<string>()
-          for (const term of tfidfResult.value.obligatoire) {
-            preChecked.add(term.term)
-          }
-          for (const term of tfidfResult.value.differenciateur) {
-            const rec = map.get(term.term.toLowerCase())
-            if (rec?.aiRecommended) {
-              preChecked.add(term.term)
-            }
-          }
-          selectedTerms.value = preChecked
-        }
-      },
-    },
-  )
-}
+// (iaRecommendedCount, iaNotRecommendedCount, getRecommendation,
+//  isIaRecommended, generateLexiqueUpfront moved to useLexiqueIa above)
 
 // Auto-trigger IA upfront after TF-IDF results
 // U5 — session guard : ne pas relancer si déjà en cache session (iaRecommendations peuplé)
