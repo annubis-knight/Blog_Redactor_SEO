@@ -52,6 +52,17 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Sprint 4 — Refonte cache-bar + recap-toggle (mai 2026) ✅
+  # tech-spec: tech-spec-sprint4-cache-bar-recap-toggle.md
+  # (#1) computeSmartTab ne retourne JAMAIS Finalisation : sélection
+  #      article = capitaine → lieutenants → lexique selon checks.
+  # (#2) TabCachePanel chips read-only (<span> au lieu de <button>),
+  #      classe `--current` (border bleu) supprimée. Navigation via navbar.
+  # (#3) SelectedArticlePanel supprimé (redondant avec MoteurContextRecap).
+  # (#4) Au clic sélection article, RecapToggle ouvert se referme.
+  # 12 nouveaux tests verts + 3 tests inversés (sprint 3 propagation).
+  sprint-4-cache-bar-recap-toggle: done
+
   # Sprint 3 — UX panels & sidebar (mai 2026) ✅
   # tech-spec: tech-spec-sprint3-ux-panels-sidebar.md
   # (#11) @click.stop sur RadarKeywordCard__header + score-ring : empêche

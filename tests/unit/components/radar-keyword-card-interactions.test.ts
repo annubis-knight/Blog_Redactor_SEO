@@ -108,28 +108,31 @@ describe('RadarKeywordCard — propagation des clics', () => {
     expect(chevron.attributes('aria-expanded')).toBe('true')
   })
 
-  it('clic sur le keyword (zone neutre du header) propage au parent', async () => {
+  // Sprint 3 (2026-05-04) — INVERSION : friction utilisateur #11 demande que
+  // le header (chevron + keyword + score + intent badges) NE propage PAS au
+  // parent (sinon ouvre la sidebar Capitaine non désirée). Ces 3 tests
+  // ont été inversés pour refléter la nouvelle règle UX.
+  it('AC1 — clic sur le keyword NE propage PAS au parent (sprint 3)', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
-    // Le span du keyword est dans le header mais hors du chevron
     const keywordEl = wrapper.find('.radar-card__keyword')
     expect(keywordEl.exists()).toBe(true)
     await keywordEl.trigger('click')
-    expect(parentClickHandler).toHaveBeenCalledTimes(1)
+    expect(parentClickHandler).not.toHaveBeenCalled()
   })
 
-  it('clic sur le score-ring propage au parent (pas de .stop sur le ring)', async () => {
+  it('AC1 — clic sur le score-ring NE propage PAS au parent (sprint 3)', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
     const ring = wrapper.find('.radar-card__score-ring')
     expect(ring.exists()).toBe(true)
     await ring.trigger('click')
-    expect(parentClickHandler).toHaveBeenCalledTimes(1)
+    expect(parentClickHandler).not.toHaveBeenCalled()
   })
 
-  it('clic sur les KPIs (zone du header) propage au parent', async () => {
+  it('AC1 — clic sur les KPIs (zone du header) NE propage PAS au parent (sprint 3)', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
     const kpis = wrapper.find('.radar-card__kpis')
     expect(kpis.exists()).toBe(true)
     await kpis.trigger('click')
-    expect(parentClickHandler).toHaveBeenCalledTimes(1)
+    expect(parentClickHandler).not.toHaveBeenCalled()
   })
 })

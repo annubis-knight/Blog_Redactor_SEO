@@ -17,7 +17,7 @@ import type { SelectedArticle, Article } from '@shared/types/index.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
-import SelectedArticlePanel from '@/components/moteur/SelectedArticlePanel.vue'
+// Sprint 4 (2026-05-04) — SelectedArticlePanel retiré (friction #3 redondance).
 import type { NavGroup } from '@/components/shared/WorkflowNav.vue'
 
 // Phase = structure interne (gating, transition banner, smart-tab logic).
@@ -67,7 +67,10 @@ const { clearResults, loadCachedResults } = useArticleResults({
 const basketStore = useMoteurBasketStore()
 const workflowNavStore = useWorkflowNavStore()
 
-provideRecapRadioGroup()
+// Sprint 4 (2026-05-04) — on conserve une référence pour pouvoir fermer
+// le panel ouvert lorsqu'un article est sélectionné (libère l'espace
+// vertical pour les contenus principaux du Moteur, cf. friction #4).
+const recapRadioGroup = provideRecapRadioGroup()
 
 const selectedArticle = ref<SelectedArticle | null>(null)
 
@@ -341,9 +344,10 @@ function computeSmartTab(articleId: number): Tab {
   const progress = articleProgressStore.getProgress(articleId)
   const checks = progress?.completedChecks ?? []
   if (checks.length === 0) return 'capitaine'
-  // Bloc 2 — tous les verrous Phase ② posés → onglet Finalisation (récap
-  // avant Rédaction). Plus pertinent que de renvoyer sur Capitaine.
-  if (checks.includes('capitaine_locked') && checks.includes('lieutenants_locked') && checks.includes('lexique_validated')) return 'finalisation'
+  // Sprint 4 (2026-05-04) — friction #1 : ne plus auto-naviguer vers
+  // Finalisation. C'est un onglet de récap pré-Rédaction, l'utilisateur le
+  // choisit explicitement via le CTA bas-de-page de Lexique. La sélection
+  // d'article ramène toujours sur le 1er onglet utile à compléter.
   if (checks.includes('lieutenants_locked')) return 'lexique'
   if (checks.includes('capitaine_locked')) return 'lieutenants'
   return 'capitaine'
@@ -357,6 +361,12 @@ function handleSelectArticle(article: SelectedArticle | null) {
     activeTab: activeTab.value,
   })
   selectedArticle.value = article
+
+  // Sprint 4 (2026-05-04) — friction #4 : referme le RecapToggle ouvert
+  // (Articles suggérés / publiés) pour libérer la place au contenu principal.
+  if (article && recapRadioGroup.openPanelId.value !== null) {
+    recapRadioGroup.toggle(recapRadioGroup.openPanelId.value)
+  }
   // Le watch sur `selectedArticle?.id` (plus haut) déclenche refreshExplorationCounts() automatiquement.
 
   // Navigate to the smart tab (components handle article change via their id watchers)
@@ -679,11 +689,12 @@ onMounted(() => {
         @select="handleSelectArticle"
       />
 
-      <!-- Selected article panel -->
-      <SelectedArticlePanel
-        v-if="selectedArticle"
-        :article="selectedArticle"
-      />
+      <!-- Sprint 4 (2026-05-04) — friction #3 : `SelectedArticlePanel`
+           supprimé. Il dupliquait MoteurContextRecap (titre + type + douleur)
+           et n'apportait que la progression, qui reste accessible via les
+           ProgressDots de la navbar et les checks workflow. -->
+      <!-- <SelectedArticlePanel … /> -->
+
 
       <!-- Article gating message -->
       <div v-if="!selectedArticle" class="article-gate">
@@ -724,11 +735,12 @@ onMounted(() => {
            Le wrapper gère le sticky bottom unique pour les deux composants ;
            chaque composant ne sait rien de l'autre. -->
       <div v-if="selectedArticle" class="cache-bar">
+        <!-- Sprint 4 (2026-05-04) — friction #2 : @navigate retiré. Les chips
+             sont devenues read-only ; la nav passe par les onglets standards. -->
         <TabCachePanel
           :entries="tabCacheEntries"
           :active-tab="activeTab"
           :show-clear-cache="true"
-          @navigate="setActiveTab"
           @clear-cache="clearExternalCacheForArticle"
         />
         <!-- 2026-05-01 — Notification "Charger DB / Cache" pour l'onglet courant.

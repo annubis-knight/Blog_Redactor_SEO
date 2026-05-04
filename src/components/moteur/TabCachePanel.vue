@@ -34,8 +34,11 @@ const props = defineProps<{
   showClearCache?: boolean
 }>()
 
+// Sprint 4 (2026-05-04) — friction #2 : les chips ne sont plus des actions de
+// navigation. Seul le bouton "Vider le cache" et le TabLoadPrompt voisin
+// portent une action. Les chips sont devenus de simples indicateurs visuels
+// (read-only) — la navigation passe par les onglets standards de la navbar.
 const emit = defineEmits<{
-  navigate: [tabId: string]
   'clear-cache': []
 }>()
 
@@ -72,20 +75,20 @@ const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCoun
       </button>
     </div>
 
-    <!-- Chips -->
+    <!-- Chips — Sprint 4 (2026-05-04) : read-only, plus de navigation au clic.
+         La nav passe par les onglets standards de la navbar. La bordure bleue
+         "current" a été retirée (vocabulaire visuel jugé excessif par l'utilisateur). -->
     <div class="tcp__chips">
-      <button
+      <span
         v-for="entry in entries"
         :key="entry.tabId"
         class="tcp__chip"
         :class="{
           'tcp__chip--filled': hasData(entry),
           'tcp__chip--empty': !hasData(entry),
-          'tcp__chip--current': entry.isCurrentTab,
         }"
-        :disabled="!hasData(entry)"
         :title="entry.hint"
-        @click="hasData(entry) ? emit('navigate', entry.tabId) : undefined"
+        :data-testid="`tcp-chip-${entry.tabId}`"
       >
         <span class="tcp__chip-label">{{ entry.tabLabel }}</span>
         <!-- DB + C toujours affichés, même à 0 — prouve qu'une lecture a bien été tentée. -->
@@ -99,7 +102,7 @@ const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCoun
             {{ entry.cacheCount }}
           </span>
         </span>
-      </button>
+      </span>
     </div>
   </div>
 </template>
@@ -173,9 +176,9 @@ const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCoun
   font-size: 0.6875rem;
   border: 1px solid transparent;
   background: none;
-  cursor: pointer;
-  transition: all 0.15s;
   font-family: inherit;
+  /* Sprint 4 (2026-05-04) — chip read-only : pas de hover, pas de cursor pointer. */
+  cursor: default;
 }
 
 .tcp__chip--filled {
@@ -184,23 +187,11 @@ const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCoun
   border-color: rgba(22, 163, 74, 0.35);
 }
 
-.tcp__chip--filled:hover {
-  background: #fff;
-  border-color: rgba(22, 163, 74, 0.7);
-  transform: translateY(-1px);
-}
-
 .tcp__chip--empty {
   background: transparent;
   color: var(--color-text-muted, #94a3b8);
   border-color: var(--color-border, #e2e8f0);
-  cursor: not-allowed;
   opacity: 0.6;
-}
-
-.tcp__chip--current {
-  border-color: var(--color-primary, #2563eb);
-  box-shadow: 0 0 0 1px var(--color-primary, #2563eb);
 }
 
 .tcp__chip-label {

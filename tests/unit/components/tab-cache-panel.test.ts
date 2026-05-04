@@ -59,18 +59,9 @@ describe('TabCachePanel', () => {
     }
   })
 
-  it('marks current tab with tcp__chip--current class', () => {
-    const entries = createEntries([
-      { tabId: 'radar', isCurrentTab: true },
-    ])
-    const wrapper = mount(TabCachePanel, {
-      props: { entries, activeTab: 'radar' },
-    })
-
-    const chips = wrapper.findAll('.tcp__chip')
-    expect(chips[1].classes()).toContain('tcp__chip--current')
-    expect(chips[0].classes()).not.toContain('tcp__chip--current')
-  })
+  // Sprint 4 (2026-05-04) — la classe `tcp__chip--current` (border bleue)
+  // a été retirée : la signalétique de l'onglet actif est portée par la
+  // navbar. Test legacy supprimé.
 
   it('displays tab label in each chip', () => {
     const entries = createEntries()
@@ -112,30 +103,10 @@ describe('TabCachePanel', () => {
     expect(discoveryNums[1].classes()).toContain('tcp__num--zero')
   })
 
-  it('emits navigate when clicking a filled chip', async () => {
-    const entries = createEntries([
-      { tabId: 'audit', dbCount: 4 },
-    ])
-    const wrapper = mount(TabCachePanel, {
-      props: { entries, activeTab: 'discovery' },
-    })
-
-    const chips = wrapper.findAll('.tcp__chip')
-    await chips[4].trigger('click') // audit
-    expect(wrapper.emitted('navigate')).toBeTruthy()
-    expect(wrapper.emitted('navigate')![0]).toEqual(['audit'])
-  })
-
-  it('does NOT emit navigate when clicking an empty chip', async () => {
-    const entries = createEntries()
-    const wrapper = mount(TabCachePanel, {
-      props: { entries, activeTab: 'discovery' },
-    })
-
-    const chips = wrapper.findAll('.tcp__chip')
-    await chips[2].trigger('click') // validation, empty
-    expect(wrapper.emitted('navigate')).toBeFalsy()
-  })
+  // Sprint 4 (2026-05-04) — l'event `navigate` a été supprimé : les chips
+  // sont devenues read-only (cf. tab-cache-panel-readonly.test.ts pour les
+  // nouveaux verrous). Les 2 tests legacy "emits navigate when clicking
+  // a filled chip" ont été retirés car par essence obsolètes.
 
   it('renders clear-cache button when showClearCache and cache > 0', () => {
     const entries = createEntries([
