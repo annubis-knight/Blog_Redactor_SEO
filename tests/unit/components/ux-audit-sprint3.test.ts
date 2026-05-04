@@ -339,24 +339,36 @@ describe('ArticleEditorView — panel mutual exclusion', () => {
     resolve(__dirname, '../../../src/views/ArticleEditorView.vue'),
     'utf-8',
   )
+  // Vague 4 (2026-05-04) : SeoPanel/GeoPanel/LinkSuggestions/BlocksPanel
+  // ont migré dans ArticlePanelsResizable.vue (sous-composant partagé).
+  // Les boutons SEO/GEO/Maillage/Blocs ont migré dans ArticlePanelsToolbar.vue.
+  const resizable = readFileSync(
+    resolve(__dirname, '../../../src/components/article/ArticlePanelsResizable.vue'),
+    'utf-8',
+  )
+  const toolbar = readFileSync(
+    resolve(__dirname, '../../../src/components/article/ArticlePanelsToolbar.vue'),
+    'utf-8',
+  )
 
-  it('renders LinkSuggestions outside article-editor-view div', () => {
-    // LinkSuggestions should be at the same level as SeoPanel/GeoPanel,
-    // outside the main .article-editor-view column, inside .article-editor-layout
+  it('panels rendered inside ArticlePanelsResizable, mounted outside article-editor-view div', () => {
+    // ArticleEditorView monte ArticlePanelsResizable dans le ResizablePanel, qui
+    // est lui-même au même niveau que .article-editor-view (mutual exclusion).
     const layoutMatch = vue.match(/class="article-editor-layout"/)
     expect(layoutMatch).not.toBeNull()
 
-    // All 3 panels should be after the closing </div> of article-editor-view
-    const _panelSection = vue.slice(vue.indexOf('</div><!-- end article-editor-view -->') || vue.indexOf('<Transition name="panel-slide">'))
-    expect(vue).toContain('<SeoPanel')
-    expect(vue).toContain('<GeoPanel')
-    expect(vue).toContain('<LinkSuggestions')
+    expect(vue).toContain('<ArticlePanelsResizable')
+
+    // Les 4 panels (SEO/GEO/LinkSuggestions/BlocksPanel) vivent dans le sous-composant.
+    expect(resizable).toContain('<SeoPanel')
+    expect(resizable).toContain('<GeoPanel')
+    expect(resizable).toContain('<LinkSuggestions')
+    expect(resizable).toContain('<BlocksPanel')
   })
 
-  it('has toggle buttons for SEO, GEO, and Maillage', () => {
-    // Button text has surrounding whitespace/newlines — use regex
-    expect(vue).toMatch(/btn-toggle[\s\S]*?>\s*SEO\s*<\/button>/)
-    expect(vue).toMatch(/btn-toggle[\s\S]*?>\s*GEO\s*<\/button>/)
-    expect(vue).toMatch(/btn-toggle[\s\S]*?>\s*Maillage\s*<\/button>/)
+  it('has toggle buttons for SEO, GEO, and Maillage (in ArticlePanelsToolbar)', () => {
+    expect(toolbar).toMatch(/btn-toggle[\s\S]*?>\s*SEO\s*<\/button>/)
+    expect(toolbar).toMatch(/btn-toggle[\s\S]*?>\s*GEO\s*<\/button>/)
+    expect(toolbar).toMatch(/btn-toggle[\s\S]*?>\s*Maillage\s*<\/button>/)
   })
 })

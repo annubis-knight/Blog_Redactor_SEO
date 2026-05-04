@@ -32,12 +32,14 @@ import OutlineRecap from '@/components/article/OutlineRecap.vue'
 import ApiCostBadge from '@/components/shared/ApiCostBadge.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
-import SeoPanel from '@/components/panels/SeoPanel.vue'
-import GeoPanel from '@/components/panels/GeoPanel.vue'
-import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 import SkeletonText from '@/components/shared/SkeletonText.vue'
 import { useKeyboardShortcuts } from '@/composables/ui/useKeyboardShortcuts'
+// Vague 4 — sous-composants/composable factorisés (partagés avec ArticleEditorView)
+import { useArticleGeneration } from '@/composables/article/useArticleGeneration'
+import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
+import ArticlePanelsResizable from '@/components/article/ArticlePanelsResizable.vue'
+import ArticleWorkflowIaBrief from '@/components/article/ArticleWorkflowIaBrief.vue'
 
 const route = useRoute()
 const briefStore = useBriefStore()
@@ -149,20 +151,29 @@ const { seoStore: _seoStore } = useSeoScoring(
 )
 useGeoScoring()
 
-// --- Word count (SSOT from editorStore — finding G5) ---
-const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
+// --- Article generation (Vague 4 — extracted to useArticleGeneration) ---
+const {
+  wordCountTarget,
+  canReduce,
+  wordCountDeltaDisplay,
+  handleGenerateArticle,
+  handleReduce,
+  handleHumanize,
+  handleAbortReduce,
+  handleAbortHumanize,
+} = useArticleGeneration({
+  articleId,
+  editorStore,
+  briefStore,
+  outlineStore,
+  articleKeywordsStore,
+})
+
+// Word count percent reste local au parent (utilisé uniquement par le template).
 const wordCountPercent = computed(() => {
   if (!wordCountTarget.value || !editorStore.wordCount) return 0
   return Math.round((editorStore.wordCount / wordCountTarget.value) * 100)
 })
-const canReduce = computed(() => {
-  if (!wordCountTarget.value || !editorStore.content) return false
-  const delta = editorStore.wordCountDelta(wordCountTarget.value)
-  if (delta === null) return false
-  const pct = (delta / wordCountTarget.value) * 100
-  return pct > 15
-})
-const wordCountDeltaDisplay = computed(() => editorStore.wordCountDelta(wordCountTarget.value))
 
 // --- IA Brief Panel ---
 const { chunks: iaBriefChunks, isStreaming: iaBriefStreaming, startStream: startBriefExplain } = useStreaming()
@@ -203,73 +214,8 @@ function handleToggleIaBrief() {
   }
 }
 
-async function handleGenerateArticle() {
-  if (!articleId.value) return
-  const id = articleId.value
-  log.info('[workflow] Starting article generation', {
-    articleId: id,
-    briefKeywords: briefStore.briefData?.keywords.length,
-    articleKeywords: articleKeywordsStore.keywords
-      ? `cap=${articleKeywordsStore.keywords.capitaine}, lt=${articleKeywordsStore.keywords.lieutenants.length}`
-      : 'null',
-    outlineSections: outlineStore.outline?.sections.length,
-  })
-  await editorStore.generateArticle(briefStore.briefData!, outlineStore.outline!, wordCountTarget.value ?? undefined)
-  if (editorStore.content && !editorStore.error) {
-    // Save article content immediately — don't lose it if meta generation fails
-    log.info('[workflow] Article done, saving content before meta', { articleId: id, contentLength: editorStore.content.length })
-    await editorStore.saveArticle(id)
-
-    const pilierKeyword = briefStore.briefData!.keywords.find(kw => kw.type === 'Pilier')
-    const keyword = pilierKeyword?.keyword ?? briefStore.briefData!.article.title
-    log.info('[workflow] Generating meta', { articleId: id, keyword })
-    await editorStore.generateMeta(id, keyword, briefStore.briefData!.article.title, editorStore.content)
-    if (!editorStore.error) {
-      log.info('[workflow] Meta done, saving with meta', {
-        articleId: id,
-        metaTitle: editorStore.metaTitle,
-        metaDescription: editorStore.metaDescription?.substring(0, 50),
-      })
-      await editorStore.saveArticle(id)
-    } else {
-      log.warn('[workflow] Meta generation failed — article content was already saved', { error: editorStore.error })
-    }
-  } else {
-    log.warn('[workflow] Article generation failed or no content', { hasContent: !!editorStore.content, error: editorStore.error })
-  }
-}
-
-// --- Reduce / Humanize handlers ---
-const currentKeyword = computed(() =>
-  articleKeywordsStore.keywords?.capitaine ?? briefStore.briefData?.article.title ?? '',
-)
-const allKeywords = computed(() =>
-  briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
-)
-
-async function handleReduce() {
-  if (!articleId.value || !wordCountTarget.value) return
-  await editorStore.reduceArticle(articleId.value, wordCountTarget.value, currentKeyword.value, allKeywords.value)
-  if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(articleId.value)
-  }
-}
-
-async function handleHumanize() {
-  if (!articleId.value) return
-  await editorStore.humanizeArticle(articleId.value, currentKeyword.value, allKeywords.value)
-  if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(articleId.value)
-  }
-}
-
-function handleAbortReduce() {
-  editorStore.abortReduce()
-}
-
-function handleAbortHumanize() {
-  editorStore.abortHumanize()
-}
+// (handleGenerateArticle, handleReduce, handleHumanize, handleAbort*,
+//  currentKeyword, allKeywords moved to useArticleGeneration above)
 
 onBeforeUnmount(() => {
   editorStore.abortReduce()
@@ -388,46 +334,18 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
     <div class="workflow-main">
       <div class="workflow-header">
         <RouterLink :to="backLink" class="back-link">&larr; {{ backLabel }}</RouterLink>
-        <div class="panel-toggles" role="toolbar" aria-label="Panneaux d'analyse">
-          <button
-            class="btn-toggle"
-            :class="{ active: showSeoPanel, disabled: !hasBody }"
-            :aria-pressed="showSeoPanel"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Generez un article pour activer le scoring SEO' : undefined"
-            @click="guardedToggle('seo')"
-          >
-            SEO
-          </button>
-          <button
-            class="btn-toggle"
-            :class="{ active: showGeoPanel, disabled: !hasBody }"
-            :aria-pressed="showGeoPanel"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Generez un article pour activer le scoring GEO' : undefined"
-            @click="guardedToggle('geo')"
-          >
-            GEO
-          </button>
-          <button
-            class="btn-toggle"
-            :class="{ active: showLinkSuggestions, disabled: !hasBody }"
-            :aria-pressed="showLinkSuggestions"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Generez un article pour activer le maillage' : undefined"
-            @click="handleToggleLinkSuggestions"
-          >
-            Maillage
-          </button>
-          <button
-            class="btn-toggle"
-            :class="{ active: showIaBriefPanel }"
-            :aria-pressed="showIaBriefPanel"
-            @click="handleToggleIaBrief"
-          >
-            IA Brief
-          </button>
-        </div>
+        <ArticlePanelsToolbar
+          :has-body="hasBody"
+          :show-seo-panel="showSeoPanel"
+          :show-geo-panel="showGeoPanel"
+          :show-link-suggestions="showLinkSuggestions"
+          :show-ia-brief-button="true"
+          :show-ia-brief-panel="showIaBriefPanel"
+          @toggle-seo="guardedToggle('seo')"
+          @toggle-geo="guardedToggle('geo')"
+          @toggle-linking="handleToggleLinkSuggestions"
+          @toggle-ia-brief="handleToggleIaBrief"
+        />
       </div>
 
       <!-- Sprint — workflow stepper moved into AppNavbar via workflow-nav store. -->
@@ -581,43 +499,23 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 
     <Transition name="panel-slide">
       <ResizablePanel v-if="hasActivePanel" :key="activePanel!">
-        <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions)" class="panel-disabled-overlay">
-          <p class="panel-disabled-msg">Generez un article pour activer le scoring</p>
-        </div>
-        <ErrorBoundary v-if="showSeoPanel" fallback-message="Erreur dans le panneau SEO.">
-          <SeoPanel />
-        </ErrorBoundary>
-        <ErrorBoundary v-if="showGeoPanel" fallback-message="Erreur dans le panneau géo.">
-          <GeoPanel />
-        </ErrorBoundary>
-        <ErrorBoundary v-if="showLinkSuggestions" fallback-message="Erreur dans les suggestions de liens.">
-          <LinkSuggestions
-            :suggestions="linkSuggestions"
-            :is-suggesting="isSuggesting"
-            @dismiss="dismissSuggestion($event)"
-            @request="requestSuggestions"
-            @close="handleCloseLinkSuggestions"
-          />
-        </ErrorBoundary>
-        <div v-if="showIaBriefPanel" class="ia-brief-panel">
-          <div class="ia-brief-header">
-            <h3>Analyse IA du Brief</h3>
-            <button
-              class="btn-relaunch"
-              :disabled="iaBriefStreaming"
-              @click="triggerBriefExplain"
-            >
-              {{ iaBriefStreaming ? 'Analyse en cours...' : 'Relancer l\'analyse' }}
-            </button>
-          </div>
-          <div
-            v-if="parsedBriefMarkdown"
-            class="ia-brief-content markdown-body"
-            v-safe-html="parsedBriefMarkdown"
-          />
-          <p v-else-if="iaBriefStreaming" class="ia-brief-loading">Analyse en cours...</p>
-          <p v-else class="ia-brief-empty">Cliquez sur "Relancer l'analyse" pour générer une analyse IA.</p>
-        </div>
+        <ArticlePanelsResizable
+          :has-body="hasBody"
+          :show-seo-panel="showSeoPanel"
+          :show-geo-panel="showGeoPanel"
+          :show-link-suggestions="showLinkSuggestions"
+          :link-suggestions="linkSuggestions"
+          :is-suggesting="isSuggesting"
+          @dismiss-suggestion="dismissSuggestion($event)"
+          @request-suggestions="requestSuggestions"
+          @close-link-suggestions="handleCloseLinkSuggestions"
+        />
+        <ArticleWorkflowIaBrief
+          v-if="showIaBriefPanel"
+          :parsed-brief-markdown="parsedBriefMarkdown"
+          :ia-brief-streaming="iaBriefStreaming"
+          @relaunch="triggerBriefExplain"
+        />
       </ResizablePanel>
     </Transition>
   </div>

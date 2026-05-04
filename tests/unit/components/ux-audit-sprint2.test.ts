@@ -50,6 +50,13 @@ describe('ArticleEditorView — header structure', () => {
     resolve(__dirname, '../../../src/views/ArticleEditorView.vue'),
     'utf-8',
   )
+  // Vague 4 (2026-05-04) : la toolbar SEO/GEO/Maillage/Blocs a été extraite
+  // dans ArticlePanelsToolbar.vue (sous-composant partagé avec ArticleWorkflowView).
+  // Les invariants ARIA/role ont migré dans ce sous-composant.
+  const toolbar = readFileSync(
+    resolve(__dirname, '../../../src/components/article/ArticlePanelsToolbar.vue'),
+    'utf-8',
+  )
 
   it('has three header groups: left, center, right', () => {
     expect(vue).toContain('header-left')
@@ -57,17 +64,17 @@ describe('ArticleEditorView — header structure', () => {
     expect(vue).toContain('header-right')
   })
 
-  it('uses role="toolbar" on header-center', () => {
-    expect(vue).toContain('role="toolbar"')
+  it('uses role="toolbar" on the panels toolbar (extracted to ArticlePanelsToolbar)', () => {
+    expect(toolbar).toContain('role="toolbar"')
   })
 
   it('uses generic .btn-toggle class (not .btn-toggle-seo)', () => {
-    expect(vue).toContain('btn-toggle')
-    expect(vue).not.toContain('btn-toggle-seo')
+    expect(toolbar).toContain('btn-toggle')
+    expect(toolbar).not.toContain('btn-toggle-seo')
   })
 
   it('has aria-pressed on toggle buttons', () => {
-    expect(vue).toContain(':aria-pressed')
+    expect(toolbar).toContain(':aria-pressed')
   })
 })
 
