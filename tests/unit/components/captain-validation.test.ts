@@ -520,10 +520,14 @@ describe('CaptainValidation', () => {
     })
 
     it('displays streaming content as markdown via AiAdviceMarkdown', async () => {
+      // Sprint 3 (2026-05-04) — AiPanel collapsed par défaut, on déploie via toggle.
       mockResult.value = fullResult
       mockAiChunks.value = '**Bold** and *italic*'
       const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
+
+      const toggle = wrapper.find('[data-testid="ai-panel-toggle"]')
+      if (toggle.exists()) await toggle.trigger('click')
 
       const advice = wrapper.find('[data-testid="ai-advice-markdown"]')
       expect(advice.exists()).toBe(true)

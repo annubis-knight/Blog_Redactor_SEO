@@ -242,12 +242,14 @@ describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
     expect(wrapper.find('[data-testid="ai-panel-advice"]').exists()).toBe(true)
   })
 
-  it('parsedMarkdown fourni → contenu rendu via <AiAdviceMarkdown>', () => {
+  it('parsedMarkdown fourni → contenu rendu via <AiAdviceMarkdown>', async () => {
+    // Sprint 3 (2026-05-04) — AiPanel collapsed par défaut, on ouvre via toggle.
     const entry = makeEntry('agence seo')
     const wrapper = mount(CaptainSidePanel, {
       props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil\n\nFais X.' },
       global: { stubs: REAL_STUBS },
     })
+    await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
     const advice = wrapper.find('[data-testid="ai-advice-markdown"]')
     expect(advice.exists()).toBe(true)
     expect(advice.html()).toContain('Conseil')
@@ -276,7 +278,7 @@ describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
     expect(err.text()).toContain('API down')
   })
 
-  it('verdictSummary fourni → affiché en tête de slot (avant le markdown)', () => {
+  it('verdictSummary fourni → affiché en tête de slot (avant le markdown)', async () => {
     const entry = makeEntry('agence seo')
     const wrapper = mount(CaptainSidePanel, {
       props: {
@@ -287,6 +289,7 @@ describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
       },
       global: { stubs: REAL_STUBS },
     })
+    await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
     const verdict = wrapper.find('[data-testid="ai-panel-verdict"]')
     expect(verdict.exists()).toBe(true)
     expect(verdict.text()).toContain('GO')
@@ -299,6 +302,7 @@ describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
       props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil' },
       global: { stubs: REAL_STUBS },
     })
+    await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
     expect(wrapper.find('[data-testid="ai-trigger-regen"]').exists()).toBe(true)
   })
 
@@ -309,6 +313,7 @@ describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
       props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil' },
       global: { stubs: REAL_STUBS },
     })
+    await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
     await wrapper.find('[data-testid="ai-trigger-regen"]').trigger('click')
     expect(window.confirm).toHaveBeenCalled()
     expect(wrapper.emitted('ai-regenerate')).toBeTruthy()
@@ -321,6 +326,7 @@ describe('CaptainSidePanel — Sprint B (migration AiPanel advice)', () => {
       props: { ...COMMON_PROPS, entry, parsedMarkdown: '## Conseil' },
       global: { stubs: REAL_STUBS },
     })
+    await wrapper.find('[data-testid="ai-panel-toggle"]').trigger('click')
     await wrapper.find('[data-testid="ai-trigger-regen"]').trigger('click')
     expect(wrapper.emitted('ai-regenerate')).toBeFalsy()
   })

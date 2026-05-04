@@ -313,7 +313,12 @@ function itemBorderClass(paa: RadarPaaItem): string {
 <template>
   <div class="radar-card" :class="{ expanded, 'radar-card--off-pain': isOffPain }">
     <!-- Single-row header -->
-    <div class="radar-card__header" @click="expanded = !expanded">
+    <!-- Sprint 3 (2026-05-04) — `@click.stop` empêche la propagation au parent
+         (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+         lors d'un clic sur le chevron / score-ring / keyword underliné.
+         Règle : la sidebar ne s'ouvre QUE sur clic dans une zone non-cliquable
+         de la card (= en dehors de ce header). -->
+    <div class="radar-card__header" @click.stop="expanded = !expanded">
       <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }">&#9654;</span>
 
       <KeywordWords v-if="interactiveWords" class="radar-card__keyword" :words="interactiveWords.words"
@@ -373,6 +378,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
         :class="{ 'radar-card__score-ring--empty': !hasScore }"
         @mouseenter.stop="showTooltip = true"
         @mouseleave.stop="showTooltip = false"
+        @click.stop
       >
         <svg width="68" height="68" viewBox="0 0 68 68">
           <circle cx="34" cy="34" :r="CIRCLE_RADIUS" fill="none" :stroke="scoreColor" stroke-width="3"
