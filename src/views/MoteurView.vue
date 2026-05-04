@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
@@ -10,7 +10,7 @@ import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscover
 import { useArticleResults } from '@/composables/editor/useArticleResults'
 import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
-import { apiGet, apiDelete } from '@/services/api.service'
+import { apiGet } from '@/services/api.service'
 import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import { log } from '@/utils/logger'
 import type { SelectedArticle, Article } from '@shared/types/index.js'
@@ -28,6 +28,7 @@ import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTa
 import { useMoteurSoftGating } from '@/composables/moteur/useMoteurSoftGating'
 import { useMoteurTabs } from '@/composables/moteur/useMoteurTabs'
 import { useMoteurCrossTabState } from '@/composables/moteur/useMoteurCrossTabState'
+import { useMoteurArticleSync } from '@/composables/moteur/useMoteurArticleSync'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -61,87 +62,9 @@ const recapRadioGroup = provideRecapRadioGroup()
 
 const selectedArticle = ref<SelectedArticle | null>(null)
 
-// --- Cannibalization detection ---
-const capitainesMap = ref<Record<string, string>>({})
-
-function refreshCapitainesMap() {
-  if (!cocoonName.value) return
-  apiGet<Record<string, string>>(`/cocoons/${encodeURIComponent(cocoonName.value)}/capitaines`)
-    .then(data => { capitainesMap.value = data })
-    .catch(err => { log.warn('[MoteurView] refreshCapitainesMap failed', { error: err }) })
-}
-
-// Sprint — handler du bouton "Vider le cache" intégré au TabCachePanel.
-// Purge les entrées api_cache (autocomplete, PAA, SERP, validate) liées au
-// capitaine de l'article courant. Ne touche pas aux *_explorations (DB persistée).
-async function clearExternalCacheForArticle() {
-  const id = selectedArticle.value?.id
-  if (!id) return
-  try {
-    const res = await apiDelete<{ cleared: number }>(`/articles/${id}/external-cache`)
-    log.info('[MoteurView] external cache cleared', { articleId: id, cleared: res.cleared })
-  } catch (err) {
-    log.warn('[MoteurView] clearExternalCacheForArticle failed', { articleId: id, error: err })
-  }
-}
-
-// 2026-04-30 — Comptes réels des explorations persistées en DB pour le TabCachePanel.
-// L'endpoint GET /articles/:id/explorations/counts existe déjà (cf.
-// server/routes/article-explorations.routes.ts) mais n'était pas consommé par
-// MoteurView, ce qui faisait afficher DB 0 même avec des données réelles.
-// Fix : on fetch au mount, à chaque changement d'article et après chaque check.
-const explorationCounts = ref<{
-  radar?: number
-  captain?: number
-  lieutenants?: number
-  lexique?: number
-}>({})
-
-async function refreshExplorationCounts() {
-  const id = selectedArticle.value?.id
-  if (!id) {
-    explorationCounts.value = {}
-    return
-  }
-  try {
-    const counts = await apiGet<Record<string, number>>(`/articles/${id}/explorations/counts`)
-    explorationCounts.value = counts
-    log.debug('[MoteurView] exploration counts refreshed', { articleId: id, counts })
-  } catch (err) {
-    log.warn('[MoteurView] refreshExplorationCounts failed', { articleId: id, error: err })
-  }
-}
-
-// Watch défensif : si `selectedArticle` mute par un autre chemin que
-// handleSelectArticle (refresh de page, navigation profonde), on rafraîchit
-// quand même les counts. `immediate: true` couvre le cas du mount initial.
-watch(
-  () => selectedArticle.value?.id ?? null,
-  () => { refreshExplorationCounts() },
-  { immediate: true },
-)
-
-function emitCheckCompleted(check: string) {
-  const id = selectedArticle.value?.id
-  if (!id) return
-  articleProgressStore.addCheck(id, check).catch(err =>
-    log.warn('[MoteurView] addCheck failed', { articleId: id, check, error: err }),
-  )
-  if (check === 'capitaine_locked') refreshCapitainesMap()
-  // Tab cache : un check signe une mutation côté DB (capitaine validé,
-  // lieutenants verrouillés, lexique validé) → recharger les counts.
-  refreshExplorationCounts()
-}
-
-function handleCheckRemoved(check: string) {
-  const id = selectedArticle.value?.id
-  if (!id) return
-  articleProgressStore.removeCheck(id, check).catch(err =>
-    log.warn('[MoteurView] removeCheck failed', { articleId: id, check, error: err }),
-  )
-  refreshExplorationCounts()
-  if (check === 'capitaine_locked') refreshCapitainesMap()
-}
+// (capitainesMap, explorationCounts, emitCheckCompleted, handleCheckRemoved,
+//  clearExternalCacheForArticle, watcher refresh moved to useMoteurArticleSync below
+//  — déclaré après cocoonName car en dépend.)
 
 const cocoonId = computed(() => Number(route.params.cocoonId))
 
@@ -150,6 +73,21 @@ const cocoon = computed(() =>
 )
 
 const cocoonName = computed(() => cocoon.value?.name ?? '')
+
+// --- Article sync (Vague 5 — extracted to useMoteurArticleSync) ---
+const {
+  capitainesMap,
+  explorationCounts,
+  refreshCapitainesMap,
+  refreshExplorationCounts,
+  emitCheckCompleted,
+  handleCheckRemoved,
+  clearExternalCacheForArticle,
+} = useMoteurArticleSync({
+  selectedArticle,
+  cocoonName,
+  articleProgressStore,
+})
 
 const breadcrumbItems = computed(() => [
   { label: 'Dashboard', to: '/' },

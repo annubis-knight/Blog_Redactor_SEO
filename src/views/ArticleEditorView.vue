@@ -10,13 +10,12 @@ import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import ArticleEditor from '@/components/editor/ArticleEditor.vue'
 import EditorBubbleMenu from '@/components/editor/EditorBubbleMenu.vue'
 import SaveStatusIndicator from '@/components/editor/SaveStatusIndicator.vue'
-import ActionMenu from '@/components/actions/ActionMenu.vue'
-import ActionResult from '@/components/actions/ActionResult.vue'
-import ArticlePicker from '@/components/actions/ArticlePicker.vue'
+import ArticleEditorActionOverlays from '@/components/article/ArticleEditorActionOverlays.vue'
 // Vague 4 — sous-composants/composable factorisés (partagés avec ArticleWorkflowView)
 import { useArticleGeneration } from '@/composables/article/useArticleGeneration'
 import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
 import ArticlePanelsResizable from '@/components/article/ArticlePanelsResizable.vue'
+import SectionProgressBar from '@/components/article/SectionProgressBar.vue'
 import { useArticlesStore } from '@/stores/article/articles.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -413,20 +412,12 @@ onMounted(async () => {
             :reduce-progress="null"
           />
 
-          <div v-if="editorStore.sectionProgress" class="section-progress">
-            <div class="section-progress-header">
-              <span class="section-progress-label">
-                Section {{ editorStore.sectionProgress.current + 1 }}/{{ editorStore.sectionProgress.total }}
-              </span>
-              <span class="section-progress-title">{{ editorStore.sectionProgress.title }}</span>
-            </div>
-            <div class="section-progress-bar">
-              <div
-                class="section-progress-fill"
-                :style="{ width: ((editorStore.sectionProgress.current + 1) / editorStore.sectionProgress.total * 100) + '%' }"
-              />
-            </div>
-          </div>
+          <SectionProgressBar
+            v-if="editorStore.sectionProgress"
+            :current="editorStore.sectionProgress.current"
+            :total="editorStore.sectionProgress.total"
+            :title="editorStore.sectionProgress.title"
+          />
 
           <ErrorBoundary fallback-message="Erreur dans le contenu de l'article.">
             <ArticleStreamDisplay
@@ -483,36 +474,22 @@ onMounted(async () => {
           @update:content="handleContentUpdate"
         />
 
-        <!-- Action Menu Popover -->
-        <div v-if="showActionMenu" class="action-overlay" @click.self="showActionMenu = false">
-          <ActionMenu
-            :disabled="isExecuting"
-            @select-action="handleSelectAction"
-          />
-        </div>
-
-        <!-- Action Result Panel -->
-        <div v-if="showActionResult" class="action-overlay" @click.self="handleRejectResult">
-          <ActionResult
-            :result="streamedResult"
-            :is-streaming="isStreaming"
-            @accept="handleAcceptResult"
-            @reject="handleRejectResult"
-          />
-        </div>
-
-        <!-- Article Picker for internal-link action -->
-        <div v-if="showArticlePicker" class="action-overlay" @click.self="handleCancelLink">
-          <ArticlePicker
-            :articles="articlesStore.articles.filter(a => a.id !== articleId)"
-            @select-article="handleSelectArticle"
-            @cancel="handleCancelLink"
-          />
-        </div>
-
-        <div v-if="actionError" class="action-error">
-          {{ actionError }}
-        </div>
+        <ArticleEditorActionOverlays
+          :show-action-menu="showActionMenu"
+          :show-action-result="showActionResult"
+          :show-article-picker="showArticlePicker"
+          :is-executing="isExecuting"
+          :is-streaming="isStreaming"
+          :streamed-result="streamedResult"
+          :articles="articlesStore.articles.filter(a => a.id !== articleId)"
+          :action-error="actionError"
+          @close-menu="showActionMenu = false"
+          @select-action="handleSelectAction"
+          @accept-result="handleAcceptResult"
+          @reject-result="handleRejectResult"
+          @select-article="handleSelectArticle"
+          @cancel-link="handleCancelLink"
+        />
         </template>
 
       </AsyncContent>
@@ -695,26 +672,6 @@ onMounted(async () => {
   cursor: not-allowed;
 }
 
-/* --- Overlays --- */
-.action-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  z-index: 50;
-}
-
-.action-error {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--color-error-bg);
-  color: var(--color-error);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-}
-
 .empty-state {
   text-align: center;
   padding: 3rem;
@@ -762,50 +719,6 @@ onMounted(async () => {
 /* --- Generation view --- */
 .generation-view {
   padding: 1rem 0;
-}
-
-/* --- Section progress bar --- */
-.section-progress {
-  margin-top: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-}
-
-.section-progress-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.375rem;
-}
-
-.section-progress-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-primary);
-}
-
-.section-progress-title {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.section-progress-bar {
-  height: 4px;
-  background: var(--color-bg-soft);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.section-progress-fill {
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: 2px;
-  transition: width 0.3s ease;
 }
 
 /* --- Panel disabled overlay --- */

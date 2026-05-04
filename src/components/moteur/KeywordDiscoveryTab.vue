@@ -8,6 +8,8 @@ import DiscoveryAiPanel from '@/components/moteur/DiscoveryAiPanel.vue'
 import DiscoveryWordGroupsSidebar from '@/components/moteur/discovery/DiscoveryWordGroupsSidebar.vue'
 import DiscoveryAnalysisResults from '@/components/moteur/discovery/DiscoveryAnalysisResults.vue'
 import DiscoverySourcesList from '@/components/moteur/discovery/DiscoverySourcesList.vue'
+import KeywordDiscoveryCacheBar from '@/components/moteur/discovery/KeywordDiscoveryCacheBar.vue'
+import KeywordDiscoveryRelevanceToggle from '@/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue'
 import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
@@ -340,62 +342,25 @@ function handleToggleAnalysisSelectAll() {
           <span v-if="props.articlePainPoint"> · Douleur : {{ props.articlePainPoint }}</span>
         </p>
 
-        <!-- Cache indicator (Sprint 15.6 — DB-first keyword_discoveries, TTL 30j applicatif) -->
-        <div v-if="cacheStatus?.cached && !hasDiscovered" class="cache-indicator">
-          <span class="cache-indicator__badge">
-            Derniere analyse
-            <span v-if="cacheStatus.cachedAt" class="cache-indicator__date">
-              du {{ new Date(cacheStatus.cachedAt).toLocaleDateString('fr-FR') }}
-            </span>
-            <span v-if="cacheStatus.keywordCount" class="cache-indicator__kw">
-              · {{ cacheStatus.keywordCount }} mots-cles
-            </span>
-            <span v-if="cacheStatus.hasAnalysis" class="cache-indicator__analysis">
-              · analyse IA incluse
-            </span>
-          </span>
-          <button class="cache-indicator__load" :disabled="cacheLoading" @click="handleLoadFromCache">
-            {{ cacheLoading ? 'Chargement...' : 'Charger' }}
-          </button>
-          <button class="cache-indicator__clear" @click="handleClearCache">
-            Rafraichir
-          </button>
-        </div>
+        <KeywordDiscoveryCacheBar
+          :cache-status="cacheStatus"
+          :has-discovered="hasDiscovered"
+          :cache-loading="cacheLoading"
+          @load="handleLoadFromCache"
+          @clear="handleClearCache"
+        />
       </div>
 
-      <!-- Relevance filter toggle + counter + progress -->
-      <div v-if="hasDiscovered" class="relevance-toggle">
-        <label class="relevance-toggle__label">
-          <input
-            type="checkbox"
-            :checked="relevanceFilterEnabled"
-            @change="toggleRelevanceFilter"
-          />
-          Filtre de pertinence
-        </label>
-        <span v-if="uniqueKeywordCount > 0" class="relevance-toggle__total">
-          {{ relevantCount }} pertinents / {{ uniqueKeywordCount }} total
-        </span>
-        <span v-if="semanticLoading && scoringProgress.total > 0" class="relevance-toggle__scoring">
-          <span class="scoring-progress">
-            <span class="scoring-progress__bar">
-              <span
-                class="scoring-progress__fill"
-                :style="{ width: Math.round((scoringProgress.scored / scoringProgress.total) * 100) + '%' }"
-              />
-            </span>
-            <span class="scoring-progress__text">
-              Filtrage {{ scoringProgress.pass }}/2 · {{ scoringProgress.scored }}/{{ scoringProgress.total }}
-            </span>
-          </span>
-        </span>
-        <span v-else-if="semanticLoading" class="relevance-toggle__scoring">
-          <span class="spinner-small" /> Analyse...
-        </span>
-        <span v-else-if="relevanceFilterEnabled && irrelevantCount > 0" class="relevance-toggle__count">
-          {{ irrelevantCount }} hors-sujet masqués
-        </span>
-      </div>
+      <KeywordDiscoveryRelevanceToggle
+        v-if="hasDiscovered"
+        :relevance-filter-enabled="relevanceFilterEnabled"
+        :unique-keyword-count="uniqueKeywordCount"
+        :relevant-count="relevantCount"
+        :irrelevant-count="irrelevantCount"
+        :semantic-loading="semanticLoading"
+        :scoring-progress="scoringProgress"
+        @toggle="toggleRelevanceFilter"
+      />
 
       <!-- Filtering suspect warning -->
       <div v-if="filteringSuspect && !semanticLoading" class="filtering-suspect-warning">
@@ -525,41 +490,6 @@ function handleToggleAnalysisSelectAll() {
   gap: 12px;
 }
 
-/* --- Relevance toggle --- */
-.relevance-toggle {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 12px;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-}
-
-.relevance-toggle__label {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.relevance-toggle__count {
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-}
-
-.relevance-toggle__scoring {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--color-primary);
-  font-size: 0.75rem;
-  font-weight: 500;
-}
-
 /* --- Filtering suspect warning --- */
 .filtering-suspect-warning {
   padding: 8px 12px;
@@ -671,44 +601,6 @@ function handleToggleAnalysisSelectAll() {
   gap: 8px;
 }
 
-/* --- Scoring progress bar --- */
-.scoring-progress {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.scoring-progress__bar {
-  width: 80px;
-  height: 6px;
-  background: var(--color-border);
-  border-radius: 3px;
-  overflow: hidden;
-}
-
-.scoring-progress__fill {
-  display: block;
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: 3px;
-  transition: width 0.3s ease;
-}
-
-.scoring-progress__text {
-  font-size: 0.6875rem;
-  color: var(--color-primary);
-  white-space: nowrap;
-}
-
-.relevance-toggle__total {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text);
-  background: var(--color-bg-hover);
-  padding: 2px 8px;
-  border-radius: 4px;
-}
-
 /* --- Spinner --- */
 .spinner-small {
   display: inline-block;
@@ -809,70 +701,6 @@ function handleToggleAnalysisSelectAll() {
   margin-top: 8px;
   max-width: 500px;
   margin-inline: auto;
-}
-
-/* --- Cache indicator --- */
-.cache-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  margin-top: 8px;
-  background: rgba(22, 163, 74, 0.06);
-  border: 1px solid rgba(22, 163, 74, 0.3);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  color: #15803d;
-}
-
-.cache-indicator__badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-weight: 500;
-}
-
-.cache-indicator__date,
-.cache-indicator__kw,
-.cache-indicator__analysis {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.cache-indicator__load {
-  margin-left: auto;
-  padding: 4px 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  background: #15803d;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.cache-indicator__load:hover:not(:disabled) {
-  background: #166534;
-}
-
-.cache-indicator__load:disabled {
-  opacity: 0.6;
-  cursor: wait;
-}
-
-.cache-indicator__clear {
-  padding: 4px 12px;
-  font-size: 0.75rem;
-  background: none;
-  border: 1px solid var(--color-border);
-  border-radius: 4px;
-  cursor: pointer;
-  color: var(--color-text-muted);
-}
-
-.cache-indicator__clear:hover {
-  border-color: var(--color-text-muted);
-  color: var(--color-text);
 }
 
 /* --- Transition --- */
