@@ -1,6 +1,6 @@
 # Moteur Workflow — Diagramme de flux
 
-> Mis à jour : 2026-05-03
+> Mis à jour : 2026-05-03 (P0 longue-traîne ajoutée — section §X)
 > Source de vérité : `src/views/MoteurView.vue` + composants `src/components/moteur/*` + constantes `shared/constants/workflow-checks.constants.ts`
 
 > **2026-05-03 — Plan de sécurisation Moteur (6 blocs livrés).**
@@ -725,3 +725,75 @@ La `RadarKeywordCard` bascule via `displayMode: 'kpi' | 'relevance'`. En mode Ca
 | GET | `/api/articles/:articleId/explorations` | article-explorations | Explorations de l'article |
 | GET | `/api/cocoons/:id/capitaines` | — | Map capitaines (cannibalisation) |
 | GET | `/api/strategy/:cocoonId` | strategy | Contexte stratégique Cerveau |
+| POST | `/api/articles/:id/radar-exploration/long-tail` | long-tail-suggest | Génère longues-traînes IA (mock-friendly) |
+| PATCH | `/api/articles/:id/radar-exploration/long-tail/selection` | long-tail-suggest | Persiste les longues-traînes cochées |
+
+---
+
+## P0 longue-traîne (livré 2026-05-03)
+
+> *Définition débutant : « longue-traîne » = mot-clé long et précis (ex: « copywriting email PME industriel »), construit en combinant 2-3 mots-clés racines plus courts vus dans Radar. Pertinent quand on vise une niche.*
+
+### Vue d'ensemble
+
+L'onglet **Radar** affiche un container principal de RadarKeywordCard (mots-clés racines avec KPIs). Sous ce container, une section **optionnelle** « Suggestions longue-traîne » apparaît quand ≥ 2 mots-clés racines sont disponibles. L'utilisateur clique « ✨ Suggérer des combinaisons » → l'IA produit ≤ 10 longues-traînes scorées 1-10.
+
+Les longues-traînes cochées sont **agrégées** avec les cards racines cochées au moment du clic « Envoyer au Capitaine ({n}) », puis dédupliquées par `keyword.toLowerCase().trim()` (3 niveaux : DouleurIntentScanner.sendToCaptain → MoteurView.handleCardsSelected → DB UNIQUE constraint).
+
+### Producteurs / consommateurs
+
+| Étape | Producteur | Consommateur |
+|---|---|---|
+| Génération | `long-tail-suggest.service` (combinator local + IA + Zod) | `radar_explorations.scan_result.longTailSuggestions[]` |
+| Sélection cochée | `useLongTailSuggestions.toggle` (debounce 500ms) | `radar_explorations.scan_result.longTailSelectedKeywords[]` |
+| Envoi vers Capitaine | `DouleurIntentScanner.sendToCaptain` (event `cards-selected`) | `MoteurView.radarCardsForCaptain` |
+| Validation Capitaine | Carousel CaptainValidation | `captain_explorations` (UPSERT, `source: 'longtail'`) |
+
+### Forme spécifique d'une RadarCard longue-traîne
+
+```ts
+{
+  keyword: string,
+  reasoning: string,         // = rationale IA
+  kpis: null,                // pas de fallback fantôme
+  source: 'longtail',        // distingue de 'radar'
+  preferenceScore: number,   // 1-10 IA (UI tri/filtre)
+  rationale: string,         // explication IA
+  derivedFromRoots: string[],// racines qui ont servi
+  // ... autres champs RadarCard à 0/[] (combinedScore, paaItems, etc.)
+}
+```
+
+### Persistance
+
+- **Avant envoi** : extension JSONB `radar_explorations.scan_result` → champs `longTailSuggestions[]` + `longTailSelectedKeywords[]`. **0 nouvelle table**, le helper `persistLongTailSuggestions` ne touche pas aux `cards[]`.
+- **Après envoi** : `captain_explorations` (chemin existant inchangé) + nouvelle colonne nullable `source TEXT NULL` (migration 015) pour tracer l'origine. Pas de CHECK constraint — validation Zod côté code.
+- **Cache `api_cache`** : type `long-tail-suggest`, key = `sha256(article_title + pain + sorted_keywords)`, TTL 7j. Évite de re-payer l'IA sur régénération.
+
+### Diagramme de flux
+
+```mermaid
+flowchart TD
+    A[Radar scan terminé<br/>radarCards: RadarCard[]] -->|>= 2 cards| B[Section longue-traîne visible]
+    B -->|Clic ✨ Suggérer| C[POST /articles/:id/radar-exploration/long-tail]
+    C --> D{api_cache HIT?}
+    D -->|Yes| E[Réponse cache]
+    D -->|No| F[long-tail-combinator<br/>déterministe]
+    F --> G[loadPrompt + ai-provider<br/>mock en dev]
+    G --> H[Validation Zod stricte]
+    H --> I[persistLongTailSuggestions<br/>radar_explorations.scan_result]
+    E --> I
+    I --> J[Réponse front]
+    J --> K[Top 5 pré-cochées<br/>useLongTailSuggestions]
+    K --> L[RadarLongTailSuggestions.vue]
+    L -->|Toggle| M[PATCH selection<br/>debounce 500ms]
+    L -->|Bouton Envoyer Capitaine| N[Agrégation dédupliquée<br/>cards racines ∪ longues-traînes]
+    N -->|emit cards-selected| O[MoteurView dédup défensive]
+    O --> P[CaptainValidation<br/>prop radarCards]
+    P -->|Validation carousel| Q[POST /articles/:id/captain-explorations<br/>source: 'longtail']
+    Q --> R[(captain_explorations<br/>UNIQUE article_id+keyword)]
+```
+
+### Point critique : `RadarCard.kpis` désormais nullable
+
+Le type `RadarCard.kpis` est passé de `RadarKeywordKpis` (non-nullable) à `RadarKeywordKpis | null`. Tous les consommateurs ont été alignés (DouleurIntentScanner, RadarKeywordCard, keyword-validate.routes). **Règle invariante** : si `kpis === null`, l'item est exclu du tri par score KPI, exclu du filtre CPC, et son rendu KPI est masqué (`v-if="card.kpis"`).

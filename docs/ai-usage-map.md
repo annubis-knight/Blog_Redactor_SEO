@@ -44,6 +44,7 @@ Lignes grisées = `classifyWithTool` (JSON structuré). Lignes normales = `strea
 | Fonctionnalité | Route | Fichier:ligne | Type appel | Modèle par défaut | Où changer |
 |---|---|---|---|---|---|
 | Génération keywords radar | `POST /keywords/radar/generate` | [keyword-radar.service.ts:46](../server/services/keyword/keyword-radar.service.ts) | `classifyWithTool` (tool `generate_radar_keywords`) | **`HAIKU_MODEL` env** (sinon `claude-haiku-4-5-20251001`) | `.env::HAIKU_MODEL` OU ligne 46 du service |
+| Suggestions longue-traîne (P0 mai 2026) | `POST /articles/:id/radar-exploration/long-tail` | [long-tail-suggest.service.ts](../server/services/keyword/long-tail-suggest.service.ts) | `classifyWithTool` (tool `suggest_long_tail`) | `CLAUDE_MODEL` env | `.env::CLAUDE_MODEL`. Cache `api_cache` type `long-tail-suggest` TTL 7j |
 
 ### Moteur — Capitaine
 

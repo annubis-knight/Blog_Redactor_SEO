@@ -45,13 +45,18 @@
 # Voir _bmad-output/planning-artifacts/epics.md pour le détail.
 
 generated: 2026-04-01
-last_updated: 2026-04-24
+last_updated: 2026-05-03
 project: BMAD
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # P0 Radar — Suggestions longue-traîne (mai 2026) ✅
+  # tech-spec: tech-spec-radar-long-tail-suggestions.md
+  # 6 sprints livrés en TDD (combinator + IA + persistance + UI + dédup + E2E)
+  # 65 tests unit/contract/integration verts.
+  radar-long-tail-suggestions: done
   # Epic 1 : Moteur structuré en phases (Explorer / Valider / Finalisation) ✅
   # Note : le plan initial prévoyait 3 phases (Générer/Valider/Assigner).
   #        L'implémentation finale est 3 phases Explorer/Valider/Finalisation.

@@ -12,7 +12,7 @@ Ce document liste tous les fichiers de prompts utilisés par l'application, orga
 
 ---
 
-## Mots-clés & Stratégie (22 prompts)
+## Mots-clés & Stratégie (23 prompts)
 
 Phase de **préparation** : recherche des bons mots-clés, construction de la stratégie, organisation du cocon sémantique.
 
@@ -22,6 +22,7 @@ Phase de **préparation** : recherche des bons mots-clés, construction de la st
 |---|---|---|
 | `pain-translate.md` | Transforme un problème client en mots-clés Google (short/medium/long-tail) | `/keywords/translate-pain` |
 | `intent-keywords.md` | Génère 20 mots-clés courts à partir du titre pour chercher les "People Also Ask" | Service `keyword-radar` |
+| `radar-long-tail-suggest.md` | Génère ≤ 10 longues-traînes scorées 1-10 à partir des mots-clés Radar racines (combinator local + IA). Variables : `{{article_title}}`, `{{article_pain_point}}`, `{{strategy_context}}`, `{{radar_keywords_with_kpis}}`, `{{candidate_combinations}}`. | `POST /articles/:id/radar-exploration/long-tail` |
 | `capitaine-ai-panel.md` | Expert SEO : analyse les candidats au mot-clé principal avec recommandations | `/keywords/:keyword/ai-panel` |
 | `propose-lieutenants.md` | Propose des mots-clés secondaires (lieutenants) basés sur SERP et PAA | `/keywords/:keyword/propose-lieutenants` |
 | `lexique-suggest.md` | Génère le champ sémantique du mot-clé (termes LSI attendus par Google) | `/keywords/lexique-suggest` |
@@ -101,7 +102,7 @@ Mini-éditions disponibles dans l'éditeur, déclenchées via le menu contextuel
 | Domaine | Nombre de prompts |
 |---|---|
 | Système (global) | 1 |
-| Mots-clés & Stratégie | 22 |
+| Mots-clés & Stratégie | 23 |
 | Génération d'article | 6 |
 | Actions contextuelles | 12 |
-| **Total** | **41** |
+| **Total** | **42** |
