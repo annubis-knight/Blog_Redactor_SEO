@@ -1,17 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted } from 'vue'
 import { useKeywordRadar } from '@/composables/keyword/useResonanceScore'
-import { radarHeatIcon } from '@/composables/keyword/useResonanceScore'
 import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.store'
 import { log } from '@/utils/logger'
-import RadarCardCheckable from './RadarCardCheckable.vue'
-import RadarLongTailSuggestions from './RadarLongTailSuggestions.vue'
-import RadarThermometer from '@/components/shared/RadarThermometer.vue'
 import RadarAiPanel from '@/components/moteur/RadarAiPanel.vue'
-import CpcFilterToggle from '@/components/shared/CpcFilterToggle.vue'
+import DouleurScannerInputs from '@/components/intent/scanner/DouleurScannerInputs.vue'
+import DouleurScannerResults from '@/components/intent/scanner/DouleurScannerResults.vue'
 import { matchesCpcFilter, type CpcFilter } from '@/components/shared/cpc-filter-types'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
-import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import { computeKpiScore } from '@shared/scoring-kpi.js'
 import type { RadarKeyword, RadarCard } from '@shared/types/intent.types'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
@@ -375,93 +371,28 @@ defineExpose({ mergeFromRadarSource })
 
 <template>
   <div class="intent-scanner">
-    <!-- Sprint 5 (2026-05-04) — friction #7 : `scanner-inputs` masqué en mode
-         `workflow`. En mode workflow, `broadKeyword` (= cocon), `specificTopic`
-         (= article.title) et `painPoint` (= article.painPoint) sont injectés
-         depuis les props. Ces inputs servaient uniquement au mode `libre`
-         (Labo) où l'utilisateur saisit ses mots-clés à la main. Les afficher
-         en workflow était redondant avec l'onglet Discovery et déstabilisait
-         l'utilisateur (« pourquoi je remplis encore ces champs ? »). -->
-    <!-- Phase 1: Context & Generate (mode libre uniquement) -->
-    <div v-if="mode === 'libre'" class="scanner-inputs">
-      <h3 class="scanner-title">Keyword Radar</h3>
-      <p class="scanner-desc">
-        L'IA genere des mots-cles courts, puis chacun est scanne dans l'ecosysteme Google
-        (PAA + Autocomplete) pour mesurer la resonance avec votre article.
-      </p>
-
-      <div class="input-row">
-        <div class="input-group">
-          <label class="input-label">Mot-cle large (silo)</label>
-          <input v-model="broadKeyword" type="text" class="input-field" placeholder="Ex: copywriting" />
-        </div>
-        <div class="input-group">
-          <label class="input-label">Sujet precis (article)</label>
-          <input v-model="specificTopic" type="text" class="input-field" placeholder="Ex: copywriting email PME" />
-        </div>
-        <div class="input-group">
-          <label class="input-label">Douleur client</label>
-          <input v-model="painPoint" type="text" class="input-field" placeholder="Ex: taux de conversion bas" />
-        </div>
-      </div>
-
-      <!-- Sprint 2.1 — PAA depth toggle removed (locked at N+2). -->
-      <div class="input-row input-row--actions">
-        <button
-          v-if="phase === 'input' || phase === 'keywords'"
-          class="btn-action"
-          :disabled="isGenerating || !broadKeyword.trim() || !specificTopic.trim()"
-          @click="handleGenerate"
-        >
-          {{ isGenerating ? 'Generation...' : 'Generer les mots-cles' }}
-        </button>
-
-        <button
-          v-if="phase === 'results'"
-          class="btn-action btn-action--secondary"
-          @click="handleReset"
-        >
-          Nouveau scan
-        </button>
-      </div>
-    </div>
-
-    <!-- Cache indicator -->
-    <div
-      v-if="radarCacheStatus?.exists && phase === 'input'"
-      class="cache-indicator"
-    >
-      <div class="cache-indicator__info">
-        <span class="cache-indicator__icon">{{ radarHeatIcon(radarCacheStatus.heatLevel ?? null) }}</span>
-        <span class="cache-indicator__text">
-          Scan precedent disponible
-          <template v-if="radarCacheStatus.globalScore !== undefined">
-            &middot; Score {{ radarCacheStatus.globalScore }}/100
-          </template>
-          <template v-if="radarCacheStatus.keywordCount">
-            &middot; {{ radarCacheStatus.keywordCount }} mots-cles
-          </template>
-        </span>
-      </div>
-      <div class="cache-indicator__actions">
-        <button
-          class="btn-action"
-          :disabled="isLoadingCache"
-          @click="handleLoadFromCache"
-        >
-          {{ isLoadingCache ? 'Chargement...' : 'Charger depuis le cache' }}
-        </button>
-        <button class="btn-action btn-action--secondary" @click="radarCacheStatus = null">
-          Ignorer
-        </button>
-      </div>
-    </div>
-
-    <!-- Error -->
-    <div v-if="error" class="scanner-error">
-      {{ error }}
-      <button class="btn-retry" @click="error = null">Fermer</button>
-    </div>
+    <!-- Sprint 5 (2026-05-04) — friction #7 : inputs Phase 1 masqués en mode
+         `workflow`. La cache-indicator et l'error restent affichés dans les 2
+         modes via DouleurScannerInputs (showInputs=false en workflow). -->
+    <DouleurScannerInputs
+      :broad-keyword="broadKeyword"
+      :specific-topic="specificTopic"
+      :pain-point="painPoint"
+      :phase="phase"
+      :is-generating="isGenerating"
+      :radar-cache-status="radarCacheStatus"
+      :is-loading-cache="isLoadingCache"
+      :error="error"
+      :show-inputs="mode === 'libre'"
+      @update:broad-keyword="(v) => broadKeyword = v"
+      @update:specific-topic="(v) => specificTopic = v"
+      @update:pain-point="(v) => painPoint = v"
+      @generate="handleGenerate"
+      @reset-scan="handleReset"
+      @load-cache="handleLoadFromCache"
+      @dismiss-cache="radarCacheStatus = null"
+      @clear-error="error = null"
+    />
 
     <!-- Phase 2: Keywords Preview (editable tags) -->
     <div v-if="phase === 'keywords' && !isScanning" class="keywords-preview">
@@ -509,94 +440,31 @@ defineExpose({ mergeFromRadarSource })
     </div>
 
     <!-- Phase 3: Results -->
-    <template v-if="phase === 'results' && scanResult">
-      <!-- Global thermometer -->
-      <RadarThermometer
-        :global-score="scanResult.globalScore"
-        :heat-level="scanResult.heatLevel"
-        :keywords-count="scanResult.cards.length"
-        :autocomplete-count="scanResult.autocomplete.totalCount"
-        :paa-total="scanResult.cards.reduce((s, c) => s + (c.kpis?.paaTotal ?? 0), 0)"
-        :verdict="scanResult.verdict"
-      />
-
-      <!-- Autocomplete section (collapsed by default — Sprint 2.3).
-           Why: too tall, pushed the radar cards (the real value) off-screen. -->
-      <details v-if="scanResult.autocomplete.totalCount > 0" class="autocomplete-section">
-        <summary class="autocomplete-summary">
-          <h4 class="section-title section-title--inline">Autocomplete ({{ scanResult.autocomplete.totalCount }})</h4>
-          <span class="autocomplete-hint">Cliquer pour d&eacute;ployer</span>
-        </summary>
-        <div class="auto-groups">
-          <div v-for="(group, gIdx) in autoGroups" :key="'ag-' + gIdx" class="auto-group">
-            <span class="auto-group-label">
-              <span class="auto-query-icon">{{ group.query.startsWith('*') ? '\u2190 ' : '\u2192 ' }}</span>
-              "{{ group.query }}" ({{ group.items.length }})
-            </span>
-            <div class="auto-group-items">
-              <span v-for="(s, i) in group.items" :key="i" class="auto-tag">
-                <span class="auto-tag-pos">#{{ s.position }}</span>
-                {{ s.text }}
-              </span>
-            </div>
-          </div>
-        </div>
-      </details>
-
-      <!-- Keyword cards with checkboxes -->
-      <div class="radar-cards">
-        <SortToggleBar
-          :options="radarSortOptions"
-          :model-value="radarSortState"
-          :count-label="filteredCards.length !== scanResult.cards.length ? `${filteredCards.length} / ${scanResult.cards.length} mots-clés` : `${filteredCards.length} mots-clés`"
-          @update:model-value="(s) => radarSortState = s"
-        >
-          <template #filters>
-            <CpcFilterToggle v-model="cpcFilter" />
-            <label class="check-all-toggle" @click.stop>
-              <input
-                type="checkbox"
-                :checked="allChecked"
-                @change="toggleAllChecked"
-              />
-              Tout
-            </label>
-          </template>
-        </SortToggleBar>
-        <RadarCardCheckable
-          v-for="card in filteredCards"
-          :key="card.keyword"
-          :card="card"
-          :checked="checkedKeywords.has(card.keyword)"
-          display-mode="kpi"
-          :article-level="props.articleLevel"
-          :modifiers="getModifiersFor(card.keyword)"
-          @update:checked="toggleCheck(card.keyword)"
-          @modifier-untag="(i: number) => handleModifierUntag(card.keyword, i)"
-          @modifier-cycle="(p: { index: number; next: 'local' | 'persona' | null }) => handleModifierCycle(card.keyword, p)"
-        />
-
-        <!-- S4 — Section longue-traîne : sous le container principal des
-             cards racines, optionnelle, déclenchée manuellement. Visible
-             seulement si articleId disponible (workflow) et >= 2 racines. -->
-        <RadarLongTailSuggestions
-          v-if="props.articleId"
-          :article-id="props.articleId"
-          :article-title="props.articleTopic"
-          :article-pain-point="painPoint"
-          :radar-keywords="scanResult.cards.map(c => ({ keyword: c.keyword }))"
-          @update:selected-suggestions="handleLongTailSelected"
-        />
-
-        <button
-          v-if="totalSelectedCount > 0"
-          class="btn-send-captain"
-          @click="sendToCaptain"
-        >
-          Envoyer au Capitaine ({{ totalSelectedCount }})
-        </button>
-      </div>
-    </template>
+    <DouleurScannerResults
+      v-if="phase === 'results' && scanResult"
+      :scan-result="scanResult"
+      :filtered-cards="filteredCards"
+      :radar-sort-options="radarSortOptions"
+      :radar-sort-state="radarSortState"
+      :cpc-filter="cpcFilter"
+      :all-checked="allChecked"
+      :checked-keywords="checkedKeywords"
+      :auto-groups="autoGroups"
+      :article-level="props.articleLevel"
+      :article-id="props.articleId"
+      :article-topic="props.articleTopic"
+      :pain-point="painPoint"
+      :total-selected-count="totalSelectedCount"
+      :get-modifiers-for="getModifiersFor"
+      @update:cpc-filter="(v) => cpcFilter = v"
+      @update:radar-sort-state="(s) => radarSortState = s"
+      @toggle-check="toggleCheck"
+      @toggle-all-checked="toggleAllChecked"
+      @modifier-untag="handleModifierUntag"
+      @modifier-cycle="handleModifierCycle"
+      @long-tail-selected="handleLongTailSelected"
+      @send-to-captain="sendToCaptain"
+    />
 
     <!-- Sprint D-2 (2026-05-02) — Panel suggestion bas-de-page : top
          candidats Capitaine via tri local marketScore + relevanceScore
@@ -617,97 +485,7 @@ defineExpose({ mergeFromRadarSource })
   gap: 1rem;
 }
 
-/* --- Inputs --- */
-.scanner-inputs {
-  padding: 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-}
-
-.scanner-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.125rem;
-  font-weight: 700;
-}
-
-.scanner-desc {
-  margin: 0 0 1rem;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
-.input-row {
-  display: flex;
-  gap: 0.75rem;
-  align-items: flex-end;
-}
-
-.input-row--actions {
-  margin-top: 0.75rem;
-}
-
-.input-group {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.input-group--depth {
-  flex: 0 0 auto;
-}
-
-.input-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-.input-field {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.875rem;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  background: var(--color-bg);
-  color: var(--color-text);
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.input-field:focus {
-  border-color: var(--color-primary);
-}
-
-.depth-toggle {
-  display: flex;
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  overflow: hidden;
-}
-
-.depth-btn {
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border: none;
-  background: var(--color-bg);
-  color: var(--color-text-muted);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.depth-btn:first-child {
-  border-right: 1px solid var(--color-border);
-}
-
-.depth-btn--active {
-  background: var(--color-primary);
-  color: white;
-}
-
+/* --- btn-action used by keywords-preview "Lancer le scan" --- */
 .btn-action {
   padding: 0.5rem 1.25rem;
   font-size: 0.875rem;
@@ -728,66 +506,6 @@ defineExpose({ mergeFromRadarSource })
 .btn-action:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-.btn-action--secondary {
-  background: var(--color-text-muted);
-}
-
-/* --- Cache Indicator --- */
-.cache-indicator {
-  padding: 1rem 1.25rem;
-  background: var(--color-success-bg, #f0fdf4);
-  border: 1px solid var(--color-success, #22c55e);
-  border-radius: 8px;
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-  animation: fadeSlideIn 0.3s ease;
-}
-
-.cache-indicator__info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.cache-indicator__icon {
-  font-size: 1.25rem;
-}
-
-.cache-indicator__text {
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text);
-}
-
-.cache-indicator__actions {
-  display: flex;
-  gap: 0.5rem;
-}
-
-/* --- Error --- */
-.scanner-error {
-  padding: 0.75rem 1rem;
-  background: var(--color-error-bg, #fef2f2);
-  border: 1px solid var(--color-error, #dc2626);
-  border-radius: 6px;
-  color: var(--color-error, #dc2626);
-  font-size: 0.8125rem;
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.btn-retry {
-  padding: 0.25rem 0.625rem;
-  font-size: 0.75rem;
-  background: var(--color-error, #dc2626);
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
 }
 
 /* --- Keywords Preview --- */
@@ -917,134 +635,4 @@ defineExpose({ mergeFromRadarSource })
   to { opacity: 1; transform: translateY(0); }
 }
 
-/* --- Autocomplete Section --- */
-.autocomplete-section {
-  padding: 1rem 1.25rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  animation: fadeSlideIn 0.3s ease;
-}
-
-.section-title {
-  margin: 0 0 0.75rem;
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--color-text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-
-/* Sprint 2.3 — collapsible autocomplete details */
-.section-title--inline { margin: 0; }
-.autocomplete-summary {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  list-style: none;
-  user-select: none;
-}
-.autocomplete-summary::-webkit-details-marker { display: none; }
-.autocomplete-summary::before {
-  content: '\25b8';
-  margin-right: 0.5rem;
-  color: var(--color-text-muted);
-  transition: transform 0.15s;
-}
-.autocomplete-section[open] .autocomplete-summary::before { transform: rotate(90deg); }
-.autocomplete-hint { font-size: 0.75rem; color: var(--color-text-muted); }
-.autocomplete-section[open] .autocomplete-summary { margin-bottom: 0.75rem; }
-
-.auto-groups {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.auto-group-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  display: block;
-  margin-bottom: 0.375rem;
-}
-
-.auto-query-icon {
-  font-size: 0.625rem;
-  opacity: 0.6;
-}
-
-.auto-group-items {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-}
-
-.auto-tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  background: var(--color-background-mute, #f1f5f9);
-  border-radius: 4px;
-  font-size: 0.75rem;
-  color: var(--color-text);
-}
-
-.auto-tag-pos {
-  font-size: 0.625rem;
-  font-weight: 700;
-  color: var(--color-text-muted);
-}
-
-/* --- Radar Cards Section --- */
-.radar-cards {
-  animation: fadeSlideIn 0.3s ease;
-}
-
-.radar-cards-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 0.5rem;
-}
-
-.radar-cards-header .section-title {
-  margin: 0;
-}
-
-.check-all-toggle {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.check-all-toggle input[type="checkbox"] {
-  cursor: pointer;
-  accent-color: var(--color-primary);
-}
-
-.btn-send-captain {
-  display: block;
-  width: 100%;
-  margin-top: 0.75rem;
-  padding: 0.625rem 1.25rem;
-  background: var(--color-primary, #3b82f6);
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-send-captain:hover {
-  background: var(--color-primary-hover, #2563eb);
-}
 </style>
