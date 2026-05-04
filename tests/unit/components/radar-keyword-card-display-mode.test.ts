@@ -37,14 +37,39 @@ function makeCard(over: Partial<RadarCard> = {}): RadarCard {
 }
 
 describe('RadarKeywordCard — displayMode', () => {
-  it('mode "relevance" affiche le combinedScore et le label "Score pertinence"', () => {
+  it('mode "relevance" affiche `relevanceScore.total` et le label "Score Pertinence"', () => {
+    // Sprint 2026-05 — fin du fallback combinedScore en mode relevance.
+    // Le score affiché provient strictement de `card.relevanceScore.total`
+    // (cf. docs/scoring-kpi-vs-relevance.md). Si absent → "—".
+    const card = makeCard({
+      combinedScore: 67, // legacy ignoré en mode relevance
+      relevanceScore: {
+        total: 78,
+        verdict: 'GO',
+        breakdown: {
+          painKeyword: { normalized: 80, weight: 0.3 },
+          paaPain: { normalized: 75, weight: 0.3 },
+          acPain: { normalized: 70, weight: 0.2 },
+          roots: { normalized: 85, weight: 0.1 },
+          intentPain: { normalized: 80, weight: 0.1 },
+        },
+      },
+    } as Partial<RadarCard>)
+    const w = mount(RadarKeywordCard, {
+      props: { card, displayMode: 'relevance', articlePainPoint: 'visibilité locale faible' },
+    })
+    const ring = w.find('.radar-card__score-ring')
+    expect(ring.exists()).toBe(true)
+    expect(ring.find('.score-ring__value').text()).toBe('78')
+    expect(ring.find('.score-ring__label').text()).toBe('Score Pertinence')
+  })
+
+  it('mode "relevance" sans relevanceScore → "—" (pas de fallback combinedScore)', () => {
     const w = mount(RadarKeywordCard, {
       props: { card: makeCard({ combinedScore: 67 }), displayMode: 'relevance' },
     })
     const ring = w.find('.radar-card__score-ring')
-    expect(ring.exists()).toBe(true)
-    expect(ring.find('.score-ring__value').text()).toBe('67')
-    expect(ring.find('.score-ring__label').text()).toBe('Score pertinence')
+    expect(ring.find('.score-ring__value').text()).toBe('—')
   })
 
   it('mode "kpi" calcule le score via computeKpiScore (≠ combinedScore)', () => {

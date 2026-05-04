@@ -8,6 +8,7 @@ import type { CpcFilter } from '@/components/shared/cpc-filter-types'
 import type { RadarCard, KeywordRadarScanResult } from '@shared/types/intent.types'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
 import type { LongTailSuggestion } from '@shared/types/long-tail.types'
+import type { ModifierKind } from '@shared/utils/keyword-modifiers'
 import type { SortOption } from '@/composables/moteur/useSortableList'
 
 interface AutoGroup {
@@ -29,7 +30,7 @@ defineProps<{
   articleTopic: string
   painPoint: string
   totalSelectedCount: number
-  getModifiersFor: (keyword: string) => unknown
+  getModifiersFor: (keyword: string) => ModifierKind[]
 }>()
 
 defineEmits<{

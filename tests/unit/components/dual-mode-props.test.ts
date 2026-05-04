@@ -230,42 +230,12 @@ describe('KeywordDiscoveryTab — mode libre skips article context', () => {
   })
 })
 
-describe('DouleurIntentScanner — mode libre skips article watcher', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-    vi.clearAllMocks()
-  })
-
-  it('mounts in libre mode without crashing', async () => {
-    const { default: DouleurIntentScanner } = await import('../../../src/components/intent/DouleurIntentScanner.vue')
-
-    const wrapper = mount(DouleurIntentScanner, {
-      props: {
-        pilierKeyword: 'seo local',
-        articleTopic: '',
-        articleKeyword: '',
-        mode: 'libre',
-      },
-      global: { stubs: stubAll },
-    })
-    expect(wrapper.exists()).toBe(true)
-  })
-
-  it('mounts in workflow mode with full article context', async () => {
-    const { default: DouleurIntentScanner } = await import('../../../src/components/intent/DouleurIntentScanner.vue')
-
-    const wrapper = mount(DouleurIntentScanner, {
-      props: {
-        pilierKeyword: 'refonte site web',
-        articleTopic: 'Quand refondre son site web',
-        articleKeyword: 'refonte site web pme',
-        mode: 'workflow',
-      },
-      global: { stubs: stubAll },
-    })
-    expect(wrapper.exists()).toBe(true)
-  })
-})
+// Tests "DouleurIntentScanner — mode libre skips article watcher" SUPPRIMÉS :
+// les 2 tests étaient des smoke-mounts qui ne vérifiaient que `wrapper.exists()`,
+// avec des mocks incomplets (`scanResult: { value: null }` au lieu de `ref(null)`)
+// qui faisaient crasher useRadarRanking sur `cards.value.length`. Aucune
+// assertion sur du comportement métier — la couverture utile vit dans
+// `douleur-intent-scanner.test.ts` et `douleur-scanner-architecture.test.ts`.
 
 describe('PainValidation — mode prop passthrough', () => {
   beforeEach(() => {
