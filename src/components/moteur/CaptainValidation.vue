@@ -946,6 +946,33 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
   })
 }
 
+/**
+ * Sprint 2 (2026-05-04) — Recalcul manuel du score Pertinence pour une card
+ * du carousel. L'utilisateur clique sur le bouton "refresh" dans
+ * `radar-card-lockable__actions` quand il voit que la Pertinence est null
+ * malgré un painPoint défini (cas "no-signals").
+ *
+ * On délègue à `carousel.addEntry()` qui ré-injecte la card via
+ * `validateKeyword(keyword, level, title, painPoint, articleId)` —
+ * même chemin que la validation initiale, donc cohérent.
+ */
+async function handleRecomputeRelevance(card: { keyword: string }) {
+  const articleId = props.selectedArticle?.id
+  const painPoint = props.selectedArticle?.painPoint
+  if (!articleId || !painPoint || painPoint.trim().length < 10) {
+    log.warn('[CaptainValidation] recompute-relevance skipped (no articleId or painPoint)', { keyword: card.keyword })
+    return
+  }
+  log.info('[CaptainValidation] Manual recompute relevance', { keyword: card.keyword })
+  await carousel.addEntry(
+    card.keyword,
+    articleLevel.value,
+    props.selectedArticle?.title,
+    articleId,
+    painPoint,
+  )
+}
+
 // --- Root variant switch (sur l'entrée sélectionnée) ---
 const currentRootVariants = computed(() => {
   const entry = selectedEntry.value
@@ -1040,9 +1067,11 @@ onUnmounted(() => abortAllAiStreams())
             :locked-keyword="lockedKeyword"
             :article-level="articleLevel"
             :article-id="props.selectedArticle?.id ?? null"
+            :article-pain-point="props.selectedArticle?.painPoint ?? null"
             @lock="lockEntry(rawIndexOf(entry))"
             @unlock="lockedIndex === rawIndexOf(entry) ? unlockEntry() : null"
             @word-toggle="(indices) => handleWordToggleAt(rawIndexOf(entry), indices)"
+            @recompute-relevance="(card) => handleRecomputeRelevance(card)"
           />
         </div>
       </div>

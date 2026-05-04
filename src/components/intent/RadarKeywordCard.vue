@@ -26,10 +26,14 @@ const props = withDefaults(defineProps<{
   modifiers?: (ModifierKind | null)[]
   /** Si true, un clic sur un mot cycle son tag local/persona/null (au lieu du toggle actif/inactif). */
   manualTagMode?: boolean
+  /** Sprint 2 (2026-05-04) — painPoint de l'article courant. Permet au tooltip
+   *  Pertinence absent de différencier "painPoint manquant" vs "signaux nuls". */
+  articlePainPoint?: string | null
 }>(), {
   displayMode: 'kpi',
   articleLevel: 'intermediaire',
   manualTagMode: false,
+  articlePainPoint: null,
 })
 
 const emit = defineEmits<{
@@ -150,6 +154,32 @@ const displayedScore = computed<number | null>(() => {
 })
 
 const hasScore = computed(() => displayedScore.value !== null)
+
+/**
+ * Sprint 2 (2026-05-04) — Cause détectable de l'absence de score Pertinence.
+ *
+ * Permet d'afficher un tooltip honnête : avant ce sprint, un message unique
+ * "Définis un point de douleur" mentait quand pain_point était bien défini
+ * en DB mais que les signaux SERP étaient nuls (PAA vides, embedding KO).
+ *
+ *   - 'no-pain'   : painPoint absent ou trop court (<10 chars).
+ *   - 'long-tail' : kpis null (longue traîne, score Pertinence non applicable).
+ *   - 'no-signals': painPoint OK + kpis OK, mais relevanceScore null →
+ *                   les signaux dérivés (PAA × douleur, AC × douleur, etc.)
+ *                   n'ont rien produit. Recalcul manuel utile.
+ *   - null        : score présent (ce computed n'est lu qu'en !hasScore).
+ */
+const PAIN_POINT_MIN_LENGTH = 10
+type RelevanceMissingReason = 'no-pain' | 'no-signals' | 'long-tail' | null
+const relevanceMissingReason = computed<RelevanceMissingReason>(() => {
+  if (props.displayMode !== 'relevance') return null
+  if (hasScore.value) return null
+  // Longue traîne : kpis: null par construction (cf. shared/types/intent.types.ts)
+  if (!props.card.kpis) return 'long-tail'
+  const pp = props.articlePainPoint?.trim() ?? ''
+  if (pp.length < PAIN_POINT_MIN_LENGTH) return 'no-pain'
+  return 'no-signals'
+})
 
 const scoreLabel = computed(() =>
   props.displayMode === 'kpi' ? 'Score KPI' : 'Score Pertinence',
@@ -365,8 +395,20 @@ function itemBorderClass(paa: RadarPaaItem): string {
                 <span>{{ displayedScore }}/100</span>
               </div>
             </template>
-            <p v-else class="tooltip-empty">
+            <!-- Sprint 2 (2026-05-04) — message diff&eacute;renci&eacute; selon la cause d&eacute;tectable
+                 (cf. computed `relevanceMissingReason`). Avant : message unique qui mentait
+                 quand pain_point &eacute;tait d&eacute;fini en DB mais signaux SERP nuls. -->
+            <p v-else-if="relevanceMissingReason === 'no-pain'" class="tooltip-empty">
               Score Pertinence indisponible. D&eacute;finis un point de douleur sur l'article et relance la validation pour obtenir le score.
+            </p>
+            <p v-else-if="relevanceMissingReason === 'no-signals'" class="tooltip-empty">
+              Le point de douleur est d&eacute;fini, mais les signaux SERP n'ont rien produit (PAA vides, autocomplete absent ou embedding indisponible). Relance la validation pour r&eacute;essayer.
+            </p>
+            <p v-else-if="relevanceMissingReason === 'long-tail'" class="tooltip-empty">
+              Score Pertinence non applicable aux longues tra&icirc;nes &mdash; utilise plut&ocirc;t le score Pertinence de leur racine dans l'onglet Capitaine.
+            </p>
+            <p v-else class="tooltip-empty">
+              Score Pertinence indisponible.
             </p>
           </div>
         </Transition>

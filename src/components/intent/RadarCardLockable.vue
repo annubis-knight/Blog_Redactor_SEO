@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import type { RadarCard } from '@shared/types/intent.types.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
 import RadarKeywordCard from './RadarKeywordCard.vue'
 import type { InteractiveWordsProps, RadarDisplayMode } from './RadarKeywordCard.vue'
 
-defineProps<{
+const props = defineProps<{
   card: RadarCard
   locked: boolean
   interactiveWords?: InteractiveWordsProps
@@ -14,14 +14,35 @@ defineProps<{
   articleLevel?: ArticleLevel
   modifiers?: (ModifierKind | null)[]
   validating?: boolean
+  /** Sprint 2 (2026-05-04) — painPoint pour le bouton recalcul Pertinence.
+   *  Si absent, le bouton est désactivé (rien à recalculer sans painPoint).
+   *  Aussi propagé à RadarKeywordCard pour le tooltip différencié. */
+  articlePainPoint?: string | null
 }>()
 
-defineEmits<{
+const emit = defineEmits<{
   'update:locked': [value: boolean]
   'word-toggle': [activeIndices: number[]]
   'modifier-untag': [index: number]
   'modifier-cycle': [payload: { index: number; next: ModifierKind | null }]
+  /** Sprint 2 — émis quand l'utilisateur clique sur le bouton recalcul Pertinence
+   *  dans la colonne d'actions. Le parent (CaptainValidation) re-validate la card. */
+  'recompute-relevance': [card: RadarCard]
 }>()
+
+// Sprint 2 — bouton recompute visible UNIQUEMENT en mode 'relevance' (Capitaine).
+const PAIN_POINT_MIN_LENGTH = 10
+const showRecomputeBtn = computed(() => props.displayMode === 'relevance')
+const recomputeDisabled = computed(() => {
+  if (props.validating) return true
+  const pp = props.articlePainPoint?.trim() ?? ''
+  return pp.length < PAIN_POINT_MIN_LENGTH
+})
+
+function handleRecompute() {
+  if (recomputeDisabled.value) return
+  emit('recompute-relevance', props.card)
+}
 
 // Mode "tag manuel" : quand actif, un clic sur un mot du keyword cycle son tag
 // (null → local → persona → null) au lieu du toggle actif/inactif normal.
@@ -67,6 +88,27 @@ function toggleManualTagMode() {
           <circle cx="7" cy="7" r="1.5" fill="currentColor"/>
         </svg>
       </button>
+
+      <!-- Sprint 2 (2026-05-04) — Bouton recalcul Pertinence.
+           Visible uniquement en mode 'relevance' (Capitaine), pas en Radar.
+           Désactivé si pas de painPoint OU validation en cours.
+           Émet `recompute-relevance` que le parent câble pour re-valider. -->
+      <button
+        v-if="showRecomputeBtn"
+        class="radar-card-lockable__recompute"
+        :disabled="recomputeDisabled"
+        :title="recomputeDisabled
+          ? 'Définis un point de douleur sur l\'article pour pouvoir recalculer la Pertinence'
+          : 'Recalculer le score Pertinence pour ce mot-clé'"
+        data-testid="radar-card-recompute-relevance"
+        type="button"
+        @click.stop="handleRecompute"
+      >
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+          <path d="M21 12a9 9 0 11-3.5-7.1L21 8" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 4v4h-4" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
     </div>
     <div class="radar-card-lockable__content">
       <RadarKeywordCard
@@ -76,6 +118,7 @@ function toggleManualTagMode() {
         :article-level="articleLevel"
         :modifiers="modifiers"
         :manual-tag-mode="manualTagMode"
+        :article-pain-point="articlePainPoint"
         @word-toggle="$emit('word-toggle', $event)"
         @modifier-untag="$emit('modifier-untag', $event)"
         @modifier-cycle="$emit('modifier-cycle', $event)"
@@ -166,6 +209,32 @@ function toggleManualTagMode() {
   border-color: #0891b2;
   background: rgba(8, 145, 178, 0.08);
   color: #0891b2;
+}
+
+/* Sprint 2 (2026-05-04) — Bouton recalcul Pertinence (mode relevance uniquement). */
+.radar-card-lockable__recompute {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  border: 1.5px solid var(--color-border, #e2e8f0);
+  border-radius: 50%;
+  background: transparent;
+  color: var(--color-text-muted, #64748b);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.radar-card-lockable__recompute:hover:not(:disabled) {
+  border-color: var(--color-badge-purple-text, #7c3aed);
+  color: var(--color-badge-purple-text, #7c3aed);
+}
+
+.radar-card-lockable__recompute:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
 }
 
 .radar-card-lockable.manual-tag-mode {

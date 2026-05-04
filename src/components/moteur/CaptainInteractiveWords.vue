@@ -4,12 +4,16 @@ import RadarCardLockable from '@/components/intent/RadarCardLockable.vue'
 import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.store'
 import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
+import type { RadarCard } from '@shared/types/intent.types'
 
 const props = defineProps<{
   entry: CarouselEntry
   lockedKeyword: string | null
   articleLevel?: ArticleLevel
   articleId?: number | null
+  /** Sprint 2 — propagé jusqu'à RadarKeywordCard (tooltip différencié) et
+   *  RadarCardLockable (bouton recalcul Pertinence). */
+  articlePainPoint?: string | null
 }>()
 
 const modifiersStore = useKeywordModifiersStore()
@@ -30,6 +34,9 @@ const emit = defineEmits<{
   'lock': []
   'unlock': []
   'word-toggle': [activeIndices: number[]]
+  /** Sprint 2 (2026-05-04) — propagé depuis RadarCardLockable.
+   *  Le parent (CaptainValidation) re-validate la card avec le painPoint courant. */
+  'recompute-relevance': [card: RadarCard]
 }>()
 
 const currentWords = computed(() => {
@@ -80,11 +87,13 @@ function handleLockedUpdate(val: boolean) {
       display-mode="relevance"
       :article-level="articleLevel"
       :modifiers="keywordModifiers"
+      :article-pain-point="articlePainPoint"
       data-testid="carousel-radar-lockable"
       @update:locked="handleLockedUpdate"
       @word-toggle="$emit('word-toggle', $event)"
       @modifier-untag="handleModifierUntag"
       @modifier-cycle="handleModifierCycle"
+      @recompute-relevance="(card) => emit('recompute-relevance', card)"
     />
   </div>
 </template>
