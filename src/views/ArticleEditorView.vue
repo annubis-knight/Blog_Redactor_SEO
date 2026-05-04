@@ -17,6 +17,7 @@ import ArticlePicker from '@/components/actions/ArticlePicker.vue'
 import { useArticleGeneration } from '@/composables/article/useArticleGeneration'
 import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
 import ArticlePanelsResizable from '@/components/article/ArticlePanelsResizable.vue'
+import SectionProgressBar from '@/components/article/SectionProgressBar.vue'
 import { useArticlesStore } from '@/stores/article/articles.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -413,20 +414,12 @@ onMounted(async () => {
             :reduce-progress="null"
           />
 
-          <div v-if="editorStore.sectionProgress" class="section-progress">
-            <div class="section-progress-header">
-              <span class="section-progress-label">
-                Section {{ editorStore.sectionProgress.current + 1 }}/{{ editorStore.sectionProgress.total }}
-              </span>
-              <span class="section-progress-title">{{ editorStore.sectionProgress.title }}</span>
-            </div>
-            <div class="section-progress-bar">
-              <div
-                class="section-progress-fill"
-                :style="{ width: ((editorStore.sectionProgress.current + 1) / editorStore.sectionProgress.total * 100) + '%' }"
-              />
-            </div>
-          </div>
+          <SectionProgressBar
+            v-if="editorStore.sectionProgress"
+            :current="editorStore.sectionProgress.current"
+            :total="editorStore.sectionProgress.total"
+            :title="editorStore.sectionProgress.title"
+          />
 
           <ErrorBoundary fallback-message="Erreur dans le contenu de l'article.">
             <ArticleStreamDisplay
@@ -762,50 +755,6 @@ onMounted(async () => {
 /* --- Generation view --- */
 .generation-view {
   padding: 1rem 0;
-}
-
-/* --- Section progress bar --- */
-.section-progress {
-  margin-top: 0.75rem;
-  padding: 0.625rem 0.75rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-}
-
-.section-progress-header {
-  display: flex;
-  align-items: baseline;
-  gap: 0.5rem;
-  margin-bottom: 0.375rem;
-}
-
-.section-progress-label {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-primary);
-}
-
-.section-progress-title {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.section-progress-bar {
-  height: 4px;
-  background: var(--color-bg-soft);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.section-progress-fill {
-  height: 100%;
-  background: var(--color-primary);
-  border-radius: 2px;
-  transition: width 0.3s ease;
 }
 
 /* --- Panel disabled overlay --- */
