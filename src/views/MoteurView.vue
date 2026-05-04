@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
@@ -18,16 +18,7 @@ import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 // Sprint 4 (2026-05-04) — SelectedArticlePanel retiré (friction #3 redondance).
-import type { NavGroup } from '@/components/shared/WorkflowNav.vue'
 
-// Phase = structure interne (gating, transition banner, smart-tab logic).
-// Conservée même si la nav-app utilise désormais NavGroup.
-interface Phase {
-  id: string
-  label: string
-  number: number
-  tabs: { id: string; label: string; optional?: boolean; locked?: boolean }[]
-}
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
@@ -35,6 +26,7 @@ import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
 import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTabLoadPrompt'
 import { useMoteurSoftGating } from '@/composables/moteur/useMoteurSoftGating'
+import { useMoteurTabs } from '@/composables/moteur/useMoteurTabs'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -226,21 +218,23 @@ const {
   keywordsStore,
 })
 
-// --- Phase navigation ---
-// Bloc 2 — 'finalisation' ajouté comme onglet dédié de Phase ③ (cf.
-// docs/moteur-data-flow.md §1). Remplace l'ancienne modale qui s'ouvrait
-// depuis un bouton non gardé.
-const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation'] as const
-type Tab = typeof TAB_IDS[number]
-const activeTab = ref<Tab>('capitaine')
+// --- Phase navigation (Vague 3 — extracted to useMoteurTabs) ---
+const {
+  activeTab,
+  visitedTabs,
+  nextTab,
+  isInGenererPhase,
+  setActiveTab,
+  computeSmartTab,
+} = useMoteurTabs({
+  selectedArticle,
+  isDiscoveryAllowed,
+  articleProgressStore,
+  workflowNavStore,
+})
 
-// Track which tabs have been visited — v-if creates them lazily, v-show keeps them alive
-const visitedTabs = ref<Record<string, boolean>>({ capitaine: true })
-watch(activeTab, (tab) => { visitedTabs.value[tab] = true })
-
-// Sprint 1.3/5.1 — contextual next-tab button. Shows "Continuer vers {TabSuivant}"
-// at the bottom of every tab so the user can chain phases without hunting for a CTA.
-const TAB_LABELS: Record<Tab, string> = {
+// Sprint 1.3/5.1 — contextual next-tab button labels (utilisés par le template).
+const TAB_LABELS: Record<string, string> = {
   discovery: 'Discovery',
   radar: 'Radar',
   capitaine: 'Capitaine',
@@ -248,11 +242,6 @@ const TAB_LABELS: Record<Tab, string> = {
   lexique: 'Lexique',
   finalisation: 'Finalisation',
 }
-const nextTab = computed<Tab | null>(() => {
-  const idx = TAB_IDS.indexOf(activeTab.value)
-  if (idx < 0 || idx >= TAB_IDS.length - 1) return null
-  return TAB_IDS[idx + 1] ?? null
-})
 
 function navigateToRedaction() {
   if (selectedArticle.value?.id) {
@@ -262,99 +251,8 @@ function navigateToRedaction() {
   }
 }
 
-const phases = computed<Phase[]>(() => [
-  {
-    id: 'generer',
-    label: 'Générer',
-    number: 1,
-    tabs: [
-      { id: 'discovery', label: 'Discovery', optional: true, locked: !isDiscoveryAllowed.value },
-      { id: 'radar', label: 'Radar', optional: true, locked: !isDiscoveryAllowed.value },
-    ],
-  },
-  {
-    id: 'valider',
-    label: 'Valider',
-    number: 2,
-    tabs: [
-      { id: 'capitaine', label: 'Capitaine' },
-      { id: 'lieutenants', label: 'Lieutenants' },
-      { id: 'lexique', label: 'Lexique' },
-    ],
-  },
-  {
-    id: 'finaliser',
-    label: 'Finaliser',
-    number: 3,
-    tabs: [
-      { id: 'finalisation', label: 'Finalisation' },
-    ],
-  },
-])
-
-const isInGenererPhase = computed(() =>
-  activeTab.value === 'discovery' || activeTab.value === 'radar',
-)
-
-function setActiveTab(tabId: string) {
-  if ((TAB_IDS as readonly string[]).includes(tabId)) {
-    activeTab.value = tabId as Tab
-  }
-}
-
-// Sprint 2.4 — PhaseTransitionBanner retiré (PHASE_CHECKS, PHASE_NEXT,
-// currentPhaseId, isCurrentPhaseComplete, bannerDismissed, transitionBanner,
-// showTransitionBanner supprimés). Le bouton bas-de-page "Continuer vers
-// {TabSuivant}" remplace ce banner.
-
-// --- Publish workflow nav state to AppNavbar (right slot)
-// La navbar globale (AppNavbar) lit `useWorkflowNavStore` et rend la nav.
-// On publie ici l'état de phases/onglets actifs ; on nettoie au unmount.
-const navGroups = computed<NavGroup[]>(() =>
-  phases.value.map(p => ({
-    id: p.id,
-    label: p.label,
-    number: p.number,
-    items: p.tabs.map(t => ({
-      id: t.id,
-      label: t.label,
-      locked: t.locked || !selectedArticle.value,
-      hint: !selectedArticle.value
-        ? 'Sélectionnez un article ci-dessus'
-        : t.locked
-          ? 'Mots-clés déjà validés — onglet verrouillé'
-          : undefined,
-    })),
-  })),
-)
-
-watch(
-  [navGroups, activeTab],
-  ([groups, active]) => {
-    workflowNavStore.setWorkflowNav({
-      workflow: 'moteur',
-      activeId: active,
-      groups,
-      onNavigate: (id: string) => setActiveTab(id),
-    })
-  },
-  { immediate: true, deep: true },
-)
-
-onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
-
-function computeSmartTab(articleId: number): Tab {
-  const progress = articleProgressStore.getProgress(articleId)
-  const checks = progress?.completedChecks ?? []
-  if (checks.length === 0) return 'capitaine'
-  // Sprint 4 (2026-05-04) — friction #1 : ne plus auto-naviguer vers
-  // Finalisation. C'est un onglet de récap pré-Rédaction, l'utilisateur le
-  // choisit explicitement via le CTA bas-de-page de Lexique. La sélection
-  // d'article ramène toujours sur le 1er onglet utile à compléter.
-  if (checks.includes('lieutenants_locked')) return 'lexique'
-  if (checks.includes('capitaine_locked')) return 'lieutenants'
-  return 'capitaine'
-}
+// (phases, isInGenererPhase, setActiveTab, navGroups, watcher publish,
+//  onBeforeUnmount cleanup, computeSmartTab moved to useMoteurTabs above)
 
 function handleSelectArticle(article: SelectedArticle | null) {
   log.debug('[MoteurView] Article toggled', {
