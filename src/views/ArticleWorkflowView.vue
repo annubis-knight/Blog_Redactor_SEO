@@ -29,7 +29,8 @@ import ArticleActions from '@/components/article/ArticleActions.vue'
 import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
 import OutlineRecap from '@/components/article/OutlineRecap.vue'
-import ApiCostBadge from '@/components/shared/ApiCostBadge.vue'
+import ArticleCostBadges from '@/components/article/ArticleCostBadges.vue'
+import ArticleWordCountBar from '@/components/article/ArticleWordCountBar.vue'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
@@ -170,11 +171,7 @@ const {
   articleKeywordsStore,
 })
 
-// Word count percent reste local au parent (utilisé uniquement par le template).
-const wordCountPercent = computed(() => {
-  if (!wordCountTarget.value || !editorStore.wordCount) return 0
-  return Math.round((editorStore.wordCount / wordCountTarget.value) * 100)
-})
+// (wordCountPercent moved into ArticleWordCountBar sub-component)
 
 // --- IA Brief Panel ---
 const { chunks: iaBriefChunks, isStreaming: iaBriefStreaming, startStream: startBriefExplain } = useStreaming()
@@ -434,42 +431,18 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
                 />
               </ErrorBoundary>
 
-              <div v-if="editorStore.lastArticleUsage || editorStore.lastMetaUsage || editorStore.lastReduceUsage || editorStore.lastHumanizeUsage" class="cost-badges">
-                <ApiCostBadge
-                  v-if="editorStore.lastArticleUsage"
-                  label="Article"
-                  :usage="editorStore.lastArticleUsage"
-                />
-                <ApiCostBadge
-                  v-if="editorStore.lastMetaUsage"
-                  label="Meta"
-                  :usage="editorStore.lastMetaUsage"
-                />
-                <ApiCostBadge
-                  v-if="editorStore.lastReduceUsage"
-                  label="Réduction"
-                  :usage="editorStore.lastReduceUsage"
-                />
-                <ApiCostBadge
-                  v-if="editorStore.lastHumanizeUsage"
-                  label="Humanisation"
-                  :usage="editorStore.lastHumanizeUsage"
-                />
-              </div>
+              <ArticleCostBadges
+                :article-usage="editorStore.lastArticleUsage"
+                :meta-usage="editorStore.lastMetaUsage"
+                :reduce-usage="editorStore.lastReduceUsage"
+                :humanize-usage="editorStore.lastHumanizeUsage"
+              />
 
-              <div v-if="editorStore.content" class="word-count-bar">
-                <div class="word-count-info">
-                  <span class="word-count-value">{{ editorStore.wordCount }} mots</span>
-                  <span v-if="wordCountTarget" class="word-count-target">/ {{ wordCountTarget }} cible</span>
-                </div>
-                <div v-if="wordCountTarget" class="word-count-progress">
-                  <div
-                    class="word-count-fill"
-                    :class="wordCountPercent >= 80 ? 'fill-good' : 'fill-fair'"
-                    :style="{ width: Math.min(100, wordCountPercent) + '%' }"
-                  />
-                </div>
-              </div>
+              <ArticleWordCountBar
+                v-if="editorStore.content"
+                :word-count="editorStore.wordCount"
+                :target="wordCountTarget"
+              />
 
               <RouterLink
                 v-if="editorStore.content && !editorStore.isGenerating"
@@ -687,61 +660,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 .btn-edit-article:hover {
   background: var(--color-primary-hover);
   text-decoration: none;
-}
-
-.cost-badges {
-  display: flex;
-  gap: 0.5rem;
-  margin-top: 0.5rem;
-  flex-wrap: wrap;
-}
-
-/* --- Word count bar --- */
-.word-count-bar {
-  margin-top: 0.75rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-}
-
-.word-count-info {
-  display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
-  margin-bottom: 0.375rem;
-}
-
-.word-count-value {
-  font-size: 0.875rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.word-count-target {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-}
-
-.word-count-progress {
-  height: 4px;
-  background: var(--color-bg-soft);
-  border-radius: 2px;
-  overflow: hidden;
-}
-
-.word-count-fill {
-  height: 100%;
-  border-radius: 2px;
-  transition: width 0.3s ease;
-}
-
-.word-count-fill.fill-good {
-  background: var(--color-success);
-}
-
-.word-count-fill.fill-fair {
-  background: var(--color-warning);
 }
 
 /* --- IA Brief panel --- */
