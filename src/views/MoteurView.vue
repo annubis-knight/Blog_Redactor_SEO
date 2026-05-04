@@ -27,13 +27,13 @@ import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
 import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTabLoadPrompt'
 import { useMoteurSoftGating } from '@/composables/moteur/useMoteurSoftGating'
 import { useMoteurTabs } from '@/composables/moteur/useMoteurTabs'
+import { useMoteurCrossTabState } from '@/composables/moteur/useMoteurCrossTabState'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
 import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
 import DouleurIntentScanner from '@/components/intent/DouleurIntentScanner.vue'
-import type { RadarKeyword, RadarCard } from '@shared/types/intent.types.js'
 
 // Phase ② Valider
 import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
@@ -51,11 +51,6 @@ const strategyStore = useCocoonStrategyStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const articleProgressStore = useArticleProgressStore()
 const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroups } = useKeywordDiscoveryTab()
-const { clearResults, loadCachedResults } = useArticleResults({
-  onRadarLoaded: (result) => {
-    radarScanResult.value = { globalScore: result.globalScore, heatLevel: result.heatLevel }
-  },
-})
 const basketStore = useMoteurBasketStore()
 const workflowNavStore = useWorkflowNavStore()
 
@@ -272,19 +267,14 @@ function handleSelectArticle(article: SelectedArticle | null) {
 
   // Navigate to the smart tab (components handle article change via their id watchers)
   const smartTab = article ? computeSmartTab(article.id) : 'capitaine'
-  activeTab.value = smartTab
+  setActiveTab(smartTab)
   visitedTabs.value[smartTab] = true
 
   // Sync basket with article
   basketStore.setArticle(article?.id ?? null)
 
-  // Reset cross-tab state
-  selectedLieutenantsLocal.value = []
-  discoveryRadarKeywords.value = []
-  radarScanResult.value = null
-  radarCacheStatus.value = null
-  radarCardsForCaptain.value = []
-  captainRootKeywords.value = []
+  // Reset cross-tab state (Vague 3 — déléguée au composable)
+  resetCrossTabState()
 
   // Clear previous analysis results then reload cached ones for the new article
   clearResults()
@@ -340,55 +330,38 @@ function handleSelectArticle(article: SelectedArticle | null) {
   }
 }
 
-// --- Cross-tab state ---
-const discoveryRadarKeywords = ref<RadarKeyword[]>([])
-const radarScanResult = ref<{ globalScore: number; heatLevel: string } | null>(null)
-const radarCacheStatus = ref<RadarCacheStatus | null>(null)
-const radarCardsForCaptain = ref<RadarCard[]>([])
+// --- Cross-tab state (Vague 3 — extracted to useMoteurCrossTabState) ---
+const {
+  discoveryRadarKeywords,
+  radarScanResult,
+  radarCacheStatus,
+  radarCardsForCaptain,
+  effectiveRootKeywords,
+  selectedLieutenantsForLexique,
+  handleCardsSelected,
+  handleRadarScanned,
+  handleSendToRadar,
+  handleKeywordsCleared,
+  handleSendToLieutenants,
+  handleLieutenantsUpdated,
+  resetCrossTabState,
+} = useMoteurCrossTabState({
+  selectedArticle,
+  articleKeywordsStore,
+  basketStore,
+  setActiveTab,
+  emitCheckCompleted,
+})
 
-function handleCardsSelected(cards: RadarCard[]) {
-  // S4 — Dédup défensive (2e niveau) : si le payload contient des doublons
-  // (régression upstream possible), on les écrase ici. Card avec kpis non-null
-  // (racine) prime sur card kpis null (longue-traîne).
-  const seen = new Map<string, RadarCard>()
-  for (const c of cards) {
-    const norm = c.keyword.trim().toLowerCase()
-    const existing = seen.get(norm)
-    if (!existing || (existing.kpis === null && c.kpis !== null)) {
-      seen.set(norm, c)
-    }
-  }
-  const deduped = Array.from(seen.values())
-  log.info(`[MoteurView] Send ${deduped.length} radar cards to Capitaine (dedup ${cards.length - deduped.length})`)
-  radarCardsForCaptain.value = deduped
-  activeTab.value = 'capitaine'
-}
-
-function handleRadarScanned(payload: { globalScore: number; heatLevel: string }) {
-  log.debug('[MoteurView] Radar scanned', payload)
-  radarScanResult.value = payload
-  emitCheckCompleted('radar_done')
-}
-
-function handleSendToRadar(keywords: RadarKeyword[]) {
-  log.info(`[MoteurView] Send to radar: ${keywords.length} keywords`)
-  discoveryRadarKeywords.value = keywords
-  activeTab.value = 'radar'
-  emitCheckCompleted('discovery_done')
-
-  // Add to basket
-  basketStore.addKeywords(keywords.map(k => ({
-    keyword: k.keyword,
-    source: 'discovery' as const,
-    reasoning: k.reasoning,
-  })))
-}
-
-function handleKeywordsCleared() {
-  log.debug('[MoteurView] Keywords cleared')
-  discoveryRadarKeywords.value = []
-  radarScanResult.value = null
-}
+// useArticleResults : doit être placé APRÈS useMoteurCrossTabState pour que
+// `radarScanResult` soit déjà défini quand le callback `onRadarLoaded` est
+// appelé. La closure capture la Ref par référence — l'ordre matters au moment
+// du call, mais TypeScript exige aussi l'ordre de déclaration.
+const { clearResults, loadCachedResults } = useArticleResults({
+  onRadarLoaded: (result) => {
+    radarScanResult.value = { globalScore: result.globalScore, heatLevel: result.heatLevel }
+  },
+})
 
 // (Soft gating computeds moved to useMoteurSoftGating composable above)
 
@@ -411,32 +384,9 @@ const suggestedKeywordsForArticle = computed(() => {
   return proposed?.suggestedKeywords ?? []
 })
 
-const captainRootKeywords = ref<string[]>([])
-
-const effectiveRootKeywords = computed(() =>
-  captainRootKeywords.value.length > 0
-    ? captainRootKeywords.value
-    : articleKeywordsStore.keywords?.rootKeywords ?? [],
-)
-
-const selectedLieutenantsLocal = ref<string[]>([])
-
-const selectedLieutenantsForLexique = computed(() =>
-  selectedLieutenantsLocal.value.length > 0
-    ? selectedLieutenantsLocal.value
-    : articleKeywordsStore.keywords?.lieutenants ?? [],
-)
-
-function handleLieutenantsUpdated(selected: string[]) {
-  selectedLieutenantsLocal.value = selected
-}
-
-function handleSendToLieutenants(payload: { keyword: string; rootKeywords: string[] }) {
-  log.info('[MoteurView] Send to Lieutenants', payload)
-  captainRootKeywords.value = payload.rootKeywords
-  activeTab.value = 'lieutenants'
-  visitedTabs.value.lieutenants = true
-}
+// (captainRootKeywords, effectiveRootKeywords, selectedLieutenantsLocal,
+//  selectedLieutenantsForLexique, handleLieutenantsUpdated, handleSendToLieutenants
+//  moved to useMoteurCrossTabState above)
 
 // --- Tab cache entries for unified cache panel ---
 // La construction des entrées est déléguée à `buildTabCacheEntries` (utilitaire
@@ -542,9 +492,7 @@ onMounted(() => {
   resetDiscovery()
   articleKeywordsStore.$reset()
   basketStore.$reset()
-  discoveryRadarKeywords.value = []
-  radarScanResult.value = null
-  radarCacheStatus.value = null
+  resetCrossTabState()
   loadData()
 })
 </script>
