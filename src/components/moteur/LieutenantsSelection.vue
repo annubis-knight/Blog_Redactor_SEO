@@ -6,6 +6,7 @@ import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store
 import { extractRoots } from '@/composables/keyword/useCapitaineValidation'
 import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
 import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
+import { useLieutenantsHn } from '@/composables/moteur/useLieutenantsHn'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
@@ -24,8 +25,6 @@ import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
-import type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
-
 export type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
 const props = withDefaults(defineProps<{
@@ -58,8 +57,8 @@ const activityLog = useCostLogStore()
 
 // Direct exploration saves — each event persists to its dedicated table
 
-/** Active tab for Structure Hn concurrents — '__all__' = merged view */
-const activeHnTab = ref<string>('__all__')
+// (activeHnTab + activeHnRecurrence moved to useLieutenantsHn — déclaré
+// après useLieutenantsIa pour avoir hnStructure dispo.)
 
 // --- SERP State (Vague 3 — extracted to useLieutenantsSerp) ---
 // canAnalyze + resolvedRootKeywords sont définis plus bas (dépendent de
@@ -97,13 +96,7 @@ const {
   activityLog,
 })
 
-/** Hn recurrence for the active tab — '__all__' uses merged data, otherwise per-keyword */
-const activeHnRecurrence = computed<HnRecurrenceItem[]>(() => {
-  if (activeHnTab.value === '__all__') return hnRecurrence.value
-  const result = serpResultsByKeyword.value.get(activeHnTab.value)
-  if (!result) return []
-  return computeHnRecurrenceFrom(result.competitors)
-})
+// (activeHnRecurrence moved to useLieutenantsHn below)
 
 // F5 — La barrière `isCaptaineLocked` ne s'applique qu'au premier passage. Dès que
 // l'IA a généré des propositions pour cet article, l'onglet reste accessible même
@@ -129,28 +122,6 @@ const resolvedRootKeywords = computed(() => {
 // donc l'ordre d'usage est ce qui compte.
 const wordGroupsRef = toRef(props, 'wordGroups')
 const cocoonSlugRef = toRef(props, 'cocoonSlug')
-
-// --- HN Structure save ---
-const hnSaved = ref(false)
-const isSavingHn = ref(false)
-
-async function saveHnStructure() {
-  const id = props.selectedArticle?.id
-  const title = props.selectedArticle?.title
-  if (!id || !title || !articleKeywordsStore.keywords || hnStructure.value.length === 0) return
-
-  isSavingHn.value = true
-  // Save outline directly to articles/{id}.json (single source of truth)
-  const outline = hnToOutline(hnStructure.value, title)
-  await apiPut(`/articles/${id}`, { outline })
-  // Also keep hnStructure in keywords for backward compat
-  articleKeywordsStore.keywords.hnStructure = hnStructure.value
-  await articleKeywordsStore.saveDecisions(id)
-  hnSaved.value = true
-  isSavingHn.value = false
-  setTimeout(() => { hnSaved.value = false }, 2000)
-  log.info('[LieutenantsSelection] Outline saved from HN structure', { sections: outline.sections.length })
-}
 
 // --- Lock/unlock Lieutenants ---
 const isLocked = ref(props.initialLocked)
@@ -189,6 +160,23 @@ const {
   computeHnRecurrenceFrom,
   hnRecurrence,
   onLieutenantsUpdated: (selected: string[]) => emit('lieutenants-updated', selected),
+})
+
+// --- HN Structure (Vague 3 — extracted to useLieutenantsHn) ---
+// Placé après IA car dépend de hnStructure (mutable, set par proposeLieutenants).
+const {
+  activeHnTab,
+  activeHnRecurrence,
+  isSavingHn,
+  hnSaved,
+  saveHnStructure,
+} = useLieutenantsHn({
+  selectedArticle: selectedArticleRef,
+  serpResultsByKeyword,
+  hnRecurrence,
+  hnStructure,
+  articleKeywordsStore,
+  computeHnRecurrenceFrom,
 })
 
 // --- Debug log: state on mount ---
