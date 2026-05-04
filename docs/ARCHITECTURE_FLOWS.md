@@ -1,7 +1,8 @@
 # Blog Redactor SEO — Architecture & Flow Diagrams
 
 > Vue d'ensemble des flux, composants, stores et données du projet.
-> Dernière mise à jour : 2026-05-01
+> Dernière mise à jour : 2026-05-04
+> **2026-05-04** : ajout des notes Sprint 4/5 stabilisation (découpage routes/services par responsabilité — voir [Annexe — Découpages structurels post-stabilisation](#annexe--découpages-structurels-post-stabilisation-2026-05-04))
 
 ---
 
@@ -1190,10 +1191,14 @@ graph TB
 | PUT | `/api/articles/:id` | editor | Sauvegarde article |
 | GET | `/api/articles/:id/progress` | article-progress | Progress article |
 | POST | `/api/articles/:id/progress/check` | article-progress | Ajoute un check |
-| POST | `/api/generate/outline` | outline | Génération plan (SSE) |
-| POST | `/api/generate/article` | editor | Génération article (SSE) |
-| POST | `/api/generate/meta` | editor | Génération meta tags |
-| POST | `/api/generate/reduce-section` | editor | Réduction de section |
+| POST | `/api/generate/outline` | outline | Génération plan (SSE) — `server/routes/generate/outline.routes.ts` |
+| POST | `/api/generate/article` | editor | Génération article (SSE) — `server/routes/generate/article.routes.ts` |
+| POST | `/api/generate/meta` | editor | Génération meta tags — `server/routes/generate/meta.routes.ts` |
+| POST | `/api/generate/reduce-section` | editor | Réduction de section — `server/routes/generate/reduce-section.routes.ts` |
+| POST | `/api/generate/humanize-section` | editor | Humanisation section — `server/routes/generate/humanize-section.routes.ts` |
+| POST | `/api/generate/action` | editor | Action contextuelle — `server/routes/generate/action.routes.ts` |
+| POST | `/api/generate/micro-context-suggest` | brief | Suggestion micro-contexte — `server/routes/generate/micro-context-suggest.routes.ts` |
+| POST | `/api/generate/brief-explain` | brief | Explication brief — `server/routes/generate/brief-explain.routes.ts` |
 | GET | `/api/article-keywords/:id` | article-keywords | Keywords d'un article |
 | PUT | `/api/article-keywords/:id` | article-keywords | Sauvegarde keywords |
 | POST | `/api/keywords/discover` | keyword-discovery | Discovery par seed |
@@ -1236,3 +1241,98 @@ graph TB
 | GET | `/api/articles/:id/explorations` | — | Explorations d'un article |
 | GET | `/api/dataforseo/brief` | brief | Données SERP DataForSEO |
 | GET | `/api/dataforseo/cost-status` | cost-log | Statut quota DataForSEO |
+
+---
+
+## Annexe — Découpages structurels post-stabilisation (2026-05-04)
+
+> Sprints 4 et 5 du tech-spec stabilisation. **Aucun changement de
+> comportement runtime** — uniquement de la décomposition interne pour
+> rendre la codebase respirable. Les API publiques sont préservées via
+> des fichiers de re-export (façades 1 ligne).
+
+### `server/routes/generate.routes.ts` (1171L → 9 fichiers, max 336L)
+
+```
+server/routes/
+├── generate.routes.ts              ← façade 1 ligne : `export { default } from './generate/index.js'`
+└── generate/
+    ├── index.ts                    ← mergeRouter (préserve la forme publique de router.stack)
+    ├── _helpers.ts                 ← rate-limit, consumeStream, prompt builders, SSE_HEADERS, etc.
+    ├── outline.routes.ts           ← POST /api/generate/outline
+    ├── article.routes.ts           ← POST /api/generate/article
+    ├── reduce-section.routes.ts    ← POST /api/generate/reduce-section
+    ├── humanize-section.routes.ts  ← POST /api/generate/humanize-section
+    ├── meta.routes.ts              ← POST /api/generate/meta
+    ├── action.routes.ts            ← POST /api/generate/action
+    ├── micro-context-suggest.routes.ts ← POST /api/generate/micro-context-suggest
+    └── brief-explain.routes.ts     ← POST /api/generate/brief-explain
+```
+
+**Pourquoi `mergeRouter` plutôt que `router.use(child)` ?** Les tests
+existants introspectent `router.stack` pour trouver chaque handler. Avec
+`router.use(child)`, les routes auraient été nichées sous des couches
+mountpath et 44 tests auraient cassé. `mergeRouter` aplatit `child.stack`
+dans le parent → forme publique strictement identique au monolithe.
+
+### `server/services/external/dataforseo.service.ts` (915L → 7 fichiers, max 269L)
+
+```
+server/services/external/
+├── dataforseo.service.ts           ← façade 4 lignes : `export * from './dataforseo/index.js'`
+└── dataforseo/
+    ├── index.ts                    ← réexports nominatifs (API publique)
+    ├── _client.ts                  ← config sandbox/auth, DataForSeoQuotaError, fetchDataForSeo (transport)
+    ├── cache.ts                    ← readCache, writeCache, isCacheFresh
+    ├── serp.ts                     ← fetchSerp, fetchPaa
+    ├── keywords.ts                 ← fetchRelatedKeywords, fetchKeywordSuggestions, fetchKeywordOverview*, fetchSearchIntentBatch
+    ├── brief.ts                    ← getBrief (orchestrateur)
+    └── scoring.ts                  ← computeCompositeScore, generateAlerts, audit, redundancy
+```
+
+**13 callers externes** (routes, services, tests) inchangés grâce à la façade.
+
+### `src/composables/editor/useArticleProposals.ts` (985L → 8 fichiers, max 338L)
+
+```
+src/composables/editor/
+├── useArticleProposals.ts          ← composable principal (orchestrateur, 338L)
+└── article-proposals/
+    ├── types.ts                    ← ArticleType local
+    ├── builders.ts                 ← buildSingleArticle, keywordToSlug, normalizeTitle, GROUP_COLORS (PURS)
+    ├── parsers.ts                  ← extractArticlesFromJson, parseSingleArticle, extractPaaQueries (PURS)
+    ├── computeds.ts                ← createArticleComputeds (refs réactifs)
+    ├── generation.ts               ← createGenerationPipeline (3 phases AI)
+    ├── regeneration.ts             ← createRegenerationActions
+    └── topics.ts                   ← createTopicsManager (auto-gen step 5)
+```
+
+**Pattern factory** : les blocs avec dépendances Vue/store sont extraits
+en factories `createXxx({ store, ... })` appelées dans le `setup` du
+composable. Cycle de vie + réactivité préservés. La signature publique
+de `useArticleProposals` n'a pas changé — aucun caller modifié.
+
+### `shared/score/` (nouveau module — Sprint 3)
+
+```
+shared/score/
+├── index.ts                        ← API publique unifiée (UNIQUE point d'entrée externe)
+├── types.ts                        ← Score = number | null
+├── format.ts                       ← formatScore (null → "—")
+├── compare.ts                      ← compareScores (null toujours en bas)
+└── aggregate.ts                    ← averageScores (ignore les null, jamais ?? 0)
+```
+
+Le module est créé À CÔTÉ des anciens `shared/scoring*.ts` (zéro casse).
+Cf. [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md#module-sharedscore-unifié-2026-05-04) pour le détail produit.
+
+### Garde-fous architecturaux actifs (`dependency-cruiser`)
+
+| Règle | Sévérité | Empêche |
+|---|---|---|
+| `no-server-in-src` | error | `src/` qui importe depuis `server/` (CLAUDE.md §3.1) |
+| `no-circular` | error | Cycles d'import nouveaux |
+| `score-internal-only-via-index` | error | Imports directs vers `shared/score/{types,format,compare,aggregate}.ts` (passer par `index.ts`) |
+| `no-orphans` | warn | Fichiers jamais importés |
+
+Lance `npm run check:arch` (ou le thermomètre global `npm run check:health`) pour vérifier.

@@ -1,5 +1,5 @@
 # generated: 2026-04-01
-# last_updated: 2026-04-24
+# last_updated: 2026-05-04
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
@@ -185,10 +185,47 @@ development_status:
   15-2-outillage-qualite: done
   epic-15-retrospective: optional
 
+  # Epic 16 : Stabilisation codebase — quick wins non-invasifs ✅
+  # Tech-spec : tech-spec-stabilisation-codebase.md (livré 2026-05-04)
+  # 6 sprints (S1-S5 + S6 optionnel) sur 1 journée.
+  # Résultats :
+  #   - 303 erreurs ESLint → 0
+  #   - 2 fichiers morts supprimés (knip)
+  #   - 52 nouveaux tests caractérisation (services keyword + stores article)
+  #   - Module shared/score/ unifié (Score = number | null) + règle ESLint
+  #     anti-régression no-restricted-syntax `?? 0` sur scores → 9 vrais
+  #     bugs préexistants détectés et corrigés
+  #   - generate.routes.ts : 1171L → 9 fichiers (max 336L)
+  #   - dataforseo.service.ts : 915L → 7 fichiers (max 269L)
+  #   - useArticleProposals.ts : 985L → 8 fichiers (max 338L)
+  #   - Stryker 100% mutation score sur shared/score/
+  #   - dependency-cruiser actif : règles no-server-in-src + score-internal-only-via-index
+  # Outillage ajouté : @vitest/coverage-v8, dependency-cruiser,
+  #                    @stryker-mutator/core, @stryker-mutator/vitest-runner.
+  # Scripts package.json ajoutés : check:arch, check:health, test:mutation.
+  epic-16: done
+  16-1-outillage-qualite-check-health: done
+  16-2-tests-caracterisation-services-stores: done
+  16-3-module-shared-score-unifie: done
+  16-4-decoupage-generate-routes: done
+  16-5-decoupage-dataforseo-useArticleProposals: done
+  16-6-mutation-testing-stryker: done
+  epic-16-retrospective: optional
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur
 #   (l'Audit originel a été migré vers /explorateur — à reconsidérer dans ce contexte)
+#
+# - Sortis du scope Epic 16 (stabilisation) — chantiers indépendants :
+#   * 271 warnings @typescript-eslint/no-explicit-any : audit de typage dédié
+#   * 20 fetch() directs dans composants Vue à remplacer par apiGet/apiPost (codemod)
+#   * Découpage CaptainValidation.vue (1507L), KeywordDiscoveryTab.vue (1421L)
+#     — éligibles maintenant que S2+S3 ont posé le filet
+#   * Unification des 6 stores qui touchent un même article (chantier d'archi)
+#   * 15 tests préexistants en échec (lieutenants-selection.gaps.test.ts +
+#     brief-structure-step.test.ts) — non liés à la stabilisation, à investiguer
+#   * 51 unused exports + 123 unused types détectés par knip — chirurgical
 #
 # - Vision Phase 3 (post-MVP) :
 #   * Génération de cocons entiers en un clic

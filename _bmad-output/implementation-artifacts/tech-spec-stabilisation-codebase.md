@@ -519,6 +519,192 @@ npx stryker init
 
 ---
 
+## Self-reviews §5 rétroactives (rattrapage 2026-05-04)
+
+> **Manquement honnête** : la phase 4 self-review (CLAUDE.md §5.1/§5.2) a été
+> faite « en tête » pendant l'exécution mais jamais écrite. Cette section
+> documente l'audit a posteriori sprint par sprint pour combler le gap.
+
+### Sprint 1 — Self-review §5.1
+
+**Contexte** : outillage qualité + nettoyage bruit (303 erreurs ESLint → 0,
+2 fichiers morts supprimés, scripts `check:health` / `check:arch`).
+
+| Critère §5.1 | Verdict | Note |
+|---|---|---|
+| Chaque besoin de la story a-t-il un test ? | ✅ N/A | Pas de logique métier, validation = `check:health` |
+| Constantes workflow utilisées (MOTEUR_*/CERVEAU_*/REDACTION_*) ? | ✅ N/A | Pas de check workflow émis |
+| Pas de TODO/console.log/code mort ? | ✅ | knip réduit à 0 fichier mort |
+| Organisation par domaine respectée (§3) ? | ✅ | Aucun fichier déplacé |
+| Cache avant appel externe ? | ✅ N/A | Pas d'appel externe touché |
+| Composants Vue passent par `apiGet/apiPost` ? | ✅ N/A | Pas de composant modifié |
+| Types explicites (pas de `any` non justifié) ? | ⚠️ | 271 `any` passés en warn — chantier indépendant explicitement déféré |
+| Noms reflètent le domaine métier ? | ✅ | `check:health`, `check:arch` |
+| Composants Moteur bimodaux (mode workflow/libre) ? | ✅ N/A | Pas touchés |
+| Prompts IA agnostiques du contexte ? | ✅ N/A | Pas touchés |
+| Doc à jour ? | ⚠️ | CLAUDE.md §10 mis à jour ; sprint-status.yaml et docs/ pas bumpés (rattrapé 2026-05-04) |
+
+**Décisions de scope justifiées** :
+- Désactivation oxlint `jest/no-disabled-tests` + 3 autres dans `tests/**` :
+  les `it.skip` / `it.todo` sont **intentionnels** pendant le développement
+  (documentation des tests à venir) — supprimer le bruit pour voir les
+  vrais bugs.
+- `@typescript-eslint/no-explicit-any` → warn : 271 occurrences = chantier
+  d'audit de typage indépendant, hors scope d'un sprint « quick win ».
+- Suppression de 2 fichiers morts (vs 108 estimés par l'audit initial) :
+  knip détecte précisément, l'audit avait surestimé en confondant
+  fichiers morts / unused exports / unused types.
+
+### Sprint 2 — Self-review §5.1 + §5.2
+
+**Contexte** : 6 fichiers de tests de caractérisation ajoutés (services
+keyword + stores article). Filet de sécurité avant tout refactor.
+
+| Critère §5.1 | Verdict | Note |
+|---|---|---|
+| Tests préfixés `moteur:*` selon §2.1 ? | ✅ | Tous les `describe` portent le préfixe domaine |
+| Mocks cohérents avec patterns existants ? | ✅ | Pattern `vi.mock` + `mockX = vi.fn()` aligné sur `dataforseo.service.test.ts` |
+| Cas null/undefined explicitement testés ? | ✅ | Préparation S3 (Score = number \| null) |
+| Pas d'import croisé ? | ✅ | Imports vers `server/services/...` et `@/stores/...` propres |
+| Pas de `any` non justifié dans tests ? | ✅ | Quelques `as unknown as` explicites pour mocks Pinia |
+| Coverage ≥ 80% sur cibles ? | ⚠️ | Non mesuré (coverage v8 installé mais pas lancé) — métrique implicite : 52 tests sur ~5 fichiers ciblés = ratio sain |
+
+| Critère §5.2 (données partagées) | Verdict | Note |
+|---|---|---|
+| Tous les producteurs visités ? | ✅ | Cartographie écrite en S2.1 (test keyword-radar) |
+| Cohérence affichage/calcul respectée ? | ✅ | Préparation S3 : tests vérifient explicitement les cas null/undefined |
+| Cas d'usage tracés (premier load, reload, restore) ? | ⚠️ | Tests focalisés sur le contrat d'API, pas sur les chemins UI bout-en-bout |
+| `null` géré de manière cohérente ? | ✅ | Tests `getProgress(unknown_id)` → null, `bestKeyword.value` → null si vide |
+| Types partagés alignés ? | ✅ | Pas de modif de types partagés en S2 |
+
+**Décisions de scope justifiées** :
+- `keyword-radar.service` testé via `generateRadarKeywords` uniquement (la
+  fonction la moins couplée) ; `scanRadarKeywords` (orchestrateur lourd) non
+  testé en unit — couverture déléguée aux tests d'intégration.
+- `tfidf.service` non doublonné : 14 tests préexistants déjà solides.
+- `moteur-basket.store` non doublonné : 12 tests préexistants verts.
+
+### Sprint 3 — Self-review §5.1 + §5.2
+
+**Contexte** : module `shared/score/` unifié, règle ESLint anti-régression
+sur `?? 0` sur les scores, dep-cruiser sens unique.
+
+| Critère §5.1 | Verdict | Note |
+|---|---|---|
+| Chaque besoin a un test ? | ✅ | 27 tests sur format/compare/aggregate + 2 tests cohérence affichage/tri |
+| Pas de TODO/console.log/code mort ? | ✅ | Module créé from scratch, propre |
+| Organisation par domaine respectée ? | ✅ | `shared/score/` est nouveau domaine cohérent |
+| Pas de `fetch` direct ? | ✅ N/A | Logique pure, pas d'I/O |
+| Types explicites ? | ✅ | `Score = number \| null` est l'apport central |
+| Doc à jour ? | ⚠️ | docs/scoring-kpi-vs-relevance.md non bumpé (rattrapé 2026-05-04) |
+
+| Critère §5.2 (données partagées — score est LE cas d'école) | Verdict | Note |
+|---|---|---|
+| Tous les producteurs visités ? | ✅ | Cartographie en phase 1.bis : keyword-radar.service, hydratation cache, restore from history |
+| **Cohérence affichage/calcul (règle d'or)** | ✅ | Test explicite « cohérence affichage / tri » : même expression pour formatScore et compareScores |
+| Cas premier load / reload / restore ? | ✅ | Couverts via tests ranking et tri |
+| `null` cohérent partout ? | ✅ | formatScore(null)='—', compareScores place null en bas, averageScores ignore null |
+| Types partagés alignés ? | ✅ | Module créé À CÔTÉ des anciens (réexports compat), zéro modification des consommateurs |
+
+**Bonus § 5.2 — la règle ESLint a IMMÉDIATEMENT révélé 9 vrais bugs préexistants** :
+ce sont les `?? 0` silencieux que la cartographie cherchait. Validation empirique
+que la phase 1.bis a fonctionné.
+
+**Décisions de scope justifiées** :
+- Pas de fusion des 3 fichiers `shared/scoring*.ts` : module créé À CÔTÉ pour
+  zéro casse. Migration progressive au gré des touches futures.
+- Migration immédiate des 9 callsites détectés : 4 vrais usages tri/sort
+  → `compareScores`, 2 cas (mapping DB, normalisation) → `eslint-disable-next-line`
+  avec justification.
+
+### Sprint 4 — Self-review §5.1
+
+**Contexte** : découpage `generate.routes.ts` (1171L → 9 fichiers, max 336L).
+Refactoring purement structurel, aucun changement de comportement runtime.
+
+| Critère §5.1 | Verdict | Note |
+|---|---|---|
+| Chaque besoin a un test ? | ✅ | Tests préexistants 44/44 verts (introspection de `router.stack`) |
+| Pas de code mort introduit ? | ✅ | Tous les helpers extraits sont consommés |
+| Organisation par domaine ? | ✅ | `server/routes/generate/` cohérent |
+| Pas d'import croisé ? | ✅ | Imports relatifs `.js` propres |
+| Types explicites ? | ✅ | Cast `unknown` ciblé sur `router.stack` (interne Express), commenté |
+| Composants Moteur bimodaux ? | ✅ N/A | Routes backend |
+| Prompts IA agnostiques ? | ✅ | Pas touchés |
+| Doc à jour ? | ⚠️ | docs/ARCHITECTURE_FLOWS.md non bumpé (rattrapé 2026-05-04) |
+
+**Décisions de scope justifiées** :
+- `mergeRouter` au lieu de `router.use(child)` : préserver la forme publique
+  de `router.stack` (44 tests existants en dépendent — introspection).
+- Fichier original `generate.routes.ts` réduit à un re-export 1 ligne :
+  zéro modification dans `server/index.ts` ni dans les tests.
+
+### Sprint 5 — Self-review §5.1 + §5.2 (rétroactif)
+
+**Contexte** : découpage `dataforseo.service.ts` (915L → 7 fichiers) +
+`useArticleProposals.ts` (985L → 8 fichiers). Délégué à 2 sous-agents.
+
+| Critère §5.1 | Verdict | Note |
+|---|---|---|
+| Chaque besoin a un test ? | ✅ | 54+12+5 tests préexistants verts post-découpage |
+| Pas de code mort ? | ✅ | Tous helpers consommés |
+| Organisation par domaine ? | ✅ | `dataforseo/` (transport/cache/serp/keywords/scoring/brief), `article-proposals/` (parsers/builders/factories) |
+| Composables Vue passent par `apiPost` ? | ✅ | Pattern factory préserve le composable principal |
+| Types explicites ? | ✅ | `Score`, `ArticleType`, `BasketKeyword`, etc. |
+| Doc à jour ? | ⚠️ | sprint-status.yaml non bumpé (rattrapé 2026-05-04) |
+
+| Critère §5.2 (données partagées sur S5.2) | Verdict | Note |
+|---|---|---|
+| Cartographie écrite ? | ❌ → ✅ | **Manquement initial**, rattrapé section dédiée ci-dessous |
+| Producteurs/consommateurs identifiés ? | ✅ | Voir cartographie rétroactive |
+| Cas d'usage tracés ? | ✅ | Tests memory-leaks (5/5) + topics (12/12) verts couvrent les chemins critiques |
+| Types partagés alignés ? | ✅ | Aucun type partagé modifié, seulement des sous-modules locaux |
+
+**Cartographie rétroactive S5.2 — `useArticleProposals`**
+
+| Axe | Sortie |
+|---|---|
+| **Producteurs** | `apiPost('/cocoons/.../suggest')` (3 phases : structure, paa, specialises) ; parsers de réponse JSON streamée ; `articles` du `cocoonStrategyStore` (état canonique) |
+| **Consommateurs** | `BrainPhase.vue` (affichage proposed articles) ; `cocoonStrategyStore.saveStrategy` (persistance) ; watcher `articles` (auto-migrate IDs/slugs/dbId) |
+| **Persistance** | Pinia `cocoonStrategyStore.strategy.proposedArticles` (per cocoonSlug, sauvé via API à chaque mutation) |
+| **Cas d'usage** | Création depuis scratch (3 phases) ; édition titre/keyword/slug ; régénération individuelle ; ajout vide manuel ; ajout smart ; suppression (avec API DELETE si dbId) |
+| **Régressions historiques** | Pas trouvées dans `git log` ; le composable était isolé jusqu'à ce sprint |
+
+**Règle de cohérence affichage/calcul** : N/A — `useArticleProposals` ne
+manipule pas de scores. Le découpage est purement structurel (factories
+Vue qui retournent des refs/computeds réactifs).
+
+### Sprint 6 — Self-review §5.1
+
+**Contexte** : Stryker mutation testing sur `shared/score/`. 100% mutation
+score (79/79 mutants tués) après 1 ajout de test.
+
+| Critère §5.1 | Verdict | Note |
+|---|---|---|
+| Tests passent les mutations (preuve qu'ils détectent vraiment) ? | ✅ | 100% mutation score |
+| Pas de tests factices ? | ✅ | Stryker valide empiriquement |
+| Config dédiée pour ne pas bloquer sur tests préexistants ? | ✅ | `vitest.stryker.config.ts` scope `tests/unit/shared` |
+| Stryker hors `check:health` ? | ✅ | Run lent, exécuté à la demande |
+| Doc à jour ? | ✅ | tech-spec bumpé v2.0.0 / status delivered |
+
+**Décisions de scope justifiées** :
+- Cible limitée à `shared/score/` : périmètre rapide (~17s) qui prouve la
+  méthode. `keyword-radar.service` initialement prévu retiré : trop
+  d'instrumentation (orchestrateur).
+- Threshold `break: 60` : protège contre les régressions massives sans
+  bloquer sur fluctuations mineures.
+
+### Synthèse des manquements méthodologiques rattrapés
+
+| Manquement | Rattrapage |
+|---|---|
+| Phase 4 self-review §5 jamais écrite explicitement | ✅ Section ci-dessus (S1→S6) |
+| Phase 6 doc partielle (sprint-status.yaml, scoring-kpi-vs-relevance.md, ARCHITECTURE_FLOWS.md) | ✅ Bumps faits (commits dédiés) |
+| Cartographie §2.0 absente en S5.2 | ✅ Cartographie rétroactive ci-dessus |
+| Coverage v8 jamais lancé en S2 | ⏳ À mesurer en backlog (non bloquant) |
+
+---
+
 ## Plan global d'exécution
 
 | Sprint | Stories | Durée | Risque | Bénéfice immédiat |

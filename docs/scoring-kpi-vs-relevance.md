@@ -1,9 +1,12 @@
 # Score KPI vs Score de Pertinence — Guide produit & technique
 
-> Mis à jour : **2026-05-02**
+> Mis à jour : **2026-05-04**
 > **Doc complémentaire** : [docs/pain-point-editorial-backbone.md](./pain-point-editorial-backbone.md) — explique pourquoi le painPoint est l'oxygène du score de pertinence et comment il irrigue le pipeline éditorial complet.
-> Source de vérité technique : [shared/scoring.ts](../shared/scoring.ts), [shared/scoring-kpi.ts](../shared/scoring-kpi.ts), [shared/types/scoring.types.ts](../shared/types/scoring.types.ts)
-> Spec d'origine : `_bmad-output/implementation-artifacts/tech-spec-score-kpi-pertinence-separation.md`
+> Source de vérité technique : [shared/score/index.ts](../shared/score/index.ts) (helpers unifiés), [shared/scoring.ts](../shared/scoring.ts) (calcul historique relevance), [shared/scoring-kpi.ts](../shared/scoring-kpi.ts) (calcul historique market), [shared/types/scoring.types.ts](../shared/types/scoring.types.ts)
+> Spec d'origine : `_bmad-output/implementation-artifacts/_archive/tech-spec-score-kpi-pertinence-separation.md`
+> Sprint stabilisation (durcissement) : [tech-spec-stabilisation-codebase.md](../_bmad-output/implementation-artifacts/tech-spec-stabilisation-codebase.md) — Sprint 3.
+
+> **2026-05-04 — Module `shared/score/` unifié + règle ESLint anti-régression.** Le piège §2.0 (divergence affichage/tri sur les scores `null`) est désormais bloqué par une règle ESLint `no-restricted-syntax`. Voir section [Module shared/score/ unifié](#module-sharedscore-unifié-2026-05-04) ci-dessous.
 
 > **2026-05-02 — Migration UI terminée.** L'onglet Capitaine affiche désormais `relevanceScore.total` (et plus `combinedScore` legacy). Le champ `combinedScore` du type `RadarCard` est `@deprecated`. Voir section [Statut de la migration](#statut-de-la-migration) ci-dessous.
 
@@ -374,11 +377,84 @@ C'est un pattern qu'on peut systématiser pour transformer le scoring de pertine
 
 ---
 
+## Module `shared/score/` unifié (2026-05-04)
+
+> Ajouté en Sprint 3 du tech-spec stabilisation. Apporte des helpers
+> **génériques** au-dessus des calculs métier existants (`computeMarketScore`,
+> `computeRelevanceScore`). N'a pas remplacé les anciens fichiers — créé À CÔTÉ
+> pour zéro casse.
+
+### Type `Score` : null = absence explicite
+
+```ts
+export type Score = number | null
+```
+
+**Convention** : `null` n'est PAS `0`. Quand un score n'est pas calculable
+(données manquantes, pas encore fetché), on stocke `null` — pas `0`.
+
+### API publique (un seul point d'entrée)
+
+```ts
+import {
+  formatScore,        // null → "—",  84.6 → "85"
+  compareScores,      // tri descendant, null TOUJOURS en bas
+  compareScoresAsc,   // tri ascendant, null TOUJOURS en bas
+  averageScores,      // moyenne en IGNORANT les null (jamais `?? 0`)
+  maxScore, minScore, countValidScores,
+  type Score,
+} from '@shared/score'
+```
+
+### La règle d'or — cohérence affichage/calcul
+
+> Si une valeur est **affichée** ET **utilisée pour le tri/filtre/agrégat**,
+> **la même expression** produit les deux. Pas de fallback différent entre
+> l'affichage et le calcul.
+
+| Bug à éviter | Correction |
+|---|---|
+| `card.marketScore?.total ?? 0` dans un `.sort(...)` | `compareScores(a.marketScore?.total ?? null, b.marketScore?.total ?? null)` |
+| `(scores.reduce((s,v) => s+(v??0), 0) / scores.length)` | `averageScores(scores)` |
+| `<span>{{ score }}</span>` dans un template Vue | `<span>{{ formatScore(score) }}</span>` |
+
+### Garde-fous actifs (impossible de réintroduire le bug)
+
+1. **Règle ESLint custom** `no-restricted-syntax` (cf. [eslint.config.ts](../eslint.config.ts)) :
+   interdit `?? 0` quand le LHS contient `Score` (3 sélecteurs AST).
+   Message : *« Fallback silencieux interdit sur un score (CLAUDE.md §2.0).
+   Utiliser compareScores/averageScores ou laisser null. »*
+
+2. **Règle dependency-cruiser** `score-internal-only-via-index`
+   (cf. [.dependency-cruiser.cjs](../.dependency-cruiser.cjs)) :
+   les modules internes (`types/format/compare/aggregate`) ne sont importés
+   QUE depuis `shared/score/` lui-même. L'API publique passe par `index.ts`.
+
+3. **Tests de mutation Stryker** : 100% mutation score (79/79 mutants tués)
+   sur `shared/score/` — preuve empirique que les tests détectent vraiment
+   les bugs.
+
+### Bugs préexistants détectés et corrigés en S3
+
+La règle ESLint a immédiatement révélé 9 fallbacks silencieux :
+
+| Fichier | Type |
+|---|---|
+| `src/stores/article/moteur-basket.store.ts` (sort `bestKeyword`) | → `compareScores` |
+| `src/components/moteur/LieutenantProposals.vue` (sort) | → `compareScoresAsc` |
+| `server/routes/keyword-ai-panel.routes.ts` (sort lieutenants) | → `compareScores` |
+| `src/composables/moteur/useDiscoveryRanking.ts` (normalisation) | `eslint-disable-next-line` justifié |
+| `server/services/infra/data.service.ts` (mapping DB) | `eslint-disable-next-line` justifié |
+
+---
+
 ## Voir aussi
 
 - [docs/pain-point-editorial-backbone.md](./pain-point-editorial-backbone.md) — Le painPoint comme colonne vertébrale éditoriale (rôle dans les prompts, l'UI et le scoring de pertinence)
 - [docs/moteur-data-flow.md](./moteur-data-flow.md) — Flux complet du Moteur (3 phases / 6 onglets)
 - [docs/article-id-reference.md](./article-id-reference.md) — Système d'identification des articles
+- [shared/score/index.ts](../shared/score/index.ts) — Helpers unifiés `formatScore`, `compareScores`, `averageScores` (Sprint 3)
 - [shared/scoring.ts](../shared/scoring.ts) — `computeRelevanceScore` + `computeCombinedScore` (legacy)
 - [shared/scoring-kpi.ts](../shared/scoring-kpi.ts) — `computeMarketScore` + `computeKpiScore` (breakdown)
 - [shared/types/scoring.types.ts](../shared/types/scoring.types.ts) — Types `MarketScoreResult`, `RelevanceScoreResult`, `ScoreVerdict`
+- [_bmad-output/implementation-artifacts/tech-spec-stabilisation-codebase.md](../_bmad-output/implementation-artifacts/tech-spec-stabilisation-codebase.md) — Spec de durcissement (Sprint 3)
