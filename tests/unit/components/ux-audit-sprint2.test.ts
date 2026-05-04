@@ -138,14 +138,16 @@ describe('DashboardView — token-based colors', () => {
 })
 
 describe('ArticleEditorView — token-based colors', () => {
-  const vue = readFileSync(
-    resolve(__dirname, '../../../src/views/ArticleEditorView.vue'),
+  // Vague 5 (2026-05-04) : action-error a migré dans ArticleEditorActionOverlays.vue.
+  // Les tokens couleur sont vérifiés sur le sous-composant.
+  const overlays = readFileSync(
+    resolve(__dirname, '../../../src/components/article/ArticleEditorActionOverlays.vue'),
     'utf-8',
   )
 
-  it('uses --color-error-bg and --color-error for action errors', () => {
-    expect(vue).toContain('var(--color-error-bg)')
-    expect(vue).toContain('var(--color-error)')
+  it('uses --color-error-bg and --color-error for action errors (in ArticleEditorActionOverlays)', () => {
+    expect(overlays).toContain('var(--color-error-bg)')
+    expect(overlays).toContain('var(--color-error)')
   })
 })
 
