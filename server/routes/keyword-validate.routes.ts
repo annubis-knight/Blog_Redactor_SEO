@@ -208,7 +208,9 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       try {
         const radar = await getRadarExploration(articleId)
         const matchingCard = radar?.scanResult?.cards?.find((c: RadarCard) => c.keyword === keyword)
-        if (matchingCard) {
+        if (matchingCard && matchingCard.kpis) {
+          // Suggestions longue-traîne (source: 'longtail') ont kpis: null par
+          // construction — on saute le cache de pertinence pour celles-là.
           const k = matchingCard.kpis
           cachedKwPainAlignment = k.painAlignmentScore ?? null
           cachedPaaPainAvg = matchingCard.scoreBreakdown?.paaMatchScore ?? null

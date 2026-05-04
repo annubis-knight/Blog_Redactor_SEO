@@ -270,7 +270,13 @@ export interface RadarCombinedScoreBreakdown {
 export interface RadarCard {
   keyword: string
   reasoning: string
-  kpis: RadarKeywordKpis
+  /**
+   * KPIs marché (volume, KD, CPC, intent, PAA…).
+   * `null` quand la card est une suggestion longue-traîne issue de l'IA
+   * (cf. `source: 'longtail'`) — pas de fallback fantôme : l'absence
+   * doit rester explicite (CLAUDE.md §3.5 anti-pattern fallback silencieux).
+   */
+  kpis: RadarKeywordKpis | null
   paaItems: RadarPaaItem[]
   /**
    * @deprecated Score legacy hybride (mélange marché + pertinence). Conservé
@@ -291,6 +297,23 @@ export interface RadarCard {
   /** Score de Pertinence (0-100). Source de vérité pour l'onglet Capitaine.
    *  `null` si painPoint absent ou aucun signal d'alignement disponible. */
   relevanceScore?: RelevanceScoreResult | null
+  /**
+   * Origine de la card. `'radar'` (ou absent) = card racine produite par le
+   * scan Radar. `'longtail'` = suggestion longue-traîne IA (kpis null par
+   * construction). Permet aux consommateurs (UI Capitaine, dédup, agrégats)
+   * de différencier les deux origines sans avoir à inspecter `kpis`.
+   */
+  source?: 'radar' | 'longtail'
+  /**
+   * Score de préférence IA sur 10 — UNIQUEMENT pour les cards `source:'longtail'`.
+   * Différent de marketScore/relevanceScore (qui sont 0-100). Sert au tri
+   * et au pré-cochage côté UI. Absent pour les cards racines.
+   */
+  preferenceScore?: number
+  /** Explication IA de la combinaison — UNIQUEMENT pour `source:'longtail'`. */
+  rationale?: string
+  /** Mots-clés racines ayant servi à construire la combinaison — UNIQUEMENT pour `source:'longtail'`. */
+  derivedFromRoots?: string[]
 }
 
 export interface KeywordRootVariant {

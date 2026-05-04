@@ -110,7 +110,9 @@ const intentConfig: Record<RadarIntentType, { svg: string; label: string; color:
 }
 
 const intentBadges = computed(() =>
-  props.card.kpis.intentTypes.map(t => intentConfig[t]),
+  // kpis === null → card sans KPIs (longue-traîne) : pas de badge intent
+  // (CLAUDE.md §3.5 — pas de fallback fantôme).
+  (props.card.kpis?.intentTypes ?? []).map(t => intentConfig[t]),
 )
 
 // Score circle: red (0) → orange (50) → green (100)
@@ -118,7 +120,10 @@ const CIRCLE_RADIUS = 30
 const CIRCLE_CIRCUMFERENCE = 2 * Math.PI * CIRCLE_RADIUS
 
 const kpiBreakdown = computed(() =>
-  props.displayMode === 'kpi' ? computeKpiScore(props.card.kpis, props.articleLevel) : null,
+  // kpis === null (longue-traîne) → pas de breakdown KPI calculable.
+  props.displayMode === 'kpi' && props.card.kpis
+    ? computeKpiScore(props.card.kpis, props.articleLevel)
+    : null,
 )
 
 /**
@@ -232,7 +237,8 @@ const breakdownRows = computed<BreakdownRow[]>(() => {
 // kpis.painAlignmentScore est undefined si pas de painPoint => pas de grisage.
 const OFF_PAIN_THRESHOLD = 35
 const isOffPain = computed(() => {
-  const s = props.card.kpis.painAlignmentScore
+  // kpis === null → pas d'évaluation off-pain possible (longue-traîne).
+  const s = props.card.kpis?.painAlignmentScore
   return typeof s === 'number' && s < OFF_PAIN_THRESHOLD
 })
 
@@ -304,8 +310,9 @@ function itemBorderClass(paa: RadarPaaItem): string {
             v-safe-svg="badge.svg" /></span>
       </div>
 
-      <!-- KPIs -->
-      <div class="radar-card__kpis">
+      <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
+           fallback fantôme — CLAUDE.md §3.5). -->
+      <div v-if="card.kpis" class="radar-card__kpis">
         <span class="kpi-item">
           <span class="kpi-lbl">vol</span>
           <span class="kpi-num">{{ formatVolume(card.kpis.searchVolume) }}</span>
