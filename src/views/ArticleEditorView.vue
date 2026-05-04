@@ -13,6 +13,10 @@ import SaveStatusIndicator from '@/components/editor/SaveStatusIndicator.vue'
 import ActionMenu from '@/components/actions/ActionMenu.vue'
 import ActionResult from '@/components/actions/ActionResult.vue'
 import ArticlePicker from '@/components/actions/ArticlePicker.vue'
+// Vague 4 — sous-composants/composable factorisés (partagés avec ArticleWorkflowView)
+import { useArticleGeneration } from '@/composables/article/useArticleGeneration'
+import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
+import ArticlePanelsResizable from '@/components/article/ArticlePanelsResizable.vue'
 import { useArticlesStore } from '@/stores/article/articles.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -22,10 +26,6 @@ import { useSeoScoring } from '@/composables/seo/useSeoScoring'
 import { useGeoScoring } from '@/composables/seo/useGeoScoring'
 import { useInternalLinking } from '@/composables/seo/useInternalLinking'
 import { usePanelToggle } from '@/composables/ui/usePanelToggle'
-import SeoPanel from '@/components/panels/SeoPanel.vue'
-import GeoPanel from '@/components/panels/GeoPanel.vue'
-import BlocksPanel from '@/components/panels/BlocksPanel.vue'
-import LinkSuggestions from '@/components/linking/LinkSuggestions.vue'
 import ErrorBoundary from '@/components/shared/ErrorBoundary.vue'
 import ResizablePanel from '@/components/panels/ResizablePanel.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
@@ -85,21 +85,22 @@ function guardedToggle(panel: Parameters<typeof toggle>[0]) {
   toggle(panel)
 }
 
-// --- Generation data (reused from WorkflowView) ---
-const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
-const canReduce = computed(() => {
-  if (!wordCountTarget.value || !editorStore.content) return false
-  const delta = editorStore.wordCountDelta(wordCountTarget.value)
-  if (delta === null) return false
-  return (delta / wordCountTarget.value) * 100 > 15
+// --- Generation data (Vague 4 — extracted to useArticleGeneration) ---
+const {
+  canReduce,
+  wordCountDeltaDisplay,
+  handleGenerateArticle,
+  handleReduce,
+  handleHumanize,
+  handleAbortReduce,
+  handleAbortHumanize,
+} = useArticleGeneration({
+  articleId,
+  editorStore,
+  briefStore,
+  outlineStore,
+  articleKeywordsStore,
 })
-const wordCountDeltaDisplay = computed(() => editorStore.wordCountDelta(wordCountTarget.value))
-const currentKeyword = computed(() =>
-  articleKeywordsStore.keywords?.capitaine ?? briefStore.briefData?.article.title ?? '',
-)
-const allKeywords = computed(() =>
-  briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
-)
 
 const {
   suggestions: linkSuggestions,
@@ -260,47 +261,8 @@ function handleCloseLinkSuggestions() {
   clearSuggestions()
 }
 
-// --- Article generation handlers ---
-async function handleGenerateArticle() {
-  if (!articleId.value || !briefStore.briefData || !outlineStore.outline) return
-  const id = articleId.value
-  log.info('[editor-view] Starting article generation', { articleId: id })
-
-  await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, wordCountTarget.value ?? undefined)
-
-  if (editorStore.content && !editorStore.error) {
-    const keyword = briefStore.briefData.keywords.find(kw => kw.type === 'Pilier')?.keyword
-      ?? briefStore.briefData.article.title
-    await editorStore.generateMeta(id, keyword, briefStore.briefData.article.title, editorStore.content)
-    if (!editorStore.error) {
-      await editorStore.saveArticle(id)
-    }
-  }
-}
-
-async function handleReduce() {
-  if (!articleId.value || !wordCountTarget.value) return
-  await editorStore.reduceArticle(articleId.value, wordCountTarget.value, currentKeyword.value, allKeywords.value)
-  if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(articleId.value)
-  }
-}
-
-async function handleHumanize() {
-  if (!articleId.value) return
-  await editorStore.humanizeArticle(articleId.value, currentKeyword.value, allKeywords.value)
-  if (editorStore.content && !editorStore.error) {
-    await editorStore.saveArticle(articleId.value)
-  }
-}
-
-function handleAbortReduce() {
-  editorStore.abortReduce()
-}
-
-function handleAbortHumanize() {
-  editorStore.abortHumanize()
-}
+// (handleGenerateArticle, handleReduce, handleHumanize, handleAbort*,
+//  currentKeyword, allKeywords moved to useArticleGeneration above)
 
 async function handleDeleteContent() {
   if (!articleId.value) return
@@ -353,47 +315,19 @@ onMounted(async () => {
           <SaveStatusIndicator />
         </div>
 
-        <div class="header-center" role="toolbar" aria-label="Panneaux d'analyse">
-          <button
-            class="btn-toggle"
-            :class="{ active: showSeoPanel, disabled: !hasBody }"
-            :aria-pressed="showSeoPanel"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Générez un article pour activer le scoring SEO' : undefined"
-            @click="guardedToggle('seo')"
-          >
-            SEO
-          </button>
-          <button
-            class="btn-toggle"
-            :class="{ active: showGeoPanel, disabled: !hasBody }"
-            :aria-pressed="showGeoPanel"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Générez un article pour activer le scoring GEO' : undefined"
-            @click="guardedToggle('geo')"
-          >
-            GEO
-          </button>
-          <button
-            class="btn-toggle"
-            :class="{ active: showLinkSuggestions, disabled: !hasBody }"
-            :aria-pressed="showLinkSuggestions"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Générez un article pour activer le maillage' : undefined"
-            @click="handleToggleLinkSuggestions"
-          >
-            Maillage
-          </button>
-          <button
-            class="btn-toggle"
-            :class="{ active: showBlocksPanel, disabled: !hasBody }"
-            :aria-pressed="showBlocksPanel"
-            :disabled="!hasBody"
-            :title="!hasBody ? 'Générez un article pour activer les blocs' : undefined"
-            @click="guardedToggle('blocks')"
-          >
-            Blocs
-          </button>
+        <div class="header-center">
+          <ArticlePanelsToolbar
+            :has-body="hasBody"
+            :show-seo-panel="showSeoPanel"
+            :show-geo-panel="showGeoPanel"
+            :show-link-suggestions="showLinkSuggestions"
+            :show-blocks-button="true"
+            :show-blocks-panel="showBlocksPanel"
+            @toggle-seo="guardedToggle('seo')"
+            @toggle-geo="guardedToggle('geo')"
+            @toggle-linking="handleToggleLinkSuggestions"
+            @toggle-blocks="guardedToggle('blocks')"
+          />
         </div>
 
         <div class="header-right">
@@ -586,28 +520,19 @@ onMounted(async () => {
 
     <Transition name="panel-slide">
       <ResizablePanel v-if="hasActivePanel" :key="activePanel!">
-        <div v-if="!hasBody && (showSeoPanel || showGeoPanel || showLinkSuggestions || showBlocksPanel)" class="panel-disabled-overlay">
-          <p class="panel-disabled-msg">Générez un article pour activer ce panneau</p>
-        </div>
-        <ErrorBoundary v-if="showSeoPanel" fallback-message="Erreur dans le panneau SEO.">
-          <SeoPanel />
-        </ErrorBoundary>
-        <ErrorBoundary v-if="showGeoPanel" fallback-message="Erreur dans le panneau géo.">
-          <GeoPanel />
-        </ErrorBoundary>
-        <ErrorBoundary v-if="showLinkSuggestions" fallback-message="Erreur dans les suggestions de liens.">
-          <LinkSuggestions
-            :suggestions="linkSuggestions"
-            :is-suggesting="isSuggesting"
-            @accept="handleAcceptSuggestion"
-            @dismiss="handleDismissSuggestion"
-            @request="requestSuggestions"
-            @close="handleCloseLinkSuggestions"
-          />
-        </ErrorBoundary>
-        <ErrorBoundary v-if="showBlocksPanel" fallback-message="Erreur dans le panneau blocs.">
-          <BlocksPanel />
-        </ErrorBoundary>
+        <ArticlePanelsResizable
+          :has-body="hasBody"
+          :show-seo-panel="showSeoPanel"
+          :show-geo-panel="showGeoPanel"
+          :show-link-suggestions="showLinkSuggestions"
+          :show-blocks-panel="showBlocksPanel"
+          :link-suggestions="linkSuggestions"
+          :is-suggesting="isSuggesting"
+          @accept-suggestion="handleAcceptSuggestion"
+          @dismiss-suggestion="handleDismissSuggestion"
+          @request-suggestions="requestSuggestions"
+          @close-link-suggestions="handleCloseLinkSuggestions"
+        />
       </ResizablePanel>
     </Transition>
     </template>
