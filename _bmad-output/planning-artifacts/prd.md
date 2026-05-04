@@ -10,7 +10,7 @@ inputDocuments:
 workflowType: 'prd'
 completedAt: '2026-03-31'
 lastUpdated: '2026-05-04'
-updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1).'
+updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView).'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
   - 'docs/ARCHITECTURE_FLOWS.md'
@@ -379,6 +379,19 @@ Les onglets sont organisés en 3 phases visuelles : Phase ① Explorer (Discover
 
 #### FR-MOT-FREE-NAV
 Navigation libre entre tous les onglets — aucun blocage dur. Le verrouillage Phase ② est un gating souple : la consultation reste libre, seules les écritures sont conditionnées.
+
+#### FR-MOT-SOFT-GATING
+**Gating souple Phase ②/③** *(ajout 2026-05-04, formalisation Vague 3 composables)*. Le Moteur applique 3 verrous d'écriture dérivés des checks `articles.completed_checks` :
+- `isCaptaineLocked` ← check `capitaine_locked` posé.
+- `isLieutenantsLocked` ← check `lieutenants_locked` posé.
+- `isLexiqueValidated` ← check `lexique_validated` posé.
+
+Conséquences :
+1. **Lexique** : extraction interdite tant que `isCaptaineLocked === false` (soft-gate UI affichée — l'utilisateur peut toujours regarder l'onglet, mais pas extraire).
+2. **Discovery / Radar** : accessibles uniquement si `isDiscoveryAllowed === true` (= keyword article a status `'suggested'` dans `keywordsStore`, sinon validé au niveau cocon → onglets verrouillés visuellement).
+3. **Finalisation / Rédaction** : déverrouillage final = les 3 checks Phase ② posés (`isFinalisationUnlocked`). Bouton "Continuer vers la Rédaction" disabled sinon, tooltip énumère les checks manquants.
+
+**Source :** `src/composables/moteur/useMoteurSoftGating.ts`. **Tests :** `tests/unit/composables/moteur/useMoteurSoftGating.test.ts`. **Verrou logique pure** : `src/composables/moteur/useFinalisationGating.ts` (déjà testé unitairement avant la Vague 3).
 
 #### FR-MOT-ARTICLE-SELECTION
 L'utilisateur doit sélectionner un article avant d'utiliser les actions du Moteur en mode workflow.
