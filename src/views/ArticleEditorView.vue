@@ -10,9 +10,7 @@ import EditorToolbar from '@/components/editor/EditorToolbar.vue'
 import ArticleEditor from '@/components/editor/ArticleEditor.vue'
 import EditorBubbleMenu from '@/components/editor/EditorBubbleMenu.vue'
 import SaveStatusIndicator from '@/components/editor/SaveStatusIndicator.vue'
-import ActionMenu from '@/components/actions/ActionMenu.vue'
-import ActionResult from '@/components/actions/ActionResult.vue'
-import ArticlePicker from '@/components/actions/ArticlePicker.vue'
+import ArticleEditorActionOverlays from '@/components/article/ArticleEditorActionOverlays.vue'
 // Vague 4 — sous-composants/composable factorisés (partagés avec ArticleWorkflowView)
 import { useArticleGeneration } from '@/composables/article/useArticleGeneration'
 import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
@@ -476,36 +474,22 @@ onMounted(async () => {
           @update:content="handleContentUpdate"
         />
 
-        <!-- Action Menu Popover -->
-        <div v-if="showActionMenu" class="action-overlay" @click.self="showActionMenu = false">
-          <ActionMenu
-            :disabled="isExecuting"
-            @select-action="handleSelectAction"
-          />
-        </div>
-
-        <!-- Action Result Panel -->
-        <div v-if="showActionResult" class="action-overlay" @click.self="handleRejectResult">
-          <ActionResult
-            :result="streamedResult"
-            :is-streaming="isStreaming"
-            @accept="handleAcceptResult"
-            @reject="handleRejectResult"
-          />
-        </div>
-
-        <!-- Article Picker for internal-link action -->
-        <div v-if="showArticlePicker" class="action-overlay" @click.self="handleCancelLink">
-          <ArticlePicker
-            :articles="articlesStore.articles.filter(a => a.id !== articleId)"
-            @select-article="handleSelectArticle"
-            @cancel="handleCancelLink"
-          />
-        </div>
-
-        <div v-if="actionError" class="action-error">
-          {{ actionError }}
-        </div>
+        <ArticleEditorActionOverlays
+          :show-action-menu="showActionMenu"
+          :show-action-result="showActionResult"
+          :show-article-picker="showArticlePicker"
+          :is-executing="isExecuting"
+          :is-streaming="isStreaming"
+          :streamed-result="streamedResult"
+          :articles="articlesStore.articles.filter(a => a.id !== articleId)"
+          :action-error="actionError"
+          @close-menu="showActionMenu = false"
+          @select-action="handleSelectAction"
+          @accept-result="handleAcceptResult"
+          @reject-result="handleRejectResult"
+          @select-article="handleSelectArticle"
+          @cancel-link="handleCancelLink"
+        />
         </template>
 
       </AsyncContent>
@@ -686,26 +670,6 @@ onMounted(async () => {
 .btn-preview:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
-
-/* --- Overlays --- */
-.action-overlay {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  z-index: 50;
-}
-
-.action-error {
-  margin-top: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--color-error-bg);
-  color: var(--color-error);
-  border-radius: 6px;
-  font-size: 0.8125rem;
 }
 
 .empty-state {
