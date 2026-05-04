@@ -9,11 +9,7 @@ import type { StrategyStepData, CocoonSuggestRequest, ThemeContext, SubQuestion 
 import type { NavItem } from '@/components/shared/WorkflowNav.vue'
 import StrategyStep from '@/components/strategy/StrategyStep.vue'
 import ContextRecap from '@/components/strategy/ContextRecap.vue'
-import ProposedArticleRow from '@/components/strategy/ProposedArticleRow.vue'
-import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
-import ArticleColumn from '@/components/production/ArticleColumn.vue'
-import GenerationStepper from '@/components/production/GenerationStepper.vue'
-import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
+import BrainArticleProposalView from '@/components/production/brain/BrainArticleProposalView.vue'
 import { useArticleProposals } from '@/composables/editor/useArticleProposals'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -34,64 +30,6 @@ const cocoonsStore = useCocoonsStore()
 const silosStore = useSilosStore()
 const themeConfigStore = useThemeConfigStore()
 const suggestingSubId = ref<string | null>(null)
-const articleSlide = ref(0)
-const columnsTrackRef = ref<HTMLElement>()
-
-function scrollToSlide(n: number) {
-  articleSlide.value = n
-  const el = columnsTrackRef.value
-  if (!el || typeof el.scrollTo !== 'function') return
-  if (n === 0) {
-    el.scrollTo({ left: 0, behavior: 'smooth' })
-  } else {
-    const cols = el.querySelectorAll('.article-column')
-    if (cols[1]) {
-      el.scrollTo({ left: (cols[1] as HTMLElement).offsetLeft, behavior: 'smooth' })
-    }
-  }
-}
-
-function onColumnsScroll() {
-  const el = columnsTrackRef.value
-  if (!el) return
-  const maxScroll = el.scrollWidth - el.clientWidth
-  articleSlide.value = el.scrollLeft > maxScroll * 0.3 ? 1 : 0
-}
-
-/* Drag-to-scroll */
-const INTERACTIVE_SELECTOR = 'a,button,input,textarea,select,[role="button"]'
-const isDragging = ref(false)
-let dragStartX = 0
-let dragScrollLeft = 0
-
-function onDragStart(e: MouseEvent) {
-  if ((e.target as HTMLElement).closest(INTERACTIVE_SELECTOR)) return
-  const el = columnsTrackRef.value
-  if (!el) return
-  isDragging.value = true
-  dragStartX = e.pageX - el.offsetLeft
-  dragScrollLeft = el.scrollLeft
-  el.style.scrollBehavior = 'auto'
-}
-
-function onDragMove(e: MouseEvent) {
-  if (!isDragging.value) return
-  const el = columnsTrackRef.value
-  if (!el) return
-  e.preventDefault()
-  const x = e.pageX - el.offsetLeft
-  el.scrollLeft = dragScrollLeft - (x - dragStartX)
-}
-
-function onDragEnd() {
-  if (!isDragging.value) return
-  isDragging.value = false
-  const el = columnsTrackRef.value
-  if (!el) return
-  el.style.scrollBehavior = 'smooth'
-  const maxScroll = el.scrollWidth - el.clientWidth
-  scrollToSlide(el.scrollLeft > maxScroll * 0.3 ? 1 : 0)
-}
 
 const cocoonSlug = computed(() =>
   props.cocoonName
@@ -528,186 +466,45 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
         @request-enrich="handleSubEnrich" />
 
       <!-- Step 6: Article proposal -->
-      <div v-else class="article-proposal-wrapper">
-      <div class="brain-step-content article-proposal">
-        <div class="step-header-row">
-          <div class="step-header-text">
-            <h3 class="step-title">Proposition d'articles</h3>
-            <p class="step-desc">
-              En se basant sur vos réponses stratégiques, Claude peut proposer une liste
-              d'articles pour ce cocon avec leur type (Pilier, Intermédiaire, Spécialisé).
-            </p>
-          </div>
-          <div class="step-header-actions">
-            <button class="btn-generate"
-              :disabled="generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error'"
-              @click="generateArticleProposals">
-              {{ (generationPhase !== 'idle' && generationPhase !== 'done' && generationPhase !== 'error') ? 'Génération...' : 'Générer avec Claude' }}
-            </button>
-            <div class="swiper-nav">
-              <button class="swiper-arrow" :disabled="articleSlide === 0" @click="scrollToSlide(0)">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
-              <button class="swiper-arrow" :disabled="articleSlide === 1" @click="scrollToSlide(1)">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-                  <path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <TopicSuggestions
-          :topics="store.strategy?.suggestedTopics ?? []"
-          :user-context="store.strategy?.topicsUserContext ?? ''"
-          :loading="topicsLoading"
-          :error="topicsError"
-          :initially-collapsed="true"
-          @toggle="toggleTopic"
-          @remove="removeTopic"
-          @add="addTopic"
-          @regenerate="generateTopics"
-          @update:user-context="updateUserContext"
-        />
-
-        <GenerationStepper :phase="generationPhase" />
-
-        <!-- Generation error -->
-        <div v-if="generationPhase === 'error'" class="truncation-warning">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <circle cx="8" cy="8" r="6.5" stroke="currentColor" stroke-width="1.2" />
-            <path d="M8 5v4M8 11v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-          Erreur lors de la génération des articles. Réessayez.
-        </div>
-
-        <!-- Phase 3 warning (Spé not generated) -->
-        <div v-if="generationWarning" class="truncation-warning">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M8 1.5l6.5 12H1.5L8 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
-            <path d="M8 6v3M8 11v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-          {{ generationWarning }}
-        </div>
-
-        <!-- Truncation warning -->
-        <div v-if="truncationWarning" class="truncation-warning">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-            <path d="M8 1.5l6.5 12H1.5L8 1.5z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
-            <path d="M8 6v3M8 11v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
-          </svg>
-          {{ truncationWarning }}
-        </div>
-
-        <!-- Global warnings (e.g. no Pilier at all) -->
-        <div v-if="globalWarnings.length > 0" class="structural-warnings" data-testid="structural-warnings">
-          <div v-for="(w, wi) in globalWarnings" :key="wi" class="structural-warning-item">
-            <span class="structural-warning-icon">&#9888;</span>
-            <span>{{ w.message }}</span>
-          </div>
-        </div>
-
-        <!-- 3-column article swiper -->
-        <div class="article-columns">
-          <div ref="columnsTrackRef" class="article-columns-track" :class="{ 'is-dragging': isDragging }" @scroll="onColumnsScroll" @mousedown="onDragStart" @mousemove="onDragMove" @mouseup="onDragEnd" @mouseleave="onDragEnd">
-            <!-- Pilier column -->
-            <ArticleColumn
-              label="Pilier"
-              header-class="col-pilier"
-              :tooltip="articleColumns[0]?.tooltip"
-              :count="articleColumns[0]?.articles.length ?? 0"
-              :peek="articleSlide === 1"
-              @click-peek="scrollToSlide(0)"
-            >
-              <ProposedArticleRow v-for="article in articleColumns[0]?.articles ?? []" :key="article.originalIndex"
-                :article="article" :index="article.originalIndex"
-                :composition-result="compositionResults.get(article.originalIndex) ?? null"
-                :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
-                @regenerate-title="regenerateTitle" @regenerate-keyword="regenerateKeyword"
-                @regenerate-slug="regenerateSlug" @select-keyword="selectKeyword" @select-title="selectTitle"
-                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle"
-                @edit-title="editTitle" @edit-keyword="editKeyword" @edit-slug="editSlug" />
-              <AddArticleMenu
-                :is-loading="addingArticleType === 'Pilier'"
-                :disabled="addingArticleType !== null"
-                label="+ Ajouter un pilier"
-                @add-empty="addEmptyArticle('Pilier')"
-                @add-smart="addSmartArticle('Pilier')"
-                @add-guided="addSmartArticle('Pilier', $event)"
-              />
-            </ArticleColumn>
-
-            <!-- Intermédiaire column -->
-            <ArticleColumn
-              label="Intermédiaire"
-              header-class="col-inter"
-              :tooltip="articleColumns[1]?.tooltip"
-              :count="articleColumns[1]?.articles.length ?? 0"
-            >
-              <ProposedArticleRow v-for="article in articleColumns[1]?.articles ?? []" :key="article.originalIndex"
-                :article="article" :index="article.originalIndex"
-                :composition-result="compositionResults.get(article.originalIndex) ?? null"
-                :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
-                @regenerate-title="regenerateTitle" @regenerate-keyword="regenerateKeyword"
-                @regenerate-slug="regenerateSlug" @select-keyword="selectKeyword" @select-title="selectTitle"
-                @select-slug="selectSlug" @toggle-accept="toggleAccept" @remove="removeProposedArticle"
-                @edit-title="editTitle" @edit-keyword="editKeyword" @edit-slug="editSlug" />
-              <AddArticleMenu
-                :is-loading="addingArticleType === 'Intermédiaire'"
-                :disabled="addingArticleType !== null"
-                label="+ Ajouter un intermédiaire"
-                @add-empty="addEmptyArticle('Intermédiaire')"
-                @add-smart="addSmartArticle('Intermédiaire')"
-                @add-guided="addSmartArticle('Intermédiaire', $event)"
-              />
-            </ArticleColumn>
-
-            <!-- Spécialisé column (grouped by parent Inter) -->
-            <ArticleColumn
-              label="Spécialisé"
-              header-class="col-spec"
-              :tooltip="articleColumns[2]?.tooltip"
-              :count="articleColumns[2]?.articles.length ?? 0"
-              :peek="articleSlide === 0"
-              @click-peek="scrollToSlide(1)"
-            >
-              <div v-for="group in groupedSpecArticles" :key="group.parentTitle" class="spec-group"
-                :class="{ 'spec-group--orphan': group.parentTitle === 'Non rattachés' }">
-                <div class="spec-group-header">
-                  <span class="spec-group-dot" :style="{ background: group.color }"></span>
-                  <span class="spec-group-label">{{ group.parentTitle.length > 40 ? group.parentTitle.slice(0, 40) + '…' : group.parentTitle }}</span>
-                </div>
-                <ProposedArticleRow v-for="article in group.articles" :key="article.originalIndex" :article="article"
-                  :index="article.originalIndex"
-                  :composition-result="compositionResults.get(article.originalIndex) ?? null"
-                  :structural-warnings="articleWarnings.get(article.originalIndex) ?? []"
-                  :available-parents="intermediateTitles" @regenerate-title="regenerateTitle"
-                  @regenerate-keyword="regenerateKeyword" @regenerate-slug="regenerateSlug"
-                  @select-keyword="selectKeyword" @select-title="selectTitle" @select-slug="selectSlug"
-                  @toggle-accept="toggleAccept" @remove="removeProposedArticle" @change-parent="changeParent"
-                  @edit-title="editTitle" @edit-keyword="editKeyword" @edit-slug="editSlug" />
-              </div>
-              <AddArticleMenu
-                :is-loading="addingArticleType === 'Spécialisé'"
-                :disabled="addingArticleType !== null"
-                label="+ Ajouter un spécialisé"
-                @add-empty="addEmptyArticle('Spécialisé')"
-                @add-smart="addSmartArticle('Spécialisé')"
-                @add-guided="addSmartArticle('Spécialisé', $event)"
-              />
-            </ArticleColumn>
-          </div>
-        </div>
-
-        <div v-if="store.strategy.proposedArticles.length > 0" class="article-actions">
-          <button class="btn btn-primary" @click="validateArticles">
-            Tout valider
-          </button>
-        </div>
-      </div>
-      </div>
+      <BrainArticleProposalView
+        v-else
+        :article-columns="articleColumns"
+        :grouped-spec-articles="groupedSpecArticles"
+        :composition-results="compositionResults"
+        :article-warnings="articleWarnings"
+        :intermediate-titles="intermediateTitles"
+        :global-warnings="globalWarnings"
+        :truncation-warning="truncationWarning"
+        :generation-warning="generationWarning"
+        :generation-phase="generationPhase"
+        :adding-article-type="addingArticleType"
+        :topics-loading="topicsLoading"
+        :topics-error="topicsError"
+        :proposed-articles-count="store.strategy.proposedArticles.length"
+        :suggested-topics="store.strategy?.suggestedTopics ?? []"
+        :topics-user-context="store.strategy?.topicsUserContext ?? ''"
+        @generate-proposals="generateArticleProposals"
+        @validate-articles="validateArticles"
+        @toggle-topic="toggleTopic"
+        @remove-topic="removeTopic"
+        @add-topic="addTopic"
+        @regenerate-topics="generateTopics"
+        @update:user-context="updateUserContext"
+        @add-empty="addEmptyArticle"
+        @add-smart="(type, hint) => addSmartArticle(type, hint)"
+        @remove-proposed="removeProposedArticle"
+        @toggle-accept="toggleAccept"
+        @regenerate-title="regenerateTitle"
+        @select-title="selectTitle"
+        @regenerate-keyword="regenerateKeyword"
+        @select-keyword="selectKeyword"
+        @regenerate-slug="regenerateSlug"
+        @select-slug="selectSlug"
+        @change-parent="changeParent"
+        @edit-title="editTitle"
+        @edit-keyword="editKeyword"
+        @edit-slug="editSlug"
+      />
 
       <!-- Navigation -->
       <div class="wizard-nav">
@@ -735,179 +532,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
   padding: 2rem;
   text-align: center;
   color: var(--color-text-muted);
-}
-
-/* --- Step content --- */
-.brain-step-content {
-  padding: 1.5rem;
-  background: var(--color-surface);
-  border: 1px solid var(--color-border);
-  border-radius: 10px;
-}
-
-/* --- Article proposal (step 6) --- */
-.truncation-warning {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 500;
-  background: var(--color-badge-amber-bg);
-  color: var(--color-badge-amber-text);
-}
-
-.step-header-row {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-bottom: 1rem;
-}
-
-.step-header-text {
-  flex: 1;
-  min-width: 0;
-}
-
-.step-header-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-  flex-shrink: 0;
-}
-
-.step-title {
-  font-size: 1.125rem;
-  font-weight: 700;
-  margin: 0 0 0.375rem;
-}
-
-.step-desc {
-  font-size: 0.875rem;
-  color: var(--color-text-muted);
-  margin: 0;
-  line-height: 1.5;
-}
-
-.btn-generate {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-generate:hover:not(:disabled) {
-  background: var(--color-primary-soft);
-}
-
-.btn-generate:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.article-columns {
-  position: relative;
-  margin-bottom: 1rem;
-}
-
-.article-columns-track {
-  display: flex;
-  gap: 1.25rem;
-  align-items: start;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scroll-behavior: smooth;
-  scrollbar-width: none;
-  -webkit-overflow-scrolling: touch;
-}
-
-.article-columns-track::-webkit-scrollbar {
-  display: none;
-}
-
-/* Spacer — extends scrollable area so slide 2 (Inter+Spé) is fully reachable */
-.article-columns-track::after {
-  content: '';
-  flex: 0 0 calc(50% - 2rem);
-}
-
-/* --- Structural warnings --- */
-.structural-warnings {
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-  padding: 0.5rem 0.75rem;
-  margin-bottom: 0.75rem;
-  border-radius: 6px;
-  background: var(--color-badge-amber-bg);
-  color: var(--color-badge-amber-text);
-  font-size: 0.8125rem;
-}
-
-.structural-warning-item {
-  display: flex;
-  align-items: baseline;
-  gap: 0.375rem;
-}
-
-.structural-warning-icon {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-}
-
-/* --- Spec group (grouped by parent Inter) --- */
-.spec-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.spec-group+.spec-group {
-  margin-top: 0.75rem;
-}
-
-.spec-group--orphan .spec-group-header {
-  border-style: dashed;
-}
-
-.spec-group-header {
-  display: flex;
-  align-items: center;
-  gap: 0.375rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 4px;
-  background: var(--color-bg-soft);
-  border: 1px solid var(--color-border);
-}
-
-.spec-group-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
-
-.spec-group-label {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.article-actions {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
 }
 
 /* --- Navigation --- */
@@ -952,115 +576,5 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 
 .btn-next:hover {
   background: var(--color-primary-hover);
-}
-
-/* --- Shared --- */
-.btn {
-  padding: 0.5rem 1.25rem;
-  border: none;
-  border-radius: 6px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.btn-sm {
-  padding: 0.375rem 0.875rem;
-  font-size: 0.8125rem;
-}
-
-.btn-primary {
-  background: var(--color-primary);
-  color: white;
-}
-
-.btn-primary:hover {
-  background: var(--color-primary-hover);
-}
-
-/* --- Drag-to-scroll --- */
-.article-columns-track.is-dragging {
-  cursor: grabbing;
-  scroll-snap-type: none;
-  user-select: none;
-}
-
-.article-columns-track:not(.is-dragging) {
-  cursor: grab;
-}
-
-/* --- Swiper nav (inline in header) --- */
-.article-proposal-wrapper {
-  display: flex;
-  flex-direction: column;
-}
-
-.swiper-nav {
-  display: flex;
-  align-items: center;
-  gap: 0.25rem;
-}
-
-.swiper-arrow {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.625rem;
-  height: 1.625rem;
-  border: 1px solid var(--color-border);
-  border-radius: 50%;
-  background: var(--color-surface);
-  color: var(--color-text);
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.swiper-arrow:hover:not(:disabled) {
-  border-color: var(--color-primary);
-  color: var(--color-primary);
-  background: var(--color-primary-soft);
-}
-
-.swiper-arrow:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
-
-@media (max-width: 900px) {
-  .step-header-row {
-    flex-direction: column;
-  }
-
-  .step-header-actions {
-    width: 100%;
-    justify-content: space-between;
-  }
-
-  .article-columns-track {
-    flex-direction: column;
-    overflow-x: visible;
-    scroll-snap-type: none;
-  }
-
-  .article-columns-track::after {
-    display: none;
-  }
-
-  .swiper-nav {
-    display: none;
-  }
-
-  .article-column--peek {
-    opacity: 1;
-    cursor: default;
-  }
-
-  .article-column {
-    flex: 0 0 auto;
-    width: 100%;
-    max-width: none;
-    scroll-snap-align: none;
-  }
 }
 </style>
