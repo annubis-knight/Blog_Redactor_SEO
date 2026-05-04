@@ -5,9 +5,10 @@ import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
-import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
+import LexiqueTermsList from '@/components/moteur/lexique/LexiqueTermsList.vue'
+import LexiqueMultiKeywordPanel from '@/components/moteur/lexique/LexiqueMultiKeywordPanel.vue'
 import { jaccardWithPainPoint } from '@/utils/pain-point-jaccard'
 import { type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
@@ -418,6 +419,20 @@ async function mergeFromDb() {
   }
 }
 
+interface LexiqueExplorationEntryRef {
+  sourceKeyword: string
+  tfidfTerms: TfidfResult | null
+  aiRecommendations: LexiqueTermRecommendation[]
+}
+
+function handleSelectPast(entry: LexiqueExplorationEntryRef) {
+  activeSourceKeyword.value = entry.sourceKeyword
+  tfidfResult.value = entry.tfidfTerms
+  const m = new Map<string, LexiqueTermRecommendation>()
+  for (const r of entry.aiRecommendations) m.set(r.term.toLowerCase(), r)
+  iaRecommendations.value = m
+}
+
 defineExpose({ hydrateFromDb, mergeFromDb })
 </script>
 
@@ -455,37 +470,17 @@ defineExpose({ hydrateFromDb, mergeFromDb })
     </div>
 
     <!-- Sprint 11 (D4) — Multi-keyword exploration + past explorations recap -->
-    <div v-if="selectedArticle?.id" class="multi-keyword-section">
-      <label class="multi-keyword-label">Extraire pour un autre mot-clé</label>
-      <div class="multi-keyword-row">
-        <input
-          v-model="customKeywordInput"
-          type="text"
-          class="multi-keyword-input"
-          :disabled="isLoading || isLocked"
-          placeholder="Ex: coach sportif Paris"
-          @keydown.enter="extractCustomKeyword"
-        />
-        <button
-          type="button"
-          class="btn-secondary"
-          :disabled="!customKeywordInput.trim() || isLoading || isLocked"
-          @click="extractCustomKeyword"
-        >Extraire</button>
-      </div>
-      <div v-if="pastExplorations.length > 0" class="past-explorations">
-        <span class="past-label">Explorations enregistrées ({{ pastExplorations.length }}) —</span>
-        <button
-          v-for="entry in pastExplorations"
-          :key="entry.sourceKeyword"
-          type="button"
-          class="past-chip"
-          :class="{ 'past-chip--active': activeSourceKeyword === entry.sourceKeyword }"
-          :title="`Exploré le ${new Date(entry.exploredAt).toLocaleDateString('fr-FR')}`"
-          @click="() => { activeSourceKeyword = entry.sourceKeyword; tfidfResult = entry.tfidfTerms; const m = new Map(); for (const r of entry.aiRecommendations) m.set(r.term.toLowerCase(), r); iaRecommendations = m }"
-        >{{ entry.sourceKeyword }}</button>
-      </div>
-    </div>
+    <LexiqueMultiKeywordPanel
+      v-if="selectedArticle?.id"
+      :custom-keyword-input="customKeywordInput"
+      :past-explorations="pastExplorations"
+      :active-source-keyword="activeSourceKeyword"
+      :is-loading="isLoading"
+      :is-locked="isLocked"
+      @update:custom-keyword="(v) => customKeywordInput = v"
+      @extract-custom="extractCustomKeyword"
+      @select-past="handleSelectPast"
+    />
 
     <!-- Error -->
     <div v-if="error" class="error-message" data-testid="error-message">
@@ -524,53 +519,43 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         @update:model-value="(s) => lexiqueSortState = s"
       />
 
-      <!-- Obligatoire (70%+) -->
-      <CollapsableSection :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire.length} termes`" :default-open="true">
-        <div v-if="tfidfResult.obligatoire.length > 0" class="term-list">
-          <div v-for="term in sortTermsByAlignment(tfidfResult.obligatoire)" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
-            <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
-            <span class="term-text">{{ term.term }}</span>
-            <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
-              {{ isIaRecommended(term.term) ? 'IA recommandé' : 'IA optionnel' }}
-            </span>
-            <span class="term-density">&times;{{ term.density }}/page</span>
-            <span class="term-percent">{{ Math.round(term.documentFrequency * 100) }}%</span>
-          </div>
-        </div>
-        <p v-else class="section-empty">Aucun terme obligatoire identifie.</p>
-      </CollapsableSection>
-
-      <!-- Differenciateur (30-70%) -->
-      <CollapsableSection :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur.length} termes`" :default-open="true">
-        <div v-if="tfidfResult.differenciateur.length > 0" class="term-list">
-          <div v-for="term in sortTermsByAlignment(tfidfResult.differenciateur)" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
-            <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
-            <span class="term-text">{{ term.term }}</span>
-            <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
-              {{ isIaRecommended(term.term) ? 'IA recommandé' : 'IA optionnel' }}
-            </span>
-            <span class="term-density">&times;{{ term.density }}/page</span>
-            <span class="term-percent">{{ Math.round(term.documentFrequency * 100) }}%</span>
-          </div>
-        </div>
-        <p v-else class="section-empty">Aucun terme differenciateur identifie.</p>
-      </CollapsableSection>
-
-      <!-- Optionnel (<30%) -->
-      <CollapsableSection :title="`Optionnel (<30%) — ${tfidfResult.optionnel.length} termes`" :default-open="false">
-        <div v-if="tfidfResult.optionnel.length > 0" class="term-list">
-          <div v-for="term in sortTermsByAlignment(tfidfResult.optionnel)" :key="term.term" class="term-row" :class="{ selected: selectedTerms.has(term.term) }">
-            <input type="checkbox" :checked="selectedTerms.has(term.term)" :disabled="isLocked" class="term-checkbox" @change="toggleTerm(term.term)" />
-            <span class="term-text">{{ term.term }}</span>
-            <span v-if="isIaRecommended(term.term) !== null" :class="isIaRecommended(term.term) ? 'badge-ia badge-ia-recommended' : 'badge-ia badge-ia-optional'" :title="getRecommendation(term.term)?.aiReason">
-              {{ isIaRecommended(term.term) ? 'IA recommandé' : 'IA optionnel' }}
-            </span>
-            <span class="term-density">&times;{{ term.density }}/page</span>
-            <span class="term-percent">{{ Math.round(term.documentFrequency * 100) }}%</span>
-          </div>
-        </div>
-        <p v-else class="section-empty">Aucun terme optionnel identifie.</p>
-      </CollapsableSection>
+      <!-- 3 sections factorisées via LexiqueTermsList -->
+      <LexiqueTermsList
+        :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire.length} termes`"
+        :terms="tfidfResult.obligatoire"
+        :selected-terms="selectedTerms"
+        :is-locked="isLocked"
+        :default-open="true"
+        :is-ia-recommended="isIaRecommended"
+        :get-recommendation="getRecommendation"
+        :sort-terms-by-alignment="sortTermsByAlignment"
+        empty-label="Aucun terme obligatoire identifie."
+        @toggle-term="toggleTerm"
+      />
+      <LexiqueTermsList
+        :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur.length} termes`"
+        :terms="tfidfResult.differenciateur"
+        :selected-terms="selectedTerms"
+        :is-locked="isLocked"
+        :default-open="true"
+        :is-ia-recommended="isIaRecommended"
+        :get-recommendation="getRecommendation"
+        :sort-terms-by-alignment="sortTermsByAlignment"
+        empty-label="Aucun terme differenciateur identifie."
+        @toggle-term="toggleTerm"
+      />
+      <LexiqueTermsList
+        :title="`Optionnel (<30%) — ${tfidfResult.optionnel.length} termes`"
+        :terms="tfidfResult.optionnel"
+        :selected-terms="selectedTerms"
+        :is-locked="isLocked"
+        :default-open="false"
+        :is-ia-recommended="isIaRecommended"
+        :get-recommendation="getRecommendation"
+        :sort-terms-by-alignment="sortTermsByAlignment"
+        empty-label="Aucun terme optionnel identifie."
+        @toggle-term="toggleTerm"
+      />
 
       <!-- Validate / Lock (inside results) -->
       <div v-if="!isLocked" class="lexique-lock" data-testid="lexique-lock">
@@ -793,104 +778,6 @@ defineExpose({ hydrateFromDb, mergeFromDb })
   font-size: 0.8125rem;
 }
 
-/* --- Selection counter --- */
-.selection-counter {
-  padding: 0.5rem 0;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.counter-detail {
-  font-weight: 400;
-  font-size: 0.75rem;
-}
-
-/* --- Term list --- */
-.term-list {
-  display: flex;
-  flex-direction: column;
-  gap: 0.375rem;
-}
-
-.term-row {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.375rem 0.625rem;
-  font-size: 0.8125rem;
-  background: var(--color-bg-secondary, #f9fafb);
-  border: 1px solid var(--color-border);
-  border-radius: 6px;
-  transition: border-color 0.15s, background 0.15s;
-}
-
-.term-row.selected {
-  border-color: var(--color-primary);
-  background: var(--color-primary-soft, #eff6ff);
-}
-
-.term-checkbox {
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.term-checkbox:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.term-text {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.badge-ia {
-  display: inline-block;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.625rem;
-  border-radius: 4px;
-  font-weight: 600;
-  flex-shrink: 0;
-  cursor: help;
-}
-
-.badge-ia-recommended {
-  background: var(--color-badge-green-bg, #dcfce7);
-  color: #15803d;
-}
-
-.badge-ia-optional {
-  background: var(--color-border);
-  color: var(--color-text-muted);
-}
-
-.term-density {
-  font-weight: 600;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-.term-percent {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-
-/* --- Empty section --- */
-.section-empty {
-  margin: 0;
-  padding: 0.5rem 0;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  font-style: italic;
-}
-
 /* --- Lock/Unlock --- */
 .lexique-lock {
   margin-top: 0.5rem;
@@ -949,110 +836,4 @@ defineExpose({ hydrateFromDb, mergeFromDb })
   color: var(--color-warning, #f59e0b);
 }
 
-/* Sprint 11 (D4) — Multi-keyword exploration */
-.multi-keyword-section {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-  padding: 0.75rem 1rem;
-  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.04));
-  border: 1px dashed var(--color-border, #e2e8f0);
-  border-radius: 8px;
-}
-.multi-keyword-label {
-  font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-text-muted, #64748b);
-  text-transform: uppercase;
-  letter-spacing: 0.03em;
-}
-.multi-keyword-row {
-  display: flex;
-  gap: 0.5rem;
-}
-.multi-keyword-input {
-  flex: 1;
-  padding: 0.375rem 0.625rem;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  background: var(--color-background, #ffffff);
-  color: var(--color-text, #1e293b);
-}
-.multi-keyword-input:focus {
-  outline: none;
-  border-color: var(--color-primary, #3b82f6);
-}
-.btn-secondary {
-  padding: 0.375rem 0.875rem;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  background: var(--color-surface, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 6px;
-  color: var(--color-text, #1e293b);
-  cursor: pointer;
-}
-.btn-secondary:hover:not(:disabled) {
-  border-color: var(--color-primary, #3b82f6);
-  color: var(--color-primary, #3b82f6);
-}
-.btn-secondary:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-.past-explorations {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 0.375rem;
-  align-items: center;
-  font-size: 0.75rem;
-}
-.past-label {
-  color: var(--color-text-muted, #64748b);
-  font-weight: 600;
-}
-.past-chip {
-  padding: 0.25rem 0.625rem;
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 999px;
-  background: var(--color-background, #ffffff);
-  font-size: 0.75rem;
-  cursor: pointer;
-  color: var(--color-text, #1e293b);
-  transition: all 0.15s;
-}
-.past-chip:hover {
-  border-color: var(--color-primary, #3b82f6);
-}
-.past-chip--active {
-  border-color: var(--color-primary, #3b82f6);
-  background: var(--color-primary, #3b82f6);
-  color: white;
-  font-weight: 600;
-}
-
-/* S2 — Toggle de tri par alignement douleur (cf. tech-spec sprint 2) */
-.lexique-sort-toggle {
-  margin: 0.5rem 0 1rem;
-  padding: 0.5rem 0.75rem;
-  background: var(--color-surface, #f8fafc);
-  border: 1px solid var(--color-border, #e2e8f0);
-  border-radius: 6px;
-}
-.lexique-sort-toggle-label {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  font-size: 0.8125rem;
-  cursor: pointer;
-  color: var(--color-text, #1e293b);
-  font-weight: 500;
-}
-.lexique-sort-toggle-hint {
-  margin: 0.25rem 0 0 1.5rem;
-  font-size: 0.6875rem;
-  color: var(--color-text-muted, #64748b);
-  font-style: italic;
-}
 </style>
