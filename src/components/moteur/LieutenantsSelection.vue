@@ -2,13 +2,12 @@
 import { ref, computed, watch, toRef } from 'vue'
 import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { hnToOutline } from '@/stores/article/outline.store'
-import { useStreaming } from '@/composables/editor/useStreaming'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineValidation'
 import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
+import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
-import { isResponseForCurrentArticle } from '@/utils/article-scope'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
@@ -25,7 +24,7 @@ import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
-import type { FilteredProposeLieutenantsResult, ProposedLieutenant, ProposeLieutenantsHnNode, HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
+import type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
 export type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
@@ -124,28 +123,12 @@ const resolvedRootKeywords = computed(() => {
   return extractRoots(props.captainKeyword).slice(0, 5)
 })
 
-// --- IA Proposal State (Phase 2 — NOUVEAU) ---
-const { chunks: iaChunks, isStreaming: iaIsStreaming, error: iaError, startStream: iaStartStream, abort: iaAbort } = useStreaming<FilteredProposeLieutenantsResult>()
-const lieutenantCards = ref<ProposedLieutenant[]>([])
-const eliminatedCards = ref<ProposedLieutenant[]>([])
-const totalGenerated = ref(0)
-const hnStructure = ref<ProposeLieutenantsHnNode[]>([])
-const contentGapInsights = ref('')
-
-// --- Selection State (Phase 3) ---
-const selectedCards = ref<Map<string, ProposedLieutenant>>(new Map())
-
-function toggleLieutenant(card: ProposedLieutenant) {
-  if (isLocked.value) return
-  const next = new Map(selectedCards.value)
-  if (next.has(card.keyword)) {
-    next.delete(card.keyword)
-  } else {
-    next.set(card.keyword, card)
-  }
-  selectedCards.value = next
-  emit('lieutenants-updated', Array.from(next.keys()))
-}
+// --- IA Proposal State (Vague 3 — extracted to useLieutenantsIa) ---
+// `isLocked` est défini plus bas (ligne ~199). On déclare le composable APRÈS
+// pour respecter l'ordre lexical, mais Vue 3 capture les Refs par référence
+// donc l'ordre d'usage est ce qui compte.
+const wordGroupsRef = toRef(props, 'wordGroups')
+const cocoonSlugRef = toRef(props, 'cocoonSlug')
 
 // --- HN Structure save ---
 const hnSaved = ref(false)
@@ -171,6 +154,42 @@ async function saveHnStructure() {
 
 // --- Lock/unlock Lieutenants ---
 const isLocked = ref(props.initialLocked)
+
+// --- IA composable (Vague 3 — extracted to useLieutenantsIa) ---
+// Doit être déclaré après isLocked + serpResult/serpResultsByKeyword/hnRecurrence
+// (du composable SERP) pour matcher leurs références.
+const selectedArticleRef = toRef(props, 'selectedArticle')
+const {
+  iaIsStreaming,
+  iaChunks,
+  iaError,
+  iaAbort,
+  lieutenantCards,
+  eliminatedCards,
+  totalGenerated,
+  hnStructure,
+  contentGapInsights,
+  selectedCards,
+  currentStep,
+  toggleLieutenant,
+  proposeLieutenants,
+  handleAssistAdd,
+  restoreLockedLieutenants,
+} = useLieutenantsIa({
+  captainKeyword: captainKeywordRef,
+  articleLevel: articleLevelRef,
+  selectedArticle: selectedArticleRef,
+  serpResult,
+  serpResultsByKeyword,
+  resolvedRootKeywords: resolvedRootKeywordsRef,
+  wordGroups: wordGroupsRef,
+  cocoonSlug: cocoonSlugRef,
+  isLocked,
+  articleKeywordsStore,
+  computeHnRecurrenceFrom,
+  hnRecurrence,
+  onLieutenantsUpdated: (selected: string[]) => emit('lieutenants-updated', selected),
+})
 
 // --- Debug log: state on mount ---
 watch(
@@ -265,9 +284,7 @@ function unlockLieutenants() {
   emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
 }
 
-// --- Analysis step tracking ---
-type AnalysisStep = 'idle' | 'serp' | 'ia-proposal' | 'filtering' | 'done'
-const currentStep = ref<AnalysisStep>('idle')
+// (currentStep + AnalysisStep moved to useLieutenantsIa above)
 
 // --- Auto-set active tabs when SERP results arrive ---
 watch(serpResultsByKeyword, (map) => {
@@ -422,205 +439,8 @@ async function analyzeSERPWithStep(): Promise<void> {
   }
 }
 
-// --- IA Proposal flow ---
-/** Restore lieutenant cards from saved data when in locked state */
-function restoreLockedLieutenants() {
-  if (lieutenantCards.value.length > 0) return // already restored
-
-  // Prefer rich data if available
-  const richLts = articleKeywordsStore.keywords?.richLieutenants
-  if (richLts && richLts.length > 0) {
-    const locked = richLts.filter(lt => lt.status === 'locked')
-    const suggested = richLts.filter(lt => lt.status === 'suggested')
-    const eliminated = richLts.filter(lt => lt.status === 'eliminated')
-    // Affichage = locked + suggested (propositions IA persistées non encore verrouillées)
-    lieutenantCards.value = [...locked, ...suggested].map(lt => ({
-      keyword: lt.keyword,
-      reasoning: lt.reasoning,
-      sources: lt.sources,
-      suggestedHnLevel: lt.suggestedHnLevel,
-      score: lt.score,
-    }))
-    eliminatedCards.value = eliminated.map(lt => ({
-      keyword: lt.keyword,
-      reasoning: lt.reasoning,
-      sources: lt.sources,
-      suggestedHnLevel: lt.suggestedHnLevel,
-      score: lt.score,
-    }))
-    // Pré-cocher uniquement les 'locked' (les 'suggested' restent non sélectionnées)
-    const selected = new Map<string, ProposedLieutenant>()
-    for (const lt of locked) {
-      selected.set(lt.keyword, {
-        keyword: lt.keyword,
-        reasoning: lt.reasoning,
-        sources: lt.sources,
-        suggestedHnLevel: lt.suggestedHnLevel,
-        score: lt.score,
-      })
-    }
-    selectedCards.value = selected
-    emit('lieutenants-updated', Array.from(selected.keys()))
-    log.info('[LieutenantsSelection] Lieutenants restored from rich data', {
-      locked: locked.length, suggested: suggested.length, eliminated: eliminated.length,
-    })
-    return
-  }
-
-  // Fallback: flat lieutenants[] (backward compat)
-  const lieutenants = articleKeywordsStore.keywords?.lieutenants
-  if (!lieutenants || lieutenants.length === 0) return
-
-  const cards: ProposedLieutenant[] = lieutenants.map(kw => ({
-    keyword: kw,
-    reasoning: '',
-    sources: [],
-    suggestedHnLevel: 2 as const,
-    score: 0,
-  }))
-  lieutenantCards.value = cards
-  const selected = new Map<string, ProposedLieutenant>()
-  for (const card of cards) {
-    selected.set(card.keyword, card)
-  }
-  selectedCards.value = selected
-  emit('lieutenants-updated', Array.from(selected.keys()))
-  log.info('[LieutenantsSelection] Lieutenants restored from flat data', { count: lieutenants.length })
-}
-
-/** F3 — Ajoute un mot-clé (suggéré par le basket) à la liste des propositions lieutenants
- *  sans lancer de SERP/IA. L'utilisateur pourra ensuite le cocher ou le laisser pour plus tard. */
-function handleAssistAdd(keyword: string) {
-  if (lieutenantCards.value.some(c => c.keyword.toLowerCase() === keyword.toLowerCase())) return
-  lieutenantCards.value = [
-    ...lieutenantCards.value,
-    {
-      keyword,
-      reasoning: 'Proposé depuis votre panier',
-      sources: [],
-      suggestedHnLevel: 2 as const,
-      score: 0,
-    },
-  ]
-  log.info('[LieutenantsSelection] Assist add', { keyword, total: lieutenantCards.value.length })
-}
-
-function proposeLieutenants() {
-  if (!props.captainKeyword || !serpResult.value || !props.selectedArticle) return
-  iaAbort()
-  lieutenantCards.value = []
-  eliminatedCards.value = []
-  totalGenerated.value = 0
-  selectedCards.value = new Map()
-  currentStep.value = 'ia-proposal'
-
-  // Captain-only SERP data (high weight)
-  const captainResult = serpResultsByKeyword.value.get(props.captainKeyword)
-  const captainHn = captainResult
-    ? computeHnRecurrenceFrom(captainResult.competitors)
-        .filter(h => h.percent >= 10)
-        .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
-    : hnRecurrence.value
-        .filter(h => h.percent >= 10)
-        .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
-
-  const captainCompetitors = captainResult
-    ? captainResult.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position }))
-    : serpResult.value.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position }))
-
-  const captainPaa = captainResult
-    ? captainResult.paaQuestions.map(q => ({ question: q.question, answer: q.answer }))
-    : serpResult.value.paaQuestions.map(q => ({ question: q.question, answer: q.answer }))
-
-  // Root keywords SERP data (lower weight — different search intent)
-  const rootKeywordsSerpData: Array<{
-    keyword: string
-    competitors: { domain: string; title: string; position: number }[]
-    hnRecurrence: { level: number; text: string; count: number; percent: number }[]
-    paaQuestions: { question: string; answer?: string }[]
-  }> = []
-
-  for (const [kw, result] of serpResultsByKeyword.value) {
-    if (kw === props.captainKeyword) continue
-    rootKeywordsSerpData.push({
-      keyword: kw,
-      competitors: result.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position })),
-      hnRecurrence: computeHnRecurrenceFrom(result.competitors)
-        .filter(h => h.percent >= 10)
-        .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent })),
-      paaQuestions: result.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? undefined })),
-    })
-  }
-
-  iaStartStream(
-    `/api/keywords/${encodeURIComponent(props.captainKeyword)}/propose-lieutenants`,
-    {
-      level: props.articleLevel ?? 'intermediaire',
-      articleId: props.selectedArticle?.id ?? 0,
-      serpHeadings: captainHn,
-      paaQuestions: captainPaa,
-      wordGroups: props.wordGroups.map(g => g.word),
-      rootKeywords: resolvedRootKeywords.value,
-      serpCompetitors: captainCompetitors,
-      rootKeywordsSerpData,
-      ...(props.cocoonSlug ? { cocoonSlug: props.cocoonSlug } : {}),
-    },
-    {
-      onDone: (data) => {
-        log.info(`[LieutenantsSelection] IA generated ${data.totalGenerated} lieutenants, selected ${data.selectedLieutenants.length}, eliminated ${data.eliminatedLieutenants.length}`)
-        totalGenerated.value = data.totalGenerated
-        hnStructure.value = data.hnStructure ?? []
-        contentGapInsights.value = data.contentGapInsights ?? ''
-
-        // Step 3: Assign cards directly from AI data (no batch KPI)
-        currentStep.value = 'filtering'
-        lieutenantCards.value = data.selectedLieutenants
-        eliminatedCards.value = data.eliminatedLieutenants
-
-        // Pre-select all filtered-in lieutenants
-        const preSelected = new Map<string, ProposedLieutenant>()
-        for (const lt of data.selectedLieutenants) {
-          preSelected.set(lt.keyword, lt)
-        }
-        selectedCards.value = preSelected
-        emit('lieutenants-updated', Array.from(preSelected.keys()))
-        currentStep.value = 'done'
-        log.info(`[LieutenantsSelection] Selection complete: ${preSelected.size} pre-selected`)
-
-        // Auto-save lieutenant explorations directly to lieutenant_explorations table.
-        // Respecte la règle métier : tout keyword approfondi DOIT être persisté.
-        const articleId = props.selectedArticle?.id
-        if (articleId && isResponseForCurrentArticle(articleKeywordsStore.keywords?.articleId, articleId)) {
-          articleKeywordsStore.saveRichLieutenantProposals(data.selectedLieutenants, data.eliminatedLieutenants)
-          // Build RichLieutenant entries for direct DB save
-          const allEntries = [
-            ...data.selectedLieutenants.map(lt => ({
-              keyword: lt.keyword,
-              status: 'suggested' as const,
-              reasoning: lt.reasoning,
-              sources: lt.sources,
-              suggestedHnLevel: lt.suggestedHnLevel,
-              score: lt.score,
-              kpis: null,
-              lockedAt: null,
-            })),
-            ...data.eliminatedLieutenants.map(lt => ({
-              keyword: lt.keyword,
-              status: 'eliminated' as const,
-              reasoning: lt.reasoning,
-              sources: lt.sources,
-              suggestedHnLevel: lt.suggestedHnLevel,
-              score: lt.score,
-              kpis: null,
-              lockedAt: null,
-            })),
-          ]
-          articleKeywordsStore.saveLieutenantExplorationEntries(articleId, allEntries, props.captainKeyword!)
-        }
-      },
-    },
-  )
-}
+// (restoreLockedLieutenants, handleAssistAdd, proposeLieutenants moved
+//  to useLieutenantsIa above)
 
 </script>
 
