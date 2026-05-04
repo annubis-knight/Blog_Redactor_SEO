@@ -10,7 +10,7 @@ inputDocuments:
 workflowType: 'prd'
 completedAt: '2026-03-31'
 lastUpdated: '2026-05-04'
-updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView).'
+updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code.'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
   - 'docs/ARCHITECTURE_FLOWS.md'
@@ -428,6 +428,29 @@ Le painPoint de l'article (`articles.pain_point`, fallback `(non défini)`) est 
 Le contexte stratégique du cocon est injecté via `{{strategy_context}}` dans les prompts Moteur listés dans FR-MOT-PAINPOINT-INJECTION. Si stratégie absente, injection à chaîne vide.
 **Source :** PRD initial — `server/utils/prompt-loader.ts` (buildCocoonStrategyBlock).
 
+#### FR-MOT-CROSS-TAB-PAYLOAD
+**Payload partagé entre onglets Discovery → Radar → Capitaine → Lieutenants → Lexique** *(ajout 2026-05-04, formalisation Vague 5 — extraction useMoteurCrossTabState)*. MoteurView orchestre 5 transitions explicites, déclenchées par boutons utilisateur :
+- Discovery → Radar : `handleSendToRadar(keywords[])` ajoute au basket + switch onglet + émet `moteur:discovery_done`
+- Radar → Capitaine : `handleCardsSelected(cards[])` dédup card racine prime sur longue-traîne + switch onglet
+- Capitaine → Lieutenants : `handleSendToLieutenants({ keyword, rootKeywords[] })` propage rootKeywords sans perte + switch onglet
+- Lieutenants → Lexique : selectedLieutenants priorisé sur store (computed `selectedLieutenantsForLexique`)
+- Radar scan terminé : `handleRadarScanned({ globalScore, heatLevel })` émet `moteur:radar_done`
+
+Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le state cross-tab est reset au switch d'article (`resetCrossTabState`).
+**Source :** `src/composables/moteur/useMoteurCrossTabState.ts`. **Tests :** `tests/unit/composables/moteur/useMoteurCrossTabState.test.ts` (8 ACs).
+
+#### FR-MOT-CANNIBALIZATION
+**Détection de cannibalisation Capitaine cross-articles d'un cocon** *(ajout 2026-05-04, formalisation Vague 5)*. Au mount du Moteur et après chaque check `capitaine_locked` (add ou remove), MoteurView fetche la map `keyword → article slug` via `GET /api/cocoons/:cocoonName/capitaines`. Cette map permet d'afficher visuellement (badge cannibalization) sur les cards Radar/Capitaine quand un keyword candidat est déjà le Capitaine verrouillé d'un autre article du même cocon, pour éviter le contenu dupliqué qui se cannibalise dans Google.
+**Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`capitainesMap`, `refreshCapitainesMap`), `server/routes/cocoons.routes.ts` (endpoint capitaines).
+
+#### FR-MOT-EXPLORATION-COUNTS
+**Counts DB persistés affichés dans TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Le panel sticky `TabCachePanel` affiche pour chaque onglet (Radar, Captain, Lieutenants, Lexique) le **count d'explorations persistées en DB** (table `radar_explorations` / `captain_explorations` / `lieutenant_explorations` / `lexique_explorations`). Endpoint `GET /api/articles/:id/explorations/counts`. Refetché au mount, au switch d'article (watcher défensif) et après chaque check (`addCheck` / `removeCheck` → mutation DB → counts à recharger). Distinct du `cacheCount` (api_cache TTL court). C'est ce qui permet au TabLoadPrompt de proposer "Charger N résultats déjà persistés".
+**Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`explorationCounts`, `refreshExplorationCounts`), `server/routes/article-explorations.routes.ts`.
+
+#### FR-MOT-EXTERNAL-CACHE-CLEAR
+**Bouton "Vider le cache" du TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Action utilisateur qui purge **uniquement** les entrées `api_cache` (autocomplete, PAA, SERP, validate) liées au capitaine de l'article courant via `DELETE /api/articles/:id/external-cache`. Ne touche **pas** aux `*_explorations` (DB persistée — règle FR-MOT-CACHE-CASCADE). Permet à l'utilisateur de forcer un re-fetch DataForSEO sans perdre ses données métier.
+**Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`clearExternalCacheForArticle`), `server/routes/articles.routes.ts` (endpoint external-cache DELETE).
+
 ---
 
 ### 8.4 — Moteur — Discovery (FR-DIS)
@@ -446,6 +469,14 @@ Store `useMoteurBasketStore` accumule les keywords sélectionnés en mémoire (p
 
 #### FR-DIS-CHECK
 Émet `moteur:discovery_done` après une analyse réussie.
+
+#### FR-DIS-CACHE
+**Cache DB-first des découvertes Discovery** *(ajout 2026-05-04, formalisation Vague 5 — Sprint 15.6)*. Chaque scan Discovery est persisté dans la table `keyword_discoveries` avec TTL applicatif de 30 jours, indexé par `seedKeyword + cocoonName + articleType`. Au premier `checkCacheForSeed(seed)`, l'UI propose un badge **« Dernière analyse du DD/MM/YYYY · N mots-clés · analyse IA incluse »** + boutons **Charger** (réhydrate sources + analysisResult sans appel API) / **Rafraîchir** (purge cache + reset). Permet de reprendre une exploration sans recoûter d'appels DataForSEO/Claude.
+**Source :** `src/components/moteur/discovery/KeywordDiscoveryCacheBar.vue`, `src/composables/keyword/useDiscoveryCache.ts`, `server/services/keyword/discovery-cache.service.ts`.
+
+#### FR-DIS-RELEVANCE-FILTER
+**Filtre de pertinence sémantique** *(ajout 2026-05-04, formalisation Vague 5)*. Toggle utilisateur dans Discovery qui active un scoring sémantique 2-passes (Claude embeddings + scoring) sur les mots-clés découverts. UI affiche : compteur **« X pertinents / N total »**, barre de progression **« Filtrage P/2 · scored/total »** pendant le scoring, badge **« X hors-sujet masqués »** quand actif. Les keywords non pertinents sont grisés (opacity 0.5) mais restent cliquables (libre arbitre, FR-MOT-RAW-KPIS). Une bannière warning apparaît si le filtrage n'a rien produit (probable failure API Claude).
+**Source :** `src/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue`, `src/composables/keyword/useSemanticScoring.ts`.
 
 ---
 
@@ -470,6 +501,26 @@ Stockés dans `RadarCard.kpis` + `RadarCard.scoreBreakdown`.
 #### FR-RAD-RESONANCE
 Stemmer français (38 suffixes), matching bidirectionnel topic ↔ text. Niveaux `total` (≥50 % overlap), `partial` (≥20 %), `none`. Qualité `exact` ou `stem`.
 **Source :** `server/services/intent/intent-scan.service.ts:44-150`.
+
+#### FR-RAD-SCORE-RING-TOOLTIP
+**Score ring SVG circulaire + tooltip contextuel** *(ajout 2026-05-04, formalisation Vague 5 — extraction RadarCardScoreRing)*. Chaque card Radar affiche le score (KPI ou Pertinence selon `displayMode`) dans un ring SVG (rayon 30, dasharray animé) + tooltip au hover qui détaille le breakdown pondéré (5-6 lignes label/desc/poids/value). Si `displayedScore === null`, affiche **« — »** + tooltip différencié selon la cause (cf. computed `relevanceMissingReason`) :
+- `no-pain` : « Définis un point de douleur sur l'article et relance la validation. »
+- `no-signals` : « Le point de douleur est défini, mais les signaux SERP n'ont rien produit (PAA vides, autocomplete absent ou embedding indisponible). »
+- `long-tail` : « Score Pertinence non applicable aux longues traînes — utilise plutôt le score Pertinence de leur racine. »
+- fallback : « Score Pertinence indisponible. »
+
+Le ring intercepte les clics (`@click.stop`) pour ne pas propager au parent (sinon la sidebar Capitaine s'ouvre à tort, cf. AC.L.3 architecture test).
+**Source :** `src/components/intent/radar-card/RadarCardScoreRing.vue`.
+
+#### FR-RAD-PAA-TREE
+**Arbre PAA récursif parent → children** *(ajout 2026-05-04, formalisation Vague 5 — extraction RadarCardPaaTree)*. Le body de chaque RadarKeywordCard (visible si `expanded === true`) affiche les questions PAA scrapées comme arbre 2 niveaux : parent (depth 1) + children (depth 2, parentQuestion). Chaque node a :
+- chevron toggle children (si présents) / chevron toggle answer (si présent)
+- badge match (`Exact` / `Partiel exact` / `Sem. partiel` / `Hors sujet` / `+ douleur` ou `+ hors-douleur`)
+- semanticScore en % si calculé
+- counts children entre parenthèses
+
+Indicateur "PAA en cache" si `cachedPaa === true` (Sprint 15.6 PAA cache TTL 90j).
+**Source :** `src/components/intent/radar-card/RadarCardPaaTree.vue`.
 
 #### FR-RAD-LONGTAIL-GENERATE
 Section optionnelle « Suggestions longue traîne » visible si ≥ 2 cards radar. Bouton « Suggérer » → étapes :
@@ -723,6 +774,25 @@ Endpoint `POST /api/generate/humanize-section`. Reformule pour rendre naturel. P
 #### FR-RED-CHECKS
 5 checks Rédaction : `redaction:brief_validated`, `redaction:outline_validated`, `redaction:content_written`, `redaction:seo_validated`, `redaction:published`.
 **Source :** `shared/constants/workflow-checks.constants.ts:40-53`.
+
+#### FR-RED-PANELS-LAYOUT
+**Architecture toolbar + ResizablePanel des panels d'analyse** *(ajout 2026-05-04, formalisation Vague 5 — extraction ArticlePanelsToolbar + ArticlePanelsResizable)*. Les 2 vues Rédaction (`ArticleWorkflowView`, `ArticleEditorView`) partagent une toolbar segmentée avec boutons toggle :
+- **SEO** (FR-RED-SEO-LIVE)
+- **GEO** (panel scoring AEO/GEO)
+- **Maillage** (FR-RED-INTERNAL-LINKING)
+- **Blocs** (BlocksPanel — éditeur uniquement)
+- **IA Brief** (FR-RED-IA-BRIEF — workflow uniquement)
+
+Le panel actif est rendu dans un `ResizablePanel` sticky (sidebar redimensionnable col-resize) à droite. Mutual exclusion : un seul panel actif à la fois (`usePanelToggle`). Les boutons SEO/GEO/Maillage/Blocs sont **gated par `hasBody = !!editorStore.content`** — désactivés visuellement si pas encore d'article généré (libre arbitre absolu : visible mais inactif, pas masqué). IA Brief n'est pas gated par hasBody (analyse du brief, pas du contenu).
+
+Toggle Escape ferme le panel ouvert (`useKeyboardShortcuts`).
+**Source :** `src/components/article/ArticlePanelsToolbar.vue`, `src/components/article/ArticlePanelsResizable.vue`, `src/composables/ui/usePanelToggle.ts`.
+
+#### FR-RED-IA-BRIEF
+**Panel IA d'analyse du brief** *(ajout 2026-05-04, formalisation Vague 5 — extraction ArticleWorkflowIaBrief)*. Disponible uniquement dans `ArticleWorkflowView` (Step 2 ou via toolbar). Au premier toggle, déclenche un streaming SSE vers `POST /api/generate/brief-explain` avec payload riche (article keywords + lexique + hnStructure + paaQuestions + topCompetitors + cocoonArticles). Le résultat markdown est parsé via `marked` et affiché en temps réel. Bouton **« Relancer l'analyse »** pour re-déclencher après modifications du brief.
+
+Distinct de FR-RED-CONTEXTUAL-ACTIONS (qui agit sur sélection texte dans l'éditeur) — IA Brief est un **récap stratégique global** d'aide à l'auteur avant écriture.
+**Source :** `src/components/article/ArticleWorkflowIaBrief.vue`, `server/routes/generate.routes.ts` (endpoint brief-explain).
 
 ---
 
