@@ -1,3 +1,4 @@
+// @vitest-environment node
 /**
  * Cohérence data-flow: strategy-context
  *
@@ -28,7 +29,8 @@ vi.mock('../../../server/utils/logger.js', () => ({
 }))
 
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../../../server/services/queries/article-pain-point.service.js'
-import { buildStrategyContext, buildCocoonStrategyBlock } from '../../../server/routes/generate/_helpers.js'
+import { buildStrategyContext } from '../../../server/routes/generate/_helpers.js'
+import { buildCocoonStrategyBlock } from '../../../server/utils/prompt-loader.js'
 import type { ArticleStrategy, CocoonStrategy } from '../../../shared/types/index.js'
 import { query } from '../../../server/db/client.js'
 
@@ -99,7 +101,10 @@ describe('FR-MOT-STRATEGY-INJECTION — buildStrategyContext', () => {
     expect(ctx).toContain('Angle')
     expect(ctx).not.toContain('Douleur adressée')
     expect(ctx).not.toContain('Promesse au lecteur')
-    expect(ctx).not.toContain('CTA')
+    // Reformulé 2026-05-04 : le pied du contexte contient toujours la phrase
+    // "Le CTA, s'il est défini, doit être amené naturellement en conclusion."
+    // On vérifie donc l'absence du champ structuré (ligne `**CTA** :`), pas du mot.
+    expect(ctx).not.toContain('**CTA**')
   })
 })
 
@@ -159,28 +164,31 @@ describe('FR-CAP-PAINPOINT-FALLBACK — getArticlePainPoint', () => {
 // PART 4: Prompt file validation (FR-MOT-PAINPOINT-INJECTION)
 // ============================================================================
 
-describe('FR-MOT-PAINPOINT-INJECTION — 8 prompts contiennent {{painPoint}}', () => {
-  const EXPECTED_PROMPTS = [
-    'capitaine-ai-panel',
-    'propose-lieutenants',
-    'lieutenants-hn-structure',
-    'lexique-ai-panel',
-    'lexique-analysis-upfront',
-    'lexique-suggest',
-    'radar-long-tail-suggest',
-    'intent-keywords',
+describe('FR-MOT-PAINPOINT-INJECTION — 8 prompts contiennent une variable pain point', () => {
+  // Reformulé 2026-05-04 : la convention historique est {{painPoint}} mais
+  // radar-long-tail-suggest utilise {{article_pain_point}} (cf. long-tail-suggest.service.ts).
+  // L'invariant réel est : chaque prompt expose une variable pain point quelconque.
+  const EXPECTED_PROMPTS: Array<{ name: string; variable: string }> = [
+    { name: 'capitaine-ai-panel', variable: '{{painPoint}}' },
+    { name: 'propose-lieutenants', variable: '{{painPoint}}' },
+    { name: 'lieutenants-hn-structure', variable: '{{painPoint}}' },
+    { name: 'lexique-ai-panel', variable: '{{painPoint}}' },
+    { name: 'lexique-analysis-upfront', variable: '{{painPoint}}' },
+    { name: 'lexique-suggest', variable: '{{painPoint}}' },
+    { name: 'radar-long-tail-suggest', variable: '{{article_pain_point}}' },
+    { name: 'intent-keywords', variable: '{{painPoint}}' },
   ]
 
-  EXPECTED_PROMPTS.forEach((promptName) => {
-    it(`${promptName}.md contient {{painPoint}}`, async () => {
+  EXPECTED_PROMPTS.forEach(({ name, variable }) => {
+    it(`${name}.md contient ${variable}`, async () => {
       try {
         const content = await readFile(
-          join(process.cwd(), 'server', 'prompts', `${promptName}.md`),
+          join(process.cwd(), 'server', 'prompts', `${name}.md`),
           'utf-8'
         )
-        expect(content).toContain('{{painPoint}}')
+        expect(content).toContain(variable)
       } catch (err) {
-        throw new Error(`Prompt file ${promptName}.md not found or error reading: ${(err as Error).message}`)
+        throw new Error(`Prompt file ${name}.md not found or error reading: ${(err as Error).message}`)
       }
     })
   })

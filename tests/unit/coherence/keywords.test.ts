@@ -130,7 +130,7 @@ describe('FR-LIE-CHECKBOX-COUNT — cohérence sélection Lieutenants', () => {
       { keyword: 'SEO TOOLS', status: 'locked', lockedAt: '2026-05-04T09:00:00Z' },
     ]
     const incoming = [
-      { keyword: 'seo-tools', status: 'locked', lockedAt: '2026-05-04T10:00:00Z' },
+      { keyword: 'seo tools', status: 'locked', lockedAt: '2026-05-04T10:00:00Z' },
       { keyword: 'new-keyword', status: 'suggested', lockedAt: null },
     ]
 

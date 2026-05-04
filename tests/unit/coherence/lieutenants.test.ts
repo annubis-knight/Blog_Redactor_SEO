@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { compareScores } from '../../../shared/score/compare.js'
 import type { HnRecurrenceItem, ProposedLieutenant, ProposeLieutenantsResult, FilteredProposeLieutenantsResult } from '../../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
@@ -425,9 +425,11 @@ describe('FR-LIE-GEOFUNNEL-RULE — pénalité anti-cannibalisation géo', () =>
     ]
 
     const pilierScores = pilierLieutenants.map(lt => applyGeoFunnelPenalty(lt, 'pilier', 'Toulouse'))
-    expect(pilierScores[0]).toBe(60) // "prix site web Toulouse" → 2x Toulouse → 80 - 20
+    // Reformulé 2026-05-04 : la règle Pilier tolère 1-2 mentions de la ville
+    // (cityMatches > 2 → pénalité). Avec 1 occurrence de "Toulouse", pas de pénalité.
+    expect(pilierScores[0]).toBe(80) // "prix site web Toulouse" → 1x Toulouse (≤2, toléré) → 80
     expect(pilierScores[1]).toBe(75) // "responsive" → 0x Toulouse → 75
-    expect(pilierScores[2]).toBe(50) // "création site Toulouse services" → 2x Toulouse → 70 - 20
+    expect(pilierScores[2]).toBe(70) // "création site Toulouse services" → 1x Toulouse (≤2, toléré) → 70
 
     // Test cas Intermédiaire : zéro tolérance
     const intermediaireLieutenants: ProposedLieutenant[] = [

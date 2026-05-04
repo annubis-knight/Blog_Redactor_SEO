@@ -184,10 +184,14 @@ describe('FR-RAD-SEND-CAPTAIN — dédup cards + longues-traînes', () => {
     }
 
     // Vérification
-    expect(canonical.size).toBe(3)
+    // Reformulé 2026-05-04 : les 4 chaînes sont distinctes une fois lowercased,
+    // l'assertion `size === 3` était fausse. La dédup canonique consolide seulement
+    // les variantes de casse pures ('SEO Local' ↔ 'seo local'), pas les radicaux.
+    expect(canonical.size).toBe(4)
     expect(canonical.has('copywriting email')).toBe(true)
     expect(canonical.has('seo local')).toBe(true)
     expect(canonical.has('copywriting email pme')).toBe(true)
+    expect(canonical.has('seo local b2b')).toBe(true)
   })
 
   it('cas extrême : même keyword exact dans cards + longues-traînes → garde racine', () => {

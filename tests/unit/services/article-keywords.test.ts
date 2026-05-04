@@ -43,11 +43,13 @@ describe('data.service — getArticleKeywords', () => {
       }],
       rowCount: 1,
     })
-    // 2nd call: captain_explorations
+    // 2nd call: captain_explorations (JOIN keyword_metrics)
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
     // 3rd call: paa_explorations
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
-    // 4th call: lieutenant_explorations
+    // 4th call: radar_explorations (hydratation marketScore/relevanceScore)
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // 5th call: lieutenant_explorations
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
 
     const { getArticleKeywords } = await importService()
@@ -73,15 +75,17 @@ describe('data.service — getArticleKeywords', () => {
       }],
       rowCount: 1,
     })
-    // captain_explorations with 2 entries
+    // captain_explorations with 2 entries (avec colonnes keyword_metrics jointes)
     mockQuery.mockResolvedValueOnce({
       rows: [
-        { keyword: 'captain kw', kpis: [{ name: 'volume', rawValue: 1000 }], article_level: 'pilier', root_keywords: [], ai_panel_markdown: '## Analysis', explored_at: new Date() },
-        { keyword: 'other kw', kpis: [{ name: 'volume', rawValue: 500 }], article_level: 'pilier', root_keywords: [], ai_panel_markdown: null, explored_at: new Date() },
+        { keyword: 'captain kw', article_level: 'pilier', status: 'locked', root_keywords: [], ai_panel_markdown: '## Analysis', explored_at: new Date(), locked_at: null, search_volume: 1000, keyword_difficulty: 30, cpc: 1.5, competition: 0.4, intent_raw: 0.6, autocomplete_suggestions: [], metrics_fetched_at: new Date() },
+        { keyword: 'other kw', article_level: 'pilier', status: 'tested', root_keywords: [], ai_panel_markdown: null, explored_at: new Date(), locked_at: null, search_volume: 500, keyword_difficulty: 25, cpc: 0.8, competition: 0.3, intent_raw: 0.5, autocomplete_suggestions: [], metrics_fetched_at: new Date() },
       ],
       rowCount: 2,
     })
     // paa_explorations empty
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // radar_explorations empty (hydrate scores)
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
     // lieutenant_explorations empty
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
@@ -112,6 +116,8 @@ describe('data.service — getArticleKeywords', () => {
     // captain_explorations empty
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
     // paa_explorations empty
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // radar_explorations empty
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
     // lieutenant_explorations with data
     mockQuery.mockResolvedValueOnce({
