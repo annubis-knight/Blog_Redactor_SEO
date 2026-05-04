@@ -34,7 +34,7 @@ import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
 import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTabLoadPrompt'
-import { isFinalisationUnlocked, finalisationButtonTitle as buildFinalisationButtonTitle } from '@/composables/moteur/useFinalisationGating'
+import { useMoteurSoftGating } from '@/composables/moteur/useMoteurSoftGating'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -212,15 +212,18 @@ const pilierKeyword = computed(() =>
   keywordsStore.keywords.find(k => k.type === 'Pilier')?.keyword ?? cocoon.value?.name ?? '',
 )
 
-// Discovery/Radar tabs are only available when keywords are NOT validated
-const isDiscoveryAllowed = computed(() => {
-  if (!selectedArticle.value) return true
-  const articleKw = selectedArticle.value.keyword
-  if (!articleKw) return true
-  const kw = keywordsStore.keywords.find(
-    k => k.keyword.toLowerCase() === articleKw.toLowerCase(),
-  )
-  return !kw || kw.status === 'suggested'
+// --- Soft gating (Vague 3 — extracted to useMoteurSoftGating) ---
+const {
+  isCaptaineLocked,
+  isLieutenantsLocked,
+  isLexiqueValidated,
+  finalisationUnlocked,
+  finalisationButtonTitle,
+  isDiscoveryAllowed,
+} = useMoteurSoftGating({
+  selectedArticle,
+  articleProgressStore,
+  keywordsStore,
 })
 
 // --- Phase navigation ---
@@ -489,36 +492,7 @@ function handleKeywordsCleared() {
   radarScanResult.value = null
 }
 
-// --- Soft gating computeds for Phase ② sous-onglets ---
-const isCaptaineLocked = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  return articleProgressStore.getProgress(id)?.completedChecks?.includes('capitaine_locked') ?? false
-})
-
-const isLieutenantsLocked = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  return articleProgressStore.getProgress(id)?.completedChecks?.includes('lieutenants_locked') ?? false
-})
-
-const isLexiqueValidated = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  return articleProgressStore.getProgress(id)?.completedChecks?.includes('lexique_validated') ?? false
-})
-
-// Bloc 2 — Gating Finalisation/Rédaction. Logique pure extraite dans
-// useFinalisationGating pour être testable unitairement (cf.
-// tests/unit/composables/finalisation-gating.test.ts).
-const finalisationChecksInput = computed(() => ({
-  capitaineLocked: isCaptaineLocked.value,
-  lieutenantsLocked: isLieutenantsLocked.value,
-  lexiqueValidated: isLexiqueValidated.value,
-}))
-
-const finalisationUnlocked = computed(() => isFinalisationUnlocked(finalisationChecksInput.value))
-const finalisationButtonTitle = computed(() => buildFinalisationButtonTitle(finalisationChecksInput.value))
+// (Soft gating computeds moved to useMoteurSoftGating composable above)
 
 // --- Lieutenants props ---
 const captainKeyword = computed(() =>
