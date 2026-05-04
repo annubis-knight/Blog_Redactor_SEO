@@ -7,7 +7,6 @@ import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useRadarCarousel } from '@/composables/keyword/useRadarCarousel'
 import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
-import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -23,8 +22,8 @@ import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
 import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import CaptainLockPanel from '@/components/moteur/CaptainLockPanel.vue'
 import UnlockLieutenantsModal from '@/components/moteur/UnlockLieutenantsModal.vue'
-import CaptainInteractiveWords from '@/components/moteur/CaptainInteractiveWords.vue'
 import CaptainSidePanel from '@/components/moteur/CaptainSidePanel.vue'
+import CaptainRadarList from '@/components/moteur/captain/CaptainRadarList.vue'
 import type { SelectedArticle, KpiResult, VerdictLevel, ValidateVerdict, ValidateResponse, ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard } from '@shared/types/intent.types.js'
 
@@ -1017,64 +1016,25 @@ onUnmounted(() => abortAllAiStreams())
 
     <!-- ===== MODE WORKFLOW : Liste verticale + Side Panel sticky ===== -->
     <div v-if="mode === 'workflow'" class="captain-layout" data-testid="captain-layout">
-      <div class="radar-list" data-testid="radar-list">
-        <SortToggleBar
-          v-if="carouselEntries.length > 0"
-          :options="captainSortOptions"
-          :model-value="captainSortState"
-          @update:model-value="(s) => captainSortState = s"
-        />
-        <div
-          v-if="carouselEntries.length === 0"
-          class="radar-list-empty"
-          data-testid="radar-list-empty"
-        >
-          Aucun mot-cl&eacute; &agrave; valider pour cet article.
-        </div>
-        <div
-          v-for="entry in sortedEntries"
-          :key="entry.originalCard.keyword"
-          class="radar-list-item"
-          :class="{
-            'radar-list-item--selected': selectedIndex === rawIndexOf(entry),
-            'radar-list-item--locked': lockedKeyword === entry.card.keyword,
-          }"
-          :data-testid="`radar-list-item-${rawIndexOf(entry)}`"
-          role="button"
-          tabindex="0"
-          :aria-pressed="selectedIndex === rawIndexOf(entry)"
-          @click="selectEntry(rawIndexOf(entry))"
-          @keydown.enter.space.prevent="selectEntry(rawIndexOf(entry))"
-        >
-          <div
-            v-if="entry.isLoading"
-            class="captain-loading"
-            :data-testid="`radar-list-item-${rawIndexOf(entry)}-loading`"
-          >
-            <div class="captain-loading-spinner" />
-            <p>Validation en cours...</p>
-          </div>
-          <div
-            v-else-if="entry.error"
-            class="captain-error"
-            :data-testid="`radar-list-item-${rawIndexOf(entry)}-error`"
-          >
-            <p>Erreur : {{ entry.error }}</p>
-          </div>
-          <CaptainInteractiveWords
-            v-else-if="entry.validation"
-            :entry="entry"
-            :locked-keyword="lockedKeyword"
-            :article-level="articleLevel"
-            :article-id="props.selectedArticle?.id ?? null"
-            :article-pain-point="props.selectedArticle?.painPoint ?? null"
-            @lock="lockEntry(rawIndexOf(entry))"
-            @unlock="lockedIndex === rawIndexOf(entry) ? unlockEntry() : null"
-            @word-toggle="(indices) => handleWordToggleAt(rawIndexOf(entry), indices)"
-            @recompute-relevance="(card) => handleRecomputeRelevance(card)"
-          />
-        </div>
-      </div>
+      <CaptainRadarList
+        :entries="carouselEntries"
+        :sorted-entries="sortedEntries"
+        :selected-index="selectedIndex"
+        :locked-index="lockedIndex"
+        :locked-keyword="lockedKeyword"
+        :article-level="articleLevel"
+        :article-id="props.selectedArticle?.id ?? null"
+        :article-pain-point="props.selectedArticle?.painPoint ?? null"
+        :sort-options="captainSortOptions"
+        :sort-state="captainSortState"
+        :raw-index-of="rawIndexOf"
+        @select="selectEntry"
+        @lock="lockEntry"
+        @unlock="unlockEntry"
+        @word-toggle="(p) => handleWordToggleAt(p.index, p.indices)"
+        @recompute-relevance="handleRecomputeRelevance"
+        @sort-change="(s) => captainSortState = s"
+      />
 
       <CaptainSidePanel
         :entry="selectedEntry"

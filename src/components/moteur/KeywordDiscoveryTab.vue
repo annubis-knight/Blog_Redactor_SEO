@@ -5,6 +5,9 @@ import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
 import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
 import DiscoveryAiPanel from '@/components/moteur/DiscoveryAiPanel.vue'
+import DiscoveryWordGroupsSidebar from '@/components/moteur/discovery/DiscoveryWordGroupsSidebar.vue'
+import DiscoveryAnalysisResults from '@/components/moteur/discovery/DiscoveryAnalysisResults.vue'
+import DiscoverySourcesList from '@/components/moteur/discovery/DiscoverySourcesList.vue'
 import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
@@ -411,87 +414,27 @@ function handleToggleAnalysisSelectAll() {
       <p v-if="error" class="discovery-error">{{ error }}</p>
 
       <!-- U1 — Source sections : toujours affichées, même vides avec placeholder -->
-      <div class="discovery-sources">
-        <template v-for="section in sections" :key="section.key">
-          <section class="source-section">
-            <div class="source-header" @click="toggleCollapsed(section.key)">
-              <span class="source-header__chevron" :class="{ 'source-header__chevron--open': !isCollapsed(section.key) }">▸</span>
-              <span class="source-header__icon">{{ section.icon }}</span>
-              <span class="source-header__title">{{ section.label }}</span>
-              <span class="source-header__count">
-                <template v-if="section.loading">
-                  <span class="spinner-small" />
-                </template>
-                <template v-else-if="section.list.length > 0">
-                  ({{ filteredList(section.list).length }}<template v-if="filteredList(section.list).length !== section.list.length">/{{ section.list.length }}</template>)
-                </template>
-              </span>
-              <label
-                v-if="filteredList(section.list).length > 0"
-                class="source-header__check-all"
-                @click.stop
-              >
-                <input
-                  type="checkbox"
-                  :checked="isAllSourceSelected(section.key)"
-                  @change="handleToggleSource(section.key)"
-                />
-                Tout
-              </label>
-            </div>
-            <ul v-if="!isCollapsed(section.key) && filteredList(section.list).length > 0" class="source-list">
-              <li
-                v-for="kw in visibleItems(filteredList(section.list), section.key)"
-                :key="section.key + '-' + kw.keyword"
-                class="source-item"
-                :class="{
-                  'source-item--selected': isSelected(kw.keyword),
-                  'source-item--multi': isMultiSource(kw.keyword),
-                  'source-item--irrelevant': !isRelevant(kw.keyword),
-                }"
-                @click="handleKeywordClick(kw.keyword)"
-              >
-                <input
-                  type="checkbox"
-                  :checked="isSelected(kw.keyword)"
-                  @click.stop
-                  @change="handleKeywordClick(kw.keyword)"
-                />
-                <span
-                  class="source-item__keyword"
-                  :class="{ 'source-item__keyword--multi': isMultiSource(kw.keyword) }"
-                >{{ kw.keyword }}</span>
-                <span v-if="sourceCountLabel(kw.keyword)" class="multi-badge">{{ sourceCountLabel(kw.keyword) }}</span>
-                <small v-if="section.showReasoning && kw.reasoning" class="source-item__reasoning">{{ kw.reasoning }}</small>
-                <span v-if="section.showKpis" class="source-item__kpis">
-                  <span v-if="kw.searchVolume != null" class="kpi-tag">Vol: {{ formatVolume(kw.searchVolume) }}</span>
-                  <span v-if="kw.difficulty != null" class="kpi-tag">KD: {{ kw.difficulty }}</span>
-                  <span v-if="kw.cpc != null" class="kpi-tag">CPC: {{ kw.cpc.toFixed(2) }}€</span>
-                  <span v-if="kw.intent" class="kpi-tag kpi-tag--intent">{{ kw.intent }}</span>
-                </span>
-              </li>
-            </ul>
-            <!-- P3 — Bouton « Tout afficher » si la liste est tronquée -->
-            <button
-              v-if="!isCollapsed(section.key) && filteredList(section.list).length > VISIBLE_THRESHOLD"
-              type="button"
-              class="source-list__expand-btn"
-              @click="toggleSectionExpanded(section.key)"
-            >
-              <template v-if="isSectionExpanded(section.key)">Réduire la liste</template>
-              <template v-else>Afficher tout ({{ filteredList(section.list).length - VISIBLE_THRESHOLD }} de plus)</template>
-            </button>
-            <!-- Placeholder quand la section est vide et pas en loading -->
-            <p
-              v-else-if="!isCollapsed(section.key) && !section.loading && section.list.length === 0"
-              class="source-section__placeholder"
-            >
-              <template v-if="!hasDiscovered">Saisissez un mot-clé pour découvrir les suggestions.</template>
-              <template v-else>Aucun résultat dans cette source.</template>
-            </p>
-          </section>
-        </template>
+      <DiscoverySourcesList
+        :sections="sections"
+        :filtered-list="filteredList"
+        :visible-items="visibleItems"
+        :is-collapsed="isCollapsed"
+        :is-section-expanded="isSectionExpanded"
+        :is-selected="isSelected"
+        :is-multi-source="isMultiSource"
+        :is-relevant="isRelevant"
+        :is-all-source-selected="isAllSourceSelected"
+        :source-count-label="sourceCountLabel"
+        :format-volume="formatVolume"
+        :has-discovered="hasDiscovered"
+        :visible-threshold="VISIBLE_THRESHOLD"
+        @toggle-collapsed="toggleCollapsed"
+        @toggle-source="handleToggleSource"
+        @keyword-click="handleKeywordClick"
+        @toggle-section-expanded="toggleSectionExpanded"
+      />
 
+      <div class="discovery-sources">
         <!-- Empty state global : aucune source n'a rien trouvé après découverte -->
         <p
           v-if="hasDiscovered && !isAnyLoading && !hasResults"
@@ -520,55 +463,15 @@ function handleToggleAnalysisSelectAll() {
         </div>
 
         <!-- AI Analysis results -->
-        <section v-if="analysisResult" class="analysis-results">
-          <div class="analysis-results__header">
-            <h3 class="analysis-results__title">Recommandation IA</h3>
-            <span class="analysis-results__count">{{ analysisResult.keywords.length }} mots-cles</span>
-            <label class="analysis-results__check-all" @click.stop>
-              <input
-                type="checkbox"
-                :checked="isAllAnalysisSelected()"
-                @change="handleToggleAnalysisSelectAll"
-              />
-              Tout selectionner
-            </label>
-          </div>
-          <p class="analysis-results__summary">{{ analysisResult.summary }}</p>
-
-          <ul class="analysis-list">
-            <li
-              v-for="(kw, index) in analysisResult.keywords"
-              :key="kw.keyword"
-              class="analysis-item"
-              :class="{
-                'analysis-item--selected': isSelected(kw.keyword),
-                'analysis-item--high': kw.priority === 'high',
-                'analysis-item--medium': kw.priority === 'medium',
-                'analysis-item--low': kw.priority === 'low',
-              }"
-              @click="toggleSelect(kw.keyword)"
-            >
-              <input
-                type="checkbox"
-                :checked="isSelected(kw.keyword)"
-                @click.stop
-                @change="toggleSelect(kw.keyword)"
-              />
-              <span class="analysis-item__rank">{{ index + 1 }}</span>
-              <span class="analysis-item__priority" :class="'priority--' + kw.priority">
-                {{ kw.priority === 'high' ? '🔴' : kw.priority === 'medium' ? '🟡' : '🟢' }}
-              </span>
-              <div class="analysis-item__content">
-                <span
-                  class="analysis-item__keyword"
-                  :class="{ 'source-item__keyword--multi': isMultiSource(kw.keyword) }"
-                >{{ kw.keyword }}</span>
-                <span v-if="sourceCountLabel(kw.keyword)" class="multi-badge">{{ sourceCountLabel(kw.keyword) }}</span>
-                <p class="analysis-item__reasoning">{{ kw.reasoning }}</p>
-              </div>
-            </li>
-          </ul>
-        </section>
+        <DiscoveryAnalysisResults
+          :analysis-result="analysisResult"
+          :is-all-analysis-selected="isAllAnalysisSelected"
+          :is-selected="isSelected"
+          :is-multi-source="isMultiSource"
+          :source-count-label="sourceCountLabel"
+          @toggle-select="toggleSelect"
+          @toggle-select-all="handleToggleAnalysisSelectAll"
+        />
       </div>
 
       <!-- Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page : tri local
@@ -584,29 +487,14 @@ function handleToggleAnalysisSelectAll() {
     </div>
 
     <!-- Sidebar: Word Groups -->
-    <aside v-if="hasDiscovered" class="discovery-sidebar">
-      <div class="sidebar-header">
-        <h3 class="sidebar-title">Groupes de mots</h3>
-        <span v-if="wordGroupsLoading" class="spinner-small" />
-      </div>
-
-      <ul v-if="wordGroups.length > 0" class="group-list">
-        <li
-          v-for="group in wordGroups"
-          :key="group.normalized"
-          class="group-item"
-          :class="{ 'group-item--active': activeGroupFilter === group.normalized }"
-          @click="handleGroupClick(group.normalized)"
-        >
-          <span class="group-item__word">{{ group.word }}</span>
-          <span class="group-item__count">{{ group.count }}</span>
-        </li>
-      </ul>
-
-      <p v-else-if="!wordGroupsLoading && hasResults" class="sidebar-empty">
-        Pas assez de données pour les groupes.
-      </p>
-    </aside>
+    <DiscoveryWordGroupsSidebar
+      v-if="hasDiscovered"
+      :word-groups="wordGroups"
+      :word-groups-loading="wordGroupsLoading"
+      :has-results="hasResults"
+      :active-group-filter="activeGroupFilter"
+      @group-click="handleGroupClick"
+    />
 
     <!-- Sticky bottom bar -->
     <Transition name="slide-up">
@@ -635,92 +523,6 @@ function handleToggleAnalysisSelectAll() {
   display: flex;
   flex-direction: column;
   gap: 12px;
-}
-
-.discovery-sidebar {
-  width: 220px;
-  flex-shrink: 0;
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  padding: 12px;
-  background: var(--color-surface);
-  align-self: flex-start;
-  position: sticky;
-  top: 16px;
-  max-height: calc(100vh - 200px);
-  overflow-y: auto;
-}
-
-/* --- Sidebar --- */
-.sidebar-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.sidebar-title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.group-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.group-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 5px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8125rem;
-  transition: background 0.1s;
-}
-
-.group-item:hover {
-  background: var(--color-bg-hover);
-}
-
-.group-item--active {
-  background: rgba(37, 99, 235, 0.1);
-  color: var(--color-primary);
-}
-
-.group-item__word {
-  font-weight: 500;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.group-item__count {
-  font-size: 0.6875rem;
-  color: var(--color-text-muted);
-  background: var(--color-bg-hover);
-  padding: 1px 6px;
-  border-radius: 10px;
-  flex-shrink: 0;
-  margin-left: 4px;
-}
-
-.group-item--active .group-item__count {
-  background: rgba(37, 99, 235, 0.15);
-  color: var(--color-primary);
-}
-
-.sidebar-empty {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  text-align: center;
 }
 
 /* --- Relevance toggle --- */
@@ -862,169 +664,11 @@ function handleToggleAnalysisSelectAll() {
   border-radius: 6px;
 }
 
-/* --- Source sections --- */
+/* --- Source sections wrapper (kept for analysis-action layout) --- */
 .discovery-sources {
   display: flex;
   flex-direction: column;
   gap: 8px;
-}
-
-.source-section {
-  border: 1px solid var(--color-border);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.source-section__placeholder {
-  margin: 0;
-  padding: 12px 16px;
-  font-size: 0.8125rem;
-  font-style: italic;
-  color: var(--color-text-muted, #64748b);
-  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.03));
-}
-
-.source-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 12px;
-  background: var(--color-surface);
-  cursor: pointer;
-  user-select: none;
-}
-
-.source-header:hover {
-  background: var(--color-bg-hover);
-}
-
-.source-header__chevron {
-  display: inline-block;
-  font-size: 0.75rem;
-  transition: transform 0.15s ease;
-  color: var(--color-text-muted);
-}
-
-.source-header__chevron--open {
-  transform: rotate(90deg);
-}
-
-.source-header__icon {
-  font-size: 0.875rem;
-}
-
-.source-header__title {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.source-header__count {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.source-header__check-all {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-}
-
-.source-header__check-all input {
-  cursor: pointer;
-}
-
-/* --- Keyword list --- */
-.source-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 300px;
-  overflow-y: auto;
-}
-
-.source-list__expand-btn {
-  display: block;
-  width: 100%;
-  margin-top: 0.25rem;
-  padding: 0.375rem 0.5rem;
-  font-size: 0.75rem;
-  color: var(--color-text-muted, #64748b);
-  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.04));
-  border: 1px dashed var(--color-border, #e2e8f0);
-  border-radius: 4px;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-}
-
-.source-list__expand-btn:hover {
-  background: var(--color-surface, #f8fafc);
-  color: var(--color-primary, #3b82f6);
-}
-
-.source-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 4px 12px;
-  border-top: 1px solid var(--color-border);
-  cursor: pointer;
-  font-size: 0.8125rem;
-  transition: background 0.1s;
-}
-
-.source-item:hover {
-  background: var(--color-bg-hover);
-}
-
-.source-item--selected {
-  background: rgba(37, 99, 235, 0.04);
-}
-
-.source-item input[type="checkbox"] {
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.source-item__keyword {
-  color: var(--color-text);
-  font-weight: 500;
-}
-
-.source-item--irrelevant {
-  opacity: 0.5;
-}
-
-.source-item--irrelevant .source-item__keyword {
-  color: var(--color-text-muted);
-  font-weight: 400;
-}
-
-.source-item__keyword--multi {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-
-.source-item--irrelevant .source-item__keyword--multi {
-  color: var(--color-text-muted);
-  font-weight: 400;
-}
-
-.multi-badge {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: rgba(37, 99, 235, 0.1);
-  padding: 1px 5px;
-  border-radius: 4px;
-  flex-shrink: 0;
 }
 
 /* --- Scoring progress bar --- */
@@ -1063,40 +707,6 @@ function handleToggleAnalysisSelectAll() {
   background: var(--color-bg-hover);
   padding: 2px 8px;
   border-radius: 4px;
-}
-
-.source-item__reasoning {
-  color: var(--color-text-muted);
-  font-size: 0.75rem;
-  margin-left: 4px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  max-width: 300px;
-}
-
-.source-item__kpis {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  margin-left: auto;
-  flex-shrink: 0;
-}
-
-.kpi-tag {
-  font-size: 0.6875rem;
-  padding: 1px 5px;
-  border-radius: 4px;
-  background: var(--color-surface);
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-  white-space: nowrap;
-}
-
-.kpi-tag--intent {
-  background: var(--color-block-info-bg);
-  border-color: var(--color-block-info-border);
-  color: var(--color-primary);
 }
 
 /* --- Spinner --- */
@@ -1201,130 +811,6 @@ function handleToggleAnalysisSelectAll() {
   margin-inline: auto;
 }
 
-/* --- Analysis results panel --- */
-.analysis-results {
-  border: 1px solid rgba(37, 99, 235, 0.3);
-  border-radius: 8px;
-  overflow: hidden;
-  background: var(--color-surface);
-}
-
-.analysis-results__header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
-  background: linear-gradient(135deg, rgba(124, 58, 237, 0.08), rgba(37, 99, 235, 0.08));
-  border-bottom: 1px solid var(--color-border);
-}
-
-.analysis-results__title {
-  font-size: 0.875rem;
-  font-weight: 700;
-  color: var(--color-text);
-  margin: 0;
-}
-
-.analysis-results__count {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: rgba(37, 99, 235, 0.1);
-  padding: 2px 8px;
-  border-radius: 10px;
-}
-
-.analysis-results__summary {
-  padding: 10px 14px;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  line-height: 1.5;
-  border-bottom: 1px solid var(--color-border);
-  margin: 0;
-}
-
-.analysis-list {
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  max-height: 500px;
-  overflow-y: auto;
-}
-
-.analysis-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 14px;
-  border-bottom: 1px solid var(--color-border);
-  cursor: pointer;
-  transition: background 0.1s;
-}
-
-.analysis-item:last-child {
-  border-bottom: none;
-}
-
-.analysis-item:hover {
-  background: var(--color-bg-hover);
-}
-
-.analysis-item--selected {
-  background: rgba(37, 99, 235, 0.04);
-}
-
-.analysis-item input[type="checkbox"] {
-  margin-top: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.analysis-item__rank {
-  font-size: 0.6875rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-  min-width: 18px;
-  text-align: right;
-  margin-top: 2px;
-  flex-shrink: 0;
-}
-
-.analysis-item__priority {
-  font-size: 0.75rem;
-  flex-shrink: 0;
-  margin-top: 1px;
-}
-
-.analysis-item__content {
-  flex: 1;
-  min-width: 0;
-}
-
-.analysis-item__keyword {
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-text);
-}
-
-.analysis-item--high .analysis-item__keyword {
-  color: #dc2626;
-}
-
-.analysis-item--medium .analysis-item__keyword {
-  color: var(--color-text);
-}
-
-.analysis-item--low .analysis-item__keyword {
-  color: var(--color-text-muted);
-}
-
-.analysis-item__reasoning {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  line-height: 1.4;
-  margin: 2px 0 0;
-}
-
 /* --- Cache indicator --- */
 .cache-indicator {
   display: flex;
@@ -1387,22 +873,6 @@ function handleToggleAnalysisSelectAll() {
 .cache-indicator__clear:hover {
   border-color: var(--color-text-muted);
   color: var(--color-text);
-}
-
-/* --- Analysis select all --- */
-.analysis-results__check-all {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  font-weight: 500;
-}
-
-.analysis-results__check-all input {
-  cursor: pointer;
 }
 
 /* --- Transition --- */
