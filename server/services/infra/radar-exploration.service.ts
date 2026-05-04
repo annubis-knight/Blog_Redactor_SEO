@@ -1,6 +1,7 @@
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import type { RadarKeyword, KeywordRadarScanResult } from '../../../shared/types/intent.types.js'
+import type { LongTailSuggestion } from '../../../shared/schemas/long-tail-suggestions.schema.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -143,4 +144,67 @@ export async function deleteRadarExploration(articleId: number): Promise<void> {
 export function isRadarFresh(scannedAt: string | Date | null | undefined): boolean {
   if (!scannedAt) return false
   return computeFreshness(scannedAt)
+}
+
+// ---------------------------------------------------------------------------
+// Long-tail suggestions (S2 — extension JSONB scan_result)
+// ---------------------------------------------------------------------------
+
+/**
+ * Met à jour le champ `scan_result.longTailSuggestions[]` (et optionnellement
+ * `scan_result.longTailSelectedKeywords[]`) sans toucher aux `cards[]`.
+ *
+ * Si la row n'existe pas encore (article sans scan), on créée une row
+ * minimale pour porter les suggestions (les cards racines viendront plus
+ * tard via `saveRadarExploration`).
+ */
+export async function persistLongTailSuggestions(
+  articleId: number,
+  suggestions: LongTailSuggestion[],
+  selectedKeywords?: string[],
+): Promise<void> {
+  // 1) Lire la row existante (si présente) pour préserver cards[].
+  const existing = await getRadarExploration(articleId)
+
+  const merged: KeywordRadarScanResult & { longTailSuggestions: LongTailSuggestion[]; longTailSelectedKeywords?: string[] } = {
+    // Defaults pour ne pas violer le schema KeywordRadarScanResult quand la row
+    // n'existe pas (cas long-tail générée sans scan radar préalable — rare mais
+    // possible si l'utilisateur arrive directement par une longue-traîne saisie).
+    specificTopic: existing?.scanResult?.specificTopic ?? '',
+    broadKeyword: existing?.scanResult?.broadKeyword ?? '',
+    autocomplete: existing?.scanResult?.autocomplete ?? { suggestions: [], totalCount: 0 },
+    cards: existing?.scanResult?.cards ?? [],
+    globalScore: existing?.scanResult?.globalScore ?? 0,
+    heatLevel: existing?.scanResult?.heatLevel ?? 'froide',
+    verdict: existing?.scanResult?.verdict ?? '',
+    scannedAt: existing?.scanResult?.scannedAt ?? new Date().toISOString(),
+    longTailSuggestions: suggestions,
+    ...(selectedKeywords !== undefined ? { longTailSelectedKeywords: selectedKeywords } : {}),
+  }
+
+  // Conserver la sélection précédente si on ne la met pas à jour explicitement
+  if (selectedKeywords === undefined && existing?.scanResult) {
+    const prev = (existing.scanResult as KeywordRadarScanResult & { longTailSelectedKeywords?: string[] }).longTailSelectedKeywords
+    if (prev) merged.longTailSelectedKeywords = prev
+  }
+
+  await query(
+    `INSERT INTO radar_explorations
+       (article_id, seed, broad_keyword, specific_topic, pain_point, depth, generated_keywords, scan_result, scanned_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, NOW())
+     ON CONFLICT (article_id) DO UPDATE
+       SET scan_result = EXCLUDED.scan_result,
+           scanned_at = NOW()`,
+    [
+      articleId,
+      existing?.seed ?? '',
+      existing?.context.broadKeyword ?? null,
+      existing?.context.specificTopic ?? null,
+      existing?.context.painPoint ?? null,
+      existing?.context.depth ?? 1,
+      JSON.stringify(existing?.generatedKeywords ?? []),
+      JSON.stringify(merged),
+    ],
+  )
+  log.info(`radar-exploration: long-tail persisted article ${articleId} (${suggestions.length} suggestions)`)
 }

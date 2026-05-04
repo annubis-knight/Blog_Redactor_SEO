@@ -21,6 +21,7 @@ import intentScanRoutes from './routes/intent-scan.routes.js'
 import discoveryCacheRoutes from './routes/discovery-cache.routes.js'
 import radarCacheRoutes from './routes/radar-cache.routes.js'
 import radarExplorationRoutes from './routes/radar-exploration.routes.js'
+import longTailSuggestRoutes from './routes/long-tail-suggest.routes.js'
 import articleExplorationsRoutes from './routes/article-explorations.routes.js'
 import keywordQueriesRoutes from './routes/keyword-queries.routes.js'
 import keywordValidateRoutes from './routes/keyword-validate.routes.js'
@@ -73,6 +74,7 @@ app.use('/api', intentScanRoutes)
 app.use('/api', discoveryCacheRoutes)
 app.use('/api', radarCacheRoutes)
 app.use('/api', radarExplorationRoutes)
+app.use('/api', longTailSuggestRoutes)
 app.use('/api', articleExplorationsRoutes)
 app.use('/api', keywordQueriesRoutes)
 app.use('/api', keywordValidateRoutes)
