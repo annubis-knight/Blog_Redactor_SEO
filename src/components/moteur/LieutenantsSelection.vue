@@ -11,17 +11,13 @@ import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
-import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
-import LieutenantsAiPanel from '@/components/moteur/LieutenantsAiPanel.vue'
-// Sprint 1 (2026-05-04) — restauration imports pré-C-1.
-// Ces deux composants étaient importés ici avant Sprint C-1 puis migrés
-// dans LieutenantsAiPanel. La régression UX a forcé leur retour ici en
-// containers principaux de premier niveau. NE PAS les ré-importer dans
-// LieutenantsAiPanel (test verrou architecture).
-import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
-import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
+// Vague 3 (2026-05-04) — sous-composant Vue qui formalise FR-LIE-AI-FRONTIER.
+// Encapsule LieutenantProposals + LieutenantH2Structure + sources IA + lock
+// + LieutenantsAiPanel. Par construction, les containers principaux ne sont
+// JAMAIS descendants du panel IA.
+import LieutenantsResultsLayout from '@/components/moteur/lieutenants/LieutenantsResultsLayout.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
@@ -484,110 +480,37 @@ async function analyzeSERPWithStep(): Promise<void> {
          si l'utilisateur a déjà ajouté des cards depuis le basket
          (`lieutenantCards.length > 0`). Avant, la section n'apparaissait que
          si SERP ou lock — bloquant l'observation des cards "assist-add". -->
-    <div v-if="serpResult || isLocked || lieutenantCards.length > 0" class="serp-results">
-
-      <!-- ⚠️ ARCHITECTURE — Sprint 1 (2026-05-04)
-           Restauration de l'architecture pré-Sprint C-1 : les containers
-           PRINCIPAUX (LieutenantProposals + LieutenantH2Structure) vivent ici
-           au premier niveau, PAS dans LieutenantsAiPanel.
-
-           Pourquoi : Sprint C-1 (2026-05-02, commit 890b285) avait wrappé
-           ces deux composants dans la coque "Suggestions IA Lieutenants".
-           Conséquence UX : l'utilisateur voyait ses propres données (cards
-           Lieutenants verrouillés, structure Hn validée) sous l'étiquette
-           "Suggestions IA", ce qui brouillait totalement la frontière entre
-           "données utilisateur" et "suggestions IA".
-
-           Test verrou anti-régression :
-             tests/unit/components/lieutenants-selection-architecture.test.ts
-           NE JAMAIS re-wrapper ces composants dans LieutenantsAiPanel. -->
-
-      <!-- Container principal #1 : Propositions Lieutenants (cards + éliminés) -->
-      <LieutenantProposals
-        :ia-is-streaming="iaIsStreaming"
-        :ia-chunks="iaChunks"
-        :ia-error="iaError"
-        :lieutenant-cards="lieutenantCards"
-        :eliminated-cards="eliminatedCards"
-        :total-generated="totalGenerated"
-        :selected-cards="selectedCards"
-        :is-locked="isLocked"
-        :content-gap-insights="contentGapInsights"
-        :article-level="articleLevel"
-        @toggle="toggleLieutenant"
-        @retry="proposeLieutenants"
-      />
-
-      <!-- Container principal #2 : Structure Hn (IA + concurrents intégrés) -->
-      <LieutenantH2Structure
-        :hn-structure="hnStructure"
-        :active-hn-recurrence="activeHnRecurrence"
-        :hn-recurrence="hnRecurrence"
-        :serp-results-by-keyword="serpResultsByKeyword"
-        :active-hn-tab="activeHnTab"
-        :is-locked="isLocked"
-        :hn-saved="hnSaved"
-        :is-saving-hn="isSavingHn"
-        @save-hn="saveHnStructure"
-        @update:active-hn-tab="activeHnTab = $event"
-      />
-
-      <!-- Sprint 4.6 — PAA section relabeled: clarifies that these are the raw
-           Google questions the AI *consulted* to build its proposal, not extra
-           content to use directly. -->
-      <CollapsableSection v-if="serpResult" title="Sources IA : questions Google (PAA)" :default-open="false">
-        <p class="section-hint">Questions "People Also Ask" scrapees depuis Google pour tes mots-cles. Elles ont deja ete prises en compte par l'IA pour proposer les lieutenants ci-dessus — affichees ici pour transparence.</p>
-        <ul v-if="serpResult.paaQuestions.length > 0" class="paa-list">
-          <li v-for="paa in serpResult.paaQuestions" :key="paa.question" class="paa-item">
-            <div class="paa-question">{{ paa.question }}</div>
-            <div v-if="paa.answer" class="paa-answer">{{ paa.answer }}</div>
-          </li>
-        </ul>
-        <p v-else class="section-empty">Google n'a renvoye aucune question PAA pour ces mots-cles — c'est normal sur des requetes techniques ou de niche.</p>
-      </CollapsableSection>
-
-      <!-- Word groups -->
-      <CollapsableSection v-if="serpResult" title="Sources IA : clusters Discovery" :default-open="false">
-        <p class="section-hint">Regroupements thematiques (par racine commune) calcules a partir des mots-cles trouves dans l'onglet Discovery. Utilises par l'IA pour reperer les sous-themes a traiter.</p>
-        <ul v-if="wordGroups.length > 0" class="group-list">
-          <li v-for="g in wordGroups" :key="g.normalized" class="group-item">
-            <span class="group-word">{{ g.word }}</span>
-            <span class="group-count">{{ g.count }} termes</span>
-          </li>
-        </ul>
-        <p v-else class="section-empty">Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici.</p>
-      </CollapsableSection>
-
-      <!-- Lock/unlock Lieutenants -->
-      <div class="lieutenant-lock" data-testid="lieutenant-lock">
-        <button
-          v-if="!isLocked"
-          class="lock-btn"
-          data-testid="lock-btn"
-          :disabled="selectedCards.size === 0"
-          @click="lockLieutenants"
-        >
-          Valider les Lieutenants
-        </button>
-        <div v-else class="locked-state" data-testid="locked-state">
-          <span class="locked-badge">Lieutenants verrouilles</span>
-          <button class="unlock-btn" data-testid="unlock-btn" @click="unlockLieutenants">Deverrouiller</button>
-        </div>
-      </div>
-
-      <!-- Section IA pure — coque purple commune avec les autres onglets.
-           NE contient PAS de cards Lieutenants ni de structure Hn (sinon
-           régression Sprint C-1). Cf. test verrou architecture. -->
-      <LieutenantsAiPanel
-        :ia-is-streaming="iaIsStreaming"
-        :ia-chunks="iaChunks"
-        :ia-error="iaError"
-        :is-locked="isLocked"
-        :content-gap-insights="contentGapInsights"
-        :total-generated="totalGenerated"
-        @retry="proposeLieutenants"
-      />
-    </div>
+    <!-- Vague 3 (2026-05-04) : LieutenantsResultsLayout encapsule l'ensemble
+         containers principaux + sources IA + lock + panel IA, en formalisant
+         FR-LIE-AI-FRONTIER (cf. PRD §8.7). -->
+    <LieutenantsResultsLayout
+      :serp-result="serpResult"
+      :is-locked="isLocked"
+      :lieutenant-cards="lieutenantCards"
+      :ia-is-streaming="iaIsStreaming"
+      :ia-chunks="iaChunks"
+      :ia-error="iaError"
+      :eliminated-cards="eliminatedCards"
+      :total-generated="totalGenerated"
+      :selected-cards="selectedCards"
+      :content-gap-insights="contentGapInsights"
+      :article-level="articleLevel"
+      :hn-structure="hnStructure"
+      :active-hn-recurrence="activeHnRecurrence"
+      :hn-recurrence="hnRecurrence"
+      :serp-results-by-keyword="serpResultsByKeyword"
+      :active-hn-tab="activeHnTab"
+      :hn-saved="hnSaved"
+      :is-saving-hn="isSavingHn"
+      :word-groups="wordGroups"
+      :selected-cards-size="selectedCards.size"
+      @toggle="toggleLieutenant"
+      @propose-retry="proposeLieutenants"
+      @save-hn="saveHnStructure"
+      @update:active-hn-tab="(tab: string) => activeHnTab = tab"
+      @lock-lieutenants="lockLieutenants"
+      @unlock-lieutenants="unlockLieutenants"
+    />
   </div>
 </template>
 
