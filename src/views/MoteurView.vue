@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onBeforeUnmount, ref, computed, watch } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
@@ -18,30 +18,22 @@ import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 // Sprint 4 (2026-05-04) — SelectedArticlePanel retiré (friction #3 redondance).
-import type { NavGroup } from '@/components/shared/WorkflowNav.vue'
 
-// Phase = structure interne (gating, transition banner, smart-tab logic).
-// Conservée même si la nav-app utilise désormais NavGroup.
-interface Phase {
-  id: string
-  label: string
-  number: number
-  tabs: { id: string; label: string; optional?: boolean; locked?: boolean }[]
-}
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
 import { useTabLoadPrompt, type LoadPromptTab } from '@/composables/moteur/useTabLoadPrompt'
-import { isFinalisationUnlocked, finalisationButtonTitle as buildFinalisationButtonTitle } from '@/composables/moteur/useFinalisationGating'
+import { useMoteurSoftGating } from '@/composables/moteur/useMoteurSoftGating'
+import { useMoteurTabs } from '@/composables/moteur/useMoteurTabs'
+import { useMoteurCrossTabState } from '@/composables/moteur/useMoteurCrossTabState'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
 import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
 import DouleurIntentScanner from '@/components/intent/DouleurIntentScanner.vue'
-import type { RadarKeyword, RadarCard } from '@shared/types/intent.types.js'
 
 // Phase ② Valider
 import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
@@ -59,11 +51,6 @@ const strategyStore = useCocoonStrategyStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const articleProgressStore = useArticleProgressStore()
 const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroups } = useKeywordDiscoveryTab()
-const { clearResults, loadCachedResults } = useArticleResults({
-  onRadarLoaded: (result) => {
-    radarScanResult.value = { globalScore: result.globalScore, heatLevel: result.heatLevel }
-  },
-})
 const basketStore = useMoteurBasketStore()
 const workflowNavStore = useWorkflowNavStore()
 
@@ -212,32 +199,37 @@ const pilierKeyword = computed(() =>
   keywordsStore.keywords.find(k => k.type === 'Pilier')?.keyword ?? cocoon.value?.name ?? '',
 )
 
-// Discovery/Radar tabs are only available when keywords are NOT validated
-const isDiscoveryAllowed = computed(() => {
-  if (!selectedArticle.value) return true
-  const articleKw = selectedArticle.value.keyword
-  if (!articleKw) return true
-  const kw = keywordsStore.keywords.find(
-    k => k.keyword.toLowerCase() === articleKw.toLowerCase(),
-  )
-  return !kw || kw.status === 'suggested'
+// --- Soft gating (Vague 3 — extracted to useMoteurSoftGating) ---
+const {
+  isCaptaineLocked,
+  isLieutenantsLocked,
+  isLexiqueValidated,
+  finalisationUnlocked,
+  finalisationButtonTitle,
+  isDiscoveryAllowed,
+} = useMoteurSoftGating({
+  selectedArticle,
+  articleProgressStore,
+  keywordsStore,
 })
 
-// --- Phase navigation ---
-// Bloc 2 — 'finalisation' ajouté comme onglet dédié de Phase ③ (cf.
-// docs/moteur-data-flow.md §1). Remplace l'ancienne modale qui s'ouvrait
-// depuis un bouton non gardé.
-const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation'] as const
-type Tab = typeof TAB_IDS[number]
-const activeTab = ref<Tab>('capitaine')
+// --- Phase navigation (Vague 3 — extracted to useMoteurTabs) ---
+const {
+  activeTab,
+  visitedTabs,
+  nextTab,
+  isInGenererPhase,
+  setActiveTab,
+  computeSmartTab,
+} = useMoteurTabs({
+  selectedArticle,
+  isDiscoveryAllowed,
+  articleProgressStore,
+  workflowNavStore,
+})
 
-// Track which tabs have been visited — v-if creates them lazily, v-show keeps them alive
-const visitedTabs = ref<Record<string, boolean>>({ capitaine: true })
-watch(activeTab, (tab) => { visitedTabs.value[tab] = true })
-
-// Sprint 1.3/5.1 — contextual next-tab button. Shows "Continuer vers {TabSuivant}"
-// at the bottom of every tab so the user can chain phases without hunting for a CTA.
-const TAB_LABELS: Record<Tab, string> = {
+// Sprint 1.3/5.1 — contextual next-tab button labels (utilisés par le template).
+const TAB_LABELS: Record<string, string> = {
   discovery: 'Discovery',
   radar: 'Radar',
   capitaine: 'Capitaine',
@@ -245,11 +237,6 @@ const TAB_LABELS: Record<Tab, string> = {
   lexique: 'Lexique',
   finalisation: 'Finalisation',
 }
-const nextTab = computed<Tab | null>(() => {
-  const idx = TAB_IDS.indexOf(activeTab.value)
-  if (idx < 0 || idx >= TAB_IDS.length - 1) return null
-  return TAB_IDS[idx + 1] ?? null
-})
 
 function navigateToRedaction() {
   if (selectedArticle.value?.id) {
@@ -259,99 +246,8 @@ function navigateToRedaction() {
   }
 }
 
-const phases = computed<Phase[]>(() => [
-  {
-    id: 'generer',
-    label: 'Générer',
-    number: 1,
-    tabs: [
-      { id: 'discovery', label: 'Discovery', optional: true, locked: !isDiscoveryAllowed.value },
-      { id: 'radar', label: 'Radar', optional: true, locked: !isDiscoveryAllowed.value },
-    ],
-  },
-  {
-    id: 'valider',
-    label: 'Valider',
-    number: 2,
-    tabs: [
-      { id: 'capitaine', label: 'Capitaine' },
-      { id: 'lieutenants', label: 'Lieutenants' },
-      { id: 'lexique', label: 'Lexique' },
-    ],
-  },
-  {
-    id: 'finaliser',
-    label: 'Finaliser',
-    number: 3,
-    tabs: [
-      { id: 'finalisation', label: 'Finalisation' },
-    ],
-  },
-])
-
-const isInGenererPhase = computed(() =>
-  activeTab.value === 'discovery' || activeTab.value === 'radar',
-)
-
-function setActiveTab(tabId: string) {
-  if ((TAB_IDS as readonly string[]).includes(tabId)) {
-    activeTab.value = tabId as Tab
-  }
-}
-
-// Sprint 2.4 — PhaseTransitionBanner retiré (PHASE_CHECKS, PHASE_NEXT,
-// currentPhaseId, isCurrentPhaseComplete, bannerDismissed, transitionBanner,
-// showTransitionBanner supprimés). Le bouton bas-de-page "Continuer vers
-// {TabSuivant}" remplace ce banner.
-
-// --- Publish workflow nav state to AppNavbar (right slot)
-// La navbar globale (AppNavbar) lit `useWorkflowNavStore` et rend la nav.
-// On publie ici l'état de phases/onglets actifs ; on nettoie au unmount.
-const navGroups = computed<NavGroup[]>(() =>
-  phases.value.map(p => ({
-    id: p.id,
-    label: p.label,
-    number: p.number,
-    items: p.tabs.map(t => ({
-      id: t.id,
-      label: t.label,
-      locked: t.locked || !selectedArticle.value,
-      hint: !selectedArticle.value
-        ? 'Sélectionnez un article ci-dessus'
-        : t.locked
-          ? 'Mots-clés déjà validés — onglet verrouillé'
-          : undefined,
-    })),
-  })),
-)
-
-watch(
-  [navGroups, activeTab],
-  ([groups, active]) => {
-    workflowNavStore.setWorkflowNav({
-      workflow: 'moteur',
-      activeId: active,
-      groups,
-      onNavigate: (id: string) => setActiveTab(id),
-    })
-  },
-  { immediate: true, deep: true },
-)
-
-onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
-
-function computeSmartTab(articleId: number): Tab {
-  const progress = articleProgressStore.getProgress(articleId)
-  const checks = progress?.completedChecks ?? []
-  if (checks.length === 0) return 'capitaine'
-  // Sprint 4 (2026-05-04) — friction #1 : ne plus auto-naviguer vers
-  // Finalisation. C'est un onglet de récap pré-Rédaction, l'utilisateur le
-  // choisit explicitement via le CTA bas-de-page de Lexique. La sélection
-  // d'article ramène toujours sur le 1er onglet utile à compléter.
-  if (checks.includes('lieutenants_locked')) return 'lexique'
-  if (checks.includes('capitaine_locked')) return 'lieutenants'
-  return 'capitaine'
-}
+// (phases, isInGenererPhase, setActiveTab, navGroups, watcher publish,
+//  onBeforeUnmount cleanup, computeSmartTab moved to useMoteurTabs above)
 
 function handleSelectArticle(article: SelectedArticle | null) {
   log.debug('[MoteurView] Article toggled', {
@@ -371,19 +267,14 @@ function handleSelectArticle(article: SelectedArticle | null) {
 
   // Navigate to the smart tab (components handle article change via their id watchers)
   const smartTab = article ? computeSmartTab(article.id) : 'capitaine'
-  activeTab.value = smartTab
+  setActiveTab(smartTab)
   visitedTabs.value[smartTab] = true
 
   // Sync basket with article
   basketStore.setArticle(article?.id ?? null)
 
-  // Reset cross-tab state
-  selectedLieutenantsLocal.value = []
-  discoveryRadarKeywords.value = []
-  radarScanResult.value = null
-  radarCacheStatus.value = null
-  radarCardsForCaptain.value = []
-  captainRootKeywords.value = []
+  // Reset cross-tab state (Vague 3 — déléguée au composable)
+  resetCrossTabState()
 
   // Clear previous analysis results then reload cached ones for the new article
   clearResults()
@@ -439,86 +330,40 @@ function handleSelectArticle(article: SelectedArticle | null) {
   }
 }
 
-// --- Cross-tab state ---
-const discoveryRadarKeywords = ref<RadarKeyword[]>([])
-const radarScanResult = ref<{ globalScore: number; heatLevel: string } | null>(null)
-const radarCacheStatus = ref<RadarCacheStatus | null>(null)
-const radarCardsForCaptain = ref<RadarCard[]>([])
-
-function handleCardsSelected(cards: RadarCard[]) {
-  // S4 — Dédup défensive (2e niveau) : si le payload contient des doublons
-  // (régression upstream possible), on les écrase ici. Card avec kpis non-null
-  // (racine) prime sur card kpis null (longue-traîne).
-  const seen = new Map<string, RadarCard>()
-  for (const c of cards) {
-    const norm = c.keyword.trim().toLowerCase()
-    const existing = seen.get(norm)
-    if (!existing || (existing.kpis === null && c.kpis !== null)) {
-      seen.set(norm, c)
-    }
-  }
-  const deduped = Array.from(seen.values())
-  log.info(`[MoteurView] Send ${deduped.length} radar cards to Capitaine (dedup ${cards.length - deduped.length})`)
-  radarCardsForCaptain.value = deduped
-  activeTab.value = 'capitaine'
-}
-
-function handleRadarScanned(payload: { globalScore: number; heatLevel: string }) {
-  log.debug('[MoteurView] Radar scanned', payload)
-  radarScanResult.value = payload
-  emitCheckCompleted('radar_done')
-}
-
-function handleSendToRadar(keywords: RadarKeyword[]) {
-  log.info(`[MoteurView] Send to radar: ${keywords.length} keywords`)
-  discoveryRadarKeywords.value = keywords
-  activeTab.value = 'radar'
-  emitCheckCompleted('discovery_done')
-
-  // Add to basket
-  basketStore.addKeywords(keywords.map(k => ({
-    keyword: k.keyword,
-    source: 'discovery' as const,
-    reasoning: k.reasoning,
-  })))
-}
-
-function handleKeywordsCleared() {
-  log.debug('[MoteurView] Keywords cleared')
-  discoveryRadarKeywords.value = []
-  radarScanResult.value = null
-}
-
-// --- Soft gating computeds for Phase ② sous-onglets ---
-const isCaptaineLocked = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  return articleProgressStore.getProgress(id)?.completedChecks?.includes('capitaine_locked') ?? false
+// --- Cross-tab state (Vague 3 — extracted to useMoteurCrossTabState) ---
+const {
+  discoveryRadarKeywords,
+  radarScanResult,
+  radarCacheStatus,
+  radarCardsForCaptain,
+  effectiveRootKeywords,
+  selectedLieutenantsForLexique,
+  handleCardsSelected,
+  handleRadarScanned,
+  handleSendToRadar,
+  handleKeywordsCleared,
+  handleSendToLieutenants,
+  handleLieutenantsUpdated,
+  resetCrossTabState,
+} = useMoteurCrossTabState({
+  selectedArticle,
+  articleKeywordsStore,
+  basketStore,
+  setActiveTab,
+  emitCheckCompleted,
 })
 
-const isLieutenantsLocked = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  return articleProgressStore.getProgress(id)?.completedChecks?.includes('lieutenants_locked') ?? false
+// useArticleResults : doit être placé APRÈS useMoteurCrossTabState pour que
+// `radarScanResult` soit déjà défini quand le callback `onRadarLoaded` est
+// appelé. La closure capture la Ref par référence — l'ordre matters au moment
+// du call, mais TypeScript exige aussi l'ordre de déclaration.
+const { clearResults, loadCachedResults } = useArticleResults({
+  onRadarLoaded: (result) => {
+    radarScanResult.value = { globalScore: result.globalScore, heatLevel: result.heatLevel }
+  },
 })
 
-const isLexiqueValidated = computed(() => {
-  const id = selectedArticle.value?.id
-  if (!id) return false
-  return articleProgressStore.getProgress(id)?.completedChecks?.includes('lexique_validated') ?? false
-})
-
-// Bloc 2 — Gating Finalisation/Rédaction. Logique pure extraite dans
-// useFinalisationGating pour être testable unitairement (cf.
-// tests/unit/composables/finalisation-gating.test.ts).
-const finalisationChecksInput = computed(() => ({
-  capitaineLocked: isCaptaineLocked.value,
-  lieutenantsLocked: isLieutenantsLocked.value,
-  lexiqueValidated: isLexiqueValidated.value,
-}))
-
-const finalisationUnlocked = computed(() => isFinalisationUnlocked(finalisationChecksInput.value))
-const finalisationButtonTitle = computed(() => buildFinalisationButtonTitle(finalisationChecksInput.value))
+// (Soft gating computeds moved to useMoteurSoftGating composable above)
 
 // --- Lieutenants props ---
 const captainKeyword = computed(() =>
@@ -539,32 +384,9 @@ const suggestedKeywordsForArticle = computed(() => {
   return proposed?.suggestedKeywords ?? []
 })
 
-const captainRootKeywords = ref<string[]>([])
-
-const effectiveRootKeywords = computed(() =>
-  captainRootKeywords.value.length > 0
-    ? captainRootKeywords.value
-    : articleKeywordsStore.keywords?.rootKeywords ?? [],
-)
-
-const selectedLieutenantsLocal = ref<string[]>([])
-
-const selectedLieutenantsForLexique = computed(() =>
-  selectedLieutenantsLocal.value.length > 0
-    ? selectedLieutenantsLocal.value
-    : articleKeywordsStore.keywords?.lieutenants ?? [],
-)
-
-function handleLieutenantsUpdated(selected: string[]) {
-  selectedLieutenantsLocal.value = selected
-}
-
-function handleSendToLieutenants(payload: { keyword: string; rootKeywords: string[] }) {
-  log.info('[MoteurView] Send to Lieutenants', payload)
-  captainRootKeywords.value = payload.rootKeywords
-  activeTab.value = 'lieutenants'
-  visitedTabs.value.lieutenants = true
-}
+// (captainRootKeywords, effectiveRootKeywords, selectedLieutenantsLocal,
+//  selectedLieutenantsForLexique, handleLieutenantsUpdated, handleSendToLieutenants
+//  moved to useMoteurCrossTabState above)
 
 // --- Tab cache entries for unified cache panel ---
 // La construction des entrées est déléguée à `buildTabCacheEntries` (utilitaire
@@ -670,9 +492,7 @@ onMounted(() => {
   resetDiscovery()
   articleKeywordsStore.$reset()
   basketStore.$reset()
-  discoveryRadarKeywords.value = []
-  radarScanResult.value = null
-  radarCacheStatus.value = null
+  resetCrossTabState()
   loadData()
 })
 </script>
