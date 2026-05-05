@@ -2,8 +2,8 @@
 name: score-capitaine
 description: Score(s) du Capitaine d'un article — dans la version actuelle (post 2026-04-28), il s'agit de DEUX scores indépendants (Score Marché objectif + Score Pertinence subjectif lié à la douleur).
 type: "{ marketScore: { value: number | null, verdict: 'GO'|'ORANGE'|'NO-GO'|'GRAY', breakdown: KpiScores }, relevanceScore: { value: number | null, verdict: 'GO'|'ORANGE'|'NO-GO'|'GRAY', breakdown: RelevanceBreakdown } | null }"
-last_updated: 2026-05-04
-related_fr: [FR-RAD-SCORING-BIMODAL, FR-CAP-SCORING-BIMODAL, FR-CAP-VALIDATE, FR-CAP-VERDICT-INFORMATIVE, FR-MOT-RAW-KPIS]
+last_updated: 2026-05-05
+related_fr: [FR-RAD-SCORING-BIMODAL, FR-CAP-SCORING-BIMODAL, FR-CAP-VALIDATE, FR-CAP-VERDICT-INFORMATIVE, FR-MOT-RAW-KPIS, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
 # Data Flow — score-capitaine

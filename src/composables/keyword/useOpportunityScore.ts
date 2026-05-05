@@ -1,6 +1,7 @@
 import type { KeywordAuditResult } from '@shared/types/index.js'
 import type { ContentGapAnalysis } from '@shared/types/index.js'
 import type { LocalNationalComparison } from '@shared/types/index.js'
+import { averageScores } from '@shared/score/index.js'
 
 export interface OpportunityScore {
   total: number
@@ -21,12 +22,12 @@ export function useOpportunityScore() {
     contentGap?: ContentGapAnalysis | null,
     localComparison?: LocalNationalComparison | null,
   ): OpportunityScore {
-    // Keyword score: average composite from audit (0-100)
+    // Keyword score: moyenne null-safe (composantes absentes exclues).
     let keywordScore = 50 // default if no audit
     if (auditResults && auditResults.length > 0) {
-      keywordScore = Math.round(
-        auditResults.reduce((sum, r) => sum + r.compositeScore.total, 0) / auditResults.length,
-      )
+      const avg = averageScores(auditResults.map(r => r.compositeScore.total))
+      // avg null = aucun score calculable → on garde la baseline 50 (neutre).
+      if (avg !== null) keywordScore = Math.round(avg)
     }
 
     // Competitor weakness (0-100): higher = weaker competitors

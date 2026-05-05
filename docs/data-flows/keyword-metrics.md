@@ -2,8 +2,8 @@
 name: keyword-metrics
 description: Table PostgreSQL cross-article permanente stockant les KPIs et analyses bruts d'un mot-clé (Volume, KeywordDifficulty, CPC, Intent, PAA[], Autocomplete[], SERP raw JSON, analyses locales/gap). Partagée par tous les articles utilisant le même mot-clé — une seule requête DataForSEO par mot-clé, jamais par article.
 type: "{ keyword: TEXT PK, lang: TEXT, country: TEXT, search_volume: int, keyword_difficulty: int, cpc: numeric, competition: numeric, intent_raw: numeric, autocomplete_suggestions: JSONB[], autocomplete_source: TEXT, paa_questions: JSONB[], local_analysis: JSONB, content_gap_analysis: JSONB, local_comparison: JSONB, serp_raw_json: JSONB, fetched_at: TIMESTAMPTZ }"
-last_updated: 2026-05-04
-related_fr: [FR-INFRA-KEYWORD-METRICS, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-INT-SERP-ONCE, FR-CAP-VALIDATE]
+last_updated: 2026-05-05
+related_fr: [FR-INFRA-KEYWORD-METRICS, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-INT-SERP-ONCE, FR-CAP-VALIDATE, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
 # Data Flow — keyword-metrics
@@ -164,6 +164,7 @@ graph TD
 - **Sprint 15.5 (2026-05-02)** — Ajout `local_analysis` + `content_gap_analysis` + `local_comparison` dans la même table au lieu de tables article-scoped. Perte de traçabilité article↔keyword (reconstruction possible via `article_keywords`). Accepté comme trade-off table consolidée.
 - **Sprint 15.5-bis (2026-05-03)** — SERP scraping déplacé dans `serp_raw_json` sur `keyword_metrics` (avant : `serp_explorations` article-scoped). Invariant **NFR-INT-SERP-ONCE** : zéro re-requête SERP si frais → TF-IDF Lexique utilise le JSON hérité. Route `/serp/analyze` check DB avant appel externe (ligne 33-37).
 - **2026-04-28 (Score Pertinence)** — Changement formule PAA : avant moyenne, après cumulative. Scores historiques stockés dans `captain_explorations` ne sont pas recalculés — affichage doit montrer la date du calcul.
+- **2026-05-05 (KPI nullable)** — Migration des types `KeywordOverview / LocationMetrics / RadarKeywordKpis / KeywordAuditResult` : les 4 KPIs marché (`searchVolume`, `keywordDifficulty`, `cpc`, `competition`) passent de `number` à `number | null`. Les `?? 0` côté adapters DataForSEO sont remplacés par `?? null` — l'absence de signal reste explicite jusqu'à l'UI (`—` au lieu de `0`). Voir tech-spec-kpi-types-nullable.md et FR-INFRA-KPI-* dans le PRD.
 
 ## Tests de cohérence à écrire
 

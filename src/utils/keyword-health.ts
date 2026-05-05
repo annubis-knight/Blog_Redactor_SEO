@@ -15,8 +15,14 @@ export function evaluateKeywordHealth(data: DataForSeoCacheEntry): KeywordHealth
   const alerts: KeywordHealthAlert[] = []
   const { searchVolume, difficulty } = data.keywordData
 
-  // Danger: no data at all
-  if (searchVolume === VOLUME_ZERO) {
+  // Donn\u00e9es KPI manquantes (DataForSEO sans signal) — info, pas danger.
+  if (searchVolume === null) {
+    alerts.push({
+      level: 'warning',
+      message: "Donn\u00e9es KPI indisponibles \u2014 DataForSEO n'a renvoy\u00e9 aucun signal",
+    })
+  } else if (searchVolume === VOLUME_ZERO) {
+    // Danger: vrai z\u00e9ro mesur\u00e9 (pas null).
     alerts.push({
       level: 'danger',
       message: "Aucun volume de recherche \u2014 ce mot-cl\u00e9 n'existe pas dans Google",
@@ -30,22 +36,22 @@ export function evaluateKeywordHealth(data: DataForSeoCacheEntry): KeywordHealth
     })
   }
 
-  // Warnings
-  if (searchVolume > VOLUME_ZERO && searchVolume < VOLUME_LOW) {
+  // Warnings — ne s'appliquent qu'aux valeurs num\u00e9riques.
+  if (searchVolume !== null && searchVolume > VOLUME_ZERO && searchVolume < VOLUME_LOW) {
     alerts.push({
       level: 'warning',
       message: `Volume tr\u00e8s faible (${searchVolume}/mois) \u2014 trafic limit\u00e9`,
     })
   }
 
-  if (difficulty > DIFFICULTY_HIGH) {
+  if (difficulty !== null && difficulty > DIFFICULTY_HIGH) {
     alerts.push({
       level: 'warning',
       message: `Difficult\u00e9 \u00e9lev\u00e9e (${difficulty}/100) \u2014 concurrence forte`,
     })
   }
 
-  if (searchVolume > VOLUME_ZERO && data.serp.length > 0 && data.paa.length === 0) {
+  if (searchVolume !== null && searchVolume > VOLUME_ZERO && data.serp.length > 0 && data.paa.length === 0) {
     alerts.push({
       level: 'warning',
       message: "Aucune PAA \u2014 pas d'opportunit\u00e9 de position z\u00e9ro",

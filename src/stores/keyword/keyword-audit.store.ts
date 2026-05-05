@@ -1,3 +1,15 @@
+/**
+ * AUTHORITY: PostgreSQL `keywords` table + cache `keyword_metrics`
+ * READS FROM: POST /api/keywords/audit (audit complet)
+ *             GET  /api/keywords/audit/:cocoon/status (freshness cache)
+ * WRITES TO:  POST /api/keywords (addKeyword)
+ *             PUT  /api/keywords (replaceKeyword)
+ *             PATCH /api/keywords/:keyword/status (updateKeywordStatus)
+ *             DELETE /api/keywords/:keyword (deleteKeyword)
+ * CONSUMERS: KeywordAuditTable.vue, KeywordComparison.vue, MoteurValidationStep
+ * RELATED FR: FR-INFRA-API-WRAPPER, NFR-INT-API-WRAPPER, NFR-OBS-COST-LOG,
+ *             NFR-OBS-DBOPS-TRACK, NFR-OBS-KNOWN-ERRORS
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import type {
@@ -9,6 +21,8 @@ import type {
   KeywordStatus,
 } from '@shared/types/index.js'
 import { log } from '@/utils/logger'
+import { averageScores } from '@shared/score/index.js'
+import { apiGet, apiPost, apiPut, apiPatch, apiDelete } from '@/services/api.service'
 
 export const useKeywordAuditStore = defineStore('keywordAudit', () => {
   const results = ref<KeywordAuditResult[]>([])
@@ -22,9 +36,9 @@ export const useKeywordAuditStore = defineStore('keywordAudit', () => {
     const types: KeywordType[] = ['Pilier', 'Moyenne traine', 'Longue traine', 'Intermédiaire', 'Spécialisé']
     return types.map(type => {
       const ofType = results.value.filter(r => r.type === type)
-      const avg = ofType.length > 0
-        ? Math.round(ofType.reduce((sum, r) => sum + r.compositeScore.total, 0) / ofType.length)
-        : 0
+      // Moyenne null-safe : composantes manquantes exclues, jamais comptées comme 0.
+      const avgRaw = averageScores(ofType.map(r => r.compositeScore.total))
+      const avg = avgRaw === null ? 0 : Math.round(avgRaw)
       const alertCount = ofType.reduce((sum, r) => sum + r.alerts.length, 0)
       return { type, averageScore: avg, keywordCount: ofType.length, alertCount }
     })
@@ -38,21 +52,13 @@ export const useKeywordAuditStore = defineStore('keywordAudit', () => {
     currentCocoon.value = cocoonName
 
     try {
-      const res = await fetch('/api/keywords/audit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ cocoonName, forceRefresh }),
-      })
-
-      if (!res.ok) {
-        const err = await res.json()
-        throw new Error(err.error?.message ?? 'Audit failed')
-      }
-
-      const json = await res.json()
-      log.info(`Audit done for "${cocoonName}"`, { results: json.data.results.length, redundancies: json.data.redundancies.length })
-      results.value = json.data.results
-      redundancies.value = json.data.redundancies
+      const data = await apiPost<{ results: KeywordAuditResult[]; redundancies: RedundancyPair[] }>(
+        '/keywords/audit',
+        { cocoonName, forceRefresh },
+      )
+      log.info(`Audit done for "${cocoonName}"`, { results: data.results.length, redundancies: data.redundancies.length })
+      results.value = data.results
+      redundancies.value = data.redundancies
     } catch (err: unknown) {
       error.value = err instanceof Error ? err.message : 'Unknown error'
     } finally {
@@ -62,60 +68,44 @@ export const useKeywordAuditStore = defineStore('keywordAudit', () => {
 
   async function fetchCacheStatus(cocoonName: string) {
     try {
-      const res = await fetch(`/api/keywords/audit/${encodeURIComponent(cocoonName)}/status`)
-      if (!res.ok) return
-      const json = await res.json()
-      log.debug(`Audit cache status for "${cocoonName}"`, json.data)
-      cacheStatus.value = json.data
+      const data = await apiGet<AuditCacheStatus>(`/keywords/audit/${encodeURIComponent(cocoonName)}/status`)
+      log.debug(`Audit cache status for "${cocoonName}"`, data)
+      cacheStatus.value = data
     } catch {
       // Silent fail — cache status is optional
     }
   }
 
   async function addKeyword(keyword: string, cocoonName: string, type: KeywordType) {
-    const res = await fetch('/api/keywords', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyword, cocoonName, type }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error?.message ?? 'Failed to add keyword')
-    }
+    await apiPost<{ success: boolean }>('/keywords', { keyword, cocoonName, type })
   }
 
   async function replaceKeywordAction(oldKeyword: string, newKeyword: string, cocoonName: string, type: KeywordType) {
-    const res = await fetch('/api/keywords', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ oldKeyword, newKeyword: { keyword: newKeyword, cocoonName, type } }),
+    await apiPut<{ success: boolean }>('/keywords', {
+      oldKeyword,
+      newKeyword: { keyword: newKeyword, cocoonName, type },
     })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error?.message ?? 'Failed to replace keyword')
-    }
   }
 
   async function updateKeywordStatus(keyword: string, status: KeywordStatus) {
-    const res = await fetch(`/api/keywords/${encodeURIComponent(keyword)}/status`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ status }),
-    })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error?.message ?? 'Failed to update status')
-    }
+    await apiPatch<{ success: boolean }>(`/keywords/${encodeURIComponent(keyword)}/status`, { status })
     // Update local state
     const result = results.value.find(r => r.keyword === keyword)
     if (result) result.status = status
   }
 
   async function deleteKeywordAction(keyword: string) {
-    const res = await fetch(`/api/keywords/${encodeURIComponent(keyword)}`, { method: 'DELETE' })
-    if (!res.ok) {
-      const err = await res.json()
-      throw new Error(err.error?.message ?? 'Failed to delete keyword')
+    await apiDelete<{ success: boolean }>(`/keywords/${encodeURIComponent(keyword)}`)
+  }
+
+  /**
+   * Ajoute en lot plusieurs mots-clés au cocoon. Utilisé par DiscoveryPanel
+   * (sélection multiple) — évite que le composant fasse des appels HTTP
+   * directs (FR-INFRA-API-WRAPPER, NFR-INT-API-WRAPPER).
+   */
+  async function addKeywordsBatch(keywords: { keyword: string; type: KeywordType }[], cocoonName: string) {
+    for (const { keyword, type } of keywords) {
+      await addKeyword(keyword, cocoonName, type)
     }
   }
 
@@ -140,6 +130,7 @@ export const useKeywordAuditStore = defineStore('keywordAudit', () => {
     fetchAudit,
     fetchCacheStatus,
     addKeyword,
+    addKeywordsBatch,
     updateKeywordStatus,
     replaceKeywordAction,
     deleteKeywordAction,

@@ -173,9 +173,9 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
             KPIs march&eacute;
           </h4>
           <ul class="side-panel-kpis-list">
-            <li><span class="kpi-label">Volume</span><span class="kpi-value">{{ marketKpis.volume.toLocaleString('fr-FR') }} rech/m</span></li>
-            <li><span class="kpi-label">Difficult&eacute;</span><span class="kpi-value">{{ marketKpis.kd }}</span></li>
-            <li><span class="kpi-label">CPC</span><span class="kpi-value">{{ marketKpis.cpc.toFixed(2) }} &euro;</span></li>
+            <li><span class="kpi-label">Volume</span><span class="kpi-value">{{ marketKpis.volume === null ? '—' : `${marketKpis.volume.toLocaleString('fr-FR')} rech/m` }}</span></li>
+            <li><span class="kpi-label">Difficult&eacute;</span><span class="kpi-value">{{ marketKpis.kd === null ? '—' : marketKpis.kd }}</span></li>
+            <li><span class="kpi-label">CPC</span><span class="kpi-value">{{ marketKpis.cpc === null ? '—' : `${marketKpis.cpc.toFixed(2)} \u20AC` }}</span></li>
             <li><span class="kpi-label">Intent</span><span class="kpi-value">{{ marketKpis.intent }}</span></li>
             <li><span class="kpi-label">PAA</span><span class="kpi-value">{{ marketKpis.paaCount }} questions</span></li>
             <li><span class="kpi-label">Autocomplete</span><span class="kpi-value">{{ marketKpis.autocompleteCount }} matches</span></li>

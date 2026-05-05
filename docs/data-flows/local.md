@@ -2,8 +2,8 @@
 name: local
 description: "Flux des données SEO local — Google Maps analysis (Local Pack + GBP listings + review gap) et comparaison volume local vs national (opportunités tarifaires et compétitives). Tables: keyword_metrics.local_analysis, keyword_metrics.local_comparison. Stores: useLocalStore + useIntentStore. Cross-article, cache permanent."
 type: "{ local_analysis: MapsResult | null, local_comparison: LocalNationalComparison | null } où MapsResult = { keyword, locationCode, hasLocalPack, listings: GbpListing[], reviewGap: ReviewGap, cachedAt }, LocalNationalComparison = { keyword, local: LocationMetrics, national: LocationMetrics, opportunityIndex, alert?: OpportunityAlert, cachedAt }"
-last_updated: 2026-05-04
-related_fr: [FR-EXP-LOCAL-COMPARE, FR-EXP-MAPS, FR-EXT-DATAFORSEO, FR-DASH-NAV, FR-LIE-GEOFUNNEL-RULE]
+last_updated: 2026-05-05
+related_fr: [FR-EXP-LOCAL-COMPARE, FR-EXP-MAPS, FR-EXT-DATAFORSEO, FR-DASH-NAV, FR-LIE-GEOFUNNEL-RULE, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
 # Data Flow — local

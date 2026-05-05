@@ -263,6 +263,17 @@ development_status:
   16-6-mutation-testing-stryker: done
   epic-16-retrospective: optional
 
+  # Chantier KPI nullable (2026-05-05) — tech-spec-kpi-types-nullable.md
+  # FR-INFRA-KPI-NULLABLE / FR-INFRA-KPI-DISPLAY-DASH / FR-INFRA-KPI-CONSISTENCY
+  # FR-INFRA-KPI-SCORING-NULLSAFE — phase Green livrée :
+  #   - shared/score/format.ts : formatVolume / formatCpc / formatKd / formatPercent
+  #   - shared/types/keyword-audit.types.ts : KeywordCompositeScore.{volume,total,...} → number | null
+  #   - server/services/external/dataforseo/scoring.ts : computeCompositeScore + generateAlerts null-safe
+  #   - 17 consommateurs adaptés (composants Vue, stores, composables, services)
+  #   - 7 tests Red devenus Green (kpi-nullable.test.ts) + 14 helpers (format-kpi.test.ts)
+  #   - Audit data-flow : 5 → 2 violations HIGH (dont 2 préexistantes)
+  kpi-nullable-green-phase: done
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur

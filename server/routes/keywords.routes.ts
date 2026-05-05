@@ -498,21 +498,16 @@ router.post('/keywords/validate-pain', async (req, res) => {
           fetchAutocomplete(kw),
         ])
 
-        // DataForSEO data
+        // DataForSEO data — FR-INFRA-KPI-NULLABLE : null propagé depuis l'adapter,
+        // pas de fallback `?? 0`. computeServerVerdict + le front gèrent null.
         const relatedCount = relatedResult.status === 'fulfilled' ? relatedResult.value.length : 0
-        // Adapter DataForSEO : le contrat de réponse de cet endpoint legacy
-        // expose les KPIs en `number` (pas null). À long terme : migrer vers
-        // `searchVolume: number | null` pour aligner avec keyword_metrics.
-        // TODO[data-flow-discipline] : type ResponseDataforseo doit autoriser null
-         
         const dataforseo = {
-          searchVolume: overview?.searchVolume ?? 0,
-          difficulty: overview?.difficulty ?? 0,
-          cpc: overview?.cpc ?? 0,
-          competition: overview?.competition ?? 0,
+          searchVolume: overview?.searchVolume ?? null,
+          difficulty: overview?.difficulty ?? null,
+          cpc: overview?.cpc ?? null,
+          competition: overview?.competition ?? null,
           relatedCount,
         }
-         
 
         // Community signal
         const community = communityResult.status === 'fulfilled' ? communityResult.value : null
@@ -521,7 +516,11 @@ router.post('/keywords/validate-pain', async (req, res) => {
         const autocomplete = autocompleteResult.status === 'fulfilled' ? autocompleteResult.value : null
 
         // Server-side verdict (simplified scoring)
-        const verdict = computeServerVerdict(dataforseo, community, autocomplete)
+        const verdict = computeServerVerdict(
+          { searchVolume: dataforseo.searchVolume, cpc: dataforseo.cpc, relatedCount: dataforseo.relatedCount },
+          community,
+          autocomplete,
+        )
 
         return { keyword: kw, dataforseo, community, autocomplete, verdict }
       }),
@@ -538,29 +537,44 @@ router.post('/keywords/validate-pain', async (req, res) => {
   }
 })
 
-/** Compute a simplified server-side verdict based on the 3 sources */
+/**
+ * Compute a simplified server-side verdict based on the 3 sources.
+ *
+ * FR-INFRA-KPI-SCORING-NULLSAFE AC3 : KPIs marché null = signal manquant,
+ * la composante n'apporte pas de score. Si TOUS les signaux DataForSEO sont
+ * null ET community/autocomplete absents → catégorie 'incertaine' (jamais
+ * 'froide' qui suggérerait un keyword mort).
+ */
 function computeServerVerdict(
-  dataforseo: { searchVolume: number; cpc: number; relatedCount: number },
+  dataforseo: { searchVolume: number | null; cpc: number | null; relatedCount: number },
   community: { discussionsCount: number; freshness: string } | null,
   autocomplete: { suggestionsCount: number; hasKeyword: boolean } | null,
 ): { category: string; confidence: number; sourcesAvailable: number } {
-  let sourcesAvailable = 1 // DataForSEO always present
+  // sourcesAvailable compte les SOURCES (DataForSEO/community/autocomplete),
+  // pas les KPIs internes. DataForSEO est marqué disponible uniquement si
+  // on a au moins un signal numérique exploitable (volume OU cpc).
+  const dataforseoUsable = dataforseo.searchVolume !== null || dataforseo.cpc !== null
+  let sourcesAvailable = dataforseoUsable ? 1 : 0
   if (community) sourcesAvailable++
   if (autocomplete) sourcesAvailable++
 
-  const vol = dataforseo.searchVolume
-  const cpc = dataforseo.cpc
   const discCount = community?.discussionsCount ?? 0
   const freshness = community?.freshness ?? 'old'
   const autoCount = autocomplete?.suggestionsCount ?? 0
   const autoHas = autocomplete?.hasKeyword ?? false
 
-  // Scoring
+  // Scoring null-safe : un KPI null ne marque AUCUN point (pas de fallback à
+  // 0 qui serait équivalent à "trop bas, pas de point" — ça mélangerait
+  // donnée absente et donnée mauvaise).
   let score = 0
-  if (vol > 200) score += 2
-  else if (vol > 50) score += 1
-  if (cpc > 3) score += 2
-  else if (cpc > 1) score += 1
+  if (dataforseo.searchVolume !== null) {
+    if (dataforseo.searchVolume > 200) score += 2
+    else if (dataforseo.searchVolume > 50) score += 1
+  }
+  if (dataforseo.cpc !== null) {
+    if (dataforseo.cpc > 3) score += 2
+    else if (dataforseo.cpc > 1) score += 1
+  }
   if (discCount >= 5 && freshness === 'recent') score += 2
   else if (discCount >= 3) score += 1
   if (autoHas) score += 2
@@ -572,6 +586,9 @@ function computeServerVerdict(
   else if (score >= 5) category = 'confirmee'
   else if (score >= 3) category = 'emergente'
   else if (score >= 2 && discCount === 0 && autoCount > 0) category = 'latente'
+  // FR-INFRA-KPI-SCORING-NULLSAFE AC3 : pas de signal exploitable nulle part
+  // → 'incertaine' plutôt que 'froide' (qui implique "mesuré et mort").
+  else if (sourcesAvailable === 0 || (!dataforseoUsable && discCount === 0 && autoCount === 0)) category = 'incertaine'
   else if (score <= 1) category = 'froide'
   else category = 'incertaine'
 

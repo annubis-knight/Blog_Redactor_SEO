@@ -333,21 +333,21 @@ async function fetchKeywordOverviewForLocation(keyword: string, locationCode: nu
   const item = json.tasks?.[0]?.result?.[0]?.items?.[0]
   if (!item) {
     log.debug(`fetchKeywordOverviewForLocation no data`, { keyword, locationCode, ms: Date.now() - start })
-    return { searchVolume: 0, keywordDifficulty: 0, cpc: 0, competition: 0, monthlySearches: [] }
+    // FR-INFRA-KPI-NULLABLE : null = pas de signal DataForSEO sur cette location.
+    return { searchVolume: null, keywordDifficulty: null, cpc: null, competition: null, monthlySearches: [] }
   }
 
   log.debug(`fetchKeywordOverviewForLocation done`, { keyword, locationCode, ms: Date.now() - start, volume: item.keyword_info?.search_volume })
-  // Adapter DataForSEO -> LocationMetrics : type legacy impose number non nullable.
-  // TODO[data-flow-discipline] : migrer LocationMetrics vers number | null
-   
+  // Adapter DataForSEO -> LocationMetrics (FR-INFRA-KPI-NULLABLE).
   return {
-    searchVolume: item.keyword_info?.search_volume ?? 0,
-    keywordDifficulty: item.keyword_info?.keyword_difficulty ?? 0,
-    cpc: item.keyword_info?.cpc ?? 0,
-    competition: item.keyword_info?.competition ?? 0,
-    monthlySearches: item.keyword_info?.monthly_searches?.map((m: any) => m.search_volume) ?? [],
+    searchVolume: item.keyword_info?.search_volume ?? null,
+    keywordDifficulty: item.keyword_info?.keyword_difficulty ?? null,
+    cpc: item.keyword_info?.cpc ?? null,
+    competition: item.keyword_info?.competition ?? null,
+    monthlySearches: (item.keyword_info?.monthly_searches ?? [])
+      .map((m: { search_volume: number | null }) => m.search_volume)
+      .filter((v: number | null): v is number => v !== null && v !== undefined),
   }
-   
 }
 
 export async function compareLocalNational(keyword: string): Promise<LocalNationalComparison> {
@@ -372,12 +372,21 @@ export async function compareLocalNational(keyword: string): Promise<LocalNation
   ])
   log.debug(`Local vs national data fetched`, { keyword, ms: Date.now() - compareStart, nationalVolume: national.searchVolume, localVolume: local.searchVolume })
 
-  const kdNational = Math.max(national.keywordDifficulty, 1)
-  const opportunityIndex = Math.round((local.searchVolume * (100 - local.keywordDifficulty)) / kdNational)
+  // FR-INFRA-KPI-SCORING-NULLSAFE AC4 : opportunityIndex devient null si une
+  // opérande est null. Pas de Math.max(null, 1) trompeur, pas de NaN propagé.
+  let opportunityIndex: number | null = null
+  if (
+    local.searchVolume !== null
+    && local.keywordDifficulty !== null
+    && national.keywordDifficulty !== null
+  ) {
+    const kdNational = Math.max(national.keywordDifficulty, 1)
+    opportunityIndex = Math.round((local.searchVolume * (100 - local.keywordDifficulty)) / kdNational)
+  }
 
   const threshold = parseInt(process.env.LOCAL_OPPORTUNITY_THRESHOLD ?? '60', 10)
   let alert: OpportunityAlert | null = null
-  if (opportunityIndex >= threshold) {
+  if (opportunityIndex !== null && opportunityIndex >= threshold) {
     alert = {
       keyword,
       index: opportunityIndex,
@@ -492,8 +501,9 @@ export async function validateAutocomplete(keyword: string, prefixes?: string[])
     // Sandbox only accepts 2250; production uses France (2742)
     const volumeLocation = isSandbox() ? 2250 : 2742
     const metrics = await fetchKeywordOverviewForLocation(keyword, volumeLocation)
-    // Normalize: 0-1000 mapped to 0-1
-    volumeNormalized = Math.min(metrics.searchVolume / 1000, 1)
+    // Normalize: 0-1000 mapped to 0-1. Si volume null → on garde 0 (signal
+    // "pas assez d'info pour rehausser la confiance"), pas de fallback fantôme.
+    volumeNormalized = metrics.searchVolume === null ? 0 : Math.min(metrics.searchVolume / 1000, 1)
   } catch (err) {
     log.warn(`Autocomplete volume enrichment failed`, { keyword, error: (err as Error).message })
   }

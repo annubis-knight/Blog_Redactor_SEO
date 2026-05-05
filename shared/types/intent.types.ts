@@ -59,11 +59,17 @@ export interface IntentAnalysis {
 
 // --- Local vs National Comparison (Epic 12) ---
 
+/**
+ * LocationMetrics — KPIs marché pour une localisation (national vs local).
+ *
+ * Les 4 KPIs marché sont `number | null` (FR-INFRA-KPI-NULLABLE).
+ * `null` = donnée absente — JAMAIS `0`.
+ */
 export interface LocationMetrics {
-  searchVolume: number
-  keywordDifficulty: number
-  cpc: number
-  competition: number
+  searchVolume: number | null
+  keywordDifficulty: number | null
+  cpc: number | null
+  competition: number | null
   monthlySearches: number[]
 }
 
@@ -71,7 +77,12 @@ export interface LocalNationalComparison {
   keyword: string
   local: LocationMetrics
   national: LocationMetrics
-  opportunityIndex: number
+  /**
+   * Indice d'opportunité locale calculé sur volume * (100 - KD) / national_KD.
+   * `null` (FR-INFRA-KPI-SCORING-NULLSAFE AC4) si l'une des opérandes est
+   * `null` — pas de fallback à 0 qui masquerait l'absence de signal.
+   */
+  opportunityIndex: number | null
   alert: OpportunityAlert | null
   cachedAt: string
 }
@@ -151,11 +162,16 @@ export interface MultiSourceVerdict {
 
 export interface ValidatePainResult {
   keyword: string
+  /**
+   * Données DataForSEO. Les 4 KPIs marché sont `number | null`
+   * (FR-INFRA-KPI-NULLABLE). `relatedCount` reste `number` (compteur,
+   * jamais absent — vaut 0 quand vide).
+   */
   dataforseo: {
-    searchVolume: number
-    difficulty: number
-    cpc: number
-    competition: number
+    searchVolume: number | null
+    difficulty: number | null
+    cpc: number | null
+    competition: number | null
     relatedCount: number
   } | null
   community: CommunitySignal | null
@@ -239,11 +255,19 @@ export interface RadarPaaItem {
   painAlignment?: RadarPainAlignment
 }
 
+/**
+ * RadarKeywordKpis — KPIs d'une card Radar (marché + signaux PAA/Autocomplete).
+ *
+ * Les 4 KPIs marché (`searchVolume`, `difficulty`, `cpc`, `competition`)
+ * sont `number | null` (FR-INFRA-KPI-NULLABLE).
+ * Les signaux dérivés (`intentProbability`, `avgSemanticScore`) étaient déjà
+ * nullables — pas de migration.
+ */
 export interface RadarKeywordKpis {
-  searchVolume: number
-  difficulty: number
-  cpc: number
-  competition: number
+  searchVolume: number | null
+  difficulty: number | null
+  cpc: number | null
+  competition: number | null
   intentTypes: RadarIntentType[]
   intentProbability: number | null
   autocompleteMatchCount: number

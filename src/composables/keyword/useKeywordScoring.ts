@@ -30,6 +30,9 @@ export function useKeywordScoring() {
     const result: KeywordSuggestion[] = []
     for (const kw of store.results) {
       const currentScore = kw.compositeScore.total
+      // Sans score actuel calculable, pas de suggestion comparable —
+      // l'utilisateur ne peut pas juger d'une alternative sans baseline.
+      if (currentScore === null) continue
       const betterAlternatives = kw.relatedKeywords
         .map(rk => ({
           ...rk,

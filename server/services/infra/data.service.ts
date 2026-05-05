@@ -639,26 +639,26 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
   })
 
   const data = res.rows.map(t => {
-    // Rebuild KPIs from keyword_metrics columns. If the row exists in DB we expose
-    // non-null values, otherwise an empty array (the UI will show "missing metrics").
-    const kpis: Array<{ name: string; rawValue: number }> = []
+    // Adapter DB -> KPIs (FR-INFRA-KPI-NULLABLE) : la garde `metrics_fetched_at`
+    // non-null indique que la ligne a été fetchée au moins une fois, mais les
+    // colonnes individuelles peuvent rester `NULL` (pas de signal DataForSEO
+    // sur ce KPI). On propage `null` plutôt que `0` pour que l'UI affiche
+    // `'—'` au lieu d'un faux zéro trompeur.
+    const kpis: Array<{ name: string; rawValue: number | null }> = []
     if (t.metrics_fetched_at) {
-      // Adapter DB -> KPIs : la garde `metrics_fetched_at` non-null garantit que les
-      // colonnes ont ete fetchees au moins une fois. Les fallbacks ?? 0 sont
-      // defensive coding pour le cas (rare) ou une colonne specifique est null.
-      // TODO[data-flow-discipline] : remonter null jusqu'au front pour distinguer
-      // "0 reel" de "donnee absente"
-       
-      kpis.push({ name: 'volume', rawValue: Number(t.search_volume ?? 0) })
-      kpis.push({ name: 'kd', rawValue: Number(t.keyword_difficulty ?? 0) })
-      kpis.push({ name: 'cpc', rawValue: Number(t.cpc ?? 0) })
-      kpis.push({ name: 'intent', rawValue: Number(t.intent_raw ?? 0.5) })
+      kpis.push({ name: 'volume', rawValue: t.search_volume === null || t.search_volume === undefined ? null : Number(t.search_volume) })
+      kpis.push({ name: 'kd', rawValue: t.keyword_difficulty === null || t.keyword_difficulty === undefined ? null : Number(t.keyword_difficulty) })
+      kpis.push({ name: 'cpc', rawValue: t.cpc === null || t.cpc === undefined ? null : Number(t.cpc) })
+      // intent_raw : 0.5 = neutre par convention historique, pas un signal absent.
+      // Si vraiment NULL, on remonte null pour cohérence.
+      kpis.push({ name: 'intent', rawValue: t.intent_raw === null || t.intent_raw === undefined ? null : Number(t.intent_raw) })
       const suggestions = (t.autocomplete_suggestions ?? []) as Array<{ text: string; position: number }>
       const keywordLower = (t.keyword as string).toLowerCase()
-      const autoPos = suggestions.find(s => s.text.toLowerCase() === keywordLower)?.position ?? 0
+      // autocomplete : position dans la liste de suggestions. Si le keyword n'est
+      // pas dans la liste, position = null (pas 0, qui suggérerait "première position").
+      const autoPos = suggestions.find(s => s.text.toLowerCase() === keywordLower)?.position ?? null
       kpis.push({ name: 'autocomplete', rawValue: autoPos })
       kpis.push({ name: 'paa', rawValue: 0 })
-       
     }
     const scores = scoresByKeyword.get(t.keyword)
     return {

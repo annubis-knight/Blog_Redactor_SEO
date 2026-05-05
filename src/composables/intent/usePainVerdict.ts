@@ -18,6 +18,8 @@ const VERDICTS: Record<PainVerdict, Omit<PainVerdictInfo, 'verdict'>> = {
 
 export function usePainVerdict() {
   function getVerdict(kw: KeywordAuditResult): PainVerdict {
+    // KPIs absents (DataForSEO sans signal) → verdict neutre, jamais danger.
+    if (kw.searchVolume === null || kw.cpc === null) return 'neutre'
     // Brûlante: high volume + high CPC = strong commercial intent
     if (kw.searchVolume > 200 && kw.cpc > 3) return 'brulante'
     // Froide: no volume + no CPC = no market signal

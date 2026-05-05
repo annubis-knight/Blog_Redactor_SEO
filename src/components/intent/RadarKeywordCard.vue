@@ -4,6 +4,7 @@ import type { RadarCard, RadarIntentType, RadarPaaItem } from '@shared/types/int
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
 import { computeKpiScore } from '@shared/scoring-kpi.js'
+import { formatVolume as fmtVolumeShared, formatCpc as fmtCpcShared, formatKd as fmtKdShared } from '@shared/score/index.js'
 import KeywordWords from './KeywordWords.vue'
 import RadarCardScoreRing from '@/components/intent/radar-card/RadarCardScoreRing.vue'
 import RadarCardPaaTree from '@/components/intent/radar-card/RadarCardPaaTree.vue'
@@ -273,10 +274,11 @@ const isOffPain = computed(() => {
   return typeof s === 'number' && s < OFF_PAIN_THRESHOLD
 })
 
-function formatVolume(v: number): string {
-  if (v >= 1000) return `${(v / 1000).toFixed(1)}k`
-  return String(v)
-}
+// formatVolume / formatCpc / formatKd centralisés dans shared/score/format.ts
+// (FR-INFRA-KPI-DISPLAY-DASH). Alias locaux pour préserver le call-site existant.
+const formatVolume = fmtVolumeShared
+const formatCpc = fmtCpcShared
+const formatKd = fmtKdShared
 
 function baseMatchLabel(paa: RadarPaaItem): string {
   if (paa.match === 'total') return paa.matchQuality === 'exact' ? 'Exact' : paa.matchQuality === 'semantic' ? 'Semantique' : 'Match'
@@ -356,12 +358,12 @@ function itemBorderClass(paa: RadarPaaItem): string {
         <span class="kpi-sep">·</span>
         <span class="kpi-item">
           <span class="kpi-lbl">KD</span>
-          <span class="kpi-num">{{ card.kpis.difficulty }}</span>
+          <span class="kpi-num">{{ formatKd(card.kpis.difficulty) }}</span>
         </span>
         <span class="kpi-sep">·</span>
         <span class="kpi-item">
           <span class="kpi-lbl">CPC</span>
-          <span class="kpi-num">{{ card.kpis.cpc.toFixed(2) }}€</span>
+          <span class="kpi-num">{{ formatCpc(card.kpis.cpc) }}</span>
         </span>
         <span class="kpi-sep">·</span>
         <span class="kpi-item">

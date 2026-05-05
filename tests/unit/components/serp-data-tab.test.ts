@@ -70,7 +70,8 @@ describe('SerpDataTab', () => {
     expect(text).toContain('CPC')
     expect(text).toContain('2.50')
     expect(text).toContain('Concurrence')
-    expect(text).toContain('73%')
+    // formatPercent insère un espace fine ('73 %') — cohérent FR-INFRA-KPI-DISPLAY-DASH AC4.
+    expect(text).toContain('73 %')
   })
 
   it('renders SERP top results collapsible', () => {

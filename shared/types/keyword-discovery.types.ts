@@ -1,14 +1,19 @@
 import type { KeywordType } from './keyword.types.js'
 import type { KeywordCompositeScore } from './keyword-audit.types.js'
 
-/** A discovered keyword with full classification and metrics */
+/**
+ * A discovered keyword with full classification and metrics.
+ *
+ * Les 4 KPIs marché sont `number | null` (FR-INFRA-KPI-NULLABLE) — propagés
+ * depuis KeywordOverview sans fallback `?? 0`.
+ */
 export interface ClassifiedKeyword {
   keyword: string
   type: KeywordType
-  searchVolume: number
-  difficulty: number
-  cpc: number
-  competition: number
+  searchVolume: number | null
+  difficulty: number | null
+  cpc: number | null
+  competition: number | null
   wordsCount: number
   intent?: string
   intentProbability?: number

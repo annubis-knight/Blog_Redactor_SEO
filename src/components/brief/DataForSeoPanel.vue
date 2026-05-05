@@ -3,6 +3,7 @@ import { ref, computed } from 'vue'
 import type { DataForSeoCacheEntry } from '@shared/types/index.js'
 import { evaluateKeywordHealth } from '@/utils/keyword-health'
 import KeywordHealthAlerts from '@/components/shared/KeywordHealthAlerts.vue'
+import { formatVolume, formatKd, formatCpc, formatPercent } from '@shared/score/index.js'
 
 const props = defineProps<{
   data: DataForSeoCacheEntry | null
@@ -43,19 +44,19 @@ function toggleSection(section: string) {
       <div class="overview-cards">
         <div class="overview-card">
           <span class="card-label">Volume</span>
-          <span class="card-value">{{ data.keywordData.searchVolume.toLocaleString('fr-FR') }}</span>
+          <span class="card-value">{{ formatVolume(data.keywordData.searchVolume) }}</span>
         </div>
         <div class="overview-card">
           <span class="card-label">Difficulté</span>
-          <span class="card-value">{{ data.keywordData.difficulty }}/100</span>
+          <span class="card-value">{{ data.keywordData.difficulty === null ? '—' : `${formatKd(data.keywordData.difficulty)}/100` }}</span>
         </div>
         <div class="overview-card">
           <span class="card-label">CPC</span>
-          <span class="card-value">{{ data.keywordData.cpc.toFixed(2) }} €</span>
+          <span class="card-value">{{ formatCpc(data.keywordData.cpc) }}</span>
         </div>
         <div class="overview-card">
           <span class="card-label">Concurrence</span>
-          <span class="card-value">{{ (data.keywordData.competition * 100).toFixed(0) }}%</span>
+          <span class="card-value">{{ formatPercent(data.keywordData.competition, { fromRatio: true }) }}</span>
         </div>
       </div>
 

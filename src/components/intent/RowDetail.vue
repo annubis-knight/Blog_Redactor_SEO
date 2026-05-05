@@ -5,6 +5,7 @@ import { normalizeDataForSeoSignal, normalizeCommunitySignal, normalizeAutocompl
 import SourceBlock from './SourceBlock.vue'
 import DiscussionList from './DiscussionList.vue'
 import AutocompleteChips from './AutocompleteChips.vue'
+import { formatVolume, formatCpc, formatKd } from '@shared/score/index.js'
 
 const props = defineProps<{
   result: ValidatePainResult
@@ -25,7 +26,7 @@ const autoScore = computed(() => normalizeAutocompleteSignal(props.result.autoco
 const dfSummary = computed(() => {
   const d = props.result.dataforseo
   if (!d) return 'Non disponible'
-  return `Vol: ${d.searchVolume.toLocaleString('fr-FR')} CPC: ${d.cpc.toFixed(2)}€ KD: ${d.difficulty}% Related: ${d.relatedCount}`
+  return `Vol: ${formatVolume(d.searchVolume)} CPC: ${formatCpc(d.cpc)} KD: ${formatKd(d.difficulty)} Related: ${d.relatedCount}`
 })
 
 // Community summary

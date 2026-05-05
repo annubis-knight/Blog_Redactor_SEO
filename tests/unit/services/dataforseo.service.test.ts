@@ -822,3 +822,125 @@ describe('dataforseo.service — getAuditCacheStatus', () => {
     else delete process.env.DATAFORSEO_MIN_REFRESH_HOURS
   })
 })
+
+// =============================================================================
+// FR-INFRA-KPI-NULLABLE — adapters DataForSEO null-safe
+// =============================================================================
+// Voir _bmad-output/planning-artifacts/prd.md §FR-INFRA-KPI-NULLABLE.
+
+describe('FR-INFRA-KPI-NULLABLE — fetchKeywordOverview adapter', () => {
+  it('AC1.a — DataForSEO renvoie tous KPIs null → adapter retourne tous null (jamais 0)', async () => {
+    mockFetch.mockResolvedValue(
+      makeDfsResponse({
+        items: [
+          {
+            keyword: 'kw-no-data',
+            keyword_info: {
+              search_volume: null,
+              cpc: null,
+              competition: null,
+              monthly_searches: null,
+            },
+            keyword_properties: { keyword_difficulty: null },
+          },
+        ],
+      }),
+    )
+
+    const result = await fetchKeywordOverview('kw-no-data')
+    expect(result.searchVolume).toBeNull()
+    expect(result.difficulty).toBeNull()
+    expect(result.cpc).toBeNull()
+    expect(result.competition).toBeNull()
+    expect(result.monthlySearches).toEqual([])
+  })
+
+  it('AC1.b — DataForSEO sans items → defaults tous null', async () => {
+    mockFetch.mockResolvedValue(makeDfsResponse({ items: null }))
+
+    const result = await fetchKeywordOverview('absent')
+    expect(result.searchVolume).toBeNull()
+    expect(result.difficulty).toBeNull()
+    expect(result.cpc).toBeNull()
+    expect(result.competition).toBeNull()
+  })
+
+  it('AC1.c — mix : volume présent, autres null → seul volume non-null', async () => {
+    mockFetch.mockResolvedValue(
+      makeDfsResponse({
+        items: [
+          {
+            keyword: 'kw-partial',
+            keyword_info: {
+              search_volume: 1500,
+              cpc: null,
+              competition: null,
+              monthly_searches: null,
+            },
+            keyword_properties: { keyword_difficulty: null },
+          },
+        ],
+      }),
+    )
+
+    const result = await fetchKeywordOverview('kw-partial')
+    expect(result.searchVolume).toBe(1500)
+    expect(result.cpc).toBeNull()
+    expect(result.competition).toBeNull()
+    expect(result.difficulty).toBeNull()
+  })
+
+  it('AC1.d — monthlySearches contient des null → adapter filtre les null (pas de 0 fantôme)', async () => {
+    mockFetch.mockResolvedValue(
+      makeDfsResponse({
+        items: [
+          {
+            keyword: 'kw-monthly',
+            keyword_info: {
+              search_volume: 1000,
+              cpc: 1.0,
+              competition: 0.3,
+              monthly_searches: [
+                { search_volume: 1000 },
+                { search_volume: null },
+                { search_volume: 1200 },
+              ],
+            },
+            keyword_properties: { keyword_difficulty: 30 },
+          },
+        ],
+      }),
+    )
+
+    const result = await fetchKeywordOverview('kw-monthly')
+    expect(result.monthlySearches).toEqual([1000, 1200])
+    expect(result.monthlySearches).not.toContain(0)
+  })
+})
+
+describe('FR-INFRA-KPI-NULLABLE — fetchKeywordOverviewBatch adapter', () => {
+  it('AC2 — item sans données → null sur tous les KPIs marché de cet item', async () => {
+    mockFetch.mockResolvedValue(
+      makeBatchResponse([
+        {
+          keyword: 'kw-partial',
+          keyword_info: { search_volume: 100, cpc: 0.5, competition: 0.2, monthly_searches: null },
+          keyword_properties: { keyword_difficulty: 40 },
+        },
+        {
+          keyword: 'kw-empty',
+          keyword_info: { search_volume: null, cpc: null, competition: null, monthly_searches: null },
+          keyword_properties: { keyword_difficulty: null },
+        },
+      ]),
+    )
+
+    const result = await fetchKeywordOverviewBatch(['kw-partial', 'kw-empty'])
+    expect(result.size).toBe(2)
+    expect(result.get('kw-partial')?.searchVolume).toBe(100)
+    expect(result.get('kw-empty')?.searchVolume).toBeNull()
+    expect(result.get('kw-empty')?.difficulty).toBeNull()
+    expect(result.get('kw-empty')?.cpc).toBeNull()
+    expect(result.get('kw-empty')?.competition).toBeNull()
+  })
+})
