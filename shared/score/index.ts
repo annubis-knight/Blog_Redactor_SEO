@@ -20,6 +20,13 @@
  */
 
 export type { Score, ScoreVerdict, Scored } from './types.js'
-export { formatScore, SCORE_PLACEHOLDER } from './format.js'
+export {
+  formatScore,
+  formatVolume,
+  formatCpc,
+  formatKd,
+  formatPercent,
+  SCORE_PLACEHOLDER,
+} from './format.js'
 export { compareScores, compareScoresAsc } from './compare.js'
 export { averageScores, maxScore, minScore, countValidScores } from './aggregate.js'

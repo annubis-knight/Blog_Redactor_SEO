@@ -20,51 +20,90 @@ import { fetchRelatedKeywords, fetchKeywordSuggestions, fetchKeywordOverviewBatc
 
 // --- Keyword Audit ---
 
-/** Compute composite score (0-100) for a keyword based on DataForSEO metrics */
+/**
+ * Compute composite score (0-100) for a keyword based on DataForSEO metrics.
+ *
+ * Null-safe (FR-INFRA-KPI-SCORING-NULLSAFE) : chaque KPI `null` produit une
+ * composante `null` (exclue de la pondération), les poids restants sont
+ * renormalisés. Si toutes les composantes sont `null`, le total est `null`
+ * — jamais `0`, qui serait une vraie valeur basse trompeuse.
+ */
 export function computeCompositeScore(overview: KeywordOverview): KeywordCompositeScore {
-  // Normalize volume: log scale, cap at 10000 for score=100
-  const volumeNorm = overview.searchVolume > 0
-    ? Math.min(100, (Math.log10(overview.searchVolume) / Math.log10(10000)) * 100)
-    : 0
+  // Volume — log scale, cap à 10000 pour score=100. null préservé.
+  const volumeNorm: number | null = overview.searchVolume === null
+    ? null
+    : overview.searchVolume > 0
+      ? Math.min(100, (Math.log10(overview.searchVolume) / Math.log10(10000)) * 100)
+      : 0
 
-  // Difficulty: invert (low difficulty = high score)
-  const difficultyInverse = 100 - Math.min(100, overview.difficulty)
+  // Difficulty — inversé (faible KD = score élevé). null préservé.
+  const difficultyInverse: number | null = overview.difficulty === null
+    ? null
+    : 100 - Math.min(100, overview.difficulty)
 
-  // CPC: log scale, cap at 5 EUR for score=100
-  const cpcNorm = overview.cpc > 0
-    ? Math.min(100, (Math.log10(overview.cpc + 1) / Math.log10(6)) * 100)
-    : 0
+  // CPC — log scale, cap à 5 EUR pour score=100. null préservé.
+  const cpcNorm: number | null = overview.cpc === null
+    ? null
+    : overview.cpc > 0
+      ? Math.min(100, (Math.log10(overview.cpc + 1) / Math.log10(6)) * 100)
+      : 0
 
-  // Competition: invert (low competition = high score)
-  const competitionInverse = 100 - Math.min(100, overview.competition * 100)
+  // Competition — inversé (faible competition = score élevé). null préservé.
+  const competitionInverse: number | null = overview.competition === null
+    ? null
+    : 100 - Math.min(100, overview.competition * 100)
 
-  const total = Math.round(
-    volumeNorm * KEYWORD_SCORE_WEIGHTS.volume +
-    difficultyInverse * KEYWORD_SCORE_WEIGHTS.difficultyInverse +
-    cpcNorm * KEYWORD_SCORE_WEIGHTS.cpc +
-    competitionInverse * KEYWORD_SCORE_WEIGHTS.competitionInverse
-  )
+  // Renormalisation : sommer poids des composantes effectives, exclure null.
+  const components: Array<{ value: number; weight: number }> = []
+  if (volumeNorm !== null) components.push({ value: volumeNorm, weight: KEYWORD_SCORE_WEIGHTS.volume })
+  if (difficultyInverse !== null) components.push({ value: difficultyInverse, weight: KEYWORD_SCORE_WEIGHTS.difficultyInverse })
+  if (cpcNorm !== null) components.push({ value: cpcNorm, weight: KEYWORD_SCORE_WEIGHTS.cpc })
+  if (competitionInverse !== null) components.push({ value: competitionInverse, weight: KEYWORD_SCORE_WEIGHTS.competitionInverse })
+
+  let total: number | null
+  if (components.length === 0) {
+    total = null
+  } else {
+    const weightSum = components.reduce((sum, c) => sum + c.weight, 0)
+    const weighted = components.reduce((sum, c) => sum + c.value * c.weight, 0)
+    total = Math.max(0, Math.min(100, Math.round(weighted / weightSum)))
+  }
 
   return {
-    volume: Math.round(volumeNorm),
-    difficultyInverse: Math.round(difficultyInverse),
-    cpc: Math.round(cpcNorm),
-    competitionInverse: Math.round(competitionInverse),
-    total: Math.max(0, Math.min(100, total)),
+    volume: volumeNorm === null ? null : Math.round(volumeNorm),
+    difficultyInverse: difficultyInverse === null ? null : Math.round(difficultyInverse),
+    cpc: cpcNorm === null ? null : Math.round(cpcNorm),
+    competitionInverse: competitionInverse === null ? null : Math.round(competitionInverse),
+    total,
   }
 }
 
-/** Generate alerts for a keyword based on its metrics */
+/**
+ * Generate alerts for a keyword based on its metrics.
+ *
+ * Null-safe (FR-INFRA-KPI-SCORING-NULLSAFE AC5) : `searchVolume === null` →
+ * alerte `missing_metrics` (info), pas `zero_volume` (danger). Les seuils
+ * `lowVolume` / `highDifficulty` ne s'appliquent qu'aux valeurs numériques.
+ */
 export function generateAlerts(overview: KeywordOverview): KeywordAlert[] {
   const alerts: KeywordAlert[] = []
-  if (overview.searchVolume === KEYWORD_AUDIT_THRESHOLDS.zeroVolume) {
+
+  if (overview.searchVolume === null) {
+    alerts.push({
+      level: 'info',
+      type: 'missing_metrics',
+      message: 'Données KPI indisponibles — DataForSEO n\'a renvoyé aucun signal pour ce mot-clé',
+    })
+  } else if (overview.searchVolume === KEYWORD_AUDIT_THRESHOLDS.zeroVolume) {
     alerts.push({ level: 'danger', type: 'zero_volume', message: 'Aucun volume de recherche — ce mot-clé n\'existe pas' })
   } else if (overview.searchVolume < KEYWORD_AUDIT_THRESHOLDS.lowVolume) {
     alerts.push({ level: 'warning', type: 'low_volume', message: `Volume très faible (${overview.searchVolume}) — trafic limité` })
   }
-  if (overview.difficulty > KEYWORD_AUDIT_THRESHOLDS.highDifficulty) {
+
+  if (overview.difficulty !== null && overview.difficulty > KEYWORD_AUDIT_THRESHOLDS.highDifficulty) {
     alerts.push({ level: 'warning', type: 'high_difficulty', message: `Difficulté élevée (${overview.difficulty}/100) — concurrence forte` })
   }
+
   return alerts
 }
 

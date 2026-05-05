@@ -7,10 +7,11 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-capitaine-radar-list-sidepanel.md'
   - '_bmad-output/implementation-artifacts/tech-spec-stabilisation-codebase.md'
   - '_bmad-output/implementation-artifacts/sprints-pain-point-relevance-evolution.md'
+  - '_bmad-output/implementation-artifacts/tech-spec-kpi-types-nullable.md'
 workflowType: 'prd'
 completedAt: '2026-03-31'
-lastUpdated: '2026-05-04'
-updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor).'
+lastUpdated: '2026-05-05'
+updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor). Ajout 2026-05-05 (chantier KPI nullable) : 4 nouvelles FRs §8.14 (FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE) qui formalisent la migration des types KPI marché (KeywordOverview, LocationMetrics, RadarKeywordKpis, ValidatePainResult.dataforseo, KeywordAuditResult) vers number | null de bout en bout. Chaque FR porte des AC testables Vitest (pas seulement narratives). Extension FR-INFRA-NO-SCORE-FALLBACK (ajout Difficulty/Cpc/Competition au scope ESLint), FR-INFRA-SCORE-MODULE (ajout helpers formatVolume/Cpc/Kd/Percent), FR-MOT-RAW-KPIS (placeholder "—" quand KPI absent). Source : tech-spec-kpi-types-nullable.'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
   - 'docs/ARCHITECTURE_FLOWS.md'
@@ -414,7 +415,7 @@ Bandeau `PhaseTransitionBanner` apparaît dès qu'une phase est terminée et pro
 Aucune action automatique au changement d'onglet — l'utilisateur déclenche tout manuellement.
 
 #### FR-MOT-RAW-KPIS
-Les KPIs bruts sont TOUJOURS visibles — libre arbitre > algorithme.
+Les KPIs bruts sont TOUJOURS visibles — libre arbitre > algorithme. Quand un KPI marché (`searchVolume`, `keywordDifficulty`, `cpc`, `competition`) est absent (DataForSEO sans signal, miss DB), l'UI affiche le placeholder `—` (jamais `0`, `0 €` ou `0 %`) — voir aussi `FR-INFRA-KPI-NULLABLE`, `FR-INFRA-KPI-DISPLAY-DASH`.
 
 #### FR-MOT-CACHE-CASCADE
 Avant tout appel externe : consultation de `keyword_metrics` (cross-article) puis `api_cache` (TTL). Pattern unifié `getOrFetch<T>(cacheType, key, ttlMs, fetcher)`.
@@ -933,12 +934,69 @@ Toutes les strings de checks dans `shared/constants/workflow-checks.constants.ts
 **Source :** `shared/constants/workflow-checks.constants.ts:1-62`.
 
 #### FR-INFRA-SCORE-MODULE
-Module `shared/score/` unifié : types, format, compare, aggregate. Export via `shared/score/index.ts` uniquement (règle dependency-cruiser `score-internal-only-via-index`). Type `Score = number | null` explicite.
-**Statut :** active. **Depuis :** 2026-05-03. **Source :** tech-spec-stabilisation-codebase (Sprint 3).
+Module `shared/score/` unifié : types, format, compare, aggregate. Export via `shared/score/index.ts` uniquement (règle dependency-cruiser `score-internal-only-via-index`). Type `Score = number | null` explicite. Helpers d'affichage : `formatScore`, `formatVolume`, `formatCpc`, `formatKd`, `formatPercent` — tous retournent `'—'` pour `null` / `undefined`. Helpers de tri / agrégat : `compareScores`, `compareScoresAsc`, `averageScores`, `maxScore`, `minScore`, `countValidScores`.
+**Statut :** active. **Depuis :** 2026-05-03 (initial), **étendu :** 2026-05-05 (helpers KPI marché). **Source :** tech-spec-stabilisation-codebase (Sprint 3) + tech-spec-kpi-types-nullable.
 
 #### FR-INFRA-NO-SCORE-FALLBACK
-Règle ESLint `no-restricted-syntax` interdit `?? 0`, `?? 50` etc. sur variables `*Score*`, `*Density*`, `*Volume*`. Force la gestion explicite de `null`.
-**Statut :** active. **Depuis :** 2026-05-03. **Source :** `eslint.config.ts:49-79` — tech-spec-stabilisation-codebase.
+Règle ESLint `no-restricted-syntax` interdit `?? 0`, `?? 50` etc. sur variables / propriétés contenant `Score`, `Density`, `Volume`, `Difficulty`, `Cpc`, `Competition` (insensible à la casse). Force la gestion explicite de `null` côté consommateurs.
+**Statut :** active. **Depuis :** 2026-05-03 (initial), **étendu :** 2026-05-05 (KPIs marché Difficulty/Cpc/Competition). **Source :** `eslint.config.ts:49-79` — tech-spec-stabilisation-codebase + tech-spec-kpi-types-nullable.
+
+#### FR-INFRA-KPI-NULLABLE
+**Champs KPI marché nullables de bout en bout.** Les types `KeywordOverview`, `LocationMetrics`, `RadarKeywordKpis`, `ValidatePainResult.dataforseo`, `KeywordAuditResult` exposent les 4 KPIs marché (`searchVolume`, `keywordDifficulty` / `difficulty`, `cpc`, `competition`) en `number | null`. `null` = donnée non disponible (DataForSEO sans signal, miss DB). Aucun adapter (DataForSEO → type interne, DB → type interne) ne substitue une valeur de remplacement (`?? 0`, `?? -1`, `?? "N/A"`). La nullité est propagée **tel quel** jusqu'à l'UI.
+
+**Critères d'acceptation testables :**
+- AC1 : `fetchKeywordOverview` mocké avec DataForSEO renvoyant `keyword_info: null` → `result.searchVolume === null` (pas `0`).
+- AC2 : `fetchKeywordOverviewBatch` propage `null` sur chaque entry du Map.
+- AC3 : `fetchKeywordOverviewForLocation` (intent.service) → `LocationMetrics.keywordDifficulty === null` quand absent.
+- AC4 : adapter DB→KPI dans `data.service.ts` : ligne `keyword_metrics` avec `cpc IS NULL` → `kpis[2].rawValue === null` (et non `0`).
+- AC5 : type-check : `expectTypeOf<KeywordOverview['searchVolume']>().toEqualTypeOf<number | null>()`.
+
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-kpi-types-nullable.
+
+#### FR-INFRA-KPI-DISPLAY-DASH
+**Affichage `—` pour KPI absent.** Tout consommateur (composant Vue, template, message log destiné à l'utilisateur) affichant un KPI marché passe par les helpers `formatVolume / formatCpc / formatKd / formatPercent` exportés par `shared/score/format.ts`. Quand le KPI est `null` ou `undefined`, l'UI affiche le placeholder `—` (jamais `0`, `0.00 €`, ou `0 %`). Voir aussi `FR-INFRA-SCORE-MODULE`, `FR-MOT-RAW-KPIS`.
+
+**Critères d'acceptation testables :**
+- AC1 : `formatVolume(null) === '—'` ; `formatVolume(1234) === '1.2k'` ; `formatVolume(124) === '124'`.
+- AC2 : `formatCpc(null) === '—'` ; `formatCpc(1.234) === '1.23 €'`.
+- AC3 : `formatKd(null) === '—'` ; `formatKd(42.7) === '43'`.
+- AC4 : `formatPercent(null) === '—'` ; `formatPercent(0.42, { fromRatio: true }) === '42 %'`.
+- AC5 : test composant `RadarKeywordCard` rendu avec `card.kpis.cpc = null` → cellule contient `'—'`, pas `'0.00 €'`.
+- AC6 : test composant `LocalComparisonStep` rendu avec `local.searchVolume = null` → cellule contient `'—'`, pas `'0'`.
+
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-kpi-types-nullable.
+
+#### FR-INFRA-KPI-CONSISTENCY
+**Cohérence affichage / tri / agrégat sur KPIs marché** *(application de CLAUDE.md §2.0 — règle de cohérence)*. La même expression / le même helper produit la cellule UI ET la valeur utilisée pour le tri ou un agrégat. Un keyword avec `searchVolume = null` :
+1. s'affiche `—` (FR-INFRA-KPI-DISPLAY-DASH),
+2. est trié **en bas** d'une liste triée par volume (descending), via `compareScores`,
+3. est **exclu** des moyennes / sommes (dénominateur ajusté), via `averageScores`.
+
+Aucun consommateur n'a le droit d'avoir un fallback `?? 0` différent entre l'affichage et le calcul.
+
+**Critères d'acceptation testables :**
+- AC1 : tri descending de 3 cards `[vol=100, vol=null, vol=50]` via `compareScores` → ordre final `[100, 50, null]`.
+- AC2 : `averageScores([10, null, 30])` retourne `20` (moyenne sur 2 valeurs effectives, pas `13.33`).
+- AC3 : pour un dataset `[A: vol=100, B: vol=null, C: vol=50]`, l'ordre rendu par un composant de liste KPI correspond à l'ordre du tri sur `searchVolume` (test cohérence dans `tests/unit/coherence/kpi-nullable.test.ts`).
+- AC4 : `countValidScores([10, null, null, 30]) === 2`.
+
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-kpi-types-nullable + CLAUDE.md §2.0.
+
+#### FR-INFRA-KPI-SCORING-NULLSAFE
+**Scoring null-safe.** Les fonctions de scoring qui consomment des KPIs marché (`computeCompositeScore`, `computeMarketScore`, `computeServerVerdict`, `opportunityIndex`, `generateAlerts`) traitent `null` comme « composante manquante » :
+- chaque composante `null` est exclue de la pondération ; les poids restants sont **renormalisés** sur les composantes effectives ;
+- si **toutes** les composantes sont `null`, le score `total` retourné est `null` (pas `0`) ;
+- le verdict final est `'GRAY'` (neutre) quand aucune composante n'est calculable, jamais `'NO_GO'` ;
+- `generateAlerts` émet `missing_metrics` (level `info`) au lieu de `zero_volume` (level `danger`) quand `searchVolume === null`.
+
+**Critères d'acceptation testables :**
+- AC1 : `computeCompositeScore({ searchVolume: null, difficulty: 50, cpc: 1, competition: 0.5, monthlySearches: [] })` → `total` calculé sur 3 composantes ; `volume === null` dans le breakdown.
+- AC2 : `computeCompositeScore` avec tous KPIs `null` → `total === null`.
+- AC3 : `computeServerVerdict({ searchVolume: null, difficulty: null, cpc: null, competition: null, relatedCount: 0 }, ...)` → `'GRAY'` (jamais `'NO_GO'`).
+- AC4 : `opportunityIndex` calculé sur `local.searchVolume = null` → retourne `null` (pas `NaN` ou `0`).
+- AC5 : `generateAlerts({ searchVolume: null, difficulty: 30, cpc: 1, competition: 0.4, monthlySearches: [] })` → contient `{ type: 'missing_metrics', level: 'info' }` ; ne contient PAS `{ type: 'zero_volume', level: 'danger' }`.
+
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-kpi-types-nullable.
 
 #### FR-INFRA-CHECK-HEALTH
 Script `npm run check:health` agrège lint + type-check + cycles + dead-code + arch.
@@ -1411,7 +1469,14 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | FR-EXT-EMBEDDINGS | jamais documenté avant | code (embedding.service.ts) | < 2026-05-04 |
 | FR-INFRA-PAA-CACHE | jamais documenté avant | code (paa-cache.service.ts) | < 2026-05-04 |
 | FR-INFRA-SCORE-MODULE | nouveau | tech-spec-stabilisation-codebase | 2026-05-03 |
+| FR-INFRA-SCORE-MODULE | étendu (helpers KPI marché) | tech-spec-kpi-types-nullable | 2026-05-05 |
 | FR-INFRA-NO-SCORE-FALLBACK | nouveau | tech-spec-stabilisation-codebase | 2026-05-03 |
+| FR-INFRA-NO-SCORE-FALLBACK | étendu (KPI marché Difficulty/Cpc/Competition) | tech-spec-kpi-types-nullable | 2026-05-05 |
+| FR-INFRA-KPI-NULLABLE | nouveau | tech-spec-kpi-types-nullable | 2026-05-05 |
+| FR-INFRA-KPI-DISPLAY-DASH | nouveau | tech-spec-kpi-types-nullable | 2026-05-05 |
+| FR-INFRA-KPI-CONSISTENCY | nouveau | tech-spec-kpi-types-nullable | 2026-05-05 |
+| FR-INFRA-KPI-SCORING-NULLSAFE | nouveau | tech-spec-kpi-types-nullable | 2026-05-05 |
+| FR-MOT-RAW-KPIS | étendu (placeholder `—` pour KPI absent) | tech-spec-kpi-types-nullable | 2026-05-05 |
 | FR-INFRA-CHECK-HEALTH | nouveau | tech-spec-stabilisation-codebase | 2026-05-03 |
 | FR-INFRA-DEPENDENCY-CRUISER | jamais documenté avant | `.dependency-cruiser.cjs` | < 2026-05-04 |
 | FR-INFRA-LOGGER | jamais documenté avant | code (server/utils/logger.ts) | < 2026-05-04 |
