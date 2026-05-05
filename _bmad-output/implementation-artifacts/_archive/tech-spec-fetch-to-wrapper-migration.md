@@ -3,8 +3,9 @@ title: 'Migration progressive fetch() directs → wrapper apiGet/apiPost + apiSt
 slug: 'fetch-to-wrapper-migration'
 created: '2026-05-05'
 last_updated: '2026-05-05'
+delivered: '2026-05-05'
 version: '1.0.0'
-status: 'in-progress'
+status: 'delivered'
 synced_with:
   - _bmad-output/planning-artifacts/prd.md (FR-INFRA-API-WRAPPER, NFR-INT-API-WRAPPER, NFR-OBS-COST-LOG, NFR-OBS-DBOPS-TRACK, NFR-OBS-KNOWN-ERRORS, §12.4)
   - docs/data-flows/_audit-2026-05-05.md (catégorie « fetch() directs hors wrapper »)
@@ -47,6 +48,8 @@ files_to_modify:
   # Commit 8 — PRD
   - _bmad-output/planning-artifacts/prd.md
 ---
+
+> ⚠️ **ARCHIVED** (livré 2026-05-05) — Ce document est archivé pour traçabilité historique. La fonctionnalité a été livrée et validée. Pour l'état actuel, consulter le PRD (FR-INFRA-API-WRAPPER, FR-INFRA-API-STREAM, NFR-INT-API-WRAPPER, NFR-OBS-EXTERNAL-API-OPT-OUT) et le code (`src/services/api.service.ts`).
 
 # Tech-spec — Migration `fetch()` directs vers wrapper API
 
