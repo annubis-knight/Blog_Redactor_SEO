@@ -2,9 +2,14 @@
  * Sprint 15.9-bis — Helpers CRUD "lecture reconstruite"
  *
  * Après les Sprints 15.3 à 15.8, plusieurs tables article-scoped ont été
- * supprimées (intent_explorations, local_explorations, content_gap_explorations,
- * serp_explorations). Leurs données vivent maintenant dans des tables
- * cross-article (keyword_metrics, keyword_intent_analyses, keyword_discoveries).
+ * supprimées via migrations dédiées :
+ *   - `local_explorations` et `content_gap_explorations` → migration 012
+ *   - `serp_explorations` → migration 013
+ *   - `intent_explorations` → migration 016 (jamais matérialisée en DB live,
+ *     drop idempotent pour aligner le code avec la réalité)
+ *
+ * Leurs données vivent maintenant dans des tables cross-article
+ * (keyword_metrics, keyword_intent_analyses, keyword_discoveries).
  *
  * Ces helpers reconstruisent à la volée les informations que l'UI attend via
  * des JOIN SQL, sans introduire de nouvelles tables.

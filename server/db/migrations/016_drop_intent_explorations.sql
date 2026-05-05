@@ -1,0 +1,22 @@
+-- =====================================================
+-- Migration 016 : Drop intent_explorations (legacy non matérialisée)
+-- =====================================================
+-- Table définie en migration 007 (`007_keyword_explorations.sql:9`) mais jamais
+-- consommée en runtime depuis l'unification autour de `keyword_metrics` +
+-- `keyword_intent_analyses` (migration 010).
+--
+-- Vérification DB live (psql, 2026-05-05) : la relation `intent_explorations`
+-- n'existe PAS dans la base actuelle (`SELECT * FROM intent_explorations`
+-- → ERROR: relation does not exist). Soit la migration 007 a échoué partiellement,
+-- soit la table a été drop manuellement sans migration tracée.
+--
+-- Cette migration aligne le code avec la réalité de la DB : elle est idempotente
+-- (`IF EXISTS` → no-op sur les DB où la table est déjà absente, drop sur celles
+-- où elle existerait encore — ex: replay sur DB vierge).
+--
+-- Voir aussi :
+--   - PRD §8.14 — FR-INFRA-INTENT-EXPLORATIONS-LEGACY (statut "dette de migration")
+--   - server/services/queries/keyword-queries.service.ts (commentaire d'en-tête nettoyé)
+-- =====================================================
+
+DROP TABLE IF EXISTS intent_explorations CASCADE;
