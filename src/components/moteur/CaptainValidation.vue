@@ -11,6 +11,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiStream } from '@/services/api.service'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useCaptainRelevanceStore } from '@/stores/article/captain-relevance.store'
 import { useNotify } from '@/composables/ui/useNotify'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>()
 
 const articleKeywordsStore = useArticleKeywordsStore()
+const captainRelevanceStore = useCaptainRelevanceStore()
 const notify = useNotify()
 
 // Debounced save: coalesces rafales de mutations (validate, root variants, AI panel)
@@ -472,6 +474,8 @@ watch(
       persistedValidations.clear()
       persistedRoots.clear()
       persistedAiPanels.clear()
+      // Sprint 8 — réinitialise le store Pertinence lors du changement d'article
+      captainRelevanceStore.reset()
     }
     if (!id || id === lastAutoValidatedId) return
     const article = props.selectedArticle
@@ -499,6 +503,28 @@ watch(
     if (isLocked.value) lockedKeyword.value = kw
   },
   { immediate: true },
+)
+
+// --- Sprint 8 — Recompute Pertinence si painPoint a changé ---
+// Quand le painPoint de l'article évolue après le chargement initial, les scores
+// affichés deviennent obsolètes (ils ont été calculés avec l'ancien painPoint).
+// Ce watcher déclenche un re-fetch /captain-explorations pour recalculer.
+watch(
+  () => props.selectedArticle?.painPoint,
+  async (newPainPoint) => {
+    const articleId = props.selectedArticle?.id
+    if (!articleId) return
+    if (!captainRelevanceStore.hasPainPointChanged(newPainPoint ?? null)) return
+    // Recompute à la volée — le store captain-relevance gère loading state
+    const newEntries = await captainRelevanceStore.recompute(articleId)
+    if (newEntries && newEntries.length > 0) {
+      articleKeywordsStore.mergeCaptainHistory(newEntries)
+      captainRelevanceStore.updatePainPointSnapshot(newPainPoint ?? null)
+      log.debug('[CaptainValidation] relevance recomputed after painPoint change', {
+        articleId, count: newEntries.length,
+      })
+    }
+  },
 )
 
 // --- Carousel AI streaming ---
