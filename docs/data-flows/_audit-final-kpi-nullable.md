@@ -2,19 +2,29 @@
 
 - Projet : `blog-redactor-seo`
 - Config : `.data-flow-discipline.json`
-- Total violations : **173**
+- Total violations : **176**
 
 ## Resume
 
 | Severite | Categorie | Violations |
 |---|---|---|
-| HIGH | Fallbacks silencieux (HIGH) | 2 |
-| MEDIUM | Fallbacks silencieux (MEDIUM) | 32 |
+| HIGH | Fallbacks silencieux (HIGH) | 4 |
+| MEDIUM | Fallbacks silencieux (MEDIUM) | 34 |
 | MEDIUM | Stores/services sans header AUTHORITY | 69 |
-| MEDIUM | fetch() directs hors wrapper | 22 |
+| MEDIUM | fetch() directs hors wrapper | 21 |
 | LOW | Fichiers > limite de lignes | 48 |
 
-## HIGH - Fallbacks silencieux (HIGH) (2)
+## HIGH - Fallbacks silencieux (HIGH) (4)
+
+### `src/composables/intent/useMultiSourceVerdict.ts:73`
+
+```
+  const kd = data.difficulty ?? 0
+```
+
+**Pourquoi** : `difficulty ?? <valeur>` masque l'absence de donnee. Un score absent n'est pas zero.
+
+**Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
 
 ### `src/composables/intent/useNlpAnalysis.ts:147`
 
@@ -36,7 +46,17 @@
 
 **Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
 
-## MEDIUM - Fallbacks silencieux (MEDIUM) (32)
+### `server/services/keyword/keyword-radar.service.ts:428`
+
+```
+      difficulty: kpis.difficulty ?? 0,
+```
+
+**Pourquoi** : `difficulty ?? <valeur>` masque l'absence de donnee. Un score absent n'est pas zero.
+
+**Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
+
+## MEDIUM - Fallbacks silencieux (MEDIUM) (34)
 
 ### `src/components/strategy/ProposedArticleRow.vue:69`
 
@@ -45,6 +65,16 @@
 ```
 
 **Pourquoi** : `warningCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `src/composables/intent/useMultiSourceVerdict.ts:69`
+
+```
+  const sv = data.searchVolume ?? 0
+```
+
+**Pourquoi** : `searchVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
 
 **Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
 
@@ -335,6 +365,16 @@
 ```
 
 **Pourquoi** : `votes_count ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/keyword/keyword-radar.service.ts:427`
+
+```
+      searchVolume: kpis.searchVolume ?? 0,
+```
+
+**Pourquoi** : `searchVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
 
 **Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
 
@@ -862,22 +902,12 @@
 
 *(... 19 autres violations dans cette categorie, non listees pour rester lisible)*
 
-## MEDIUM - fetch() directs hors wrapper (22)
+## MEDIUM - fetch() directs hors wrapper (21)
 
 ### `src/components/editor/tiptap/extensions/dynamic-block-drop.ts:590`
 
 ```
   const res = await fetch('/api/generate/action', {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `src/components/keywords/DiscoveryPanel.vue:62`
-
-```
-      await fetch('/api/keywords', {
 ```
 
 **Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
@@ -1186,10 +1216,10 @@
 
 **Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
 
-### `src/components/keywords/DiscoveryPanel.vue:585`
+### `src/components/keywords/DiscoveryPanel.vue:581`
 
 ```
-585 lignes (limite : 400)
+581 lignes (limite : 400)
 ```
 
 **Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
