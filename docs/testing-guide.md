@@ -316,10 +316,10 @@ Ou relance n'importe quel test : `beforeAll::cleanupOrphanedFixtures` purge auto
 ### 6.1 Pré-requis : avoir les serveurs qui tournent
 
 ```bash
-# Serveur API (port 3005) — obligatoire pour tests HTTP
+# Serveur API (port 3400 — NFR-CFG-APP-PORTS) — obligatoire pour tests HTTP
 npm run dev:server
 
-# Serveur Vite (port 5173) — obligatoire seulement pour Playwright
+# Serveur Vite (port 5400 — NFR-CFG-APP-PORTS) — obligatoire seulement pour Playwright
 npm run dev:client
 
 # Ou les deux en parallèle
@@ -387,7 +387,7 @@ npm run test:browser
 AI_PROVIDER=mock              # Fixtures déterministes, pas de réseau
 MOCK_LATENCY_MS=200           # Latence simulée
 DATAFORSEO_SANDBOX=true       # DataForSEO gratuit + fake data
-TEST_BASE_URL=http://localhost:3005/api   # Pour override si besoin
+TEST_BASE_URL=http://localhost:3400/api   # Pour override si besoin
 ```
 
 En prod : `AI_PROVIDER=claude`.

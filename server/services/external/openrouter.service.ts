@@ -36,7 +36,7 @@ function getHeaders(): Record<string, string> {
     'Authorization': `Bearer ${apiKey}`,
     'Content-Type': 'application/json',
     // Optional but recommended by OpenRouter for analytics/ranking
-    'HTTP-Referer': 'http://localhost:3005',
+    'HTTP-Referer': `http://localhost:${process.env.PORT ?? 3400}`,
     'X-Title': 'Blog Redactor SEO',
   }
 }

@@ -51,7 +51,7 @@ describe('Tab moteur/lexique — Extraction TF-IDF', () => {
 describe('Tab moteur/lexique — IA upfront (E2 + U5)', () => {
   it('POST /keywords/:captain/ai-lexique-upfront (stream) renvoie SSE', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-lex')}/ai-lexique-upfront`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-lex')}/ai-lexique-upfront`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

@@ -7,7 +7,7 @@ import { test as base } from '@playwright/test'
 import { query, pool } from '../../../server/db/client.js'
 
 const TEST_PREFIX = '[browser:'
-const API = process.env.TEST_BASE_URL ?? 'http://localhost:3005/api'
+const API = process.env.TEST_BASE_URL ?? `http://localhost:${process.env.PORT ?? 3400}/api`
 
 export interface TestArticle {
   id: number

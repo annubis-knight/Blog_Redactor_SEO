@@ -343,7 +343,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
 
   it('POST /keywords/:kw/ai-panel (stream) retourne SSE event:chunk', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-ai')}/ai-panel`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-ai')}/ai-panel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -438,7 +438,7 @@ describe('Moteur Workflow — Onglet Lieutenants', () => {
 
   it('POST /keywords/:captain/propose-lieutenants (stream) retourne SSE', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -528,7 +528,7 @@ describe('Moteur Workflow — Onglet Lexique', () => {
 
   it('POST /keywords/:kw/ai-lexique-upfront (stream) retourne SSE', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-lex')}/ai-lexique-upfront`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-lex')}/ai-lexique-upfront`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

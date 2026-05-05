@@ -2,12 +2,14 @@
  * HTTP client wrapper for e2e/integration/contract tests.
  *
  * Assume le serveur dev est lancé en parallèle (AI_PROVIDER=mock conseillé).
- * URL configurable via TEST_BASE_URL (défaut: http://localhost:3005/api).
+ * URL configurable via TEST_BASE_URL (défaut: http://localhost:3400/api — NFR-CFG-APP-PORTS).
  *
  * Les fonctions lèvent une erreur claire si le serveur n'est pas joignable ou
  * si un endpoint renvoie un status inattendu.
  */
-const BASE_URL = process.env.TEST_BASE_URL ?? 'http://localhost:3005/api'
+import { TEST_API_BASE_URL } from './base-url'
+
+const BASE_URL = TEST_API_BASE_URL
 
 export interface ApiResponse<T = unknown> {
   status: number

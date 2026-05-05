@@ -50,7 +50,7 @@ describe('Tab moteur/lieutenants — SERP analysis', () => {
 describe('Tab moteur/lieutenants — Propositions IA (E2)', () => {
   it('POST /keywords/:captain/propose-lieutenants (stream) renvoie SSE', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -75,7 +75,7 @@ describe('Tab moteur/lieutenants — Propositions IA (E2)', () => {
       serpResults: [{ keyword: 'kw1', topResults: [] }],
     }
     const t1 = Date.now()
-    await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent(kw)}/propose-lieutenants`, {
+    await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent(kw)}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
@@ -83,7 +83,7 @@ describe('Tab moteur/lieutenants — Propositions IA (E2)', () => {
     const e1 = Date.now() - t1
 
     const t2 = Date.now()
-    await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent(kw)}/propose-lieutenants`, {
+    await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent(kw)}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

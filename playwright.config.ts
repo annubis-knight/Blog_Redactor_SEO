@@ -19,7 +19,7 @@ export default defineConfig({
   workers: 1,
   reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5173',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:5400',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     actionTimeout: 10000,
@@ -37,14 +37,14 @@ export default defineConfig({
     : [
         {
           command: 'npm run dev:server',
-          port: 3005,
+          port: 3400,
           reuseExistingServer: true,
           timeout: 30000,
           env: { AI_PROVIDER: 'mock', NODE_ENV: 'development' },
         },
         {
           command: 'npm run dev:client',
-          port: 5173,
+          port: 5400,
           reuseExistingServer: true,
           timeout: 30000,
         },

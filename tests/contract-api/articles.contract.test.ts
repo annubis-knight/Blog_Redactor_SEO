@@ -85,7 +85,7 @@ describe('Contract /articles', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'Patch Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Patch Article')
 
-    const res = await fetch(`http://localhost:3005/api/articles/${article.id}`, {
+    const res = await fetch(`http://localhost:3400/api/articles/${article.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ title: `Renamed ${ctx.runId}` }),

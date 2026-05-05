@@ -13,7 +13,7 @@ const ctx = setupTestContext()
 describe('Test harness sanity', () => {
   it('serveur dev est joignable', async () => {
     const up = await isServerUp()
-    expect(up, 'Le serveur dev doit tourner sur localhost:3005 — démarrer avec `npm run dev:server`').toBe(true)
+    expect(up, 'Le serveur dev doit tourner sur localhost:3400 — démarrer avec `npm run dev:server`').toBe(true)
   })
 
   it('GET /health renvoie ok', async () => {

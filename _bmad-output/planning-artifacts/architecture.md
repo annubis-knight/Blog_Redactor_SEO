@@ -216,7 +216,7 @@ Pour les métriques mot-clé : consultation `keyword_metrics` AVANT DataForSEO (
 - Format succès : `{ data: T }`
 - Format erreur : `{ error: { code: string, message: string } }`
 - Streaming : SSE pour génération (outline, article, reduce-section, AI panels)
-- Proxy Vite : `/api` → `http://localhost:3005`
+- Proxy Vite : `/api` → `http://localhost:3400` (frontend dev sur `:5400` — NFR-CFG-APP-PORTS)
 
 **Wrapper frontend :**
 
@@ -733,7 +733,7 @@ Blog_Redactor_SEO_rebirth/
 **Boundary frontend/backend :**
 
 ```
-[Vue App] ──fetch──→ [Vite Proxy /api] ──→ [Express :3005]
+[Vue App :5400] ──fetch──→ [Vite Proxy /api] ──→ [Express :3400]
                                                │
                             ┌──────────────────┼────────────────────┐
                             ▼                  ▼                    ▼

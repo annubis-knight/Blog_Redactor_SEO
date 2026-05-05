@@ -263,7 +263,8 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 
 **Architecture existante :**
 - Frontend : Vue 3.5 + Vue Router 5 + Pinia 3 (22 stores en 5 domaines) + TipTap 3
-- Backend : Express 5.2, port 3005, CORS localhost only
+- Backend : Express 5.2, port 3400 (configurable via `PORT`), CORS localhost only
+- Frontend dev : Vite, port 5400 (configurable via `VITE_PORT`)
 - Communication : REST API + SSE streaming (Claude tokens, génération article par section, panels IA)
 - Validation : Zod 4 schémas partagés front/back (`shared/schemas/`)
 - Data : PostgreSQL (pg 8.20) — articles, keywords, cocoons, strategies, api_cache, keyword_metrics, article_explorations, captain_explorations, radar_explorations, theme_config, internal_links…
@@ -1475,6 +1476,44 @@ Variables d'env PostgreSQL (`PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_
 #### NFR-CFG-INTER-SECTION-DELAY
 `INTER_SECTION_DELAY_MS` configurable (défaut 15s).
 
+#### NFR-CFG-APP-PORTS
+**Ports applicatifs figés.** Le projet utilise deux ports applicatifs uniques sur la machine de dev :
+- **Backend Express** : `3400` (configurable via `PORT`).
+- **Frontend Vite** : `5400` (configurable via `VITE_PORT`).
+
+Ces valeurs sont les **défauts en dur** (`server/index.ts`, `vite.config.ts`) et les **valeurs publiées dans `.env.example`**. Le port PostgreSQL `PG_PORT` (5432) est indépendant et n'est pas concerné.
+
+**Critères d'acceptation testables :**
+- AC1 : `.env.example` contient `PORT=3400` et `VITE_PORT=5400`.
+- AC2 : `server/index.ts` fait `const PORT = process.env.PORT || 3400` (le fallback est `3400`, jamais `3005` ou autre).
+- AC3 : `vite.config.ts` exporte `server.port = Number(process.env.VITE_PORT) || 5400` et `server.proxy['/api'].target` pointe sur `http://localhost:${PORT_BACK}` avec `PORT_BACK = process.env.PORT || 3400`.
+- AC4 : `playwright.config.ts` `baseURL` défaut = `http://localhost:5400` ; `webServer[0].port = 3400` ; `webServer[1].port = 5400`.
+- AC5 : grep dans le repo (hors `node_modules`, `dist`, `_archive`) sur les littéraux `:3005` ou `:5173` retourne **0 résultat actif** (peuvent subsister dans des doc archivées avec bandeau ARCHIVED).
+
+**Statut :** active. **Depuis :** 2026-05-05.
+
+#### NFR-CFG-PORT-PREFLIGHT
+**Libération idempotente des ports avant `dev` / `build` / `test:browser`.** Un script Node `scripts/kill-port.mjs` libère les ports `3400` et `5400` (cross-platform Windows + POSIX) avant tout démarrage de serveur de dev, build ou suite Playwright. Le script est :
+- **idempotent** : exit 0 même si rien n'écoute sur les ports ;
+- **cross-platform** : détecte la plateforme (`process.platform === 'win32'` → `netstat -ano` + `taskkill /F /PID`, sinon → `lsof -ti:PORT` + `kill -9`) ;
+- **silencieux par défaut** : log uniquement les ports effectivement libérés (pas de bruit si tout est déjà libre) ;
+- **paramétrable** : `node scripts/kill-port.mjs 3400 5400` (positional args) ou défaut interne `[3400, 5400]` ;
+- **robuste** : un échec sur un port (process protégé / permission denied) loggue un warning mais ne casse pas le hook (autres ports continuent).
+
+Câblage `package.json` :
+- `predev` → kill-port `3400 5400`,
+- `prebuild` → kill-port `3400 5400` (le build Vite peut lancer un serveur de prévisualisation),
+- `pretest:browser` → kill-port `3400 5400` (Playwright `webServer` ne réutilise pas si un autre process tient le port).
+
+**Critères d'acceptation testables :**
+- AC1 : `scripts/kill-port.mjs` existe et est exécutable via `node scripts/kill-port.mjs`.
+- AC2 : appelé sans port occupé → exit code `0`, aucune erreur stderr fatale.
+- AC3 : `package.json` contient les hooks `predev`, `prebuild`, `pretest:browser` invoquant `node scripts/kill-port.mjs 3400 5400`.
+- AC4 : test unit qui parse `package.json` et vérifie la présence des 3 hooks + l'invocation du script.
+- AC5 : test unit qui appelle la fonction `freePort(port)` exportée par le script (mock de `child_process.exec`) → vérifie la commande émise selon `os.platform()`.
+
+**Statut :** active. **Depuis :** 2026-05-05.
+
 ---
 
 ## 10. Conventions de nommage
@@ -1614,6 +1653,8 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | FR-INFRA-API-STREAM | nouveau (wrapper SSE unifié) | tech-spec-fetch-to-wrapper-migration | 2026-05-05 |
 | NFR-INT-API-WRAPPER | affiné (critère d'acceptation via audit, dette résorbée) | tech-spec-fetch-to-wrapper-migration | 2026-05-05 |
 | NFR-OBS-EXTERNAL-API-OPT-OUT | nouveau (opt-out documenté pour fetch externes) | tech-spec-fetch-to-wrapper-migration | 2026-05-05 |
+| NFR-CFG-APP-PORTS | nouveau (ports figés 3400 back / 5400 front) | chantier-ports-3400-5400 | 2026-05-05 |
+| NFR-CFG-PORT-PREFLIGHT | nouveau (kill-port preflight idempotent) | chantier-ports-3400-5400 | 2026-05-05 |
 
 ### 12.5 — Dette technique identifiée
 

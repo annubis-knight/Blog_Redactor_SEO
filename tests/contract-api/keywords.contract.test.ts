@@ -187,7 +187,7 @@ describe('Contract /keywords/:captain/propose-lieutenants', () => {
 
   it('POST OK → SSE stream', { timeout: 90000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -204,7 +204,7 @@ describe('Contract /keywords/:captain/propose-lieutenants', () => {
 describe('Contract /keywords/:captain/ai-lexique-upfront', () => {
   it('POST OK → SSE stream', { timeout: 90000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/ai-lexique-upfront`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/ai-lexique-upfront`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({

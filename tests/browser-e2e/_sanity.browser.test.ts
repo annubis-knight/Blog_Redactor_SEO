@@ -1,6 +1,6 @@
 /**
  * Sanity browser test — vérifie que l'app charge et que la home rend.
- * Si ce test casse, vérifier que `npm run dev:client` tourne sur :5173.
+ * Si ce test casse, vérifier que `npm run dev:client` tourne sur :5400.
  */
 import { test, expect } from './helpers/test-fixtures'
 

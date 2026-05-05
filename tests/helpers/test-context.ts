@@ -71,7 +71,8 @@ export function setupTestContext(): TestContext {
     // 2. Check que le serveur dev tourne (nécessaire pour tous les tests HTTP).
     ctx.serverOk = await isServerUp()
     if (!ctx.serverOk) {
-      console.warn(`[test-context] server not reachable at ${process.env.TEST_BASE_URL ?? 'http://localhost:3005/api'} — HTTP tests will be skipped`)
+      const { TEST_API_BASE_URL } = await import('./base-url')
+      console.warn(`[test-context] server not reachable at ${TEST_API_BASE_URL} — HTTP tests will be skipped`)
     }
     // 3. Warning si provider != mock (les tests assument des fixtures déterministes)
     const provider = (process.env.AI_PROVIDER ?? 'claude').toLowerCase()

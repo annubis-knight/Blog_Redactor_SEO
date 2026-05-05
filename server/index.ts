@@ -30,7 +30,7 @@ import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
 import paaRoutes from './routes/paa.routes.js'
 
 const app = express()
-const PORT = process.env.PORT || 3005
+const PORT = process.env.PORT || 3400
 
 // Middleware
 app.use(express.json({ limit: '5mb' }))

@@ -267,7 +267,7 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'Del Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Del Article')
 
-    const delRes = await fetch(`http://localhost:3005/api/articles/${article.id}`, { method: 'DELETE' })
+    const delRes = await fetch(`http://localhost:3400/api/articles/${article.id}`, { method: 'DELETE' })
     expect([200, 204]).toContain(delRes.status)
 
     // Comportement réel : l'article reste mais cocoon_id devient NULL

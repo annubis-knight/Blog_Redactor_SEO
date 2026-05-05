@@ -88,7 +88,7 @@ async function getValidToken(): Promise<string> {
 export function getAuthUrl(): string {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3005/api/gsc/callback'
+    process.env.GOOGLE_REDIRECT_URI ?? `http://localhost:${process.env.PORT ?? 3400}/api/gsc/callback`
   if (!clientId) throw new Error('GOOGLE_CLIENT_ID must be set')
 
   const params = new URLSearchParams({
@@ -107,7 +107,7 @@ export async function exchangeCode(code: string): Promise<GscToken> {
   const clientId = process.env.GOOGLE_CLIENT_ID
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET
   const redirectUri =
-    process.env.GOOGLE_REDIRECT_URI ?? 'http://localhost:3005/api/gsc/callback'
+    process.env.GOOGLE_REDIRECT_URI ?? `http://localhost:${process.env.PORT ?? 3400}/api/gsc/callback`
   if (!clientId || !clientSecret)
     throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set')
 

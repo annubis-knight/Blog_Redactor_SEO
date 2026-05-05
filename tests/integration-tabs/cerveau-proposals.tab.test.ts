@@ -92,7 +92,7 @@ describe('Tab cerveau/proposals — Articles CRUD', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'DelTab Cocon')
     const article = await ctx.createArticle(cocoon.id, 'DelTab Article')
 
-    const delRes = await fetch(`http://localhost:3005/api/articles/${article.id}`, { method: 'DELETE' })
+    const delRes = await fetch(`http://localhost:3400/api/articles/${article.id}`, { method: 'DELETE' })
     expect([200, 204]).toContain(delRes.status)
 
     const dbRes = await query<{ cocoon_id: number | null }>(

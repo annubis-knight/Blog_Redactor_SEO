@@ -88,7 +88,7 @@ describe('Tab moteur/capitaine — KeywordAssistPanel (F3)', () => {
 describe('Tab moteur/capitaine — AI Panel + TTL (U5)', () => {
   it('POST /keywords/:kw/ai-panel (stream) renvoie SSE chunks', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
-    const res = await fetch(`http://localhost:3005/api/keywords/${encodeURIComponent('test-' + ctx.runId)}/ai-panel`, {
+    const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId)}/ai-panel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
