@@ -16,7 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const discoveryStore = useKeywordDiscoveryStore()
-const _auditStore = useKeywordAuditStore()
+const auditStore = useKeywordAuditStore()
 const { getScoreColor } = useKeywordScoring()
 
 const searchMode = ref<'seed' | 'domain'>('seed')
@@ -56,16 +56,12 @@ async function addSelectedToCocoon() {
   adding.value = true
   log.info('Adding discovered keywords to cocoon', { count: selected.value.size, cocoon: props.cocoonName })
   try {
-    for (const keyword of selected.value) {
-      const kw = discoveryStore.results.find(r => r.keyword === keyword)
-      if (!kw) continue
-      await fetch('/api/keywords', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword: kw.keyword, cocoonName: props.cocoonName, type: kw.type }),
-      })
-    }
-    log.info('Keywords added to cocoon', { count: selected.value.size })
+    const batch = Array.from(selected.value)
+      .map(keyword => discoveryStore.results.find(r => r.keyword === keyword))
+      .filter((kw): kw is NonNullable<typeof kw> => kw != null)
+      .map(kw => ({ keyword: kw.keyword, type: kw.type }))
+    await auditStore.addKeywordsBatch(batch, props.cocoonName)
+    log.info('Keywords added to cocoon', { count: batch.length })
     selected.value.clear()
     emit('keywordAdded')
   } catch (err) {

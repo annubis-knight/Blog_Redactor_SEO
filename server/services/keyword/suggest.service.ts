@@ -70,6 +70,7 @@ async function fetchSuggestions(query: string, language = 'fr', country = 'fr'):
   url.searchParams.set('gl', country)
 
   try {
+    // External API call — bypass wrapper by design (Google Suggest).
     const res = await fetch(url.toString(), {
       signal: AbortSignal.timeout(10_000),
       headers: { 'User-Agent': 'Mozilla/5.0' },

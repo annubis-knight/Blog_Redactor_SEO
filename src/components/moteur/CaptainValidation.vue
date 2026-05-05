@@ -8,6 +8,7 @@ import { useRadarCarousel } from '@/composables/keyword/useRadarCarousel'
 import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import { useStreaming } from '@/composables/editor/useStreaming'
+import { apiStream } from '@/services/api.service'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useNotify } from '@/composables/ui/useNotify'
@@ -525,7 +526,7 @@ function launchAiStream(keyword: string, validation: ValidateResponse, force = f
   carouselAiStreaming.value.add(keyword)
   touchAiStreaming()
 
-  const url = `/api/keywords/${encodeURIComponent(validation.keyword)}/ai-panel`
+  const path = `/keywords/${encodeURIComponent(validation.keyword)}/ai-panel`
   const body = {
     level: validation.articleLevel,
     articleId: props.selectedArticle?.id,
@@ -538,54 +539,25 @@ function launchAiStream(keyword: string, validation: ValidateResponse, force = f
 
   let accumulated = ''
 
-  fetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-    signal: controller.signal,
-  })
-    .then(async (res) => {
-      if (!res.ok) {
-        const json = await res.json().catch(() => null)
-        throw new Error(json?.error?.message ?? `Erreur HTTP ${res.status}`)
-      }
-      if (!res.body) throw new Error('Pas de body streamable')
-
-      const reader = res.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() ?? ''
-        let eventType = ''
-        for (const line of lines) {
-          if (line.startsWith('event: ')) {
-            eventType = line.slice(7).trim()
-          } else if (line.startsWith('data: ')) {
-            try {
-              const parsed = JSON.parse(line.slice(6))
-              if (eventType === 'chunk') {
-                accumulated += parsed.content
-                carouselAiCache.value.set(keyword, accumulated)
-                touchAiCache()
-              } else if (eventType === 'error') {
-                carouselAiErrors.value.set(keyword, parsed.message ?? 'Erreur inconnue')
-                touchAiErrors()
-              }
-            } catch { /* ignore malformed JSON */ }
-            eventType = ''
-          }
-        }
-      }
-    })
-    .catch((err) => {
-      if ((err as Error).name === 'AbortError') return
-      carouselAiErrors.value.set(keyword, (err as Error).message)
+  // FR-INFRA-API-STREAM : passe par apiStream qui gere automatiquement
+  // cost-log, KNOWN_ERROR_CODES (toast UI) et AbortController.
+  apiStream<unknown>(path, body, {
+    onChunkRaw: (piece) => {
+      accumulated += piece
+      carouselAiCache.value.set(keyword, accumulated)
+      touchAiCache()
+    },
+    onError: (msg) => {
+      carouselAiErrors.value.set(keyword, msg)
       touchAiErrors()
+    },
+  }, { signal: controller.signal })
+    .then((out) => {
+      if (out.aborted) return
+      if (out.errorMessage) {
+        carouselAiErrors.value.set(keyword, out.errorMessage)
+        touchAiErrors()
+      }
     })
     .finally(() => {
       carouselAiStreaming.value.delete(keyword)

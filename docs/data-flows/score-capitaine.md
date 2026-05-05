@@ -101,6 +101,7 @@ flowchart TD
 
 - **2026-04-28 (sprint score-pertinence)** — Avant cette date, un seul score (`computeVerdict()`) gating le lock via `canLock`. Un bug : la valeur affichée dans la card pouvait différer de celle utilisée par `sortByScore()` parce que les deux n'utilisaient pas la même expression. Régression résolue par l'unification dans `shared/score/` + suppression de `canLock` (FR-CAP-VERDICT-INFORMATIVE remplace FR-CAP-VERDICT-GATING).
 - **2026-04-28 (formule F1 PAA)** — Le score Pertinence sur PAA était une moyenne des scores individuels, ce qui donnait des résultats trompeurs si peu de PAA. Refactor : score cumulatif `(somme points / (nbPAA × 2)) × 100`. Cf. `sprints-pain-point-relevance-evolution.md` S3.
+- **2026-05-05 (KPI nullable)** — `KpiSummary.rawValue` (utilisé par `data.service.ts` pour reconstituer les KPIs Capitaine depuis `keyword_metrics`) passe à `number | null`. Adapter DB→KPIs : `t.search_volume === null` propagé tel quel au lieu de `Number(t.search_volume ?? 0)`. UI Capitaine (`CaptainSidePanel.vue`) affiche `'—'` via `formatVolume / formatCpc / formatKd` quand `rawValue` est `null` — distingue « 0 réel mesuré » de « donnée absente DataForSEO ». `computeMarketScore` exclut les composantes null de la pondération (renormalisation). Voir FR-INFRA-KPI-NULLABLE / FR-INFRA-KPI-SCORING-NULLSAFE.
 
 ## Tests de cohérence à écrire
 

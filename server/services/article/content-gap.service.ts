@@ -24,6 +24,7 @@ async function searchWithTavily(
   log.debug('Tavily search request', { keyword, search_depth: 'advanced', max_results: 5 })
   const start = Date.now()
 
+  // External API call — bypass wrapper by design (Tavily search).
   const res = await fetch('https://api.tavily.com/search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

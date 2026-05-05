@@ -17,6 +17,7 @@ async function fetchGoogleMaps(keyword: string, locationCode: number = 1006157):
   log.debug('DataForSEO Maps request', { keyword, locationCode, url })
   const start = Date.now()
 
+  // External API call — bypass wrapper by design (DataForSEO Maps).
   const res = await fetch(url, {
     method: 'POST',
     headers: { 'Authorization': auth, 'Content-Type': 'application/json' },

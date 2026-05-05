@@ -40,6 +40,7 @@ async function refreshAccessToken(refreshToken: string): Promise<GscToken> {
   if (!clientId || !clientSecret)
     throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set')
 
+  // External API call — bypass wrapper by design (Google OAuth).
   const res = await fetch(OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -110,6 +111,7 @@ export async function exchangeCode(code: string): Promise<GscToken> {
   if (!clientId || !clientSecret)
     throw new Error('GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET must be set')
 
+  // External API call — bypass wrapper by design (Google OAuth).
   const res = await fetch(OAUTH_TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -163,6 +165,7 @@ export async function queryPerformance(
   const accessToken = await getValidToken()
   const encodedSiteUrl = encodeURIComponent(siteUrl)
 
+  // External API call — bypass wrapper by design (Google Search Console API).
   const res = await fetch(
     `${GSC_API_BASE}/sites/${encodedSiteUrl}/searchAnalytics/query`,
     {

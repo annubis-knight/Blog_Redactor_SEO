@@ -2,19 +2,28 @@
 
 - Projet : `blog-redactor-seo`
 - Config : `.data-flow-discipline.json`
-- Total violations : **173**
+- Total violations : **155**
 
 ## Resume
 
 | Severite | Categorie | Violations |
 |---|---|---|
-| HIGH | Fallbacks silencieux (HIGH) | 2 |
-| MEDIUM | Fallbacks silencieux (MEDIUM) | 32 |
+| HIGH | Fallbacks silencieux (HIGH) | 4 |
+| MEDIUM | Fallbacks silencieux (MEDIUM) | 34 |
 | MEDIUM | Stores/services sans header AUTHORITY | 69 |
-| MEDIUM | fetch() directs hors wrapper | 22 |
 | LOW | Fichiers > limite de lignes | 48 |
 
-## HIGH - Fallbacks silencieux (HIGH) (2)
+## HIGH - Fallbacks silencieux (HIGH) (4)
+
+### `src/composables/intent/useMultiSourceVerdict.ts:73`
+
+```
+  const kd = data.difficulty ?? 0
+```
+
+**Pourquoi** : `difficulty ?? <valeur>` masque l'absence de donnee. Un score absent n'est pas zero.
+
+**Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
 
 ### `src/composables/intent/useNlpAnalysis.ts:147`
 
@@ -36,7 +45,17 @@
 
 **Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
 
-## MEDIUM - Fallbacks silencieux (MEDIUM) (32)
+### `server/services/keyword/keyword-radar.service.ts:428`
+
+```
+      difficulty: kpis.difficulty ?? 0,
+```
+
+**Pourquoi** : `difficulty ?? <valeur>` masque l'absence de donnee. Un score absent n'est pas zero.
+
+**Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
+
+## MEDIUM - Fallbacks silencieux (MEDIUM) (34)
 
 ### `src/components/strategy/ProposedArticleRow.vue:69`
 
@@ -45,6 +64,16 @@
 ```
 
 **Pourquoi** : `warningCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `src/composables/intent/useMultiSourceVerdict.ts:69`
+
+```
+  const sv = data.searchVolume ?? 0
+```
+
+**Pourquoi** : `searchVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
 
 **Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
 
@@ -338,7 +367,17 @@
 
 **Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
 
-### `server/services/strategy/local-seo.service.ts:56`
+### `server/services/keyword/keyword-radar.service.ts:427`
+
+```
+      searchVolume: kpis.searchVolume ?? 0,
+```
+
+**Pourquoi** : `searchVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/strategy/local-seo.service.ts:57`
 
 ```
     votesCount: item.rating?.votes_count ?? 0,
@@ -862,228 +901,6 @@
 
 *(... 19 autres violations dans cette categorie, non listees pour rester lisible)*
 
-## MEDIUM - fetch() directs hors wrapper (22)
-
-### `src/components/editor/tiptap/extensions/dynamic-block-drop.ts:590`
-
-```
-  const res = await fetch('/api/generate/action', {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `src/components/keywords/DiscoveryPanel.vue:62`
-
-```
-      await fetch('/api/keywords', {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `src/components/moteur/CaptainValidation.vue:541`
-
-```
-  fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `src/composables/editor/useStreaming.ts:127`
-
-```
-      const res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `src/composables/editor/useStreaming.ts:202`
-
-```
-    const res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/article/content-gap.service.ts:27`
-
-```
-  const res = await fetch('https://api.tavily.com/search', {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/article/export.service.ts:190`
-
-```
-                fetch(file)
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/gsc.service.ts:43`
-
-```
-  const res = await fetch(OAUTH_TOKEN_URL, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/gsc.service.ts:113`
-
-```
-  const res = await fetch(OAUTH_TOKEN_URL, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/gsc.service.ts:166`
-
-```
-  const res = await fetch(
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/openrouter.service.ts:62`
-
-```
-  const res = await fetch(API_URL, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/openrouter.service.ts:129`
-
-```
-  const res = await fetch(API_URL, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/serp-analysis.service.ts:72`
-
-```
-    const res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/dataforseo/_client.ts:98`
-
-```
-    const response = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/external/dataforseo/_client.ts:170`
-
-```
-    const response = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/intent/intent.service.ts:84`
-
-```
-    res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/intent/intent.service.ts:313`
-
-```
-    res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/intent/intent.service.ts:424`
-
-```
-    res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/keyword/autocomplete.service.ts:93`
-
-```
-      response = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/keyword/autocomplete.service.ts:112`
-
-```
-        response = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/keyword/suggest.service.ts:73`
-
-```
-    const res = await fetch(url.toString(), {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
-### `server/services/strategy/local-seo.service.ts:20`
-
-```
-  const res = await fetch(url, {
-```
-
-**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
-
-**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
-
 ## LOW - Fichiers > limite de lignes (48)
 
 ### `src/components/brief/ContentGapPanel.vue:578`
@@ -1116,10 +933,10 @@
 
 **Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
 
-### `src/components/editor/tiptap/extensions/dynamic-block-drop.ts:924`
+### `src/components/editor/tiptap/extensions/dynamic-block-drop.ts:901`
 
 ```
-924 lignes (limite : 400)
+901 lignes (limite : 400)
 ```
 
 **Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
@@ -1186,10 +1003,10 @@
 
 **Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
 
-### `src/components/keywords/DiscoveryPanel.vue:585`
+### `src/components/keywords/DiscoveryPanel.vue:581`
 
 ```
-585 lignes (limite : 400)
+581 lignes (limite : 400)
 ```
 
 **Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
@@ -1226,10 +1043,10 @@
 
 **Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
 
-### `src/components/moteur/CaptainValidation.vue:1496`
+### `src/components/moteur/CaptainValidation.vue:1468`
 
 ```
-1496 lignes (limite : 400)
+1468 lignes (limite : 400)
 ```
 
 **Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
@@ -1536,10 +1353,10 @@
 
 **Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
 
-### `server/services/intent/intent.service.ts:542`
+### `server/services/intent/intent.service.ts:545`
 
 ```
-542 lignes (limite : 400)
+545 lignes (limite : 400)
 ```
 
 **Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.

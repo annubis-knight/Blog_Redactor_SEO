@@ -191,6 +191,7 @@ flowchart TD
 - **2026-05-02 (sprint score-bimodal)** — Avant, un seul score `combinedScore` (hybride marché+pertinence). Risque : fallback silencieux masquait l'absence d'un signal. Refactor : cards embarquent maintenant `marketScore` et `relevanceScore` (tous deux peuvent être `null` séparément). Pour longues-traînes, `kpis:null` **explicite** (pas de fallback combinedScore).
 - **Côté longues-traînes — identité avec racines** — Pas de régression connue, mais cas à surveiller : si l'IA génère un keyword identique à une racine, la dédup doit garder la racine (données primaires).
 - **Côté persistance — toggle selection** — Debounce 500ms = best-effort (pas de garantie si reload immédiat). Acceptable UX, documenté dans composable.
+- **2026-05-05 (KPI nullable)** — `RadarKeywordKpis.searchVolume / difficulty / cpc / competition` passent à `number | null`. `computeKpiScore` (shared/scoring-kpi.ts) renormalise sur les composantes effectives (rawLabel !== '—') au lieu de pondérer un faux `0`. Adapter `keyword-radar.service.ts` propage `null` depuis `KeywordOverview` plutôt que `?? 0`. **Compat payloads JSONB persistés** : les anciens scans avec KPIs en `0` restent valides (≠ `null`), interprétés comme « scan ancien sans data ». Voir FR-INFRA-KPI-NULLABLE / FR-INFRA-KPI-SCORING-NULLSAFE.
 
 ## Tests de cohérence à écrire
 

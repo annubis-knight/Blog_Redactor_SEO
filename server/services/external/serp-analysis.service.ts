@@ -69,6 +69,7 @@ async function fetchPageHtml(url: string): Promise<string> {
   const start = Date.now()
 
   try {
+    // External API call — bypass wrapper by design (scraping concurrent SERP).
     const res = await fetch(url, {
       headers: { 'User-Agent': USER_AGENT },
       signal: controller.signal,

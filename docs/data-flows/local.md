@@ -162,6 +162,7 @@ flowchart TD
 - **Sprint 15.5 (2026-05-02)** — `upsertKeywordLocalAnalysis()` remplace `upsert_local_analysis()` article-scoped. Signature change : paramètres `(keyword, analysis, lang?, country?)` au lieu de `(articleId, keyword, analysis)`.
 - **Sprint 15.5 (2026-05-04)** — `calculateReviewGap()` utilise env var `MY_GBP_REVIEWS` côté serveur, pas stockée en DB. À documenter dans env.example.
 - **Aucun** — Pas encore de changement formule `opportunityIndex` depuis implémentation (formule stable : `(local.volume × (100 - local.KD)) / max(national.KD, 1)`).
+- **2026-05-05 (KPI nullable)** — `LocationMetrics.searchVolume / keywordDifficulty / cpc / competition` passent à `number | null`. `LocalNationalComparison.opportunityIndex` devient `number | null` : retourne `null` si une opérande (`local.searchVolume`, `local.keywordDifficulty`, `national.keywordDifficulty`) est absente — pas de fallback `0` ni `NaN`. UI : `LocalComparisonStep.vue` affiche `'—'` via `formatVolume / formatKd / formatCpc / formatPercent`. Voir FR-INFRA-KPI-NULLABLE / FR-INFRA-KPI-SCORING-NULLSAFE AC4.
 
 ## Tests de cohérence à écrire
 

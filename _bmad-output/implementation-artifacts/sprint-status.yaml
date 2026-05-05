@@ -1,5 +1,5 @@
 # generated: 2026-04-01
-# last_updated: 2026-05-04
+# last_updated: 2026-05-05
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
@@ -274,6 +274,21 @@ development_status:
   #   - Audit data-flow : 5 → 2 violations HIGH (dont 2 préexistantes)
   kpi-nullable-green-phase: done
 
+  # Chantier fetch→wrapper migration (2026-05-05) — tech-spec-fetch-to-wrapper-migration.md
+  # FR-INFRA-API-WRAPPER (affiné) / FR-INFRA-API-STREAM (nouveau) /
+  # NFR-INT-API-WRAPPER (affiné) / NFR-OBS-EXTERNAL-API-OPT-OUT (nouveau)
+  #   - 35 fetch() directs identifiés par audit data-flow-discipline
+  #   - 9 fetch métier internes migrés vers apiGet/apiPost/apiPut/apiPatch/apiDelete
+  #   - 4 fetch SSE migrés vers nouveau apiStream<T> + useStreaming refactor
+  #   - 14 fetch externes documentés (// External API call — bypass wrapper by design)
+  #   - 5 faux positifs filtrés au niveau du script audit (api.service.ts + HTML templates)
+  #   - 8 commits sur branche dédiée chore/fetch-to-wrapper-migration
+  #   - 31/31 tests verts (api.service.test, keyword-audit.store.test,
+  #     keyword-discovery.store.test, race-conditions.test) — fix régression
+  #     race-conditions abort test (it.skip → mock apiPost)
+  #   - Audit final : 0 violation dans la catégorie « fetch() directs hors wrapper »
+  fetch-to-wrapper-migration: done
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur
@@ -281,7 +296,8 @@ development_status:
 #
 # - Sortis du scope Epic 16 (stabilisation) — chantiers indépendants :
 #   * 271 warnings @typescript-eslint/no-explicit-any : audit de typage dédié
-#   * 20 fetch() directs dans composants Vue à remplacer par apiGet/apiPost (codemod)
+#   * ~~20 fetch() directs dans composants Vue à remplacer par apiGet/apiPost~~
+#     → résorbé 2026-05-05 via tech-spec-fetch-to-wrapper-migration
 #   * Découpage CaptainValidation.vue (1507L), KeywordDiscoveryTab.vue (1421L)
 #     — éligibles maintenant que S2+S3 ont posé le filet
 #   * Unification des 6 stores qui touchent un même article (chantier d'archi)

@@ -90,6 +90,7 @@ export async function fetchAutocomplete(
 
     let response: Response
     try {
+      // External API call — bypass wrapper by design (Google Suggest).
       response = await fetch(url, {
         signal: controller.signal,
         headers: {
@@ -109,6 +110,7 @@ export async function fetchAutocomplete(
       const retryController = new AbortController()
       const retryTimeoutId = setTimeout(() => retryController.abort(), 3000)
       try {
+        // External API call — bypass wrapper by design (Google Suggest, retry).
         response = await fetch(url, {
           signal: retryController.signal,
           headers: {

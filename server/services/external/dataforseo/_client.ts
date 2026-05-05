@@ -95,6 +95,7 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
       await sleep(delay)
     }
 
+    // External API call — bypass wrapper by design (DataForSEO).
     const response = await fetch(url, {
       method: 'POST',
       headers: {
@@ -167,6 +168,7 @@ export async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[])
       await sleep(delay)
     }
 
+    // External API call — bypass wrapper by design (DataForSEO).
     const response = await fetch(url, {
       method: 'POST',
       headers: {

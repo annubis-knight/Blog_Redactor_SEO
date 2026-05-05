@@ -1,11 +1,23 @@
+> ⚠️ **ARCHIVED — HISTORICAL SPEC (do not use as current source of truth)**
+>
+> Ce document est une spec de planification implémentée et livrée le 2026-05-05.
+> Il peut diverger de l'état actuel du code. Pour connaître l'état livré, consulter :
+> - `_bmad-output/planning-artifacts/prd.md` §8.14 (FR-INFRA-KPI-NULLABLE, KPI-DISPLAY-DASH, KPI-CONSISTENCY, KPI-SCORING-NULLSAFE)
+> - `shared/score/format.ts` (helpers formatVolume/Cpc/Kd/Percent)
+> - `shared/types/dataforseo.types.ts`, `shared/types/intent.types.ts`, `shared/types/keyword-audit.types.ts` (types migrés)
+> - `docs/data-flows/keyword-metrics.md` et autres cartographies (cas d'usage `null`)
+>
+> Voir `CLAUDE.md` à la racine pour les règles complètes.
+
 ---
 title: 'Migration des types KPI vers `number | null`'
 slug: 'kpi-types-nullable'
 created: '2026-05-05'
-status: 'in-progress'
-version: '0.2.0'
+delivered: '2026-05-05'
+status: 'delivered'
+version: '1.0.0'
 last_updated: '2026-05-05'
-stepsCompleted: [1, 2, 3, 4, 6, 8, 9, 10-partial, 13-partial]
+stepsCompleted: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14]
 tech_stack:
   - TypeScript 5.9 (shared/types)
   - Express 5 (server adapters DataForSEO + DB)

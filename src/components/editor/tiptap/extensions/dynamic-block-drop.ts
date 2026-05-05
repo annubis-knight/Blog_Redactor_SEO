@@ -19,6 +19,7 @@ import { Plugin, PluginKey } from '@tiptap/pm/state'
 import { DOMParser, Fragment, Node as PMNode } from '@tiptap/pm/model'
 import type { EditorView } from '@tiptap/pm/view'
 import { log } from '@/utils/logger'
+import { apiStream } from '@/services/api.service'
 
 export const DYNAMIC_BLOCK_MIME = 'application/x-dynamic-block'
 
@@ -587,63 +588,39 @@ async function doStreamOnce(
     selectedTextPreview: selectedText.slice(0, 200),
   })
 
-  const res = await fetch('/api/generate/action', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(requestBody),
-    signal,
-  })
-
-  if (!res.ok) {
-    const json = await res.json().catch(() => null) as { error?: { message?: string } } | null
-    const message = json?.error?.message ?? `HTTP ${res.status}`
-    if (res.status === 429) throw new RateLimitError(message)
-    throw new Error(message)
-  }
-  if (!res.body) throw new Error('Réponse sans body streamable')
-
-  const reader = res.body.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-  let accumulated = ''
-  let eventType = ''
   let chunkCount = 0
   let firstChunkMs: number | null = null
+  let accumulated = ''
 
-  while (true) {
-    const { done, value } = await reader.read()
-    if (done) break
-    buffer += decoder.decode(value, { stream: true })
-
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
-
-    for (const line of lines) {
-      if (line.startsWith('event: ')) {
-        eventType = line.slice(7).trim()
-      } else if (line.startsWith('data: ')) {
-        const data = line.slice(6)
-        try {
-          const parsed = JSON.parse(data)
-          if (eventType === 'chunk') {
-            if (firstChunkMs === null) {
-              firstChunkMs = Date.now() - startMs
-              log.debug('[dynamic-block-drop] 📥 first chunk received', { pendingId, ttfbMs: firstChunkMs })
-            }
-            chunkCount++
-            accumulated += parsed.content
-          } else if (eventType === 'error') {
-            const errMessage = typeof parsed.message === 'string' ? parsed.message : 'Erreur IA'
-            if (/429|rate[_ ]?limit/i.test(errMessage)) throw new RateLimitError(errMessage)
-            throw new Error(errMessage)
-          }
-        } catch (err) {
-          if (eventType === 'error') throw err
-          // Ignore JSON malformé hors event error
+  // FR-INFRA-API-STREAM : passe par apiStream pour beneficier du cost-log
+  // automatique et de la surface des KNOWN_ERROR_CODES via le wrapper.
+  const out = await apiStream<unknown>(
+    '/generate/action',
+    requestBody,
+    {
+      onChunkRaw: (piece) => {
+        if (firstChunkMs === null) {
+          firstChunkMs = Date.now() - startMs
+          log.debug('[dynamic-block-drop] 📥 first chunk received', { pendingId, ttfbMs: firstChunkMs })
         }
-        eventType = ''
-      }
-    }
+        chunkCount++
+        accumulated += piece
+      },
+      onError: (msg) => {
+        // L'event SSE error remontera via out.errorMessage, mais on capture
+        // le pattern 429 ici pour traduire en RateLimitError specifique.
+        if (/429|rate[_ ]?limit/i.test(msg)) throw new RateLimitError(msg)
+      },
+    },
+    { signal },
+  )
+
+  if (out.aborted) {
+    throw new DOMException('Aborted', 'AbortError')
+  }
+  if (out.errorMessage) {
+    if (/429|rate[_ ]?limit/i.test(out.errorMessage)) throw new RateLimitError(out.errorMessage)
+    throw new Error(out.errorMessage)
   }
 
   const totalMs = Date.now() - startMs

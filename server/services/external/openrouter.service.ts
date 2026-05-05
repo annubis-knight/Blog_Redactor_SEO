@@ -59,6 +59,7 @@ export async function classifyJsonOpenRouter<T>(
   assertFreeModel(model)
   const startedAt = Date.now()
 
+  // External API call — bypass wrapper by design (OpenRouter).
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: getHeaders(),
@@ -126,6 +127,7 @@ export async function* streamChatCompletionOpenRouter(
   assertFreeModel(model)
   const startedAt = Date.now()
 
+  // External API call — bypass wrapper by design (OpenRouter).
   const res = await fetch(API_URL, {
     method: 'POST',
     headers: getHeaders(),

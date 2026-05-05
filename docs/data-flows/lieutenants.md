@@ -199,6 +199,8 @@ flowchart TD
 
 - **2026-05-03 (serp cross-article)** — Migration SERP scraping de table `serp_explorations` (article-scoped) vers `keyword_metrics.serp_raw_json` (cross-article). Invariant **NFR-INT-SERP-ONCE** : une seule requête SERP par mot-clé, même si 5 articles utilisent le keyword. Route `/serp/analyze` check DB (ligne 34-37 `serp-analysis.routes.ts`) avant appel externe.
 
+- **2026-05-05 (KPI nullable — propagation indirecte)** — Lieutenants consomment indirectement les KPIs marché via le scoring du Capitaine et les payloads SERP. Les types upstream (`KeywordOverview`, `LocationMetrics`, `RadarKeywordKpis`, `KeywordAuditResult`) passent à `number | null`. Pas d'impact direct sur les containers Lieutenant (qui ne lisent pas `searchVolume / cpc / kd / competition` directement), mais les scores `marketScore` et `relevanceScore` des Capitaines validés en amont peuvent être `null` — Lieutenants doit gérer ce cas sans masquer l'absence par `0`. Voir FR-INFRA-KPI-NULLABLE.
+
 ## Tests de cohérence à écrire
 
 À placer dans `tests/unit/coherence/lieutenants.test.ts` :
