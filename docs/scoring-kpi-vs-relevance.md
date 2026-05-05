@@ -370,10 +370,32 @@ C'est un pattern qu'on peut systématiser pour transformer le scoring de pertine
 
 **Limite connue** : si l'utilisateur a validé un keyword Capitaine **sans passer par le Radar** (saisie manuelle), aucune entrée correspondante n'existe dans `radar_explorations.scan_result.cards`. Dans ce cas, `relevanceScore` reste `null` et la card affiche `—`. Pour obtenir le score, l'utilisateur doit passer par Radar (qui calcule le Score Pertinence côté backend) ou re-valider le keyword via le bouton Capitaine.
 
+### 2026-05-05 — Architecture live computation (refonte)
+
+> **Document de référence figé** : [docs/data-flows/relevance-score-live-computation.md](./data-flows/relevance-score-live-computation.md). Cette section résume la décision ; le détail (schémas, FRs, tests) est dans le doc dédié.
+
+**Bug résolu** : la "limite connue" de la section [2026-05-02 (suite)](#2026-05-02-suite--restoration-des-scores-au-reload) — saisie manuelle Capitaine sans scan Radar préalable → `relevanceScore = null` au reload — est définitivement éliminée.
+
+**Décision** : abandon de la dépendance au snapshot Radar pour la Pertinence. Le score est recalculé à la volée côté backend à chaque hydratation Capitaine.
+
+| Aspect | Avant | Après (2026-05-05) |
+|---|---|---|
+| Calcul Score Marché | Front, à chaque rendu | ✅ Inchangé |
+| Calcul Score Pertinence | Au scan Radar + persisté dans snapshot | **Back, à chaque hydratation Capitaine, jamais persisté** |
+| Source des `root_keywords` | Calculées au verrouillage Capitaine | **Calculées et persistées dès l'entrée du keyword dans `captain_explorations`** |
+| Snapshot `radar_explorations.scan_result.cards[].relevanceScore` | Écrit par scan Radar, lu au reload | **Plus écrit. Anciennes lignes ignorées à la lecture.** |
+| Mémoïsation racines partagées | N/A | **Map locale serveur (durée = 1 requête HTTP)** |
+| Tooltip "score absent" | 3 causes devinées par le frontend | **5 causes typées renvoyées par le backend** (`unavailableReason`) |
+
+**FRs couvrant cette refonte** : FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE, FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB, FR-CAP-ROOTS-PERSISTED-AT-ENTRY, FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-CAP-RELEVANCE-LINEAR-ROOTS, FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-CARD-CHEVRON-TOGGLE.
+
+**Tech-spec** : [tech-spec-relevance-live-computation.md](../_bmad-output/implementation-artifacts/tech-spec-relevance-live-computation.md).
+
 ### Travaux futurs (à scoper si nécessaire)
 
 - **Suppression complète de `combinedScore`** du payload backend (`/keywords/radar/scan`, `/keywords/:kw/validate`) une fois confirmé qu'aucun ancien article persisté ne l'exige. Inclura une migration des `radar_explorations.scan_result`.
-- **Recalcul direct côté backend** au moment du `getCaptainExplorations` quand le keyword est absent du radar (utiliser `computeRelevanceScore` avec les signaux disponibles dans `keyword_metrics`).
+- **Migration de nettoyage** (non bloquante) : retirer le champ `relevanceScore` des anciennes lignes `radar_explorations.scan_result.cards[]` en DB. Aujourd'hui ignoré à la lecture (pas urgent).
+- **Extraction sémantique des racines** (LLM) si l'extraction linéaire actuelle s'avère insuffisante en pratique. Verrouillé statu quo via FR-CAP-RELEVANCE-LINEAR-ROOTS.
 
 ---
 

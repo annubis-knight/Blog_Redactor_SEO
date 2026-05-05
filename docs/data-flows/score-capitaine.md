@@ -3,7 +3,7 @@ name: score-capitaine
 description: Score(s) du Capitaine d'un article — dans la version actuelle (post 2026-04-28), il s'agit de DEUX scores indépendants (Score Marché objectif + Score Pertinence subjectif lié à la douleur).
 type: "{ marketScore: { value: number | null, verdict: 'GO'|'ORANGE'|'NO-GO'|'GRAY', breakdown: KpiScores }, relevanceScore: { value: number | null, verdict: 'GO'|'ORANGE'|'NO-GO'|'GRAY', breakdown: RelevanceBreakdown } | null }"
 last_updated: 2026-05-05
-related_fr: [FR-RAD-SCORING-BIMODAL, FR-CAP-SCORING-BIMODAL, FR-CAP-VALIDATE, FR-CAP-VERDICT-INFORMATIVE, FR-MOT-RAW-KPIS, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE]
+related_fr: [FR-RAD-SCORING-BIMODAL, FR-CAP-SCORING-BIMODAL, FR-CAP-VALIDATE, FR-CAP-VERDICT-INFORMATIVE, FR-MOT-RAW-KPIS, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE, FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE, FR-CAP-ROOTS-PERSISTED-AT-ENTRY, FR-RAD-NO-RELEVANCE-IN-SCAN]
 ---
 
 # Data Flow — score-capitaine
@@ -26,14 +26,18 @@ Qui crée ou met à jour cette donnée :
 
 ## Persistance
 
-**Autorité** : `keyword_metrics` (PostgreSQL) pour les KPIs bruts ; `captain_explorations(article_id, keyword)` pour la validation contextuelle (verdict + scores) cumulée article par article.
+> **⚠️ Refonte 2026-05-05** : ni `marketScore` ni `relevanceScore` ne sont persistés en DB. Voir [relevance-score-live-computation.md](./relevance-score-live-computation.md) pour l'architecture complète. Cette section décrit la persistance des **inputs** uniquement.
 
-- Table `keyword_metrics` (cross-article, permanent) — colonnes `search_volume`, `keyword_difficulty`, `cpc`, `competition`, `intent_raw`, `autocomplete_suggestions[]`, `paa_questions[]`, `serp_raw_json JSONB`, `fetched_at`. Source unique des KPIs marché.
-- Table `captain_explorations(article_id, keyword, source, validation JSONB)` — `validation` contient `marketScore`, `relevanceScore`, verdict, breakdowns. Persiste l'évaluation contextualisée.
-- Store Pinia `articleKeywordsStore` — slot unique `richCaptain` par article (lock atomique via `lockCaptain()`).
-- Cache `api_cache` (TTL variable par endpoint DataForSEO) — couche supplémentaire pour les appels eux-mêmes.
+**Autorité** : `keyword_metrics` (PostgreSQL) pour les KPIs bruts ; `captain_explorations(article_id, keyword)` pour les **métadonnées** Capitaine (status, root_keywords, ai_panel_markdown). **Les scores Marché/Pertinence ne sont PAS persistés** — calculés à la volée à chaque hydratation.
 
-> Hiérarchie d'autorité : `keyword_metrics` (KPIs bruts) → `captain_explorations` (verdict contextualisé) → `articleKeywordsStore.richCaptain` (lock UI). Toute écriture doit passer par cette chaîne ; toute lecture suit le sens inverse.
+- Table `keyword_metrics` (cross-article, permanent) — colonnes `search_volume`, `keyword_difficulty`, `cpc`, `competition`, `intent_raw`, `autocomplete_suggestions[]`, `paa_questions[]`, `serp_raw_json JSONB`, `fetched_at`. **Inputs** des deux scores.
+- Table `captain_explorations(article_id, keyword, source, status, root_keywords, ai_panel_markdown, ...)` — métadonnées Capitaine. **Pas de colonne score**. La colonne `root_keywords` (TEXT[]) est remplie **dès l'entrée** du keyword (FR-CAP-ROOTS-PERSISTED-AT-ENTRY).
+- Table `articles.pain_point` — input critique du Score Pertinence.
+- Store Pinia `articleKeywordsStore` — slot unique `richCaptain` par article (lock atomique via `lockCaptain()`). Contient des scores **calculés à la volée**, vidé au F5.
+- **Nouveau store** `captain-relevance.store` — Map des cards et racines avec leurs scores Pertinence + breakdown. Hydraté à chaque mount, vidé au F5.
+- Cache `api_cache` (TTL variable par endpoint DataForSEO) — couche supplémentaire pour les appels eux-mêmes. **N'est PAS utilisé pour les scores.**
+
+> **Hiérarchie d'autorité** : `keyword_metrics` (KPIs bruts) + `articles.pain_point` (input pertinence) + `captain_explorations.root_keywords` (racines) → calcul à la volée → `articleKeywordsStore.richCaptain` + `captain-relevance.store` (lecture session). Toute écriture passe par les **inputs** ; les scores sont dérivés, jamais persistés.
 
 ## Consommateurs
 
