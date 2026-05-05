@@ -3,6 +3,7 @@ import { log } from '../utils/logger.js'
 import { respondWithError } from '../utils/api-error.js'
 import { getCached, setCached, slugify } from '../db/cache-helpers.js'
 import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords, saveCaptainExploration, updateCaptainExplorationAiPanel, getCaptainExplorations, saveLieutenantExplorations, getLieutenantExplorations } from '../services/infra/data.service.js'
+import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
 import { previewMigration, applyMigration } from '../services/keyword/keyword-assignment.service.js'
@@ -285,6 +286,10 @@ router.post('/articles/:id/captain-explorations', async (req, res) => {
   try {
     const entry = req.body
     if (!entry.keyword) { res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'keyword is required' } }); return }
+    // FR-CAP-ROOTS-PERSISTED-AT-ENTRY : calcul des racines à l'entrée si absent (ex: appel depuis frontend sans roots)
+    if (!Array.isArray(entry.rootKeywords) || entry.rootKeywords.length === 0) {
+      entry.rootKeywords = extractRoots(entry.keyword)
+    }
     const dbOps = await saveCaptainExploration(id, entry)
     res.json({ data: { success: true }, dbOps })
   } catch (err) {

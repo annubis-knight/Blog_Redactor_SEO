@@ -6,6 +6,7 @@ import { saveCaptainExploration } from '../services/infra/data.service.js'
 import { getRadarExploration } from '../services/infra/radar-exploration.service.js'
 import { computeMarketScore } from '../../shared/scoring-kpi.js'
 import { computeRelevanceScore } from '../../shared/scoring.js'
+import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import type { RadarKeywordKpis, RadarCard } from '../../shared/types/intent.types.js'
 import type { RelevanceScoreResult } from '../../shared/types/scoring.types.js'
 import type { CaptainValidationEntry } from '../../shared/types/keyword.types.js'
@@ -283,7 +284,7 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
           articleLevel,
           // kpis kept here only until Sprint 15.3-bis drops the column entirely.
           kpis: kpis.map(k => ({ name: k.name, rawValue: k.rawValue })),
-          rootKeywords: [],
+          rootKeywords: extractRoots(keyword),
           paaQuestions: response.paaQuestions,
         }
         await saveCaptainExploration(articleId, captainEntry)
