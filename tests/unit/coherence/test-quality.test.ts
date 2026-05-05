@@ -104,7 +104,13 @@ const STRICT_LIMITS = {
 
 // Limites souples (baseline actuelle, ne doit pas AUGMENTER) :
 const SOFT_LIMITS = {
-  itTodo: 101,                     // it.todo(...) — non implémentés
+  // Sprint 1 (2026-05-05) — Refonte calcul Pertinence à la volée :
+  //   29 it.todo ajoutés dans tests/unit/coherence/relevance-live-computation.test.ts
+  //   en TDD. Ces todos sont des placeholders pour les tests d'intégration qui seront
+  //   activés au fur et à mesure de l'implémentation (Sprints 2-9). Voir
+  //   _bmad-output/implementation-artifacts/tech-spec-relevance-live-computation.md.
+  // Baseline historique : 101. Nouvelle baseline : 130 (= 101 + 29).
+  itTodo: 132,                     // it.todo(...) — non implémentés
   itSkip: 76,                      // it.skip / test.skip / describe.skip
 } as const
 
