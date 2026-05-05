@@ -31,7 +31,6 @@ import { computeRelevanceScore } from '../../../shared/scoring.js'
 import { getKeywordMetrics, type KeywordMetrics } from './keyword-metrics.service.js'
 import { lexicalPainAlignment, avgLexicalPainAlignment } from './lexical-pain-alignment.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../queries/article-pain-point.service.js'
-import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 
 /** Longueur minimale du painPoint pour qu'un calcul Pertinence soit tenté. */
@@ -267,6 +266,4 @@ export const __test__ = {
   computeRelevanceForSingleKeyword,
   painPointToWords,
   loadMetricsBatch,
-  // query exposé pour permettre aux tests de spy sans toucher au module DB
-  query,
 }

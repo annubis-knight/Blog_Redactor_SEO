@@ -25,6 +25,7 @@ import type {
   DbOp,
 } from '../../../shared/types/index.js'
 import type { PaaQuestionValidate } from '../../../shared/types/keyword-validate.types.js'
+import { computeRelevanceForCaptainTab } from '../keyword/captain-relevance.service.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -611,32 +612,56 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     paaByKeyword.set(p.keyword, list)
   }
 
-  // 2026-05-02 — Hydrate marketScore + relevanceScore depuis radar_explorations.
-  // Les scores ne sont PAS persistés dans captain_explorations (par design :
-  // ils sont calculés, pas saisis). On les rapatrie ici depuis le scan_result
-  // du Radar qui les a déjà calculés. Ainsi, restoreFromHistory côté front
-  // dispose de relevanceScore.total pour l'affichage et le tri Capitaine.
-  // Voir docs/scoring-kpi-vs-relevance.md → Statut de la migration.
+  // 2026-05-05 — Refonte live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE).
+  // marketScore : continue d'être rapatrié depuis radar_explorations (calcul
+  //   stable, ne dépend que du keyword). À terme, peut être recalculé front
+  //   à partir des kpis (FR-RAD-MARKET-COMPUTED-LIVE) — non bloquant ici.
+  // relevanceScore : N'EST PLUS lu depuis le snapshot Radar (FR-RAD-NO-RELEVANCE-IN-SCAN).
+  //   Calculé à la volée par computeRelevanceForCaptainTab (FR-CAP-RELEVANCE-COMPUTED-LIVE).
+  //   Le champ relevanceScore présent dans les anciens snapshots est IGNORÉ.
   const t3 = Date.now()
   const radarRes = await pool.query(
     `SELECT scan_result FROM radar_explorations WHERE article_id = $1`, [articleId]
   )
   ops.push({ operation: 'select', table: 'radar_explorations', rowCount: radarRes.rows.length, ms: Date.now() - t3 })
-  const scoresByKeyword = new Map<string, { marketScore?: unknown; relevanceScore?: unknown }>()
+  const marketScoresByKeyword = new Map<string, unknown>()
+  let legacyRelevanceCount = 0
   if (radarRes.rows[0]?.scan_result) {
     const scanResult = radarRes.rows[0].scan_result as { cards?: Array<{ keyword: string; marketScore?: unknown; relevanceScore?: unknown | null }> }
     for (const card of scanResult.cards ?? []) {
-      scoresByKeyword.set(card.keyword, {
-        marketScore: card.marketScore,
-        relevanceScore: card.relevanceScore,
-      })
+      if (card.marketScore !== undefined) {
+        marketScoresByKeyword.set(card.keyword, card.marketScore)
+      }
+      if (card.relevanceScore !== undefined && card.relevanceScore !== null) {
+        legacyRelevanceCount++
+      }
     }
   }
-  log.debug('[captain-explorations] scores lookup', {
+  if (legacyRelevanceCount > 0) {
+    log.debug('[captain-explorations] legacy relevanceScore in snapshot ignored (live computation)', {
+      articleId,
+      ignoredCount: legacyRelevanceCount,
+    })
+  }
+  log.debug('[captain-explorations] marketScore lookup', {
     articleId,
-    scoresFound: scoresByKeyword.size,
+    marketScoresFound: marketScoresByKeyword.size,
     captainKeywords: res.rows.map(r => r.keyword),
   })
+
+  // 2026-05-05 — Calcul Pertinence à la volée (FR-CAP-RELEVANCE-COMPUTED-LIVE).
+  // Mémoïsation des racines partagées via Map locale serveur (FR-CAP-RELEVANCE-MEMOIZATION).
+  // Source de vérité : docs/data-flows/relevance-score-live-computation.md.
+  const t4 = Date.now()
+  const captainKeywordsForRelevance = res.rows.map(r => ({
+    keyword: r.keyword as string,
+    rootKeywords: (r.root_keywords ?? []) as string[],
+    isLongTail: false, // TODO Sprint 4 : détecter longue-traîne via flag ou kpis null
+  }))
+  const relevanceResult = await computeRelevanceForCaptainTab(articleId, captainKeywordsForRelevance)
+  // 'select' marker — le calcul Pertinence ne fait que des lectures (FR-CAP-RELEVANCE-NO-DB-WRITE).
+  // Le timing inclut les SELECTs sur articles.pain_point + keyword_metrics + le calcul lexical.
+  ops.push({ operation: 'select', table: 'captain-relevance-live', rowCount: relevanceResult.cards.size, ms: Date.now() - t4 })
 
   const data = res.rows.map(t => {
     // Adapter DB -> KPIs (FR-INFRA-KPI-NULLABLE) : la garde `metrics_fetched_at`
@@ -660,7 +685,8 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       kpis.push({ name: 'autocomplete', rawValue: autoPos })
       kpis.push({ name: 'paa', rawValue: 0 })
     }
-    const scores = scoresByKeyword.get(t.keyword)
+    const marketScoreFromRadar = marketScoresByKeyword.get(t.keyword) ?? null
+    const liveRelevance = relevanceResult.cards.get(t.keyword) ?? null
     return {
       keyword: t.keyword,
       kpis,
@@ -669,10 +695,22 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       paaQuestions: paaByKeyword.get(t.keyword) ?? [],
       aiPanelMarkdown: t.ai_panel_markdown ?? null,
       exploredAt: t.explored_at?.toISOString() ?? null,
-      // Scores hydratés depuis radar_explorations (peuvent être absents si la
-      // card n'était pas dans le scan, ex: keyword saisi manuellement par l'utilisateur).
-      marketScore: (scores?.marketScore ?? null) as CaptainValidationEntry['marketScore'],
-      relevanceScore: (scores?.relevanceScore ?? null) as CaptainValidationEntry['relevanceScore'],
+      // marketScore : rapatrié depuis radar_explorations (snapshot stable).
+      // Peut être null si la card n'était pas dans le scan (saisie manuelle).
+      marketScore: marketScoreFromRadar as CaptainValidationEntry['marketScore'],
+      // relevanceScore : calculé à la volée (FR-CAP-RELEVANCE-COMPUTED-LIVE).
+      // Toujours cohérent avec le painPoint actuel de l'article.
+      // Le champ unavailableReason est porté par liveRelevance pour le tooltip honnête.
+      relevanceScore: (liveRelevance && liveRelevance.total !== null
+        ? {
+            total: liveRelevance.total,
+            verdict: liveRelevance.verdict,
+            breakdown: liveRelevance.breakdown,
+            rootsContext: liveRelevance.rootsContext,
+          }
+        : null) as CaptainValidationEntry['relevanceScore'],
+      // Cause typée renvoyée au front pour le tooltip (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
+      relevanceUnavailableReason: liveRelevance?.unavailableReason ?? null,
     }
   })
   return { data, dbOps: ops }
