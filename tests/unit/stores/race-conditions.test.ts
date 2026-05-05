@@ -148,51 +148,39 @@ describe('keyword-discovery.store — AbortController', () => {
     return useKeywordDiscoveryStore()
   }
 
-  // FIXME (chantier fetch→apiPost wrapper) : ce test mocke directement
-  // globalThis.fetch ; depuis la migration vers apiPost (src/services/api.service.ts)
-  // le timing d'attachement du signal AbortController a changé (await fetch +
-  // await res.json ajoutent des microtâches) et le mock ne capte plus l'abort
-  // sur le premier appel. À régler avec un mock au niveau apiPost plutôt qu'au
-  // niveau fetch, dans le chantier dédié à la migration wrapper.
-  // Ce skip n'est PAS lié au chantier KPI nullable — toute la chaîne KPI passe vert.
-  it.skip('aborts previous request when new discovery is launched', async () => {
-    const abortedSignals: boolean[] = []
+  // Depuis la migration vers le wrapper apiPost (chantier
+  // fetch-to-wrapper-migration), on mocke apiPost et on observe le signal
+  // AbortController passé en options. Plus de timing dépendant des microtâches
+  // de fetch().
+  it('aborts previous request when new discovery is launched', async () => {
+    const capturedSignals: AbortSignal[] = []
 
-    // Mock fetch to capture the signal
-    const originalFetch = globalThis.fetch
-    globalThis.fetch = vi.fn().mockImplementation((_url: string, init?: RequestInit) => {
-      return new Promise((resolve, reject) => {
-        if (init?.signal) {
-          init.signal.addEventListener('abort', () => {
-            abortedSignals.push(true)
+    mockApiPost.mockImplementation((_path: string, _body: unknown, options?: { signal?: AbortSignal }) => {
+      if (options?.signal) capturedSignals.push(options.signal)
+      // Promise qui ne résout jamais — la seule sortie est l'abort.
+      return new Promise((_resolve, reject) => {
+        if (options?.signal) {
+          options.signal.addEventListener('abort', () => {
             reject(new DOMException('Aborted', 'AbortError'))
           })
         }
-        // Never resolve (simulates slow request) unless not aborted
-        setTimeout(() => {
-          resolve(new Response(JSON.stringify({
-            data: { keywords: [], apiCost: 0, totalBeforeDedup: 0, totalAfterDedup: 0, total: 0 },
-          }), { status: 200, headers: { 'Content-Type': 'application/json' } }))
-        }, 100)
       })
     })
 
-    try {
-      const store = await getStore()
+    const store = await getStore()
 
-      // Launch seed discovery
-      const seedPromise = store.discoverFromSeed('keyword1')
+    // Lance la première discovery (seed) — ne résoudra jamais (mock pending).
+    const seedPromise = store.discoverFromSeed('keyword1')
+    // Immédiatement, lance la seconde (domain) — doit aborter la seed.
+    store.discoverFromDomain('example.com')
 
-      // Immediately launch domain discovery — should abort the seed
-      const domainPromise = store.discoverFromDomain('example.com')
+    // On attend uniquement que la première promesse se règle (par AbortError
+    // catché silencieusement dans le store). La seconde reste pending.
+    await seedPromise
 
-      await Promise.allSettled([seedPromise, domainPromise])
-
-      // First request should have been aborted
-      expect(abortedSignals.length).toBeGreaterThanOrEqual(1)
-    } finally {
-      globalThis.fetch = originalFetch
-    }
+    expect(capturedSignals.length).toBeGreaterThanOrEqual(2)
+    expect(capturedSignals[0].aborted).toBe(true)
+    expect(capturedSignals[1].aborted).toBe(false)
   })
 })
 
