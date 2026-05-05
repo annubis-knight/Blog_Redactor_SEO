@@ -638,7 +638,10 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     }
   }
   if (legacyRelevanceCount > 0) {
-    log.debug('[captain-explorations] legacy relevanceScore in snapshot ignored (live computation)', {
+    // Sprint 9 — snapshot Radar ancien avec relevanceScore persisté. On ignore
+    // silencieusement (live computation remplace), mais on log.warn pour traçabilité
+    // (FR-RAD-NO-RELEVANCE-IN-SCAN : les nouveaux scans ne stockent plus ce champ).
+    log.warn('[captain-explorations] legacy relevanceScore in snapshot ignored (live computation)', {
       articleId,
       ignoredCount: legacyRelevanceCount,
     })
