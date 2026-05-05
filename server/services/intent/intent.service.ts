@@ -81,6 +81,7 @@ async function fetchSerpAdvanced(keyword: string, locationCode: number = 2250): 
 
   let res: Response
   try {
+    // External API call — bypass wrapper by design (DataForSEO SERP advanced).
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
@@ -310,6 +311,7 @@ async function fetchKeywordOverviewForLocation(keyword: string, locationCode: nu
 
   let res: Response
   try {
+    // External API call — bypass wrapper by design (DataForSEO keyword overview).
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
@@ -421,6 +423,7 @@ async function fetchGoogleAutocomplete(keyword: string): Promise<string[]> {
 
   let res: Response
   try {
+    // External API call — bypass wrapper by design (DataForSEO Google autocomplete).
     res = await fetch(url, {
       method: 'POST',
       headers: { 'Authorization': auth, 'Content-Type': 'application/json' },
