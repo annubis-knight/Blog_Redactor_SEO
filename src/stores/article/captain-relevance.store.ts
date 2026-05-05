@@ -47,16 +47,28 @@ export const useCaptainRelevanceStore = defineStore('captain-relevance', () => {
    * @returns Les nouvelles entrées, ou null en cas d'erreur.
    */
   async function recompute(articleId: number): Promise<CaptainValidationEntry[] | null> {
+    log.debug('[captain-relevance store] recompute — démarrage', {
+      articleId,
+      previousSnapshot: painPointSnapshot.value?.slice(0, 60) ?? null,
+      previousState: loading.value,
+    })
     loading.value = 'computing'
     lastArticleId.value = articleId
     try {
       const entries = await apiGet<CaptainValidationEntry[]>(`/articles/${articleId}/captain-explorations`)
       loading.value = 'done'
-      log.debug('[captain-relevance] recomputed', { articleId, count: entries?.length ?? 0 })
+      const scored = entries?.filter(e => e.relevanceScore !== null).length ?? 0
+      const unavailable = entries?.filter(e => e.relevanceScore === null).length ?? 0
+      log.debug('[captain-relevance store] recompute — succès', {
+        articleId,
+        total: entries?.length ?? 0,
+        scored,
+        unavailable,
+      })
       return entries ?? null
     } catch (err) {
       loading.value = 'error'
-      log.error('[captain-relevance] recompute failed', { articleId, error: (err as Error).message })
+      log.error('[captain-relevance store] recompute — échec', { articleId, error: (err as Error).message })
       return null
     }
   }
@@ -68,7 +80,13 @@ export const useCaptainRelevanceStore = defineStore('captain-relevance', () => {
   function hasPainPointChanged(currentPainPoint: string | null): boolean {
     const current = currentPainPoint?.trim() ?? null
     const snap = painPointSnapshot.value?.trim() ?? null
-    return current !== snap
+    const changed = current !== snap
+    log.debug('[captain-relevance store] hasPainPointChanged', {
+      changed,
+      current: current?.slice(0, 60) ?? null,
+      snapshot: snap?.slice(0, 60) ?? null,
+    })
+    return changed
   }
 
   /**
@@ -76,10 +94,16 @@ export const useCaptainRelevanceStore = defineStore('captain-relevance', () => {
    * À appeler par CaptainValidation.vue après avoir intégré les nouvelles entrées.
    */
   function updatePainPointSnapshot(painPoint: string | null) {
-    painPointSnapshot.value = painPoint?.trim() ?? null
+    const trimmed = painPoint?.trim() ?? null
+    log.debug('[captain-relevance store] updatePainPointSnapshot', {
+      from: painPointSnapshot.value?.slice(0, 60) ?? null,
+      to: trimmed?.slice(0, 60) ?? null,
+    })
+    painPointSnapshot.value = trimmed
   }
 
   function reset() {
+    log.debug('[captain-relevance store] reset', { lastArticleId: lastArticleId.value })
     loading.value = 'idle'
     painPointSnapshot.value = null
     lastArticleId.value = null

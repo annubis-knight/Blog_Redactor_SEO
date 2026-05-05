@@ -183,21 +183,50 @@ export async function computeRelevanceForCaptainTab(
   articleId: number,
   keywords: CaptainKeywordInput[],
 ): Promise<CaptainTabRelevanceResult> {
+  const tTotal = Date.now()
+  log.debug('[captain-relevance] PHASE 1 — démarrage', {
+    articleId,
+    keywordsCount: keywords.length,
+    keywords: keywords.map(k => k.keyword),
+  })
+
   // ---- PHASE 1 : Lecture DB ----
   const painPoint = await getArticlePainPoint(articleId)
   const painPointSnapshot = painPoint === PAIN_POINT_FALLBACK ? null : painPoint
+  log.debug('[captain-relevance] PHASE 1 — painPoint lu', {
+    articleId,
+    painPointAvailable: painPoint !== PAIN_POINT_FALLBACK,
+    painPointLength: painPoint !== PAIN_POINT_FALLBACK ? painPoint.length : 0,
+    painPointPreview: painPoint !== PAIN_POINT_FALLBACK ? painPoint.slice(0, 60) : '(fallback)',
+  })
 
   // Collecter toutes les racines uniques (Set dédoublonne)
   const allRootsSet = new Set<string>()
   for (const kw of keywords) {
     for (const root of kw.rootKeywords) allRootsSet.add(root)
   }
+  log.debug('[captain-relevance] PHASE 1 — racines collectées', {
+    articleId,
+    rootsCount: allRootsSet.size,
+    roots: [...allRootsSet],
+  })
 
   // Charger les métriques pour tous les keywords + racines en parallèle
   const allKeywordsToFetch = [
     ...new Set([...keywords.map(k => k.keyword), ...allRootsSet]),
   ]
+  const tMetrics = Date.now()
   const metricsByKeyword = await loadMetricsBatch(allKeywordsToFetch)
+  const metricsHits = [...allKeywordsToFetch].filter(k => metricsByKeyword.has(k))
+  const metricsMisses = [...allKeywordsToFetch].filter(k => !metricsByKeyword.has(k))
+  log.debug('[captain-relevance] PHASE 1 — métriques chargées', {
+    articleId,
+    total: allKeywordsToFetch.length,
+    hits: metricsHits.length,
+    misses: metricsMisses.length,
+    missingKeywords: metricsMisses,
+    ms: Date.now() - tMetrics,
+  })
 
   // ---- PHASE 2A : Calcul des racines uniques (mémoïsation locale) ----
   const rootScores = new Map<string, RelevanceLiveEntry>()
@@ -205,6 +234,13 @@ export async function computeRelevanceForCaptainTab(
     const metrics = metricsByKeyword.get(root) ?? null
     const result = computeRelevanceForSingleKeyword(root, painPoint, metrics, null, false)
     rootScores.set(root, { keyword: root, ...result })
+    log.debug('[captain-relevance] PHASE 2A — racine calculée', {
+      root,
+      score: result.total,
+      unavailableReason: result.unavailableReason,
+      hasPaa: (metrics?.paaQuestions?.length ?? 0) > 0,
+      hasAc: (metrics?.autocompleteSuggestions?.length ?? 0) > 0,
+    })
   }
 
   // ---- PHASE 2B : Calcul des cards complètes en lisant la Map ----
@@ -226,7 +262,26 @@ export async function computeRelevanceForCaptainTab(
       kw.isLongTail ?? false,
     )
     cardScores.set(kw.keyword, { keyword: kw.keyword, ...result })
+    log.debug('[captain-relevance] PHASE 2B — card calculée', {
+      keyword: kw.keyword,
+      score: result.total,
+      verdict: result.verdict,
+      unavailableReason: result.unavailableReason,
+      rootsUsed: kw.rootKeywords.length,
+      rootsAverage,
+      breakdown: result.breakdown,
+    })
   }
+
+  const totalMs = Date.now() - tTotal
+  log.debug('[captain-relevance] PHASE 3 — résumé final', {
+    articleId,
+    cardsComputed: cardScores.size,
+    rootsComputed: rootScores.size,
+    scored: [...cardScores.values()].filter(c => c.total !== null).length,
+    unavailable: [...cardScores.values()].filter(c => c.total === null).length,
+    totalMs,
+  })
 
   // ---- PHASE 3 : Réponse — la Map est garbage-collectée à la sortie ----
   return {

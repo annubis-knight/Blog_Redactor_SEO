@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, watch } from 'vue'
+import { log } from '@/utils/logger'
 import type { RadarCard, RadarIntentType, RadarPaaItem } from '@shared/types/intent.types.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
@@ -187,6 +188,21 @@ const relevanceMissingReason = computed<RelevanceMissingReason>(() => {
   return 'no-signals'
 })
 
+watch(
+  () => [props.card.relevanceScore, props.card.relevanceUnavailableReason, relevanceMissingReason.value] as const,
+  ([score, backendReason, resolvedReason]) => {
+    log.debug('[RadarKeywordCard] relevance state', {
+      keyword: props.card.keyword,
+      score: score?.total ?? null,
+      verdict: score?.verdict ?? null,
+      backendReason: backendReason ?? null,
+      resolvedReason,
+      source: backendReason ? 'backend' : 'frontend-heuristic',
+    })
+  },
+  { immediate: true },
+)
+
 const scoreLabel = computed(() =>
   props.displayMode === 'kpi' ? 'Score KPI' : 'Score Pertinence',
 )
@@ -313,6 +329,15 @@ function itemBorderClass(paa: RadarPaaItem): string {
   return ''
 }
 
+function handleChevronClick(e: MouseEvent) {
+  e.stopPropagation()
+  expanded.value = !expanded.value
+  log.debug('[RadarKeywordCard] chevron toggled', {
+    keyword: props.card.keyword,
+    expanded: expanded.value,
+    paaCount: props.card.paaItems?.length ?? 0,
+  })
+}
 
 </script>
 
@@ -323,7 +348,7 @@ function itemBorderClass(paa: RadarPaaItem): string {
          propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
          propage normalement au parent (radar-list-item → ouvre la sidebar). -->
     <div class="radar-card__header">
-      <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }" @click.stop="expanded = !expanded">&#9654;</span>
+      <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }" @click="handleChevronClick">&#9654;</span>
 
       <KeywordWords v-if="interactiveWords" class="radar-card__keyword" :words="interactiveWords.words"
         :active-indices="interactiveWords.activeIndices" :loading="interactiveWords.loading" :modifiers="modifiers"

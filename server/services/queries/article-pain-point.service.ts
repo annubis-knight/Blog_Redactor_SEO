@@ -26,15 +26,26 @@ export const PAIN_POINT_FALLBACK = '(non défini)'
  * une lecture best-effort qui ne doit pas casser le flux de prompts.
  */
 export async function getArticlePainPoint(articleId: number | null | undefined): Promise<string> {
-  if (!articleId || !Number.isFinite(articleId)) return PAIN_POINT_FALLBACK
+  if (!articleId || !Number.isFinite(articleId)) {
+    log.debug('[painPoint] articleId invalide → fallback', { articleId })
+    return PAIN_POINT_FALLBACK
+  }
+  log.debug('[painPoint] lecture DB', { articleId })
   try {
+    const t = Date.now()
     const res = await query<{ pain_point: string | null }>(
       `SELECT pain_point FROM articles WHERE id = $1`,
       [articleId],
     )
     const raw = res.rows[0]?.pain_point
-    if (!raw || typeof raw !== 'string' || raw.trim() === '') return PAIN_POINT_FALLBACK
-    return raw.trim()
+    const ms = Date.now() - t
+    if (!raw || typeof raw !== 'string' || raw.trim() === '') {
+      log.debug('[painPoint] absent ou vide → fallback', { articleId, ms })
+      return PAIN_POINT_FALLBACK
+    }
+    const trimmed = raw.trim()
+    log.debug('[painPoint] trouvé', { articleId, length: trimmed.length, preview: trimmed.slice(0, 60), ms })
+    return trimmed
   } catch (err) {
     log.warn(`[painPoint lookup] échec lecture articleId=${articleId} — ${(err as Error).message}`)
     return PAIN_POINT_FALLBACK

@@ -130,7 +130,14 @@ export function useRadarCarousel() {
     painPoint?: string,
   ) {
     const roots = extractRoots(keyword).slice(0, 5)
-    if (roots.length === 0 || response.kpis.find(k => k.name === 'volume')?.color === 'green') return
+    const volumeColor = response.kpis.find(k => k.name === 'volume')?.color
+    log.debug('[useRadarCarousel] validateRoots — évaluation', {
+      keyword,
+      roots,
+      volumeColor,
+      willValidate: roots.length > 0 && volumeColor !== 'green',
+    })
+    if (roots.length === 0 || volumeColor === 'green') return
 
     patch(entryIndex, { isLoadingRoots: true })
     const variants = new Map<string, KeywordRootVariant>()
@@ -157,6 +164,13 @@ export function useRadarCarousel() {
 
   async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
+    log.debug('[useRadarCarousel] loadCards — démarrage', {
+      count: cards.length,
+      keywords: cards.map(c => c.keyword),
+      level,
+      articleId,
+      hasPainPoint: !!painPoint,
+    })
     entries.value = cards.map(createEntry)
     currentIndex.value = 0
 
@@ -392,7 +406,14 @@ export function useRadarCarousel() {
     })
 
     currentIndex.value = 0
-    log.debug('[useRadarCarousel] Restored from history', { count: history.length })
+    const withRelevance = entries.value.filter(e => (e.card.relevanceScore?.total ?? null) !== null).length
+    const withRoots = entries.value.filter(e => e.rootVariants.size > 0).length
+    log.debug('[useRadarCarousel] restoreFromHistory — terminé', {
+      total: history.length,
+      withRelevance,
+      withRoots,
+      withUnavailableReason: entries.value.filter(e => e.card.relevanceUnavailableReason).length,
+    })
   }
 
   function reset() {

@@ -576,6 +576,8 @@ export async function saveArticleKeywords(id: number, data: Omit<ArticleKeywords
 // ---------------------------------------------------------------------------
 
 export async function getCaptainExplorations(articleId: number): Promise<{ data: CaptainValidationEntry[]; dbOps: DbOp[] }> {
+  const tTotal = Date.now()
+  log.debug('[getCaptainExplorations] démarrage', { articleId })
   const ops: DbOp[] = []
   // Sprint 15.3-bis — JOIN keyword_metrics to rebuild KPIs on the fly.
   // captain_explorations no longer stores `kpis` (migration 011).
@@ -594,12 +596,24 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     [articleId],
   )
   ops.push({ operation: 'select', table: 'captain_explorations+keyword_metrics', rowCount: res.rows.length, ms: Date.now() - t1 })
+  log.debug('[getCaptainExplorations] captain_explorations+metrics lus', {
+    articleId,
+    count: res.rows.length,
+    keywords: res.rows.map(r => r.keyword),
+    ms: Date.now() - t1,
+  })
   // Hydrate PAA questions from dedicated table
   const t2 = Date.now()
   const paaRes = await pool.query(
     `SELECT * FROM paa_explorations WHERE article_id = $1 ORDER BY explored_at`, [articleId]
   )
   ops.push({ operation: 'select', table: 'paa_explorations', rowCount: paaRes.rows.length, ms: Date.now() - t2 })
+  log.debug('[getCaptainExplorations] paa_explorations lues', {
+    articleId,
+    count: paaRes.rows.length,
+    keywords: [...new Set(paaRes.rows.map(r => r.keyword))],
+    ms: Date.now() - t2,
+  })
   const paaByKeyword = new Map<string, PaaQuestionValidate[]>()
   for (const p of paaRes.rows) {
     const list = paaByKeyword.get(p.keyword) ?? []
@@ -624,6 +638,11 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     `SELECT scan_result FROM radar_explorations WHERE article_id = $1`, [articleId]
   )
   ops.push({ operation: 'select', table: 'radar_explorations', rowCount: radarRes.rows.length, ms: Date.now() - t3 })
+  log.debug('[getCaptainExplorations] radar_explorations lues', {
+    articleId,
+    hasScanResult: !!radarRes.rows[0]?.scan_result,
+    ms: Date.now() - t3,
+  })
   const marketScoresByKeyword = new Map<string, unknown>()
   let legacyRelevanceCount = 0
   if (radarRes.rows[0]?.scan_result) {
@@ -665,6 +684,14 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
   // 'select' marker — le calcul Pertinence ne fait que des lectures (FR-CAP-RELEVANCE-NO-DB-WRITE).
   // Le timing inclut les SELECTs sur articles.pain_point + keyword_metrics + le calcul lexical.
   ops.push({ operation: 'select', table: 'captain-relevance-live', rowCount: relevanceResult.cards.size, ms: Date.now() - t4 })
+  log.debug('[getCaptainExplorations] relevance live calculée', {
+    articleId,
+    painPointSnapshot: relevanceResult.painPointSnapshot?.slice(0, 60) ?? null,
+    computedAt: relevanceResult.computedAt.toISOString(),
+    scored: [...relevanceResult.cards.values()].filter(c => c.total !== null).length,
+    unavailable: [...relevanceResult.cards.values()].filter(c => c.total === null).length,
+    ms: Date.now() - t4,
+  })
 
   const data = res.rows.map(t => {
     // Adapter DB -> KPIs (FR-INFRA-KPI-NULLABLE) : la garde `metrics_fetched_at`
@@ -715,6 +742,13 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       // Cause typée renvoyée au front pour le tooltip (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
       relevanceUnavailableReason: liveRelevance?.unavailableReason ?? null,
     }
+  })
+  log.debug('[getCaptainExplorations] DONE', {
+    articleId,
+    entries: data.length,
+    withRelevance: data.filter(e => e.relevanceScore !== null).length,
+    withMarketScore: data.filter(e => e.marketScore !== null).length,
+    totalMs: Date.now() - tTotal,
   })
   return { data, dbOps: ops }
 }
