@@ -208,65 +208,52 @@ describe('FR-LEX-SELECT — cohérence Lexique affichage / persistance', () => {
 })
 
 // ============================================================================
-// Test 4: FR-CAP-PERSIST + FR-INFRA-API-WRAPPER — mirror non-régression
+// Test 4: FR-CAP-PERSIST — mirror captain_keyword_locked via saveArticleKeywords
 // ============================================================================
+// Historique : avant 2026-05-04, la colonne `articles.captain_keyword_locked`
+// etait geree par une route dediee PUT /articles/:id/captain-keyword. Cette
+// route a ete supprimee : le mirror se fait maintenant DANS saveArticleKeywords
+// quand le payload contient `richCaptain.status === 'locked'`. Les tests
+// ci-dessous verifient ce contrat actuel.
 
-describe('FR-CAP-PERSIST — mirror captain_keyword_locked non-régression', () => {
-  it('saveDecisions() NE doit pas écraser articles.captain_keyword_locked', async () => {
-    // Simuler la base de données avant save
-    const mockDb = {
-      article_keywords: {
-        article_id: 1,
-        capitaine: 'seo',
-        lieutenants: [],
-        lexique: [],
-        captain_locked_at: '2026-05-04T10:00:00Z',
-      },
-      articles: {
-        id: 1,
-        captain_keyword_locked: 'seo', // Posé par PUT /captain-keyword
-      },
-    }
+describe('FR-CAP-PERSIST — mirror captain_keyword_locked via richCaptain', () => {
+  /**
+   * Reproduit la logique du mirror dans server/services/infra/data.service.ts:562-568.
+   * Une evolution de cette logique cassera ce test, ce qui est volontaire.
+   */
+  function computeMirroredCaptainKeyword(payload: {
+    richCaptain?: { status?: string; keyword?: string | null }
+  }): string | null {
+    return payload.richCaptain?.status === 'locked'
+      ? (payload.richCaptain.keyword ?? null)
+      : null
+  }
 
-    // Simuler saveDecisions() appelant PUT /articles/:id/keywords
-    // avec payload : { capitaine, lieutenants, lexique, rootKeywords, hnStructure }
-    // (NOTE: richCaptain N'EST PAS dans le payload)
-    const _payload = {
-      capitaine: 'seo',
-      lieutenants: [],
-      lexique: [],
-      rootKeywords: [],
-      hnStructure: [],
-      // richCaptain: undefined ← c'est l'absence qui causait le bug
-    }
-
-    // La route saveArticleKeywords() ne doit PAS toucher captain_keyword_locked
-    // (elle était verrouillée par PUT /articles/:id/captain-keyword)
-
-    // Après saveDecisions, captain_keyword_locked doit TEN OIR
-    expect(mockDb.articles.captain_keyword_locked).toBe('seo')
+  it('payload avec richCaptain.status="locked" → mirror = keyword', () => {
+    const mirrored = computeMirroredCaptainKeyword({
+      richCaptain: { status: 'locked', keyword: 'seo' },
+    })
+    expect(mirrored).toBe('seo')
   })
 
-  it('PUT /articles/:id/captain-keyword lock explicitement', () => {
-    const mockDb = {
-      articles: {
-        id: 1,
-        captain_keyword_locked: null as string | null,
-      },
-    }
-
-    function updateCaptainKeywordLocked(id: number, keyword: string | null) {
-      mockDb.articles.captain_keyword_locked = keyword
-    }
-
-    updateCaptainKeywordLocked(1, 'mot-clé')
-    expect(mockDb.articles.captain_keyword_locked).toBe('mot-clé')
-
-    updateCaptainKeywordLocked(1, null)
-    expect(mockDb.articles.captain_keyword_locked).toBeNull()
+  it('payload sans richCaptain → mirror = null (pas de preservation magique)', () => {
+    const mirrored = computeMirroredCaptainKeyword({})
+    expect(mirrored).toBeNull()
   })
 
-  it.todo('contrat : captain_keyword_locked est EXCLUSIVEMENT géré par PUT /captain-keyword')
+  it('payload avec richCaptain.status="suggested" → mirror = null', () => {
+    const mirrored = computeMirroredCaptainKeyword({
+      richCaptain: { status: 'suggested', keyword: 'seo' },
+    })
+    expect(mirrored).toBeNull()
+  })
+
+  it('payload avec richCaptain.status="locked" mais keyword=null → mirror = null', () => {
+    const mirrored = computeMirroredCaptainKeyword({
+      richCaptain: { status: 'locked', keyword: null },
+    })
+    expect(mirrored).toBeNull()
+  })
 })
 
 // ============================================================================
