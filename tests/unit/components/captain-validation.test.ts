@@ -1364,13 +1364,10 @@ describe('CaptainValidation', () => {
 
       // Trigger lockCarouselEntry via the lock panel in carousel mode
       const lockBtn = wrapper.find('[data-testid="carousel-lock-btn"]')
-      if (lockBtn.exists()) {
-        await lockBtn.trigger('click')
-        await nextTick()
-        expect(mockSaveDecisions).toHaveBeenCalledWith(mockArticle.id)
-      } else {
-        expect(true).toBe(true)
-      }
+      expect(lockBtn.exists(), 'le bouton lock doit exister en mode carousel').toBe(true)
+      await lockBtn.trigger('click')
+      await nextTick()
+      expect(mockSaveDecisions).toHaveBeenCalledWith(mockArticle.id)
     })
   })
 

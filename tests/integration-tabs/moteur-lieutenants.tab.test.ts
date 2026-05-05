@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiPost, apiGet } from '../helpers/api-client.js'
+import { apiPost, apiGet, expectSuccessOrKnownError } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
 
 const ctx = setupTestContext()
@@ -24,12 +24,9 @@ describe('Tab moteur/lieutenants — SERP analysis', () => {
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-l-serp`,
     })
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(Array.isArray(res.data?.competitors)).toBe(true)
-    } else {
-      expect([500]).toContain(res.status)
-    }
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(Array.isArray(res.data?.competitors)).toBe(true)
   })
 
   it('POST /serp/analyze?articleId=X retourne OK (persistance DB-first en arrière-plan)', { timeout: 60000 }, async () => {

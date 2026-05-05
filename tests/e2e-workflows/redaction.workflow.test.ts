@@ -141,13 +141,11 @@ describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'Status Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Status Article')
 
-    // Le schema valide : à rédiger | en cours | publié | …
-    const res = await apiPut(`/articles/${article.id}/status`, { status: 'en cours' })
-    expect([200, 400]).toContain(res.status)
-    if (res.status === 200) {
-      const dbRes = await query<{ status: string }>(`SELECT status FROM articles WHERE id = $1`, [article.id])
-      expect(dbRes.rows[0]?.status).toBe('en cours')
-    }
+    // Schema actuel (shared/schemas/shared-enums.schema.ts) : 'à rédiger' | 'brouillon' | 'publié'
+    const res = await apiPut(`/articles/${article.id}/status`, { status: 'brouillon' })
+    expect(res.status, `'brouillon' doit etre un status valide (recu ${res.status})`).toBe(200)
+    const dbRes = await query<{ status: string }>(`SELECT status FROM articles WHERE id = $1`, [article.id])
+    expect(dbRes.rows[0]?.status).toBe('brouillon')
   })
 
   it('POST /generate/article sans body → 400/500', async () => {

@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiPost } from '../helpers/api-client.js'
+import { apiPost, expectSuccessOrKnownError } from '../helpers/api-client.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -25,16 +25,13 @@ describe('Contract /intent/analyze', () => {
       dominantIntent: string
       classification: { type: string; confidence: number; reasoning: string }
     }>('/intent/analyze', { keyword: `test-${ctx.runId}-intent` })
-    // Tolère 500 si DataForSEO sandbox rate-limit
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(Array.isArray(res.data?.modules)).toBe(true)
-      expect(Array.isArray(res.data?.scores)).toBe(true)
-      expect(res.data?.classification?.type).toBeDefined()
-      expect(['informational', 'transactional_local', 'navigational', 'mixed']).toContain(res.data?.dominantIntent ?? '')
-    } else {
-      expect([500]).toContain(res.status)
-    }
+    // Tolère un code d'erreur env connu (cost-guard, rate-limit). Sinon échoue.
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(Array.isArray(res.data?.modules)).toBe(true)
+    expect(Array.isArray(res.data?.scores)).toBe(true)
+    expect(res.data?.classification?.type).toBeDefined()
+    expect(['informational', 'transactional_local', 'navigational', 'mixed']).toContain(res.data?.dominantIntent ?? '')
   })
 
   it('POST 2ème appel sur même keyword → DB-first si 1er appel a réussi', { timeout: 60000 }, async () => {
@@ -65,13 +62,10 @@ describe('Contract /local/maps', () => {
     const res = await apiPost<{ keyword: string; listings: unknown[]; reviewGap: unknown }>(
       '/local/maps', { keyword: `test-${ctx.runId}-maps` },
     )
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(Array.isArray(res.data?.listings)).toBe(true)
-      expect(res.data?.reviewGap).toBeDefined()
-    } else {
-      expect([500]).toContain(res.status)
-    }
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(Array.isArray(res.data?.listings)).toBe(true)
+    expect(res.data?.reviewGap).toBeDefined()
   })
 })
 
@@ -91,13 +85,10 @@ describe('Contract /keywords/compare-local', () => {
       opportunityIndex?: number
       alert?: { type: string; index: number } | null
     }>('/keywords/compare-local', { keyword: `test-${ctx.runId}-cl` })
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(res.data?.local).toBeDefined()
-      expect(res.data?.national).toBeDefined()
-    } else {
-      expect([500]).toContain(res.status)
-    }
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(res.data?.local).toBeDefined()
+    expect(res.data?.national).toBeDefined()
   })
 
   it('Alerte : si opportunité forte → alert.type === "opportunity"', { timeout: 60000 }, async () => {
@@ -127,17 +118,13 @@ describe('Contract /content-gap/analyze', () => {
       gaps: unknown[]
       averageWordCount: number
     }>('/content-gap/analyze', { keyword: `test-${ctx.runId}-cg` })
-    // Tavily peut être absent → on tolère 500 mais la shape doit matcher
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(Array.isArray(res.data?.competitors)).toBe(true)
-      expect(Array.isArray(res.data?.themes)).toBe(true)
-      expect(Array.isArray(res.data?.gaps)).toBe(true)
-      expect(typeof res.data?.averageWordCount).toBe('number')
-    } else {
-      // Fail attendu si Tavily indispo
-      expect([500]).toContain(res.status)
-    }
+    // Tavily peut être absent → tolère un code d'erreur env connu, sinon échoue
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(Array.isArray(res.data?.competitors)).toBe(true)
+    expect(Array.isArray(res.data?.themes)).toBe(true)
+    expect(Array.isArray(res.data?.gaps)).toBe(true)
+    expect(typeof res.data?.averageWordCount).toBe('number')
   })
 
   it('POST avec currentContent → calcule presentInArticle', { timeout: 60000 }, async () => {
@@ -168,12 +155,9 @@ describe('Contract /serp/analyze', () => {
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>(
       '/serp/analyze', { keyword: `test-${ctx.runId}-serp` },
     )
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(Array.isArray(res.data?.competitors)).toBe(true)
-    } else {
-      expect([500]).toContain(res.status)
-    }
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(Array.isArray(res.data?.competitors)).toBe(true)
   })
 
   it('POST 2ème call < 7j → cache hit DB-first si 1er a réussi', { timeout: 60000 }, async () => {

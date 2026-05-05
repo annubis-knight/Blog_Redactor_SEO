@@ -8,7 +8,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiPost } from '../helpers/api-client.js'
+import { apiPost, expectSuccessOrKnownError } from '../helpers/api-client.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -91,14 +91,12 @@ describe('Contract /generate/meta', () => {
       articleTitle: 'Guide plombier à Toulouse',
       articleContent: 'Lorsque vous recherchez un plombier à Toulouse, plusieurs critères doivent guider votre choix : les certifications, les avis clients, la réactivité en cas d\'urgence, et la transparence des tarifs. Cet article vous guide pour éviter les mauvaises surprises et trouver un artisan fiable.',
     })
-    // 200 si IA répond en JSON, 500 si IA refuse (contenu trop court/invalide)
-    expect([200, 500]).toContain(res.status)
-    if (res.status === 200) {
-      expect(res.data?.metaTitle).toBeDefined()
-      expect(res.data?.metaDescription).toBeDefined()
-      expect((res.data?.metaTitle ?? '').length).toBeLessThanOrEqual(70)
-      expect((res.data?.metaDescription ?? '').length).toBeLessThanOrEqual(170)
-    }
+    // 200 si IA répond en JSON, sinon doit être une erreur env tolérée
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.metaTitle).toBeDefined()
+    expect(res.data?.metaDescription).toBeDefined()
+    expect((res.data?.metaTitle ?? '').length).toBeLessThanOrEqual(70)
+    expect((res.data?.metaDescription ?? '').length).toBeLessThanOrEqual(170)
   })
 })
 

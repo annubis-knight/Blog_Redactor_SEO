@@ -66,18 +66,17 @@ describe('Tab redaction/seo — Generate meta IA', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'MetaG Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MetaG Article')
 
+    const { expectSuccessOrKnownError } = await import('../helpers/api-client.js')
     const res = await apiPost<{ metaTitle: string; metaDescription: string }>('/generate/meta', {
       articleId: article.id,
       keyword: `plombier toulouse`,
       articleTitle: 'Guide plombier à Toulouse',
       articleContent: 'Lorsque vous cherchez un plombier à Toulouse, plusieurs critères comptent : certifications, avis, réactivité et tarifs transparents. Ce guide vous aide à éviter les arnaques.',
     })
-    // 200 si IA répond JSON, 500 si refus
-    expect([200, 500]).toContain(res.status)
-    if (res.status === 200) {
-      expect(res.data?.metaTitle).toBeDefined()
-      expect(res.data?.metaDescription).toBeDefined()
-    }
+    // 200 si IA répond JSON, sinon doit être un code d'erreur env tolérée
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.metaTitle).toBeDefined()
+    expect(res.data?.metaDescription).toBeDefined()
   })
 
   it.todo('Meta trop longues remontées comme warning (frontend)')

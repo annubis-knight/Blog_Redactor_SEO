@@ -9,7 +9,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiPost, apiGet, apiDelete, apiPut } from '../helpers/api-client.js'
+import { apiPost, apiGet, apiDelete, apiPut, expectSuccessOrKnownError } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
 
 const ctx = setupTestContext()
@@ -431,12 +431,9 @@ describe('Moteur Workflow — Onglet Lieutenants', () => {
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-serp`,
     })
-    if (res.status === 200) {
-      expect(res.data?.keyword).toBeDefined()
-      expect(Array.isArray(res.data?.competitors)).toBe(true)
-    } else {
-      expect([500]).toContain(res.status)
-    }
+    if (!expectSuccessOrKnownError(res)) return
+    expect(res.data?.keyword).toBeDefined()
+    expect(Array.isArray(res.data?.competitors)).toBe(true)
   })
 
   it('POST /keywords/:captain/propose-lieutenants (stream) retourne SSE', { timeout: 30000 }, async () => {

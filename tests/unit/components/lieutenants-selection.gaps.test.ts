@@ -200,14 +200,11 @@ describe('LieutenantsSelection — handleAssistAdd (basket)', () => {
     await wrapper.find('.assist-add').trigger('click')
     await nextTick()
 
-    // Pour observer lieutenantCards depuis le DOM, on regarde le prop passé à LieutenantProposals
-    // (mais c'est un stub vide). Alternative : vérifier que le composant ne crash pas + que
-    // l'émission a été interceptée (le re-clic ne duplique pas).
-    await wrapper.find('.assist-add').trigger('click')
-    // Pas de crash — l'idempotence est testée plus précisément côté composable. Ici on
-    // valide juste que le canal @add est câblé. Le reste est testé via l'observation
-    // de lieutenantCards via les stubs ci-dessous.
-    expect(true).toBe(true)
+    // Vérifie que la card a bien été propagée jusqu'à LieutenantProposals
+    const proposals = wrapper.findComponent({ name: 'LieutenantProposals' })
+    const cards = proposals.props('lieutenantCards') as { keyword: string }[]
+    expect(cards.length).toBe(1)
+    expect(cards[0]!.keyword).toBe('kw-from-basket')
   })
 
   it('handleAssistAdd ne duplique pas un keyword déjà présent', async () => {
@@ -408,18 +405,14 @@ describe('LieutenantsSelection — recommendAndPropagateWordCount au lock', () =
 
     // Maintenant clic lock
     const lockBtn = wrapper.find('[data-testid="lock-btn"]')
-    if (lockBtn.exists() && !(lockBtn.element as HTMLButtonElement).disabled) {
-      await lockBtn.trigger('click')
-      await nextTick()
-      await nextTick()
+    expect(lockBtn.exists(), 'le bouton lock doit exister apres toggle').toBe(true)
+    expect((lockBtn.element as HTMLButtonElement).disabled, 'le bouton lock ne doit pas etre disabled').toBe(false)
+    await lockBtn.trigger('click')
+    await nextTick()
+    await nextTick()
 
-      const recoCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('recommend-word-count'))
-      expect(recoCalls.length).toBeGreaterThan(0)
-    } else {
-      // Le bouton est désactivé / invisible faute de scénario complet → on tolère
-      // ce skip (l'objectif est de NE PAS planter la suite).
-      expect(true).toBe(true)
-    }
+    const recoCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('recommend-word-count'))
+    expect(recoCalls.length).toBeGreaterThan(0)
   })
 })
 
