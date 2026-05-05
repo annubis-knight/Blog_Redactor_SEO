@@ -162,3 +162,158 @@ export async function apiPut<T>(path: string, body: unknown, options?: ApiOption
   pushDbOpsIfPresent(path, json)
   return json.data as T
 }
+
+// ============================================================
+// FR-INFRA-API-STREAM — wrapper SSE pour POST → ReadableStream
+// ============================================================
+
+export interface SectionStartInfo {
+  index: number
+  total: number
+  title: string
+}
+
+export interface ApiStreamCallbacks<T> {
+  /** Cumulative payload as chunks arrive (handy for incremental rendering). */
+  onChunk?: (accumulated: string) => void
+  /** Each individual chunk text (no accumulation). Useful when callers want to control aggregation themselves. */
+  onChunkRaw?: (chunk: string) => void
+  /** Final structured payload from the `done` SSE event. */
+  onDone?: (data: T) => void
+  /** Cost / token usage attached to the `done` SSE event. */
+  onUsage?: (usage: ApiUsage) => void
+  /** A new section is starting (multi-section streaming, e.g. article generation). */
+  onSectionStart?: (info: SectionStartInfo) => void
+  /** A section finished. */
+  onSectionDone?: (info: { index: number }) => void
+  /** Server-side error event during the stream. */
+  onError?: (message: string) => void
+}
+
+export interface ApiStreamResult<T> {
+  result: T | null
+  usage: ApiUsage | null
+  errorMessage: string | null
+  aborted: boolean
+}
+
+async function consumeSseBody<T>(
+  reader: ReadableStreamDefaultReader<Uint8Array>,
+  callbacks?: ApiStreamCallbacks<T>,
+): Promise<ApiStreamResult<T>> {
+  const decoder = new TextDecoder()
+  let buffer = ''
+  let result: T | null = null
+  let usage: ApiUsage | null = null
+  let errorMessage: string | null = null
+  let accumulated = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    let eventType = ''
+    for (const line of lines) {
+      if (line.startsWith('event: ')) {
+        eventType = line.slice(7).trim()
+      } else if (line.startsWith('data: ')) {
+        const data = line.slice(6)
+        try {
+          const parsed = JSON.parse(data)
+          if (eventType === 'chunk') {
+            // Support legacy `content` key (generate/article) and unified `html` key (generate/reduce, humanize-section)
+            const piece: string = typeof parsed.content === 'string'
+              ? parsed.content
+              : typeof parsed.html === 'string'
+                ? parsed.html
+                : ''
+            if (piece) {
+              accumulated += piece
+              callbacks?.onChunkRaw?.(piece)
+              callbacks?.onChunk?.(accumulated)
+            }
+          } else if (eventType === 'done') {
+            if (parsed.usage) {
+              usage = parsed.usage as ApiUsage
+              callbacks?.onUsage?.(parsed.usage as ApiUsage)
+            }
+            result = (parsed.outline ?? parsed.metadata ?? parsed) as T
+            callbacks?.onDone?.(result as T)
+          } else if (eventType === 'section-start') {
+            callbacks?.onSectionStart?.(parsed as SectionStartInfo)
+          } else if (eventType === 'section-done') {
+            callbacks?.onSectionDone?.(parsed as { index: number })
+          } else if (eventType === 'error') {
+            const msg = parsed.message ?? 'Erreur inconnue'
+            errorMessage = msg
+            callbacks?.onError?.(msg)
+          }
+        } catch {
+          // Ignore malformed JSON lines
+        }
+        eventType = ''
+      }
+    }
+  }
+
+  return { result, usage, errorMessage, aborted: false }
+}
+
+/**
+ * SSE wrapper — POST to a streaming endpoint and consume `chunk`/`done`/
+ * `section-*`/`error` events. Mirrors the cost-log + known-error semantics of
+ * the JSON wrappers above (cf. FR-INFRA-API-WRAPPER), so callers don't need to
+ * reinvent error handling for streaming routes.
+ *
+ * On HTTP error before the stream starts: handles known error codes and throws.
+ * On AbortError: returns `{ aborted: true }` (callbacks not called).
+ */
+export async function apiStream<T>(
+  path: string,
+  body: unknown,
+  callbacks?: ApiStreamCallbacks<T>,
+  options?: ApiOptions,
+): Promise<ApiStreamResult<T>> {
+  log.debug(`SSE stream start → /api${path}`)
+  try {
+    const res = await fetch(`/api${path}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+      signal: options?.signal,
+    })
+
+    if (!res.ok) {
+      // Réutilise le pipeline KNOWN_ERROR_CODES + toast du wrapper JSON.
+      await handleApiError(res, 'POST (SSE)', path)
+    }
+
+    if (!res.body) {
+      return { result: null, usage: null, errorMessage: 'La réponse ne contient pas de body streamable', aborted: false }
+    }
+
+    const reader = res.body.getReader()
+    const out = await consumeSseBody<T>(reader, callbacks)
+    if (out.usage) {
+      try {
+        const store = useCostLogStore()
+        store.addEntry(labelFromUrl(path), out.usage)
+      } catch {
+        // Store not available outside Pinia context — silently skip
+      }
+    }
+    return out
+  } catch (err) {
+    if ((err as Error).name === 'AbortError') {
+      log.debug(`SSE stream-once aborted ← /api${path}`)
+      return { result: null, usage: null, errorMessage: null, aborted: true }
+    }
+    const message = err instanceof Error ? err.message : 'Erreur de streaming'
+    log.error(`SSE stream failed ← /api${path} — ${message}`)
+    return { result: null, usage: null, errorMessage: message, aborted: false }
+  }
+}
