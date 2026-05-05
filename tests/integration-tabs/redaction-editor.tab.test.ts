@@ -39,11 +39,10 @@ describe('Tab redaction/editor — Content CRUD', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'EdStatus Cocon')
     const article = await ctx.createArticle(cocoon.id, 'EdStatus Article')
 
-    const res = await apiPut(`/articles/${article.id}/status`, { status: 'en cours' })
-    if (res.status === 200) {
-      const dbRes = await query<{ status: string }>(`SELECT status FROM articles WHERE id = $1`, [article.id])
-      expect(dbRes.rows[0]?.status).toBe('en cours')
-    }
+    const res = await apiPut(`/articles/${article.id}/status`, { status: 'brouillon' })
+    expect(res.status, `'brouillon' doit etre un status valide (recu ${res.status})`).toBe(200)
+    const dbRes = await query<{ status: string }>(`SELECT status FROM articles WHERE id = $1`, [article.id])
+    expect(dbRes.rows[0]?.status).toBe('brouillon')
   })
 })
 

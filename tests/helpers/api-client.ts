@@ -61,6 +61,92 @@ export async function isServerUp(): Promise<boolean> {
 }
 
 /**
+ * Codes d'erreur "non-déterministes" tolérés par les tests qui dépendent
+ * d'APIs externes (DataForSEO, Claude, Tavily…). Quand un test reçoit l'un
+ * de ces codes, il est autorisé à skipper ses assertions de succès — mais il
+ * DOIT vérifier que le serveur a renvoyé une erreur structurée (sinon
+ * c'est un faux positif silencieux).
+ *
+ * Usage type :
+ *   const res = await apiPost('/keyword/validate', { ... })
+ *   if (!expectSuccessOrKnownError(res)) return  // env limité, skip propre
+ *   // ... assertions de succès ...
+ */
+export const TOLERATED_ENV_ERROR_CODES = new Set<string>([
+  // Cost-guard / rate-limit DataForSEO
+  'DATAFORSEO_COST_BUDGET',
+  'DATAFORSEO_RATE_LIMITED',
+  'RATE_LIMITED',
+  // Erreurs métier qui ENCAPSULENT une erreur externe (DataForSEO 402/429,
+  // Tavily key absente, etc.). Le message contient le détail amont.
+  'INTENT_ANALYSIS_ERROR',
+  'MAPS_ANALYSIS_ERROR',
+  'COMPARISON_ERROR',
+  'CONTENT_GAP_ERROR',
+  'SERP_ANALYSIS_ERROR',
+  'KEYWORD_VALIDATE_ERROR',
+  // IA providers indispo
+  'AI_PROVIDER_UNAVAILABLE',
+  'AI_PARSE_ERROR',         // Claude/Gemini répond du non-JSON
+  // Réseau amont
+  'EXTERNAL_API_TIMEOUT',
+])
+
+/**
+ * Mots-clés dans le message d'erreur qui indiquent une cause externe
+ * (clé API absente, payment required, rate-limit). Heuristique de fallback
+ * quand le code seul ne suffit pas à diagnostiquer.
+ */
+const EXTERNAL_CAUSE_KEYWORDS = [
+  'DataForSEO',
+  'Tavily',
+  'TAVILY_API_KEY',
+  'CLAUDE_API_KEY',
+  'OPENROUTER',
+  '402',     // Payment required
+  '429',     // Too Many Requests
+] as const
+
+function messageMatchesExternalCause(message: string | undefined): boolean {
+  if (!message) return false
+  return EXTERNAL_CAUSE_KEYWORDS.some(kw => message.includes(kw))
+}
+
+/**
+ * Retourne `true` si la réponse est un succès (200 + data non null) → le test
+ * peut continuer ses assertions de succès.
+ *
+ * Retourne `false` si la réponse est une erreur tolérée (code dans
+ * TOLERATED_ENV_ERROR_CODES OU message contenant un mot-clé "cause externe")
+ * → le test peut skipper proprement.
+ *
+ * **Throw** sinon — c'est ce qui distingue ce helper du vieux pattern
+ * `if (status === 200)` qui passait silencieusement les autres cas. Un 404,
+ * un 500 sans code d'erreur structurée, un 401, etc. font ECHOUER le test.
+ */
+export function expectSuccessOrKnownError<T>(res: ApiResponse<T>): boolean {
+  if (res.status === 200 && res.data !== null) return true
+
+  const code = res.error?.code
+  const message = res.error?.message
+
+  // Code explicitement dans la whitelist
+  if (code && TOLERATED_ENV_ERROR_CODES.has(code)) return false
+
+  // Sinon, fallback heuristique : message qui mentionne une cause externe
+  if (messageMatchesExternalCause(message)) return false
+
+  // Toute autre situation = vraie erreur. On laisse vitest échouer avec un
+  // message clair (status + code + message).
+  throw new Error(
+    `Expected 200+data ou code d'erreur env tolere. ` +
+    `Recu : status=${res.status}, code=${code ?? '(aucun)'}, message=${message ?? '(aucun)'}.\n` +
+    `Codes toleres : ${[...TOLERATED_ENV_ERROR_CODES].join(', ')}.\n` +
+    `Mots-cles message toleres : ${EXTERNAL_CAUSE_KEYWORDS.join(', ')}.`,
+  )
+}
+
+/**
  * Consomme un stream SSE/texte et retourne le texte concaténé. Utilisé pour
  * les endpoints qui streament (translate-pain, generate/article, etc.).
  */

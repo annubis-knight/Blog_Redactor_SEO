@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiGet, apiPut, apiPost } from '../helpers/api-client.js'
+import { apiGet, apiPut, apiPost, expectSuccessOrKnownError } from '../helpers/api-client.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -129,11 +129,9 @@ describe('Tab redaction/brief — Keywords list', () => {
       cocoonName: 'test',
       existingTerms: [],
     })
-    // 200 si IA répond OK, 500 si parse fail
-    expect([200, 500]).toContain(res.status)
-    if (res.status === 200) {
-      expect(Array.isArray(res.data?.lexique)).toBe(true)
-    }
+    // 200 si IA répond OK, sinon doit être un code d'erreur env tolérée
+    if (!expectSuccessOrKnownError(res)) return
+    expect(Array.isArray(res.data?.lexique)).toBe(true)
   })
 })
 
