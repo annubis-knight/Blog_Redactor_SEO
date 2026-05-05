@@ -15,9 +15,9 @@ export interface DiscoveredKeyword {
   source: DiscoverySource
   reasoning?: string
   sourceDetail?: string // e.g. "question:comment", "intent:prix", "alphabet:a"
-  searchVolume?: number
-  difficulty?: number
-  cpc?: number
+  searchVolume?: number | null
+  difficulty?: number | null
+  cpc?: number | null
   intent?: string
   type?: KeywordType
 }

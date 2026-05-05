@@ -54,19 +54,30 @@ function logNormalize(value: number, maxRef: number): number {
 // --- Per-source normalization ---
 
 export function normalizeDataForSeoSignal(data: {
-  searchVolume: number
-  cpc: number
-  difficulty: number
+  searchVolume: number | null
+  cpc: number | null
+  difficulty: number | null
   relatedCount: number
 } | null): number {
   if (!data) return 0
 
-  // All zeros = no data, not "easy keyword"
-  if (data.searchVolume === 0 && data.cpc === 0 && data.difficulty === 0 && data.relatedCount === 0) return 0
+  // KPIs absents → on les neutralise localement pour conserver la composition
+  // pondérée existante (volumeScore + cpcScore + kdScore + relatedScore). Le
+  // fallback est encapsulé : on ne propage PAS un faux 0 hors de cette fonction.
+  // Si tout est absent ET relatedCount=0, on retourne 0 = "pas de signal".
+   
+  const sv = data.searchVolume ?? 0
+   
+  const cpc = data.cpc ?? 0
+   
+  const kd = data.difficulty ?? 0
 
-  const volumeScore = logNormalize(data.searchVolume, 10000)
-  const cpcScore = clamp(data.cpc / 10, 0, 1)
-  const kdScore = 1 - clamp(data.difficulty / 100, 0, 1) // low difficulty = good
+  // All zeros = no data, not "easy keyword"
+  if (sv === 0 && cpc === 0 && kd === 0 && data.relatedCount === 0) return 0
+
+  const volumeScore = logNormalize(sv, 10000)
+  const cpcScore = clamp(cpc / 10, 0, 1)
+  const kdScore = 1 - clamp(kd / 100, 0, 1) // low difficulty = good
   const relatedScore = clamp(data.relatedCount / 50, 0, 1)
 
   // Weighted average of sub-signals
@@ -143,7 +154,7 @@ export function computeCompositeScore(
 // --- Special case detection ---
 
 export function detectSpecialCase(
-  dataforseo: { searchVolume: number; relatedCount: number } | null,
+  dataforseo: { searchVolume: number | null; relatedCount: number } | null,
   community: CommunitySignal | null,
 ): PainVerdictCategory | null {
   const volume = dataforseo?.searchVolume ?? 0

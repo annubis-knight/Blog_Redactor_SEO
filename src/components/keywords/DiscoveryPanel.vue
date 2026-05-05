@@ -5,6 +5,7 @@ import { useKeywordDiscoveryStore } from '@/stores/keyword/keyword-discovery.sto
 import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import { useKeywordScoring } from '@/composables/keyword/useKeywordScoring'
 import ApiCostBadge from '@/components/shared/ApiCostBadge.vue'
+import { formatVolume, formatKd, formatCpc, formatScore } from '@shared/score/index.js'
 
 const props = defineProps<{
   cocoonName: string
@@ -242,15 +243,15 @@ function formatIntent(intent?: string): string {
                 <option value="Longue traine">Longue traîne</option>
               </select>
             </td>
-            <td class="col-number">{{ kw.searchVolume.toLocaleString() }}</td>
-            <td class="col-number">{{ kw.difficulty }}</td>
-            <td class="col-number">{{ kw.cpc.toFixed(2) }}€</td>
+            <td class="col-number">{{ formatVolume(kw.searchVolume) }}</td>
+            <td class="col-number">{{ formatKd(kw.difficulty) }}</td>
+            <td class="col-number">{{ formatCpc(kw.cpc) }}</td>
             <td>
               <span class="badge-intent" :data-intent="kw.intent">{{ formatIntent(kw.intent) }}</span>
             </td>
             <td class="col-score">
-              <span class="score-value" :style="{ color: getScoreColor(kw.compositeScore.total) }">
-                {{ kw.compositeScore.total }}
+              <span class="score-value" :style="{ color: getScoreColor(kw.compositeScore.total ?? 0) }">
+                {{ formatScore(kw.compositeScore.total) }}
               </span>
             </td>
             <td>

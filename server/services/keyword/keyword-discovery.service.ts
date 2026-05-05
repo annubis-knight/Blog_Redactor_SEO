@@ -6,6 +6,7 @@ import {
 } from '../external/dataforseo.service.js'
 import { log } from '../../utils/logger.js'
 import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
+import { compareScores } from '../../../shared/score/index.js'
 
 async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
   const cached = await getCached<T>(cacheType, key)
@@ -38,19 +39,27 @@ const DISCOVERY_TTL_MS = 24 * 60 * 60 * 1000 // 24h
  * When a keyword has high volume but too many words, it falls one tier down.
  */
 export function classifyKeywordsRelative(
-  keywords: Array<{ searchVolume: number; wordsCount: number }>,
+  keywords: Array<{ searchVolume: number | null; wordsCount: number }>,
 ): KeywordType[] {
   if (keywords.length === 0) return []
 
-  // Compute volume percentiles from the dataset
-  const volumes = keywords.map(k => k.searchVolume).sort((a, b) => b - a)
-  const p85 = volumes[Math.floor(volumes.length * 0.15)] ?? 0 // top 15%
-  const p50 = volumes[Math.floor(volumes.length * 0.50)] ?? 0 // top 50%
+  // FR-INFRA-KPI-CONSISTENCY : on ne classifie qu'à partir des volumes connus.
+  // Les percentiles sont calculés sur le sous-ensemble non-null pour ne pas
+  // être biaisés par des absences (sinon les null tirent la médiane vers 0
+  // et tout le monde devient Pilier).
+  const knownVolumes = keywords
+    .map(k => k.searchVolume)
+    .filter((v): v is number => v !== null)
+    .sort((a, b) => b - a)
+  const p85 = knownVolumes[Math.floor(knownVolumes.length * 0.15)] ?? 0
+  const p50 = knownVolumes[Math.floor(knownVolumes.length * 0.50)] ?? 0
 
   return keywords.map(({ searchVolume, wordsCount }) => {
+    // Volume inconnu → on classe par défaut en Longue traine (prudent).
+    // L'utilisateur verra "—" pour le volume et pourra relancer la validation.
+    if (searchVolume === null) return 'Longue traine'
     if (searchVolume >= p85 && wordsCount <= 3) return 'Pilier'
     if (searchVolume >= p50 && wordsCount <= 4) return 'Moyenne traine'
-    // High volume but too many words → still Moyenne traine
     if (searchVolume >= p85 && wordsCount > 3) return 'Moyenne traine'
     return 'Longue traine'
   })
@@ -280,8 +289,8 @@ async function enrichAndClassify(
     existsInCocoon: existingKeywords?.has(e.raw.keyword.toLowerCase()),
   }))
 
-  // Sort by composite score descending
-  results.sort((a, b) => b.compositeScore.total - a.compositeScore.total)
+  // Sort by composite score descending — null en bas (FR-INFRA-KPI-CONSISTENCY).
+  results.sort((a, b) => compareScores(a.compositeScore.total, b.compositeScore.total))
 
   const typeCounts: Record<string, number> = { Pilier: 0, 'Moyenne traine': 0, 'Longue traine': 0, 'Intermédiaire': 0, 'Spécialisé': 0 }
   for (const r of results) typeCounts[r.type]++

@@ -394,14 +394,13 @@ export async function scanRadarKeywords(
 
     const painAlignmentScore = painAlignmentMap.get(kw.keyword)
 
-    // Adapter overview DataForSEO -> RadarKeywordKpis : type legacy impose number.
-    // TODO[data-flow-discipline] : migrer RadarKeywordKpis.searchVolume / difficulty / cpc vers number | null
-     
+    // Adapter overview DataForSEO -> RadarKeywordKpis (FR-INFRA-KPI-NULLABLE) :
+    // les champs marché restent `null` quand DataForSEO n'a renvoyé aucun signal.
     const kpis: RadarKeywordKpis = {
-      searchVolume: overview?.searchVolume ?? 0,
-      difficulty: overview?.difficulty ?? 0,
-      cpc: overview?.cpc ?? 0,
-      competition: overview?.competition ?? 0,
+      searchVolume: overview?.searchVolume ?? null,
+      difficulty: overview?.difficulty ?? null,
+      cpc: overview?.cpc ?? null,
+      competition: overview?.competition ?? null,
       intentTypes: intentData ? mapIntentTypes(intentData.intent) : [],
       intentProbability: intentData?.intentProbability ?? null,
       autocompleteMatchCount: autoMatchCount,
@@ -411,15 +410,32 @@ export async function scanRadarKeywords(
       avgSemanticScore,
       painAlignmentScore,
     }
-     
 
-    // Étapes 3A/3B — enrichir avec les signaux "pertinence × douleur"
+    // Étapes 3A/3B — enrichir avec les signaux "pertinence × douleur".
+    // computeCombinedScore (legacy) attend des nombres non nullable : on
+    // remplace null par 0 ici uniquement parce que ce score legacy
+    // (`combinedScore`) est conservé pour compatibilité JSONB persistée et
+    // n'est plus utilisé pour de nouveaux affichages — voir RadarCard.combinedScore @deprecated.
     const paaPainAvg = paaPainAlignmentByKw.get(kw.keyword)
+    // computeCombinedScore (legacy `combinedScore`) attend des nombres
+    // non nullable. On encapsule le fallback ici : il ne sort jamais de cette
+    // expression — `combinedScore` est @deprecated et n'est plus consommé pour
+    // un nouvel affichage (cf. RadarCard.combinedScore). Le score frais est
+    // `marketScore` / `relevanceScore` calculés juste après, eux null-safe.
+     
     const scoreBreakdown = computeCombinedScore({
-      ...kpis,
+      searchVolume: kpis.searchVolume ?? 0,
+      difficulty: kpis.difficulty ?? 0,
+      cpc: kpis.cpc ?? 0,
+      paaWeightedScore: kpis.paaWeightedScore,
+      autocompleteMatchCount: kpis.autocompleteMatchCount,
+      avgSemanticScore: kpis.avgSemanticScore,
+      intentTypes: kpis.intentTypes,
+      painAlignmentScore: kpis.painAlignmentScore,
       paaPainAlignmentAvg: paaPainAvg,
       autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? undefined,
     })
+     
 
     // Séparation KPI vs Pertinence (V1) — chaque card embarque les deux scores
     // Sprint S3 — `paaPainAlignmentCumulative` remplace la moyenne lissée pour

@@ -212,10 +212,18 @@ describe('POST /keywords/validate-pain — multi-source', () => {
 
     const result = res.json.mock.calls[0][0].data.results[0]
     expect(result.keyword).toBe('failing kw')
-    expect(result.dataforseo).toEqual(expect.objectContaining({ searchVolume: 0, cpc: 0, relatedCount: 0 }))
+    // FR-INFRA-KPI-NULLABLE : DataForSEO sans signal ⇒ KPIs `null` (pas `0`),
+    // l'absence reste explicite jusqu'à l'UI. relatedCount est un compteur,
+    // donc 0 légitime.
+    expect(result.dataforseo).toEqual(expect.objectContaining({ searchVolume: null, cpc: null, relatedCount: 0 }))
     expect(result.community).toBeNull()
     expect(result.autocomplete).toBeNull()
-    expect(result.verdict.sourcesAvailable).toBe(1)
+    // FR-INFRA-KPI-SCORING-NULLSAFE : DataForSEO sans aucun KPI exploitable
+    // (volume + cpc null) n'est plus comptée comme une source utilisable —
+    // sinon le verdict croirait avoir 1 source alors qu'aucun signal n'a été
+    // mesuré. Avant la migration, `0/0` faisait croire à une source active.
+    expect(result.verdict.sourcesAvailable).toBe(0)
+    expect(result.verdict.category).toBe('incertaine')
   })
 
   it('returns response with correct structure matching schema', async () => {

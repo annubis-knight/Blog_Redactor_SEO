@@ -19,15 +19,13 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
         serp: (metrics.serpRawJson as any)?.competitors ?? [],
         paa: metrics.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? null })),
         relatedKeywords: [],
-        // Adapter DataForSEO brief : le contrat KeywordOverview legacy impose
-        // searchVolume/difficulty/cpc/competition en `number` non nullable.
-        // TODO[data-flow-discipline] : migrer KeywordOverview vers number | null
-         
+        // Adapter DataForSEO brief — FR-INFRA-KPI-NULLABLE : null propagé tel
+        // quel depuis keyword_metrics jusqu'au consommateur.
         keywordData: {
-          searchVolume: metrics.searchVolume ?? 0,
-          difficulty: metrics.keywordDifficulty ?? 0,
-          cpc: metrics.cpc ?? 0,
-          competition: metrics.competition ?? 0,
+          searchVolume: metrics.searchVolume,
+          difficulty: metrics.keywordDifficulty,
+          cpc: metrics.cpc,
+          competition: metrics.competition,
           monthlySearches: [],
         },
          
@@ -58,9 +56,11 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
   const serp = serpResult.status === 'fulfilled' ? serpResult.value : []
   const paa = paaResult.status === 'fulfilled' ? paaResult.value : []
   const relatedKeywords = relatedResult.status === 'fulfilled' ? relatedResult.value : []
+  // FR-INFRA-KPI-NULLABLE : si l'appel échoue, on retourne null sur tous les
+  // KPIs (la donnée n'est pas "0", elle est absente).
   const keywordData = keywordResult.status === 'fulfilled'
     ? keywordResult.value
-    : { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, monthlySearches: [] as number[] }
+    : { searchVolume: null, difficulty: null, cpc: null, competition: null, monthlySearches: [] as number[] }
 
   // Log failures without crashing
   if (serpResult.status === 'rejected') log.warn(`SERP failed for "${keyword}": ${serpResult.reason?.message}`)

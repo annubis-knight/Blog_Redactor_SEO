@@ -2,10 +2,17 @@ import type { ProposeLieutenantsHnNode } from './serp-analysis.types.js'
 import type { ArticleLevel, PaaQuestionValidate } from './keyword-validate.types.js'
 import type { MarketScoreResult, RelevanceScoreResult } from './scoring.types.js'
 
-/** Lightweight KPI for persistence — only name and raw value */
+/**
+ * Lightweight KPI for persistence — only name and raw value.
+ *
+ * `rawValue` est `number | null` (FR-INFRA-KPI-NULLABLE) : `null` = donnée
+ * absente (DataForSEO sans signal, miss DB). L'UI affiche `'—'` via les
+ * helpers `formatVolume / formatCpc / formatKd / formatPercent` du module
+ * `shared/score/format.ts` (FR-INFRA-KPI-DISPLAY-DASH).
+ */
 export interface KpiSummary {
   name: string
-  rawValue: number
+  rawValue: number | null
 }
 
 /** Keyword type classification */

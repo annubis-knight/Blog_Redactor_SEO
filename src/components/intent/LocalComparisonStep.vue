@@ -4,6 +4,7 @@ import { useIntentStore } from '@/stores/keyword/intent.store'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import ErrorMessage from '@/components/shared/ErrorMessage.vue'
 import ScoreGauge from '@/components/shared/ScoreGauge.vue'
+import { formatVolume, formatKd, formatCpc, formatPercent } from '@shared/score/index.js'
 
 const props = withDefaults(defineProps<{
   keyword: string
@@ -36,44 +37,42 @@ const metricRows = computed<MetricRow[]>(() => {
   const local = comparison.value.local
   const national = comparison.value.national
 
+  // Delta % : seulement si les deux opérandes sont définies ET national > 0.
+  const safeDelta = (loc: number | null, nat: number | null): number => {
+    if (loc === null || nat === null || nat <= 0) return 0
+    return Math.round(((loc - nat) / nat) * 100)
+  }
+
   return [
     {
       label: 'Volume',
-      localValue: local.searchVolume.toLocaleString('fr-FR'),
-      nationalValue: national.searchVolume.toLocaleString('fr-FR'),
-      delta: national.searchVolume > 0
-        ? Math.round(((local.searchVolume - national.searchVolume) / national.searchVolume) * 100)
-        : 0,
+      localValue: formatVolume(local.searchVolume),
+      nationalValue: formatVolume(national.searchVolume),
+      delta: safeDelta(local.searchVolume, national.searchVolume),
       unit: '',
       higherIsBetter: false,
     },
     {
       label: 'KD',
-      localValue: `${local.keywordDifficulty}`,
-      nationalValue: `${national.keywordDifficulty}`,
-      delta: national.keywordDifficulty > 0
-        ? Math.round(((local.keywordDifficulty - national.keywordDifficulty) / national.keywordDifficulty) * 100)
-        : 0,
+      localValue: formatKd(local.keywordDifficulty),
+      nationalValue: formatKd(national.keywordDifficulty),
+      delta: safeDelta(local.keywordDifficulty, national.keywordDifficulty),
       unit: '/100',
       higherIsBetter: false,
     },
     {
       label: 'CPC',
-      localValue: `${local.cpc.toFixed(2)} \u20AC`,
-      nationalValue: `${national.cpc.toFixed(2)} \u20AC`,
-      delta: national.cpc > 0
-        ? Math.round(((local.cpc - national.cpc) / national.cpc) * 100)
-        : 0,
+      localValue: formatCpc(local.cpc),
+      nationalValue: formatCpc(national.cpc),
+      delta: safeDelta(local.cpc, national.cpc),
       unit: '',
       higherIsBetter: false,
     },
     {
       label: 'Competition',
-      localValue: `${(local.competition * 100).toFixed(0)}%`,
-      nationalValue: `${(national.competition * 100).toFixed(0)}%`,
-      delta: national.competition > 0
-        ? Math.round(((local.competition - national.competition) / national.competition) * 100)
-        : 0,
+      localValue: formatPercent(local.competition, { fromRatio: true }),
+      nationalValue: formatPercent(national.competition, { fromRatio: true }),
+      delta: safeDelta(local.competition, national.competition),
       unit: '',
       higherIsBetter: false,
     },
@@ -169,12 +168,12 @@ onMounted(() => {
       <div class="opportunity-section">
         <h3 class="section-label">Indice d'opportunite</h3>
         <div class="opportunity-row">
-          <ScoreGauge :score="comparison.opportunityIndex" label="Opp." size="lg" />
+          <ScoreGauge :score="comparison.opportunityIndex ?? 0" label="Opp." size="lg" />
           <div class="opportunity-bar-wrapper">
             <div class="opportunity-bar-track">
               <div
                 class="opportunity-bar-fill"
-                :style="{ width: `${Math.min(comparison.opportunityIndex, 100)}%` }"
+                :style="{ width: `${Math.min(comparison.opportunityIndex ?? 0, 100)}%` }"
               ></div>
             </div>
             <div class="opportunity-labels">

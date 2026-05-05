@@ -132,23 +132,25 @@ export async function fetchKeywordOverview(
   const item = result.items?.[0]
   if (!item) {
     log.warn(`No keyword data for "${keyword}", using defaults`)
-    return { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, monthlySearches: [] }
+    // FR-INFRA-KPI-NULLABLE : null = donnée absente, jamais 0.
+    return { searchVolume: null, difficulty: null, cpc: null, competition: null, monthlySearches: [] }
   }
 
   log.debug(`fetchKeywordOverview done`, { keyword, volume: item.keyword_info?.search_volume, difficulty: item.keyword_properties?.keyword_difficulty })
-  // Adapter DataForSEO -> KeywordOverview : le type interne legacy impose number.
-  // TODO[data-flow-discipline] : migrer KeywordOverview.searchVolume / difficulty / cpc vers number | null
-   
+  // Adapter DataForSEO -> KeywordOverview (FR-INFRA-KPI-NULLABLE) :
+  // null = donnée absente. monthlySearches : on filtre les éléments null
+  // au lieu de les remplacer par 0 (cf. tech-spec D2).
   return {
-    searchVolume: item.keyword_info?.search_volume ?? 0,
-    difficulty: item.keyword_properties?.keyword_difficulty ?? 0,
-    cpc: item.keyword_info?.cpc ?? 0,
-    competition: item.keyword_info?.competition ?? 0,
-    monthlySearches: (item.keyword_info?.monthly_searches ?? []).map((m) => m.search_volume ?? 0),
+    searchVolume: item.keyword_info?.search_volume ?? null,
+    difficulty: item.keyword_properties?.keyword_difficulty ?? null,
+    cpc: item.keyword_info?.cpc ?? null,
+    competition: item.keyword_info?.competition ?? null,
+    monthlySearches: (item.keyword_info?.monthly_searches ?? [])
+      .map((m) => m.search_volume)
+      .filter((v): v is number => v !== null && v !== undefined),
     wordsCount: item.keyword_properties?.words_count ?? undefined,
     coreKeyword: item.keyword_properties?.core_keyword ?? undefined,
   }
-   
 }
 
 // --- Batch endpoints (Task 2 & 3) ---
@@ -200,19 +202,18 @@ export async function fetchKeywordOverviewBatch(
       for (const item of items) {
         if (!item?.keyword) continue
         const kwLower = item.keyword.toLowerCase()
-        // Adapter DataForSEO batch -> KeywordOverview : type legacy impose number.
-        // TODO[data-flow-discipline] : migrer vers number | null
-         
+        // Adapter DataForSEO batch -> KeywordOverview (FR-INFRA-KPI-NULLABLE).
         result.set(kwLower, {
-          searchVolume: item.keyword_info?.search_volume ?? 0,
-          difficulty: item.keyword_properties?.keyword_difficulty ?? 0,
-          cpc: item.keyword_info?.cpc ?? 0,
-          competition: item.keyword_info?.competition ?? 0,
-          monthlySearches: (item.keyword_info?.monthly_searches ?? []).map((m) => m.search_volume ?? 0),
+          searchVolume: item.keyword_info?.search_volume ?? null,
+          difficulty: item.keyword_properties?.keyword_difficulty ?? null,
+          cpc: item.keyword_info?.cpc ?? null,
+          competition: item.keyword_info?.competition ?? null,
+          monthlySearches: (item.keyword_info?.monthly_searches ?? [])
+            .map((m) => m.search_volume)
+            .filter((v): v is number => v !== null && v !== undefined),
           wordsCount: item.keyword_properties?.words_count ?? undefined,
           coreKeyword: item.keyword_properties?.core_keyword ?? undefined,
         })
-         
       }
     } catch (err) {
       log.warn(`Batch keyword overview failed for ${chunk.length} keywords: ${(err as Error).message}`)

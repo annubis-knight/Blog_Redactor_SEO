@@ -2,8 +2,8 @@
 name: lieutenants
 description: "Flux des Lieutenants (sous-keywords H2/H3) d'un article — extraction Hn via SERP, scoring IA, anti-cannibalisation géo-funnel, persistance JSONB article_keywords."
 type: "{ richLieutenants: RichLieutenant[], selectedLieutenants: string[], hnStructure: ProposeLieutenantsHnNode[] }"
-last_updated: 2026-05-04
-related_fr: [FR-MOT-PHASES, FR-MOT-MODE-BIMODAL, FR-MOT-CHECKS, FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-HN-STRUCTURE, FR-LIE-SECTIONS-FOLDABLE, FR-LIE-CANDIDATES-BADGES, FR-LIE-CHECKBOX-COUNT, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-CHECK]
+last_updated: 2026-05-05
+related_fr: [FR-MOT-PHASES, FR-MOT-MODE-BIMODAL, FR-MOT-CHECKS, FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-HN-STRUCTURE, FR-LIE-SECTIONS-FOLDABLE, FR-LIE-CANDIDATES-BADGES, FR-LIE-CHECKBOX-COUNT, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-CHECK, FR-INFRA-KPI-NULLABLE]
 synced_with: [docs/data-flows/keyword-metrics.md, docs/moteur-data-flow.md, _bmad-output/planning-artifacts/prd.md]
 ---
 

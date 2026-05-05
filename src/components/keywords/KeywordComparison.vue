@@ -4,6 +4,13 @@ import { log } from '@/utils/logger'
 import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import { useKeywordScoring } from '@/composables/keyword/useKeywordScoring'
 import type { KeywordSuggestion } from '../../../shared/types/index.js'
+import {
+  formatVolume,
+  formatCpc,
+  formatKd,
+  formatPercent,
+  formatScore,
+} from '@shared/score/index.js'
 
 const props = defineProps<{
   keyword: string
@@ -72,24 +79,24 @@ async function handleReplace() {
           <div class="col-keyword">{{ currentResult.keyword }}</div>
           <div class="metric-row">
             <span class="metric-label">Volume</span>
-            <span class="metric-value">{{ currentResult.searchVolume.toLocaleString() }}</span>
+            <span class="metric-value">{{ formatVolume(currentResult.searchVolume) }}</span>
           </div>
           <div class="metric-row">
             <span class="metric-label">Difficulté</span>
-            <span class="metric-value">{{ currentResult.difficulty }}/100</span>
+            <span class="metric-value">{{ currentResult.difficulty === null ? '—' : `${formatKd(currentResult.difficulty)}/100` }}</span>
           </div>
           <div class="metric-row">
             <span class="metric-label">CPC</span>
-            <span class="metric-value">{{ currentResult.cpc.toFixed(2) }}€</span>
+            <span class="metric-value">{{ formatCpc(currentResult.cpc) }}</span>
           </div>
           <div class="metric-row">
             <span class="metric-label">Compétition</span>
-            <span class="metric-value">{{ (currentResult.competition * 100).toFixed(0) }}%</span>
+            <span class="metric-value">{{ formatPercent(currentResult.competition, { fromRatio: true }) }}</span>
           </div>
           <div class="metric-row score-row">
             <span class="metric-label">Score</span>
-            <span class="metric-value score" :style="{ color: getScoreColor(currentResult.compositeScore.total) }">
-              {{ currentResult.compositeScore.total }}/100
+            <span class="metric-value score" :style="{ color: getScoreColor(currentResult.compositeScore.total ?? 0) }">
+              {{ currentResult.compositeScore.total === null ? '—' : `${formatScore(currentResult.compositeScore.total)}/100` }}
             </span>
           </div>
         </div>

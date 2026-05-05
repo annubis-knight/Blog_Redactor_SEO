@@ -369,9 +369,9 @@ export function useKeywordDiscoveryTab() {
       const kwList: Array<{
         keyword: string
         sources: string[]
-        searchVolume?: number
-        difficulty?: number
-        cpc?: number
+        searchVolume?: number | null
+        difficulty?: number | null
+        cpc?: number | null
         intent?: string
       }> = []
 

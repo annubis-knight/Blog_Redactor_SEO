@@ -8,6 +8,14 @@ import { computeAlignmentScore, type AlignmentResult } from '@/composables/keywo
 import { useKeywordAuditStore } from '@/stores/keyword/keyword-audit.store'
 import { useIntentStore } from '@/stores/keyword/intent.store'
 import KeywordAlertBadge from './KeywordAlertBadge.vue'
+import {
+  formatVolume,
+  formatCpc,
+  formatKd,
+  formatPercent,
+  formatScore,
+  compareScores,
+} from '@shared/score/index.js'
 
 const props = defineProps<{
   results: KeywordAuditResult[]
@@ -114,16 +122,28 @@ const sortAsc = ref(false)
 
 const sortedResults = computed(() => {
   const sorted = [...props.results]
+  // Tri null-safe (FR-INFRA-KPI-CONSISTENCY) : les KPIs absents passent par
+  // compareScores pour rester en bas, peu importe le sens de tri.
+  const KPI_KEYS = new Set(['searchVolume', 'difficulty', 'cpc', 'competition', 'score'])
   sorted.sort((a, b) => {
+    if (KPI_KEYS.has(sortKey.value)) {
+      const va = sortKey.value === 'score' ? a.compositeScore.total
+        : sortKey.value === 'searchVolume' ? a.searchVolume
+        : sortKey.value === 'difficulty' ? a.difficulty
+        : sortKey.value === 'cpc' ? a.cpc
+        : a.competition
+      const vb = sortKey.value === 'score' ? b.compositeScore.total
+        : sortKey.value === 'searchVolume' ? b.searchVolume
+        : sortKey.value === 'difficulty' ? b.difficulty
+        : sortKey.value === 'cpc' ? b.cpc
+        : b.competition
+      // compareScores trie desc et place null en bas. Inverser pour asc.
+      return sortAsc.value ? -compareScores(va, vb) : compareScores(va, vb)
+    }
     let va: string | number, vb: string | number
     switch (sortKey.value) {
       case 'keyword': va = a.keyword; vb = b.keyword; break
       case 'type': va = a.type; vb = b.type; break
-      case 'searchVolume': va = a.searchVolume; vb = b.searchVolume; break
-      case 'difficulty': va = a.difficulty; vb = b.difficulty; break
-      case 'cpc': va = a.cpc; vb = b.cpc; break
-      case 'competition': va = a.competition; vb = b.competition; break
-      case 'score': va = a.compositeScore.total; vb = b.compositeScore.total; break
       case 'verdict': {
         const order = { brulante: 3, emergente: 2, neutre: 1, froide: 0 }
         va = order[getVerdictInfo(a).verdict]; vb = order[getVerdictInfo(b).verdict]; break
@@ -245,7 +265,7 @@ async function handleDelete(keyword: string) {
           <td class="cell-keyword">
             {{ kw.keyword }}
             <button
-              v-if="kw.difficulty > 50"
+              v-if="kw.difficulty !== null && kw.difficulty > 50"
               class="btn-switcher"
               :class="{ active: switcherKeyword === kw.keyword }"
               title="Voir variante locale moins compétitive"
@@ -270,13 +290,13 @@ async function handleDelete(keyword: string) {
             </div>
           </td>
           <td><span class="type-badge" :class="'type-' + kw.type.replace(/\s/g, '-').toLowerCase()">{{ kw.type }}</span></td>
-          <td class="num">{{ kw.searchVolume.toLocaleString() }}</td>
-          <td class="num">{{ kw.difficulty }}/100</td>
-          <td class="num">{{ kw.cpc.toFixed(2) }}€</td>
-          <td class="num">{{ (kw.competition * 100).toFixed(0) }}%</td>
+          <td class="num">{{ formatVolume(kw.searchVolume) }}</td>
+          <td class="num">{{ kw.difficulty === null ? '—' : `${formatKd(kw.difficulty)}/100` }}</td>
+          <td class="num">{{ formatCpc(kw.cpc) }}</td>
+          <td class="num">{{ formatPercent(kw.competition, { fromRatio: true }) }}</td>
           <td class="num">
-            <span class="score-cell" :style="{ color: getScoreColor(kw.compositeScore.total) }">
-              {{ kw.compositeScore.total }}/100
+            <span class="score-cell" :style="{ color: getScoreColor(kw.compositeScore.total ?? 0) }">
+              {{ kw.compositeScore.total === null ? '—' : `${formatScore(kw.compositeScore.total)}/100` }}
             </span>
           </td>
           <td>

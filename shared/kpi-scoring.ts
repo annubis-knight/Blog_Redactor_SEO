@@ -47,12 +47,19 @@ export function getThresholds(level: ArticleLevel): ThresholdConfig {
 
 /**
  * Score a single KPI based on its raw value and the threshold config.
+ *
+ * Null-safe (FR-INFRA-KPI-SCORING-NULLSAFE) : `rawValue === null` retourne
+ * un résultat de couleur 'neutral' avec label '—'. Le scoring composite
+ * (computeKpiScore) ignore ces composantes dans la pondération.
  */
 export function scoreKpi(
   name: string,
-  rawValue: number,
+  rawValue: number | null,
   config: ThresholdConfig,
 ): KpiResult {
+  if (rawValue === null) {
+    return { name, rawValue: 0, color: 'neutral', label: '—', thresholds: { green: 0 } }
+  }
   switch (name) {
     case 'volume':       return scoreVolume(rawValue, config)
     case 'kd':           return scoreKd(rawValue, config)

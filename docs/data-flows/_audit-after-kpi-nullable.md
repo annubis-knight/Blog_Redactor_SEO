@@ -1,0 +1,1568 @@
+# Audit data-flow-discipline - 2026-05-05
+
+- Projet : `blog-redactor-seo`
+- Config : `.data-flow-discipline.json`
+- Total violations : **173**
+
+## Resume
+
+| Severite | Categorie | Violations |
+|---|---|---|
+| HIGH | Fallbacks silencieux (HIGH) | 2 |
+| MEDIUM | Fallbacks silencieux (MEDIUM) | 32 |
+| MEDIUM | Stores/services sans header AUTHORITY | 69 |
+| MEDIUM | fetch() directs hors wrapper | 22 |
+| LOW | Fichiers > limite de lignes | 48 |
+
+## HIGH - Fallbacks silencieux (HIGH) (2)
+
+### `src/composables/intent/useNlpAnalysis.ts:147`
+
+```
+        confidence: allScores[0]?.score ?? 0,
+```
+
+**Pourquoi** : `score ?? <valeur>` masque l'absence de donnee. Un score absent n'est pas zero.
+
+**Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
+
+### `server/services/infra/radar-exploration.service.ts:182`
+
+```
+    globalScore: existing?.scanResult?.globalScore ?? 0,
+```
+
+**Pourquoi** : `globalScore ?? <valeur>` masque l'absence de donnee. Un score absent n'est pas zero.
+
+**Remede** : Retirer le `??`. Gerer `null` explicitement (tri en bas, exclusion des agregats, affichage neutre).
+
+## MEDIUM - Fallbacks silencieux (MEDIUM) (32)
+
+### `src/components/strategy/ProposedArticleRow.vue:69`
+
+```
+  const compWarnings = props.compositionResult?.warningCount ?? 0
+```
+
+**Pourquoi** : `warningCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `src/composables/intent/useMultiSourceVerdict.ts:160`
+
+```
+  const volume = dataforseo?.searchVolume ?? 0
+```
+
+**Pourquoi** : `searchVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `src/composables/intent/useMultiSourceVerdict.ts:161`
+
+```
+  const discCount = community?.discussionsCount ?? 0
+```
+
+**Pourquoi** : `discussionsCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `src/composables/intent/useMultiSourceVerdict.ts:162`
+
+```
+  const relatedCount = dataforseo?.relatedCount ?? 0
+```
+
+**Pourquoi** : `relatedCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `src/composables/seo/useCompositionCheck.ts:29`
+
+```
+  const warningCount = computed(() => compositionResult.value?.warningCount ?? 0)
+```
+
+**Pourquoi** : `warningCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/middleware/db-telemetry.middleware.ts:84`
+
+```
+        ? Number((res as { rowCount: unknown }).rowCount ?? 0)
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/routes/article-explorations.routes.ts:173`
+
+```
+    log.info(`[external-cache] cleared ${deleteRes.rowCount ?? 0} rows for article=${articleId} (slug="${slug}")`)
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/routes/article-explorations.routes.ts:174`
+
+```
+    res.json({ data: { cleared: deleteRes.rowCount ?? 0 } })
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/routes/keyword-validate.routes.ts:157`
+
+```
+      scoreKpi('volume', rawVolume ?? 0, config),
+```
+
+**Pourquoi** : `rawVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/routes/keyword-validate.routes.ts:176`
+
+```
+      searchVolume: rawVolume ?? 0,
+```
+
+**Pourquoi** : `rawVolume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/routes/keywords.routes.ts:561`
+
+```
+  const discCount = community?.discussionsCount ?? 0
+```
+
+**Pourquoi** : `discussionsCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/routes/keywords.routes.ts:563`
+
+```
+  const autoCount = autocomplete?.suggestionsCount ?? 0
+```
+
+**Pourquoi** : `suggestionsCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/external/gemini.service.ts:81`
+
+```
+    inputTokens: usageMeta?.promptTokenCount ?? 0,
+```
+
+**Pourquoi** : `promptTokenCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/external/gemini.service.ts:82`
+
+```
+    outputTokens: usageMeta?.candidatesTokenCount ?? 0,
+```
+
+**Pourquoi** : `candidatesTokenCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/external/dataforseo/keywords.ts:54`
+
+```
+      searchVolume: rk.keyword_info?.search_volume ?? 0,
+```
+
+**Pourquoi** : `search_volume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/external/dataforseo/keywords.ts:96`
+
+```
+      searchVolume: item.keyword_info?.search_volume ?? 0,
+```
+
+**Pourquoi** : `search_volume ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:261`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:270`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:336`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:343`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:471`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:479`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:484`
+
+```
+  return (res.rowCount ?? 0) > 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:703`
+
+```
+    return res.rowCount ?? 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:721`
+
+```
+        paaRows += paaRes.rowCount ?? 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:738`
+
+```
+    return res.rowCount ?? 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:791`
+
+```
+    rowCount += res.rowCount ?? 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/infra/data.service.ts:809`
+
+```
+  return res.rowCount ?? 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/intent/community-discussions.service.ts:152`
+
+```
+              votesCount: nested.rating?.votes_count ?? 0,
+```
+
+**Pourquoi** : `votes_count ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/intent/community-discussions.service.ts:164`
+
+```
+            votesCount: item.rating?.votes_count ?? 0,
+```
+
+**Pourquoi** : `votes_count ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/services/strategy/local-seo.service.ts:56`
+
+```
+    votesCount: item.rating?.votes_count ?? 0,
+```
+
+**Pourquoi** : `votes_count ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+### `server/utils/db-telemetry.ts:16`
+
+```
+ *     return res.rowCount ?? 0
+```
+
+**Pourquoi** : `rowCount ?? <valeur>` est un fallback. Pour un compteur ou volume, c'est souvent OK, mais a verifier : si la valeur sert aussi au tri ou a un agregat, le 0 fausse le calcul.
+
+**Remede** : Verifier l'usage. Si seul l'affichage a besoin de 0, OK. Sinon retirer le `??`.
+
+## MEDIUM - Stores/services sans header AUTHORITY (69)
+
+### `src/composables/article/useArticleGeneration.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/editor/useArticleProposals.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/editor/useArticleResults.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/editor/useContextualActions.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/editor/useStreaming.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/editor/article-proposals/computeds.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/editor/article-proposals/topics.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/intent/useIntentVerdict.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/intent/useNlpAnalysis.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useCapitaineValidation.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useDiscoveryCache.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useDiscoverySelection.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useKeywordDiscoveryTab.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useRadarCarousel.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useRelevanceScoring.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/keyword/useResonanceScore.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/lexique/useLexiqueIa.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useLieutenantsHn.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useLieutenantsIa.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useLieutenantsSerp.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useMoteurCrossTabState.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useMoteurSoftGating.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useMoteurTabs.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/moteur/useTabLoadPrompt.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/seo/useCompositionCheck.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/seo/useInternalLinking.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/ui/usePanelToggle.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/ui/useRecapRadioGroup.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/composables/ui/useResizablePanel.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/services/api.service.ts:1`
+
+```
+(service avec etat partage sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce service avec etat partage touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/article-keywords.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/article-progress.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/articles.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/editor.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/geo.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/keyword-modifiers.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/moteur-basket.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/outline.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/article/seo.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/external/gsc.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/external/local.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/keyword/intent.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/keyword/keywords.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/keyword/linking.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/strategy/brief.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/strategy/cocoon-strategy.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/strategy/cocoons.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/strategy/silos.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/strategy/strategy.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+### `src/stores/strategy/theme-config.store.ts:1`
+
+```
+(store sans bloc `AUTHORITY:` en tete)
+```
+
+**Pourquoi** : Ce store touche une donnee partagee mais ne declare pas son AUTHORITY (cherchabilite, tracabilite).
+
+**Remede** : Ajouter en tete un bloc /** AUTHORITY: ... READS FROM: ... WRITES TO: ... CONSUMERS: ... RELATED FR: ... */
+
+*(... 19 autres violations dans cette categorie, non listees pour rester lisible)*
+
+## MEDIUM - fetch() directs hors wrapper (22)
+
+### `src/components/editor/tiptap/extensions/dynamic-block-drop.ts:590`
+
+```
+  const res = await fetch('/api/generate/action', {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `src/components/keywords/DiscoveryPanel.vue:62`
+
+```
+      await fetch('/api/keywords', {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `src/components/moteur/CaptainValidation.vue:541`
+
+```
+  fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `src/composables/editor/useStreaming.ts:127`
+
+```
+      const res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `src/composables/editor/useStreaming.ts:202`
+
+```
+    const res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/article/content-gap.service.ts:27`
+
+```
+  const res = await fetch('https://api.tavily.com/search', {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/article/export.service.ts:190`
+
+```
+                fetch(file)
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/gsc.service.ts:43`
+
+```
+  const res = await fetch(OAUTH_TOKEN_URL, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/gsc.service.ts:113`
+
+```
+  const res = await fetch(OAUTH_TOKEN_URL, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/gsc.service.ts:166`
+
+```
+  const res = await fetch(
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/openrouter.service.ts:62`
+
+```
+  const res = await fetch(API_URL, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/openrouter.service.ts:129`
+
+```
+  const res = await fetch(API_URL, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/serp-analysis.service.ts:72`
+
+```
+    const res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/dataforseo/_client.ts:98`
+
+```
+    const response = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/external/dataforseo/_client.ts:170`
+
+```
+    const response = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/intent/intent.service.ts:84`
+
+```
+    res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/intent/intent.service.ts:313`
+
+```
+    res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/intent/intent.service.ts:424`
+
+```
+    res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/keyword/autocomplete.service.ts:93`
+
+```
+      response = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/keyword/autocomplete.service.ts:112`
+
+```
+        response = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/keyword/suggest.service.ts:73`
+
+```
+    const res = await fetch(url.toString(), {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+### `server/services/strategy/local-seo.service.ts:20`
+
+```
+  const res = await fetch(url, {
+```
+
+**Pourquoi** : `fetch()` direct contourne le wrapper API (cost-log, dbops tracking, error codes).
+
+**Remede** : Utiliser `apiGet/apiPost/...` a la place. Pour un appel externe legitime, ajouter un commentaire `// External API call - bypass wrapper by design` sur la ligne precedente.
+
+## LOW - Fichiers > limite de lignes (48)
+
+### `src/components/brief/ContentGapPanel.vue:578`
+
+```
+578 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/dashboard/SiloCard.vue:425`
+
+```
+425 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/editor/tiptap/extensions/drag-handle.ts:682`
+
+```
+682 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/editor/tiptap/extensions/dynamic-block-drop.ts:924`
+
+```
+924 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/intent/AutocompleteValidation.vue:451`
+
+```
+451 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/intent/DouleurIntentScanner.vue:638`
+
+```
+638 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/intent/IntentStep.vue:531`
+
+```
+531 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/intent/LocalComparisonStep.vue:433`
+
+```
+433 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/intent/PainValidation.vue:468`
+
+```
+468 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/intent/RadarKeywordCard.vue:549`
+
+```
+549 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/keywords/DiscoveryPanel.vue:585`
+
+```
+585 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/keywords/KeywordAuditTable.vue:723`
+
+```
+723 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/local/MapsStep.vue:464`
+
+```
+464 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/moteur/CaptainSidePanel.vue:468`
+
+```
+468 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/moteur/CaptainValidation.vue:1496`
+
+```
+1496 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/moteur/KeywordDiscoveryTab.vue:717`
+
+```
+717 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/moteur/LexiqueExtraction.vue:793`
+
+```
+793 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/moteur/LieutenantSerpAnalysis.vue:466`
+
+```
+466 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/moteur/LieutenantsSelection.vue:649`
+
+```
+649 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/production/BrainPhase.vue:580`
+
+```
+580 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/production/EnginePhase.vue:403`
+
+```
+403 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/production/TopicSuggestions.vue:424`
+
+```
+424 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/production/brain/BrainArticleProposalView.vue:591`
+
+```
+591 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/shared/CostLogPanel.vue:483`
+
+```
+483 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/strategy/ProposedArticleRow.vue:611`
+
+```
+611 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/strategy/StrategyStep.vue:779`
+
+```
+779 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/strategy/SubQuestionCard.vue:492`
+
+```
+492 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/components/workflow/BriefStructureStep.vue:722`
+
+```
+722 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/composables/intent/useMultiSourceVerdict.ts:430`
+
+```
+430 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/composables/keyword/useKeywordDiscoveryTab.ts:512`
+
+```
+512 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/composables/keyword/useRadarCarousel.ts:416`
+
+```
+416 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/composables/keyword/useResonanceScore.ts:493`
+
+```
+493 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/stores/article/article-keywords.store.ts:525`
+
+```
+525 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/stores/article/editor.store.ts:614`
+
+```
+614 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/utils/seo-calculator.ts:608`
+
+```
+608 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/views/ArticleEditorView.vue:790`
+
+```
+790 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/views/ArticleWorkflowView.vue:735`
+
+```
+735 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/views/ExplorateurView.vue:562`
+
+```
+562 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/views/MoteurView.vue:845`
+
+```
+845 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `src/views/ThemeConfigView.vue:642`
+
+```
+642 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/routes/keyword-ai-panel.routes.ts:419`
+
+```
+419 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/routes/keywords.routes.ts:912`
+
+```
+912 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/routes/strategy.routes.ts:595`
+
+```
+595 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/services/infra/data.service.ts:880`
+
+```
+880 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/services/intent/intent-scan.service.ts:679`
+
+```
+679 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/services/intent/intent.service.ts:542`
+
+```
+542 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `server/services/keyword/keyword-radar.service.ts:505`
+
+```
+505 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+
+### `shared/scoring.ts:425`
+
+```
+425 lignes (limite : 400)
+```
+
+**Pourquoi** : Fichier trop long - handicap a la cartographie cognitive.
+
+**Remede** : Decouper par responsabilite metier (extraire en sous-modules / sous-composables).
+

@@ -1,6 +1,17 @@
+/**
+ * AUTHORITY: PostgreSQL `api_cache` (clé : `discovery:<seed|domain>`) + DataForSEO
+ * READS FROM: POST /api/keywords/discover (depuis seed)
+ *             POST /api/keywords/discover-from-site (depuis domaine)
+ * WRITES TO:  (rien — discovery est read-only, l'utilisateur valide via keyword-audit.store.addKeyword)
+ * CONSUMERS: DiscoveryPanel.vue (sélection + ajout au cocoon),
+ *            KeywordDiscoveryTab.vue (affichage filtré)
+ * RELATED FR: FR-INFRA-API-WRAPPER, NFR-INT-API-WRAPPER, NFR-OBS-COST-LOG,
+ *             NFR-OBS-KNOWN-ERRORS, FR-INFRA-KPI-CONSISTENCY (filtres null-safe)
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
+import { apiPost } from '@/services/api.service'
 import type { ClassifiedKeyword, KeywordDiscoveryResult, DomainDiscoveryResult, KeywordType } from '@shared/types/index.js'
 
 export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
@@ -27,9 +38,17 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
     return results.value.filter(kw => {
       if (typeFilter.value && kw.type !== typeFilter.value) return false
       if (intentFilter.value && kw.intent !== intentFilter.value) return false
-      if (kw.searchVolume < minVolume.value) return false
-      if (kw.difficulty > maxDifficulty.value) return false
-      if (kw.compositeScore.total < minScore.value) return false
+      // KPI absent : on n'exclut que si l'utilisateur exige un seuil > 0.
+      // Affichage cohérent avec FR-INFRA-KPI-CONSISTENCY (null = inconnu, pas 0).
+      if (kw.searchVolume === null) {
+        if (minVolume.value > 0) return false
+      } else if (kw.searchVolume < minVolume.value) return false
+      if (kw.difficulty === null) {
+        if (maxDifficulty.value < 100) return false
+      } else if (kw.difficulty > maxDifficulty.value) return false
+      if (kw.compositeScore.total === null) {
+        if (minScore.value > 0) return false
+      } else if (kw.compositeScore.total < minScore.value) return false
       return true
     })
   })
@@ -63,19 +82,11 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
     domain.value = ''
 
     try {
-      const response = await fetch('/api/keywords/discover', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, options: maxResults ? { maxResults } : undefined }),
-        signal: currentController.signal,
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error?.message ?? `HTTP ${response.status}`)
-      }
-
-      const { data } = await response.json() as { data: KeywordDiscoveryResult }
+      const data = await apiPost<KeywordDiscoveryResult>(
+        '/keywords/discover',
+        { keyword, options: maxResults ? { maxResults } : undefined },
+        { signal: myController.signal },
+      )
       log.info(`Discovered ${data.keywords.length} keywords for "${keyword}"`)
       results.value = data.keywords
       apiCost.value = data.apiCost
@@ -101,19 +112,11 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
     seed.value = ''
 
     try {
-      const response = await fetch('/api/keywords/discover-from-site', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ domain: domainName, options: maxResults ? { maxResults } : undefined }),
-        signal: currentController.signal,
-      })
-
-      if (!response.ok) {
-        const data = await response.json()
-        throw new Error(data.error?.message ?? `HTTP ${response.status}`)
-      }
-
-      const { data } = await response.json() as { data: DomainDiscoveryResult }
+      const data = await apiPost<DomainDiscoveryResult>(
+        '/keywords/discover-from-site',
+        { domain: domainName, options: maxResults ? { maxResults } : undefined },
+        { signal: myController.signal },
+      )
       log.info(`Discovered ${data.keywords.length} keywords from "${domainName}"`)
       results.value = data.keywords
       apiCost.value = data.apiCost

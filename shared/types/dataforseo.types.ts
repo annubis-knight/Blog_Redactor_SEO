@@ -18,11 +18,21 @@ export interface RelatedKeyword {
   cpc: number
 }
 
+/**
+ * KeywordOverview — agrégat KPI marché renvoyé par DataForSEO Keyword Overview.
+ *
+ * Les 4 KPIs marché (`searchVolume`, `difficulty`, `cpc`, `competition`)
+ * sont `number | null` (FR-INFRA-KPI-NULLABLE). `null` = donnée absente
+ * (DataForSEO sans signal, miss DB) — JAMAIS substitué par `0`.
+ *
+ * `monthlySearches` reste `number[]` : l'adapter filtre les éléments
+ * absents au lieu de les remplacer par 0 (cf. tech-spec D2).
+ */
 export interface KeywordOverview {
-  searchVolume: number
-  difficulty: number
-  cpc: number
-  competition: number
+  searchVolume: number | null
+  difficulty: number | null
+  cpc: number | null
+  competition: number | null
   monthlySearches: number[]
   wordsCount?: number
   coreKeyword?: string

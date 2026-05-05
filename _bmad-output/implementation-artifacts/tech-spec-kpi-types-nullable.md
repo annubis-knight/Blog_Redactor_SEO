@@ -3,9 +3,9 @@ title: 'Migration des types KPI vers `number | null`'
 slug: 'kpi-types-nullable'
 created: '2026-05-05'
 status: 'in-progress'
-version: '0.1.0'
+version: '0.2.0'
 last_updated: '2026-05-05'
-stepsCompleted: []
+stepsCompleted: [1, 2, 3, 4, 6, 8, 9, 10-partial, 13-partial]
 tech_stack:
   - TypeScript 5.9 (shared/types)
   - Express 5 (server adapters DataForSEO + DB)

@@ -215,7 +215,9 @@ export async function auditCocoonKeywords(
   const freshResults: KeywordAuditResult[] = []
   for (const kw of staleKeywords) {
     const kwLower = kw.keyword.toLowerCase()
-    const overview = overviewMap.get(kwLower) ?? { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, monthlySearches: [] as number[] }
+    // Si le keyword est absent du batch overview (rare), on fallback sur un
+    // overview "tout null" — FR-INFRA-KPI-NULLABLE.
+    const overview = overviewMap.get(kwLower) ?? { searchVolume: null, difficulty: null, cpc: null, competition: null, monthlySearches: [] as number[] }
     const intentData = intentMap.get(kwLower)
     const related = relatedMap.get(kwLower) ?? []
 

@@ -63,6 +63,10 @@ function intentValueToPseudoScore(intentTypes: RadarIntentType[], prob: number |
 export function computeKpiScore(kpis: RadarKeywordKpis, level: ArticleLevel): KpiScoreBreakdown {
   const thresholds = getThresholds(level)
 
+  // FR-INFRA-KPI-NULLABLE : on passe le null tel quel à scoreKpi, qui retourne
+  // color='neutral' + label='—' pour un rawValue null. La pondération du total
+  // (FR-INFRA-KPI-SCORING-NULLSAFE) exclut ces composantes pour ne pas
+  // contaminer le score par un "50" arbitraire (couleur neutre).
   const volumeResult = scoreKpi('volume', kpis.searchVolume, thresholds)
   const kdResult = scoreKpi('kd', kpis.difficulty, thresholds)
   const cpcResult = scoreKpi('cpc', kpis.cpc, thresholds)
@@ -81,9 +85,17 @@ export function computeKpiScore(kpis: RadarKeywordKpis, level: ArticleLevel): Kp
     { name: 'autocomplete', label: 'Autocomplete', rawLabel: autocompleteResult.label, normalized: normalizeFromColor(autocompleteResult.color), weight: WEIGHTS.autocomplete, color: autocompleteResult.color },
   ]
 
-  const total = Math.round(
-    components.reduce((sum, c) => sum + c.normalized * c.weight, 0),
-  )
+  // Renormalisation null-safe : exclure les composantes dont le KPI source est
+  // absent (rawLabel === '—'). Si toutes sont absentes → total = 0 (signal
+  // « pas de marché exploitable »). Sinon : moyenne pondérée sur les poids
+  // effectifs uniquement, ramenée à 100.
+  const effective = components.filter(c => c.rawLabel !== '—')
+  const totalWeight = effective.reduce((sum, c) => sum + c.weight, 0)
+  const total = effective.length === 0 || totalWeight === 0
+    ? 0
+    : Math.round(
+      effective.reduce((sum, c) => sum + c.normalized * c.weight, 0) / totalWeight,
+    )
 
   return { total, components }
 }

@@ -2,8 +2,8 @@
 name: radar-explorations
 description: Flux complet d'exploration Radar (scan bimodal + suggestions longue-traîne) — table article-scoped stockant cards racines, suggestions IA et sélections utilisateur dans un JSONB.
 type: "{ seed: string, context: RadarExplorationContext, generatedKeywords: RadarKeyword[], scanResult: KeywordRadarScanResult & { longTailSuggestions?: LongTailSuggestion[], longTailSelectedKeywords?: string[] } }"
-last_updated: 2026-05-04
-related_fr: [FR-RAD-PERSIST, FR-RAD-LONGTAIL-GENERATE, FR-RAD-LONGTAIL-UI, FR-RAD-LONGTAIL-REGENERATE, FR-RAD-SEND-CAPTAIN, FR-RAD-SCORING-BIMODAL]
+last_updated: 2026-05-05
+related_fr: [FR-RAD-PERSIST, FR-RAD-LONGTAIL-GENERATE, FR-RAD-LONGTAIL-UI, FR-RAD-LONGTAIL-REGENERATE, FR-RAD-SEND-CAPTAIN, FR-RAD-SCORING-BIMODAL, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
 # Data Flow — radar-explorations
