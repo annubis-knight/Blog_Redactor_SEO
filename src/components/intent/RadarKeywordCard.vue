@@ -159,25 +159,28 @@ const displayedScore = computed<number | null>(() => {
 const hasScore = computed(() => displayedScore.value !== null)
 
 /**
- * Sprint 2 (2026-05-04) — Cause détectable de l'absence de score Pertinence.
+ * 2026-05-05 — Cause détectable de l'absence de score Pertinence.
  *
- * Permet d'afficher un tooltip honnête : avant ce sprint, un message unique
- * "Définis un point de douleur" mentait quand pain_point était bien défini
- * en DB mais que les signaux SERP étaient nuls (PAA vides, embedding KO).
+ * Priorité : on utilise `card.relevanceUnavailableReason` (typé backend,
+ * FR-CAP-RELEVANCE-UNAVAILABLE-REASON) si disponible. Fallback sur
+ * l'heuristique frontend uniquement si la card ne porte pas encore ce champ
+ * (cards Radar en mode live scan, jamais passées par le backend Capitaine).
  *
- *   - 'no-pain'   : painPoint absent ou trop court (<10 chars).
- *   - 'long-tail' : kpis null (longue traîne, score Pertinence non applicable).
- *   - 'no-signals': painPoint OK + kpis OK, mais relevanceScore null →
- *                   les signaux dérivés (PAA × douleur, AC × douleur, etc.)
- *                   n'ont rien produit. Recalcul manuel utile.
- *   - null        : score présent (ce computed n'est lu qu'en !hasScore).
+ *   - 'no-pain'             : painPoint absent ou trop court (<10 chars).
+ *   - 'long-tail'           : kpis null (longue traîne, non applicable).
+ *   - 'missing-paa'         : métriques PAA absentes en DB.
+ *   - 'missing-autocomplete': métriques autocomplete absentes en DB.
+ *   - 'no-signals'          : fallback front (backend n'a pas renvoyé de raison).
+ *   - null                  : score présent.
  */
 const PAIN_POINT_MIN_LENGTH = 10
-type RelevanceMissingReason = 'no-pain' | 'no-signals' | 'long-tail' | null
+type RelevanceMissingReason = 'no-pain' | 'no-signals' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | null
 const relevanceMissingReason = computed<RelevanceMissingReason>(() => {
   if (props.displayMode !== 'relevance') return null
   if (hasScore.value) return null
-  // Longue traîne : kpis: null par construction (cf. shared/types/intent.types.ts)
+  // Priorité : raison typée renvoyée par le backend (via card.relevanceUnavailableReason)
+  if (props.card.relevanceUnavailableReason) return props.card.relevanceUnavailableReason
+  // Fallback frontend heuristique (cards Radar sans passage par Capitaine backend)
   if (!props.card.kpis) return 'long-tail'
   const pp = props.articlePainPoint?.trim() ?? ''
   if (pp.length < PAIN_POINT_MIN_LENGTH) return 'no-pain'
@@ -316,13 +319,11 @@ function itemBorderClass(paa: RadarPaaItem): string {
 <template>
   <div class="radar-card" :class="{ expanded, 'radar-card--off-pain': isOffPain }">
     <!-- Single-row header -->
-    <!-- Sprint 3 (2026-05-04) — `@click.stop` empêche la propagation au parent
-         (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
-         lors d'un clic sur le chevron / score-ring / keyword underliné.
-         Règle : la sidebar ne s'ouvre QUE sur clic dans une zone non-cliquable
-         de la card (= en dehors de ce header). -->
-    <div class="radar-card__header" @click.stop="expanded = !expanded">
-      <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }">&#9654;</span>
+    <!-- FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) : seul le chevron ▶ stoppe la
+         propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
+         propage normalement au parent (radar-list-item → ouvre la sidebar). -->
+    <div class="radar-card__header">
+      <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }" @click.stop="expanded = !expanded">&#9654;</span>
 
       <KeywordWords v-if="interactiveWords" class="radar-card__keyword" :words="interactiveWords.words"
         :active-indices="interactiveWords.activeIndices" :loading="interactiveWords.loading" :modifiers="modifiers"

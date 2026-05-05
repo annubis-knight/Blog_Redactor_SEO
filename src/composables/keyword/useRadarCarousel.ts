@@ -350,6 +350,10 @@ export function useRadarCarousel() {
         relevanceTotal: h.relevanceScore?.total ?? 'n/a',
       })
       const card = hydrateCardFromValidation(h.keyword, response)
+      // FR-CAP-RELEVANCE-UNAVAILABLE-REASON : propage la cause typée backend
+      if (h.relevanceUnavailableReason !== undefined) {
+        card.relevanceUnavailableReason = h.relevanceUnavailableReason
+      }
 
       // Restore root variants if available.
       // Note 2026-05-02 : `RichRootKeyword` n'inclut pas marketScore/relevanceScore

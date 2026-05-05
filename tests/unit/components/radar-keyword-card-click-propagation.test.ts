@@ -1,18 +1,15 @@
 /**
- * Sprint 3 (2026-05-04) — Tests propagation des clics dans RadarKeywordCard.
+ * Sprint 7 (2026-05-05) — Tests propagation des clics dans RadarKeywordCard.
  *
- * Friction utilisateur (audit 2026-05-03) :
- *   « un click sur radar-card__chevron devrait uniquement déclencher le
- *     déroulement des PAA, pas l'affichage de la side bar. La side bar
- *     peut s'afficher uniquement si le clic sur la radar card ne
- *     déclenche pas d'action. Les éléments cliquables de la radarcard
- *     sont : les termes underlines, le chevron, les icônes action. »
+ * FR-RAD-CARD-CHEVRON-TOGGLE — comportement figé (docs/radar-card-component.md) :
+ *   • Chevron ▶ : toggle PAA + @click.stop (ne propage PAS au parent)
+ *   • Reste du header (keyword, KPIs) : propage AU parent (ouvre la sidebar)
+ *                                       + ne toggle PAS le PAA
+ *   • Score-ring : @click.stop sur le composant lui-même (pour le tooltip)
+ *                  → ne propage PAS, ne toggle PAS le PAA
  *
- * Cause racine : le parent (radar-list-item dans CaptainValidation) a
- * @click=selectEntry. Tout clic interne de RadarKeywordCard bubble et
- * déclenche selectEntry → ouverture sidebar non désirée.
- *
- * Fix : @click.stop sur les zones interactives de RadarKeywordCard.
+ * Ces tests remplacent les anciens AC1 du Sprint 3 qui encodaient l'ANCIEN
+ * comportement (@click.stop sur tout le header). Mis à jour en Sprint 7.
  */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -45,9 +42,6 @@ const MIN_CARD: RadarCard = {
   relevanceScore: null,
 } as never as RadarCard
 
-/**
- * Mount avec un parent qui spy le clic bubble.
- */
 function mountWithParentSpy() {
   const parentClicks: string[] = []
   const wrapper = mount({
@@ -70,28 +64,26 @@ function mountWithParentSpy() {
   return { wrapper, parentClicks }
 }
 
-describe('RadarKeywordCard — propagation des clics (Sprint 3)', () => {
-  it('AC1 — clic sur radar-card__header NE bubble PAS au parent', async () => {
-    const { wrapper, parentClicks } = mountWithParentSpy()
-    parentClicks.length = 0
-    await wrapper.find('.radar-card__header').trigger('click')
-    expect(parentClicks).toEqual([]) // pas de bubble
-  })
-
-  it('AC1 — clic sur radar-card__header toggle expanded (PAA visible)', async () => {
-    const { wrapper } = mountWithParentSpy()
-    await wrapper.find('.radar-card__header').trigger('click')
-    expect(wrapper.find('.radar-card.expanded').exists()).toBe(true)
-  })
-
-  it('AC1 — clic sur radar-card__chevron NE bubble PAS au parent', async () => {
+describe('RadarKeywordCard — propagation des clics (FR-RAD-CARD-CHEVRON-TOGGLE)', () => {
+  it('clic sur radar-card__chevron : toggle PAA + NE bubble PAS au parent', async () => {
     const { wrapper, parentClicks } = mountWithParentSpy()
     parentClicks.length = 0
     await wrapper.find('.radar-card__chevron').trigger('click')
     expect(parentClicks).toEqual([])
+    expect(wrapper.find('.radar-card.expanded').exists()).toBe(true)
   })
 
-  it('AC1 — clic sur radar-card__score-ring NE bubble PAS au parent', async () => {
+  it('clic sur radar-card__header (hors chevron) : bubble AU parent + ne toggle PAS le PAA', async () => {
+    const { wrapper, parentClicks } = mountWithParentSpy()
+    parentClicks.length = 0
+    // Clic direct sur le header (hors chevron) → bubble vers le parent
+    await wrapper.find('.radar-card__header').trigger('click')
+    expect(parentClicks).toContain('parent')
+    // PAA ne se toggle pas (le header seul ne toggle plus)
+    expect(wrapper.find('.radar-card.expanded').exists()).toBe(false)
+  })
+
+  it('clic sur radar-card__score-ring NE bubble PAS au parent (tooltip protégé)', async () => {
     const { wrapper, parentClicks } = mountWithParentSpy()
     parentClicks.length = 0
     await wrapper.find('.radar-card__score-ring').trigger('click')
@@ -101,9 +93,7 @@ describe('RadarKeywordCard — propagation des clics (Sprint 3)', () => {
   it('garde-fou — clic direct sur le parent (hors radar-card) déclenche bien le bubble', async () => {
     const { wrapper, parentClicks } = mountWithParentSpy()
     parentClicks.length = 0
-    // Trigger un click direct sur l'élément data-testid="parent"
     await wrapper.find('[data-testid="parent"]').trigger('click')
-    // Le clic au-dessus de la card bubble bien au handler (sanity check du test)
     expect(parentClicks).toContain('parent')
   })
 })

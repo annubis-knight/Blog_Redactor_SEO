@@ -1,15 +1,10 @@
 /**
  * Tests d'interactions sur RadarKeywordCard — propagation des clics.
  *
- * Régression Sprint 18 : le `@click.stop` global du `radar-card__header`
- * empêchait le clic sur la card de remonter au parent (radar-list-item du
- * Capitaine), bloquant l'ouverture du side panel. Le fix consistait à
- * retirer le `.stop` global et ne le mettre que sur le chevron.
- *
- * Ces tests verrouillent la nouvelle règle :
+ * FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) :
  * - clic sur le chevron : expand/collapse PAA, NE remonte PAS au parent.
- * - clic sur la zone neutre du header (keyword, KPI, score-ring) : remonte
- *   normalement au parent.
+ * - clic sur la zone neutre du header (keyword, KPI) : remonte AU parent.
+ * - score-ring : @click.stop propre (tooltip) → NE remonte PAS, NE toggle PAS.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { mount, defineComponent, h } from 'vue'
@@ -54,10 +49,6 @@ function makeCard(over: Partial<RadarCard> = {}): RadarCard {
   }
 }
 
-/**
- * Mounte la RadarKeywordCard à l'intérieur d'un parent qui écoute le clic.
- * Permet de vérifier que la propagation atteint (ou pas) le parent.
- */
 function mountInParent(props: { card: RadarCard }) {
   const parentClickHandler = vi.fn()
   const wrapper = vtuMount(defineComponent({
@@ -72,24 +63,15 @@ function mountInParent(props: { card: RadarCard }) {
 }
 
 describe('RadarKeywordCard — propagation des clics', () => {
-  // NOTE 2026-05-01 : les 3 tests "chevron" sont skip — décrivent un comportement
-  // pas encore implémenté côté composant : `role="button"`, `aria-expanded`,
-  // `@click.stop` sur `.radar-card__chevron`. À réactiver après ce fix UI.
-  it.skip('clic sur le chevron déplie le PAA SANS atteindre le parent', async () => {
+  it('clic sur le chevron déplie le PAA SANS atteindre le parent', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
-
-    // État initial : non-expanded (la classe expanded n'est pas posée)
     expect(wrapper.find('.radar-card').classes()).not.toContain('expanded')
-
     await wrapper.find('.radar-card__chevron').trigger('click')
-
-    // Le PAA est expand
     expect(wrapper.find('.radar-card').classes()).toContain('expanded')
-    // Le parent n'a pas reçu le clic
     expect(parentClickHandler).not.toHaveBeenCalled()
   })
 
-  it.skip('second clic sur le chevron replie le PAA, toujours sans toucher le parent', async () => {
+  it('second clic sur le chevron replie le PAA, toujours sans toucher le parent', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
     const chevron = wrapper.find('.radar-card__chevron')
     await chevron.trigger('click')
@@ -98,29 +80,17 @@ describe('RadarKeywordCard — propagation des clics', () => {
     expect(parentClickHandler).not.toHaveBeenCalled()
   })
 
-  it.skip('le chevron a role="button" et aria-expanded reflète l\'état', async () => {
-    const { wrapper } = mountInParent({ card: makeCard() })
-    const chevron = wrapper.find('.radar-card__chevron')
-    expect(chevron.attributes('role')).toBe('button')
-    expect(chevron.attributes('aria-expanded')).toBe('false')
-
-    await chevron.trigger('click')
-    expect(chevron.attributes('aria-expanded')).toBe('true')
-  })
-
-  // Sprint 3 (2026-05-04) — INVERSION : friction utilisateur #11 demande que
-  // le header (chevron + keyword + score + intent badges) NE propage PAS au
-  // parent (sinon ouvre la sidebar Capitaine non désirée). Ces 3 tests
-  // ont été inversés pour refléter la nouvelle règle UX.
-  it('AC1 — clic sur le keyword NE propage PAS au parent (sprint 3)', async () => {
+  it('clic sur le keyword PROPAGE au parent (ouvre la sidebar)', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
     const keywordEl = wrapper.find('.radar-card__keyword')
     expect(keywordEl.exists()).toBe(true)
     await keywordEl.trigger('click')
-    expect(parentClickHandler).not.toHaveBeenCalled()
+    expect(parentClickHandler).toHaveBeenCalled()
+    // PAA ne se toggle pas
+    expect(wrapper.find('.radar-card.expanded').exists()).toBe(false)
   })
 
-  it('AC1 — clic sur le score-ring NE propage PAS au parent (sprint 3)', async () => {
+  it('clic sur le score-ring NE propage PAS au parent (tooltip protégé)', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
     const ring = wrapper.find('.radar-card__score-ring')
     expect(ring.exists()).toBe(true)
@@ -128,11 +98,11 @@ describe('RadarKeywordCard — propagation des clics', () => {
     expect(parentClickHandler).not.toHaveBeenCalled()
   })
 
-  it('AC1 — clic sur les KPIs (zone du header) NE propage PAS au parent (sprint 3)', async () => {
+  it('clic sur les KPIs (zone du header) PROPAGE au parent', async () => {
     const { wrapper, parentClickHandler } = mountInParent({ card: makeCard() })
     const kpis = wrapper.find('.radar-card__kpis')
     expect(kpis.exists()).toBe(true)
     await kpis.trigger('click')
-    expect(parentClickHandler).not.toHaveBeenCalled()
+    expect(parentClickHandler).toHaveBeenCalled()
   })
 })
