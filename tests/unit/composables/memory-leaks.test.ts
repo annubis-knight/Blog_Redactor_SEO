@@ -102,17 +102,14 @@ describe('useKeywordRadar — timer cleanup', () => {
     // Since _startProgressEstimation is private, we call scan which triggers it
     // But that requires mocking the API. Instead, verify that on unmount, clearInterval is called.
 
-    const _callsBefore = clearIntervalSpy.mock.calls.length
+    // Verifie que le composable s'est bien execute (sinon le test ne prouve rien
+    // sur le hook unmount).
+    expect(_radarInstance, 'useKeywordRadar() doit avoir ete invoque dans setup()').not.toBeNull()
 
-    // Unmount the component
-    app.unmount()
-
-    // clearInterval should have been called (at least once for _stopProgress)
-    // Note: _stopProgress calls clearInterval only if _progressTimer is set,
-    // so this test verifies the hook is registered. If no timer was started,
-    // clearInterval won't be called - that's still correct behavior.
-    // We verify the hook exists by checking no error was thrown on unmount.
-    expect(true).toBe(true) // unmount succeeded without error
+    // Unmount ne doit pas throw — onBeforeUnmount enregistre par le composable
+    // doit gerer le cas ou aucun timer n'est actif (pas d'appel clearInterval
+    // sur null/undefined).
+    expect(() => app.unmount(), "app.unmount() ne doit pas throw").not.toThrow()
 
     clearIntervalSpy.mockRestore()
     vi.useRealTimers()
