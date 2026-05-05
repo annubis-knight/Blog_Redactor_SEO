@@ -1,7 +1,7 @@
 ---
 title: Tech-spec — Score Pertinence en calcul à la volée + clic chevron Radar Card
 version: 1.0.0
-status: draft
+status: archived
 created: 2026-05-05
 last_updated: 2026-05-05
 related_fr:
