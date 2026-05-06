@@ -1,8 +1,9 @@
 # Le Point de Douleur — Colonne vertébrale éditoriale
 
-> Dernière mise à jour : **2026-04-28**
+> Dernière mise à jour : **2026-05-06** (Sprint 10.5 — formalisation immutabilité après Cerveau)
 > Doc complémentaire : [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md)
 > Source de vérité technique : code dans `src/`, `server/`, `shared/` — ce document décrit l'intention et l'usage transverse.
+> Last verified against code : **2026-05-06**.
 
 ---
 
@@ -38,7 +39,11 @@ Ce n'est **pas** :
 - Une caractéristique produit (« cours de 45 min »)
 
 ### Quand est-il défini ?
-Dans la phase **Cerveau** (stratégie cocon), au moment de la création de chaque article. Stocké sur l'objet `Article.painPoint` (PostgreSQL). Modifiable à tout moment, mais sa modification invalide les calculs de pertinence en cache pour cet article.
+Dans la phase **Cerveau** (stratégie cocon), au moment de la création de chaque article. Stocké sur l'objet `Article.painPoint` (PostgreSQL).
+
+**Immutabilité après Cerveau (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU, Sprint 10.5)** : une fois que l'utilisateur a quitté le Cerveau pour entrer dans le Moteur ou la Rédaction, le `painPoint` est **figé pour la durée du workflow**. Aucun composant Moteur ni Rédaction n'expose de chemin de mutation du `painPoint`. La seule façon de modifier un painPoint est de revenir explicitement dans le Cerveau (cas marginal, équivalent à recommencer l'article).
+
+**Conséquence sur le scoring** : le Score Pertinence est calculé à la volée à chaque hydratation de l'onglet Capitaine (FR-CAP-RELEVANCE-COMPUTED-LIVE), mais il n'est **pas** recalculé en cours de session sur un changement de painPoint live (cf. FR-CAP-NO-PAINPOINT-WATCHER). Un changement de painPoint nécessite un changement d'article ou un F5 pour être pris en compte côté Capitaine — situation qui ne se produit pas dans le workflow standard.
 
 ---
 

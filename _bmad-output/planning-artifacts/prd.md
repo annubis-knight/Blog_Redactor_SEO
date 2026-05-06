@@ -654,12 +654,12 @@ Persistance article-scoped dans `captain_explorations(article_id, keyword)` → 
 Émet `moteur:capitaine_locked` au verrouillage.
 
 #### FR-CAP-RELEVANCE-COMPUTED-LIVE
-Le Score Pertinence (`relevanceScore`) est calculé à la volée côté backend à chaque hydratation de l'onglet Capitaine, jamais persisté. À chaque appel `GET /articles/:id/relevance` (ou endpoint équivalent), le serveur exécute le calcul complet à partir du `painPoint` actuel + `keyword_metrics` + `captain_explorations.root_keywords`. Le score reflète **toujours** le `painPoint` actuel de l'article, pas un painPoint historique.
+Le Score Pertinence (`relevanceScore`) est calculé à la volée côté backend à chaque hydratation de l'onglet Capitaine, jamais persisté. À chaque appel `GET /articles/:id/relevance` (ou endpoint équivalent), le serveur exécute le calcul complet à partir du `painPoint` (figé après Cerveau, voir FR-PAIN-IMMUTABLE-AFTER-CEREVEAU) + `keyword_metrics` + `captain_explorations.root_keywords`. Le score reflète le `painPoint` de l'article au moment du chargement de l'onglet — il n'y a pas de re-calcul live en cours de session sur changement painPoint (cf. FR-CAP-NO-PAINPOINT-WATCHER).
 **Critères d'acceptation testables** :
-- Modifier `articles.pain_point` en DB et recharger l'onglet produit un score différent (sans action manuelle).
+- Recharger l'onglet Capitaine déclenche un calcul backend frais (sans cache de score Pertinence).
 - Saisie manuelle d'un keyword jamais scanné Radar → score calculé et affiché (pas `—`).
 - Aucun `INSERT/UPDATE` SQL ne contient `relevanceScore` dans son payload pendant un calcul Pertinence (vérifiable par spy).
-**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+**Statut :** active. **Depuis :** 2026-05-05. **Mis à jour :** 2026-05-06 (Sprint 10.5 — précision sur l'immutabilité du painPoint en session). **Source :** tech-spec-relevance-live-computation, tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
 #### FR-CAP-RELEVANCE-NO-DB-WRITE
 Aucune écriture DB (`INSERT`/`UPDATE`) ne contient le champ `relevanceScore`. Le calcul Pertinence ne fait que des lectures DB.
@@ -737,6 +737,31 @@ Le 5e signal du Score Pertinence (« Intent SERP × Intent éditorial attendu »
 - Test d'intégration `getCaptainExplorations` : vérifie que `painIntentExpected` est lu depuis DB et passé à `computeRelevanceForCaptainTab`.
 - Article créé sans `pain_intent_expected` → score Pertinence calculé sur 4 signaux (5e neutre à 50).
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-pain-intent-expected-signal.
+
+#### FR-PAIN-IMMUTABLE-AFTER-CEREVEAU
+Le `painPoint` d'un article (`articles.pain_point`) ne peut être modifié qu'à partir de l'interface Cerveau (étapes de stratégie cocon, création/édition d'article par lot). Aucun composant Moteur ou Rédaction n'expose de chemin de mutation du `painPoint`.
+**Justification produit** : le `painPoint` est l'**input central** du pipeline éditorial (cf. `docs/pain-point-editorial-backbone.md`). Modifier le painPoint après avoir validé un Capitaine + des Lieutenants reviendrait à invalider tout le travail aval — ce flux n'a pas de sens métier. L'utilisateur qui veut changer le painPoint recommence l'article depuis le Cerveau.
+**Critères d'acceptation testables** :
+- Aucun handler `change`/`input`/`PUT` côté Moteur ou Rédaction ne mute `articles.pain_point`.
+- Recherche grep `pain_point\s*=` dans `src/components/moteur/`, `src/components/redaction/`, `src/components/workflow/` ne retourne aucune mutation.
+- L'unique chemin de mutation côté front est dans le Cerveau (`src/components/strategy/`, `src/components/production/`).
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
+
+#### FR-CAP-NO-PAINPOINT-WATCHER
+Le composant `CaptainValidation.vue` ne surveille pas les changements live de `props.selectedArticle.painPoint`. Si la prop change (cas marginal : un parent pousse un nouveau painPoint pendant que l'utilisateur est sur l'onglet Capitaine), aucune action automatique n'est déclenchée. Le calcul du Score Pertinence est figé pour la durée d'une session sur l'onglet — un nouveau calcul a lieu uniquement au prochain mount (changement d'article ou F5).
+**Justification** : le watcher Sprint 8 (commit `5b849df`) qui détectait ce changement et déclenchait un recompute Pertinence vivait pour gérer un scénario qui n'existe plus (le painPoint ne change plus en cours de workflow, cf. FR-PAIN-IMMUTABLE-AFTER-CEREVEAU).
+**Critères d'acceptation testables** :
+- `tests/unit/components/captain-validation-painpoint-frozen.test.ts` : modifier `selectedArticle.painPoint` après mount ne déclenche aucun appel à `mergeCaptainHistory` ni fetch `/captain-explorations`.
+- Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
+
+#### FR-CAP-RELEVANCE-STORE-REMOVED
+Le store frontend `captain-relevance.store.ts` (Pinia) — qui gérait la détection de changement painPoint et le déclenchement de recompute — est supprimé. Sa responsabilité est entièrement assumée par le calcul live au backend (`captain-relevance.service.ts`) déclenché à chaque hydratation initiale de l'onglet via `article-keywords.store.fetchKeywords()`.
+**Critères d'acceptation testables** :
+- Le fichier `src/stores/article/captain-relevance.store.ts` n'existe pas dans le repo.
+- Recherche grep `useCaptainRelevanceStore` dans `src/` retourne 0 occurrence.
+- `tests/unit/components/captain-validation-painpoint-frozen.test.ts` : test canari qui vérifie l'absence du fichier et l'absence d'import.
+**Statut :** active. **Depuis :** 2026-05-06. **Remplace :** ancien store `captain-relevance` créé en commit `e13a330` (Sprint 6 du Chantier A — Pertinence à la volée). **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
 #### FR-PIE-AI-GENERATION
 Les prompts IA de création d'articles (`cocoon-articles.md`, `cocoon-articles-spe.md`, `cocoon-add-article.md`) génèrent le champ `painIntentExpected` en plus de `painPoint`. Le champ est inclus dans la même réponse JSON que les autres métadonnées article — **aucun appel IA supplémentaire**.

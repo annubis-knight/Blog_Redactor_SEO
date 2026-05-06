@@ -2,8 +2,9 @@
 name: relevance-score-live-computation
 description: Architecture du calcul à la volée du Score Pertinence dans l'onglet Capitaine, mémoïsation des racines, et règles de persistance des root_keywords à l'entrée d'un keyword.
 type: "{ marketScore: 'persisted-never (live front)', relevanceScore: 'persisted-never (live back at hydration)', rootKeywords: 'persisted-at-entry-only' }"
-last_updated: 2026-05-05
-related_fr: [FR-RAD-MARKET-COMPUTED-LIVE, FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE, FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB, FR-CAP-ROOTS-PERSISTED-AT-ENTRY, FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-CAP-RELEVANCE-LINEAR-ROOTS]
+last_updated: 2026-05-06
+last_verified: 2026-05-06
+related_fr: [FR-RAD-MARKET-COMPUTED-LIVE, FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE, FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB, FR-CAP-ROOTS-PERSISTED-AT-ENTRY, FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON, FR-RAD-NO-RELEVANCE-IN-SCAN, FR-CAP-RELEVANCE-LINEAR-ROOTS, FR-PAIN-IMMUTABLE-AFTER-CEREVEAU, FR-CAP-NO-PAINPOINT-WATCHER, FR-CAP-RELEVANCE-STORE-REMOVED]
 synced_with:
   - docs/scoring-kpi-vs-relevance.md
   - docs/data-flows/score-capitaine.md
@@ -31,7 +32,9 @@ synced_with:
 | **Tableau `root_keywords`** | Front via `extractRoots()` (linéaire) ou retourné par l'IA pour longue-traîne | ✅ Oui, dès l'**entrée** d'un keyword dans `captain_explorations` | DB PostgreSQL |
 | **Snapshot `radar_explorations.scan_result.cards[].relevanceScore`** | (à supprimer — voir §6) | ❌ Sera retiré | — |
 
-**Règle d'or** : le Score Pertinence dépend du triplet `(keyword, painPoint, article)`. Comme deux de ces trois inputs peuvent changer indépendamment, **le score ne peut PAS être persisté sans devenir obsolète**. La seule architecture saine est le **calcul à la volée** à chaque consultation de l'onglet Capitaine.
+**Règle d'or** : le Score Pertinence dépend du triplet `(keyword, painPoint, article)`. Le `keyword` peut changer (l'utilisateur explore un nouveau mot-clé) et l'`article` peut changer (switch d'article). En revanche, depuis le Sprint 10.5 (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU), le `painPoint` est **figé après la sortie du Cerveau** — il ne change plus en cours de workflow Moteur/Rédaction. Le calcul reste **à la volée** à chaque hydratation de l'onglet Capitaine pour garder une architecture stateless côté Pertinence et accommoder les deux autres dimensions du triplet.
+
+**Note Sprint 10.5 (2026-05-06)** : avant cette date, un watcher dans `CaptainValidation.vue` détectait les changements live de `painPoint` et déclenchait un recompute via le store dédié `captain-relevance.store.ts`. Cette logique a été supprimée — `painPoint` ne change plus en session, donc le watcher n'avait plus de raison d'exister. Le store frontend `captain-relevance` a été supprimé en conséquence (FR-CAP-RELEVANCE-STORE-REMOVED). Le calcul backend (`captain-relevance.service.ts`) reste inchangé.
 
 ---
 

@@ -52,6 +52,29 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Sprint 10.5 — Nettoyage legacy painPoint (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-10.5-cleanup-painpoint-legacy.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FRs nouvelles : FR-PAIN-IMMUTABLE-AFTER-CEREVEAU, FR-CAP-NO-PAINPOINT-WATCHER,
+  #                 FR-CAP-RELEVANCE-STORE-REMOVED.
+  # FR mise à jour : FR-CAP-RELEVANCE-COMPUTED-LIVE (précision sur l'immutabilité
+  #                  du painPoint en session).
+  # Décision produit : le painPoint est figé après la sortie du Cerveau. Le
+  # workflow Moteur/Rédaction n'expose aucun chemin de mutation. Le watcher
+  # Sprint 8 (commit 5b849df) qui détectait les changements painPoint pour
+  # déclencher un recompute Pertinence est devenu legacy et est supprimé.
+  # Périmètre :
+  #   - Suppression watcher painPoint dans CaptainValidation.vue (~50 lignes).
+  #   - Suppression complète du store captain-relevance.store.ts (121 lignes).
+  #   - Test de régression : tests/unit/components/captain-validation-painpoint-frozen.test.ts
+  #     (6 tests verts) qui verrouille AC.10.5.1 à AC.10.5.6.
+  #   - PRD : 3 FRs ajoutées + 1 FR clarifiée.
+  #   - Docs data-flows : 5 fichiers corrigés (pain-point-editorial-backbone,
+  #     relevance-score-live-computation, lexique, score-capitaine, strategy-context).
+  # Validation : type-check vert, lint pré-existant 3 erreurs hors scope (.claude/skills),
+  # 89 tests Capitaine verts, knip/madge inchangés.
+  sprint-10-5-cleanup-painpoint-legacy: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,

@@ -64,7 +64,7 @@ Qui crée ou met à jour cette donnée :
 | Cas | Lecture | Écriture | Risque de divergence |
 |---|---|---|---|
 | Premier load (article jamais ouvert) | — | endpoint `/validate` → `keyword_metrics` + `captain_explorations` | Faible si fetch atomique. |
-| Reload (data en cache) | `keyword_metrics` + `captain_explorations` | aucune (sauf TTL expiré) | **Risque** : si `relevanceScore` est `null` au reload alors qu'il était calculé au premier load (cache lexical perdu, painPoint changé) → l'utilisateur voit deux verdicts différents pour la même session. |
+| Reload (data en cache) | `keyword_metrics` + `captain_explorations` | aucune (sauf TTL expiré) | **Risque ATTÉNUÉ Sprint 10.5** : depuis FR-PAIN-IMMUTABLE-AFTER-CEREVEAU, le `painPoint` est figé en cours de workflow. Le seul cas où `relevanceScore` peut être `null` au reload est l'absence de signaux (PAA, autocomplete) ou un keyword longue-traîne — cas tracés par `unavailableReason` (FR-CAP-RELEVANCE-UNAVAILABLE-REASON). |
 | Switch d'onglet Phase ① → ② | hydratation depuis `keyword_metrics` | aucune | Faible. |
 | Restore depuis history (slider) | `captain_explorations` historique | aucune | **Risque** : les scores historiques utilisent les anciennes formules (avant 2026-04-28) si pas re-calculés — afficher la date du calcul à côté du score. |
 | Merge cache + DB (cache stale) | `api_cache` (stale) + `keyword_metrics` (frais) | upsert `keyword_metrics` | Le service `keyword-validate.service.ts` doit toujours préférer la DB freshness à l'`api_cache` quand il s'agit de KPIs persistants. |
