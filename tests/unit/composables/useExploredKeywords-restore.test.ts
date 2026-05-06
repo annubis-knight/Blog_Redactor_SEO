@@ -10,7 +10,7 @@
  * (front) les propage à `hydrateCardFromValidation`.
  */
 import { describe, it, expect } from 'vitest'
-import { useRadarCarousel } from '../../../src/composables/keyword/useRadarCarousel'
+import { useExploredKeywords } from '../../../src/composables/keyword/useExploredKeywords'
 import type { CaptainValidationEntry } from '../../../shared/types/keyword.types'
 import type { MarketScoreResult, RelevanceScoreResult } from '../../../shared/types/scoring.types'
 
@@ -53,9 +53,9 @@ function makeEntry(overrides: Partial<CaptainValidationEntry> = {}): CaptainVali
   }
 }
 
-describe('useRadarCarousel.restoreFromHistory — propagation scores', () => {
+describe('useExploredKeywords.restoreFromHistory — propagation scores', () => {
   it('propage relevanceScore depuis CaptainValidationEntry vers card.relevanceScore', () => {
-    const carousel = useRadarCarousel()
+    const carousel = useExploredKeywords()
     const relevance = relevanceStub(78)
     const history = [makeEntry({ keyword: 'kw1', relevanceScore: relevance })]
 
@@ -67,7 +67,7 @@ describe('useRadarCarousel.restoreFromHistory — propagation scores', () => {
   })
 
   it('propage marketScore depuis CaptainValidationEntry vers card.marketScore', () => {
-    const carousel = useRadarCarousel()
+    const carousel = useExploredKeywords()
     const market = marketStub(65)
     const history = [makeEntry({ keyword: 'kw1', marketScore: market })]
 
@@ -77,7 +77,7 @@ describe('useRadarCarousel.restoreFromHistory — propagation scores', () => {
   })
 
   it('relevanceScore null dans l\'entry → null sur la card (cas painPoint absent)', () => {
-    const carousel = useRadarCarousel()
+    const carousel = useExploredKeywords()
     const history = [makeEntry({ keyword: 'kw1', relevanceScore: null })]
 
     carousel.restoreFromHistory(history, 'intermediaire')
@@ -86,7 +86,7 @@ describe('useRadarCarousel.restoreFromHistory — propagation scores', () => {
   })
 
   it('relevanceScore absent dans l\'entry → null sur la card', () => {
-    const carousel = useRadarCarousel()
+    const carousel = useExploredKeywords()
     const history = [makeEntry({ keyword: 'kw1' })]
     delete (history[0] as CaptainValidationEntry).relevanceScore
 
@@ -96,7 +96,7 @@ describe('useRadarCarousel.restoreFromHistory — propagation scores', () => {
   })
 
   it('plusieurs entries : chaque card reçoit son propre relevanceScore', () => {
-    const carousel = useRadarCarousel()
+    const carousel = useExploredKeywords()
     const history = [
       makeEntry({ keyword: 'kw1', relevanceScore: relevanceStub(80) }),
       makeEntry({ keyword: 'kw2', relevanceScore: relevanceStub(50) }),

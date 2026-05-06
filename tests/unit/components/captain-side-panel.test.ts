@@ -15,10 +15,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { defineComponent, h } from 'vue'
 import CaptainSidePanel from '../../../src/components/moteur/CaptainSidePanel.vue'
-import type { CarouselEntry } from '../../../src/composables/keyword/useRadarCarousel'
+import type { ExploredKeywordEntry } from '../../../src/composables/keyword/useExploredKeywords'
 
-// Stub minimal d'une CarouselEntry validée — strict minimum pour rendre le panel.
-function makeEntry(keyword: string): CarouselEntry {
+// Stub minimal d'une ExploredKeywordEntry validée — strict minimum pour rendre le panel.
+function makeEntry(keyword: string): ExploredKeywordEntry {
   const card = {
     keyword,
     reasoning: '',

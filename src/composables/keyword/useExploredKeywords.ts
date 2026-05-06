@@ -8,7 +8,7 @@ import type { ValidateResponse, ArticleLevel, VerdictLevel } from '@shared/types
 import type { CaptainValidationEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
 import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
 
-export interface CarouselEntry {
+export interface ExploredKeywordEntry {
   card: RadarCard
   originalCard: RadarCard
   validation: ValidateResponse | null
@@ -87,7 +87,7 @@ export function hydrateCardFromValidation(keyword: string, response: ValidateRes
   return out
 }
 
-function createEntry(card: RadarCard): CarouselEntry {
+function createEntry(card: RadarCard): ExploredKeywordEntry {
   const wordCount = card.keyword.trim().split(/\s+/).length
   return {
     card,
@@ -103,8 +103,8 @@ function createEntry(card: RadarCard): CarouselEntry {
   }
 }
 
-export function useRadarCarousel() {
-  const entries = ref<CarouselEntry[]>([])
+export function useExploredKeywords() {
+  const entries = ref<ExploredKeywordEntry[]>([])
   const currentIndex = ref(0)
   let loadVersion = 0
 
@@ -112,7 +112,7 @@ export function useRadarCarousel() {
   const count = computed(() => entries.value.length)
   const currentEntry = computed(() => entries.value[currentIndex.value] ?? null)
 
-  function patch(i: number, updates: Partial<CarouselEntry>) {
+  function patch(i: number, updates: Partial<ExploredKeywordEntry>) {
     const current = entries.value[i]
     if (!current) return
     entries.value[i] = { ...current, ...updates }
@@ -131,7 +131,7 @@ export function useRadarCarousel() {
   ) {
     const roots = extractRoots(keyword).slice(0, 5)
     const volumeColor = response.kpis.find(k => k.name === 'volume')?.color
-    log.debug('[useRadarCarousel] validateRoots — évaluation', {
+    log.debug('[useExploredKeywords] validateRoots — évaluation', {
       keyword,
       roots,
       volumeColor,
@@ -164,7 +164,7 @@ export function useRadarCarousel() {
 
   async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
-    log.debug('[useRadarCarousel] loadCards — démarrage', {
+    log.debug('[useExploredKeywords] loadCards — démarrage', {
       count: cards.length,
       keywords: cards.map(c => c.keyword),
       level,
@@ -184,13 +184,13 @@ export function useRadarCarousel() {
           if (thisVersion !== loadVersion) return
           patch(i, { validation: response, originalCard: card, isLoading: false })
 
-          log.debug('[useRadarCarousel] Validated', { keyword: card.keyword, verdict: response.verdict.level })
+          log.debug('[useExploredKeywords] Validated', { keyword: card.keyword, verdict: response.verdict.level })
 
           await validateRoots(card.keyword, response, i, level, articleTitle, thisVersion, articleId, painPoint)
         } catch (err) {
           if (thisVersion !== loadVersion) return
           patch(i, { error: (err as Error).message, isLoading: false })
-          log.warn('[useRadarCarousel] Validation failed', { keyword: card.keyword, error: (err as Error).message })
+          log.warn('[useExploredKeywords] Validation failed', { keyword: card.keyword, error: (err as Error).message })
         }
       }),
     )
@@ -214,7 +214,7 @@ export function useRadarCarousel() {
     }
   }
 
-  function effectiveVerdict(entry: CarouselEntry): VerdictLevel | null {
+  function effectiveVerdict(entry: ExploredKeywordEntry): VerdictLevel | null {
     if (!entry.validation) return null
     return entry.validation.verdict.level
   }
@@ -246,13 +246,13 @@ export function useRadarCarousel() {
       if (thisVersion !== loadVersion) return
       const hydratedCard = hydrateCardFromValidation(keyword, response)
       patch(entryIndex, { card: hydratedCard, originalCard: hydratedCard, validation: response, isLoading: false })
-      log.debug('[useRadarCarousel] addEntry validated', { keyword, verdict: response.verdict.level })
+      log.debug('[useExploredKeywords] addEntry validated', { keyword, verdict: response.verdict.level })
 
       await validateRoots(keyword, response, entryIndex, level, articleTitle, thisVersion, articleId, painPoint)
     } catch (err) {
       if (thisVersion !== loadVersion) return
       patch(entryIndex, { error: (err as Error).message, isLoading: false })
-      log.warn('[useRadarCarousel] addEntry failed', { keyword, error: (err as Error).message })
+      log.warn('[useExploredKeywords] addEntry failed', { keyword, error: (err as Error).message })
     }
   }
 
@@ -317,7 +317,7 @@ export function useRadarCarousel() {
         activeWordIndices: activeIndices,
       }
 
-      log.info('[useRadarCarousel] Root variant added in-place', { parent: current.originalCard.keyword, variant: newRootKeyword })
+      log.info('[useExploredKeywords] Root variant added in-place', { parent: current.originalCard.keyword, variant: newRootKeyword })
     } catch (err) {
       const current = entries.value[entryIndex]
       if (current) {
@@ -357,7 +357,7 @@ export function useRadarCarousel() {
         marketScore: h.marketScore ?? undefined,
         relevanceScore: h.relevanceScore ?? null,
       }
-      log.debug('[useRadarCarousel] restoreFromHistory entry', {
+      log.debug('[useExploredKeywords] restoreFromHistory entry', {
         keyword: h.keyword,
         hasMarketScore: !!h.marketScore,
         hasRelevanceScore: !!h.relevanceScore,
@@ -402,13 +402,13 @@ export function useRadarCarousel() {
         activeWordIndices: Array.from({ length: h.keyword.trim().split(/\s+/).length }, (_, i) => i),
         failedRoots: [],
         pendingVariants: new Set(),
-      } satisfies CarouselEntry
+      } satisfies ExploredKeywordEntry
     })
 
     currentIndex.value = 0
     const withRelevance = entries.value.filter(e => (e.card.relevanceScore?.total ?? null) !== null).length
     const withRoots = entries.value.filter(e => e.rootVariants.size > 0).length
-    log.debug('[useRadarCarousel] restoreFromHistory — terminé', {
+    log.debug('[useExploredKeywords] restoreFromHistory — terminé', {
       total: history.length,
       withRelevance,
       withRoots,

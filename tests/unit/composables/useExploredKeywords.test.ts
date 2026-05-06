@@ -55,11 +55,11 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
-describe('useRadarCarousel', () => {
+describe('useExploredKeywords', () => {
   // Dynamic import to avoid module-level mock timing issues
   async function createCarousel() {
-    const { useRadarCarousel } = await import('../../../src/composables/keyword/useRadarCarousel')
-    return useRadarCarousel()
+    const { useExploredKeywords } = await import('../../../src/composables/keyword/useExploredKeywords')
+    return useExploredKeywords()
   }
 
   it('starts inactive with no entries', async () => {
@@ -249,7 +249,7 @@ describe('useRadarCarousel', () => {
 
   describe('hydrateCardFromValidation', () => {
     it('converts ValidateResponse to RadarCard with correct fields', async () => {
-      const { hydrateCardFromValidation } = await import('../../../src/composables/keyword/useRadarCarousel')
+      const { hydrateCardFromValidation } = await import('../../../src/composables/keyword/useExploredKeywords')
 
       const response: ValidateResponse = {
         keyword: 'test keyword',

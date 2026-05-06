@@ -49,8 +49,8 @@ vi.mock('../../../src/composables/keyword/useCapitaineValidation', async () => {
   }
 })
 
-vi.mock('../../../src/composables/keyword/useRadarCarousel', () => ({
-  useRadarCarousel: () => ({
+vi.mock('../../../src/composables/keyword/useExploredKeywords', () => ({
+  useExploredKeywords: () => ({
     entries: ref([]),
     currentIndex: ref(0),
     isActive: ref(false),

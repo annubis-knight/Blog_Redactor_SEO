@@ -13,7 +13,7 @@ import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import CaptainInteractiveWords from '../../../src/components/moteur/CaptainInteractiveWords.vue'
-import type { CarouselEntry } from '../../../src/composables/keyword/useRadarCarousel'
+import type { ExploredKeywordEntry } from '../../../src/composables/keyword/useExploredKeywords'
 
 const RadarCardLockableStub = {
   name: 'RadarCardLockable',
@@ -35,7 +35,7 @@ const RadarCardLockableStub = {
   `,
 }
 
-function makeEntry(over: Partial<CarouselEntry> = {}): CarouselEntry {
+function makeEntry(over: Partial<ExploredKeywordEntry> = {}): ExploredKeywordEntry {
   const card = {
     keyword: 'agence seo paris',
     reasoning: '',

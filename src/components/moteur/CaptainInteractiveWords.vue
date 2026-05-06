@@ -2,12 +2,12 @@
 import { computed } from 'vue'
 import RadarCardLockable from '@/components/intent/RadarCardLockable.vue'
 import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.store'
-import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
+import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types'
 import type { RadarCard } from '@shared/types/intent.types'
 
 const props = defineProps<{
-  entry: CarouselEntry
+  entry: ExploredKeywordEntry
   lockedKeyword: string | null
   articleLevel?: ArticleLevel
   articleId?: number | null

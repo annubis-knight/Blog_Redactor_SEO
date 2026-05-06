@@ -755,6 +755,14 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-CODE-NO-CAROUSEL
+Le terme « carousel » est éliminé du nommage des symboles publics côté frontend (composables, interfaces, fichiers de tests). Le composable historiquement nommé `useRadarCarousel` est renommé `useExploredKeywords` ; l'interface `CarouselEntry` devient `ExploredKeywordEntry`.
+**Justification** : en mode workflow (par défaut), le Capitaine présente une **liste verticale** de mots-clés explorés (cf. `CaptainRadarList.vue`) — pas un carousel UI. Le terme legacy datait du mode libre (Labo) où il y avait une vraie navigation carousel ; aujourd'hui il prête à confusion. Le terme « exploredKeywords » est préféré à « scanHistory » car il englobe les recherches manuelles ET automatiques.
+**Critères d'acceptation testables** :
+- Recherche grep `useRadarCarousel|CarouselEntry` dans `src/`, `tests/`, `shared/` retourne 0 occurrence.
+- Le composable est accessible via `useExploredKeywords` exporté depuis `src/composables/keyword/useExploredKeywords.ts`.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-12-rename-explored-keywords.
+
 #### FR-UI-VOCABULAIRE-VERROUILLER
 Les boutons d'action de figeage d'une décision utilisateur dans le Moteur (Capitaine, Lieutenants, Lexique) utilisent le vocabulaire **« Verrouiller »** dans leur libellé. L'ancien vocabulaire « Valider » est réservé à la documentation produit interne et au backend (en attente de renommage Sprint 14) et n'apparaît plus dans l'interface utilisateur du workflow Moteur.
 **Justification produit** : « Valider » est ambigu — il désigne à la fois la recherche/exploration (scan DataForSEO + calcul scoring) et le verrouillage (décision utilisateur de figer un mot-clé). Côté UX, l'utilisateur **verrouille** un mot-clé / une sélection — c'est un acte de figeage, pas une étape technique.

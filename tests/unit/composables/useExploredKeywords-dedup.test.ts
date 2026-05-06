@@ -1,11 +1,11 @@
 /**
- * Régression : useRadarCarousel doit dédupliquer les entries par
+ * Régression : useExploredKeywords doit dédupliquer les entries par
  * `originalCard.keyword`. Sans cette garde, addEntry et restoreFromHistory
  * peuvent injecter des doublons → Vue warn "Duplicate keys" + cartes
  * fantômes en double dans la radar-list du Capitaine.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { useRadarCarousel } from '@/composables/keyword/useRadarCarousel'
+import { useExploredKeywords } from '@/composables/keyword/useExploredKeywords'
 import type { CaptainValidationEntry } from '@shared/types/keyword.types'
 
 // Mock l'API : addEntry valide via apiPost. On répond toujours OK.
@@ -32,14 +32,14 @@ vi.mock('@/utils/logger', () => ({
 }))
 
 // NOTE 2026-05-01 : tests de régression écrits AVANT l'implémentation de la dédup.
-// La dédup n'est pas (encore) présente dans useRadarCarousel.addEntry/restoreFromHistory.
+// La dédup n'est pas (encore) présente dans useExploredKeywords.addEntry/restoreFromHistory.
 // Skipped pour ne pas masquer la todo : à réactiver dès qu'un fix code-side ajoute
 // un guard `if (entries.value.some(e => e.originalCard.keyword === keyword)) return`.
-describe.skip('useRadarCarousel — dédup contre doublons', () => {
-  let carousel: ReturnType<typeof useRadarCarousel>
+describe.skip('useExploredKeywords — dédup contre doublons', () => {
+  let carousel: ReturnType<typeof useExploredKeywords>
 
   beforeEach(() => {
-    carousel = useRadarCarousel()
+    carousel = useExploredKeywords()
   })
 
   it('addEntry du même keyword 2 fois ne crée qu\'une seule entry', async () => {

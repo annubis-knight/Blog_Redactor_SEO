@@ -7,7 +7,7 @@
  * docs/scoring-kpi-vs-relevance.md.
  */
 import { describe, it, expect } from 'vitest'
-import { hydrateCardFromValidation } from '../../../src/composables/keyword/useRadarCarousel'
+import { hydrateCardFromValidation } from '../../../src/composables/keyword/useExploredKeywords'
 import type { ValidateResponse } from '../../../shared/types'
 
 function makeResponse(overrides: Partial<ValidateResponse> = {}): ValidateResponse {

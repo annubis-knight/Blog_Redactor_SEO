@@ -4,7 +4,7 @@
 // carousel manuel pour le mode libre. Les tests skip ont été écrits pour l'ancien
 // layout monolithique : ils référencent des testIDs/selectors disparus
 // (`verdict-thermometer`, `kpi-volume`, `radar-card-section`, etc.) ou attendent
-// un comportement de validation qui passe maintenant par useRadarCarousel/store.
+// un comportement de validation qui passe maintenant par useExploredKeywords/store.
 // À réécrire de fond en comble en s'appuyant sur les sous-composants
 // (CaptainCarousel, CaptainLockPanel, CaptainVerdictPanel, RadarCardLockable,
 // CaptainInteractiveWords) plutôt que sur le DOM monolithique.
@@ -86,7 +86,7 @@ vi.mock('../../../src/composables/editor/useStreaming', () => ({
   }),
 }))
 
-// Mock useRadarCarousel
+// Mock useExploredKeywords
 const mockCarouselEntries = ref<any[]>([])
 const mockCarouselCurrentIndex = ref(0)
 const mockCarouselIsActive = computed(() => mockCarouselEntries.value.length > 0)
@@ -107,8 +107,8 @@ const mockCarouselEffectiveVerdict = vi.fn((entry: any) => {
 const mockCarouselReset = vi.fn()
 const mockCarouselAddEntry = vi.fn()
 
-vi.mock('../../../src/composables/keyword/useRadarCarousel', () => ({
-  useRadarCarousel: () => ({
+vi.mock('../../../src/composables/keyword/useExploredKeywords', () => ({
+  useExploredKeywords: () => ({
     entries: mockCarouselEntries,
     currentIndex: mockCarouselCurrentIndex,
     currentEntry: mockCarouselCurrentEntry,
@@ -819,7 +819,7 @@ describe('CaptainValidation', () => {
       combinedScore: 65,
     }
 
-    function makeCarouselEntry(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
+    function makeExploredKeywordEntry(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
       return {
         card,
         originalCard: card,
@@ -843,8 +843,8 @@ describe('CaptainValidation', () => {
 
     it.skip('shows carousel section when entries are present', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -863,8 +863,8 @@ describe('CaptainValidation', () => {
 
     it.skip('displays current keyword and counter', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -877,8 +877,8 @@ describe('CaptainValidation', () => {
 
     it.skip('calls next() on right arrow click', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -891,8 +891,8 @@ describe('CaptainValidation', () => {
 
     it.skip('calls prev() on left arrow click', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 1
 
@@ -905,8 +905,8 @@ describe('CaptainValidation', () => {
 
     it.skip('disables prev arrow at index 0', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -918,8 +918,8 @@ describe('CaptainValidation', () => {
 
     it.skip('disables next arrow at last index', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 1
 
@@ -931,8 +931,8 @@ describe('CaptainValidation', () => {
 
     it.skip('renders carousel counter showing current/total', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -946,7 +946,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows loading state when entry is loading', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, null, { isLoading: true }),
+        makeExploredKeywordEntry(mockRadarCardA, null, { isLoading: true }),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -958,7 +958,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows error state when entry has error', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, null, { error: 'API timeout' }),
+        makeExploredKeywordEntry(mockRadarCardA, null, { error: 'API timeout' }),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -971,7 +971,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows carousel results with verdict thermometer', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -984,7 +984,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows lock button in carousel, disabled when verdict not GO', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardB, validationB),
+        makeExploredKeywordEntry(mockRadarCardB, validationB),
       ]
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('ORANGE')
@@ -999,7 +999,7 @@ describe('CaptainValidation', () => {
 
     it.skip('enables lock button when verdict is GO', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
@@ -1013,7 +1013,7 @@ describe('CaptainValidation', () => {
 
     it.skip('locking emits validated + check-completed and persists', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
@@ -1034,7 +1034,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows locked state after locking, with unlock button', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
@@ -1052,7 +1052,7 @@ describe('CaptainValidation', () => {
 
     it.skip('unlocking emits check-removed and reverts to lock button', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
@@ -1074,7 +1074,7 @@ describe('CaptainValidation', () => {
 
     it.skip('hides manual mode when carousel is active', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -1088,7 +1088,7 @@ describe('CaptainValidation', () => {
 
     it.skip('manual input calls carousel.addEntry when carousel is active', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -1122,7 +1122,7 @@ describe('CaptainValidation', () => {
         ],
       }
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationWithPaa),
+        makeExploredKeywordEntry(mockRadarCardA, validationWithPaa),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -1137,7 +1137,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows RadarCardLockable in carousel results', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntry(mockRadarCardA, validationA),
+        makeExploredKeywordEntry(mockRadarCardA, validationA),
       ]
       mockCarouselCurrentIndex.value = 0
 
@@ -1197,7 +1197,7 @@ describe('CaptainValidation', () => {
       ['creation site web', { keyword: 'creation site web', card: rootVariantCard3, validation: rootVariantValidation3 }],
     ])
 
-    function makeCarouselEntryLocal(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
+    function makeExploredKeywordEntryLocal(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
       return {
         card,
         originalCard: card,
@@ -1214,7 +1214,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows kpi-root-zone buttons when rootVariants are present', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+        makeExploredKeywordEntryLocal(longTailCard, longTailValidation, {
           rootVariants: rootVariantsMap,
         }),
       ]
@@ -1233,7 +1233,7 @@ describe('CaptainValidation', () => {
 
     it.skip('clicking a kpi-root-item swaps the carousel card', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+        makeExploredKeywordEntryLocal(longTailCard, longTailValidation, {
           rootVariants: rootVariantsMap,
         }),
       ]
@@ -1252,7 +1252,7 @@ describe('CaptainValidation', () => {
 
     it.skip('renders interactive keyword words when rootVariants are present (F4 — all active by default)', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+        makeExploredKeywordEntryLocal(longTailCard, longTailValidation, {
           rootVariants: rootVariantsMap,
         }),
       ]
@@ -1272,7 +1272,7 @@ describe('CaptainValidation', () => {
 
     it.skip('clicking an active word (last in sequence) swaps to the corresponding root variant', async () => {
       mockCarouselEntries.value = [
-        makeCarouselEntryLocal(longTailCard, longTailValidation, {
+        makeExploredKeywordEntryLocal(longTailCard, longTailValidation, {
           rootVariants: rootVariantsMap,
           activeWordIndices: [0, 1, 2, 3, 4],
         }),
@@ -1352,7 +1352,7 @@ describe('CaptainValidation', () => {
       expect(mockSaveCaptainExplorationEntry).toHaveBeenCalled()
     })
 
-    it.skip('lockCarouselEntry calls saveDecisions immediately', async () => {
+    it.skip('lockExploredKeywordEntry calls saveDecisions immediately', async () => {
       const validation = { ...fullResult, keyword: 'kw-sync' }
       mockCarouselEntries.value = [makeEntry('kw-sync', validation)]
 
@@ -1362,7 +1362,7 @@ describe('CaptainValidation', () => {
       await nextTick()
       mockSaveDecisions.mockClear()
 
-      // Trigger lockCarouselEntry via the lock panel in carousel mode
+      // Trigger lockExploredKeywordEntry via the lock panel in carousel mode
       const lockBtn = wrapper.find('[data-testid="carousel-lock-btn"]')
       expect(lockBtn.exists(), 'le bouton lock doit exister en mode carousel').toBe(true)
       await lockBtn.trigger('click')

@@ -1,14 +1,14 @@
 <script setup lang="ts">
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import CaptainInteractiveWords from '@/components/moteur/CaptainInteractiveWords.vue'
-import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
+import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import type { SortOption } from '@/composables/moteur/useSortableList'
 import type { ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard } from '@shared/types/intent.types.js'
 
 defineProps<{
-  entries: CarouselEntry[]
-  sortedEntries: CarouselEntry[]
+  entries: ExploredKeywordEntry[]
+  sortedEntries: ExploredKeywordEntry[]
   selectedIndex: number | null
   lockedIndex: number | null
   lockedKeyword: string | null
@@ -17,7 +17,7 @@ defineProps<{
   articlePainPoint: string | null
   sortOptions: SortOption[]
   sortState: { key: string | null; direction: 'asc' | 'desc' | 'neutral' }
-  rawIndexOf: (entry: CarouselEntry) => number
+  rawIndexOf: (entry: ExploredKeywordEntry) => number
 }>()
 
 defineEmits<{

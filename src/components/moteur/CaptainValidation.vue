@@ -4,8 +4,8 @@ import { useDebounceFn } from '@vueuse/core'
 import { marked } from 'marked'
 import { useCapitaineValidation, articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
-import { useRadarCarousel } from '@/composables/keyword/useRadarCarousel'
-import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
+import { useExploredKeywords } from '@/composables/keyword/useExploredKeywords'
+import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiStream } from '@/services/api.service'
@@ -389,7 +389,7 @@ function handleHistoryClick(index: number) {
 }
 
 // ===== CAROUSEL (data layer) + RADAR-LIST UI (workflow) =====
-const carousel = useRadarCarousel()
+const carousel = useExploredKeywords()
 const carouselEntries = computed(() => carousel.entries.value)
 const lockedKeyword = ref<string | null>(null)
 
@@ -410,7 +410,7 @@ const captainSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
   { key: 'score', label: 'Score Pertinence' },
 ]
-const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<CarouselEntry>({
+const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<ExploredKeywordEntry>({
   items: carouselEntries,
   getValue: (entry, key) => {
     if (key === 'az') return entry.card.keyword
@@ -426,14 +426,14 @@ const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<C
  * `selectedIndex`, `lockEntry(idx)`, `lockedIndex`, watchers, qui parlent
  * tous en index brut.
  */
-function rawIndexOf(entry: CarouselEntry): number {
+function rawIndexOf(entry: ExploredKeywordEntry): number {
   return carousel.entries.value.findIndex(e => e.originalCard.keyword === entry.originalCard.keyword)
 }
 
 // Sprint 2026-04 — Pointeur de sélection UI pour la liste verticale (mode workflow).
 // Indépendant de carousel.currentIndex (qui sert l'auto-validation interne).
 const selectedIndex = ref<number | null>(null)
-const selectedEntry = computed<CarouselEntry | null>(() => {
+const selectedEntry = computed<ExploredKeywordEntry | null>(() => {
   if (selectedIndex.value === null) return null
   return carousel.entries.value[selectedIndex.value] ?? null
 })
@@ -771,7 +771,7 @@ watch(
   },
 )
 
-function carouselEffectiveVerdict(entry: CarouselEntry): VerdictLevel | null {
+function carouselEffectiveVerdict(entry: ExploredKeywordEntry): VerdictLevel | null {
   return carousel.effectiveVerdict(entry)
 }
 

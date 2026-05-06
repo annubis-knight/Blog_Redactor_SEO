@@ -89,6 +89,24 @@ development_status:
   # Validation : 186 tests UI verts, type-check vert, 0 occurrence résiduelle.
   sprint-11-vocabulaire-verrouiller: done
 
+  # Sprint 12 — Renommage useRadarCarousel → useExploredKeywords (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-12-rename-explored-keywords.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FR ajoutée : FR-CODE-NO-CAROUSEL.
+  # Décision produit : éliminer "carousel" — le mode workflow présente une liste
+  # verticale, pas un carousel UI. "exploredKeywords" préféré à "scanHistory"
+  # car il englobe recherches manuelles + automatiques.
+  # Périmètre :
+  #   - useRadarCarousel.ts → useExploredKeywords.ts (1 fichier composable)
+  #   - 4 fichiers de tests renommés (useRadarCarousel*.test.ts → useExploredKeywords*.test.ts)
+  #   - CarouselEntry → ExploredKeywordEntry (interface)
+  #   - 8 fichiers consommateurs adaptés (4 components + 5 tests)
+  # Hors-scope (reporté Sprint 12B / 13) : renommage propriété TS
+  #   RichCaptain.validationHistory → exploredKeywords (~25 fichiers, type partagé front+back),
+  #   et variables internes carouselAi* dans CaptainValidation.vue.
+  # Validation : type-check vert, 120 tests Capitaine + composables verts.
+  sprint-12-rename-explored-keywords: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,

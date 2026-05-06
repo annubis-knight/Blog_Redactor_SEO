@@ -7,12 +7,12 @@ import AiAdviceMarkdown from '@/components/moteur/ai-panel/AiAdviceMarkdown.vue'
 import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
 import { useResizablePanel } from '@/composables/ui/useResizablePanel'
 import type { AiPanelState } from '@/composables/moteur/useAiPanel'
-import type { CarouselEntry } from '@/composables/keyword/useRadarCarousel'
+import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
 import type { VerdictLevel, ValidateResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
 
 const props = defineProps<{
-  entry: CarouselEntry | null
+  entry: ExploredKeywordEntry | null
   parsedMarkdown: string
   aiIsStreaming: boolean
   aiError: string | null
