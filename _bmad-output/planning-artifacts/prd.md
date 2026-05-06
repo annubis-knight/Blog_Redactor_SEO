@@ -755,6 +755,21 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-MOT-LOCK-DERIVED
+L'état "verrouillé" d'un container Moteur (Capitaine, Lieutenants) est **dérivé** de la donnée persistée (statut DB), pas stocké dans une Ref locale. La double source de vérité (Ref + store) qui demandait des watchers de synchronisation manuelle est supprimée. Le store est la source unique de vérité.
+**Implémentation** :
+- Capitaine : `isLocked = computed(() => articleKeywordsStore.keywords?.richCaptain?.status === 'locked')`.
+- Lieutenants : `isLocked = computed(() => articleKeywordsStore.keywords?.richLieutenants?.some(l => l.status === 'locked'))`.
+- Lexique : **conserve sa Ref locale** (sémantique de lock côté DB pas encore clarifiée — sprint dédié futur).
+- Le store expose désormais `unlockCaptain()` et `unlockLieutenants()` (méthodes manquantes — l'unlock UI ne propageait pas au store ni à la DB avant Sprint 13).
+**Critères d'acceptation testables** :
+- `isLocked` dans CaptainValidation.vue est un `computed`, pas une `ref`.
+- `isLocked` dans LieutenantsSelection.vue est un `computed`, pas une `ref`.
+- Aucune écriture impérative `isLocked.value = true/false` ne subsiste dans ces 2 fichiers.
+- Le watcher Sprint 16 hotfix de CaptainValidation.vue est supprimé.
+- Tests existants passent avec mocks store qui mutent comme le vrai store (au lieu d'être des `vi.fn()` inertes).
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-13-isLocked-computed.
+
 #### FR-CODE-NO-CAROUSEL
 Le terme « carousel » est éliminé du nommage des symboles publics côté frontend (composables, interfaces, fichiers de tests). Le composable historiquement nommé `useRadarCarousel` est renommé `useExploredKeywords` ; l'interface `CarouselEntry` devient `ExploredKeywordEntry`.
 **Justification** : en mode workflow (par défaut), le Capitaine présente une **liste verticale** de mots-clés explorés (cf. `CaptainRadarList.vue`) — pas un carousel UI. Le terme legacy datait du mode libre (Labo) où il y avait une vraie navigation carousel ; aujourd'hui il prête à confusion. Le terme « exploredKeywords » est préféré à « scanHistory » car il englobe les recherches manuelles ET automatiques.

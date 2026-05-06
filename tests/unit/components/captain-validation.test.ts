@@ -125,9 +125,35 @@ vi.mock('../../../src/composables/keyword/useExploredKeywords', () => ({
 }))
 
 // Mock article-keywords store
-const mockStoreKeywords = ref<{ capitaine?: string } | null>(null)
+// Sprint 13 — `isLocked` est désormais DÉRIVÉ du store (computed). Pour que
+// les tests reflètent le vrai flux, lockCaptain et unlockCaptain mutent le
+// mockStoreKeywords pour simuler le store réel. Avant Sprint 13, lockCaptain
+// était un vi.fn() inerte et le composant tenait son état dans une Ref locale.
+const mockStoreKeywords = ref<{
+  articleId?: number
+  capitaine?: string
+  richCaptain?: { keyword: string; status: 'suggested' | 'locked'; lockedAt: string | null; aiPanelMarkdown: string | null; validationHistory: unknown[] }
+} | null>(null)
 const mockSetCapitaine = vi.fn()
-const mockLockCaptain = vi.fn()
+const mockLockCaptain = vi.fn((keyword: string, aiPanelMarkdown: string | null, articleId?: number) => {
+  // Reproduit le comportement réel du store : crée richCaptain si absent, sinon mute.
+  if (!mockStoreKeywords.value) {
+    mockStoreKeywords.value = { articleId: articleId ?? 1, capitaine: keyword }
+  }
+  mockStoreKeywords.value.capitaine = keyword
+  mockStoreKeywords.value.richCaptain = {
+    keyword,
+    status: 'locked',
+    lockedAt: new Date().toISOString(),
+    aiPanelMarkdown,
+    validationHistory: [],
+  }
+})
+const mockUnlockCaptain = vi.fn(() => {
+  if (!mockStoreKeywords.value?.richCaptain) return
+  mockStoreKeywords.value.richCaptain.status = 'suggested'
+  mockStoreKeywords.value.richCaptain.lockedAt = null
+})
 const mockAddCaptainValidation = vi.fn()
 const mockAddRootKeywordValidation = vi.fn()
 const mockSaveKeywords = vi.fn()
@@ -142,10 +168,11 @@ const mockSaveCaptainExplorationAiPanel = vi.fn()
 // "regression — survives minimal store mock without crashing" plus bas.
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
-    keywords: mockStoreKeywords.value,
+    get keywords() { return mockStoreKeywords.value },
     lockedLieutenants: [],
     setCapitaine: mockSetCapitaine,
     lockCaptain: mockLockCaptain,
+    unlockCaptain: mockUnlockCaptain,
     addCaptainValidation: mockAddCaptainValidation,
     addRootKeywordValidation: mockAddRootKeywordValidation,
     updateCaptainValidationAiPanel: vi.fn(),

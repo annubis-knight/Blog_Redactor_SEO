@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, watch, toRef } from 'vue'
+import { computed, watch, toRef } from 'vue'
 import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { hnToOutline } from '@/stores/article/outline.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -120,7 +120,15 @@ const wordGroupsRef = toRef(props, 'wordGroups')
 const cocoonSlugRef = toRef(props, 'cocoonSlug')
 
 // --- Lock/unlock Lieutenants ---
-const isLocked = ref(props.initialLocked)
+// Sprint 13 — `isLocked` est désormais DÉRIVÉ du store (source unique).
+// Vrai si au moins un lieutenant a status='locked' pour l'article courant.
+// La prop `initialLocked` est conservée pour compat tests.
+const isLocked = computed(() => {
+  const kw = articleKeywordsStore.keywords
+  if (!kw) return props.initialLocked
+  if (kw.articleId !== props.selectedArticle?.id) return props.initialLocked
+  return kw.richLieutenants?.some(lt => lt.status === 'locked') ?? false
+})
 
 // --- IA composable (Vague 3 — extracted to useLieutenantsIa) ---
 // Doit être déclaré après isLocked + serpResult/serpResultsByKeyword/hnRecurrence
@@ -210,7 +218,8 @@ async function lockLieutenants() {
     const outline = hnToOutline(hnStructure.value, title)
     await apiPut(`/articles/${id}`, { outline })
   }
-  isLocked.value = true
+  // Sprint 13 — `isLocked` n'est plus une Ref. setRichLieutenants ci-dessus a
+  // déjà mis chaque lieutenant en status='locked', le computed se réactive.
   emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
   emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
 
@@ -264,7 +273,11 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
 }
 
 function unlockLieutenants() {
-  isLocked.value = false
+  // Sprint 13 — Source unique : on déverrouille via le store. Le computed
+  // `isLocked` se réactive quand richLieutenants[].status passe à 'suggested'.
+  articleKeywordsStore.unlockLieutenants()
+  const id = props.selectedArticle?.id
+  if (id) void articleKeywordsStore.saveDecisions(id)
   emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
 }
 
@@ -298,7 +311,8 @@ watch(
     hnStructure.value = []
     contentGapInsights.value = ''
 
-    isLocked.value = props.initialLocked
+    // Sprint 13 — `isLocked` est computed, plus besoin de reset. Le store
+    // sera resynchronisé par fetchKeywords() au changement d'article.
     iaAbort()
 
     // Restore saved data if article was previously locked

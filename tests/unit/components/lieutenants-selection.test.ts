@@ -45,16 +45,43 @@ const mockStoreKeywords = ref<{
 })
 const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
 const mockSaveDecisions = vi.fn().mockResolvedValue(undefined)
-const mockSetRichLieutenants = vi.fn()
+// Sprint 13 — `isLocked` est désormais un computed dérivé de richLieutenants[].status.
+// Pour que les tests reflètent le vrai flux, setRichLieutenants et unlockLieutenants
+// MUTENT le mockStoreKeywords pour simuler le store réel.
+const mockSetRichLieutenants = vi.fn((selected: any[], eliminated: any[]) => {
+  if (!mockStoreKeywords.value) return
+  const now = new Date().toISOString()
+  mockStoreKeywords.value.richLieutenants = [
+    ...selected.map(lt => ({
+      keyword: lt.keyword, status: 'locked' as const, reasoning: lt.reasoning ?? '',
+      sources: lt.sources ?? [], suggestedHnLevel: lt.suggestedHnLevel ?? 2,
+      score: lt.score, kpis: null, lockedAt: now,
+    })),
+    ...eliminated.map(lt => ({
+      keyword: lt.keyword, status: 'eliminated' as const, reasoning: lt.reasoning ?? '',
+      sources: lt.sources ?? [], suggestedHnLevel: lt.suggestedHnLevel ?? 2,
+      score: lt.score, kpis: null, lockedAt: null,
+    })),
+  ]
+  mockStoreKeywords.value.lieutenants = selected.map(lt => lt.keyword)
+})
+const mockUnlockLieutenants = vi.fn(() => {
+  if (!mockStoreKeywords.value?.richLieutenants) return
+  for (const lt of mockStoreKeywords.value.richLieutenants) {
+    if (lt.status === 'locked') { lt.status = 'suggested'; lt.lockedAt = null }
+  }
+  mockStoreKeywords.value.lieutenants = []
+})
 const mockSaveRichLieutenantProposals = vi.fn()
 const mockSaveLieutenantExplorationEntries = vi.fn().mockResolvedValue(undefined)
 
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
-    keywords: mockStoreKeywords.value,
+    get keywords() { return mockStoreKeywords.value },
     saveKeywords: mockSaveKeywords,
     saveDecisions: mockSaveDecisions,
     setRichLieutenants: mockSetRichLieutenants,
+    unlockLieutenants: mockUnlockLieutenants,
     saveRichLieutenantProposals: mockSaveRichLieutenantProposals,
     saveLieutenantExplorationEntries: mockSaveLieutenantExplorationEntries,
   }),
@@ -1001,9 +1028,20 @@ describe('LieutenantsSelection', () => {
     })
 
     it('initialLocked prop sets locked state immediately', async () => {
+      // Sprint 13 — `isLocked` est désormais un computed dérivé de richLieutenants[].status.
+      // La prop `initialLocked` est un fallback uniquement quand le store ne matche pas
+      // l'article. Pour que le test reflète le comportement attendu (UI verrouillé), on
+      // configure aussi le store avec un lieutenant en status='locked'.
+      const previousRich = mockStoreKeywords.value!.richLieutenants
+      mockStoreKeywords.value!.richLieutenants = [
+        { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'],
+          suggestedHnLevel: 2, score: 50, kpis: null, lockedAt: '2026-01-01T00:00:00Z' },
+      ]
       const w = await mountWithCards({ initialLocked: true })
       expect((w.vm as any).isLocked).toBe(true)
       expect(w.find('[data-testid="locked-state"]').exists()).toBe(true)
+      // Cleanup pour ne pas polluer les tests suivants
+      mockStoreKeywords.value!.richLieutenants = previousRich
     })
   })
 

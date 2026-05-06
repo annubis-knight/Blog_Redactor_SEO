@@ -272,7 +272,14 @@ describe('LieutenantsSelection — saveHnStructure', () => {
   })
 
   it('saveHnStructure no-op si hnStructure vide', async () => {
+    // Sprint 13 — `isLocked` est désormais un computed dérivé de richLieutenants[].status.
+    // Pour que LieutenantH2Structure soit rendu (v-if isLocked), on configure aussi
+    // le store avec un lieutenant en status='locked'.
     mockStoreKeywords.value!.hnStructure = []
+    mockStoreKeywords.value!.richLieutenants = [
+      { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'],
+        suggestedHnLevel: 2, score: 50, kpis: null, lockedAt: '2026-01-01T00:00:00Z' },
+    ]
     const wrapper = mountLieutenants({ initialLocked: true })
     await nextTick()
 

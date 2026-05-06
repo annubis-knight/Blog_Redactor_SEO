@@ -337,6 +337,24 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
+  /**
+   * Sprint 13 — Déverrouille le Capitaine (mirror de lockCaptain).
+   * Met richCaptain.status = 'suggested' et lockedAt = null.
+   * Préserve validationHistory et aiPanelMarkdown (le user peut re-locker).
+   *
+   * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
+   * du composant CaptainValidation.vue, sans propager au store ni à la DB.
+   * Conséquence : la DB conservait status='locked' éternellement après un unlock UI.
+   */
+  function unlockCaptain() {
+    if (!keywords.value?.richCaptain) return
+    keywords.value.richCaptain.status = 'suggested'
+    keywords.value.richCaptain.lockedAt = null
+    // Note : on NE reset PAS keywords.value.capitaine (string non-nullable au type)
+    // — le store conserve la valeur pour rétro-compat. richCaptain.status est
+    // la source unique pour le verrouillage.
+  }
+
   function updateCaptainValidationAiPanel(keyword: string, aiPanelMarkdown: string) {
     const history = keywords.value?.richCaptain?.validationHistory
     if (!history) return
@@ -454,6 +472,33 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
    * lieutenants conservent leur historique mais ne sont plus considérés
    * comme actifs pour le nouveau Capitaine.
    */
+  /**
+   * Sprint 13 — Déverrouille les lieutenants verrouillés (mirror de setRichLieutenants).
+   * Tous les lieutenants en status 'locked' repassent à 'suggested'. lockedAt = null.
+   * Différent de archiveLockedLieutenants qui les passe à 'archived' (terminal).
+   *
+   * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
+   * du composant LieutenantsSelection.vue, sans propager au store ni à la DB.
+   */
+  function unlockLieutenants() {
+    if (!keywords.value?.richLieutenants) return
+    let unlocked = 0
+    for (const lt of keywords.value.richLieutenants) {
+      if (lt.status === 'locked') {
+        lt.status = 'suggested'
+        lt.lockedAt = null
+        unlocked++
+      }
+    }
+    if (unlocked > 0) {
+      // Sync flat lieutenants — vide la liste plate (les lieutenants actifs)
+      // mais garde richLieutenants pour permettre un re-lock si l'utilisateur
+      // les recoche.
+      keywords.value.lieutenants = []
+      log.info(`[article-keywords] unlocked ${unlocked} lieutenants (status -> 'suggested')`)
+    }
+  }
+
   function archiveLockedLieutenants() {
     if (!keywords.value?.richLieutenants) return
     let archived = 0
@@ -514,10 +559,10 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
     mergeCaptainHistory, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
-    setCapitaine, addCaptainValidation, lockCaptain, updateCaptainValidationAiPanel,
+    setCapitaine, addCaptainValidation, lockCaptain, unlockCaptain, updateCaptainValidationAiPanel,
     addRootKeywordValidation,
     setRootKeywords, addLieutenant, removeLieutenant,
-    saveRichLieutenantProposals, setRichLieutenants,
+    saveRichLieutenantProposals, setRichLieutenants, unlockLieutenants,
     archiveLockedLieutenants,
     addLexiqueTerm, removeLexiqueTerm,
     initEmpty, $reset,

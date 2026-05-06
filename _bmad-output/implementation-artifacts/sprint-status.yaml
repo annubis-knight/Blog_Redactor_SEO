@@ -107,6 +107,26 @@ development_status:
   # Validation : type-check vert, 120 tests Capitaine + composables verts.
   sprint-12-rename-explored-keywords: done
 
+  # Sprint 13 — Refonte verrou en computed (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-13-isLocked-computed.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FR ajoutée : FR-MOT-LOCK-DERIVED.
+  # Décision produit : `isLocked` est dérivé de la donnée persistée (statut DB),
+  # pas stocké dans une Ref locale. Source unique de vérité = store.
+  # Périmètre :
+  #   - CaptainValidation.vue : isLocked devient computed(richCaptain.status === 'locked')
+  #     + suppression watcher Sprint 16 hotfix + suppression 5 écritures impératives
+  #   - LieutenantsSelection.vue : isLocked devient computed(richLieutenants.some(l => l.status === 'locked'))
+  #     + suppression 3 écritures impératives
+  #   - article-keywords.store.ts : ajout unlockCaptain() et unlockLieutenants()
+  #     (méthodes manquantes — l'unlock UI ne propageait pas au store ni à la DB)
+  #   - 2 fichiers de tests adaptés (mock store réactif via getter + mutation lockCaptain)
+  # Hors-scope : LexiqueExtraction.vue conserve sa Ref locale (la sémantique de lock
+  #   côté DB n'est pas claire — sprint dédié futur).
+  # Validation : type-check vert, 3982 tests verts (3 fails non liés : 2 sanity E2E
+  #   + 1 test gaps mis à jour pour cohérence avec computed).
+  sprint-13-isLocked-computed: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,

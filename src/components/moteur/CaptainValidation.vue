@@ -103,7 +103,19 @@ const keywordInput = ref('')
 const { warnings: compositionWarnings, allPass: compositionAllPass } = useCompositionCheck(keywordInput, articleLevel)
 
 // --- Lock/unlock Capitaine ---
-const isLocked = ref(props.initialLocked)
+// Sprint 13 — `isLocked` est désormais DÉRIVÉ du store (source unique de vérité).
+// Avant : Ref locale + watcher Sprint 16 hotfix qui resynchait depuis le store.
+// Après : computed qui lit directement richCaptain.status. La Ref est éliminée,
+// les watchers de sync ne sont plus nécessaires (FR-MOT-LOCK-DERIVED).
+//
+// La prop `initialLocked` est conservée pour compat tests existants mais n'a
+// plus d'effet : si elle est `true`, c'est que le store a déjà richCaptain.status='locked'.
+const isLocked = computed(() => {
+  const kw = articleKeywordsStore.keywords
+  if (!kw) return props.initialLocked
+  if (kw.articleId !== props.selectedArticle?.id) return props.initialLocked
+  return kw.richCaptain?.status === 'locked'
+})
 
 // --- Debug log: state on mount ---
 watch(
@@ -135,7 +147,9 @@ function handleValidate() {
 watch(
   () => activeKeyword.value,
   (kw) => {
-    isLocked.value = props.initialLocked
+    // Sprint 13 — `isLocked` n'est plus une Ref. Pas besoin de la reset ici :
+    // le computed dérive directement de richCaptain.status, qui sera bien
+    // resynchronisé par le store quand l'article change.
     if (kw) {
       keywordInput.value = kw
       log.debug('CaptainValidation — input pré-rempli', { keyword: kw })
@@ -164,22 +178,20 @@ watch(
   { immediate: true },
 )
 
-// Sprint 16 hotfix — keep `isLocked` in sync with DB state. Without this, a
-// captain persisted with `status === 'locked'` in `captain_explorations` never
-// surfaced its locked state in the UI (the user saw the card but no lock badge).
+// Sprint 13 — Le watcher Sprint 16 hotfix qui resynchait `isLocked` depuis
+// richCaptain.status est SUPPRIMÉ. `isLocked` est désormais un computed qui
+// lit directement le store, donc plus besoin de resync manuelle.
+// On garde uniquement le watcher pour synchroniser `lockedKeyword` (qui reste
+// une Ref locale parce qu'elle représente la sélection UI courante du carousel,
+// pas l'état de verrouillage).
 watch(
   () => articleKeywordsStore.keywords?.richCaptain?.status,
   (status) => {
     const storeArticleId = articleKeywordsStore.keywords?.articleId
     const selectedId = props.selectedArticle?.id
     if (storeArticleId !== selectedId) return
-    const shouldLock = status === 'locked'
-    if (shouldLock !== isLocked.value) {
-      isLocked.value = shouldLock
-      if (shouldLock) {
-        lockedKeyword.value = articleKeywordsStore.keywords?.richCaptain?.keyword ?? null
-      }
-      log.debug('CaptainValidation — isLocked synced from store', { status, isLocked: shouldLock, lockedKeyword: lockedKeyword.value })
+    if (status === 'locked') {
+      lockedKeyword.value = articleKeywordsStore.keywords?.richCaptain?.keyword ?? null
     }
   },
   { immediate: true },
@@ -305,8 +317,9 @@ function handleManualAiRegenerate() {
 }
 
 // --- Lock/Unlock (manual mode) ---
+// Sprint 13 — Plus d'écriture `isLocked.value = true`. C'est `lockCaptain` du store
+// qui passe richCaptain.status = 'locked', et le computed `isLocked` se réactive.
 function lockCaptaine() {
-  isLocked.value = true
   const keyword = currentResult.value?.keyword
   log.info('CaptainValidation — Capitaine verrouillé', { keyword, verdict: effectiveVerdict.value })
   if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
@@ -339,12 +352,14 @@ function requestUnlock(source: UnlockSource) {
 }
 
 function performUnlock(source: UnlockSource) {
-  if (source === 'manual') {
-    isLocked.value = false
-  } else {
+  // Sprint 13 — Source unique de vérité : on déverrouille via le store, pas via
+  // une Ref locale. Le computed `isLocked` se réactive automatiquement quand
+  // richCaptain.status passe à 'suggested'.
+  if (source === 'carousel') {
     lockedKeyword.value = null
-    isLocked.value = false
   }
+  articleKeywordsStore.unlockCaptain()
+  if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
   log.info('CaptainValidation — Capitaine déverrouillé', { source })
   if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
   pendingUnlock.value = null
@@ -833,7 +848,8 @@ async function lockEntry(idx: number) {
 
   selectedIndex.value = idx
   lockedKeyword.value = newKw
-  isLocked.value = true
+  // Sprint 13 — `isLocked` n'est plus une Ref. Le computed se réactive après
+  // articleKeywordsStore.lockCaptain() ci-dessous.
 
   if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
   emit('validated', newKw)
