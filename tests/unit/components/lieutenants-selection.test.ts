@@ -970,7 +970,7 @@ describe('LieutenantsSelection', () => {
       await w.find('[data-testid="lock-btn"]').trigger('click')
       await nextTick()
       expect(w.find('[data-testid="locked-state"]').exists()).toBe(true)
-      expect(w.find('.locked-badge').text()).toBe('Lieutenants verrouilles')
+      expect(w.find('.locked-badge').text()).toBe('Lieutenants verrouillés')
     })
 
     it('shows unlock button in locked state', async () => {
