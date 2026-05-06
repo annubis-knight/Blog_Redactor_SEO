@@ -1,3 +1,5 @@
+import type { PainIntentExpected } from './scoring.types.js'
+
 /** Article type in the cocoon hierarchy */
 export type ArticleType = 'Pilier' | 'Intermédiaire' | 'Spécialisé'
 
@@ -24,6 +26,8 @@ export interface RawArticle {
   captainKeywordLocked?: string | null
   /** Pain point issu de la stratégie */
   painPoint?: string | null
+  /** Intent éditorial attendu — alimente le 5e signal du Score Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL). */
+  painIntentExpected?: PainIntentExpected | null
   createdAt?: string      // ISO timestamp
   updatedAt?: string      // ISO timestamp
 }
@@ -70,6 +74,8 @@ export interface Article {
   captainKeywordLocked: string | null
   /** Pain point issu de la stratégie */
   painPoint: string | null
+  /** Intent éditorial attendu — alimente le 5e signal du Score Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL). */
+  painIntentExpected: PainIntentExpected | null
   createdAt?: string      // ISO timestamp
   updatedAt?: string      // ISO timestamp
 }

@@ -1,5 +1,16 @@
 import { z } from 'zod/v4'
 import { articleTypeSchema } from './shared-enums.schema.js'
+import { PAIN_INTENT_EXPECTED_VALUES } from '../types/scoring.types.js'
+
+/**
+ * Schéma Zod pour `painIntentExpected` — utilisé par la validation de la
+ * réponse IA (cocoon-articles*) et par les routes PUT /articles/:id.
+ * `null` autorisé pour les articles dont l'intent n'a pas (encore) été défini.
+ */
+export const painIntentExpectedSchema = z
+  .enum(PAIN_INTENT_EXPECTED_VALUES)
+  .nullable()
+  .default(null)
 
 const subQuestionSchema = z.object({
   id: z.string(),
@@ -92,6 +103,7 @@ export const proposedArticleSchema = z.object({
   parentTitle: z.string().nullable(),
   rationale: z.string(),
   painPoint: z.string().default(''),
+  painIntentExpected: painIntentExpectedSchema,
   suggestedKeyword: z.string(),
   suggestedKeywords: z.array(z.string()).default([]),
   suggestedSlug: z.string().default(''),

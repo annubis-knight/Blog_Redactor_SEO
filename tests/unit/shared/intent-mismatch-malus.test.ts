@@ -1,11 +1,11 @@
 /**
- * Tests pour le malus intent mismatch — Sprint S5.
+ * Tests pour le malus intent mismatch.
  *
  * Spécification :
  *  - le malus de -10 points est INTÉGRÉ dans `intentPain.normalized`
  *    (pas une variable séparée du score)
- *  - il s'applique uniquement quand `painIntentExpected` (ou `painType`
- *    deprecated) est défini ET ne matche aucun des `intentTypes` détectés
+ *  - il s'applique uniquement quand `painIntentExpected` est défini
+ *    ET ne matche aucun des `intentTypes` détectés
  *  - le score `intentPain.normalized` reste clampé [0, 100]
  *  - sans `painIntentExpected` → comportement neutre 50, aucun malus
  */
@@ -53,29 +53,11 @@ describe('Intent mismatch malus — Sprint S5', () => {
     expect(r.breakdown.intentPain.normalized).toBe(100)
   })
 
-  it('aucun painIntentExpected ni painType → composante neutre 50, pas de malus', () => {
+  it('aucun painIntentExpected → composante neutre 50, pas de malus', () => {
     const r = computeRelevanceScore({
       intentTypes: ['commercial'],
     })
     expect(r.breakdown.intentPain.normalized).toBe(50)
-  })
-
-  it('painType (legacy deprecated) reste accepté en fallback', () => {
-    const r = computeRelevanceScore({
-      intentTypes: ['informational'],
-      painType: 'commercial', // legacy
-    })
-    expect(r.breakdown.intentPain.normalized).toBe(20) // 30 - 10 malus
-  })
-
-  it('painIntentExpected prime sur painType si les deux sont fournis', () => {
-    const r = computeRelevanceScore({
-      intentTypes: ['informational'],
-      painType: 'informational',           // legacy → match → score 100
-      painIntentExpected: 'commercial',    // nouveau → mismatch → 30 - 10 = 20
-    })
-    // painIntentExpected prime → mismatch → 20
-    expect(r.breakdown.intentPain.normalized).toBe(20)
   })
 
   it('mismatch impacte le total : score < celui sans mismatch', () => {

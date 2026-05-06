@@ -1,5 +1,5 @@
 # generated: 2026-04-01
-# last_updated: 2026-05-05
+# last_updated: 2026-05-06
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
@@ -71,6 +71,25 @@ development_status:
   # Sprint 9: log.warn legacy relevanceScore dans anciens snapshots Radar
   # Sprint 10: validation complète (lint, type-check, tests, build) ✅
   chantier-a-relevance-live-computation: done
+
+  # Chantier B — Activation 5e signal Pertinence (2026-05-06) ✅
+  # tech-spec: tech-spec-pain-intent-expected-signal.md
+  # FRs: FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-PIE-AI-GENERATION,
+  #       FR-PIE-CERVEAU-OVERRIDE
+  # Phase 1: cartographie producteurs/consommateurs painIntentExpected
+  # Phase 2: PRD (3 nouveaux FRs) + tech-spec
+  # Phase 3a: tests TDD RED (helper read DB, intégration scoring, UI dropdown)
+  # Phase 3b: prompts cocoon-* incluent painIntentExpected + types/Zod
+  # Phase 3c: persistance (addArticlesToCocoon write, getArticlePainIntent read)
+  # Phase 3d: câblage scoring (5e signal actif via metrics.intentLabel +
+  #           painIntentExpected). Migration 017 keyword_metrics.intent_label.
+  # Phase 3e: UI Cerveau dropdown radio dans ProposedArticleRow.vue + PATCH route
+  # Phase 4-5: self-review + validation (type-check vert, tests verts)
+  # Phase 6: docs (architecture.md, pain-point-editorial-backbone.md,
+  #          scoring-kpi-vs-relevance.md, sprint-status.yaml)
+  # Backfill: intents écrits manuellement par Claude pour articles existants
+  # CLEAN: suppression du legacy painType deprecated dans shared/scoring.ts
+  chantier-b-pain-intent-expected-signal: done
 
   # Sprint 5 — Radar UX (mai 2026) ✅
   # tech-spec: tech-spec-sprint5-radar-ux.md

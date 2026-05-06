@@ -56,21 +56,37 @@ export interface RelevanceScoreInput {
   /** Moyenne 0-100 du score relevance des racines extraites. null → fallback redistribution. */
   rootsAverageScore?: number | null
   /** Types d'intent détectés. Optionnel — neutre si absent. */
-  intentTypes?: Array<'commercial' | 'transactional' | 'informational' | 'navigational'>
+  intentTypes?: PainIntentExpected[]
   /**
-   * @deprecated S5 — utiliser `painIntentExpected` à la place. Conservé pour rétro-compat.
-   * Type de douleur déclaré pour l'article. Optionnel — neutre si absent.
-   */
-  painType?: 'commercial' | 'transactional' | 'informational' | 'navigational'
-  /**
-   * Sprint S5 — Type d'intent attendu derrière la douleur de l'article (champ DB
+   * Type d'intent attendu derrière la douleur de l'article (champ DB
    * `articles.pain_intent_expected`). Si différent de l'intent réel détecté sur
    * le mot-clé, un MALUS est intégré directement dans `intentPain.normalized`
    * (-10 points sur la composante elle-même, pas une variable séparée).
    * Cf. docs/pain-point-editorial-backbone.md — "Pattern malus intégré".
    */
-  painIntentExpected?: 'commercial' | 'transactional' | 'informational' | 'navigational'
+  painIntentExpected?: PainIntentExpected
 }
+
+/**
+ * Les 4 types d'intention SEO reconnus, alignés sur la classification
+ * DataForSEO `search_intent_info.main_intent`.
+ *
+ * AUTHORITY: PostgreSQL `articles.pain_intent_expected` TEXT (CHECK contraint).
+ * RELATED FR: FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-PIE-AI-GENERATION.
+ */
+export type PainIntentExpected =
+  | 'commercial'
+  | 'transactional'
+  | 'informational'
+  | 'navigational'
+
+/** Constante des 4 valeurs autorisées — utile pour les schémas Zod et l'UI. */
+export const PAIN_INTENT_EXPECTED_VALUES = [
+  'commercial',
+  'transactional',
+  'informational',
+  'navigational',
+] as const satisfies readonly PainIntentExpected[]
 
 /**
  * Malus appliqué à la composante `intentPain.normalized` quand l'intent réel

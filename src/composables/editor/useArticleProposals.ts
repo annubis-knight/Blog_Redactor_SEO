@@ -2,6 +2,7 @@ import { ref, watch, type Ref } from 'vue'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import type { ProposedArticle, CocoonSuggestRequest } from '@shared/types/index.js'
+import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 
@@ -167,6 +168,7 @@ export function useArticleProposals(params: {
           slug: article.suggestedSlug || undefined,
           suggestedKeyword: article.suggestedKeyword?.trim() || null,
           painPoint: article.painPoint?.trim() || null,
+          painIntentExpected: article.painIntentExpected,
         }],
       })
       if (created?.[0]?.id) {
@@ -249,6 +251,29 @@ export function useArticleProposals(params: {
     store.saveStrategy(cocoonSlug.value)
   }
 
+  /**
+   * FR-PIE-CERVEAU-OVERRIDE — l'utilisateur corrige l'intent éditorial généré
+   * par l'IA. Mise à jour locale immédiate (pour réactivité UI) + persistance
+   * via PATCH si l'article est déjà en DB. La sauvegarde de la stratégie
+   * (saveStrategy) garantit la persistance même avant création DB.
+   */
+  async function updatePainIntent(index: number, value: PainIntentExpected | null) {
+    if (!store.strategy) return
+    const article = store.strategy.proposedArticles[index]
+    if (!article) return
+    store.strategy.proposedArticles[index] = { ...article, painIntentExpected: value }
+    store.saveStrategy(cocoonSlug.value)
+    // Si l'article est déjà persisté en DB, propager le changement immédiatement.
+    if (article.createdInDb && article.dbId > 0) {
+      try {
+        await apiPatch(`/articles/${article.dbId}`, { painIntentExpected: value })
+        log.debug('[useArticleProposals] painIntentExpected synchronisé en DB', { dbId: article.dbId, value })
+      } catch (err) {
+        log.warn('[useArticleProposals] échec sync painIntentExpected', { dbId: article.dbId, error: (err as Error).message })
+      }
+    }
+  }
+
   // --- Computeds (factory) ---
   const computeds = createArticleComputeds(store)
 
@@ -326,6 +351,7 @@ export function useArticleProposals(params: {
     editTitle,
     editKeyword,
     editSlug,
+    updatePainIntent,
     generateArticleProposals,
     validateArticles,
     // Topic actions

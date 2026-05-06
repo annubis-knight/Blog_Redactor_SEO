@@ -1,6 +1,7 @@
 /** Strategy data for a single article — 6-step Brain-First workflow */
 
 import type { ArticleType } from './article.types.js'
+import type { PainIntentExpected } from './scoring.types.js'
 
 export interface SubQuestion {
   id: string
@@ -158,6 +159,13 @@ export interface ProposedArticle {
   parentTitle: string | null
   rationale: string
   painPoint: string
+  /**
+   * Intent éditorial attendu derrière le painPoint, généré par l'IA au moment
+   * de la création (FR-PIE-AI-GENERATION) et corrigeable côté Cerveau
+   * (FR-PIE-CERVEAU-OVERRIDE). Persisté dans `articles.pain_intent_expected`.
+   * `null` = non défini → 5e signal Pertinence neutralisé à 50/100.
+   */
+  painIntentExpected: PainIntentExpected | null
   suggestedKeyword: string
   suggestedKeywords: string[]
   suggestedSlug: string

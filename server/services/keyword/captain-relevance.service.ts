@@ -1,17 +1,20 @@
 /**
  * AUTHORITY: Calcul à la volée du Score Pertinence pour l'onglet Capitaine.
  *            Le score n'est JAMAIS persisté (cf. FR-CAP-RELEVANCE-NO-DB-WRITE).
- * READS FROM: articles.pain_point (DB), captain_explorations.root_keywords (DB),
- *             keyword_metrics (DB) — paa_questions, autocomplete_suggestions, intent_raw
+ * READS FROM: articles.pain_point (DB), articles.pain_intent_expected (DB),
+ *             captain_explorations.root_keywords (DB),
+ *             keyword_metrics (DB) — paa_questions, autocomplete_suggestions,
+ *             intent_raw, intent_label
  * WRITES TO: rien (read-only par contrat)
- * CONSUMERS: data.service.ts → getCaptainExplorations (à adapter Sprint 3),
+ * CONSUMERS: data.service.ts → getCaptainExplorations,
  *            futurs endpoints /articles/:id/relevance et /relevance/compute
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE,
  *             FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB,
- *             FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON
+ *             FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
+ *             FR-CAP-RELEVANCE-INTENT-SIGNAL (5e signal Intent SERP × Intent éditorial)
  *
  * Architecture (cf. docs/data-flows/relevance-score-live-computation.md §2) :
- *   PHASE 1 — lecture DB (3 SQL parallèles : painPoint, captain_explorations, keyword_metrics)
+ *   PHASE 1 — lecture DB parallèle (painPoint + painIntentExpected + métriques keyword)
  *   PHASE 2A — calcul des racines uniques avec mémoïsation Map<rootKeyword, score>
  *   PHASE 2B — calcul des cards complètes en lisant la Map mémoïsée
  *   PHASE 3 — réponse, Map garbage-collectée
@@ -21,16 +24,20 @@
  *   - Pas de récursion sur les racines (signal 4 neutralisé pour les racines elles-mêmes)
  *   - Calcul lexical rapide (matchResonanceDetailed via lexicalPainAlignment), pas d'embeddings
  *   - Tooltip honnête : `unavailableReason` typé renvoyé au front
+ *   - 5e signal (Intent × Douleur) : actif quand metrics.intentLabel ET
+ *     painIntentExpected sont présents ; neutralisé à 50/100 sinon (dégradation gracieuse)
  */
 
 import type {
   RelevanceScoreLiveResult,
   RelevanceUnavailableReason,
+  PainIntentExpected,
 } from '../../../shared/types/scoring.types.js'
 import { computeRelevanceScore } from '../../../shared/scoring.js'
 import { getKeywordMetrics, type KeywordMetrics } from './keyword-metrics.service.js'
 import { lexicalPainAlignment, avgLexicalPainAlignment } from './lexical-pain-alignment.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../queries/article-pain-point.service.js'
+import { getArticlePainIntent } from '../queries/article-pain-intent.service.js'
 import { log } from '../../utils/logger.js'
 
 /** Longueur minimale du painPoint pour qu'un calcul Pertinence soit tenté. */
@@ -86,6 +93,11 @@ function painPointToWords(painPoint: string): string[] {
  * Pour les racines : on passe `rootsAverageScore: null` (pas de récursion).
  * Pour les cards : on passe la moyenne des scores de leurs racines, lue
  * dans la Map mémoïsée par l'appelant.
+ *
+ * `painIntentExpected` (FR-CAP-RELEVANCE-INTENT-SIGNAL) provient d'un lookup
+ * unique sur `articles.pain_intent_expected` réalisé par l'appelant
+ * (`computeRelevanceForCaptainTab`). Si `null`, le 5e signal reste neutralisé
+ * à 50/100 — c'est le comportement de dégradation gracieuse documenté.
  */
 function computeRelevanceForSingleKeyword(
   keyword: string,
@@ -93,6 +105,7 @@ function computeRelevanceForSingleKeyword(
   metrics: KeywordMetrics | null,
   rootsAverageScore: number | null,
   isLongTail: boolean,
+  painIntentExpected: PainIntentExpected | null,
 ): RelevanceScoreLiveResult {
   // Cas 1 — Pas de painPoint utilisable
   if (!painPoint || painPoint === PAIN_POINT_FALLBACK || painPoint.length < PAIN_POINT_MIN_LENGTH) {
@@ -136,50 +149,21 @@ function computeRelevanceForSingleKeyword(
   const acTexts = metrics.autocompleteSuggestions.map(a => a.text).filter(Boolean)
   const autocompletePainAlignmentAvg = avgLexicalPainAlignment(acTexts, painWords)
 
-  // Signal 5 — Intent × Douleur (matrice qualitative dans computeRelevanceScore)
-  //
-  // TODO [chantier:pain-intent-signal] — câbler le 5e signal Pertinence
-  //
-  // POURQUOI neutralisé à 50/100 :
-  //   Le signal "Intent × Douleur" croise l'intention SERP du keyword (info /
-  //   transactionnelle / etc., venant de `keyword_metrics.intent_raw`) avec
-  //   l'intention attendue par l'article (champ `pain_intent_expected` qu'on
-  //   souhaiterait dans `articles`). Aujourd'hui :
-  //     - `intent_raw` existe en DB (DataForSEO) mais n'est pas typé en
-  //       `intentTypes` au moment d'appeler `computeRelevanceScore`.
-  //     - `articles.pain_intent_expected` N'EXISTE PAS encore : ni colonne DB,
-  //       ni UI de saisie, ni prompt IA pour la déduire.
-  //   Tant que ces deux briques manquent, `computeRelevanceScore` neutralise
-  //   le signal à 50/100. Le score total est donc valide (4 signaux sur 5)
-  //   mais ne capture pas encore la nuance d'intention.
-  //
-  // QUAND s'y attaquer :
-  //   1. Migration DB : `ALTER TABLE articles ADD COLUMN pain_intent_expected TEXT[]`
-  //      (valeurs : 'informational' | 'transactional' | 'commercial' | 'navigational').
-  //   2. UI Cerveau : champ de saisie au moment de la définition du painPoint
-  //      (idéalement avec déduction IA depuis le painPoint texte).
-  //   3. Lecture ici : récupérer `articles.pain_intent_expected` dans `getArticlePainPoint`
-  //      (ou un nouveau `getArticleIntentExpected`), passer à `computeRelevanceForSingleKeyword`.
-  //   4. Mapper `metrics.intent_raw` → `intentTypes` (cf. shared/types/scoring.types.ts).
-  //
-  // FR/NFR concernés :
-  //   - FR-CAP-RELEVANCE-COMPUTED-LIVE (PRD §FR-CAP-RELEVANCE-COMPUTED-LIVE) — le calcul
-  //     reste valide même sans ce signal (déjà documenté comme dégradation gracieuse).
-  //   - À créer : un nouveau FR-CAP-RELEVANCE-INTENT-SIGNAL ou équivalent qui
-  //     spécifie le mapping intent_raw / pain_intent_expected → score 0-100.
-  //
-  // TESTS à mettre à jour :
-  //   - tests/unit/coherence/relevance-live-computation.test.ts : ajouter un cas
-  //     "intent matches expected → score boosté" et "intent diverge → score réduit".
-  //   - tests/unit/score/computeRelevanceScore.test.ts (s'il existe) : couvrir
-  //     les 4×4 combinaisons de la matrice qualitative intent/painIntentExpected.
+  // Signal 5 — Intent × Douleur (FR-CAP-RELEVANCE-INTENT-SIGNAL).
+  // Croise le label SERP de DataForSEO (`metrics.intentLabel`) avec l'intent
+  // éditorial attendu de l'article (`painIntentExpected`). Si l'un des deux
+  // manque, `computeRelevanceScore` neutralise le signal à 50/100 — pas de
+  // pénalité injustifiée. Si mismatch, malus -10 appliqué directement sur la
+  // composante `intentPain.normalized` (cf. INTENT_MISMATCH_MALUS).
+  const intentTypes = metrics.intentLabel ? [metrics.intentLabel] : undefined
 
   const result = computeRelevanceScore({
     painAlignmentScore,
     paaPainAlignmentAvg: paaPainAlignmentAvg ?? undefined,
     autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? undefined,
     rootsAverageScore: rootsAverageScore ?? undefined,
-    intentTypes: undefined, // voir TODO ci-dessus [chantier:pain-intent-signal]
+    intentTypes,
+    painIntentExpected: painIntentExpected ?? undefined,
   })
 
   return {
@@ -224,14 +208,18 @@ export async function computeRelevanceForCaptainTab(
     keywords: keywords.map(k => k.keyword),
   })
 
-  // ---- PHASE 1 : Lecture DB ----
-  const painPoint = await getArticlePainPoint(articleId)
+  // ---- PHASE 1 : Lecture DB (parallèle painPoint + painIntent) ----
+  const [painPoint, painIntentExpected] = await Promise.all([
+    getArticlePainPoint(articleId),
+    getArticlePainIntent(articleId),
+  ])
   const painPointSnapshot = painPoint === PAIN_POINT_FALLBACK ? null : painPoint
-  log.debug('[captain-relevance] PHASE 1 — painPoint lu', {
+  log.debug('[captain-relevance] PHASE 1 — article lu', {
     articleId,
     painPointAvailable: painPoint !== PAIN_POINT_FALLBACK,
     painPointLength: painPoint !== PAIN_POINT_FALLBACK ? painPoint.length : 0,
     painPointPreview: painPoint !== PAIN_POINT_FALLBACK ? painPoint.slice(0, 60) : '(fallback)',
+    painIntentExpected,
   })
 
   // Collecter toutes les racines uniques (Set dédoublonne)
@@ -266,7 +254,14 @@ export async function computeRelevanceForCaptainTab(
   const rootScores = new Map<string, RelevanceLiveEntry>()
   for (const root of allRootsSet) {
     const metrics = metricsByKeyword.get(root) ?? null
-    const result = computeRelevanceForSingleKeyword(root, painPoint, metrics, null, false)
+    const result = computeRelevanceForSingleKeyword(
+      root,
+      painPoint,
+      metrics,
+      null,
+      false,
+      painIntentExpected,
+    )
     rootScores.set(root, { keyword: root, ...result })
     log.debug('[captain-relevance] PHASE 2A — racine calculée', {
       root,
@@ -294,6 +289,7 @@ export async function computeRelevanceForCaptainTab(
       metrics,
       rootsAverage,
       kw.isLongTail ?? false,
+      painIntentExpected,
     )
     cardScores.set(kw.keyword, { keyword: kw.keyword, ...result })
     log.debug('[captain-relevance] PHASE 2B — card calculée', {

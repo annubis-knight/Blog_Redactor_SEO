@@ -357,6 +357,7 @@ const {
   editTitle,
   editKeyword,
   editSlug,
+  updatePainIntent,
   generateArticleProposals,
   validateArticles,
   topicsLoading,
@@ -504,6 +505,7 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
         @edit-title="editTitle"
         @edit-keyword="editKeyword"
         @edit-slug="editSlug"
+        @update-pain-intent="updatePainIntent"
       />
 
       <!-- Navigation -->

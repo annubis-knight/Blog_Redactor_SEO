@@ -90,9 +90,21 @@ Le détail de la pondération vit dans [docs/scoring-kpi-vs-relevance.md](./scor
 | PAA × Douleur (25%) | moyenne embedding(PAA) ↔ embedding(painPoint) | composante neutralisée à 50 |
 | Autocomplete × Douleur (15%) | moyenne embedding(AC) ↔ embedding(painPoint) | composante neutralisée à 50 |
 | Racines (20%) | moyenne `relevanceScore` des racines (récursif) | composante neutralisée à 50 |
-| Intent × Douleur (10%) | matrice `painType × intentType` | 50 si `painType` absent |
+| Intent × Douleur (10%) | matrice `painIntentExpected × intentLabel` (DataForSEO) | 50 si l'un des deux est absent |
 
 **Conséquence** : sans painPoint, `relevanceScore.total` ≈ 50 (zone ORANGE neutre, pas exploitable). C'est pour ça que `/keywords/:keyword/validate` retourne `relevanceScore: null` plutôt qu'un score artificiel.
+
+### Le 5e signal — Intent SERP × Intent éditorial (FR-CAP-RELEVANCE-INTENT-SIGNAL)
+
+Activé depuis 2026-05-06. Croise deux valeurs typées `commercial | transactional | informational | navigational` :
+
+- **Côté keyword (SERP)** : `keyword_metrics.intent_label`, label renvoyé par DataForSEO `search_intent.keyword_intent.label`. Persisté via la migration **017**.
+- **Côté article (éditorial)** : `articles.pain_intent_expected`, valeur typée définie au moment de la création de l'article (généré par les prompts IA `cocoon-articles*.md`, corrigeable manuellement via dropdown radio dans [src/components/strategy/ProposedArticleRow.vue](../src/components/strategy/ProposedArticleRow.vue)).
+
+**Comportement** :
+- Match parfait → score 100, pas de malus
+- Mismatch → matrice 4×4 (cf. `computeIntentPainAlignment` dans [shared/scoring.ts](../shared/scoring.ts)) + malus -10 (`INTENT_MISMATCH_MALUS`)
+- Une des deux valeurs absente → composante neutralisée à 50 (dégradation gracieuse)
 
 ### Le painPoint **n'entre pas** dans le `marketScore`
 
@@ -284,7 +296,7 @@ le profil "longue-traîne pertinente" et invite à valider malgré le verdict ma
 
 **Intent désirée vs réelle (S5)** :
 - ✅ Nouveau champ DB `articles.pain_intent_expected` (migration `014_articles_pain_intent_expected.sql`).
-- ✅ Nouveau champ `RelevanceScoreInput.painIntentExpected` (le legacy `painType` reste accepté pour transition, marqué `@deprecated`).
+- ✅ Champ `RelevanceScoreInput.painIntentExpected` (le legacy `painType` a été supprimé en 2026-05-06 — chantier B activation 5e signal).
 - ✅ **Pattern malus intégré** : quand l'intent réel ≠ intent attendu, un malus de **-10 points** est soustrait directement de `intentPain.normalized` (pas une variable séparée). Voir constante `INTENT_MISMATCH_MALUS` dans [shared/types/scoring.types.ts](../shared/types/scoring.types.ts). Ce pattern peut être réutilisé pour d'autres composantes (cannibalisation, longueur excessive, etc.).
 - ✅ `computeVerdict` legacy marqué `@deprecated` avec doc complète (suppression effective dans story future quand 0 consommateur).
 
