@@ -1,5 +1,20 @@
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
+import {
+  PAIN_INTENT_EXPECTED_VALUES,
+  type PainIntentExpected,
+} from '../../../shared/types/scoring.types.js'
+
+const ALLOWED_INTENT_LABELS = new Set<string>(PAIN_INTENT_EXPECTED_VALUES)
+
+/**
+ * Coerce une chaîne arbitraire vers un `PainIntentExpected | null`. Sécurise
+ * la lecture DB face à un éventuel contournement de la contrainte CHECK.
+ */
+function coerceIntentLabel(value: unknown): PainIntentExpected | null {
+  if (typeof value !== 'string') return null
+  return ALLOWED_INTENT_LABELS.has(value) ? (value as PainIntentExpected) : null
+}
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,6 +44,12 @@ export interface KeywordMetrics {
   cpc: number | null
   competition: number | null
   intentRaw: number | null
+  /**
+   * Label intent SERP issu de DataForSEO (`search_intent.keyword_intent.label`).
+   * Croisé avec `articles.pain_intent_expected` pour le 5e signal Pertinence.
+   * cf. FR-CAP-RELEVANCE-INTENT-SIGNAL.
+   */
+  intentLabel: PainIntentExpected | null
   autocompleteSuggestions: AutocompleteSuggestion[]
   autocompleteSource: 'google' | 'dataforseo' | null
   paaQuestions: PaaQuestion[]
@@ -48,6 +69,7 @@ interface KeywordMetricsRow {
   cpc: string | null
   competition: string | null
   intent_raw: string | null
+  intent_label: string | null
   autocomplete_suggestions: AutocompleteSuggestion[]
   autocomplete_source: string | null
   paa_questions: PaaQuestion[]
@@ -68,6 +90,7 @@ function rowToMetrics(row: KeywordMetricsRow): KeywordMetrics {
     cpc: row.cpc !== null ? Number(row.cpc) : null,
     competition: row.competition !== null ? Number(row.competition) : null,
     intentRaw: row.intent_raw !== null ? Number(row.intent_raw) : null,
+    intentLabel: coerceIntentLabel(row.intent_label),
     autocompleteSuggestions: row.autocomplete_suggestions ?? [],
     autocompleteSource: (row.autocomplete_source as KeywordMetrics['autocompleteSource']) ?? null,
     paaQuestions: row.paa_questions ?? [],
@@ -93,7 +116,7 @@ export async function getKeywordMetrics(
 ): Promise<KeywordMetrics | null> {
   const res = await query<KeywordMetricsRow>(
     `SELECT keyword, lang, country, search_volume, keyword_difficulty, cpc, competition,
-            intent_raw, autocomplete_suggestions, autocomplete_source, paa_questions,
+            intent_raw, intent_label, autocomplete_suggestions, autocomplete_source, paa_questions,
             local_analysis, content_gap_analysis, local_comparison, serp_raw_json, fetched_at
        FROM keyword_metrics
       WHERE keyword = $1 AND lang = $2 AND country = $3`,
@@ -103,7 +126,7 @@ export async function getKeywordMetrics(
 }
 
 /**
- * Upsert ONLY the KPI fields (volume, KD, CPC, competition, intent_raw).
+ * Upsert ONLY the KPI fields (volume, KD, CPC, competition, intent_raw, intent_label).
  * Leaves autocomplete and PAA untouched.
  */
 export async function upsertKeywordKpis(
@@ -114,20 +137,23 @@ export async function upsertKeywordKpis(
     cpc?: number | null
     competition?: number | null
     intentRaw?: number | null
+    /** Label intent SERP DataForSEO (FR-CAP-RELEVANCE-INTENT-SIGNAL). */
+    intentLabel?: PainIntentExpected | null
   },
   lang: string = 'fr',
   country: string = 'fr',
 ): Promise<void> {
   await query(
     `INSERT INTO keyword_metrics
-       (keyword, lang, country, search_volume, keyword_difficulty, cpc, competition, intent_raw, fetched_at)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW())
+       (keyword, lang, country, search_volume, keyword_difficulty, cpc, competition, intent_raw, intent_label, fetched_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET search_volume = COALESCE(EXCLUDED.search_volume, keyword_metrics.search_volume),
            keyword_difficulty = COALESCE(EXCLUDED.keyword_difficulty, keyword_metrics.keyword_difficulty),
            cpc = COALESCE(EXCLUDED.cpc, keyword_metrics.cpc),
            competition = COALESCE(EXCLUDED.competition, keyword_metrics.competition),
            intent_raw = COALESCE(EXCLUDED.intent_raw, keyword_metrics.intent_raw),
+           intent_label = COALESCE(EXCLUDED.intent_label, keyword_metrics.intent_label),
            fetched_at = NOW()`,
     [
       keyword, lang, country,
@@ -136,6 +162,7 @@ export async function upsertKeywordKpis(
       kpis.cpc ?? null,
       kpis.competition ?? null,
       kpis.intentRaw ?? null,
+      kpis.intentLabel ?? null,
     ],
   )
 }

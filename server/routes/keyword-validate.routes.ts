@@ -8,7 +8,16 @@ import { computeMarketScore } from '../../shared/scoring-kpi.js'
 import { computeRelevanceScore } from '../../shared/scoring.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import type { RadarKeywordKpis, RadarCard } from '../../shared/types/intent.types.js'
-import type { RelevanceScoreResult } from '../../shared/types/scoring.types.js'
+import type { RelevanceScoreResult, PainIntentExpected } from '../../shared/types/scoring.types.js'
+import { PAIN_INTENT_EXPECTED_VALUES } from '../../shared/types/scoring.types.js'
+
+const VALID_INTENT_LABELS = new Set<string>(PAIN_INTENT_EXPECTED_VALUES)
+
+/** Coerce un label DataForSEO arbitraire vers les 4 valeurs autorisées. */
+function coerceIntentLabel(value: unknown): PainIntentExpected | null {
+  if (typeof value !== 'string') return null
+  return VALID_INTENT_LABELS.has(value) ? (value as PainIntentExpected) : null
+}
 import type { CaptainValidationEntry } from '../../shared/types/keyword.types.js'
 import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
 import {
@@ -105,6 +114,8 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       // computeIntentScore applies level context, so keep it for verdict. For raw
       // storage we keep the DataForSEO intentProbability when available.
       rawIntentScore = intentData?.intentProbability ?? null
+      // Label intent SERP — alimente le 5e signal Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL).
+      const rawIntentLabel = coerceIntentLabel(intentData?.intent)
       autocompleteSuggestions = autocomplete.suggestions.map((text, idx) => ({ text, position: idx + 1 }))
       paaQuestionsRaw = paa.map(p => ({ question: p.question, answer: p.answer ?? null }))
 
@@ -116,6 +127,7 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
         cpc: rawCpc,
         competition: rawCompetition,
         intentRaw: rawIntentScore,
+        intentLabel: rawIntentLabel,
       })
       if (paaQuestionsRaw.length > 0) {
         await upsertKeywordPaa(keyword, paaQuestionsRaw)
