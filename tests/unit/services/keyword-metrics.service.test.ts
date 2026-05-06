@@ -154,17 +154,27 @@ describe('moteur:keyword-metrics:upsertKeywordKpis', () => {
     await upsertKeywordKpis('seo', { searchVolume: 1000, keywordDifficulty: 50 })
     expect(mockQuery).toHaveBeenCalledTimes(1)
     const [, params] = mockQuery.mock.calls[0]!
-    expect(params).toEqual(['seo', 'fr', 'fr', 1000, 50, null, null, null])
+    // Signature : keyword, lang, country, volume, KD, cpc, competition, intentRaw, intentLabel
+    expect(params).toEqual(['seo', 'fr', 'fr', 1000, 50, null, null, null, null])
   })
 
   it('coalesces undefined KPIs to null in params', async () => {
     mockQuery.mockResolvedValueOnce({ rows: [] })
     await upsertKeywordKpis('seo', { cpc: 1.5 })
     const [, params] = mockQuery.mock.calls[0]!
-    // Per signature : volume, KD, cpc, competition, intentRaw
+    // Per signature : volume, KD, cpc, competition, intentRaw, intentLabel
     expect(params[3]).toBeNull()
     expect(params[4]).toBeNull()
     expect(params[5]).toBe(1.5)
+    expect(params[8]).toBeNull() // intentLabel
+  })
+
+  it('persists intentLabel for the 5th Pertinence signal', async () => {
+    mockQuery.mockResolvedValueOnce({ rows: [] })
+    await upsertKeywordKpis('seo', { intentLabel: 'commercial' })
+    const [sql, params] = mockQuery.mock.calls[0]!
+    expect(sql).toContain('intent_label')
+    expect(params[8]).toBe('commercial')
   })
 
   it('uses ON CONFLICT to upsert (idempotent)', async () => {

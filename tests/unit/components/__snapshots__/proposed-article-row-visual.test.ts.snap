@@ -83,6 +83,16 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
     </div>
     <!--v-if-->
     <div data-v-6ebf81e5="" class="detail-pain-point"><span data-v-6ebf81e5="" class="keyword-label">Douleur</span><span data-v-6ebf81e5="" class="pain-point-text">Manque de visibilité Google Maps</span></div>
+    <!-- FR-PIE-CERVEAU-OVERRIDE : dropdown radio single-select pour corriger
+           l'intent éditorial généré par l'IA. La valeur alimente le 5e signal
+           du Score Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL). -->
+    <div data-v-6ebf81e5="" class="detail-pain-intent"><label data-v-6ebf81e5="" for="pain-intent-0" class="keyword-label">Intention éditoriale</label><select data-v-6ebf81e5="" id="pain-intent-0" data-testid="pain-intent-select" class="pain-intent-select" value="">
+        <option data-v-6ebf81e5="" value="">Non défini</option>
+        <option data-v-6ebf81e5="" value="informational">Informationnelle (explique, guide, éduque)</option>
+        <option data-v-6ebf81e5="" value="commercial">Commerciale (comparatif, sélection)</option>
+        <option data-v-6ebf81e5="" value="transactional">Transactionnelle (achat, conversion)</option>
+        <option data-v-6ebf81e5="" value="navigational">Navigationnelle (page produit/marque)</option>
+      </select></div>
     <p data-v-6ebf81e5="" class="detail-rationale">Article pilier pour le cocon SEO local.</p><!-- Header (collapsed only) -->
     <!--v-if-->
     <!-- Kebab dropdown (collapsed only) -->

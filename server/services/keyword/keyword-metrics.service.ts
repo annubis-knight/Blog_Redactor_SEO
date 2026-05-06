@@ -1,3 +1,17 @@
+/**
+ * AUTHORITY: PostgreSQL `keyword_metrics` (ligne par keyword × lang × country).
+ *            Source unique cross-article pour les métriques DataForSEO :
+ *            volume, difficulté, CPC, intent (raw + label), autocomplete, PAA, SERP.
+ * READS FROM: SELECT keyword_metrics WHERE keyword = $1 AND lang/country.
+ * WRITES TO: INSERT/UPSERT via upsertKeywordKpis, upsertKeywordAutocomplete,
+ *            upsertKeywordPaa (autres helpers ci-dessous).
+ *            COALESCE systématique : on n'écrase jamais une valeur existante par null.
+ * CONSUMERS: keyword-validate.routes (validation card individuelle),
+ *            captain-relevance.service (Score Pertinence live),
+ *            radar-* services (scan SERP cross-article).
+ * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-INTENT-SIGNAL,
+ *             FR-INFRA-KPI-NULLABLE.
+ */
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import {

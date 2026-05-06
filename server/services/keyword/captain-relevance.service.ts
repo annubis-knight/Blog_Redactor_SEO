@@ -1,17 +1,20 @@
 /**
  * AUTHORITY: Calcul à la volée du Score Pertinence pour l'onglet Capitaine.
  *            Le score n'est JAMAIS persisté (cf. FR-CAP-RELEVANCE-NO-DB-WRITE).
- * READS FROM: articles.pain_point (DB), captain_explorations.root_keywords (DB),
- *             keyword_metrics (DB) — paa_questions, autocomplete_suggestions, intent_raw
+ * READS FROM: articles.pain_point (DB), articles.pain_intent_expected (DB),
+ *             captain_explorations.root_keywords (DB),
+ *             keyword_metrics (DB) — paa_questions, autocomplete_suggestions,
+ *             intent_raw, intent_label
  * WRITES TO: rien (read-only par contrat)
- * CONSUMERS: data.service.ts → getCaptainExplorations (à adapter Sprint 3),
+ * CONSUMERS: data.service.ts → getCaptainExplorations,
  *            futurs endpoints /articles/:id/relevance et /relevance/compute
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE,
  *             FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB,
- *             FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON
+ *             FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
+ *             FR-CAP-RELEVANCE-INTENT-SIGNAL (5e signal Intent SERP × Intent éditorial)
  *
  * Architecture (cf. docs/data-flows/relevance-score-live-computation.md §2) :
- *   PHASE 1 — lecture DB (3 SQL parallèles : painPoint, captain_explorations, keyword_metrics)
+ *   PHASE 1 — lecture DB parallèle (painPoint + painIntentExpected + métriques keyword)
  *   PHASE 2A — calcul des racines uniques avec mémoïsation Map<rootKeyword, score>
  *   PHASE 2B — calcul des cards complètes en lisant la Map mémoïsée
  *   PHASE 3 — réponse, Map garbage-collectée
@@ -21,6 +24,8 @@
  *   - Pas de récursion sur les racines (signal 4 neutralisé pour les racines elles-mêmes)
  *   - Calcul lexical rapide (matchResonanceDetailed via lexicalPainAlignment), pas d'embeddings
  *   - Tooltip honnête : `unavailableReason` typé renvoyé au front
+ *   - 5e signal (Intent × Douleur) : actif quand metrics.intentLabel ET
+ *     painIntentExpected sont présents ; neutralisé à 50/100 sinon (dégradation gracieuse)
  */
 
 import type {
