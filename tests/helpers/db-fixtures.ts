@@ -147,8 +147,9 @@ export async function cleanupTestFixtures(runId: string): Promise<void> {
   await query(`DELETE FROM keyword_intent_analyses WHERE keyword LIKE $1`, [`%test-${runId}-%`])
   await query(`DELETE FROM keyword_discoveries WHERE seed LIKE $1`, [`%test-${runId}-%`])
 
-  // 5. api_cache entries dont la clé contient le runId
-  await query(`DELETE FROM api_cache WHERE cache_key LIKE $1`, [`%test-${runId}-%`])
+  // 5. external_api_cache entries dont la clé contient le runId
+  // (Sprint 16 : table ex-api_cache renommée → external_api_cache)
+  await query(`DELETE FROM external_api_cache WHERE cache_key LIKE $1`, [`%test-${runId}-%`])
 }
 
 /**

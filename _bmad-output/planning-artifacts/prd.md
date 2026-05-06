@@ -107,13 +107,13 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 1. **Verdict bimodal qui donne confiance** — Score Marché (Volume / KD / CPC / PAA / Intent / Autocomplete) ET Score Pertinence (Pain alignment / PAA×douleur / Autocomplete×douleur / Racines / Intent×douleur) calculés et affichés séparément. Verdicts informatifs, l'utilisateur lock librement.
 
-2. **Sophistication invisible** — Cache à 3 niveaux (`api_cache` TTL, `keyword_metrics` cross-article permanent, `paa_cache` hiérarchique). Cost-guard sliding-window sur DataForSEO. Multi-provider IA (Claude / Gemini / OpenRouter / Mock) avec fallback automatique 429/503. Progression cochée silencieusement via `articles.completed_checks` TEXT[].
+2. **Sophistication invisible** — Cache à 3 niveaux (`external_api_cache` TTL, `keyword_metrics` cross-article permanent, `paa_cache` hiérarchique). Cost-guard sliding-window sur DataForSEO. Multi-provider IA (Claude / Gemini / OpenRouter / Mock) avec fallback automatique 429/503. Progression cochée silencieusement via `articles.completed_checks` TEXT[].
 
 3. **Outil taillé sur mesure** — Workflow consultant : Cerveau → Moteur → Rédaction. Hiérarchie Silos / Cocons / Articles avec niveaux Pilier / Intermédiaire / Spécifique. Injection automatique du contexte stratégique et du painPoint dans **6+ prompts IA** via `loadPrompt()` avec variables `{{strategy_context}}` et `{{painPoint}}`.
 
 4. **Récupération longue-traîne** — Le Radar génère des keywords courts (~20 candidats) puis dérive jusqu'à 10 suggestions longue-traîne avec score de préférence 1-10, persistées en JSONB pour idempotence à la régénération.
 
-5. **Observabilité intégrée** — Logger central configurable (`logs.config.ts`), activity log front (cost-log store), DbOps tracking, known error codes surfacés en UI, health check, job de purge horaire `api_cache`.
+5. **Observabilité intégrée** — Logger central configurable (`logs.config.ts`), activity log front (cost-log store), DbOps tracking, known error codes surfacés en UI, health check, job de purge horaire `external_api_cache`.
 
 ---
 
@@ -148,8 +148,8 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 ### Technical Success
 
-- **Zéro appel API redondant** — Cache à 3 niveaux : `api_cache` (TTL par type), `keyword_metrics` (cross-article permanent), `paa_cache` (90 jours, hiérarchique).
-- **Persistance PostgreSQL** — Articles, keywords, progress, strategies, cache en base. Purge horaire `api_cache` expirées.
+- **Zéro appel API redondant** — Cache à 3 niveaux : `external_api_cache` (TTL par type), `keyword_metrics` (cross-article permanent), `paa_cache` (90 jours, hiérarchique).
+- **Persistance PostgreSQL** — Articles, keywords, progress, strategies, cache en base. Purge horaire `external_api_cache` expirées.
 - **Réactivité** — Streaming SSE pour appels longs (Claude). Cost-guard DataForSEO en sliding-window pour bloquer les dépassements budget avant l'appel.
 - **Observabilité** — Activity log front + logger central back + health check.
 
@@ -157,7 +157,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 | Indicateur | Cible |
 |---|---|
-| Appels API redondants | 0 (cache `api_cache` + `keyword_metrics` + `paa_cache`) |
+| Appels API redondants | 0 (cache `external_api_cache` + `keyword_metrics` + `paa_cache`) |
 | Phases du Moteur identifiables | 3 phases visuelles sur 6 onglets |
 | Progression par article | 5 checks `moteur:*` + 3 checks `cerveau:*` + 5 checks `redaction:*` automatiquement écrits |
 | Persistance | 100% PostgreSQL (pas de fichier JSON côté chaud) |
@@ -197,7 +197,7 @@ L'utilisateur a une intuition sur « erp cloud pme ». Vérification rapide avan
 Article commencé la semaine dernière. Checks Discovery + Radar faits.
 
 1. **Moteur** → Sélection article. Dots montrent Discovery et Radar faits.
-2. **Cache à 3 niveaux** → `api_cache` + `keyword_metrics` + `paa_cache`. Aucun re-call API.
+2. **Cache à 3 niveaux** → `external_api_cache` + `keyword_metrics` + `paa_cache`. Aucun re-call API.
 3. **Phase ② Valider** → Reprise exactement là où il s'était arrêté.
 4. **Contexte stratégique** → Toujours accessible via `MoteurStrategyContext`. PainPoint propagé dans tous les prompts via `getArticlePainPoint()`.
 
@@ -227,7 +227,7 @@ Injection automatique du contexte stratégique (cible, douleur, angle, promesse,
 
 ### 5.3 Cache à 3 niveaux
 
-- `api_cache` (TTL par type, purge horaire) pour les appels d'API.
+- `external_api_cache` (TTL par type, purge horaire) pour les appels d'API.
 - `keyword_metrics` (cross-article, permanent) pour Volume / KD / CPC / PAA / Intent / Autocomplete / SERP raw.
 - `paa_cache` (TTL 90 jours, hiérarchique par keyword + depth).
 
@@ -267,13 +267,13 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 - Frontend dev : Vite, port 5400 (configurable via `VITE_PORT`)
 - Communication : REST API + SSE streaming (Claude tokens, génération article par section, panels IA)
 - Validation : Zod 4 schémas partagés front/back (`shared/schemas/`)
-- Data : PostgreSQL (pg 8.20) — articles, keywords, cocoons, strategies, api_cache, keyword_metrics, article_explorations, captain_explorations, radar_explorations, theme_config, internal_links…
+- Data : PostgreSQL (pg 8.20) — articles, keywords, cocoons, strategies, external_api_cache, keyword_metrics, article_explorations, captain_explorations, radar_explorations, theme_config, internal_links…
 - APIs externes : Anthropic Claude, Google GenAI, OpenRouter, HuggingFace Transformers (embeddings), DataForSEO, Google Autocomplete, Google Search Console
 
 **Contraintes brownfield :**
 - Réutiliser les 100+ composants existants — Labo réutilise les composants Moteur en mode `libre`.
 - Store `article-progress` (dans `stores/article/`) exploite `articles.completed_checks` TEXT[].
-- Cache `api_cache` + `keyword_metrics` + `paa_cache`.
+- Cache `external_api_cache` + `keyword_metrics` + `paa_cache`.
 - Prompts IA dans `server/prompts/*.md` — enrichissement via `loadPrompt()` et variables `{{...}}`.
 
 ---
@@ -419,7 +419,7 @@ Aucune action automatique au changement d'onglet — l'utilisateur déclenche to
 Les KPIs bruts sont TOUJOURS visibles — libre arbitre > algorithme. Quand un KPI marché (`searchVolume`, `keywordDifficulty`, `cpc`, `competition`) est absent (DataForSEO sans signal, miss DB), l'UI affiche le placeholder `—` (jamais `0`, `0 €` ou `0 %`) — voir aussi `FR-INFRA-KPI-NULLABLE`, `FR-INFRA-KPI-DISPLAY-DASH`.
 
 #### FR-MOT-CACHE-CASCADE
-Avant tout appel externe : consultation de `keyword_metrics` (cross-article) puis `api_cache` (TTL). Pattern unifié `getOrFetch<T>(cacheType, key, ttlMs, fetcher)`.
+Avant tout appel externe : consultation de `keyword_metrics` (cross-article) puis `external_api_cache` (TTL). Pattern unifié `getOrFetch<T>(cacheType, key, ttlMs, fetcher)`.
 **Source :** `server/db/cache-helpers.ts`, `server/services/keyword/keyword-metrics.service.ts`.
 
 #### FR-MOT-PAINPOINT-INJECTION
@@ -446,11 +446,11 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`capitainesMap`, `refreshCapitainesMap`), `server/routes/cocoons.routes.ts` (endpoint capitaines).
 
 #### FR-MOT-EXPLORATION-COUNTS
-**Counts DB persistés affichés dans TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Le panel sticky `TabCachePanel` affiche pour chaque onglet (Radar, Captain, Lieutenants, Lexique) le **count d'explorations persistées en DB** (table `radar_explorations` / `captain_explorations` / `lieutenant_explorations` / `lexique_explorations`). Endpoint `GET /api/articles/:id/explorations/counts`. Refetché au mount, au switch d'article (watcher défensif) et après chaque check (`addCheck` / `removeCheck` → mutation DB → counts à recharger). Distinct du `cacheCount` (api_cache TTL court). C'est ce qui permet au TabLoadPrompt de proposer "Charger N résultats déjà persistés".
+**Counts DB persistés affichés dans TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Le panel sticky `TabCachePanel` affiche pour chaque onglet (Radar, Captain, Lieutenants, Lexique) le **count d'explorations persistées en DB** (table `radar_explorations` / `captain_explorations` / `lieutenant_explorations` / `lexique_explorations`). Endpoint `GET /api/articles/:id/explorations/counts`. Refetché au mount, au switch d'article (watcher défensif) et après chaque check (`addCheck` / `removeCheck` → mutation DB → counts à recharger). Distinct du `cacheCount` (external_api_cache TTL court). C'est ce qui permet au TabLoadPrompt de proposer "Charger N résultats déjà persistés".
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`explorationCounts`, `refreshExplorationCounts`), `server/routes/article-explorations.routes.ts`.
 
 #### FR-MOT-EXTERNAL-CACHE-CLEAR
-**Bouton "Vider le cache" du TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Action utilisateur qui purge **uniquement** les entrées `api_cache` (autocomplete, PAA, SERP, validate) liées au capitaine de l'article courant via `DELETE /api/articles/:id/external-cache`. Ne touche **pas** aux `*_explorations` (DB persistée — règle FR-MOT-CACHE-CASCADE). Permet à l'utilisateur de forcer un re-fetch DataForSEO sans perdre ses données métier.
+**Bouton "Vider le cache" du TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Action utilisateur qui purge **uniquement** les entrées `external_api_cache` (autocomplete, PAA, SERP, validate) liées au capitaine de l'article courant via `DELETE /api/articles/:id/external-cache`. Ne touche **pas** aux `*_explorations` (DB persistée — règle FR-MOT-CACHE-CASCADE). Permet à l'utilisateur de forcer un re-fetch DataForSEO sans perdre ses données métier.
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`clearExternalCacheForArticle`), `server/routes/articles.routes.ts` (endpoint external-cache DELETE).
 
 ---
@@ -540,7 +540,7 @@ Chaque suggestion affichée avec checkbox, badge score 1-10, mention « dérivé
 **Statut :** active. **Depuis :** 2026-05-03. **Source :** tech-spec-radar-long-tail-suggestions.
 
 #### FR-RAD-LONGTAIL-REGENERATE
-Au reload, longues traînes + état coché restaurés. Le bouton « Suggérer » devient « Régénérer » et utilise le cache idempotent (`api_cache` TTL 7 jours).
+Au reload, longues traînes + état coché restaurés. Le bouton « Suggérer » devient « Régénérer » et utilise le cache idempotent (`external_api_cache` TTL 7 jours).
 **Statut :** active. **Depuis :** 2026-05-03.
 
 #### FR-RAD-SEND-CAPTAIN
@@ -670,10 +670,10 @@ Aucune écriture DB (`INSERT`/`UPDATE`) ne contient le champ `relevanceScore`. L
 **Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
 
 #### FR-CAP-RELEVANCE-NO-CACHE
-Le Score Pertinence n'est jamais mis en cache TTL serveur (`api_cache`). Aucun store front (Pinia, localStorage, sessionStorage) ne le persiste au-delà de la session navigateur courante.
+Le Score Pertinence n'est jamais mis en cache TTL serveur (`external_api_cache`). Aucun store front (Pinia, localStorage, sessionStorage) ne le persiste au-delà de la session navigateur courante.
 **Critères d'acceptation testables** :
 - F5 du navigateur vide complètement le store Pertinence côté front.
-- Aucun appel `api_cache.get('relevance:*')` ou clé similaire.
+- Aucun appel `external_api_cache.get('relevance:*')` ou clé similaire.
 - Le store Pinia se recharge via API à chaque mount du composant Capitaine.
 **Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
 
@@ -754,6 +754,17 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - `tests/unit/components/captain-validation-painpoint-frozen.test.ts` : modifier `selectedArticle.painPoint` après mount ne déclenche aucun appel à `mergeCaptainHistory` ni fetch `/captain-explorations`.
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
+
+#### FR-INFRA-EXTERNAL-API-CACHE
+La table `external_api_cache` (anciennement `api_cache`, renommée Sprint 16) cache les appels API externes en fin de vie (DataForSEO `validate`, autocomplete). Les autres cache_types historiques (`paa`, `serp`, `radar`, `discovery`, `intent`, `local-seo`, `content-gap`, `lexique`) ont été migrés vers des tables dédiées `*_explorations` au fil des migrations 006-010.
+**Schéma** : `(id SERIAL PK, cache_key TEXT, cache_type TEXT, data JSONB, cached_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, UNIQUE(cache_key, cache_type))`.
+**Cache_types actifs (2026-05-06)** : `validate`, `autocomplete`, `radar`, `dataforseo`, `gsc`. Les autres ne sont plus écrits par le code actuel — la migration 018 a nettoyé les lignes orphelines.
+**Critères d'acceptation testables** :
+- `SELECT * FROM external_api_cache` fonctionne ; `api_cache` n'existe plus.
+- Le job de purge horaire (`server/index.ts`) cible `external_api_cache`.
+- Aucune référence SQL à `FROM api_cache` / `INTO api_cache` / `TABLE api_cache` ne subsiste dans `server/`, `src/`, `tests/`.
+**Plan de mort à long terme** : migrer les 2 derniers types `validate` et `autocomplete` vers des tables dédiées (`keyword_metrics.autocomplete_*` et nouvelle `validate_cache`), puis `DROP TABLE external_api_cache`. Sprint dédié futur.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-16-rename-external-api-cache.
 
 #### FR-NAM-CONTAINERS-PANEL
 Les 6 containers d'onglets du Moteur sont nommés `*Panel.vue` (Pattern A : `XxxPanel`).
@@ -1071,7 +1082,7 @@ Endpoints utilisés :
 - `/dataforseo_labs/google/keyword_suggestions/live` ($0.01)
 - `/keywords_data/google_ads/search_volume/live` ($0.05)
 
-Cache `api_cache` (TTL variable par endpoint).
+Cache `external_api_cache` (TTL variable par endpoint).
 **Source :** `server/services/external/dataforseo*.ts`.
 
 #### FR-EXT-DATAFORSEO-COSTGUARD
@@ -1087,7 +1098,7 @@ OAuth2 flow Google Search Console : `GET /api/gsc/status`, `GET /api/gsc/auth`, 
 **Source :** `server/routes/gsc.routes.ts:13-117` — `server/services/external/gsc.service.ts`.
 
 #### FR-EXT-GSC-PERFORMANCE
-Endpoint `POST /api/gsc/performance`. Dates + dimensions (query, page, device, country) → rows `{ clicks, impressions, ctr, position }`. Cache 24h dans `api_cache`.
+Endpoint `POST /api/gsc/performance`. Dates + dimensions (query, page, device, country) → rows `{ clicks, impressions, ctr, position }`. Cache 24h dans `external_api_cache`.
 
 #### FR-EXT-GSC-KEYWORD-GAP
 Endpoint `POST /api/gsc/keyword-gap`. Compare keywords ciblés vs réellement indexés / ranking dans GSC.
@@ -1117,11 +1128,11 @@ Endpoint Google Autocomplete via DataForSEO ou direct (à confirmer). Fallback s
 ### 8.14 — Infrastructure transversale (FR-INFRA)
 
 #### FR-INFRA-API-CACHE
-Table `api_cache(cache_key TEXT, cache_type TEXT, data JSONB, expires_at TIMESTAMPTZ, cached_at)`. Types : `paa`, `serp`, `radar`, `discovery`, `autocomplete`, `intent`, `longtail`, etc. TTL par type. Opérations `getCached(type, key)` (filtre `expires_at > NOW()`), `setCached(type, key, data, ttlMs)` (UPSERT ON CONFLICT).
+Table `external_api_cache(cache_key TEXT, cache_type TEXT, data JSONB, expires_at TIMESTAMPTZ, cached_at)`. Types : `paa`, `serp`, `radar`, `discovery`, `autocomplete`, `intent`, `longtail`, etc. TTL par type. Opérations `getCached(type, key)` (filtre `expires_at > NOW()`), `setCached(type, key, data, ttlMs)` (UPSERT ON CONFLICT).
 **Source :** `server/db/cache-helpers.ts:13-39`.
 
 #### FR-INFRA-API-CACHE-PURGE
-Job de purge horaire (`setInterval` 60 × 60 × 1000ms) dans `server/index.ts:115-125` : `DELETE FROM api_cache WHERE expires_at < NOW()`.
+Job de purge horaire (`setInterval` 60 × 60 × 1000ms) dans `server/index.ts:115-125` : `DELETE FROM external_api_cache WHERE expires_at < NOW()`.
 **Source :** `server/index.ts:115-125`.
 
 #### FR-INFRA-KEYWORD-METRICS
@@ -1251,7 +1262,7 @@ Vérification connexion PostgreSQL au startup (`server/index.ts:94-113`).
 Store front `useCostLogStore` accumule activity log entries (API usage + DB ops + messages) injectées par `apiGet/apiPost/...`.
 
 #### FR-INFRA-PAA-EXPLORATIONS
-**Table `paa_explorations`** — persistance article-scoped des questions PAA (People Also Ask) testées contre un contexte d'article. Schéma : `(id SERIAL PK, article_id INTEGER FK articles, keyword TEXT, question TEXT, answer TEXT, is_match BOOLEAN, match_quality TEXT, explored_at TIMESTAMPTZ, UNIQUE(article_id, keyword, question))`. Distinct du cache `api_cache.cache_type='paa'` (TTL court, cross-article) : ici, persistance permanente article-scoped des résultats annotés (match / no-match).
+**Table `paa_explorations`** — persistance article-scoped des questions PAA (People Also Ask) testées contre un contexte d'article. Schéma : `(id SERIAL PK, article_id INTEGER FK articles, keyword TEXT, question TEXT, answer TEXT, is_match BOOLEAN, match_quality TEXT, explored_at TIMESTAMPTZ, UNIQUE(article_id, keyword, question))`. Distinct du cache `external_api_cache.cache_type='paa'` (TTL court, cross-article) : ici, persistance permanente article-scoped des résultats annotés (match / no-match).
 
 **Producteurs :** `saveCaptainExploration()` dans `server/services/infra/data.service.ts:708` (UPSERT lors d'une exploration Capitaine).
 **Consommateurs :** `getCaptainExplorations()` dans `data.service.ts:599` (lecture full au mount onglet Capitaine), endpoint counts `GET /api/articles/:id/explorations/counts` dans `article-explorations.routes.ts:128` (consommé par `TabCachePanel.vue` — voir `FR-EXP-COUNTS`).
@@ -1291,7 +1302,7 @@ Store front `useCostLogStore` accumule activity log entries (API usage + DB ops 
 **Statut :** active. **Source :** `server/db/migrations/003_keyword_tables.sql` + rename migration 010.
 
 #### FR-INFRA-KEYWORD-DISCOVERIES
-**Table `keyword_discoveries`** — cache DB-first des scans Discovery (Phase ① Explorer du Moteur), TTL applicatif **30 jours**. Schéma : `(seed TEXT, lang TEXT, sources_json JSONB, ai_analysis_json JSONB, fetched_at TIMESTAMPTZ, PK(seed, lang))`. Distinct de `api_cache` (TTL DataForSEO court 24-48h) : ce cache **métier** persiste l'arbre de découverte complet (sources + analyse IA) pour permettre la reprise sans re-coût.
+**Table `keyword_discoveries`** — cache DB-first des scans Discovery (Phase ① Explorer du Moteur), TTL applicatif **30 jours**. Schéma : `(seed TEXT, lang TEXT, sources_json JSONB, ai_analysis_json JSONB, fetched_at TIMESTAMPTZ, PK(seed, lang))`. Distinct de `external_api_cache` (TTL DataForSEO court 24-48h) : ce cache **métier** persiste l'arbre de découverte complet (sources + analyse IA) pour permettre la reprise sans re-coût.
 
 **Producteurs :** `cacheDiscoverySources()` (sources only), `cacheDiscoveryAiAnalysis()` (enrichissement IA), `clearDiscoveryCache()` dans `server/services/keyword/keyword-discovery-db.service.ts:57-90`.
 **Consommateurs :** `getDiscoveryCache(seed, lang)` dans `keyword-discovery-db.service.ts:44`. Front : `useKeywordDiscoveryStore` lit via `GET /api/keywords/discovery/cache/:seed`, déclenche le badge **« Dernière analyse du DD/MM/YYYY · N mots-clés »** dans `KeywordDiscoveryTab.vue` + boutons **Charger** / **Rafraîchir**.
@@ -1338,20 +1349,20 @@ Store front `useCostLogStore` accumule activity log entries (API usage + DB ops 
 | `article_micro_contexts`    | **FR-INFRA-MICRO-CONTEXTS**           | FR-CER-MICRO-CONTEXT, FR-CER-WORD-COUNT-RECOMMEND      | NFR-INT-PROMPT-AGNOSTIC (via `buildMicroContextBlock`)                 | 1:1 avec articles.                                                    |
 | `article_strategies`        | **FR-INFRA-ARTICLE-STRATEGIES**       | FR-CER-STEPS-ARTICLE                                   | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA Rédaction                        | Wizard Cerveau article-scoped.                                        |
 | `articles.completed_checks` | **FR-INFRA-WORKFLOW-CHECKS-CONSTANTS**| FR-MOT-PHASES (toutes émissions `MOTEUR_*`)            | FR-MOT-SOFT-GATING, FR-FIN-RECAP, `useFinalisationGating`              | TEXT[] sur `articles`. SSOT (`NFR-INT-COMPLETED-CHECKS-SSOT`).        |
-| `api_cache`                 | **FR-INFRA-API-CACHE**                | FR-EXT-DATAFORSEO-CACHE, FR-EXT-PAA-CACHE              | Toutes FR-EXT (lecture before fetch)                                   | TTL court multi-types. Purge horaire (`FR-INFRA-API-CACHE-PURGE`).    |
+| `external_api_cache`                 | **FR-INFRA-API-CACHE**                | FR-EXT-DATAFORSEO-CACHE, FR-EXT-PAA-CACHE              | Toutes FR-EXT (lecture before fetch)                                   | TTL court multi-types. Purge horaire (`FR-INFRA-API-CACHE-PURGE`).    |
 | `captain_explorations`      | (FR-CAP-PERSIST décrit la table)      | FR-CAP-PERSIST, FR-RAD-LONGTAIL-PERSIST (via source)   | FR-CAP-LOCK, FR-CAP-CARDS, FR-EXP-COUNTS                               | Renommée depuis `keyword_tests` en migration 010.                     |
 | `cocoons`                   | (schéma initial)                      | FR-CER-STEPS-COCOON, FR-DASH-WORKFLOW-CHOICE           | FR-DASH-NAV, FR-CER-AIGUILLAGE                                         |                                                                       |
 | `cocoon_strategies`         | **FR-INFRA-COCOON-STRATEGIES**        | FR-CER-STEPS-COCOON                                    | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA (via `buildCocoonStrategyBlock`) | Cross-articles du même cocon.                                         |
 | `intent_explorations`       | **FR-INFRA-INTENT-EXPLORATIONS-LEGACY** | aucun (legacy)                                       | aucun (legacy)                                                         | **N'existe pas en DB live** mais `CREATE TABLE` reste dans migration 007 — créer migration `DROP IF EXISTS` idempotente. |
 | `internal_links`            | (FR-RED-INTERNAL-LINKS décrit)        | FR-RED-INTERNAL-LINKS                                  | FR-RED-INTERNAL-LINKS, prompts maillage                                |                                                                       |
-| `keyword_discoveries`       | **FR-INFRA-KEYWORD-DISCOVERIES**      | FR-DIS-CACHE                                           | FR-DIS-CACHE, FR-DIS-LOAD                                              | TTL applicatif 30j (différent `api_cache`).                           |
+| `keyword_discoveries`       | **FR-INFRA-KEYWORD-DISCOVERIES**      | FR-DIS-CACHE                                           | FR-DIS-CACHE, FR-DIS-LOAD                                              | TTL applicatif 30j (différent `external_api_cache`).                           |
 | `keyword_intent_analyses`   | (FR-MOT-INTENT-ANALYSIS décrit)       | FR-MOT-INTENT-ANALYSIS                                 | FR-CAP-CARDS, FR-RAD-CARDS                                             | Cross-article permanent.                                              |
 | `keyword_metrics`           | **FR-INFRA-KEYWORD-METRICS**          | FR-EXT-DATAFORSEO-CACHE, FR-MOT-RAW-KPIS               | Toutes FR Capitaine / Radar / Lieutenants (kpis)                       | Cross-article permanent. Freshness 7j.                                |
 | `keywords_seo`              | **FR-INFRA-KEYWORDS-SEO**             | FR-CER-AIGUILLAGE, FR-CER-BATCH-CREATE                 | FR-CAP-CARDS, FR-MOT-PHASES                                            | Cocoon-scoped. Pool dans lequel le Capitaine pioche.                  |
 | `lexique_explorations`      | (FR-LEX-EXPLORATION décrit)           | FR-LEX-EXPLORATION                                     | FR-LEX-RECOMMEND, FR-EXP-COUNTS                                        |                                                                       |
 | `lieutenant_explorations`   | **FR-INFRA-LIEUTENANT-EXPLORATIONS**  | FR-LIE-PROPOSE, FR-LIE-PERSIST                         | FR-LIE-SELECT, FR-EXP-COUNTS                                           | Renommée depuis `lieutenant_proposals` en migration 010.              |
 | `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP                             | Référentiel statique cross-cocon.                                     |
-| `paa_explorations`          | **FR-INFRA-PAA-EXPLORATIONS**         | FR-CAP-PERSIST (PAA testées)                           | FR-CAP-CARDS, FR-EXP-COUNTS                                            | Distinct de `api_cache.cache_type='paa'`.                             |
+| `paa_explorations`          | **FR-INFRA-PAA-EXPLORATIONS**         | FR-CAP-PERSIST (PAA testées)                           | FR-CAP-CARDS, FR-EXP-COUNTS                                            | Distinct de `external_api_cache.cache_type='paa'`.                             |
 | `radar_explorations`        | (FR-RAD-PERSIST décrit)               | FR-RAD-PERSIST, FR-RAD-LONGTAIL-PERSIST                | FR-RAD-CARDS, FR-CAP-PERSIST (via source), FR-EXP-COUNTS               | Article-scoped, JSONB `scan_result`.                                  |
 | `silos`                     | (schéma initial)                      | FR-DASH-NAV (CRUD admin)                               | FR-DASH-NAV                                                            | Conteneur de cocoons.                                                 |
 | `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`)                 | Singleton (`id=1`).                                                   |
@@ -1464,7 +1475,7 @@ Cache hit rate DataForSEO > 90 % après première utilisation d'un mot-clé (gr�
 **Statut :** prescrit, non monitoré (instrumentation à ajouter dans `cache-helpers.ts`).
 
 #### NFR-PERF-PURGE-HOURLY
-Job purge `api_cache` actif toutes les heures.
+Job purge `external_api_cache` actif toutes les heures.
 **Statut :** active, implémenté (`server/index.ts:115-125`).
 
 #### NFR-PERF-SEO-DEBOUNCE
@@ -1480,7 +1491,7 @@ Inter-section delay configurable lors de la génération article (défaut 15s) p
 ### 9.2 — Coût et optimisation (NFR-COST)
 
 #### NFR-COST-CACHE-FIRST
-Aucun appel API externe si résultat valide en `keyword_metrics` puis `api_cache` puis `paa_cache`.
+Aucun appel API externe si résultat valide en `keyword_metrics` puis `external_api_cache` puis `paa_cache`.
 **Statut :** active.
 
 #### NFR-COST-POSTGRESQL
@@ -1789,7 +1800,7 @@ Câblage `package.json` :
 | `cocoon_strategies` | cocoon_id, data JSONB, completed_steps | Cerveau cocon |
 | `theme_config` | id, data JSONB | 1 ligne unique |
 | `internal_links` | source_id, target_id, anchor_text, position | Linking matrix |
-| `api_cache` | cache_key, cache_type, data JSONB, expires_at, cached_at | Cache TTL global |
+| `external_api_cache` | cache_key, cache_type, data JSONB, expires_at, cached_at | Cache TTL global |
 | `keyword_metrics` | keyword PK, search_volume, kd, cpc, paa[], intent, autocomplete[], serp_raw_json, local_comparison, content_gap_analysis, fetched_at | Cache cross-article permanent |
 | `paa_cache` | keyword, depth, data, fetched_at | Cache hiérarchique PAA |
 | `radar_explorations` | article_id PK, scan_result JSONB | Persistance Radar (cards + longTailSuggestions) |

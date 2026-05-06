@@ -115,12 +115,12 @@ app.listen(PORT, () => {
   // Purge expired cache entries every hour
   setInterval(async () => {
     try {
-      const res = await pool.query('DELETE FROM api_cache WHERE expires_at < NOW()')
+      const res = await pool.query('DELETE FROM external_api_cache WHERE expires_at < NOW()')
       if (res.rowCount && res.rowCount > 0) {
-        log.debug(`api_cache purge: ${res.rowCount} expired entries deleted`)
+        log.debug(`external_api_cache purge: ${res.rowCount} expired entries deleted`)
       }
     } catch (err) {
-      log.error('api_cache purge failed:', err)
+      log.error('external_api_cache purge failed:', err)
     }
   }, 60 * 60 * 1000)
 })

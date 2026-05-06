@@ -164,7 +164,7 @@ router.delete('/articles/:id/external-cache', async (req, res) => {
     const slug = slugify(keyword)
     const { query } = await import('../db/client.js')
     const deleteRes = await query(
-      `DELETE FROM api_cache
+      `DELETE FROM external_api_cache
         WHERE (cache_type IN ('autocomplete', 'autocomplete-intent', 'paa', 'serp')
                 AND cache_key LIKE $1 || '%')
            OR (cache_type IN ('validate') AND cache_key LIKE $1 || '%')`,

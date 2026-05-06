@@ -149,6 +149,20 @@ development_status:
   # Validation : type-check vert, build vert (10.81s), 3983 tests verts.
   sprint-15-rename-containers-panel: done
 
+  # Sprint 16 — Renommage api_cache → external_api_cache + nettoyage (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-16-rename-external-api-cache.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FR ajoutée : FR-INFRA-EXTERNAL-API-CACHE.
+  # Migration DB : 018_rename_api_cache_to_external_api_cache.sql appliquée.
+  # Renommages :
+  #   - Table api_cache → external_api_cache (ALTER TABLE RENAME TO)
+  #   - Index correspondants renommés
+  #   - DELETE des cache_types orphelins (paa, serp, discovery, intent, local-seo, etc.)
+  #   - 5 fichiers code modifiés (cache-helpers, index, article-explorations route, db-fixtures, prd)
+  #   - 26 références PRD renommées (sauf updateReason historique ligne 14)
+  # Validation : type-check vert, build vert (9.97s), 3983 tests verts.
+  sprint-16-rename-external-api-cache: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,

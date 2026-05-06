@@ -15,7 +15,7 @@ export async function getCached<T>(
   cacheKey: string
 ): Promise<T | null> {
   const res = await query<{ data: T }>(
-    `SELECT data FROM api_cache
+    `SELECT data FROM external_api_cache
      WHERE cache_type = $1 AND cache_key = $2 AND expires_at > NOW()`,
     [cacheType, cacheKey]
   )
@@ -31,7 +31,7 @@ export async function setCached<T>(
   const expiresAt = new Date(Date.now() + ttlMs)
   // Passer l'objet JS directement — pg sérialise en JSONB
   await query(
-    `INSERT INTO api_cache (cache_type, cache_key, data, expires_at)
+    `INSERT INTO external_api_cache (cache_type, cache_key, data, expires_at)
      VALUES ($1, $2, $3, $4)
      ON CONFLICT (cache_key, cache_type) DO UPDATE
      SET data = EXCLUDED.data, cached_at = NOW(), expires_at = EXCLUDED.expires_at`,
@@ -44,7 +44,7 @@ export async function deleteCached(
   cacheKey: string
 ): Promise<void> {
   await query(
-    `DELETE FROM api_cache WHERE cache_type = $1 AND cache_key = $2`,
+    `DELETE FROM external_api_cache WHERE cache_type = $1 AND cache_key = $2`,
     [cacheType, cacheKey]
   )
 }
