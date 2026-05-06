@@ -137,8 +137,8 @@ defineEmits<{
         Verrouiller les Lieutenants
       </button>
       <div v-else class="locked-state" data-testid="locked-state">
-        <span class="locked-badge">Lieutenants verrouilles</span>
-        <button class="unlock-btn" data-testid="unlock-btn" @click="$emit('unlock-lieutenants')">Deverrouiller</button>
+        <span class="locked-badge">Lieutenants verrouillés</span>
+        <button class="unlock-btn" data-testid="unlock-btn" @click="$emit('unlock-lieutenants')">Déverrouiller</button>
       </div>
     </div>
 
