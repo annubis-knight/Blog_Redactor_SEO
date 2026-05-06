@@ -8,9 +8,9 @@
  */
 import { describe, it, expect } from 'vitest'
 import { hydrateCardFromValidation } from '../../../src/composables/keyword/useExploredKeywords'
-import type { ValidateResponse } from '../../../shared/types'
+import type { ScanResponse } from '../../../shared/types'
 
-function makeResponse(overrides: Partial<ValidateResponse> = {}): ValidateResponse {
+function makeResponse(overrides: Partial<ScanResponse> = {}): ScanResponse {
   return {
     keyword: 'test keyword',
     articleLevel: 'intermediaire',
@@ -25,18 +25,18 @@ function makeResponse(overrides: Partial<ValidateResponse> = {}): ValidateRespon
     fromCache: false,
     cachedAt: null,
     ...overrides,
-  } as ValidateResponse
+  } as ScanResponse
 }
 
 describe('hydrateCardFromValidation — propagation des scores', () => {
-  it('propage marketScore depuis ValidateResponse', () => {
+  it('propage marketScore depuis ScanResponse', () => {
     const market = { total: 65, verdict: 'ORANGE' as const, components: [] }
     const response = makeResponse({ marketScore: market })
     const card = hydrateCardFromValidation('test keyword', response)
     expect(card.marketScore).toEqual(market)
   })
 
-  it('propage relevanceScore depuis ValidateResponse', () => {
+  it('propage relevanceScore depuis ScanResponse', () => {
     const relevance = {
       total: 78,
       verdict: 'GO' as const,

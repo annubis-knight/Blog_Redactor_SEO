@@ -55,7 +55,7 @@ vi.mock('../../../src/composables/seo/useCompositionCheck', () => ({
   checkKeywordComposition: vi.fn(() => ({ allPass: true, warningCount: 0, results: [] })),
 }))
 
-vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineScan', () => ({
   articleTypeToLevel: vi.fn((type: string) => {
     const map: Record<string, string> = { Pilier: 'N2', Intermédiaire: 'N3', Spécialisé: 'N4' }
     return map[type] ?? 'N4'

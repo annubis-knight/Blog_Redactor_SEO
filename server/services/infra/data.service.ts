@@ -24,7 +24,7 @@ import type {
   ArticleProgress,
   DbOp,
 } from '../../../shared/types/index.js'
-import type { PaaQuestionValidate } from '../../../shared/types/keyword-validate.types.js'
+import type { PaaQuestionScan } from '../../../shared/types/keyword-validate.types.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import { computeRelevanceForCaptainTab } from '../keyword/captain-relevance.service.js'
 
@@ -649,7 +649,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     keywords: [...new Set(paaRes.rows.map(r => r.keyword))],
     ms: Date.now() - t2,
   })
-  const paaByKeyword = new Map<string, PaaQuestionValidate[]>()
+  const paaByKeyword = new Map<string, PaaQuestionScan[]>()
   for (const p of paaRes.rows) {
     const list = paaByKeyword.get(p.keyword) ?? []
     list.push({

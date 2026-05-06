@@ -75,7 +75,7 @@ describe('Cross-Workflow — Happy path complet', () => {
 
     // 7. Onglet Capitaine : valide un keyword
     const captainKw = `test-${ctx.runId}-journey-captain`
-    await apiPost(`/keywords/${encodeURIComponent(captainKw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(captainKw)}/scan`, {
       level: 'pilier',
       articleTitle: article.titre,
       articleId: article.id,
@@ -150,7 +150,7 @@ describe('Cross-Workflow — Cache cross-article', () => {
     const sharedKw = `test-${ctx.runId}-shared`
 
     const t1Start = Date.now()
-    await apiPost(`/keywords/${encodeURIComponent(sharedKw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(sharedKw)}/scan`, {
       level: 'pilier',
       articleTitle: article1.titre,
       articleId: article1.id,
@@ -158,7 +158,7 @@ describe('Cross-Workflow — Cache cross-article', () => {
     const t1Elapsed = Date.now() - t1Start
 
     const t2Start = Date.now()
-    await apiPost(`/keywords/${encodeURIComponent(sharedKw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(sharedKw)}/scan`, {
       level: 'pilier',
       articleTitle: article2.titre,
       articleId: article2.id,
@@ -192,7 +192,7 @@ describe('Cross-Workflow — Resilience', () => {
     const article = await ctx.createArticle(cocoon.id, 'Resilience Article')
 
     const kw = `test-${ctx.runId}-res`
-    await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier', articleTitle: article.titre, articleId: article.id,
     })
 
@@ -213,8 +213,8 @@ describe('Cross-Workflow — Resilience', () => {
 
     // Lance A et B en parallèle (simule vrai switch)
     await Promise.all([
-      apiPost(`/keywords/${encodeURIComponent(kwA)}/validate`, { level: 'pilier', articleTitle: articleA.titre, articleId: articleA.id }),
-      apiPost(`/keywords/${encodeURIComponent(kwB)}/validate`, { level: 'pilier', articleTitle: articleB.titre, articleId: articleB.id }),
+      apiPost(`/keywords/${encodeURIComponent(kwA)}/scan`, { level: 'pilier', articleTitle: articleA.titre, articleId: articleA.id }),
+      apiPost(`/keywords/${encodeURIComponent(kwB)}/scan`, { level: 'pilier', articleTitle: articleB.titre, articleId: articleB.id }),
     ])
 
     // Vérifie que A a son kwA et B a son kwB (pas de pollution)

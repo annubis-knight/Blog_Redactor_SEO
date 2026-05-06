@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import type { ValidateResponse } from '@shared/types/index.js'
+import type { ScanResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
 import ScoreRing from '@/components/shared/ScoreRing.vue'
 
@@ -12,7 +12,7 @@ import ScoreRing from '@/components/shared/ScoreRing.vue'
  *
  * Mode 1 — carousel : `variants` (Map<string, KeywordRootVariant>) avec rotation
  *                     de l'active et des isLoadingRoots/failedRoots.
- * Mode 2 — manual    : `singleRoot` (ValidateResponse) pour le mode historique
+ * Mode 2 — manual    : `singleRoot` (ScanResponse) pour le mode historique
  *                     non-carousel (ne montre qu'une racine).
  */
 const props = defineProps<{
@@ -25,11 +25,11 @@ const props = defineProps<{
   /** Liste des racines dont la validation a échoué. */
   failedRoots?: string[]
   /** Mode manuel : une seule racine en lecture seule. */
-  singleRoot?: ValidateResponse | null
+  singleRoot?: ScanResponse | null
 }>()
 
 const emit = defineEmits<{
-  (e: 'select', variant: { keyword: string; card: RadarCard; validation: ValidateResponse }): void
+  (e: 'select', variant: { keyword: string; card: RadarCard; validation: ScanResponse }): void
 }>()
 
 function handleSelect(variant: KeywordRootVariant) {

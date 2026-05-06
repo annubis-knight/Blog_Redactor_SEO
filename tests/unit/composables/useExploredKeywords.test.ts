@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { RadarCard } from '../../../shared/types/intent.types'
-import type { ValidateResponse } from '../../../shared/types/index'
+import type { ScanResponse } from '../../../shared/types/index'
 
 // Mock api.service
 const mockApiPost = vi.fn()
@@ -34,7 +34,7 @@ function makeCard(keyword: string): RadarCard {
   }
 }
 
-const goResponse: ValidateResponse = {
+const goResponse: ScanResponse = {
   keyword: 'seo local',
   articleLevel: 'pilier',
   kpis: [
@@ -45,7 +45,7 @@ const goResponse: ValidateResponse = {
   cachedAt: null,
 }
 
-const orangeResponse: ValidateResponse = {
+const orangeResponse: ScanResponse = {
   ...goResponse,
   keyword: 'copywriting web',
   verdict: { level: 'ORANGE', greenCount: 3, totalKpis: 6, autoNoGo: false },
@@ -79,8 +79,8 @@ describe('useExploredKeywords', () => {
     expect(c.isActive.value).toBe(true)
     expect(c.count.value).toBe(2)
     expect(mockApiPost).toHaveBeenCalledTimes(2)
-    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20local/validate', { level: 'pilier' })
-    expect(mockApiPost).toHaveBeenCalledWith('/keywords/copywriting%20web/validate', { level: 'pilier' })
+    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20local/scan', { level: 'pilier' })
+    expect(mockApiPost).toHaveBeenCalledWith('/keywords/copywriting%20web/scan', { level: 'pilier' })
   })
 
   it('stores validation results in entries', async () => {
@@ -204,7 +204,7 @@ describe('useExploredKeywords', () => {
 
       await c.addEntry('seo test', 'intermediaire')
 
-      expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20test/validate', { level: 'intermediaire' })
+      expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20test/scan', { level: 'intermediaire' })
       expect(c.entries.value[0]?.validation).not.toBeNull()
       expect(c.entries.value[0]?.isLoading).toBe(false)
     })
@@ -248,10 +248,10 @@ describe('useExploredKeywords', () => {
   })
 
   describe('hydrateCardFromValidation', () => {
-    it('converts ValidateResponse to RadarCard with correct fields', async () => {
+    it('converts ScanResponse to RadarCard with correct fields', async () => {
       const { hydrateCardFromValidation } = await import('../../../src/composables/keyword/useExploredKeywords')
 
-      const response: ValidateResponse = {
+      const response: ScanResponse = {
         keyword: 'test keyword',
         articleLevel: 'pilier',
         kpis: [
@@ -288,7 +288,7 @@ describe('useExploredKeywords', () => {
   })
 
   describe('multi-root validation', () => {
-    const weakVolumeResponse: ValidateResponse = {
+    const weakVolumeResponse: ScanResponse = {
       keyword: 'creation site web entreprise toulouse',
       articleLevel: 'pilier',
       kpis: [
@@ -303,7 +303,7 @@ describe('useExploredKeywords', () => {
       cachedAt: null,
     }
 
-    function makeRootResponse(keyword: string): ValidateResponse {
+    function makeRootResponse(keyword: string): ScanResponse {
       return {
         keyword,
         articleLevel: 'pilier',
@@ -325,7 +325,7 @@ describe('useExploredKeywords', () => {
         if (url.includes('creation%20site%20web%20entreprise%20toulouse')) {
           return Promise.resolve(weakVolumeResponse)
         }
-        const keyword = decodeURIComponent(url.split('/keywords/')[1].split('/validate')[0])
+        const keyword = decodeURIComponent(url.split('/keywords/')[1].split('/scan')[0])
         return Promise.resolve(makeRootResponse(keyword))
       })
 
@@ -351,7 +351,7 @@ describe('useExploredKeywords', () => {
     })
 
     it('addEntry with green volume skips root validation', async () => {
-      const greenResponse: ValidateResponse = {
+      const greenResponse: ScanResponse = {
         ...weakVolumeResponse,
         kpis: weakVolumeResponse.kpis.map(k =>
           k.name === 'volume' ? { ...k, color: 'green' as const, rawValue: 2000 } : k,
@@ -373,7 +373,7 @@ describe('useExploredKeywords', () => {
         }
         rootCallIndex++
         if (rootCallIndex === 2) return Promise.reject(new Error('root API error'))
-        const keyword = decodeURIComponent(url.split('/keywords/')[1].split('/validate')[0])
+        const keyword = decodeURIComponent(url.split('/keywords/')[1].split('/scan')[0])
         return Promise.resolve(makeRootResponse(keyword))
       })
 

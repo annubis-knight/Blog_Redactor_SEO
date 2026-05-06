@@ -250,7 +250,7 @@ describe('Moteur Workflow — Onglet Radar', () => {
 describe('Moteur Workflow — Onglet Capitaine', () => {
   it('POST /keywords/:kw/validate sans level → 400', async () => {
     if (requireServer().skip) return
-    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-plombier')}/validate`, {})
+    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-plombier')}/scan`, {})
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
@@ -263,7 +263,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
       kpis: Array<{ name: string; color: string }>
       verdict: { level: string; greenCount: number; totalKpis: number }
       paaQuestions: unknown[]
-    }>(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    }>(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier',
       articleTitle: 'Test article',
     })
@@ -279,7 +279,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
 
   it('POST /keywords/:kw/validate avec level invalide → 400', async () => {
     if (requireServer().skip) return
-    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-plombier')}/validate`, {
+    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-plombier')}/scan`, {
       level: 'xyz',
     })
     expect(res.status).toBe(400)
@@ -292,7 +292,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
     const article = await ctx.createArticle(cocoon.id, 'Captain Article')
 
     const kw = `test-${ctx.runId}-captain-persist`
-    const res = await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    const res = await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier',
       articleTitle: 'Test',
       articleId: article.id,
@@ -314,7 +314,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
     const article = await ctx.createArticle(cocoon.id, 'History Article')
 
     const kw = `test-${ctx.runId}-history`
-    await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier',
       articleTitle: 'Test',
       articleId: article.id,
@@ -330,11 +330,11 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
     if (requireServer().skip) return
     const kw = `test-${ctx.runId}-ttl`
     const t1 = Date.now()
-    await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, { level: 'pilier', articleTitle: 'Test' })
+    await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, { level: 'pilier', articleTitle: 'Test' })
     const e1 = Date.now() - t1
 
     const t2 = Date.now()
-    const r2 = await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, { level: 'pilier', articleTitle: 'Test' })
+    const r2 = await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, { level: 'pilier', articleTitle: 'Test' })
     const e2 = Date.now() - t2
 
     expect(r2.status).toBe(200)
@@ -617,7 +617,7 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'Counts2 Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Counts2 Article')
 
-    await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-c2')}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-c2')}/scan`, {
       level: 'pilier',
       articleTitle: 'Test',
       articleId: article.id,
@@ -684,7 +684,7 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
 
     // 4. Capitaine validate
     const kw = `test-${ctx.runId}-wf-cap`
-    await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier', articleTitle: article.titre, articleId: article.id,
     })
 
@@ -714,8 +714,8 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
     const kw1 = `test-${ctx.runId}-se-1`
     const kw2 = `test-${ctx.runId}-se-2`
     await Promise.all([
-      apiPost(`/keywords/${encodeURIComponent(kw1)}/validate`, { level: 'pilier', articleTitle: a1.titre, articleId: a1.id }),
-      apiPost(`/keywords/${encodeURIComponent(kw2)}/validate`, { level: 'pilier', articleTitle: a2.titre, articleId: a2.id }),
+      apiPost(`/keywords/${encodeURIComponent(kw1)}/scan`, { level: 'pilier', articleTitle: a1.titre, articleId: a1.id }),
+      apiPost(`/keywords/${encodeURIComponent(kw2)}/scan`, { level: 'pilier', articleTitle: a2.titre, articleId: a2.id }),
     ])
 
     const db1 = await query<{ keyword: string }>(`SELECT keyword FROM captain_explorations WHERE article_id = $1`, [a1.id])

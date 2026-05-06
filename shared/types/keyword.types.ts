@@ -1,5 +1,5 @@
 import type { ProposeLieutenantsHnNode } from './serp-analysis.types.js'
-import type { ArticleLevel, PaaQuestionValidate } from './keyword-validate.types.js'
+import type { ArticleLevel, PaaQuestionScan } from './keyword-validate.types.js'
 import type { MarketScoreResult, RelevanceScoreResult, RelevanceUnavailableReason } from './scoring.types.js'
 
 /**
@@ -58,7 +58,7 @@ export interface CaptainValidationEntry {
   kpis: KpiSummary[]
   articleLevel: ArticleLevel
   rootKeywords: string[]                    // root variant names tested with this keyword
-  paaQuestions?: PaaQuestionValidate[]
+  paaQuestions?: PaaQuestionScan[]
   aiPanelMarkdown?: string | null           // AI-generated analysis per keyword
   exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
   /**

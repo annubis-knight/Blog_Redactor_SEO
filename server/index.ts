@@ -24,7 +24,7 @@ import radarExplorationRoutes from './routes/radar-exploration.routes.js'
 import longTailSuggestRoutes from './routes/long-tail-suggest.routes.js'
 import articleExplorationsRoutes from './routes/article-explorations.routes.js'
 import keywordQueriesRoutes from './routes/keyword-queries.routes.js'
-import keywordValidateRoutes from './routes/keyword-validate.routes.js'
+import keywordScanRoutes from './routes/keyword-scan.routes.js'
 import keywordAiPanelRoutes from './routes/keyword-ai-panel.routes.js'
 import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
 import paaRoutes from './routes/paa.routes.js'
@@ -77,7 +77,7 @@ app.use('/api', radarExplorationRoutes)
 app.use('/api', longTailSuggestRoutes)
 app.use('/api', articleExplorationsRoutes)
 app.use('/api', keywordQueriesRoutes)
-app.use('/api', keywordValidateRoutes)
+app.use('/api', keywordScanRoutes)
 app.use('/api', keywordAiPanelRoutes)
 app.use('/api', serpAnalysisRoutes)
 app.use('/api', paaRoutes)

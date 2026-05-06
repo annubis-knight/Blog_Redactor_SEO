@@ -24,11 +24,11 @@ import { setActivePinia, createPinia } from 'pinia'
 import CaptainPanel from '../../../src/components/moteur/CaptainPanel.vue'
 
 // Mocks composables
-vi.mock('../../../src/composables/keyword/useCapitaineValidation', async () => {
-  const actual = await vi.importActual<Record<string, unknown>>('../../../src/composables/keyword/useCapitaineValidation')
+vi.mock('../../../src/composables/keyword/useCapitaineScan', async () => {
+  const actual = await vi.importActual<Record<string, unknown>>('../../../src/composables/keyword/useCapitaineScan')
   return {
     ...actual,
-    useCapitaineValidation: () => ({
+    useCapitaineScan: () => ({
       currentResult: ref(null),
       isLoading: ref(false),
       error: ref(null),
@@ -38,7 +38,7 @@ vi.mock('../../../src/composables/keyword/useCapitaineValidation', async () => {
       isLoadingRoot: ref(false),
       radarCard: ref(null),
       isLoadingRadar: ref(false),
-      validateKeyword: vi.fn(),
+      scanKeyword: vi.fn(),
       navigateHistory: vi.fn(),
       reset: vi.fn(),
     }),

@@ -8,7 +8,7 @@ import { VERDICT_CONFIG } from '@/composables/ui/useVerdictColors'
 import { useResizablePanel } from '@/composables/ui/useResizablePanel'
 import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
-import type { VerdictLevel, ValidateResponse } from '@shared/types/index.js'
+import type { VerdictLevel, ScanResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
 
 const props = defineProps<{
@@ -43,7 +43,7 @@ const marketKpis = computed(() => {
 })
 
 const emit = defineEmits<{
-  (e: 'switch-variant', variant: { keyword: string; card: RadarCard; validation: ValidateResponse }): void
+  (e: 'switch-variant', variant: { keyword: string; card: RadarCard; validation: ScanResponse }): void
   (e: 'ai-regenerate'): void
   (e: 'goto-locked'): void
   (e: 'close'): void

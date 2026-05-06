@@ -1,6 +1,6 @@
 /**
  * Union de tous les stopwords français du projet.
- * Sources : keyword-matcher.ts, useCapitaineValidation.ts, useMultiSourceVerdict.ts
+ * Sources : keyword-matcher.ts, useCapitaineScan.ts, useMultiSourceVerdict.ts
  */
 export const FRENCH_STOPWORDS = new Set([
   // Articles & déterminants

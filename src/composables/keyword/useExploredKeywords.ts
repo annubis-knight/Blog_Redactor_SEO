@@ -1,17 +1,17 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
-import { extractRoots } from '@/composables/keyword/useCapitaineValidation'
+import { extractRoots } from '@/composables/keyword/useCapitaineScan'
 import { log } from '@/utils/logger'
 import { computeCombinedScore } from '@shared/scoring.js'
 import { getThresholds, scoreKpi, computeVerdict } from '@shared/kpi-scoring.js'
-import type { ValidateResponse, ArticleLevel, VerdictLevel } from '@shared/types/index.js'
+import type { ScanResponse, ArticleLevel, VerdictLevel } from '@shared/types/index.js'
 import type { CaptainValidationEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
 import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
 
 export interface ExploredKeywordEntry {
   card: RadarCard
   originalCard: RadarCard
-  validation: ValidateResponse | null
+  validation: ScanResponse | null
   isLoading: boolean
   error: string | null
   rootVariants: Map<string, KeywordRootVariant>
@@ -24,14 +24,14 @@ export interface ExploredKeywordEntry {
 }
 
 /**
- * Convert a ValidateResponse into a fully hydrated RadarCard.
+ * Convert a ScanResponse into a fully hydrated RadarCard.
  *
  * 2026-05-02 — Propage `marketScore` et `relevanceScore` du backend vers la
  * card. Avant ce fix, ces deux scores étaient perdus, forçant l'UI Capitaine
  * à fallback sur `combinedScore` (legacy hybride) et brisant la séparation
  * KPI / Pertinence documentée dans docs/scoring-kpi-vs-relevance.md.
  */
-export function hydrateCardFromValidation(keyword: string, response: ValidateResponse): RadarCard {
+export function hydrateCardFromValidation(keyword: string, response: ScanResponse): RadarCard {
   const kpiMap = Object.fromEntries(response.kpis.map(k => [k.name, k]))
 
   const paaItems: RadarPaaItem[] = (response.paaQuestions || []).map(p => ({
@@ -121,7 +121,7 @@ export function useExploredKeywords() {
   /** Validate root variants for a long-tail keyword with weak volume (best-effort, capped at 5) */
   async function validateRoots(
     keyword: string,
-    response: ValidateResponse,
+    response: ScanResponse,
     entryIndex: number,
     level: ArticleLevel,
     articleTitle: string | undefined,
@@ -145,8 +145,8 @@ export function useExploredKeywords() {
     await Promise.allSettled(
       roots.map(async (rootKw) => {
         try {
-          const rootResponse = await apiPost<ValidateResponse>(
-            `/keywords/${encodeURIComponent(rootKw)}/validate`,
+          const rootResponse = await apiPost<ScanResponse>(
+            `/keywords/${encodeURIComponent(rootKw)}/scan`,
             { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
           )
           if (thisVersion !== loadVersion) return
@@ -177,8 +177,8 @@ export function useExploredKeywords() {
     await Promise.allSettled(
       cards.map(async (card, i) => {
         try {
-          const response = await apiPost<ValidateResponse>(
-            `/keywords/${encodeURIComponent(card.keyword)}/validate`,
+          const response = await apiPost<ScanResponse>(
+            `/keywords/${encodeURIComponent(card.keyword)}/scan`,
             { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
           )
           if (thisVersion !== loadVersion) return
@@ -239,8 +239,8 @@ export function useExploredKeywords() {
 
     // Validate
     try {
-      const response = await apiPost<ValidateResponse>(
-        `/keywords/${encodeURIComponent(keyword)}/validate`,
+      const response = await apiPost<ScanResponse>(
+        `/keywords/${encodeURIComponent(keyword)}/scan`,
         { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
       )
       if (thisVersion !== loadVersion) return
@@ -292,8 +292,8 @@ export function useExploredKeywords() {
     const thisVersion = loadVersion
 
     try {
-      const response = await apiPost<ValidateResponse>(
-        `/keywords/${encodeURIComponent(newRootKeyword)}/validate`,
+      const response = await apiPost<ScanResponse>(
+        `/keywords/${encodeURIComponent(newRootKeyword)}/scan`,
         { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
       )
       if (thisVersion !== loadVersion) return
@@ -342,7 +342,7 @@ export function useExploredKeywords() {
       const kpis = h.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
       const verdict = computeVerdict(kpis)
 
-      const response: ValidateResponse = {
+      const response: ScanResponse = {
         keyword: h.keyword,
         articleLevel: h.articleLevel,
         kpis,
@@ -379,7 +379,7 @@ export function useExploredKeywords() {
       for (const root of rootsForKeyword) {
         const rootKpis = root.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
         const rootVerdict = computeVerdict(rootKpis)
-        const rootResponse: ValidateResponse = {
+        const rootResponse: ScanResponse = {
           keyword: root.keyword,
           articleLevel: root.articleLevel,
           kpis: rootKpis,

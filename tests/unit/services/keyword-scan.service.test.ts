@@ -4,7 +4,7 @@ import {
   scoreKpi,
   computeVerdict,
   computeIntentScore,
-} from '../../../server/services/keyword/keyword-validate.service'
+} from '../../../server/services/keyword/keyword-scan.service'
 import type { KpiResult } from '../../../shared/types/keyword-validate.types'
 
 // Helper to build a full set of 6 KPIs quickly
@@ -22,7 +22,7 @@ function buildKpis(overrides: Partial<Record<string, KpiResult>>): KpiResult[] {
 
 // --- Task 4: Tests du service de scoring ---
 
-describe('keyword-validate.service', () => {
+describe('keyword-scan.service', () => {
   describe('getThresholds', () => {
     it('returns thresholds for pilier', () => {
       const t = getThresholds('pilier')

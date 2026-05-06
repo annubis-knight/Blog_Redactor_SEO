@@ -51,7 +51,7 @@ export interface UseAiPanelReturn<T> {
  *   - un timestamp de fraîcheur (isStale)
  *   - un parser optionnel
  *
- * Les composables métier (useCapitaineValidation, useLexiqueIa, etc.) délèguent
+ * Les composables métier (useCapitaineScan, useLexiqueIa, etc.) délèguent
  * la plomberie à ce hook et exposent au-dessus leurs méthodes spécifiques
  * (handoff, sélection, etc.).
  */

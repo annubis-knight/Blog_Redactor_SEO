@@ -39,7 +39,7 @@ async function tryImportCaptainRelevanceService() {
 
 describe('FR-CAP-RELEVANCE-LINEAR-ROOTS — extraction linéaire des racines', () => {
   it('keyword 4 mots → 2 racines tronquées progressivement depuis la fin', async () => {
-    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineValidation.js')
+    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineScan.js')
     expect(extractRoots('cours piano intermédiaire paris')).toEqual([
       'cours piano intermédiaire',
       'cours piano',
@@ -47,12 +47,12 @@ describe('FR-CAP-RELEVANCE-LINEAR-ROOTS — extraction linéaire des racines', (
   })
 
   it('keyword 2 mots → tableau vide (< 3 mots requis)', async () => {
-    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineValidation.js')
+    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineScan.js')
     expect(extractRoots('cours piano')).toEqual([])
   })
 
   it('stopwords filtrés via FRENCH_STOPWORDS', async () => {
-    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineValidation.js')
+    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineScan.js')
     // "le cours de piano paris" : "le" et "de" sont des stopwords
     // → 2 mots significatifs requis, max 5 racines
     const roots = extractRoots('le cours de piano paris')
@@ -61,7 +61,7 @@ describe('FR-CAP-RELEVANCE-LINEAR-ROOTS — extraction linéaire des racines', (
   })
 
   it('aucun appel LLM (pas de I/O réseau) — fonction synchrone et pure', async () => {
-    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineValidation.js')
+    const { extractRoots } = await import('../../../src/composables/keyword/useCapitaineScan.js')
     const start = Date.now()
     extractRoots('cours piano intermédiaire paris')
     const duration = Date.now() - start

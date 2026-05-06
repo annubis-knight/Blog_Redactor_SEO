@@ -20,7 +20,7 @@ export interface KpiResult {
 
 export type VerdictLevel = 'GO' | 'ORANGE' | 'NO-GO' | 'GRAY'
 
-export interface ValidateVerdict {
+export interface ScanVerdict {
   level: VerdictLevel
   greenCount: number     // Nombre de KPIs verts
   totalKpis: number      // Toujours 6
@@ -28,21 +28,21 @@ export interface ValidateVerdict {
   autoNoGo: boolean      // True si NO-GO automatique (0 signaux)
 }
 
-export interface PaaQuestionValidate {
+export interface PaaQuestionScan {
   question: string
   answer: string | null
   match?: 'none' | 'partial' | 'total'
   matchQuality?: 'exact' | 'stem'
 }
 
-export interface ValidateResponse {
+export interface ScanResponse {
   keyword: string
   articleLevel: ArticleLevel
   kpis: KpiResult[]
-  verdict: ValidateVerdict
+  verdict: ScanVerdict
   fromCache: boolean
   cachedAt: string | null
-  paaQuestions?: PaaQuestionValidate[]
+  paaQuestions?: PaaQuestionScan[]
   /**
    * Score KPI / Marché (0-100) — calculé à partir de Volume / KD / Intent / PAA / AC / CPC.
    * Affiché dans l'onglet Radar. Cf. docs/scoring-kpi-vs-relevance.md.

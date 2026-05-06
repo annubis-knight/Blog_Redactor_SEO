@@ -2,7 +2,7 @@ import type {
   ArticleLevel,
   KpiColor,
   KpiResult,
-  ValidateVerdict,
+  ScanVerdict,
   ThresholdConfig,
 } from './types/keyword-validate.types.js'
 
@@ -78,7 +78,7 @@ export function scoreKpi(
  * Score KPI ajusté avec les nouveaux poids et seuils GO/ORANGE/NOGO unifiés à 70/40.
  *
  * Cette fonction est conservée pour rétro-compatibilité avec :
- *   - les payloads `ValidateResponse.verdict` historiques persistés en DB
+ *   - les payloads `ScanResponse.verdict` historiques persistés en DB
  *   - les consommateurs UI qui lisent `verdict.level` directement (carousel, store)
  *
  * Différences entre les deux verdicts :
@@ -98,7 +98,7 @@ export function scoreKpi(
  *  - `GO`    : ≥4/6 verts, pas de red sur Volume/KD/PAA
  *  - `ORANGE`: signaux mixtes (fallback)
  */
-export function computeVerdict(kpis: KpiResult[]): ValidateVerdict {
+export function computeVerdict(kpis: KpiResult[]): ScanVerdict {
   const volume = kpis.find(k => k.name === 'volume')
   const kd = kpis.find(k => k.name === 'kd')
   const paa = kpis.find(k => k.name === 'paa')

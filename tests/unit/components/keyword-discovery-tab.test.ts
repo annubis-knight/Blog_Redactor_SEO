@@ -146,7 +146,7 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineScan', () => ({
   articleTypeToLevel: (t: string) => {
     const m: Record<string, string> = { 'Pilier': 'pilier', 'Intermédiaire': 'intermediaire', 'Spécialisé': 'specifique' }
     return m[t] ?? 'intermediaire'

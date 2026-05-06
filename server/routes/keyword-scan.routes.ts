@@ -26,7 +26,7 @@ import {
   upsertKeywordPaa,
   isKeywordMetricsFresh,
 } from '../services/keyword/keyword-metrics.service.js'
-import { getThresholds, scoreKpi, computeVerdict } from '../services/keyword/keyword-validate.service.js'
+import { getThresholds, scoreKpi, computeVerdict } from '../services/keyword/keyword-scan.service.js'
 import { lexicalPainAlignment, avgLexicalPainAlignment } from '../services/keyword/lexical-pain-alignment.js'
 import {
   fetchSerpAdvanced,
@@ -37,7 +37,7 @@ import {
   computePaaWeightedScore,
 } from '../services/intent/intent-scan.service.js'
 import type { ResonanceMatch, RadarMatchQuality } from '../../shared/types/intent.types.js'
-import type { ArticleLevel, ValidateResponse } from '../../shared/types/keyword-validate.types.js'
+import type { ArticleLevel, ScanResponse } from '../../shared/types/keyword-validate.types.js'
 
 const router = Router()
 
@@ -45,8 +45,8 @@ const FRESHNESS_DAYS = 7
 
 const VALID_LEVELS: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
 
-/** POST /api/keywords/:keyword/validate — Contextual scoring + verdict */
-router.post('/keywords/:keyword/validate', async (req, res) => {
+/** POST /api/keywords/:keyword/scan — Contextual scoring + verdict */
+router.post('/keywords/:keyword/scan', async (req, res) => {
   try {
     const keyword = decodeURIComponent(req.params.keyword)
     // Bloc 5 — `painPoint` accepté optionnellement pour permettre le calcul
@@ -274,7 +274,7 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
       })
     }
 
-    const response: ValidateResponse = {
+    const response: ScanResponse = {
       keyword,
       articleLevel,
       kpis,
@@ -308,7 +308,7 @@ router.post('/keywords/:keyword/validate', async (req, res) => {
 
     res.json({ data: response })
   } catch (err) {
-    log.error(`POST /api/keywords/:keyword/validate — ${(err as Error).message}`)
+    log.error(`POST /api/keywords/:keyword/scan — ${(err as Error).message}`)
     respondWithError(res, err, { message: 'Keyword validation failed' })
   }
 })

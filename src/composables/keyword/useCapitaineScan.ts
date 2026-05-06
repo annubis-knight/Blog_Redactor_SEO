@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import type { ValidateResponse, ArticleLevel } from '@shared/types/index.js'
+import type { ScanResponse, ArticleLevel } from '@shared/types/index.js'
 import type { ArticleType } from '@shared/types/article.types.js'
 import type { RadarCard, KeywordRadarScanResult } from '@shared/types/intent.types.js'
 import { FRENCH_STOPWORDS, extractRoots as extractRootsShared } from '@shared/utils/keyword-roots.js'
@@ -25,13 +25,13 @@ export function extractRoot(keyword: string): string | null {
   return roots.length > 0 ? roots[roots.length - 1]! : null
 }
 
-export function useCapitaineValidation() {
-  const result = ref<ValidateResponse | null>(null)
+export function useCapitaineScan() {
+  const result = ref<ScanResponse | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
-  const history = ref<ValidateResponse[]>([])
+  const history = ref<ScanResponse[]>([])
   const historyIndex = ref(-1)
-  const rootResult = ref<ValidateResponse | null>(null)
+  const rootResult = ref<ScanResponse | null>(null)
   const isLoadingRoot = ref(false)
   const radarCard = ref<RadarCard | null>(null)
   const isLoadingRadar = ref(false)
@@ -45,7 +45,7 @@ export function useCapitaineValidation() {
     return result.value
   })
 
-  async function validateKeyword(
+  async function scanKeyword(
     keyword: string,
     level: ArticleLevel,
     articleTitle?: string,
@@ -60,8 +60,8 @@ export function useCapitaineValidation() {
 
     // Bloc 5 — `painPoint` + `articleId` envoyés à /validate pour permettre
     // au backend de calculer relevanceScore à la volée même sans cache Radar.
-    const validatePromise = apiPost<ValidateResponse>(
-      `/keywords/${encodeURIComponent(keyword)}/validate`,
+    const validatePromise = apiPost<ScanResponse>(
+      `/keywords/${encodeURIComponent(keyword)}/scan`,
       { level, articleTitle, articleId, painPoint: articlePainPoint },
     )
 
@@ -79,9 +79,9 @@ export function useCapitaineValidation() {
     ).then(scanResult => {
       if (thisVersion !== validationVersion) return
       radarCard.value = scanResult.cards?.[0] ?? null
-      log.debug('[useCapitaineValidation] Radar card loaded', { keyword, score: radarCard.value?.combinedScore })
+      log.debug('[useCapitaineScan] Radar card loaded', { keyword, score: radarCard.value?.combinedScore })
     }).catch(err => {
-      log.warn('[useCapitaineValidation] Radar scan failed (best-effort)', { keyword, error: (err as Error).message })
+      log.warn('[useCapitaineScan] Radar scan failed (best-effort)', { keyword, error: (err as Error).message })
     }).finally(() => {
       if (thisVersion === validationVersion) isLoadingRadar.value = false
     })
@@ -96,7 +96,7 @@ export function useCapitaineValidation() {
       history.value = [response, ...history.value.filter(h => h.keyword !== response.keyword)].slice(0, 20)
       historyIndex.value = 0
 
-      log.debug('[useCapitaineValidation] Validation result', {
+      log.debug('[useCapitaineScan] Validation result', {
         keyword,
         level,
         verdict: response.verdict.level,
@@ -108,16 +108,16 @@ export function useCapitaineValidation() {
       if (root && response.kpis.find(k => k.name === 'volume')?.color !== 'green') {
         isLoadingRoot.value = true
         try {
-          const rootResponse = await apiPost<ValidateResponse>(
-            `/keywords/${encodeURIComponent(root)}/validate`,
+          const rootResponse = await apiPost<ScanResponse>(
+            `/keywords/${encodeURIComponent(root)}/scan`,
             { level, articleTitle, articleId, painPoint: articlePainPoint },
           )
           if (thisVersion !== validationVersion) return // stale root
           rootResult.value = rootResponse
-          log.debug('[useCapitaineValidation] Root analysis', { root, verdict: rootResponse.verdict.level })
+          log.debug('[useCapitaineScan] Root analysis', { root, verdict: rootResponse.verdict.level })
         } catch {
           // Root analysis is best-effort
-          log.warn('[useCapitaineValidation] Root analysis failed', { root })
+          log.warn('[useCapitaineScan] Root analysis failed', { root })
         } finally {
           if (thisVersion === validationVersion) isLoadingRoot.value = false
         }
@@ -125,7 +125,7 @@ export function useCapitaineValidation() {
     } catch (err) {
       if (thisVersion !== validationVersion) return
       error.value = (err as Error).message
-      log.error('[useCapitaineValidation] Validation failed', { keyword, error: error.value })
+      log.error('[useCapitaineScan] Validation failed', { keyword, error: error.value })
     } finally {
       if (thisVersion === validationVersion) isLoading.value = false
     }
@@ -165,7 +165,7 @@ export function useCapitaineValidation() {
     isLoadingRoot,
     radarCard,
     isLoadingRadar,
-    validateKeyword,
+    scanKeyword,
     navigateHistory,
     reset,
   }

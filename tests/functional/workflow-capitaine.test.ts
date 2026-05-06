@@ -19,7 +19,7 @@ import {
   extractRoot,
   articleTypeToLevel,
   FRENCH_STOPWORDS,
-} from '../../src/composables/keyword/useCapitaineValidation'
+} from '../../src/composables/keyword/useCapitaineScan'
 
 import { checkKeywordComposition } from '../../shared/composition-rules'
 

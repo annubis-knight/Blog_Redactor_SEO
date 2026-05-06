@@ -6,7 +6,7 @@
  * WRITES TO: INSERT/UPSERT via upsertKeywordKpis, upsertKeywordAutocomplete,
  *            upsertKeywordPaa (autres helpers ci-dessous).
  *            COALESCE systématique : on n'écrase jamais une valeur existante par null.
- * CONSUMERS: keyword-validate.routes (validation card individuelle),
+ * CONSUMERS: keyword-scan.routes (validation card individuelle),
  *            captain-relevance.service (Score Pertinence live),
  *            radar-* services (scan SERP cross-article).
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-INTENT-SIGNAL,

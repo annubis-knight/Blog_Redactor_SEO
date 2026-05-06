@@ -161,8 +161,8 @@ export type {
   KpiColor,
   KpiResult,
   VerdictLevel,
-  ValidateVerdict,
-  ValidateResponse,
+  ScanVerdict,
+  ScanResponse,
 } from './keyword-validate.types.js'
 
 export type {

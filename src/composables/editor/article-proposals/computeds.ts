@@ -1,6 +1,6 @@
 import { computed } from 'vue'
 import { checkKeywordComposition } from '@/composables/seo/useCompositionCheck'
-import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
+import { articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
 import type { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { GROUP_COLORS, normalizeTitle } from './builders'
 

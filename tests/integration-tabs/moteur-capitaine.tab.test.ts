@@ -13,20 +13,20 @@ function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true 
 describe('Tab moteur/capitaine — Validate', () => {
   it('POST /keywords/:kw/validate sans level → 400 MISSING_PARAM', async () => {
     if (requireServer().skip) return
-    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/validate`, {})
+    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, {})
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
   it('POST /keywords/:kw/validate level invalide → 400', async () => {
     if (requireServer().skip) return
-    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/validate`, { level: 'invalid' })
+    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, { level: 'invalid' })
     expect(res.status).toBe(400)
   })
 
   it('POST /keywords/:kw/validate retourne 6 KPIs + verdict', { timeout: 30000 }, async () => {
     if (requireServer().skip) return
     const res = await apiPost<{ kpis: unknown[]; verdict: { level: string; totalKpis: number } }>(
-      `/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/validate`,
+      `/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/scan`,
       { level: 'pilier', articleTitle: 'test' },
     )
     expect(res.status).toBe(200)
@@ -41,7 +41,7 @@ describe('Tab moteur/capitaine — Validate', () => {
     const article = await ctx.createArticle(cocoon.id, 'CapPers Article')
 
     const kw = `test-${ctx.runId}-cappers`
-    await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier', articleTitle: 'test', articleId: article.id,
     })
 
@@ -60,7 +60,7 @@ describe('Tab moteur/capitaine — Carousel hydratation', () => {
     const article = await ctx.createArticle(cocoon.id, 'CapHistory Article')
 
     const kw = `test-${ctx.runId}-history`
-    await apiPost(`/keywords/${encodeURIComponent(kw)}/validate`, {
+    await apiPost(`/keywords/${encodeURIComponent(kw)}/scan`, {
       level: 'pilier', articleTitle: 'test', articleId: article.id,
     })
 

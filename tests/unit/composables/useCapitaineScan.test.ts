@@ -9,12 +9,12 @@ vi.mock('../../../src/utils/logger', () => ({
 }))
 
 import { apiPost } from '../../../src/services/api.service'
-import { useCapitaineValidation, articleTypeToLevel, extractRoot, extractRoots } from '../../../src/composables/keyword/useCapitaineValidation'
-import type { ValidateResponse } from '../../../shared/types/keyword-validate.types'
+import { useCapitaineScan, articleTypeToLevel, extractRoot, extractRoots } from '../../../src/composables/keyword/useCapitaineScan'
+import type { ScanResponse } from '../../../shared/types/keyword-validate.types'
 
 const mockApiPost = vi.mocked(apiPost)
 
-function makeMockResult(keyword: string, verdict = 'GO' as const): ValidateResponse {
+function makeMockResult(keyword: string, verdict = 'GO' as const): ScanResponse {
   return {
     keyword,
     articleLevel: 'pilier',
@@ -41,9 +41,9 @@ const EMPTY_RADAR_RESULT = {
 /**
  * Setup mock that routes by URL:
  * - /radar/scan → returns empty radar result (or custom)
- * - /validate → returns from validateResults queue
+ * - /scan → returns from validateResults queue
  */
-function setupRoutedMock(validateResults: ValidateResponse[], radarResult = EMPTY_RADAR_RESULT) {
+function setupRoutedMock(validateResults: ScanResponse[], radarResult = EMPTY_RADAR_RESULT) {
   let validateIdx = 0
   mockApiPost.mockImplementation((url: string) => {
     if (url.includes('/radar/scan')) {
@@ -59,9 +59,9 @@ beforeEach(() => {
   vi.resetAllMocks()
 })
 
-describe('useCapitaineValidation', () => {
+describe('useCapitaineScan', () => {
   it('starts with null result, not loading, no error', () => {
-    const { result, isLoading, error, radarCard } = useCapitaineValidation()
+    const { result, isLoading, error, radarCard } = useCapitaineScan()
     expect(result.value).toBeNull()
     expect(isLoading.value).toBe(false)
     expect(error.value).toBeNull()
@@ -70,16 +70,16 @@ describe('useCapitaineValidation', () => {
 
   it('validates keyword and returns result', async () => {
     setupRoutedMock([makeMockResult('seo')])
-    const { result, validateKeyword } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier')
-    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo/validate', { level: 'pilier' })
+    const { result, scanKeyword } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier')
+    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo/scan', { level: 'pilier' })
     expect(result.value?.keyword).toBe('seo')
   })
 
   it('calls radar scan in parallel', async () => {
     setupRoutedMock([makeMockResult('seo')])
-    const { validateKeyword } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier', 'Mon article SEO')
+    const { scanKeyword } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier', 'Mon article SEO')
     expect(mockApiPost).toHaveBeenCalledWith('/keywords/radar/scan', {
       broadKeyword: 'seo',
       specificTopic: 'Mon article SEO',
@@ -90,8 +90,8 @@ describe('useCapitaineValidation', () => {
 
   it('uses keyword as specificTopic when no articleTitle', async () => {
     setupRoutedMock([makeMockResult('seo')])
-    const { validateKeyword } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier')
+    const { scanKeyword } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier')
     expect(mockApiPost).toHaveBeenCalledWith('/keywords/radar/scan', expect.objectContaining({
       specificTopic: 'seo',
     }))
@@ -105,8 +105,8 @@ describe('useCapitaineValidation', () => {
       cachedPaa: false,
     }
     setupRoutedMock([makeMockResult('seo')], { ...EMPTY_RADAR_RESULT, cards: [mockCard] })
-    const { radarCard, validateKeyword } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier')
+    const { radarCard, scanKeyword } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier')
     expect(radarCard.value).not.toBeNull()
     expect(radarCard.value?.combinedScore).toBe(72)
   })
@@ -118,17 +118,17 @@ describe('useCapitaineValidation', () => {
       if (url.includes('/radar/scan')) return Promise.reject(new Error('Radar down'))
       return Promise.resolve(results[validateIdx++])
     })
-    const { error, radarCard, validateKeyword } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier')
+    const { error, radarCard, scanKeyword } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier')
     expect(error.value).toBeNull()
     expect(radarCard.value).toBeNull()
   })
 
   it('encodes keyword in URL', async () => {
     setupRoutedMock([makeMockResult('mot clé')])
-    const { validateKeyword } = useCapitaineValidation()
-    await validateKeyword('mot clé', 'pilier')
-    expect(mockApiPost).toHaveBeenCalledWith(`/keywords/${encodeURIComponent('mot clé')}/validate`, { level: 'pilier' })
+    const { scanKeyword } = useCapitaineScan()
+    await scanKeyword('mot clé', 'pilier')
+    expect(mockApiPost).toHaveBeenCalledWith(`/keywords/${encodeURIComponent('mot clé')}/scan`, { level: 'pilier' })
   })
 
   it('sets error on API failure', async () => {
@@ -136,15 +136,15 @@ describe('useCapitaineValidation', () => {
       if (url.includes('/radar/scan')) return Promise.resolve(EMPTY_RADAR_RESULT)
       return Promise.reject(new Error('Network error'))
     })
-    const { error, validateKeyword } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier')
+    const { error, scanKeyword } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier')
     expect(error.value).toBe('Network error')
   })
 
   it('reset clears all state including radarCard', async () => {
     setupRoutedMock([makeMockResult('seo')])
-    const { result, history, radarCard, validateKeyword, reset } = useCapitaineValidation()
-    await validateKeyword('seo', 'pilier')
+    const { result, history, radarCard, scanKeyword, reset } = useCapitaineScan()
+    await scanKeyword('seo', 'pilier')
     reset()
     expect(result.value).toBeNull()
     expect(history.value).toHaveLength(0)
@@ -154,9 +154,9 @@ describe('useCapitaineValidation', () => {
   describe('history', () => {
     it('unshifts results to history (newest first)', async () => {
       setupRoutedMock([makeMockResult('seo'), makeMockResult('seo local')])
-      const { history, validateKeyword } = useCapitaineValidation()
-      await validateKeyword('seo', 'pilier')
-      await validateKeyword('seo local', 'pilier')
+      const { history, scanKeyword } = useCapitaineScan()
+      await scanKeyword('seo', 'pilier')
+      await scanKeyword('seo local', 'pilier')
       expect(history.value).toHaveLength(2)
       expect(history.value[0].keyword).toBe('seo local')
       expect(history.value[1].keyword).toBe('seo')
@@ -164,10 +164,10 @@ describe('useCapitaineValidation', () => {
 
     it('deduplicates by keyword', async () => {
       setupRoutedMock([makeMockResult('seo'), makeMockResult('seo local'), makeMockResult('seo')])
-      const { history, validateKeyword } = useCapitaineValidation()
-      await validateKeyword('seo', 'pilier')
-      await validateKeyword('seo local', 'pilier')
-      await validateKeyword('seo', 'pilier')
+      const { history, scanKeyword } = useCapitaineScan()
+      await scanKeyword('seo', 'pilier')
+      await scanKeyword('seo local', 'pilier')
+      await scanKeyword('seo', 'pilier')
       expect(history.value).toHaveLength(2)
       expect(history.value[0].keyword).toBe('seo')
       expect(history.value[1].keyword).toBe('seo local')
@@ -176,9 +176,9 @@ describe('useCapitaineValidation', () => {
     it('caps history at 20 entries', async () => {
       const results = Array.from({ length: 25 }, (_, i) => makeMockResult(`kw-${i}`))
       setupRoutedMock(results)
-      const { history, validateKeyword } = useCapitaineValidation()
+      const { history, scanKeyword } = useCapitaineScan()
       for (let i = 0; i < 25; i++) {
-        await validateKeyword(`kw-${i}`, 'pilier')
+        await scanKeyword(`kw-${i}`, 'pilier')
       }
       expect(history.value.length).toBeLessThanOrEqual(20)
       expect(history.value[0].keyword).toBe('kw-24')
@@ -186,9 +186,9 @@ describe('useCapitaineValidation', () => {
 
     it('navigates history without API call', async () => {
       setupRoutedMock([makeMockResult('seo'), makeMockResult('seo local')])
-      const { currentResult, historyIndex, validateKeyword, navigateHistory } = useCapitaineValidation()
-      await validateKeyword('seo', 'pilier')
-      await validateKeyword('seo local', 'pilier')
+      const { currentResult, historyIndex, scanKeyword, navigateHistory } = useCapitaineScan()
+      await scanKeyword('seo', 'pilier')
+      await scanKeyword('seo local', 'pilier')
       expect(currentResult.value?.keyword).toBe('seo local')
 
       const callsBefore = mockApiPost.mock.calls.length
@@ -200,10 +200,10 @@ describe('useCapitaineValidation', () => {
 
     it('historyIndex tracks latest entry at 0', async () => {
       setupRoutedMock([makeMockResult('a'), makeMockResult('b')])
-      const { historyIndex, validateKeyword } = useCapitaineValidation()
-      await validateKeyword('a', 'pilier')
+      const { historyIndex, scanKeyword } = useCapitaineScan()
+      await scanKeyword('a', 'pilier')
       expect(historyIndex.value).toBe(0)
-      await validateKeyword('b', 'pilier')
+      await scanKeyword('b', 'pilier')
       expect(historyIndex.value).toBe(0)
     })
   })
@@ -216,8 +216,8 @@ describe('useCapitaineValidation', () => {
 
       setupRoutedMock([weakResult, rootResponse])
 
-      const { rootResult, validateKeyword } = useCapitaineValidation()
-      await validateKeyword('plombier urgence paris', 'pilier')
+      const { rootResult, scanKeyword } = useCapitaineScan()
+      await scanKeyword('plombier urgence paris', 'pilier')
 
       expect(rootResult.value).not.toBeNull()
       expect(rootResult.value?.keyword).toBe('plombier urgence')
@@ -225,15 +225,15 @@ describe('useCapitaineValidation', () => {
 
     it('does NOT fetch root for short keywords', async () => {
       setupRoutedMock([makeMockResult('seo')])
-      const { rootResult, validateKeyword } = useCapitaineValidation()
-      await validateKeyword('seo', 'pilier')
+      const { rootResult, scanKeyword } = useCapitaineScan()
+      await scanKeyword('seo', 'pilier')
       expect(rootResult.value).toBeNull()
     })
 
     it('does NOT fetch root when volume is green', async () => {
       setupRoutedMock([makeMockResult('plombier urgence paris')])
-      const { rootResult, validateKeyword } = useCapitaineValidation()
-      await validateKeyword('plombier urgence paris', 'pilier')
+      const { rootResult, scanKeyword } = useCapitaineScan()
+      await scanKeyword('plombier urgence paris', 'pilier')
       expect(rootResult.value).toBeNull()
     })
   })

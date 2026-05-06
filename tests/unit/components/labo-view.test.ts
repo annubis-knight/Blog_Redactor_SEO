@@ -4,8 +4,8 @@ import { setActivePinia, createPinia } from 'pinia'
 
 // --- Mocks ---
 
-vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
-  useCapitaineValidation: () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineScan', () => ({
+  useCapitaineScan: () => ({
     result: { value: null },
     currentResult: { value: null },
     isLoading: { value: false },
@@ -14,7 +14,7 @@ vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
     historyIndex: { value: -1 },
     rootResult: { value: null },
     isLoadingRoot: { value: false },
-    validateKeyword: vi.fn(),
+    scanKeyword: vi.fn(),
     navigateHistory: vi.fn(),
     reset: vi.fn(),
   }),

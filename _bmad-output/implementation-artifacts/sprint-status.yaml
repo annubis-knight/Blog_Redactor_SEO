@@ -127,11 +127,23 @@ development_status:
   #   + 1 test gaps mis à jour pour cohérence avec computed).
   sprint-13-isLocked-computed: done
 
-  # Sprint 14 — Vocabulaire backend "validate" → "scan" — REPORTÉ (2026-05-06)
-  # tech-spec: tech-spec-sprint-14-vocabulaire-backend-scan.md (status: deferred)
-  # Décision : rayon trop important (67 fichiers, route HTTP, types Zod, services).
-  # Reporté à un sprint dédié avec sa propre branche.
-  sprint-14-vocabulaire-backend-scan: deferred
+  # Sprint 14 — Vocabulaire backend "validate" → "scan" (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-14-vocabulaire-backend-scan.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FR ajoutée : FR-API-VOCABULAIRE-SCAN.
+  # Livré en 3 vagues pour limiter le risque :
+  #   Vague A (frontend) : useCapitaineValidation → useCapitaineScan,
+  #     validateKeyword() → scanKeyword(). 23 fichiers.
+  #   Vague B (types partagés) : ValidateResponse → ScanResponse,
+  #     ValidateVerdict → ScanVerdict, PaaQuestionValidate → PaaQuestionScan.
+  #     19 fichiers.
+  #   Vague C (backend) : keyword-validate.service.ts → keyword-scan.service.ts,
+  #     keyword-validate.routes.ts → keyword-scan.routes.ts, URL HTTP
+  #     /keywords/:keyword/validate → /keywords/:keyword/scan. 10 fichiers.
+  # Préservé : POST /keywords/validate-pain (validation painPoint Cerveau)
+  #   reste inchangé — sémantiquement différent.
+  # Validation : type-check vert, build vert (10.13s), 3983 tests verts.
+  sprint-14-vocabulaire-backend-scan: done
 
   # Sprint 15 — Renommage containers en *Panel (2026-05-06) ✅
   # tech-spec: tech-spec-sprint-15-rename-containers-panel.md

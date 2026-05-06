@@ -153,23 +153,23 @@ describe('Contract /keywords/validate-pain', () => {
   })
 })
 
-describe('Contract /keywords/:kw/validate', () => {
+describe('Contract /keywords/:kw/scan', () => {
   it('POST sans level → 400 MISSING_PARAM', async () => {
     if (requireServer().skip) return
-    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/validate`, {})
+    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, {})
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
   it('POST level invalide → 400', async () => {
     if (requireServer().skip) return
-    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/validate`, { level: 'xyz' })
+    const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, { level: 'xyz' })
     expect(res.status).toBe(400)
   })
 
   it('POST OK → { keyword, kpis[6], verdict, paaQuestions }', { timeout: 60000 }, async () => {
     if (requireServer().skip) return
     const res = await apiPost<{ keyword: string; kpis: unknown[]; verdict: { level: string } }>(
-      `/keywords/${encodeURIComponent('test-' + ctx.runId + '-c')}/validate`,
+      `/keywords/${encodeURIComponent('test-' + ctx.runId + '-c')}/scan`,
       { level: 'pilier', articleTitle: 'test' },
     )
     expect(res.status).toBe(200)

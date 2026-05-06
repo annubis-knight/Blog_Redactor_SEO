@@ -17,17 +17,17 @@ import CaptainPanel from '../../../src/components/moteur/CaptainPanel.vue'
 
 // Register the v-safe-html directive globally for all mount() calls
 config.global.directives = { ...config.global.directives, 'safe-html': safeHtmlDirective }
-import type { ValidateResponse, SelectedArticle } from '../../../shared/types/index'
+import type { ScanResponse, SelectedArticle } from '../../../shared/types/index'
 import type { RadarCard } from '../../../shared/types/intent.types'
 
 // Mock the composable
-const mockResult = ref<ValidateResponse | null>(null)
+const mockResult = ref<ScanResponse | null>(null)
 const mockCurrentResult = computed(() => mockResult.value)
 const mockIsLoading = ref(false)
 const mockError = ref<string | null>(null)
-const mockHistory = ref<ValidateResponse[]>([])
+const mockHistory = ref<ScanResponse[]>([])
 const mockHistoryIndex = ref(-1)
-const mockRootResult = ref<ValidateResponse | null>(null)
+const mockRootResult = ref<ScanResponse | null>(null)
 const mockIsLoadingRoot = ref(false)
 const mockRadarCard = ref<RadarCard | null>(null)
 const mockIsLoadingRadar = ref(false)
@@ -35,8 +35,8 @@ const mockValidateKeyword = vi.fn()
 const mockNavigateHistory = vi.fn()
 const mockReset = vi.fn()
 
-vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
-  useCapitaineValidation: () => ({
+vi.mock('../../../src/composables/keyword/useCapitaineScan', () => ({
+  useCapitaineScan: () => ({
     result: mockResult,
     currentResult: mockCurrentResult,
     isLoading: mockIsLoading,
@@ -47,7 +47,7 @@ vi.mock('../../../src/composables/keyword/useCapitaineValidation', () => ({
     isLoadingRoot: mockIsLoadingRoot,
     radarCard: mockRadarCard,
     isLoadingRadar: mockIsLoadingRadar,
-    validateKeyword: mockValidateKeyword,
+    scanKeyword: mockValidateKeyword,
     navigateHistory: mockNavigateHistory,
     reset: mockReset,
   }),
@@ -218,7 +218,7 @@ const mockArticle: SelectedArticle = {
   source: 'proposed',
 }
 
-const fullResult: ValidateResponse = {
+const fullResult: ScanResponse = {
   keyword: 'seo local',
   articleLevel: 'pilier',
   kpis: [
@@ -817,7 +817,7 @@ describe('CaptainPanel', () => {
       })
       await nextTick()
 
-      // Should NOT have called validateKeyword automatically
+      // Should NOT have called scanKeyword automatically
       expect(mockValidateKeyword).not.toHaveBeenCalled()
       // But input should be pre-filled
       const input = wrapper.find('.keyword-input-field')
@@ -846,7 +846,7 @@ describe('CaptainPanel', () => {
       combinedScore: 65,
     }
 
-    function makeExploredKeywordEntry(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
+    function makeExploredKeywordEntry(card: RadarCard, validation: ScanResponse | null = null, overrides: Partial<any> = {}) {
       return {
         card,
         originalCard: card,
@@ -861,8 +861,8 @@ describe('CaptainPanel', () => {
       }
     }
 
-    const validationA: ValidateResponse = { ...fullResult, keyword: 'seo local' }
-    const validationB: ValidateResponse = {
+    const validationA: ScanResponse = { ...fullResult, keyword: 'seo local' }
+    const validationB: ScanResponse = {
       ...fullResult,
       keyword: 'seo technique',
       verdict: { level: 'ORANGE' as const, greenCount: 3, totalKpis: 6, autoNoGo: false },
@@ -1141,7 +1141,7 @@ describe('CaptainPanel', () => {
     })
 
     it.skip('shows carousel PAA questions when paaQuestions present in validation', async () => {
-      const validationWithPaa: ValidateResponse = {
+      const validationWithPaa: ScanResponse = {
         ...validationA,
         paaQuestions: [
           { question: 'Comment faire du SEO local ?', answer: null },
@@ -1202,18 +1202,18 @@ describe('CaptainPanel', () => {
       combinedScore: 65,
     }
 
-    const longTailValidation: ValidateResponse = {
+    const longTailValidation: ScanResponse = {
       ...fullResult,
       keyword: 'creation site web entreprise toulouse',
     }
 
-    const rootVariantValidation4: ValidateResponse = {
+    const rootVariantValidation4: ScanResponse = {
       ...fullResult,
       keyword: 'creation site web entreprise',
       verdict: { level: 'GO' as const, greenCount: 5, totalKpis: 6, autoNoGo: false },
     }
 
-    const rootVariantValidation3: ValidateResponse = {
+    const rootVariantValidation3: ScanResponse = {
       ...fullResult,
       keyword: 'creation site web',
       verdict: { level: 'ORANGE' as const, greenCount: 3, totalKpis: 6, autoNoGo: false },
@@ -1224,7 +1224,7 @@ describe('CaptainPanel', () => {
       ['creation site web', { keyword: 'creation site web', card: rootVariantCard3, validation: rootVariantValidation3 }],
     ])
 
-    function makeExploredKeywordEntryLocal(card: RadarCard, validation: ValidateResponse | null = null, overrides: Partial<any> = {}) {
+    function makeExploredKeywordEntryLocal(card: RadarCard, validation: ScanResponse | null = null, overrides: Partial<any> = {}) {
       return {
         card,
         originalCard: card,
@@ -1322,7 +1322,7 @@ describe('CaptainPanel', () => {
     // After refactoring: each validation triggers a direct saveCaptainExplorationEntry
     // call — no more debounce coalescing.
 
-    function makeEntry(keyword: string, validation: ValidateResponse | null = null) {
+    function makeEntry(keyword: string, validation: ScanResponse | null = null) {
       const card: RadarCard = {
         keyword,
         combinedScore: 50,

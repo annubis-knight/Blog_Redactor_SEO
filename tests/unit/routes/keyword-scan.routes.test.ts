@@ -89,11 +89,11 @@ function makeRes() {
 }
 
 // Import router and extract handler
-import router from '../../../server/routes/keyword-validate.routes'
+import router from '../../../server/routes/keyword-scan.routes'
 
 function getHandler() {
   const layer = (router as any).stack.find(
-    (l: any) => l.route?.path === '/keywords/:keyword/validate' && l.route?.methods?.post,
+    (l: any) => l.route?.path === '/keywords/:keyword/scan' && l.route?.methods?.post,
   )
   return layer?.route?.stack?.[0]?.handle
 }
@@ -138,7 +138,7 @@ beforeEach(() => {
   mockUpsertKeywordPaa.mockResolvedValue(undefined)
 })
 
-describe('POST /keywords/:keyword/validate', () => {
+describe('POST /keywords/:keyword/scan', () => {
   // --- AC: Validation des paramètres ---
   describe('parameter validation', () => {
     it('returns 400 when level is missing', async () => {
@@ -182,7 +182,7 @@ describe('POST /keywords/:keyword/validate', () => {
       expect(mockFetchIntentBatch).toHaveBeenCalledWith(['seo'])
     })
 
-    it('returns { data: ValidateResponse } with 6 KPIs and verdict', async () => {
+    it('returns { data: ScanResponse } with 6 KPIs and verdict', async () => {
       const handler = getHandler()
       const req = makeReq('seo', { level: 'pilier' })
       const res = makeRes()

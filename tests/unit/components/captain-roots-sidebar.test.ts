@@ -15,7 +15,7 @@ import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
 import CaptainRootsSidebar from '../../../src/components/moteur/CaptainRootsSidebar.vue'
 import type { KeywordRootVariant, RadarCard } from '../../../shared/types/intent.types'
-import type { ValidateResponse } from '../../../shared/types'
+import type { ScanResponse } from '../../../shared/types'
 
 const ScoreRingStub = {
   name: 'ScoreRing',
@@ -58,7 +58,7 @@ function makeCard(score: number, keyword = 'kw'): RadarCard {
   }
 }
 
-function makeValidation(verdict = 'GO', greenCount = 5): ValidateResponse {
+function makeValidation(verdict = 'GO', greenCount = 5): ScanResponse {
   return {
     keyword: 'x',
     articleLevel: 'pilier',

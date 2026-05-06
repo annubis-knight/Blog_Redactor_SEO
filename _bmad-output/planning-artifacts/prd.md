@@ -755,6 +755,22 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-API-VOCABULAIRE-SCAN
+Le vocabulaire **"scan"** désigne la recherche/exploration d'un mot-clé (appel DataForSEO + calcul scoring) côté backend. Le vocabulaire **"validate"** est réservé au cas spécifique de validation de painPoint utilisateur (Cerveau, route `/keywords/validate-pain`). Les composants Capitaine consomment l'endpoint `POST /api/keywords/:keyword/scan` qui retourne un `ScanResponse` typé.
+**Justification** : avant Sprint 14, le mot "validate" était utilisé pour deux choses différentes — la recherche et le verrouillage. Sprint 11 a aligné l'UI ("Verrouiller" au lieu de "Valider"). Sprint 14 finit le travail côté vocabulaire backend pour que `scan` désigne sans ambiguïté la recherche.
+**Renommages** :
+- Composable : `useCapitaineValidation` → `useCapitaineScan`. Fonction : `validateKeyword()` → `scanKeyword()`.
+- Types : `ValidateResponse` → `ScanResponse`, `ValidateVerdict` → `ScanVerdict`, `PaaQuestionValidate` → `PaaQuestionScan`.
+- Backend : `keyword-validate.service.ts` → `keyword-scan.service.ts`, `keyword-validate.routes.ts` → `keyword-scan.routes.ts`.
+- URL HTTP : `POST /api/keywords/:keyword/validate` → `POST /api/keywords/:keyword/scan`.
+
+**Critères d'acceptation testables** :
+- Recherche grep `useCapitaineValidation` dans `src/`, `tests/` retourne 0 occurrence.
+- Recherche grep `ValidateResponse|ValidateVerdict|PaaQuestionValidate` dans `src/`, `tests/`, `shared/`, `server/` retourne 0 occurrence.
+- L'URL HTTP `/keywords/:keyword/validate` n'est plus exposée par le backend. Seul `/keywords/:keyword/scan` est actif.
+- L'endpoint `/keywords/validate-pain` (validation painPoint) reste fonctionnel et inchangé.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-14-vocabulaire-backend-scan.
+
 #### FR-INFRA-EXTERNAL-API-CACHE
 La table `external_api_cache` (anciennement `api_cache`, renommée Sprint 16) cache les appels API externes en fin de vie (DataForSEO `validate`, autocomplete). Les autres cache_types historiques (`paa`, `serp`, `radar`, `discovery`, `intent`, `local-seo`, `content-gap`, `lexique`) ont été migrés vers des tables dédiées `*_explorations` au fil des migrations 006-010.
 **Schéma** : `(id SERIAL PK, cache_key TEXT, cache_type TEXT, data JSONB, cached_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, UNIQUE(cache_key, cache_type))`.

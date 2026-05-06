@@ -53,7 +53,7 @@ const currentWords = computed(() => {
  *   3. Les 2 premiers mots SIGNIFICATIFS (non-stopwords) sont SANCTUARISÉS
  *      via `lockedLeftWords: 2` : visuellement non-cliquables, ancrent la
  *      racine du capitaine. Aligné sur la contrainte d'`extractRoots` qui
- *      exige déjà ≥ 2 mots significatifs (cf. useCapitaineValidation.ts).
+ *      exige déjà ≥ 2 mots significatifs (cf. useCapitaineScan.ts).
  */
 const interactiveWordsProps = computed(() => {
   if (currentWords.value.length < 3) return undefined

@@ -59,7 +59,7 @@ vi.mock('../../server/db/cache-helpers', () => ({
 
 import { getCached, slugify } from '../../server/db/cache-helpers'
 import { loadPrompt } from '../../server/utils/prompt-loader'
-import { extractRoots, articleTypeToLevel } from '../../src/composables/keyword/useCapitaineValidation'
+import { extractRoots, articleTypeToLevel } from '../../src/composables/keyword/useCapitaineScan'
 import { checkKeywordComposition } from '../../shared/composition-rules'
 import type { SerpAnalysisResult, SerpCompetitor } from '../../shared/types/serp-analysis.types'
 import type { PaaQuestion } from '../../shared/types/dataforseo.types'

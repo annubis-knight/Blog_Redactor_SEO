@@ -2,7 +2,7 @@
 import { ref, computed, watch, nextTick, onUnmounted, onBeforeUnmount } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { marked } from 'marked'
-import { useCapitaineValidation, articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
+import { useCapitaineScan, articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useExploredKeywords } from '@/composables/keyword/useExploredKeywords'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
@@ -25,7 +25,7 @@ import CaptainLockPanel from '@/components/moteur/CaptainLockPanel.vue'
 import UnlockLieutenantsModal from '@/components/moteur/UnlockLieutenantsModal.vue'
 import CaptainSidePanel from '@/components/moteur/CaptainSidePanel.vue'
 import CaptainRadarList from '@/components/moteur/captain/CaptainRadarList.vue'
-import type { SelectedArticle, KpiResult, VerdictLevel, ValidateVerdict, ValidateResponse, ArticleLevel } from '@shared/types/index.js'
+import type { SelectedArticle, KpiResult, VerdictLevel, ScanVerdict, ScanResponse, ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard } from '@shared/types/intent.types.js'
 
 // Configure marked
@@ -88,8 +88,8 @@ const {
   currentResult, isLoading, error,
   history, historyIndex, rootResult, isLoadingRoot,
   radarCard, isLoadingRadar,
-  validateKeyword, navigateHistory, reset,
-} = useCapitaineValidation()
+  scanKeyword, navigateHistory, reset,
+} = useCapitaineScan()
 
 const articleLevel = computed<ArticleLevel>(() => {
   if (props.mode === 'libre' || !props.selectedArticle) return 'intermediaire'
@@ -198,7 +198,7 @@ watch(
 )
 
 // --- Verdict display ---
-function getVerdictLabel(verdict: ValidateVerdict): string {
+function getVerdictLabel(verdict: ScanVerdict): string {
   if (verdict.autoNoGo) return 'Aucun signal détecté — ce mot-clé n\'existe pas dans les données.'
   if (verdict.level === 'GO') return 'Signaux positifs — mot-clé viable.'
   if (verdict.level === 'ORANGE') return 'Signaux mixtes — à étudier.'
@@ -215,7 +215,7 @@ const verdictLabel = computed(() => {
   return getVerdictLabel(currentResult.value.verdict)
 })
 
-function noGoFeedback(verdict: ValidateVerdict, kpis: KpiResult[]): string {
+function noGoFeedback(verdict: ScanVerdict, kpis: KpiResult[]): string {
   if (verdict.autoNoGo) return 'Aucun signal détecté — ce mot-clé n\'existe pas dans les données.'
   const volume = kpis.find(k => k.name === 'volume')
   const kd = kpis.find(k => k.name === 'kd')
@@ -395,7 +395,7 @@ function chipVerdictColor(entry: { verdict: { level: VerdictLevel } }): string {
 
 function handleSuggestedClick(kw: string) {
   keywordInput.value = kw
-  validateKeyword(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.painPoint ?? undefined, props.selectedArticle?.id)
+  scanKeyword(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.painPoint ?? undefined, props.selectedArticle?.id)
 }
 
 function handleHistoryClick(index: number) {
@@ -532,7 +532,7 @@ function touchAiCache() { carouselAiCache.value = new Map(carouselAiCache.value)
 function touchAiStreaming() { carouselAiStreaming.value = new Set(carouselAiStreaming.value) }
 function touchAiErrors() { carouselAiErrors.value = new Map(carouselAiErrors.value) }
 
-function launchAiStream(keyword: string, validation: ValidateResponse, force = false) {
+function launchAiStream(keyword: string, validation: ScanResponse, force = false) {
   // Sprint 3.2 — `force` allows the regenerate button to bypass the in-memory
   // cache and re-stream from Claude. We also drop the persistedAiPanels guard
   // so the new markdown is re-saved.
@@ -946,7 +946,7 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
  * malgré un painPoint défini (cas "no-signals").
  *
  * On délègue à `carousel.addEntry()` qui ré-injecte la card via
- * `validateKeyword(keyword, level, title, painPoint, articleId)` —
+ * `scanKeyword(keyword, level, title, painPoint, articleId)` —
  * même chemin que la validation initiale, donc cohérent.
  */
 async function handleRecomputeRelevance(card: { keyword: string }) {
@@ -979,7 +979,7 @@ const activeVariantKeyword = computed(() => {
   return entry.card.keyword
 })
 
-function switchToVariant(variant: { keyword: string; card: RadarCard; validation: ValidateResponse }) {
+function switchToVariant(variant: { keyword: string; card: RadarCard; validation: ScanResponse }) {
   if (selectedIndex.value === null) return
   const idx = selectedIndex.value
   const entry = carousel.entries.value[idx]

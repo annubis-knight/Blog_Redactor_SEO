@@ -2,7 +2,7 @@ import { ref } from 'vue'
 import { defineStore } from 'pinia'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import type { ValidateResponse, ArticleLevel, CaptainValidationEntry } from '@shared/types/index.js'
+import type { ScanResponse, ArticleLevel, CaptainValidationEntry } from '@shared/types/index.js'
 
 /**
  * Sprint 16 refinement — Global Pinia store for the Discovery→Captain pre-validation.
@@ -79,8 +79,8 @@ export const useCaptainTriggerStore = defineStore('captain-trigger', () => {
 
   async function runValidation(entry: PendingValidation) {
     try {
-      const response = await apiPost<ValidateResponse>(
-        `/keywords/${encodeURIComponent(entry.keyword)}/validate`,
+      const response = await apiPost<ScanResponse>(
+        `/keywords/${encodeURIComponent(entry.keyword)}/scan`,
         { level: entry.articleLevel, articleId: entry.articleId, ...(entry.painPoint ? { painPoint: entry.painPoint } : {}) },
       )
       const exploration: CaptainValidationEntry = {

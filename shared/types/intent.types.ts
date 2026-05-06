@@ -1,4 +1,4 @@
-import type { ValidateResponse } from './keyword-validate.types.js'
+import type { ScanResponse } from './keyword-validate.types.js'
 import type { MarketScoreResult, RelevanceScoreResult, RelevanceUnavailableReason } from './scoring.types.js'
 
 // --- SERP Module Detection (Epic 11) ---
@@ -350,7 +350,7 @@ export interface RadarCard {
 export interface KeywordRootVariant {
   keyword: string
   card: RadarCard
-  validation: ValidateResponse
+  validation: ScanResponse
 }
 
 export interface KeywordRadarScanResult {
