@@ -40,35 +40,38 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
+/**
+ * Le dropdown vit dans le bloc `.proposal-details` rendu uniquement quand
+ * l'article est déplié (v-if="expanded"). On clique donc sur la zone pour
+ * déplier avant d'inspecter le select.
+ */
+async function mountExpanded(article: ProposedArticle) {
+  const wrapper = mount(ProposedArticleRow, { props: { article, index: 0 } })
+  await wrapper.find('.proposal-item').trigger('click')
+  return wrapper
+}
+
 describe('ProposedArticleRow — pain intent expected dropdown', () => {
-  it('expose un select avec data-testid="pain-intent-select"', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle(), index: 0 },
-    })
+  it('expose un select avec data-testid="pain-intent-select"', async () => {
+    const wrapper = await mountExpanded(makeArticle())
     const select = wrapper.find('[data-testid="pain-intent-select"]')
     expect(select.exists()).toBe(true)
   })
 
-  it('affiche la valeur courante painIntentExpected', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ painIntentExpected: 'commercial' }), index: 0 },
-    })
+  it('affiche la valeur courante painIntentExpected', async () => {
+    const wrapper = await mountExpanded(makeArticle({ painIntentExpected: 'commercial' }))
     const select = wrapper.find<HTMLSelectElement>('[data-testid="pain-intent-select"]')
     expect(select.element.value).toBe('commercial')
   })
 
-  it('affiche la valeur vide quand painIntentExpected est null', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ painIntentExpected: null }), index: 0 },
-    })
+  it('affiche la valeur vide quand painIntentExpected est null', async () => {
+    const wrapper = await mountExpanded(makeArticle({ painIntentExpected: null }))
     const select = wrapper.find<HTMLSelectElement>('[data-testid="pain-intent-select"]')
     expect(select.element.value).toBe('')
   })
 
-  it('contient exactement 5 options : 4 valeurs + Non défini', () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle(), index: 0 },
-    })
+  it('contient exactement 5 options : 4 valeurs + Non défini', async () => {
+    const wrapper = await mountExpanded(makeArticle())
     const options = wrapper.findAll('[data-testid="pain-intent-select"] option')
     expect(options).toHaveLength(5)
     const values = options.map(o => o.attributes('value'))
@@ -80,9 +83,7 @@ describe('ProposedArticleRow — pain intent expected dropdown', () => {
   })
 
   it('émet update:pain-intent-expected quand l\'utilisateur change la valeur', async () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ painIntentExpected: 'informational' }), index: 0 },
-    })
+    const wrapper = await mountExpanded(makeArticle({ painIntentExpected: 'informational' }))
     const select = wrapper.find('[data-testid="pain-intent-select"]')
     await select.setValue('commercial')
     expect(wrapper.emitted('update:pain-intent-expected')).toBeTruthy()
@@ -90,9 +91,7 @@ describe('ProposedArticleRow — pain intent expected dropdown', () => {
   })
 
   it('émet null quand l\'utilisateur sélectionne « Non défini »', async () => {
-    const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ painIntentExpected: 'commercial' }), index: 0 },
-    })
+    const wrapper = await mountExpanded(makeArticle({ painIntentExpected: 'commercial' }))
     const select = wrapper.find('[data-testid="pain-intent-select"]')
     await select.setValue('')
     expect(wrapper.emitted('update:pain-intent-expected')).toBeTruthy()

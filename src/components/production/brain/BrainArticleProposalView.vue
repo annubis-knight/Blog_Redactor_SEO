@@ -7,6 +7,7 @@ import GenerationStepper from '@/components/production/GenerationStepper.vue'
 import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
 import type { ProposedArticle, SuggestedTopic, CompositionCheckResult } from '@shared/types/index.js'
 import type { ArticleType } from '@shared/types/article.types.js'
+import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 
 export type GenerationPhase = 'idle' | 'structure' | 'paa-queries' | 'paa-fetch' | 'specialises' | 'done' | 'error'
 
@@ -66,6 +67,7 @@ const emit = defineEmits<{
   (e: 'edit-title', index: number, value: string): void
   (e: 'edit-keyword', index: number, value: string): void
   (e: 'edit-slug', index: number, value: string): void
+  (e: 'update-pain-intent', index: number, value: PainIntentExpected | null): void
 }>()
 
 const articleSlide = ref(0)
@@ -235,7 +237,8 @@ function isProcessing(phase: GenerationPhase): boolean {
               @remove="(i: number) => emit('remove-proposed', i)"
               @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
               @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
-              @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)" />
+              @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)"
+              @update:pain-intent-expected="(v: PainIntentExpected | null) => emit('update-pain-intent', article.originalIndex, v)" />
             <AddArticleMenu
               :is-loading="addingArticleType === 'Pilier'"
               :disabled="addingArticleType !== null"
@@ -266,7 +269,8 @@ function isProcessing(phase: GenerationPhase): boolean {
               @remove="(i: number) => emit('remove-proposed', i)"
               @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
               @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
-              @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)" />
+              @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)"
+              @update:pain-intent-expected="(v: PainIntentExpected | null) => emit('update-pain-intent', article.originalIndex, v)" />
             <AddArticleMenu
               :is-loading="addingArticleType === 'Intermédiaire'"
               :disabled="addingArticleType !== null"
@@ -307,7 +311,8 @@ function isProcessing(phase: GenerationPhase): boolean {
                 @change-parent="(i: number, p: string) => emit('change-parent', i, p)"
                 @edit-title="(i: number, v: string) => emit('edit-title', i, v)"
                 @edit-keyword="(i: number, v: string) => emit('edit-keyword', i, v)"
-                @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)" />
+                @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)"
+                @update:pain-intent-expected="(v: PainIntentExpected | null) => emit('update-pain-intent', article.originalIndex, v)" />
             </div>
             <AddArticleMenu
               :is-loading="addingArticleType === 'Spécialisé'"

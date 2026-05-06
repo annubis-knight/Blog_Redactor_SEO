@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, nextTick } from 'vue'
 import type { ProposedArticle, CompositionCheckResult } from '@shared/types/index.js'
+import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { IconEdit } from '@/components/shared/icons'
 import ProposedArticleSliderNav from '@/components/strategy/proposed/ProposedArticleSliderNav.vue'
 import ProposedArticleCompositionTooltip from '@/components/strategy/proposed/ProposedArticleCompositionTooltip.vue'
@@ -27,7 +28,25 @@ const emit = defineEmits<{
   (e: 'edit-title', index: number, value: string): void
   (e: 'edit-keyword', index: number, value: string): void
   (e: 'edit-slug', index: number, value: string): void
+  (e: 'update:pain-intent-expected', value: PainIntentExpected | null): void
 }>()
+
+/** Options du dropdown radio (FR-PIE-CERVEAU-OVERRIDE).
+ *  L'ordre est aligné sur la fréquence d'usage SEO : informational en premier
+ *  (default IA pour la majorité des articles), navigational en dernier (rare). */
+const PAIN_INTENT_OPTIONS: Array<{ value: PainIntentExpected; label: string }> = [
+  { value: 'informational', label: 'Informationnelle (explique, guide, éduque)' },
+  { value: 'commercial', label: 'Commerciale (comparatif, sélection)' },
+  { value: 'transactional', label: 'Transactionnelle (achat, conversion)' },
+  { value: 'navigational', label: 'Navigationnelle (page produit/marque)' },
+]
+
+function handlePainIntentChange(event: Event) {
+  const target = event.target as HTMLSelectElement
+  const value = target.value
+  // String vide → null (« Non défini ») ; sinon, valeur typée garantie par les options du <select>.
+  emit('update:pain-intent-expected', value === '' ? null : (value as PainIntentExpected))
+}
 
 const keywords = computed(() => props.article.suggestedKeywords?.length ? props.article.suggestedKeywords : [props.article.suggestedKeyword])
 const currentKeywordIndex = computed(() => {
@@ -275,6 +294,25 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
         <span class="pain-point-text">{{ article.painPoint }}</span>
       </div>
 
+      <!-- FR-PIE-CERVEAU-OVERRIDE : dropdown radio single-select pour corriger
+           l'intent éditorial généré par l'IA. La valeur alimente le 5e signal
+           du Score Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL). -->
+      <div class="detail-pain-intent">
+        <label :for="`pain-intent-${index}`" class="keyword-label">Intention éditoriale</label>
+        <select
+          :id="`pain-intent-${index}`"
+          data-testid="pain-intent-select"
+          class="pain-intent-select"
+          :value="article.painIntentExpected ?? ''"
+          @change="handlePainIntentChange"
+        >
+          <option value="">Non défini</option>
+          <option v-for="opt in PAIN_INTENT_OPTIONS" :key="opt.value" :value="opt.value">
+            {{ opt.label }}
+          </option>
+        </select>
+      </div>
+
       <p v-if="article.rationale" class="detail-rationale">{{ article.rationale }}</p>
 
       <ProposedArticleActions
@@ -510,6 +548,35 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
   font-size: 0.75rem;
   color: var(--color-text);
   line-height: 1.4;
+}
+
+.detail-pain-intent {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding-top: 0.625rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.pain-intent-select {
+  font-size: 0.75rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  cursor: pointer;
+  width: fit-content;
+  min-width: 220px;
+}
+
+.pain-intent-select:hover {
+  border-color: var(--color-primary, #3b82f6);
+}
+
+.pain-intent-select:focus {
+  outline: 2px solid var(--color-primary, #3b82f6);
+  outline-offset: 1px;
 }
 
 .detail-rationale {
