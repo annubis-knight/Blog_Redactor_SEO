@@ -55,7 +55,7 @@ function formatDate(iso: string | null | undefined): string {
 </script>
 
 <template>
-  <div class="finalisation" data-testid="finalisation-recap">
+  <div class="finalisation" data-testid="finalisation-panel">
     <header class="finalisation__header">
       <h2 class="finalisation__title">✅ Prêt pour la Rédaction</h2>
       <p class="finalisation__subtitle">

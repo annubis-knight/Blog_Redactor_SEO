@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
-import LieutenantsSelection from '../../../src/components/moteur/LieutenantsSelection.vue'
+import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '../../../shared/types/index'
 import type { WordGroup } from '../../../shared/types/discovery-tab.types'
 import type { FilteredProposeLieutenantsResult, ProposedLieutenant } from '../../../shared/types/serp-analysis.types'
@@ -210,7 +210,7 @@ const LieutenantCardStub = {
 }
 
 function mountComponent(overrides: Record<string, unknown> = {}) {
-  return mount(LieutenantsSelection, {
+  return mount(LieutenantsPanel, {
     props: {
       selectedArticle: ARTICLE,
       mode: 'workflow',
@@ -291,7 +291,7 @@ beforeEach(() => {
   mockSaveKeywords.mockClear()
 })
 
-describe('LieutenantsSelection', () => {
+describe('LieutenantsPanel', () => {
   // --- Header (Sprint 1, 2026-05-04) ---
   // Le bloc legacy `.lieutenants-header` (rappel Capitaine + level) a été
   // supprimé. Le rappel Capitaine était redondant avec MoteurContextRecap.
@@ -300,7 +300,7 @@ describe('LieutenantsSelection', () => {
     it('article level apparaît dans le DOM via LieutenantProposals header', async () => {
       const w = await mountWithResults({ articleLevel: 'intermediaire' })
       // Le badge est rendu dans LieutenantProposals (container principal),
-      // pas dans LieutenantsSelection. On vérifie sa présence dans le DOM rendu.
+      // pas dans LieutenantsPanel. On vérifie sa présence dans le DOM rendu.
       expect(w.html().toLowerCase()).toContain('intermediaire')
     })
 

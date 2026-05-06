@@ -147,7 +147,7 @@ const canExtract = computed(() =>
 watch(
   () => articleKeywordsStore.keywords,
   (kw) => {
-    log.debug('[LexiqueExtraction] store keywords snapshot', {
+    log.debug('[LexiquePanel] store keywords snapshot', {
       articleId: props.selectedArticle?.id,
       lexiqueTerms: kw?.lexique ?? [],
       lexiqueCount: kw?.lexique?.length ?? 0,
@@ -166,7 +166,7 @@ function handleAssistAdd(term: string) {
   const next = new Set(selectedTerms.value)
   next.add(term)
   selectedTerms.value = next
-  log.info('[LexiqueExtraction] Assist add', { term, total: selectedTerms.value.size })
+  log.info('[LexiquePanel] Assist add', { term, total: selectedTerms.value.size })
 }
 
 async function extractLexique() {
@@ -218,7 +218,7 @@ const selectedByLevel = computed(() => {
 watch(tfidfResult, (res) => {
   if (!res) return
   if (iaRecommendations.value.size > 0) {
-    log.debug('[LexiqueExtraction] Skip IA upfront — session cache already populated', { count: iaRecommendations.value.size })
+    log.debug('[LexiquePanel] Skip IA upfront — session cache already populated', { count: iaRecommendations.value.size })
     return
   }
   generateLexiqueUpfront()
@@ -238,7 +238,7 @@ async function validateLexique() {
 
   isLocked.value = true
   emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
-  log.info(`[LexiqueExtraction] Lexique validated with ${terms.length} terms`)
+  log.info(`[LexiquePanel] Lexique validated with ${terms.length} terms`)
 }
 
 function unlockLexique() {
@@ -255,7 +255,7 @@ async function fetchTfidf(keywordOverride?: string) {
   error.value = null
 
   try {
-    log.info(`[LexiqueExtraction] Fetching TF-IDF for "${keyword}"`)
+    log.info(`[LexiquePanel] Fetching TF-IDF for "${keyword}"`)
     const result = await apiPost<TfidfResult>('/serp/tfidf', {
       keyword,
       articleId: props.selectedArticle?.id ?? undefined,
@@ -269,10 +269,10 @@ async function fetchTfidf(keywordOverride?: string) {
     }
     selectedTerms.value = preChecked
 
-    log.info(`[LexiqueExtraction] TF-IDF loaded: ${result.obligatoire.length}O + ${result.differenciateur.length}D + ${result.optionnel.length}Op`)
+    log.info(`[LexiquePanel] TF-IDF loaded: ${result.obligatoire.length}O + ${result.differenciateur.length}D + ${result.optionnel.length}Op`)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erreur inconnue'
-    log.error(`[LexiqueExtraction] TF-IDF fetch failed`, { error: error.value })
+    log.error(`[LexiquePanel] TF-IDF fetch failed`, { error: error.value })
   } finally {
     isLoading.value = false
   }
@@ -290,7 +290,7 @@ async function hydrateFromDb() {
   try {
     const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(`/articles/${id}/explorations`)
     pastExplorations.value = payload.lexique ?? []
-    log.debug('[LexiqueExtraction] DB hydration', { count: pastExplorations.value.length })
+    log.debug('[LexiquePanel] DB hydration', { count: pastExplorations.value.length })
 
     // Restore the exploration that matches the capitaine, if any.
     const active = activeSourceKeyword.value || props.captainKeyword || ''
@@ -301,10 +301,10 @@ async function hydrateFromDb() {
       const map = new Map<string, LexiqueTermRecommendation>()
       for (const rec of match.aiRecommendations) map.set(rec.term.toLowerCase(), rec)
       iaRecommendations.value = map
-      log.info(`[LexiqueExtraction] Restored from DB for "${match.sourceKeyword}" (${shouldRegenerate(match.exploredAt) ? 'stale' : 'fresh'})`)
+      log.info(`[LexiquePanel] Restored from DB for "${match.sourceKeyword}" (${shouldRegenerate(match.exploredAt) ? 'stale' : 'fresh'})`)
     }
   } catch (err) {
-    log.warn(`[LexiqueExtraction] DB hydration failed — ${(err as Error).message}`)
+    log.warn(`[LexiquePanel] DB hydration failed — ${(err as Error).message}`)
   }
 }
 
@@ -367,9 +367,9 @@ async function mergeFromDb() {
     if (additions.length > 0) {
       pastExplorations.value = [...pastExplorations.value, ...additions]
     }
-    log.info(`[LexiqueExtraction] Merged ${additions.length} explorations from DB (skipped ${incoming.length - additions.length} duplicates)`)
+    log.info(`[LexiquePanel] Merged ${additions.length} explorations from DB (skipped ${incoming.length - additions.length} duplicates)`)
   } catch (err) {
-    log.warn(`[LexiqueExtraction] DB merge failed — ${(err as Error).message}`)
+    log.warn(`[LexiquePanel] DB merge failed — ${(err as Error).message}`)
   }
 }
 

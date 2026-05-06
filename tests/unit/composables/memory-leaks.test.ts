@@ -117,26 +117,26 @@ describe('useKeywordRadar — timer cleanup', () => {
 })
 
 // ============================================================
-// useKeywordDiscoveryTab — relevanceScores bounded
+// useDiscoveryPanel — relevanceScores bounded
 // ============================================================
 
-describe('useKeywordDiscoveryTab — relevanceScores bounded', () => {
+describe('useDiscoveryPanel — relevanceScores bounded', () => {
   it('relevanceScores is bounded to 500 entries max after mergeScores', async () => {
     // Mock all additional dependencies
-    vi.doMock('../../../src/composables/keyword/useKeywordDiscoveryTab', async (importOriginal) => {
+    vi.doMock('../../../src/composables/keyword/useDiscoveryPanel', async (importOriginal) => {
       return await importOriginal()
     })
 
-    const { useKeywordDiscoveryTab } = await import('../../../src/composables/keyword/useKeywordDiscoveryTab')
+    const { useDiscoveryPanel } = await import('../../../src/composables/keyword/useDiscoveryPanel')
 
     // We need a Vue component context for computed refs
     const { createApp, defineComponent, h } = await import('vue')
 
-    let tabInstance: ReturnType<typeof useKeywordDiscoveryTab> | null = null
+    let tabInstance: ReturnType<typeof useDiscoveryPanel> | null = null
 
     const TestComp = defineComponent({
       setup() {
-        tabInstance = useKeywordDiscoveryTab()
+        tabInstance = useDiscoveryPanel()
         return () => h('div')
       },
     })

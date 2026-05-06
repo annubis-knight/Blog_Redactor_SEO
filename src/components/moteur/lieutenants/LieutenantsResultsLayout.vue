@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Vague 3 — Sous-composant Vue extrait de LieutenantsSelection.
+ * Vague 3 — Sous-composant Vue extrait de LieutenantsPanel.
  *
  * Référence FR PRD : FR-LIE-AI-FRONTIER (PRD §8.7).
  *

@@ -51,8 +51,8 @@ describe('article-keywords.store — mergeCaptainHistory', () => {
   it('ajoute uniquement les entrées absentes (clé = keyword lowercased)', () => {
     const store = useArticleKeywordsStore()
     store.initEmpty(1)
-    store.addCaptainValidation(entry('design émotionnel'))
-    store.addCaptainValidation(entry('UX émotionnelle'))
+    store.addCaptainPanel(entry('design émotionnel'))
+    store.addCaptainPanel(entry('UX émotionnelle'))
     expect(store.captainValidationHistory).toHaveLength(2)
 
     // Payload contient une dup (case différente) + une nouvelle entrée
@@ -81,7 +81,7 @@ describe('article-keywords.store — mergeCaptainHistory', () => {
   it('respecte la limite MAX_VALIDATION_HISTORY (30) après merge', () => {
     const store = useArticleKeywordsStore()
     store.initEmpty(1)
-    for (let i = 0; i < 25; i++) store.addCaptainValidation(entry(`kw-${i}`))
+    for (let i = 0; i < 25; i++) store.addCaptainPanel(entry(`kw-${i}`))
     expect(store.captainValidationHistory).toHaveLength(25)
 
     // Ajoute 10 nouveaux via merge → total 35, doit être tronqué à 30

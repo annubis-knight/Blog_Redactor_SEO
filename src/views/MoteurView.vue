@@ -6,7 +6,7 @@ import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
-import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
+import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useArticleResults } from '@/composables/editor/useArticleResults'
 import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
@@ -33,14 +33,14 @@ import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
-import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
-import DouleurIntentScanner from '@/components/intent/DouleurIntentScanner.vue'
+import DiscoveryPanel from '@/components/moteur/DiscoveryPanel.vue'
+import RadarPanel from '@/components/intent/RadarPanel.vue'
 
 // Phase ② Valider
-import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
-import LieutenantsSelection from '@/components/moteur/LieutenantsSelection.vue'
-import LexiqueExtraction from '@/components/moteur/LexiqueExtraction.vue'
-import FinalisationRecap from '@/components/moteur/FinalisationRecap.vue'
+import CaptainPanel from '@/components/moteur/CaptainPanel.vue'
+import LieutenantsPanel from '@/components/moteur/LieutenantsPanel.vue'
+import LexiquePanel from '@/components/moteur/LexiquePanel.vue'
+import FinalisationPanel from '@/components/moteur/FinalisationPanel.vue'
 
 import { useRouter } from 'vue-router'
 
@@ -51,7 +51,7 @@ const keywordsStore = useKeywordsStore()
 const strategyStore = useCocoonStrategyStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const articleProgressStore = useArticleProgressStore()
-const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroups } = useKeywordDiscoveryTab()
+const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroups } = useDiscoveryPanel()
 const basketStore = useMoteurBasketStore()
 const workflowNavStore = useWorkflowNavStore()
 
@@ -223,7 +223,7 @@ function handleSelectArticle(article: SelectedArticle | null) {
   // fusionne sans écraser l'état mémoire et déclenche correctement la
   // restauration du container Capitaine (validationHistory). fetchKeywords
   // (replace) provoquait une race condition avec une stub-entry du watcher
-  // CaptainValidation, laissant souvent 0-1 carte affichée alors que la DB
+  // CaptainPanel, laissant souvent 0-1 carte affichée alors que la DB
   // en contenait davantage.
   if (article) {
     articleKeywordsStore.fetchKeywordsMerge(article.id)
@@ -315,7 +315,7 @@ const articleLevelForLieutenants = computed(() => {
   return (typeMap[selectedArticle.value.type ?? ''] ?? 'intermediaire') as 'pilier' | 'intermediaire' | 'specifique'
 })
 
-// --- Suggested keywords from strategy for CaptainValidation ---
+// --- Suggested keywords from strategy for CaptainPanel ---
 const suggestedKeywordsForArticle = computed(() => {
   if (!selectedArticle.value) return []
   const title = selectedArticle.value.title
@@ -533,7 +533,7 @@ onMounted(() => {
         <!-- Phase ① Générer — Discovery -->
         <!-- Sprint 1.2 — PainTranslator retiré du workflow (toujours dispo dans LaboView pour expérimenter). -->
         <div v-if="visitedTabs.discovery" v-show="activeTab === 'discovery'" class="tab-content">
-          <KeywordDiscoveryTab
+          <DiscoveryPanel
             mode="workflow"
             :pilier-keyword="cocoon?.name ?? pilierKeyword"
             :article-id="selectedArticle?.id ?? null"
@@ -549,7 +549,7 @@ onMounted(() => {
 
         <!-- Phase ① Générer — Radar -->
         <div v-if="visitedTabs.radar" v-show="activeTab === 'radar'" class="tab-content">
-          <DouleurIntentScanner
+          <RadarPanel
             ref="radarRef"
             mode="workflow"
             :pilier-keyword="cocoon?.name ?? pilierKeyword"
@@ -567,7 +567,7 @@ onMounted(() => {
 
         <!-- Phase ② Valider — Capitaine -->
         <div v-if="visitedTabs.capitaine" v-show="activeTab === 'capitaine'" class="tab-content">
-          <CaptainValidation
+          <CaptainPanel
             :selected-article="selectedArticle"
             mode="workflow"
             :initial-locked="isCaptaineLocked"
@@ -581,7 +581,7 @@ onMounted(() => {
 
         <!-- Phase ② Valider — Lieutenants (gating souple : nécessite Capitaine verrouillé) -->
         <div v-if="visitedTabs.lieutenants" v-show="activeTab === 'lieutenants'" class="tab-content">
-          <LieutenantsSelection
+          <LieutenantsPanel
             :selected-article="selectedArticle"
             :mode="'workflow'"
             :captain-keyword="captainKeyword"
@@ -602,7 +602,7 @@ onMounted(() => {
           <div v-if="!isCaptaineLocked" class="soft-gate-message">
             <p>Verrouillez d'abord le Capitaine pour débloquer les actions Lexique.</p>
           </div>
-          <LexiqueExtraction
+          <LexiquePanel
             ref="lexiqueRef"
             :selected-article="selectedArticle"
             :captain-keyword="captainKeyword"
@@ -621,7 +621,7 @@ onMounted(() => {
              accessible via la nav, mais le bouton "Continuer vers la Rédaction"
              est désactivé tant que les 3 verrous Phase ② ne sont pas posés. -->
         <div v-if="visitedTabs.finalisation" v-show="activeTab === 'finalisation'" class="tab-content">
-          <FinalisationRecap
+          <FinalisationPanel
             :selected-article="selectedArticle"
             @navigate-redaction="navigateToRedaction"
           />

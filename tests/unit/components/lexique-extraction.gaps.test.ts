@@ -1,5 +1,5 @@
 /**
- * Tests COMPLÉMENTAIRES pour LexiqueExtraction.
+ * Tests COMPLÉMENTAIRES pour LexiquePanel.
  *
  * Le fichier `lexique-extraction.test.ts` couvre 64 tests (extraction TF-IDF,
  * IA upfront, badges, validation/lock, error fallback). Ce fichier ajoute les
@@ -16,7 +16,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
-import LexiqueExtraction from '../../../src/components/moteur/LexiqueExtraction.vue'
+import LexiquePanel from '../../../src/components/moteur/LexiquePanel.vue'
 import type { LexiqueAnalysisResult, TfidfResult, LexiqueTermRecommendation } from '../../../shared/types/serp-analysis.types'
 
 // --- Mocks API ---
@@ -122,7 +122,7 @@ const baseProps = {
 }
 
 function mountLexique(propsOverride: Partial<typeof baseProps> = {}) {
-  return mount(LexiqueExtraction, {
+  return mount(LexiquePanel, {
     props: { ...baseProps, ...propsOverride },
     global: {
       stubs: {
@@ -141,7 +141,7 @@ function mountLexique(propsOverride: Partial<typeof baseProps> = {}) {
 // ============================================================================
 // Trou A — handleAssistAdd
 // ============================================================================
-describe('LexiqueExtraction — handleAssistAdd (basket)', () => {
+describe('LexiquePanel — handleAssistAdd (basket)', () => {
   it('emit add depuis KeywordAssistPanel ajoute un terme à selectedTerms', async () => {
     // L'auto-fetch TF-IDF + pré-sélection peut ajouter des termes au démarrage.
     // On capture l'état avant le clic, puis on vérifie qu'un nouveau terme a
@@ -177,7 +177,7 @@ describe('LexiqueExtraction — handleAssistAdd (basket)', () => {
 // ============================================================================
 // Trou B — extractCustomKeyword (D4)
 // ============================================================================
-describe('LexiqueExtraction — extractCustomKeyword (D4)', () => {
+describe('LexiquePanel — extractCustomKeyword (D4)', () => {
   it('saisie + Entrée dans .multi-keyword-input lance fetchTfidf avec le custom keyword', async () => {
     const wrapper = mountLexique()
     await nextTick()
@@ -231,7 +231,7 @@ describe('LexiqueExtraction — extractCustomKeyword (D4)', () => {
 // ============================================================================
 // Trou C — pastExplorations chips
 // ============================================================================
-describe('LexiqueExtraction — pastExplorations chips', () => {
+describe('LexiquePanel — pastExplorations chips', () => {
   it('charge les past explorations au mount via /articles/:id/explorations', async () => {
     mockApiGet.mockResolvedValue({
       lexique: [
@@ -305,7 +305,7 @@ describe('LexiqueExtraction — pastExplorations chips', () => {
 // ============================================================================
 // Trou D — hydrateFromDb (restauration au mount)
 // ============================================================================
-describe('LexiqueExtraction — hydrateFromDb', () => {
+describe('LexiquePanel — hydrateFromDb', () => {
   it('au mount avec captainLocked, GET /articles/:id/explorations est appelé', async () => {
     mockApiGet.mockClear()
     const wrapper = mountLexique()
@@ -370,7 +370,7 @@ describe('LexiqueExtraction — hydrateFromDb', () => {
 // ============================================================================
 // Trou E — hasEverValidated (F5 soft gate)
 // ============================================================================
-describe('LexiqueExtraction — hasEverValidated (F5 soft gate)', () => {
+describe('LexiquePanel — hasEverValidated (F5 soft gate)', () => {
   it('canExtract=true si captain locked + 0 lexique en store (cas standard)', async () => {
     mockKeywords.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: [] }
     const wrapper = mountLexique({ isCaptaineLocked: true })

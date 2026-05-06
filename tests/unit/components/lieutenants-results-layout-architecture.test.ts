@@ -5,7 +5,7 @@
  *
  * Ces tests doublent le verrou Sprint C-1 (`lieutenants-selection-architecture.test.ts`)
  * mais à un niveau plus fin : ils s'exécutent sur le sous-composant ISOLÉ,
- * sans monter LieutenantsSelection.
+ * sans monter LieutenantsPanel.
  *
  * Invariant : LieutenantProposals et LieutenantH2Structure sont descendants
  * directs de `.serp-results` (root du sous-composant), JAMAIS du

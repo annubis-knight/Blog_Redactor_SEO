@@ -1,5 +1,5 @@
 /**
- * Tests pour DouleurIntentScanner — Onglet Radar du Moteur.
+ * Tests pour RadarPanel — Onglet Radar du Moteur.
  *
  * Couvre les actions utilisateur :
  * - 3 inputs (broadKeyword, specificTopic, painPoint)
@@ -20,7 +20,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import DouleurIntentScanner from '../../../src/components/intent/DouleurIntentScanner.vue'
+import RadarPanel from '../../../src/components/intent/RadarPanel.vue'
 
 // ===== Mock useKeywordRadar =====
 const mockGeneratedKeywords = ref<{ keyword: string; reasoning?: string }[]>([])
@@ -126,7 +126,7 @@ function makeCard(keyword: string, cpc = 1.5, paaTotal = 3) {
 const mountedWrappers: Array<{ unmount: () => void }> = []
 
 function mountScanner(propsOverride: Partial<typeof baseProps> = {}) {
-  const wrapper = mount(DouleurIntentScanner, {
+  const wrapper = mount(RadarPanel, {
     props: { ...baseProps, ...propsOverride },
     attachTo: document.body,
   })
@@ -151,7 +151,7 @@ afterEach(() => {
 // ============================================================================
 // Phase 2 — Keywords générés (preview, suppression, scan)
 // ============================================================================
-describe('DouleurIntentScanner — phase 2 : keywords preview', () => {
+describe('RadarPanel — phase 2 : keywords preview', () => {
   it('phase keywords : tags affichés avec compteur', () => {
     mockGeneratedKeywords.value = [
       { keyword: 'foo', reasoning: 'r1' },
@@ -198,7 +198,7 @@ describe('DouleurIntentScanner — phase 2 : keywords preview', () => {
 // ============================================================================
 // Phase 3 — Scanning state
 // ============================================================================
-describe('DouleurIntentScanner — phase scanning', () => {
+describe('RadarPanel — phase scanning', () => {
   it('spinner + texte de phase visibles pendant isScanning', () => {
     mockIsScanning.value = true
     mockScanProgress.value = { phase: 'PAA en cours', scanned: 5, total: 20 }
@@ -226,7 +226,7 @@ describe('DouleurIntentScanner — phase scanning', () => {
 // ============================================================================
 // Phase 4 — Results (cards, filtre CPC, sélection)
 // ============================================================================
-describe('DouleurIntentScanner — phase results', () => {
+describe('RadarPanel — phase results', () => {
   beforeEach(() => {
     mockScanResult.value = {
       globalScore: 72,
@@ -338,7 +338,7 @@ describe('DouleurIntentScanner — phase results', () => {
 // ============================================================================
 // Cache (Sprint 2.X — radar_cache table)
 // ============================================================================
-describe('DouleurIntentScanner — cache', () => {
+describe('RadarPanel — cache', () => {
   // Note : depuis Sprint 15.7 le cache-indicator est rendu via <Teleport to="body">,
   // donc on l'inspecte via document.querySelector au lieu du wrapper de mount.
   it('cache-indicator visible si exists=true et phase=input', () => {
@@ -389,7 +389,7 @@ describe('DouleurIntentScanner — cache', () => {
 // ============================================================================
 // Erreur
 // ============================================================================
-describe('DouleurIntentScanner — gestion erreur', () => {
+describe('RadarPanel — gestion erreur', () => {
   it('scanner-error visible si error défini', () => {
     mockError.value = 'API DataForSEO down'
     const wrapper = mountScanner()
@@ -408,7 +408,7 @@ describe('DouleurIntentScanner — gestion erreur', () => {
 // ============================================================================
 // Watcher — keywords injectés depuis Discovery
 // ============================================================================
-describe('DouleurIntentScanner — keywords injectés depuis Discovery', () => {
+describe('RadarPanel — keywords injectés depuis Discovery', () => {
   it('injectedKeywords non-vide remplit generatedKeywords + reset scanResult', async () => {
     const injected = [
       { keyword: 'kw-injected-1', reasoning: 'depuis Discovery' },
@@ -435,7 +435,7 @@ describe('DouleurIntentScanner — keywords injectés depuis Discovery', () => {
 // ============================================================================
 // Reset au changement d'article (mode workflow)
 // ============================================================================
-describe('DouleurIntentScanner — reset au changement d\'article (workflow)', () => {
+describe('RadarPanel — reset au changement d\'article (workflow)', () => {
   it('changer pilierKeyword en mode workflow déclenche reset()', async () => {
     const wrapper = mountScanner({ mode: 'workflow' as const })
     mockReset.mockClear()

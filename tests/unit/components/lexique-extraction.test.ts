@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
-import LexiqueExtraction from '../../../src/components/moteur/LexiqueExtraction.vue'
+import LexiquePanel from '../../../src/components/moteur/LexiquePanel.vue'
 import type { LexiqueAnalysisResult, LexiqueTermRecommendation } from '../../../shared/types/serp-analysis.types'
 
 // --- Mocks ---
@@ -105,7 +105,7 @@ function simulateIaUpfrontDone(result: LexiqueAnalysisResult = MOCK_IA_RESULT) {
 }
 
 function mountComponent(overrides: Record<string, unknown> = {}) {
-  return mount(LexiqueExtraction, {
+  return mount(LexiquePanel, {
     props: {
       selectedArticle: { id: 1, slug: 'test-article', keyword: 'seo', title: 'Test', type: 'Cluster', painPoint: '', locked: false, source: 'proposed' as const },
       captainKeyword: 'seo',
@@ -135,7 +135,7 @@ beforeEach(() => {
   mockKeywordsRef.value = null
 })
 
-describe('LexiqueExtraction', () => {
+describe('LexiquePanel', () => {
   describe('Header', () => {
     it('displays captain keyword', () => {
       const wrapper = mountComponent()

@@ -26,7 +26,7 @@ const emit = defineEmits<{
   'modifier-untag': [index: number]
   'modifier-cycle': [payload: { index: number; next: ModifierKind | null }]
   /** Sprint 2 — émis quand l'utilisateur clique sur le bouton recalcul Pertinence
-   *  dans la colonne d'actions. Le parent (CaptainValidation) re-validate la card. */
+   *  dans la colonne d'actions. Le parent (CaptainPanel) re-validate la card. */
   'recompute-relevance': [card: RadarCard]
 }>()
 

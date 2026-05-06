@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
-import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
+import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
 import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { articleTypeToLevel } from '@/composables/keyword/useCapitaineValidation'
@@ -100,7 +100,7 @@ const {
   saveToCache,
   clearCacheForSeed,
   reset,
-} = useKeywordDiscoveryTab()
+} = useDiscoveryPanel()
 
 const seedInput = ref(props.articleKeyword || props.pilierKeyword)
 const hasDiscovered = ref(hasResults.value)

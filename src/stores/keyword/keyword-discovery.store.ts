@@ -4,7 +4,7 @@
  *             POST /api/keywords/discover-from-site (depuis domaine)
  * WRITES TO:  (rien — discovery est read-only, l'utilisateur valide via keyword-audit.store.addKeyword)
  * CONSUMERS: DiscoveryPanel.vue (sélection + ajout au cocoon),
- *            KeywordDiscoveryTab.vue (affichage filtré)
+ *            DiscoveryPanel.vue (affichage filtré)
  * RELATED FR: FR-INFRA-API-WRAPPER, NFR-INT-API-WRAPPER, NFR-OBS-COST-LOG,
  *             NFR-OBS-KNOWN-ERRORS, FR-INFRA-KPI-CONSISTENCY (filtres null-safe)
  */

@@ -187,7 +187,7 @@ const {
 watch(
   () => articleKeywordsStore.keywords,
   (kw) => {
-    log.debug('[LieutenantsSelection] store keywords snapshot', {
+    log.debug('[LieutenantsPanel] store keywords snapshot', {
       articleId: props.selectedArticle?.id,
       richLieutenants: kw?.richLieutenants?.map(lt => ({
         keyword: lt.keyword,
@@ -268,7 +268,7 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
         : `${detail} · Modifiable dans la Rédaction.`,
     )
   } catch (err) {
-    log.warn(`[LieutenantsSelection] recommend-word-count failed: ${(err as Error).message}`)
+    log.warn(`[LieutenantsPanel] recommend-word-count failed: ${(err as Error).message}`)
   }
 }
 
@@ -331,7 +331,7 @@ watch(
   (hn) => {
     if (isLocked.value && hn && hn.length > 0 && hnStructure.value.length === 0) {
       hnStructure.value = hn
-      log.info('[LieutenantsSelection] HN structure restored from store', { nodes: hn.length })
+      log.info('[LieutenantsPanel] HN structure restored from store', { nodes: hn.length })
     }
   },
 )
@@ -398,11 +398,11 @@ watch(serpResult, (result) => {
   const richLts = articleKeywordsStore.keywords?.richLieutenants ?? []
   const hasFreshProposals = richLts.length > 0 && richLts.every(lt => !shouldRegenerate(lt.exploredAt))
   if (hasFreshProposals) {
-    log.info('[LieutenantsSelection] Skip IA proposal — DB has fresh proposals', { count: richLts.length })
+    log.info('[LieutenantsPanel] Skip IA proposal — DB has fresh proposals', { count: richLts.length })
     restoreLockedLieutenants()
     return
   }
-  log.info('[LieutenantsSelection] Auto-triggering IA proposal after SERP')
+  log.info('[LieutenantsPanel] Auto-triggering IA proposal after SERP')
   proposeLieutenants()
 })
 

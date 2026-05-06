@@ -1,5 +1,5 @@
 /**
- * Tests anti-régression pour FinalisationRecap (onglet Finalisation du Moteur).
+ * Tests anti-régression pour FinalisationPanel (onglet Finalisation du Moteur).
  *
  * Composant 100 % lecture seule qui résume Capitaine + Lieutenants + Lexique
  * juste avant le passage à la Rédaction. Couvre :
@@ -15,7 +15,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import FinalisationRecap from '../../../src/components/moteur/FinalisationRecap.vue'
+import FinalisationPanel from '../../../src/components/moteur/FinalisationPanel.vue'
 import { useArticleKeywordsStore } from '../../../src/stores/article/article-keywords.store'
 
 const STUBS = {
@@ -34,13 +34,13 @@ const SELECTED_ARTICLE = {
   painPoint: null,
 }
 
-describe('FinalisationRecap', () => {
+describe('FinalisationPanel', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
 
   it('affiche le titre de l\'article passé en prop', () => {
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -48,7 +48,7 @@ describe('FinalisationRecap', () => {
   })
 
   it('fallback "cet article" quand selectedArticle null', () => {
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: null },
       global: { stubs: STUBS },
     })
@@ -74,7 +74,7 @@ describe('FinalisationRecap', () => {
       hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -97,7 +97,7 @@ describe('FinalisationRecap', () => {
       hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -122,7 +122,7 @@ describe('FinalisationRecap', () => {
       hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -148,7 +148,7 @@ describe('FinalisationRecap', () => {
       hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -165,7 +165,7 @@ describe('FinalisationRecap', () => {
       lieutenants: [], richLieutenants: [], lexique: [], richRootKeywords: [], hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -181,7 +181,7 @@ describe('FinalisationRecap', () => {
       richRootKeywords: [], hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -198,7 +198,7 @@ describe('FinalisationRecap', () => {
       lieutenants: [], richLieutenants: [], lexique: [], richRootKeywords: [], hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -206,7 +206,7 @@ describe('FinalisationRecap', () => {
   })
 
   it('clic sur "Aller à la Rédaction" → emit navigate-redaction', async () => {
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })
@@ -229,7 +229,7 @@ describe('FinalisationRecap', () => {
       lieutenants: [], richLieutenants: [], lexique: [], richRootKeywords: [], hnStructure: [],
     } as never
 
-    const wrapper = mount(FinalisationRecap, {
+    const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
     })

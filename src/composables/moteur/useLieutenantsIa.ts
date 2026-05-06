@@ -14,7 +14,7 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
 
 /**
- * Vague 3 — Composable extrait de LieutenantsSelection.
+ * Vague 3 — Composable extrait de LieutenantsPanel.
  *
  * Encapsule la Phase 2 IA des Lieutenants : streaming `propose-lieutenants`,
  * cards selected/eliminated, structure Hn, contentGap, restoration depuis DB.

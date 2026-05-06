@@ -6,7 +6,7 @@ import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 /**
  * Sprint C-2 (2026-05-02) — Panel IA Lexique en bas de page.
  *
- * L'extraction TF-IDF reste à sa place dans LexiqueExtraction.vue (les badges
+ * L'extraction TF-IDF reste à sa place dans LexiquePanel.vue (les badges
  * IA-recommandés sont apposés sur les termes du tableau). Ce composant
  * agrège l'état IA et offre :
  *   - le CTA standardisé d'analyse / régénération (variant suggestion)

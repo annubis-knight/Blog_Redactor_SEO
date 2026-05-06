@@ -10,7 +10,7 @@
  *
  * Implémentation : 3e bouton dans la colonne d'actions, visible uniquement
  * en mode `relevance` (Capitaine), qui émet `recompute-relevance` que le
- * parent CaptainValidation câble pour relancer la validation à la volée.
+ * parent CaptainPanel câble pour relancer la validation à la volée.
  */
 import { describe, it, expect, vi } from 'vitest'
 import { mount } from '@vue/test-utils'

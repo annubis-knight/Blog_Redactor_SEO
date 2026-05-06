@@ -33,9 +33,9 @@ vi.mock('../../../src/composables/editor/useStreaming', () => ({
   }),
 }))
 
-vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', async () => {
-  const { mockKeywordDiscoveryTab } = await import('../__mocks__/useKeywordDiscoveryTab.mock')
-  return mockKeywordDiscoveryTab()
+vi.mock('../../../src/composables/keyword/useDiscoveryPanel', async () => {
+  const { mockDiscoveryPanel } = await import('../__mocks__/useDiscoveryPanel.mock')
+  return mockDiscoveryPanel()
 })
 
 vi.mock('../../../src/utils/logger', () => ({
@@ -54,9 +54,9 @@ const componentStub = { template: '<div class="stub" />' }
 const globalStubs = {
   RouterLink: routerLinkStub,
   Breadcrumb: { template: '<nav class="breadcrumb-stub" />' },
-  KeywordDiscoveryTab: componentStub,
+  DiscoveryPanel: componentStub,
   PainTranslator: componentStub,
-  CaptainValidation: componentStub,
+  CaptainPanel: componentStub,
 }
 
 // --- Router test ---

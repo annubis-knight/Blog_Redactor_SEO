@@ -286,7 +286,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  function addCaptainValidation(entry: CaptainValidationEntry, articleId?: number) {
+  function addCaptainPanel(entry: CaptainValidationEntry, articleId?: number) {
     if (!keywords.value) {
       if (articleId) ensureKeywords(articleId)
       else return
@@ -343,7 +343,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
    * Préserve validationHistory et aiPanelMarkdown (le user peut re-locker).
    *
    * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
-   * du composant CaptainValidation.vue, sans propager au store ni à la DB.
+   * du composant CaptainPanel.vue, sans propager au store ni à la DB.
    * Conséquence : la DB conservait status='locked' éternellement après un unlock UI.
    */
   function unlockCaptain() {
@@ -478,7 +478,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
    * Différent de archiveLockedLieutenants qui les passe à 'archived' (terminal).
    *
    * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
-   * du composant LieutenantsSelection.vue, sans propager au store ni à la DB.
+   * du composant LieutenantsPanel.vue, sans propager au store ni à la DB.
    */
   function unlockLieutenants() {
     if (!keywords.value?.richLieutenants) return
@@ -559,7 +559,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
     mergeCaptainHistory, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
-    setCapitaine, addCaptainValidation, lockCaptain, unlockCaptain, updateCaptainValidationAiPanel,
+    setCapitaine, addCaptainPanel, lockCaptain, unlockCaptain, updateCaptainValidationAiPanel,
     addRootKeywordValidation,
     setRootKeywords, addLieutenant, removeLieutenant,
     saveRichLieutenantProposals, setRichLieutenants, unlockLieutenants,

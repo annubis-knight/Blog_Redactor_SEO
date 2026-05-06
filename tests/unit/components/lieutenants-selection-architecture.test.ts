@@ -24,7 +24,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
-import LieutenantsSelection from '../../../src/components/moteur/LieutenantsSelection.vue'
+import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
 import type { SelectedArticle } from '../../../shared/types/index'
 import type { FilteredProposeLieutenantsResult } from '../../../shared/types/serp-analysis.types'
 import type { RichLieutenant } from '../../../shared/types/keyword.types'
@@ -135,7 +135,7 @@ const baseProps = {
 }
 
 function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
-  return mount(LieutenantsSelection, {
+  return mount(LieutenantsPanel, {
     props: { ...baseProps, ...propsOverride },
     global: {
       stubs: {
@@ -182,7 +182,7 @@ function isDescendantOf(wrapper: ReturnType<typeof mountLieutenants>, ancestorSe
   return ancestor.find(descendantSelector).exists()
 }
 
-describe('LieutenantsSelection — architecture des sections (anti-régression Sprint C-1)', () => {
+describe('LieutenantsPanel — architecture des sections (anti-régression Sprint C-1)', () => {
   it('AC1.1 — lieutenants-container N\'EST PAS descendant de ai-panel-suggestion', async () => {
     const wrapper = mountLieutenants()
     await nextTick()

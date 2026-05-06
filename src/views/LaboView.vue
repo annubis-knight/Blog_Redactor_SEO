@@ -1,19 +1,19 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
-import { useKeywordDiscoveryTab } from '@/composables/keyword/useKeywordDiscoveryTab'
+import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { log } from '@/utils/logger'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleType } from '@shared/types/article.types.js'
 
 // Discovery / Douleur
-import KeywordDiscoveryTab from '@/components/moteur/KeywordDiscoveryTab.vue'
+import DiscoveryPanel from '@/components/moteur/DiscoveryPanel.vue'
 import PainTranslator from '@/components/intent/PainTranslator.vue'
 
 // Verdict GO/NO-GO
-import CaptainValidation from '@/components/moteur/CaptainValidation.vue'
+import CaptainPanel from '@/components/moteur/CaptainPanel.vue'
 
-const { reset: resetDiscovery } = useKeywordDiscoveryTab()
+const { reset: resetDiscovery } = useDiscoveryPanel()
 
 const keywordInput = ref('')
 const activeKeyword = ref('')
@@ -108,7 +108,7 @@ function setKeyword() {
     <!-- Tab content -->
     <template v-if="activeKeyword">
       <div v-if="activeTab === 'discovery'" class="tab-content">
-        <KeywordDiscoveryTab
+        <DiscoveryPanel
           mode="libre"
           :pilier-keyword="activeKeyword"
           :article-title="''"
@@ -126,7 +126,7 @@ function setKeyword() {
       </div>
 
       <div v-if="activeTab === 'capitaine'" class="tab-content">
-        <CaptainValidation mode="libre" :selected-article="libreArticle" />
+        <CaptainPanel mode="libre" :selected-article="libreArticle" />
       </div>
     </template>
   </div>

@@ -12,7 +12,7 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders collapsed state
            fallback fantôme — CLAUDE.md §3.5). -->
     <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
     <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
        lors d'un clic sur le score-ring. -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(101, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="30.159289474462017" transform="rotate(-90 34 34)"></circle>
@@ -38,7 +38,7 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders expanded state 
            fallback fantôme — CLAUDE.md §3.5). -->
     <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
     <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
        lors d'un clic sur le score-ring. -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(101, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="30.159289474462017" transform="rotate(-90 34 34)"></circle>
@@ -64,7 +64,7 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance
            fallback fantôme — CLAUDE.md §3.5). -->
     <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
     <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
        lors d'un clic sur le score-ring. -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring radar-card__score-ring--empty"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="var(--color-text-muted, #94a3b8)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="188.49555921538757" transform="rotate(-90 34 34)"></circle>
@@ -90,7 +90,7 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance
            fallback fantôme — CLAUDE.md §3.5). -->
     <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
     <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
        lors d'un clic sur le score-ring. -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(90, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="47.12388980384689" transform="rotate(-90 34 34)"></circle>

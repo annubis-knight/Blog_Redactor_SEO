@@ -48,8 +48,8 @@ test.describe('Moteur Radar — Suggestions longue-traine (structure)', () => {
     await page.goto(`/cocoon/${article.cocoonId}/moteur`)
     await page.waitForLoadState('networkidle', { timeout: 15000 })
 
-    // Le composant longue-traine vit dans DouleurIntentScanner, qui n'apparait
-    // que sur l'onglet Radar. Discovery (KeywordDiscoveryTab) ne doit pas
+    // Le composant longue-traine vit dans RadarPanel, qui n'apparait
+    // que sur l'onglet Radar. Discovery (DiscoveryPanel) ne doit pas
     // contenir le testid.
     const discoveryTab = page.locator('[data-testid="phase-tab-discovery"]')
     if (await discoveryTab.count() > 0) {

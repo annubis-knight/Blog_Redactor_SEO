@@ -1,5 +1,5 @@
 /**
- * Vague 1 — Tests architecturaux KeywordDiscoveryTab.
+ * Vague 1 — Tests architecturaux DiscoveryPanel.
  *
  * Référence FR PRD : FR-DIS-DECOUVRIR (l'utilisateur doit pouvoir explorer 6
  * sources de mots-clés en parallèle, regroupées par section, avec une sidebar
@@ -21,9 +21,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import KeywordDiscoveryTab from '../../../src/components/moteur/KeywordDiscoveryTab.vue'
+import DiscoveryPanel from '../../../src/components/moteur/DiscoveryPanel.vue'
 
-// ===== Mock useKeywordDiscoveryTab — état minimal =====
+// ===== Mock useDiscoveryPanel — état minimal =====
 const mockHasResults = ref(true)
 const mockWordGroups = ref([
   { word: 'design', normalized: 'design', count: 5 },
@@ -36,8 +36,8 @@ const mockAnalysisResult = ref({
   summary: 'Résumé IA',
 })
 
-vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', () => ({
-  useKeywordDiscoveryTab: () => ({
+vi.mock('../../../src/composables/keyword/useDiscoveryPanel', () => ({
+  useDiscoveryPanel: () => ({
     suggestAlphabetKw: ref([{ keyword: 'design a', source: 'suggest-alphabet' as const }]),
     suggestQuestionsKw: ref([]),
     suggestIntentsKw: ref([]),
@@ -110,7 +110,7 @@ const baseProps = {
 }
 
 function mountTab() {
-  return mount(KeywordDiscoveryTab, {
+  return mount(DiscoveryPanel, {
     props: baseProps,
     global: {
       stubs: {
@@ -148,7 +148,7 @@ beforeEach(() => {
   mockHasResults.value = true
 })
 
-describe('KeywordDiscoveryTab — architecture des sections (Vague 1)', () => {
+describe('DiscoveryPanel — architecture des sections (Vague 1)', () => {
   it('AC.A.1 — DiscoverySourcesList est descendant de .discovery-main', async () => {
     const wrapper = mountTab()
     await nextTick()

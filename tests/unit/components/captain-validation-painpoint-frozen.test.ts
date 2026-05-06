@@ -24,7 +24,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
-import CaptainValidation from '../../../src/components/moteur/CaptainValidation.vue'
+import CaptainPanel from '../../../src/components/moteur/CaptainPanel.vue'
 import type { SelectedArticle } from '../../../shared/types/index'
 
 // --- Mocks composables ---
@@ -167,9 +167,9 @@ beforeEach(() => {
   vi.clearAllMocks()
 })
 
-describe('CaptainValidation — painPoint figé après mount (Sprint 10.5)', () => {
+describe('CaptainPanel — painPoint figé après mount (Sprint 10.5)', () => {
   it('AC.10.5.1 — modifier painPoint après mount ne déclenche aucun mergeCaptainHistory', async () => {
-    const wrapper = mount(CaptainValidation, {
+    const wrapper = mount(CaptainPanel, {
       props: { selectedArticle: { ...baseArticle }, mode: 'workflow' },
       global: { stubs },
     })
@@ -191,7 +191,7 @@ describe('CaptainValidation — painPoint figé après mount (Sprint 10.5)', () 
   })
 
   it('AC.10.5.2 — modifier painPoint après mount ne déclenche aucun fetch /captain-explorations', async () => {
-    const wrapper = mount(CaptainValidation, {
+    const wrapper = mount(CaptainPanel, {
       props: { selectedArticle: { ...baseArticle }, mode: 'workflow' },
       global: { stubs },
     })
@@ -213,7 +213,7 @@ describe('CaptainValidation — painPoint figé après mount (Sprint 10.5)', () 
   })
 
   it('AC.10.5.3 — passer painPoint de défini à null ne déclenche aucun recompute', async () => {
-    const wrapper = mount(CaptainValidation, {
+    const wrapper = mount(CaptainPanel, {
       props: { selectedArticle: { ...baseArticle }, mode: 'workflow' },
       global: { stubs },
     })
@@ -238,7 +238,7 @@ describe('CaptainValidation — painPoint figé après mount (Sprint 10.5)', () 
 
   it('AC.10.5.4 — passer painPoint de null à défini ne déclenche aucun recompute', async () => {
     const articleSansPain: SelectedArticle = { ...baseArticle, painPoint: null as never }
-    const wrapper = mount(CaptainValidation, {
+    const wrapper = mount(CaptainPanel, {
       props: { selectedArticle: articleSansPain, mode: 'workflow' },
       global: { stubs },
     })
@@ -261,13 +261,13 @@ describe('CaptainValidation — painPoint figé après mount (Sprint 10.5)', () 
     expect(captainExplorationsCalls).toHaveLength(0)
   })
 
-  it('AC.10.5.5 — aucun import du store captain-relevance ne subsiste dans CaptainValidation.vue', async () => {
+  it('AC.10.5.5 — aucun import du store captain-relevance ne subsiste dans CaptainPanel.vue', async () => {
     // Lecture brute du fichier source pour verrouiller l'absence d'import.
     // Ce test est volontairement basique mais constitue un canari : si quelqu'un
     // ré-introduit le store, ce test devient rouge immédiatement.
     const fs = await import('node:fs')
     const path = await import('node:path')
-    const filePath = path.resolve(__dirname, '../../../src/components/moteur/CaptainValidation.vue')
+    const filePath = path.resolve(__dirname, '../../../src/components/moteur/CaptainPanel.vue')
     const source = fs.readFileSync(filePath, 'utf-8')
     expect(source).not.toMatch(/captain-relevance/)
     expect(source).not.toMatch(/useCaptainRelevanceStore/)

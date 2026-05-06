@@ -5,7 +5,7 @@ import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } fr
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 
 /**
- * Vague 5 — Composable extrait de LexiqueExtraction.
+ * Vague 5 — Composable extrait de LexiquePanel.
  *
  * Encapsule l'analyse IA upfront du Lexique :
  *  - streaming `/api/keywords/{kw}/ai-lexique-upfront`

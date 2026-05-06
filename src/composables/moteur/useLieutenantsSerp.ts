@@ -7,7 +7,7 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
 /**
- * Vague 3 — Composable extrait de LieutenantsSelection.
+ * Vague 3 — Composable extrait de LieutenantsPanel.
  *
  * Encapsule l'état et l'orchestration SERP multi-keyword (Phase 1) :
  * scrape DataForSEO, agrégation par mot-clé, calcul Hn recurrence, merge final.

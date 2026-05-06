@@ -7,7 +7,7 @@ import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor } from '@share
 import type { ProposeLieutenantsHnNode, HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
 /**
- * Vague 3 — Composable extrait de LieutenantsSelection.
+ * Vague 3 — Composable extrait de LieutenantsPanel.
  *
  * Encapsule la gestion de la Structure Hn :
  *  - tab actif sur les concurrents Hn (`__all__` ou par keyword)

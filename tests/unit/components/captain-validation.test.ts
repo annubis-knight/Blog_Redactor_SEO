@@ -1,5 +1,5 @@
 // NOTE 2026-05-01 : ~46 tests sont it.skip dans ce fichier.
-// CaptainValidation.vue a été refactoré en composant BIMODAL (mode 'workflow' |
+// CaptainPanel.vue a été refactoré en composant BIMODAL (mode 'workflow' |
 // 'libre') avec un layout radar-list + side-panel pour le mode workflow et un
 // carousel manuel pour le mode libre. Les tests skip ont été écrits pour l'ancien
 // layout monolithique : ils référencent des testIDs/selectors disparus
@@ -13,7 +13,7 @@ import { mount, config } from '@vue/test-utils'
 import { ref, nextTick, computed } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { safeHtmlDirective } from '../../../src/directives/v-safe-html'
-import CaptainValidation from '../../../src/components/moteur/CaptainValidation.vue'
+import CaptainPanel from '../../../src/components/moteur/CaptainPanel.vue'
 
 // Register the v-safe-html directive globally for all mount() calls
 config.global.directives = { ...config.global.directives, 'safe-html': safeHtmlDirective }
@@ -154,14 +154,14 @@ const mockUnlockCaptain = vi.fn(() => {
   mockStoreKeywords.value.richCaptain.status = 'suggested'
   mockStoreKeywords.value.richCaptain.lockedAt = null
 })
-const mockAddCaptainValidation = vi.fn()
+const mockAddCaptainPanel = vi.fn()
 const mockAddRootKeywordValidation = vi.fn()
 const mockSaveKeywords = vi.fn()
 const mockSaveDecisions = vi.fn()
 const mockSaveCaptainExplorationEntry = vi.fn()
 const mockSaveCaptainExplorationAiPanel = vi.fn()
 
-// IMPORTANT — Tout getter/action utilisé par CaptainValidation.vue doit être
+// IMPORTANT — Tout getter/action utilisé par CaptainPanel.vue doit être
 // présent ici, sinon le composant casse à l'évaluation du computed associé
 // (ex: `lockedLieutenantCount` lit `lockedLieutenants`). Un getter manquant
 // → undefined.length → 32 tests rouges en cascade. Voir le test
@@ -173,7 +173,7 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     setCapitaine: mockSetCapitaine,
     lockCaptain: mockLockCaptain,
     unlockCaptain: mockUnlockCaptain,
-    addCaptainValidation: mockAddCaptainValidation,
+    addCaptainPanel: mockAddCaptainPanel,
     addRootKeywordValidation: mockAddRootKeywordValidation,
     updateCaptainValidationAiPanel: vi.fn(),
     setRootKeywords: vi.fn(),
@@ -189,7 +189,7 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-// F3 — Mock du store basket (utilisé par KeywordAssistPanel, sous-composant de CaptainValidation)
+// F3 — Mock du store basket (utilisé par KeywordAssistPanel, sous-composant de CaptainPanel)
 vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
   useMoteurBasketStore: () => ({
     keywords: [],
@@ -256,15 +256,15 @@ beforeEach(() => {
   mockCarouselCurrentIndex.value = 0
 })
 
-describe('CaptainValidation', () => {
+describe('CaptainPanel', () => {
   describe('empty state', () => {
     it('shows empty when no article selected', () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: null, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: null, mode: 'libre' } })
       expect(wrapper.find('[data-testid="captain-empty"]').exists()).toBe(true)
     })
 
     it.skip('shows keyword input pre-filled when article has keyword (no auto-validate)', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       const input = wrapper.find('.keyword-input-field')
       expect((input.element as HTMLInputElement).value).toBe('seo local')
@@ -276,7 +276,7 @@ describe('CaptainValidation', () => {
   describe('loading state', () => {
     it('shows loading spinner', async () => {
       mockIsLoading.value = true
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="captain-loading"]').exists()).toBe(true)
     })
@@ -285,7 +285,7 @@ describe('CaptainValidation', () => {
   describe('error state', () => {
     it('shows error message', async () => {
       mockError.value = 'API failure'
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="captain-error"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('API failure')
@@ -295,7 +295,7 @@ describe('CaptainValidation', () => {
   describe('results display', () => {
     it.skip('shows verdict thermometer with GO', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="verdict-thermometer"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('GO')
@@ -304,7 +304,7 @@ describe('CaptainValidation', () => {
 
     it.skip('displays all 6 KPIs in horizontal row', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="kpi-volume"]').exists()).toBe(true)
       expect(wrapper.find('[data-testid="kpi-kd"]').exists()).toBe(true)
@@ -316,7 +316,7 @@ describe('CaptainValidation', () => {
 
     it.skip('shows raw values', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="kpi-volume"]').text()).toContain('1 500 rech/m')
     })
@@ -325,7 +325,7 @@ describe('CaptainValidation', () => {
   describe('tooltip', () => {
     it.skip('shows tooltip on hover', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       await wrapper.find('[data-testid="kpi-volume"]').trigger('mouseenter')
       await nextTick()
@@ -334,7 +334,7 @@ describe('CaptainValidation', () => {
 
     it.skip('hides tooltip on leave', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       await wrapper.find('[data-testid="kpi-volume"]').trigger('mouseenter')
       await nextTick()
@@ -350,14 +350,14 @@ describe('CaptainValidation', () => {
         ...fullResult,
         verdict: { level: 'NO-GO', greenCount: 0, totalKpis: 6, autoNoGo: true, reason: 'Aucun signal détecté' },
       }
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="nogo-feedback"]').text()).toContain('Aucun signal détecté')
     })
 
     it('does NOT show feedback for GO', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="nogo-feedback"]').exists()).toBe(false)
     })
@@ -365,13 +365,13 @@ describe('CaptainValidation', () => {
 
   describe('keyword input and validation', () => {
     it('shows keyword input always', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="keyword-input"]').exists()).toBe(true)
     })
 
     it.skip('calls carousel.addEntry on button click', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const input = wrapper.find('.keyword-input-field')
@@ -382,7 +382,7 @@ describe('CaptainValidation', () => {
     })
 
     it.skip('calls carousel.addEntry on Enter key', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const input = wrapper.find('.keyword-input-field')
@@ -399,7 +399,7 @@ describe('CaptainValidation', () => {
       mockHistory.value = [fullResult, { ...fullResult, keyword: 'seo v2' }]
       mockHistoryIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="history-carousel"]').exists()).toBe(true)
       expect(wrapper.find('.history-chips').findAll('.history-chip').length).toBe(2)
@@ -410,7 +410,7 @@ describe('CaptainValidation', () => {
       mockHistory.value = [fullResult]
       mockHistoryIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="history-carousel"]').exists()).toBe(false)
     })
@@ -420,7 +420,7 @@ describe('CaptainValidation', () => {
       mockHistory.value = [fullResult, { ...fullResult, keyword: 'seo v2' }]
       mockHistoryIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const chips = wrapper.findAll('.history-chip')
@@ -434,7 +434,7 @@ describe('CaptainValidation', () => {
       mockResult.value = fullResult
       mockRootResult.value = { ...fullResult, keyword: 'seo' }
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="root-analysis"]').exists()).toBe(true)
       expect(wrapper.text()).toContain('Racine')
@@ -445,7 +445,7 @@ describe('CaptainValidation', () => {
       mockResult.value = fullResult
       mockIsLoadingRoot.value = true
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="root-loading"]').exists()).toBe(true)
     })
@@ -454,7 +454,7 @@ describe('CaptainValidation', () => {
   describe('suggested keywords', () => {
     it.skip('shows suggested keywords collapse when props provided and result exists', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, suggestedKeywords: ['refonte site web', 'refaire site internet'] },
       })
       await nextTick()
@@ -464,7 +464,7 @@ describe('CaptainValidation', () => {
 
     it('does NOT show suggested keywords when empty', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, suggestedKeywords: [] },
       })
       await nextTick()
@@ -473,7 +473,7 @@ describe('CaptainValidation', () => {
 
     it.skip('clicks suggested keyword to validate', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, suggestedKeywords: ['refonte site web'] },
       })
       await nextTick()
@@ -486,7 +486,7 @@ describe('CaptainValidation', () => {
   describe('thresholds table', () => {
     it('shows thresholds table in results', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="thresholds-table"]').exists()).toBe(true)
     })
@@ -501,7 +501,7 @@ describe('CaptainValidation', () => {
           { question: 'Pourquoi le SEO est important ?', answer: null },
         ],
       }
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="paa-list"]').exists()).toBe(true)
       expect(wrapper.findAll('.paa-item').length).toBe(2)
@@ -509,7 +509,7 @@ describe('CaptainValidation', () => {
 
     it('does NOT show PAA when absent', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="paa-list"]').exists()).toBe(false)
     })
@@ -526,13 +526,13 @@ describe('CaptainValidation', () => {
     it('shows AiPanel advice when results are displayed', async () => {
       mockResult.value = fullResult
       mockAiChunks.value = 'Conseil expert'
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="ai-panel-advice"]').exists()).toBe(true)
     })
 
     it('triggers streaming when currentResult changes', async () => {
-      mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       mockResult.value = fullResult
       await nextTick()
 
@@ -550,7 +550,7 @@ describe('CaptainValidation', () => {
       // Sprint 3 (2026-05-04) — AiPanel collapsed par défaut, on déploie via toggle.
       mockResult.value = fullResult
       mockAiChunks.value = '**Bold** and *italic*'
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const toggle = wrapper.find('[data-testid="ai-panel-toggle"]')
@@ -566,7 +566,7 @@ describe('CaptainValidation', () => {
       mockResult.value = fullResult
       mockAiIsStreaming.value = true
       mockAiChunks.value = 'Début…'
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       // Le slot streaming d'AiPanel passe :streaming="true" → caret visible.
@@ -576,7 +576,7 @@ describe('CaptainValidation', () => {
     it('shows error block in AiPanel when streaming errored', async () => {
       mockResult.value = fullResult
       mockAiError.value = 'Claude API down'
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const errEl = wrapper.find('[data-testid="ai-panel-error"]')
@@ -588,7 +588,7 @@ describe('CaptainValidation', () => {
   describe('lock/unlock Capitaine', () => {
     it('shows lock button when GO and not locked', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       expect(wrapper.find('[data-testid="lock-btn"]').exists()).toBe(true)
@@ -600,7 +600,7 @@ describe('CaptainValidation', () => {
         ...fullResult,
         verdict: { level: 'ORANGE', greenCount: 3, totalKpis: 6, autoNoGo: false },
       }
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const lockBtn = wrapper.find('[data-testid="lock-btn"]')
@@ -610,7 +610,7 @@ describe('CaptainValidation', () => {
 
     it.skip('emits check-completed on lock', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -622,7 +622,7 @@ describe('CaptainValidation', () => {
 
     it.skip('persists keyword to store on lock', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -635,7 +635,7 @@ describe('CaptainValidation', () => {
 
     it('shows locked state after locking', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -648,7 +648,7 @@ describe('CaptainValidation', () => {
 
     it('shows unlock button when locked', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -659,7 +659,7 @@ describe('CaptainValidation', () => {
 
     it.skip('emits check-removed on unlock', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -674,7 +674,7 @@ describe('CaptainValidation', () => {
 
     it.skip('reverts to unlocked state after unlock', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -689,7 +689,7 @@ describe('CaptainValidation', () => {
 
     it('emits validated with keyword on lock', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       await wrapper.find('[data-testid="lock-btn"]').trigger('click')
@@ -701,7 +701,7 @@ describe('CaptainValidation', () => {
 
     it.skip('initializes locked from initialLocked prop', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, initialLocked: true },
       })
       await nextTick()
@@ -732,7 +732,7 @@ describe('CaptainValidation', () => {
       mockResult.value = fullResult
       mockRadarCard.value = mockRadarCardData
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="radar-card-section"]').exists()).toBe(true)
       expect(wrapper.find('.radar-card').exists()).toBe(true)
@@ -742,7 +742,7 @@ describe('CaptainValidation', () => {
       mockResult.value = fullResult
       mockIsLoadingRadar.value = true
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('[data-testid="radar-loading"]').exists()).toBe(true)
     })
@@ -751,14 +751,14 @@ describe('CaptainValidation', () => {
       mockResult.value = fullResult
       mockRadarCard.value = null
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
       expect(wrapper.find('.radar-card').exists()).toBe(false)
       expect(wrapper.find('[data-testid="radar-loading"]').exists()).toBe(false)
     })
 
     it.skip('passes article title to carousel.addEntry', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, mode: 'libre' } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, mode: 'libre' } })
       await nextTick()
 
       const input = wrapper.find('.keyword-input-field')
@@ -782,7 +782,7 @@ describe('CaptainValidation', () => {
 
     it('does NOT emit check-completed when locked in mode libre', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: libreArticle, mode: 'libre' },
       })
       await nextTick()
@@ -797,7 +797,7 @@ describe('CaptainValidation', () => {
 
     it('does NOT emit check-removed when unlocked in mode libre', async () => {
       mockResult.value = fullResult
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: libreArticle, mode: 'libre' },
       })
       await nextTick()
@@ -812,7 +812,7 @@ describe('CaptainValidation', () => {
     })
 
     it.skip('does NOT auto-validate in mode libre (populates input only)', async () => {
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: libreArticle, mode: 'libre' },
       })
       await nextTick()
@@ -875,7 +875,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       expect(wrapper.find('[data-testid="carousel-section"]').exists()).toBe(true)
@@ -883,7 +883,7 @@ describe('CaptainValidation', () => {
     })
 
     it('does NOT show carousel when no entries', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle } })
       await nextTick()
       expect(wrapper.find('[data-testid="carousel-section"]').exists()).toBe(false)
     })
@@ -895,7 +895,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       expect(wrapper.find('.carousel-keyword').text()).toBe('seo local')
@@ -909,7 +909,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       await wrapper.find('[data-testid="carousel-next"]').trigger('click')
@@ -923,7 +923,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 1
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       await wrapper.find('[data-testid="carousel-prev"]').trigger('click')
@@ -937,7 +937,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       expect((wrapper.find('[data-testid="carousel-prev"]').element as HTMLButtonElement).disabled).toBe(true)
@@ -950,7 +950,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 1
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       expect((wrapper.find('[data-testid="carousel-next"]').element as HTMLButtonElement).disabled).toBe(true)
@@ -963,7 +963,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA, mockRadarCardB] } })
       await nextTick()
 
       const nav = wrapper.find('[data-testid="carousel-nav"]')
@@ -977,7 +977,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       expect(wrapper.find('[data-testid="carousel-loading"]').exists()).toBe(true)
@@ -989,7 +989,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       expect(wrapper.find('[data-testid="carousel-error"]').exists()).toBe(true)
@@ -1002,7 +1002,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       expect(wrapper.find('[data-testid="carousel-results"]').exists()).toBe(true)
@@ -1016,7 +1016,7 @@ describe('CaptainValidation', () => {
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('ORANGE')
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardB] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardB] } })
       await nextTick()
 
       const lockBtn = wrapper.find('[data-testid="carousel-lock-btn"]')
@@ -1031,7 +1031,7 @@ describe('CaptainValidation', () => {
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       const lockBtn = wrapper.find('[data-testid="carousel-lock-btn"]')
@@ -1045,7 +1045,7 @@ describe('CaptainValidation', () => {
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       await wrapper.find('[data-testid="carousel-lock-btn"]').trigger('click')
@@ -1066,7 +1066,7 @@ describe('CaptainValidation', () => {
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       await wrapper.find('[data-testid="carousel-lock-btn"]').trigger('click')
@@ -1084,7 +1084,7 @@ describe('CaptainValidation', () => {
       mockCarouselCurrentIndex.value = 0
       mockCarouselEffectiveVerdict.mockReturnValue('GO')
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       await wrapper.find('[data-testid="carousel-lock-btn"]').trigger('click')
@@ -1105,7 +1105,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       // Manual mode elements should not be visible
@@ -1119,7 +1119,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       const input = wrapper.find('.keyword-input-field')
@@ -1130,7 +1130,7 @@ describe('CaptainValidation', () => {
     })
 
     it.skip('manual input calls carousel.addEntry even when carousel is empty', async () => {
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle } })
       await nextTick()
 
       const input = wrapper.find('.keyword-input-field')
@@ -1153,7 +1153,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       // PAA CollapsableSection should exist in the carousel results
@@ -1168,7 +1168,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [mockRadarCardA] } })
       await nextTick()
 
       expect(wrapper.find('[data-testid="carousel-radar-lockable"]').exists()).toBe(true)
@@ -1247,7 +1247,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
       await nextTick()
 
       const rootItems = wrapper.findAll('.kpi-root-item')
@@ -1266,7 +1266,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
       await nextTick()
 
       expect(wrapper.find('.carousel-keyword').text()).toBe('creation site web entreprise toulouse')
@@ -1285,7 +1285,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
       await nextTick()
 
       const kwWords = wrapper.findAll('.kw-word')
@@ -1306,7 +1306,7 @@ describe('CaptainValidation', () => {
       ]
       mockCarouselCurrentIndex.value = 0
 
-      const wrapper = mount(CaptainValidation, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
+      const wrapper = mount(CaptainPanel, { props: { selectedArticle: mockArticle, radarCards: [longTailCard] } })
       await nextTick()
 
       // Click 'toulouse' (index 4, active) → désactive toulouse → reste "creation site web entreprise" → variant exists
@@ -1354,7 +1354,7 @@ describe('CaptainValidation', () => {
     })
 
     it.skip('each validation triggers a direct saveCaptainExplorationEntry call', async () => {
-      mount(CaptainValidation, {
+      mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, radarCards: [] },
       })
       await nextTick()
@@ -1383,7 +1383,7 @@ describe('CaptainValidation', () => {
       const validation = { ...fullResult, keyword: 'kw-sync' }
       mockCarouselEntries.value = [makeEntry('kw-sync', validation)]
 
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, radarCards: [] },
       })
       await nextTick()
@@ -1409,7 +1409,7 @@ describe('CaptainValidation', () => {
       // l'implémentation du module mocké par une variante minimale qui
       // n'expose PAS lockedLieutenants. Ce test simule le cas d'un mock
       // incomplet — le composant doit traiter undefined comme 0.
-      const wrapper = mount(CaptainValidation, {
+      const wrapper = mount(CaptainPanel, {
         props: { selectedArticle: mockArticle, mode: 'libre' },
       })
       await nextTick()

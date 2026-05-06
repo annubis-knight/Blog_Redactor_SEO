@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Vague 5 — Sous-composant Vue extrait de KeywordDiscoveryTab.
+ * Vague 5 — Sous-composant Vue extrait de DiscoveryPanel.
  *
  * Cache indicator (Sprint 15.6 — DB-first keyword_discoveries, TTL 30j applicatif).
  * Affiche un badge "Dernière analyse" + boutons Charger / Rafraîchir, visible

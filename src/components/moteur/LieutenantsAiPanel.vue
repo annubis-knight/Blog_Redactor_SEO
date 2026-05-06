@@ -14,7 +14,7 @@ import AiPanelHeader from '@/components/moteur/ai-panel/AiPanelHeader.vue'
  * Cette refonte (sprint 1, 2026-05-04) restaure la séparation : ce composant
  * affiche UNIQUEMENT le streaming IA brut + le CTA Régénérer + content-gap
  * insights. Les containers principaux remontent au niveau de
- * `LieutenantsSelection.vue` en sections de premier niveau.
+ * `LieutenantsPanel.vue` en sections de premier niveau.
  *
  * Test verrou anti-régression :
  *   tests/unit/components/lieutenants-selection-architecture.test.ts

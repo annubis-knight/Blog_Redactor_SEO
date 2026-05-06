@@ -1,5 +1,5 @@
 /**
- * Vague 1 — Tests architecturaux DouleurIntentScanner.
+ * Vague 1 — Tests architecturaux RadarPanel.
  *
  * Référence FR PRD : FR-RAD-SCAN (le Radar scanne 3 phases : Phase 1 inputs
  * pour saisir broad/specific/painPoint en mode libre, Phase 2 keywords
@@ -17,7 +17,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import DouleurIntentScanner from '../../../src/components/intent/DouleurIntentScanner.vue'
+import RadarPanel from '../../../src/components/intent/RadarPanel.vue'
 
 const mockGeneratedKeywords = ref<{ keyword: string; reasoning?: string }[]>([])
 const mockScanResult = ref<{ globalScore: number; heatLevel: string; cards: never[]; autocomplete: { suggestions: never[]; totalCount: number }; verdict?: string } | null>(null)
@@ -90,7 +90,7 @@ beforeEach(() => {
 })
 
 function mountScanner(propsOverride: Partial<typeof baseProps & { mode: 'workflow' | 'libre' }> = {}) {
-  return mount(DouleurIntentScanner, {
+  return mount(RadarPanel, {
     props: { ...baseProps, ...propsOverride },
     global: { stubs },
   })
@@ -102,7 +102,7 @@ function isDescendantOf(wrapper: ReturnType<typeof mountScanner>, ancestorSelect
   return ancestor.find(descendantSelector).exists()
 }
 
-describe('DouleurIntentScanner — architecture des phases (Vague 1)', () => {
+describe('RadarPanel — architecture des phases (Vague 1)', () => {
   it('AC.E.1 — DouleurScannerInputs est descendant direct de .intent-scanner', async () => {
     const wrapper = mountScanner({ mode: 'libre' as const })
     await nextTick()

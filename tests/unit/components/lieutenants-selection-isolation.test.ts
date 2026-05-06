@@ -31,7 +31,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
-import LieutenantsSelection from '../../../src/components/moteur/LieutenantsSelection.vue'
+import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
 import type { SelectedArticle } from '../../../shared/types/index'
 import type { FilteredProposeLieutenantsResult } from '../../../shared/types/serp-analysis.types'
 import type { RichLieutenant } from '../../../shared/types/keyword.types'
@@ -169,7 +169,7 @@ const baseProps = {
 }
 
 function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
-  return mount(LieutenantsSelection, {
+  return mount(LieutenantsPanel, {
     props: { ...baseProps, ...propsOverride },
     global: {
       stubs: {
@@ -235,7 +235,7 @@ function readLieutenantCards(wrapper: ReturnType<typeof mountLieutenants>): { ke
   return (proposals.props('lieutenantCards') as { keyword: string }[]) ?? []
 }
 
-describe('LieutenantsSelection — isolation par articleId (P1)', () => {
+describe('LieutenantsPanel — isolation par articleId (P1)', () => {
   it('A→B : afficher uniquement les Lieutenants de B après switch', async () => {
     const wrapper = mountLieutenants()
     await nextTick()

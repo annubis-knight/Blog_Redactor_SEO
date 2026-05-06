@@ -8,7 +8,7 @@
  * - AC3/AC16 : sélection click + keyboard (a11y)
  * - Cloisonnement workflow vs libre : la nouvelle UI n'apparait QUE en mode workflow
  *
- * Pour rendre `CaptainValidation` (donc `[data-testid="captain-layout"]`) on doit
+ * Pour rendre `CaptainPanel` (donc `[data-testid="captain-layout"]`) on doit
  * sélectionner un article via le `MoteurContextRecap` (DOM click sur `.tree-article-btn`).
  * Sur un article neuf, pas de radarCards → liste vide, side-panel en empty state.
  */
@@ -18,7 +18,7 @@ import { test as testWithCtx } from './helpers/test-fixtures'
 /**
  * Sélectionne l'article créé par fixture (titre commence par `[browser:`)
  * via click sur le tree-article-btn correspondant. Renvoie true si la
- * sélection a réussi (CaptainValidation est monté).
+ * sélection a réussi (CaptainPanel est monté).
  */
 async function selectFixtureArticle(page: Page, articleTitle: string): Promise<boolean> {
   // L'article fixture est inséré comme "publié" → vit dans le RecapToggle
@@ -146,7 +146,7 @@ testWithCtx.describe('Capitaine — Nouvelle UI radar-list (mode workflow)', () 
     await page.reload()
     await page.waitForLoadState('networkidle', { timeout: 15000 })
     // ⚠ Avec la passe 6, l'article sélectionné est aussi restauré au reload
-    // → CaptainValidation est monté direct, sans nouveau click recap.
+    // → CaptainPanel est monté direct, sans nouveau click recap.
     await expect(page.locator('[data-testid="captain-layout"]')).toBeVisible({ timeout: 10000 })
     // Et le panel reste fermé conformément à la préférence persistée.
     await expect(page.locator('[data-testid="side-panel"]')).toHaveCount(0)
@@ -185,7 +185,7 @@ testWithCtx.describe('Capitaine — Persistance article sélectionné au reload'
     expect(afterKey).toBe(String(article.id))
   })
 
-  testWithCtx('reload navigateur restaure automatiquement la sélection (CaptainValidation monté direct)', async ({ page, ctx }) => {
+  testWithCtx('reload navigateur restaure automatiquement la sélection (CaptainPanel monté direct)', async ({ page, ctx }) => {
     const article = await ctx.createArticle('RestoreArticle Browser')
     await page.goto(`/cocoon/${article.cocoonId}/moteur`)
     await page.waitForLoadState('networkidle', { timeout: 15000 })
@@ -200,7 +200,7 @@ testWithCtx.describe('Capitaine — Persistance article sélectionné au reload'
     await page.reload()
     await page.waitForLoadState('networkidle', { timeout: 15000 })
 
-    // CaptainValidation doit être monté direct, sans avoir cliqué dans le recap
+    // CaptainPanel doit être monté direct, sans avoir cliqué dans le recap
     await expect(page.locator('[data-testid="captain-layout"]')).toBeVisible({ timeout: 10000 })
   })
 
@@ -227,7 +227,7 @@ testWithCtx.describe('Capitaine — Persistance article sélectionné au reload'
       article.cocoonId,
     )
     expect(keyAfter).toBeNull()
-    // Et CaptainValidation n'est pas monté (article-gate visible)
+    // Et CaptainPanel n'est pas monté (article-gate visible)
     await expect(page.locator('[data-testid="captain-layout"]')).toHaveCount(0)
   })
 
@@ -423,7 +423,7 @@ testWithCtx.describe('Capitaine — DOM testids attendus dans le side panel (ren
 
     const mounted = await selectFixtureArticle(page, article.titre)
     if (!mounted) {
-      testWithCtx.skip(true, 'CaptainValidation non monté')
+      testWithCtx.skip(true, 'CaptainPanel non monté')
     }
 
     // 2026-04-30 — Le panel n'est plus rendu en mode "vide" (v-if sur entry).

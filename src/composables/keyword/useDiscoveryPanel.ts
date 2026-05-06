@@ -63,7 +63,7 @@ function buildFetchKey(seed: string, articleTitle?: string, articleKeyword?: str
   return [seed, articleTitle ?? '', articleKeyword ?? '', painPoint ?? ''].join('|').toLowerCase()
 }
 
-export function useKeywordDiscoveryTab() {
+export function useDiscoveryPanel() {
   const isAnyLoading = computed(() =>
     suggestLoading.value || aiLoading.value || dataforseoLoading.value,
   )

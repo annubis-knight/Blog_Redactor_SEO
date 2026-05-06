@@ -1,5 +1,5 @@
 /**
- * Tests COMPLÉMENTAIRES pour LieutenantsSelection.
+ * Tests COMPLÉMENTAIRES pour LieutenantsPanel.
  *
  * Le fichier `lieutenants-selection.test.ts` couvre déjà 94 tests (SERP,
  * IA proposal, Hn structure, lock/unlock, content gap, save explorations).
@@ -18,7 +18,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
-import LieutenantsSelection from '../../../src/components/moteur/LieutenantsSelection.vue'
+import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '../../../shared/types/index'
 import type { FilteredProposeLieutenantsResult } from '../../../shared/types/serp-analysis.types'
 
@@ -155,7 +155,7 @@ const baseProps = {
 }
 
 function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
-  return mount(LieutenantsSelection, {
+  return mount(LieutenantsPanel, {
     props: { ...baseProps, ...propsOverride },
     global: {
       stubs: {
@@ -193,7 +193,7 @@ function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
 // ============================================================================
 // Trou A — handleAssistAdd : ajout depuis basket via KeywordAssistPanel
 // ============================================================================
-describe('LieutenantsSelection — handleAssistAdd (basket)', () => {
+describe('LieutenantsPanel — handleAssistAdd (basket)', () => {
   it('emit add depuis KeywordAssistPanel ajoute un lieutenant card', async () => {
     const wrapper = mountLieutenants()
     // Le stub émet 'add' avec 'kw-from-basket' au clic
@@ -241,7 +241,7 @@ describe('LieutenantsSelection — handleAssistAdd (basket)', () => {
 // ============================================================================
 // Trou B — saveHnStructure
 // ============================================================================
-describe('LieutenantsSelection — saveHnStructure', () => {
+describe('LieutenantsPanel — saveHnStructure', () => {
   it('emit save-hn depuis LieutenantH2Structure persiste l\'outline + saveDecisions', async () => {
     // Pré-condition : hnStructure non vide en store DB ET on déclenche
     // le watcher pour que la ref locale `hnStructure` soit alimentée.
@@ -294,7 +294,7 @@ describe('LieutenantsSelection — saveHnStructure', () => {
 // ============================================================================
 // Trou C — refreshSERP
 // ============================================================================
-describe('LieutenantsSelection — refreshSERP', () => {
+describe('LieutenantsPanel — refreshSERP', () => {
   it('emit refresh depuis LieutenantSerpAnalysis reset le state + relance analyzeSERP', async () => {
     const wrapper = mountLieutenants()
     await nextTick()
@@ -339,7 +339,7 @@ describe('LieutenantsSelection — refreshSERP', () => {
 // ============================================================================
 // Trou D — hasEverAnalyzed (F5 soft gate)
 // ============================================================================
-describe('LieutenantsSelection — hasEverAnalyzed (F5 soft gate)', () => {
+describe('LieutenantsPanel — hasEverAnalyzed (F5 soft gate)', () => {
   it('soft gate visible : !isCaptaineLocked + 0 lieutenants en DB', () => {
     mockStoreKeywords.value!.richLieutenants = []
     const wrapper = mountLieutenants({ isCaptaineLocked: false })
@@ -366,7 +366,7 @@ describe('LieutenantsSelection — hasEverAnalyzed (F5 soft gate)', () => {
 // ============================================================================
 // Trou E — recommendAndPropagateWordCount (post-lock)
 // ============================================================================
-describe('LieutenantsSelection — recommendAndPropagateWordCount au lock', () => {
+describe('LieutenantsPanel — recommendAndPropagateWordCount au lock', () => {
   it('lock déclenche POST /articles/:id/recommend-word-count en arrière-plan', async () => {
     // Préparer un état lockable : SERP fait + cards sélectionnées.
     // Sprint 1 (2026-05-04) — Bloc 6 a retiré l'auto-trigger SERP au lock
@@ -426,7 +426,7 @@ describe('LieutenantsSelection — recommendAndPropagateWordCount au lock', () =
 // ============================================================================
 // Trou F — restoreLockedLieutenants
 // ============================================================================
-describe('LieutenantsSelection — restoreLockedLieutenants', () => {
+describe('LieutenantsPanel — restoreLockedLieutenants', () => {
   /**
    * Note : `restoreLockedLieutenants` est appelé via :
    * 1. Le watcher `selectedArticle.id` quand `initialLocked === true` ET que l'id change
@@ -501,7 +501,7 @@ describe('LieutenantsSelection — restoreLockedLieutenants', () => {
 // ============================================================================
 // Trou G — Auto-trigger SERP au lock Capitaine + skip si déjà locked
 // ============================================================================
-describe('LieutenantsSelection — déclenchement SERP', () => {
+describe('LieutenantsPanel — déclenchement SERP', () => {
   // Bloc 6 (mai 2026) — l'auto-trigger SERP au lock Capitaine a été
   // retiré. L'utilisateur lance désormais le SERP manuellement via le
   // bouton "Analyser SERP". Ce test vérifie qu'aucun appel /serp/analyze

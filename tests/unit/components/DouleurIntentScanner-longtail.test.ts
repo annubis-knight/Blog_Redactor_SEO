@@ -1,5 +1,5 @@
 /**
- * S4 — Tests unit du flux unifié "Envoyer au Capitaine" dans DouleurIntentScanner
+ * S4 — Tests unit du flux unifié "Envoyer au Capitaine" dans RadarPanel
  * (cards racines + longues-traînes, dédupliqués par keyword normalisé).
  *
  * Stratégie : on mocke useKeywordRadar pour injecter un scanResult artificiel
@@ -65,7 +65,7 @@ vi.mock('@/stores/article/keyword-modifiers.store', () => ({
   }),
 }))
 
-import DouleurIntentScanner from '../../../src/components/intent/DouleurIntentScanner.vue'
+import RadarPanel from '../../../src/components/intent/RadarPanel.vue'
 import type { RadarCard } from '@shared/types/intent.types'
 import type { LongTailSuggestion } from '@shared/types/long-tail.types'
 
@@ -101,7 +101,7 @@ const fakeLongTail: LongTailSuggestion[] = [
   { keyword: 'kw beta', rationale: 'rationale b long', preferenceScore: 8, derivedFromRoots: ['root-b'] },
 ]
 
-describe('moteur:radar DouleurIntentScanner — CTA unifié + dédup longue-traîne', () => {
+describe('moteur:radar RadarPanel — CTA unifié + dédup longue-traîne', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     setActivePinia(createPinia())
@@ -120,7 +120,7 @@ describe('moteur:radar DouleurIntentScanner — CTA unifié + dédup longue-tra�
   it('aggregates card racines + longue-traines and emits cards-selected without duplicates', async () => {
     mockApiPost.mockResolvedValueOnce({ suggestions: fakeLongTail, fromCache: false })
 
-    const wrapper = mount(DouleurIntentScanner, {
+    const wrapper = mount(RadarPanel, {
       props: {
         pilierKeyword: 'copywriting',
         articleTopic: 'B2B',
@@ -175,7 +175,7 @@ await flushPromises()
     ]
     mockApiPost.mockResolvedValueOnce({ suggestions: lt, fromCache: false })
 
-    const wrapper = mount(DouleurIntentScanner, {
+    const wrapper = mount(RadarPanel, {
       props: {
         pilierKeyword: 'copywriting',
         articleTopic: 'B2B',
@@ -207,7 +207,7 @@ await flushPromises()
   })
 
   it('does not emit when nothing is selected', async () => {
-    const wrapper = mount(DouleurIntentScanner, {
+    const wrapper = mount(RadarPanel, {
       props: {
         pilierKeyword: 'copywriting',
         articleTopic: 'B2B',
@@ -222,7 +222,7 @@ await flushPromises()
   })
 
   it('hides the long-tail section when articleId is null (libre mode)', async () => {
-    const wrapper = mount(DouleurIntentScanner, {
+    const wrapper = mount(RadarPanel, {
       props: {
         pilierKeyword: 'copywriting',
         articleTopic: 'B2B',

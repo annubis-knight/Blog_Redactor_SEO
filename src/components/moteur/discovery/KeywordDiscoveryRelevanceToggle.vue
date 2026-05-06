@@ -1,6 +1,6 @@
 <script setup lang="ts">
 /**
- * Vague 5 — Sous-composant Vue extrait de KeywordDiscoveryTab.
+ * Vague 5 — Sous-composant Vue extrait de DiscoveryPanel.
  *
  * Toggle "Filtre de pertinence" + compteur visible/masqués + barre de
  * progression du scoring sémantique. Visible uniquement après

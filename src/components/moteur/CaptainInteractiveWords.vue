@@ -35,7 +35,7 @@ const emit = defineEmits<{
   'unlock': []
   'word-toggle': [activeIndices: number[]]
   /** Sprint 2 (2026-05-04) — propagé depuis RadarCardLockable.
-   *  Le parent (CaptainValidation) re-validate la card avec le painPoint courant. */
+   *  Le parent (CaptainPanel) re-validate la card avec le painPoint courant. */
   'recompute-relevance': [card: RadarCard]
 }>()
 

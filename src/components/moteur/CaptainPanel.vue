@@ -121,7 +121,7 @@ const isLocked = computed(() => {
 watch(
   () => articleKeywordsStore.keywords,
   (kw) => {
-    log.debug('[CaptainValidation] store keywords snapshot', {
+    log.debug('[CaptainPanel] store keywords snapshot', {
       articleId: props.selectedArticle?.id,
       richCaptain: kw?.richCaptain ? {
         keyword: kw.richCaptain.keyword,
@@ -140,7 +140,7 @@ watch(
 function handleValidate() {
   const kw = keywordInput.value.trim()
   if (!kw) return
-  log.info('CaptainValidation — validation', { keyword: kw, level: articleLevel.value })
+  log.info('CaptainPanel — validation', { keyword: kw, level: articleLevel.value })
   carousel.addEntry(kw, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
 }
 
@@ -152,7 +152,7 @@ watch(
     // resynchronisé par le store quand l'article change.
     if (kw) {
       keywordInput.value = kw
-      log.debug('CaptainValidation — input pré-rempli', { keyword: kw })
+      log.debug('CaptainPanel — input pré-rempli', { keyword: kw })
     } else {
       keywordInput.value = ''
       reset()
@@ -166,7 +166,7 @@ watch(
   (persisted) => {
     if (!persisted) return
     keywordInput.value = persisted
-    log.debug('CaptainValidation — restauré depuis store', { keyword: persisted })
+    log.debug('CaptainPanel — restauré depuis store', { keyword: persisted })
     if (isLocked.value) {
       const currentKw = carousel.currentEntry.value?.card.keyword
       if (currentKw !== persisted) {
@@ -264,7 +264,7 @@ watch(
   () => currentResult.value,
   (res) => {
     if (!res) return
-    log.debug('CaptainValidation — lancement panel IA', { keyword: res.keyword, verdict: res.verdict.level })
+    log.debug('CaptainPanel — lancement panel IA', { keyword: res.keyword, verdict: res.verdict.level })
     aiAbort()
     aiStartStream(
       `/api/keywords/${encodeURIComponent(res.keyword)}/ai-panel`,
@@ -321,7 +321,7 @@ function handleManualAiRegenerate() {
 // qui passe richCaptain.status = 'locked', et le computed `isLocked` se réactive.
 function lockCaptaine() {
   const keyword = currentResult.value?.keyword
-  log.info('CaptainValidation — Capitaine verrouillé', { keyword, verdict: effectiveVerdict.value })
+  log.info('CaptainPanel — Capitaine verrouillé', { keyword, verdict: effectiveVerdict.value })
   if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
   if (keyword) {
     emit('validated', keyword)
@@ -360,20 +360,20 @@ function performUnlock(source: UnlockSource) {
   }
   articleKeywordsStore.unlockCaptain()
   if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
-  log.info('CaptainValidation — Capitaine déverrouillé', { source })
+  log.info('CaptainPanel — Capitaine déverrouillé', { source })
   if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
   pendingUnlock.value = null
 }
 
 function handleUnlockKeep() {
   if (!pendingUnlock.value) return
-  log.info('[CaptainValidation] Unlock — keep lieutenants')
+  log.info('[CaptainPanel] Unlock — keep lieutenants')
   performUnlock(pendingUnlock.value)
 }
 
 function handleUnlockArchive() {
   if (!pendingUnlock.value) return
-  log.info('[CaptainValidation] Unlock — archive lieutenants', { count: lockedLieutenantCount.value })
+  log.info('[CaptainPanel] Unlock — archive lieutenants', { count: lockedLieutenantCount.value })
   articleKeywordsStore.archiveLockedLieutenants()
   if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
   notify.info(`${lockedLieutenantCount.value} lieutenant(s) archivé(s)`)
@@ -381,7 +381,7 @@ function handleUnlockArchive() {
 }
 
 function handleUnlockCancel() {
-  log.debug('[CaptainValidation] Unlock cancelled')
+  log.debug('[CaptainPanel] Unlock cancelled')
   pendingUnlock.value = null
 }
 
@@ -621,7 +621,7 @@ function handleAiRegenerate() {
   const entry = selectedEntry.value
   if (!entry?.validation) return
   const kw = entry.card.keyword
-  log.info('[CaptainValidation] AI panel regenerate requested', { keyword: kw })
+  log.info('[CaptainPanel] AI panel regenerate requested', { keyword: kw })
   launchAiStream(kw, entry.validation, true)
 }
 
@@ -673,7 +673,7 @@ watch(
     // 1/34 entries displayed instead of 34/34. `restoreFromHistory` rebuilds
     // `entries` from scratch so it naturally supersedes any prior stub.
     if (history.length > carousel.entries.value.length) {
-      log.info('[CaptainValidation] Restoring carousel from history', {
+      log.info('[CaptainPanel] Restoring carousel from history', {
         entryCount: history.length,
         previousCarouselCount: carousel.entries.value.length,
         level: articleLevel.value,
@@ -719,7 +719,7 @@ watch(
       // Persist captain validation entry (once per keyword)
       if (!persistedValidations.has(kw)) {
         persistedValidations.add(kw)
-        articleKeywordsStore.addCaptainValidation({
+        articleKeywordsStore.addCaptainPanel({
           keyword: kw,
           kpis: toKpiSummary(entry.validation.kpis),
           articleLevel: entry.validation.articleLevel,
@@ -833,7 +833,7 @@ function selectEntry(idx: number) {
 async function lockEntry(idx: number) {
   const entry = carousel.entries.value[idx]
   if (!entry?.validation) {
-    log.debug('[CaptainValidation] lockEntry no-op (entry incomplete)', { idx })
+    log.debug('[CaptainPanel] lockEntry no-op (entry incomplete)', { idx })
     return
   }
   const newKw = entry.card.keyword
@@ -841,7 +841,7 @@ async function lockEntry(idx: number) {
   const isTransfer = previousKw !== null && previousKw !== newKw
 
   if (isTransfer) {
-    log.info('CaptainValidation — lock transfert', { from: previousKw, to: newKw })
+    log.info('CaptainPanel — lock transfert', { from: previousKw, to: newKw })
     if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
     await nextTick()
   }
@@ -918,7 +918,7 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
   }
 
   const previousActiveIndices = entry.activeWordIndices
-  log.info('[CaptainValidation] handleWordToggleAt — validating root variant in-place', { parent: entry.originalCard.keyword, variant: activeKeywordStr, idx })
+  log.info('[CaptainPanel] handleWordToggleAt — validating root variant in-place', { parent: entry.originalCard.keyword, variant: activeKeywordStr, idx })
   // Aligne currentIndex pour cohérence interne du composable (pas critique mais propre)
   carousel.goTo(idx)
   carousel.addRootVariantToEntry(
@@ -930,7 +930,7 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
     props.selectedArticle?.id,
     props.selectedArticle?.painPoint ?? undefined,
   ).catch((err) => {
-    log.warn('[CaptainValidation] Root variant validation failed', { variant: activeKeywordStr, error: (err as Error).message })
+    log.warn('[CaptainPanel] Root variant validation failed', { variant: activeKeywordStr, error: (err as Error).message })
     notify.error(`Impossible de valider "${activeKeywordStr}"`)
     const current = carousel.entries.value[idx]
     if (current) {
@@ -953,10 +953,10 @@ async function handleRecomputeRelevance(card: { keyword: string }) {
   const articleId = props.selectedArticle?.id
   const painPoint = props.selectedArticle?.painPoint
   if (!articleId || !painPoint || painPoint.trim().length < 10) {
-    log.warn('[CaptainValidation] recompute-relevance skipped (no articleId or painPoint)', { keyword: card.keyword })
+    log.warn('[CaptainPanel] recompute-relevance skipped (no articleId or painPoint)', { keyword: card.keyword })
     return
   }
-  log.info('[CaptainValidation] Manual recompute relevance', { keyword: card.keyword })
+  log.info('[CaptainPanel] Manual recompute relevance', { keyword: card.keyword })
   await carousel.addEntry(
     card.keyword,
     articleLevel.value,

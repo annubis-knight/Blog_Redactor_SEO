@@ -1,5 +1,5 @@
 /**
- * Vague 1 — Tests architecturaux LexiqueExtraction.
+ * Vague 1 — Tests architecturaux LexiquePanel.
  *
  * Référence FR PRD : FR-LEX-EXTRAIRE (le Lexique extrait 3 niveaux de termes
  * — Obligatoire / Différenciateur / Optionnel — depuis la SERP, et permet
@@ -18,7 +18,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 import { ref, nextTick } from 'vue'
-import LexiqueExtraction from '../../../src/components/moteur/LexiqueExtraction.vue'
+import LexiquePanel from '../../../src/components/moteur/LexiquePanel.vue'
 
 const { tfidfFixture } = vi.hoisted(() => ({
   tfidfFixture: {
@@ -102,7 +102,7 @@ beforeEach(() => {
 })
 
 async function mountLexique() {
-  const wrapper = mount(LexiqueExtraction, {
+  const wrapper = mount(LexiquePanel, {
     props: baseProps,
     global: { stubs },
   })
@@ -119,7 +119,7 @@ function isDescendantOf(wrapper: ReturnType<typeof mount>, ancestorSelector: str
   return ancestor.find(descendantSelector).exists()
 }
 
-describe('LexiqueExtraction — architecture des sections (Vague 1)', () => {
+describe('LexiquePanel — architecture des sections (Vague 1)', () => {
   it('AC.D.1 — LexiqueTermsList est rendu 3 fois sous lexique-results', async () => {
     const wrapper = await mountLexique()
     const termsLists = wrapper.findAll('[data-testid="lexique-terms-list"]')

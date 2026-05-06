@@ -28,7 +28,7 @@ const showTooltip = ref(false)
 
 <template>
   <!-- Sprint 3 (2026-05-04) — `@click.stop` empêche la propagation au parent
-       (radar-list-item dans CaptainValidation), qui ouvrait à tort la sidebar
+       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
        lors d'un clic sur le score-ring. -->
   <div
     class="radar-card__score-ring"

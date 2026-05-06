@@ -755,6 +755,23 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-NAM-CONTAINERS-PANEL
+Les 6 containers d'onglets du Moteur sont nommés `*Panel.vue` (Pattern A : `XxxPanel`).
+**Renommages** :
+- `CaptainValidation.vue` → `CaptainPanel.vue`
+- `LieutenantsSelection.vue` → `LieutenantsPanel.vue`
+- `LexiqueExtraction.vue` → `LexiquePanel.vue`
+- `KeywordDiscoveryTab.vue` → `DiscoveryPanel.vue`
+- `DouleurIntentScanner.vue` → `RadarPanel.vue`
+- `FinalisationRecap.vue` → `FinalisationPanel.vue`
+- Composable associé : `useKeywordDiscoveryTab` → `useDiscoveryPanel`
+
+**Justification** : avant Sprint 15, le naming était hétérogène (`Validation`, `Selection`, `Extraction`, `Tab`, `Scanner`, `Recap`) — aucun pattern. Le suffixe `Panel` est court, neutre, et signale qu'il s'agit du panneau (container) de l'onglet, pas d'une opération.
+**Critères d'acceptation testables** :
+- Les 6 fichiers sont nommés `*Panel.vue` dans `src/components/moteur/` ou `src/components/intent/`.
+- Aucun import ne référence les anciens noms.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-15-rename-containers-panel.
+
 #### FR-MOT-LOCK-DERIVED
 L'état "verrouillé" d'un container Moteur (Capitaine, Lieutenants) est **dérivé** de la donnée persistée (statut DB), pas stocké dans une Ref locale. La double source de vérité (Ref + store) qui demandait des watchers de synchronisation manuelle est supprimée. Le store est la source unique de vérité.
 **Implémentation** :

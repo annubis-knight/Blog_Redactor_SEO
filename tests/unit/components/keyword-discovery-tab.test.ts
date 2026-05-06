@@ -1,5 +1,5 @@
 /**
- * Tests pour KeywordDiscoveryTab — Onglet Discovery du Moteur.
+ * Tests pour DiscoveryPanel — Onglet Discovery du Moteur.
  *
  * Couvre les actions utilisateur :
  * - input + bouton/Entrée pour lancer une découverte
@@ -15,15 +15,15 @@
  * - watchers pilier/articleKeyword
  *
  * Les API externes (DataForSEO, Claude, semantic scoring) sont mockées via
- * useKeywordDiscoveryTab. captain-trigger est mocké pour observer schedule/cancel.
+ * useDiscoveryPanel. captain-trigger est mocké pour observer schedule/cancel.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
-import KeywordDiscoveryTab from '../../../src/components/moteur/KeywordDiscoveryTab.vue'
+import DiscoveryPanel from '../../../src/components/moteur/DiscoveryPanel.vue'
 
-// ===== Mock useKeywordDiscoveryTab — état dynamique =====
+// ===== Mock useDiscoveryPanel — état dynamique =====
 const mockSuggestAlphabetKw = ref<unknown[]>([])
 const mockSuggestQuestionsKw = ref<unknown[]>([])
 const mockSuggestIntentsKw = ref<unknown[]>([])
@@ -76,8 +76,8 @@ const mockSaveToCache = vi.fn()
 const mockClearCacheForSeed = vi.fn()
 const mockReset = vi.fn()
 
-vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', () => ({
-  useKeywordDiscoveryTab: () => ({
+vi.mock('../../../src/composables/keyword/useDiscoveryPanel', () => ({
+  useDiscoveryPanel: () => ({
     suggestAlphabetKw: mockSuggestAlphabetKw,
     suggestQuestionsKw: mockSuggestQuestionsKw,
     suggestIntentsKw: mockSuggestIntentsKw,
@@ -207,7 +207,7 @@ const baseProps = {
 const mountedWrappers: Array<{ unmount: () => void }> = []
 
 function mountTab(propsOverride: Partial<typeof baseProps> = {}) {
-  const wrapper = mount(KeywordDiscoveryTab, {
+  const wrapper = mount(DiscoveryPanel, {
     props: { ...baseProps, ...propsOverride },
     attachTo: document.body,
   })
@@ -223,7 +223,7 @@ afterEach(() => {
 // ============================================================================
 // Saisie + bouton Découvrir
 // ============================================================================
-describe('KeywordDiscoveryTab — saisie + lancement découverte', () => {
+describe('DiscoveryPanel — saisie + lancement découverte', () => {
   it('seedInput pré-rempli avec articleKeyword au mount', () => {
     const wrapper = mountTab()
     const input = wrapper.find('.discovery-input__field')
@@ -280,7 +280,7 @@ describe('KeywordDiscoveryTab — saisie + lancement découverte', () => {
 // ============================================================================
 // Toggle sections sources (collapsed)
 // ============================================================================
-describe('KeywordDiscoveryTab — sections collapsibles', () => {
+describe('DiscoveryPanel — sections collapsibles', () => {
   it('clic sur le header bascule la section en collapsed (chevron change)', async () => {
     mockHasResults.value = true
     mockSuggestAlphabetKw.value = [{ keyword: 'foo' }, { keyword: 'bar' }]
@@ -312,7 +312,7 @@ describe('KeywordDiscoveryTab — sections collapsibles', () => {
 // ============================================================================
 // Clic keyword + captain-trigger
 // ============================================================================
-describe('KeywordDiscoveryTab — clic keyword (captain-trigger toast)', () => {
+describe('DiscoveryPanel — clic keyword (captain-trigger toast)', () => {
   it('clic sur un keyword non-sélectionné : toggleSelect + captainTrigger.schedule', async () => {
     mockHasResults.value = true
     mockAiKeywords.value = [{ keyword: 'mon kw', reasoning: 'x' }]
@@ -369,7 +369,7 @@ describe('KeywordDiscoveryTab — clic keyword (captain-trigger toast)', () => {
 // ============================================================================
 // Checkbox Tout par source
 // ============================================================================
-describe('KeywordDiscoveryTab — sélection groupée par source', () => {
+describe('DiscoveryPanel — sélection groupée par source', () => {
   it('checkbox "Tout" non-cochée → selectAllInSource', async () => {
     mockHasResults.value = true
     mockAiKeywords.value = [{ keyword: 'a' }, { keyword: 'b' }]
@@ -400,7 +400,7 @@ describe('KeywordDiscoveryTab — sélection groupée par source', () => {
 // ============================================================================
 // Filtre par groupe (sidebar)
 // ============================================================================
-describe('KeywordDiscoveryTab — filtre par groupe', () => {
+describe('DiscoveryPanel — filtre par groupe', () => {
   it('clic sur un group-item active le filtre', async () => {
     mockHasResults.value = true
     mockWordGroups.value = [{ word: 'site', normalized: 'site', count: 5 }]
@@ -442,7 +442,7 @@ describe('KeywordDiscoveryTab — filtre par groupe', () => {
 // ============================================================================
 // Filtre de pertinence
 // ============================================================================
-describe('KeywordDiscoveryTab — filtre de pertinence', () => {
+describe('DiscoveryPanel — filtre de pertinence', () => {
   it('relevance-toggle visible après une découverte', () => {
     mockHasResults.value = true
     const wrapper = mountTab()
@@ -485,7 +485,7 @@ describe('KeywordDiscoveryTab — filtre de pertinence', () => {
 // ============================================================================
 // Cache (Sprint 15.6)
 // ============================================================================
-describe('KeywordDiscoveryTab — cache', () => {
+describe('DiscoveryPanel — cache', () => {
   // Sprint 15.7 — cache-indicator est rendu via <Teleport to="body">,
   // donc on l'inspecte via document.querySelector au lieu du wrapper de mount.
   it('cache-indicator visible si cacheStatus.cached et !hasDiscovered', () => {
@@ -530,7 +530,7 @@ describe('KeywordDiscoveryTab — cache', () => {
 // ============================================================================
 // Analyse IA
 // ============================================================================
-describe('KeywordDiscoveryTab — analyse IA', () => {
+describe('DiscoveryPanel — analyse IA', () => {
   it('bouton "Analyser" visible si hasResults + relevantCount > 0', () => {
     mockHasResults.value = true
     mockRelevantCount.value = 25
@@ -597,7 +597,7 @@ describe('KeywordDiscoveryTab — analyse IA', () => {
 // ============================================================================
 // Send to Radar
 // ============================================================================
-describe('KeywordDiscoveryTab — émission send-to-radar', () => {
+describe('DiscoveryPanel — émission send-to-radar', () => {
   it('discovery-bar visible uniquement si selectedCount > 0', () => {
     mockSelectedCount.value = 0
     let wrapper = mountTab()
@@ -625,7 +625,7 @@ describe('KeywordDiscoveryTab — émission send-to-radar', () => {
 // ============================================================================
 // Watchers article / pilier
 // ============================================================================
-describe('KeywordDiscoveryTab — watchers', () => {
+describe('DiscoveryPanel — watchers', () => {
   it('changer articleKeyword met à jour seedInput', async () => {
     const wrapper = mountTab()
     expect((wrapper.find('.discovery-input__field').element as HTMLInputElement).value).toBe('seo local boulanger')
@@ -639,7 +639,7 @@ describe('KeywordDiscoveryTab — watchers', () => {
   it('changer UNIQUEMENT pilierKeyword (cocoon, articleKeyword inchangé) provoque un reset complet', async () => {
     // Le watcher gère 2 cas : article toggled (return tôt) et pilier changed.
     // Pour atteindre la branche reset, articleKeyword DOIT rester identique.
-    const wrapper = mount(KeywordDiscoveryTab, {
+    const wrapper = mount(DiscoveryPanel, {
       props: { ...baseProps, articleKeyword: 'kw-stable' },
     })
     await nextTick()
@@ -655,7 +655,7 @@ describe('KeywordDiscoveryTab — watchers', () => {
 // ============================================================================
 // Pagination "Tout afficher"
 // ============================================================================
-describe('KeywordDiscoveryTab — pagination > 100 items', () => {
+describe('DiscoveryPanel — pagination > 100 items', () => {
   it('bouton "Tout afficher" visible si list > VISIBLE_THRESHOLD (100)', () => {
     mockHasResults.value = true
     const big = Array.from({ length: 120 }, (_, i) => ({ keyword: `kw-${i}` }))
@@ -684,7 +684,7 @@ describe('KeywordDiscoveryTab — pagination > 100 items', () => {
 // ============================================================================
 // États placeholder + empty
 // ============================================================================
-describe('KeywordDiscoveryTab — états vides + erreur', () => {
+describe('DiscoveryPanel — états vides + erreur', () => {
   it('placeholder section : "Saisissez un mot-clé..." si pas encore lancé', () => {
     mockHasResults.value = false
     const wrapper = mountTab()

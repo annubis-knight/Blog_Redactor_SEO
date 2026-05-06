@@ -1,5 +1,5 @@
 /**
- * Vague 1 — Tests architecturaux CaptainValidation.
+ * Vague 1 — Tests architecturaux CaptainPanel.
  *
  * Référence FR PRD : FR-CAP-VALIDATE (le Capitaine valide un keyword candidat
  * en mode workflow (liste verticale + sidepanel sticky) ou en mode libre
@@ -21,7 +21,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
-import CaptainValidation from '../../../src/components/moteur/CaptainValidation.vue'
+import CaptainPanel from '../../../src/components/moteur/CaptainPanel.vue'
 
 // Mocks composables
 vi.mock('../../../src/composables/keyword/useCapitaineValidation', async () => {
@@ -126,7 +126,7 @@ beforeEach(() => {
 })
 
 function mountCaptain(mode: 'workflow' | 'libre') {
-  return mount(CaptainValidation, {
+  return mount(CaptainPanel, {
     props: { ...baseProps, mode },
     global: { stubs },
   })
@@ -138,7 +138,7 @@ function isDescendantOf(wrapper: ReturnType<typeof mountCaptain>, ancestorSelect
   return ancestor.find(descendantSelector).exists()
 }
 
-describe('CaptainValidation — architecture des modes (Vague 1)', () => {
+describe('CaptainPanel — architecture des modes (Vague 1)', () => {
   it('AC.B.1 — Mode workflow → CaptainRadarList rendu, manual-mode absent', async () => {
     const wrapper = mountCaptain('workflow')
     await nextTick()

@@ -2,7 +2,7 @@
  * Sprint C-2 (2026-05-02) — Tests LexiqueAiPanel.
  *
  * Wrapper bas-de-page qui regroupe l'analyse IA du Lexique sous la coque
- * commune. L'extraction TF-IDF reste à sa place dans LexiqueExtraction.vue.
+ * commune. L'extraction TF-IDF reste à sa place dans LexiquePanel.vue.
  * Ce panel résume les recommandations IA et expose le CTA de régénération.
  *
  * Sprint 3 (2026-05-04) — Le panel IA est COLLAPSED par défaut.

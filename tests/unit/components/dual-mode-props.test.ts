@@ -37,9 +37,9 @@ vi.mock('../../../src/stores/external/local.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', async () => {
-  const { mockKeywordDiscoveryTab } = await import('../__mocks__/useKeywordDiscoveryTab.mock')
-  return mockKeywordDiscoveryTab()
+vi.mock('../../../src/composables/keyword/useDiscoveryPanel', async () => {
+  const { mockDiscoveryPanel } = await import('../__mocks__/useDiscoveryPanel.mock')
+  return mockDiscoveryPanel()
 })
 
 vi.mock('../../../src/composables/keyword/useResonanceScore', () => ({
@@ -194,16 +194,16 @@ describe('Dual-mode prop — mode defaults to workflow', () => {
   })
 })
 
-describe('KeywordDiscoveryTab — mode libre skips article context', () => {
+describe('DiscoveryPanel — mode libre skips article context', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
     vi.clearAllMocks()
   })
 
   it('mounts in libre mode without article context', async () => {
-    const { default: KeywordDiscoveryTab } = await import('../../../src/components/moteur/KeywordDiscoveryTab.vue')
+    const { default: DiscoveryPanel } = await import('../../../src/components/moteur/DiscoveryPanel.vue')
 
-    const wrapper = mount(KeywordDiscoveryTab, {
+    const wrapper = mount(DiscoveryPanel, {
       props: {
         pilierKeyword: 'seo local',
         mode: 'libre',
@@ -214,9 +214,9 @@ describe('KeywordDiscoveryTab — mode libre skips article context', () => {
   })
 
   it('mounts in workflow mode with full article context', async () => {
-    const { default: KeywordDiscoveryTab } = await import('../../../src/components/moteur/KeywordDiscoveryTab.vue')
+    const { default: DiscoveryPanel } = await import('../../../src/components/moteur/DiscoveryPanel.vue')
 
-    const wrapper = mount(KeywordDiscoveryTab, {
+    const wrapper = mount(DiscoveryPanel, {
       props: {
         pilierKeyword: 'seo local',
         mode: 'workflow',
@@ -230,7 +230,7 @@ describe('KeywordDiscoveryTab — mode libre skips article context', () => {
   })
 })
 
-// Tests "DouleurIntentScanner — mode libre skips article watcher" SUPPRIMÉS :
+// Tests "RadarPanel — mode libre skips article watcher" SUPPRIMÉS :
 // les 2 tests étaient des smoke-mounts qui ne vérifiaient que `wrapper.exists()`,
 // avec des mocks incomplets (`scanResult: { value: null }` au lieu de `ref(null)`)
 // qui faisaient crasher useRadarRanking sur `cards.value.length`. Aucune

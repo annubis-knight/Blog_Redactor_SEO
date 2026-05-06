@@ -158,7 +158,7 @@ function handleLongTailSelected(selection: LongTailSuggestion[]) {
 }
 
 /** Convertit une suggestion longue-traine en RadarCard "vide" (kpis: null,
- *  source: 'longtail') compatible avec le payload attendu par CaptainValidation. */
+ *  source: 'longtail') compatible avec le payload attendu par CaptainPanel. */
 function toRadarCardFromLongTail(s: LongTailSuggestion): RadarCard {
   return {
     keyword: s.keyword,

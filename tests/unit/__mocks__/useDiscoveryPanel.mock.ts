@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 import { ref } from 'vue'
 
 /**
- * Full mock factory for useKeywordDiscoveryTab composable.
+ * Full mock factory for useDiscoveryPanel composable.
  * Use via vi.mock path with createMock() or import the default mock.
  */
 function createKeywordDiscoveryTabMock() {
@@ -63,8 +63,8 @@ function createKeywordDiscoveryTabMock() {
 
 /**
  * Ready-to-use vi.mock factory.
- * Usage: vi.mock('../../../src/composables/keyword/useKeywordDiscoveryTab', mockKeywordDiscoveryTab)
+ * Usage: vi.mock('../../../src/composables/keyword/useDiscoveryPanel', mockDiscoveryPanel)
  */
-export const mockKeywordDiscoveryTab = () => ({
-  useKeywordDiscoveryTab: () => createKeywordDiscoveryTabMock(),
+export const mockDiscoveryPanel = () => ({
+  useDiscoveryPanel: () => createKeywordDiscoveryTabMock(),
 })

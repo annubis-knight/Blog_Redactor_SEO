@@ -2,7 +2,7 @@
 /**
  * Functional end-to-end test of the Lieutenant tab pipeline.
  *
- * Tests the REAL function chain used by LieutenantsSelection.vue:
+ * Tests the REAL function chain used by LieutenantsPanel.vue:
  *   1. Read cached SERP data for captain + root keywords
  *   2. mergeSerpResults() — dedup competitors & PAA
  *   3. Hn recurrence computation on merged data
@@ -77,7 +77,7 @@ const ROOT_KEYWORDS = [
 ]
 
 // ---------------------------------------------------------------------------
-// mergeSerpResults — same logic as in LieutenantsSelection.vue
+// mergeSerpResults — same logic as in LieutenantsPanel.vue
 // ---------------------------------------------------------------------------
 function mergeSerpResults(results: SerpAnalysisResult[]): SerpAnalysisResult {
   if (results.length === 1) return results[0]
@@ -113,7 +113,7 @@ function mergeSerpResults(results: SerpAnalysisResult[]): SerpAnalysisResult {
 }
 
 // ---------------------------------------------------------------------------
-// hnRecurrence — same logic as in LieutenantsSelection.vue
+// hnRecurrence — same logic as in LieutenantsPanel.vue
 // ---------------------------------------------------------------------------
 interface HnRecurrenceItem {
   level: number

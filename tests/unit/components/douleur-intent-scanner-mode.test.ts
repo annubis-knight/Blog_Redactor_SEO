@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import DouleurIntentScanner from '../../../src/components/intent/DouleurIntentScanner.vue'
+import RadarPanel from '../../../src/components/intent/RadarPanel.vue'
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -28,9 +28,9 @@ const COMMON_PROPS = {
   injectedKeywords: [],
 }
 
-describe('DouleurIntentScanner — scanner-inputs par mode (Sprint 5 #7)', () => {
+describe('RadarPanel — scanner-inputs par mode (Sprint 5 #7)', () => {
   it('AC7 — mode "workflow" : .scanner-inputs est masqué', () => {
-    const w = mount(DouleurIntentScanner, {
+    const w = mount(RadarPanel, {
       props: { ...COMMON_PROPS, mode: 'workflow' },
       global: {
         stubs: {
@@ -47,7 +47,7 @@ describe('DouleurIntentScanner — scanner-inputs par mode (Sprint 5 #7)', () =>
   })
 
   it('AC7 — mode "libre" : .scanner-inputs reste visible', () => {
-    const w = mount(DouleurIntentScanner, {
+    const w = mount(RadarPanel, {
       props: { ...COMMON_PROPS, mode: 'libre' },
       global: {
         stubs: {
