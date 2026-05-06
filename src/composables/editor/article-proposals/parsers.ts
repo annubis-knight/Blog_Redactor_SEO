@@ -1,6 +1,6 @@
 import type { ProposedArticle } from '@shared/types/index.js'
 import type { ArticleType } from './types'
-import { buildSingleArticle, keywordToSlug } from './builders'
+import { buildSingleArticle } from './builders'
 
 /**
  * Parsers JSON appliqués aux réponses IA pour extraire des `ProposedArticle`
@@ -52,28 +52,7 @@ export function extractArticlesFromJson(text: string): ProposedArticle[] {
     try {
       const obj = JSON.parse(raw) as Record<string, unknown>
       if (typeof obj.title === 'string' && obj.title.trim()) {
-        const kw = (obj.suggestedKeyword as string) ?? ''
-        const sl = ((obj.suggestedSlug as string) ?? '') || keywordToSlug(kw)
-        articles.push({
-          id: crypto.randomUUID(),
-          title: obj.title.trim(),
-          suggestedTitles: [obj.title.trim()],
-          type: (['Pilier', 'Intermédiaire', 'Spécialisé'] as const).includes(obj.type as any) ? (obj.type as ArticleType) : 'Spécialisé',
-          parentTitle: (obj.parentTitle as string) ?? null,
-          rationale: (obj.rationale as string) ?? '',
-          painPoint: (obj.painPoint as string) ?? '',
-          suggestedKeyword: kw,
-          suggestedKeywords: kw ? [kw] : [],
-          suggestedSlug: sl,
-          suggestedSlugs: sl ? [sl] : [],
-          validatedSearchQuery: null,
-          keywordValidated: false,
-          searchQueryValidated: false,
-          titleValidated: false,
-          accepted: false,
-          createdInDb: false,
-          dbId: 0,
-        })
+        articles.push(buildSingleArticle(obj, 'Spécialisé'))
       }
     } catch { /* skip malformed object */ }
   }
@@ -122,31 +101,8 @@ export function parseArticlesFromSuggestion(suggestion: string): ProposedArticle
   try {
     const jsonMatch = suggestion.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
-      const articles = JSON.parse(jsonMatch[0]) as ProposedArticle[]
-      return articles.map(a => {
-        const kw = a.suggestedKeyword ?? ''
-        const sl = (a.suggestedSlug ?? '') || keywordToSlug(kw)
-        return {
-          id: crypto.randomUUID(),
-          title: a.title ?? '',
-          suggestedTitles: a.title ? [a.title] : [],
-          type: a.type ?? 'Spécialisé',
-          parentTitle: a.parentTitle ?? null,
-          rationale: a.rationale ?? '',
-          painPoint: a.painPoint ?? '',
-          suggestedKeyword: kw,
-          suggestedKeywords: kw ? [kw] : [],
-          suggestedSlug: sl,
-          suggestedSlugs: sl ? [sl] : [],
-          validatedSearchQuery: null,
-          keywordValidated: false,
-          searchQueryValidated: false,
-          titleValidated: false,
-          accepted: false,
-          createdInDb: false,
-          dbId: 0,
-        }
-      })
+      const rawArticles = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>
+      return rawArticles.map(a => buildSingleArticle(a, 'Spécialisé'))
     }
   } catch { /* try object-by-object */ }
   return extractArticlesFromJson(suggestion)

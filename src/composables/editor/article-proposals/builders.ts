@@ -1,5 +1,19 @@
 import type { ProposedArticle } from '@shared/types/index.js'
+import type { PainIntentExpected } from '@shared/types/scoring.types.js'
+import { PAIN_INTENT_EXPECTED_VALUES } from '@shared/types/scoring.types.js'
 import type { ArticleType } from './types'
+
+/**
+ * Normalise une valeur arbitraire en `PainIntentExpected | null`. Utilisé pour
+ * accepter ce que l'IA renvoie : si la valeur est dans les 4 attendues, on la
+ * garde ; sinon `null` (5e signal Pertinence neutralisé à 50/100).
+ */
+function coercePainIntentExpected(value: unknown): PainIntentExpected | null {
+  if (typeof value !== 'string') return null
+  return (PAIN_INTENT_EXPECTED_VALUES as readonly string[]).includes(value)
+    ? (value as PainIntentExpected)
+    : null
+}
 
 /**
  * Couleurs de fond utilisées pour distinguer les groupes d'articles Spécialisés
@@ -56,6 +70,7 @@ export function buildSingleArticle(
     parentTitle: (obj.parentTitle as string) ?? null,
     rationale: String(obj.rationale ?? ''),
     painPoint: String(obj.painPoint ?? ''),
+    painIntentExpected: coercePainIntentExpected(obj.painIntentExpected),
     suggestedKeyword: keyword,
     suggestedKeywords: keyword ? [keyword] : [],
     suggestedSlug: slug,
@@ -83,6 +98,7 @@ export function buildEmptyArticle(type: ArticleType): ProposedArticle {
     parentTitle: null,
     rationale: '',
     painPoint: '',
+    painIntentExpected: null,
     suggestedKeyword: '',
     suggestedKeywords: [],
     suggestedSlug: '',

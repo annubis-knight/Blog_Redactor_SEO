@@ -126,6 +126,7 @@ const suggestedArticlesForRecap = computed<Article[]>(() =>
     suggestedKeyword: p.suggestedKeyword || null,
     captainKeywordLocked: null,
     painPoint: p.painPoint || null,
+    painIntentExpected: p.painIntentExpected,
   })),
 )
 

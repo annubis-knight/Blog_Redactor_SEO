@@ -135,11 +135,23 @@ Réponds **uniquement** en JSON, sans code fence, sans explication. Un tableau d
     "type": "Pilier",
     "parentTitle": null,
     "painPoint": "La douleur ou le problème précis auquel cet article répond",
+    "painIntentExpected": "informational",
     "rationale": "Justification courte (1-2 phrases)"
   }
 ]
 ```
 
 Le champ `painPoint` doit décrire le **problème concret** que le lecteur cherche à résoudre — formulé du point de vue du lecteur, pas du rédacteur.
+
+### Règles pour `painIntentExpected`
+
+Choisis exactement **une** des 4 valeurs suivantes selon le type de réponse que l'article doit apporter :
+
+- `"informational"` : article qui explique, guide, éduque (« Comment faire X », « Guide débutant Y », « Comprendre Z »). C'est le défaut pour la plupart des articles SEO éditoriaux.
+- `"commercial"` : comparatif, sélection, recommandation (« Meilleur X 2026 », « Comparatif X vs Y », « Top 10 Z »). Le lecteur compare avant d'acheter.
+- `"transactional"` : pousse directement à l'action ou la conversion (« Acheter X », « Réserver X », « Tarifs X »). Rare en SEO éditorial pur.
+- `"navigational"` : page produit/marque précise (« iPhone 15 Pro », « Notion vs Airtable » lorsque c'est un duel direct entre 2 produits identifiés). Très rare en SEO éditorial.
+
+**Règle simple** : si l'article répond à « comment faire ? » ou « qu'est-ce que ? » → `informational`. Si l'article répond à « lequel choisir ? » → `commercial`. Sinon, ces deux valeurs couvrent 95% des cas.
 
 **IMPORTANT** : Le champ `parentTitle` doit être une copie EXACTE du titre de l'article parent. Toute variation (guillemets, espaces, casse) cassera le lien hiérarchique.

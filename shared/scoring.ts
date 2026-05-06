@@ -167,19 +167,18 @@ const RELEVANCE_WEIGHTS_TARGET = {
 } as const
 
 type RelevanceIntentType = NonNullable<RelevanceScoreInput['intentTypes']>[number]
-type RelevancePainType = NonNullable<RelevanceScoreInput['painType']>
 
 /**
  * Mapping qualitatif intent × douleur → score 0-100.
- * Si pas de painType ou pas d'intentTypes → 50 neutre.
+ * Si pas de painIntentExpected ou pas d'intentTypes → 50 neutre.
  */
 function computeIntentPainAlignment(
   intentTypes: RelevanceIntentType[] | undefined,
-  painType: RelevancePainType | undefined,
+  painIntentExpected: RelevanceIntentType | undefined,
 ): number {
-  if (!painType || !intentTypes || intentTypes.length === 0) return 50
+  if (!painIntentExpected || !intentTypes || intentTypes.length === 0) return 50
 
-  const matrix: Record<RelevancePainType, Record<RelevanceIntentType, number>> = {
+  const matrix: Record<RelevanceIntentType, Record<RelevanceIntentType, number>> = {
     commercial: {
       commercial:    100,
       transactional: 80,
@@ -206,7 +205,7 @@ function computeIntentPainAlignment(
     },
   }
 
-  return Math.max(...intentTypes.map(t => matrix[painType][t] ?? 50))
+  return Math.max(...intentTypes.map(t => matrix[painIntentExpected][t] ?? 50))
 }
 
 /**
@@ -230,13 +229,11 @@ export function computeRelevanceScore(input: RelevanceScoreInput): RelevanceScor
   const paaPainNorm = clampScore(input.paaPainAlignmentAvg, 50)
   const acPainNorm = clampScore(input.autocompletePainAlignmentAvg, 50)
 
-  // S5 — Le nouveau champ `painIntentExpected` prime sur `painType` (legacy
-  // deprecated). On accepte les deux pour la transition.
-  const expectedIntent = input.painIntentExpected ?? input.painType
+  const expectedIntent = input.painIntentExpected
   let intentPainNorm = computeIntentPainAlignment(input.intentTypes, expectedIntent)
 
-  // S5 — Malus intégré directement dans la composante `intentPain.normalized`
-  // (et pas en variable séparée). Pattern extensible : si on veut malus sur
+  // Malus intégré directement dans la composante `intentPain.normalized`
+  // (pas en variable séparée). Pattern extensible : si on veut malus sur
   // d'autres composantes (cannibalisation sur painKeyword, etc.), on adapte
   // de la même manière le `normalized` de la composante concernée.
   if (input.intentTypes && input.intentTypes.length > 0 && expectedIntent) {

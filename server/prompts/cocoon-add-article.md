@@ -94,7 +94,19 @@ Réponds **uniquement** en JSON, sans code fence, sans explication. Un **objet u
   "type": "{{articleType}}",
   "parentTitle": null,
   "painPoint": "La douleur ou le problème précis auquel cet article répond",
+  "painIntentExpected": "informational",
   "rationale": "Justification courte : pourquoi cet article comble un manque"
 }
+
+### Règles pour `painIntentExpected`
+
+Choisis exactement **une** des 4 valeurs suivantes selon le type de réponse que l'article doit apporter :
+
+- `"informational"` : article qui explique, guide, éduque (« Comment faire X », « Guide débutant Y »). Défaut pour la plupart des articles SEO éditoriaux.
+- `"commercial"` : comparatif, sélection (« Meilleur X 2026 », « Comparatif X vs Y »).
+- `"transactional"` : pousse à l'action (« Acheter X », « Réserver X »). Rare en SEO éditorial.
+- `"navigational"` : page marque/produit précis. Très rare.
+
+**Règle simple** : si l'article répond à « comment faire ? » → `informational`. Si l'article répond à « lequel choisir ? » → `commercial`. Sinon, ces deux valeurs couvrent 95% des cas.
 
 **IMPORTANT** : Le champ `parentTitle` doit être une copie EXACTE du titre de l'article parent. Toute variation cassera le lien hiérarchique.
