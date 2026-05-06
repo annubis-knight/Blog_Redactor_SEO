@@ -213,13 +213,20 @@ development_status:
   # Validation : type-check vert, build vert (9.14s), 3962 tests verts.
   sprint-18-lock-on-original-card: done
 
-  # Sprint 19 — Mort de external_api_cache — REPORTÉ (2026-05-06)
-  # tech-spec: tech-spec-sprint-19-mort-external-api-cache.md (status: deferred)
-  # Décision : audit révèle 10+ cache_types actifs (vs 5 estimés Sprint 16) →
-  #   rayon 8+ services à découper + 6+ migrations DB. Décision produit
-  #   nécessaire avant : dropper la table OU la garder comme cache générique ?
-  # FR-INFRA-EXTERNAL-API-CACHE mise à jour avec la liste réelle des types.
-  sprint-19-mort-external-api-cache: deferred
+  # Sprint 19 — Décision produit external_api_cache : option A (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-19-cache-generic-decision.md
+  # branche: chore/sprint-19-cache-generic-decision
+  # DÉCISION PRODUIT : option A — la table est conservée comme cache générique
+  # réutilisable long terme. Pas de migration vers tables dédiées, pas de
+  # DROP TABLE. Plan de mort officiellement abandonné.
+  # Justifications : créer 6+ tables avec presque le même schéma = dette de
+  # maintenance pour gain cosmétique. Le pattern cache-helpers.ts est mature.
+  # Le nom external_api_cache (Sprint 16) signale clairement le rôle.
+  # FR-INFRA-EXTERNAL-API-CACHE mise à jour avec la décision finale.
+  # Aucune modification de code (pure décision documentée).
+  # L'ancien tech-spec deferred (tech-spec-sprint-19-mort-external-api-cache.md)
+  # est supprimé, remplacé par celui-ci.
+  sprint-19-cache-generic-decision: done
 
   # Sprint 20 — Renommage validationHistory → exploredKeywords (2026-05-06) ✅
   # tech-spec: dans Sprint 18 (regroupé)

@@ -825,15 +825,16 @@ Le vocabulaire **"scan"** désigne la recherche/exploration d'un mot-clé (appel
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-14-vocabulaire-backend-scan.
 
 #### FR-INFRA-EXTERNAL-API-CACHE
-La table `external_api_cache` (anciennement `api_cache`, renommée Sprint 16) cache les appels API externes en fin de vie (DataForSEO `validate`, autocomplete). Les autres cache_types historiques (`paa`, `serp`, `radar`, `discovery`, `intent`, `local-seo`, `content-gap`, `lexique`) ont été migrés vers des tables dédiées `*_explorations` au fil des migrations 006-010.
-**Schéma** : `(id SERIAL PK, cache_key TEXT, cache_type TEXT, data JSONB, cached_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, UNIQUE(cache_key, cache_type))`.
-**Cache_types actifs (2026-05-06, audit Sprint 19)** : `dataforseo`, `gsc`, `radar`, `long-tail-suggest`, `suggest` (4 sub-keys), `keyword-discovery`, `intent`, `community-discussions`, `validate`, `autocomplete`. **10+ types actifs** (estimation Sprint 16 de 5 types était incomplète). La migration 018 a nettoyé les lignes orphelines des types historiques (`paa`, `serp`, `discovery`, `intent`, `local-seo`, `content-gap`, `lexique`, `paa_reverse_index`, `discussions`, `suggest`).
+La table `external_api_cache` (anciennement `api_cache`, renommée Sprint 16) est le **cache générique réutilisable** pour tous les appels API externes. Décision produit Sprint 19 (option A) : la table est conservée long terme, **il n'y a pas de plan de mort**. Tout nouveau cache d'appel externe doit utiliser cette table via `cache-helpers.ts` (`getCached` / `setCached` / `deleteCached`) — pas de table dédiée à créer pour ça.
+**Schéma** : `(id SERIAL PK, cache_key TEXT, cache_type TEXT, data JSONB, cached_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, UNIQUE(cache_key, cache_type))`. La partition par `(cache_type, cache_key)` permet d'accueillir N types sans collision et sans schéma dédié.
+**Cache_types actifs (2026-05-06)** : `dataforseo`, `gsc`, `radar`, `long-tail-suggest`, `suggest` (4 sub-keys), `keyword-discovery`, `intent`, `community-discussions`, `validate`, `autocomplete`. Liste extensible par convention (string `cache_type`).
+**Justification produit (Sprint 19 option A)** : créer 6+ tables dédiées avec presque le même schéma serait de la dette de maintenance pour un gain cosmétique. Le pattern `cache-helpers.ts` est mature (utilisé par 8+ services depuis longtemps, sans bug récurrent). Le nom `external_api_cache` (Sprint 16) signale clairement le rôle. Aucun impact utilisateur — ce serait du tech debt pur.
 **Critères d'acceptation testables** :
 - `SELECT * FROM external_api_cache` fonctionne ; `api_cache` n'existe plus.
 - Le job de purge horaire (`server/index.ts`) cible `external_api_cache`.
 - Aucune référence SQL à `FROM api_cache` / `INTO api_cache` / `TABLE api_cache` ne subsiste dans `server/`, `src/`, `tests/`.
-**Plan de mort à long terme** : reporté (cf. tech-spec-sprint-19-mort-external-api-cache.md status: deferred). Décision produit nécessaire avant migration : faut-il vraiment dropper la table (et créer 6+ tables dédiées), ou la garder comme cache générique réutilisable ? Le renommage Sprint 16 (`api_cache` → `external_api_cache`) et le nettoyage des types orphelins suffisent pour la lisibilité actuelle.
-**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-16-rename-external-api-cache.
+- Tout nouveau cache d'appel externe (futurs services) doit utiliser `cache-helpers.ts` plutôt que créer une table dédiée.
+**Statut :** active. **Depuis :** 2026-05-06. **Décision produit Sprint 19 :** option A — table conservée comme cache générique long terme, plan de mort officiellement abandonné. **Source :** tech-spec-sprint-19-cache-generic-decision (supersede tech-spec-sprint-16-rename-external-api-cache pour la partie "plan de mort").
 
 #### FR-NAM-CONTAINERS-PANEL
 Les 6 containers d'onglets du Moteur sont nommés `*Panel.vue` (Pattern A : `XxxPanel`).
