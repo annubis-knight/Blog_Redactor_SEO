@@ -725,6 +725,45 @@ L'algorithme d'extraction des racines `extractRoots()` reste **linéaire** (tron
 - Aucun appel LLM dans le chemin de calcul.
 **Statut :** active (verrouille statu quo). **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
 
+#### FR-CAP-RELEVANCE-INTENT-SIGNAL
+Le 5e signal du Score Pertinence (« Intent SERP × Intent éditorial attendu ») est calculé en croisant `keyword_metrics.intent_raw` (intention SERP du keyword côté DataForSEO) avec `articles.pain_intent_expected` (intention éditoriale attendue côté article). Lorsque les deux divergent, un malus est appliqué à la composante `intentPain.normalized` du Score Pertinence (cf. `shared/scoring.ts` — `INTENT_MISMATCH_MALUS`).
+**Type stocké** : TEXT single-value, valeurs `'commercial' | 'transactional' | 'informational' | 'navigational' | NULL`. Migration DB : `014_articles_pain_intent_expected.sql`.
+**Comportement** :
+- `pain_intent_expected = NULL` → signal neutralisé à 50/100 (dégradation gracieuse, pas de malus).
+- Match (intent SERP === intent attendu) → score boosté.
+- Mismatch → malus appliqué directement sur la composante (pas de variable séparée).
+**Critères d'acceptation testables** :
+- Tests unitaires sur `computeIntentPainAlignment` (matrice 4×4 complète).
+- Test d'intégration `getCaptainExplorations` : vérifie que `painIntentExpected` est lu depuis DB et passé à `computeRelevanceForCaptainTab`.
+- Article créé sans `pain_intent_expected` → score Pertinence calculé sur 4 signaux (5e neutre à 50).
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-pain-intent-expected-signal.
+
+#### FR-PIE-AI-GENERATION
+Les prompts IA de création d'articles (`cocoon-articles.md`, `cocoon-articles-spe.md`, `cocoon-add-article.md`) génèrent le champ `painIntentExpected` en plus de `painPoint`. Le champ est inclus dans la même réponse JSON que les autres métadonnées article — **aucun appel IA supplémentaire**.
+**Valeurs autorisées** : `'commercial' | 'transactional' | 'informational' | 'navigational'`.
+**Règles d'inférence** (documentées dans les prompts) :
+- `informational` : article qui explique, guide, éduque (« Comment faire X », « Guide débutant Y »).
+- `commercial` : comparatif, sélection (« Meilleur X 2026 », « Comparatif X vs Y »).
+- `transactional` : pousse à l'achat ou conversion (« Acheter X », « Réserver X »).
+- `navigational` : page marque/produit précis (rare en SEO éditorial).
+**Critères d'acceptation testables** :
+- Schéma Zod valide les 4 valeurs en sortie de prompt (`painIntentExpectedSchema`).
+- `addArticlesToCocoon` persiste le champ dans `articles.pain_intent_expected`.
+- Si l'IA omet le champ (rétro-compat), persistance avec `NULL` — pas d'erreur 500.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-pain-intent-expected-signal.
+
+#### FR-PIE-CERVEAU-OVERRIDE
+L'utilisateur peut corriger l'intent généré par l'IA via un dropdown radio single-select dans `ProposedArticleRow.vue`, à côté de l'affichage du painPoint. Le changement déclenche un PUT vers `/articles/:id` qui met à jour `pain_intent_expected` en DB.
+**Comportement** :
+- Dropdown affiche les 4 valeurs + option « Non défini » (NULL).
+- Persistance immédiate au changement (pas de bouton « Enregistrer »).
+- Notification toast confirmant la mise à jour.
+**Critères d'acceptation testables** :
+- Test composant `ProposedArticleRow.vue` : changement de valeur déclenche émission événement avec nouvelle valeur.
+- Test contract-api `PUT /articles/:id` : payload `{ painIntentExpected: 'informational' }` → row DB mise à jour.
+- Réouverture de la card → la valeur correcte est affichée.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-pain-intent-expected-signal.
+
 ---
 
 ### 8.7 — Moteur — Lieutenants (FR-LIE)
