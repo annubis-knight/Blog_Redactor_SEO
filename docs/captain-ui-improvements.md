@@ -41,7 +41,7 @@ Le panel utilise un `v-if="entry !== null"` : tant qu'aucune carte n'est sélect
 
 ### Code
 - [src/components/moteur/CaptainSidePanel.vue](../src/components/moteur/CaptainSidePanel.vue) — `useEventListener` + 3 garde-fous
-- [src/components/moteur/CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) — `@close="selectedIndex = null"`
+- [src/components/moteur/CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue) — `@close="selectedIndex = null"`
 
 ### Tests
 - [tests/unit/components/captain-side-panel.test.ts](../tests/unit/components/captain-side-panel.test.ts) :
@@ -65,7 +65,7 @@ Effet *bouton enfoncé* :
 - Hover plus prononcé sur l'état sélectionné
 
 ### Code
-- [src/components/moteur/CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) → CSS `.radar-list-item`, `.radar-list-item--selected`
+- [src/components/moteur/CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue) → CSS `.radar-list-item`, `.radar-list-item--selected`
 
 ```css
 .radar-list-item--selected {
@@ -95,7 +95,7 @@ Visuellement lourd et redondant.
 
 ### Code
 - [src/components/intent/RadarCardLockable.vue](../src/components/intent/RadarCardLockable.vue) → suppression de la border verte parent
-- [src/components/moteur/CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) → suppression des règles `.radar-list-item--locked` et `.radar-list-item--selected.radar-list-item--locked`
+- [src/components/moteur/CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue) → suppression des règles `.radar-list-item--locked` et `.radar-list-item--selected.radar-list-item--locked`
 
 ---
 
@@ -111,7 +111,7 @@ Visuellement lourd et redondant.
 
 ### Code
 - [src/composables/ui/useResizablePanel.ts](../src/composables/ui/useResizablePanel.ts) → suppression de toute borne haute
-- [src/components/moteur/CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) → `.captain-layout { display: block }`
+- [src/components/moteur/CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue) → `.captain-layout { display: block }`
 
 ### Tests
 - [tests/unit/composables/useResizablePanel.test.ts](../tests/unit/composables/useResizablePanel.test.ts) :

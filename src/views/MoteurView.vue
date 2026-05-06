@@ -221,7 +221,7 @@ function handleSelectArticle(article: SelectedArticle | null) {
   // Fetch article-level keywords (capitaine, lieutenants, lexique).
   // Bloc 3 — fetchKeywordsMerge au lieu de fetchKeywords : la variante merge
   // fusionne sans écraser l'état mémoire et déclenche correctement la
-  // restauration du container Capitaine (validationHistory). fetchKeywords
+  // restauration du container Capitaine (exploredKeywords). fetchKeywords
   // (replace) provoquait une race condition avec une stub-entry du watcher
   // CaptainPanel, laissant souvent 0-1 carte affichée alors que la DB
   // en contenait davantage.

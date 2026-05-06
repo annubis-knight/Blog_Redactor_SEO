@@ -90,7 +90,7 @@ Qui crée ou met à jour cette donnée :
   - Badges sources racines.
   - Bouton « ✨ Suggérer » au premier appel, remplacé par « ⟳ Régénérer » après succès.
 
-- [src/components/moteur/KeywordDiscoveryTab.vue](../../src/components/moteur/KeywordDiscoveryTab.vue) — tab ① Découverte (source utilisateur), n'affiche pas directement le Radar mais émet `send-to-radar` pour transition.
+- [src/components/moteur/DiscoveryPanel.vue](../../src/components/moteur/DiscoveryPanel.vue) — tab ① Découverte (source utilisateur), n'affiche pas directement le Radar mais émet `send-to-radar` pour transition.
 
 ### Calcul / tri / filtre / agrégat
 
@@ -156,7 +156,7 @@ flowchart TD
         LTComp["RadarLongTailSuggestions.vue<br/>affichage + checkbox"]
         Tri["compareScores()<br/>shared/score/compare.ts"]
         Agg["Agrégation CTA<br/>MoteurView.handleCardsSelected"]
-        Cap["CaptainValidation.vue<br/>radarCards prop"]
+        Cap["CaptainPanel.vue<br/>radarCards prop"]
     end
 
     AI -->|POST /radar/generate| Scan

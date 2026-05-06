@@ -23,7 +23,7 @@ export type {
   Keyword,
   ArticleKeywords,
   RawArticleKeywordsDb,
-  CaptainValidationEntry,
+  CaptainScanEntry,
   RichCaptain,
   RichRootKeyword,
   RichLieutenant,

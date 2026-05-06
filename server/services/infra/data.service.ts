@@ -8,7 +8,7 @@ import type {
   ArticleStatus,
   ArticlePhase,
   ArticleKeywords,
-  CaptainValidationEntry,
+  CaptainScanEntry,
   RichCaptain,
   RichLieutenant,
   Cocoon,
@@ -533,24 +533,24 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   const row = res.rows[0]
 
   // Hydrate from exploration tables
-  const { data: validationHistory, dbOps: captainOps } = await getCaptainExplorations(id)
+  const { data: exploredKeywords, dbOps: captainOps } = await getCaptainExplorations(id)
   ops.push(...captainOps)
   const { data: richLieutenants, dbOps: lieutOps } = await getLieutenantExplorations(id)
   ops.push(...lieutOps)
 
   // Build richCaptain from decision + exploration data.
-  // NOTE: we also build it when validationHistory is non-empty even without a
+  // NOTE: we also build it when exploredKeywords is non-empty even without a
   // locked captain — otherwise the carousel on the Captain tab can't rehydrate
   // past explorations after a refresh. (Bug fix Sprint 0.1.)
   const captainKeyword = row.capitaine ?? ''
-  const hasExplorations = validationHistory.length > 0
+  const hasExplorations = exploredKeywords.length > 0
   const captainTest = captainKeyword
-    ? validationHistory.find(v => v.keyword === captainKeyword)
+    ? exploredKeywords.find(v => v.keyword === captainKeyword)
     : undefined
   const richCaptain: RichCaptain | undefined = (captainKeyword || hasExplorations) ? {
     keyword: captainKeyword,
     status: row.captain_locked_at ? 'locked' : 'suggested',
-    validationHistory,
+    exploredKeywords,
     aiPanelMarkdown: captainTest?.aiPanelMarkdown ?? null,
     lockedAt: row.captain_locked_at?.toISOString() ?? null,
   } : undefined
@@ -564,7 +564,7 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
       rootKeywords: row.root_keywords ?? [],
       hnStructure: row.hn_structure ?? [],
       richCaptain,
-      richRootKeywords: validationHistory.flatMap(v =>
+      richRootKeywords: exploredKeywords.flatMap(v =>
         (v.rootKeywords ?? []).map(rk => ({
           keyword: rk, parentKeyword: v.keyword,
           kpis: [], articleLevel: v.articleLevel, timestamp: '',
@@ -610,7 +610,7 @@ export async function saveArticleKeywords(id: number, data: Omit<ArticleKeywords
 // Captain Explorations (captain_explorations + paa_explorations tables)
 // ---------------------------------------------------------------------------
 
-export async function getCaptainExplorations(articleId: number): Promise<{ data: CaptainValidationEntry[]; dbOps: DbOp[] }> {
+export async function getCaptainExplorations(articleId: number): Promise<{ data: CaptainScanEntry[]; dbOps: DbOp[] }> {
   const tTotal = Date.now()
   log.debug('[getCaptainExplorations] démarrage', { articleId })
   const ops: DbOp[] = []
@@ -793,7 +793,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       exploredAt: t.explored_at?.toISOString() ?? null,
       // marketScore : rapatrié depuis radar_explorations (snapshot stable).
       // Peut être null si la card n'était pas dans le scan (saisie manuelle).
-      marketScore: marketScoreFromRadar as CaptainValidationEntry['marketScore'],
+      marketScore: marketScoreFromRadar as CaptainScanEntry['marketScore'],
       // relevanceScore : calculé à la volée (FR-CAP-RELEVANCE-COMPUTED-LIVE).
       // Toujours cohérent avec le painPoint actuel de l'article.
       // Le champ unavailableReason est porté par liveRelevance pour le tooltip honnête.
@@ -804,7 +804,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
             breakdown: liveRelevance.breakdown,
             rootsContext: liveRelevance.rootsContext,
           }
-        : null) as CaptainValidationEntry['relevanceScore'],
+        : null) as CaptainScanEntry['relevanceScore'],
       // Cause typée renvoyée au front pour le tooltip (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
       relevanceUnavailableReason: liveRelevance?.unavailableReason ?? null,
     }
@@ -821,7 +821,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
 
 export async function saveCaptainExploration(
   articleId: number,
-  entry: CaptainValidationEntry & { status?: string }
+  entry: CaptainScanEntry & { status?: string }
 ): Promise<DbOp[]> {
   const ops: DbOp[] = []
 

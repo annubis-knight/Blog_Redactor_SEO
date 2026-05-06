@@ -25,7 +25,7 @@ describe('FR-CAP-LOCK-RADIO — cohérence lock atomique du Capitaine', () => {
       storeState.richCaptain = {
         keyword,
         status: 'locked',
-        validationHistory: [],
+        exploredKeywords: [],
         aiPanelMarkdown: aiPanel,
         lockedAt: new Date().toISOString(),
       }
@@ -40,21 +40,21 @@ describe('FR-CAP-LOCK-RADIO — cohérence lock atomique du Capitaine', () => {
   })
 
   it('re-lock même keyword est idempotent (ne duplique pas)', () => {
-    const storeState = { richCaptain: { keyword: 'seo', status: 'locked', validationHistory: [], aiPanelMarkdown: null, lockedAt: '2026-05-04T10:00:00Z' } }
+    const storeState = { richCaptain: { keyword: 'seo', status: 'locked', exploredKeywords: [], aiPanelMarkdown: null, lockedAt: '2026-05-04T10:00:00Z' } }
 
     function lockCaptain(keyword: string, aiPanel: string | null) {
       storeState.richCaptain = {
         keyword,
         status: 'locked',
-        validationHistory: storeState.richCaptain.validationHistory,
+        exploredKeywords: storeState.richCaptain.exploredKeywords,
         aiPanelMarkdown: aiPanel,
         lockedAt: new Date().toISOString(),
       }
     }
 
-    const initialCount = storeState.richCaptain.validationHistory.length
+    const initialCount = storeState.richCaptain.exploredKeywords.length
     lockCaptain('seo', 'new panel')
-    const finalCount = storeState.richCaptain.validationHistory.length
+    const finalCount = storeState.richCaptain.exploredKeywords.length
 
     expect(finalCount).toBe(initialCount) // pas d'append
   })
@@ -266,7 +266,7 @@ describe('FR-MOT-PHASES — fetchKeywordsMerge() idempotence', () => {
       capitaine: 'validated-keyword',
       richCaptain: {
         status: 'locked',
-        validationHistory: [{ keyword: 'validated-keyword' }],
+        exploredKeywords: [{ keyword: 'validated-keyword' }],
       },
     }
 
@@ -290,22 +290,22 @@ describe('FR-MOT-PHASES — fetchKeywordsMerge() idempotence', () => {
     expect(memory.capitaine).toBe('validated-keyword') // memory wins
   })
 
-  it('validationHistory merge est append-only (pas repioche)', () => {
+  it('exploredKeywords merge est append-only (pas repioche)', () => {
     const memory = {
-      validationHistory: [
+      exploredKeywords: [
         { keyword: 'seo-audit', status: 'validated' },
       ],
     }
 
     const db = {
-      validationHistory: [
+      exploredKeywords: [
         { keyword: 'seo', status: 'validated' },
         { keyword: 'seo-audit', status: 'validated' }, // déjà en mémoire
       ],
     }
 
-    function mergeCaptainHistory(incoming: any[]) {
-      const history = memory.validationHistory
+    function mergeCaptainExploredKeywords(incoming: any[]) {
+      const history = memory.exploredKeywords
       const keyOf = (e: any) => e.keyword.trim().toLowerCase()
       const seen = new Set(history.map(keyOf))
 
@@ -318,22 +318,22 @@ describe('FR-MOT-PHASES — fetchKeywordsMerge() idempotence', () => {
       }
     }
 
-    mergeCaptainHistory(db.validationHistory)
+    mergeCaptainExploredKeywords(db.exploredKeywords)
 
-    expect(memory.validationHistory).toHaveLength(2)
-    expect(memory.validationHistory.map((h: any) => h.keyword)).toEqual(['seo-audit', 'seo'])
+    expect(memory.exploredKeywords).toHaveLength(2)
+    expect(memory.exploredKeywords.map((h: any) => h.keyword)).toEqual(['seo-audit', 'seo'])
   })
 
   it('2e fetch reste idempotent (pas append doublon)', () => {
-    const memory = { validationHistory: [{ keyword: 'seo' }] }
-    const db = { validationHistory: [{ keyword: 'seo' }] }
+    const memory = { exploredKeywords: [{ keyword: 'seo' }] }
+    const db = { exploredKeywords: [{ keyword: 'seo' }] }
 
     function merge() {
-      const seen = new Set(memory.validationHistory.map((h: any) => h.keyword.toLowerCase()))
-      for (const h of db.validationHistory) {
+      const seen = new Set(memory.exploredKeywords.map((h: any) => h.keyword.toLowerCase()))
+      for (const h of db.exploredKeywords) {
         const key = h.keyword.toLowerCase()
         if (!seen.has(key)) {
-          memory.validationHistory.push(h)
+          memory.exploredKeywords.push(h)
         }
       }
     }
@@ -341,7 +341,7 @@ describe('FR-MOT-PHASES — fetchKeywordsMerge() idempotence', () => {
     merge()
     merge() // 2e appel
 
-    expect(memory.validationHistory).toHaveLength(1)
+    expect(memory.exploredKeywords).toHaveLength(1)
   })
 
   it.todo('reload + switch onglet produit même resultate que premier load')

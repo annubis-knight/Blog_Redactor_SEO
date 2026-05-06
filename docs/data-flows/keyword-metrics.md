@@ -15,8 +15,8 @@ related_fr: [FR-INFRA-KEYWORD-METRICS, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRS
 
 Qui crée ou met à jour cette donnée :
 
-- **Endpoint** `POST /api/keywords/:keyword/validate` ([server/routes/keyword-validate.routes.ts:39-301](../../server/routes/keyword-validate.routes.ts)) — réceptionne `{ keyword, level, articleTitle, articleId?, painPoint? }`, effectue un appel parallèle Overview + Autocomplete + SERP + Intent + PAA si miss cache, **upserte KPIs + PAA via `upsertKeywordKpis()` et `upsertKeywordPaa()`** ligne 112-121, retourne `ValidateResponse` bimodal (marketScore + relevanceScore).
-- **Service** `keyword-validate.service.ts` orchestre les appels externes et le cache-check (cf. `isKeywordMetricsFresh()` ligne 78).
+- **Endpoint** `POST /api/keywords/:keyword/validate` ([server/routes/keyword-scan.routes.ts:39-301](../../server/routes/keyword-scan.routes.ts)) — réceptionne `{ keyword, level, articleTitle, articleId?, painPoint? }`, effectue un appel parallèle Overview + Autocomplete + SERP + Intent + PAA si miss cache, **upserte KPIs + PAA via `upsertKeywordKpis()` et `upsertKeywordPaa()`** ligne 112-121, retourne `ValidateResponse` bimodal (marketScore + relevanceScore).
+- **Service** `keyword-scan.service.ts` orchestre les appels externes et le cache-check (cf. `isKeywordMetricsFresh()` ligne 78).
 - **Freshness check centralisé** `isKeywordMetricsFresh(fetchedAt, ttlDays=7)` ([server/services/keyword/keyword-metrics.service.ts:250-254](../../server/services/keyword/keyword-metrics.service.ts)) — retourne `false` si `null` ou > 7j, court-circuite les appels externes.
 - **Service Autocomplete** `fetchAutocomplete()` → `upsertKeywordAutocomplete()` ([server/services/keyword/autocomplete.service.ts:149](../../server/services/keyword/autocomplete.service.ts)) — upserte colonne `autocomplete_suggestions` + `autocomplete_source` ('google' | 'dataforseo').
 - **Service SERP** `analyzeSerpCompetitors()` → `upsertKeywordSerp()` via `serp-analysis.routes.ts:42` ([server/routes/serp-analysis.routes.ts:10-50](../../server/routes/serp-analysis.routes.ts)) — persiste `serp_raw_json JSONB` (payload brut `SerpAnalysisResult`), zéro re-requête si frais (invariant **NFR-INT-SERP-ONCE**).
@@ -52,7 +52,7 @@ Côté front **Pinia store** `articleKeywordsStore` ([src/stores/article/article
 
 - **[src/components/moteur/CaptainSidePanel.vue:32-43](../../src/components/moteur/CaptainSidePanel.vue)** — section « KPIs marché » : affiche `searchVolume`, `difficulty`, `cpc`, `intentTypes`, `paaTotal`, `autocompleteMatchCount` depuis `entry.card.kpis` (structure `RadarKeywordKpis` issue de la réponse `/validate`). Lecture seule, sans fallback numérique (`volume ?? 0` interdit par ESLint).
 - **[src/components/intent/RadarKeywordCard.vue](../../src/components/intent/RadarKeywordCard.vue)** — card Radar bimodal `displayMode='market' | 'relevance'` : affiche les 2 scores indépendants via les KPIs.
-- **[src/components/moteur/CaptainValidation.vue](../../src/components/moteur/CaptainValidation.vue)** — liste verticale avec verdicts par entrée : utilise `card.kpis` pour reconstuire les badges KPI.
+- **[src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue)** — liste verticale avec verdicts par entrée : utilise `card.kpis` pour reconstuire les badges KPI.
 - **[src/components/moteur/CaptainVerdictPanel.vue](../../src/components/moteur/CaptainVerdictPanel.vue)** — feu tricolore (GO/ORANGE/NO-GO/GRAY) sur base du verdict.
 - **Pages d'audit, comparaison** : affichage summary `Volume: 1.2K | KD: 45 | CPC: €0.50 | Intent: Transactionnel` sans calcul additionnel.
 
@@ -87,11 +87,11 @@ Côté front **Pinia store** `articleKeywordsStore` ([src/stores/article/article
 graph TD
     subgraph Producteurs["Producteurs (services + routes)"]
         A["DataForSEO APIs:<br/>Overview / Autocomplete<br/>/ SERP / Intent / PAA"]
-        R1["POST /api/keywords/:kw/validate<br/>(keyword-validate.routes.ts:39-120)"]
+        R1["POST /api/keywords/:kw/validate<br/>(keyword-scan.routes.ts:39-120)"]
         R2["POST /api/serp/analyze<br/>(serp-analysis.routes.ts:19-50)"]
         R3["POST /api/content-gap<br/>(content-gap.service.ts:215)"]
         R4["Local SEO service<br/>(local-seo.service.ts:122)"]
-        S1["keyword-validate.service.ts"]
+        S1["keyword-scan.service.ts"]
         S2["autocomplete.service.ts"]
         S3["serp-analysis.service.ts"]
         S4["paa-cache.service.ts"]

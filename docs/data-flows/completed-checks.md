@@ -31,9 +31,9 @@ Qui crée ou met à jour cette donnée :
   - `saveArticleProgress(id, progress)` ([lignes 286-294](../../server/services/infra/data.service.ts)) — UPDATE global : `phase`, `completed_checks`, `check_timestamps`.
 
 - **Émetteurs frontend** — composants Vue qui émettent `check-completed` ou `check-removed` :
-  - `CaptainValidation.vue` ([lignes 47-52](../../src/components/moteur/CaptainValidation.vue)) — emit `check-completed` quand Capitaine est verrouillé.
-  - `LieutenantsSelection.vue` ([lignes 49-54](../../src/components/moteur/LieutenantsSelection.vue)) — emit `check-completed` quand Lieutenants sont verrouillés.
-  - `LexiqueExtraction.vue` ([lignes 43-46](../../src/components/moteur/LexiqueExtraction.vue)) — emit `check-completed` quand Lexique est validé.
+  - `CaptainPanel.vue` ([lignes 47-52](../../src/components/moteur/CaptainPanel.vue)) — emit `check-completed` quand Capitaine est verrouillé.
+  - `LieutenantsPanel.vue` ([lignes 49-54](../../src/components/moteur/LieutenantsPanel.vue)) — emit `check-completed` quand Lieutenants sont verrouillés.
+  - `LexiquePanel.vue` ([lignes 43-46](../../src/components/moteur/LexiquePanel.vue)) — emit `check-completed` quand Lexique est validé.
   - `RadarCardCheckable.vue` — emit `check-completed` pour Radar (phase découverte).
 
 - **Handler parent** `MoteurView.vue` ([lignes 137-147](../../src/views/MoteurView.vue)) — fonction `emitCheckCompleted(check)` qui appelle `articleProgressStore.addCheck(id, check)` synchronement.
@@ -129,9 +129,9 @@ flowchart TD
         EP2["POST /articles/:id/progress/uncheck<br/>articles.routes.ts:362"]
         EP3["PUT /articles/:id/progress<br/>articles.routes.ts:320"]
         SVC["addArticleCheck / removeArticleCheck<br/>data.service.ts:296-322"]
-        CaptainC["CaptainValidation.vue<br/>emit check-completed"]
-        LieutenantC["LieutenantsSelection.vue<br/>emit check-completed"]
-        LexiqueC["LexiqueExtraction.vue<br/>emit check-completed"]
+        CaptainC["CaptainPanel.vue<br/>emit check-completed"]
+        LieutenantC["LieutenantsPanel.vue<br/>emit check-completed"]
+        LexiqueC["LexiquePanel.vue<br/>emit check-completed"]
         RadarC["RadarCardCheckable.vue<br/>emit check-completed"]
         MView["MoteurView.emitCheckCompleted()<br/>calls articleProgressStore.addCheck"]
         Store["article-progress.store.ts<br/>addCheck/removeCheck"]
@@ -187,7 +187,7 @@ flowchart TD
    - Tester le cas : appel `addCheck`, puis reload, puis `getProgress` → vérifier que le check est bien persiste et reload le retrouve.
 
 2. **`describe('FR-MOT-CHECKS-CONSTANTS — imports obligatoires')`** :
-   - Vérifier que `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED` sont utilisés correctement dans `CaptainValidation.vue`, `LieutenantsSelection.vue`, `LexiqueExtraction.vue`.
+   - Vérifier que `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED` sont utilisés correctement dans `CaptainPanel.vue`, `LieutenantsPanel.vue`, `LexiquePanel.vue`.
    - Interdire hardcoded strings : grep tous les `.vue` pour des strings comme `'moteur:capitaine_locked'` directement.
 
 3. **`describe('FR-MOT-CHECKS — gating finalisation cohérent')`** :

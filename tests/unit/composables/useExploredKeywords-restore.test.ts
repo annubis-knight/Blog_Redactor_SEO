@@ -11,7 +11,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { useExploredKeywords } from '../../../src/composables/keyword/useExploredKeywords'
-import type { CaptainValidationEntry } from '../../../shared/types/keyword.types'
+import type { CaptainScanEntry } from '../../../shared/types/keyword.types'
 import type { MarketScoreResult, RelevanceScoreResult } from '../../../shared/types/scoring.types'
 
 function relevanceStub(total: number): RelevanceScoreResult {
@@ -33,7 +33,7 @@ function marketStub(total: number): MarketScoreResult {
   return { total, verdict: total >= 70 ? 'GO' : total >= 40 ? 'ORANGE' : 'NOGO', components: [] }
 }
 
-function makeEntry(overrides: Partial<CaptainValidationEntry> = {}): CaptainValidationEntry {
+function makeEntry(overrides: Partial<CaptainScanEntry> = {}): CaptainScanEntry {
   return {
     keyword: 'test keyword',
     kpis: [
@@ -54,7 +54,7 @@ function makeEntry(overrides: Partial<CaptainValidationEntry> = {}): CaptainVali
 }
 
 describe('useExploredKeywords.restoreFromHistory — propagation scores', () => {
-  it('propage relevanceScore depuis CaptainValidationEntry vers card.relevanceScore', () => {
+  it('propage relevanceScore depuis CaptainScanEntry vers card.relevanceScore', () => {
     const carousel = useExploredKeywords()
     const relevance = relevanceStub(78)
     const history = [makeEntry({ keyword: 'kw1', relevanceScore: relevance })]
@@ -66,7 +66,7 @@ describe('useExploredKeywords.restoreFromHistory — propagation scores', () => 
     expect(carousel.entries.value[0].card.relevanceScore?.total).toBe(78)
   })
 
-  it('propage marketScore depuis CaptainValidationEntry vers card.marketScore', () => {
+  it('propage marketScore depuis CaptainScanEntry vers card.marketScore', () => {
     const carousel = useExploredKeywords()
     const market = marketStub(65)
     const history = [makeEntry({ keyword: 'kw1', marketScore: market })]
@@ -88,7 +88,7 @@ describe('useExploredKeywords.restoreFromHistory — propagation scores', () => 
   it('relevanceScore absent dans l\'entry → null sur la card', () => {
     const carousel = useExploredKeywords()
     const history = [makeEntry({ keyword: 'kw1' })]
-    delete (history[0] as CaptainValidationEntry).relevanceScore
+    delete (history[0] as CaptainScanEntry).relevanceScore
 
     carousel.restoreFromHistory(history, 'intermediaire')
 

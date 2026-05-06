@@ -63,7 +63,7 @@ describe('FinalisationPanel', () => {
       richCaptain: {
         keyword: 'agence seo paris',
         status: 'locked',
-        validationHistory: [],
+        exploredKeywords: [],
         lockedAt: '2026-04-15T10:00:00.000Z',
         aiPanelMarkdown: null,
       },
@@ -222,7 +222,7 @@ describe('FinalisationPanel', () => {
       richCaptain: {
         keyword: 'agence',
         status: 'locked',
-        validationHistory: [],
+        exploredKeywords: [],
         lockedAt: null,
         aiPanelMarkdown: null,
       },

@@ -5,7 +5,7 @@ import { log } from '@/utils/logger'
 import { computeCombinedScore } from '@shared/scoring.js'
 import { getThresholds, scoreKpi, computeVerdict } from '@shared/kpi-scoring.js'
 import type { ScanResponse, ArticleLevel, VerdictLevel } from '@shared/types/index.js'
-import type { CaptainValidationEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
+import type { CaptainScanEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
 import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
 
 export interface ExploredKeywordEntry {
@@ -379,7 +379,7 @@ export function useExploredKeywords() {
 
   /** Restore carousel entries from persisted validation history (no API calls) */
   function restoreFromHistory(
-    history: CaptainValidationEntry[],
+    history: CaptainScanEntry[],
     level: ArticleLevel,
     richRootKeywords?: RichRootKeyword[],
   ) {

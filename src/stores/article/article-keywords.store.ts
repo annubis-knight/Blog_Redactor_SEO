@@ -2,7 +2,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { apiGet, apiPut, apiPost, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import type { ArticleKeywords, CaptainValidationEntry, RichRootKeyword, RichLieutenant } from '@shared/types/index.js'
+import type { ArticleKeywords, CaptainScanEntry, RichRootKeyword, RichLieutenant } from '@shared/types/index.js'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
 const MAX_VALIDATION_HISTORY = 30
@@ -18,8 +18,8 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Rich computed getters ----
 
-  const captainValidationHistory = computed(() =>
-    keywords.value?.richCaptain?.validationHistory ?? [],
+  const captainExploredKeywords = computed(() =>
+    keywords.value?.richCaptain?.exploredKeywords ?? [],
   )
 
   const lockedLieutenants = computed(() =>
@@ -67,12 +67,12 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
       if (!local.capitaine && remote.capitaine) {
         local.capitaine = remote.capitaine
       }
-      // richCaptain : merge validationHistory par keyword
+      // richCaptain : merge exploredKeywords par keyword
       if (remote.richCaptain) {
         if (!local.richCaptain) {
-          local.richCaptain = { ...remote.richCaptain, validationHistory: [...(remote.richCaptain.validationHistory ?? [])] }
+          local.richCaptain = { ...remote.richCaptain, exploredKeywords: [...(remote.richCaptain.exploredKeywords ?? [])] }
         } else {
-          mergeCaptainHistory(remote.richCaptain.validationHistory ?? [])
+          mergeCaptainExploredKeywords(remote.richCaptain.exploredKeywords ?? [])
           // aiPanelMarkdown : adopte si mémoire vide
           if (!local.richCaptain.aiPanelMarkdown && remote.richCaptain.aiPanelMarkdown) {
             local.richCaptain.aiPanelMarkdown = remote.richCaptain.aiPanelMarkdown
@@ -123,23 +123,23 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   }
 
   /**
-   * Append-only merge sur richCaptain.validationHistory. Clé = `id` si présent,
+   * Append-only merge sur richCaptain.exploredKeywords. Clé = `id` si présent,
    * sinon `keyword` lowercased. En cas de collision, conserve l'entrée mémoire
    * (l'utilisateur a pu l'éditer localement).
    */
-  function mergeCaptainHistory(incoming: CaptainValidationEntry[]) {
+  function mergeCaptainExploredKeywords(incoming: CaptainScanEntry[]) {
     if (!keywords.value) return
     if (!keywords.value.richCaptain) {
       keywords.value.richCaptain = {
         keyword: '',
         status: 'suggested',
-        validationHistory: [],
+        exploredKeywords: [],
         aiPanelMarkdown: null,
         lockedAt: null,
       }
     }
-    const history = keywords.value.richCaptain.validationHistory
-    const keyOf = (e: CaptainValidationEntry): string => e.keyword.trim().toLowerCase()
+    const history = keywords.value.richCaptain.exploredKeywords
+    const keyOf = (e: CaptainScanEntry): string => e.keyword.trim().toLowerCase()
     const seen = new Set(history.map(keyOf))
     for (const entry of incoming) {
       const key = keyOf(entry)
@@ -211,7 +211,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Exploration saves (dedicated tables) ----
 
-  async function saveCaptainExplorationEntry(articleId: number, entry: CaptainValidationEntry) {
+  async function saveCaptainExplorationEntry(articleId: number, entry: CaptainScanEntry) {
     try {
       await apiPost(`/articles/${articleId}/captain-explorations`, entry)
       log.debug(`[article-keywords] captain exploration saved`, { keyword: entry.keyword })
@@ -286,7 +286,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  function addCaptainPanel(entry: CaptainValidationEntry, articleId?: number) {
+  function addCaptainPanel(entry: CaptainScanEntry, articleId?: number) {
     if (!keywords.value) {
       if (articleId) ensureKeywords(articleId)
       else return
@@ -296,13 +296,13 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
       kw.richCaptain = {
         keyword: '',
         status: 'suggested',
-        validationHistory: [],
+        exploredKeywords: [],
         aiPanelMarkdown: null,
         lockedAt: null,
       }
     }
     // Dedup by keyword — update in place if already exists
-    const history = kw.richCaptain.validationHistory
+    const history = kw.richCaptain.exploredKeywords
     const existingIdx = history.findIndex(h => h.keyword === entry.keyword)
     if (existingIdx !== -1) {
       history[existingIdx] = entry
@@ -325,7 +325,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
       kw.richCaptain = {
         keyword,
         status: 'locked',
-        validationHistory: [],
+        exploredKeywords: [],
         aiPanelMarkdown,
         lockedAt: new Date().toISOString(),
       }
@@ -340,7 +340,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   /**
    * Sprint 13 — Déverrouille le Capitaine (mirror de lockCaptain).
    * Met richCaptain.status = 'suggested' et lockedAt = null.
-   * Préserve validationHistory et aiPanelMarkdown (le user peut re-locker).
+   * Préserve exploredKeywords et aiPanelMarkdown (le user peut re-locker).
    *
    * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
    * du composant CaptainPanel.vue, sans propager au store ni à la DB.
@@ -356,7 +356,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   }
 
   function updateCaptainValidationAiPanel(keyword: string, aiPanelMarkdown: string) {
-    const history = keywords.value?.richCaptain?.validationHistory
+    const history = keywords.value?.richCaptain?.exploredKeywords
     if (!history) return
     const entry = history.find(h => h.keyword === keyword)
     if (entry) entry.aiPanelMarkdown = aiPanelMarkdown
@@ -611,9 +611,9 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   return {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
-    captainValidationHistory, lockedLieutenants, eliminatedLieutenants,
+    captainExploredKeywords, lockedLieutenants, eliminatedLieutenants,
     fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
-    mergeCaptainHistory, mergeRichLieutenants,
+    mergeCaptainExploredKeywords, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
     setCapitaine, addCaptainPanel, lockCaptain, unlockCaptain, updateCaptainValidationAiPanel,
     addRootKeywordValidation,

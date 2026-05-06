@@ -755,6 +755,18 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-CAP-EXPLORED-KEYWORDS-NAMING
+La propriété TypeScript du type `RichCaptain` qui contient l'historique des mots-clés explorés s'appelle **`exploredKeywords`** (anciennement `validationHistory`). Le type d'élément correspondant est `CaptainScanEntry` (anciennement `CaptainValidationEntry`).
+**Justification** : aligne le naming avec FR-CODE-NO-CAROUSEL (Sprint 12 : `useExploredKeywords`) et FR-API-VOCABULAIRE-SCAN (Sprint 14 : "scan" pour la recherche, "validate" réservé à `/keywords/validate-pain` côté Cerveau). Le mot "validation" prêtait à confusion — l'utilisateur ne valide rien dans cette liste, c'est un historique de mots-clés explorés.
+**Renommages associés** :
+- `mergeCaptainHistory` → `mergeCaptainExploredKeywords` (méthode du store article-keywords)
+- Variables locales `captainValidationHistory` → `captainExploredKeywords`
+**Critères d'acceptation testables** :
+- Recherche grep `validationHistory` ou `CaptainValidationEntry` ou `mergeCaptainHistory` dans `src/`, `tests/`, `shared/`, `server/` retourne 0 occurrence.
+- Le type `CaptainScanEntry` est exporté depuis `shared/types/keyword.types.ts`.
+- La propriété `richCaptain.exploredKeywords: CaptainScanEntry[]` remplace l'ancienne `richCaptain.validationHistory`.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-18-lock-on-original-card (Sprint 20 regroupé).
+
 #### FR-CAP-LOCK-ORIGINAL-ONLY
 Le mot-clé verrouillé du Capitaine est **toujours** l'`originalCard.keyword` de la RadarCard sélectionnée, jamais une racine active (`card.keyword` quand l'utilisateur a activé une variante). Si l'utilisateur veut verrouiller une racine, il doit la chercher explicitement (input text Capitaine ou recherche d'une RadarCard ayant ce mot-clé comme original).
 **Justification** : cohérence DB (1 RadarCard = 1 entrée stable dans `captain_explorations`), cohérence UI (`pinnedPredicate` simplifié, un seul critère de match), cohérence sémantique (le verrouillage agit sur la card identifiée par son mot-clé d'origine, peu importe la racine active), élimination de bugs frontière où locker une racine puis désactiver la racine laisserait une card "verrouillée" avec un keyword d'affichage différent.
@@ -815,12 +827,12 @@ Le vocabulaire **"scan"** désigne la recherche/exploration d'un mot-clé (appel
 #### FR-INFRA-EXTERNAL-API-CACHE
 La table `external_api_cache` (anciennement `api_cache`, renommée Sprint 16) cache les appels API externes en fin de vie (DataForSEO `validate`, autocomplete). Les autres cache_types historiques (`paa`, `serp`, `radar`, `discovery`, `intent`, `local-seo`, `content-gap`, `lexique`) ont été migrés vers des tables dédiées `*_explorations` au fil des migrations 006-010.
 **Schéma** : `(id SERIAL PK, cache_key TEXT, cache_type TEXT, data JSONB, cached_at TIMESTAMPTZ, expires_at TIMESTAMPTZ, UNIQUE(cache_key, cache_type))`.
-**Cache_types actifs (2026-05-06)** : `validate`, `autocomplete`, `radar`, `dataforseo`, `gsc`. Les autres ne sont plus écrits par le code actuel — la migration 018 a nettoyé les lignes orphelines.
+**Cache_types actifs (2026-05-06, audit Sprint 19)** : `dataforseo`, `gsc`, `radar`, `long-tail-suggest`, `suggest` (4 sub-keys), `keyword-discovery`, `intent`, `community-discussions`, `validate`, `autocomplete`. **10+ types actifs** (estimation Sprint 16 de 5 types était incomplète). La migration 018 a nettoyé les lignes orphelines des types historiques (`paa`, `serp`, `discovery`, `intent`, `local-seo`, `content-gap`, `lexique`, `paa_reverse_index`, `discussions`, `suggest`).
 **Critères d'acceptation testables** :
 - `SELECT * FROM external_api_cache` fonctionne ; `api_cache` n'existe plus.
 - Le job de purge horaire (`server/index.ts`) cible `external_api_cache`.
 - Aucune référence SQL à `FROM api_cache` / `INTO api_cache` / `TABLE api_cache` ne subsiste dans `server/`, `src/`, `tests/`.
-**Plan de mort à long terme** : migrer les 2 derniers types `validate` et `autocomplete` vers des tables dédiées (`keyword_metrics.autocomplete_*` et nouvelle `validate_cache`), puis `DROP TABLE external_api_cache`. Sprint dédié futur.
+**Plan de mort à long terme** : reporté (cf. tech-spec-sprint-19-mort-external-api-cache.md status: deferred). Décision produit nécessaire avant migration : faut-il vraiment dropper la table (et créer 6+ tables dédiées), ou la garder comme cache générique réutilisable ? Le renommage Sprint 16 (`api_cache` → `external_api_cache`) et le nettoyage des types orphelins suffisent pour la lisibilité actuelle.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-16-rename-external-api-cache.
 
 #### FR-NAM-CONTAINERS-PANEL

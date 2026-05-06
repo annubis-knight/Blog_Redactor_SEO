@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { useExploredKeywords } from '@/composables/keyword/useExploredKeywords'
-import type { CaptainValidationEntry } from '@shared/types/keyword.types'
+import type { CaptainScanEntry } from '@shared/types/keyword.types'
 
 // Mock l'API : addEntry valide via apiPost. On répond toujours OK.
 vi.mock('@/services/api.service', () => ({
@@ -56,7 +56,7 @@ describe.skip('useExploredKeywords — dédup contre doublons', () => {
   })
 
   it('restoreFromHistory déduplique les keywords identiques en entrée', () => {
-    const history: CaptainValidationEntry[] = [
+    const history: CaptainScanEntry[] = [
       { keyword: 'kw-a', kpis: [], articleLevel: 'pilier', rootKeywords: [] },
       { keyword: 'kw-b', kpis: [], articleLevel: 'pilier', rootKeywords: [] },
       { keyword: 'kw-a', kpis: [], articleLevel: 'pilier', rootKeywords: [] }, // doublon
@@ -68,7 +68,7 @@ describe.skip('useExploredKeywords — dédup contre doublons', () => {
   })
 
   it('addEntry après restoreFromHistory ne re-ajoute pas un keyword existant', async () => {
-    const history: CaptainValidationEntry[] = [
+    const history: CaptainScanEntry[] = [
       { keyword: 'kw-existant', kpis: [], articleLevel: 'pilier', rootKeywords: [] },
     ]
     carousel.restoreFromHistory(history, 'pilier')

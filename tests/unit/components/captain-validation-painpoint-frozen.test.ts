@@ -14,7 +14,7 @@
  *
  * Ce fichier verrouille l'absence de cette logique :
  *   - AC.10.5.1 : modifier props.selectedArticle.painPoint après mount ne déclenche
- *                 AUCUN appel à articleKeywordsStore.mergeCaptainHistory
+ *                 AUCUN appel à articleKeywordsStore.mergeCaptainExploredKeywords
  *   - AC.10.5.2 : aucun fetch /captain-explorations n'est lancé suite à un changement
  *                 de painPoint (le calcul live a déjà eu lieu au mount, point.)
  *   - AC.10.5.3 : pas d'import du store captain-relevance dans le composant
@@ -72,7 +72,7 @@ vi.mock('../../../src/composables/keyword/useExploredKeywords', () => ({
 
 // --- Mocks stores et services ---
 // On espionne :
-//   - mergeCaptainHistory : ne doit pas être appelée par un watcher live painPoint
+//   - mergeCaptainExploredKeywords : ne doit pas être appelée par un watcher live painPoint
 //   - apiGet : pas de fetch /captain-explorations en réaction à un changement painPoint
 const {
   mockMergeCaptainHistory,
@@ -95,7 +95,7 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     keywords: null,
     lockedLieutenants: [],
     saveKeywords: mockSaveKeywords,
-    mergeCaptainHistory: mockMergeCaptainHistory,
+    mergeCaptainExploredKeywords: mockMergeCaptainHistory,
     initEmpty: vi.fn(),
   }),
 }))
@@ -168,7 +168,7 @@ beforeEach(() => {
 })
 
 describe('CaptainPanel — painPoint figé après mount (Sprint 10.5)', () => {
-  it('AC.10.5.1 — modifier painPoint après mount ne déclenche aucun mergeCaptainHistory', async () => {
+  it('AC.10.5.1 — modifier painPoint après mount ne déclenche aucun mergeCaptainExploredKeywords', async () => {
     const wrapper = mount(CaptainPanel, {
       props: { selectedArticle: { ...baseArticle }, mode: 'workflow' },
       global: { stubs },
@@ -180,7 +180,7 @@ describe('CaptainPanel — painPoint figé après mount (Sprint 10.5)', () => {
 
     // Simulation : le painPoint change après le mount initial. Avant Sprint 10.5,
     // le watcher détectait ce changement et déclenchait recompute() puis
-    // mergeCaptainHistory(). Aujourd'hui, plus aucune réaction live au painPoint.
+    // mergeCaptainExploredKeywords(). Aujourd'hui, plus aucune réaction live au painPoint.
     await wrapper.setProps({
       selectedArticle: { ...baseArticle, painPoint: 'Nouveau painPoint complètement différent' },
     })

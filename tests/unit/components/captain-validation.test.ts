@@ -132,7 +132,7 @@ vi.mock('../../../src/composables/keyword/useExploredKeywords', () => ({
 const mockStoreKeywords = ref<{
   articleId?: number
   capitaine?: string
-  richCaptain?: { keyword: string; status: 'suggested' | 'locked'; lockedAt: string | null; aiPanelMarkdown: string | null; validationHistory: unknown[] }
+  richCaptain?: { keyword: string; status: 'suggested' | 'locked'; lockedAt: string | null; aiPanelMarkdown: string | null; exploredKeywords: unknown[] }
 } | null>(null)
 const mockSetCapitaine = vi.fn()
 const mockLockCaptain = vi.fn((keyword: string, aiPanelMarkdown: string | null, articleId?: number) => {
@@ -146,7 +146,7 @@ const mockLockCaptain = vi.fn((keyword: string, aiPanelMarkdown: string | null, 
     status: 'locked',
     lockedAt: new Date().toISOString(),
     aiPanelMarkdown,
-    validationHistory: [],
+    exploredKeywords: [],
   }
 })
 const mockUnlockCaptain = vi.fn(() => {

@@ -96,7 +96,7 @@ describe('data.service — getArticleKeywords', () => {
     expect(result!.richCaptain).toBeDefined()
     expect(result!.richCaptain!.keyword).toBe('captain kw')
     expect(result!.richCaptain!.status).toBe('locked')
-    expect(result!.richCaptain!.validationHistory).toHaveLength(2)
+    expect(result!.richCaptain!.exploredKeywords).toHaveLength(2)
     expect(result!.richCaptain!.aiPanelMarkdown).toBe('## Analysis')
   })
 
@@ -174,7 +174,7 @@ describe('data.service — saveArticleKeywords', () => {
       richCaptain: {
         keyword: 'captain kw',
         status: 'locked',
-        validationHistory: [
+        exploredKeywords: [
           { keyword: 'captain kw', kpis: [{ name: 'volume', rawValue: 1000 }], articleLevel: 'pilier', rootKeywords: [] },
         ],
         aiPanelMarkdown: null,

@@ -5,7 +5,7 @@
 
 > **2026-05-03 — Plan de sécurisation Moteur (6 blocs livrés).**
 > 1. **Bloc 1** — Computed défensif `lockedLieutenantCount?.length ?? 0` dans
->    `CaptainValidation.vue` (réparation de 32 tests cassés).
+>    `CaptainPanel.vue` (réparation de 32 tests cassés).
 > 2. **Bloc 2** — Onglet `'finalisation'` ajouté à `TAB_IDS`, modale
 >    supprimée. Bouton « Continuer vers la Rédaction » désactivé tant que
 >    les 3 verrous Phase ② ne sont pas posés (computed `finalisationUnlocked`
@@ -24,7 +24,7 @@
 >    (qualité embeddings) prioritaire, fallback lexical
 >    (`server/services/keyword/lexical-pain-alignment.ts`, testé)
 >    déterministe et mock-friendly. Aucune nouvelle persistance DB.
-> 6. **Bloc 6** — Auto-trigger SERP supprimé de `LieutenantsSelection.vue`
+> 6. **Bloc 6** — Auto-trigger SERP supprimé de `LieutenantsPanel.vue`
 >    (l'utilisateur clique « Analyser SERP » manuellement, plus de pollution
 >    cross-keyword). Modale `UnlockLieutenantsModal` simplifiée à 2 boutons
 >    (Garder / Tout réinitialiser ; Échap ou clic-extérieur pour annuler).
@@ -229,7 +229,7 @@ flowchart LR
     end
 
     subgraph VALIDATE["Validation"]
-      API1["POST /api/keywords/:keyword/validate<br/><i>keyword-validate.service</i>"]:::action
+      API1["POST /api/keywords/:keyword/validate<br/><i>keyword-scan.service</i>"]:::action
       PAR["Appels parallèles<br/>DataForSEO + Autocomplete + PAA<br/>+ racine si longue traîne"]:::action
       CACHE["Cache multi-niveau<br/><i>1. keyword_metrics (cross-article)<br/>2. api_cache (TTL)</i>"]:::data
     end
@@ -422,7 +422,7 @@ flowchart LR
 
   GATE["Gating<br/><i>finalisationUnlocked = all 3 checks</i>"]:::gate
 
-  subgraph FINAL["FinalisationRecap.vue (read-only)"]
+  subgraph FINAL["FinalisationPanel.vue (read-only)"]
     direction TB
     R1["Capitaine validé<br/><i>avec KPIs</i>"]:::data
     R2["Lieutenants[] sélectionnés<br/><i>avec badges</i>"]:::data
@@ -501,7 +501,7 @@ flowchart LR
 |---|---|---|
 | Radar (`generatedKeywords`) | `keyword` lowercased + trim | Garde l'entrée mémoire |
 | Radar (`scanResult`) | scalaire | Adopte le payload uniquement si la mémoire est vide |
-| Capitaine (`validationHistory`) | `keyword` lowercased | Garde l'entrée mémoire (l'utilisateur peut avoir édité) |
+| Capitaine (`exploredKeywords`) | `keyword` lowercased | Garde l'entrée mémoire (l'utilisateur peut avoir édité) |
 | Lieutenants (`richLieutenants`) | `keyword` lowercased | `lockedAt` le plus récent gagne |
 | Lexique (`lexique[]`) | valeur string | Union par valeur |
 | Lexique (`pastExplorations`) | `sourceKeyword` lowercased | Garde l'entrée mémoire |
@@ -796,4 +796,4 @@ flowchart TD
 
 ### Point critique : `RadarCard.kpis` désormais nullable
 
-Le type `RadarCard.kpis` est passé de `RadarKeywordKpis` (non-nullable) à `RadarKeywordKpis | null`. Tous les consommateurs ont été alignés (DouleurIntentScanner, RadarKeywordCard, keyword-validate.routes). **Règle invariante** : si `kpis === null`, l'item est exclu du tri par score KPI, exclu du filtre CPC, et son rendu KPI est masqué (`v-if="card.kpis"`).
+Le type `RadarCard.kpis` est passé de `RadarKeywordKpis` (non-nullable) à `RadarKeywordKpis | null`. Tous les consommateurs ont été alignés (DouleurIntentScanner, RadarKeywordCard, keyword-scan.routes). **Règle invariante** : si `kpis === null`, l'item est exclu du tri par score KPI, exclu du filtre CPC, et son rendu KPI est masqué (`v-if="card.kpis"`).

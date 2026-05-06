@@ -213,7 +213,42 @@ development_status:
   # Validation : type-check vert, build vert (9.14s), 3962 tests verts.
   sprint-18-lock-on-original-card: done
 
-  # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
+  # Sprint 19 — Mort de external_api_cache — REPORTÉ (2026-05-06)
+  # tech-spec: tech-spec-sprint-19-mort-external-api-cache.md (status: deferred)
+  # Décision : audit révèle 10+ cache_types actifs (vs 5 estimés Sprint 16) →
+  #   rayon 8+ services à découper + 6+ migrations DB. Décision produit
+  #   nécessaire avant : dropper la table OU la garder comme cache générique ?
+  # FR-INFRA-EXTERNAL-API-CACHE mise à jour avec la liste réelle des types.
+  sprint-19-mort-external-api-cache: deferred
+
+  # Sprint 20 — Renommage validationHistory → exploredKeywords (2026-05-06) ✅
+  # tech-spec: dans Sprint 18 (regroupé)
+  # Renommages dans 17 fichiers (front + back + tests + types) :
+  #   - CaptainValidationEntry → CaptainScanEntry
+  #   - validationHistory → exploredKeywords (propriété RichCaptain)
+  #   - mergeCaptainHistory → mergeCaptainExploredKeywords
+  #   - captainValidationHistory → captainExploredKeywords (variables locales)
+  # Aligne le naming avec FR-CODE-NO-CAROUSEL (Sprint 12 : useExploredKeywords)
+  # et Sprint 14 (vocabulaire scan vs validate). Le mot "validation" est réservé
+  # au cas validate-pain (Cerveau) ; côté Capitaine c'est de la recherche/scan.
+  # Validation : type-check vert, build vert, 3962 tests verts.
+  sprint-20-rename-explored-keywords-property: done
+
+  # Sprint 21 — Cleanup docs data-flows (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-21-cleanup-docs-data-flows.md
+  # - 4 audits datés archivés dans docs/data-flows/_archive/
+  # - 16 docs vivantes : naming mis à jour (Sprints 11-20)
+  # Traçabilité historique conservée (commentaires // Sprint 15.X — Storage
+  # moved from api_cache[X]... dans le code, refs api_cache historiques dans
+  # docs).
+  sprint-21-cleanup-docs-data-flows: done
+
+  # Sprint 22 — Test E2E Playwright anti-duplication Capitaine (2026-05-06) ✅
+  # Fichier : tests/browser-e2e/moteur-capitaine-no-duplication.browser.test.ts
+  # Couvre FR-CAP-LOCK-NO-DUPLICATE : 5 toggles lock/unlock consécutifs ne
+  # créent pas de duplication. Test skippé conditionnellement si fixture
+  # indisponible (serveur dev offline).
+  sprint-22-e2e-anti-duplication: done
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,
   #       FR-RAD-CARD-CHEVRON-TOGGLE, FR-CAP-RELEVANCE-COMPUTED-LIVE,

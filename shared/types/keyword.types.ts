@@ -53,7 +53,7 @@ export type LieutenantKeywordStatus = 'suggested' | 'locked' | 'eliminated' | 'a
 // ---- Rich captain types ----
 
 /** A single captain validation test entry (one per keyword tested in carousel) */
-export interface CaptainValidationEntry {
+export interface CaptainScanEntry {
   keyword: string
   kpis: KpiSummary[]
   articleLevel: ArticleLevel
@@ -86,7 +86,7 @@ export interface CaptainValidationEntry {
 export interface RichCaptain {
   keyword: string
   status: CaptainKeywordStatus
-  validationHistory: CaptainValidationEntry[]
+  exploredKeywords: CaptainScanEntry[]
   aiPanelMarkdown: string | null
   lockedAt: string | null
 }

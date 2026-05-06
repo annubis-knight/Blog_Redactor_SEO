@@ -24,7 +24,7 @@ Qui crée ou met à jour cette donnée :
 
 - **Service `filterLieutenants()`** ([server/routes/keyword-ai-panel.routes.ts:133-145](../../server/routes/keyword-ai-panel.routes.ts)) — tri descendants par score (null en bas, respecte règle cohérence), partage entre `selectedLieutenants` (topK) et `eliminatedLieutenants` (reste). Utilise `compareScores()` pour placer les null correctement (jamais convertis en 0).
 
-- **Composant frontend** `LieutenantsSelection.vue` ([src/components/moteur/LieutenantsSelection.vue:49-173](../../src/components/moteur/LieutenantsSelection.vue)) — émet `lieutenants-updated` au debounce 300ms, appelle `articleKeywordsStore.saveDecisions(articleId)` pour écrire `{ lieutenants: selectedKeywords[] }` + `{ hnStructure }` dans DB.
+- **Composant frontend** `LieutenantsPanel.vue` ([src/components/moteur/LieutenantsPanel.vue:49-173](../../src/components/moteur/LieutenantsPanel.vue)) — émet `lieutenants-updated` au debounce 300ms, appelle `articleKeywordsStore.saveDecisions(articleId)` pour écrire `{ lieutenants: selectedKeywords[] }` + `{ hnStructure }` dans DB.
 
 - **Anti-cannibalisation check** `getCocoonExistingLieutenants(articleId)` ([server/services/infra/data.service.js](../../server/services/infra/data.service.js)) — requête SQL `SELECT DISTINCT jsonb_array_elements(lieutenants)::TEXT FROM article_keywords WHERE article_id IN (SELECT id FROM articles WHERE cocoon_id = ...)` → liste des lieutenants déjà utilisés dans le cocon, incluse dans le prompt pour l'IA (« INTERDITS »).
 
@@ -48,7 +48,7 @@ Qui crée ou met à jour cette donnée :
 
 ### Affichage (UI)
 
-- **[src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue)** — composant parent bimodal. Section SERP affiche `HnRecurrenceItem[]` (H2/H3 + count + percent) depuis `computeHnRecurrenceFrom(displayedCompetitors)`. Curseur intelligent (slider 0-100) filtre localement si sous défaut, sinon déclenche re-scan.
+- **[src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue)** — composant parent bimodal. Section SERP affiche `HnRecurrenceItem[]` (H2/H3 + count + percent) depuis `computeHnRecurrenceFrom(displayedCompetitors)`. Curseur intelligent (slider 0-100) filtre localement si sous défaut, sinon déclenche re-scan.
 
 - **[src/components/moteur/LieutenantProposals.vue](../../src/components/moteur/LieutenantProposals.vue)** — affichage cards candidats IA (`ProposedLieutenant[]`) avec badges multi-source `[SERP] [PAA] [Groupe]` + pertinence `Fort/Moyen/Faible` + score visuel.
 
@@ -60,7 +60,7 @@ Qui crée ou met à jour cette donnée :
 
 - **[src/components/moteur/LieutenantSerpAnalysis.vue](../../src/components/moteur/LieutenantSerpAnalysis.vue)** — tableau `HnRecurrenceItem` avec colonnes Heading / Niveau / Récurrence / Pourcentage. Tabs par keyword si multi-scan.
 
-- **FinalisationRecap.vue** — affichage read-only `Lieutenants sélectionnés: [list]` + Hn structure preview.
+- **FinalisationPanel.vue** — affichage read-only `Lieutenants sélectionnés: [list]` + Hn structure preview.
 
 ### Calcul / tri / filtre / agrégat
 
@@ -136,7 +136,7 @@ flowchart TD
         COMP2["LieutenantsAiPanel.vue<br/>SSE streaming proposal"]
         COMP3["LieutenantProposals.vue<br/>cards candidats + badges"]
         COMP4["LieutenantH2Structure.vue<br/>Hn interactive"]
-        PARENT["LieutenantsSelection.vue (parent)<br/>orchestration 3 phases"]
+        PARENT["LieutenantsPanel.vue (parent)<br/>orchestration 3 phases"]
     end
     
     KM -.->|GET /articles/:id/keywords| STORE["Pinia Store<br/>useArticleKeywordsStore<br/>{ keywords, richLieutenants, hnStructure }"]
@@ -187,7 +187,7 @@ flowchart TD
 
 ## Régressions historiques
 
-- **Sprint 1 (2026-05-04 — Restauration après C-1)** — Les conteneurs `LieutenantProposals` et `LieutenantH2Structure` avaient été migrés dans `LieutenantsAiPanel` lors de la refonte UX (C-1). Regression : les proposals IA n'étaient pas affichées en temps réel. Rollback : réimportation en tant que containers principaux dans `LieutenantsSelection.vue` (ligne 21-22). Verrouillage architecture ajouté via test unitaire pour éviter future régression.
+- **Sprint 1 (2026-05-04 — Restauration après C-1)** — Les conteneurs `LieutenantProposals` et `LieutenantH2Structure` avaient été migrés dans `LieutenantsAiPanel` lors de la refonte UX (C-1). Regression : les proposals IA n'étaient pas affichées en temps réel. Rollback : réimportation en tant que containers principaux dans `LieutenantsPanel.vue` (ligne 21-22). Verrouillage architecture ajouté via test unitaire pour éviter future régression.
 
 - **Phase ② (sprint 4 — structure SERP multi-keyword)** — Ajout de `serpResultsByKeyword: Map<string, SerpAnalysisResult>` pour supporter multi-scan (plusieurs Capitaines testés). Avant : un seul `serpResult`, impossible de conserver les données si utilisateur switch Capitaine.
 

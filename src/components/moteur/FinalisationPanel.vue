@@ -28,7 +28,7 @@ const captain = computed(() => {
   const kw = articleKeywordsStore.keywords
   return {
     keyword: kw?.richCaptain?.keyword ?? kw?.capitaine ?? '—',
-    history: kw?.richCaptain?.validationHistory ?? [],
+    history: kw?.richCaptain?.exploredKeywords ?? [],
     lockedAt: kw?.richCaptain?.lockedAt ?? null,
   }
 })

@@ -1,7 +1,20 @@
 // @vitest-environment node
 /**
  * Sanity test : valide que le harness e2e fonctionne (DB write + read + cleanup).
- * Ce fichier doit toujours rester vert. Si tout casse, regarder ici en premier.
+ *
+ * COMPORTEMENT ATTENDU :
+ *   - VERT si `npm run dev:server` tourne sur localhost:3400
+ *   - ROUGE sinon (par design — c'est l'indicateur explicite que le serveur
+ *     dev n'est pas démarré pour les tests d'intégration)
+ *
+ * Les fails de ce fichier sans serveur dev sont **normaux** et **attendus**.
+ * Les autres tests e2e/contract-api/integration-tabs ont un guard interne
+ * `if (!ctx.serverOk) return` et passent silencieusement, mais ce sanity test
+ * échoue volontairement pour signaler clairement l'état du harness.
+ *
+ * Pour exécuter localement : `npm run dev:server` puis `npm run test:unit`.
+ *
+ * Si tout casse, regarder ici en premier.
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'

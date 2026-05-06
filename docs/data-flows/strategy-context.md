@@ -36,7 +36,7 @@ Qui crée ou met à jour cette donnée :
 - **Endpoint Radar** `POST /keywords/radar/scan` ([server/routes/intent-scan.routes.ts:66-96](../../server/routes/intent-scan.routes.ts)) — Reçoit le `painPoint` optionnel du client.
 - **Service de lecture** `getArticlePainPoint(articleId: number | null | undefined)` ([server/services/queries/article-pain-point.service.ts:28-42](../../server/services/queries/article-pain-point.service.ts)) — Lit `articles.pain_point TEXT NULL` depuis la base. Retourne la chaîne trimée si valide, sinon fallback `PAIN_POINT_FALLBACK = "(non défini)"`. Best-effort : never throw, loggue l'erreur si DB inaccessible.
 - **Table de persistance** `articles.pain_point TEXT NULL` ([server/db/migrations/014_articles_pain_intent_expected.sql:1-17](../../server/db/migrations/014_articles_pain_intent_expected.sql)) — Colonne textuelle nullable ajoutée en S5. Saisie via le formulaire Cerveau (étape "douleur" article), persiste jusqu'au reload.
-- **Alternativement (Radar)** — Le client peut saisir/modifier le `painPoint` directement à l'étape de génération Radar (DouleurIntentScanner.vue), sans passer par Cerveau.
+- **Alternativement (Radar)** — Le client peut saisir/modifier le `painPoint` directement à l'étape de génération Radar (RadarPanel.vue), sans passer par Cerveau.
 
 ## Persistance
 
@@ -64,7 +64,7 @@ Qui crée ou met à jour cette donnée :
 - **Composant** `MoteurStrategyContext.vue` ([src/components/moteur/MoteurStrategyContext.vue](../../src/components/moteur/MoteurStrategyContext.vue)) — Affichage collapsable du bloc stratégique côté Moteur (lecture-seule, affiche les 6 réponses validées article).
 - **Composant** `ContextRecap.vue` ([src/components/strategy/ContextRecap.vue](../../src/components/strategy/ContextRecap.vue)) — Affichage récapitulatif du contexte Cerveau (cocon + thème + themeConfig).
 - **Composant** `MoteurContextRecap.vue` ([src/components/moteur/MoteurContextRecap.vue](../../src/components/moteur/MoteurContextRecap.vue)) — Panel Moteur affichant le contexte stratégique agrégé.
-- **Vue Radar** `DouleurIntentScanner.vue` ([src/components/intent/DouleurIntentScanner.vue](../../src/components/intent/DouleurIntentScanner.vue)) — Saisie / édition du painPoint en tempo real avant génération Radar.
+- **Vue Radar** `RadarPanel.vue` ([src/components/intent/RadarPanel.vue](../../src/components/intent/RadarPanel.vue)) — Saisie / édition du painPoint en tempo real avant génération Radar.
 - **Affichage fallback** — Quand `painPoint = "(non défini)"`, les composants affichent le badge neutre sans cacher l'absence.
 
 ### Calcul / tri / filtre / agrégat
@@ -83,7 +83,7 @@ Qui crée ou met à jour cette donnée :
 - **Radar Scan** — Service `scanRadarKeywords()` accepte un `painPoint` optionnel pour pondérer les signaux lexicaux (PAA, AC, racines) selon la pertinence à la douleur.
 - **IA Panel Runner** `runAiPanelStream()` — Récepteur universel pour SSE streaming, reçoit le prompt + variables déjà injectées.
 
-> **Règle de cohérence affichage / calcul** — Le `painPoint` affiché dans `DouleurIntentScanner.vue` est exactement celui passé à `getArticlePainPoint(articleId)` pour injection prompt. Ne jamais utiliser un fallback différent entre affichage (ex: `— incomplet`) et calcul (ex: valeur zéro numérique).
+> **Règle de cohérence affichage / calcul** — Le `painPoint` affiché dans `RadarPanel.vue` est exactement celui passé à `getArticlePainPoint(articleId)` pour injection prompt. Ne jamais utiliser un fallback différent entre affichage (ex: `— incomplet`) et calcul (ex: valeur zéro numérique).
 
 ## Cas d'usage à risque
 
@@ -108,7 +108,7 @@ flowchart TD
         A1["POST /api/strategy/:id<br/>strategy.routes:118-134"]
         A2["POST /api/strategy/cocoon/:slug<br/>strategy.routes:262-273"]
         B1["POST /keywords/:kw/ai-panel<br/>keyword-ai-panel.routes:48-79"]
-        B2["DouleurIntentScanner.vue<br/>saisie painPoint"]
+        B2["RadarPanel.vue<br/>saisie painPoint"]
         B3["POST /keywords/radar/generate<br/>intent-scan.routes:34-63"]
     end
     
@@ -138,7 +138,7 @@ flowchart TD
         C1["capitaine-ai-panel SSE<br/>runAiPanelStream"]
         C2["propose-lieutenants SSE<br/>runAiPanelStream"]
         C3["MoteurStrategyContext.vue<br/>affichage"]
-        C4["DouleurIntentScanner.vue<br/>affichage + saisie"]
+        C4["RadarPanel.vue<br/>affichage + saisie"]
         C5["useRelevanceScoring<br/>calcul relevanceScore"]
     end
     

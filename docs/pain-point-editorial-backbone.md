@@ -195,11 +195,11 @@ Avantage : la richesse sémantique fine des PAA (5 niveaux topicWeight × 3 nive
 
 | Onglet | Composant | Reçoit painPoint ? | Transmis à API ? | Endpoint |
 | ------ | --------- | ------------------ | ---------------- | -------- |
-| ① Discovery | [KeywordDiscoveryTab.vue](../src/components/moteur/KeywordDiscoveryTab.vue) | ✅ `articlePainPoint` | ✅ | `/keywords/discover`, `/keywords/relevance-score`, `/keywords/translate-pain` |
-| ② Radar | [DouleurIntentScanner.vue](../src/components/intent/DouleurIntentScanner.vue) | ✅ `articlePainPoint` | ✅ | `/keywords/radar/scan`, `/keywords/radar/generate` |
-| ③ Capitaine | [CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) | ✅ | ✅ via `articleId` (S2) | `/keywords/:kw/validate`, `/keywords/:kw/ai-panel` |
-| ④ Lieutenants | [LieutenantsSelection.vue](../src/components/moteur/LieutenantsSelection.vue) | ✅ via `articleId` (S2) | ✅ | `/keywords/:kw/propose-lieutenants` |
-| ⑤ Lexique | [LexiqueExtraction.vue](../src/components/moteur/LexiqueExtraction.vue) | ✅ via `articleId` (S2) | ✅ | `/keywords/:kw/ai-lexique-upfront`, `/keywords/lexique-suggest` |
+| ① Discovery | [DiscoveryPanel.vue](../src/components/moteur/DiscoveryPanel.vue) | ✅ `articlePainPoint` | ✅ | `/keywords/discover`, `/keywords/relevance-score`, `/keywords/translate-pain` |
+| ② Radar | [RadarPanel.vue](../src/components/intent/RadarPanel.vue) | ✅ `articlePainPoint` | ✅ | `/keywords/radar/scan`, `/keywords/radar/generate` |
+| ③ Capitaine | [CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue) | ✅ | ✅ via `articleId` (S2) | `/keywords/:kw/validate`, `/keywords/:kw/ai-panel` |
+| ④ Lieutenants | [LieutenantsPanel.vue](../src/components/moteur/LieutenantsPanel.vue) | ✅ via `articleId` (S2) | ✅ | `/keywords/:kw/propose-lieutenants` |
+| ⑤ Lexique | [LexiquePanel.vue](../src/components/moteur/LexiquePanel.vue) | ✅ via `articleId` (S2) | ✅ | `/keywords/:kw/ai-lexique-upfront`, `/keywords/lexique-suggest` |
 | ⑥ Hn / Structure | endpoint `/keywords/:kw/ai-hn-structure` | ✅ via `articleId` (S2) | ✅ | `/keywords/:kw/ai-hn-structure` |
 
 > **Stratégie S2** : plutôt que de propager `painPoint` comme prop dans toute la chaîne UI, le composant transmet uniquement l'`articleId` au backend, qui récupère le painPoint via le helper [getArticlePainPoint](../server/services/queries/article-pain-point.service.ts). Plus simple, moins fragile, fallback `(non défini)` automatique.
@@ -287,7 +287,7 @@ le profil "longue-traîne pertinente" et invite à valider malgré le verdict ma
 
 ### Phase B — Couverture UI/API (livrée Sprint S2) ✅
 4. ✅ Lieutenants : `articleId` transmis au body de `/keywords/:kw/propose-lieutenants` (le backend récupère le painPoint via le helper `getArticlePainPoint`).
-5. ✅ Lexique : toggle « Trier par alignement douleur » côté UI ([LexiqueExtraction.vue](../src/components/moteur/LexiqueExtraction.vue)) + utilitaire pur Jaccard ([src/utils/pain-point-jaccard.ts](../src/utils/pain-point-jaccard.ts)). Tri TF-IDF préservé par défaut.
+5. ✅ Lexique : toggle « Trier par alignement douleur » côté UI ([LexiquePanel.vue](../src/components/moteur/LexiquePanel.vue)) + utilitaire pur Jaccard ([src/utils/pain-point-jaccard.ts](../src/utils/pain-point-jaccard.ts)). Tri TF-IDF préservé par défaut.
 6. ✅ Hn / Structure : `articleId` accepté dans `/keywords/:kw/ai-hn-structure`.
 
 ### Phase C — Refonte scoring PAA en cumulatif (livrée Sprint S3) ✅

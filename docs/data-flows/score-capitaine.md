@@ -15,8 +15,8 @@ related_fr: [FR-RAD-SCORING-BIMODAL, FR-CAP-SCORING-BIMODAL, FR-CAP-VALIDATE, FR
 
 Qui crée ou met à jour cette donnée :
 
-- **Endpoint** `POST /api/keywords/:keyword/validate` ([server/routes/keyword-validate.routes.ts:39-301](../../server/routes/keyword-validate.routes.ts)) — reçoit `{ keyword, level, articleTitle, painPoint? }`, fetch parallèle Overview + Autocomplete + SERP + Intent + PAA si miss cache, calcule les 2 scores, renvoie `ValidateResponse`.
-- **Service** `keyword-validate.service.ts` orchestre l'appel.
+- **Endpoint** `POST /api/keywords/:keyword/validate` ([server/routes/keyword-scan.routes.ts:39-301](../../server/routes/keyword-scan.routes.ts)) — reçoit `{ keyword, level, articleTitle, painPoint? }`, fetch parallèle Overview + Autocomplete + SERP + Intent + PAA si miss cache, calcule les 2 scores, renvoie `ValidateResponse`.
+- **Service** `keyword-scan.service.ts` orchestre l'appel.
 - **Cache cross-article** `keyword_metrics` (FRESHNESS_DAYS = 7) — si frais, court-circuite les appels DataForSEO.
 - **Calcul Score Marché** — `shared/scoring-kpi.ts → computeMarketScore(kpis)` — pondération Volume 30 / KD 20 / Intent 15 / PAA 10 / AC 10 / CPC 10 → `{ value: 0-100 | null, verdict, breakdown }`.
 - **Calcul Score Pertinence** — `shared/scoring.ts → computeRelevanceScore(...)` — pondération Pain 30 / PAA × douleur 25 / AC × douleur 15 / Racines 20 / Intent × douleur 10. `null` si painPoint absent ou pas de signal lexical exploitable.
@@ -45,7 +45,7 @@ Qui crée ou met à jour cette donnée :
 
 - [src/components/moteur/CaptainSidePanel.vue](../../src/components/moteur/CaptainSidePanel.vue) — section « KPIs marché » (Volume / KD / CPC / Intent / PAA count / AC count) en lecture seule, badges de verdict.
 - [src/components/intent/RadarKeywordCard.vue](../../src/components/intent/RadarKeywordCard.vue) — affichage card Radar bimodal selon `displayMode='market' | 'relevance'`.
-- `CaptainValidation.vue` mode workflow — liste verticale des entrées validées avec leurs deux scores.
+- `CaptainPanel.vue` mode workflow — liste verticale des entrées validées avec leurs deux scores.
 - `CaptainVerdictPanel.vue` — feu tricolore (GO/ORANGE/NO-GO/GRAY) issu du verdict.
 
 ### Calcul / tri / filtre / agrégat
@@ -67,7 +67,7 @@ Qui crée ou met à jour cette donnée :
 | Reload (data en cache) | `keyword_metrics` + `captain_explorations` | aucune (sauf TTL expiré) | **Risque ATTÉNUÉ Sprint 10.5** : depuis FR-PAIN-IMMUTABLE-AFTER-CEREVEAU, le `painPoint` est figé en cours de workflow. Le seul cas où `relevanceScore` peut être `null` au reload est l'absence de signaux (PAA, autocomplete) ou un keyword longue-traîne — cas tracés par `unavailableReason` (FR-CAP-RELEVANCE-UNAVAILABLE-REASON). |
 | Switch d'onglet Phase ① → ② | hydratation depuis `keyword_metrics` | aucune | Faible. |
 | Restore depuis history (slider) | `captain_explorations` historique | aucune | **Risque** : les scores historiques utilisent les anciennes formules (avant 2026-04-28) si pas re-calculés — afficher la date du calcul à côté du score. |
-| Merge cache + DB (cache stale) | `api_cache` (stale) + `keyword_metrics` (frais) | upsert `keyword_metrics` | Le service `keyword-validate.service.ts` doit toujours préférer la DB freshness à l'`api_cache` quand il s'agit de KPIs persistants. |
+| Merge cache + DB (cache stale) | `api_cache` (stale) + `keyword_metrics` (frais) | upsert `keyword_metrics` | Le service `keyword-scan.service.ts` doit toujours préférer la DB freshness à l'`api_cache` quand il s'agit de KPIs persistants. |
 | Refresh navigateur | re-hydratation complète depuis DB | aucune | Faible si toutes les valeurs source sont en DB (pas en localStorage). |
 
 ## Diagramme
@@ -75,7 +75,7 @@ Qui crée ou met à jour cette donnée :
 ```mermaid
 flowchart TD
     subgraph Producteurs
-        E1[POST /api/keywords/:kw/validate<br/>keyword-validate.routes.ts:39-301]
+        E1[POST /api/keywords/:kw/validate<br/>keyword-scan.routes.ts:39-301]
         S1[computeMarketScore<br/>shared/scoring-kpi.ts]
         S2[computeRelevanceScore<br/>shared/scoring.ts]
         DF[DataForSEO :<br/>Overview / SERP / Intent / PAA / AC]
@@ -91,7 +91,7 @@ flowchart TD
     CE --> AKS[articleKeywordsStore.richCaptain<br/>Pinia store]
 
     AKS --> CSP[CaptainSidePanel.vue<br/>affichage KPIs]
-    AKS --> CV[CaptainValidation.vue<br/>liste + verdicts]
+    AKS --> CV[CaptainPanel.vue<br/>liste + verdicts]
     AKS --> RKC[RadarKeywordCard.vue<br/>displayMode]
     CE --> SORT[compareScores<br/>shared/score/compare.ts]:::calc
     CE --> AGG[averageScores<br/>shared/score/aggregate.ts]:::calc

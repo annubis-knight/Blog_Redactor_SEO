@@ -123,7 +123,10 @@ const SOFT_LIMITS = {
   // Sprint 18 (2026-05-06) — 1 it.skip ajouté (saveHnStructure gaps test
   // obsolète post-Sprint 13 isLocked computed). À réécrire avec le nouveau
   // flow checkbox=lock immédiat.
-  itSkip: 86,                      // it.skip / test.skip / describe.skip
+  // Sprint 22 (2026-05-06) — Nouveau test E2E anti-duplication avec 3 test.skip
+  // conditionnels (early return si fixture indisponible). Détectés 1 fois mais
+  // comptés statiquement 3× par l'audit.
+  itSkip: 87,                      // it.skip / test.skip / describe.skip
 } as const
 
 // ============================================================================

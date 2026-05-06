@@ -18,7 +18,7 @@ function coerceIntentLabel(value: unknown): PainIntentExpected | null {
   if (typeof value !== 'string') return null
   return VALID_INTENT_LABELS.has(value) ? (value as PainIntentExpected) : null
 }
-import type { CaptainValidationEntry } from '../../shared/types/keyword.types.js'
+import type { CaptainScanEntry } from '../../shared/types/keyword.types.js'
 import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
 import {
   getKeywordMetrics,
@@ -291,7 +291,7 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
     // Article-scoped persistence — track the decision "article X tested keyword Y at level Z"
     if (typeof articleId === 'number' && Number.isFinite(articleId)) {
       try {
-        const captainEntry: CaptainValidationEntry = {
+        const captainEntry: CaptainScanEntry = {
           keyword,
           articleLevel,
           // kpis kept here only until Sprint 15.3-bis drops the column entirely.

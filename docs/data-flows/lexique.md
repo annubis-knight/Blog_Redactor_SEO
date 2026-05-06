@@ -17,7 +17,7 @@ Qui crée ou met à jour cette donnée :
 
 - **Endpoint** `POST /api/serp/tfidf` ([server/routes/serp-analysis.routes.ts:52-89](../../server/routes/serp-analysis.routes.ts)) — reçoit `{ keyword, articleId? }`, lit `keyword_metrics.serp_raw_json` (OBLIGATOIRE : invariant **NFR-INT-SERP-ONCE** — aucune re-requête SERP). Appelle `extractTfidf(competitors, keyword)`, retourne `TfidfResult` avec 3 niveaux. Persiste optionnellement en `lexique_explorations` via `saveLexiqueTfidf()` si `articleId` fourni (multi-keyword tracking).
 - **Service TF-IDF** `extractTfidf()` ([server/services/keyword/tfidf.service.ts:22-81](../../server/services/keyword/tfidf.service.ts)) — tokenization du texte brut des concurrents (filtre stopwords français, ≥3 chars), calcul fréquence document (DF), classification seuil : `DF ≥ 0.7` → obligatoire, `0.3 ≤ DF < 0.7` → différenciateur, `DF < 0.3` → optionnel. Densité = `(total occurrences / total competitors)` arrondie à 0.1. Tri par densité DESC, limité à 50 termes par niveau (ligne 70).
-- **Composant Vue** `LexiqueExtraction.vue` ([src/components/moteur/LexiqueExtraction.vue:149-324](../../src/components/moteur/LexiqueExtraction.vue)) — déclenche `/api/serp/tfidf` au clic « Extraire Lexique ». Pré-coche tous les `obligatoire` (ligne 311-315), merge IA recommendations (ligne 240-253). Sauvegarde sélection utilisateur via `articleKeywordsStore.saveDecisions(id)` qui écrit `article_keywords.lexique` array (ligne 282).
+- **Composant Vue** `LexiquePanel.vue` ([src/components/moteur/LexiquePanel.vue:149-324](../../src/components/moteur/LexiquePanel.vue)) — déclenche `/api/serp/tfidf` au clic « Extraire Lexique ». Pré-coche tous les `obligatoire` (ligne 311-315), merge IA recommendations (ligne 240-253). Sauvegarde sélection utilisateur via `articleKeywordsStore.saveDecisions(id)` qui écrit `article_keywords.lexique` array (ligne 282).
 - **IA Upfront Lexique** streaming endpoint `/api/keywords/:keyword/ai-lexique-upfront` (appelé post-TF-IDF, ligne 218-256) — injecte le contexte stratégique (painPoint, niveau d'article) et recommande : `{ term: string, aiRecommended: boolean, rationale: string }[]`. Pré-coche les recommandés (ligne 248-250). Persiste via `saveLexiqueAi()` dans `lexique_explorations(ai_recommendations JSONB)`.
 - **Multi-keyword Exploration** (Sprint 11 D4) — champ saisie libre `customKeywordInput` (ligne 101, 156-163) permet TF-IDF sur tout mot-clé, pas seulement le Capitaine. Chaque exploration persistée indépendamment en `lexique_explorations(article_id, source_keyword)` avec PK composite (migration 008, ligne 17).
 - **DB Hydration** `hydrateFromDb()` (ligne 332-354) — restaure les explorations Lexique d'une session antérieure via `GET /articles/:id/explorations` si frais (`shouldRegenerate()`). Évite les re-calculs TF-IDF + IA intra-session.
@@ -28,7 +28,7 @@ Qui crée ou met à jour cette donnée :
 
 1. **TF-IDF brut cross-article** — `keyword_metrics.serp_raw_json JSONB` (partagée par tous les articles, 7j TTL). Champ source unique pour `/api/serp/tfidf` (NFR-INT-SERP-ONCE : aucun appel SERP supplémentaire).
 
-2. **Explorations multi-keyword article-scoped** — table `lexique_explorations(article_id, source_keyword, tfidf_terms JSONB, ai_recommendations JSONB, ai_missing_terms JSONB, ai_summary TEXT, explored_at TIMESTAMPTZ)` ([server/db/migrations/008_lexique_explorations.sql:8-18](../../server/db/migrations/008_lexique_explorations.sql)) — upsert via `ON CONFLICT (article_id, source_keyword) DO UPDATE`. Permet le replay d'une exploration passée (ligne 485 LexiqueExtraction.vue).
+2. **Explorations multi-keyword article-scoped** — table `lexique_explorations(article_id, source_keyword, tfidf_terms JSONB, ai_recommendations JSONB, ai_missing_terms JSONB, ai_summary TEXT, explored_at TIMESTAMPTZ)` ([server/db/migrations/008_lexique_explorations.sql:8-18](../../server/db/migrations/008_lexique_explorations.sql)) — upsert via `ON CONFLICT (article_id, source_keyword) DO UPDATE`. Permet le replay d'une exploration passée (ligne 485 LexiquePanel.vue).
 
 3. **Sélection utilisateur finale** — `article_keywords.lexique TEXT[] JSONB` (même colonne que Capitaine + Lieutenants + racines). Autorité de validation = cette table (ce qu'on sauvegarde avec `saveDecisions()` est la vérité). 
 
@@ -47,7 +47,7 @@ article_keywords.lexique (sélection utilisateur validée)
 
 ### Affichage (UI)
 
-- **Composant LexiqueExtraction.vue** — affiche 3 sections : obligatoire (tous cochés par défaut), différenciateur (filtrés par IA), optionnel (non cochés par défaut). Chaque terme affiche : `density`, `documentFrequency`, `competitorCount`, badge `aiRecommended` (ligne 495+).
+- **Composant LexiquePanel.vue** — affiche 3 sections : obligatoire (tous cochés par défaut), différenciateur (filtrés par IA), optionnel (non cochés par défaut). Chaque terme affiche : `density`, `documentFrequency`, `competitorCount`, badge `aiRecommended` (ligne 495+).
 - **Barre de tri SortToggleBar.vue** ([src/components/moteur/SortToggleBar.vue:1-160](../../src/components/moteur/SortToggleBar.vue)) — options `{ key: 'az', label: 'A-Z' }`, `{ key: 'density', label: 'Densité' }`, `{ key: 'alignment', label: 'Pertinence douleur' }` (ligne 62-71 LexiqueExtraction). Sortes par terme lexico, densité TF-IDF ou Jaccard douleur.
 - **Recap Finalisation** — affiche nombre de termes lexique sélectionnés (dans le recap de validation).
 - **Panel IA LexiqueAiPanel.vue** — recommandations en texte libre (summary), compteurs `aiRecommendedCount` vs `notRecommendedCount` (ligne 189-198 LexiqueExtraction).
@@ -72,10 +72,10 @@ article_keywords.lexique (sélection utilisateur validée)
 | Multi-keyword exploration (Sprint 11 D4) | `/api/serp/tfidf` pour mot-clé N via `customKeywordInput` → `/api/serp/analyze` si SERP miss → calcul TF-IDF local | chaque extraction persistée séparément en `lexique_explorations(article_id, keyword)` | Modéré : chaque mot-clé a son propre TF-IDF. Pas de collision si les keywords sont distincts. |
 | Restore past exploration (clic bouton du chip ligne 485) | `lexique_explorations` table hit, restaure `tfidfTerms` + `iaRecommendations` | aucune (c'est une restauration, pas une mutation) | **Risque FAIBLE** : timestamp `exploredAt` affiché au hover (ligne 484), donc l'utilisateur voit l'âge. |
 | IA Upfront abort (utilisateur cancel avant fin du stream) | `iaAbort()` appelé (ligne 215, 267, 387) | aucune (cancel in-flight, ne sauvegarde pas) | Faible : les recommendations inachevées ne sont pas committées. |
-| Validation atomique (saveDecisions) | `articleKeywordsStore.saveDecisions()` fusion {capitaine, lieutenants, lexique, rootKeywords} | `PUT /articles/:id/keywords` écrit 4 colonnes en une requête | **Risque FAIBLE SI atomicité API** : l'endpoint doit écrire Capitaine + Lieutenants + Lexique + racines dans la même transaction DB, sinon divergence UI → DB. À vérifier : `server/routes/keyword-validate.routes.ts` ou `server/routes/article-keywords.routes.ts`. |
+| Validation atomique (saveDecisions) | `articleKeywordsStore.saveDecisions()` fusion {capitaine, lieutenants, lexique, rootKeywords} | `PUT /articles/:id/keywords` écrit 4 colonnes en une requête | **Risque FAIBLE SI atomicité API** : l'endpoint doit écrire Capitaine + Lieutenants + Lexique + racines dans la même transaction DB, sinon divergence UI → DB. À vérifier : `server/routes/keyword-scan.routes.ts` ou `server/routes/article-keywords.routes.ts`. |
 | Merge cache + DB (TabLoadPrompt 2026-05-01) | `fetchKeywordsMerge()` récupère lexique distant et fusionne par valeur (union, ligne 97-105) | aucune (fetch seul) | Faible : union par string = pas de collision, pire cas = doublons (dedup fait au affichage). |
 | Check workflow émis (MOTEUR_LEXIQUE_VALIDATED) | `articleKeywordsStore.keywords.completedChecks` (mémoire, emit line 285) | `emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)` via composant parent (MoteurView) qui appelle le backend | Modéré : emit est fire-and-forget, pas garanti d'arrive au backend. À confirmer : le parent gère le POST check ou LexiqueExtraction l'appelle directement ? Aujourd'hui c'est le parent (MoteurView) qui le fait, donc `LexiqueExtraction` doit émettre l'événement (✅ ligne 285 fait ça). |
-| Invariant NFR-INT-SERP-ONCE violation | `/api/serp/tfidf` lecture `keyword_metrics.serp_raw_json` | aucun (read-only) | **Risque CRITIQUE** : si utilisateur clique TF-IDF avant `/api/serp/analyze`, `serp_raw_json` est `null` → endpoint retourne 404 "Lancez d'abord l'analyse SERP" (ligne 69). Route `/serp/analyze` fait le check (ligne 34-37). Composant UI doit désactiver le bouton Extraire Lexique tant que SERP n'est pas lancé (à vérifier dans LexiqueExtraction.vue). |
+| Invariant NFR-INT-SERP-ONCE violation | `/api/serp/tfidf` lecture `keyword_metrics.serp_raw_json` | aucun (read-only) | **Risque CRITIQUE** : si utilisateur clique TF-IDF avant `/api/serp/analyze`, `serp_raw_json` est `null` → endpoint retourne 404 "Lancez d'abord l'analyse SERP" (ligne 69). Route `/serp/analyze` fait le check (ligne 34-37). Composant UI doit désactiver le bouton Extraire Lexique tant que SERP n'est pas lancé (à vérifier dans LexiquePanel.vue). |
 
 ## Diagramme
 
@@ -93,7 +93,7 @@ flowchart TD
     end
     
     subgraph UI["Composant Vue + Sélection"]
-        LV["LexiqueExtraction.vue<br/>(ligne 149-324)<br/>fetch + affichage"]
+        LV["LexiquePanel.vue<br/>(ligne 149-324)<br/>fetch + affichage"]
         STB["SortToggleBar.vue<br/>(tri A-Z/density/alignment)"]
         CB["Checkboxes utilisateur<br/>(obligatoire pré-checked)"]
         SEL["selectedTerms: Set&lt;string&gt;"]

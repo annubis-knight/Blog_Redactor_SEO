@@ -22,9 +22,9 @@ Qui crée ou met à jour cette donnée :
 - **Store Pinia** `useArticleKeywordsStore` ([src/stores/article/article-keywords.store.ts:10-525](../../src/stores/article/article-keywords.store.ts)) — mutations locales (setCapitaine, addLieutenant, addLexiqueTerm, lockCaptain, etc.) + save actions (saveDecisions → PUT /articles/:id/keywords, saveKeywords alias, saveCaptainExplorationEntry → POST /articles/:id/captain-explorations).
 
 - **Composants Vue (Moteur)** — déclenchent les mutations du store :
-  - `CaptainValidation.vue` — radio lock (emit 'check-completed' → `lockCaptain()` côté store).
-  - `LieutenantsSelection.vue` — checkboxes sélection → `setRichLieutenants()`.
-  - `LexiqueExtraction.vue` — checkboxes termes → mutations `addLexiqueTerm()`.
+  - `CaptainPanel.vue` — radio lock (emit 'check-completed' → `lockCaptain()` côté store).
+  - `LieutenantsPanel.vue` — checkboxes sélection → `setRichLieutenants()`.
+  - `LexiquePanel.vue` — checkboxes termes → mutations `addLexiqueTerm()`.
   - Tous appellent `saveDecisions(id)` au blur ou via bouton Valider.
 
 - **Endpoints d'exploration dédiés** — produisent des données `richCaptain`, `richLieutenants` hydratées :
@@ -36,10 +36,10 @@ Qui crée ou met à jour cette donnée :
 **Autorité** : Table PostgreSQL `article_keywords(article_id PRIMARY KEY, capitaine, lieutenants[], lexique[], hn_structure JSONB, captain_locked_at TIMESTAMPTZ, root_keywords[])` — colonne article_id référence `articles(id)` ON DELETE CASCADE.
 
 **Tables associées (hydratation)**:
-- `captain_explorations(article_id FK, keyword, article_level, status, root_keywords[], ai_panel_markdown, explored_at, locked_at)` — historique validations Capitaine, source de vérité pour `richCaptain.validationHistory`.
+- `captain_explorations(article_id FK, keyword, article_level, status, root_keywords[], ai_panel_markdown, explored_at, locked_at)` — historique validations Capitaine, source de vérité pour `richCaptain.exploredKeywords`.
 - `lieutenant_explorations(article_id FK, keyword, status, reasoning, sources[], suggested_hn_level, score, kpis, locked_at, explored_at)` — propositions/sélections Lieutenants, source de vérité pour `richLieutenants[]`.
 - `paa_explorations(article_id FK, keyword, question, answer, is_match, match_quality)` — questions PAA associées à chaque Capitaine validé.
-- `radar_explorations(article_id FK, scan_result JSONB contenant { cards: [{ keyword, marketScore, relevanceScore, ... }] })` — cache scan Radar avec scores Marché + Pertinence hydratés dans `richCaptain.validationHistory[].marketScore` / `.relevanceScore`.
+- `radar_explorations(article_id FK, scan_result JSONB contenant { cards: [{ keyword, marketScore, relevanceScore, ... }] })` — cache scan Radar avec scores Marché + Pertinence hydratés dans `richCaptain.exploredKeywords[].marketScore` / `.relevanceScore`.
 
 **Hiérarchie d'autorité (lecture)** : `article_keywords` (décisions plate) → `captain_explorations` (validations contextualisées) → `radar_explorations` (scores Marché/Pertinence) → store Pinia `richCaptain` / `richLieutenants` (cache front).
 
@@ -49,19 +49,19 @@ Qui crée ou met à jour cette donnée :
 
 ### Affichage (UI)
 
-- **CaptainValidation.vue** — carousel validations Capitaine : affiche historique `richCaptain.validationHistory[]` avec KPIs, scores Marché/Pertinence, radio lock (FR-CAP-LOCK-RADIO).
-- **CaptainSidePanel.vue** — section sticky Capitaine : affiche `richCaptain.keyword` locké, KPIs readonly (search_volume / keyword_difficulty / CPC / Intent / PAA count / AC count), badges verdict (GO/ORANGE/NO-GO/GRAY) — scores extraits de `richCaptain.validationHistory[0]` ou card Radar associée.
+- **CaptainPanel.vue** — carousel validations Capitaine : affiche historique `richCaptain.exploredKeywords[]` avec KPIs, scores Marché/Pertinence, radio lock (FR-CAP-LOCK-RADIO).
+- **CaptainSidePanel.vue** — section sticky Capitaine : affiche `richCaptain.keyword` locké, KPIs readonly (search_volume / keyword_difficulty / CPC / Intent / PAA count / AC count), badges verdict (GO/ORANGE/NO-GO/GRAY) — scores extraits de `richCaptain.exploredKeywords[0]` ou card Radar associée.
 - **CaptainVerdictPanel.vue** — feu tricolore du verdict (informatif depuis 2026-04-28, FR-CAP-VERDICT-INFORMATIVE).
-- **LieutenantsSelection.vue** — liste checkboxes `richLieutenants[]`, filtrée par niveau (Pilier 5-8 / Intermédiaire 3-5 / Spécifique 1-3), compteur recommandé, badges `sources[]`, score AI.
-- **LexiqueExtraction.vue** — checkboxes termes `lexique[]`, 3 niveaux (Obligatoire pré-coché / Différenciateur / Optionnel), tri configurable (A-Z / densité / Jaccard douleur).
-- **FinalisationRecap.vue** — récapitulatif 3-phase : affiche Capitaine verrouillé, Lieutenants sélectionnés count, Lexique terms count.
+- **LieutenantsPanel.vue** — liste checkboxes `richLieutenants[]`, filtrée par niveau (Pilier 5-8 / Intermédiaire 3-5 / Spécifique 1-3), compteur recommandé, badges `sources[]`, score AI.
+- **LexiquePanel.vue** — checkboxes termes `lexique[]`, 3 niveaux (Obligatoire pré-coché / Différenciateur / Optionnel), tri configurable (A-Z / densité / Jaccard douleur).
+- **FinalisationPanel.vue** — récapitulatif 3-phase : affiche Capitaine verrouillé, Lieutenants sélectionnés count, Lexique terms count.
 - **ArticleKeywordsPanel.vue** — panneau lecture simple des keywords sélectionnés.
 - **SeoPanel.vue** — affichage dense keywords + statut validation dans la barre latérale.
 - **RadarKeywordCard.vue** — card individual dans Radar tab, affiche `marketScore.verdict` / `relevanceScore.verdict` en mode bimodal (user switch market ↔ relevance).
 
 ### Calcul / tri / filtre / agrégat
 
-- **Tri Capitaine** — `compareScores()` ([shared/score/compare.ts](../../shared/score/compare.ts)) — trie `validationHistory[]` par `relevanceScore.value` ou `marketScore.value` selon mode, gère `null` (en bas, jamais 0).
+- **Tri Capitaine** — `compareScores()` ([shared/score/compare.ts](../../shared/score/compare.ts)) — trie `exploredKeywords[]` par `relevanceScore.value` ou `marketScore.value` selon mode, gère `null` (en bas, jamais 0).
 - **Tri Radar cards** — idem `compareScores()`, user-selectable displayMode.
 - **Filtre Lieutenants** — post-IA `filterLieutenants()` applique cap par level (Pilier 5 / Intermédiaire 5 / Spécifique 4), géofunnel rule (FR-LIE-GEOFUNNEL-RULE).
 - **Agrégats** — `averageScores()`, `maxScore()`, `minScore()` ([shared/score/aggregate.ts](../../shared/score/aggregate.ts)) — excluent les `null` (pas de fallback 0).
@@ -78,13 +78,13 @@ Qui crée ou met à jour cette donnée :
 | Cas | Lecture | Écriture | Risque de divergence |
 |---|---|---|---|
 | **Premier load** (article jamais ouvert) | `GET /articles/:id/keywords` → hydrate depuis `article_keywords` + `captain_explorations` + `paa_explorations` + `lieutenant_explorations` | aucune (données vides ou migrées) | Faible si fetch atomique. |
-| **Reload** (page refresh) | idem, rehydration depuis DB | aucune (sauf si utilisateur re-valide) | **Risque** : si richCaptain.validationHistory()[0].relevanceScore est `null` au reload alors qu'il était calculé avant, l'utilisateur voit un verdict différent pour le même Capitaine. Cause : cache lexical perdu (radar_explorations stale). Solution : afficher date calcul + badge TTL. |
+| **Reload** (page refresh) | idem, rehydration depuis DB | aucune (sauf si utilisateur re-valide) | **Risque** : si richCaptain.exploredKeywords()[0].relevanceScore est `null` au reload alors qu'il était calculé avant, l'utilisateur voit un verdict différent pour le même Capitaine. Cause : cache lexical perdu (radar_explorations stale). Solution : afficher date calcul + badge TTL. |
 | **Switch onglet Phase ① → ② (Capitaine)** | hydration depuis `keyword_metrics` fresh + `captain_explorations` | aucune | Faible si données cohérentes. |
-| **Restore depuis history (slider)** | `richCaptain.validationHistory[]` → restaure ancien entry avec scores ancienne formule | aucune (history immutable) | **Risque majeur** : formule scoring Marché/Pertinence a changé 2026-04-28 (F1 PAA). Ancien entry a `marketScore.value = ancienneFormule`. User voit verdict "ORANGE" rehistorisé, pas "GO" d'aujourd'hui. Solution : versioner la formule dans `CaptainValidationEntry.formulaVersion`, afficher warning si legacy. |
+| **Restore depuis history (slider)** | `richCaptain.exploredKeywords[]` → restaure ancien entry avec scores ancienne formule | aucune (history immutable) | **Risque majeur** : formule scoring Marché/Pertinence a changé 2026-04-28 (F1 PAA). Ancien entry a `marketScore.value = ancienneFormule`. User voit verdict "ORANGE" rehistorisé, pas "GO" d'aujourd'hui. Solution : versioner la formule dans `CaptainScanEntry.formulaVersion`, afficher warning si legacy. |
 | **Unlock Capitaine** (archivier Lieutenants) | `richLieutenants[] → status locked` → `archiveLockedLieutenants()` passe status 'locked' → 'archived' | `POST /articles/:id/lieutenants/archive` | Faible si idempotent (Postgres idempotency ON CONFLICT). |
 | **Save décisions via store** (`saveDecisions`) | `article_keywords` plate (capitaine, lieutenants[], lexique[]) + `captain_keyword_locked` sur articles.captain_locked_at | `PUT /articles/:id/keywords` + mirror vers `articles.captain_keyword_locked` | **Régression historique (2026-04-27)** : `saveArticleKeywords()` écrasait `articles.captain_keyword_locked` à NULL si `data.richCaptain` undefined dans payload. Fix : mirror EXCLUSIVEMENT géré par `PUT /articles/:id/captain-keyword`, pas par saveDecisions. Test contrat : `captain-keyword-locked.contract.test.ts`. |
 | **Merge articles de deux cocons** | `richLieutenants` depuis deux articles fusionne par `mergeRichLieutenants()` (clé = keyword lowercase trim, winner = lockedAt plus récent) | Union sans doublon | Faible si clés uniques. |
-| **Fetch & merge (TabLoadPrompt)** | `fetchKeywordsMerge()` merge payload DB dans état mémoire SANS écraser (adoption partielle) | aucune | **Risque** : si utilisateur a validé Capitaine en mémoire, then reload, richCaptain en mémoire peut diverger de richCaptain en DB. Règle merge : capitaine adopte DB seulement si mémoire vide, validationHistory append-only. |
+| **Fetch & merge (TabLoadPrompt)** | `fetchKeywordsMerge()` merge payload DB dans état mémoire SANS écraser (adoption partielle) | aucune | **Risque** : si utilisateur a validé Capitaine en mémoire, then reload, richCaptain en mémoire peut diverger de richCaptain en DB. Règle merge : capitaine adopte DB seulement si mémoire vide, exploredKeywords append-only. |
 | **Lexique suggestion** (endpoint SSE) | lecture `keyword_metrics` (pour KPIs contexte) + `articles.pain_point` → POST IA → parse JSON response | mutation `keywords.value.lexique = result.lexique` | **Risque** : réponse IA invalide JSON → parse fail → `error.value` set, state partial. Solution : UI doit afficher spinner + error boundary. |
 
 ## Diagramme
@@ -94,9 +94,9 @@ flowchart TD
     subgraph Producteurs
         E1["PUT /articles/:id/keywords<br/>keywords.routes.ts:235-262"]
         S1["saveArticleKeywords<br/>data.service.ts:543-571"]
-        UI1["CaptainValidation.vue<br/>CaptainLockPanel.vue"]
-        UI2["LieutenantsSelection.vue"]
-        UI3["LexiqueExtraction.vue"]
+        UI1["CaptainPanel.vue<br/>CaptainLockPanel.vue"]
+        UI2["LieutenantsPanel.vue"]
+        UI3["LexiquePanel.vue"]
         STORE["useArticleKeywordsStore<br/>mutations + actions"]
     end
 
@@ -116,12 +116,12 @@ flowchart TD
     end
 
     subgraph Consommateurs_Display
-        CVH["CaptainValidation.vue<br/>affiche validationHistory"]
+        CVH["CaptainPanel.vue<br/>affiche exploredKeywords"]
         CSP["CaptainSidePanel.vue<br/>affiche KPIs locked"]
         CVP["CaptainVerdictPanel.vue<br/>verdict badges"]
-        LH2["LieutenantsSelection.vue<br/>liste checkboxes"]
-        LEX["LexiqueExtraction.vue<br/>termes 3 niveaux"]
-        FIN["FinalisationRecap.vue<br/>recap 3-phase"]
+        LH2["LieutenantsPanel.vue<br/>liste checkboxes"]
+        LEX["LexiquePanel.vue<br/>termes 3 niveaux"]
+        FIN["FinalisationPanel.vue<br/>recap 3-phase"]
     end
 
     subgraph Consommateurs_Calc
@@ -153,7 +153,7 @@ flowchart TD
     AK -->|capitaine, lieutenants[], lexique[]| CVH
     AK -->|capitaine, hn_structure| CSP
     RE -->|marketScore, relevanceScore| CVH
-    CE -->|validationHistory| CVH
+    CE -->|exploredKeywords| CVH
     CE -->|aiPanelMarkdown| CVH
     LE -->|richLieutenants[]| LH2
     AK -->|lexique[]| LEX
@@ -175,7 +175,7 @@ flowchart TD
 
 - **2026-04-27 (sprint captain-lock)** — Bug mirror : `saveArticleKeywords()` appelait `updateArticleCaptainKeyword()` avec `data.richCaptain?.keyword`, mais le payload PUT ne contient pas `richCaptain` (seulement capitaine plat). Résultat : `richCaptain` undefined → mirror écrivait NULL sur `articles.captain_keyword_locked`, effaçant le verrouillage après chaque save. Fix (2026-04-28) : mirror EXCLUSIVEMENT géré par endpoint dédié `PUT /articles/:id/captain-keyword`, saveDecisions ne le touche plus. Contrat : `captain-keyword-locked.contract.test.ts:25-61`.
 
-- **2026-04-28 (score-pertinence sprint)** — Formule scoring Marché/Pertinence changée (F1 PAA pour relevanceScore). Ancien `CaptainValidationEntry` a `marketScore`/`relevanceScore` null ou calculés par ancienne formule. Au restore from history, user voit ancien verdict. Solution préparée (pas implémentée) : ajouter champ `formulaVersion` à `CaptainValidationEntry`, afficher warning "calcul 2026-04-27" si legacy.
+- **2026-04-28 (score-pertinence sprint)** — Formule scoring Marché/Pertinence changée (F1 PAA pour relevanceScore). Ancien `CaptainScanEntry` a `marketScore`/`relevanceScore` null ou calculés par ancienne formule. Au restore from history, user voit ancien verdict. Solution préparée (pas implémentée) : ajouter champ `formulaVersion` à `CaptainScanEntry`, afficher warning "calcul 2026-04-27" si legacy.
 
 - **2026-05-02 (hydratation scores)** — Migration : `marketScore` et `relevanceScore` ne sont PAS persistés dans `captain_explorations` (par design : scores = résultats calculs, pas données saisies). Avant fix, hydratation manquait scores. Solution : hydrater depuis `radar_explorations.scan_result.cards[k]` (la single source of truth du Radar) au moment de servir `getCaptainExplorations()`. Ainsi `restoreFromHistory` côté front dispose de scores pour affichage + tri.
 

@@ -1,5 +1,5 @@
 /**
- * Tests des mergers `mergeCaptainHistory`, `mergeRichLieutenants` et
+ * Tests des mergers `mergeCaptainExploredKeywords`, `mergeRichLieutenants` et
  * `fetchKeywordsMerge` du store article-keywords. Garantit l'invariant clé :
  * **aucun doublon** ne doit apparaître après un merge, peu importe l'overlap
  * entre l'état mémoire et le payload entrant.
@@ -7,7 +7,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useArticleKeywordsStore } from '../../../src/stores/article/article-keywords.store'
-import type { ArticleKeywords, CaptainValidationEntry, RichLieutenant } from '../../../shared/types/index.js'
+import type { ArticleKeywords, CaptainScanEntry, RichLieutenant } from '../../../shared/types/index.js'
 
 vi.mock('../../../src/services/api.service', () => ({
   apiGet: vi.fn(),
@@ -24,14 +24,14 @@ beforeEach(() => {
   mockApiGet.mockReset()
 })
 
-function entry(keyword: string): CaptainValidationEntry {
+function entry(keyword: string): CaptainScanEntry {
   return {
     keyword,
     kpis: [],
     articleLevel: 'intermediaire',
     timestamp: new Date().toISOString(),
     validated: true,
-  } as unknown as CaptainValidationEntry
+  } as unknown as CaptainScanEntry
 }
 
 function lieutenant(keyword: string, lockedAt: string | null = null, status: 'suggested' | 'locked' | 'eliminated' | 'archived' = 'suggested'): RichLieutenant {
@@ -47,22 +47,22 @@ function lieutenant(keyword: string, lockedAt: string | null = null, status: 'su
   } as unknown as RichLieutenant
 }
 
-describe('article-keywords.store — mergeCaptainHistory', () => {
+describe('article-keywords.store — mergeCaptainExploredKeywords', () => {
   it('ajoute uniquement les entrées absentes (clé = keyword lowercased)', () => {
     const store = useArticleKeywordsStore()
     store.initEmpty(1)
     store.addCaptainPanel(entry('design émotionnel'))
     store.addCaptainPanel(entry('UX émotionnelle'))
-    expect(store.captainValidationHistory).toHaveLength(2)
+    expect(store.captainExploredKeywords).toHaveLength(2)
 
     // Payload contient une dup (case différente) + une nouvelle entrée
-    store.mergeCaptainHistory([
+    store.mergeCaptainExploredKeywords([
       entry('Design Émotionnel'), // dup → ignorée
       entry('design affectif'),   // nouveau
     ])
 
-    expect(store.captainValidationHistory).toHaveLength(3)
-    const keywords = store.captainValidationHistory.map(h => h.keyword)
+    expect(store.captainExploredKeywords).toHaveLength(3)
+    const keywords = store.captainExploredKeywords.map(h => h.keyword)
     expect(keywords).toContain('design émotionnel')
     expect(keywords).toContain('UX émotionnelle')
     expect(keywords).toContain('design affectif')
@@ -74,19 +74,19 @@ describe('article-keywords.store — mergeCaptainHistory', () => {
     // Pas de richCaptain au départ
     expect(store.keywords?.richCaptain).toBeUndefined()
 
-    store.mergeCaptainHistory([entry('foo')])
-    expect(store.keywords?.richCaptain?.validationHistory).toHaveLength(1)
+    store.mergeCaptainExploredKeywords([entry('foo')])
+    expect(store.keywords?.richCaptain?.exploredKeywords).toHaveLength(1)
   })
 
   it('respecte la limite MAX_VALIDATION_HISTORY (30) après merge', () => {
     const store = useArticleKeywordsStore()
     store.initEmpty(1)
     for (let i = 0; i < 25; i++) store.addCaptainPanel(entry(`kw-${i}`))
-    expect(store.captainValidationHistory).toHaveLength(25)
+    expect(store.captainExploredKeywords).toHaveLength(25)
 
     // Ajoute 10 nouveaux via merge → total 35, doit être tronqué à 30
-    store.mergeCaptainHistory(Array.from({ length: 10 }, (_, i) => entry(`new-${i}`)))
-    expect(store.captainValidationHistory).toHaveLength(30)
+    store.mergeCaptainExploredKeywords(Array.from({ length: 10 }, (_, i) => entry(`new-${i}`)))
+    expect(store.captainExploredKeywords).toHaveLength(30)
   })
 })
 

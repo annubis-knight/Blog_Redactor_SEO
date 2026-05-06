@@ -147,7 +147,7 @@ L'utilisateur examine les mots-clés cochés en mode "Pertinence" (alignement av
 **Props** : `card`, `checked`, `disabled?`, `displayMode?`, `articleLevel?`, `modifiers?`.
 **Emits** : `update:checked`, `modifier-untag`, `modifier-cycle`.
 
-**Usage** : [DouleurScannerResults.vue](../src/components/intent/scanner/DouleurScannerResults.vue) (onglet Radar du Moteur) et [DouleurIntentScanner.vue](../src/components/intent/DouleurIntentScanner.vue).
+**Usage** : [DouleurScannerResults.vue](../src/components/intent/scanner/DouleurScannerResults.vue) (onglet Radar du Moteur) et [RadarPanel.vue](../src/components/intent/RadarPanel.vue).
 
 Émet `check-completed` (workflow) côté parent quand la sélection franchit les seuils — voir [data-flows/completed-checks.md](data-flows/completed-checks.md).
 
@@ -163,7 +163,7 @@ L'utilisateur examine les mots-clés cochés en mode "Pertinence" (alignement av
 **Props** : `card`, `locked`, `interactiveWords?`, `displayMode?`, `articleLevel?`, `modifiers?`, `validating?`, `articlePainPoint?`.
 **Emits** : `update:locked`, `word-toggle`, `modifier-untag`, `modifier-cycle`, `recompute-relevance`.
 
-**Usage** : monté par [CaptainInteractiveWords.vue](../src/components/moteur/CaptainInteractiveWords.vue), lui-même monté par [CaptainRadarList.vue](../src/components/moteur/captain/CaptainRadarList.vue), affiché dans [CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue).
+**Usage** : monté par [CaptainInteractiveWords.vue](../src/components/moteur/CaptainInteractiveWords.vue), lui-même monté par [CaptainRadarList.vue](../src/components/moteur/captain/CaptainRadarList.vue), affiché dans [CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue).
 
 ### 3.4 Sous-composants bas niveau
 

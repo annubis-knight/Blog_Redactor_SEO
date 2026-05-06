@@ -339,34 +339,34 @@ C'est un pattern qu'on peut systématiser pour transformer le scoring de pertine
 
 | Fichier | Changement |
 |---|---|
-| [src/composables/keyword/useRadarCarousel.ts](../src/composables/keyword/useRadarCarousel.ts) | `hydrateCardFromValidation` propage `marketScore` + `relevanceScore` (avant ils étaient perdus) |
+| [src/composables/keyword/useExploredKeywords.ts](../src/composables/keyword/useExploredKeywords.ts) | `hydrateCardFromValidation` propage `marketScore` + `relevanceScore` (avant ils étaient perdus) |
 | [src/components/intent/RadarKeywordCard.vue](../src/components/intent/RadarKeywordCard.vue) | `displayedScore` strict par mode, plus de fallback `combinedScore`. Affichage `—` si null. Tooltip utilise `relevanceScore.breakdown` en mode `relevance`. |
-| [src/components/moteur/CaptainValidation.vue](../src/components/moteur/CaptainValidation.vue) | Tri sur `entry.card.relevanceScore?.total` strict |
-| [src/components/intent/DouleurIntentScanner.vue](../src/components/intent/DouleurIntentScanner.vue) | Tri Radar sur `computeKpiScore(card.kpis, level).total` |
+| [src/components/moteur/CaptainPanel.vue](../src/components/moteur/CaptainPanel.vue) | Tri sur `entry.card.relevanceScore?.total` strict |
+| [src/components/intent/RadarPanel.vue](../src/components/intent/RadarPanel.vue) | Tri Radar sur `computeKpiScore(card.kpis, level).total` |
 | [src/composables/moteur/useRadarRanking.ts](../src/composables/moteur/useRadarRanking.ts) | Plus de fallback `combinedScore` dans `marketTotal` / `relevanceTotal` |
 | [src/components/moteur/CaptainRootsSidebar.vue](../src/components/moteur/CaptainRootsSidebar.vue) | Moyenne et tooltip racines basés sur `relevanceScore.total` |
 | [shared/types/intent.types.ts](../shared/types/intent.types.ts) | `RadarCard.combinedScore` et `RadarCard.scoreBreakdown` marqués `@deprecated` |
 
 **Tests anti-régression** :
 - [tests/unit/components/radar-keyword-card-score-separation.test.ts](../tests/unit/components/radar-keyword-card-score-separation.test.ts) — verrouille la séparation stricte des scores par mode
-- [tests/unit/composables/useRadarCarousel-hydrate-scores.test.ts](../tests/unit/composables/useRadarCarousel-hydrate-scores.test.ts) — verrouille la propagation `marketScore`/`relevanceScore` lors de l'hydratation
+- [tests/unit/composables/useExploredKeywords-hydrate-scores.test.ts](../tests/unit/composables/useExploredKeywords-hydrate-scores.test.ts) — verrouille la propagation `marketScore`/`relevanceScore` lors de l'hydratation
 
 ### 2026-05-02 (suite) — Restoration des scores au reload
 
 **Bug détecté immédiatement après la migration UI** : au reload d'un article (revenir sur l'onglet Capitaine après avoir quitté), les cards affichaient `—` au lieu du Score Pertinence. Pourtant les données étaient bien présentes en backend.
 
-**Cause racine** : `useRadarCarousel.restoreFromHistory()` reconstruit les cards à partir de `CaptainValidationEntry` (DB). Or :
+**Cause racine** : `useExploredKeywords.restoreFromHistory()` reconstruit les cards à partir de `CaptainScanEntry` (DB). Or :
 1. La table `captain_explorations` ne persiste **pas** les scores (par design : ils sont calculés, pas saisis).
 2. La donnée `relevanceScore` existe en revanche dans `radar_explorations.scan_result.cards[k]`.
-3. Le payload `validationHistory` retourné au front ne rapatriait pas ces scores depuis le radar.
+3. Le payload `exploredKeywords` retourné au front ne rapatriait pas ces scores depuis le radar.
 
 **Fix appliqué** :
 
 | Couche | Fichier | Changement |
 |---|---|---|
-| Type partagé | [shared/types/keyword.types.ts](../shared/types/keyword.types.ts) | `CaptainValidationEntry` étendu avec `marketScore?` et `relevanceScore?` (optionnels, hydratés à la lecture) |
+| Type partagé | [shared/types/keyword.types.ts](../shared/types/keyword.types.ts) | `CaptainScanEntry` étendu avec `marketScore?` et `relevanceScore?` (optionnels, hydratés à la lecture) |
 | Backend | [server/services/infra/data.service.ts](../server/services/infra/data.service.ts) (`getCaptainExplorations`) | Lookup unique sur `radar_explorations.scan_result.cards[k]` indexé par keyword. Chaque entry est enrichie avec `marketScore` et `relevanceScore` avant d'être retournée. |
-| Front | [src/composables/keyword/useRadarCarousel.ts](../src/composables/keyword/useRadarCarousel.ts) (`restoreFromHistory`) | Propage `entry.marketScore` et `entry.relevanceScore` dans la `ValidateResponse` reconstruite, qui alimente ensuite `hydrateCardFromValidation`. |
+| Front | [src/composables/keyword/useExploredKeywords.ts](../src/composables/keyword/useExploredKeywords.ts) (`restoreFromHistory`) | Propage `entry.marketScore` et `entry.relevanceScore` dans la `ValidateResponse` reconstruite, qui alimente ensuite `hydrateCardFromValidation`. |
 
 **Limite connue** : si l'utilisateur a validé un keyword Capitaine **sans passer par le Radar** (saisie manuelle), aucune entrée correspondante n'existe dans `radar_explorations.scan_result.cards`. Dans ce cas, `relevanceScore` reste `null` et la card affiche `—`. Pour obtenir le score, l'utilisateur doit passer par Radar (qui calcule le Score Pertinence côté backend) ou re-valider le keyword via le bouton Capitaine.
 

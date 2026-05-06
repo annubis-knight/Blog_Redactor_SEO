@@ -23,9 +23,9 @@ Onglet Radar                    Onglet Capitaine
 ```
 
 Code :
-- Émission : [DouleurIntentScanner.vue:108](../src/components/intent/DouleurIntentScanner.vue#L108) — `emit('cards-selected', selected)`
+- Émission : [RadarPanel.vue:108](../src/components/intent/RadarPanel.vue#L108) — `emit('cards-selected', selected)`
 - Réception : [MoteurView.vue:418](../src/views/MoteurView.vue#L418) — `handleCardsSelected` qui bascule sur l'onglet Capitaine
-- Pré-validation côté Capitaine : [useRadarCarousel.ts:138](../src/composables/keyword/useRadarCarousel.ts#L138) — `loadCards` valide chaque card en parallèle + ses racines
+- Pré-validation côté Capitaine : [useExploredKeywords.ts:138](../src/composables/keyword/useExploredKeywords.ts#L138) — `loadCards` valide chaque card en parallèle + ses racines
 
 ---
 
@@ -46,7 +46,7 @@ Le serveur :
 
 → Tu vois apparaître :
 - Un **thermomètre global** ([RadarThermometer.vue](../src/components/shared/RadarThermometer.vue)) avec score 0-100, icône, label, verdict
-- Une **liste de cards triées** par `combinedScore` décroissant ([DouleurIntentScanner.vue:393-428](../src/components/intent/DouleurIntentScanner.vue#L393))
+- Une **liste de cards triées** par `combinedScore` décroissant ([RadarPanel.vue:393-428](../src/components/intent/RadarPanel.vue#L393))
 
 ### 2.2 Comment le tri t'aide à choisir
 
@@ -88,9 +88,9 @@ Sur une card avec **3 mots ou plus**, chaque mot du keyword est cliquable indivi
 
 Quand tu désactives un mot suivant :
 1. Le composant émet `word-toggle` avec les indices restants
-2. [`handleWordToggleAt`](../src/components/moteur/CaptainValidation.vue#L814) reconstitue la chaîne avec uniquement les mots actifs
+2. [`handleWordToggleAt`](../src/components/moteur/CaptainPanel.vue#L814) reconstitue la chaîne avec uniquement les mots actifs
 3. Si cette racine est déjà pré-validée (présente dans `entry.rootVariants` du composable carousel) → **bascule instantanée** vers ses KPIs
-4. Sinon → **validation à la volée** via `addRootVariantToEntry` ([useRadarCarousel.ts:243](../src/composables/keyword/useRadarCarousel.ts#L243))
+4. Sinon → **validation à la volée** via `addRootVariantToEntry` ([useExploredKeywords.ts:243](../src/composables/keyword/useExploredKeywords.ts#L243))
 
 → La card affiche alors les KPIs de la **nouvelle racine**. Tu peux comparer en temps réel.
 
@@ -100,15 +100,15 @@ Quand tu désactives un mot suivant :
 
 C'est ici que se fait le vrai **mixage multi-racines + SEO local**.
 
-Le composant **CaptainInput** ([CaptainValidation.vue:901-908](../src/components/moteur/CaptainValidation.vue#L901)) te laisse **taper librement** un keyword qui n'est dans aucune card.
+Le composant **CaptainInput** ([CaptainPanel.vue:901-908](../src/components/moteur/CaptainPanel.vue#L901)) te laisse **taper librement** un keyword qui n'est dans aucune card.
 
 Workflow :
 1. Tu observes les radar cards → tu repères que *"agence référencement"* a un bon score (cohérent éditorialement) **et** que *"toulouse"* est un terme local performant pour ton article
 2. Tu tapes dans l'input : `agence référencement toulouse`
-3. Validation → [`carousel.addEntry()`](../src/composables/keyword/useRadarCarousel.ts#L189) :
+3. Validation → [`carousel.addEntry()`](../src/composables/keyword/useExploredKeywords.ts#L189) :
    - Crée une nouvelle entry dans la liste verticale
    - Lance un appel `/keywords/:keyword/validate` qui te donne ses KPIs propres
-   - Lance aussi [`validateRoots()`](../src/composables/keyword/useRadarCarousel.ts#L101) qui décompose ta chaîne et pré-valide chaque racine en parallèle (max 5 racines)
+   - Lance aussi [`validateRoots()`](../src/composables/keyword/useExploredKeywords.ts#L101) qui décompose ta chaîne et pré-valide chaque racine en parallèle (max 5 racines)
 
 → La card résultante porte **les vrais KPIs** de cette combinaison composée par toi. Tu vois immédiatement :
 - Volume / KD / CPC du mot-clé entier

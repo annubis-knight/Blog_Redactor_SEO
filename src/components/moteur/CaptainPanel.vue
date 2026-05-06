@@ -126,8 +126,8 @@ watch(
       richCaptain: kw?.richCaptain ? {
         keyword: kw.richCaptain.keyword,
         status: kw.richCaptain.status,
-        historyCount: kw.richCaptain.validationHistory.length,
-        historyKeywords: kw.richCaptain.validationHistory.map(h => h.keyword),
+        historyCount: kw.richCaptain.exploredKeywords.length,
+        historyKeywords: kw.richCaptain.exploredKeywords.map(h => h.keyword),
         lockedAt: kw.richCaptain.lockedAt,
       } : null,
       flatCapitaine: kw?.capitaine,
@@ -168,7 +168,7 @@ watch(
 // `addEntry` ne dédupliquait pas → duplications cumulées à chaque toggle.
 // Maintenant : si l'entry n'existe pas, on log un warning (potentielle race
 // condition à investiguer) sans créer de duplication. Le restore via
-// validationHistory (watcher dédié plus bas) reste la voie normale d'apparition
+// exploredKeywords (watcher dédié plus bas) reste la voie normale d'apparition
 // des entries.
 watch(
   () => articleKeywordsStore.keywords?.capitaine,
@@ -523,7 +523,7 @@ watch(
     // Guard: only trust history if the store data belongs to this article (prevents race condition)
     const storeMatchesArticle = articleKeywordsStore.keywords?.articleId === id
     const existingHistory = storeMatchesArticle
-      ? articleKeywordsStore.keywords?.richCaptain?.validationHistory
+      ? articleKeywordsStore.keywords?.richCaptain?.exploredKeywords
       : undefined
     if (existingHistory && existingHistory.length > 0) {
       lastAutoValidatedId = id
@@ -674,12 +674,12 @@ const persistedAiPanels = new Set<string>()
 
 // Pre-fill sets from existing persisted history AND restore carousel
 //
-// 2026-05-02 — `deep: true` indispensable : `mergeCaptainHistory` (TabLoadPrompt)
+// 2026-05-02 — `deep: true` indispensable : `mergeCaptainExploredKeywords` (TabLoadPrompt)
 // fait un `history.push(entry)` qui mute le tableau en place. Sans deep, le
 // watcher ne se déclenche pas et le carousel n'est pas rebuild → le tri n'a
 // aucun nouvel item à trier.
 watch(
-  () => articleKeywordsStore.keywords?.richCaptain?.validationHistory,
+  () => articleKeywordsStore.keywords?.richCaptain?.exploredKeywords,
   (history) => {
     if (!history) return
     // Guard: only process history that belongs to the currently selected article
@@ -776,7 +776,7 @@ watch(
 
       // Update rootKeywords on the captain validation entry
       const rootKeys = Array.from(entry.rootVariants.keys())
-      const history = articleKeywordsStore.keywords?.richCaptain?.validationHistory
+      const history = articleKeywordsStore.keywords?.richCaptain?.exploredKeywords
       const captainEntry = history?.find(h => h.keyword === kw)
       if (captainEntry) captainEntry.rootKeywords = rootKeys
 

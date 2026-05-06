@@ -34,7 +34,7 @@ synced_with:
 
 **Règle d'or** : le Score Pertinence dépend du triplet `(keyword, painPoint, article)`. Le `keyword` peut changer (l'utilisateur explore un nouveau mot-clé) et l'`article` peut changer (switch d'article). En revanche, depuis le Sprint 10.5 (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU), le `painPoint` est **figé après la sortie du Cerveau** — il ne change plus en cours de workflow Moteur/Rédaction. Le calcul reste **à la volée** à chaque hydratation de l'onglet Capitaine pour garder une architecture stateless côté Pertinence et accommoder les deux autres dimensions du triplet.
 
-**Note Sprint 10.5 (2026-05-06)** : avant cette date, un watcher dans `CaptainValidation.vue` détectait les changements live de `painPoint` et déclenchait un recompute via le store dédié `captain-relevance.store.ts`. Cette logique a été supprimée — `painPoint` ne change plus en session, donc le watcher n'avait plus de raison d'exister. Le store frontend `captain-relevance` a été supprimé en conséquence (FR-CAP-RELEVANCE-STORE-REMOVED). Le calcul backend (`captain-relevance.service.ts`) reste inchangé.
+**Note Sprint 10.5 (2026-05-06)** : avant cette date, un watcher dans `CaptainPanel.vue` détectait les changements live de `painPoint` et déclenchait un recompute via le store dédié `captain-relevance.store.ts`. Cette logique a été supprimée — `painPoint` ne change plus en session, donc le watcher n'avait plus de raison d'exister. Le store frontend `captain-relevance` a été supprimé en conséquence (FR-CAP-RELEVANCE-STORE-REMOVED). Le calcul backend (`captain-relevance.service.ts`) reste inchangé.
 
 ---
 
@@ -76,7 +76,7 @@ Le signal 4 du Score Pertinence (Racines) a besoin du tableau des racines pour f
 ┌───────────────────────────────────────────────────────────────────────────────┐
 │ NAVIGATEUR (Vue + Pinia)                                                      │
 │                                                                               │
-│  CaptainValidation.vue mount                                                  │
+│  CaptainPanel.vue mount                                                  │
 │       │                                                                       │
 │       ▼                                                                       │
 │  store.loading = 'computing'                                                  │
@@ -424,7 +424,7 @@ Pour traçabilité en production.
 | Porte d'entrée | Fichier | Quand |
 |---|---|---|
 | Envoi depuis Radar | [server/routes/keywords.routes.ts](../../server/routes/keywords.routes.ts) — endpoint d'import depuis Radar | À l'INSERT initial de l'entrée `captain_explorations` |
-| Input manuel Capitaine | [server/routes/keyword-validate.routes.ts](../../server/routes/keyword-validate.routes.ts) — premier `/validate` qui crée l'entrée | Idem |
+| Input manuel Capitaine | [server/routes/keyword-scan.routes.ts](../../server/routes/keyword-scan.routes.ts) — premier `/validate` qui crée l'entrée | Idem |
 | Acceptation longue-traîne IA | [server/services/keyword/long-tail-suggest.service.ts](../../server/services/keyword/long-tail-suggest.service.ts) | Idem |
 
 Toutes ces portes utilisent `extractRoots()` côté front avant l'envoi, ou (préférable côté back pour cohérence) une fonction serveur équivalente.
