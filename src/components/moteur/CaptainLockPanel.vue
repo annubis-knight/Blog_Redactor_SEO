@@ -25,7 +25,7 @@ defineEmits<{
       :disabled="!canLock"
       @click="$emit('lock')"
     >
-      Valider ce Capitaine
+      Verrouiller ce mot-clé
     </button>
     <div v-else class="locked-state" :data-testid="`${testIdPrefix}locked-state`">
       <span class="locked-badge">Capitaine verrouillé</span>

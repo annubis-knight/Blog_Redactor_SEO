@@ -565,7 +565,7 @@ describe('CaptainValidation', () => {
       await nextTick()
 
       expect(wrapper.find('[data-testid="lock-btn"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="lock-btn"]').text()).toContain('Valider ce Capitaine')
+      expect(wrapper.find('[data-testid="lock-btn"]').text()).toContain('Verrouiller ce mot-clé')
     })
 
     it('lock button is disabled when verdict is not GO', async () => {

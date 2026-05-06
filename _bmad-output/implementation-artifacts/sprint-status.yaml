@@ -75,6 +75,20 @@ development_status:
   # 89 tests Capitaine verts, knip/madge inchangés.
   sprint-10-5-cleanup-painpoint-legacy: done
 
+  # Sprint 11 — Vocabulaire UI "Valider" → "Verrouiller" (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-11-vocabulaire-verrouiller.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FR ajoutée : FR-UI-VOCABULAIRE-VERROUILLER.
+  # Périmètre :
+  #   - "Valider ce Capitaine" → "Verrouiller ce mot-clé" (CaptainLockPanel.vue)
+  #   - "Valider les Lieutenants" → "Verrouiller les Lieutenants" (LieutenantsResultsLayout.vue)
+  #   - "Valider le Lexique" → "Verrouiller le Lexique" (LexiqueExtraction.vue)
+  #   - 2 tests ajustés (captain-validation.test.ts, lexique-extraction.test.ts)
+  # Hors-scope : renommage backend validateKeyword → scanKeyword (Sprint 14),
+  #              renommage useRadarCarousel (Sprint 12), refonte verrou en computed (Sprint 13).
+  # Validation : 186 tests UI verts, type-check vert, 0 occurrence résiduelle.
+  sprint-11-vocabulaire-verrouiller: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,

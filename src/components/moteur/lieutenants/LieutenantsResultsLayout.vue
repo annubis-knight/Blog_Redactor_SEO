@@ -134,7 +134,7 @@ defineEmits<{
         :disabled="selectedCardsSize === 0"
         @click="$emit('lock-lieutenants')"
       >
-        Valider les Lieutenants
+        Verrouiller les Lieutenants
       </button>
       <div v-else class="locked-state" data-testid="locked-state">
         <span class="locked-badge">Lieutenants verrouilles</span>

@@ -755,6 +755,19 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-UI-VOCABULAIRE-VERROUILLER
+Les boutons d'action de figeage d'une décision utilisateur dans le Moteur (Capitaine, Lieutenants, Lexique) utilisent le vocabulaire **« Verrouiller »** dans leur libellé. L'ancien vocabulaire « Valider » est réservé à la documentation produit interne et au backend (en attente de renommage Sprint 14) et n'apparaît plus dans l'interface utilisateur du workflow Moteur.
+**Justification produit** : « Valider » est ambigu — il désigne à la fois la recherche/exploration (scan DataForSEO + calcul scoring) et le verrouillage (décision utilisateur de figer un mot-clé). Côté UX, l'utilisateur **verrouille** un mot-clé / une sélection — c'est un acte de figeage, pas une étape technique.
+**Mapping libellés** :
+- Capitaine : "Verrouiller ce mot-clé" (était "Valider ce Capitaine")
+- Lieutenants : "Verrouiller les Lieutenants" (était "Valider les Lieutenants")
+- Lexique : "Verrouiller le Lexique" (était "Valider le Lexique")
+- Boutons "Déverrouiller" : inchangés (déjà cohérents)
+**Critères d'acceptation testables** :
+- Recherche grep `"Valider ce Capitaine"` / `"Valider les Lieutenants"` / `"Valider le Lexique"` dans `src/components/` retourne 0 occurrence.
+- Tests UI matchent les nouveaux libellés.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-11-vocabulaire-verrouiller.
+
 #### FR-CAP-RELEVANCE-STORE-REMOVED
 Le store frontend `captain-relevance.store.ts` (Pinia) — qui gérait la détection de changement painPoint et le déclenchement de recompute — est supprimé. Sa responsabilité est entièrement assumée par le calcul live au backend (`captain-relevance.service.ts`) déclenché à chaque hydratation initiale de l'onglet via `article-keywords.store.fetchKeywords()`.
 **Critères d'acceptation testables** :

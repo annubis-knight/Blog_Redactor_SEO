@@ -519,7 +519,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
           :disabled="selectedCount === 0"
           @click="validateLexique"
         >
-          Valider le Lexique
+          Verrouiller le Lexique
         </button>
       </div>
     </div>

@@ -724,7 +724,7 @@ describe('LexiqueExtraction', () => {
     it('shows validate button after extraction', async () => {
       const wrapper = await mountWithResults()
       expect(wrapper.find('[data-testid="lock-btn"]').exists()).toBe(true)
-      expect(wrapper.find('[data-testid="lock-btn"]').text()).toContain('Valider le Lexique')
+      expect(wrapper.find('[data-testid="lock-btn"]').text()).toContain('Verrouiller le Lexique')
     })
 
     it('validate button is disabled when no terms selected', async () => {
