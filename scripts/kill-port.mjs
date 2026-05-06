@@ -53,12 +53,18 @@ export async function freePort(port) {
       // netstat -ano renvoie des lignes du type :
       //   TCP    0.0.0.0:3400      0.0.0.0:0      LISTENING       9876
       // On prend les LISTENING dont la colonne "Local Address" se termine par :PORT.
-      const { stdout } = await execAsync(`netstat -ano -p TCP`)
+      const { stdout } = await execAsync(`netstat -ano`)
       const found = new Set()
-      const lineRe = new RegExp(`:${port}\\b\\s+\\S+\\s+LISTENING\\s+(\\d+)`, 'i')
       for (const line of stdout.split(/\r?\n/)) {
-        const m = line.match(lineRe)
-        if (m) found.add(m[1])
+        // "  TCP    0.0.0.0:5400    0.0.0.0:0    LISTENING    1234"
+        const cols = line.trim().split(/\s+/)
+        // cols: [proto, localAddr, remoteAddr, state, pid]
+        if (cols.length >= 5 && cols[3].toUpperCase() === 'LISTENING') {
+          const localAddr = cols[1]
+          if (localAddr.endsWith(`:${port}`)) {
+            found.add(cols[4])
+          }
+        }
       }
       pids = [...found]
     } else {
