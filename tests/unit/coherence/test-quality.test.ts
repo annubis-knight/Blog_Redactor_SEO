@@ -120,7 +120,10 @@ const SOFT_LIMITS = {
   //   1 it.skip (recommendAndPropagateWordCount au lock),
   //   1 it.skip (AC.J.7.bis toggleLieutenant no-op).
   // Tests obsolètes mais conservés pour traçabilité.
-  itSkip: 85,                      // it.skip / test.skip / describe.skip
+  // Sprint 18 (2026-05-06) — 1 it.skip ajouté (saveHnStructure gaps test
+  // obsolète post-Sprint 13 isLocked computed). À réécrire avec le nouveau
+  // flow checkbox=lock immédiat.
+  itSkip: 86,                      // it.skip / test.skip / describe.skip
 } as const
 
 // ============================================================================

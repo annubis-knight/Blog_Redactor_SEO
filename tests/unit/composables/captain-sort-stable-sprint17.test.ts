@@ -69,12 +69,17 @@ describe('Sprint 17 — Tri Capitaine stable (FR-CAP-SORT-STABLE-ON-ROOT-VARIANT
     expect(indexOfVoitureAfter).toBe(positionBefore)
   })
 
-  it('AC.17.A.2 — pinnedPredicate match originalCard.keyword OU card.keyword', () => {
+  it('AC.17.A.2 — pinnedPredicate match UNIQUEMENT sur originalCard.keyword (Sprint 18)', () => {
+    // Setup : 2 entries dont la 1ère a une racine active différente de son originalCard.
+    // Ordre d'insertion : ["voiture electrique pas chere", "autre keyword"].
     const entries = ref<FakeEntry[]>([
       makeEntry('voiture electrique pas chere', 50, 'voiture electrique', 50),
       makeEntry('autre keyword', 80),
     ])
     const lockedKeyword = ref<string | null>(null)
+
+    const isPinned = (entry: FakeEntry) =>
+      lockedKeyword.value !== null && entry.originalCard.keyword === lockedKeyword.value
 
     const { sorted } = useSortableList<FakeEntry>({
       items: entries,
@@ -82,19 +87,20 @@ describe('Sprint 17 — Tri Capitaine stable (FR-CAP-SORT-STABLE-ON-ROOT-VARIANT
         if (key === 'az') return entry.originalCard.keyword
         return null
       },
-      pinnedPredicate: (entry) => {
-        if (lockedKeyword.value === null) return false
-        return entry.originalCard.keyword === lockedKeyword.value
-            || entry.card.keyword === lockedKeyword.value
-      },
+      pinnedPredicate: isPinned,
     })
 
-    // Lock sur la racine active (card.keyword) : la card pinned remonte en haut
+    // Cas 1 : lockedKeyword = la racine active "voiture electrique".
+    // L'originalCard de l'entry 0 est "voiture electrique pas chere" — donc NE MATCHE PAS.
+    // Aucun pin actif → ordre d'insertion respecté.
     lockedKeyword.value = 'voiture electrique'
-    expect(sorted.value[0]?.originalCard.keyword).toBe('voiture electrique pas chere')
+    expect(isPinned(entries.value[0]!)).toBe(false)
+    expect(sorted.value.filter(isPinned).length).toBe(0)
 
-    // Lock sur l'originalCard.keyword : pareil
+    // Cas 2 : lockedKeyword = l'originalCard de l'entry 0.
+    // Le predicate match → pin actif → l'entry remonte en tête.
     lockedKeyword.value = 'voiture electrique pas chere'
+    expect(isPinned(entries.value[0]!)).toBe(true)
     expect(sorted.value[0]?.originalCard.keyword).toBe('voiture electrique pas chere')
   })
 })

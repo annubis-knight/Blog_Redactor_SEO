@@ -454,11 +454,10 @@ const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<E
   },
   pinnedPredicate: (entry) => {
     if (lockedKeyword.value === null) return false
-    // Sprint 17 — match sur originalCard.keyword OU sur card.keyword (cas où
-    // l'utilisateur a locké une racine active). originalCard est la stable,
-    // mais lockEntry peut capturer card.keyword si une racine est active.
+    // Sprint 18 — Décision produit : lock UNIQUEMENT sur originalCard.keyword.
+    // lockEntry capture toujours originalCard.keyword (jamais la racine active),
+    // donc lockedKeyword === entry.originalCard.keyword est l'unique condition.
     return entry.originalCard.keyword === lockedKeyword.value
-        || entry.card.keyword === lockedKeyword.value
   },
 })
 
@@ -481,18 +480,14 @@ const selectedEntry = computed<ExploredKeywordEntry | null>(() => {
 })
 const lockedIndex = computed(() => {
   if (lockedKeyword.value === null) return -1
-  // Sprint 17 — match sur originalCard OU card.keyword (gère le cas où la racine
-  // active a été lockée). originalCard.keyword est la valeur stable en priorité.
-  return carousel.entries.value.findIndex(e =>
-    e.originalCard.keyword === lockedKeyword.value || e.card.keyword === lockedKeyword.value,
-  )
+  // Sprint 18 — Lock UNIQUEMENT sur originalCard.keyword (décision tranchée).
+  return carousel.entries.value.findIndex(e => e.originalCard.keyword === lockedKeyword.value)
 })
 const lockedEntryExists = computed(() => lockedIndex.value !== -1)
 const selectedIsLocked = computed(() => {
   if (!selectedEntry.value || !lockedKeyword.value) return false
-  // Sprint 17 — match sur originalCard.keyword ou card.keyword (Bug A).
+  // Sprint 18 — Lock UNIQUEMENT sur originalCard.keyword.
   return selectedEntry.value.originalCard.keyword === lockedKeyword.value
-      || selectedEntry.value.card.keyword === lockedKeyword.value
 })
 
 // Reset selectedIndex si entries shrink en dessous de l'index pointé
@@ -869,7 +864,14 @@ async function lockEntry(idx: number) {
     log.debug('[CaptainPanel] lockEntry no-op (entry incomplete)', { idx })
     return
   }
-  const newKw = entry.card.keyword
+  // Sprint 18 — Décision produit tranchée : on lock TOUJOURS le mot-clé d'origine
+  // de la card (originalCard.keyword), JAMAIS la racine active. Si l'utilisateur
+  // veut locker une racine, il doit la chercher explicitement (input Capitaine
+  // ou recherche d'une RadarCard avec ce mot-clé comme original). Cela garantit :
+  //   - 1 card = 1 entrée DB stable, pas de drift selon racine active
+  //   - Le pinnedPredicate (qui matche originalCard.keyword) reste cohérent
+  //   - Aucune ambiguïté sur "qu'est-ce qui est verrouillé ?"
+  const newKw = entry.originalCard.keyword
   const previousKw = lockedKeyword.value
   const isTransfer = previousKw !== null && previousKw !== newKw
 
@@ -881,8 +883,6 @@ async function lockEntry(idx: number) {
 
   selectedIndex.value = idx
   lockedKeyword.value = newKw
-  // Sprint 13 — `isLocked` n'est plus une Ref. Le computed se réactive après
-  // articleKeywordsStore.lockCaptain() ci-dessous.
 
   if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
   emit('validated', newKw)

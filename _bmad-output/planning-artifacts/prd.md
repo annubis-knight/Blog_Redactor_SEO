@@ -755,6 +755,16 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-CAP-LOCK-ORIGINAL-ONLY
+Le mot-clé verrouillé du Capitaine est **toujours** l'`originalCard.keyword` de la RadarCard sélectionnée, jamais une racine active (`card.keyword` quand l'utilisateur a activé une variante). Si l'utilisateur veut verrouiller une racine, il doit la chercher explicitement (input text Capitaine ou recherche d'une RadarCard ayant ce mot-clé comme original).
+**Justification** : cohérence DB (1 RadarCard = 1 entrée stable dans `captain_explorations`), cohérence UI (`pinnedPredicate` simplifié, un seul critère de match), cohérence sémantique (le verrouillage agit sur la card identifiée par son mot-clé d'origine, peu importe la racine active), élimination de bugs frontière où locker une racine puis désactiver la racine laisserait une card "verrouillée" avec un keyword d'affichage différent.
+**Critères d'acceptation testables** :
+- `lockEntry(idx)` capture toujours `entry.originalCard.keyword`, jamais `entry.card.keyword`.
+- Le `pinnedPredicate` match UNIQUEMENT sur `originalCard.keyword`.
+- Le `lockedIndex` cherche par `originalCard.keyword`.
+- Le `selectedIsLocked` ne match plus `card.keyword`.
+**Statut :** active. **Depuis :** 2026-05-06. **Supersede partiellement :** Sprint 17 (qui avait introduit un compromis défensif `originalCard.keyword OR card.keyword`). **Source :** tech-spec-sprint-18-lock-on-original-card.
+
 #### FR-CAP-LOCK-NO-DUPLICATE
 Quand l'utilisateur lock/unlock/relock une RadarCard du Capitaine, **aucune entry n'est dupliquée** dans `entries.value` du composable `useExploredKeywords`. La déduplication est appliquée à 3 endroits :
 - `addEntry(keyword, ...)` : si une entry existe déjà pour `originalCard.keyword` (case-insensitive, trim), réutilise cette entry au lieu d'en créer une 2e.

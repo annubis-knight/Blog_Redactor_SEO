@@ -202,6 +202,17 @@ development_status:
   # (2 sanity E2E pré-existants).
   sprint-17-bugs-comportementaux-capitaine: done
 
+  # Sprint 18 — Lock sur originalCard.keyword UNIQUEMENT (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-18-lock-on-original-card.md
+  # branche: chore/sprint-18-22-cleanup-and-investigations
+  # FR ajoutée : FR-CAP-LOCK-ORIGINAL-ONLY (supersede partiellement Sprint 17).
+  # Décision produit tranchée : on ne lock JAMAIS une racine active. lockEntry
+  # capture toujours entry.originalCard.keyword. pinnedPredicate / lockedIndex /
+  # selectedIsLocked / classe radar-list-item--locked / isLocked dans
+  # CaptainInteractiveWords matchent tous UNIQUEMENT sur originalCard.keyword.
+  # Validation : type-check vert, build vert (9.14s), 3962 tests verts.
+  sprint-18-lock-on-original-card: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,
