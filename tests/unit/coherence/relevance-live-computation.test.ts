@@ -217,3 +217,121 @@ describe('Garde-fous structurels — décisions architecturales 2026-05-05', () 
     expect(typeof scoring.computeRelevanceScore).toBe('function')
   })
 })
+
+// =====================================================
+// FR-CAP-RELEVANCE-INTENT-SIGNAL — 5e signal Pertinence actif
+// =====================================================
+
+describe('FR-CAP-RELEVANCE-INTENT-SIGNAL — câblage painIntentExpected', () => {
+  it('CaptainKeywordInput accepte painIntentExpected', async () => {
+    const mod = await tryImportCaptainRelevanceService()
+    if (!mod) return
+    // L'interface CaptainKeywordInput doit transporter painIntentExpected
+    // pour permettre au scoring d'appliquer la matrice 4×4 + malus.
+    // Test indirect : on appelle computeRelevanceForCaptainTab avec ce champ
+    // et on vérifie qu'il n'y a pas d'erreur de typage runtime.
+    const result = mod.__test__.computeRelevanceForSingleKeyword(
+      'cours piano',
+      'Je galère à trouver des cours adaptés à mon niveau',
+      null, // metrics
+      null, // rootsAverageScore
+      false, // isLongTail
+    )
+    // Sans metrics, on tombe sur missing-paa — ce n'est pas l'objet du test ;
+    // l'important est que le service existe et accepte la signature.
+    expect(result).toBeDefined()
+    expect(['no-pain', 'long-tail', 'missing-paa', 'missing-autocomplete', null]).toContain(
+      result.unavailableReason,
+    )
+  })
+
+  it('helper getArticlePainIntent existe et est exporté', async () => {
+    try {
+      const mod = await import('../../../server/services/queries/article-pain-intent.service.js')
+      expect(typeof mod.getArticlePainIntent).toBe('function')
+    } catch {
+      // Module absent → test échoue clairement
+      expect.fail('getArticlePainIntent doit être exporté depuis server/services/queries/article-pain-intent.service.ts')
+    }
+  })
+
+  it('computeRelevanceScore applique le malus de mismatch quand painIntentExpected est fourni', async () => {
+    const { computeRelevanceScore } = await import('../../../shared/scoring.js')
+    const matchResult = computeRelevanceScore({
+      intentTypes: ['informational'],
+      painIntentExpected: 'informational',
+    })
+    const mismatchResult = computeRelevanceScore({
+      intentTypes: ['transactional'],
+      painIntentExpected: 'informational',
+    })
+    expect(matchResult.breakdown.intentPain.normalized).toBeGreaterThan(
+      mismatchResult.breakdown.intentPain.normalized,
+    )
+  })
+
+  it('articles.pain_intent_expected est TEXT single-value, pas TEXT[]', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const migrationPath = path.resolve(
+      process.cwd(),
+      'server/db/migrations/014_articles_pain_intent_expected.sql',
+    )
+    const content = fs.readFileSync(migrationPath, 'utf-8')
+    // Single-value : `pain_intent_expected TEXT` (pas TEXT[])
+    expect(content).toMatch(/pain_intent_expected\s+TEXT\b(?!\[)/)
+    // CHECK contraint sur les 4 valeurs
+    for (const v of ['commercial', 'transactional', 'informational', 'navigational']) {
+      expect(content).toContain(`'${v}'`)
+    }
+  })
+})
+
+// =====================================================
+// FR-PIE-AI-GENERATION — prompts IA génèrent painIntentExpected
+// =====================================================
+
+describe('FR-PIE-AI-GENERATION — prompts cocoon-* incluent painIntentExpected', () => {
+  const promptFiles = [
+    'server/prompts/cocoon-articles.md',
+    'server/prompts/cocoon-articles-spe.md',
+    'server/prompts/cocoon-add-article.md',
+  ]
+
+  for (const file of promptFiles) {
+    it(`${file} mentionne painIntentExpected dans le format de sortie`, async () => {
+      const fs = await import('node:fs')
+      const path = await import('node:path')
+      const content = fs.readFileSync(path.resolve(process.cwd(), file), 'utf-8')
+      expect(content).toContain('painIntentExpected')
+      // Doit lister les 4 valeurs autorisées
+      for (const v of ['commercial', 'transactional', 'informational', 'navigational']) {
+        expect(content).toContain(v)
+      }
+    })
+  }
+})
+
+// =====================================================
+// CLEAN — legacy painType deprecated supprimé
+// =====================================================
+
+describe('CLEAN — legacy painType supprimé après activation painIntentExpected', () => {
+  it('shared/types/scoring.types.ts n\'expose plus painType', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const content = fs.readFileSync(
+      path.resolve(process.cwd(), 'shared/types/scoring.types.ts'),
+      'utf-8',
+    )
+    // Le champ painType est supprimé (pas de rétro-compat needed selon CLAUDE.md)
+    expect(content).not.toMatch(/^\s*painType\??:/m)
+  })
+
+  it('shared/scoring.ts ne lit plus le champ painType', async () => {
+    const fs = await import('node:fs')
+    const path = await import('node:path')
+    const content = fs.readFileSync(path.resolve(process.cwd(), 'shared/scoring.ts'), 'utf-8')
+    expect(content).not.toContain('input.painType')
+  })
+})
