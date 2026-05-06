@@ -15,11 +15,10 @@ import {
   fetchAutocompleteMergedGrouped,
   normalize,
   computePaaWeightedScore,
-  computePaaPainAlignmentCumulative,
 } from '../intent/intent-scan.service.js'
 import { readPaaCache, writePaaCache } from '../infra/paa-cache.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
-import { computeCombinedScore, computeRelevanceScore } from '../../../shared/scoring.js'
+import { computeCombinedScore } from '../../../shared/scoring.js'
 import { computeMarketScore } from '../../../shared/scoring-kpi.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type {
@@ -437,32 +436,20 @@ export async function scanRadarKeywords(
     })
      
 
-    // Séparation KPI vs Pertinence (V1) — chaque card embarque les deux scores
-    // Sprint S3 — `paaPainAlignmentCumulative` remplace la moyenne lissée pour
-    // alimenter computeRelevanceScore. La somme cumulative exploite la richesse
-    // du barème topicWeight × painWeight (cf. computePaaPainAlignmentCumulative).
+    // 2026-05-05 — FR-RAD-NO-RELEVANCE-IN-SCAN
+    // Le scan Radar ne calcule plus le Score Pertinence. Cette responsabilité
+    // est désormais portée exclusivement par l'onglet Capitaine via
+    // captain-relevance.service.ts (FR-CAP-RELEVANCE-COMPUTED-LIVE).
+    // Le scan Radar ne produit plus que :
+    //   - les KPIs marché bruts (Volume/KD/CPC/Intent/PAA/AC)
+    //   - le marketScore (computeMarketScore — calcul stable, ne dépend pas du painPoint)
+    // Le champ relevanceScore reste dans la structure pour rétro-compat avec
+    // les anciens clients front, mais vaut TOUJOURS null. Les anciens snapshots
+    // en DB qui contiennent encore une valeur sont ignorés à la lecture par
+    // getCaptainExplorations (cf. data.service.ts).
     const radarLevel: ArticleLevel = 'intermediaire'
     const marketScore = computeMarketScore(kpis, radarLevel)
-    const paaPainCumulative = paaItems.length > 0
-      ? computePaaPainAlignmentCumulative(paaItems)
-      : null
-    let relevanceScore = null
-    const hasPainSignal = !!painPoint && (
-      painAlignmentScore != null ||
-      paaPainCumulative != null ||
-      autocompletePainAlignmentAvg != null
-    )
-    if (hasPainSignal) {
-      relevanceScore = computeRelevanceScore({
-        painAlignmentScore: painAlignmentScore ?? null,
-        // S3 — formule F1 cumulative (somme points / max théorique × 100)
-        paaPainAlignmentAvg: paaPainCumulative,
-        autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? null,
-        rootsAverageScore: null,
-        intentTypes: kpis.intentTypes,
-      })
-    }
-    log.debug(`[Radar] Card "${kw.keyword}": combined=${scoreBreakdown.total}, market=${marketScore.total}, relevance=${relevanceScore?.total ?? 'n/a'}, paaCumulative=${paaPainCumulative ?? 'n/a'}`)
+    log.debug(`[Radar] Card "${kw.keyword}": combined=${scoreBreakdown.total}, market=${marketScore.total} (relevance computed live in Capitaine tab)`)
 
     cards.push({
       keyword: kw.keyword,
@@ -473,7 +460,7 @@ export async function scanRadarKeywords(
       scoreBreakdown,
       cachedPaa: paaData.fromCache,
       marketScore,
-      relevanceScore,
+      relevanceScore: null,
     })
   }
 

@@ -1,6 +1,6 @@
 import type { ProposeLieutenantsHnNode } from './serp-analysis.types.js'
 import type { ArticleLevel, PaaQuestionValidate } from './keyword-validate.types.js'
-import type { MarketScoreResult, RelevanceScoreResult } from './scoring.types.js'
+import type { MarketScoreResult, RelevanceScoreResult, RelevanceUnavailableReason } from './scoring.types.js'
 
 /**
  * Lightweight KPI for persistence — only name and raw value.
@@ -62,18 +62,24 @@ export interface CaptainValidationEntry {
   aiPanelMarkdown?: string | null           // AI-generated analysis per keyword
   exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
   /**
-   * 2026-05-02 — Score Marché (`computeMarketScore`) et Score Pertinence
-   * (`computeRelevanceScore`) hydratés à la lecture (pas persistés en DB).
+   * 2026-05-05 — Refonte live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE).
    *
-   * Backend : `getCaptainExplorations` rapatrie ces scores depuis
-   * `radar_explorations.scan_result.cards[k]` (single source of truth) au
-   * moment de servir la liste, pour que `restoreFromHistory` puisse
-   * reconstruire des cards Capitaine avec leur Score Pertinence affichable.
+   * marketScore : rapatrié depuis `radar_explorations.scan_result.cards[k]` au
+   *   reload (snapshot stable, dépend uniquement du keyword).
+   * relevanceScore : CALCULÉ À LA VOLÉE par `computeRelevanceForCaptainTab`
+   *   à chaque hydratation Capitaine. JAMAIS persisté en DB.
+   *   Toujours cohérent avec le `painPoint` actuel de l'article.
    *
-   * Voir docs/scoring-kpi-vs-relevance.md → Statut de la migration.
+   * Voir docs/data-flows/relevance-score-live-computation.md.
    */
   marketScore?: MarketScoreResult | null
   relevanceScore?: RelevanceScoreResult | null
+  /**
+   * 2026-05-05 — Cause typée renvoyée quand `relevanceScore` est null,
+   * pour que le frontend affiche un tooltip honnête sans deviner.
+   * Voir FR-CAP-RELEVANCE-UNAVAILABLE-REASON.
+   */
+  relevanceUnavailableReason?: RelevanceUnavailableReason | null
 }
 
 /** Rich captain object with validation history and AI panel content */

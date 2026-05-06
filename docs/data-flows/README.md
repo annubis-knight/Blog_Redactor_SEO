@@ -20,6 +20,7 @@ docs/data-flows/
 ├── _template.md                 # squelette à copier
 ├── _audit-YYYY-MM-DD.md         # rapports d'audit générés
 ├── score-capitaine.md           # Scoring Marché + Pertinence article Capitaine (2026-05-04)
+├── relevance-score-live-computation.md  # Architecture live computation Pertinence + persistance racines (2026-05-05) — DOC FIGÉE
 ├── strategy-context.md          # Contexte stratégique Brain-First + painPoint injection IA (2026-05-04)
 ├── completed-checks.md
 ├── keyword-metrics.md

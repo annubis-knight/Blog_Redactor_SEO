@@ -554,6 +554,34 @@ Persistance article-scoped via table `radar_explorations(article_id PK, JSONB sc
 #### FR-RAD-CHECK
 Émet `moteur:radar_done` après un scan réussi.
 
+#### FR-RAD-MARKET-COMPUTED-LIVE
+Le Score Marché (`marketScore`) est calculé à la volée côté front à chaque rendu d'une `RadarKeywordCard`, à partir des `kpis` reçus du backend. Il n'est jamais persisté en DB ni en cache.
+**Critères d'acceptation testables** :
+- Le store Pinia front ne contient pas de champ `marketScore` persisté.
+- Aucune colonne SQL ne contient `market_score` ou équivalent.
+- Le score affiché dans la card est `computeKpiScore(kpis, articleLevel).total` à l'instant du rendu.
+- Si `kpis === null` (longue-traîne) : affichage `—`.
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-RAD-NO-RELEVANCE-IN-SCAN
+Le scan Radar (`scanRadarKeywords`) ne calcule plus le Score Pertinence et ne l'inclut plus dans son snapshot `radar_explorations.scan_result.cards[]`. Il ne produit que `marketScore` et les `kpis` bruts. Les anciennes lignes en DB qui contiennent encore `relevanceScore` sont ignorées par le code de lecture (pas de migration destructive).
+**Critères d'acceptation testables** :
+- Après refonte, `keyword-radar.service.ts` n'appelle plus `computeRelevanceScore`.
+- La structure `KeywordRadarScanResult.cards[]` ne contient plus le champ `relevanceScore` (ou il vaut toujours `undefined`).
+- Le code de lecture de `getCaptainExplorations` n'utilise plus le champ `relevanceScore` du snapshot Radar (il calcule à la volée — voir FR-CAP-RELEVANCE-COMPUTED-LIVE).
+**Statut :** active. **Depuis :** 2026-05-05. **Remplace :** comportement historique où le scan Radar persistait `relevanceScore` dans le snapshot. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-RAD-CARD-CHEVRON-TOGGLE
+Sur une `RadarKeywordCard`, le toggle expand/collapse de la section PAA est déclenché **uniquement par un clic sur le chevron** (icône triangle à gauche du header). Tout autre clic dans la card propage normalement vers le parent (notamment vers `radar-list-item` dans `CaptainValidation` qui ouvre le side panel).
+**Zones avec @click.stop conservés** : chevron PAA, sous-chevrons PAA dans le body, score-ring (pour le tooltip), cadenas (`RadarCardLockable`), tag manuel, recompute Pertinence, mots interactifs (`KeywordWords`).
+**Zones qui propagent au parent** : keyword text (mode non-interactif), KPIs, badges intent, espaces vides du header.
+**Critères d'acceptation testables** :
+- Clic sur le chevron : PAA toggle, side panel ne s'ouvre PAS.
+- Clic sur le keyword text non-interactif : side panel s'ouvre, PAA inchangé.
+- Clic sur KPIs : side panel s'ouvre.
+- Clic sur cadenas : action verrou, side panel ne s'ouvre PAS.
+**Statut :** active. **Depuis :** 2026-05-05. **Remplace :** comportement historique où tout clic sur le header togglait le PAA et bloquait le side panel. **Source :** tech-spec-relevance-live-computation.
+
 ---
 
 ### 8.6 — Moteur — Capitaine (FR-CAP)
@@ -624,6 +652,78 @@ Persistance article-scoped dans `captain_explorations(article_id, keyword)` → 
 
 #### FR-CAP-CHECK
 Émet `moteur:capitaine_locked` au verrouillage.
+
+#### FR-CAP-RELEVANCE-COMPUTED-LIVE
+Le Score Pertinence (`relevanceScore`) est calculé à la volée côté backend à chaque hydratation de l'onglet Capitaine, jamais persisté. À chaque appel `GET /articles/:id/relevance` (ou endpoint équivalent), le serveur exécute le calcul complet à partir du `painPoint` actuel + `keyword_metrics` + `captain_explorations.root_keywords`. Le score reflète **toujours** le `painPoint` actuel de l'article, pas un painPoint historique.
+**Critères d'acceptation testables** :
+- Modifier `articles.pain_point` en DB et recharger l'onglet produit un score différent (sans action manuelle).
+- Saisie manuelle d'un keyword jamais scanné Radar → score calculé et affiché (pas `—`).
+- Aucun `INSERT/UPDATE` SQL ne contient `relevanceScore` dans son payload pendant un calcul Pertinence (vérifiable par spy).
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-RELEVANCE-NO-DB-WRITE
+Aucune écriture DB (`INSERT`/`UPDATE`) ne contient le champ `relevanceScore`. Le calcul Pertinence ne fait que des lectures DB.
+**Critères d'acceptation testables** :
+- Aucune colonne SQL ne s'appelle `relevance_score` ou équivalent.
+- La cellule JSONB `radar_explorations.scan_result` ne contient plus de champ `relevanceScore` après refonte (anciennes lignes ignorées à la lecture).
+- Test unitaire avec spy `pg.query` capture aucun payload contenant `relevanceScore`.
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-RELEVANCE-NO-CACHE
+Le Score Pertinence n'est jamais mis en cache TTL serveur (`api_cache`). Aucun store front (Pinia, localStorage, sessionStorage) ne le persiste au-delà de la session navigateur courante.
+**Critères d'acceptation testables** :
+- F5 du navigateur vide complètement le store Pertinence côté front.
+- Aucun appel `api_cache.get('relevance:*')` ou clé similaire.
+- Le store Pinia se recharge via API à chaque mount du composant Capitaine.
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-RELEVANCE-ROOTS-FROM-DB
+Pour le calcul du signal 4 (Racines), le serveur lit le tableau `captain_explorations.root_keywords` persisté. En fallback (entrée DB absente), il appelle `extractRoots(keyword)` à la volée mais sans persister le résultat.
+**Critères d'acceptation testables** :
+- Si `root_keywords` existe en DB → utilisé tel quel pour le calcul (vérifiable par mock DB).
+- Si `root_keywords` absent ou vide → fallback `extractRoots()` mémoire seule, aucune écriture DB.
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-ROOTS-PERSISTED-AT-ENTRY
+Le tableau `root_keywords` est calculé et persisté en DB **au moment où un keyword entre dans `captain_explorations`** (envoi depuis Radar, input manuel Capitaine, acceptation longue-traîne IA). Pas avant, pas après.
+**Critères d'acceptation testables** :
+- Toutes les portes d'entrée `captain_explorations` appellent `extractRoots(keyword)` et incluent le résultat dans l'`INSERT` initial.
+- Le verrouillage Capitaine d'un keyword existant ne déclenche aucun `UPDATE` sur `root_keywords` (immutable après entrée).
+- Le calcul Pertinence ne déclenche aucun `INSERT/UPDATE` sur `root_keywords`.
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-RELEVANCE-MEMOIZATION
+Pendant un calcul Pertinence pour N cards, chaque racine partagée est calculée **une seule fois** via une Map locale serveur (durée = 1 requête HTTP), puis lue plusieurs fois sans recalcul.
+**Critères d'acceptation testables** :
+- 5 cards qui partagent la racine `cours piano` → `computeRelevanceScore` appelé une seule fois pour `cours piano` (vérifiable par spy).
+- La Map est créée à l'entrée de la fonction et libérée à la sortie (pas persistée hors scope).
+- Aucun `localStorage`, `sessionStorage`, ou cache TTL côté serveur ne stocke ces scores intermédiaires.
+**Statut :** active. **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-RELEVANCE-UNAVAILABLE-REASON
+Quand `relevanceScore.total === null`, le backend retourne un champ `unavailableReason` typé qui décrit la cause précise. Le frontend affiche un message correspondant honnête.
+Type : `'no-pain' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | null`.
+**Mapping** :
+- `painPoint` absent ou < 10 chars → `'no-pain'` → *"Définis un point de douleur sur l'article"*.
+- `kpis === null` (longue-traîne) → `'long-tail'` → *"Score non applicable (longue-traîne)"*.
+- `paa_questions` vide en DB → `'missing-paa'` → *"Pas de PAA disponible — relance un scan Radar pour ce keyword"*.
+- `autocomplete_suggestions` vide en DB → `'missing-autocomplete'` → *"Pas d'autocomplete — relance un scan Radar"*.
+- Score présent → champ absent ou `null`.
+
+**Critères d'acceptation testables** :
+- Tests unitaires couvrant les 5 cas (4 causes + 1 cas score présent).
+- Backend logge la cause à chaque retour `null` : `log.info('[Capitaine] relevanceScore null', { articleId, keyword, reason })`.
+- Frontend affiche le message correspondant dans le tooltip du score-ring (pas de devinette).
+**Statut :** active. **Depuis :** 2026-05-05. **Remplace :** ancien tooltip 3 causes deviné par le frontend. **Source :** tech-spec-relevance-live-computation.
+
+#### FR-CAP-RELEVANCE-LINEAR-ROOTS
+L'algorithme d'extraction des racines `extractRoots()` reste **linéaire** (troncature progressive depuis la fin, max 5 racines, minimum 2 mots significatifs hors stopwords). Toute évolution vers une extraction sémantique (LLM ou parsing) requiert une nouvelle tech-spec dédiée.
+**Critères d'acceptation testables** :
+- `extractRoots('cours piano intermédiaire paris')` retourne `['cours piano intermédiaire', 'cours piano']`.
+- `extractRoots('cours piano')` retourne `[]` (< 3 mots).
+- Stopwords filtrés via `FRENCH_STOPWORDS`.
+- Aucun appel LLM dans le chemin de calcul.
+**Statut :** active (verrouille statu quo). **Depuis :** 2026-05-05. **Source :** tech-spec-relevance-live-computation.
 
 ---
 

@@ -1,5 +1,5 @@
 import type { ValidateResponse } from './keyword-validate.types.js'
-import type { MarketScoreResult, RelevanceScoreResult } from './scoring.types.js'
+import type { MarketScoreResult, RelevanceScoreResult, RelevanceUnavailableReason } from './scoring.types.js'
 
 // --- SERP Module Detection (Epic 11) ---
 
@@ -321,6 +321,13 @@ export interface RadarCard {
   /** Score de Pertinence (0-100). Source de vérité pour l'onglet Capitaine.
    *  `null` si painPoint absent ou aucun signal d'alignement disponible. */
   relevanceScore?: RelevanceScoreResult | null
+  /**
+   * 2026-05-05 — Cause typée de l'absence de Score Pertinence (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
+   * Renvoyé par le backend (captain-relevance.service.ts) pour que le tooltip
+   * frontend soit honnête sans deviner.
+   * `null` si `relevanceScore` est présent.
+   */
+  relevanceUnavailableReason?: RelevanceUnavailableReason | null
   /**
    * Origine de la card. `'radar'` (ou absent) = card racine produite par le
    * scan Radar. `'longtail'` = suggestion longue-traîne IA (kpis null par

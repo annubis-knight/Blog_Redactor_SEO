@@ -45,13 +45,33 @@
 # Voir _bmad-output/planning-artifacts/epics.md pour le détail.
 
 generated: 2026-04-01
-last_updated: 2026-05-03
+last_updated: 2026-05-05
 project: BMAD
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
+  # tech-spec: tech-spec-relevance-live-computation.md
+  # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,
+  #       FR-RAD-CARD-CHEVRON-TOGGLE, FR-CAP-RELEVANCE-COMPUTED-LIVE,
+  #       FR-CAP-RELEVANCE-NO-DB-WRITE, FR-CAP-RELEVANCE-NO-CACHE,
+  #       FR-CAP-RELEVANCE-ROOTS-FROM-DB, FR-CAP-ROOTS-PERSISTED-AT-ENTRY,
+  #       FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
+  #       FR-CAP-RELEVANCE-LINEAR-ROOTS
+  # Sprint 1: tests TDD anti-régression (relevance-live-computation.test.ts)
+  # Sprint 2: captain-relevance.service.ts + types scoring (RelevanceUnavailableReason)
+  # Sprint 3: getCaptainExplorations utilise computeRelevanceForCaptainTab
+  # Sprint 4: scan Radar n'inclut plus relevanceScore (FR-RAD-NO-RELEVANCE-IN-SCAN)
+  # Sprint 5: shared/utils/keyword-roots.ts + rootKeywords persistés à l'entrée DB
+  # Sprint 6: captain-relevance.store.ts (loading state + painPointSnapshot)
+  # Sprint 7: chevron seul toggle PAA (FR-RAD-CARD-CHEVRON-TOGGLE) + tooltips typés
+  # Sprint 8: CaptainValidation watcher painPoint → recompute automatique
+  # Sprint 9: log.warn legacy relevanceScore dans anciens snapshots Radar
+  # Sprint 10: validation complète (lint, type-check, tests, build) ✅
+  chantier-a-relevance-live-computation: done
+
   # Sprint 5 — Radar UX (mai 2026) ✅
   # tech-spec: tech-spec-sprint5-radar-ux.md
   # (#6) auto-load DB Radar au sélection article (Capitaine/Lexique déjà OK).

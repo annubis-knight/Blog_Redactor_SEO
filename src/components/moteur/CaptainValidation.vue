@@ -11,6 +11,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiStream } from '@/services/api.service'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useCaptainRelevanceStore } from '@/stores/article/captain-relevance.store'
 import { useNotify } from '@/composables/ui/useNotify'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
@@ -52,6 +53,7 @@ const emit = defineEmits<{
 }>()
 
 const articleKeywordsStore = useArticleKeywordsStore()
+const captainRelevanceStore = useCaptainRelevanceStore()
 const notify = useNotify()
 
 // Debounced save: coalesces rafales de mutations (validate, root variants, AI panel)
@@ -472,6 +474,8 @@ watch(
       persistedValidations.clear()
       persistedRoots.clear()
       persistedAiPanels.clear()
+      // Sprint 8 — réinitialise le store Pertinence lors du changement d'article
+      captainRelevanceStore.reset()
     }
     if (!id || id === lastAutoValidatedId) return
     const article = props.selectedArticle
@@ -499,6 +503,47 @@ watch(
     if (isLocked.value) lockedKeyword.value = kw
   },
   { immediate: true },
+)
+
+// --- Sprint 8 — Recompute Pertinence si painPoint a changé ---
+// Quand le painPoint de l'article évolue après le chargement initial, les scores
+// affichés deviennent obsolètes (ils ont été calculés avec l'ancien painPoint).
+// Ce watcher déclenche un re-fetch /captain-explorations pour recalculer.
+watch(
+  () => props.selectedArticle?.painPoint,
+  async (newPainPoint, oldPainPoint) => {
+    const articleId = props.selectedArticle?.id
+    log.debug('[CaptainValidation] painPoint watcher — déclenché', {
+      articleId,
+      old: oldPainPoint?.slice(0, 60) ?? null,
+      new: newPainPoint?.slice(0, 60) ?? null,
+    })
+    if (!articleId) {
+      log.debug('[CaptainValidation] painPoint watcher — skip (no articleId)')
+      return
+    }
+    if (!captainRelevanceStore.hasPainPointChanged(newPainPoint ?? null)) {
+      log.debug('[CaptainValidation] painPoint watcher — skip (no change detected)')
+      return
+    }
+    log.info('[CaptainValidation] painPoint watcher — recompute déclenché', {
+      articleId,
+      painPointLength: newPainPoint?.length ?? 0,
+    })
+    // Recompute à la volée — le store captain-relevance gère loading state
+    const newEntries = await captainRelevanceStore.recompute(articleId)
+    if (newEntries && newEntries.length > 0) {
+      articleKeywordsStore.mergeCaptainHistory(newEntries)
+      captainRelevanceStore.updatePainPointSnapshot(newPainPoint ?? null)
+      log.debug('[CaptainValidation] painPoint watcher — merge terminé', {
+        articleId,
+        merged: newEntries.length,
+        scored: newEntries.filter(e => e.relevanceScore !== null).length,
+      })
+    } else {
+      log.warn('[CaptainValidation] painPoint watcher — recompute retourné vide', { articleId })
+    }
+  },
 )
 
 // --- Carousel AI streaming ---

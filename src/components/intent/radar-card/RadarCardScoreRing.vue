@@ -9,7 +9,7 @@ interface BreakdownRow {
   rawLabel?: string
 }
 
-type RelevanceMissingReason = 'no-pain' | 'no-signals' | 'long-tail' | null
+type RelevanceMissingReason = 'no-pain' | 'no-signals' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | null
 
 defineProps<{
   displayedScore: number | null
@@ -59,10 +59,16 @@ const showTooltip = ref(false)
           </div>
         </template>
         <p v-else-if="relevanceMissingReason === 'no-pain'" class="tooltip-empty">
-          Score Pertinence indisponible. D&eacute;finis un point de douleur sur l'article et relance la validation pour obtenir le score.
+          Score Pertinence indisponible. D&eacute;finis un point de douleur sur l'article et recharge l'onglet Capitaine pour obtenir le score.
+        </p>
+        <p v-else-if="relevanceMissingReason === 'missing-paa'" class="tooltip-empty">
+          Score Pertinence indisponible &mdash; aucune question PAA trouv&eacute;e pour ce mot-cl&eacute;. Relance la validation pour r&eacute;cup&eacute;rer les PAA depuis la SERP.
+        </p>
+        <p v-else-if="relevanceMissingReason === 'missing-autocomplete'" class="tooltip-empty">
+          Score Pertinence indisponible &mdash; aucune suggestion autocomplete trouv&eacute;e. Relance la validation pour r&eacute;cup&eacute;rer les suggestions depuis la SERP.
         </p>
         <p v-else-if="relevanceMissingReason === 'no-signals'" class="tooltip-empty">
-          Le point de douleur est d&eacute;fini, mais les signaux SERP n'ont rien produit (PAA vides, autocomplete absent ou embedding indisponible). Relance la validation pour r&eacute;essayer.
+          Le point de douleur est d&eacute;fini, mais les signaux SERP n'ont rien produit. Relance la validation pour r&eacute;essayer.
         </p>
         <p v-else-if="relevanceMissingReason === 'long-tail'" class="tooltip-empty">
           Score Pertinence non applicable aux longues tra&icirc;nes &mdash; utilise plut&ocirc;t le score Pertinence de leur racine dans l'onglet Capitaine.

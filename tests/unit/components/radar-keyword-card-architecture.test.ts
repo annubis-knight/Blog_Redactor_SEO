@@ -101,8 +101,8 @@ describe('RadarKeywordCard — architecture des sous-composants (Vague 2)', () =
     // Collapsed : pas de paa-tree
     expect(wrapper.find('[data-testid="radar-card-paa-tree"]').exists()).toBe(false)
 
-    // Expanded
-    await wrapper.find('.radar-card__header').trigger('click')
+    // Expanded via le chevron (FR-RAD-CARD-CHEVRON-TOGGLE)
+    await wrapper.find('.radar-card__chevron').trigger('click')
     expect(wrapper.find('[data-testid="radar-card-paa-tree"]').exists()).toBe(true)
     expect(isDescendantOf(wrapper, '.radar-card__body', '[data-testid="radar-card-paa-tree"]'))
       .toBe(true)
@@ -113,7 +113,7 @@ describe('RadarKeywordCard — architecture des sous-composants (Vague 2)', () =
       props: { card: makeCard() },
       global: { stubs },
     })
-    await wrapper.find('.radar-card__header').trigger('click')
+    await wrapper.find('.radar-card__chevron').trigger('click')
     expect(isDescendantOf(wrapper, '.radar-card__body', '[data-testid="radar-card-score-ring"]'))
       .toBe(false)
   })
