@@ -137,15 +137,49 @@ function computeRelevanceForSingleKeyword(
   const autocompletePainAlignmentAvg = avgLexicalPainAlignment(acTexts, painWords)
 
   // Signal 5 — Intent × Douleur (matrice qualitative dans computeRelevanceScore)
-  // On laisse computeRelevanceScore neutraliser à 50 si painType absent
-  // (le futur sprint S5 pourra hooker `painIntentExpected` ici depuis articles.pain_intent_expected)
+  //
+  // TODO [chantier:pain-intent-signal] — câbler le 5e signal Pertinence
+  //
+  // POURQUOI neutralisé à 50/100 :
+  //   Le signal "Intent × Douleur" croise l'intention SERP du keyword (info /
+  //   transactionnelle / etc., venant de `keyword_metrics.intent_raw`) avec
+  //   l'intention attendue par l'article (champ `pain_intent_expected` qu'on
+  //   souhaiterait dans `articles`). Aujourd'hui :
+  //     - `intent_raw` existe en DB (DataForSEO) mais n'est pas typé en
+  //       `intentTypes` au moment d'appeler `computeRelevanceScore`.
+  //     - `articles.pain_intent_expected` N'EXISTE PAS encore : ni colonne DB,
+  //       ni UI de saisie, ni prompt IA pour la déduire.
+  //   Tant que ces deux briques manquent, `computeRelevanceScore` neutralise
+  //   le signal à 50/100. Le score total est donc valide (4 signaux sur 5)
+  //   mais ne capture pas encore la nuance d'intention.
+  //
+  // QUAND s'y attaquer :
+  //   1. Migration DB : `ALTER TABLE articles ADD COLUMN pain_intent_expected TEXT[]`
+  //      (valeurs : 'informational' | 'transactional' | 'commercial' | 'navigational').
+  //   2. UI Cerveau : champ de saisie au moment de la définition du painPoint
+  //      (idéalement avec déduction IA depuis le painPoint texte).
+  //   3. Lecture ici : récupérer `articles.pain_intent_expected` dans `getArticlePainPoint`
+  //      (ou un nouveau `getArticleIntentExpected`), passer à `computeRelevanceForSingleKeyword`.
+  //   4. Mapper `metrics.intent_raw` → `intentTypes` (cf. shared/types/scoring.types.ts).
+  //
+  // FR/NFR concernés :
+  //   - FR-CAP-RELEVANCE-COMPUTED-LIVE (PRD §FR-CAP-RELEVANCE-COMPUTED-LIVE) — le calcul
+  //     reste valide même sans ce signal (déjà documenté comme dégradation gracieuse).
+  //   - À créer : un nouveau FR-CAP-RELEVANCE-INTENT-SIGNAL ou équivalent qui
+  //     spécifie le mapping intent_raw / pain_intent_expected → score 0-100.
+  //
+  // TESTS à mettre à jour :
+  //   - tests/unit/coherence/relevance-live-computation.test.ts : ajouter un cas
+  //     "intent matches expected → score boosté" et "intent diverge → score réduit".
+  //   - tests/unit/score/computeRelevanceScore.test.ts (s'il existe) : couvrir
+  //     les 4×4 combinaisons de la matrice qualitative intent/painIntentExpected.
 
   const result = computeRelevanceScore({
     painAlignmentScore,
     paaPainAlignmentAvg: paaPainAlignmentAvg ?? undefined,
     autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? undefined,
     rootsAverageScore: rootsAverageScore ?? undefined,
-    intentTypes: undefined, // intentTypes typé séparément, à hooker plus tard
+    intentTypes: undefined, // voir TODO ci-dessus [chantier:pain-intent-signal]
   })
 
   return {
@@ -299,8 +333,32 @@ export async function computeRelevanceForCaptainTab(
 async function loadMetricsBatch(keywords: string[]): Promise<Map<string, KeywordMetrics>> {
   const result = new Map<string, KeywordMetrics>()
   if (keywords.length === 0) return result
-  // On utilise getKeywordMetrics en parallèle plutôt qu'un IN unique pour réutiliser
-  // la logique existante (fr/fr par défaut). Une optim future possible : SQL IN.
+  // TODO [chantier:metrics-batch-sql-in] — optimisation N+1 sur loadMetricsBatch
+  //
+  // POURQUOI N appels parallèles aujourd'hui :
+  //   On délègue à `getKeywordMetrics(kw)` une fois par keyword pour réutiliser
+  //   sa logique (fr/fr par défaut, mappage de la row DB vers le type
+  //   `KeywordMetrics`, gestion des fallbacks). C'est rapide tant que N reste
+  //   petit (~5 keywords par article Capitaine + leurs racines, donc ~10-15
+  //   requêtes parallèles). Postgres absorbe ça sans broncher en local.
+  //
+  // QUAND s'y attaquer :
+  //   Si on observe une latence anormale sur `[captain-relevance] PHASE 1 —
+  //   métriques chargées` (log debug avec `ms`), ou si un article a 50+ cards
+  //   Capitaine. Refactor :
+  //     SELECT * FROM keyword_metrics WHERE keyword = ANY($1) AND lang='fr' AND country='fr'
+  //   puis hydrater un Map<string, KeywordMetrics> en une seule passe.
+  //   Attention : il faut conserver le même mapping que `getKeywordMetrics`
+  //   (mêmes types, mêmes fallbacks) — extraire un helper `rowToKeywordMetrics`.
+  //
+  // FR/NFR concernés :
+  //   - NFR-PERF-* (performance) — pas de FR fonctionnel impacté, c'est purement
+  //     une optim non-bloquante.
+  //
+  // TESTS à mettre à jour :
+  //   - tests/unit/coherence/relevance-live-computation.test.ts : le test
+  //     `loadMetricsBatch` (via `__test__`) doit rester vert avec le même
+  //     contrat (Map<keyword, KeywordMetrics>, valeurs absentes non-incluses).
   const settled = await Promise.allSettled(keywords.map(kw => getKeywordMetrics(kw)))
   for (let i = 0; i < settled.length; i++) {
     const s = settled[i]

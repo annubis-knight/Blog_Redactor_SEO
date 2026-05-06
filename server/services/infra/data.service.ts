@@ -678,7 +678,38 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
   const captainKeywordsForRelevance = res.rows.map(r => ({
     keyword: r.keyword as string,
     rootKeywords: (r.root_keywords ?? []) as string[],
-    isLongTail: false, // TODO Sprint 4 : détecter longue-traîne via flag ou kpis null
+    // TODO [chantier:long-tail-detection] — détection longue-traîne pour Pertinence
+    //
+    // POURQUOI codé en dur à `false` :
+    //   Au moment du chantier "calcul Pertinence à la volée" (2026-05-05), il
+    //   n'existait aucun signal fiable côté DB pour distinguer une card
+    //   longue-traîne (issue de la combinaison IA Radar) d'une card SERP
+    //   classique. Les deux atterrissent dans `captain_explorations` sans flag
+    //   distinctif. On a donc passé `false` partout — conséquence : aucune
+    //   card ne déclenche aujourd'hui le cas `'long-tail'` du tooltip Pertinence.
+    //   Les longues-traînes sans KPIs marché tombent dans `'missing-paa'` au
+    //   lieu de `'long-tail'` — le tooltip est moins précis mais pas faux.
+    //
+    // QUAND s'y attaquer :
+    //   - Soit ajouter une colonne `is_long_tail` dans `captain_explorations`
+    //     (alimentée à l'écriture par radar-exploration.routes / send-captain).
+    //   - Soit détecter dynamiquement via `kpis === null` côté reader (plus
+    //     fragile, dépend de l'état DataForSEO).
+    //   La 1re option est la plus robuste — c'est elle qui était envisagée
+    //   dans la tech-spec initiale.
+    //
+    // FR/NFR concernés :
+    //   - FR-CAP-RELEVANCE-UNAVAILABLE-REASON (PRD §FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
+    //     mapping `kpis === null` → `'long-tail'`).
+    //   - Voir aussi FR-RAD-LONGTAIL-* pour le pipeline d'écriture longue-traîne.
+    //
+    // TESTS à mettre à jour :
+    //   - tests/unit/coherence/relevance-live-computation.test.ts : déjà un cas
+    //     `isLongTail: true` pour la fonction pure ; ajouter un test
+    //     d'intégration depuis `getCaptainExplorations` qui vérifie qu'une row
+    //     marquée longue-traîne propage bien `unavailableReason: 'long-tail'`.
+    //   - Snapshot `radar-keyword-card-visual` : vérifier le tooltip "long-tail".
+    isLongTail: false,
   }))
   const relevanceResult = await computeRelevanceForCaptainTab(articleId, captainKeywordsForRelevance)
   // 'select' marker — le calcul Pertinence ne fait que des lectures (FR-CAP-RELEVANCE-NO-DB-WRITE).
