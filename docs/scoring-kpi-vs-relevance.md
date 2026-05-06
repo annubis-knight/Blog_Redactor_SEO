@@ -126,7 +126,7 @@ Le score de la composante « Intent × Douleur » dérive d'une matrice qualitat
 | **informational** | 50 | 40 | 100 | 30 |
 | **navigational** | 60 | 50 | 40 | 100 |
 
-Si `painType` ou `intentTypes` est absent → 50 neutre.
+Si `painIntentExpected` (côté article) ou `intentTypes` (côté DataForSEO `intent_label`) est absent → 50 neutre. Voir FR-CAP-RELEVANCE-INTENT-SIGNAL et `docs/pain-point-editorial-backbone.md` pour le câblage complet.
 
 ---
 
