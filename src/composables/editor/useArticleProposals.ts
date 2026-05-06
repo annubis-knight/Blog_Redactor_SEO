@@ -167,6 +167,7 @@ export function useArticleProposals(params: {
           slug: article.suggestedSlug || undefined,
           suggestedKeyword: article.suggestedKeyword?.trim() || null,
           painPoint: article.painPoint?.trim() || null,
+          painIntentExpected: article.painIntentExpected,
         }],
       })
       if (created?.[0]?.id) {

@@ -25,6 +25,7 @@ import type {
   DbOp,
 } from '../../../shared/types/index.js'
 import type { PaaQuestionValidate } from '../../../shared/types/keyword-validate.types.js'
+import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import { computeRelevanceForCaptainTab } from '../keyword/captain-relevance.service.js'
 
 // ---------------------------------------------------------------------------
@@ -323,13 +324,30 @@ export async function removeArticleCheck(id: number, check: string): Promise<Art
   return (await getArticleProgress(id)) ?? { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
 }
 
-export async function updateArticleInCocoon(id: number, updates: { title?: string; slug?: string }): Promise<boolean> {
+export async function updateArticleInCocoon(
+  id: number,
+  updates: {
+    title?: string
+    slug?: string
+    /**
+     * Override utilisateur de l'intent éditorial attendu (FR-PIE-CERVEAU-OVERRIDE).
+     * `null` autorisé pour effacer la valeur (5e signal Pertinence neutralisé à 50/100).
+     */
+    painIntentExpected?: PainIntentExpected | null
+  },
+): Promise<boolean> {
   const parts: string[] = []
   const values: unknown[] = []
   let idx = 1
 
   if (updates.title !== undefined) { parts.push(`titre = $${idx++}`); values.push(updates.title) }
   if (updates.slug !== undefined) { parts.push(`slug = $${idx++}`); values.push(updates.slug) }
+  // `null` est une valeur valide pour painIntentExpected (efface le champ),
+  // donc on teste `!== undefined` plutôt que la troncation.
+  if (updates.painIntentExpected !== undefined) {
+    parts.push(`pain_intent_expected = $${idx++}`)
+    values.push(updates.painIntentExpected)
+  }
   if (parts.length === 0) return false
 
   values.push(id)
@@ -375,7 +393,14 @@ export async function addCocoonToSilo(siloName: string, cocoonName: string): Pro
 
 export async function addArticlesToCocoon(
   cocoonName: string,
-  articles: { title: string; type: ArticleType; slug?: string; suggestedKeyword?: string | null; painPoint?: string | null }[],
+  articles: {
+    title: string
+    type: ArticleType
+    slug?: string
+    suggestedKeyword?: string | null
+    painPoint?: string | null
+    painIntentExpected?: PainIntentExpected | null
+  }[],
 ): Promise<Article[]> {
   const cocoonRes = await pool.query(`SELECT id FROM cocoons WHERE nom = $1`, [cocoonName])
   if (cocoonRes.rows.length === 0) throw new Error(`Cocoon "${cocoonName}" not found`)
@@ -398,11 +423,20 @@ export async function addArticlesToCocoon(
 
     try {
       const res = await pool.query(`
-        INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps, suggested_keyword, pain_point)
-        VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7)
+        INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps, suggested_keyword, pain_point, pain_intent_expected)
+        VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7, $8)
         ON CONFLICT (slug) DO NOTHING
         RETURNING *
-      `, [nextId, cocoonId, article.title, article.type, slug, article.suggestedKeyword ?? null, article.painPoint ?? null])
+      `, [
+        nextId,
+        cocoonId,
+        article.title,
+        article.type,
+        slug,
+        article.suggestedKeyword ?? null,
+        article.painPoint ?? null,
+        article.painIntentExpected ?? null,
+      ])
 
       if (res.rows.length > 0) {
         created.push(rowToArticle(res.rows[0]))

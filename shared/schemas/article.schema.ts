@@ -4,6 +4,7 @@ import {
   articleStatusSchema,
   articlePhaseSchema,
 } from './shared-enums.schema.js'
+import { painIntentExpectedSchema } from './strategy.schema.js'
 
 const rawArticleSchema = z.object({
   id: z.number().int().positive(),
@@ -72,12 +73,14 @@ export const batchCreateArticlesSchema = z.object({
     slug: z.string().optional(),
     suggestedKeyword: z.string().nullable().optional(),
     painPoint: z.string().nullable().optional(),
+    painIntentExpected: painIntentExpectedSchema.optional(),
   })).min(1),
 })
 
 export const patchArticleSchema = z.object({
   title: z.string().min(1).optional(),
   slug: z.string().min(1).optional(),
+  painIntentExpected: painIntentExpectedSchema.optional(),
 })
 
 export type PatchArticleRequest = z.infer<typeof patchArticleSchema>
