@@ -499,6 +499,62 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
+  /**
+   * Sprint 17 — Lock immédiat d'un lieutenant individuel (déclenché par
+   * checkbox cochée, plus de bouton batch). Si le lieutenant n'existe pas
+   * encore dans richLieutenants, le crée avec status='locked'.
+   *
+   * Distinct de setRichLieutenants (batch). Cette méthode-ci permet le
+   * verrouillage atomique mot-clé par mot-clé, conforme à FR-LIE-CHECKBOX-LOCK-IMMEDIATE.
+   */
+  function lockLieutenant(payload: {
+    keyword: string
+    reasoning: string
+    sources: ('paa' | 'serp' | 'group' | 'root' | 'content-gap')[]
+    suggestedHnLevel: 2 | 3
+    score: number
+  }) {
+    if (!keywords.value) return
+    const now = new Date().toISOString()
+    const rich = keywords.value.richLieutenants ?? []
+    const existing = rich.find(lt => lt.keyword === payload.keyword)
+    if (existing) {
+      existing.status = 'locked'
+      existing.lockedAt = now
+    } else {
+      rich.push({
+        keyword: payload.keyword,
+        status: 'locked',
+        reasoning: payload.reasoning,
+        sources: payload.sources,
+        suggestedHnLevel: payload.suggestedHnLevel,
+        score: payload.score,
+        kpis: null,
+        lockedAt: now,
+      })
+      keywords.value.richLieutenants = rich
+    }
+    // Sync flat list pour rétro-compat
+    if (!keywords.value.lieutenants.includes(payload.keyword)) {
+      keywords.value.lieutenants = [...keywords.value.lieutenants, payload.keyword]
+    }
+  }
+
+  /**
+   * Sprint 17 — Unlock immédiat d'un lieutenant individuel (checkbox décochée).
+   * Passe le statut à 'suggested' (pas 'eliminated' — le lieutenant reste
+   * proposable, l'utilisateur peut le re-cocher).
+   */
+  function unlockLieutenant(keyword: string) {
+    if (!keywords.value?.richLieutenants) return
+    const lt = keywords.value.richLieutenants.find(l => l.keyword === keyword)
+    if (lt && lt.status === 'locked') {
+      lt.status = 'suggested'
+      lt.lockedAt = null
+    }
+    keywords.value.lieutenants = keywords.value.lieutenants.filter(l => l !== keyword)
+  }
+
   function archiveLockedLieutenants() {
     if (!keywords.value?.richLieutenants) return
     let archived = 0
@@ -563,6 +619,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     addRootKeywordValidation,
     setRootKeywords, addLieutenant, removeLieutenant,
     saveRichLieutenantProposals, setRichLieutenants, unlockLieutenants,
+    lockLieutenant, unlockLieutenant,
     archiveLockedLieutenants,
     addLexiqueTerm, removeLexiqueTerm,
     initEmpty, $reset,

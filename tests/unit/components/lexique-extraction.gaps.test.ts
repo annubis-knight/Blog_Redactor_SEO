@@ -220,7 +220,7 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
     expect((input.element as HTMLInputElement).value).toBe('')
   })
 
-  it('input désactivé si isLocked=true', async () => {
+  it.skip('input désactivé si isLocked=true (Sprint 17 — sémantique inversée : l\'utilisateur peut étendre sa sélection même avec des termes déjà cochés)', async () => {
     const wrapper = mountLexique({ initialLocked: true })
     await nextTick()
     const input = wrapper.find('.multi-keyword-input')
@@ -399,7 +399,7 @@ describe('LexiquePanel — hasEverValidated (F5 soft gate)', () => {
     expect((btn.element as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('canExtract=false si déjà locked (lexique validé)', async () => {
+  it.skip('canExtract=false si déjà locked (Sprint 17 — sémantique inversée : extraction reste possible pour étendre la sélection, FR-LEX-CHECKBOX-LOCK-IMMEDIATE)', async () => {
     const wrapper = mountLexique({ initialLocked: true })
     await nextTick()
     const btn = wrapper.find('[data-testid="btn-extract"]')

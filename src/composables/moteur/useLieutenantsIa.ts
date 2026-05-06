@@ -74,7 +74,10 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
   const {
     captainKeyword, articleLevel, selectedArticle,
     serpResult, serpResultsByKeyword, resolvedRootKeywords,
-    wordGroups, cocoonSlug, isLocked,
+    wordGroups, cocoonSlug,
+    // Sprint 17 — `isLocked` n'est plus utilisé dans le composable depuis
+    // FR-LIE-CHECKBOX-LOCK-IMMEDIATE (toggleLieutenant fonctionne toujours,
+    // pas de garde). Conservé dans LieutenantsIaDeps pour compat tests existants.
     articleKeywordsStore,
     computeHnRecurrenceFrom, hnRecurrence,
     onLieutenantsUpdated,
@@ -97,12 +100,22 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
   const currentStep = ref<AnalysisStep>('idle')
 
   function toggleLieutenant(card: ProposedLieutenant): void {
-    if (isLocked.value) return
+    // Sprint 17 — Plus de garde isLocked : le verrouillage est désormais
+    // par mot-clé (FR-LIE-CHECKBOX-LOCK-IMMEDIATE), pas par container.
+    // Cocher = lock immédiat en DB. Décocher = unlock immédiat en DB.
     const next = new Map(selectedCards.value)
     if (next.has(card.keyword)) {
       next.delete(card.keyword)
+      articleKeywordsStore.unlockLieutenant(card.keyword)
     } else {
       next.set(card.keyword, card)
+      articleKeywordsStore.lockLieutenant({
+        keyword: card.keyword,
+        reasoning: card.reasoning,
+        sources: card.sources,
+        suggestedHnLevel: card.suggestedHnLevel,
+        score: card.score,
+      })
     }
     selectedCards.value = next
     onLieutenantsUpdated(Array.from(next.keys()))

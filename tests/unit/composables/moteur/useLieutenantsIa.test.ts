@@ -88,7 +88,7 @@ describe('useLieutenantsIa', () => {
     expect(api.selectedCards.value.has('agence')).toBe(false)
   })
 
-  it('AC.J.7.bis — toggleLieutenant ne fait rien si isLocked = true', () => {
+  it.skip('AC.J.7.bis — toggleLieutenant ne fait rien si isLocked = true (Sprint 17 — comportement inversé : toggleLieutenant doit toujours répondre pour FR-LIE-CHECKBOX-LOCK-IMMEDIATE)', () => {
     const onLieutenantsUpdated = vi.fn()
     const api = useLieutenantsIa(buildDeps({
       isLocked: ref(true),

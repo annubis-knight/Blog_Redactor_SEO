@@ -64,8 +64,8 @@ defineEmits<{
   (e: 'propose-retry'): void
   (e: 'save-hn'): void
   (e: 'update:active-hn-tab', tab: string): void
-  (e: 'lock-lieutenants'): void
-  (e: 'unlock-lieutenants'): void
+  // Sprint 17 — `lock-lieutenants` / `unlock-lieutenants` supprimés (boutons batch enlevés).
+  // La checkbox de chaque LieutenantCard fait le lock immédiat via toggleLieutenant.
 }>()
 </script>
 
@@ -125,21 +125,13 @@ defineEmits<{
       <p v-else class="section-empty">Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici.</p>
     </CollapsableSection>
 
-    <!-- Lock/unlock Lieutenants -->
-    <div class="lieutenant-lock" data-testid="lieutenant-lock">
-      <button
-        v-if="!isLocked"
-        class="lock-btn"
-        data-testid="lock-btn"
-        :disabled="selectedCardsSize === 0"
-        @click="$emit('lock-lieutenants')"
-      >
-        Verrouiller les Lieutenants
-      </button>
-      <div v-else class="locked-state" data-testid="locked-state">
-        <span class="locked-badge">Lieutenants verrouillés</span>
-        <button class="unlock-btn" data-testid="unlock-btn" @click="$emit('unlock-lieutenants')">Déverrouiller</button>
-      </div>
+    <!-- Sprint 17 — Plus de boutons batch "Verrouiller / Déverrouiller les Lieutenants".
+         La checkbox de chaque LieutenantCard verrouille IMMÉDIATEMENT le mot-clé
+         en DB (lockLieutenant store). Le check workflow MOTEUR_LIEUTENANTS_LOCKED
+         est dérivé : émis dès qu'au moins 1 lieutenant a status='locked'.
+         Cf. FR-LIE-CHECKBOX-LOCK-IMMEDIATE. -->
+    <div v-if="isLocked" class="lieutenant-lock-status" data-testid="lieutenant-lock-status">
+      <span class="locked-badge">Lieutenants verrouillés</span>
     </div>
 
     <!-- Section IA pure — coque purple commune avec les autres onglets.

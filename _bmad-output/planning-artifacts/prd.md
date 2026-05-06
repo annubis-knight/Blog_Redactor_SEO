@@ -755,6 +755,37 @@ Le composant `CaptainValidation.vue` ne surveille pas les changements live de `p
 - Lecture de `src/components/moteur/CaptainValidation.vue` ne contient aucun `watch(() => props.selectedArticle?.painPoint, ...)`.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-10.5-cleanup-painpoint-legacy.
 
+#### FR-CAP-LOCK-NO-DUPLICATE
+Quand l'utilisateur lock/unlock/relock une RadarCard du Capitaine, **aucune entry n'est dupliquée** dans `entries.value` du composable `useExploredKeywords`. La déduplication est appliquée à 3 endroits :
+- `addEntry(keyword, ...)` : si une entry existe déjà pour `originalCard.keyword` (case-insensitive, trim), réutilise cette entry au lieu d'en créer une 2e.
+- `loadCards(cards, ...)` : dédup des inputs par `keyword` avant `entries.value = cards.map(...)`.
+- `restoreFromHistory(history, ...)` : dédup l'historique avant restauration.
+**Justification** : avant Sprint 17, le watcher `keywords.capitaine` du `CaptainPanel.vue` appelait `addEntry(persisted)` à chaque mutation du `capitaine` du store, sans vérifier l'existence. Combiné avec un `pinnedPredicate` qui matchait toutes les entries `card.keyword === lockedKeyword`, l'utilisateur voyait jusqu'à 3+ duplications de la même card verrouillée à chaque toggle lock.
+**Critères d'acceptation testables** :
+- AC.17.B.1 : `addEntry("X")` 3 fois ne produit qu'une seule entry.
+- AC.17.B.2 : `loadCards([X, X, Y])` produit 2 entries.
+- AC.17.B.3 : `restoreFromHistory([X, X])` produit 1 entry.
+- Le watcher `keywords.capitaine` du `CaptainPanel.vue` ne fait plus d'appel à `carousel.addEntry` (juste un log warning si l'entry est manquante).
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
+
+#### FR-CAP-SORT-STABLE-ON-ROOT-VARIANT
+Activer/désactiver une racine d'une RadarCard du Capitaine (clic sur un mot souligné `kw-word--active`) **ne change pas la position** de la card dans la liste triée. Le tri A-Z et le tri Score Pertinence du Capitaine utilisent `entry.originalCard.keyword` / `entry.originalCard.relevanceScore` au lieu de `entry.card.*`. Le `pinnedPredicate` matche désormais sur `originalCard.keyword OR card.keyword` pour gérer le cas où la racine elle-même a été lockée.
+**Justification** : `entry.card` est remplacée dynamiquement par `entry.rootVariants[X].card` lors du clic sur un mot souligné — utiliser `card.keyword` dans le tri causait une réorganisation visible de la liste à chaque interaction.
+**Critères d'acceptation testables** :
+- AC.17.A.1 : Activer/désactiver un mot dans une RadarCard ne change pas l'index de la card dans `sortedEntries` (tri A-Z et tri score).
+- AC.17.A.2 : Le `pinnedPredicate` matche par `originalCard.keyword` ou `card.keyword`.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
+
+#### FR-LIE-CHECKBOX-LOCK-IMMEDIATE
+Cocher la checkbox d'un lieutenant dans `LieutenantsPanel` verrouille IMMÉDIATEMENT ce lieutenant en DB (`status = 'locked'`, `lockedAt` setté) via `articleKeywordsStore.lockLieutenant(payload)`. Le décochage le déverrouille (`status = 'suggested'`, `lockedAt = null`) via `unlockLieutenant(keyword)`. **Aucun bouton "Verrouiller la sélection" en bloc** — le bouton batch est supprimé du template.
+Le check workflow `MOTEUR_LIEUTENANTS_LOCKED` est dérivé : émis automatiquement dès que `richLieutenants.some(l => l.status === 'locked')` passe de false à true via watcher dérivé. Retiré quand le dernier lieutenant locked est déverrouillé.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
+
+#### FR-LEX-CHECKBOX-LOCK-IMMEDIATE
+Cocher la checkbox d'un terme TF-IDF du `LexiquePanel` l'ajoute IMMÉDIATEMENT à `keywords.lexique` via `articleKeywordsStore.addLexiqueTerm(value)`. Le décochage le retire via `removeLexiqueTerm(value)`. **Aucun bouton "Verrouiller le Lexique" en bloc** — le bouton batch est supprimé du template.
+Le check workflow `MOTEUR_LEXIQUE_VALIDATED` est dérivé : émis automatiquement quand `keywords.lexique.length` passe de 0 à ≥1 via watcher dérivé. Retiré quand le dernier terme est décoché.
+**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
+
 #### FR-API-VOCABULAIRE-SCAN
 Le vocabulaire **"scan"** désigne la recherche/exploration d'un mot-clé (appel DataForSEO + calcul scoring) côté backend. Le vocabulaire **"validate"** est réservé au cas spécifique de validation de painPoint utilisateur (Cerveau, route `/keywords/validate-pain`). Les composants Capitaine consomment l'endpoint `POST /api/keywords/:keyword/scan` qui retourne un `ScanResponse` typé.
 **Justification** : avant Sprint 14, le mot "validate" était utilisé pour deux choses différentes — la recherche et le verrouillage. Sprint 11 a aligné l'UI ("Verrouiller" au lieu de "Valider"). Sprint 14 finit le travail côté vocabulaire backend pour que `scan` désigne sans ambiguïté la recherche.

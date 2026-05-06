@@ -202,32 +202,13 @@ watch(
   { immediate: true },
 )
 
-async function lockLieutenants() {
-  if (selectedCards.value.size === 0) return
-  const id = props.selectedArticle?.id
-  const title = props.selectedArticle?.title
-  if (!id || !title || !articleKeywordsStore.keywords) return
-
-  // Persist rich lieutenant data with status 'locked' / 'eliminated'
-  const selected = Array.from(selectedCards.value.values())
-  articleKeywordsStore.setRichLieutenants(selected, eliminatedCards.value)
-  articleKeywordsStore.keywords.hnStructure = hnStructure.value
-  await articleKeywordsStore.saveDecisions(id)
-  // Save outline directly to articles/{id}.json (single source of truth)
-  if (hnStructure.value.length > 0) {
-    const outline = hnToOutline(hnStructure.value, title)
-    await apiPut(`/articles/${id}`, { outline })
-  }
-  // Sprint 13 — `isLocked` n'est plus une Ref. setRichLieutenants ci-dessus a
-  // déjà mis chaque lieutenant en status='locked', le computed se réactive.
-  emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
-  emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
-
-  // targetWordCount recommendation : la structure HN est maintenant validée
-  // + le SERP a été analysé → contexte max pour un conseil IA pertinent.
-  // Non-bloquant : en cas d'échec, on n'empêche pas le lock.
-  void recommendAndPropagateWordCount(id)
-}
+// Sprint 17 — Le bouton "Verrouiller les Lieutenants" en bloc est SUPPRIMÉ
+// du template. La checkbox de chaque LieutenantCard appelle directement
+// `articleKeywordsStore.lockLieutenant` via toggleLieutenant du composable
+// useLieutenantsIa. Voir FR-LIE-CHECKBOX-LOCK-IMMEDIATE.
+// La fonction historique `lockLieutenants` (batch) a été retirée. Les side-effects
+// (saveDecisions, save outline H2, recommendWordCount) sont déclenchés par le
+// watcher dérivé sur isLocked (transition false → true).
 
 /**
  * Appelle l'endpoint de recommandation targetWordCount et, si l'utilisateur n'a
@@ -272,14 +253,47 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
   }
 }
 
-function unlockLieutenants() {
-  // Sprint 13 — Source unique : on déverrouille via le store. Le computed
-  // `isLocked` se réactive quand richLieutenants[].status passe à 'suggested'.
-  articleKeywordsStore.unlockLieutenants()
-  const id = props.selectedArticle?.id
-  if (id) void articleKeywordsStore.saveDecisions(id)
-  emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
-}
+// Sprint 17 — Le bouton "Déverrouiller les Lieutenants" en bloc est SUPPRIMÉ
+// du template. Le déverrouillage individuel passe par toggleLieutenant
+// (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
+
+/**
+ * Sprint 17 — Watcher dérivé : émet/retire le check workflow
+ * MOTEUR_LIEUTENANTS_LOCKED + déclenche les side-effects (save outline,
+ * recommendWordCount) sur transition 0 → ≥1 locked. C'est le SEUL endroit qui
+ * émet ce check désormais (avant Sprint 17, l'émission se faisait dans
+ * lockLieutenants() en réponse au bouton batch supprimé).
+ */
+let previousLockedState = false
+watch(
+  () => isLocked.value,
+  async (locked) => {
+    if (locked && !previousLockedState) {
+      emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
+      emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
+      // Side-effects post-lock : persister hnStructure + outline + reco wordCount.
+      const id = props.selectedArticle?.id
+      const title = props.selectedArticle?.title
+      if (id && title && articleKeywordsStore.keywords) {
+        articleKeywordsStore.keywords.hnStructure = hnStructure.value
+        await articleKeywordsStore.saveDecisions(id)
+        if (hnStructure.value.length > 0) {
+          const outline = hnToOutline(hnStructure.value, title)
+          await apiPut(`/articles/${id}`, { outline }).catch((err) => {
+            log.warn(`[LieutenantsPanel] outline save failed: ${(err as Error).message}`)
+          })
+        }
+        void recommendAndPropagateWordCount(id)
+      }
+    } else if (!locked && previousLockedState) {
+      emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
+      const id = props.selectedArticle?.id
+      if (id) void articleKeywordsStore.saveDecisions(id)
+    }
+    previousLockedState = locked
+  },
+  { immediate: true },
+)
 
 // (currentStep + AnalysisStep moved to useLieutenantsIa above)
 
@@ -522,8 +536,6 @@ async function analyzeSERPWithStep(): Promise<void> {
       @propose-retry="proposeLieutenants"
       @save-hn="saveHnStructure"
       @update:active-hn-tab="(tab: string) => activeHnTab = tab"
-      @lock-lieutenants="lockLieutenants"
-      @unlock-lieutenants="unlockLieutenants"
     />
   </div>
 </template>

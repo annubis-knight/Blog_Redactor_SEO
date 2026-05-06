@@ -75,6 +75,38 @@ const mockUnlockLieutenants = vi.fn(() => {
 const mockSaveRichLieutenantProposals = vi.fn()
 const mockSaveLieutenantExplorationEntries = vi.fn().mockResolvedValue(undefined)
 
+// Sprint 17 — Mocks lockLieutenant / unlockLieutenant (par mot-clé) pour
+// FR-LIE-CHECKBOX-LOCK-IMMEDIATE. La checkbox toggleLieutenant les appelle
+// directement maintenant.
+const mockLockLieutenantSingle = vi.fn((payload: { keyword: string; reasoning: string; sources: any[]; suggestedHnLevel: number; score: number }) => {
+  if (!mockStoreKeywords.value) return
+  const rich = mockStoreKeywords.value.richLieutenants ?? []
+  const existing = rich.find((lt: any) => lt.keyword === payload.keyword)
+  if (existing) {
+    existing.status = 'locked'
+    existing.lockedAt = new Date().toISOString()
+  } else {
+    rich.push({
+      keyword: payload.keyword, status: 'locked', reasoning: payload.reasoning,
+      sources: payload.sources, suggestedHnLevel: payload.suggestedHnLevel,
+      score: payload.score, kpis: null, lockedAt: new Date().toISOString(),
+    })
+    mockStoreKeywords.value.richLieutenants = rich
+  }
+  if (!mockStoreKeywords.value.lieutenants.includes(payload.keyword)) {
+    mockStoreKeywords.value.lieutenants = [...mockStoreKeywords.value.lieutenants, payload.keyword]
+  }
+})
+const mockUnlockLieutenantSingle = vi.fn((keyword: string) => {
+  if (!mockStoreKeywords.value?.richLieutenants) return
+  const lt = mockStoreKeywords.value.richLieutenants.find((l: any) => l.keyword === keyword)
+  if (lt && lt.status === 'locked') {
+    lt.status = 'suggested'
+    lt.lockedAt = null
+  }
+  mockStoreKeywords.value.lieutenants = mockStoreKeywords.value.lieutenants.filter((l: string) => l !== keyword)
+})
+
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     get keywords() { return mockStoreKeywords.value },
@@ -82,6 +114,8 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     saveDecisions: mockSaveDecisions,
     setRichLieutenants: mockSetRichLieutenants,
     unlockLieutenants: mockUnlockLieutenants,
+    lockLieutenant: mockLockLieutenantSingle,
+    unlockLieutenant: mockUnlockLieutenantSingle,
     saveRichLieutenantProposals: mockSaveRichLieutenantProposals,
     saveLieutenantExplorationEntries: mockSaveLieutenantExplorationEntries,
   }),
@@ -909,7 +943,7 @@ describe('LieutenantsPanel', () => {
       expect((w.vm as any).selectedCards.size).toBe(0)
     })
 
-    it('resets isLocked when article changes', async () => {
+    it.skip('resets isLocked when article changes (Sprint 17 — bouton batch supprimé, isLocked computed dérivé)', async () => {
       const w = await mountWithCards()
       // Lock
       await w.find('[data-testid="lock-btn"]').trigger('click')
@@ -947,7 +981,11 @@ describe('LieutenantsPanel', () => {
   })
 
   // --- Lock/unlock ---
-  describe('Lock/unlock Lieutenants', () => {
+  // Sprint 17 — Bouton "Verrouiller les Lieutenants" en bloc supprimé du template.
+  // La checkbox de chaque LieutenantCard fait le lock immédiat (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
+  // Ces tests testaient le bouton batch obsolète — skippés.
+  // Les tests "Checkbox selection" plus haut couvrent désormais le nouveau flow.
+  describe.skip('Lock/unlock Lieutenants (batch — supprimé Sprint 17)', () => {
     it('shows lock button after analysis with cards', async () => {
       const w = await mountWithCards()
       expect(w.find('[data-testid="lock-btn"]').exists()).toBe(true)
@@ -1054,7 +1092,7 @@ describe('LieutenantsPanel', () => {
       return w
     }
 
-    it('passes disabled=true to LieutenantCard when locked', async () => {
+    it.skip('passes disabled=true to LieutenantCard when locked (Sprint 17 — comportement inversé : checkbox active pour lock/unlock immédiat)', async () => {
       const w = await mountLocked()
       const stubs = w.findAllComponents({ name: 'LieutenantCard' })
       for (const stub of stubs) {
@@ -1062,7 +1100,7 @@ describe('LieutenantsPanel', () => {
       }
     })
 
-    it('toggleLieutenant is a no-op when locked', async () => {
+    it.skip('toggleLieutenant is a no-op when locked (Sprint 17 — toggleLieutenant fonctionne maintenant pour FR-LIE-CHECKBOX-LOCK-IMMEDIATE)', async () => {
       const w = await mountLocked()
       const sizeBefore = (w.vm as any).selectedCards.size
       // Try to toggle a card via the component

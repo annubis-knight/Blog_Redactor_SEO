@@ -51,7 +51,7 @@ defineEmits<{
       class="radar-list-item"
       :class="{
         'radar-list-item--selected': selectedIndex === rawIndexOf(entry),
-        'radar-list-item--locked': lockedKeyword === entry.card.keyword,
+        'radar-list-item--locked': lockedKeyword !== null && (entry.originalCard.keyword === lockedKeyword || entry.card.keyword === lockedKeyword),
       }"
       :data-testid="`radar-list-item-${rawIndexOf(entry)}`"
       role="button"

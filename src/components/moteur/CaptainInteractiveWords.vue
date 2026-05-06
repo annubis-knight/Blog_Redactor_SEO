@@ -66,7 +66,13 @@ const interactiveWordsProps = computed(() => {
 })
 
 const isLocked = computed(() => {
-  return props.entry.card.keyword === props.lockedKeyword
+  if (props.lockedKeyword === null) return false
+  // Sprint 17 — match sur originalCard ou card.keyword. originalCard est la
+  // valeur stable (Bug A — la position dans la liste ne change pas quand on
+  // active une racine), mais card.keyword est nécessaire pour le cas où la
+  // racine elle-même a été lockée.
+  return props.entry.originalCard.keyword === props.lockedKeyword
+      || props.entry.card.keyword === props.lockedKeyword
 })
 
 const isValidatingVariant = computed(() => props.entry.pendingVariants.size > 0)

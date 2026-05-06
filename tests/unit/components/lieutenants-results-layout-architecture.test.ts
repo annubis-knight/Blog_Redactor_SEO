@@ -125,7 +125,7 @@ describe('LieutenantsResultsLayout — architecture FR-LIE-AI-FRONTIER (Vague 3 
     expect(wrapper.find('.serp-results').exists()).toBe(false)
   })
 
-  it('AC.J.21 — lieutenant-lock est rendu quand bloc visible (lock-btn si !isLocked)', () => {
+  it.skip('AC.J.21 — lieutenant-lock est rendu quand bloc visible (Sprint 17 — bouton batch supprimé : checkbox = lock immédiat)', () => {
     const wrapper = mount(LieutenantsResultsLayout, {
       props: baseProps,
       global: { stubs },

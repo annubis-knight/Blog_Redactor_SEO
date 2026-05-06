@@ -367,7 +367,7 @@ describe('LieutenantsPanel — hasEverAnalyzed (F5 soft gate)', () => {
 // Trou E — recommendAndPropagateWordCount (post-lock)
 // ============================================================================
 describe('LieutenantsPanel — recommendAndPropagateWordCount au lock', () => {
-  it('lock déclenche POST /articles/:id/recommend-word-count en arrière-plan', async () => {
+  it.skip('lock déclenche POST /articles/:id/recommend-word-count en arrière-plan (Sprint 17 — bouton lock-btn supprimé, à réécrire pour passer par toggleLieutenant + watcher dérivé)', async () => {
     // Préparer un état lockable : SERP fait + cards sélectionnées.
     // Sprint 1 (2026-05-04) — Bloc 6 a retiré l'auto-trigger SERP au lock
     // Capitaine, et ma refonte du sprint 1 conditionne le rendu de

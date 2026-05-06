@@ -161,6 +161,15 @@ watch(
   { immediate: true },
 )
 
+// Sprint 17 (Bug B) — Le watcher `keywords.capitaine` ne fait PLUS d'addEntry.
+// Avant : à chaque mutation de `capitaine` (lock, unlock, relock), si
+// `currentEntry.card.keyword !== persisted`, le code appelait `addEntry`
+// pour "garantir" que le mot-clé verrouillé soit dans la liste. Mais
+// `addEntry` ne dédupliquait pas → duplications cumulées à chaque toggle.
+// Maintenant : si l'entry n'existe pas, on log un warning (potentielle race
+// condition à investiguer) sans créer de duplication. Le restore via
+// validationHistory (watcher dédié plus bas) reste la voie normale d'apparition
+// des entries.
 watch(
   () => articleKeywordsStore.keywords?.capitaine,
   (persisted) => {
@@ -168,11 +177,16 @@ watch(
     keywordInput.value = persisted
     log.debug('CaptainPanel — restauré depuis store', { keyword: persisted })
     if (isLocked.value) {
-      const currentKw = carousel.currentEntry.value?.card.keyword
-      if (currentKw !== persisted) {
-        carousel.addEntry(persisted, articleLevel.value, props.selectedArticle?.title, props.selectedArticle?.id, props.selectedArticle?.painPoint ?? undefined)
-      }
       lockedKeyword.value = persisted
+      const exists = carousel.entries.value.some(
+        e => e.originalCard.keyword === persisted || e.card.keyword === persisted,
+      )
+      if (!exists) {
+        log.warn('CaptainPanel — capitaine verrouillé absent de entries (probable race condition au mount)', {
+          persisted,
+          entriesCount: carousel.entries.value.length,
+        })
+      }
     }
   },
   { immediate: true },
@@ -425,14 +439,27 @@ const captainSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
   { key: 'score', label: 'Score Pertinence' },
 ]
+// Sprint 17 (Bug A) — Tri et pin sur `originalCard.keyword`, pas `card.keyword`.
+// Quand l'utilisateur active/désactive une racine, `card` est remplacée par
+// la variante racine (le keyword change) — sans cette correction, la position
+// dans la liste change à chaque clic, ce que l'utilisateur ne veut pas.
+// Le tri reste basé sur le mot-clé d'origine (stable). L'affichage du score
+// continue de venir de la card active (la racine sélectionnée).
 const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<ExploredKeywordEntry>({
   items: carouselEntries,
   getValue: (entry, key) => {
-    if (key === 'az') return entry.card.keyword
-    if (key === 'score') return entry.card.relevanceScore?.total ?? null
+    if (key === 'az') return entry.originalCard.keyword
+    if (key === 'score') return entry.originalCard.relevanceScore?.total ?? null
     return null
   },
-  pinnedPredicate: (entry) => lockedKeyword.value !== null && entry.card.keyword === lockedKeyword.value,
+  pinnedPredicate: (entry) => {
+    if (lockedKeyword.value === null) return false
+    // Sprint 17 — match sur originalCard.keyword OU sur card.keyword (cas où
+    // l'utilisateur a locké une racine active). originalCard est la stable,
+    // mais lockEntry peut capturer card.keyword si une racine est active.
+    return entry.originalCard.keyword === lockedKeyword.value
+        || entry.card.keyword === lockedKeyword.value
+  },
 })
 
 /**
@@ -454,12 +481,18 @@ const selectedEntry = computed<ExploredKeywordEntry | null>(() => {
 })
 const lockedIndex = computed(() => {
   if (lockedKeyword.value === null) return -1
-  return carousel.entries.value.findIndex(e => e.card.keyword === lockedKeyword.value)
+  // Sprint 17 — match sur originalCard OU card.keyword (gère le cas où la racine
+  // active a été lockée). originalCard.keyword est la valeur stable en priorité.
+  return carousel.entries.value.findIndex(e =>
+    e.originalCard.keyword === lockedKeyword.value || e.card.keyword === lockedKeyword.value,
+  )
 })
 const lockedEntryExists = computed(() => lockedIndex.value !== -1)
 const selectedIsLocked = computed(() => {
   if (!selectedEntry.value || !lockedKeyword.value) return false
-  return selectedEntry.value.card.keyword === lockedKeyword.value
+  // Sprint 17 — match sur originalCard.keyword ou card.keyword (Bug A).
+  return selectedEntry.value.originalCard.keyword === lockedKeyword.value
+      || selectedEntry.value.card.keyword === lockedKeyword.value
 })
 
 // Reset selectedIndex si entries shrink en dessous de l'index pointé

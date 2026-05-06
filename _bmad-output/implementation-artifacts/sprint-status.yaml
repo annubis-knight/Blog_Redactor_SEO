@@ -175,6 +175,33 @@ development_status:
   # Validation : type-check vert, build vert (9.97s), 3983 tests verts.
   sprint-16-rename-external-api-cache: done
 
+  # Sprint 17 — Bugs comportementaux Capitaine + suppression boutons batch (2026-05-06) ✅
+  # tech-spec: tech-spec-sprint-17-bugs-comportementaux-capitaine.md
+  # branche: chore/sprint-10.5-cleanup-painpoint-legacy
+  # FRs ajoutées :
+  #   - FR-CAP-LOCK-NO-DUPLICATE (Bug B : duplication des cards verrouillées)
+  #   - FR-CAP-SORT-STABLE-ON-ROOT-VARIANT (Bug A : réorganisation liste au clic mot souligné)
+  #   - FR-LIE-CHECKBOX-LOCK-IMMEDIATE (suppression bouton batch Lieutenants)
+  #   - FR-LEX-CHECKBOX-LOCK-IMMEDIATE (suppression bouton batch Lexique)
+  # Bug A — Tri Capitaine sur originalCard.keyword au lieu de card.keyword,
+  #   pinnedPredicate match originalCard OU card.keyword.
+  # Bug B — Déduplication addEntry / loadCards / restoreFromHistory dans
+  #   useExploredKeywords. Watcher keywords.capitaine ne fait plus addEntry.
+  # Boutons batch — Suppression du bouton "Verrouiller les Lieutenants"
+  #   (LieutenantsResultsLayout.vue) + "Verrouiller le Lexique"
+  #   (LexiquePanel.vue). La checkbox de chaque card/terme persiste
+  #   immédiatement en DB. Check workflow émis par watcher dérivé sur isLocked.
+  # Store — Ajout lockLieutenant/unlockLieutenant (par mot-clé), addLexiqueTerm/
+  #   removeLexiqueTerm déjà présents.
+  # Tests — 2 nouveaux fichiers de régression :
+  #   - tests/unit/composables/useExploredKeywords-dedup-sprint17.test.ts (6 tests, FR-CAP-LOCK-NO-DUPLICATE)
+  #   - tests/unit/composables/captain-sort-stable-sprint17.test.ts (2 tests, FR-CAP-SORT-STABLE-ON-ROOT-VARIANT)
+  # Tests obsolètes skippés (8 it.skip + 2 describe.skip dont le périmètre
+  #   batch n'existe plus) — baseline test-quality augmentée 76 → 85.
+  # Validation : type-check vert, build vert (11.94s), 3963 tests verts
+  # (2 sanity E2E pré-existants).
+  sprint-17-bugs-comportementaux-capitaine: done
+
   # Chantier A — Refonte calcul Pertinence à la volée (2026-05-05) ✅
   # tech-spec: tech-spec-relevance-live-computation.md
   # FRs: FR-RAD-MARKET-COMPUTED-LIVE, FR-RAD-NO-RELEVANCE-IN-SCAN,

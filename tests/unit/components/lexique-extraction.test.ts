@@ -27,15 +27,33 @@ vi.mock('../../../src/composables/editor/useStreaming', () => ({
 
 const mockSaveKeywords = vi.fn().mockResolvedValue(undefined)
 const mockSaveDecisions = vi.fn().mockResolvedValue(undefined)
-const mockInitEmpty = vi.fn()
 const mockKeywordsRef = ref<{ articleId: number; capitaine: string; lieutenants: string[]; lexique: string[] } | null>(null)
+const mockInitEmpty = vi.fn((id: number) => {
+  if (!mockKeywordsRef.value) {
+    mockKeywordsRef.value = { articleId: id, capitaine: '', lieutenants: [], lexique: [] }
+  }
+})
+// Sprint 17 — Mocks pour FR-LEX-CHECKBOX-LOCK-IMMEDIATE :
+// toggleTerm appelle maintenant addLexiqueTerm/removeLexiqueTerm directement.
+const mockAddLexiqueTerm = vi.fn((value: string) => {
+  if (!mockKeywordsRef.value) return
+  if (!mockKeywordsRef.value.lexique.includes(value)) {
+    mockKeywordsRef.value.lexique = [...mockKeywordsRef.value.lexique, value]
+  }
+})
+const mockRemoveLexiqueTerm = vi.fn((value: string) => {
+  if (!mockKeywordsRef.value) return
+  mockKeywordsRef.value.lexique = mockKeywordsRef.value.lexique.filter(t => t !== value)
+})
 
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
-    keywords: mockKeywordsRef,
+    get keywords() { return mockKeywordsRef.value },
     saveKeywords: mockSaveKeywords,
     saveDecisions: mockSaveDecisions,
     initEmpty: mockInitEmpty,
+    addLexiqueTerm: mockAddLexiqueTerm,
+    removeLexiqueTerm: mockRemoveLexiqueTerm,
   }),
 }))
 
@@ -712,7 +730,11 @@ describe('LexiquePanel', () => {
     })
   })
 
-  describe('Validate / Lock', () => {
+  // Sprint 17 — Bouton "Verrouiller le Lexique" en bloc supprimé du template.
+  // Chaque checkbox terme persiste immédiatement dans keywords.lexique
+  // (FR-LEX-CHECKBOX-LOCK-IMMEDIATE). Ces tests testaient le bouton batch
+  // obsolète — skippés.
+  describe.skip('Validate / Lock (batch — supprimé Sprint 17)', () => {
     async function mountWithResults(overrides: Record<string, unknown> = {}) {
       const wrapper = mountComponent(overrides)
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')

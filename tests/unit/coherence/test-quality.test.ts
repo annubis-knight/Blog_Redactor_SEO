@@ -111,7 +111,16 @@ const SOFT_LIMITS = {
   //   _bmad-output/implementation-artifacts/tech-spec-relevance-live-computation.md.
   // Baseline historique : 101. Nouvelle baseline : 130 (= 101 + 29).
   itTodo: 132,                     // it.todo(...) — non implémentés
-  itSkip: 76,                      // it.skip / test.skip / describe.skip
+  // Sprint 17 (2026-05-06) — Suppression boutons batch Lieutenants/Lexique
+  // (FR-LIE-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-CHECKBOX-LOCK-IMMEDIATE) :
+  //   2 describe.skip (batch lock/validate),
+  //   3 it.skip (resets isLocked, passes disabled, no-op when locked dans tests Lieutenants),
+  //   1 it.skip (input désactivé Lexique gaps),
+  //   1 it.skip (AC.J.21 lieutenant-lock layout),
+  //   1 it.skip (recommendAndPropagateWordCount au lock),
+  //   1 it.skip (AC.J.7.bis toggleLieutenant no-op).
+  // Tests obsolètes mais conservés pour traçabilité.
+  itSkip: 85,                      // it.skip / test.skip / describe.skip
 } as const
 
 // ============================================================================

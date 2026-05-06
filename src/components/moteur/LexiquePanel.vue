@@ -52,7 +52,13 @@ const tfidfResult = ref<TfidfResult | null>(null)
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
-const isLocked = ref(props.initialLocked)
+// Sprint 17 — `isLocked` dérivé du store : "lockée" = au moins 1 terme dans
+// keywords.lexique. Plus de Ref locale, plus de bouton batch.
+// FR-LEX-CHECKBOX-LOCK-IMMEDIATE.
+const isLocked = computed(() => {
+  const lex = articleKeywordsStore.keywords?.lexique
+  return Array.isArray(lex) && lex.length > 0
+})
 
 // 2026-05-02 — Migration vers la barre de tri unifiée (S2 historique remplacé).
 // Critères :
@@ -139,8 +145,14 @@ const hasEverValidated = computed(() =>
   (articleKeywordsStore.keywords?.lexique?.length ?? 0) > 0,
 )
 
+// Sprint 17 — `isLocked` est désormais dérivé de keywords.lexique.length > 0
+// (FR-LEX-CHECKBOX-LOCK-IMMEDIATE). Sans le retrait de `!isLocked.value`,
+// l'extraction serait bloquée dès qu'un seul terme est coché — incohérent avec
+// le nouveau modèle où l'utilisateur peut étendre sa sélection en relançant
+// une extraction. La protection contre la double-extraction simultanée reste
+// assurée par `!isLoading.value`.
 const canExtract = computed(() =>
-  (props.isCaptaineLocked || hasEverValidated.value) && !!props.captainKeyword && !isLoading.value && !isLocked.value,
+  (props.isCaptaineLocked || hasEverValidated.value) && !!props.captainKeyword && !isLoading.value,
 )
 
 // --- Debug log: state on mount ---
@@ -185,15 +197,26 @@ async function extractCustomKeyword() {
   customKeywordInput.value = ''
 }
 
+// Sprint 17 — Cocher/décocher un terme = lock/unlock immédiat en DB.
+// FR-LEX-CHECKBOX-LOCK-IMMEDIATE. Plus de garde isLocked (le verrou est par
+// terme, pas par container). Le check workflow MOTEUR_LEXIQUE_VALIDATED est
+// dérivé d'un watcher (plus bas) sur la taille de keywords.lexique.
 function toggleTerm(term: string) {
-  if (isLocked.value) return
+  const id = props.selectedArticle?.id
+  if (!id) return
+  if (!articleKeywordsStore.keywords) {
+    articleKeywordsStore.initEmpty(id)
+  }
   const next = new Set(selectedTerms.value)
   if (next.has(term)) {
     next.delete(term)
+    articleKeywordsStore.removeLexiqueTerm(term)
   } else {
     next.add(term)
+    articleKeywordsStore.addLexiqueTerm(term)
   }
   selectedTerms.value = next
+  void articleKeywordsStore.saveDecisions(id)
 }
 
 // Selection counters
@@ -224,27 +247,24 @@ watch(tfidfResult, (res) => {
   generateLexiqueUpfront()
 })
 
-// --- Validate / Lock ---
-async function validateLexique() {
-  const id = props.selectedArticle?.id
-  if (!id || selectedTerms.value.size === 0) return
+// Sprint 17 — Bouton "Verrouiller le Lexique" en bloc SUPPRIMÉ du template.
+// Le toggleTerm persiste immédiatement chaque ajout/retrait dans le store.
+// Les fonctions historiques validateLexique/unlockLexique sont retirées
+// (FR-LEX-CHECKBOX-LOCK-IMMEDIATE).
 
-  const terms = [...selectedTerms.value]
-  if (!articleKeywordsStore.keywords) {
-    articleKeywordsStore.initEmpty(id)
-  }
-  articleKeywordsStore.keywords!.lexique = terms
-  await articleKeywordsStore.saveDecisions(id)
-
-  isLocked.value = true
-  emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
-  log.info(`[LexiquePanel] Lexique validated with ${terms.length} terms`)
-}
-
-function unlockLexique() {
-  isLocked.value = false
-  emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
-}
+let previousLockedState = false
+watch(
+  isLocked,
+  (locked) => {
+    if (locked && !previousLockedState) {
+      emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
+    } else if (!locked && previousLockedState) {
+      emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+    }
+    previousLockedState = locked
+  },
+  { immediate: true },
+)
 
 // Fetch TF-IDF — keyword can be overridden (Sprint 11 D4 multi-keyword)
 async function fetchTfidf(keywordOverride?: string) {
@@ -333,7 +353,8 @@ watch(
     pastExplorations.value = []
     activeSourceKeyword.value = ''
     customKeywordInput.value = ''
-    isLocked.value = props.initialLocked
+    // Sprint 17 — `isLocked` est computed dérivé de keywords.lexique.length.
+    // Reset implicite via le store quand l'article change (fetchKeywords).
     iaAbort()
   },
 )
@@ -511,27 +532,14 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         @toggle-term="toggleTerm"
       />
 
-      <!-- Validate / Lock (inside results) -->
-      <div v-if="!isLocked" class="lexique-lock" data-testid="lexique-lock">
-        <button
-          class="lock-btn"
-          data-testid="lock-btn"
-          :disabled="selectedCount === 0"
-          @click="validateLexique"
-        >
-          Verrouiller le Lexique
-        </button>
-      </div>
     </div>
 
-    <!-- Lock state (always visible when locked, even without results) -->
-    <div v-if="isLocked" class="lexique-lock" data-testid="lexique-lock">
-      <div class="locked-state" data-testid="locked-state">
-        <span class="locked-badge">Lexique verrouillé</span>
-        <button class="unlock-btn" data-testid="unlock-btn" @click="unlockLexique">
-          Déverrouiller
-        </button>
-      </div>
+    <!-- Sprint 17 — Plus de boutons batch "Verrouiller / Déverrouiller le Lexique".
+         Chaque checkbox de terme TF-IDF persiste immédiatement dans keywords.lexique
+         via toggleTerm. Voir FR-LEX-CHECKBOX-LOCK-IMMEDIATE. Badge d'état conservé
+         pour visibilité utilisateur. -->
+    <div v-if="isLocked" class="lexique-lock-status" data-testid="lexique-lock-status">
+      <span class="locked-badge">{{ selectedCount }} terme(s) verrouillé(s)</span>
     </div>
 
     <!-- Sprint C-2 (2026-05-02) — Panel IA Lexique en bas de page. Reprend

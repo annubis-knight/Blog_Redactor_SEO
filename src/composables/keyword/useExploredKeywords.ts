@@ -164,18 +164,30 @@ export function useExploredKeywords() {
 
   async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
+    // Sprint 17 (Bug B) — Dédup les cards d'entrée par keyword (case-insensitive).
+    // Conserve la première occurrence rencontrée. Sans cette dédup, un Radar
+    // qui retourne 2 fois le même mot-clé créerait 2 entries identiques.
+    const dedupedCards = Array.from(
+      new Map(cards.map(c => [c.keyword.trim().toLowerCase(), c])).values(),
+    )
+    if (dedupedCards.length !== cards.length) {
+      log.warn('[useExploredKeywords] loadCards — duplicates filtered', {
+        before: cards.length,
+        after: dedupedCards.length,
+      })
+    }
     log.debug('[useExploredKeywords] loadCards — démarrage', {
-      count: cards.length,
-      keywords: cards.map(c => c.keyword),
+      count: dedupedCards.length,
+      keywords: dedupedCards.map(c => c.keyword),
       level,
       articleId,
       hasPainPoint: !!painPoint,
     })
-    entries.value = cards.map(createEntry)
+    entries.value = dedupedCards.map(createEntry)
     currentIndex.value = 0
 
     await Promise.allSettled(
-      cards.map(async (card, i) => {
+      dedupedCards.map(async (card, i) => {
         try {
           const response = await apiPost<ScanResponse>(
             `/keywords/${encodeURIComponent(card.keyword)}/scan`,
@@ -219,9 +231,45 @@ export function useExploredKeywords() {
     return entry.validation.verdict.level
   }
 
-  /** Add a single keyword as a new carousel entry and validate it */
+  /** Add a single keyword as a new carousel entry and validate it.
+   *
+   * Sprint 17 (Bug B) — Déduplication par originalCard.keyword. Si le mot-clé
+   * existe déjà dans `entries` (même casse normalisée), on ne crée pas une
+   * nouvelle entrée : on pointe `currentIndex` sur l'entry existante et on
+   * relance la validation pour rafraîchir les scores. Avant ce fix, locker /
+   * déverrouiller un mot-clé dupliquait la card via le watcher
+   * `keywords.capitaine` qui appelait `addEntry` sans vérifier l'existence.
+   */
   async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
+    const normalizedKeyword = keyword.trim().toLowerCase()
+
+    // Sprint 17 — dédup : si une entry existe déjà pour ce keyword, la réutiliser.
+    const existingIndex = entries.value.findIndex(
+      e => e.originalCard.keyword.trim().toLowerCase() === normalizedKeyword,
+    )
+    if (existingIndex !== -1) {
+      log.debug('[useExploredKeywords] addEntry — entry existante, refresh in-place', {
+        keyword,
+        existingIndex,
+      })
+      currentIndex.value = existingIndex
+      // Re-scan pour rafraîchir les scores (le caller s'attend à une validation fraîche).
+      try {
+        const response = await apiPost<ScanResponse>(
+          `/keywords/${encodeURIComponent(keyword)}/scan`,
+          { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+        )
+        if (thisVersion !== loadVersion) return
+        const hydratedCard = hydrateCardFromValidation(keyword, response)
+        patch(existingIndex, { card: hydratedCard, originalCard: hydratedCard, validation: response, isLoading: false })
+      } catch (err) {
+        if (thisVersion !== loadVersion) return
+        log.warn('[useExploredKeywords] addEntry refresh failed', { keyword, error: (err as Error).message })
+      }
+      return
+    }
+
     // Build a minimal RadarCard for a manually-entered keyword
     const card: RadarCard = {
       keyword,
@@ -338,7 +386,21 @@ export function useExploredKeywords() {
     ++loadVersion
     const config = getThresholds(level)
 
-    entries.value = history.map(h => {
+    // Sprint 17 (Bug B) — Dédup l'historique par keyword (case-insensitive).
+    // Le backend ne devrait pas retourner de doublons (UNIQUE constraint sur
+    // captain_explorations) mais cette dédup défensive protège contre tout
+    // payload malformé ou bug régression côté serveur.
+    const dedupedHistory = Array.from(
+      new Map(history.map(h => [h.keyword.trim().toLowerCase(), h])).values(),
+    )
+    if (dedupedHistory.length !== history.length) {
+      log.warn('[useExploredKeywords] restoreFromHistory — duplicates filtered', {
+        before: history.length,
+        after: dedupedHistory.length,
+      })
+    }
+
+    entries.value = dedupedHistory.map(h => {
       const kpis = h.kpis.map(s => scoreKpi(s.name, s.rawValue, config))
       const verdict = computeVerdict(kpis)
 
@@ -409,7 +471,7 @@ export function useExploredKeywords() {
     const withRelevance = entries.value.filter(e => (e.card.relevanceScore?.total ?? null) !== null).length
     const withRoots = entries.value.filter(e => e.rootVariants.size > 0).length
     log.debug('[useExploredKeywords] restoreFromHistory — terminé', {
-      total: history.length,
+      total: dedupedHistory.length,
       withRelevance,
       withRoots,
       withUnavailableReason: entries.value.filter(e => e.card.relevanceUnavailableReason).length,
