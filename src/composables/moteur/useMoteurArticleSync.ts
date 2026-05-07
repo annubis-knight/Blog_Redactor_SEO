@@ -3,6 +3,7 @@ import { apiGet, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import type { SelectedArticle } from '@shared/types/index.js'
+import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 
 /**
  * Vague 5 — Composable extrait de MoteurView.
@@ -24,8 +25,14 @@ export interface MoteurArticleSyncDeps {
 }
 
 export interface MoteurArticleSyncApi {
-  /** Map keyword → article slug pour les autres articles du cocon (détection cannibalization). */
-  capitainesMap: Ref<Record<string, string>>
+  /**
+   * Map articleId (number) → captain-keyword pour les articles du cocon.
+   * Cohérent avec le contrat backend `/cocoons/:name/capitaines` qui renvoie
+   * `Record<number, string>` (clé = articleId). Bug F3 (2026-05-07) — ce
+   * type était `Record<string, string>` et créait un drift silencieux avec
+   * `MoteurContextRecap.props.capitainesMap` qui attend `Record<number, string>`.
+   */
+  capitainesMap: Ref<Record<number, string>>
   /** Counts persistés en DB par onglet pour l'article courant. */
   explorationCounts: Ref<{ radar?: number; captain?: number; lieutenants?: number; lexique?: number }>
   /** Recharge la map capitaines depuis l'API cocon. */
@@ -43,11 +50,11 @@ export interface MoteurArticleSyncApi {
 export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticleSyncApi {
   const { selectedArticle, cocoonName, articleProgressStore } = deps
 
-  const capitainesMap = ref<Record<string, string>>({})
+  const capitainesMap = ref<Record<number, string>>({})
 
   function refreshCapitainesMap(): void {
     if (!cocoonName.value) return
-    apiGet<Record<string, string>>(`/cocoons/${encodeURIComponent(cocoonName.value)}/capitaines`)
+    apiGet<Record<number, string>>(`/cocoons/${encodeURIComponent(cocoonName.value)}/capitaines`)
       .then(data => { capitainesMap.value = data })
       .catch(err => { log.warn('[useMoteurArticleSync] refreshCapitainesMap failed', { error: err }) })
   }
@@ -100,7 +107,10 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
     articleProgressStore.addCheck(id, check).catch(err =>
       log.warn('[useMoteurArticleSync] addCheck failed', { articleId: id, check, error: err }),
     )
-    if (check === 'capitaine_locked') refreshCapitainesMap()
+    // Bug F2 (2026-05-07) — comparait la string littérale `'capitaine_locked'`
+    // alors que les checks sont préfixés (`MOTEUR_CAPITAINE_LOCKED ===
+    // 'moteur:capitaine_locked'`). refreshCapitainesMap ne firait jamais.
+    if (check === MOTEUR_CAPITAINE_LOCKED) refreshCapitainesMap()
     refreshExplorationCounts()
   }
 
@@ -111,7 +121,7 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
       log.warn('[useMoteurArticleSync] removeCheck failed', { articleId: id, check, error: err }),
     )
     refreshExplorationCounts()
-    if (check === 'capitaine_locked') refreshCapitainesMap()
+    if (check === MOTEUR_CAPITAINE_LOCKED) refreshCapitainesMap()
   }
 
   return {

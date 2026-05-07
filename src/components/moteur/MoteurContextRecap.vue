@@ -2,12 +2,14 @@
 import { computed, watch } from 'vue'
 import type { Article, ArticleType, SelectedArticle } from '@shared/types/index.js'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { hasCannibalization as hasCannibalizationPure } from '@/composables/moteur/useCannibalizationDetection'
 import ProgressDots from './ProgressDots.vue'
 import RecapToggle from '@/components/shared/RecapToggle.vue'
 import IconWarning from '@/components/shared/icons/IconWarning.vue'
 
 const progressStore = useArticleProgressStore()
+const articleKeywordsStore = useArticleKeywordsStore()
 
 const props = withDefaults(defineProps<{
   suggestedArticles: Article[]
@@ -85,6 +87,12 @@ const publishedGroups = computed<GroupedArticles[]>(() => {
  * vers `props.capitainesMap` enrichit pour les articles dont le keyword
  * n'apparaît pas encore dans la liste suggested/published (ex: article fraîchement
  * créé puis verrouillé Capitaine).
+ *
+ * FR-MOT-DISPLAY-FROM-STORE — overlay la valeur du store pour l'article
+ * sélectionné afin que `hasCannibalization()` (calcul) reste cohérent avec
+ * `getDisplayedKeyword()` (affichage). Sans cet overlay : tree affiche "Y"
+ * mais le calcul cannibal continue avec "X" → drift §2.0 (cohérence
+ * affichage/calcul).
  */
 const unifiedCapitainesMap = computed<Record<number, string>>(() => {
   const map: Record<number, string> = {}
@@ -94,6 +102,10 @@ const unifiedCapitainesMap = computed<Record<number, string>>(() => {
     const id = Number(idStr)
     if (kw && Number.isFinite(id) && !map[id]) map[id] = kw
   }
+  const storeKw = articleKeywordsStore.keywords
+  if (storeKw && storeKw.articleId > 0 && storeKw.capitaine) {
+    map[storeKw.articleId] = storeKw.capitaine
+  }
   return map
 })
 
@@ -101,8 +113,28 @@ function isSelected(slug: string): boolean {
   return props.selectedSlug === slug
 }
 
+/**
+ * FR-MOT-DISPLAY-FROM-STORE — pour l'article sélectionné (et persisté en DB),
+ * lit le Capitaine depuis le store Pinia (source réactive fraîche). Pour les
+ * autres articles, fallback `props.capitainesMap`. Court-circuite
+ * `MoteurView.vue:127` qui hardcode `captainKeywordLocked: null` pour les
+ * suggérés.
+ *
+ * Garde `art.id > 0` : les articles proposés non persistés (`dbId === 0`)
+ * n'ont pas de ligne DB, et `setCapitaine()` peut seed `articleId: 0` dans
+ * le store quand la saisie démarre sans contexte article — sans cette
+ * garde, deux articles `id === 0` collisionneraient.
+ */
+function getDisplayedKeyword(art: GroupedArticle): string {
+  const kw = articleKeywordsStore.keywords
+  if (art.id > 0 && art.slug === props.selectedSlug && kw && kw.articleId === art.id) {
+    return kw.capitaine || art.keyword
+  }
+  return props.capitainesMap[art.id] || art.keyword
+}
+
 function getChecks(id: number): string[] {
-  return progressStore.getProgress(id)?.completedChecks ?? []
+  return progressStore.progressMap[String(id)]?.completedChecks ?? []
 }
 
 // Fetch progress for all visible articles
@@ -172,7 +204,7 @@ function toggleArticle(article: GroupedArticle) {
               title="Cannibalisation : un autre article utilise le même capitaine"
             />
             <ProgressDots :completed-checks="getChecks(art.id)" />
-            <span v-if="art.keyword" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ art.keyword }}</span>
+            <span v-if="getDisplayedKeyword(art)" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ getDisplayedKeyword(art) }}</span>
           </button>
         </div>
       </div>
@@ -211,7 +243,7 @@ function toggleArticle(article: GroupedArticle) {
               title="Cannibalisation : un autre article utilise le même capitaine"
             />
             <ProgressDots :completed-checks="getChecks(art.id)" />
-            <span v-if="art.keyword" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ art.keyword }}</span>
+            <span v-if="getDisplayedKeyword(art)" class="tree-article-keyword" :class="{ 'is-suggested': !art.keywordLocked }">{{ getDisplayedKeyword(art) }}</span>
             <svg class="tree-lock" width="10" height="10" viewBox="0 0 16 16" fill="none" aria-hidden="true">
               <rect x="3" y="7" width="10" height="7" rx="1.5" stroke="currentColor" stroke-width="1.2" />
               <path d="M5 7V5a3 3 0 016 0v2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
