@@ -51,6 +51,9 @@ defineProps<{
   activeHnTab: string
   hnSaved: boolean
   isSavingHn: boolean
+  /** HN regen-only stream (différent de iaIsStreaming des lieutenants). */
+  hnRegenStreaming: boolean
+  hnRegenError: string | null
 
   // Word groups (Discovery clusters)
   wordGroups: WordGroup[]
@@ -63,6 +66,7 @@ defineEmits<{
   (e: 'toggle', card: ProposedLieutenant): void
   (e: 'propose-retry'): void
   (e: 'save-hn'): void
+  (e: 'regenerate-hn', lockedHeadings: ProposeLieutenantsHnNode[]): void
   (e: 'update:active-hn-tab', tab: string): void
   // Sprint 17 — `lock-lieutenants` / `unlock-lieutenants` supprimés (boutons batch enlevés).
   // La checkbox de chaque LieutenantCard fait le lock immédiat via toggleLieutenant.
@@ -97,7 +101,11 @@ defineEmits<{
       :is-locked="isLocked"
       :hn-saved="hnSaved"
       :is-saving-hn="isSavingHn"
+      :selected-cards-size="selectedCardsSize"
+      :hn-regen-streaming="hnRegenStreaming"
+      :hn-regen-error="hnRegenError"
       @save-hn="$emit('save-hn')"
+      @regenerate-hn="(headings: ProposeLieutenantsHnNode[]) => $emit('regenerate-hn', headings)"
       @update:active-hn-tab="(tab: string) => $emit('update:active-hn-tab', tab)"
     />
 

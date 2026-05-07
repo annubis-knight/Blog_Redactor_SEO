@@ -1123,11 +1123,16 @@ describe('LieutenantsPanel', () => {
       expect(hnIaSection).toBeDefined()
     })
 
-    it('does not render hn-structure-section when hnStructure is empty', async () => {
+    it('renders hn-structure-section even when hnStructure is empty (with empty placeholder)', async () => {
+      // FR-MOT-HN-EMPTY-VISIBLE (2026-05-07) : la section "Structure Hn recommandée (IA)"
+      // reste affichée même quand hnStructure est vide, avec un hint et un bouton
+      // "Générer la structure Hn" pour signaler à l'utilisateur qu'une HN est attendue ici.
       const w = await mountWithResults()
       const sections = w.findAllComponents({ name: 'CollapsableSection' })
       const hnIaSection = sections.find(s => s.props('title') === 'Structure Hn recommandee (IA)')
-      expect(hnIaSection).toBeUndefined()
+      expect(hnIaSection).toBeDefined()
+      // Placeholder explicite pour signaler le vide
+      expect(w.find('[data-testid="hn-structure-empty"]').exists()).toBe(true)
     })
 
     it('renders hn-structure-item elements for each node', async () => {

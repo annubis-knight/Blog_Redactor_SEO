@@ -6,7 +6,7 @@ import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
-import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult } from '../../shared/types/serp-analysis.types.js'
+import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult, ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
 import { compareScores } from '../../shared/score/index.js'
 
@@ -81,44 +81,90 @@ router.post('/keywords/:keyword/ai-panel', async (req, res) => {
 /**
  * POST /keywords/:keyword/ai-hn-structure
  * SSE streaming Hn structure recommendation using selected Lieutenants.
- * Body: { lieutenants: string[], level: string, hnStructure: { level: number, text: string, count: number }[] }
+ *
+ * Body:
+ *   - lieutenants: string[]  → mots-cles selectionnes par l'utilisateur (obligatoire, non vide)
+ *   - level: ArticleLevel    → 'pilier' | 'intermediaire' | 'specifique'
+ *   - hnStructure?: { level: number, text: string, count: number, percent?: number }[]
+ *                           → recurrence Hn des concurrents (optionnel)
+ *   - lockedHeadings?: ProposeLieutenantsHnNode[]
+ *                           → headings deja verrouilles par l'utilisateur (optionnel)
+ *                             Ces titres DOIVENT apparaitre tels quels dans la sortie.
+ *   - articleId?: number
+ *   - cocoonSlug?: string
+ *
+ * Done payload (event `done`):
+ *   { outline: { hnStructure, justification }, metadata, usage }
+ *   `outline` est ce que useStreaming<T> expose au client via onDone.
  */
 router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
   const keyword = decodeURIComponent(req.params.keyword)
-  const { lieutenants, level, hnStructure, articleId, cocoonSlug } = req.body
+  const { lieutenants, level, hnStructure, lockedHeadings, articleId, cocoonSlug } = req.body as {
+    lieutenants: string[]
+    level: string
+    hnStructure?: { level: number; text: string; count: number; percent?: number }[]
+    lockedHeadings?: ProposeLieutenantsHnNode[]
+    articleId?: number
+    cocoonSlug?: string
+  }
 
   if (!keyword || !level || !Array.isArray(lieutenants) || lieutenants.length === 0) {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword, level, and non-empty lieutenants are required' } })
     return
   }
 
-  log.info(`AI Hn structure request for "${keyword}" (${level}, ${lieutenants.length} lieutenants)`)
+  log.info(`AI Hn structure request for "${keyword}" (${level}, ${lieutenants.length} lieutenants, ${lockedHeadings?.length ?? 0} locked headings)`)
 
-  const hnSummary = Array.isArray(hnStructure)
-    ? hnStructure.map((h: { level: number; text: string; count: number }) => `H${h.level}: ${h.text} (${h.count}x)`).join('\n')
+  const hnSummary = Array.isArray(hnStructure) && hnStructure.length > 0
+    ? hnStructure.map(h => `H${h.level}: ${h.text} (${h.count}x)`).join('\n')
     : 'Aucune donnee de structure concurrente'
+
+  const lockedSummary = Array.isArray(lockedHeadings) && lockedHeadings.length > 0
+    ? lockedHeadings.flatMap(h => {
+        const lines = [`- H${h.level}: ${h.text}`]
+        if (Array.isArray(h.children)) {
+          for (const child of h.children) {
+            lines.push(`    - H${child.level}: ${child.text}`)
+          }
+        }
+        return lines
+      }).join('\n')
+    : 'Aucun heading verrouille'
 
   const painPoint = await getArticlePainPoint(articleId)
   const systemPrompt = await loadPrompt('lieutenants-hn-structure', {
     keyword,
     level,
     painPoint,
-    lieutenants: lieutenants.join(', '),
+    lieutenants: lieutenants.map(kw => `- ${kw}`).join('\n'),
     hn_structure: hnSummary,
+    locked_headings: lockedSummary,
   }, cocoonSlug ? { cocoonSlug } : undefined)
-  log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
+  log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, lockedCount: lockedHeadings?.length ?? 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
   const userPrompt = `Recommande une structure Hn pour un article "${keyword}" de niveau ${level} utilisant ces Lieutenants: ${lieutenants.join(', ')}`
 
-  await runAiPanelStream({
+  await runAiPanelStream<{ hnStructure: ProposeLieutenantsHnNode[]; justification?: string }>({
     req,
     res,
     keyword,
     level,
     systemPrompt,
     userPrompt,
+    maxTokens: 4096,
     logTag: 'ai-hn-structure',
-    buildDonePayload: (_parsed, usage) => ({ metadata: { keyword, level }, usage }),
+    parser: (fullContent) => {
+      const parsed = parseAiJson<{ hnStructure?: ProposeLieutenantsHnNode[]; justification?: string }>(fullContent)
+      if (!Array.isArray(parsed.hnStructure)) {
+        throw new Error('AI response missing hnStructure array')
+      }
+      return { hnStructure: parsed.hnStructure, justification: parsed.justification }
+    },
+    buildDonePayload: (parsed, usage) => ({
+      outline: parsed ?? { hnStructure: [], justification: '' },
+      metadata: { keyword, level },
+      usage,
+    }),
   })
 })
 
