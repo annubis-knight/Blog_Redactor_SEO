@@ -868,6 +868,22 @@ L'état "verrouillé" d'un container Moteur (Capitaine, Lieutenants) est **déri
 - Tests existants passent avec mocks store qui mutent comme le vrai store (au lieu d'être des `vi.fn()` inertes).
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-13-isLocked-computed.
 
+#### FR-MOT-DISPLAY-FROM-STORE
+Les composants UI du Moteur qui affichent des données live (Capitaine verrouillé, checks workflow) lisent ces données depuis le store Pinia (`articleKeywordsStore`, `articleProgressStore`) plutôt que depuis des props passées par le parent. Les props restent acceptables pour les données figées (titre article, type, `suggestedKeyword` initial).
+**Justification** : les props sont nourries par des computeds figés sur des sources statiques (`strategyStore.proposedArticles`, `cocoonsStore.cocoons`) qui ne sont pas invalidées sur mutation utilisateur. Le store Pinia est muté en optimistic update lors de chaque action (`lockCaptain`, `unlockCaptain`, `addCheck`, `removeCheck`) et reste donc la source réactive fraîche. `MoteurView.vue:127` hardcode même `captainKeywordLocked: null` pour les articles suggérés — la projection ne pourra jamais refléter un lock pour ces articles.
+**Implémentation** :
+- `MoteurContextRecap.vue` : helper `getDisplayedKeyword(art)` qui lit `articleKeywordsStore.keywords?.capitaine` pour l'article sélectionné, `props.capitainesMap[art.id]` sinon. Index réactif `checksByArticleId = computed()` sur `progressStore.progressMap` pour garantir la traque Vue de la mutation des checks.
+- `LexiquePanel.vue` : computed `displayedCaptainKeyword` qui lit `articleKeywordsStore.keywords?.capitaine` quand `articleId` matche, fallback `props.captainKeyword` sinon.
+**Limitation connue** : la cohérence cross-article (article B affiché dans le tree pendant qu'on travaille sur A) n'est garantie que pour l'article actuellement sélectionné. Les autres articles affichent ce que `props.capitainesMap` contient, rafraîchi par `useMoteurArticleSync` au check `capitaine_locked` mais pas live si le lock est fait sur un autre onglet/session. Sprint dédié futur pour propagation cross-tab si nécessaire.
+**Critères d'acceptation testables** :
+- Lock Capitaine "X" → "Y" sur article sélectionné : `<MoteurContextRecap>` affiche "Y" sans reload.
+- Lock Capitaine "X" → "Y" sur article sélectionné : `<LexiquePanel>` lexique-header affiche "Y" sans reload.
+- Validation d'un check Moteur (Discovery / Radar / Capitaine / Lieutenants / Lexique) : le dot correspondant dans `<ProgressDots>` du tree passe à `--filled` sans reload.
+- Uncheck d'un check Moteur : le dot redevient vide sans reload.
+- Switch article A → B → A : aucun bleed-through (le Capitaine de B n'apparaît pas sur A).
+- `tests/unit/coherence/captain-keyword-and-progress-reactive.test.ts` couvre les 3 scénarios.
+**Statut :** active. **Depuis :** 2026-05-07. **Source :** tech-spec-reactive-captain-and-progress-v2.
+
 #### FR-CODE-NO-CAROUSEL
 Le terme « carousel » est éliminé du nommage des symboles publics côté frontend (composables, interfaces, fichiers de tests). Le composable historiquement nommé `useRadarCarousel` est renommé `useExploredKeywords` ; l'interface `CarouselEntry` devient `ExploredKeywordEntry`.
 **Justification** : en mode workflow (par défaut), le Capitaine présente une **liste verticale** de mots-clés explorés (cf. `CaptainRadarList.vue`) — pas un carousel UI. Le terme legacy datait du mode libre (Labo) où il y avait une vraie navigation carousel ; aujourd'hui il prête à confusion. Le terme « exploredKeywords » est préféré à « scanHistory » car il englobe les recherches manuelles ET automatiques.

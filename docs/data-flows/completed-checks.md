@@ -2,8 +2,9 @@
 name: completed-checks
 description: Progression d'un article à travers trois workflows (Moteur, Cerveau, Rédaction) — suivi des étapes achevées via un tableau TEXT[] de checks préfixés en PostgreSQL.
 type: "TEXT[] (PostgreSQL)" 
-last_updated: 2026-05-04
-related_fr: [FR-MOT-CHECKS, FR-CER-CHECKS, FR-RED-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE]
+last_updated: 2026-05-07
+related_fr: [FR-MOT-CHECKS, FR-CER-CHECKS, FR-RED-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE]
+synced_with: [captain-keyword-locked.md]
 ---
 
 # Data Flow — completed-checks
@@ -118,6 +119,7 @@ Qui crée ou met à jour cette donnée :
 | **Refresh bouton Radar / Discovery** (re-scan même keyword) | Lecture `completedChecks` pour décider si Discovery bloquée | Possible émission de `MOTEUR_RADAR_DONE` | **Risque faible** — check est idempotent (ne s'ajoute pas deux fois), mais l'affichage du dot peut être stale quelques secondes si refresh API est lent. |
 | **Uncheck manuel** (utilisateur click "Retirer Capitaine") | Lecture requise pour afficher l'état de lock avant uncheck | POST `/progress/uncheck` | **Risque modéré** — permet une régression (ex: utilisateur enlève Capitaine, relance Discovery, remet Capitaine). Pas de confirmation modale — risque d'accident. |
 | **Restore from history** (utilisateur slider temporel) | Lecture checks historiques depuis `validation_history` JSONB | Aucune (restore ne persiste pas actuellement) | **Risque élevé** — `validation_history` enregistré mais jamais utilisé. Si feature "restore to checkpoint" est ajoutée, il faudra vérifier que les checks restaurés matchent la formule de gating courante. |
+| **ProgressDots non réactifs** (validation d'un check sur l'article sélectionné) | `MoteurContextRecap.getChecks(id)` → `progressStore.getProgress(id)?.completedChecks` | `articleProgressStore.addCheck(id, check)` mute `progressMap` et persiste DB | **Régression historique 2026-05-07** — la fonction `getChecks(id)` accédait `progressMap` à chaque appel mais le re-render Vue n'était pas garanti pour des indexations dynamiques par `String(id)`. Cause racine partagée avec FR-MOT-DISPLAY-FROM-STORE : composants UI live doivent lire le store via une dépendance réactive explicite. **Mitigation** : `MoteurContextRecap.checksByArticleId` exposé via `computed<Record<number, string[]>>` qui itère `progressMap`, garantissant la traque Vue. Voir [captain-keyword-locked.md](./captain-keyword-locked.md). |
 
 ## Diagramme
 

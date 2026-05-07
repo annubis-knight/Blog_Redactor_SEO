@@ -225,7 +225,17 @@ function handleSelectArticle(article: SelectedArticle | null) {
   // (replace) provoquait une race condition avec une stub-entry du watcher
   // CaptainPanel, laissant souvent 0-1 carte affichée alors que la DB
   // en contenait davantage.
+  //
+  // F6 (2026-05-07) — `$reset()` avant `fetchKeywordsMerge` pour éviter le
+  // bleed-through pendant la fenêtre async : entre l'instant `selectedArticle`
+  // change et la résolution du fetch, `articleKeywordsStore.keywords` contient
+  // encore les keywords de l'article précédent. Sans reset, `getDisplayedKeyword`
+  // / `displayedCaptainKeyword` peuvent matcher la mauvaise garde `articleId`
+  // si l'ancien et le nouveau articleId entrent en collision (LRU, refresh
+  // partiel). Reset = état neutre, helpers retombent sur la prop figée jusqu'à
+  // ce que le fetch peuple le store avec le bon `articleId`.
   if (article) {
+    articleKeywordsStore.$reset()
     articleKeywordsStore.fetchKeywordsMerge(article.id)
     loadCachedResults(article.id)
 

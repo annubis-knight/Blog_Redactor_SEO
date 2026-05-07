@@ -145,6 +145,25 @@ const hasEverValidated = computed(() =>
   (articleKeywordsStore.keywords?.lexique?.length ?? 0) > 0,
 )
 
+/**
+ * FR-MOT-DISPLAY-FROM-STORE — lit le Capitaine depuis le store Pinia (source
+ * réactive fraîche, mutée par lockCaptain/unlockCaptain) plutôt que depuis
+ * `props.captainKeyword`, qui est une projection figée fournie par MoteurView
+ * et ne se rafraîchit pas live après un re-lock.
+ *
+ * Garde `selectedArticle.id > 0` pour éviter les collisions sur les articles
+ * proposés non persistés (`dbId === 0`) où `setCapitaine()` peut seed
+ * `articleId: 0` dans le store.
+ */
+const displayedCaptainKeyword = computed<string | null>(() => {
+  const kw = articleKeywordsStore.keywords
+  const selId = props.selectedArticle?.id ?? 0
+  if (selId > 0 && kw && kw.articleId === selId) {
+    return kw.capitaine || props.captainKeyword
+  }
+  return props.captainKeyword
+})
+
 // Sprint 17 — `isLocked` est désormais dérivé de keywords.lexique.length > 0
 // (FR-LEX-CHECKBOX-LOCK-IMMEDIATE). Sans le retrait de `!isLocked.value`,
 // l'extraction serait bloquée dès qu'un seul terme est coché — incohérent avec
@@ -417,7 +436,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
     <div class="lexique-header">
       <div class="captain-badge">
         <span class="captain-icon">&#127894;</span>
-        <span class="captain-keyword">{{ captainKeyword ?? '—' }}</span>
+        <span class="captain-keyword">{{ displayedCaptainKeyword ?? '—' }}</span>
       </div>
       <div v-if="selectedLieutenants.length > 0" class="lieutenant-badges">
         <span v-for="lt in selectedLieutenants" :key="lt" class="lt-badge">{{ lt }}</span>
