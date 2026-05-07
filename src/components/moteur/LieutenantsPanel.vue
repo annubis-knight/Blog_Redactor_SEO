@@ -146,8 +146,11 @@ const {
   contentGapInsights,
   selectedCards,
   currentStep,
+  hnRegenStreaming,
+  hnRegenError,
   toggleLieutenant,
   proposeLieutenants,
+  regenerateHnStructure,
   handleAssistAdd,
   restoreLockedLieutenants,
 } = useLieutenantsIa({
@@ -530,11 +533,14 @@ async function analyzeSERPWithStep(): Promise<void> {
       :active-hn-tab="activeHnTab"
       :hn-saved="hnSaved"
       :is-saving-hn="isSavingHn"
+      :hn-regen-streaming="hnRegenStreaming"
+      :hn-regen-error="hnRegenError"
       :word-groups="wordGroups"
       :selected-cards-size="selectedCards.size"
       @toggle="toggleLieutenant"
       @propose-retry="proposeLieutenants"
       @save-hn="saveHnStructure"
+      @regenerate-hn="regenerateHnStructure"
       @update:active-hn-tab="(tab: string) => activeHnTab = tab"
     />
   </div>

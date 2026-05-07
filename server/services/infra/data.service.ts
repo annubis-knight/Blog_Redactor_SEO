@@ -562,7 +562,7 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
       lieutenants: row.lieutenants ?? [],
       lexique: row.lexique ?? [],
       rootKeywords: row.root_keywords ?? [],
-      hnStructure: row.hn_structure ?? [],
+      hnStructure: Array.isArray(row.hn_structure) ? row.hn_structure : [],
       richCaptain,
       richRootKeywords: exploredKeywords.flatMap(v =>
         (v.rootKeywords ?? []).map(rk => ({
@@ -963,7 +963,7 @@ export async function getArticleKeywordsByCocoon(cocoonName: string): Promise<Ar
     capitaine: row.capitaine ?? '',
     lieutenants: row.lieutenants ?? [],
     lexique: row.lexique ?? [],
-    hnStructure: row.hn_structure ?? [],
+    hnStructure: Array.isArray(row.hn_structure) ? row.hn_structure : [],
     rootKeywords: [],
   }))
 }

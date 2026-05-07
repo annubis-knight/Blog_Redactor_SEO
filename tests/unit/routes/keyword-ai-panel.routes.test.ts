@@ -241,7 +241,7 @@ describe('POST /api/keywords/:keyword/ai-hn-structure', () => {
     }))
   })
 
-  it('loads prompt with keyword, level, and lieutenants', async () => {
+  it('loads prompt with keyword, level, and lieutenants formatted as bullet list', async () => {
     mockStreamGenerator.mockReturnValue(createMockStream(['Structure'])())
     const handler = getHnHandler()
     const req = makeReq('seo local', {
@@ -251,10 +251,35 @@ describe('POST /api/keywords/:keyword/ai-hn-structure', () => {
     })
     const res = makeRes()
     await handler(req, res)
+    // FR-MOT-HN-REGEN-LOCKED 2026-05-07 : lieutenants désormais formatés
+    // en liste markdown ("- causes\n- solutions") pour clarté du prompt.
     expect(mockLoadPrompt).toHaveBeenCalledWith('lieutenants-hn-structure', expect.objectContaining({
       keyword: 'seo local',
       level: 'intermediaire',
-      lieutenants: 'causes, solutions',
+      lieutenants: '- causes\n- solutions',
+      locked_headings: 'Aucun heading verrouille',
+    }), undefined)
+  })
+
+  it('passes lockedHeadings to prompt when provided', async () => {
+    mockStreamGenerator.mockReturnValue(createMockStream(['OK'])())
+    const handler = getHnHandler()
+    const req = makeReq('seo', {
+      level: 'pilier',
+      lieutenants: ['causes'],
+      hnStructure: [],
+      lockedHeadings: [
+        { level: 2, text: 'H2 verrouillé', children: [{ level: 3, text: 'H3 verrouillé' }] },
+        { level: 2, text: 'H2 sans enfants' },
+      ],
+    })
+    const res = makeRes()
+    await handler(req, res)
+    expect(mockLoadPrompt).toHaveBeenCalledWith('lieutenants-hn-structure', expect.objectContaining({
+      locked_headings: expect.stringContaining('- H2: H2 verrouillé'),
+    }), undefined)
+    expect(mockLoadPrompt).toHaveBeenCalledWith('lieutenants-hn-structure', expect.objectContaining({
+      locked_headings: expect.stringContaining('- H3: H3 verrouillé'),
     }), undefined)
   })
 
@@ -274,9 +299,18 @@ describe('POST /api/keywords/:keyword/ai-hn-structure', () => {
     expect(allWritten).toContain('"content":"H3 Detail"')
   })
 
-  it('sends done event with metadata', async () => {
+  it('sends done event with metadata + outline parsed from JSON', async () => {
     const usage = { inputTokens: 50, outputTokens: 100, model: 'claude-sonnet-4-6', estimatedCost: 0.001 }
-    mockStreamGenerator.mockReturnValue(createMockStream(['Text'], usage)())
+    // FR-MOT-HN-REGEN-LOCKED 2026-05-07 : la route parse maintenant le JSON
+    // de la sortie IA pour exposer { outline: { hnStructure, justification } }.
+    const aiJson = JSON.stringify({
+      hnStructure: [
+        { level: 1, text: 'H1' },
+        { level: 2, text: 'H2 a' },
+      ],
+      justification: 'Structure logique',
+    })
+    mockStreamGenerator.mockReturnValue(createMockStream([aiJson], usage)())
     const handler = getHnHandler()
     const req = makeReq('seo', {
       level: 'pilier',
@@ -289,6 +323,8 @@ describe('POST /api/keywords/:keyword/ai-hn-structure', () => {
     expect(allWritten).toContain('event: done')
     expect(allWritten).toContain('"keyword":"seo"')
     expect(allWritten).toContain('"level":"pilier"')
+    expect(allWritten).toContain('"hnStructure"')
+    expect(allWritten).toContain('"H2 a"')
     expect(res.end).toHaveBeenCalled()
   })
 

@@ -4,7 +4,10 @@
  * Macro qui affiche la structure Hn proposée par l'IA + récurrence concurrents.
  * Couvre :
  *   1. structure Hn de l'IA : H2 + enfants H3 rendus hiérarchiquement
- *   2. structure absente → bloc IA absent
+ *   2. structure absente → section visible avec hint + bouton Générer
+ *      (FR-MOT-HN-EMPTY-VISIBLE 2026-05-07 : la section reste affichée
+ *       avec un placeholder pour signaler à l'utilisateur qu'une HN est
+ *       attendue ici, plutôt que de disparaître silencieusement.)
  *   3. bouton Sauvegarder visible si !isLocked, masqué si locked
  *   4. clic Sauvegarder → emit save-hn
  *   5. bouton disabled pendant isSavingHn
@@ -14,6 +17,8 @@
  *   9. clic tab → emit update:activeHnTab
  *  10. liste de récurrence avec count, total, percent + bar
  *  11. liste vide → message dédié
+ *  12. Régénération HN : bouton + propagation lockedHeadings
+ *      (FR-MOT-HN-REGEN-LOCKED 2026-05-07)
  */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -37,12 +42,75 @@ const BASE = {
   isLocked: false,
   hnSaved: false,
   isSavingHn: false,
+  selectedCardsSize: 0,
+  hnRegenStreaming: false,
+  hnRegenError: null as string | null,
 }
 
 describe('LieutenantH2Structure', () => {
-  it('structure Hn IA absente → bloc IA absent', () => {
+  it('structure Hn IA absente → section visible avec hint + bouton Generer', () => {
     const wrapper = mount(LieutenantH2Structure, { props: BASE, global: { stubs: STUBS } })
-    expect(wrapper.find('[data-testid="hn-structure-section"]').exists()).toBe(false)
+    // FR-MOT-HN-EMPTY-VISIBLE : la section reste affichée même vide.
+    expect(wrapper.find('[data-testid="hn-structure-section"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hn-structure-empty"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="hn-generate-btn"]').exists()).toBe(true)
+    // Sans lieutenants cochés, le bouton est désactivé.
+    expect((wrapper.find('[data-testid="hn-generate-btn"]').element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('structure Hn IA absente + lieutenants cochés → bouton Generer activable', () => {
+    const wrapper = mount(LieutenantH2Structure, {
+      props: { ...BASE, selectedCardsSize: 3 },
+      global: { stubs: STUBS },
+    })
+    expect((wrapper.find('[data-testid="hn-generate-btn"]').element as HTMLButtonElement).disabled).toBe(false)
+  })
+
+  it('clic Generer → emit regenerate-hn avec lockedHeadings vide (aucun titre verrouillé)', async () => {
+    const wrapper = mount(LieutenantH2Structure, {
+      props: { ...BASE, selectedCardsSize: 3 },
+      global: { stubs: STUBS },
+    })
+    await wrapper.find('[data-testid="hn-generate-btn"]').trigger('click')
+    expect(wrapper.emitted('regenerate-hn')![0]).toEqual([[]])
+  })
+
+  it('verrou + Regenerer → emit regenerate-hn avec lockedHeadings du H2 verrouillé', async () => {
+    const hnStructure: ProposeLieutenantsHnNode[] = [
+      { level: 2, text: 'H2 à garder' },
+      { level: 2, text: 'H2 jetable' },
+    ]
+    const wrapper = mount(LieutenantH2Structure, {
+      props: { ...BASE, hnStructure, selectedCardsSize: 3 },
+      global: { stubs: STUBS },
+    })
+    // Verrouille le premier H2
+    const lockBtns = wrapper.findAll('.hn-lock-btn')
+    await lockBtns[0].trigger('click')
+    // Click Régénérer
+    await wrapper.find('[data-testid="hn-regenerate-btn"]').trigger('click')
+    const emitted = wrapper.emitted('regenerate-hn')
+    expect(emitted).toBeTruthy()
+    expect(emitted![0][0]).toEqual([{ level: 2, text: 'H2 à garder', children: undefined }])
+  })
+
+  it('hnRegenStreaming=true → texte "Regeneration..." + bouton désactivé', () => {
+    const hnStructure: ProposeLieutenantsHnNode[] = [{ level: 2, text: 'H2' }]
+    const wrapper = mount(LieutenantH2Structure, {
+      props: { ...BASE, hnStructure, selectedCardsSize: 3, hnRegenStreaming: true },
+      global: { stubs: STUBS },
+    })
+    const btn = wrapper.find('[data-testid="hn-regenerate-btn"]')
+    expect(btn.text()).toContain('Regeneration')
+    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('hnRegenError → message d\'erreur affiché', () => {
+    const wrapper = mount(LieutenantH2Structure, {
+      props: { ...BASE, selectedCardsSize: 3, hnRegenError: 'Erreur réseau' },
+      global: { stubs: STUBS },
+    })
+    expect(wrapper.text()).toContain('Erreur réseau')
   })
 
   it('structure Hn IA : H2 + enfants H3 rendus hiérarchiquement', () => {
