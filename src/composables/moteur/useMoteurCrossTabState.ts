@@ -5,6 +5,7 @@ import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import type { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { log } from '@/utils/logger'
+import { MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE } from '@shared/constants/workflow-checks.constants.js'
 
 /**
  * Vague 3 — Composable extrait de MoteurView.
@@ -108,14 +109,14 @@ export function useMoteurCrossTabState(deps: MoteurCrossTabStateDeps): MoteurCro
   function handleRadarScanned(payload: { globalScore: number; heatLevel: string }): void {
     log.debug('[MoteurCrossTabState] Radar scanned', payload)
     radarScanResult.value = payload
-    emitCheckCompleted('radar_done')
+    emitCheckCompleted(MOTEUR_RADAR_DONE)
   }
 
   function handleSendToRadar(keywords: RadarKeyword[]): void {
     log.info(`[MoteurCrossTabState] Send to radar: ${keywords.length} keywords`)
     discoveryRadarKeywords.value = keywords
     setActiveTab('radar')
-    emitCheckCompleted('discovery_done')
+    emitCheckCompleted(MOTEUR_DISCOVERY_DONE)
 
     // Add to basket
     basketStore.addKeywords(keywords.map(k => ({

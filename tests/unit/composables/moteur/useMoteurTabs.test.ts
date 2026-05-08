@@ -24,6 +24,11 @@ import {
 import { useArticleProgressStore } from '../../../../src/stores/article/article-progress.store'
 import { useWorkflowNavStore } from '../../../../src/stores/ui/workflow-nav.store'
 import type { SelectedArticle } from '../../../../shared/types/index'
+import {
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '../../../../shared/constants/workflow-checks.constants.js'
 
 function makeArticle(id = 1): SelectedArticle {
   return {
@@ -126,16 +131,16 @@ describe('useMoteurTabs', () => {
     expect(api.computeSmartTab(1)).toBe('capitaine')
 
     // capitaine_locked → lieutenants
-    articleProgressStore.progressMap['1'].completedChecks = ['capitaine_locked']
+    articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED]
     expect(api.computeSmartTab(1)).toBe('lieutenants')
 
     // lieutenants_locked → lexique
-    articleProgressStore.progressMap['1'].completedChecks = ['capitaine_locked', 'lieutenants_locked']
+    articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED]
     expect(api.computeSmartTab(1)).toBe('lexique')
 
     // Sprint 4 friction #1 : lexique_validated NE devient PAS finalisation
     articleProgressStore.progressMap['1'].completedChecks = [
-      'capitaine_locked', 'lieutenants_locked', 'lexique_validated',
+      MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED,
     ]
     expect(api.computeSmartTab(1)).toBe('lexique')
     unmount()

@@ -6,6 +6,11 @@ import {
   isFinalisationUnlocked,
   finalisationButtonTitle as buildFinalisationButtonTitle,
 } from '@/composables/moteur/useFinalisationGating'
+import {
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants.js'
 
 /**
  * Vague 3 — Composable extrait de MoteurView.
@@ -53,9 +58,9 @@ export function useMoteurSoftGating(deps: MoteurSoftGatingDeps): MoteurSoftGatin
     return articleProgressStore.getProgress(id)?.completedChecks?.includes(check) ?? false
   }
 
-  const isCaptaineLocked = computed(() => hasCheck('capitaine_locked'))
-  const isLieutenantsLocked = computed(() => hasCheck('lieutenants_locked'))
-  const isLexiqueValidated = computed(() => hasCheck('lexique_validated'))
+  const isCaptaineLocked = computed(() => hasCheck(MOTEUR_CAPITAINE_LOCKED))
+  const isLieutenantsLocked = computed(() => hasCheck(MOTEUR_LIEUTENANTS_LOCKED))
+  const isLexiqueValidated = computed(() => hasCheck(MOTEUR_LEXIQUE_VALIDATED))
 
   const finalisationChecksInput = computed(() => ({
     capitaineLocked: isCaptaineLocked.value,

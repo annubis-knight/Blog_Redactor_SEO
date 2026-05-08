@@ -60,7 +60,7 @@ const BASE = {
   eliminatedCards: [] as ProposedLieutenant[],
   totalGenerated: 0,
   selectedCards: new Map<string, ProposedLieutenant>(),
-  isLocked: false,
+  // 2026-05-08 — `isLocked` SUPPRIME du composant.
   contentGapInsights: '',
 }
 
@@ -186,7 +186,11 @@ describe('LieutenantProposals', () => {
     expect(wrapper.emitted('toggle')![0][0]).toEqual(cards[1])
   })
 
-  it('isLocked=true → toutes les cards passent disabled', () => {
+  it('REGRESSION GUARD : cards JAMAIS disabled (2026-05-08, plus de notion panel locked)', () => {
+    // L'ancien comportement "isLocked=true → cards disabled" est SUPPRIME.
+    // Le verrouillage est par checkbox individuelle (lock immediat) — pas
+    // par batch panel. Les cards doivent toujours rester cliquables pour
+    // permettre lock/unlock de chaque lieutenant a tout moment.
     const cards = [makeLt('a'), makeLt('b')]
     const wrapper = mount(LieutenantProposals, {
       props: {
@@ -194,13 +198,12 @@ describe('LieutenantProposals', () => {
         lieutenantCards: cards,
         selectedCards: new Map(),
         totalGenerated: 2,
-        isLocked: true,
       },
       global: GLOBAL,
     })
     const stubs = wrapper.findAll('.stub-lt-card')
-    expect(stubs[0].attributes('data-disabled')).toBe('true')
-    expect(stubs[1].attributes('data-disabled')).toBe('true')
+    expect(stubs[0].attributes('data-disabled')).not.toBe('true')
+    expect(stubs[1].attributes('data-disabled')).not.toBe('true')
   })
 
   it('checked reflète selectedCards.has(keyword)', () => {

@@ -56,6 +56,8 @@ describe('FinalisationPanel', () => {
   })
 
   it('capitaine : affiche keyword depuis richCaptain en priorité', () => {
+    // 2026-05-07 — `lockedAt` SUPPRIME du type RichCaptain : le test verifie
+    // uniquement le keyword affiche, plus de formatage de date.
     const store = useArticleKeywordsStore()
     store.keywords = {
       articleId: 1,
@@ -64,7 +66,6 @@ describe('FinalisationPanel', () => {
         keyword: 'agence seo paris',
         status: 'locked',
         exploredKeywords: [],
-        lockedAt: '2026-04-15T10:00:00.000Z',
         aiPanelMarkdown: null,
       },
       lieutenants: [],
@@ -80,8 +81,6 @@ describe('FinalisationPanel', () => {
     })
 
     expect(wrapper.text()).toContain('agence seo paris')
-    // Date formatée fr-FR : 15/04/2026
-    expect(wrapper.text()).toContain('15/04/2026')
   })
 
   it('capitaine : fallback sur flat keyword si richCaptain absent', () => {
@@ -113,9 +112,9 @@ describe('FinalisationPanel', () => {
       richCaptain: null,
       lieutenants: [],
       richLieutenants: [
-        { keyword: 'agence locale', reasoning: 'fort volume', status: 'locked', suggestedHnLevel: 2, sources: [], score: 80, kpis: null, lockedAt: null },
-        { keyword: 'consultant seo', reasoning: 'pertinent', status: 'suggested', suggestedHnLevel: 3, sources: [], score: 70, kpis: null, lockedAt: null },
-        { keyword: 'expert local', reasoning: 'niche', status: 'locked', suggestedHnLevel: 3, sources: [], score: 75, kpis: null, lockedAt: null },
+        { keyword: 'agence locale', reasoning: 'fort volume', status: 'locked', suggestedHnLevel: 2, sources: [], score: 80, kpis: null },
+        { keyword: 'consultant seo', reasoning: 'pertinent', status: 'suggested', suggestedHnLevel: 3, sources: [], score: 70, kpis: null },
+        { keyword: 'expert local', reasoning: 'niche', status: 'locked', suggestedHnLevel: 3, sources: [], score: 75, kpis: null },
       ],
       lexique: [],
       richRootKeywords: [],
@@ -214,7 +213,8 @@ describe('FinalisationPanel', () => {
     expect(wrapper.emitted('navigate-redaction')).toBeTruthy()
   })
 
-  it('lockedAt invalide ou absent → pas de date affichée', () => {
+  it('FinalisationPanel n\'affiche plus de date de verrouillage (2026-05-07)', () => {
+    // `lockedAt` a ete supprime du type RichCaptain (timestamp inutile).
     const store = useArticleKeywordsStore()
     store.keywords = {
       articleId: 1,
@@ -223,7 +223,6 @@ describe('FinalisationPanel', () => {
         keyword: 'agence',
         status: 'locked',
         exploredKeywords: [],
-        lockedAt: null,
         aiPanelMarkdown: null,
       },
       lieutenants: [], richLieutenants: [], lexique: [], richRootKeywords: [], hnStructure: [],

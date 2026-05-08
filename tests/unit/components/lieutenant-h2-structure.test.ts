@@ -39,7 +39,8 @@ const BASE = {
   hnRecurrence: [] as HnRecurrenceItem[],
   serpResultsByKeyword: new Map<string, SerpAnalysisResult>(),
   activeHnTab: '__all__',
-  isLocked: false,
+  // 2026-05-08 — `isLocked` SUPPRIME du composant : le concept "panel locké"
+  // n'existe plus. Le verrouillage est par checkbox individuelle.
   hnSaved: false,
   isSavingHn: false,
   selectedCardsSize: 0,
@@ -141,22 +142,13 @@ describe('LieutenantH2Structure', () => {
     expect(children[0].text()).toContain('Les avantages métier')
   })
 
-  it('REGRESSION GUARD : bouton Sauvegarder visible quand !isLocked', () => {
+  it('REGRESSION GUARD : bouton Sauvegarder TOUJOURS visible (2026-05-08, plus de notion de panel locked)', () => {
     const hnStructure: ProposeLieutenantsHnNode[] = [{ level: 2, text: 'H2' }]
     const wrapper = mount(LieutenantH2Structure, {
-      props: { ...BASE, hnStructure, isLocked: false },
+      props: { ...BASE, hnStructure },
       global: { stubs: STUBS },
     })
     expect(wrapper.find('.btn-save-hn').exists()).toBe(true)
-  })
-
-  it('REGRESSION GUARD : bouton Sauvegarder masqué quand isLocked', () => {
-    const hnStructure: ProposeLieutenantsHnNode[] = [{ level: 2, text: 'H2' }]
-    const wrapper = mount(LieutenantH2Structure, {
-      props: { ...BASE, hnStructure, isLocked: true },
-      global: { stubs: STUBS },
-    })
-    expect(wrapper.find('.btn-save-hn').exists()).toBe(false)
   })
 
   it('clic Sauvegarder → emit save-hn', async () => {
@@ -189,13 +181,16 @@ describe('LieutenantH2Structure', () => {
     expect(wrapper.text()).toContain('Sauvegardee')
   })
 
-  it('badge "Validée avec lieutenants" si isLocked + !hnSaved', () => {
+  it('REGRESSION GUARD : badge "Validee avec les lieutenants" SUPPRIME (2026-05-08)', () => {
+    // Le badge dependait du concept "panel locked" qui n'existe plus.
+    // Le statut "structure sauvegardee" est porte uniquement par le badge
+    // "Sauvegardee" (cf. test ci-dessus).
     const hnStructure: ProposeLieutenantsHnNode[] = [{ level: 2, text: 'H2' }]
     const wrapper = mount(LieutenantH2Structure, {
-      props: { ...BASE, hnStructure, isLocked: true, hnSaved: false },
+      props: { ...BASE, hnStructure, hnSaved: false },
       global: { stubs: STUBS },
     })
-    expect(wrapper.text()).toContain('Validee avec les lieutenants')
+    expect(wrapper.text()).not.toContain('Validee avec les lieutenants')
   })
 
   it('tabs keywords visibles si serpResultsByKeyword.size > 1', () => {

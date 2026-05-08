@@ -14,6 +14,7 @@ import { useArticleKeywordsStore } from '../../../../src/stores/article/article-
 import { useMoteurBasketStore } from '../../../../src/stores/article/moteur-basket.store'
 import type { SelectedArticle } from '../../../../shared/types/index'
 import type { RadarCard } from '../../../../shared/types/intent.types'
+import { MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE } from '../../../../shared/constants/workflow-checks.constants.js'
 
 function makeArticle(id = 1): SelectedArticle {
   return {
@@ -75,7 +76,7 @@ describe('useMoteurCrossTabState', () => {
     api.handleRadarScanned({ globalScore: 72, heatLevel: 'chaude' })
 
     expect(api.radarScanResult.value).toEqual({ globalScore: 72, heatLevel: 'chaude' })
-    expect(emitCheckCompleted).toHaveBeenCalledWith('radar_done')
+    expect(emitCheckCompleted).toHaveBeenCalledWith(MOTEUR_RADAR_DONE)
   })
 
   it('AC.I.12 — handleSendToRadar publie keywords + ajoute au basket + switch tab + émet check', () => {
@@ -99,7 +100,7 @@ describe('useMoteurCrossTabState', () => {
 
     expect(api.discoveryRadarKeywords.value).toHaveLength(2)
     expect(setActiveTab).toHaveBeenCalledWith('radar')
-    expect(emitCheckCompleted).toHaveBeenCalledWith('discovery_done')
+    expect(emitCheckCompleted).toHaveBeenCalledWith(MOTEUR_DISCOVERY_DONE)
     expect(addKeywordsSpy).toHaveBeenCalled()
     expect(addKeywordsSpy.mock.calls[0]![0][0].source).toBe('discovery')
   })

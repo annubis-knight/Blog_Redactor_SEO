@@ -239,7 +239,12 @@ describe('article-keywords.store — addLexiqueTerm / removeLexiqueTerm', () => 
 })
 
 describe('article-keywords.store — saveKeywords', () => {
-  it('saves keywords via API and updates state', async () => {
+  it('saves keywords via API and preserves local store state (no overwrite)', async () => {
+    // 2026-05-08 — saveDecisions n'ECRASE plus keywords.value avec la response
+    // du PUT. La response contient seulement les flat fields, pas richCaptain/
+    // richLieutenants. Si on remplaçait, on perdrait ces objets riches et
+    // l'UI verrait disparaitre les checkboxes locked. Le store local est
+    // deja a jour (mute par lockCaptain/lockLieutenant avant l'appel save).
     const savedKeywords: ArticleKeywords = { ...mockKeywords, capitaine: 'updated capitaine' }
     mockApiPut.mockResolvedValue(savedKeywords)
     const store = useArticleKeywordsStore()
@@ -255,7 +260,8 @@ describe('article-keywords.store — saveKeywords', () => {
       rootKeywords: [],
       hnStructure: [],
     })
-    expect(store.keywords).toEqual(savedKeywords)
+    // Le store local conserve sa valeur (mute par setCapitaine avant le save).
+    expect(store.keywords?.capitaine).toBe('updated capitaine')
     expect(store.isSaving).toBe(false)
     expect(store.error).toBeNull()
   })

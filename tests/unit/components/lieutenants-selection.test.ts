@@ -1065,21 +1065,11 @@ describe('LieutenantsPanel', () => {
       expect(w.find('[data-testid="locked-state"]').exists()).toBe(false)
     })
 
-    it('initialLocked prop sets locked state immediately', async () => {
-      // Sprint 13 — `isLocked` est désormais un computed dérivé de richLieutenants[].status.
-      // La prop `initialLocked` est un fallback uniquement quand le store ne matche pas
-      // l'article. Pour que le test reflète le comportement attendu (UI verrouillé), on
-      // configure aussi le store avec un lieutenant en status='locked'.
-      const previousRich = mockStoreKeywords.value!.richLieutenants
-      mockStoreKeywords.value!.richLieutenants = [
-        { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'],
-          suggestedHnLevel: 2, score: 50, kpis: null, lockedAt: '2026-01-01T00:00:00Z' },
-      ]
-      const w = await mountWithCards({ initialLocked: true })
-      expect((w.vm as any).isLocked).toBe(true)
-      expect(w.find('[data-testid="locked-state"]').exists()).toBe(true)
-      // Cleanup pour ne pas polluer les tests suivants
-      mockStoreKeywords.value!.richLieutenants = previousRich
+    it.skip('OBSOLETE 2026-05-08 : initialLocked prop sets locked state immediately', async () => {
+      // Test SUPPRIME : la computed `isLocked` au niveau panel + le data-testid
+      // `locked-state` ont ete elimines. Plus de notion "panel locked" : le
+      // verrouillage est par checkbox individuelle. Cf. FR-LIE-CHECKBOX-LOCK-IMMEDIATE
+      // etendu (suppression du concept "batch lock panel").
     })
   })
 
