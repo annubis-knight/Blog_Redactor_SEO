@@ -1,9 +1,27 @@
 <script setup lang="ts">
+/**
+ * AUTHORITY: PostgreSQL `article_keywords.lexique` TEXT[] (termes verrouilles utilisateur).
+ *            PostgreSQL `lexique_explorations` (cache propositions TF-IDF/IA, distinct).
+ * READS FROM: useArticleKeywordsStore.keywords.lexique (mount/store hydrate via fetchKeywords).
+ *             GET /articles/:id/explorations (hydrateFromDb / mergeFromDb pour pastExplorations).
+ *             POST /serp/tfidf (extraction TF-IDF live).
+ *             useArticleProgressStore.getProgress(id).completedChecks (reconciliation au mount).
+ * WRITES TO: articleKeywordsStore.addLexiqueTerm / removeLexiqueTerm + saveDecisions(id)
+ *            (toggle terme = mute store + PUT /articles/:id/keywords).
+ *            Emits 'check-completed' / 'check-removed' (MOTEUR_LEXIQUE_VALIDATED) consommes
+ *            par MoteurView qui appelle articleProgressStore.addCheck / removeCheck.
+ * CONSUMERS: MoteurView (parent), TabCachePanel via tab-cache-entries.ts
+ *            (validatedLexiqueCount = lexique.length).
+ * RELATED FR: FR-LEX-SELECT, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-TFIDF, FR-LEX-MULTI-KEYWORD,
+ *             FR-MOT-CHECK-RECONCILIATION (cleanup check legacy au mount si lexique=[]),
+ *             FR-MOT-CACHE-PANEL-COUNT (lexique.length pilote le compteur DB du TabCachePanel).
+ */
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { apiGet, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useLexiqueIa } from '@/composables/lexique/useLexiqueIa'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
@@ -242,11 +260,12 @@ function toggleTerm(term: string) {
 const selectedCount = computed(() => selectedTerms.value.size)
 
 const selectedByLevel = computed(() => {
-  if (!tfidfResult.value) return { obligatoire: 0, differenciateur: 0, optionnel: 0 }
+  const r = tfidfResult.value
+  if (!r) return { obligatoire: 0, differenciateur: 0, optionnel: 0 }
   return {
-    obligatoire: tfidfResult.value.obligatoire.filter(t => selectedTerms.value.has(t.term)).length,
-    differenciateur: tfidfResult.value.differenciateur.filter(t => selectedTerms.value.has(t.term)).length,
-    optionnel: tfidfResult.value.optionnel.filter(t => selectedTerms.value.has(t.term)).length,
+    obligatoire: (r.obligatoire ?? []).filter(t => selectedTerms.value.has(t.term)).length,
+    differenciateur: (r.differenciateur ?? []).filter(t => selectedTerms.value.has(t.term)).length,
+    optionnel: (r.optionnel ?? []).filter(t => selectedTerms.value.has(t.term)).length,
   }
 })
 
@@ -271,10 +290,56 @@ watch(tfidfResult, (res) => {
 // Les fonctions historiques validateLexique/unlockLexique sont retirées
 // (FR-LEX-CHECKBOX-LOCK-IMMEDIATE).
 
+/**
+ * Watcher de gating workflow + reconciliation au mount (FR-MOT-CHECK-RECONCILIATION).
+ *
+ * Au mount (immediate, isFirstRun=true) :
+ *  - lexique=[] mais 'moteur:lexique_validated' present en DB → emit check-removed
+ *    (cas observe article 64 : check legacy non nettoye apres deverrouillage).
+ *  - lexique=['t1',...] mais check absent → emit check-completed (etat coherent).
+ *  - DB et store coherents → no-op.
+ *
+ * Apres le mount : transitions normales false↔true (utilisateur coche/decoche).
+ */
 let previousLockedState = false
+let isFirstRun = true
 watch(
   isLocked,
   (locked) => {
+    if (isFirstRun) {
+      isFirstRun = false
+      previousLockedState = locked
+      const id = props.selectedArticle?.id
+      let checks: string[] = []
+      try {
+        const progressStore = useArticleProgressStore()
+        checks = id ? (progressStore.getProgress(id)?.completedChecks ?? []) : []
+      } catch {
+        checks = []
+      }
+      const checkPresent = checks.includes(MOTEUR_LEXIQUE_VALIDATED)
+      const lexiqueCount = articleKeywordsStore.keywords?.lexique?.length ?? 0
+      let decision: 'add' | 'remove' | 'noop'
+      if (locked && !checkPresent) {
+        decision = 'add'
+        emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
+      } else if (!locked && checkPresent) {
+        decision = 'remove'
+        emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+      } else {
+        decision = 'noop'
+      }
+      log.info('[reconcile:lexique]', {
+        articleId: id,
+        lexiqueCount,
+        isLocked: locked,
+        checkPresent,
+        decision,
+        check: MOTEUR_LEXIQUE_VALIDATED,
+      })
+      return
+    }
+
     if (locked && !previousLockedState) {
       emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
     } else if (!locked && previousLockedState) {
@@ -515,7 +580,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
 
       <!-- 3 sections factorisées via LexiqueTermsList -->
       <LexiqueTermsList
-        :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire.length} termes`"
+        :title="`Obligatoire (70%+) — ${tfidfResult.obligatoire?.length ?? 0} termes`"
         :terms="tfidfResult.obligatoire"
         :selected-terms="selectedTerms"
         :is-locked="isLocked"
@@ -527,7 +592,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         @toggle-term="toggleTerm"
       />
       <LexiqueTermsList
-        :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur.length} termes`"
+        :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur?.length ?? 0} termes`"
         :terms="tfidfResult.differenciateur"
         :selected-terms="selectedTerms"
         :is-locked="isLocked"
@@ -539,7 +604,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         @toggle-term="toggleTerm"
       />
       <LexiqueTermsList
-        :title="`Optionnel (<30%) — ${tfidfResult.optionnel.length} termes`"
+        :title="`Optionnel (<30%) — ${tfidfResult.optionnel?.length ?? 0} termes`"
         :terms="tfidfResult.optionnel"
         :selected-terms="selectedTerms"
         :is-locked="isLocked"
