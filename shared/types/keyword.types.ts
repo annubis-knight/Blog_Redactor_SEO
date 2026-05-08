@@ -82,13 +82,16 @@ export interface CaptainScanEntry {
   relevanceUnavailableReason?: RelevanceUnavailableReason | null
 }
 
-/** Rich captain object with validation history and AI panel content */
+/**
+ * Rich captain object with validation history and AI panel content.
+ * 2026-05-07 — `lockedAt` SUPPRIME : le timestamp ne servait nulle part dans l'UI
+ * et brouillait la source de verite. status est derive de `keyword` non-vide.
+ */
 export interface RichCaptain {
   keyword: string
   status: CaptainKeywordStatus
   exploredKeywords: CaptainScanEntry[]
   aiPanelMarkdown: string | null
-  lockedAt: string | null
 }
 
 // ---- Rich root keyword types ----
@@ -104,7 +107,12 @@ export interface RichRootKeyword {
 
 // ---- Rich lieutenant types ----
 
-/** Rich lieutenant object with AI-generated metadata */
+/**
+ * Rich lieutenant object with AI-generated metadata.
+ * 2026-05-07 — `lockedAt` SUPPRIME : le timestamp ne servait nulle part dans l'UI
+ * et brouillait la source de verite. status (locked/suggested/eliminated/archived)
+ * suffit pour determiner l'etat.
+ */
 export interface RichLieutenant {
   keyword: string
   status: LieutenantKeywordStatus
@@ -113,7 +121,6 @@ export interface RichLieutenant {
   suggestedHnLevel: 2 | 3
   score: number                             // 0-100 AI quality score
   kpis: KpiSummary[] | null                 // null if not individually validated
-  lockedAt: string | null
   exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
 }
 

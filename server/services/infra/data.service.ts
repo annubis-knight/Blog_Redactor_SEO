@@ -542,6 +542,10 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   // NOTE: we also build it when exploredKeywords is non-empty even without a
   // locked captain — otherwise the carousel on the Captain tab can't rehydrate
   // past explorations after a refresh. (Bug fix Sprint 0.1.)
+  //
+  // 2026-05-07 — `captain_locked_at` SUPPRIME : status est derive directement
+  // de `capitaine` non-vide. Source unique de verite = article_keywords.capitaine.
+  // Plus de champ `lockedAt` dans le type RichCaptain.
   const captainKeyword = row.capitaine ?? ''
   const hasExplorations = exploredKeywords.length > 0
   const captainTest = captainKeyword
@@ -549,10 +553,9 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
     : undefined
   const richCaptain: RichCaptain | undefined = (captainKeyword || hasExplorations) ? {
     keyword: captainKeyword,
-    status: row.captain_locked_at ? 'locked' : 'suggested',
+    status: captainKeyword ? 'locked' : 'suggested',
     exploredKeywords,
     aiPanelMarkdown: captainTest?.aiPanelMarkdown ?? null,
-    lockedAt: row.captain_locked_at?.toISOString() ?? null,
   } : undefined
 
   return {
@@ -576,34 +579,71 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   }
 }
 
-export async function saveArticleKeywords(id: number, data: Omit<ArticleKeywords, 'articleId'>): Promise<ArticleKeywords> {
-  // Decision layer only → article_keywords
+/**
+ * Sauvegarde "decision-only" sur article_keywords + mirror sur articles.
+ *
+ * 2026-05-07 — Option A : SEUL le champ `capitaine` est utilise pour determiner
+ * l'etat de verrouillage (capitaine non-vide = verrouille). La colonne
+ * `captain_locked_at` est SUPPRIMEE de l'INSERT/UPDATE et de la lecture.
+ *
+ * Option A "preserve si non envoye" : chaque champ du payload est traite en
+ * mode "remplace si fourni, conserve si undefined". Evite l'ecrasement
+ * accidentel quand un PUT incomplet est envoye (ex: requestSave parasite
+ * au mount qui n'inclut pas le champ).
+ *
+ * Champs traites :
+ *   - capitaine, lieutenants, lexique, hnStructure, rootKeywords
+ *   - articles.captain_keyword_locked (mirror) = capitaine non-vide ? capitaine : null
+ */
+export async function saveArticleKeywords(id: number, data: Partial<Omit<ArticleKeywords, 'articleId'>>): Promise<ArticleKeywords> {
+  // Lit l'etat actuel pour preserver les champs non-fournis dans le payload
+  // (Option A : le PUT remplace les champs envoyes uniquement).
+  const existing = await pool.query(
+    'SELECT capitaine, lieutenants, lexique, hn_structure, root_keywords FROM article_keywords WHERE article_id = $1',
+    [id],
+  )
+  const cur = existing.rows[0] ?? null
+
+  // Resolution "preserve si non envoye" champ par champ.
+  const finalCapitaine = data.capitaine !== undefined ? (data.capitaine ?? '') : (cur?.capitaine ?? '')
+  const finalLieutenants = data.lieutenants !== undefined ? data.lieutenants : (cur?.lieutenants ?? [])
+  const finalLexique = data.lexique !== undefined ? data.lexique : (cur?.lexique ?? [])
+  const finalHnStructure = data.hnStructure !== undefined
+    ? (data.hnStructure ? JSON.stringify(data.hnStructure) : null)
+    : (cur?.hn_structure ? JSON.stringify(cur.hn_structure) : null)
+  const finalRootKeywords = data.rootKeywords !== undefined ? data.rootKeywords : (cur?.root_keywords ?? [])
+
+  // Decision layer only → article_keywords (sans captain_locked_at).
   await pool.query(`
-    INSERT INTO article_keywords (article_id, capitaine, lieutenants, lexique, hn_structure, captain_locked_at, root_keywords)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO article_keywords (article_id, capitaine, lieutenants, lexique, hn_structure, root_keywords)
+    VALUES ($1, $2, $3, $4, $5, $6)
     ON CONFLICT (article_id) DO UPDATE
     SET capitaine = EXCLUDED.capitaine, lieutenants = EXCLUDED.lieutenants,
         lexique = EXCLUDED.lexique, hn_structure = EXCLUDED.hn_structure,
-        captain_locked_at = EXCLUDED.captain_locked_at, root_keywords = EXCLUDED.root_keywords
+        root_keywords = EXCLUDED.root_keywords
   `, [
     id,
-    data.capitaine ?? '',
-    data.lieutenants ?? [],
-    data.lexique ?? [],
-    data.hnStructure ? JSON.stringify(data.hnStructure) : null,
-    data.richCaptain?.lockedAt ?? null,
-    data.rootKeywords ?? [],
+    finalCapitaine,
+    finalLieutenants,
+    finalLexique,
+    finalHnStructure,
+    finalRootKeywords,
   ])
 
-  // Mirror captain lock state on articles table
-  const mirrored = data.richCaptain?.status === 'locked'
-    ? (data.richCaptain.keyword ?? null)
-    : null
+  // Mirror sur articles.captain_keyword_locked : capitaine non-vide = verrouille.
+  const mirrored = finalCapitaine && finalCapitaine.length > 0 ? finalCapitaine : null
   await updateArticleCaptainKeyword(id, mirrored).catch(err => {
     log.warn('saveArticleKeywords — mirror captainKeyword failed', { id, error: (err as Error).message })
   })
 
-  return { articleId: id, ...data }
+  return {
+    articleId: id,
+    capitaine: finalCapitaine,
+    lieutenants: finalLieutenants,
+    lexique: finalLexique,
+    rootKeywords: finalRootKeywords,
+    hnStructure: data.hnStructure ?? (cur?.hn_structure ? (typeof cur.hn_structure === 'string' ? JSON.parse(cur.hn_structure) : cur.hn_structure) : []),
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -890,6 +930,8 @@ export async function getLieutenantExplorations(articleId: number): Promise<{ da
     `SELECT * FROM lieutenant_explorations WHERE article_id = $1 ORDER BY score DESC`, [articleId]
   )
   const dbOps: DbOp[] = [{ operation: 'select', table: 'lieutenant_explorations', rowCount: res.rows.length, ms: Date.now() - t }]
+  // 2026-05-07 — `lieutenant_explorations.locked_at` SUPPRIME (timestamp inutile
+  // dans l'UI). Source de verite du status = colonne `status`.
   const data = res.rows.map(lt => ({
     keyword: lt.keyword,
     status: lt.status,
@@ -899,7 +941,6 @@ export async function getLieutenantExplorations(articleId: number): Promise<{ da
     // eslint-disable-next-line no-restricted-syntax -- mapping DB : 0 est valeur par défaut historique de cette colonne (avant nullable)
     score: lt.score ?? 0,
     kpis: lt.kpis ?? null,
-    lockedAt: lt.locked_at?.toISOString() ?? null,
     exploredAt: lt.explored_at?.toISOString() ?? null,
   }))
   return { data, dbOps }
@@ -912,8 +953,8 @@ export async function saveLieutenantExplorations(
   let rowCount = 0
   for (const lt of entries) {
     const res = await pool.query(`
-      INSERT INTO lieutenant_explorations (article_id, keyword, status, captain_keyword, reasoning, sources, suggested_hn_level, score, kpis, locked_at, explored_at)
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+      INSERT INTO lieutenant_explorations (article_id, keyword, status, captain_keyword, reasoning, sources, suggested_hn_level, score, kpis, explored_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       ON CONFLICT (article_id, keyword) DO UPDATE
       SET status = CASE WHEN lieutenant_explorations.status IN ('locked','eliminated') AND EXCLUDED.status = 'suggested'
                        THEN lieutenant_explorations.status ELSE EXCLUDED.status END,
@@ -921,13 +962,11 @@ export async function saveLieutenantExplorations(
           reasoning = EXCLUDED.reasoning, sources = EXCLUDED.sources,
           suggested_hn_level = EXCLUDED.suggested_hn_level,
           score = EXCLUDED.score, kpis = EXCLUDED.kpis,
-          locked_at = CASE WHEN lieutenant_explorations.status IN ('locked','eliminated') AND EXCLUDED.status = 'suggested'
-                           THEN lieutenant_explorations.locked_at ELSE EXCLUDED.locked_at END,
           explored_at = NOW()
     `, [
       articleId, lt.keyword, lt.status, captainKeyword,
       lt.reasoning, lt.sources, lt.suggestedHnLevel,
-      lt.score, lt.kpis ? JSON.stringify(lt.kpis) : null, lt.lockedAt ?? null,
+      lt.score, lt.kpis ? JSON.stringify(lt.kpis) : null,
     ])
     rowCount += res.rowCount ?? 0
   }
