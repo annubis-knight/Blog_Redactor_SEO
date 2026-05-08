@@ -53,7 +53,7 @@ const BASE_PROPS = {
   sliderValue: 5,
   isLoading: false,
   canAnalyze: true,
-  isLocked: false,
+  // 2026-05-08 — `isLocked` SUPPRIME du composant.
   iaIsStreaming: false,
   serpDoneCount: 0,
   serpTotalCount: 0,
@@ -101,16 +101,12 @@ describe('LieutenantSerpAnalysis', () => {
     expect(wrapper.find('.btn-refresh').exists()).toBe(false)
   })
 
-  it('REGRESSION GUARD : bouton Refresh masqué si isLocked=true (même avec serpResult)', () => {
+  it('REGRESSION GUARD : bouton Refresh TOUJOURS visible si serpResult (2026-05-08)', () => {
+    // L'ancien comportement "isLocked=true → Refresh masque" est SUPPRIME.
+    // Le bouton Refresh SERP doit etre dispo a tout moment des qu'il y a des
+    // resultats SERP, peu importe l'etat de verrouillage des lieutenants.
     const wrapper = mount(LieutenantSerpAnalysis, {
-      props: { ...BASE_PROPS, serpResult: makeSerpResult(), isLocked: true },
-    })
-    expect(wrapper.find('.btn-refresh').exists()).toBe(false)
-  })
-
-  it('bouton Refresh visible si serpResult + !isLocked', () => {
-    const wrapper = mount(LieutenantSerpAnalysis, {
-      props: { ...BASE_PROPS, serpResult: makeSerpResult(), isLocked: false },
+      props: { ...BASE_PROPS, serpResult: makeSerpResult() },
     })
     expect(wrapper.find('.btn-refresh').exists()).toBe(true)
   })

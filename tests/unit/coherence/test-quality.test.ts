@@ -126,7 +126,9 @@ const SOFT_LIMITS = {
   // Sprint 22 (2026-05-06) — Nouveau test E2E anti-duplication avec 3 test.skip
   // conditionnels (early return si fixture indisponible). Détectés 1 fois mais
   // comptés statiquement 3× par l'audit.
-  itSkip: 87,                      // it.skip / test.skip / describe.skip
+  // 2026-05-08 — Suppression du concept "panel locked" pour les Lieutenants :
+  //   1 it.skip ajouté (initialLocked prop sets locked state immediately, obsolète).
+  itSkip: 88,                      // it.skip / test.skip / describe.skip
 } as const
 
 // ============================================================================

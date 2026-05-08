@@ -799,9 +799,28 @@ Activer/désactiver une racine d'une RadarCard du Capitaine (clic sur un mot sou
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
 
 #### FR-LIE-CHECKBOX-LOCK-IMMEDIATE
-Cocher la checkbox d'un lieutenant dans `LieutenantsPanel` verrouille IMMÉDIATEMENT ce lieutenant en DB (`status = 'locked'`, `lockedAt` setté) via `articleKeywordsStore.lockLieutenant(payload)`. Le décochage le déverrouille (`status = 'suggested'`, `lockedAt = null`) via `unlockLieutenant(keyword)`. **Aucun bouton "Verrouiller la sélection" en bloc** — le bouton batch est supprimé du template.
-Le check workflow `MOTEUR_LIEUTENANTS_LOCKED` est dérivé : émis automatiquement dès que `richLieutenants.some(l => l.status === 'locked')` passe de false à true via watcher dérivé. Retiré quand le dernier lieutenant locked est déverrouillé.
-**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
+Cocher la checkbox d'un lieutenant dans `LieutenantsPanel` verrouille IMMÉDIATEMENT ce lieutenant en DB (`status = 'locked'`) via `articleKeywordsStore.lockLieutenant(payload)`. Le décochage le déverrouille (`status = 'suggested'`) via `unlockLieutenant(keyword)`. **Aucun bouton "Verrouiller la sélection" en bloc** — le bouton batch est supprimé du template.
+
+**Mise à jour 2026-05-08 — Suppression du concept "panel locked"** :
+- L'ancienne computed `isLocked` au niveau du `LieutenantsPanel` (vraie dès qu'un seul lieutenant était `status='locked'`) est SUPPRIMÉE. Elle créait un cul-de-sac UX : dès qu'une case était cochée, **toutes les autres devenaient désactivées** (cursor `not-allowed`), bloquant l'utilisateur sans bouton de déverrouillage batch.
+- Toutes les checkboxes restent cliquables à tout moment, peu importe combien de lieutenants sont déjà verrouillés.
+- Toutes les actions (`Refresh SERP`, `Régénérer IA`, `Sauvegarder Hn`, `Régénérer Hn`, lock individuel des headings) sont disponibles à tout moment.
+- Le badge "Lieutenants verrouillés" en bas du panel et le badge "Validée avec les lieutenants" sur la structure Hn sont SUPPRIMÉS.
+- Suppression du timestamp `lockedAt` côté backend (colonne DB `lieutenant_explorations.locked_at` droppée par migration 019) et côté types (`RichLieutenant.lockedAt` retiré). Source unique de vérité = colonne `status`.
+
+**Règle de gating workflow `MOTEUR_LIEUTENANTS_LOCKED` (refonte 2026-05-08)** :
+Le check est émis ssi **(au moins 1 lieutenant a `status='locked'`)** ET **(`hn_structure` est non-vide)**. Reflète la règle métier : l'étape Lieutenants n'est "faite" que quand l'utilisateur a ET sélectionné au moins un lieutenant ET généré la structure Hn. Implémenté via la computed `lieutenantsCheckActive` dans `LieutenantsPanel.vue`, observée par un watcher qui émet/retire le check sur transition.
+
+**Critères d'acceptation testables** :
+- AC.LIE.LOCK.1 : Cocher 1 lieutenant ne désactive PAS les autres checkboxes (cursor reste `pointer`).
+- AC.LIE.LOCK.2 : Le bouton "Refresh SERP" reste cliquable même quand des lieutenants sont verrouillés.
+- AC.LIE.LOCK.3 : Le bouton "Régénérer IA" reste cliquable même quand des lieutenants sont verrouillés.
+- AC.LIE.LOCK.4 : Le badge "Lieutenants verrouillés" n'existe pas dans le DOM (`data-testid="lieutenant-lock-status"` absent).
+- AC.LIE.GATING.1 : `MOTEUR_LIEUTENANTS_LOCKED` n'est PAS émis tant que `hn_structure` est vide, même avec ≥1 lieutenant `status='locked'`.
+- AC.LIE.GATING.2 : `MOTEUR_LIEUTENANTS_LOCKED` est émis dès que **les deux conditions** sont remplies.
+- AC.LIE.GATING.3 : Le check est retiré si l'utilisateur unlock le dernier lieutenant OU vide la `hn_structure`.
+
+**Statut :** active. **Depuis :** 2026-05-06. **Étendu :** 2026-05-08 (suppression `isLocked` panel + nouvelle règle gating). **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine + chantier 2026-05-08 (refonte gating Lieutenants).
 
 #### FR-LEX-CHECKBOX-LOCK-IMMEDIATE
 Cocher la checkbox d'un terme TF-IDF du `LexiquePanel` l'ajoute IMMÉDIATEMENT à `keywords.lexique` via `articleKeywordsStore.addLexiqueTerm(value)`. Le décochage le retire via `removeLexiqueTerm(value)`. **Aucun bouton "Verrouiller le Lexique" en bloc** — le bouton batch est supprimé du template.

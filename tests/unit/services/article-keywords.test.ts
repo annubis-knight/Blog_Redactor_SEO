@@ -138,6 +138,10 @@ describe('data.service — getArticleKeywords', () => {
 
 describe('data.service — saveArticleKeywords', () => {
   it('creates new entry and writes to article_keywords only', async () => {
+    // 2026-05-07 Option A — saveArticleKeywords lit d'abord l'etat existant
+    // pour preserver les champs non-fournis (3 calls au lieu de 2).
+    // SELECT existing
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
     // article_keywords UPSERT
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
     // updateArticleCaptainKeyword
@@ -154,13 +158,16 @@ describe('data.service — saveArticleKeywords', () => {
     expect(result.capitaine).toBe('main keyword')
     expect(result.lieutenants).toEqual(['lt1'])
     expect(result.lexique).toEqual(['lsi1', 'lsi2'])
-    // First call should be the article_keywords INSERT
-    expect(mockQuery.mock.calls[0][0]).toContain('article_keywords')
-    // Only 2 calls: article_keywords UPSERT + mirror captain lock
-    expect(mockQuery.mock.calls).toHaveLength(2)
+    // First call = SELECT existing, second = article_keywords UPSERT
+    expect(mockQuery.mock.calls[0][0]).toContain('SELECT')
+    expect(mockQuery.mock.calls[1][0]).toContain('article_keywords')
+    // 3 calls total: SELECT + UPSERT + mirror
+    expect(mockQuery.mock.calls).toHaveLength(3)
   })
 
   it('does not write to exploration tables (decision only)', async () => {
+    // SELECT existing (Option A preserve)
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
     // article_keywords UPSERT
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
     // updateArticleCaptainKeyword
@@ -171,20 +178,11 @@ describe('data.service — saveArticleKeywords', () => {
       capitaine: 'captain kw',
       lieutenants: [],
       lexique: [],
-      richCaptain: {
-        keyword: 'captain kw',
-        status: 'locked',
-        exploredKeywords: [
-          { keyword: 'captain kw', kpis: [{ name: 'volume', rawValue: 1000 }], articleLevel: 'pilier', rootKeywords: [] },
-        ],
-        aiPanelMarkdown: null,
-        lockedAt: '2026-01-01T00:00:00.000Z',
-      },
     })
 
-    // Only 2 calls: article_keywords + mirror. No exploration table writes.
-    expect(mockQuery.mock.calls).toHaveLength(2)
-    expect(mockQuery.mock.calls[0][0]).toContain('article_keywords')
+    // 3 calls: SELECT + article_keywords + mirror. No exploration table writes.
+    expect(mockQuery.mock.calls).toHaveLength(3)
+    expect(mockQuery.mock.calls[1][0]).toContain('article_keywords')
     // No captain_explorations or lieutenant_explorations calls
     const allQueries = mockQuery.mock.calls.map(c => c[0] as string)
     expect(allQueries.every(q => !q.includes('captain_explorations') && !q.includes('lieutenant_explorations'))).toBe(true)
@@ -236,7 +234,7 @@ describe('data.service — saveLieutenantExplorations', () => {
 
     const { saveLieutenantExplorations } = await importService()
     await saveLieutenantExplorations(1, [
-      { keyword: 'lt1', status: 'suggested', reasoning: 'good', sources: ['paa'], suggestedHnLevel: 2, score: 85, kpis: null, lockedAt: null },
+      { keyword: 'lt1', status: 'suggested', reasoning: 'good', sources: ['paa'], suggestedHnLevel: 2, score: 85, kpis: null },
     ], 'captain kw')
 
     expect(mockQuery.mock.calls[0][0]).toContain('lieutenant_explorations')
