@@ -304,15 +304,30 @@ watch(
         checks = []
       }
       const checkPresent = checks.includes(MOTEUR_LIEUTENANTS_LOCKED)
+      const lockedCount = articleKeywordsStore.lockedLieutenants?.length ?? 0
+      const hnStructureSize = articleKeywordsStore.keywords?.hnStructure?.length ?? 0
+      let decision: 'add' | 'remove' | 'noop'
       if (active && !checkPresent) {
         // Cas rare : la regle est remplie mais le check manque → l'ajouter.
+        decision = 'add'
         emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
       } else if (!active && checkPresent) {
         // Cas observe 2026-05-08 : check legacy en DB alors que la nouvelle
         // regle (locked + hn_structure) n'est pas remplie → retirer le check.
+        decision = 'remove'
         emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
-        log.info('[LieutenantsPanel] cleanup obsolete MOTEUR_LIEUTENANTS_LOCKED check (gating rule changed)')
+      } else {
+        decision = 'noop'
       }
+      log.info('[reconcile:lieutenants]', {
+        articleId: id,
+        lockedCount,
+        hnStructureSize,
+        active,
+        checkPresent,
+        decision,
+        check: MOTEUR_LIEUTENANTS_LOCKED,
+      })
       return
     }
 

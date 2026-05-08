@@ -1,5 +1,22 @@
 <script setup lang="ts">
-import { ref, computed, watch, nextTick, onUnmounted, onBeforeUnmount } from 'vue'
+/**
+ * AUTHORITY: PostgreSQL `article_keywords.{capitaine, richCaptain, richRootKeywords, rootKeywords}`.
+ *            Le verrouillage capitaine est porte par richCaptain.status='locked'.
+ * READS FROM: useArticleKeywordsStore.keywords (mount via fetchKeywords).
+ *             useArticleProgressStore.getProgress(id).completedChecks (reconciliation au mount).
+ * WRITES TO: articleKeywordsStore.lockCaptain / unlockCaptain / setRootKeywords
+ *            + saveKeywords(id) (PUT /articles/:id/keywords).
+ *            articleKeywordsStore.saveCaptainExplorationEntry / saveCaptainExplorationAiPanel
+ *            (POST /articles/:id/captain-explorations).
+ *            Emits 'check-completed' / 'check-removed' (MOTEUR_CAPITAINE_LOCKED).
+ * CONSUMERS: MoteurView (parent), LieutenantsPanel (props isCaptaineLocked, captainKeyword),
+ *            LexiquePanel (idem), TabCachePanel via tab-cache-entries.ts
+ *            (isCaptaineLocked && captainKeyword → dbCount=1).
+ * RELATED FR: FR-CAP-LOCK, FR-CAP-LOCK-RADIO, FR-CAP-LOCK-ORIGINAL-ONLY, FR-CAP-LOCK-NO-DUPLICATE,
+ *             FR-CAP-PERSIST, FR-MOT-CHECK-RECONCILIATION (cleanup check legacy au mount),
+ *             FR-MOT-CACHE-PANEL-COUNT (capitaine verrouille → dbCount=1).
+ */
+import { ref, computed, watch, nextTick, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { marked } from 'marked'
 import { useCapitaineScan, articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
@@ -11,6 +28,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiStream } from '@/services/api.service'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import { useNotify } from '@/composables/ui/useNotify'
 import { log } from '@/utils/logger'
@@ -136,6 +154,51 @@ watch(
   },
   { immediate: true },
 )
+
+/**
+ * FR-MOT-CHECK-RECONCILIATION (AC.RECONCILE.3) — au mount, reconcilie l'etat
+ * `richCaptain.status` (source de verite) avec le check workflow stocke en
+ * DB (`articles.completed_checks`). Cas observe : check legacy persiste alors
+ * que le capitaine a ete deverrouille hors-watcher (changement d'article,
+ * migration de regle gating, etc.).
+ *
+ * - Capitaine non verrouille mais check 'moteur:capitaine_locked' present
+ *   → emit 'check-removed' (cleanup dot mensonger).
+ * - Capitaine verrouille mais check absent → emit 'check-completed'.
+ * - Coherent → no-op.
+ */
+onMounted(() => {
+  if (props.mode === 'libre') return
+  const id = props.selectedArticle?.id
+  if (!id) return
+  let checks: string[] = []
+  try {
+    const progressStore = useArticleProgressStore()
+    checks = progressStore.getProgress(id)?.completedChecks ?? []
+  } catch {
+    checks = []
+  }
+  const checkPresent = checks.includes(MOTEUR_CAPITAINE_LOCKED)
+  const capitaineKw = articleKeywordsStore.keywords?.capitaine ?? null
+  let decision: 'add' | 'remove' | 'noop'
+  if (isLocked.value && !checkPresent) {
+    decision = 'add'
+    emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
+  } else if (!isLocked.value && checkPresent) {
+    decision = 'remove'
+    emit('check-removed', MOTEUR_CAPITAINE_LOCKED)
+  } else {
+    decision = 'noop'
+  }
+  log.info('[reconcile:capitaine]', {
+    articleId: id,
+    capitaineKw,
+    isLocked: isLocked.value,
+    checkPresent,
+    decision,
+    check: MOTEUR_CAPITAINE_LOCKED,
+  })
+})
 
 function handleValidate() {
   const kw = keywordInput.value.trim()

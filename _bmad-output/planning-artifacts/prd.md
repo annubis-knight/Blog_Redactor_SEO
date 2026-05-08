@@ -462,8 +462,51 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`capitainesMap`, `refreshCapitainesMap`), `server/routes/cocoons.routes.ts` (endpoint capitaines).
 
 #### FR-MOT-EXPLORATION-COUNTS
-**Counts DB persistés affichés dans TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Le panel sticky `TabCachePanel` affiche pour chaque onglet (Radar, Captain, Lieutenants, Lexique) le **count d'explorations persistées en DB** (table `radar_explorations` / `captain_explorations` / `lieutenant_explorations` / `lexique_explorations`). Endpoint `GET /api/articles/:id/explorations/counts`. Refetché au mount, au switch d'article (watcher défensif) et après chaque check (`addCheck` / `removeCheck` → mutation DB → counts à recharger). Distinct du `cacheCount` (external_api_cache TTL court). C'est ce qui permet au TabLoadPrompt de proposer "Charger N résultats déjà persistés".
+**Counts DB persistés affichés dans TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5 — partiellement supersedée 2026-05-08 par FR-MOT-CACHE-PANEL-COUNT pour les onglets Capitaine/Lieutenants/Lexique)*. Le panel sticky `TabCachePanel` affiche pour chaque onglet (Radar, Captain, Lieutenants, Lexique) le **count d'explorations persistées en DB** (table `radar_explorations` / `captain_explorations` / `lieutenant_explorations` / `lexique_explorations`). Endpoint `GET /api/articles/:id/explorations/counts`. Refetché au mount, au switch d'article (watcher défensif) et après chaque check (`addCheck` / `removeCheck` → mutation DB → counts à recharger). Distinct du `cacheCount` (external_api_cache TTL court). C'est ce qui permet au TabLoadPrompt de proposer "Charger N résultats déjà persistés".
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`explorationCounts`, `refreshExplorationCounts`), `server/routes/article-explorations.routes.ts`.
+
+#### FR-MOT-CACHE-PANEL-COUNT
+**Compteur "DB N" du TabCachePanel : nombre de mots-clés verrouillés** *(ajout 2026-05-08, transversal Capitaine/Lieutenants/Lexique)*. Pour les onglets Moteur dont la livraison utilisateur est un ensemble de mots-clés verrouillés (Capitaine, Lieutenants, Lexique), le compteur "DB N" affiché par `TabCachePanel.vue` reflète le **nombre de mots-clés effectivement verrouillés par l'utilisateur** pour l'article courant, **pas** le nombre d'explorations SERP/IA persistées.
+
+**Source unique** : la ligne `article_keywords` de l'article :
+- Capitaine : `1` si `article_keywords.capitaine` est non-null/non-vide, sinon `0`.
+- Lieutenants : `article_keywords.lieutenants.length` (TEXT[]).
+- Lexique : `article_keywords.lexique.length` (TEXT[]).
+
+**Distinct des explorations** : les tables `*_explorations` (caches de propositions/SERP/TF-IDF) restent consultables via `GET /articles/:id/explorations/counts` (FR-MOT-EXPLORATION-COUNTS) pour les onglets Radar/Discovery et pour les sections "Explorations passées" internes aux panels — mais elles ne pilotent plus le compteur "DB N" du TabCachePanel pour les 3 onglets ci-dessus.
+
+**Bouton de chargement manuel ("Recharger DB")** : filet de sécurité pour les cas où l'hydratation au mount aurait échoué silencieusement (race condition, erreur réseau transitoire, etc.). Le clic appelle `articleKeywordsStore.fetchKeywords(articleId)` (idempotent), recharge la ligne `article_keywords` depuis la DB, et le compteur se rafraîchit naturellement par réactivité.
+
+**Justification** : le compteur "DB N" doit refléter ce qui appartient à l'utilisateur (son état de décision verrouillé), pas l'état d'un cache technique. Une exploration SERP qui a produit 150 termes proposés mais 0 verrouillé doit afficher `0` au TabCachePanel — pas `1` ou `2`.
+
+**Critères d'acceptation testables** :
+- AC.CACHEPANEL.1 : Article avec `article_keywords.lexique = []` mais `lexique_explorations` à 2 rows → onglet Lexique du TabCachePanel affiche **0**, pas 2.
+- AC.CACHEPANEL.2 : Article avec `article_keywords.lieutenants = ['kw1']` mais `lieutenant_explorations` à 5 rows → onglet Lieutenants affiche **1**.
+- AC.CACHEPANEL.3 : Article avec `article_keywords.capitaine = null` mais `captain_explorations` à 3 rows → onglet Capitaine affiche **0**.
+- AC.CACHEPANEL.4 : Cocher un terme Lexique met à jour le compteur de **0 → 1** dans le même tick (réactivité Pinia, pas besoin de refetch).
+- AC.CACHEPANEL.5 : Cliquer sur le bouton de chargement manuel re-trigger `fetchKeywords` même si le store est déjà hydraté (idempotent, no-op silencieux si rien ne change). Aucun appel à `/explorations/counts` n'est nécessaire pour les 3 onglets concernés.
+- AC.CACHEPANEL.6 : Au switch d'article, le compteur reflète l'`article_keywords` du nouvel article dans le même tick (pas de flash de l'ancienne valeur).
+
+**Statut :** active. **Depuis :** 2026-05-08. **Source :** chantier 2026-05-08 (cohérence Lexique TabCachePanel).
+**Voir aussi :** FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-SELECT, FR-MOT-EXPLORATION-COUNTS.
+
+#### FR-MOT-CHECK-RECONCILIATION
+**Réconciliation défensive des checks workflow au mount** *(ajout 2026-05-08, transversal — supersede AC.GATING.4 de FR-MOT-WORKFLOW-GATING-DUAL en l'étendant)*. Au mount d'un panel ayant un check workflow lié à un état persisté (`MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`), une **réconciliation défensive** s'exécute après l'hydratation du store : si la DB indique que la condition d'émission n'est plus vraie (ex : `article_keywords.lexique = []`) mais que `articles.completed_checks` contient encore le check, ce dernier est retiré (`removeCheck`). La règle s'applique en sens inverse : condition vraie + check absent → `addCheck`.
+
+**Pourquoi** : éviter les "dots verts mensongers" dus à un historique de persistance non nettoyé (changement de capitaine, switch d'article au mauvais moment, évolution de la règle de gating, déverrouillage hors-watcher, etc.). La DB `article_keywords` reste source de vérité de l'état utilisateur ; `articles.completed_checks` est dérivable de cet état et doit lui rester cohérent à chaque mount.
+
+**Implémentation** : un onMounted ou watcher first-run dans chaque panel concerné, qui passe par les routes existantes (`POST /progress/check`, `DELETE /progress/check`). Pas de mutation DB directe. Le watcher principal qui réagit aux transitions utilisateur (`isLocked` true↔false) reste inchangé.
+
+**Critères d'acceptation testables** :
+- AC.RECONCILE.1 : Article avec `article_keywords.lexique = []` mais `articles.completed_checks` contient `'moteur:lexique_validated'` → après mount LexiquePanel, le check ne figure plus dans `completed_checks`.
+- AC.RECONCILE.2 : Article avec `article_keywords.lieutenants = []` (ou `hn_structure = ''`) mais check `'moteur:lieutenants_locked'` présent → retiré au mount LieutenantsPanel (généralisation de AC.GATING.4).
+- AC.RECONCILE.3 : Article avec `article_keywords.capitaine = null` mais check `'moteur:capitaine_locked'` présent → retiré au mount CaptainPanel.
+- AC.RECONCILE.4 : Réciproque Lexique : `article_keywords.lexique = ['terme1']` mais check absent → ajouté au mount.
+- AC.RECONCILE.5 : La réconciliation passe exclusivement par les routes `POST /progress/check` et `DELETE /progress/check` ; aucune mutation SQL directe n'est ajoutée côté front.
+- AC.RECONCILE.6 : Si DB et store sont déjà cohérents, la réconciliation est un no-op silencieux (aucun appel réseau).
+
+**Statut :** active. **Depuis :** 2026-05-08. **Source :** chantier 2026-05-08 (cohérence Lexique TabCachePanel + dot mensonger article 64).
+**Voir aussi :** FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, FR-MOT-WORKFLOW-GATING-DUAL.
 
 #### FR-MOT-EXTERNAL-CACHE-CLEAR
 **Bouton "Vider le cache" du TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Action utilisateur qui purge **uniquement** les entrées `external_api_cache` (autocomplete, PAA, SERP, validate) liées au capitaine de l'article courant via `DELETE /api/articles/:id/external-cache`. Ne touche **pas** aux `*_explorations` (DB persistée — règle FR-MOT-CACHE-CASCADE). Permet à l'utilisateur de forcer un re-fetch DataForSEO sans perdre ses données métier.
@@ -907,9 +950,10 @@ Les checks workflow `MOTEUR_CAPITAINE_LOCKED` et `MOTEUR_LIEUTENANTS_LOCKED` sui
 - AC.GATING.1 : Cocher 1 lieutenant sans `hn_structure` ne fait PAS apparaître `moteur:lieutenants_locked` dans `articles.completed_checks`.
 - AC.GATING.2 : Cocher 1 lieutenant + générer `hn_structure` → `moteur:lieutenants_locked` ajouté.
 - AC.GATING.3 : Décocher tous les lieutenants OU vider `hn_structure` → `moteur:lieutenants_locked` retiré.
-- AC.GATING.4 : Au mount d'un article avec `moteur:lieutenants_locked` en DB mais `hn_structure` vide → le check est retiré automatiquement (cleanup état hérité).
+- AC.GATING.4 : Au mount d'un article avec `moteur:lieutenants_locked` en DB mais `hn_structure` vide → le check est retiré automatiquement (cleanup état hérité). *(Cas spécifique généralisé par FR-MOT-CHECK-RECONCILIATION pour les 3 checks Capitaine/Lieutenants/Lexique.)*
 
 **Statut :** active. **Depuis :** 2026-05-08. **Source :** chantier 2026-05-08 (refonte gating Lieutenants).
+**Voir aussi :** FR-MOT-CHECK-RECONCILIATION (généralise la réconciliation au mount à tous les checks Moteur dérivés d'un état persisté).
 
 #### FR-MOT-LOCK-DERIVED
 L'état "verrouillé" d'un container Moteur (Capitaine, Lieutenants) est **dérivé** de la donnée persistée (statut DB), pas stocké dans une Ref locale. La double source de vérité (Ref + store) qui demandait des watchers de synchronisation manuelle est supprimée. Le store est la source unique de vérité.

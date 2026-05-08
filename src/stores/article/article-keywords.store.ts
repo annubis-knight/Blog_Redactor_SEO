@@ -1,3 +1,21 @@
+/**
+ * AUTHORITY: PostgreSQL `article_keywords` (capitaine TEXT, lieutenants TEXT[],
+ *            lexique TEXT[], rootKeywords TEXT[], hnStructure JSONB,
+ *            richCaptain JSONB, richLieutenants JSONB, richRootKeywords JSONB).
+ *            Source de verite des mots-cles verrouilles utilisateur par article.
+ * READS FROM: GET /articles/:id/keywords (fetchKeywords, fetchKeywordsMerge).
+ * WRITES TO: PUT /articles/:id/keywords (saveDecisions / saveKeywords).
+ *            POST /articles/:id/captain-explorations (saveCaptainExplorationEntry).
+ *            POST /articles/:id/lieutenant-explorations (saveLieutenantExplorationEntries).
+ * CONSUMERS: CaptainPanel, LieutenantsPanel, LexiquePanel, FinalisationPanel,
+ *            useFinalisationGating, MoteurContextRecap, tab-cache-entries.ts
+ *            (validatedLexiqueCount = lexique.length, lockedLieutenantsCount =
+ *            richLieutenants.filter(status='locked').length, isCaptaineLocked =
+ *            richCaptain?.status === 'locked').
+ * RELATED FR: FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-LEX-SELECT,
+ *             FR-MOT-CACHE-PANEL-COUNT (lexique.length / lieutenants.length pilotent
+ *             le compteur DB du TabCachePanel pour Capitaine/Lieutenants/Lexique).
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { apiGet, apiPut, apiPost, apiPatch } from '@/services/api.service'

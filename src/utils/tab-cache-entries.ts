@@ -1,21 +1,37 @@
 /**
+ * AUTHORITY: PostgreSQL `article_keywords.{capitaine,lieutenants,lexique}`
+ *            (sources de verite des mots-cles verrouilles utilisateur).
+ *            PostgreSQL `radar_explorations` (pour Radar uniquement).
+ * READS FROM: ExplorationCounts (issu de GET /articles/:id/explorations/counts,
+ *             FR-MOT-EXPLORATION-COUNTS, utilise pour Radar et pour les hints).
+ *             TabCacheUIState (snapshot UI : isCaptaineLocked, captainKeyword,
+ *             lockedLieutenantsCount, validatedLexiqueCount).
+ * CONSUMERS: src/views/MoteurView.vue (computed `tabCacheEntries`), TabCachePanel.vue.
+ * RELATED FR: FR-MOT-CACHE-PANEL-COUNT (2026-05-08, source unique du compteur),
+ *             FR-MOT-EXPLORATION-COUNTS (counts d'explorations).
+ *
  * Mapping pur des comptes DB + état UI vers les entrées du TabCachePanel.
  *
- * Extrait de MoteurView.vue (commit bea9e4f) pour deux raisons :
- *   1. Testabilité : un mount complet de MoteurView nécessite Pinia + Router +
- *      stores, ce qui rend les tests fragiles. Une fonction pure est triviale
- *      à tester avec 100 % de couverture sans mock.
- *   2. Garde-fou : ce code avait été cassé silencieusement par une refonte
- *      antérieure (commentaire "dbCount = vraies entrées" mais implémentation
- *      qui retournait un flag binaire 0|1). Les tests sur cette fonction
- *      bloquent toute régression future.
+ * Sémantique du `dbCount` :
+ *  - Radar : nombre d'explorations persistées (`counts.radar`). Pas de notion
+ *    de "verrouillage utilisateur" sur cet onglet.
+ *  - Capitaine : 1 si capitaine verrouillé en DB, 0 sinon.
+ *  - Lieutenants : `lockedLieutenantsCount` (lieutenants avec status='locked').
+ *  - Lexique : `validatedLexiqueCount` (taille de `article_keywords.lexique`).
  *
- * Garde l'invariant : `dbCount` reflète le VRAI nombre d'entrées persistées
- * dans les tables *_explorations, pas un flag d'état métier.
+ * Les `counts.captain`, `counts.lieutenants`, `counts.lexique` (compte
+ * d'explorations DB) restent disponibles dans les hints pour donner un
+ * contexte ("8 mots-clés testés") mais ne pilotent plus le compteur principal.
  *
- * 2026-05-01 — Discovery retiré du panel : son modèle de persistance est
- * cross-article (clé `seed`, pas `articleId`), incompatible avec la notif
- * "Charger depuis DB/Cache" pilotée par l'article courant.
+ * Historique :
+ *  - bea9e4f : extraction depuis MoteurView, fix d'un dbCount qui était un
+ *    flag binaire 0|1 calculé depuis un état métier flou. L'invariant alors
+ *    posé ("dbCount = vraies entrées explorations") est partiellement révisé
+ *    le 2026-05-08 par FR-MOT-CACHE-PANEL-COUNT pour Capitaine/Lieutenants/
+ *    Lexique : le compteur reflète désormais l'état utilisateur, pas les
+ *    explorations. Radar conserve la sémantique "explorations".
+ *  - 2026-05-01 : Discovery retiré du panel (modèle de persistance
+ *    cross-article seed-based, incompatible avec la notif articleId).
  */
 
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
@@ -39,11 +55,12 @@ export interface TabCacheUIState {
   // Radar : le scan est unique (pk article_id) mais on affiche le nombre de keywords générés
   radarScanResult: { globalScore: number } | null
   radarCacheStatus: { exists: boolean; globalScore?: number } | null
-  // Capitaine
+  // Capitaine : verrouillage et mot-clé pour le hint
   isCaptaineLocked: boolean
   captainKeyword: string | null
-  // Lieutenants/Lexique : le nombre verrouillé/validé est utilisé en hint, pas en count
+  // Lieutenants : nombre de lieutenants avec status='locked' dans richLieutenants
   lockedLieutenantsCount: number
+  // Lexique : taille de article_keywords.lexique (TEXT[])
   validatedLexiqueCount: number
 }
 
@@ -54,9 +71,10 @@ function pluralS(n: number): string {
 /**
  * Construit les 4 entrées du TabCachePanel (Radar, Capitaine, Lieutenants, Lexique).
  *
- * @param counts Comptes réels DB (résultat de /explorations/counts).
- *               Si l'appel a échoué, passer `{}` — toutes les sources tomberont à 0.
- * @param ui Snapshot de l'état UI (active tab, locks, results en mémoire).
+ * @param counts Comptes d'explorations DB. Utilisés pour Radar (dbCount) et
+ *               pour enrichir les hints des autres onglets.
+ * @param ui Snapshot de l'état UI : verrouillages utilisateur (source du
+ *           dbCount pour Capitaine/Lieutenants/Lexique).
  */
 export function buildTabCacheEntries(
   counts: ExplorationCounts,
@@ -78,7 +96,8 @@ export function buildTabCacheEntries(
     {
       tabId: 'capitaine',
       tabLabel: 'Capitaine',
-      dbCount: counts.captain ?? 0,
+      // FR-MOT-CACHE-PANEL-COUNT : 1 si verrouillé, 0 sinon (pas le count d'explorations).
+      dbCount: ui.isCaptaineLocked && ui.captainKeyword ? 1 : 0,
       cacheCount: 0,
       isCurrentTab: ui.activeTab === 'capitaine',
       hint: (() => {
@@ -95,7 +114,8 @@ export function buildTabCacheEntries(
     {
       tabId: 'lieutenants',
       tabLabel: 'Lieutenants',
-      dbCount: counts.lieutenants ?? 0,
+      // FR-MOT-CACHE-PANEL-COUNT : nombre de lieutenants verrouillés (status='locked').
+      dbCount: ui.lockedLieutenantsCount,
       cacheCount: 0,
       isCurrentTab: ui.activeTab === 'lieutenants',
       hint: (() => {
@@ -110,7 +130,8 @@ export function buildTabCacheEntries(
     {
       tabId: 'lexique',
       tabLabel: 'Lexique',
-      dbCount: counts.lexique ?? 0,
+      // FR-MOT-CACHE-PANEL-COUNT : taille de article_keywords.lexique (termes verrouillés).
+      dbCount: ui.validatedLexiqueCount,
       cacheCount: 0,
       isCurrentTab: ui.activeTab === 'lexique',
       hint: (() => {
