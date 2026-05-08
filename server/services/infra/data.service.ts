@@ -951,13 +951,19 @@ export async function saveLieutenantExplorations(
 ): Promise<DbOp> {
   const t = Date.now()
   let rowCount = 0
+  // 2026-05-08 — Protection "no-downgrade locked → suggested" SUPPRIMEE.
+  // Cette garde datait de l'epoque ou les batch saves IA pouvaient ecraser
+  // les decisions utilisateur. Depuis sprint 17 (FR-LIE-CHECKBOX-LOCK-IMMEDIATE)
+  // le verrouillage est atomique par checkbox, et le payload reflete TOUJOURS
+  // l'etat voulu par l'utilisateur. Sans suppression, un unlock individuel
+  // (status='suggested') ne pouvait pas persister, le row restait `locked`
+  // en DB et au reload la checkbox reapparaissait cochee.
   for (const lt of entries) {
     const res = await pool.query(`
       INSERT INTO lieutenant_explorations (article_id, keyword, status, captain_keyword, reasoning, sources, suggested_hn_level, score, kpis, explored_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW())
       ON CONFLICT (article_id, keyword) DO UPDATE
-      SET status = CASE WHEN lieutenant_explorations.status IN ('locked','eliminated') AND EXCLUDED.status = 'suggested'
-                       THEN lieutenant_explorations.status ELSE EXCLUDED.status END,
+      SET status = EXCLUDED.status,
           captain_keyword = EXCLUDED.captain_keyword,
           reasoning = EXCLUDED.reasoning, sources = EXCLUDED.sources,
           suggested_hn_level = EXCLUDED.suggested_hn_level,
