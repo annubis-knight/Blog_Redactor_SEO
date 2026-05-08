@@ -1389,6 +1389,35 @@ Règles d'architecture dans `.dependency-cruiser.cjs` :
 - `no-server-in-src` : pas d'import `server/` depuis `src/` (sauf via `shared/`).
 - `score-internal-only-via-index` : imports `shared/score/*` uniquement via `index.ts`.
 
+#### FR-INFRA-RUNTIME-MODE
+**Toggle global mock / réel.** Un bouton dans `AppNavbar.vue` (à gauche de l'engrenage) permet à l'utilisateur de basculer toutes les sources externes (AI provider Claude/Gemini/OpenRouter ↔ mock fixtures, DataForSEO production ↔ sandbox) en un clic, sans redémarrer le serveur.
+
+**Architecture** :
+- **Front** : store Pinia `useRuntimeModeStore` (`src/stores/ui/runtime-mode.store.ts`) avec persistance `localStorage` (clé `runtime-mode`). Hydratation au boot via `GET /api/runtime-mode`. Toggle via `setMode(mode)` qui POST l'override puis met à jour `localStorage` ; rollback optimiste en cas d'échec réseau.
+- **Back** : module `server/services/infra/runtime-mode.service.ts` mémorise un override en RAM (variable `overrideMode: 'mock' | 'real' | null`). Routes `GET/POST /api/runtime-mode`.
+- **Consommateurs back** : `getProvider()` (`ai-provider.service.ts:46`) et `isSandbox()` (`dataforseo/_client.ts:39`) consultent l'override **avant** les variables `.env` (`AI_PROVIDER`, `DATAFORSEO_SANDBOX`). Quand l'override est `null`, fallback sur `.env`.
+
+**Cohérence affichage / décision** *(application CLAUDE.md §2.0)* : la même source (`runtimeMode.effective`) pilote le badge UI ET la décision serveur via l'override mémorisé. Aucun fallback divergent. Quand le serveur restart, son override RAM est perdu mais le front détecte le mismatch lors de `hydrate()` et repousse son dernier état localStorage → resynchronisation automatique sans intervention utilisateur.
+
+**Sémantique du switch** :
+- `'mock'` → AI provider forcé sur `mock` ; DataForSEO forcé sur sandbox.
+- `'real'` → AI provider forcé sur `claude` ; DataForSEO forcé sur production.
+- `null` (jamais bascullé) → lecture `.env` standard.
+
+**Persistance** : RAM côté serveur (perdue au restart) + `localStorage` côté front (survit aux reloads). Aucune table DB — décision explicite, le toggle est un état dev/utilisateur-solo, pas une donnée métier.
+
+**Critères d'acceptation testables** :
+- AC1 : `setRuntimeMode('mock')` puis `getProvider()` → `'mock'`, `isSandbox()` → `true`, indépendamment de `process.env.AI_PROVIDER` / `process.env.DATAFORSEO_SANDBOX`.
+- AC2 : `setRuntimeMode('real')` puis `getProvider()` → `'claude'`, `isSandbox()` → `false`, indépendamment de `.env`.
+- AC3 : `setRuntimeMode(null)` puis `getProvider()` lit `.env` (`AI_PROVIDER=gemini` → `'gemini'`).
+- AC4 : `getEffectiveMode()` sans override + `AI_PROVIDER=mock` → `'mock'` ; sans override + `DATAFORSEO_SANDBOX=true` → `'mock'` ; sans override + ni l'un ni l'autre → `'real'`.
+- AC5 : `POST /api/runtime-mode` avec body `{ mode: 'invalid' }` → 400 (validation Zod `enum(['mock','real']).nullable()`).
+- AC6 : store front `setMode('mock')` qui échoue côté serveur → l'état revient à la valeur précédente (rollback optimiste) et `localStorage` est restauré.
+- AC7 : store front `hydrate()` quand `localStorage='real'` et serveur retourne `override=null` (cas restart serveur) → le store re-POST `'real'` pour resynchroniser.
+- AC8 : navbar — clic sur le bouton toggle inverse `effective` (`'mock'` ↔ `'real'`) et déclenche un POST.
+
+**Statut :** active. **Depuis :** 2026-05-08. **Source :** `server/services/infra/runtime-mode.service.ts`, `server/routes/runtime-mode.routes.ts`, `src/stores/ui/runtime-mode.store.ts`, `src/components/shared/AppNavbar.vue`.
+
 #### FR-INFRA-LOGGER
 Logger central `server/utils/logger.ts` avec niveaux DEBUG / INFO / WARN / ERROR. Configurable via `logs.config.ts`.
 

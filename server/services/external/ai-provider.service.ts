@@ -36,14 +36,24 @@ import {
   calculateMockCost,
   ensureFixturesLoaded,
 } from './mock.service.js'
+import { getRuntimeMode } from '../infra/runtime-mode.service.js'
 
 export type AIProvider = 'claude' | 'gemini' | 'openrouter' | 'mock'
 
 export { USAGE_SENTINEL, WEB_SEARCH_TOOL }
 export type { ApiUsage }
 
-/** Lit AI_PROVIDER à chaque appel — permet un switch à chaud en dev. */
+/**
+ * Lit AI_PROVIDER à chaque appel — permet un switch à chaud en dev.
+ *
+ * Override runtime : si l'utilisateur a basculé le toggle navbar, le mode
+ * override prend le pas. `mock` force `mock`, `real` force `claude` (le
+ * provider IA réel par défaut). Sinon, fallback sur `.env`.
+ */
 export function getProvider(): AIProvider {
+  const override = getRuntimeMode()
+  if (override === 'mock') return 'mock'
+  if (override === 'real') return 'claude'
   const val = (process.env.AI_PROVIDER ?? 'claude').toLowerCase()
   if (val === 'gemini') return 'gemini'
   if (val === 'openrouter') return 'openrouter'

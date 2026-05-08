@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import { useSilosStore } from '@/stores/strategy/silos.store'
 import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
+import { useRuntimeModeStore } from '@/stores/ui/runtime-mode.store'
 import WorkflowNav from '@/components/shared/WorkflowNav.vue'
 
 const silosStore = useSilosStore()
 const workflowNav = useWorkflowNavStore()
+const runtimeMode = useRuntimeModeStore()
 
 const WORKFLOW_LABELS: Record<string, string> = {
   cerveau: 'Cerveau',
@@ -13,9 +15,22 @@ const WORKFLOW_LABELS: Record<string, string> = {
   redaction: 'R&eacute;daction',
 }
 
+const isMock = computed(() => runtimeMode.effective === 'mock')
+
+async function onToggleMode() {
+  try {
+    await runtimeMode.toggle()
+  } catch {
+    // erreur déjà loguée dans le store
+  }
+}
+
 onMounted(() => {
   if (silosStore.silos.length === 0) {
     silosStore.fetchSilos()
+  }
+  if (!runtimeMode.isHydrated) {
+    runtimeMode.hydrate()
   }
 })
 </script>
@@ -41,6 +56,18 @@ onMounted(() => {
         @navigate="workflowNav.navigate"
       />
     </div>
+
+    <button
+      type="button"
+      class="navbar-mode-toggle"
+      :class="{ 'is-mock': isMock, 'is-real': !isMock }"
+      :title="isMock ? 'Sources : MOCK (cliquer pour passer en réel)' : 'Sources : RÉEL (cliquer pour passer en mock)'"
+      :aria-pressed="isMock"
+      aria-label="Basculer entre sources mock et réelles"
+      @click="onToggleMode"
+    >
+      <span class="navbar-mode-toggle__label">{{ isMock ? 'MOCK' : 'RÉEL' }}</span>
+    </button>
 
     <RouterLink to="/config" class="navbar-config" title="Configuration du thème">
       <svg width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -115,13 +142,55 @@ onMounted(() => {
   flex-shrink: 0;
 }
 
+.navbar-mode-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 0.625rem;
+  margin-left: auto;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  background: transparent;
+  font-family: inherit;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+}
+
+.navbar-mode-toggle.is-mock {
+  color: #b45309;
+  background: rgba(251, 191, 36, 0.15);
+  border-color: rgba(251, 191, 36, 0.4);
+}
+
+.navbar-mode-toggle.is-mock:hover {
+  background: rgba(251, 191, 36, 0.25);
+}
+
+.navbar-mode-toggle.is-real {
+  color: #15803d;
+  background: rgba(34, 197, 94, 0.12);
+  border-color: rgba(34, 197, 94, 0.35);
+}
+
+.navbar-mode-toggle.is-real:hover {
+  background: rgba(34, 197, 94, 0.22);
+}
+
+.navbar-mode-toggle__label {
+  font-variant-numeric: tabular-nums;
+}
+
 .navbar-config {
   display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
   height: 32px;
-  margin-left: auto;
   border-radius: 6px;
   color: var(--color-text-muted);
   text-decoration: none;

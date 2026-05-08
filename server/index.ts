@@ -28,6 +28,7 @@ import keywordScanRoutes from './routes/keyword-scan.routes.js'
 import keywordAiPanelRoutes from './routes/keyword-ai-panel.routes.js'
 import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
 import paaRoutes from './routes/paa.routes.js'
+import runtimeModeRoutes from './routes/runtime-mode.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3400
@@ -81,6 +82,7 @@ app.use('/api', keywordScanRoutes)
 app.use('/api', keywordAiPanelRoutes)
 app.use('/api', serpAnalysisRoutes)
 app.use('/api', paaRoutes)
+app.use('/api', runtimeModeRoutes)
 
 // Global error handler
 app.use(errorHandler)

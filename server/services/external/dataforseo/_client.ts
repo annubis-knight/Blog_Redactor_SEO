@@ -1,5 +1,6 @@
 import { log } from '../../../utils/logger.js'
 import { costGuard, CostBudgetError } from '../dataforseo-cost-guard.js'
+import { getRuntimeMode } from '../../infra/runtime-mode.service.js'
 
 // --- Shared constants ---
 
@@ -33,10 +34,15 @@ export { CostBudgetError }
  *
  * Why: previously we inferred sandbox from NODE_ENV. `npm run dev:server` does
  * NOT set NODE_ENV, so the inference silently failed and dev traffic hit the
- * paid production API. Now the ONLY way to enable sandbox is
- * `DATAFORSEO_SANDBOX=true` in `.env`.
+ * paid production API. Default route: `DATAFORSEO_SANDBOX=true` in `.env`.
+ *
+ * Runtime override : if the user toggled navbar mock/real, that takes
+ * precedence over `.env` so a single switch covers AI + DataForSEO.
  */
 export function isSandbox(): boolean {
+  const override = getRuntimeMode()
+  if (override === 'mock') return true
+  if (override === 'real') return false
   return process.env.DATAFORSEO_SANDBOX === 'true'
 }
 
