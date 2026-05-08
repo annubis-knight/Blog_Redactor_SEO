@@ -14,6 +14,11 @@ import { useMoteurSoftGating } from '../../../../src/composables/moteur/useMoteu
 import { useArticleProgressStore } from '../../../../src/stores/article/article-progress.store'
 import { useKeywordsStore } from '../../../../src/stores/keyword/keywords.store'
 import type { SelectedArticle } from '../../../../shared/types/index'
+import {
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '../../../../shared/constants/workflow-checks.constants.js'
 
 function makeArticle(id = 1, keyword = 'seo local'): SelectedArticle {
   return {
@@ -50,18 +55,18 @@ describe('useMoteurSoftGating', () => {
     expect(api.finalisationUnlocked.value).toBe(false)
 
     // 1/3 → false
-    articleProgressStore.progressMap['1'].completedChecks = ['capitaine_locked']
+    articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED]
     expect(api.finalisationUnlocked.value).toBe(false)
 
     // 2/3 → false
-    articleProgressStore.progressMap['1'].completedChecks = ['capitaine_locked', 'lieutenants_locked']
+    articleProgressStore.progressMap['1'].completedChecks = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED]
     expect(api.finalisationUnlocked.value).toBe(false)
 
     // 3/3 → true
     articleProgressStore.progressMap['1'].completedChecks = [
-      'capitaine_locked',
-      'lieutenants_locked',
-      'lexique_validated',
+      MOTEUR_CAPITAINE_LOCKED,
+      MOTEUR_LIEUTENANTS_LOCKED,
+      MOTEUR_LEXIQUE_VALIDATED,
     ]
     expect(api.finalisationUnlocked.value).toBe(true)
   })
@@ -74,7 +79,7 @@ describe('useMoteurSoftGating', () => {
     articleProgressStore.progressMap['1'] = {
       articleId: 1,
       phase: 'moteur',
-      completedChecks: ['capitaine_locked', 'lexique_validated'],
+      completedChecks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LEXIQUE_VALIDATED],
       lastCheckAt: null,
     } as never
 
@@ -106,7 +111,7 @@ describe('useMoteurSoftGating', () => {
     articleProgressStore.progressMap['1'] = {
       articleId: 1,
       phase: 'moteur',
-      completedChecks: ['capitaine_locked'],
+      completedChecks: [MOTEUR_CAPITAINE_LOCKED],
       lastCheckAt: null,
     } as never
 

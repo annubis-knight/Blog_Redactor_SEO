@@ -10,7 +10,6 @@ const props = defineProps<{
   hnRecurrence: HnRecurrenceItem[]
   serpResultsByKeyword: Map<string, SerpAnalysisResult>
   activeHnTab: string
-  isLocked: boolean
   hnSaved: boolean
   isSavingHn: boolean
   /** Nb de lieutenants cochés — précondition pour générer/régénérer. */
@@ -118,7 +117,6 @@ function onRegenerate(): void {
             Verrouille les titres a conserver puis regenere — l'IA construira la nouvelle structure autour de tes titres verrouilles et integrera les nouveaux lieutenants coches.
           </p>
           <button
-            v-if="!isLocked"
             class="btn-regen-hn"
             :disabled="!canRegenerate"
             :title="selectedCardsSize === 0 ? 'Coche au moins un lieutenant pour pouvoir regenerer' : ''"
@@ -139,8 +137,7 @@ function onRegenerate(): void {
           <li v-for="(node, idx) in hnStructure" :key="idx" class="hn-structure-item">
             <div class="hn-row">
               <button
-                v-if="!isLocked"
-                type="button"
+                    type="button"
                 class="hn-lock-btn"
                 :class="{ 'is-locked': isHeadingLocked(node.level, node.text) }"
                 :title="isHeadingLocked(node.level, node.text) ? 'Deverrouiller — l\'IA pourra modifier ce titre' : 'Verrouiller — l\'IA conservera ce titre tel quel'"
@@ -162,8 +159,7 @@ function onRegenerate(): void {
             <ul v-if="node.children && node.children.length > 0" class="hn-structure-children">
               <li v-for="(child, cidx) in node.children" :key="cidx" class="hn-structure-child">
                 <button
-                  v-if="!isLocked"
-                  type="button"
+                        type="button"
                   class="hn-lock-btn"
                   :class="{ 'is-locked': isHeadingLocked(child.level, child.text) }"
                   :title="isHeadingLocked(child.level, child.text) ? 'Deverrouiller' : 'Verrouiller'"
@@ -186,7 +182,7 @@ function onRegenerate(): void {
           </li>
         </ul>
         <div class="hn-structure-actions">
-          <button v-if="!isLocked" class="btn-save-hn" :disabled="isSavingHn" @click="$emit('save-hn')">
+          <button class="btn-save-hn" :disabled="isSavingHn" @click="$emit('save-hn')">
             {{ isSavingHn ? 'Sauvegarde...' : 'Sauvegarder la structure' }}
           </button>
           <Transition name="fade">
@@ -197,12 +193,10 @@ function onRegenerate(): void {
               Sauvegardee
             </span>
           </Transition>
-          <span v-if="isLocked && !hnSaved" class="hn-saved-badge">
-            <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
-              <path d="M3 8.5L6.5 12L13 4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
-            </svg>
-            Validee avec les lieutenants
-          </span>
+          <!-- 2026-05-08 — Badge "Validée avec les lieutenants" SUPPRIMÉ (lié au
+               concept de panel locké, qui n'existe plus). Le statut "structure
+               sauvegardée" est porté par .hn-saved-badge ci-dessus. -->
+
         </div>
       </template>
       <div v-else class="hn-empty" data-testid="hn-structure-empty">
@@ -213,7 +207,6 @@ function onRegenerate(): void {
             : 'Coche au moins un lieutenant ci-dessus, puis lance la generation IA.' }}
         </p>
         <button
-          v-if="!isLocked"
           class="btn-regen-hn"
           :disabled="!canRegenerate"
           :title="selectedCardsSize === 0 ? 'Coche au moins un lieutenant pour pouvoir generer' : ''"

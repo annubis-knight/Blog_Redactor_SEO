@@ -163,19 +163,19 @@ function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
         LieutenantSerpAnalysis: {
           name: 'LieutenantSerpAnalysis',
           template: '<div class="serp-stub"></div>',
-          props: ['serpResultsByKeyword', 'activeSerpTab', 'activeSerpTabResult', 'displayedCompetitors', 'serpResult', 'sliderValue', 'isLoading', 'canAnalyze', 'isLocked', 'iaIsStreaming', 'serpDoneCount', 'serpTotalCount', 'serpPendingKeywords', 'serpCurrentKeyword', 'iaChunks', 'currentStep'],
+          props: ['serpResultsByKeyword', 'activeSerpTab', 'activeSerpTabResult', 'displayedCompetitors', 'serpResult', 'sliderValue', 'isLoading', 'canAnalyze', 'iaIsStreaming', 'serpDoneCount', 'serpTotalCount', 'serpPendingKeywords', 'serpCurrentKeyword', 'iaChunks', 'currentStep'],
           emits: ['analyze', 'refresh', 'update:slider-value', 'update:active-serp-tab'],
         },
         LieutenantH2Structure: {
           name: 'LieutenantH2Structure',
           template: '<div class="hn-stub"></div>',
-          props: ['hnStructure', 'activeHnRecurrence', 'hnRecurrence', 'serpResultsByKeyword', 'activeHnTab', 'isLocked', 'hnSaved', 'isSavingHn'],
+          props: ['hnStructure', 'activeHnRecurrence', 'hnRecurrence', 'serpResultsByKeyword', 'activeHnTab', 'hnSaved', 'isSavingHn'],
           emits: ['save-hn', 'update:active-hn-tab'],
         },
         LieutenantProposals: {
           name: 'LieutenantProposals',
           template: '<div class="prop-stub"></div>',
-          props: ['iaIsStreaming', 'iaChunks', 'iaError', 'lieutenantCards', 'eliminatedCards', 'totalGenerated', 'selectedCards', 'isLocked', 'contentGapInsights'],
+          props: ['iaIsStreaming', 'iaChunks', 'iaError', 'lieutenantCards', 'eliminatedCards', 'totalGenerated', 'selectedCards', 'contentGapInsights'],
           emits: ['toggle', 'retry'],
         },
         KeywordAssistPanel: {
@@ -278,15 +278,18 @@ describe('LieutenantsPanel — saveHnStructure', () => {
   })
 
   it('saveHnStructure no-op si hnStructure vide', async () => {
-    // Sprint 13 — `isLocked` est désormais un computed dérivé de richLieutenants[].status.
-    // Pour que LieutenantH2Structure soit rendu (v-if isLocked), on configure aussi
-    // le store avec un lieutenant en status='locked'.
+    // 2026-05-08 — `isLocked` au niveau panel SUPPRIME. Pour que
+    // LieutenantH2Structure soit rendu (v-if="serpResult || lieutenantCards.length > 0"),
+    // on configure le store avec lieutenants flat ET richLieutenants pour que
+    // restoreLockedLieutenants() peuple lieutenantCards.
     mockStoreKeywords.value!.hnStructure = []
     mockStoreKeywords.value!.richLieutenants = [
       { keyword: 'lt-locked', status: 'locked', reasoning: 'r', sources: ['serp'],
-        suggestedHnLevel: 2, score: 50, kpis: null, lockedAt: '2026-01-01T00:00:00Z' },
+        suggestedHnLevel: 2, score: 50, kpis: null },
     ]
+    mockStoreKeywords.value!.lieutenants = ['lt-locked']
     const wrapper = mountLieutenants({ initialLocked: true })
+    await nextTick()
     await nextTick()
 
     const hn = wrapper.findComponent({ name: 'LieutenantH2Structure' })
@@ -485,22 +488,25 @@ describe('LieutenantsPanel — restoreLockedLieutenants', () => {
   })
 
   it('aucune restauration si initialLocked=false (LieutenantProposals non rendu)', async () => {
-    // Sans `isLocked` ET sans `serpResult`, le bloc serp-results n'est pas
-    // rendu dans le DOM (cf v-if="serpResult || isLocked" du template). C'est
-    // la preuve indirecte qu'aucune restauration n'a été faite.
+    // 2026-05-08 — Inversion semantique : la restauration des cards depuis le
+    // store est maintenant inconditionnelle (plus de garde `isLocked` /
+    // `initialLocked`). Si la DB contient des richLieutenants, ils sont
+    // restaures automatiquement → LieutenantProposals est rendu.
+    // C'est coherent avec la suppression du concept "panel locked" :
+    // l'utilisateur voit toujours ses lieutenants existants.
     mockStoreKeywords.value!.richLieutenants = [
       { keyword: 'lt', status: 'locked', reasoning: '', sources: [], suggestedHnLevel: 2, score: 50 },
     ]
-    mockStoreKeywords.value!.lieutenants = []
+    mockStoreKeywords.value!.lieutenants = ['lt']
     const wrapper = mountLieutenants({ initialLocked: false, isCaptaineLocked: false })
     await nextTick()
     await wrapper.setProps({ selectedArticle: { ...ARTICLE, id: 2 } })
     await nextTick()
     await nextTick()
 
-    // LieutenantProposals n'est pas rendu (pas d'isLocked, pas de serpResult)
+    // LieutenantProposals EST rendu maintenant (la restauration s'est faite).
     const proposals = wrapper.findComponent({ name: 'LieutenantProposals' })
-    expect(proposals.exists()).toBe(false)
+    expect(proposals.exists()).toBe(true)
   })
 })
 

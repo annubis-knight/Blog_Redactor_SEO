@@ -297,7 +297,7 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
       if (!filtered) return
       // E2 — Persist server-side BEFORE notifying the client. Survit aux
       // déconnexions client après stream.
-      const dbEntries: Pick<RichLieutenant, 'keyword' | 'status' | 'reasoning' | 'sources' | 'suggestedHnLevel' | 'score' | 'kpis' | 'lockedAt'>[] = [
+      const dbEntries: Pick<RichLieutenant, 'keyword' | 'status' | 'reasoning' | 'sources' | 'suggestedHnLevel' | 'score' | 'kpis'>[] = [
         ...filtered.selectedLieutenants.map(lt => ({
           keyword: lt.keyword,
           status: 'suggested' as const,
@@ -306,7 +306,6 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
           suggestedHnLevel: lt.suggestedHnLevel,
           score: lt.score,
           kpis: null,
-          lockedAt: null,
         })),
         ...filtered.eliminatedLieutenants.map(lt => ({
           keyword: lt.keyword,
@@ -316,7 +315,6 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
           suggestedHnLevel: lt.suggestedHnLevel,
           score: lt.score,
           kpis: null,
-          lockedAt: null,
         })),
       ]
       await saveLieutenantExplorations(Number(articleId), dbEntries as RichLieutenant[], keyword)

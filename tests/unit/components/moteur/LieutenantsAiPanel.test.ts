@@ -33,7 +33,7 @@ const BASE_PROPS = {
   iaIsStreaming: false,
   iaChunks: '',
   iaError: null,
-  isLocked: false,
+  // 2026-05-08 — `isLocked` SUPPRIME.
   contentGapInsights: '',
   totalGenerated: 0,
 }
@@ -111,11 +111,14 @@ describe('LieutenantsAiPanel — panel IA pur (post-Sprint 1)', () => {
     expect(w.emitted('retry')).toBeTruthy()
   })
 
-  it('le bouton régénérer disparaît si isLocked=true (pas d\'IA après lock)', () => {
+  it('REGRESSION GUARD : bouton regenerer TOUJOURS visible si totalGenerated > 0 (2026-05-08)', () => {
+    // L'ancien comportement "isLocked=true → bouton masque" est SUPPRIME.
+    // L'utilisateur peut regenerer la suggestion IA a tout moment, peu importe
+    // l'etat de verrouillage individuel des lieutenants.
     const w = mount(LieutenantsAiPanel, {
-      props: { ...BASE_PROPS, totalGenerated: 3, isLocked: true },
+      props: { ...BASE_PROPS, totalGenerated: 3 },
       global: { stubs: STUBS },
     })
-    expect(w.find('[data-testid="ai-regen-btn"]').exists()).toBe(false)
+    expect(w.find('[data-testid="ai-regen-btn"]').exists()).toBe(true)
   })
 })

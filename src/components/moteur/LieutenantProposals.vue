@@ -17,7 +17,6 @@ const props = defineProps<{
   eliminatedCards: ProposedLieutenant[]
   totalGenerated: number
   selectedCards: Map<string, ProposedLieutenant>
-  isLocked: boolean
   contentGapInsights: string
   // Sprint 1 (2026-05-04) — badge level article migré depuis le legacy
   // `lieutenants-header` supprimé. Affiché dans le header de cette section.
@@ -110,7 +109,6 @@ const parsedInsights = computed(() =>
           :key="lt.keyword"
           :lieutenant="lt"
           :checked="isCardSelected(lt.keyword, selectedCards)"
-          :disabled="isLocked"
           @update:checked="$emit('toggle', lt)"
         />
       </div>
@@ -126,7 +124,6 @@ const parsedInsights = computed(() =>
             :key="lt.keyword"
             :lieutenant="lt"
             :checked="isCardSelected(lt.keyword, selectedCards)"
-            :disabled="isLocked"
             class="eliminated"
             @update:checked="$emit('toggle', lt)"
           />

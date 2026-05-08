@@ -144,19 +144,19 @@ function mountLieutenants(propsOverride: Partial<typeof baseProps> = {}) {
         LieutenantSerpAnalysis: {
           name: 'LieutenantSerpAnalysis',
           template: '<div class="serp-stub" data-testid="serp-stub"></div>',
-          props: ['serpResultsByKeyword', 'activeSerpTab', 'activeSerpTabResult', 'displayedCompetitors', 'serpResult', 'sliderValue', 'isLoading', 'canAnalyze', 'isLocked', 'iaIsStreaming', 'serpDoneCount', 'serpTotalCount', 'serpPendingKeywords', 'serpCurrentKeyword', 'iaChunks', 'currentStep'],
+          props: ['serpResultsByKeyword', 'activeSerpTab', 'activeSerpTabResult', 'displayedCompetitors', 'serpResult', 'sliderValue', 'isLoading', 'canAnalyze', 'iaIsStreaming', 'serpDoneCount', 'serpTotalCount', 'serpPendingKeywords', 'serpCurrentKeyword', 'iaChunks', 'currentStep'],
           emits: ['analyze', 'refresh', 'update:slider-value', 'update:active-serp-tab'],
         },
         LieutenantH2Structure: {
           name: 'LieutenantH2Structure',
           template: '<div class="hn-stub" data-testid="lieutenant-h2-structure"></div>',
-          props: ['hnStructure', 'activeHnRecurrence', 'hnRecurrence', 'serpResultsByKeyword', 'activeHnTab', 'isLocked', 'hnSaved', 'isSavingHn'],
+          props: ['hnStructure', 'activeHnRecurrence', 'hnRecurrence', 'serpResultsByKeyword', 'activeHnTab', 'hnSaved', 'isSavingHn'],
           emits: ['save-hn', 'update:active-hn-tab'],
         },
         LieutenantProposals: {
           name: 'LieutenantProposals',
           template: '<div class="prop-stub" data-testid="lieutenants-container"></div>',
-          props: ['iaIsStreaming', 'iaChunks', 'iaError', 'lieutenantCards', 'eliminatedCards', 'totalGenerated', 'selectedCards', 'isLocked', 'contentGapInsights'],
+          props: ['iaIsStreaming', 'iaChunks', 'iaError', 'lieutenantCards', 'eliminatedCards', 'totalGenerated', 'selectedCards', 'contentGapInsights'],
           emits: ['toggle', 'retry'],
         },
         KeywordAssistPanel: {

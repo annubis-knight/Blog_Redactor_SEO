@@ -145,7 +145,9 @@ describe('BriefStructureStep — comportements macro user-facing', () => {
     // Émis quand angle + (tone || directives) sont remplis
     expect(wrapper.emitted('check-completed')).toBeTruthy()
     const events = wrapper.emitted('check-completed')!
-    expect(events.some(e => e[0] === 'brief-validated')).toBe(true)
+    // 2026-05-08 — emit utilise la constante REDACTION_BRIEF_VALIDATED
+    // ('redaction:brief_validated') au lieu de la legacy 'brief-validated'.
+    expect(events.some(e => e[0] === 'redaction:brief_validated')).toBe(true)
   })
 
   it('REGRESSION GUARD : angle vide seul → PUT mais PAS d\'emit check-completed', async () => {

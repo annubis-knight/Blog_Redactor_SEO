@@ -407,7 +407,23 @@ Composants Moteur acceptent prop `mode: 'workflow' | 'libre'`. Mode workflow = a
 **Source :** `shared/constants/workflow-checks.constants.ts:14-27`.
 
 #### FR-MOT-CHECKS-CONSTANTS
-Tout `emit('check-completed', …)` doit utiliser une constante de `shared/constants/workflow-checks.constants.ts` (jamais hardcoder la string). **Statut :** prescrit, partiellement violé (plusieurs composants hardcodent encore la string — dette à résorber).
+Tout `emit('check-completed', …)`, `articleProgressStore.addCheck(...)`, `progressStore.completedChecks.includes(...)`, ou tout site qui produit/consomme un check workflow DOIT utiliser une constante de `shared/constants/workflow-checks.constants.ts`. Aucune string en dur tolérée.
+
+**Format strict des checks** : `<prefix>:<snake_case_action>`. Préfixes autorisés : `moteur`, `cerveau`, `redaction`. Le schéma Zod `addCheckSchema` (`shared/schemas/article-progress.schema.ts`) valide ce format au niveau backend et **rejette** tout check non conforme avec un 400.
+
+**Migration historique 2026-05-08** :
+- Plusieurs sites du code émettaient des checks au format legacy sans préfixe (`'capitaine_locked'`, `'lieutenants_locked'`, `'discovery_done'`, `'radar_done'`, `'lexique_validated'`, `'brief-validated'`). Conséquence : les ProgressDots et le gating workflow lisaient le format préfixé, ne trouvaient rien → dots non-remplis. La DB se remplissait avec les 2 formats en doublon.
+- **Migration `020_normalize_completed_checks.sql`** : convertit tous les checks legacy en format préfixé, élimine les doublons, sur tous les articles existants.
+- **Sites corrigés** : `CaptainPanel.vue` (4 emits), `BriefStructureStep.vue` (1 emit), `useMoteurSoftGating.ts` (3 lectures), `useMoteurTabs.ts` (2 lectures), `useMoteurCrossTabState.ts` (2 emits).
+- **Test de garde anti-régression** : `tests/unit/coherence/completed-checks.test.ts` parcourt tous les `.ts` et `.vue` de `src/` et échoue si un littéral check legacy y apparaît (hors signatures `defineEmits` qui sont des noms d'events Vue, pas des checks).
+
+**Critères d'acceptation testables** :
+- AC.CHK.1 : `addCheckSchema.safeParse({ check: 'capitaine_locked' })` retourne `success: false`.
+- AC.CHK.2 : `addCheckSchema.safeParse({ check: 'moteur:capitaine_locked' })` retourne `success: true`.
+- AC.CHK.3 : Le test `aucun fichier .ts ou .vue de src/ ne contient un litteral check legacy` passe.
+- AC.CHK.4 : Migration 020 appliquée → aucun article n'a de check sans préfixe en DB.
+
+**Statut :** active (strict). **Depuis :** prescrit dès origine, **renforcé 2026-05-08** (regex Zod + test garde anti-régression + migration cleanup).
 
 #### FR-MOT-PHASE-TRANSITION
 Bandeau `PhaseTransitionBanner` apparaît dès qu'une phase est terminée et propose de passer à la suivante. L'utilisateur peut l'ignorer — pas de redirection automatique.
@@ -799,9 +815,28 @@ Activer/désactiver une racine d'une RadarCard du Capitaine (clic sur un mot sou
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
 
 #### FR-LIE-CHECKBOX-LOCK-IMMEDIATE
-Cocher la checkbox d'un lieutenant dans `LieutenantsPanel` verrouille IMMÉDIATEMENT ce lieutenant en DB (`status = 'locked'`, `lockedAt` setté) via `articleKeywordsStore.lockLieutenant(payload)`. Le décochage le déverrouille (`status = 'suggested'`, `lockedAt = null`) via `unlockLieutenant(keyword)`. **Aucun bouton "Verrouiller la sélection" en bloc** — le bouton batch est supprimé du template.
-Le check workflow `MOTEUR_LIEUTENANTS_LOCKED` est dérivé : émis automatiquement dès que `richLieutenants.some(l => l.status === 'locked')` passe de false à true via watcher dérivé. Retiré quand le dernier lieutenant locked est déverrouillé.
-**Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine.
+Cocher la checkbox d'un lieutenant dans `LieutenantsPanel` verrouille IMMÉDIATEMENT ce lieutenant en DB (`status = 'locked'`) via `articleKeywordsStore.lockLieutenant(payload)`. Le décochage le déverrouille (`status = 'suggested'`) via `unlockLieutenant(keyword)`. **Aucun bouton "Verrouiller la sélection" en bloc** — le bouton batch est supprimé du template.
+
+**Mise à jour 2026-05-08 — Suppression du concept "panel locked"** :
+- L'ancienne computed `isLocked` au niveau du `LieutenantsPanel` (vraie dès qu'un seul lieutenant était `status='locked'`) est SUPPRIMÉE. Elle créait un cul-de-sac UX : dès qu'une case était cochée, **toutes les autres devenaient désactivées** (cursor `not-allowed`), bloquant l'utilisateur sans bouton de déverrouillage batch.
+- Toutes les checkboxes restent cliquables à tout moment, peu importe combien de lieutenants sont déjà verrouillés.
+- Toutes les actions (`Refresh SERP`, `Régénérer IA`, `Sauvegarder Hn`, `Régénérer Hn`, lock individuel des headings) sont disponibles à tout moment.
+- Le badge "Lieutenants verrouillés" en bas du panel et le badge "Validée avec les lieutenants" sur la structure Hn sont SUPPRIMÉS.
+- Suppression du timestamp `lockedAt` côté backend (colonne DB `lieutenant_explorations.locked_at` droppée par migration 019) et côté types (`RichLieutenant.lockedAt` retiré). Source unique de vérité = colonne `status`.
+
+**Règle de gating workflow `MOTEUR_LIEUTENANTS_LOCKED` (refonte 2026-05-08)** :
+Le check est émis ssi **(au moins 1 lieutenant a `status='locked'`)** ET **(`hn_structure` est non-vide)**. Reflète la règle métier : l'étape Lieutenants n'est "faite" que quand l'utilisateur a ET sélectionné au moins un lieutenant ET généré la structure Hn. Implémenté via la computed `lieutenantsCheckActive` dans `LieutenantsPanel.vue`, observée par un watcher qui émet/retire le check sur transition.
+
+**Critères d'acceptation testables** :
+- AC.LIE.LOCK.1 : Cocher 1 lieutenant ne désactive PAS les autres checkboxes (cursor reste `pointer`).
+- AC.LIE.LOCK.2 : Le bouton "Refresh SERP" reste cliquable même quand des lieutenants sont verrouillés.
+- AC.LIE.LOCK.3 : Le bouton "Régénérer IA" reste cliquable même quand des lieutenants sont verrouillés.
+- AC.LIE.LOCK.4 : Le badge "Lieutenants verrouillés" n'existe pas dans le DOM (`data-testid="lieutenant-lock-status"` absent).
+- AC.LIE.GATING.1 : `MOTEUR_LIEUTENANTS_LOCKED` n'est PAS émis tant que `hn_structure` est vide, même avec ≥1 lieutenant `status='locked'`.
+- AC.LIE.GATING.2 : `MOTEUR_LIEUTENANTS_LOCKED` est émis dès que **les deux conditions** sont remplies.
+- AC.LIE.GATING.3 : Le check est retiré si l'utilisateur unlock le dernier lieutenant OU vide la `hn_structure`.
+
+**Statut :** active. **Depuis :** 2026-05-06. **Étendu :** 2026-05-08 (suppression `isLocked` panel + nouvelle règle gating). **Source :** tech-spec-sprint-17-bugs-comportementaux-capitaine + chantier 2026-05-08 (refonte gating Lieutenants).
 
 #### FR-LEX-CHECKBOX-LOCK-IMMEDIATE
 Cocher la checkbox d'un terme TF-IDF du `LexiquePanel` l'ajoute IMMÉDIATEMENT à `keywords.lexique` via `articleKeywordsStore.addLexiqueTerm(value)`. Le décochage le retire via `removeLexiqueTerm(value)`. **Aucun bouton "Verrouiller le Lexique" en bloc** — le bouton batch est supprimé du template.
@@ -852,6 +887,29 @@ Les 6 containers d'onglets du Moteur sont nommés `*Panel.vue` (Pattern A : `Xxx
 - Les 6 fichiers sont nommés `*Panel.vue` dans `src/components/moteur/` ou `src/components/intent/`.
 - Aucun import ne référence les anciens noms.
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-sprint-15-rename-containers-panel.
+
+#### FR-MOT-WORKFLOW-GATING-DUAL
+Les checks workflow `MOTEUR_CAPITAINE_LOCKED` et `MOTEUR_LIEUTENANTS_LOCKED` suivent une **règle de gating à double condition** : un check est actif uniquement si le verrouillage de la décision utilisateur ET la livraison de l'artefact dérivé sont présents.
+
+**Règle Capitaine** : `MOTEUR_CAPITAINE_LOCKED` actif ssi
+- `article_keywords.capitaine` non-vide (mot-clé verrouillé) ET
+- _(à étendre selon évolution du modèle métier)_
+
+**Règle Lieutenants** : `MOTEUR_LIEUTENANTS_LOCKED` actif ssi
+- `≥1 lieutenant` a `status='locked'` dans `lieutenant_explorations` ET
+- `article_keywords.hn_structure` non-vide (structure Hn générée).
+
+**Justification** : un Lieutenant verrouillé sans structure Hn ne fournit pas l'information dont la Rédaction a besoin. Le check workflow ne doit pas être considéré comme "validé" tant que l'artefact dérivé (la structure Hn pour Lieutenants) n'est pas produit.
+
+**Implémentation** : computed `lieutenantsCheckActive` dans `LieutenantsPanel.vue` + watcher avec garde "first run" qui réconcilie l'état réel avec le check stocké en DB au mount (cas critique : si la règle gating change, les checks legacy persistant en DB sont retirés au prochain chargement de l'article).
+
+**Critères d'acceptation testables** :
+- AC.GATING.1 : Cocher 1 lieutenant sans `hn_structure` ne fait PAS apparaître `moteur:lieutenants_locked` dans `articles.completed_checks`.
+- AC.GATING.2 : Cocher 1 lieutenant + générer `hn_structure` → `moteur:lieutenants_locked` ajouté.
+- AC.GATING.3 : Décocher tous les lieutenants OU vider `hn_structure` → `moteur:lieutenants_locked` retiré.
+- AC.GATING.4 : Au mount d'un article avec `moteur:lieutenants_locked` en DB mais `hn_structure` vide → le check est retiré automatiquement (cleanup état hérité).
+
+**Statut :** active. **Depuis :** 2026-05-08. **Source :** chantier 2026-05-08 (refonte gating Lieutenants).
 
 #### FR-MOT-LOCK-DERIVED
 L'état "verrouillé" d'un container Moteur (Capitaine, Lieutenants) est **dérivé** de la donnée persistée (statut DB), pas stocké dans une Ref locale. La double source de vérité (Ref + store) qui demandait des watchers de synchronisation manuelle est supprimée. Le store est la source unique de vérité.

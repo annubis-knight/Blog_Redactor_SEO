@@ -19,6 +19,7 @@ import OutlineEditor from '@/components/outline/OutlineEditor.vue'
 import OutlineDisplay from '@/components/outline/OutlineDisplay.vue'
 import ArticleKeywordsPanel from '@/components/keywords/ArticleKeywordsPanel.vue'
 import type { ArticleMicroContext } from '@shared/types/index.js'
+import { REDACTION_BRIEF_VALIDATED } from '@shared/constants/workflow-checks.constants.js'
 
 const props = defineProps<{
   articleId: number
@@ -97,7 +98,7 @@ async function saveMicroContext() {
     savedFeedback.value = true
     setTimeout(() => { savedFeedback.value = false }, 2000)
     if (angle.value.trim() && (tone.value.trim() || directives.value.trim())) {
-      emit('check-completed', 'brief-validated')
+      emit('check-completed', REDACTION_BRIEF_VALIDATED)
     }
   } catch (err) {
     log.error('[BriefStructureStep] saveMicroContext failed', { error: (err as Error).message })

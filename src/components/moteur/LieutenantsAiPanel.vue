@@ -24,7 +24,6 @@ defineProps<{
   iaIsStreaming: boolean
   iaChunks: string
   iaError: string | null
-  isLocked: boolean
   contentGapInsights: string
   totalGenerated: number
 }>()
@@ -72,7 +71,6 @@ const emit = defineEmits<{
         </template>
       </p>
       <button
-        v-if="!isLocked"
         type="button"
         class="lap__retry-btn"
         data-testid="ai-regen-btn"
