@@ -135,7 +135,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         status: 'suggested',
         exploredKeywords: [],
         aiPanelMarkdown: null,
-        lockedAt: null,
       }
     }
     const history = keywords.value.richCaptain.exploredKeywords
@@ -155,26 +154,24 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   /**
    * Merge sans doublon des richLieutenants. Clé = `keyword` (lowercase trim).
-   * En cas de collision, le statut DB le plus récent gagne (mesuré par
-   * `lockedAt`). Si l'un des deux est null, on garde celui qui est défini.
+   * 2026-05-07 — `lockedAt` SUPPRIME. En cas de collision, on prefere l'incoming
+   * s'il a un status terminal ('locked' / 'archived' / 'eliminated'), sinon on
+   * conserve l'existant.
    */
   function mergeRichLieutenants(incoming: RichLieutenant[]) {
     if (!keywords.value) return
     const existing = keywords.value.richLieutenants ?? []
     const byKey = new Map<string, RichLieutenant>()
     const keyOf = (lt: RichLieutenant) => lt.keyword.trim().toLowerCase()
+    const TERMINAL: ReadonlyArray<RichLieutenant['status']> = ['locked', 'archived', 'eliminated']
     for (const lt of existing) byKey.set(keyOf(lt), lt)
     for (const lt of incoming) {
       const key = keyOf(lt)
       const current = byKey.get(key)
       if (!current) {
         byKey.set(key, lt)
-      } else {
-        const incomingTime = lt.lockedAt ? Date.parse(lt.lockedAt) : 0
-        const currentTime = current.lockedAt ? Date.parse(current.lockedAt) : 0
-        if (incomingTime > currentTime) {
-          byKey.set(key, lt)
-        }
+      } else if (TERMINAL.includes(lt.status) && !TERMINAL.includes(current.status)) {
+        byKey.set(key, lt)
       }
     }
     keywords.value.richLieutenants = Array.from(byKey.values())
@@ -188,7 +185,15 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     isSaving.value = true
     error.value = null
     try {
-      keywords.value = await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
+      // 2026-05-08 — On NE remplace PAS keywords.value avec la reponse du PUT.
+      // La reponse contient seulement les champs flat (capitaine, lieutenants,
+      // lexique, rootKeywords, hnStructure) — pas richCaptain ni richLieutenants.
+      // Si on remplaçait, on perdrait ces objets riches et l'UI verrait
+      // disparaitre les checkboxes cochees (etat 'locked' dans richLieutenants).
+      // On envoie le PUT, on log la response, mais on garde keywords.value tel quel.
+      // La DB est a jour, le store local aussi (mute par lockCaptain/lockLieutenant
+      // avant l'appel).
+      await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
         capitaine: kw.capitaine,
         lieutenants: kw.lieutenants,
         lexique: kw.lexique,
@@ -298,7 +303,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         status: 'suggested',
         exploredKeywords: [],
         aiPanelMarkdown: null,
-        lockedAt: null,
       }
     }
     // Dedup by keyword — update in place if already exists
@@ -327,13 +331,11 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         status: 'locked',
         exploredKeywords: [],
         aiPanelMarkdown,
-        lockedAt: new Date().toISOString(),
       }
     } else {
       kw.richCaptain.keyword = keyword
       kw.richCaptain.status = 'locked'
       kw.richCaptain.aiPanelMarkdown = aiPanelMarkdown
-      kw.richCaptain.lockedAt = new Date().toISOString()
     }
   }
 
@@ -349,10 +351,12 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   function unlockCaptain() {
     if (!keywords.value?.richCaptain) return
     keywords.value.richCaptain.status = 'suggested'
-    keywords.value.richCaptain.lockedAt = null
-    // Note : on NE reset PAS keywords.value.capitaine (string non-nullable au type)
-    // — le store conserve la valeur pour rétro-compat. richCaptain.status est
-    // la source unique pour le verrouillage.
+    // 2026-05-07 — `lockedAt` SUPPRIME du type RichCaptain.
+    // On vide aussi `capitaine` côté store : c'est cette valeur qui est
+    // envoyée au backend par saveDecisions, et le backend dérive le mirror
+    // sur articles.captain_keyword_locked à partir d'elle.
+    keywords.value.richCaptain.keyword = ''
+    keywords.value.capitaine = ''
   }
 
   function updateCaptainValidationAiPanel(keyword: string, aiPanelMarkdown: string) {
@@ -417,7 +421,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
-        lockedAt: null,
       })),
       ...eliminated.map(lt => ({
         keyword: lt.keyword,
@@ -427,7 +430,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
-        lockedAt: null,
       })),
     ]
     keywords.value.richLieutenants = rich
@@ -436,7 +438,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   function setRichLieutenants(selected: ProposedLieutenant[], eliminated: ProposedLieutenant[]) {
     if (!keywords.value) return
-    const now = new Date().toISOString()
     const rich: RichLieutenant[] = [
       ...selected.map(lt => ({
         keyword: lt.keyword,
@@ -446,7 +447,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
-        lockedAt: now,
       })),
       ...eliminated.map(lt => ({
         keyword: lt.keyword,
@@ -456,7 +456,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         suggestedHnLevel: lt.suggestedHnLevel,
         score: lt.score,
         kpis: null,
-        lockedAt: null,
       })),
     ]
     keywords.value.richLieutenants = rich
@@ -486,7 +485,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     for (const lt of keywords.value.richLieutenants) {
       if (lt.status === 'locked') {
         lt.status = 'suggested'
-        lt.lockedAt = null
         unlocked++
       }
     }
@@ -515,12 +513,10 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     score: number
   }) {
     if (!keywords.value) return
-    const now = new Date().toISOString()
     const rich = keywords.value.richLieutenants ?? []
     const existing = rich.find(lt => lt.keyword === payload.keyword)
     if (existing) {
       existing.status = 'locked'
-      existing.lockedAt = now
     } else {
       rich.push({
         keyword: payload.keyword,
@@ -530,7 +526,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         suggestedHnLevel: payload.suggestedHnLevel,
         score: payload.score,
         kpis: null,
-        lockedAt: now,
       })
       keywords.value.richLieutenants = rich
     }
@@ -550,7 +545,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     const lt = keywords.value.richLieutenants.find(l => l.keyword === keyword)
     if (lt && lt.status === 'locked') {
       lt.status = 'suggested'
-      lt.lockedAt = null
     }
     keywords.value.lieutenants = keywords.value.lieutenants.filter(l => l !== keyword)
   }
@@ -561,7 +555,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     for (const lt of keywords.value.richLieutenants) {
       if (lt.status === 'locked') {
         lt.status = 'archived'
-        lt.lockedAt = null
         archived++
       }
     }

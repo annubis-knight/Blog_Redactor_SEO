@@ -29,7 +29,6 @@ const captain = computed(() => {
   return {
     keyword: kw?.richCaptain?.keyword ?? kw?.capitaine ?? '—',
     history: kw?.richCaptain?.exploredKeywords ?? [],
-    lockedAt: kw?.richCaptain?.lockedAt ?? null,
   }
 })
 
@@ -46,12 +45,6 @@ const lieutenants = computed(() => {
 
 const lexique = computed(() => articleKeywordsStore.keywords?.lexique ?? [])
 
-function formatDate(iso: string | null | undefined): string {
-  if (!iso) return ''
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' })
-}
 </script>
 
 <template>
@@ -70,9 +63,6 @@ function formatDate(iso: string | null | undefined): string {
     >
       <div class="finalisation__block">
         <p class="finalisation__keyword">{{ captain.keyword }}</p>
-        <p v-if="captain.lockedAt" class="finalisation__meta">
-          Verrouillé le {{ formatDate(captain.lockedAt) }}
-        </p>
       </div>
     </CollapsableSection>
 

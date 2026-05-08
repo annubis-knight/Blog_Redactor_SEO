@@ -128,7 +128,6 @@ watch(
         status: kw.richCaptain.status,
         historyCount: kw.richCaptain.exploredKeywords.length,
         historyKeywords: kw.richCaptain.exploredKeywords.map(h => h.keyword),
-        lockedAt: kw.richCaptain.lockedAt,
       } : null,
       flatCapitaine: kw?.capitaine,
       richRootCount: kw?.richRootKeywords?.length ?? 0,
