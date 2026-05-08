@@ -113,26 +113,30 @@ const resolvedRootKeywords = computed(() => {
 })
 
 // --- IA Proposal State (Vague 3 — extracted to useLieutenantsIa) ---
-// `isLocked` est défini plus bas (ligne ~199). On déclare le composable APRÈS
-// pour respecter l'ordre lexical, mais Vue 3 capture les Refs par référence
-// donc l'ordre d'usage est ce qui compte.
 const wordGroupsRef = toRef(props, 'wordGroups')
 const cocoonSlugRef = toRef(props, 'cocoonSlug')
 
-// --- Lock/unlock Lieutenants ---
-// Sprint 13 — `isLocked` est désormais DÉRIVÉ du store (source unique).
-// Vrai si au moins un lieutenant a status='locked' pour l'article courant.
-// La prop `initialLocked` est conservée pour compat tests.
-const isLocked = computed(() => {
+// --- Gating Lieutenants (2026-05-08 — refonte) ---
+// L'ancien concept "panel locké" (`isLocked` au niveau du panel entier) est
+// SUPPRIMÉ. Le verrouillage est désormais individuel par checkbox
+// (FR-LIE-CHECKBOX-LOCK-IMMEDIATE depuis sprint 17). Mais la computed
+// `isLocked` était restée et désactivait toutes les checkboxes dès qu'UN seul
+// lieutenant était locké → cul-de-sac UX.
+//
+// Nouveau modèle :
+// - `hasAnyLockedLieutenant` : utilitaire interne pour les watchers de
+//   restauration / skip de régénération IA.
+// - `lieutenantsCheckActive` : règle métier pour le check workflow
+//   `MOTEUR_LIEUTENANTS_LOCKED`. Actif ssi (≥1 lieutenant locked) ET
+//   (hn_structure non-vide). Reflète qu'on ne peut considérer l'étape
+//   Lieutenants comme "faite" tant que la structure Hn n'a pas été générée.
+const hasAnyLockedLieutenant = computed(() => {
   const kw = articleKeywordsStore.keywords
-  if (!kw) return props.initialLocked
-  if (kw.articleId !== props.selectedArticle?.id) return props.initialLocked
+  if (!kw || kw.articleId !== props.selectedArticle?.id) return false
   return kw.richLieutenants?.some(lt => lt.status === 'locked') ?? false
 })
 
 // --- IA composable (Vague 3 — extracted to useLieutenantsIa) ---
-// Doit être déclaré après isLocked + serpResult/serpResultsByKeyword/hnRecurrence
-// (du composable SERP) pour matcher leurs références.
 const selectedArticleRef = toRef(props, 'selectedArticle')
 const {
   iaIsStreaming,
@@ -162,11 +166,16 @@ const {
   resolvedRootKeywords: resolvedRootKeywordsRef,
   wordGroups: wordGroupsRef,
   cocoonSlug: cocoonSlugRef,
-  isLocked,
   articleKeywordsStore,
   computeHnRecurrenceFrom,
   hnRecurrence,
   onLieutenantsUpdated: (selected: string[]) => emit('lieutenants-updated', selected),
+})
+
+// `lieutenantsCheckActive` doit être déclaré APRÈS `hnStructure` (référence
+// du composable IA) pour pouvoir le lire.
+const lieutenantsCheckActive = computed(() => {
+  return hasAnyLockedLieutenant.value && hnStructure.value.length > 0
 })
 
 // --- HN Structure (Vague 3 — extracted to useLieutenantsHn) ---
@@ -192,12 +201,9 @@ watch(
   (kw) => {
     log.debug('[LieutenantsPanel] store keywords snapshot', {
       articleId: props.selectedArticle?.id,
-      richLieutenants: kw?.richLieutenants?.map(lt => ({
-        keyword: lt.keyword,
-        status: lt.status,
-      })) ?? [],
-      flatLieutenants: kw?.lieutenants ?? [],
-      hnStructure: kw?.hnStructure ? `${(kw.hnStructure as unknown[]).length} nodes` : 'none',
+      richLieutenantsCount: kw?.richLieutenants?.length ?? 0,
+      flatLieutenantsCount: kw?.lieutenants?.length ?? 0,
+      hnStructureCount: (kw?.hnStructure as unknown[] | undefined)?.length ?? 0,
       isCaptainLocked: props.isCaptaineLocked,
       captainKeyword: props.captainKeyword,
     })
@@ -261,20 +267,25 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
 // (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
 
 /**
- * Sprint 17 — Watcher dérivé : émet/retire le check workflow
- * MOTEUR_LIEUTENANTS_LOCKED + déclenche les side-effects (save outline,
- * recommendWordCount) sur transition 0 → ≥1 locked. C'est le SEUL endroit qui
- * émet ce check désormais (avant Sprint 17, l'émission se faisait dans
- * lockLieutenants() en réponse au bouton batch supprimé).
+ * Watcher de gating workflow (refonte 2026-05-08).
+ *
+ * Émet/retire le check `MOTEUR_LIEUTENANTS_LOCKED` selon `lieutenantsCheckActive` :
+ *   - actif ssi (≥1 lieutenant locked) ET (hn_structure non-vide)
+ *   - reflète la règle métier : l'étape Lieutenants n'est "faite" que quand
+ *     l'utilisateur a ET sélectionné au moins un lieutenant ET généré la
+ *     structure Hn.
+ *
+ * Side-effects sur transition false → true : sauvegarde hnStructure + outline
+ * + recommandation wordCount (héritage sprint 17, reste pertinent).
  */
-let previousLockedState = false
+let previousCheckActive = false
 watch(
-  () => isLocked.value,
-  async (locked) => {
-    if (locked && !previousLockedState) {
+  () => lieutenantsCheckActive.value,
+  async (active) => {
+    if (active && !previousCheckActive) {
       emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
       emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
-      // Side-effects post-lock : persister hnStructure + outline + reco wordCount.
+      // Side-effects : persister hnStructure + outline + reco wordCount.
       const id = props.selectedArticle?.id
       const title = props.selectedArticle?.title
       if (id && title && articleKeywordsStore.keywords) {
@@ -288,12 +299,12 @@ watch(
         }
         void recommendAndPropagateWordCount(id)
       }
-    } else if (!locked && previousLockedState) {
+    } else if (!active && previousCheckActive) {
       emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
       const id = props.selectedArticle?.id
       if (id) void articleKeywordsStore.saveDecisions(id)
     }
-    previousLockedState = locked
+    previousCheckActive = active
   },
   { immediate: true },
 )
@@ -328,39 +339,49 @@ watch(
     hnStructure.value = []
     contentGapInsights.value = ''
 
-    // Sprint 13 — `isLocked` est computed, plus besoin de reset. Le store
-    // sera resynchronisé par fetchKeywords() au changement d'article.
+    // Le store sera resynchronisé par fetchKeywords() au changement d'article.
     iaAbort()
 
-    // Restore saved data if article was previously locked
-    if (props.initialLocked) {
-      if (articleKeywordsStore.keywords?.hnStructure && articleKeywordsStore.keywords.hnStructure.length > 0) {
-        hnStructure.value = articleKeywordsStore.keywords.hnStructure
-      }
+    // 2026-05-08 — Restore est maintenant inconditionnel : si la DB contient
+    // une hn_structure ou des lieutenants, on les restaure. Plus de garde
+    // `isLocked` au niveau panel (concept supprimé).
+    if (articleKeywordsStore.keywords?.hnStructure && articleKeywordsStore.keywords.hnStructure.length > 0) {
+      hnStructure.value = articleKeywordsStore.keywords.hnStructure
+    }
+    // Restauration via richLieutenants (chemin nominal) OU lieutenants flat
+    // (fallback backward compat).
+    const hasRich = (articleKeywordsStore.keywords?.richLieutenants?.length ?? 0) > 0
+    const hasFlat = (articleKeywordsStore.keywords?.lieutenants?.length ?? 0) > 0
+    if (hasRich || hasFlat) {
       restoreLockedLieutenants()
     }
   },
 )
 
 // --- Restore hnStructure when keywords arrive (async fetch) ---
+// `immediate: true` pour couvrir le cas mount-with-data.
 watch(
   () => articleKeywordsStore.keywords?.hnStructure,
   (hn) => {
-    if (isLocked.value && hn && hn.length > 0 && hnStructure.value.length === 0) {
+    if (hn && hn.length > 0 && hnStructure.value.length === 0) {
       hnStructure.value = hn
       log.info('[LieutenantsPanel] HN structure restored from store', { nodes: hn.length })
     }
   },
+  { immediate: true },
 )
 
 // --- Restore lieutenant cards when keywords arrive (async fetch) ---
+// `immediate: true` pour couvrir le cas mount-with-data (article deja locké
+// au moment du mount, ex. retour sur l'onglet ou test unitaire).
 watch(
   () => articleKeywordsStore.keywords?.lieutenants,
   (lts) => {
-    if (isLocked.value && lts && lts.length > 0 && lieutenantCards.value.length === 0) {
+    if (lts && lts.length > 0 && lieutenantCards.value.length === 0) {
       restoreLockedLieutenants()
     }
   },
+  { immediate: true },
 )
 
 // 2026-05-02 — Sync `lieutenantCards` quand `richLieutenants` change (TabLoadPrompt
@@ -368,6 +389,12 @@ watch(
 // Le merge ajoute de nouveaux items que la liste UI doit refléter pour que le
 // tri puisse les voir. Watcher en `deep: true` pour capter aussi les push
 // éventuels en place.
+//
+// 2026-05-08 — Bug fix : le watcher peuplait `lieutenantCards` mais oubliait
+// `selectedCards` (la Map qui pilote l'état coché des checkboxes). Conséquence :
+// au clic "DB N" du TabLoadPrompt, les cards apparaissaient mais aucune checkbox
+// n'était cochée même pour les lieutenants `status='locked'`. Fix : on peuple
+// aussi `selectedCards` avec les locked.
 watch(
   () => articleKeywordsStore.keywords?.richLieutenants,
   (richLts) => {
@@ -395,6 +422,28 @@ watch(
         score: lt.score,
       }))
     }
+    // Sync `selectedCards` avec les lieutenants `locked` du store. Les
+    // checkboxes des lieutenants verrouillés doivent apparaître cochées.
+    // On préserve les sélections utilisateur déjà en mémoire et on ajoute
+    // celles qui sont marquées 'locked' en DB mais absentes du Map local.
+    let changed = false
+    for (const lt of locked) {
+      if (!selectedCards.value.has(lt.keyword)) {
+        selectedCards.value.set(lt.keyword, {
+          keyword: lt.keyword,
+          reasoning: lt.reasoning,
+          sources: lt.sources,
+          suggestedHnLevel: lt.suggestedHnLevel,
+          score: lt.score,
+        })
+        changed = true
+      }
+    }
+    if (changed) {
+      // Réassigne pour déclencher la réactivité Vue (Map mutée en place ne
+      // re-render pas dans certains cas).
+      selectedCards.value = new Map(selectedCards.value)
+    }
   },
   { deep: true },
 )
@@ -408,10 +457,12 @@ watch(
 // Les Lieutenants déjà verrouillés survivent à tout changement de Capitaine
 // (cf. mergeRichLieutenants dans article-keywords.store.ts:156-181).
 
-// --- Auto-trigger IA proposal after SERP success (skip if lieutenants already locked) ---
+// --- Auto-trigger IA proposal after SERP success ---
+// 2026-05-08 — la garde `isLocked` est SUPPRIMEE (concept disparu). On skip
+// uniquement si on a déjà des cards en mémoire ou un stream en cours.
 // U5 — règle TTL 7 jours : ne pas relancer l'IA si des propositions fraîches existent déjà en DB
 watch(serpResult, (result) => {
-  if (!result || iaIsStreaming.value || lieutenantCards.value.length !== 0 || isLocked.value) return
+  if (!result || iaIsStreaming.value || lieutenantCards.value.length !== 0) return
   const richLts = articleKeywordsStore.keywords?.richLieutenants ?? []
   const hasFreshProposals = richLts.length > 0 && richLts.every(lt => !shouldRegenerate(lt.exploredAt))
   if (hasFreshProposals) {
@@ -488,7 +539,6 @@ async function analyzeSERPWithStep(): Promise<void> {
       :slider-value="sliderValue"
       :is-loading="isLoading"
       :can-analyze="canAnalyze"
-      :is-locked="isLocked"
       :ia-is-streaming="iaIsStreaming"
       :serp-done-count="serpDoneCount"
       :serp-total-count="serpTotalCount"
@@ -516,7 +566,6 @@ async function analyzeSERPWithStep(): Promise<void> {
          FR-LIE-AI-FRONTIER (cf. PRD §8.7). -->
     <LieutenantsResultsLayout
       :serp-result="serpResult"
-      :is-locked="isLocked"
       :lieutenant-cards="lieutenantCards"
       :ia-is-streaming="iaIsStreaming"
       :ia-chunks="iaChunks"

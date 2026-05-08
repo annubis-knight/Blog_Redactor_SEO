@@ -43,7 +43,6 @@ export interface LieutenantsIaDeps {
   resolvedRootKeywords: Ref<string[]>
   wordGroups: Ref<WordGroup[]>
   cocoonSlug: Ref<string>
-  isLocked: Ref<boolean>
   articleKeywordsStore: ReturnType<typeof useArticleKeywordsStore>
   /** Helper du composable SERP (réutilisé pour `proposeLieutenants` HN). */
   computeHnRecurrenceFrom: (comps: SerpCompetitor[]) => HnRecurrenceItem[]
@@ -321,7 +320,6 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
                 suggestedHnLevel: lt.suggestedHnLevel,
                 score: lt.score,
                 kpis: null,
-                lockedAt: null,
               })),
               ...data.eliminatedLieutenants.map(lt => ({
                 keyword: lt.keyword,
@@ -331,7 +329,6 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
                 suggestedHnLevel: lt.suggestedHnLevel,
                 score: lt.score,
                 kpis: null,
-                lockedAt: null,
               })),
             ]
             articleKeywordsStore.saveLieutenantExplorationEntries(articleId, allEntries, captainKeyword.value!)

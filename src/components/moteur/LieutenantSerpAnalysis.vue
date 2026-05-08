@@ -11,7 +11,6 @@ const props = defineProps<{
   sliderValue: number
   isLoading: boolean
   canAnalyze: boolean
-  isLocked: boolean
   iaIsStreaming: boolean
   serpDoneCount: number
   serpTotalCount: number
@@ -72,7 +71,7 @@ const blogStats = computed(() => {
         {{ isLoading ? 'Analyse en cours...' : 'Analyser SERP' }}
       </button>
       <button
-        v-if="serpResult && !isLocked"
+        v-if="serpResult"
         class="btn-refresh"
         :disabled="isLoading || iaIsStreaming"
         @click="$emit('refresh')"
