@@ -11,6 +11,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiStream } from '@/services/api.service'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import { useNotify } from '@/composables/ui/useNotify'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
@@ -335,7 +336,7 @@ function handleManualAiRegenerate() {
 function lockCaptaine() {
   const keyword = currentResult.value?.keyword
   log.info('CaptainPanel — Capitaine verrouillé', { keyword, verdict: effectiveVerdict.value })
-  if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
+  if (props.mode !== 'libre') emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
   if (keyword) {
     emit('validated', keyword)
     const aiMarkdown = aiChunks.value ?? null
@@ -374,7 +375,7 @@ function performUnlock(source: UnlockSource) {
   articleKeywordsStore.unlockCaptain()
   if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
   log.info('CaptainPanel — Capitaine déverrouillé', { source })
-  if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
+  if (props.mode !== 'libre') emit('check-removed', MOTEUR_CAPITAINE_LOCKED)
   pendingUnlock.value = null
 }
 
@@ -876,14 +877,14 @@ async function lockEntry(idx: number) {
 
   if (isTransfer) {
     log.info('CaptainPanel — lock transfert', { from: previousKw, to: newKw })
-    if (props.mode !== 'libre') emit('check-removed', 'capitaine_locked')
+    if (props.mode !== 'libre') emit('check-removed', MOTEUR_CAPITAINE_LOCKED)
     await nextTick()
   }
 
   selectedIndex.value = idx
   lockedKeyword.value = newKw
 
-  if (props.mode !== 'libre') emit('check-completed', 'capitaine_locked')
+  if (props.mode !== 'libre') emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
   emit('validated', newKw)
 
   const aiMarkdown = carouselAiCache.value.get(newKw) ?? null

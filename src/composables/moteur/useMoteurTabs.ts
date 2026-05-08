@@ -3,6 +3,10 @@ import type { NavGroup } from '@/components/shared/WorkflowNav.vue'
 import type { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
 import type { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import type { SelectedArticle } from '@shared/types/index.js'
+import {
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+} from '@shared/constants/workflow-checks.constants.js'
 
 /**
  * Vague 3 — Composable extrait de MoteurView.
@@ -131,8 +135,8 @@ export function useMoteurTabs(deps: MoteurTabsDeps): MoteurTabsApi {
     const checks = progress?.completedChecks ?? []
     if (checks.length === 0) return 'capitaine'
     // Sprint 4 (2026-05-04) — friction #1 : ne plus auto-naviguer vers Finalisation.
-    if (checks.includes('lieutenants_locked')) return 'lexique'
-    if (checks.includes('capitaine_locked')) return 'lieutenants'
+    if (checks.includes(MOTEUR_LIEUTENANTS_LOCKED)) return 'lexique'
+    if (checks.includes(MOTEUR_CAPITAINE_LOCKED)) return 'lieutenants'
     return 'capitaine'
   }
 

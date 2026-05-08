@@ -141,6 +141,23 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     }
     selectedCards.value = next
     onLieutenantsUpdated(Array.from(next.keys()))
+
+    // 2026-05-08 — Persist the new statuses on `lieutenant_explorations`.
+    // saveDecisions seul met à jour la liste plate `article_keywords.lieutenants`
+    // mais ne touche PAS la table `lieutenant_explorations.status` (jointe au
+    // mount par getArticleKeywords pour reconstruire `richLieutenants`).
+    // Sans cet appel, un unlock individuel ne survivait pas au reload.
+    const articleId = selectedArticle.value?.id
+    const captainKw = captainKeyword.value
+    const richLts = articleKeywordsStore.keywords?.richLieutenants
+    if (articleId && captainKw && richLts && richLts.length > 0) {
+      void articleKeywordsStore.saveLieutenantExplorationEntries(
+        articleId,
+        richLts,
+        captainKw,
+      )
+    }
+    void articleKeywordsStore.saveDecisions(selectedArticle.value!.id)
   }
 
   /** F3 — Ajoute un mot-clé (suggéré par le basket) à la liste des propositions

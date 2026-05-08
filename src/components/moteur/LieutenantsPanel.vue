@@ -3,6 +3,7 @@ import { computed, watch, toRef } from 'vue'
 import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { hnToOutline } from '@/stores/article/outline.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineScan'
 import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
 import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
@@ -277,11 +278,44 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
  *
  * Side-effects sur transition false → true : sauvegarde hnStructure + outline
  * + recommandation wordCount (héritage sprint 17, reste pertinent).
+ *
+ * Au MOUNT (immediate), ne fait pas de transition false→false ni true→true (no-op),
+ * MAIS si le check est present en DB alors que active=false (regle non remplie
+ * mais check legacy persiste), on emit `check-removed` pour nettoyer l'etat.
+ * Idem inversement : check absent mais active=true → emit `check-completed`.
  */
 let previousCheckActive = false
+let isFirstRun = true
 watch(
   () => lieutenantsCheckActive.value,
   async (active) => {
+    // Au mount : reconcilier l'etat reel avec le check workflow stocke en DB.
+    if (isFirstRun) {
+      isFirstRun = false
+      previousCheckActive = active
+      const id = props.selectedArticle?.id
+      // Lazy access au store progress pour eviter erreur Pinia hors composant
+      // dans les tests qui ne mockent pas ce store.
+      let checks: string[] = []
+      try {
+        const progressStore = useArticleProgressStore()
+        checks = id ? (progressStore.getProgress(id)?.completedChecks ?? []) : []
+      } catch {
+        checks = []
+      }
+      const checkPresent = checks.includes(MOTEUR_LIEUTENANTS_LOCKED)
+      if (active && !checkPresent) {
+        // Cas rare : la regle est remplie mais le check manque → l'ajouter.
+        emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
+      } else if (!active && checkPresent) {
+        // Cas observe 2026-05-08 : check legacy en DB alors que la nouvelle
+        // regle (locked + hn_structure) n'est pas remplie → retirer le check.
+        emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
+        log.info('[LieutenantsPanel] cleanup obsolete MOTEUR_LIEUTENANTS_LOCKED check (gating rule changed)')
+      }
+      return
+    }
+
     if (active && !previousCheckActive) {
       emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
       emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
