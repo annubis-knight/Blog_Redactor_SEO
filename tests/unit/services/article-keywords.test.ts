@@ -228,8 +228,13 @@ describe('data.service — saveCaptainExploration', () => {
 })
 
 describe('data.service — saveLieutenantExplorations', () => {
-  it('upserts into lieutenant_explorations with status protection', async () => {
-    // lieutenant_explorations UPSERT
+  it('upserts into lieutenant_explorations sans CASE downgrade-protection (2026-05-08)', async () => {
+    // 2026-05-08 — La protection CASE qui empechait status='locked' d'etre
+    // downgrade en 'suggested' a ete RETIREE. Elle bloquait le cas legitime
+    // "user uncoche une checkbox" → l'unlock individuel ne pouvait pas
+    // persister, le row restait `locked` en DB et reapparaissait coche au
+    // reload. Maintenant le payload reflete TOUJOURS l'etat voulu par
+    // l'utilisateur (lock atomique sprint 17 + persist atomique 2026-05-08).
     mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
 
     const { saveLieutenantExplorations } = await importService()
@@ -238,7 +243,8 @@ describe('data.service — saveLieutenantExplorations', () => {
     ], 'captain kw')
 
     expect(mockQuery.mock.calls[0][0]).toContain('lieutenant_explorations')
-    expect(mockQuery.mock.calls[0][0]).toContain('CASE WHEN')
+    // status = EXCLUDED.status (sans CASE) : permet le downgrade locked → suggested.
+    expect(mockQuery.mock.calls[0][0]).not.toContain('CASE WHEN lieutenant_explorations.status')
   })
 })
 
