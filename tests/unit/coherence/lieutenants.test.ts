@@ -12,7 +12,7 @@ import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.
  */
 
 describe('FR-LIE-SERP-ANALYZE — freshness check SERP (TTL 7j)', () => {
-  it('detecte le cache hit keyword_metrics.serp_raw_json si frais (<= 7j)', () => {
+  it('detecte le cache hit keyword_serp_results si frais (<= 7j)', () => {
     const now = new Date()
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
 
@@ -37,22 +37,24 @@ describe('FR-LIE-SERP-ANALYZE — freshness check SERP (TTL 7j)', () => {
     expect(isFresh(null, 7)).toBe(false)
   })
 
-  it('court-circuite le fetch DataForSEO si DB hit frais', () => {
+  it('court-circuite le fetch DataForSEO si DB hit frais (Story C2 — keyword_serp_results)', () => {
+    // Simule le pattern de /serp/analyze post-C2 :
+    // getSerpResultsFresh(keyword) renvoie les rows si fetched_at < TTL, null sinon.
     const mockDb = {
-      getKeywordMetrics: vi.fn((kw: string) => ({
-        keyword: kw,
-        serpRawJson: { competitors: [], paaQuestions: [], fromCache: true },
-        fetchedAt: new Date().toISOString(),
+      getSerpResultsFresh: vi.fn(() => [
+        { keyword: 'seo local', position: 1, url: 'https://example.com/1' },
+      ]),
+      reconstructSerpAnalysisResult: vi.fn(() => ({
+        competitors: [], paaQuestions: [], fromCache: true,
       })),
     }
 
     const mockFetch = vi.fn()
 
-    // Simule le pattern de /serp/analyze
     const analyzeSerp = (keyword: string) => {
-      const existing = mockDb.getKeywordMetrics(keyword)
-      if (existing?.serpRawJson) {
-        return { ...existing.serpRawJson, fromCache: true }
+      const fresh = mockDb.getSerpResultsFresh(keyword)
+      if (fresh) {
+        return { ...mockDb.reconstructSerpAnalysisResult(keyword), fromCache: true }
       }
       mockFetch()
       return { competitors: [], paaQuestions: [], fromCache: false }
@@ -64,32 +66,18 @@ describe('FR-LIE-SERP-ANALYZE — freshness check SERP (TTL 7j)', () => {
   })
 
   it('re-scrape si DB stale (> 7j)', () => {
-    const now = new Date()
-    const eightDaysAgo = new Date(now.getTime() - 8 * 24 * 60 * 60 * 1000)
-
-    const isFresh = (fetchedAt: string | null, ttlDays: number = 7): boolean => {
-      if (!fetchedAt) return false
-      const diff = now.getTime() - new Date(fetchedAt).getTime()
-      const ttlMs = ttlDays * 24 * 60 * 60 * 1000
-      return diff <= ttlMs
-    }
-
     const mockDb = {
-      getKeywordMetrics: vi.fn(() => ({
-        keyword: 'seo local',
-        serpRawJson: { competitors: [], paaQuestions: [] },
-        fetchedAt: eightDaysAgo.toISOString(),
-      })),
+      // getSerpResultsFresh renvoie null quand stale (cf. service)
+      getSerpResultsFresh: vi.fn(() => null),
     }
 
     const mockFetch = vi.fn().mockResolvedValue({ competitors: [], paaQuestions: [] })
 
     const analyzeSerp = (keyword: string) => {
-      const existing = mockDb.getKeywordMetrics(keyword)
-      if (existing?.serpRawJson && isFresh(existing.fetchedAt, 7)) {
-        return { ...existing.serpRawJson, fromCache: true }
+      const fresh = mockDb.getSerpResultsFresh(keyword)
+      if (fresh) {
+        return Promise.resolve({ competitors: [], paaQuestions: [], fromCache: true })
       }
-      // Stale → re-fetch
       return mockFetch().then((r: unknown) => ({ ...r, fromCache: false }))
     }
 

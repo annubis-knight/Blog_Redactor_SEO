@@ -2,8 +2,17 @@ import { log } from '../../utils/logger.js'
 import { fetchSerp, fetchPaa } from './dataforseo.service.js'
 import type { SerpCompetitor, SerpAnalysisResult, HnNode } from '../../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
+import {
+  upsertSerpResults,
+  upsertSerpScrapes,
+  upsertPaaQuestions,
+  withSerpTransaction,
+} from '../keyword/keyword-serp.service.js'
 
-// Sprint 15.5-bis — SERP results now stored in keyword_metrics.serp_raw_json (cross-article).
+// Story C4 — fin du dual-write : on n'écrit plus dans keyword_metrics.serp_raw_json.
+// Les artefacts SERP sont uniquement persistés dans les 4 tables filles via
+// keyword-serp.service. La colonne legacy reste en DB en lecture seule
+// transitoire (drop différé Epic E1 ≥ 14 jours).
 
 const FETCH_TIMEOUT_MS = 10_000
 const USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; +https://example.com)'
@@ -161,9 +170,8 @@ export async function analyzeSerpCompetitors(
   keyword: string,
   articleLevel: ArticleLevel,
 ): Promise<SerpAnalysisResult> {
-  // Sprint 15.5-bis — DB-first check is now performed in the route itself
-  // (`/serp/analyze`) via keyword_metrics.serp_raw_json. This service only handles
-  // the external fetch path.
+  // Story C2 — la cache check est dans la route (`/serp/analyze`) via
+  // getSerpResultsFresh. Ce service ne fait que l'external fetch + la persist.
   log.info(`Analyzing SERP competitors for "${keyword}" (level: ${articleLevel})`)
   const totalStart = Date.now()
 
@@ -225,7 +233,63 @@ export async function analyzeSerpCompetitors(
     fromCache: false,
   }
 
-  // Sprint 15.5-bis — persistence handled by caller via upsertKeywordSerp().
+  // Story C4 — persistence atomique sur les 4 tables filles uniquement.
+  // En cas d'échec d'une des écritures, la transaction rollback intégralement.
+  await withSerpTransaction(async (client) => {
+    // Garantit le parent keyword_metrics(keyword, lang, country) pour la FK
+    // depuis keyword_serp_results / _paa_questions / _autocomplete (dual-write
+    // legacy retiré en C4 — ce stub minimal remplace la création implicite).
+    await client.query(
+      `INSERT INTO keyword_metrics (keyword, lang, country, fetched_at)
+       VALUES ($1, 'fr', 'fr', NOW())
+       ON CONFLICT (keyword, lang, country) DO UPDATE SET fetched_at = NOW()`,
+      [keyword],
+    )
+
+    if (competitors.length > 0) {
+      await upsertSerpResults(
+        keyword,
+        competitors.map((c) => ({
+          position: c.position,
+          url: c.url,
+          title: c.title,
+          domain: c.domain,
+        })),
+        'fr',
+        'fr',
+        client,
+      )
+
+      await upsertSerpScrapes(
+        keyword,
+        competitors.map((c) => ({
+          position: c.position,
+          url: c.url,
+          headings: c.headings,
+          textContent: c.textContent || null,
+          isBlog: c.isBlog ?? null,
+        })),
+        'fr',
+        'fr',
+        client,
+      )
+    }
+
+    if (paaQuestions.length > 0) {
+      await upsertPaaQuestions(
+        keyword,
+        paaQuestions.map((p) => ({
+          question: p.question,
+          answer: p.answer ?? null,
+          depth: 1,
+        })),
+        'fr',
+        'fr',
+        client,
+      )
+    }
+  })
+
   log.info(`SERP analysis done for "${keyword}": ${competitors.length} competitors, ${paaQuestions.length} PAA`, { ms: Date.now() - totalStart })
 
   return result

@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-05-09T13:52:45.718Z
--- Commit git       : 7968f52 (main)
--- Sujet commit     : Merge branch 'docs/lexique-decouplage-roadmap' into main
+-- Généré le        : 2026-05-09T14:23:37.519Z
+-- Commit git       : 01fc223 (feat/keyword-metrics-decomposition)
+-- Sujet commit     : chore(plan): merge planning artifacts into chantier branch
 -- Working tree     : ⚠️  NON (modifs non commitées)
--- Tables           : 21
--- Empreinte schéma : sha256:2b037c5a04068e702e8a00c04bd5d46196bbb06b22dde826d6012c69187ad21f
+-- Tables           : 25
+-- Empreinte schéma : sha256:d89fca3925b3b857a11e4da4426875fcbf1d9926aa1ab4fd5751f0a655c65077
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -141,6 +141,18 @@ CREATE TABLE "internal_links" (
   CONSTRAINT "internal_links_source_id_target_id_position_key" UNIQUE (source_id, target_id, "position")
 );
 
+CREATE TABLE "keyword_autocomplete" (
+  "keyword" TEXT NOT NULL,
+  "lang" TEXT NOT NULL DEFAULT 'fr'::text,
+  "country" TEXT NOT NULL DEFAULT 'fr'::text,
+  "position" INTEGER NOT NULL,
+  "text" TEXT NOT NULL,
+  "source" TEXT,
+  "fetched_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT "keyword_autocomplete_keyword_lang_country_fkey" FOREIGN KEY (keyword, lang, country) REFERENCES keyword_metrics(keyword, lang, country) ON DELETE CASCADE,
+  CONSTRAINT "keyword_autocomplete_pkey" PRIMARY KEY (keyword, lang, country, "position")
+);
+
 CREATE TABLE "keyword_discoveries" (
   "seed" TEXT NOT NULL,
   "lang" TEXT NOT NULL DEFAULT 'fr'::text,
@@ -184,6 +196,48 @@ CREATE TABLE "keyword_metrics" (
   "intent_label" TEXT,
   CONSTRAINT "keyword_metrics_intent_label_check" CHECK (((intent_label IS NULL) OR (intent_label = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text])))),
   CONSTRAINT "keyword_metrics_pkey" PRIMARY KEY (keyword, lang, country)
+);
+
+CREATE TABLE "keyword_paa_questions" (
+  "id" BIGINT NOT NULL DEFAULT nextval('keyword_paa_questions_id_seq'::regclass),
+  "keyword" TEXT NOT NULL,
+  "lang" TEXT NOT NULL DEFAULT 'fr'::text,
+  "country" TEXT NOT NULL DEFAULT 'fr'::text,
+  "question" TEXT NOT NULL,
+  "answer" TEXT,
+  "depth" INTEGER DEFAULT 1,
+  "parent_question" TEXT,
+  "fetched_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT "keyword_paa_questions_keyword_lang_country_fkey" FOREIGN KEY (keyword, lang, country) REFERENCES keyword_metrics(keyword, lang, country) ON DELETE CASCADE,
+  CONSTRAINT "keyword_paa_questions_pkey" PRIMARY KEY (id),
+  CONSTRAINT "keyword_paa_questions_keyword_lang_country_question_depth_key" UNIQUE (keyword, lang, country, question, depth)
+);
+
+CREATE TABLE "keyword_serp_results" (
+  "keyword" TEXT NOT NULL,
+  "lang" TEXT NOT NULL DEFAULT 'fr'::text,
+  "country" TEXT NOT NULL DEFAULT 'fr'::text,
+  "position" INTEGER NOT NULL,
+  "url" TEXT NOT NULL,
+  "title" TEXT,
+  "domain" TEXT,
+  "fetched_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT "keyword_serp_results_keyword_lang_country_fkey" FOREIGN KEY (keyword, lang, country) REFERENCES keyword_metrics(keyword, lang, country) ON DELETE CASCADE,
+  CONSTRAINT "keyword_serp_results_pkey" PRIMARY KEY (keyword, lang, country, "position")
+);
+
+CREATE TABLE "keyword_serp_scrapes" (
+  "keyword" TEXT NOT NULL,
+  "lang" TEXT NOT NULL DEFAULT 'fr'::text,
+  "country" TEXT NOT NULL DEFAULT 'fr'::text,
+  "position" INTEGER NOT NULL,
+  "url" TEXT NOT NULL,
+  "headings" JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "text_content" TEXT,
+  "is_blog" BOOLEAN,
+  "scraped_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT "keyword_serp_scrapes_keyword_lang_country_position_fkey" FOREIGN KEY (keyword, lang, country, "position") REFERENCES keyword_serp_results(keyword, lang, country, "position") ON DELETE CASCADE,
+  CONSTRAINT "keyword_serp_scrapes_pkey" PRIMARY KEY (keyword, lang, country, "position")
 );
 
 CREATE TABLE "keywords_seo" (
@@ -297,7 +351,17 @@ CREATE INDEX idx_internal_links_source ON public.internal_links USING btree (sou
 
 CREATE INDEX idx_internal_links_target ON public.internal_links USING btree (target_id);
 
+CREATE INDEX idx_keyword_autocomplete_fetched ON public.keyword_autocomplete USING btree (fetched_at);
+
 CREATE INDEX idx_keyword_metrics_fetched ON public.keyword_metrics USING btree (fetched_at);
+
+CREATE INDEX idx_keyword_paa_kw ON public.keyword_paa_questions USING btree (keyword, lang, country);
+
+CREATE INDEX idx_keyword_serp_results_domain ON public.keyword_serp_results USING btree (domain);
+
+CREATE INDEX idx_keyword_serp_results_fetched ON public.keyword_serp_results USING btree (fetched_at);
+
+CREATE INDEX idx_keyword_serp_scrapes_scraped ON public.keyword_serp_scrapes USING btree (scraped_at);
 
 CREATE INDEX idx_keywords_seo_cocoon ON public.keywords_seo USING btree (cocoon_name);
 
@@ -316,6 +380,8 @@ CREATE INDEX idx_radar_explorations_scanned ON public.radar_explorations USING b
 -- (auto-créée par SERIAL/IDENTITY) "cocoons_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "internal_links_id_seq"
+
+-- (auto-créée par SERIAL/IDENTITY) "keyword_paa_questions_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "keyword_tests_id_seq"
 

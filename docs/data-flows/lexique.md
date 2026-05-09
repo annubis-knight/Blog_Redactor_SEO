@@ -2,9 +2,11 @@
 name: lexique
 description: Termes sémantiques lexique d'un article — array de strings stocké en JSONB dans `article_keywords.lexique` (sélection utilisateur après TF-IDF + IA). Source autorité = endpoint `/api/serp/tfidf` (cross-article, sans re-SERP) + `lexique_explorations` table (multi-keyword, par article).
 type: "{ obligatoire: TfidfTerm[], differenciateur: TfidfTerm[], optionnel: TfidfTerm[], keyword: string, totalCompetitors: number } + sélection utilisateur string[] -> article_keywords.lexique"
-last_updated: 2026-05-04
-related_fr: [FR-LEX-TFIDF, FR-LEX-SORT, FR-LEX-SELECT, FR-LEX-AI-PANEL, FR-LEX-MULTI-KEYWORD, FR-LEX-CHECK, FR-MOT-PAINPOINT-INJECTION]
+last_updated: 2026-05-09
+related_fr: [FR-LEX-TFIDF, FR-LEX-SORT, FR-LEX-SELECT, FR-LEX-AI-PANEL, FR-LEX-MULTI-KEYWORD, FR-LEX-CHECK, FR-MOT-PAINPOINT-INJECTION, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION]
 ---
+
+> **Sprint keyword-metrics-decomposition (2026-05-09)** — l'autorité TF-IDF de Lexique n'est plus `keyword_metrics.serp_raw_json` mais **`keyword_serp_scrapes.text_content`** (table fille dédiée). La route `/serp/tfidf` lit directement les scrapes via `getSerpScrapes(keyword)` puis délègue à `computeTfidfFromTexts(texts[], keyword)` (pure). Voir `keyword-serp.service.ts`. Les sections ci-dessous mentionnant `serp_raw_json` reflètent l'état avant refonte.
 
 # Data Flow — lexique
 
