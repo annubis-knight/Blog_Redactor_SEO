@@ -3,7 +3,7 @@ title: 'Epics — Refonte schéma keyword_metrics'
 slug: epics-keyword-metrics-decomposition
 version: 1.1.0
 last_updated: 2026-05-09
-status: proposed
+status: archived
 related_nfr: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
 synced_with:
   - _bmad-output/planning-artifacts/prd.md
@@ -13,6 +13,8 @@ synced_with:
 ---
 
 # Epics — Décomposition `keyword_metrics`
+
+> **⚠️ ARCHIVED 2026-05-09** — Sprint keyword-metrics-decomposition livré sur `feat/keyword-metrics-decomposition`. NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION : statut **active** (PRD §8.3.bis). Ce document est conservé pour traçabilité ; ne pas l'utiliser comme source de vérité — voir le code et les data-flows à jour.
 
 > Découpe macro du chantier en 4 epics ordonnés par dépendance. Chaque epic regroupe des stories (détails dans `stories-keyword-metrics-decomposition.md`).
 

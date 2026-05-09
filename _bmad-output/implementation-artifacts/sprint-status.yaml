@@ -45,13 +45,28 @@
 # Voir _bmad-output/planning-artifacts/epics.md pour le détail.
 
 generated: 2026-04-01
-last_updated: 2026-05-05
+last_updated: 2026-05-09
 project: BMAD
 project_key: NOKEY
 tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Sprint keyword-metrics-decomposition (2026-05-09) ✅
+  # tech-spec: _archive/tech-spec-keyword-metrics-decomposition.md
+  # branche : feat/keyword-metrics-decomposition (mergée dans main)
+  # NFR : NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION (PRD §8.3.bis) — statut: active.
+  # Décomposition de keyword_metrics (god-table 17 colonnes) en 4 tables filles
+  # cross-article : keyword_serp_results (URLs Top 10), keyword_serp_scrapes
+  # (headings + text_content + is_blog), keyword_paa_questions, keyword_autocomplete.
+  # Service centralisé : server/services/keyword/keyword-serp.service.ts.
+  # 11 stories : A1 (DDL+snapshot), A2 (backfill), B1 (service), B2 (dual-write),
+  # C1 (TF-IDF Lexique), C2 (cache check), C3 (brief Capitaine), C4 (stop dual-write
+  # + retrait type), D1 (bench perf), D2 (docs), D3 (archivage).
+  # Bench D1 : -97.5 % payload brief Capitaine sur top-5 keywords.
+  # Différé Epic E1 (≥ 14j) : ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json.
+  sprint-keyword-metrics-decomposition: done
+
   # Sprint 10.5 — Nettoyage legacy painPoint (2026-05-06) ✅
   # tech-spec: tech-spec-sprint-10.5-cleanup-painpoint-legacy.md
   # branche: chore/sprint-10.5-cleanup-painpoint-legacy

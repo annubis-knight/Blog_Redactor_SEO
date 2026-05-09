@@ -3,7 +3,7 @@ title: 'Refonte schéma keyword_metrics — décomposition en 5 tables'
 slug: keyword-metrics-decomposition
 version: 1.1.0
 last_updated: 2026-05-09
-status: proposed
+status: archived
 owner: Arnaud
 related_nfr: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
 related_fr_indirect:
@@ -23,6 +23,8 @@ synced_with:
 ---
 
 # Tech-Spec — Décomposition de `keyword_metrics`
+
+> **⚠️ ARCHIVED 2026-05-09** — Sprint keyword-metrics-decomposition livré sur `feat/keyword-metrics-decomposition`. NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION : statut **active** (PRD §8.3.bis). Ce document est conservé pour traçabilité ; ne pas l'utiliser comme source de vérité — voir le code et les data-flows à jour.
 
 > Plan d'implémentation pour la NFR `NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION` (PRD §8.3.bis).
 > **Aucun code dans ce document. C'est un livrable de planification.**
