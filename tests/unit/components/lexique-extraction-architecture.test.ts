@@ -78,13 +78,23 @@ const stubs = {
     props: ['title', 'terms', 'selectedTerms', 'isLocked', 'defaultOpen', 'isIaRecommended', 'getRecommendation', 'sortTermsByAlignment', 'emptyLabel'],
     emits: ['toggle-term'],
   },
-  LexiqueMultiKeywordPanel: {
-    name: 'LexiqueMultiKeywordPanel',
-    template: '<div data-testid="lexique-multi-keyword-panel"></div>',
-    props: ['customKeywordInput', 'pastExplorations', 'activeSourceKeyword', 'isLoading', 'isLocked'],
-    emits: ['update:custom-keyword', 'extract-custom', 'select-past'],
+  // Chantier 3 E2-S2 — LexiqueMultiKeywordPanel renommé LexiqueCustomKeywordInput
+  // (chips remplacés par TabBar côté parent). On stub le nouveau nom + on ajoute
+  // un stub pour TabBar.
+  LexiqueCustomKeywordInput: {
+    name: 'LexiqueCustomKeywordInput',
+    template: '<div data-testid="lexique-custom-keyword-input"></div>',
+    props: ['customKeywordInput', 'isLoading', 'isLocked'],
+    emits: ['update:custom-keyword', 'extract-custom'],
+  },
+  TabBar: {
+    name: 'TabBar',
+    template: '<div data-testid="lexique-tab-bar"></div>',
+    props: ['tabs', 'activeId', 'ariaLabel'],
+    emits: ['update:activeId'],
   },
   SortToggleBar: { template: '<div data-testid="lexique-sort-bar"></div>' },
+  ConfirmModal: { template: '<div></div>', props: ['open', 'title', 'message', 'confirmLabel', 'cancelLabel'] },
 }
 
 const baseProps = {
@@ -130,12 +140,15 @@ describe('LexiquePanel — architecture des sections (Vague 1)', () => {
     expect(results.findAll('[data-testid="lexique-terms-list"]').length).toBe(3)
   })
 
-  it('AC.D.2 — LexiqueMultiKeywordPanel N\'EST PAS descendant de lexique-results', async () => {
+  it('AC.D.2 — TabBar (ex-LexiqueMultiKeywordPanel) N\'EST PAS descendant de lexique-results', async () => {
+    // Chantier 3 E2-S2 : la liste des explorations vit désormais dans TabBar,
+    // pas dans LexiqueMultiKeywordPanel. L'invariant architectural est conservé :
+    // les onglets restent au-dessus de la grille de termes (lexique-results).
     const wrapper = await mountLexique()
-    expect(isDescendantOf(wrapper, '[data-testid="lexique-results"]', '[data-testid="lexique-multi-keyword-panel"]'))
+    expect(isDescendantOf(wrapper, '[data-testid="lexique-results"]', '[data-testid="lexique-tab-bar"]'))
       .toBe(false)
     // Mais bien rendu (présent dans le DOM)
-    expect(wrapper.find('[data-testid="lexique-multi-keyword-panel"]').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="lexique-tab-bar"]').exists()).toBe(true)
   })
 
   it('AC.D.3 — LexiqueAiPanel reste descendant direct de .lexique-extraction (pas absorbé par TermsList)', async () => {

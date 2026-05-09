@@ -184,17 +184,18 @@ describe('LexiquePanel — handleAssistAdd (basket)', () => {
 // Trou B — extractCustomKeyword (D4)
 // ============================================================================
 describe('LexiquePanel — extractCustomKeyword (D4)', () => {
-  it('saisie + Entrée dans .multi-keyword-input lance fetchTfidf avec le custom keyword', async () => {
+  it('saisie + Entrée dans .custom-keyword-input lance fetchTfidf avec le custom keyword', async () => {
+    // Chantier 3 E2-S2 — sélecteur renommé .multi-keyword-input → .custom-keyword-input
+    // (composant LexiqueMultiKeywordPanel renommé LexiqueCustomKeywordInput).
     const wrapper = mountLexique()
-    await nextTick()
+    await flushPromises()
     mockApiPost.mockClear()
     mockApiPost.mockResolvedValue(TFIDF_RESULT_2)
 
-    const input = wrapper.find('.multi-keyword-input')
+    const input = wrapper.find('.custom-keyword-input')
     await input.setValue('autre keyword')
     await input.trigger('keydown.enter')
-    await nextTick()
-    await nextTick()
+    await flushPromises()
 
     const tfidfCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('/serp/tfidf'))
     expect(tfidfCalls.length).toBeGreaterThan(0)
@@ -205,7 +206,7 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
 
   it('clic « Extraire » avec input vide ne déclenche pas fetchTfidf', async () => {
     const wrapper = mountLexique()
-    await nextTick()
+    await flushPromises()
     mockApiPost.mockClear()
 
     const btnSecondary = wrapper.find('.btn-secondary')
@@ -214,14 +215,13 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
 
   it('après extraction custom, input est vidé', async () => {
     const wrapper = mountLexique()
-    await nextTick()
+    await flushPromises()
     mockApiPost.mockResolvedValue(TFIDF_RESULT_2)
 
-    const input = wrapper.find('.multi-keyword-input')
+    const input = wrapper.find('.custom-keyword-input')
     await input.setValue('autre keyword')
     await wrapper.find('.btn-secondary').trigger('click')
-    await nextTick()
-    await nextTick()
+    await flushPromises()
 
     expect((input.element as HTMLInputElement).value).toBe('')
   })
@@ -229,82 +229,98 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
   it.skip('input désactivé si isLocked=true (Sprint 17 — sémantique inversée : l\'utilisateur peut étendre sa sélection même avec des termes déjà cochés)', async () => {
     const wrapper = mountLexique({ initialLocked: true })
     await nextTick()
-    const input = wrapper.find('.multi-keyword-input')
+    const input = wrapper.find('.custom-keyword-input')
     expect((input.element as HTMLInputElement).disabled).toBe(true)
   })
 })
 
 // ============================================================================
-// Trou C — pastExplorations chips
+// Trou C — pastExplorations onglets (chantier 3 E2-S2 : ex-chips → TabBar)
 // ============================================================================
-describe('LexiquePanel — pastExplorations chips', () => {
+describe('LexiquePanel — pastExplorations onglets', () => {
+  function mockExplorations(entries: { sourceKeyword: string; tfidf: typeof TFIDF_RESULT; recs?: Array<{ term: string; aiRecommended: boolean; aiReason: string }> }[]) {
+    mockApiGet.mockImplementation(async (path: string) => {
+      if (path.includes('/serp/exists')) return { exists: true, scrapedAt: '2026-05-01T00:00:00.000Z' }
+      return {
+        lexique: entries.map(e => ({
+          articleId: 1,
+          sourceKeyword: e.sourceKeyword,
+          tfidfTerms: e.tfidf,
+          aiRecommendations: e.recs ?? [],
+          aiMissingTerms: [],
+          aiSummary: null,
+          exploredAt: new Date().toISOString(),
+        })),
+      }
+    })
+  }
+
   it('charge les past explorations au mount via /articles/:id/explorations', async () => {
-    mockApiGet.mockResolvedValue({
-      lexique: [
-        { articleId: 1, sourceKeyword: 'seo', tfidfTerms: TFIDF_RESULT, aiRecommendations: [], aiMissingTerms: [], aiSummary: null, exploredAt: new Date().toISOString() },
-        { articleId: 1, sourceKeyword: 'seo local', tfidfTerms: TFIDF_RESULT_2, aiRecommendations: [], aiMissingTerms: [], aiSummary: null, exploredAt: new Date().toISOString() },
-      ],
-    })
+    mockExplorations([
+      { sourceKeyword: 'seo', tfidf: TFIDF_RESULT },
+      { sourceKeyword: 'seo local', tfidf: TFIDF_RESULT_2 },
+    ])
     const wrapper = mountLexique()
-    await nextTick()
-    await nextTick()
+    await flushPromises()
+    await flushPromises()
 
-    const chips = wrapper.findAll('.past-chip')
-    expect(chips.length).toBe(2)
-    expect(chips[0]!.text()).toContain('seo')
-    expect(chips[1]!.text()).toContain('seo local')
+    // 2 onglets explorations + 1 onglet « + Tester » = 3 tabs role="tab"
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs.length).toBe(3)
+    expect(tabs[0].text()).toBe('seo')
+    expect(tabs[1].text()).toBe('seo local')
+    expect(tabs[2].text()).toMatch(/Tester/)
   })
 
-  it('chip actif visuellement selon activeSourceKeyword', async () => {
-    mockApiGet.mockResolvedValue({
-      lexique: [
-        { articleId: 1, sourceKeyword: 'seo', tfidfTerms: TFIDF_RESULT, aiRecommendations: [], aiMissingTerms: [], aiSummary: null, exploredAt: new Date().toISOString() },
-        { articleId: 1, sourceKeyword: 'seo local', tfidfTerms: TFIDF_RESULT_2, aiRecommendations: [], aiMissingTerms: [], aiSummary: null, exploredAt: new Date().toISOString() },
-      ],
-    })
+  it('onglet actif (aria-selected="true") selon activeSourceKeyword', async () => {
+    mockExplorations([
+      { sourceKeyword: 'seo', tfidf: TFIDF_RESULT },
+      { sourceKeyword: 'seo local', tfidf: TFIDF_RESULT_2 },
+    ])
     const wrapper = mountLexique()
-    await nextTick()
-    await nextTick()
+    await flushPromises()
+    await flushPromises()
 
-    // L'auto-restore se base sur captainKeyword='seo' → chip 'seo' devrait être actif
-    const chips = wrapper.findAll('.past-chip')
-    expect(chips[0]!.classes()).toContain('past-chip--active')
-    expect(chips[1]!.classes()).not.toContain('past-chip--active')
+    // L'auto-restore se base sur captainKeyword='seo' → onglet 'seo' devrait être actif
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs[0].attributes('aria-selected')).toBe('true')
+    expect(tabs[1].attributes('aria-selected')).toBe('false')
   })
 
-  it('clic sur un chip switch tfidfResult sans appel API', async () => {
-    mockApiGet.mockResolvedValue({
-      lexique: [
-        { articleId: 1, sourceKeyword: 'seo', tfidfTerms: TFIDF_RESULT, aiRecommendations: [], aiMissingTerms: [], aiSummary: null, exploredAt: new Date().toISOString() },
-        { articleId: 1, sourceKeyword: 'seo local', tfidfTerms: TFIDF_RESULT_2, aiRecommendations: [{ term: 'local-business', aiRecommended: true, aiReason: 'r' }], aiMissingTerms: [], aiSummary: null, exploredAt: new Date().toISOString() },
-      ],
-    })
+  it('clic sur un onglet switch tfidfResult sans appel API', async () => {
+    mockExplorations([
+      { sourceKeyword: 'seo', tfidf: TFIDF_RESULT },
+      { sourceKeyword: 'seo local', tfidf: TFIDF_RESULT_2, recs: [{ term: 'local-business', aiRecommended: true, aiReason: 'r' }] },
+    ])
     const wrapper = mountLexique()
-    await nextTick()
-    await nextTick()
+    await flushPromises()
+    await flushPromises()
 
     mockApiPost.mockClear()
-    // Click sur le 2ème chip ('seo local')
-    const chips = wrapper.findAll('.past-chip')
-    await chips[1]!.trigger('click')
-    await nextTick()
+    // Click sur le 2ème onglet ('seo local')
+    const tabs = wrapper.findAll('[role="tab"]')
+    await tabs[1].trigger('click')
+    await flushPromises()
 
     // Pas d'appel API
     const tfidfCalls = mockApiPost.mock.calls.filter(c => String(c[0]).includes('/serp/tfidf'))
     expect(tfidfCalls.length).toBe(0)
-    // Le 2ème chip est maintenant actif
-    const chipsAfter = wrapper.findAll('.past-chip')
-    expect(chipsAfter[1]!.classes()).toContain('past-chip--active')
-    expect(chipsAfter[0]!.classes()).not.toContain('past-chip--active')
+    // Le 2ème onglet est maintenant actif (aria-selected="true")
+    const tabsAfter = wrapper.findAll('[role="tab"]')
+    expect(tabsAfter[1].attributes('aria-selected')).toBe('true')
+    expect(tabsAfter[0].attributes('aria-selected')).toBe('false')
   })
 
-  it('section past-explorations absente si aucune exploration', async () => {
-    mockApiGet.mockResolvedValue({ lexique: [] })
+  it('aucune exploration → seul l\'onglet « Tester un mot-clé » est rendu', async () => {
+    // Default beforeEach mock répond { exists:true } pour /serp/exists et
+    // { lexique: [] } pour /explorations.
     const wrapper = mountLexique()
-    await nextTick()
-    await nextTick()
+    await flushPromises()
+    await flushPromises()
 
-    expect(wrapper.find('.past-explorations').exists()).toBe(false)
+    const tabs = wrapper.findAll('[role="tab"]')
+    expect(tabs.length).toBe(1)
+    expect(tabs[0].text()).toMatch(/Tester/)
   })
 })
 

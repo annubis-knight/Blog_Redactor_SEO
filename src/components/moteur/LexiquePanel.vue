@@ -30,8 +30,9 @@ import { useSerpExistsCheck } from '@/composables/lexique/useSerpExistsCheck'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
 import LexiqueTermsList from '@/components/moteur/lexique/LexiqueTermsList.vue'
-import LexiqueMultiKeywordPanel from '@/components/moteur/lexique/LexiqueMultiKeywordPanel.vue'
+import LexiqueCustomKeywordInput from '@/components/moteur/lexique/LexiqueCustomKeywordInput.vue'
 import ConfirmModal from '@/components/shared/ConfirmModal.vue'
+import TabBar from '@/components/shared/TabBar.vue'
 import { jaccardWithPainPoint } from '@/utils/pain-point-jaccard'
 import { type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
@@ -146,6 +147,46 @@ const {
 } = useSerpExistsCheck(captainKeywordForPrecheck)
 const showSerpScrapeModal = ref(false)
 
+// Chantier 3 E2-S2 (FR-LEX-MULTI-KEYWORD-TABS) — onglets multi-keyword.
+// 1 onglet par exploration enregistrée (label = sourceKeyword brut, sans
+// transformation côté UI — cohérence affichage/calcul §2.0) + 1 onglet
+// « + Tester un mot-clé » pour déclencher une saisie libre.
+const CUSTOM_TAB_ID = '__custom__'
+
+const lexiqueTabs = computed(() => {
+  const explorationTabs = pastExplorations.value.map((entry) => ({
+    id: entry.sourceKeyword,
+    label: entry.sourceKeyword,
+  }))
+  // Quand 0 exploration, on n'affiche que l'onglet de saisie libre
+  // (label simplifié sans le « + »).
+  const customLabel = explorationTabs.length === 0 ? 'Tester un mot-clé' : '+ Tester un mot-clé'
+  return [...explorationTabs, { id: CUSTOM_TAB_ID, label: customLabel }]
+})
+
+// L'onglet actif côté UI : soit le sourceKeyword courant, soit l'onglet libre.
+const displayedTabId = computed<string>(() => {
+  if (activeSourceKeyword.value && pastExplorations.value.some(e => e.sourceKeyword === activeSourceKeyword.value)) {
+    return activeSourceKeyword.value
+  }
+  return CUSTOM_TAB_ID
+})
+
+function onSelectTab(id: string): void {
+  if (id === CUSTOM_TAB_ID) {
+    activeSourceKeyword.value = ''
+    return
+  }
+  const entry = pastExplorations.value.find(e => e.sourceKeyword === id)
+  if (!entry) return
+  // Inline équivalent de handleSelectPast : pas de fetch, lecture du cache.
+  activeSourceKeyword.value = entry.sourceKeyword
+  tfidfResult.value = entry.tfidfTerms
+  const m = new Map<string, LexiqueTermRecommendation>()
+  for (const r of entry.aiRecommendations) m.set(r.term.toLowerCase(), r)
+  iaRecommendations.value = m
+}
+
 // --- IA Upfront Analysis (Vague 5 — extracted to useLexiqueIa) ---
 const captainKeywordRef = toRef(props, 'captainKeyword')
 const articleLevelRef = toRef(props, 'articleLevel')
@@ -248,6 +289,12 @@ async function extractLexique() {
  * choisit explicitement de tester un keyword vierge. Le coût scrape est
  * acté par cette saisie libre (cohérent avec la modale du captain keyword
  * qui sert le même objectif sur le keyword principal).
+ *
+ * Chantier 3 E2-S2 (FR-LEX-MULTI-KEYWORD-TABS / AC.LEX-TABS.3) : après
+ * succès, on appelle `mergeFromDb` pour récupérer l'entrée fraîchement
+ * persistée par le backend → un nouvel onglet apparaît automatiquement et
+ * `displayedTabId` (computed) bascule sur ce keyword puisque
+ * `activeSourceKeyword.value === kw` désormais matche une entry du cache.
  */
 async function extractCustomKeyword() {
   const kw = customKeywordInput.value.trim()
@@ -255,6 +302,9 @@ async function extractCustomKeyword() {
   activeSourceKeyword.value = kw
   iaRecommendations.value = new Map()
   await fetchTfidf(kw, true)
+  if (tfidfResult.value) {
+    await mergeFromDb()
+  }
   customKeywordInput.value = ''
 }
 
@@ -550,19 +600,9 @@ async function mergeFromDb() {
   }
 }
 
-interface LexiqueExplorationEntryRef {
-  sourceKeyword: string
-  tfidfTerms: TfidfResult | null
-  aiRecommendations: LexiqueTermRecommendation[]
-}
-
-function handleSelectPast(entry: LexiqueExplorationEntryRef) {
-  activeSourceKeyword.value = entry.sourceKeyword
-  tfidfResult.value = entry.tfidfTerms
-  const m = new Map<string, LexiqueTermRecommendation>()
-  for (const r of entry.aiRecommendations) m.set(r.term.toLowerCase(), r)
-  iaRecommendations.value = m
-}
+// Chantier 3 E2-S2 — `handleSelectPast` (Sprint 11 chips) supprimé : le
+// switch d'onglet passe désormais par `onSelectTab` (TabBar). Cohérent
+// avec FR-LEX-MULTI-KEYWORD-TABS / AC.LEX-TABS.2.
 
 defineExpose({ hydrateFromDb, mergeFromDb })
 </script>
@@ -638,18 +678,29 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       @cancel="cancelSerpScrape"
     />
 
-    <!-- Sprint 11 (D4) — Multi-keyword exploration + past explorations recap -->
-    <LexiqueMultiKeywordPanel
-      v-if="selectedArticle?.id"
-      :custom-keyword-input="customKeywordInput"
-      :past-explorations="pastExplorations"
-      :active-source-keyword="activeSourceKeyword"
-      :is-loading="isLoading"
-      :is-locked="isLocked"
-      @update:custom-keyword="(v) => customKeywordInput = v"
-      @extract-custom="extractCustomKeyword"
-      @select-past="handleSelectPast"
-    />
+    <!--
+      Chantier 3 E2-S2 (FR-LEX-MULTI-KEYWORD-TABS) — onglets multi-keyword
+      remplacent les chips collapsibles. Un onglet par sourceKeyword exploré
+      (label brut, cohérence affichage/calcul §2.0) + un onglet « + Tester
+      un mot-clé » qui révèle la saisie libre. Le clic onglet est un pur
+      switch UI (pas de refetch DB — lecture du cache pastExplorations).
+    -->
+    <div v-if="selectedArticle?.id" class="lexique-tabs-section">
+      <TabBar
+        :tabs="lexiqueTabs"
+        :active-id="displayedTabId"
+        aria-label="Mots-clés explorés pour le Lexique"
+        @update:active-id="onSelectTab"
+      />
+      <LexiqueCustomKeywordInput
+        v-if="displayedTabId === '__custom__'"
+        :custom-keyword-input="customKeywordInput"
+        :is-loading="isLoading"
+        :is-locked="isLocked"
+        @update:custom-keyword="(v) => customKeywordInput = v"
+        @extract-custom="extractCustomKeyword"
+      />
+    </div>
 
     <!-- Error -->
     <div v-if="error" class="error-message" data-testid="error-message">
