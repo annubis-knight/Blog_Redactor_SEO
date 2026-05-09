@@ -23,28 +23,27 @@ synced_with:
 - **Durée** : 1 sprint de 2 semaines (10 jours ouvrés).
 - **Charge estimée** : ~9 jours-personne (cf. récap stories). Marge ~10 % pour imprévus.
 - **Contexte** : projet solo, pas de blocage par revue externe.
-- **Branche racine** : `refactor/keyword-metrics-decomposition` (chantier global). Chaque story = sous-branche dérivée puis rebase + merge dans la branche racine, qui est mergée dans `main` à la fin du sprint.
-- **Modèle alternatif (recommandé pour solo)** : 1 branche par story directement issue de `main`, mergée dès passage Phase 5+6 (CLAUDE.md §11.2). Permet des releases progressives et limite les conflits. **C'est ce modèle qu'on suit ci-dessous.**
+- **Branche unique** : `feat/keyword-metrics-decomposition` créée depuis `origin/main` au démarrage. Toutes les stories y sont commitées séquentiellement (1 commit conventional commits par story). Merge dans `main` UNE FOIS à la fin du sprint, après Story D3 validée. Cf. §"Stratégie de merge" plus bas.
 
 ---
 
 ## Ordre des stories
 
-Ordonnancement strict par dépendance technique. Aucune story ne peut commencer avant que ses dépendances soient mergées dans `main`.
+Ordonnancement strict par dépendance technique. Toutes les stories sont commitées séquentiellement sur la branche unique `feat/keyword-metrics-decomposition`.
 
-| # | Story | Branche | Dépend de | Estimation | Jour cible |
+| # | Story | Préfixe commit | Dépend de | Estimation | Jour cible |
 |---|---|---|---|---|---|
-| 1 | **A1** DDL 4 tables + snapshot | `feat/keyword-serp-tables-schema` | — | 0.5j | J1 (matin) |
-| 2 | **A2** Script backfill | `feat/keyword-serp-backfill-script` | A1 | 1.0j | J1 (après-midi) → J2 |
-| 3 | **B1** Service `keyword-serp` | `feat/keyword-serp-service` | A1 (table existe) | 1.0j | J3 |
-| 4 | **B2** Dual-write `analyzeSerpCompetitors` | `refactor/serp-analysis-dual-write` | B1, A2 (backfill ok) | 1.0j | J4 |
-| 5 | **C1** Bascule TF-IDF Lexique | `refactor/tfidf-from-keyword-serp-scrapes` | B1, B2 | 1.0j | J5 |
-| 6 | **C2** Bascule cache check `/serp/analyze` | `refactor/serp-analyze-cache-from-tables` | B1, B2 | 1.5j | J6 → J7 (matin) |
-| 7 | **C3** Bascule brief Capitaine | `refactor/capitaine-brief-from-serp-results` | B1 | 0.5j | J7 (après-midi) |
-| 8 | **C4** Stop dual-write + retrait type | `refactor/drop-serp-raw-json-dual-write` | C1, C2, C3 | 1.0j | J8 |
-| 9 | **D1** Bench perf | `chore/bench-keyword-metrics-payload` | C4 | 0.5j | J9 (matin) |
-| 10 | **D2** Docs + NFR active | `docs/keyword-metrics-decomposition` | C4 | 0.5j | J9 (après-midi) |
-| 11 | **D3** Archivage + sprint-status | `chore/archive-keyword-metrics-decomposition` | D2 | 0.25j | J10 (matin) |
+| 1 | **A1** DDL 4 tables + snapshot | `feat(db):` | — | 0.5j | J1 (matin) |
+| 2 | **A2** Script backfill | `feat(db):` | A1 | 1.0j | J1 (après-midi) → J2 |
+| 3 | **B1** Service `keyword-serp` | `feat(keyword):` | A1 (table existe) | 1.0j | J3 |
+| 4 | **B2** Dual-write `analyzeSerpCompetitors` | `refactor(serp):` | B1, A2 (backfill ok) | 1.0j | J4 |
+| 5 | **C1** Bascule TF-IDF Lexique | `refactor(lexique):` | B1, B2 | 1.0j | J5 |
+| 6 | **C2** Bascule cache check `/serp/analyze` | `refactor(serp):` | B1, B2 | 1.5j | J6 → J7 (matin) |
+| 7 | **C3** Bascule brief Capitaine | `refactor(capitaine):` | B1 | 0.5j | J7 (après-midi) |
+| 8 | **C4** Stop dual-write + retrait type | `refactor(serp):` | C1, C2, C3 | 1.0j | J8 |
+| 9 | **D1** Bench perf | `chore(bench):` | C4 | 0.5j | J9 (matin) |
+| 10 | **D2** Docs + NFR active | `docs(prd):` | C4 | 0.5j | J9 (après-midi) |
+| 11 | **D3** Archivage + sprint-status | `chore(plan):` | D2 | 0.25j | J10 (matin) |
 
 **Buffer** : J10 (après-midi) pour imprévus, ré-runs `npm run check:health`, ajustements feedback.
 
@@ -96,15 +95,15 @@ Le diff `schema.sql` est le livrable versionné. Aucun fichier `migrations/NNN_*
 
 ## Stratégie de merge
 
-**Modèle 1-branche-par-story, merge progressif dans `main`** (CLAUDE.md §11.2) :
+**Modèle branche-racine chantier** : une seule branche `feat/keyword-metrics-decomposition` créée depuis `origin/main`, sur laquelle toutes les stories sont commitées séquentiellement. Merge dans `main` UNE FOIS à la fin, après Story D3 validée et tous les checks verts.
 
-1. Pour chaque story i : `git checkout -b <type>/<sujet> origin/main`.
-2. TDD strict (Red/Green/Refactor) côté services backend (cf. CLAUDE.md §2.1).
-3. Self-review §5 + validation §6 verts.
-4. Commit (pas d'`--amend`), push, merge no-ff dans `main` (ou fast-forward si propre), suppression branche locale + remote.
-5. Pull `origin/main`, repartir pour story i+1.
+1. **Au démarrage** : `git fetch origin && git checkout -b feat/keyword-metrics-decomposition origin/main` (une seule fois).
+2. **Pour chaque story i** : implémentation TDD (Red/Green/Refactor), self-review §5, validation §6, **1 commit conventional commits sur la branche-racine** (pas de sous-branche, pas de merge intermédiaire).
+3. **À la fin du sprint** : push final + merge dans `main` (no-ff pour préserver l'historique du chantier) + suppression branche locale + remote (CLAUDE.md §11.2).
 
-**Pourquoi pas branche racine longue durée** : risque de conflits cumulés entre stories qui touchent les mêmes fichiers (`serp-analysis.routes.ts` est touché par C2 ET C4 ; `serp-analysis.service.ts` par B2 et C4 ; `keyword-metrics.service.ts` par C4 et D2).
+**Pourquoi pas 1 branche par story** : pour un chantier solo cohérent, ça pollue `main` avec 11 commits intermédiaires d'un chantier en cours, et complique le rollback (impossible de revert "le chantier" en une seule opération). La branche-racine garde l'historique propre côté `main` (1 merge commit visible) et préservé côté chantier (11 commits atomiques dans la branche).
+
+**Conflits** : aucun risque entre stories du même chantier sur la même branche — au contraire, ça expose les conflits potentiels en interne (ex: `serp-analysis.routes.ts` touché par C2 puis C4) au lieu de les enterrer dans des merges successifs.
 
 ---
 
