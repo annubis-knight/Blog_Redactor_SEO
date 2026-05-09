@@ -105,7 +105,18 @@ development_status:
   #     conditionnel, modale coût $0.003. POST /serp/tfidf accepte
   #     triggerScrapeIfMissing. 4 tests UI verts. PRD : FR-LEX-PRECHECK-SERP
   #     proposed → active.
-  # E2 (Système d'onglets multi-keyword) ⏳ pending
+  # E2 (Système d'onglets multi-keyword) ✅ done
+  #   - E2-S1 : composant TabBar partagé (src/components/shared/TabBar.vue),
+  #     ARIA role=tablist/tab/aria-selected, support disabled. 5 tests verts.
+  #   - E2-S2 : intégration TabBar dans LexiquePanel + rename
+  #     LexiqueMultiKeywordPanel → LexiqueCustomKeywordInput (chips → onglets).
+  #     Cohérence affichage/calcul §2.0 : tab.id = tab.label = sourceKeyword
+  #     brut (pas de lowercase/trim). extractCustomKeyword appelle mergeFromDb
+  #     après succès. 4 tests UI verts + 8 tests existants migrés (chips → tabs).
+  #   - E2-S3 : test architectural lexique-tabbar.test.ts (3 verts) — vérifie
+  #     que LexiquePanel importe TabBar depuis @/components/shared/, pas de
+  #     role=tablist hors TabBar, TabBar pur (aucun import métier Lexique).
+  #     PRD : FR-LEX-MULTI-KEYWORD-TABS proposed → active.
   # E3 (Séparation lecture/verrouillage) ⏳ pending
   sprint-chantier-3-ux-lexique: in-progress
 

@@ -1221,23 +1221,28 @@ Service `lexique-exploration.service.ts` : input libre « tester ce mot-clé » 
 **Voir aussi :** FR-LEX-SCRAPE-DEDIE, FR-LEX-MULTI-KEYWORD-TABS.
 
 #### FR-LEX-MULTI-KEYWORD-TABS
-**Système d'onglets par `source_keyword` dans le container Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Le container Lexique affiche un système d'onglets, **un onglet par `source_keyword` exploré pour l'article courant** (lus depuis `lexique_explorations`).
+**Système d'onglets par `source_keyword` dans le container Lexique** *(actif 2026-05-09 — Stories E2-S1+S2+S3 chantier 3)*. Le container Lexique affiche un système d'onglets, **un onglet par `source_keyword` exploré pour l'article courant** (lus depuis `lexique_explorations`).
 
 **Comportement** :
-- Le label de chaque onglet = `source_keyword` (ex. `creation site web entreprises`, `creation site Toulouse`).
-- L'onglet actif affiche le `tfidfResult` correspondant + ses recommandations IA.
-- Un onglet « + Tester un mot-clé » ouvre le champ libre existant (`extractCustomKeyword`).
-- Le composant **s'inspire des patterns d'onglets déjà présents** dans le projet (à identifier en phase d'exploration du chantier — ne pas réinventer).
+- Le label de chaque onglet = `source_keyword` brut (ex. `creation site web entreprises`, `creation site Toulouse`). **Pas de transformation côté UI** (cohérence affichage/calcul §2.0 CLAUDE.md : `tab.id === tab.label === entry.sourceKeyword`).
+- L'onglet actif affiche le `tfidfResult` correspondant + ses recommandations IA, sans refetch DB.
+- Un onglet « + Tester un mot-clé » (ou « Tester un mot-clé » s'il n'y a aucune exploration) ouvre le champ libre existant (`extractCustomKeyword`).
+- Le composant utilise `<TabBar>` partagé (`src/components/shared/TabBar.vue`, ARIA-compliant role="tablist"/role="tab"/aria-selected).
+
+**Contrats techniques** *(implémentés)* :
+- Composant pur `<TabBar>` réutilisable : props `{ tabs: TabItem[], activeId: string, ariaLabel? }`, emit `update:activeId`, support `disabled`.
+- Composant `LexiqueCustomKeywordInput.vue` (renommage de `LexiqueMultiKeywordPanel.vue`) — saisie libre uniquement (la liste d'explorations est portée par `<TabBar>` côté parent).
+- LexiquePanel : computed `lexiqueTabs`, `displayedTabId` (matching strict, pas de lowercase), handler `onSelectTab`. `extractCustomKeyword` appelle `mergeFromDb` après succès → nouvel onglet apparaît automatiquement.
 
 **Critères d'acceptation testables** :
-- AC.LEX-TABS.1 : Article avec 3 `lexique_explorations` (3 `source_keyword` distincts) → 3 onglets affichés + 1 onglet « + Tester un mot-clé ».
-- AC.LEX-TABS.2 : Cliquer sur un onglet change le `tfidfResult` affiché sans refetch DB (lecture du cache déjà chargé via `pastExplorations`).
-- AC.LEX-TABS.3 : Lancer une nouvelle extraction sur un keyword vierge ajoute un nouvel onglet et le sélectionne.
-- AC.LEX-TABS.4 : Article sans aucune exploration → un seul onglet « + Tester un mot-clé » (ou message d'invitation).
-- AC.LEX-TABS.5 : Le composant onglets utilise un pattern UI déjà existant (test architectural : grep d'un composant `Tab*` partagé importé).
+- AC.LEX-TABS.1 : Article avec 3 `lexique_explorations` → 3 onglets + 1 onglet « + Tester un mot-clé » (4 boutons `role="tab"`). *(test : `tests/unit/components/moteur/LexiquePanel.tabs.test.ts`)*
+- AC.LEX-TABS.2 : Cliquer sur un onglet change le `tfidfResult` affiché sans refetch DB (`apiGet('/articles/:id/explorations')` count stable). *(test : idem + `lexique-extraction.gaps`)*
+- AC.LEX-TABS.3 : Extraction d'un keyword vierge → nouvel onglet via `mergeFromDb` post-fetch + sélection automatique (matching strict `activeSourceKeyword === entry.sourceKeyword`). *(test : `lexique-extraction.gaps`)*
+- AC.LEX-TABS.4 : Article sans aucune exploration → 1 seul onglet « Tester un mot-clé ». *(test : `LexiquePanel.tabs.test.ts` + `lexique-extraction.gaps`)*
+- AC.LEX-TABS.5 : Test architectural — `LexiquePanel.vue` importe `TabBar` depuis `@/components/shared/`, `<TabBar>` reste pur (aucun import métier Lexique). *(test : `tests/unit/architecture/lexique-tabbar.test.ts`)*
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
-**Voir aussi :** FR-LEX-MULTI-KEYWORD (existant, à étendre), FR-LEX-LECTURE-VS-VERROUILLAGE.
+**Statut :** **active** *(implémenté 2026-05-09 — Story E2 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
+**Voir aussi :** FR-LEX-MULTI-KEYWORD (existant, étendu), FR-LEX-LECTURE-VS-VERROUILLAGE.
 
 #### FR-LEX-LECTURE-VS-VERROUILLAGE
 **Séparation stricte des responsabilités lecture vs verrouillage** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Deux familles de fonctions strictement séparées dans le LexiquePanel et son store associé :
