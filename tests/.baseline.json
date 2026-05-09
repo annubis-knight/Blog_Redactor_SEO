@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-05-09T16:19:24.084Z",
+  "generated_at": "2026-05-09T19:14:59.941Z",
   "git": {
-    "commit": "9ee10ce",
-    "branch": "main",
-    "subject": "Merge branch 'chore/drop-serp-raw-json-column' into main",
+    "commit": "0cb1283",
+    "branch": "feat/chantier-3-ux-lexique",
+    "subject": "Merge branch 'feat/decouplage-lieutenants-lexique' into main",
     "clean": false
   },
   "totals": {
-    "passed": 4045,
-    "failed": 25,
+    "passed": 4088,
+    "failed": 28,
     "skipped": 244
   },
-  "fingerprint": "sha256:be2f4468bd9b8d759607d191d9b53a74222f3ecb14843ecb867f7ab4ac566e59",
+  "fingerprint": "sha256:1bf8da62a2ea0f2c416681c371c2db513b07d6a0810d035aa0edb3246bed67d0",
   "failures": [
     {
       "file": "tests/contract-api/article-explorations-counts.contract.test.ts",
@@ -28,6 +28,10 @@
     {
       "file": "tests/contract-api/keywords.contract.test.ts",
       "name": "Contract /keywords/:kw/scan POST OK → { keyword, kpis[6], verdict, paaQuestions }"
+    },
+    {
+      "file": "tests/e2e-workflows/cerveau.workflow.test.ts",
+      "name": "Cerveau Workflow — Silos & Cocoons POST /silos/:name/cocoons crée un cocon"
     },
     {
       "file": "tests/e2e-workflows/cross-workflow.e2e.test.ts",
@@ -74,10 +78,6 @@
       "name": "Moteur Workflow — Onglet Capitaine U5 TTL : re-validation du même keyword est plus rapide (cache DB)"
     },
     {
-      "file": "tests/integration-tabs/cerveau-theme.tab.test.ts",
-      "name": "Tab cerveau/theme — Analyseur IA POST /theme/config/parse avec text valide → 200 ou 500"
-    },
-    {
       "file": "tests/integration-tabs/moteur-capitaine.tab.test.ts",
       "name": "Tab moteur/capitaine — Carousel hydratation GET /articles/:id/explorations renvoie captain[] avec history"
     },
@@ -91,7 +91,7 @@
     },
     {
       "file": "tests/integration-tabs/moteur-lieutenants.tab.test.ts",
-      "name": "Tab moteur/lieutenants — SERP analysis POST /serp/analyze?articleId=X retourne OK (persistance DB-first en arrière-plan)"
+      "name": "Tab moteur/lieutenants — SERP analysis POST /serp/analyze OK → { keyword, competitors[] }"
     },
     {
       "file": "tests/integration-tabs/redaction-brief.tab.test.ts",
@@ -112,6 +112,18 @@
     {
       "file": "tests/unit/coherence/relevance-live-computation.test.ts",
       "name": "FR-CAP-RELEVANCE-INTENT-SIGNAL — câblage painIntentExpected articles.pain_intent_expected est TEXT single-value, pas TEXT[]"
+    },
+    {
+      "file": "tests/unit/coherence/test-quality.test.ts",
+      "name": "Test quality — anti-régression qualité de la suite it.skip / describe.skip ne doivent pas augmenter (baseline: 88)"
+    },
+    {
+      "file": "tests/unit/coherence/test-quality.test.ts",
+      "name": "Test quality — anti-régression qualité de la suite it.todo() ne doit pas augmenter (baseline: 132)"
+    },
+    {
+      "file": "tests/unit/coherence/test-quality.test.ts",
+      "name": "Test quality — anti-régression qualité de la suite zéro pattern conditionnel silencieux (limite stricte: 0)"
     }
   ],
   "note": "Fichier généré par `npm run test:snapshot`. Ne pas éditer à la main. Régénérer après réparation/ajout de tests."

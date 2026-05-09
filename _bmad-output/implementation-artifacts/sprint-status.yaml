@@ -1,5 +1,5 @@
 # generated: 2026-04-01
-# last_updated: 2026-05-06
+# last_updated: 2026-05-09
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
@@ -92,6 +92,22 @@ development_status:
   # AC.SCRAPE.4 corrigé (pas de colonne fetch_error), séparation data-prep /
   # IA-SSE Lieutenants explicitée, persistance lexique conditionnée à articleId.
   sprint-decouplage-lieutenants-lexique: done
+
+  # Sprint chantier 3 — UX onglet Lexique (en cours, 2026-05-09) ⏳
+  # plan: plan-chantier-3-ux-lexique.md (3 epics, 9 stories, 14 ACs)
+  # branche: feat/chantier-3-ux-lexique (1 seule branche, merge final)
+  # E1 (Endpoint pré-check SERP) ✅ done
+  #   - E1-S1 : service hasSerpScrape + handler GET /:keyword/serp/exists
+  #     (200 OK toujours, 400 si keyword invalide). 3 tests intégration verts.
+  #   - E1-S2 : composable useSerpExistsCheck (watch immediate + refetch).
+  #     4 tests unit verts.
+  #   - E1-S3 : LexiquePanel + ConfirmModal — gating watcher anti-404, CTA
+  #     conditionnel, modale coût $0.003. POST /serp/tfidf accepte
+  #     triggerScrapeIfMissing. 4 tests UI verts. PRD : FR-LEX-PRECHECK-SERP
+  #     proposed → active.
+  # E2 (Système d'onglets multi-keyword) ⏳ pending
+  # E3 (Séparation lecture/verrouillage) ⏳ pending
+  sprint-chantier-3-ux-lexique: in-progress
 
   # Sprint 10.5 — Nettoyage legacy painPoint (2026-05-06) ✅
   # tech-spec: tech-spec-sprint-10.5-cleanup-painpoint-legacy.md
