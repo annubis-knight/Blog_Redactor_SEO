@@ -525,7 +525,7 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 
 **Hors scope multi-process** : le cache mémoire 1h est module-scoped (Map d'un seul process Node.js). Un déploiement multi-worker / cluster nécessiterait une couche partagée (Redis, IPC) — story dédiée hors de ce chantier.
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 sur branche `feat/decouplage-lieutenants-lexique`)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique (archivé). **Garde-fous :** tests architecturaux permanents `tests/unit/architecture/decouplage-lieutenants-lexique.test.ts` (no cross-import) + tests d'intégration permanents `tests/integration/decouplage-lieutenants-lexique.test.ts` (cache mémoire partagé).
 **Voir aussi :** FR-LEX-SCRAPE-DEDIE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
 
 #### NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
@@ -1140,7 +1140,7 @@ La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, 
 
 **Important — séparation `data prep` ↔ `IA SSE`** : ce service prépare uniquement les **données scrape** (compétiteurs + headings + PAA). L'appel IA qui propose effectivement les Lieutenants reste porté par la **route SSE existante** `POST /keywords/:keyword/propose-lieutenants` ([server/routes/keyword-ai-panel.routes.ts](server/routes/keyword-ai-panel.routes.ts)) — refonte de cette route hors-scope du chantier 2 (le SSE streaming est une mécanique distincte, complexe à transformer en sync, et pas nécessaire pour atteindre le découplage Lieutenants/Lexique cible). La persistance dans `lieutenant_explorations` reste également portée par la route SSE via `saveLieutenantExplorations`.
 
-**Aucun appel à `analyzeSerpCompetitors`** (déprécié dès qu'on a basculé). **Aucun import de service Lexique**.
+**Aucun appel à `analyzeSerpCompetitors`** (supprimé en C3). **Aucun import de service Lexique**.
 
 **Critères d'acceptation testables** :
 - AC.LIE-SCRAPE.1 : `lieutenants-analysis.service.ts` n'importe ni `tfidf.service.ts` ni `lexique-analysis.service.ts` (test grep architectural).
@@ -1148,7 +1148,7 @@ La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, 
 - AC.LIE-SCRAPE.3 : Si `keyword_serp_results` est vide pour le keyword, le service déclenche le fetch SERP DataForSEO + scrape, persiste, puis propose. Pas de 404 silencieux.
 - AC.LIE-SCRAPE.4 : Le service est invocable depuis l'onglet Lieutenants ou depuis un test sans dépendance contextuelle.
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 — Story B1+B3+C1 chantier 2)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique.
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-LEX-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
 
 ---
@@ -1183,7 +1183,7 @@ Service `lexique-exploration.service.ts` : input libre « tester ce mot-clé » 
 3. Extrait `text_content` des scrapes et calcule TF-IDF.
 4. Persiste le résultat dans `lexique_explorations` **si et seulement si** `articleId` est fourni dans les options. Le service reste invocable sans `articleId` (exploration libre, tests).
 
-**Aucun appel à `analyzeSerpCompetitors`** (déprécié). **Aucun import de service Lieutenants**.
+**Aucun appel à `analyzeSerpCompetitors`** (supprimé en C3). **Aucun import de service Lieutenants**.
 
 **Critères d'acceptation testables** :
 - AC.LEX-SCRAPE.1 : `lexique-analysis.service.ts` n'importe ni le composant Lieutenants ni `lieutenants-analysis.service.ts` (test grep architectural).
@@ -1192,7 +1192,8 @@ Service `lexique-exploration.service.ts` : input libre « tester ce mot-clé » 
 - AC.LEX-SCRAPE.4 : Le service est invocable depuis l'onglet Lexique ou depuis un test sans dépendance HTTP/Express (signature pure : `(keyword, opts?) => Promise<LexiqueAnalysisServiceResult>`).
 - AC.LEX-SCRAPE.5 : L'endpoint actuel `POST /api/serp/tfidf` est conservé temporairement (compatibilité), mais sa logique interne pointe vers `lexique-analysis.service`. Code 404 + message verbatim préservés. Suppression différée à un PR ultérieur (post-chantier 3).
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 — Story B2+B3+C2 chantier 2)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique.
+
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
 
 #### FR-LEX-PRECHECK-SERP
@@ -1629,7 +1630,7 @@ Règles d'architecture dans `.dependency-cruiser.cjs` :
 - AC.SCRAPE.6 : Le retour de `fetchAndPersist` expose `fromCache: 'memory' | 'db' | null` — `'memory'` si hit cache mémoire, `'db'` si hit DB freshness 7j (cache mémoire vide), `null` si fetch externe effectué. Cette tri-state est testée explicitement.
 - AC.SCRAPE.7 : Eviction LRU vérifiée : insérer `MEMORY_CACHE_MAX_ENTRIES + 1` keywords distincts → la 1ère entrée est éjectée (re-fetch externe au prochain accès).
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique). **Précisions ACs ajoutées 2026-05-09 (audit en Story A1).**
+**Statut :** **active** *(implémenté 2026-05-09 — Story A1+A2+C1+C3 chantier 2)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique. **Précisions ACs ajoutées 2026-05-09 (audit en Story A1).**
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-LEX-SCRAPE-DEDIE, FR-LIE-SCRAPE-DEDIE.
 
 #### FR-INFRA-LOGGER
