@@ -74,3 +74,77 @@ describe('AC.SCRAPE.1 — scrape-corpus.service.ts ne couple pas aux onglets mé
     expect(src).toMatch(/from\s+['"]\.\.\/keyword\/keyword-serp\.service/)
   })
 })
+
+// --- AC.LIE-SCRAPE.1 -------------------------------------------------------
+
+describe('AC.LIE-SCRAPE.1 — lieutenants-analysis.service.ts n\'importe ni tfidf ni lexique-', () => {
+  it('aucun import dont le path matche /tfidf|lexique-/i', async () => {
+    const src = await readServiceSource('server/services/keyword/lieutenants-analysis.service.ts')
+    const imports = extractImportPaths(src)
+
+    const forbidden = [/tfidf/i, /lexique-/i]
+
+    for (const path of imports) {
+      if (path.includes('shared/')) continue
+      const match = pathContainsAny(path, forbidden)
+      expect(
+        match,
+        `lieutenants-analysis.service.ts ne doit pas importer "${path}" (matche ${match?.source ?? '?'})`,
+      ).toBeNull()
+    }
+  })
+
+  it('importe bien scrape-corpus.service (filet positif)', async () => {
+    const src = await readServiceSource('server/services/keyword/lieutenants-analysis.service.ts')
+    expect(src).toMatch(/from\s+['"][^'"]*scrape-corpus\.service/)
+  })
+})
+
+// --- AC.LEX-SCRAPE.1 -------------------------------------------------------
+
+describe('AC.LEX-SCRAPE.1 — lexique-analysis.service.ts n\'importe pas Lieutenants', () => {
+  it('aucun import dont le path matche /lieutenants-/i ou /components\\/moteur\\/Lieutenants/i', async () => {
+    const src = await readServiceSource('server/services/keyword/lexique-analysis.service.ts')
+    const imports = extractImportPaths(src)
+
+    const forbidden = [
+      /lieutenants-/i,
+      /components\/moteur\/Lieutenants/i,
+    ]
+
+    for (const path of imports) {
+      if (path.includes('shared/')) continue
+      const match = pathContainsAny(path, forbidden)
+      expect(
+        match,
+        `lexique-analysis.service.ts ne doit pas importer "${path}" (matche ${match?.source ?? '?'})`,
+      ).toBeNull()
+    }
+  })
+
+  it('importe bien scrape-corpus.service + tfidf.service (filet positif)', async () => {
+    const src = await readServiceSource('server/services/keyword/lexique-analysis.service.ts')
+    expect(src).toMatch(/from\s+['"][^'"]*scrape-corpus\.service/)
+    expect(src).toMatch(/from\s+['"][^'"]*tfidf\.service/)
+  })
+})
+
+// --- AC.DECOUPLAGE.3 — vérification croisée explicite ----------------------
+
+describe('AC.DECOUPLAGE.3 — Lieutenants ↮ Lexique zéro import croisé', () => {
+  it('lieutenants-analysis.service.ts n\'importe pas lexique-analysis.service.ts', async () => {
+    const src = await readServiceSource('server/services/keyword/lieutenants-analysis.service.ts')
+    const imports = extractImportPaths(src)
+    for (const path of imports) {
+      expect(path, `import interdit "${path}"`).not.toMatch(/lexique-analysis\.service/)
+    }
+  })
+
+  it('lexique-analysis.service.ts n\'importe pas lieutenants-analysis.service.ts', async () => {
+    const src = await readServiceSource('server/services/keyword/lexique-analysis.service.ts')
+    const imports = extractImportPaths(src)
+    for (const path of imports) {
+      expect(path, `import interdit "${path}"`).not.toMatch(/lieutenants-analysis\.service/)
+    }
+  })
+})
