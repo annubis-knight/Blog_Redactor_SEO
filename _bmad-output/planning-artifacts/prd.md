@@ -548,7 +548,7 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 - AC.SCHEMA.4 : Lecture des URLs SERP d'un keyword n'impose plus de désérialiser `textContent` (gain perf vérifiable).
 - AC.SCHEMA.5 : Phase finale : `serp_raw_json` est dropée de `keyword_metrics` (migration SQL séparée, après bascule de tous les consommateurs).
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 sur branche `feat/keyword-metrics-decomposition`)*. **Depuis :** 2026-05-09. **Source :** tech-spec-keyword-metrics-decomposition (archivé). **Bench D1 :** réduction payload brief Capitaine **97.5 %** sur top-5 keywords (cf. `docs/perf-bench-keyword-metrics-decomposition.md`). **Reste :** AC.SCHEMA.5 (drop colonne `serp_raw_json`) différé Epic E1 ≥ 14 jours après stabilisation.
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
 
 ---

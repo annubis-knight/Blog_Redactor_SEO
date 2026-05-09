@@ -2,10 +2,12 @@
 name: lieutenants
 description: "Flux des Lieutenants (sous-keywords H2/H3) d'un article — extraction Hn via SERP, scoring IA, anti-cannibalisation géo-funnel, persistance JSONB article_keywords."
 type: "{ richLieutenants: RichLieutenant[], selectedLieutenants: string[], hnStructure: ProposeLieutenantsHnNode[] }"
-last_updated: 2026-05-05
-related_fr: [FR-MOT-PHASES, FR-MOT-MODE-BIMODAL, FR-MOT-CHECKS, FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-HN-STRUCTURE, FR-LIE-SECTIONS-FOLDABLE, FR-LIE-CANDIDATES-BADGES, FR-LIE-CHECKBOX-COUNT, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-CHECK, FR-INFRA-KPI-NULLABLE]
+last_updated: 2026-05-09
+related_fr: [FR-MOT-PHASES, FR-MOT-MODE-BIMODAL, FR-MOT-CHECKS, FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-HN-STRUCTURE, FR-LIE-SECTIONS-FOLDABLE, FR-LIE-CANDIDATES-BADGES, FR-LIE-CHECKBOX-COUNT, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-CHECK, FR-INFRA-KPI-NULLABLE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION]
 synced_with: [docs/data-flows/keyword-metrics.md, docs/moteur-data-flow.md, _bmad-output/planning-artifacts/prd.md]
 ---
+
+> **Sprint keyword-metrics-decomposition (2026-05-09)** — l'autorité SERP de Lieutenants n'est plus `keyword_metrics.serp_raw_json` mais **`keyword_serp_scrapes.headings`** (table fille dédiée). Cache check : `keyword_serp_results.fetched_at < 7j`. Voir `keyword-serp.service.ts`. Les sections ci-dessous mentionnant `serp_raw_json` reflètent l'état avant refonte.
 
 # Data Flow — lieutenants
 
