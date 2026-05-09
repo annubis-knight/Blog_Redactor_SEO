@@ -5,8 +5,10 @@
   "type": "module",
   "scripts": {
     "kill-ports": "node scripts/kill-port.mjs 3400 5400",
-    "predev": "node scripts/kill-port.mjs 3400 5400",
+    "predev": "node scripts/kill-port.mjs 3400 5400 && (npm run db:check || echo \"⚠️  Snapshot DB possiblement périmé — démarrage quand même\")",
     "dev": "concurrently --raw \"npm:dev:client\" \"npm:dev:server\"",
+    "db:snapshot": "tsx scripts/db-snapshot.ts",
+    "db:check": "tsx scripts/db-check.ts",
     "dev:client": "vite",
     "dev:server": "node --env-file=.env --import=tsx/esm --watch server/index.ts",
     "prebuild": "node scripts/kill-port.mjs 3400 5400",
