@@ -8,6 +8,8 @@ synced_with: [docs/data-flows/keyword-metrics.md, docs/moteur-data-flow.md, _bma
 ---
 
 > **Sprint keyword-metrics-decomposition (2026-05-09)** — l'autorité SERP de Lieutenants n'est plus `keyword_metrics.serp_raw_json` mais **`keyword_serp_scrapes.headings`** (table fille dédiée). Cache check : `keyword_serp_results.fetched_at < 7j`. Voir `keyword-serp.service.ts`. Les sections ci-dessous mentionnant `serp_raw_json` reflètent l'état avant refonte.
+>
+> **Sprint decouplage-lieutenants-lexique (2026-05-09)** — `analyzeSerpCompetitors` est **supprimé**. Le scrape SERP est désormais porté par `scrape-corpus.service.ts` (single producer cross-domaine, cache mémoire 1h LRU module-scoped). Les Lieutenants consomment via `lieutenants-analysis.service.ts` (`proposeLieutenants(keyword, articleLevel)` qui lit headings + paa, **jamais textContent** — cf. AC.LIE-SCRAPE.2). La route `POST /api/serp/analyze` appelle directement `scrape-corpus.fetchAndPersist`. L'IA SSE de proposition Lieutenants reste portée par `keyword-ai-panel.routes.ts:/keywords/:kw/propose-lieutenants` (inchangée).
 
 # Data Flow — lieutenants
 
@@ -20,7 +22,7 @@ Qui crée ou met à jour cette donnée :
 
 - **Endpoint** `POST /api/serp/analyze` ([server/routes/serp-analysis.routes.ts:19-50](../../server/routes/serp-analysis.routes.ts)) — reçoit `{ keyword, articleLevel }`, consulte d'abord `keyword_metrics.serp_raw_json` (cache cross-article, TTL 7j), sinon scrape DataForSEO Top 10 concurrents. Extrait headings H1/H2/H3 via regex, calcule récurrence + pourcentages, retourne `SerpAnalysisResult { competitors[], paaQuestions[], maxScraped, fromCache }`.
 
-- **Service** `analyzeSerpCompetitors()` ([server/services/external/serp-analysis.service.ts](../../server/services/external/serp-analysis.service.ts)) — exécute le scraping en parallèle (Promise.all 10 requêtes HTTP), extrait texte de chaque H1-H3 via `extractTextContent()` (strip HTML), construit `HnNode[]` par concurrent, persiste via `upsertKeywordSerp()` dans `keyword_metrics.serp_raw_json`.
+- **Service** `scrape-corpus.fetchAndPersist()` ([server/services/external/scrape-corpus.service.ts](../../server/services/external/scrape-corpus.service.ts), post chantier 2) — exécute le scraping en parallèle (Promise.all 10 requêtes HTTP), extrait `headings[]` (Lieutenants), `text_content` (Lexique), `is_blog`, persiste atomiquement dans `keyword_serp_results` + `keyword_serp_scrapes` + `keyword_paa_questions`. Cache mémoire 1h LRU module-scoped (clé `keyword:lang:country`). Le service `lieutenants-analysis.service.proposeLieutenants` consomme `getHeadings` + `getPaaQuestions` (jamais `getTextContent`).
 
 - **Endpoint** `POST /keywords/:keyword/propose-lieutenants` ([server/routes/keyword-ai-panel.routes.ts:151-249](../../server/routes/keyword-ai-panel.routes.ts)) — reçoit `{ level, articleId, serpHeadings, paaQuestions, wordGroups, rootKeywords, serpCompetitors, rootKeywordsSerpData, cocoonSlug }`, forge le prompt `propose-lieutenants.md` (variabilité `{{keyword}}`, `{{level}}`, `{{painPoint}}`, `{{hn_recurrence}}`, `{{paa_questions}}`, `{{existing_lieutenants}}`), appelle Claude Sonnet (SSE, 8192 tokens max), reçoit JSON `ProposeLieutenantsResult { lieutenants[], hnStructure[], contentGapInsights }`, applique le filtre `filterLieutenants()` (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4, tri desc score).
 
@@ -103,7 +105,7 @@ flowchart TD
     subgraph Producteurs["Producteurs (SERP + IA)"]
         A["DataForSEO SERP<br/>(Top 10 competitors)"]
         R1["POST /api/serp/analyze<br/>(serp-analysis.routes.ts:19-50)"]
-        S1["analyzeSerpCompetitors<br/>(serp-analysis.service.ts)"]
+        S1["scrape-corpus.fetchAndPersist<br/>(scrape-corpus.service.ts)<br/>+ cache mémoire 1h LRU"]
         EXTRACT["extractTextContent + HnNode[]<br/>computeHnRecurrenceFrom()"]
         R2["POST /keywords/:kw/propose-lieutenants<br/>(keyword-ai-panel.routes.ts:151-249)"]
         S2["Claude Sonnet (SSE, 8192 tokens)"]
@@ -221,7 +223,7 @@ flowchart TD
 
 7. **`describe('FR-MOT-MODE-BIMODAL — Lieutenants en mode libre (Labo)')`** — Composant accepte prop `mode: 'libre'`, article virtuel id=0. `/serp/analyze` fonctionne (utilise cache cross-article), `/propose-lieutenants` fonctionne (aucun `existing_lieutenants` requête car pas de cocoon). Vérifier que `saveDecisions()` est no-op ou retourne erreur gracieuse.
 
-8. **`describe('NFR-INT-SERP-ONCE — multi-article same keyword, single SERP fetch')`** — Scénario : article A valide Capitaine (appel `/serp/analyze` kw="seo local"), puis article B teste même Capitaine (appel `/serp/analyze` kw="seo local"). Vérifier que le deuxième appel lit `keyword_metrics.serp_raw_json` sans re-fetch (mock `analyzeSerpCompetitors` pour échouer si appelée). DB est source unique.
+8. **`describe('NFR-INT-SERP-ONCE — multi-article same keyword, single SERP fetch')`** — Scénario : article A valide Capitaine (appel `/serp/analyze` kw="seo local"), puis article B teste même Capitaine (appel `/serp/analyze` kw="seo local"). Vérifier que le deuxième appel lit `keyword_metrics.serp_raw_json` sans re-fetch (mock `scrape-corpus.fetchAndPersist` pour échouer si appelée). DB est source unique.
 
 ---
 

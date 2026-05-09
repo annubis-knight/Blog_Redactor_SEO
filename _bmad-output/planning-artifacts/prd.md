@@ -10,7 +10,7 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-kpi-types-nullable.md'
 workflowType: 'prd'
 completedAt: '2026-03-31'
-lastUpdated: '2026-05-05'
+lastUpdated: '2026-05-09'
 updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor). Ajout 2026-05-05 (chantier KPI nullable) : 4 nouvelles FRs §8.14 (FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE) qui formalisent la migration des types KPI marché (KeywordOverview, LocationMetrics, RadarKeywordKpis, ValidatePainResult.dataforseo, KeywordAuditResult) vers number | null de bout en bout. Chaque FR porte des AC testables Vitest (pas seulement narratives). Extension FR-INFRA-NO-SCORE-FALLBACK (ajout Difficulty/Cpc/Competition au scope ESLint), FR-INFRA-SCORE-MODULE (ajout helpers formatVolume/Cpc/Kd/Percent), FR-MOT-RAW-KPIS (placeholder "—" quand KPI absent). Source : tech-spec-kpi-types-nullable. Ajout 2026-05-05 (chantier fetch-to-wrapper-migration) : FR-INFRA-API-WRAPPER affiné (périmètre clarifié, dette résorbée, critère mesurable via audit), FR-INFRA-API-STREAM nouveau (wrapper SSE unifié pour POST → ReadableStream avec mêmes garanties cost-log + KNOWN_ERROR_CODES que apiPost), NFR-INT-API-WRAPPER affiné (critère d''acceptation = 0 violation audit), NFR-OBS-EXTERNAL-API-OPT-OUT nouveau (commentaire `// External API call — bypass wrapper by design` obligatoire sur les 14 fetch externes côté server/services/external/*). Section §12.5 dette technique : ligne `fetch() directs résiduels` marquée résorbée. Source : tech-spec-fetch-to-wrapper-migration. Ajout 2026-05-05 (chantier audit couverture DB) : 9 nouvelles FR-INFRA §8.14 formalisant les tables PostgreSQL jusqu''ici fantômes ou sous-couvertes au PRD (FR-INFRA-PAA-EXPLORATIONS, FR-INFRA-INTENT-EXPLORATIONS-LEGACY, FR-INFRA-KEYWORDS-SEO, FR-INFRA-LOCAL-ENTITIES, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-ARTICLE-STRATEGIES, FR-INFRA-COCOON-STRATEGIES, FR-INFRA-MICRO-CONTEXTS). Chaque FR documente le schéma + producteurs + consommateurs avec lignes de code source. Vérification DB live (psql) confirme 20 tables actives (vs 22 dans les CREATE TABLE — 2 renommées via migration 010, 1 jamais matérialisée : `intent_explorations`). Ajout d''une §8.14.bis Matrice de couverture tables ↔ FR (vue inverse FR↔table) qui répond aux questions opérationnelles : impact d''un changement schéma, impact d''un changement FR, détection de tables sans FR. Règle de maintenance : toute migration créant/modifiant une table doit ajouter/maj une ligne dans la matrice.'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -521,9 +521,11 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 - AC.DECOUPLAGE.1 : Un test d'intégration démarre l'analyse Lexique sur un keyword vierge (jamais touché par Lieutenants) → réussit sans erreur, sans appel au service Lieutenants.
 - AC.DECOUPLAGE.2 : Un test d'intégration démarre l'analyse Lieutenants sur un keyword vierge → réussit sans appel au service Lexique.
 - AC.DECOUPLAGE.3 : Un test grep vérifie qu'aucun import croisé n'existe entre `lexique-analysis.service.ts` et `lieutenants-analysis.service.ts`.
-- AC.DECOUPLAGE.4 : Si le scrape HTML d'une URL est déjà fait pour Lieutenants pendant la session, un appel Lexique sur le même keyword **réutilise** le scrape (cache mémoire 1h) au lieu de re-scraper — vérifié par mock count des appels HTTP.
+- AC.DECOUPLAGE.4 : Si le scrape HTML d'une URL est déjà fait pour Lieutenants pendant la session, un appel Lexique sur le même keyword **réutilise** le scrape (cache mémoire 1h **process-scoped**) au lieu de re-scraper — vérifié par mock count des appels HTTP.
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Hors scope multi-process** : le cache mémoire 1h est module-scoped (Map d'un seul process Node.js). Un déploiement multi-worker / cluster nécessiterait une couche partagée (Redis, IPC) — story dédiée hors de ce chantier.
+
+**Statut :** **active** *(implémenté 2026-05-09 sur branche `feat/decouplage-lieutenants-lexique`)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique (archivé). **Garde-fous :** tests architecturaux permanents `tests/unit/architecture/decouplage-lieutenants-lexique.test.ts` (no cross-import) + tests d'intégration permanents `tests/integration/decouplage-lieutenants-lexique.test.ts` (cache mémoire partagé).
 **Voir aussi :** FR-LEX-SCRAPE-DEDIE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
 
 #### NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
@@ -1134,9 +1136,11 @@ La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, 
 1. Lit les URLs SERP depuis `keyword_serp_results` (FR-INFRA-SCRAPE-CORPUS-NEUTRE).
 2. Déclenche le scrape via `scrape-corpus.service` si nécessaire (cache court mémoire 1h partagé avec Lexique).
 3. Extrait `headings[]` + classifie `isBlog` pour chaque concurrent.
-4. Propose les Lieutenants via IA et persiste dans `lieutenant_explorations`.
+4. Retourne un `ProposeLieutenantsServiceResult` (compétiteurs + headings + PAA) consommable par `/serp/analyze`.
 
-**Aucun appel à `analyzeSerpCompetitors`** (déprécié dès qu'on a basculé). **Aucun import de service Lexique**.
+**Important — séparation `data prep` ↔ `IA SSE`** : ce service prépare uniquement les **données scrape** (compétiteurs + headings + PAA). L'appel IA qui propose effectivement les Lieutenants reste porté par la **route SSE existante** `POST /keywords/:keyword/propose-lieutenants` ([server/routes/keyword-ai-panel.routes.ts](server/routes/keyword-ai-panel.routes.ts)) — refonte de cette route hors-scope du chantier 2 (le SSE streaming est une mécanique distincte, complexe à transformer en sync, et pas nécessaire pour atteindre le découplage Lieutenants/Lexique cible). La persistance dans `lieutenant_explorations` reste également portée par la route SSE via `saveLieutenantExplorations`.
+
+**Aucun appel à `analyzeSerpCompetitors`** (supprimé en C3). **Aucun import de service Lexique**.
 
 **Critères d'acceptation testables** :
 - AC.LIE-SCRAPE.1 : `lieutenants-analysis.service.ts` n'importe ni `tfidf.service.ts` ni `lexique-analysis.service.ts` (test grep architectural).
@@ -1144,7 +1148,7 @@ La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, 
 - AC.LIE-SCRAPE.3 : Si `keyword_serp_results` est vide pour le keyword, le service déclenche le fetch SERP DataForSEO + scrape, persiste, puis propose. Pas de 404 silencieux.
 - AC.LIE-SCRAPE.4 : Le service est invocable depuis l'onglet Lieutenants ou depuis un test sans dépendance contextuelle.
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 — Story B1+B3+C1 chantier 2)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique.
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-LEX-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
 
 ---
@@ -1175,20 +1179,21 @@ Service `lexique-exploration.service.ts` : input libre « tester ce mot-clé » 
 #### FR-LEX-SCRAPE-DEDIE
 **Service métier dédié au Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Le Lexique consomme un service `lexique-analysis.service.ts` qui :
 1. Lit les URLs SERP du keyword cible depuis `keyword_serp_results` (FR-INFRA-SCRAPE-CORPUS-NEUTRE).
-2. Déclenche le scrape via `scrape-corpus.service` si nécessaire (cache court mémoire 1h partagé avec Lieutenants).
+2. Déclenche le scrape via `scrape-corpus.service` si nécessaire (cache court mémoire 1h partagé avec Lieutenants), uniquement si l'option `triggerScrapeIfMissing` est passée. Sinon, throw `LexiqueScrapeMissingError` (préserve le 404 actuel verbatim).
 3. Extrait `text_content` des scrapes et calcule TF-IDF.
-4. Persiste le résultat dans `lexique_explorations`.
+4. Persiste le résultat dans `lexique_explorations` **si et seulement si** `articleId` est fourni dans les options. Le service reste invocable sans `articleId` (exploration libre, tests).
 
-**Aucun appel à `analyzeSerpCompetitors`** (déprécié). **Aucun import de service Lieutenants**.
+**Aucun appel à `analyzeSerpCompetitors`** (supprimé en C3). **Aucun import de service Lieutenants**.
 
 **Critères d'acceptation testables** :
 - AC.LEX-SCRAPE.1 : `lexique-analysis.service.ts` n'importe ni le composant Lieutenants ni `lieutenants-analysis.service.ts` (test grep architectural).
 - AC.LEX-SCRAPE.2 : Mock `scrape-corpus.service` → un test unitaire vérifie que `lexique-analysis` ne lit jamais `headings[]` (utilise uniquement `text_content`).
-- AC.LEX-SCRAPE.3 : Si `keyword_serp_results` est vide pour le keyword, le service peut déclencher le fetch SERP DataForSEO + scrape (avec confirmation de coût côté UI via FR-LEX-PRECHECK-SERP).
-- AC.LEX-SCRAPE.4 : Le service est invocable depuis l'onglet Lexique ou depuis un test sans dépendance contextuelle.
-- AC.LEX-SCRAPE.5 : L'endpoint actuel `POST /api/serp/tfidf` est conservé temporairement (compatibilité), mais sa logique interne pointe vers `lexique-analysis.service`. Suppression différée à un PR ultérieur.
+- AC.LEX-SCRAPE.3 : Si `keyword_serp_results` est vide et `triggerScrapeIfMissing: true`, le service déclenche le fetch SERP DataForSEO + scrape (UX coût via FR-LEX-PRECHECK-SERP). Si `triggerScrapeIfMissing` non fourni / `false`, le service throw `LexiqueScrapeMissingError` avec message verbatim *« Lancez d'abord l'analyse SERP dans l'onglet Lieutenants »* (préservé pour compat chantier 1).
+- AC.LEX-SCRAPE.4 : Le service est invocable depuis l'onglet Lexique ou depuis un test sans dépendance HTTP/Express (signature pure : `(keyword, opts?) => Promise<LexiqueAnalysisServiceResult>`).
+- AC.LEX-SCRAPE.5 : L'endpoint actuel `POST /api/serp/tfidf` est conservé temporairement (compatibilité), mais sa logique interne pointe vers `lexique-analysis.service`. Code 404 + message verbatim préservés. Suppression différée à un PR ultérieur (post-chantier 3).
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 — Story B2+B3+C2 chantier 2)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique.
+
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
 
 #### FR-LEX-PRECHECK-SERP
@@ -1610,14 +1615,22 @@ Règles d'architecture dans `.dependency-cruiser.cjs` :
 
 **Décomposition de l'existant** : remplace progressivement `analyzeSerpCompetitors` ([server/services/external/serp-analysis.service.ts:160](server/services/external/serp-analysis.service.ts#L160)) qui faisait à la fois SERP + scraping + extraction (couplage à casser).
 
+**Cache mémoire — invariants** :
+- TTL : `MEMORY_CACHE_TTL_MS = 60 * 60 * 1000` ms (1h), exposé en constante du module.
+- Capacité bornée : `MEMORY_CACHE_MAX_ENTRIES = 100` entrées max ; au-delà, **eviction LRU** (entrée la moins récemment accédée). Évite la fuite mémoire en prod.
+- Clé de cache : `${keyword.toLowerCase()}:${lang}:${country}`.
+- Helper de test exporté : `__resetMemoryCacheForTests()` pour isoler les runs (sprint-plan §G5/G7).
+
 **Critères d'acceptation testables** :
-- AC.SCRAPE.1 : `scrape-corpus.service` n'importe ni `tfidf.service` ni un fichier Lieutenants (test grep architectural).
+- AC.SCRAPE.1 : `scrape-corpus.service` n'importe ni `tfidf.service` ni un fichier Lieutenants ni un fichier Lexique (test grep architectural).
 - AC.SCRAPE.2 : Appel sur un keyword dont les URLs sont déjà en cache mémoire (< 1h) → 0 nouveau fetch HTTP (mock count).
 - AC.SCRAPE.3 : Appel sur un keyword vierge → 10 fetchs HTTP en parallèle, persistance dans `keyword_serp_scrapes`.
-- AC.SCRAPE.4 : Si une URL répond 404/timeout → la ligne `keyword_serp_scrapes` est créée avec `fetch_error` rempli, les 9 autres scrapes réussissent.
-- AC.SCRAPE.5 : Le service expose deux fonctions distinctes : `getHeadings(keyword)` (lecture optimisée pour Lieutenants) et `getTextContent(keyword)` (lecture optimisée pour Lexique). Pas de blob monolithique retourné.
+- AC.SCRAPE.4 : Si une URL répond 404/timeout → la ligne `keyword_serp_scrapes` est créée avec `headings = []` et `text_content = null` (la table n'a pas de colonne `fetch_error` ; l'erreur est loggée côté serveur). Les 9 autres scrapes réussissent et la transaction commit normalement.
+- AC.SCRAPE.5 : Le service expose deux fonctions distinctes : `getHeadings(keyword)` (lecture optimisée pour Lieutenants — SELECT scopé sur `headings`/`is_blog`/`domain`) et `getTextContent(keyword)` (lecture optimisée pour Lexique — SELECT scopé sur `text_content`). Pas de blob monolithique retourné.
+- AC.SCRAPE.6 : Le retour de `fetchAndPersist` expose `fromCache: 'memory' | 'db' | null` — `'memory'` si hit cache mémoire, `'db'` si hit DB freshness 7j (cache mémoire vide), `null` si fetch externe effectué. Cette tri-state est testée explicitement.
+- AC.SCRAPE.7 : Eviction LRU vérifiée : insérer `MEMORY_CACHE_MAX_ENTRIES + 1` keywords distincts → la 1ère entrée est éjectée (re-fetch externe au prochain accès).
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Statut :** **active** *(implémenté 2026-05-09 — Story A1+A2+C1+C3 chantier 2)*. **Depuis :** 2026-05-09. **Source :** tech-spec-decouplage-lieutenants-lexique. **Précisions ACs ajoutées 2026-05-09 (audit en Story A1).**
 **Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-LEX-SCRAPE-DEDIE, FR-LIE-SCRAPE-DEDIE.
 
 #### FR-INFRA-LOGGER

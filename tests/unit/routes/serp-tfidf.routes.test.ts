@@ -6,37 +6,35 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-// Story C1 — TF-IDF reads from keyword_serp_scrapes (cross-article, dedicated table).
-const mockGetKeywordMetrics = vi.fn()
-const mockIsFresh = vi.fn()
+// Story C2 (chantier 2) — la route délègue à lexique-analysis.analyzeLexique.
+const mockAnalyzeLexique = vi.fn()
 
-vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
-  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
-  isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
-}))
+vi.mock('../../../server/services/keyword/lexique-analysis.service', () => {
+  class LexiqueScrapeMissingError extends Error {
+    constructor() {
+      super("Lancez d'abord l'analyse SERP dans l'onglet Lieutenants")
+      this.name = 'LexiqueScrapeMissingError'
+    }
+  }
+  return {
+    analyzeLexique: (...args: unknown[]) => mockAnalyzeLexique(...args),
+    LexiqueScrapeMissingError,
+  }
+})
 
-const mockGetSerpScrapes = vi.fn()
+import { LexiqueScrapeMissingError as MockLexiqueScrapeMissingError } from '../../../server/services/keyword/lexique-analysis.service.js'
+
+// Mocks restants utilisés par d'autres parties de la route (cache check /serp/analyze).
+const mockGetSerpResultsFresh = vi.fn()
+const mockReconstructSerp = vi.fn()
 vi.mock('../../../server/services/keyword/keyword-serp.service', () => ({
-  getSerpScrapes: (...args: unknown[]) => mockGetSerpScrapes(...args),
+  getSerpResultsFresh: (...args: unknown[]) => mockGetSerpResultsFresh(...args),
+  reconstructSerpAnalysisResult: (...args: unknown[]) => mockReconstructSerp(...args),
 }))
 
-const mockExtractTfidf = vi.fn()
-vi.mock('../../../server/services/keyword/tfidf.service', () => ({
-  extractTfidf: (...args: unknown[]) => mockExtractTfidf(...args),
-}))
-
-const mockAnalyze = vi.fn()
-vi.mock('../../../server/services/external/serp-analysis.service', () => ({
-  analyzeSerpCompetitors: (...args: unknown[]) => mockAnalyze(...args),
-}))
-
-vi.mock('../../../shared/schemas/serp-analysis.schema', () => ({
-  serpAnalyzeBodySchema: {
-    safeParse: vi.fn().mockReturnValue({
-      success: true,
-      data: { keyword: 'seo', articleLevel: 'intermediaire' },
-    }),
-  },
+const mockFetchAndPersist = vi.fn()
+vi.mock('../../../server/services/external/scrape-corpus.service', () => ({
+  fetchAndPersist: (...args: unknown[]) => mockFetchAndPersist(...args),
 }))
 
 import router from '../../../server/routes/serp-analysis.routes'
@@ -66,53 +64,19 @@ function getTfidfHandler() {
 const MOCK_TFIDF_RESULT = {
   keyword: 'seo',
   totalCompetitors: 5,
-  obligatoire: [{ term: 'seo', level: 'obligatoire', documentFrequency: 0.8, density: 4.2, competitorCount: 4, totalCompetitors: 5 }],
+  obligatoire: [
+    { term: 'seo', level: 'obligatoire', documentFrequency: 0.8, density: 4.2, competitorCount: 4, totalCompetitors: 5 },
+  ],
   differenciateur: [],
   optionnel: [],
 }
 
-const MOCK_CACHED_SERP = {
-  keyword: 'seo',
-  articleLevel: 'intermediaire',
-  competitors: [
-    { position: 1, title: 'Page 1', url: 'https://example.com', domain: 'example.com', headings: [], textContent: 'seo content' },
-  ],
-  paaQuestions: [],
-  maxScraped: 1,
-  cachedAt: '2026-03-31T00:00:00.000Z',
-  fromCache: false,
-}
-
-const MOCK_SCRAPES = [
-  {
-    keyword: 'seo',
-    lang: 'fr',
-    country: 'fr',
-    position: 1,
-    url: 'https://example.com',
-    headings: [],
-    textContent: 'seo content',
-    isBlog: false,
-    scrapedAt: new Date().toISOString(),
-  },
-]
-
 beforeEach(() => {
   vi.clearAllMocks()
-  // Story C1 — TF-IDF reads from keyword_serp_scrapes table.
-  mockGetSerpScrapes.mockResolvedValue(MOCK_SCRAPES)
-  mockGetKeywordMetrics.mockResolvedValue({
-    keyword: 'seo',
-    lang: 'fr',
-    country: 'fr',
-    fetchedAt: new Date().toISOString(),
-  })
-  mockIsFresh.mockReturnValue(true)
-  mockExtractTfidf.mockResolvedValue(MOCK_TFIDF_RESULT)
-  mockAnalyze.mockResolvedValue(MOCK_CACHED_SERP)
+  mockAnalyzeLexique.mockResolvedValue({ tfidfResult: MOCK_TFIDF_RESULT })
 })
 
-describe('POST /api/serp/tfidf', () => {
+describe('POST /api/serp/tfidf (Story C2 — bascule lexique-analysis)', () => {
   it('route handler exists', () => {
     expect(getTfidfHandler()).toBeDefined()
   })
@@ -144,8 +108,8 @@ describe('POST /api/serp/tfidf', () => {
     expect(res.status).toHaveBeenCalledWith(400)
   })
 
-  it('returns 404 if keyword_serp_scrapes is empty (preserve message verbatim — AC.C1.1)', async () => {
-    mockGetSerpScrapes.mockResolvedValue([])
+  it('AC.C2.2 — 404 verbatim si LexiqueScrapeMissingError', async () => {
+    mockAnalyzeLexique.mockRejectedValue(new MockLexiqueScrapeMissingError())
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()
@@ -156,15 +120,7 @@ describe('POST /api/serp/tfidf', () => {
     })
   })
 
-  it('AC.C1.5 calls extractTfidf with keyword only (no competitors param)', async () => {
-    const handler = getTfidfHandler()
-    const req = makeReq({ keyword: 'seo' })
-    const res = makeRes()
-    await handler(req, res)
-    expect(mockExtractTfidf).toHaveBeenCalledWith('seo')
-  })
-
-  it('returns { data: TfidfResult }', async () => {
+  it('AC.C2.3 — 200 avec { data: TfidfResult } quand scrapes présents', async () => {
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()
@@ -172,16 +128,32 @@ describe('POST /api/serp/tfidf', () => {
     expect(res.json).toHaveBeenCalledWith({ data: MOCK_TFIDF_RESULT })
   })
 
-  it('trims keyword before processing', async () => {
+  it('appelle analyzeLexique avec keyword trimé', async () => {
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: '  seo local  ' })
     const res = makeRes()
     await handler(req, res)
-    expect(mockExtractTfidf).toHaveBeenCalledWith('seo local')
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo local', { articleId: undefined })
   })
 
-  it('returns 500 on unexpected error', async () => {
-    mockGetSerpScrapes.mockRejectedValue(new Error('DB error'))
+  it('AC.C2.4 — articleId fourni → propagé dans opts', async () => {
+    const handler = getTfidfHandler()
+    const req = makeReq({ keyword: 'seo', articleId: 42 })
+    const res = makeRes()
+    await handler(req, res)
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', { articleId: 42 })
+  })
+
+  it('articleId invalide (string non-numérique) → opts.articleId = undefined', async () => {
+    const handler = getTfidfHandler()
+    const req = makeReq({ keyword: 'seo', articleId: 'abc' })
+    const res = makeRes()
+    await handler(req, res)
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', { articleId: undefined })
+  })
+
+  it('returns 500 on unexpected error (non-LexiqueScrapeMissingError)', async () => {
+    mockAnalyzeLexique.mockRejectedValue(new Error('DB down'))
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()

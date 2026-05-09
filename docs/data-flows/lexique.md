@@ -7,6 +7,8 @@ related_fr: [FR-LEX-TFIDF, FR-LEX-SORT, FR-LEX-SELECT, FR-LEX-AI-PANEL, FR-LEX-M
 ---
 
 > **Sprint keyword-metrics-decomposition (2026-05-09)** — l'autorité TF-IDF de Lexique n'est plus `keyword_metrics.serp_raw_json` mais **`keyword_serp_scrapes.text_content`** (table fille dédiée). La route `/serp/tfidf` lit directement les scrapes via `getSerpScrapes(keyword)` puis délègue à `computeTfidfFromTexts(texts[], keyword)` (pure). Voir `keyword-serp.service.ts`. Les sections ci-dessous mentionnant `serp_raw_json` reflètent l'état avant refonte.
+>
+> **Sprint decouplage-lieutenants-lexique (2026-05-09)** — la route `POST /api/serp/tfidf` délègue désormais à **`lexique-analysis.service.analyzeLexique(keyword, opts)`** ([server/services/keyword/lexique-analysis.service.ts](../../server/services/keyword/lexique-analysis.service.ts)). Ce service consomme `scrape-corpus.getTextContent` (jamais `headings` — cf. AC.LEX-SCRAPE.2), appelle `extractTfidf`, persiste optionnellement via `saveLexiqueTfidf` si `articleId` fourni. Le 404 verbatim *« Lancez d'abord l'analyse SERP dans l'onglet Lieutenants »* est préservé via la classe `LexiqueScrapeMissingError`. Le Lexique peut désormais déclencher son propre scrape (`triggerScrapeIfMissing: true`) — l'UX du 404 sera adressée en chantier 3 (FR-LEX-PRECHECK-SERP).
 
 # Data Flow — lexique
 
