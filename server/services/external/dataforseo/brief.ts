@@ -10,13 +10,22 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
   // Sprint 15.8 — check keyword_metrics first (cross-article DB).
   if (!forceRefresh) {
     const { getKeywordMetrics, isKeywordMetricsFresh } = await import('../../keyword/keyword-metrics.service.js')
+    const { getSerpResults } = await import('../../keyword/keyword-serp.service.js')
     const metrics = await getKeywordMetrics(keyword)
     if (metrics && isKeywordMetricsFresh(metrics.fetchedAt) && metrics.searchVolume !== null) {
       log.debug(`DB-first hit for brief "${keyword}"`)
-      // Rebuild a minimal DataForSeoCacheEntry from keyword_metrics (shape matches PaaQuestion[]).
+      // Story C3 — Capitaine n'a besoin que des URLs Top 10. On lit
+      // keyword_serp_results (cross-article slim) au lieu du payload monolithique.
+      const serpRows = await getSerpResults(keyword).catch(() => [])
       return {
         keyword,
-        serp: (metrics.serpRawJson as any)?.competitors ?? [],
+        serp: serpRows.map((r) => ({
+          position: r.position,
+          title: r.title ?? '',
+          url: r.url,
+          domain: r.domain ?? '',
+          description: '',
+        })),
         paa: metrics.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? null })),
         relatedKeywords: [],
         // Adapter DataForSEO brief — FR-INFRA-KPI-NULLABLE : null propagé tel

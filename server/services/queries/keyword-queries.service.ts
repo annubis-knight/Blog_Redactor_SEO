@@ -31,6 +31,7 @@ import {
   getLieutenantExplorations,
 } from '../infra/data.service.js'
 import { listLexiqueExplorations } from '../keyword/lexique-exploration.service.js'
+import { getSerpResults } from '../keyword/keyword-serp.service.js'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -266,7 +267,11 @@ export async function listArticleExplorations(articleId: number) {
     local: metricsCapitaine?.localAnalysis ?? null,
     contentGap: metricsCapitaine?.contentGapAnalysis ?? null,
     comparison: metricsCapitaine?.localComparison ?? null,
-    serp: metricsCapitaine?.serpRawJson ?? null,
+    // Story C3 — brief Capitaine ne charge plus le payload SERP complet
+    // (~50-100 ko) ; il lit uniquement les URLs Top 10 depuis keyword_serp_results.
+    serp: capitaineKeyword
+      ? { competitors: await getSerpResults(capitaineKeyword).catch(() => []) }
+      : null,
   }
 }
 
