@@ -8,161 +8,25 @@ import {
   upsertPaaQuestions,
   withSerpTransaction,
 } from '../keyword/keyword-serp.service.js'
+import {
+  extractHeadings,
+  extractTextContent,
+  classifyIsBlog,
+  __fetchPageHtmlInternal as fetchPageHtml,
+} from './scrape-corpus.service.js'
+
+// Story A1 (chantier 2) — les helpers HTML (extractHeadings, extractTextContent,
+// classifyIsBlog, fetchPageHtml) sont désormais propriété de scrape-corpus.service.
+// On les re-exporte ici pour la compatibilité des tests legacy
+// (`tests/unit/services/serp-analysis.test.ts`) jusqu'à C3.
+export { extractHeadings, extractTextContent }
 
 // Persistence SERP : les artefacts sont écrits atomiquement dans les 4 tables
 // filles (keyword_serp_results / _scrapes / _paa_questions) via
 // keyword-serp.service. Cf. NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
 
-const FETCH_TIMEOUT_MS = 10_000
-const USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; +https://example.com)'
-
 // ---------------------------------------------------------------------------
-// HTML extraction helpers
-// ---------------------------------------------------------------------------
-
-/** Extract H1/H2/H3 headings from raw HTML */
-export function extractHeadings(html: string): HnNode[] {
-  const headings: HnNode[] = []
-  const regex = /<h([1-3])[^>]*>([\s\S]*?)<\/h\1>/gi
-  let match: RegExpExecArray | null
-  while ((match = regex.exec(html)) !== null) {
-    const level = Number(match[1])
-    // Strip inner HTML tags, decode basic entities
-    const text = match[2]
-      .replace(/<[^>]+>/g, '')
-      .replace(/&amp;/g, '&')
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;/g, "'")
-      .replace(/\s+/g, ' ')
-      .trim()
-    if (text) {
-      headings.push({ level, text })
-    }
-  }
-  return headings
-}
-
-/** Extract plain text content from HTML (for TF-IDF in Epic 8) */
-export function extractTextContent(html: string): string {
-  return html
-    // Remove script/style blocks
-    .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/<style[\s\S]*?<\/style>/gi, '')
-    .replace(/<noscript[\s\S]*?<\/noscript>/gi, '')
-    // Remove HTML comments
-    .replace(/<!--[\s\S]*?-->/g, '')
-    // Remove tags
-    .replace(/<[^>]+>/g, ' ')
-    // Decode common entities
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&nbsp;/g, ' ')
-    // Collapse whitespace
-    .replace(/\s+/g, ' ')
-    .trim()
-}
-
-// ---------------------------------------------------------------------------
-// Fetch a single competitor page HTML
-// ---------------------------------------------------------------------------
-
-async function fetchPageHtml(url: string): Promise<string> {
-  const controller = new AbortController()
-  const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS)
-  const start = Date.now()
-
-  try {
-    // External API call — bypass wrapper by design (scraping concurrent SERP).
-    const res = await fetch(url, {
-      headers: { 'User-Agent': USER_AGENT },
-      signal: controller.signal,
-      redirect: 'follow',
-    })
-    if (!res.ok) {
-      log.warn('Page fetch HTTP error', { url, status: res.status, ms: Date.now() - start })
-      throw new Error(`HTTP ${res.status}`)
-    }
-    const html = await res.text()
-    log.debug('Page fetched', { url, size: html.length, ms: Date.now() - start })
-    return html
-  } catch (err) {
-    const message = (err as Error).message
-    if (message.includes('abort')) {
-      log.warn('Page fetch timeout', { url, timeoutMs: FETCH_TIMEOUT_MS, ms: Date.now() - start })
-    } else if (!message.startsWith('HTTP ')) {
-      log.warn('Page fetch network error', { url, error: message, ms: Date.now() - start })
-    }
-    throw err
-  } finally {
-    clearTimeout(timeout)
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Sprint 4.4 — Blog classification heuristic.
-// No extra API call: purely URL/domain patterns. This is cheap and fast; the
-// user can later ask for an AI-driven refinement for borderline cases.
-// ---------------------------------------------------------------------------
-
-const BLOG_URL_PATTERNS = [
-  /\/blog\//i,
-  /\/articles?\//i,
-  /\/news\//i,
-  /\/insights?\//i,
-  /\/magazine\//i,
-  /\/journal\//i,
-  /\/ressources?\//i,
-  /\/guide\//i,
-  /\/tutoriels?\//i,
-]
-
-const KNOWN_BLOG_DOMAINS = new Set([
-  'medium.com',
-  'dev.to',
-  'hashnode.com',
-  'substack.com',
-  'wordpress.com',
-  'blogger.com',
-  'tumblr.com',
-])
-
-const INSTITUTIONAL_DOMAIN_SUFFIXES = ['.gouv.fr', '.gov', '.edu', '.europa.eu']
-const INSTITUTIONAL_DOMAINS = new Set([
-  'wikipedia.org',
-  'fr.wikipedia.org',
-  'linkedin.com',
-  'pagesjaunes.fr',
-  'societe.com',
-  'infogreffe.fr',
-])
-
-function classifyIsBlog(url: string, domain: string, headings: HnNode[]): boolean {
-  const domLower = domain.toLowerCase()
-  // Institutional / directory sites → not a blog.
-  if (INSTITUTIONAL_DOMAINS.has(domLower)) return false
-  if (INSTITUTIONAL_DOMAIN_SUFFIXES.some(s => domLower.endsWith(s))) return false
-
-  // Obvious blog platforms.
-  if (KNOWN_BLOG_DOMAINS.has(domLower)) return true
-  if (domLower.endsWith('.substack.com')) return true
-
-  // URL path patterns.
-  if (BLOG_URL_PATTERNS.some(rx => rx.test(url))) return true
-
-  // Strong secondary signal: many H2 headings suggest long-form editorial content.
-  const h2Count = headings.filter(h => h.level === 2).length
-  if (h2Count >= 5) return true
-
-  return false
-}
-
-// ---------------------------------------------------------------------------
-// Core analysis function
+// Core analysis function (legacy — bascule en wrapper deprecated en C1, supprimé en C3)
 // ---------------------------------------------------------------------------
 
 export async function analyzeSerpCompetitors(
@@ -202,8 +66,7 @@ export async function analyzeSerpCompetitors(
         }
       } catch (err) {
         log.warn(`Failed to fetch ${sr.url}: ${(err as Error).message}`)
-        // Even on fetch error, we can still classify based on URL/domain alone.
-        const isBlog = classifyIsBlog(sr.url, sr.domain, [])
+        const isBlog = classifyIsBlog(sr.url, sr.domain, [] as HnNode[])
         return {
           position: sr.position,
           title: sr.title,
@@ -233,11 +96,7 @@ export async function analyzeSerpCompetitors(
   }
 
   // Story C4 — persistence atomique sur les 4 tables filles uniquement.
-  // En cas d'échec d'une des écritures, la transaction rollback intégralement.
   await withSerpTransaction(async (client) => {
-    // Garantit le parent keyword_metrics(keyword, lang, country) pour la FK
-    // depuis keyword_serp_results / _paa_questions / _autocomplete (dual-write
-    // legacy retiré en C4 — ce stub minimal remplace la création implicite).
     await client.query(
       `INSERT INTO keyword_metrics (keyword, lang, country, fetched_at)
        VALUES ($1, 'fr', 'fr', NOW())
