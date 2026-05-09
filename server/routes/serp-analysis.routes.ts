@@ -7,7 +7,6 @@ import type { SerpAnalysisResult } from '../../shared/types/serp-analysis.types.
 import { respondWithError } from '../utils/api-error.js'
 import {
   getKeywordMetrics,
-  upsertKeywordSerp,
   isKeywordMetricsFresh,
 } from '../services/keyword/keyword-metrics.service.js'
 
@@ -37,11 +36,9 @@ router.post('/serp/analyze', async (req, res) => {
       return
     }
 
+    // Story B2 — analyzeSerpCompetitors persiste dual-write en transaction
+    // (legacy serp_raw_json + 4 tables filles). Pas de persist redondant ici.
     const result = await analyzeSerpCompetitors(keyword, articleLevel)
-
-    try { await upsertKeywordSerp(keyword, result) }
-    catch (err) { log.warn(`serp: DB persist failed — ${(err as Error).message}`) }
-
     res.json({ data: result })
   } catch (err) {
     log.error(`POST /api/serp/analyze — ${(err as Error).message}`)

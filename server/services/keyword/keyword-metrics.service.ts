@@ -12,6 +12,7 @@
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-INTENT-SIGNAL,
  *             FR-INFRA-KPI-NULLABLE.
  */
+import type { PoolClient } from 'pg'
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import {
@@ -274,15 +275,19 @@ export async function upsertKeywordSerp(
   serpRawJson: unknown,
   lang: string = 'fr',
   country: string = 'fr',
+  client?: PoolClient,
 ): Promise<void> {
-  await query(
-    `INSERT INTO keyword_metrics (keyword, lang, country, serp_raw_json, fetched_at)
+  const sql = `INSERT INTO keyword_metrics (keyword, lang, country, serp_raw_json, fetched_at)
      VALUES ($1, $2, $3, $4::jsonb, NOW())
      ON CONFLICT (keyword, lang, country) DO UPDATE
        SET serp_raw_json = EXCLUDED.serp_raw_json,
-           fetched_at = NOW()`,
-    [keyword, lang, country, JSON.stringify(serpRawJson)],
-  )
+           fetched_at = NOW()`
+  const params = [keyword, lang, country, JSON.stringify(serpRawJson)]
+  if (client) {
+    await client.query(sql, params)
+  } else {
+    await query(sql, params)
+  }
 }
 
 /**

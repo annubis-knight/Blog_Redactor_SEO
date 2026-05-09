@@ -2,8 +2,18 @@ import { log } from '../../utils/logger.js'
 import { fetchSerp, fetchPaa } from './dataforseo.service.js'
 import type { SerpCompetitor, SerpAnalysisResult, HnNode } from '../../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
+import { upsertKeywordSerp } from '../keyword/keyword-metrics.service.js'
+import {
+  upsertSerpResults,
+  upsertSerpScrapes,
+  upsertPaaQuestions,
+  withSerpTransaction,
+} from '../keyword/keyword-serp.service.js'
 
-// Sprint 15.5-bis — SERP results now stored in keyword_metrics.serp_raw_json (cross-article).
+// Sprint keyword-metrics-decomposition (Story B2) — dual-write SERP en transaction :
+// keyword_metrics.serp_raw_json (legacy) + 4 tables filles (keyword_serp_*).
+// Pendant la fenêtre B2 → C4, les deux paths d'écriture coexistent. La
+// transaction garantit qu'aucun consommateur ne voit un état partiel.
 
 const FETCH_TIMEOUT_MS = 10_000
 const USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; +https://example.com)'
@@ -225,7 +235,56 @@ export async function analyzeSerpCompetitors(
     fromCache: false,
   }
 
-  // Sprint 15.5-bis — persistence handled by caller via upsertKeywordSerp().
+  // Story B2 — dual-write atomique : legacy serp_raw_json + 4 tables filles.
+  // En cas d'échec d'une des écritures, la transaction rollback intégralement
+  // (aucun état partiel exposé aux consommateurs).
+  await withSerpTransaction(async (client) => {
+    await upsertKeywordSerp(keyword, result, 'fr', 'fr', client)
+
+    if (competitors.length > 0) {
+      await upsertSerpResults(
+        keyword,
+        competitors.map((c) => ({
+          position: c.position,
+          url: c.url,
+          title: c.title,
+          domain: c.domain,
+        })),
+        'fr',
+        'fr',
+        client,
+      )
+
+      await upsertSerpScrapes(
+        keyword,
+        competitors.map((c) => ({
+          position: c.position,
+          url: c.url,
+          headings: c.headings,
+          textContent: c.textContent || null,
+          isBlog: c.isBlog ?? null,
+        })),
+        'fr',
+        'fr',
+        client,
+      )
+    }
+
+    if (paaQuestions.length > 0) {
+      await upsertPaaQuestions(
+        keyword,
+        paaQuestions.map((p) => ({
+          question: p.question,
+          answer: p.answer ?? null,
+          depth: 1,
+        })),
+        'fr',
+        'fr',
+        client,
+      )
+    }
+  })
+
   log.info(`SERP analysis done for "${keyword}": ${competitors.length} competitors, ${paaQuestions.length} PAA`, { ms: Date.now() - totalStart })
 
   return result
