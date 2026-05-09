@@ -1,32 +1,31 @@
 <script setup lang="ts">
 /**
- * AUTHORITY: PostgreSQL `article_keywords.lexique` TEXT[] (termes verrouilles utilisateur).
- *            PostgreSQL `lexique_explorations` (cache propositions TF-IDF/IA, distinct).
- *            PostgreSQL `keyword_serp_scrapes` (lecture seule via pré-check léger).
- * READS FROM: useArticleKeywordsStore.keywords.lexique (mount/store hydrate via fetchKeywords).
- *             GET /articles/:id/explorations (hydrateFromDb / mergeFromDb pour pastExplorations).
- *             GET /keywords/:keyword/serp/exists (pré-check léger via useSerpExistsCheck).
- *             POST /serp/tfidf (extraction TF-IDF live, optionnellement avec triggerScrapeIfMissing).
- *             useArticleProgressStore.getProgress(id).completedChecks (reconciliation au mount).
- * WRITES TO: articleKeywordsStore.addLexiqueTerm / removeLexiqueTerm + saveDecisions(id)
- *            (toggle terme = mute store + PUT /articles/:id/keywords).
- *            Emits 'check-completed' / 'check-removed' (MOTEUR_LEXIQUE_VALIDATED) consommes
- *            par MoteurView qui appelle articleProgressStore.addCheck / removeCheck.
- * CONSUMERS: MoteurView (parent), TabCachePanel via tab-cache-entries.ts
- *            (validatedLexiqueCount = lexique.length).
- * RELATED FR: FR-LEX-SELECT, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-TFIDF, FR-LEX-MULTI-KEYWORD,
- *             FR-LEX-PRECHECK-SERP (chantier 3 E1-S3 : CTA explicite si pas de scrape SERP),
- *             FR-MOT-CHECK-RECONCILIATION (cleanup check legacy au mount si lexique=[]),
- *             FR-MOT-CACHE-PANEL-COUNT (lexique.length pilote le compteur DB du TabCachePanel).
+ * AUTHORITY: PostgreSQL `article_keywords.lexique` TEXT[] (VERROUILLAGE via
+ *            useLexiqueLocking) + `lexique_explorations` (LECTURE via
+ *            useLexiqueExplorations) + `keyword_serp_scrapes` (pré-check via
+ *            useSerpExistsCheck).
+ * READS FROM: GET /articles/:id/explorations (composable LECTURE).
+ *             GET /keywords/:keyword/serp/exists (composable pré-check).
+ *             POST /serp/tfidf (fetchTfidf, optionnellement triggerScrapeIfMissing).
+ *             useArticleProgressStore.getProgress(id).completedChecks
+ *             (reconciliation au mount).
+ * WRITES TO: useLexiqueLocking.toggleTerm → store + PUT /articles/:id/keywords.
+ *            Emits check-completed / check-removed (MOTEUR_LEXIQUE_VALIDATED).
+ * CONSUMERS: MoteurView (parent), TabCachePanel (validatedLexiqueCount).
+ * RELATED FR: FR-LEX-SELECT, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-TFIDF,
+ *             FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS (E2),
+ *             FR-LEX-PRECHECK-SERP (E1), FR-LEX-LECTURE-VS-VERROUILLAGE (E3),
+ *             FR-MOT-CHECK-RECONCILIATION, FR-MOT-CACHE-PANEL-COUNT.
  */
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
-import { apiGet, apiPost } from '@/services/api.service'
+import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
-import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useLexiqueIa } from '@/composables/lexique/useLexiqueIa'
 import { useSerpExistsCheck } from '@/composables/lexique/useSerpExistsCheck'
+import { useLexiqueExplorations } from '@/composables/lexique/useLexiqueExplorations'
+import { useLexiqueLocking } from '@/composables/lexique/useLexiqueLocking'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
 import LexiqueTermsList from '@/components/moteur/lexique/LexiqueTermsList.vue'
@@ -38,19 +37,8 @@ import { type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
-import type { TfidfResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
+import type { TfidfResult } from '@shared/types/serp-analysis.types.js'
 import { MOTEUR_LEXIQUE_VALIDATED } from '@shared/constants/workflow-checks.constants.js'
-
-// Sprint 11 — Multi-keyword exploration + DB hydration
-interface LexiqueExplorationEntry {
-  articleId: number
-  sourceKeyword: string
-  tfidfTerms: TfidfResult | null
-  aiRecommendations: LexiqueTermRecommendation[]
-  aiMissingTerms: string[]
-  aiSummary: string | null
-  exploredAt: string
-}
 
 const props = withDefaults(defineProps<{
   selectedArticle: SelectedArticle | null
@@ -60,10 +48,7 @@ const props = withDefaults(defineProps<{
   isCaptaineLocked: boolean
   initialLocked?: boolean
   cocoonSlug?: string
-}>(), {
-  initialLocked: false,
-  cocoonSlug: '',
-})
+}>(), { initialLocked: false, cocoonSlug: '' })
 
 const emit = defineEmits<{
   (e: 'check-completed', check: string): void
@@ -72,39 +57,48 @@ const emit = defineEmits<{
 
 const articleKeywordsStore = useArticleKeywordsStore()
 
-const tfidfResult = ref<TfidfResult | null>(null)
+// --- État UI local ---
+// `selectedTerms` = candidats UI (pre-check obligatoire post-fetchTfidf + basket).
+// Distinct de `lockedTerms` (store.lexique persisté) ; toggle synchronise les deux.
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
-// Sprint 17 — `isLocked` dérivé du store : "lockée" = au moins 1 terme dans
-// keywords.lexique. Plus de Ref locale, plus de bouton batch.
-// FR-LEX-CHECKBOX-LOCK-IMMEDIATE.
-const isLocked = computed(() => {
-  const lex = articleKeywordsStore.keywords?.lexique
-  return Array.isArray(lex) && lex.length > 0
+const customKeywordInput = ref('')
+const showSerpScrapeModal = ref(false)
+
+// --- Composables (séparation LECTURE / VERROUILLAGE — FR-LEX-LECTURE-VS-VERROUILLAGE) ---
+const articleIdRef = computed(() => props.selectedArticle?.id ?? undefined)
+const captainKeywordRef = toRef(props, 'captainKeyword')
+
+const {
+  pastExplorations, activeSourceKeyword, tfidfResult, iaRecommendations,
+  hydrateFromDb, mergeFromDb, selectExploration, reset: resetExplorations,
+} = useLexiqueExplorations({ articleId: articleIdRef, captainKeyword: captainKeywordRef })
+
+const { isLocked, toggleTerm: persistToggle } = useLexiqueLocking({ articleId: articleIdRef })
+
+const { exists: serpExists, isChecking: serpExistsIsChecking, refetch: refetchSerpExists }
+  = useSerpExistsCheck(captainKeywordRef)
+
+const {
+  iaIsStreaming, iaError, iaResult,
+  iaRecommendedCount, iaNotRecommendedCount,
+  iaAbort, getRecommendation, isIaRecommended, generateLexiqueUpfront,
+} = useLexiqueIa({
+  tfidfResult, selectedTerms, activeSourceKeyword,
+  captainKeyword: captainKeywordRef,
+  articleLevel: toRef(props, 'articleLevel'),
+  cocoonSlug: toRef(props, 'cocoonSlug'),
+  selectedArticleId: articleIdRef,
 })
 
-// 2026-05-02 — Migration vers la barre de tri unifiée (S2 historique remplacé).
-// Critères :
-//   - "az"        : ordre alphabétique sur le terme
-//   - "density"   : densité TF-IDF (par défaut DESC, plus dense en haut)
-//   - "alignment" : similarité Jaccard term × painPoint (S2 historique)
-// L'ordre TF-IDF par défaut (état neutral) est conservé.
+// --- Tri / sélection ---
 const lexiqueSortOptions = computed<SortOption[]>(() => {
-  const opts: SortOption[] = [
-    { key: 'az', label: 'A-Z' },
-    { key: 'density', label: 'Densité' },
-  ]
-  if (props.selectedArticle?.painPoint) {
-    opts.push({ key: 'alignment', label: 'Pertinence douleur' })
-  }
+  const opts: SortOption[] = [{ key: 'az', label: 'A-Z' }, { key: 'density', label: 'Densité' }]
+  if (props.selectedArticle?.painPoint) opts.push({ key: 'alignment', label: 'Pertinence douleur' })
   return opts
 })
-
-const lexiqueSortState = ref<{ key: string | null; direction: 'asc' | 'desc' | 'neutral' }>({
-  key: null,
-  direction: 'neutral',
-})
+const lexiqueSortState = ref<{ key: string | null; direction: 'asc' | 'desc' | 'neutral' }>({ key: null, direction: 'neutral' })
 
 function getLexiqueValue<T extends { term: string; density?: number; documentFrequency?: number }>(t: T, key: string): string | number | null {
   if (key === 'az') return t.term
@@ -118,8 +112,7 @@ function sortTermsByAlignment<T extends { term: string; density?: number; docume
   if (!key || direction === 'neutral') return terms
   const sign = direction === 'desc' ? -1 : 1
   return [...terms].sort((a, b) => {
-    const va = getLexiqueValue(a, key)
-    const vb = getLexiqueValue(b, key)
+    const va = getLexiqueValue(a, key); const vb = getLexiqueValue(b, key)
     if (va == null && vb == null) return 0
     if (va == null) return 1
     if (vb == null) return -1
@@ -128,232 +121,7 @@ function sortTermsByAlignment<T extends { term: string; density?: number; docume
   })
 }
 
-// Sprint 11 (D4) — champ saisie libre pour lancer TF-IDF sur un keyword arbitraire.
-const customKeywordInput = ref('')
-// Keyword source actif pour l'extraction courante (capitaine par défaut).
-const activeSourceKeyword = ref<string>('')
-// DB-hydrated past explorations for this article (displayed as collapsible sections).
-const pastExplorations = ref<LexiqueExplorationEntry[]>([])
-
-// Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — pré-check SERP léger sur le
-// captain keyword pour gater l'UX : si aucun scrape n'existe, on affiche un
-// CTA explicite *« Lancer l'analyse SERP »* au lieu de tenter un POST
-// /serp/tfidf qui répondrait 404 (origine de la trace rouge console).
-const captainKeywordForPrecheck = computed<string | null>(() => props.captainKeyword)
-const {
-  exists: serpExists,
-  isChecking: serpExistsIsChecking,
-  refetch: refetchSerpExists,
-} = useSerpExistsCheck(captainKeywordForPrecheck)
-const showSerpScrapeModal = ref(false)
-
-// Chantier 3 E2-S2 (FR-LEX-MULTI-KEYWORD-TABS) — onglets multi-keyword.
-// 1 onglet par exploration enregistrée (label = sourceKeyword brut, sans
-// transformation côté UI — cohérence affichage/calcul §2.0) + 1 onglet
-// « + Tester un mot-clé » pour déclencher une saisie libre.
-const CUSTOM_TAB_ID = '__custom__'
-
-const lexiqueTabs = computed(() => {
-  const explorationTabs = pastExplorations.value.map((entry) => ({
-    id: entry.sourceKeyword,
-    label: entry.sourceKeyword,
-  }))
-  // Quand 0 exploration, on n'affiche que l'onglet de saisie libre
-  // (label simplifié sans le « + »).
-  const customLabel = explorationTabs.length === 0 ? 'Tester un mot-clé' : '+ Tester un mot-clé'
-  return [...explorationTabs, { id: CUSTOM_TAB_ID, label: customLabel }]
-})
-
-// L'onglet actif côté UI : soit le sourceKeyword courant, soit l'onglet libre.
-const displayedTabId = computed<string>(() => {
-  if (activeSourceKeyword.value && pastExplorations.value.some(e => e.sourceKeyword === activeSourceKeyword.value)) {
-    return activeSourceKeyword.value
-  }
-  return CUSTOM_TAB_ID
-})
-
-function onSelectTab(id: string): void {
-  if (id === CUSTOM_TAB_ID) {
-    activeSourceKeyword.value = ''
-    return
-  }
-  const entry = pastExplorations.value.find(e => e.sourceKeyword === id)
-  if (!entry) return
-  // Inline équivalent de handleSelectPast : pas de fetch, lecture du cache.
-  activeSourceKeyword.value = entry.sourceKeyword
-  tfidfResult.value = entry.tfidfTerms
-  const m = new Map<string, LexiqueTermRecommendation>()
-  for (const r of entry.aiRecommendations) m.set(r.term.toLowerCase(), r)
-  iaRecommendations.value = m
-}
-
-// --- IA Upfront Analysis (Vague 5 — extracted to useLexiqueIa) ---
-const captainKeywordRef = toRef(props, 'captainKeyword')
-const articleLevelRef = toRef(props, 'articleLevel')
-const cocoonSlugRef = toRef(props, 'cocoonSlug')
-const selectedArticleIdRef = computed(() => props.selectedArticle?.id ?? undefined)
-
-const {
-  iaIsStreaming,
-  iaError,
-  iaResult,
-  iaRecommendations,
-  iaRecommendedCount,
-  iaNotRecommendedCount,
-  iaAbort,
-  getRecommendation,
-  isIaRecommended,
-  generateLexiqueUpfront,
-} = useLexiqueIa({
-  tfidfResult,
-  selectedTerms,
-  activeSourceKeyword,
-  captainKeyword: captainKeywordRef,
-  articleLevel: articleLevelRef,
-  cocoonSlug: cocoonSlugRef,
-  selectedArticleId: selectedArticleIdRef,
-})
-
-// F5 — La barrière `isCaptaineLocked` ne s'applique qu'au premier passage. Dès que
-// des termes lexique ont été validés une fois, l'onglet reste accessible même si
-// l'utilisateur déverrouille ensuite le Capitaine.
-const hasEverValidated = computed(() =>
-  (articleKeywordsStore.keywords?.lexique?.length ?? 0) > 0,
-)
-
-/**
- * FR-MOT-DISPLAY-FROM-STORE — lit le Capitaine depuis le store Pinia (source
- * réactive fraîche, mutée par lockCaptain/unlockCaptain) plutôt que depuis
- * `props.captainKeyword`, qui est une projection figée fournie par MoteurView
- * et ne se rafraîchit pas live après un re-lock.
- *
- * Garde `selectedArticle.id > 0` pour éviter les collisions sur les articles
- * proposés non persistés (`dbId === 0`) où `setCapitaine()` peut seed
- * `articleId: 0` dans le store.
- */
-const displayedCaptainKeyword = computed<string | null>(() => {
-  const kw = articleKeywordsStore.keywords
-  const selId = props.selectedArticle?.id ?? 0
-  if (selId > 0 && kw && kw.articleId === selId) {
-    return kw.capitaine || props.captainKeyword
-  }
-  return props.captainKeyword
-})
-
-// Sprint 17 — `isLocked` est désormais dérivé de keywords.lexique.length > 0
-// (FR-LEX-CHECKBOX-LOCK-IMMEDIATE). Sans le retrait de `!isLocked.value`,
-// l'extraction serait bloquée dès qu'un seul terme est coché — incohérent avec
-// le nouveau modèle où l'utilisateur peut étendre sa sélection en relançant
-// une extraction. La protection contre la double-extraction simultanée reste
-// assurée par `!isLoading.value`.
-const canExtract = computed(() =>
-  (props.isCaptaineLocked || hasEverValidated.value) && !!props.captainKeyword && !isLoading.value,
-)
-
-// --- Debug log: state on mount ---
-watch(
-  () => articleKeywordsStore.keywords,
-  (kw) => {
-    log.debug('[LexiquePanel] store keywords snapshot', {
-      articleId: props.selectedArticle?.id,
-      lexiqueTerms: kw?.lexique ?? [],
-      lexiqueCount: kw?.lexique?.length ?? 0,
-      isCaptainLocked: props.isCaptaineLocked,
-      captainKeyword: props.captainKeyword,
-      isLocked: isLocked.value,
-      tfidfLoaded: !!tfidfResult.value,
-    })
-  },
-  { immediate: true },
-)
-
-/** F3 — Ajoute un terme (suggéré par le basket) à la sélection lexique courante. */
-function handleAssistAdd(term: string) {
-  if (isLocked.value) return
-  const next = new Set(selectedTerms.value)
-  next.add(term)
-  selectedTerms.value = next
-  log.info('[LexiquePanel] Assist add', { term, total: selectedTerms.value.size })
-}
-
-async function extractLexique() {
-  if (!props.captainKeyword || !canExtract.value) return
-  activeSourceKeyword.value = props.captainKeyword
-  await fetchTfidf(props.captainKeyword)
-}
-
-/**
- * Sprint 11 (D4) — TF-IDF sur un keyword arbitraire (hors capitaine verrouillé).
- *
- * Chantier 3 E1-S3 : on passe `triggerScrape=true` puisque l'utilisateur
- * choisit explicitement de tester un keyword vierge. Le coût scrape est
- * acté par cette saisie libre (cohérent avec la modale du captain keyword
- * qui sert le même objectif sur le keyword principal).
- *
- * Chantier 3 E2-S2 (FR-LEX-MULTI-KEYWORD-TABS / AC.LEX-TABS.3) : après
- * succès, on appelle `mergeFromDb` pour récupérer l'entrée fraîchement
- * persistée par le backend → un nouvel onglet apparaît automatiquement et
- * `displayedTabId` (computed) bascule sur ce keyword puisque
- * `activeSourceKeyword.value === kw` désormais matche une entry du cache.
- */
-async function extractCustomKeyword() {
-  const kw = customKeywordInput.value.trim()
-  if (!kw || isLoading.value) return
-  activeSourceKeyword.value = kw
-  iaRecommendations.value = new Map()
-  await fetchTfidf(kw, true)
-  if (tfidfResult.value) {
-    await mergeFromDb()
-  }
-  customKeywordInput.value = ''
-}
-
-/**
- * Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — handler du CTA *« Lancer
- * l'analyse SERP »*. Ouvre la modale de confirmation coût DataForSEO. Sur
- * confirmation, déclenche fetchTfidf(triggerScrape=true) puis re-vérifie
- * exists pour repasser à l'UI nominale (bouton « Extraire le Lexique »).
- */
-function openSerpScrapeModal() {
-  showSerpScrapeModal.value = true
-}
-
-async function confirmSerpScrape() {
-  showSerpScrapeModal.value = false
-  if (!props.captainKeyword) return
-  await fetchTfidf(props.captainKeyword, true)
-  await refetchSerpExists()
-}
-
-function cancelSerpScrape() {
-  showSerpScrapeModal.value = false
-}
-
-// Sprint 17 — Cocher/décocher un terme = lock/unlock immédiat en DB.
-// FR-LEX-CHECKBOX-LOCK-IMMEDIATE. Plus de garde isLocked (le verrou est par
-// terme, pas par container). Le check workflow MOTEUR_LEXIQUE_VALIDATED est
-// dérivé d'un watcher (plus bas) sur la taille de keywords.lexique.
-function toggleTerm(term: string) {
-  const id = props.selectedArticle?.id
-  if (!id) return
-  if (!articleKeywordsStore.keywords) {
-    articleKeywordsStore.initEmpty(id)
-  }
-  const next = new Set(selectedTerms.value)
-  if (next.has(term)) {
-    next.delete(term)
-    articleKeywordsStore.removeLexiqueTerm(term)
-  } else {
-    next.add(term)
-    articleKeywordsStore.addLexiqueTerm(term)
-  }
-  selectedTerms.value = next
-  void articleKeywordsStore.saveDecisions(id)
-}
-
-// Selection counters
 const selectedCount = computed(() => selectedTerms.value.size)
-
 const selectedByLevel = computed(() => {
   const r = tfidfResult.value
   if (!r) return { obligatoire: 0, differenciateur: 0, optionnel: 0 }
@@ -364,120 +132,104 @@ const selectedByLevel = computed(() => {
   }
 })
 
-// (iaRecommendedCount, iaNotRecommendedCount, getRecommendation,
-//  isIaRecommended, generateLexiqueUpfront moved to useLexiqueIa above)
-
-// Auto-trigger IA upfront after TF-IDF results
-// U5 — session guard : ne pas relancer si déjà en cache session (iaRecommendations peuplé)
-// TODO U5 plus complet : persister les iaRecommendations en DB avec exploredAt,
-// et réutiliser via shouldRegenerate(exploredAt). Pour l'instant : cache de session seulement.
-watch(tfidfResult, (res) => {
-  if (!res) return
-  if (iaRecommendations.value.size > 0) {
-    log.debug('[LexiquePanel] Skip IA upfront — session cache already populated', { count: iaRecommendations.value.size })
-    return
-  }
-  generateLexiqueUpfront()
+// --- Onglets (chantier 3 E2-S2 — FR-LEX-MULTI-KEYWORD-TABS) ---
+const CUSTOM_TAB_ID = '__custom__'
+const lexiqueTabs = computed(() => {
+  const explorationTabs = pastExplorations.value.map(e => ({ id: e.sourceKeyword, label: e.sourceKeyword }))
+  const customLabel = explorationTabs.length === 0 ? 'Tester un mot-clé' : '+ Tester un mot-clé'
+  return [...explorationTabs, { id: CUSTOM_TAB_ID, label: customLabel }]
 })
-
-// Sprint 17 — Bouton "Verrouiller le Lexique" en bloc SUPPRIMÉ du template.
-// Le toggleTerm persiste immédiatement chaque ajout/retrait dans le store.
-// Les fonctions historiques validateLexique/unlockLexique sont retirées
-// (FR-LEX-CHECKBOX-LOCK-IMMEDIATE).
-
-/**
- * Watcher de gating workflow + reconciliation au mount (FR-MOT-CHECK-RECONCILIATION).
- *
- * Au mount (immediate, isFirstRun=true) :
- *  - lexique=[] mais 'moteur:lexique_validated' present en DB → emit check-removed
- *    (cas observe article 64 : check legacy non nettoye apres deverrouillage).
- *  - lexique=['t1',...] mais check absent → emit check-completed (etat coherent).
- *  - DB et store coherents → no-op.
- *
- * Apres le mount : transitions normales false↔true (utilisateur coche/decoche).
- */
-let previousLockedState = false
-let isFirstRun = true
-watch(
-  isLocked,
-  (locked) => {
-    if (isFirstRun) {
-      isFirstRun = false
-      previousLockedState = locked
-      const id = props.selectedArticle?.id
-      let checks: string[] = []
-      try {
-        const progressStore = useArticleProgressStore()
-        checks = id ? (progressStore.getProgress(id)?.completedChecks ?? []) : []
-      } catch {
-        checks = []
-      }
-      const checkPresent = checks.includes(MOTEUR_LEXIQUE_VALIDATED)
-      const lexiqueCount = articleKeywordsStore.keywords?.lexique?.length ?? 0
-      let decision: 'add' | 'remove' | 'noop'
-      if (locked && !checkPresent) {
-        decision = 'add'
-        emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
-      } else if (!locked && checkPresent) {
-        decision = 'remove'
-        emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
-      } else {
-        decision = 'noop'
-      }
-      log.info('[reconcile:lexique]', {
-        articleId: id,
-        lexiqueCount,
-        isLocked: locked,
-        checkPresent,
-        decision,
-        check: MOTEUR_LEXIQUE_VALIDATED,
-      })
-      return
-    }
-
-    if (locked && !previousLockedState) {
-      emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
-    } else if (!locked && previousLockedState) {
-      emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
-    }
-    previousLockedState = locked
-  },
-  { immediate: true },
+const displayedTabId = computed<string>(() =>
+  activeSourceKeyword.value && pastExplorations.value.some(e => e.sourceKeyword === activeSourceKeyword.value)
+    ? activeSourceKeyword.value
+    : CUSTOM_TAB_ID,
 )
 
-/**
- * Fetch TF-IDF — keyword can be overridden (Sprint 11 D4 multi-keyword).
- *
- * Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) : `triggerScrape` est honoré côté
- * backend par lexique-analysis.service (AC.LEX-SCRAPE.3 chantier 2). Quand
- * l'utilisateur confirme la modale de scrape, on passe `true`. Sinon
- * `false` et on retombe sur le 404 verbatim (compat C1.1/C2.2) — qui ne
- * doit plus se produire automatiquement grâce au gating watcher serpExists.
- */
+function onSelectTab(id: string): void {
+  if (id === CUSTOM_TAB_ID) {
+    activeSourceKeyword.value = ''
+    return
+  }
+  selectExploration(id) // composable LECTURE — 0 fetch, lit le cache
+}
+
+// --- Capitaine display + gating ---
+// FR-MOT-DISPLAY-FROM-STORE : capitaine lu live depuis le store (et non depuis
+// props, projection figée). Garde id>0 contre articles proposés (dbId=0).
+const displayedCaptainKeyword = computed<string | null>(() => {
+  const kw = articleKeywordsStore.keywords
+  const selId = props.selectedArticle?.id ?? 0
+  if (selId > 0 && kw && kw.articleId === selId) return kw.capitaine || props.captainKeyword
+  return props.captainKeyword
+})
+
+// F5 : barrière isCaptaineLocked au 1er passage uniquement, puis "ever validated"
+// permet d'étendre la sélection même si le capitaine est ré-ouvert.
+const hasEverValidated = computed(() => (articleKeywordsStore.keywords?.lexique?.length ?? 0) > 0)
+const canExtract = computed(() =>
+  (props.isCaptaineLocked || hasEverValidated.value) && !!props.captainKeyword && !isLoading.value,
+)
+
+// --- Actions UI ---
+
+function handleAssistAdd(term: string) {
+  if (isLocked.value) return
+  const next = new Set(selectedTerms.value); next.add(term)
+  selectedTerms.value = next
+}
+
+// Toggle = sync Set local UI + délègue persistance au composable VERROUILLAGE
+// (FR-LEX-LECTURE-VS-VERROUILLAGE).
+function handleToggleTerm(term: string) {
+  const next = new Set(selectedTerms.value)
+  if (next.has(term)) next.delete(term); else next.add(term)
+  selectedTerms.value = next
+  persistToggle(term)
+}
+
+async function extractLexique() {
+  if (!props.captainKeyword || !canExtract.value) return
+  activeSourceKeyword.value = props.captainKeyword
+  await fetchTfidf(props.captainKeyword)
+}
+
+// Sprint 11 D4 + chantier 3 E1-S3/E2-S2 : triggerScrape=true (utilisateur
+// acte le coût) + mergeFromDb après succès → nouvel onglet via cache LECTURE.
+async function extractCustomKeyword() {
+  const kw = customKeywordInput.value.trim()
+  if (!kw || isLoading.value) return
+  activeSourceKeyword.value = kw
+  iaRecommendations.value = new Map()
+  await fetchTfidf(kw, true)
+  if (tfidfResult.value) await mergeFromDb()
+  customKeywordInput.value = ''
+}
+
+function openSerpScrapeModal() { showSerpScrapeModal.value = true }
+async function confirmSerpScrape() {
+  showSerpScrapeModal.value = false
+  if (!props.captainKeyword) return
+  await fetchTfidf(props.captainKeyword, true)
+  await refetchSerpExists()
+}
+function cancelSerpScrape() { showSerpScrapeModal.value = false }
+
+// Fetch TF-IDF (POST /serp/tfidf). Mute tfidfResult/selectedTerms (UI). Pas
+// de mutation article_keywords (persistance explorations gérée côté backend).
 async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = false) {
   const keyword = keywordOverride ?? activeSourceKeyword.value ?? props.captainKeyword
   if (!keyword) return
-
-  isLoading.value = true
-  error.value = null
-
+  isLoading.value = true; error.value = null
   try {
-    log.info(`[LexiquePanel] Fetching TF-IDF for "${keyword}" (triggerScrape=${triggerScrape})`)
     const result = await apiPost<TfidfResult>('/serp/tfidf', {
       keyword,
       articleId: props.selectedArticle?.id ?? undefined,
       triggerScrapeIfMissing: triggerScrape,
     })
     tfidfResult.value = result
-
-    // Initial pre-check: all obligatoire (will be refined by IA upfront)
     const preChecked = new Set<string>()
-    for (const term of result.obligatoire) {
-      preChecked.add(term.term)
-    }
+    for (const term of result.obligatoire) preChecked.add(term.term)
     selectedTerms.value = preChecked
-
-    log.info(`[LexiquePanel] TF-IDF loaded: ${result.obligatoire.length}O + ${result.differenciateur.length}D + ${result.optionnel.length}Op`)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erreur inconnue'
     log.error(`[LexiquePanel] TF-IDF fetch failed`, { error: error.value })
@@ -486,123 +238,62 @@ async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = fal
   }
 }
 
-/**
- * Sprint 11 — Hydrate past explorations from DB (article-scoped) before any
- * TF-IDF/AI call. When a fresh (<7d) exploration exists for the capitaine,
- * we restore tfidfResult + iaRecommendations straight from the table and skip
- * the SERP/AI roundtrips entirely.
- */
-async function hydrateFromDb() {
-  const id = props.selectedArticle?.id
-  if (!id) return
-  try {
-    const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(`/articles/${id}/explorations`)
-    pastExplorations.value = payload.lexique ?? []
-    log.debug('[LexiquePanel] DB hydration', { count: pastExplorations.value.length })
+// --- Watchers ---
 
-    // Restore the exploration that matches the capitaine, if any.
-    const active = activeSourceKeyword.value || props.captainKeyword || ''
-    const match = pastExplorations.value.find(e => e.sourceKeyword.toLowerCase() === active.toLowerCase())
-    if (match && match.tfidfTerms) {
-      tfidfResult.value = match.tfidfTerms
-      activeSourceKeyword.value = match.sourceKeyword
-      const map = new Map<string, LexiqueTermRecommendation>()
-      for (const rec of match.aiRecommendations) map.set(rec.term.toLowerCase(), rec)
-      iaRecommendations.value = map
-      log.info(`[LexiquePanel] Restored from DB for "${match.sourceKeyword}" (${shouldRegenerate(match.exploredAt) ? 'stale' : 'fresh'})`)
-    }
-  } catch (err) {
-    log.warn(`[LexiquePanel] DB hydration failed — ${(err as Error).message}`)
+// Auto-trigger IA upfront après TF-IDF (session cache).
+watch(tfidfResult, (res) => {
+  if (!res || iaRecommendations.value.size > 0) return
+  generateLexiqueUpfront()
+})
+
+// Watcher gating workflow + reconciliation au mount (FR-MOT-CHECK-RECONCILIATION).
+// AC.LEX-SEP.4 : reste DANS le composant (propagation de check workflow,
+// distinct des familles LECTURE/VERROUILLAGE — c'est l'orchestration métier
+// MoteurView ↔ LexiquePanel).
+let previousLockedState = false
+let isFirstRun = true
+watch(isLocked, (locked) => {
+  if (isFirstRun) {
+    isFirstRun = false
+    previousLockedState = locked
+    const id = props.selectedArticle?.id
+    let checks: string[] = []
+    try {
+      checks = id ? (useArticleProgressStore().getProgress(id)?.completedChecks ?? []) : []
+    } catch { checks = [] }
+    const checkPresent = checks.includes(MOTEUR_LEXIQUE_VALIDATED)
+    if (locked && !checkPresent) emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
+    else if (!locked && checkPresent) emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+    log.info('[reconcile:lexique]', { articleId: id, isLocked: locked, checkPresent, check: MOTEUR_LEXIQUE_VALIDATED })
+    return
   }
-}
+  if (locked && !previousLockedState) emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
+  else if (!locked && previousLockedState) emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+  previousLockedState = locked
+}, { immediate: true })
 
-// Auto-restore TF-IDF when captain is locked — prefer DB-first.
-//
-// Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) : on intègre serpExists dans les
-// dépendances du watcher pour gater le fetch live. La séquence devient :
-//   1. hydrateFromDb (cache article-scoped — sans appel externe).
-//   2. Attendre que le pré-check soit résolu (serpExists !== null).
-//   3. Si serpExists=false → ne pas tenter POST /serp/tfidf (anti-404).
-//      L'utilisateur déclenchera via le CTA + modale de confirmation coût.
-//   4. Si serpExists=true → fetcher TF-IDF live si rien restauré depuis le cache.
+// Auto-restore TF-IDF (capitaine locked) : hydrate cache → attendre pré-check
+// → si exists=false ne PAS POSTer /serp/tfidf (anti-404, FR-LEX-PRECHECK-SERP)
+// → si exists=true et pas de cache, fetchTfidf live.
 watch(
-  [
-    () => props.isCaptaineLocked,
-    () => props.captainKeyword,
-    () => props.selectedArticle?.id,
-    () => serpExists.value,
-  ],
+  [() => props.isCaptaineLocked, () => props.captainKeyword, articleIdRef, () => serpExists.value],
   async ([locked, keyword, , exists]) => {
     if (!locked || !keyword) return
     if (!activeSourceKeyword.value) activeSourceKeyword.value = keyword
     await hydrateFromDb()
-    // Pré-check pas encore résolu → on attend le prochain tick du watcher.
-    if (exists === null) return
-    // Pas de scrape SERP disponible → on ne lance PAS l'extraction live.
-    // L'utilisateur cliquera sur le CTA pour déclencher le scrape DataForSEO.
-    if (exists === false) return
-    if (!tfidfResult.value && !isLoading.value) {
-      await fetchTfidf(keyword)
-    }
+    if (exists === null || exists === false) return
+    if (!tfidfResult.value && !isLoading.value) await fetchTfidf(keyword)
   },
   { immediate: true },
 )
 
-// Reset when article changes
-watch(
-  () => props.selectedArticle?.slug,
-  () => {
-    tfidfResult.value = null
-    error.value = null
-    selectedTerms.value = new Set()
-    iaRecommendations.value = new Map()
-    pastExplorations.value = []
-    activeSourceKeyword.value = ''
-    customKeywordInput.value = ''
-    // Sprint 17 — `isLocked` est computed dérivé de keywords.lexique.length.
-    // Reset implicite via le store quand l'article change (fetchKeywords).
-    iaAbort()
-  },
-)
-
-onUnmounted(() => {
+// Reset article : composable LECTURE.reset() + state UI local.
+watch(() => props.selectedArticle?.slug, () => {
+  resetExplorations()
+  selectedTerms.value = new Set(); customKeywordInput.value = ''; error.value = null
   iaAbort()
 })
-
-/**
- * 2026-05-01 — Variante merge-only de hydrateFromDb. Récupère les explorations
- * Lexique persistées et fusionne SANS doublon dans `pastExplorations`. Appelé
- * par le TabLoadPrompt depuis MoteurView (via defineExpose).
- *
- * Clé d'unicité : `sourceKeyword` (lowercase trim).
- */
-async function mergeFromDb() {
-  const id = props.selectedArticle?.id
-  if (!id) return
-  try {
-    const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(`/articles/${id}/explorations`)
-    const incoming = payload.lexique ?? []
-    const seen = new Set(pastExplorations.value.map(e => e.sourceKeyword.trim().toLowerCase()))
-    const additions: LexiqueExplorationEntry[] = []
-    for (const entry of incoming) {
-      const key = entry.sourceKeyword.trim().toLowerCase()
-      if (!seen.has(key)) {
-        seen.add(key)
-        additions.push(entry)
-      }
-    }
-    if (additions.length > 0) {
-      pastExplorations.value = [...pastExplorations.value, ...additions]
-    }
-    log.info(`[LexiquePanel] Merged ${additions.length} explorations from DB (skipped ${incoming.length - additions.length} duplicates)`)
-  } catch (err) {
-    log.warn(`[LexiquePanel] DB merge failed — ${(err as Error).message}`)
-  }
-}
-
-// Chantier 3 E2-S2 — `handleSelectPast` (Sprint 11 chips) supprimé : le
-// switch d'onglet passe désormais par `onSelectTab` (TabBar). Cohérent
-// avec FR-LEX-MULTI-KEYWORD-TABS / AC.LEX-TABS.2.
+onUnmounted(() => { iaAbort() })
 
 defineExpose({ hydrateFromDb, mergeFromDb })
 </script>
@@ -750,7 +441,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         :get-recommendation="getRecommendation"
         :sort-terms-by-alignment="sortTermsByAlignment"
         empty-label="Aucun terme obligatoire identifie."
-        @toggle-term="toggleTerm"
+        @toggle-term="handleToggleTerm"
       />
       <LexiqueTermsList
         :title="`Differenciateur (30-70%) — ${tfidfResult.differenciateur?.length ?? 0} termes`"
@@ -762,7 +453,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         :get-recommendation="getRecommendation"
         :sort-terms-by-alignment="sortTermsByAlignment"
         empty-label="Aucun terme differenciateur identifie."
-        @toggle-term="toggleTerm"
+        @toggle-term="handleToggleTerm"
       />
       <LexiqueTermsList
         :title="`Optionnel (<30%) — ${tfidfResult.optionnel?.length ?? 0} termes`"
@@ -774,7 +465,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         :get-recommendation="getRecommendation"
         :sort-terms-by-alignment="sortTermsByAlignment"
         empty-label="Aucun terme optionnel identifie."
-        @toggle-term="toggleTerm"
+        @toggle-term="handleToggleTerm"
       />
 
     </div>
