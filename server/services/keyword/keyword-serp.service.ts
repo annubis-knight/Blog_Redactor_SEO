@@ -4,13 +4,14 @@
  *            Source unique cross-article pour les artefacts SERP (URLs Top 10,
  *            HTML scrapé, questions PAA, autocomplete).
  * READS FROM: getSerpResults / getSerpScrapes / getPaaQuestions / getAutocomplete
- *             / getSerpResultsFresh.
+ *             / getSerpResultsFresh / hasSerpScrape (pré-check léger).
  * WRITES TO: upsertSerpResults / upsertSerpScrapes / upsertPaaQuestions /
  *            upsertAutocomplete (idempotents, ON CONFLICT DO UPDATE / NOTHING).
  * CONSUMERS: serp-analysis.routes (/serp/analyze + /serp/tfidf), tfidf.service,
- *            keyword-queries.service (brief Capitaine), dataforseo/brief.ts.
+ *            keyword-queries.service (brief Capitaine), dataforseo/brief.ts,
+ *            keywords.routes (/keywords/:keyword/serp/exists — pré-check UI Lexique).
  * RELATED: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, NFR-INT-SERP-ONCE,
- *          FR-LEX-TFIDF, FR-LIE-SERP-ANALYZE.
+ *          FR-LEX-TFIDF, FR-LIE-SERP-ANALYZE, FR-LEX-PRECHECK-SERP.
  */
 import type { PoolClient } from 'pg'
 import { query, pool } from '../../db/client.js'
@@ -236,6 +237,33 @@ export async function getAutocomplete(
     source: r.source,
     fetchedAt: r.fetched_at.toISOString(),
   }))
+}
+
+/**
+ * FR-LEX-PRECHECK-SERP — pré-check léger : un scrape SERP existe-t-il pour
+ * ce keyword/lang/country ? Lit `keyword_serp_scrapes` en agrégat
+ * (`MAX(scraped_at)`) sans charger `text_content`/`headings` (requête sub-ms
+ * sur l'index PK). Aucun appel externe DataForSEO.
+ *
+ * Consommé par `GET /api/keywords/:keyword/serp/exists` pour gater l'UI
+ * Lexique : si `exists:false`, le composant affiche un CTA explicite *« Lancer
+ * l'analyse SERP »* au lieu de tenter un POST /serp/tfidf qui répondrait 404
+ * (origine de la trace rouge console pré-chantier 3).
+ */
+export async function hasSerpScrape(
+  keyword: string,
+  lang: string = 'fr',
+  country: string = 'fr',
+): Promise<{ exists: boolean; scrapedAt: string | null }> {
+  const res = await query<{ scraped_at: Date | null }>(
+    `SELECT MAX(scraped_at) AS scraped_at
+       FROM keyword_serp_scrapes
+      WHERE keyword = $1 AND lang = $2 AND country = $3`,
+    [keyword, lang, country],
+  )
+  const scrapedAt = res.rows[0]?.scraped_at ?? null
+  if (!scrapedAt) return { exists: false, scrapedAt: null }
+  return { exists: true, scrapedAt: scrapedAt.toISOString() }
 }
 
 /**

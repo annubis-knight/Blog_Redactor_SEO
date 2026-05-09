@@ -10,6 +10,7 @@ import { previewMigration, applyMigration } from '../services/keyword/keyword-as
 import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
 import { suggestAll } from '../services/keyword/suggest.service.js'
 import { computeWordGroups } from '../services/keyword/word-groups.service.js'
+import { hasSerpScrape } from '../services/keyword/keyword-serp.service.js'
 import type { ArticleKeywordAssignment } from '../services/keyword/keyword-assignment.service.js'
 import type { Keyword, KeywordStatus } from '../../shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
@@ -73,6 +74,33 @@ router.post('/keywords/audit', async (req, res) => {
   } catch (err) {
     log.error(`POST /api/keywords/audit — ${(err as Error).message}`)
     respondWithError(res, err, { code: 'AUDIT_ERROR', message: 'Failed to audit keywords' })
+  }
+})
+
+/**
+ * GET /api/keywords/:keyword/serp/exists — chantier 3 E1-S1 (FR-LEX-PRECHECK-SERP).
+ *
+ * Pré-check léger : un scrape SERP existe-t-il pour ce keyword ? Permet à
+ * l'UI Lexique d'afficher un CTA explicite *« Lancer l'analyse SERP »* au
+ * lieu de tenter un POST /serp/tfidf qui répondrait 404. 200 OK toujours
+ * (sauf paramètre invalide). Cf. AC.LEX-PRECHECK.1, AC.LEX-PRECHECK.2.
+ */
+router.get('/keywords/:keyword/serp/exists', async (req, res) => {
+  try {
+    const raw = decodeURIComponent(req.params.keyword ?? '').trim()
+    if (raw.length < 2 || raw.length > 200) {
+      res.status(400).json({
+        error: { code: 'INVALID_KEYWORD', message: 'keyword must be 2..200 chars after trim' },
+      })
+      return
+    }
+    const result = await hasSerpScrape(raw)
+    res.json({ data: result })
+  } catch (err) {
+    log.error(`GET /api/keywords/:keyword/serp/exists — ${(err as Error).message}`)
+    res.status(500).json({
+      error: { code: 'INTERNAL_ERROR', message: 'Failed to check SERP scrape' },
+    })
   }
 })
 
