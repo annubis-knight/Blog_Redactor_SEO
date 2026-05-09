@@ -1,15 +1,14 @@
 // @vitest-environment node
 /**
- * Story B2 — tests d'intégration du dual-write SERP en transaction.
+ * Story B2 — tests d'intégration de la persistance SERP en transaction.
  *
- * Vérifie AC.B2.1 à B2.4 : un keyword fraîchement scrapé peuple à la
- * fois `keyword_metrics.serp_raw_json` (legacy) ET les 4 tables filles
- * (keyword_serp_results, keyword_serp_scrapes, keyword_paa_questions),
- * avec rollback intégral si une seule des écritures échoue.
+ * Vérifie sur DB locale : un keyword fraîchement scrapé peuple les 4 tables
+ * filles (keyword_serp_results, keyword_serp_scrapes, keyword_paa_questions)
+ * en une transaction atomique, avec rollback intégral si l'une des écritures
+ * échoue.
  *
- * On mocke `fetchSerp`, `fetchPaa`, et `fetchPageHtml` côté serp-analysis
- * pour ne pas dépendre du réseau. La persistance, elle, est validée
- * sur la vraie DB locale (intégration).
+ * On mocke `fetchSerp`, `fetchPaa`, et `fetchPageHtml` pour ne pas dépendre
+ * du réseau. La persistance, elle, est validée sur la vraie DB locale.
  */
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { pool, query } from '../../server/db/client.js'
@@ -51,8 +50,8 @@ afterAll(async () => {
   await pool.end()
 })
 
-describe('B2 — happy path persist (post-C4 : 4 tables filles uniquement)', () => {
-  it('un keyword vierge → 4 tables filles peuplées (no legacy serp_raw_json write)', async () => {
+describe('B2 — happy path persist (4 tables filles)', () => {
+  it('un keyword vierge → 4 tables filles peuplées', async () => {
     const { analyzeSerpCompetitors } = await import('../../server/services/external/serp-analysis.service.js')
     await analyzeSerpCompetitors(FIXTURE_KEYWORD, 'COCON_SECONDAIRE')
 
@@ -74,14 +73,13 @@ describe('B2 — happy path persist (post-C4 : 4 tables filles uniquement)', () 
     )
     expect(paa.rows[0].n).toBe(2)
 
-    // AC.C4.4 — la row keyword_metrics existe (stub fetched_at) mais
-    // serp_raw_json reste null (plus de dual-write legacy).
-    const km = await query<{ serp_raw_json: unknown }>(
-      `SELECT serp_raw_json FROM keyword_metrics WHERE keyword = $1`,
+    // La row parent keyword_metrics existe (stub fetched_at créé pour la FK).
+    // La colonne serp_raw_json a été droppée — plus de check sur sa valeur.
+    const km = await query(
+      `SELECT 1 FROM keyword_metrics WHERE keyword = $1`,
       [FIXTURE_KEYWORD],
     )
     expect(km.rowCount).toBe(1)
-    expect(km.rows[0].serp_raw_json).toBeNull()
   })
 })
 

@@ -87,8 +87,7 @@ describe('moteur:keyword-metrics:getKeywordMetrics', () => {
         local_analysis: null,
         content_gap_analysis: null,
         local_comparison: null,
-        serp_raw_json: null,
-        fetched_at: new Date('2026-05-03T10:00:00Z'),
+          fetched_at: new Date('2026-05-03T10:00:00Z'),
       }],
     })
     const result = await getKeywordMetrics('seo')
@@ -118,8 +117,7 @@ describe('moteur:keyword-metrics:getKeywordMetrics', () => {
         local_analysis: null,
         content_gap_analysis: null,
         local_comparison: null,
-        serp_raw_json: null,
-        fetched_at: new Date(),
+          fetched_at: new Date(),
       }],
     })
     const result = await getKeywordMetrics('rare')

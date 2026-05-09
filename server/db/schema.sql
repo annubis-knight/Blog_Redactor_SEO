@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-05-09T14:23:37.519Z
--- Commit git       : 01fc223 (feat/keyword-metrics-decomposition)
--- Sujet commit     : chore(plan): merge planning artifacts into chantier branch
+-- Généré le        : 2026-05-09T16:13:20.162Z
+-- Commit git       : cbfede7 (chore/drop-serp-raw-json-column)
+-- Sujet commit     : Merge branch 'feat/keyword-metrics-decomposition' into main
 -- Working tree     : ⚠️  NON (modifs non commitées)
 -- Tables           : 25
--- Empreinte schéma : sha256:d89fca3925b3b857a11e4da4426875fcbf1d9926aa1ab4fd5751f0a655c65077
+-- Empreinte schéma : sha256:fe699ca76c0a21435de69501734017665a03fa1502f41bf772590fa4a1f48f88
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -192,7 +192,6 @@ CREATE TABLE "keyword_metrics" (
   "local_analysis" JSONB,
   "content_gap_analysis" JSONB,
   "local_comparison" JSONB,
-  "serp_raw_json" JSONB,
   "intent_label" TEXT,
   CONSTRAINT "keyword_metrics_intent_label_check" CHECK (((intent_label IS NULL) OR (intent_label = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text])))),
   CONSTRAINT "keyword_metrics_pkey" PRIMARY KEY (keyword, lang, country)

@@ -44,17 +44,17 @@ describe('FR-LEX-TFIDF — classification 3 niveaux', () => {
 // NFR-INT-SERP-ONCE — TF-IDF ne refait jamais le SERP
 // =====================================================
 
-describe('NFR-INT-SERP-ONCE — TF-IDF lit serp_raw_json sans refetch', () => {
-  it('echoue explicitement si serp_raw_json absent (pas de fallback silencieux)', () => {
-    type MetricsRow = { keyword: string; serp_raw_json: unknown | null }
-    const noSerp: MetricsRow = { keyword: 'test', serp_raw_json: null }
+describe('NFR-INT-SERP-ONCE — TF-IDF lit keyword_serp_scrapes sans refetch', () => {
+  it('echoue explicitement si keyword_serp_scrapes vide (pas de fallback silencieux)', () => {
+    type ScrapesProbe = { keyword: string; rowCount: number }
+    const noScrapes: ScrapesProbe = { keyword: 'test', rowCount: 0 }
     // L'invariant : le service TF-IDF NE DOIT PAS appeler DataForSEO en miss
     // Il doit lever une erreur pour pousser l'utilisateur a faire /serp/analyze d'abord
-    const shouldFail = noSerp.serp_raw_json === null
+    const shouldFail = noScrapes.rowCount === 0
     expect(shouldFail).toBe(true)
   })
 
-  it('reutilise le meme serp_raw_json pour 2 articles partageant le keyword', () => {
+  it('reutilise les memes keyword_serp_scrapes pour 2 articles partageant le keyword', () => {
     type Call = { keyword: string; articleId: number; serpFetched: boolean }
     const calls: Call[] = [
       { keyword: 'crm pme', articleId: 1, serpFetched: false }, // hit cache

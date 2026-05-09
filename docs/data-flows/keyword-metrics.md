@@ -1,12 +1,12 @@
 ---
 name: keyword-metrics
 description: Table PostgreSQL cross-article permanente stockant les KPIs numériques d'un mot-clé (Volume, KeywordDifficulty, CPC, Intent, PAA[], Autocomplete[], analyses locales/gap). Les artefacts SERP (URLs Top 10, scrapes HTML, PAA, autocomplete) sont désormais dans 4 tables filles dédiées (`keyword_serp_*`) — voir keyword-serp.service.ts. Partagée par tous les articles utilisant le même mot-clé — une seule requête DataForSEO par mot-clé, jamais par article.
-type: "{ keyword: TEXT PK, lang: TEXT, country: TEXT, search_volume: int, keyword_difficulty: int, cpc: numeric, competition: numeric, intent_raw: numeric, autocomplete_suggestions: JSONB[], autocomplete_source: TEXT, paa_questions: JSONB[], local_analysis: JSONB, content_gap_analysis: JSONB, local_comparison: JSONB, fetched_at: TIMESTAMPTZ } /* serp_raw_json JSONB conservée en DB read-only transitoire — drop différé Epic E1 */"
+type: "{ keyword: TEXT PK, lang: TEXT, country: TEXT, search_volume: int, keyword_difficulty: int, cpc: numeric, competition: numeric, intent_raw: numeric, autocomplete_suggestions: JSONB[], autocomplete_source: TEXT, paa_questions: JSONB[], local_analysis: JSONB, content_gap_analysis: JSONB, local_comparison: JSONB, fetched_at: TIMESTAMPTZ }"
 last_updated: 2026-05-09
 related_fr: [FR-INFRA-KEYWORD-METRICS, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-INT-SERP-ONCE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-CAP-VALIDATE, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
-> **Sprint keyword-metrics-decomposition (2026-05-09)** — `serp_raw_json` n'est plus écrite (Story C4). Les artefacts SERP cross-article vivent désormais dans **4 tables filles dédiées** : `keyword_serp_results` (URLs Top 10), `keyword_serp_scrapes` (headings + text_content + is_blog), `keyword_paa_questions` (PAA), `keyword_autocomplete` (suggestions). Service consolidé : [`server/services/keyword/keyword-serp.service.ts`](../../server/services/keyword/keyword-serp.service.ts). La colonne `serp_raw_json` reste en DB en **lecture seule transitoire** — drop différé en Epic E1 (≥ 14 jours après stabilisation). Les sections ci-dessous mentionnant `serp_raw_json` reflètent l'état avant refonte ; elles seront purgées après le drop.
+> **Sprint keyword-metrics-decomposition (2026-05-09)** — la colonne `serp_raw_json` a été **droppée** (chore/drop-serp-raw-json-column). Les artefacts SERP cross-article vivent désormais dans **4 tables filles dédiées** : `keyword_serp_results` (URLs Top 10), `keyword_serp_scrapes` (headings + text_content + is_blog), `keyword_paa_questions` (PAA), `keyword_autocomplete` (suggestions). Service consolidé : [`server/services/keyword/keyword-serp.service.ts`](../../server/services/keyword/keyword-serp.service.ts). Les sections ci-dessous mentionnant `serp_raw_json` sont des références historiques.
 
 # Data Flow — keyword-metrics
 
