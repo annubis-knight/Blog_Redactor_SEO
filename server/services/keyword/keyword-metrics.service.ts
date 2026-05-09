@@ -2,11 +2,9 @@
  * AUTHORITY: PostgreSQL `keyword_metrics` (ligne par keyword × lang × country).
  *            Source unique cross-article pour les KPIs numériques DataForSEO :
  *            volume, difficulté, CPC, intent (raw + label), autocomplete, PAA.
- *            -- serp_raw_json column kept read-only until post-stabilization
- *            -- drop (Epic E1, ≥ 14 jours après merge sprint keyword-metrics-decomposition).
- *            -- Nouveaux artefacts SERP cross-article : voir keyword-serp.service.ts
- *            -- (keyword_serp_results, keyword_serp_scrapes, keyword_paa_questions,
- *            --  keyword_autocomplete).
+ *            Artefacts SERP cross-article : voir keyword-serp.service.ts
+ *            (keyword_serp_results, keyword_serp_scrapes, keyword_paa_questions,
+ *             keyword_autocomplete).
  * READS FROM: SELECT keyword_metrics WHERE keyword = $1 AND lang/country.
  * WRITES TO: INSERT/UPSERT via upsertKeywordKpis, upsertKeywordAutocomplete,
  *            upsertKeywordPaa (autres helpers ci-dessous).
@@ -75,9 +73,6 @@ export interface KeywordMetrics {
   localAnalysis: unknown | null           // Sprint 15.5 — MapsResult shape
   contentGapAnalysis: unknown | null      // Sprint 15.5 — ContentGapAnalysis shape
   localComparison: unknown | null         // Sprint 15.5 — LocalNationalComparison shape
-  // Story C4 — `serpRawJson` retiré du type. Les artefacts SERP sont désormais
-  // dans keyword_serp_results / _scrapes / _paa_questions / _autocomplete.
-  // La colonne `serp_raw_json` reste en DB en lecture seule transitoire (drop différé E1).
   fetchedAt: string
 }
 

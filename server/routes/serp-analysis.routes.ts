@@ -41,8 +41,7 @@ router.post('/serp/analyze', async (req, res) => {
       }
     }
 
-    // Story B2 — analyzeSerpCompetitors persiste dual-write en transaction
-    // (legacy serp_raw_json + 4 tables filles). Pas de persist redondant ici.
+    // analyzeSerpCompetitors persiste atomiquement dans les 4 tables filles.
     const result = await analyzeSerpCompetitors(keyword, articleLevel)
     res.json({ data: result })
   } catch (err) {

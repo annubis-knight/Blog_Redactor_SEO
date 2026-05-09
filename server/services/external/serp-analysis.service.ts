@@ -9,10 +9,9 @@ import {
   withSerpTransaction,
 } from '../keyword/keyword-serp.service.js'
 
-// Story C4 — fin du dual-write : on n'écrit plus dans keyword_metrics.serp_raw_json.
-// Les artefacts SERP sont uniquement persistés dans les 4 tables filles via
-// keyword-serp.service. La colonne legacy reste en DB en lecture seule
-// transitoire (drop différé Epic E1 ≥ 14 jours).
+// Persistence SERP : les artefacts sont écrits atomiquement dans les 4 tables
+// filles (keyword_serp_results / _scrapes / _paa_questions) via
+// keyword-serp.service. Cf. NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
 
 const FETCH_TIMEOUT_MS = 10_000
 const USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; +https://example.com)'
