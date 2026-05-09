@@ -1,7 +1,12 @@
 /**
  * AUTHORITY: PostgreSQL `keyword_metrics` (ligne par keyword × lang × country).
- *            Source unique cross-article pour les métriques DataForSEO :
- *            volume, difficulté, CPC, intent (raw + label), autocomplete, PAA, SERP.
+ *            Source unique cross-article pour les KPIs numériques DataForSEO :
+ *            volume, difficulté, CPC, intent (raw + label), autocomplete, PAA.
+ *            -- serp_raw_json column kept read-only until post-stabilization
+ *            -- drop (Epic E1, ≥ 14 jours après merge sprint keyword-metrics-decomposition).
+ *            -- Nouveaux artefacts SERP cross-article : voir keyword-serp.service.ts
+ *            -- (keyword_serp_results, keyword_serp_scrapes, keyword_paa_questions,
+ *            --  keyword_autocomplete).
  * READS FROM: SELECT keyword_metrics WHERE keyword = $1 AND lang/country.
  * WRITES TO: INSERT/UPSERT via upsertKeywordKpis, upsertKeywordAutocomplete,
  *            upsertKeywordPaa (autres helpers ci-dessous).
@@ -10,9 +15,8 @@
  *            captain-relevance.service (Score Pertinence live),
  *            radar-* services (scan SERP cross-article).
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-INTENT-SIGNAL,
- *             FR-INFRA-KPI-NULLABLE.
+ *             FR-INFRA-KPI-NULLABLE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
  */
-import type { PoolClient } from 'pg'
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import {
@@ -71,7 +75,9 @@ export interface KeywordMetrics {
   localAnalysis: unknown | null           // Sprint 15.5 — MapsResult shape
   contentGapAnalysis: unknown | null      // Sprint 15.5 — ContentGapAnalysis shape
   localComparison: unknown | null         // Sprint 15.5 — LocalNationalComparison shape
-  serpRawJson: unknown | null             // Sprint 15.5-bis — SerpAnalysisResult shape
+  // Story C4 — `serpRawJson` retiré du type. Les artefacts SERP sont désormais
+  // dans keyword_serp_results / _scrapes / _paa_questions / _autocomplete.
+  // La colonne `serp_raw_json` reste en DB en lecture seule transitoire (drop différé E1).
   fetchedAt: string
 }
 
@@ -91,7 +97,6 @@ interface KeywordMetricsRow {
   local_analysis: unknown | null
   content_gap_analysis: unknown | null
   local_comparison: unknown | null
-  serp_raw_json: unknown | null
   fetched_at: Date
 }
 
@@ -112,7 +117,6 @@ function rowToMetrics(row: KeywordMetricsRow): KeywordMetrics {
     localAnalysis: row.local_analysis,
     contentGapAnalysis: row.content_gap_analysis,
     localComparison: row.local_comparison,
-    serpRawJson: row.serp_raw_json,
     fetchedAt: row.fetched_at.toISOString(),
   }
 }
@@ -132,7 +136,7 @@ export async function getKeywordMetrics(
   const res = await query<KeywordMetricsRow>(
     `SELECT keyword, lang, country, search_volume, keyword_difficulty, cpc, competition,
             intent_raw, intent_label, autocomplete_suggestions, autocomplete_source, paa_questions,
-            local_analysis, content_gap_analysis, local_comparison, serp_raw_json, fetched_at
+            local_analysis, content_gap_analysis, local_comparison, fetched_at
        FROM keyword_metrics
       WHERE keyword = $1 AND lang = $2 AND country = $3`,
     [keyword, lang, country],
@@ -267,27 +271,6 @@ export async function upsertKeywordLocalComparison(
            fetched_at = NOW()`,
     [keyword, lang, country, JSON.stringify(comparison)],
   )
-}
-
-/** Sprint 15.5-bis — SERP scraping raw payload stored on keyword_metrics. */
-export async function upsertKeywordSerp(
-  keyword: string,
-  serpRawJson: unknown,
-  lang: string = 'fr',
-  country: string = 'fr',
-  client?: PoolClient,
-): Promise<void> {
-  const sql = `INSERT INTO keyword_metrics (keyword, lang, country, serp_raw_json, fetched_at)
-     VALUES ($1, $2, $3, $4::jsonb, NOW())
-     ON CONFLICT (keyword, lang, country) DO UPDATE
-       SET serp_raw_json = EXCLUDED.serp_raw_json,
-           fetched_at = NOW()`
-  const params = [keyword, lang, country, JSON.stringify(serpRawJson)]
-  if (client) {
-    await client.query(sql, params)
-  } else {
-    await query(sql, params)
-  }
 }
 
 /**

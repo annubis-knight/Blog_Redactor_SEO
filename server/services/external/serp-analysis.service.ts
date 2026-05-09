@@ -2,7 +2,6 @@ import { log } from '../../utils/logger.js'
 import { fetchSerp, fetchPaa } from './dataforseo.service.js'
 import type { SerpCompetitor, SerpAnalysisResult, HnNode } from '../../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
-import { upsertKeywordSerp } from '../keyword/keyword-metrics.service.js'
 import {
   upsertSerpResults,
   upsertSerpScrapes,
@@ -10,10 +9,10 @@ import {
   withSerpTransaction,
 } from '../keyword/keyword-serp.service.js'
 
-// Sprint keyword-metrics-decomposition (Story B2) — dual-write SERP en transaction :
-// keyword_metrics.serp_raw_json (legacy) + 4 tables filles (keyword_serp_*).
-// Pendant la fenêtre B2 → C4, les deux paths d'écriture coexistent. La
-// transaction garantit qu'aucun consommateur ne voit un état partiel.
+// Story C4 — fin du dual-write : on n'écrit plus dans keyword_metrics.serp_raw_json.
+// Les artefacts SERP sont uniquement persistés dans les 4 tables filles via
+// keyword-serp.service. La colonne legacy reste en DB en lecture seule
+// transitoire (drop différé Epic E1 ≥ 14 jours).
 
 const FETCH_TIMEOUT_MS = 10_000
 const USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; +https://example.com)'
@@ -171,9 +170,8 @@ export async function analyzeSerpCompetitors(
   keyword: string,
   articleLevel: ArticleLevel,
 ): Promise<SerpAnalysisResult> {
-  // Sprint 15.5-bis — DB-first check is now performed in the route itself
-  // (`/serp/analyze`) via keyword_metrics.serp_raw_json. This service only handles
-  // the external fetch path.
+  // Story C2 — la cache check est dans la route (`/serp/analyze`) via
+  // getSerpResultsFresh. Ce service ne fait que l'external fetch + la persist.
   log.info(`Analyzing SERP competitors for "${keyword}" (level: ${articleLevel})`)
   const totalStart = Date.now()
 
@@ -235,11 +233,18 @@ export async function analyzeSerpCompetitors(
     fromCache: false,
   }
 
-  // Story B2 — dual-write atomique : legacy serp_raw_json + 4 tables filles.
-  // En cas d'échec d'une des écritures, la transaction rollback intégralement
-  // (aucun état partiel exposé aux consommateurs).
+  // Story C4 — persistence atomique sur les 4 tables filles uniquement.
+  // En cas d'échec d'une des écritures, la transaction rollback intégralement.
   await withSerpTransaction(async (client) => {
-    await upsertKeywordSerp(keyword, result, 'fr', 'fr', client)
+    // Garantit le parent keyword_metrics(keyword, lang, country) pour la FK
+    // depuis keyword_serp_results / _paa_questions / _autocomplete (dual-write
+    // legacy retiré en C4 — ce stub minimal remplace la création implicite).
+    await client.query(
+      `INSERT INTO keyword_metrics (keyword, lang, country, fetched_at)
+       VALUES ($1, 'fr', 'fr', NOW())
+       ON CONFLICT (keyword, lang, country) DO UPDATE SET fetched_at = NOW()`,
+      [keyword],
+    )
 
     if (competitors.length > 0) {
       await upsertSerpResults(

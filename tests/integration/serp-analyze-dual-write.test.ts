@@ -51,24 +51,16 @@ afterAll(async () => {
   await pool.end()
 })
 
-describe('B2 — happy path dual-write', () => {
-  it('AC.B2.1 + B2.4 : un keyword vierge → legacy + 4 tables peuplées avec mêmes URLs', async () => {
+describe('B2 — happy path persist (post-C4 : 4 tables filles uniquement)', () => {
+  it('un keyword vierge → 4 tables filles peuplées (no legacy serp_raw_json write)', async () => {
     const { analyzeSerpCompetitors } = await import('../../server/services/external/serp-analysis.service.js')
     await analyzeSerpCompetitors(FIXTURE_KEYWORD, 'COCON_SECONDAIRE')
-
-    const km = await query<{ serp_raw_json: { competitors: { url: string }[] } | null }>(
-      `SELECT serp_raw_json FROM keyword_metrics WHERE keyword = $1`,
-      [FIXTURE_KEYWORD],
-    )
-    expect(km.rowCount).toBe(1)
-    const legacyUrls = (km.rows[0].serp_raw_json?.competitors ?? []).map((c) => c.url)
-    expect(legacyUrls).toHaveLength(5)
 
     const newUrls = await query<{ url: string }>(
       `SELECT url FROM keyword_serp_results WHERE keyword = $1 ORDER BY position`,
       [FIXTURE_KEYWORD],
     )
-    expect(newUrls.rows.map((r) => r.url)).toEqual(legacyUrls)
+    expect(newUrls.rows).toHaveLength(5)
 
     const scrapes = await query(
       `SELECT COUNT(*)::int AS n FROM keyword_serp_scrapes WHERE keyword = $1`,
@@ -81,6 +73,15 @@ describe('B2 — happy path dual-write', () => {
       [FIXTURE_KEYWORD],
     )
     expect(paa.rows[0].n).toBe(2)
+
+    // AC.C4.4 — la row keyword_metrics existe (stub fetched_at) mais
+    // serp_raw_json reste null (plus de dual-write legacy).
+    const km = await query<{ serp_raw_json: unknown }>(
+      `SELECT serp_raw_json FROM keyword_metrics WHERE keyword = $1`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(km.rowCount).toBe(1)
+    expect(km.rows[0].serp_raw_json).toBeNull()
   })
 })
 
@@ -120,37 +121,4 @@ describe('B2 — rollback transactionnel', () => {
     vi.resetModules()
   })
 
-  it('AC.B2.3 : injection erreur sur upsertKeywordSerp (legacy) → rollback total', async () => {
-    vi.resetModules()
-
-    vi.doMock('../../server/services/keyword/keyword-metrics.service.js', async (importOriginal) => {
-      const actual = await importOriginal<
-        typeof import('../../server/services/keyword/keyword-metrics.service.js')
-      >()
-      return {
-        ...actual,
-        upsertKeywordSerp: vi.fn(async () => {
-          throw new Error('forced legacy fault')
-        }),
-      }
-    })
-
-    const { analyzeSerpCompetitors } = await import('../../server/services/external/serp-analysis.service.js')
-
-    await expect(analyzeSerpCompetitors(FIXTURE_KEYWORD, 'COCON_SECONDAIRE')).rejects.toThrow(/forced legacy fault/)
-
-    const results = await query(
-      `SELECT 1 FROM keyword_serp_results WHERE keyword = $1`,
-      [FIXTURE_KEYWORD],
-    )
-    expect(results.rowCount).toBe(0)
-    const km = await query(
-      `SELECT 1 FROM keyword_metrics WHERE keyword = $1`,
-      [FIXTURE_KEYWORD],
-    )
-    expect(km.rowCount).toBe(0)
-
-    vi.doUnmock('../../server/services/keyword/keyword-metrics.service.js')
-    vi.resetModules()
-  })
 })

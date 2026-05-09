@@ -8,12 +8,10 @@ vi.mock('../../../server/utils/logger', () => ({
 
 // Story C1 — TF-IDF reads from keyword_serp_scrapes (cross-article, dedicated table).
 const mockGetKeywordMetrics = vi.fn()
-const mockUpsertKeywordSerp = vi.fn()
 const mockIsFresh = vi.fn()
 
 vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
   getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
-  upsertKeywordSerp: (...args: unknown[]) => mockUpsertKeywordSerp(...args),
   isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
 }))
 
@@ -107,10 +105,8 @@ beforeEach(() => {
     keyword: 'seo',
     lang: 'fr',
     country: 'fr',
-    serpRawJson: MOCK_CACHED_SERP,
     fetchedAt: new Date().toISOString(),
   })
-  mockUpsertKeywordSerp.mockResolvedValue(undefined)
   mockIsFresh.mockReturnValue(true)
   mockExtractTfidf.mockResolvedValue(MOCK_TFIDF_RESULT)
   mockAnalyze.mockResolvedValue(MOCK_CACHED_SERP)

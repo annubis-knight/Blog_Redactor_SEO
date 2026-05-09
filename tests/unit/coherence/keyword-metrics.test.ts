@@ -21,7 +21,6 @@ vi.mock('../../../server/utils/logger', () => ({
 const {
   getKeywordMetrics,
   upsertKeywordKpis,
-  upsertKeywordSerp,
   isKeywordMetricsFresh,
 } = await import('../../../server/services/keyword/keyword-metrics.service.js')
 
@@ -98,7 +97,6 @@ describe('FR-INFRA-KEYWORD-METRICS — cache-first pattern', () => {
       local_analysis: null,
       content_gap_analysis: null,
       local_comparison: null,
-      serp_raw_json: null,
       fetched_at: freshDate,
     }
 
@@ -119,51 +117,10 @@ describe('FR-INFRA-KEYWORD-METRICS — cache-first pattern', () => {
 
 // =====================================================
 // Test 3: NFR-INT-SERP-ONCE invariant
+// (Story C4 — `upsertKeywordSerp` retiré ; SERP cross-article persistance
+//  est dans keyword-serp.service. NFR-INT-SERP-ONCE testée par
+//  serp-analyze-cache-c2.test.ts + serp-analyze-dual-write.test.ts.)
 // =====================================================
-
-describe('NFR-INT-SERP-ONCE — SERP cached and reused', () => {
-  it('upsertKeywordSerp persists serp_raw_json to DB', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-
-    const serpData = {
-      keyword: 'coffee',
-      totalCompetitors: 10,
-      competitors: [
-        { rank: 1, url: 'https://example.com', textContent: 'Coffee brewing guide.' },
-      ],
-      obligatoire: [],
-      differenciateur: [],
-      optionnel: [],
-    }
-
-    await upsertKeywordSerp('coffee', serpData)
-
-    expect(mockQuery).toHaveBeenCalledTimes(1)
-    const [sql, params] = mockQuery.mock.calls[0]!
-    expect(sql).toContain('serp_raw_json')
-    expect(params[0]).toBe('coffee')
-    expect(params[3]).toBe(JSON.stringify(serpData))
-  })
-
-  it('ON CONFLICT ensures idempotent upsert', async () => {
-    mockQuery.mockResolvedValueOnce({ rows: [] })
-
-    const serpData = {
-      keyword: 'seo',
-      totalCompetitors: 5,
-      competitors: [],
-      obligatoire: [],
-      differenciateur: [],
-      optionnel: [],
-    }
-
-    await upsertKeywordSerp('seo', serpData)
-
-    const [sql] = mockQuery.mock.calls[0]!
-    expect(sql).toContain('ON CONFLICT')
-    expect(sql).toContain('DO UPDATE')
-  })
-})
 
 // =====================================================
 // Test 4: compareScores places null in bottom (tri)
