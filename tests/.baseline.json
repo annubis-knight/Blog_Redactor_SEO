@@ -1,0 +1,118 @@
+{
+  "generated_at": "2026-05-09T16:19:24.084Z",
+  "git": {
+    "commit": "9ee10ce",
+    "branch": "main",
+    "subject": "Merge branch 'chore/drop-serp-raw-json-column' into main",
+    "clean": false
+  },
+  "totals": {
+    "passed": 4045,
+    "failed": 25,
+    "skipped": 244
+  },
+  "fingerprint": "sha256:be2f4468bd9b8d759607d191d9b53a74222f3ecb14843ecb867f7ab4ac566e59",
+  "failures": [
+    {
+      "file": "tests/contract-api/article-explorations-counts.contract.test.ts",
+      "name": "Contract GET /articles/:id/explorations/counts article fraîchement créé → toutes les sources à 0"
+    },
+    {
+      "file": "tests/contract-api/cocoons-id-stability.contract.test.ts",
+      "name": "Contract /cocoons — stabilité des identifiants GET /cocoons renvoie un id qui correspond à cocoons.id en DB"
+    },
+    {
+      "file": "tests/contract-api/cocoons-id-stability.contract.test.ts",
+      "name": "Contract /cocoons — stabilité des identifiants GET /cocoons/:id/articles résout par id DB et survit à la suppression d'un cocon antérieur"
+    },
+    {
+      "file": "tests/contract-api/keywords.contract.test.ts",
+      "name": "Contract /keywords/:kw/scan POST OK → { keyword, kpis[6], verdict, paaQuestions }"
+    },
+    {
+      "file": "tests/e2e-workflows/cross-workflow.e2e.test.ts",
+      "name": "Cross-Workflow — Cache cross-article Même keyword testé sur 2 articles différents : 2ème call utilise keyword_metrics partagé"
+    },
+    {
+      "file": "tests/e2e-workflows/cross-workflow.e2e.test.ts",
+      "name": "Cross-Workflow — Happy path complet Cerveau (silo + cocon + article) → Moteur (validate + persist) → Rédaction (micro-context + content) → Progress"
+    },
+    {
+      "file": "tests/e2e-workflows/cross-workflow.e2e.test.ts",
+      "name": "Cross-Workflow — Resilience Refresh navigateur (simulé) : GET /explorations après POST restaure l'état"
+    },
+    {
+      "file": "tests/e2e-workflows/cross-workflow.e2e.test.ts",
+      "name": "Cross-Workflow — Resilience Switch d'article en vol : les validations sur article A ne polluent pas article B"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Cross-tab transitions GET /articles/:id/explorations/counts incrémente captain après validate"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Cross-tab transitions Switch d'article en vol : validations parallèles sur 2 articles restent isolées"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Cross-tab transitions Workflow complet Discovery → Radar → Capitaine → Lieutenants → Lexique"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Onglet Capitaine GET /articles/:id/explorations renvoie captain[] avec validation history"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Onglet Capitaine POST /keywords/:kw/validate retourne { kpis[], verdict }"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Onglet Capitaine POST /keywords/:kw/validate?articleId → persiste captain_explorations"
+    },
+    {
+      "file": "tests/e2e-workflows/moteur.workflow.test.ts",
+      "name": "Moteur Workflow — Onglet Capitaine U5 TTL : re-validation du même keyword est plus rapide (cache DB)"
+    },
+    {
+      "file": "tests/integration-tabs/cerveau-theme.tab.test.ts",
+      "name": "Tab cerveau/theme — Analyseur IA POST /theme/config/parse avec text valide → 200 ou 500"
+    },
+    {
+      "file": "tests/integration-tabs/moteur-capitaine.tab.test.ts",
+      "name": "Tab moteur/capitaine — Carousel hydratation GET /articles/:id/explorations renvoie captain[] avec history"
+    },
+    {
+      "file": "tests/integration-tabs/moteur-capitaine.tab.test.ts",
+      "name": "Tab moteur/capitaine — Validate POST /keywords/:kw/validate retourne 6 KPIs + verdict"
+    },
+    {
+      "file": "tests/integration-tabs/moteur-capitaine.tab.test.ts",
+      "name": "Tab moteur/capitaine — Validate POST /keywords/:kw/validate?articleId persiste captain_explorations"
+    },
+    {
+      "file": "tests/integration-tabs/moteur-lieutenants.tab.test.ts",
+      "name": "Tab moteur/lieutenants — SERP analysis POST /serp/analyze?articleId=X retourne OK (persistance DB-first en arrière-plan)"
+    },
+    {
+      "file": "tests/integration-tabs/redaction-brief.tab.test.ts",
+      "name": "Tab redaction/brief — Keywords list POST /keywords/lexique-suggest renvoie { lexique: string[] }"
+    },
+    {
+      "file": "tests/unit/coherence/prd-tables-matrix.test.ts",
+      "name": "PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations) au moins 20 tables vivantes (sentinelle anti-régression)"
+    },
+    {
+      "file": "tests/unit/coherence/prd-tables-matrix.test.ts",
+      "name": "PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations) intent_explorations est bien drop par migration 016 (FR-INFRA-INTENT-EXPLORATIONS-LEGACY)"
+    },
+    {
+      "file": "tests/unit/coherence/prd-tables-matrix.test.ts",
+      "name": "PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations) la matrice ne référence pas de table fantôme (drop ou jamais créée)"
+    },
+    {
+      "file": "tests/unit/coherence/relevance-live-computation.test.ts",
+      "name": "FR-CAP-RELEVANCE-INTENT-SIGNAL — câblage painIntentExpected articles.pain_intent_expected est TEXT single-value, pas TEXT[]"
+    }
+  ],
+  "note": "Fichier généré par `npm run test:snapshot`. Ne pas éditer à la main. Régénérer après réparation/ajout de tests."
+}

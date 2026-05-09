@@ -15,6 +15,8 @@
     "build": "run-p type-check \"build-only {@}\" --",
     "preview": "vite preview",
     "test:unit": "vitest",
+    "test:snapshot": "tsx scripts/test-snapshot.ts",
+    "test:check": "tsx scripts/test-check.ts",
     "pretest:browser": "node scripts/kill-port.mjs 3400 5400",
     "test:browser": "playwright test",
     "test:browser:ui": "playwright test --ui",
