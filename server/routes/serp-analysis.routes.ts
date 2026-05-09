@@ -1,14 +1,16 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { extractTfidf } from '../services/keyword/tfidf.service.js'
 import { serpAnalyzeBodySchema } from '../../shared/schemas/serp-analysis.schema.js'
 import { respondWithError } from '../utils/api-error.js'
 import {
   getSerpResultsFresh,
-  getSerpScrapes,
   reconstructSerpAnalysisResult,
 } from '../services/keyword/keyword-serp.service.js'
 import { fetchAndPersist as scrapeCorpusFetchAndPersist } from '../services/external/scrape-corpus.service.js'
+import {
+  analyzeLexique,
+  LexiqueScrapeMissingError,
+} from '../services/keyword/lexique-analysis.service.js'
 import type { SerpAnalysisResult, SerpCompetitor, HnNode } from '../../shared/types/serp-analysis.types.js'
 
 // Story C2 (chantier 1) — la cache check freshness lit `keyword_serp_results`.
@@ -95,7 +97,7 @@ function toSerpAnalysisResult(
   }
 }
 
-/** POST /api/serp/tfidf — TF-IDF extraction (reads keyword_serp_scrapes) */
+/** POST /api/serp/tfidf — TF-IDF extraction via lexique-analysis service (Story C2) */
 router.post('/serp/tfidf', async (req, res) => {
   try {
     const { keyword, articleId } = req.body
@@ -109,26 +111,21 @@ router.post('/serp/tfidf', async (req, res) => {
     const articleIdNum = Number(articleId)
     const hasArticleId = Number.isInteger(articleIdNum) && articleIdNum > 0
 
-    // Story C1 — TF-IDF lit `keyword_serp_scrapes` directement.
-    // 404 si aucune scrape n'est dispo (texte préservé verbatim — cf. AC.C1.1).
-    const scrapes = await getSerpScrapes(trimmed)
-    if (scrapes.length === 0) {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: "Lancez d'abord l'analyse SERP dans l'onglet Lieutenants" } })
-      return
-    }
-
-    const result = await extractTfidf(trimmed)
-
-    if (hasArticleId) {
-      try {
-        const { saveLexiqueTfidf } = await import('../services/keyword/lexique-exploration.service.js')
-        await saveLexiqueTfidf(articleIdNum, trimmed, result)
-      } catch (err) {
-        log.warn(`tfidf: DB persist failed — ${(err as Error).message}`)
+    // Story C2 (chantier 2) — délègue à lexique-analysis.service.
+    // Le service throw LexiqueScrapeMissingError → 404 verbatim (préservé pour
+    // compat AC.C1.1 chantier 1 + AC.C2.2 chantier 2).
+    try {
+      const { tfidfResult } = await analyzeLexique(trimmed, {
+        articleId: hasArticleId ? articleIdNum : undefined,
+      })
+      res.json({ data: tfidfResult })
+    } catch (err) {
+      if (err instanceof LexiqueScrapeMissingError) {
+        res.status(404).json({ error: { code: 'NOT_FOUND', message: err.message } })
+        return
       }
+      throw err
     }
-
-    res.json({ data: result })
   } catch (err) {
     log.error(`POST /api/serp/tfidf — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'TF-IDF extraction failed' } })
