@@ -97,10 +97,26 @@ function toSerpAnalysisResult(
   }
 }
 
-/** POST /api/serp/tfidf — TF-IDF extraction via lexique-analysis service (Story C2) */
+/**
+ * POST /api/serp/tfidf — TF-IDF extraction via lexique-analysis service (Story C2).
+ *
+ * Body:
+ *   - keyword (required): string, will be trimmed.
+ *   - articleId (optional): number > 0.
+ *   - triggerScrapeIfMissing (optional, chantier 3 E1-S3 / FR-LEX-PRECHECK-SERP):
+ *     boolean. Si true et qu'aucun scrape SERP n'existe pour ce keyword,
+ *     déclenche le scrape DataForSEO en amont avant l'extraction TF-IDF.
+ *     Honoré par analyzeLexique (AC.LEX-SCRAPE.3 chantier 2 livré).
+ *     Si false / absent : préserve le comportement legacy (404 verbatim si
+ *     pas de scrape — compat AC.C1.1 chantier 1 + AC.C2.2 chantier 2).
+ */
 router.post('/serp/tfidf', async (req, res) => {
   try {
-    const { keyword, articleId } = req.body
+    const { keyword, articleId, triggerScrapeIfMissing } = req.body as {
+      keyword?: unknown
+      articleId?: unknown
+      triggerScrapeIfMissing?: unknown
+    }
 
     if (!keyword || typeof keyword !== 'string' || keyword.trim().length === 0) {
       res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'keyword is required' } })
@@ -110,13 +126,15 @@ router.post('/serp/tfidf', async (req, res) => {
     const trimmed = keyword.trim()
     const articleIdNum = Number(articleId)
     const hasArticleId = Number.isInteger(articleIdNum) && articleIdNum > 0
+    const shouldTriggerScrape = triggerScrapeIfMissing === true
 
     // Story C2 (chantier 2) — délègue à lexique-analysis.service.
-    // Le service throw LexiqueScrapeMissingError → 404 verbatim (préservé pour
-    // compat AC.C1.1 chantier 1 + AC.C2.2 chantier 2).
+    // Sans triggerScrapeIfMissing, le service throw LexiqueScrapeMissingError
+    // → 404 verbatim (préservé pour compat AC.C1.1 chantier 1 + AC.C2.2).
     try {
       const { tfidfResult } = await analyzeLexique(trimmed, {
         articleId: hasArticleId ? articleIdNum : undefined,
+        triggerScrapeIfMissing: shouldTriggerScrape,
       })
       res.json({ data: tfidfResult })
     } catch (err) {

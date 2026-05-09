@@ -14,7 +14,7 @@
  * Mocks : apiPost, apiGet, useStreaming, store article-keywords, basket.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { mount, flushPromises } from '@vue/test-utils'
 import { ref, nextTick } from 'vue'
 import LexiquePanel from '../../../src/components/moteur/LexiquePanel.vue'
 import type { LexiqueAnalysisResult, TfidfResult, LexiqueTermRecommendation } from '../../../shared/types/serp-analysis.types'
@@ -106,8 +106,13 @@ beforeEach(() => {
   iaStreaming.error.value = null
   iaStreaming.result.value = null
   mockKeywords.value = null
-  // Default : pas d'explorations passées
-  mockApiGet.mockResolvedValue({ lexique: [] })
+  // Default : pré-check SERP OK + pas d'explorations passées.
+  // Chantier 3 E1-S3 : on différencie /serp/exists (200 OK avec scrape
+  // existant, donc auto-fetch autorisé) vs /explorations (cache vide).
+  mockApiGet.mockImplementation(async (path: string) => {
+    if (path.includes('/serp/exists')) return { exists: true, scrapedAt: '2026-05-01T00:00:00.000Z' }
+    return { lexique: [] }
+  })
   mockApiPost.mockResolvedValue(TFIDF_RESULT)
 })
 
@@ -146,10 +151,11 @@ describe('LexiquePanel — handleAssistAdd (basket)', () => {
     // L'auto-fetch TF-IDF + pré-sélection peut ajouter des termes au démarrage.
     // On capture l'état avant le clic, puis on vérifie qu'un nouveau terme a
     // été ajouté après.
+    // Chantier 3 E1-S3 — flushPromises pour résoudre le pré-check SERP +
+    // hydrateFromDb + fetchTfidf (chaîne d'await en série).
     const wrapper = mountLexique()
-    await nextTick()
-    await nextTick()
-    await nextTick()
+    await flushPromises()
+    await flushPromises()
 
     const assist = wrapper.findComponent({ name: 'KeywordAssistPanel' })
     const before = (assist.props('excludeKeywords') as string[]).slice()
@@ -353,9 +359,17 @@ describe('LexiquePanel — hydrateFromDb', () => {
   })
 
   it('hydrateFromDb gère gracieusement une erreur API', async () => {
-    mockApiGet.mockRejectedValue(new Error('GET explorations failed'))
+    // Chantier 3 E1-S3 — le pré-check SERP doit répondre OK pour que le
+    // fallback fetchTfidf soit autorisé (sinon le watcher est gated par
+    // serpExists=null/false). On différencie /serp/exists (200 OK) vs
+    // /explorations (erreur testée).
+    mockApiGet.mockImplementation(async (path: string) => {
+      if (path.includes('/serp/exists')) return { exists: true, scrapedAt: '2026-05-01T00:00:00.000Z' }
+      throw new Error('GET explorations failed')
+    })
     mockApiPost.mockResolvedValue(TFIDF_RESULT)
     const wrapper = mountLexique()
+    await nextTick()
     await nextTick()
     await nextTick()
     await nextTick()

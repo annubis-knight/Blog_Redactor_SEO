@@ -210,7 +210,13 @@ describe('LexiquePanel', () => {
       const wrapper = mountComponent()
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
       // Sprint 11 — request carries articleId for DB-first persistence (lexique_explorations).
-      expect(mockApiPost).toHaveBeenCalledWith('/serp/tfidf', { keyword: 'seo', articleId: 1 })
+      // Chantier 3 E1-S3 — triggerScrapeIfMissing default à false côté composant
+      // (true uniquement quand l'utilisateur confirme la modale CTA pré-check).
+      expect(mockApiPost).toHaveBeenCalledWith('/serp/tfidf', {
+        keyword: 'seo',
+        articleId: 1,
+        triggerScrapeIfMissing: false,
+      })
     })
 
     it('shows loading text while extracting', async () => {

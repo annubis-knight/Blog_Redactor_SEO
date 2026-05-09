@@ -2,9 +2,11 @@
 /**
  * AUTHORITY: PostgreSQL `article_keywords.lexique` TEXT[] (termes verrouilles utilisateur).
  *            PostgreSQL `lexique_explorations` (cache propositions TF-IDF/IA, distinct).
+ *            PostgreSQL `keyword_serp_scrapes` (lecture seule via pré-check léger).
  * READS FROM: useArticleKeywordsStore.keywords.lexique (mount/store hydrate via fetchKeywords).
  *             GET /articles/:id/explorations (hydrateFromDb / mergeFromDb pour pastExplorations).
- *             POST /serp/tfidf (extraction TF-IDF live).
+ *             GET /keywords/:keyword/serp/exists (pré-check léger via useSerpExistsCheck).
+ *             POST /serp/tfidf (extraction TF-IDF live, optionnellement avec triggerScrapeIfMissing).
  *             useArticleProgressStore.getProgress(id).completedChecks (reconciliation au mount).
  * WRITES TO: articleKeywordsStore.addLexiqueTerm / removeLexiqueTerm + saveDecisions(id)
  *            (toggle terme = mute store + PUT /articles/:id/keywords).
@@ -13,6 +15,7 @@
  * CONSUMERS: MoteurView (parent), TabCachePanel via tab-cache-entries.ts
  *            (validatedLexiqueCount = lexique.length).
  * RELATED FR: FR-LEX-SELECT, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-TFIDF, FR-LEX-MULTI-KEYWORD,
+ *             FR-LEX-PRECHECK-SERP (chantier 3 E1-S3 : CTA explicite si pas de scrape SERP),
  *             FR-MOT-CHECK-RECONCILIATION (cleanup check legacy au mount si lexique=[]),
  *             FR-MOT-CACHE-PANEL-COUNT (lexique.length pilote le compteur DB du TabCachePanel).
  */
@@ -23,10 +26,12 @@ import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useLexiqueIa } from '@/composables/lexique/useLexiqueIa'
+import { useSerpExistsCheck } from '@/composables/lexique/useSerpExistsCheck'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
 import LexiqueTermsList from '@/components/moteur/lexique/LexiqueTermsList.vue'
 import LexiqueMultiKeywordPanel from '@/components/moteur/lexique/LexiqueMultiKeywordPanel.vue'
+import ConfirmModal from '@/components/shared/ConfirmModal.vue'
 import { jaccardWithPainPoint } from '@/utils/pain-point-jaccard'
 import { type SortOption } from '@/composables/moteur/useSortableList'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
@@ -129,6 +134,18 @@ const activeSourceKeyword = ref<string>('')
 // DB-hydrated past explorations for this article (displayed as collapsible sections).
 const pastExplorations = ref<LexiqueExplorationEntry[]>([])
 
+// Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — pré-check SERP léger sur le
+// captain keyword pour gater l'UX : si aucun scrape n'existe, on affiche un
+// CTA explicite *« Lancer l'analyse SERP »* au lieu de tenter un POST
+// /serp/tfidf qui répondrait 404 (origine de la trace rouge console).
+const captainKeywordForPrecheck = computed<string | null>(() => props.captainKeyword)
+const {
+  exists: serpExists,
+  isChecking: serpExistsIsChecking,
+  refetch: refetchSerpExists,
+} = useSerpExistsCheck(captainKeywordForPrecheck)
+const showSerpScrapeModal = ref(false)
+
 // --- IA Upfront Analysis (Vague 5 — extracted to useLexiqueIa) ---
 const captainKeywordRef = toRef(props, 'captainKeyword')
 const articleLevelRef = toRef(props, 'articleLevel')
@@ -224,14 +241,42 @@ async function extractLexique() {
   await fetchTfidf(props.captainKeyword)
 }
 
-/** Sprint 11 (D4) — TF-IDF sur un keyword arbitraire (hors capitaine verrouillé). */
+/**
+ * Sprint 11 (D4) — TF-IDF sur un keyword arbitraire (hors capitaine verrouillé).
+ *
+ * Chantier 3 E1-S3 : on passe `triggerScrape=true` puisque l'utilisateur
+ * choisit explicitement de tester un keyword vierge. Le coût scrape est
+ * acté par cette saisie libre (cohérent avec la modale du captain keyword
+ * qui sert le même objectif sur le keyword principal).
+ */
 async function extractCustomKeyword() {
   const kw = customKeywordInput.value.trim()
   if (!kw || isLoading.value) return
   activeSourceKeyword.value = kw
   iaRecommendations.value = new Map()
-  await fetchTfidf(kw)
+  await fetchTfidf(kw, true)
   customKeywordInput.value = ''
+}
+
+/**
+ * Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — handler du CTA *« Lancer
+ * l'analyse SERP »*. Ouvre la modale de confirmation coût DataForSEO. Sur
+ * confirmation, déclenche fetchTfidf(triggerScrape=true) puis re-vérifie
+ * exists pour repasser à l'UI nominale (bouton « Extraire le Lexique »).
+ */
+function openSerpScrapeModal() {
+  showSerpScrapeModal.value = true
+}
+
+async function confirmSerpScrape() {
+  showSerpScrapeModal.value = false
+  if (!props.captainKeyword) return
+  await fetchTfidf(props.captainKeyword, true)
+  await refetchSerpExists()
+}
+
+function cancelSerpScrape() {
+  showSerpScrapeModal.value = false
 }
 
 // Sprint 17 — Cocher/décocher un terme = lock/unlock immédiat en DB.
@@ -350,8 +395,16 @@ watch(
   { immediate: true },
 )
 
-// Fetch TF-IDF — keyword can be overridden (Sprint 11 D4 multi-keyword)
-async function fetchTfidf(keywordOverride?: string) {
+/**
+ * Fetch TF-IDF — keyword can be overridden (Sprint 11 D4 multi-keyword).
+ *
+ * Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) : `triggerScrape` est honoré côté
+ * backend par lexique-analysis.service (AC.LEX-SCRAPE.3 chantier 2). Quand
+ * l'utilisateur confirme la modale de scrape, on passe `true`. Sinon
+ * `false` et on retombe sur le 404 verbatim (compat C1.1/C2.2) — qui ne
+ * doit plus se produire automatiquement grâce au gating watcher serpExists.
+ */
+async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = false) {
   const keyword = keywordOverride ?? activeSourceKeyword.value ?? props.captainKeyword
   if (!keyword) return
 
@@ -359,10 +412,11 @@ async function fetchTfidf(keywordOverride?: string) {
   error.value = null
 
   try {
-    log.info(`[LexiquePanel] Fetching TF-IDF for "${keyword}"`)
+    log.info(`[LexiquePanel] Fetching TF-IDF for "${keyword}" (triggerScrape=${triggerScrape})`)
     const result = await apiPost<TfidfResult>('/serp/tfidf', {
       keyword,
       articleId: props.selectedArticle?.id ?? undefined,
+      triggerScrapeIfMissing: triggerScrape,
     })
     tfidfResult.value = result
 
@@ -413,12 +467,30 @@ async function hydrateFromDb() {
 }
 
 // Auto-restore TF-IDF when captain is locked — prefer DB-first.
+//
+// Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) : on intègre serpExists dans les
+// dépendances du watcher pour gater le fetch live. La séquence devient :
+//   1. hydrateFromDb (cache article-scoped — sans appel externe).
+//   2. Attendre que le pré-check soit résolu (serpExists !== null).
+//   3. Si serpExists=false → ne pas tenter POST /serp/tfidf (anti-404).
+//      L'utilisateur déclenchera via le CTA + modale de confirmation coût.
+//   4. Si serpExists=true → fetcher TF-IDF live si rien restauré depuis le cache.
 watch(
-  [() => props.isCaptaineLocked, () => props.captainKeyword, () => props.selectedArticle?.id],
-  async ([locked, keyword]) => {
+  [
+    () => props.isCaptaineLocked,
+    () => props.captainKeyword,
+    () => props.selectedArticle?.id,
+    () => serpExists.value,
+  ],
+  async ([locked, keyword, , exists]) => {
     if (!locked || !keyword) return
     if (!activeSourceKeyword.value) activeSourceKeyword.value = keyword
     await hydrateFromDb()
+    // Pré-check pas encore résolu → on attend le prochain tick du watcher.
+    if (exists === null) return
+    // Pas de scrape SERP disponible → on ne lance PAS l'extraction live.
+    // L'utilisateur cliquera sur le CTA pour déclencher le scrape DataForSEO.
+    if (exists === false) return
     if (!tfidfResult.value && !isLoading.value) {
       await fetchTfidf(keyword)
     }
@@ -516,8 +588,35 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       @add="handleAssistAdd"
     />
 
-    <!-- Extract button -->
-    <div class="extract-controls">
+    <!--
+      Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — gating : si aucun scrape SERP
+      n'existe pour le captain keyword, on n'expose pas le bouton « Extraire »
+      (qui produirait un 404 console). À la place : message explicite + CTA
+      *« Lancer l'analyse SERP »* qui ouvre la modale de confirmation coût.
+    -->
+    <div
+      v-if="serpExists === false && captainKeyword"
+      class="precheck-prompt"
+      data-testid="precheck-missing"
+    >
+      <p class="precheck-message">
+        Le scrape SERP n'est pas encore disponible pour ce mot-clé.
+      </p>
+      <button
+        type="button"
+        class="btn-extract btn-precheck"
+        data-testid="btn-trigger-serp-scrape"
+        :disabled="serpExistsIsChecking"
+        @click="openSerpScrapeModal"
+      >
+        Lancer l'analyse SERP (~$0.003 DataForSEO)
+      </button>
+    </div>
+
+    <!-- Extract button — visible quand le scrape SERP est confirmé OU quand on
+         attend encore le pré-check (cas legacy / état initial avant la première
+         vérif). Ne s'affiche jamais quand serpExists=false (gating anti-404). -->
+    <div v-else class="extract-controls">
       <button
         class="btn-extract"
         data-testid="btn-extract"
@@ -527,6 +626,17 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         {{ isLoading ? 'Extraction en cours...' : 'Extraire le Lexique' }}
       </button>
     </div>
+
+    <!-- Modale de confirmation coût scrape SERP (FR-LEX-PRECHECK-SERP). -->
+    <ConfirmModal
+      :open="showSerpScrapeModal"
+      title="Lancer l'analyse SERP DataForSEO ?"
+      message="Le scrape récupère les pages Top 10 Google et leur contenu pour calculer le TF-IDF. Coût estimé : $0.003."
+      confirm-label="Confirmer (~$0.003)"
+      cancel-label="Annuler"
+      @confirm="confirmSerpScrape"
+      @cancel="cancelSerpScrape"
+    />
 
     <!-- Sprint 11 (D4) — Multi-keyword exploration + past explorations recap -->
     <LexiqueMultiKeywordPanel
@@ -704,6 +814,32 @@ defineExpose({ hydrateFromDb, mergeFromDb })
 .extract-controls {
   display: flex;
   align-items: center;
+}
+
+/* Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — état pré-check missing. */
+.precheck-prompt {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--color-block-amber-bg, #fef3c7);
+  border: 1px solid var(--color-warning, #f59e0b);
+  border-radius: 8px;
+}
+
+.precheck-message {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text, #0f172a);
+}
+
+.btn-precheck {
+  background: var(--color-warning, #f59e0b);
+}
+
+.btn-precheck:hover:not(:disabled) {
+  background: var(--color-warning-hover, #d97706);
 }
 
 .btn-extract {

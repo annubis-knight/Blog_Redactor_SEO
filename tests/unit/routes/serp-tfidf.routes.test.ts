@@ -133,7 +133,12 @@ describe('POST /api/serp/tfidf (Story C2 — bascule lexique-analysis)', () => {
     const req = makeReq({ keyword: '  seo local  ' })
     const res = makeRes()
     await handler(req, res)
-    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo local', { articleId: undefined })
+    // Chantier 3 E1-S3 — triggerScrapeIfMissing par défaut à false (compat
+    // AC.C1.1 / AC.C2.2 : 404 verbatim si pas de scrape existant).
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo local', {
+      articleId: undefined,
+      triggerScrapeIfMissing: false,
+    })
   })
 
   it('AC.C2.4 — articleId fourni → propagé dans opts', async () => {
@@ -141,7 +146,10 @@ describe('POST /api/serp/tfidf (Story C2 — bascule lexique-analysis)', () => {
     const req = makeReq({ keyword: 'seo', articleId: 42 })
     const res = makeRes()
     await handler(req, res)
-    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', { articleId: 42 })
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', {
+      articleId: 42,
+      triggerScrapeIfMissing: false,
+    })
   })
 
   it('articleId invalide (string non-numérique) → opts.articleId = undefined', async () => {
@@ -149,7 +157,21 @@ describe('POST /api/serp/tfidf (Story C2 — bascule lexique-analysis)', () => {
     const req = makeReq({ keyword: 'seo', articleId: 'abc' })
     const res = makeRes()
     await handler(req, res)
-    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', { articleId: undefined })
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', {
+      articleId: undefined,
+      triggerScrapeIfMissing: false,
+    })
+  })
+
+  it('chantier 3 E1-S3 — triggerScrapeIfMissing:true du body → propagé dans opts', async () => {
+    const handler = getTfidfHandler()
+    const req = makeReq({ keyword: 'seo', triggerScrapeIfMissing: true })
+    const res = makeRes()
+    await handler(req, res)
+    expect(mockAnalyzeLexique).toHaveBeenCalledWith('seo', {
+      articleId: undefined,
+      triggerScrapeIfMissing: true,
+    })
   })
 
   it('returns 500 on unexpected error (non-LexiqueScrapeMissingError)', async () => {
