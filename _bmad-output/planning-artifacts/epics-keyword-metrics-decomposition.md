@@ -1,7 +1,7 @@
 ---
 title: 'Epics — Refonte schéma keyword_metrics'
 slug: epics-keyword-metrics-decomposition
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
 status: proposed
 related_nfr: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
@@ -27,11 +27,12 @@ synced_with:
 **Couvre AC** : AC.SCHEMA.1, AC.SCHEMA.2.
 
 **Stories** :
-- Story A1 — Migration SQL `015_keyword_metrics_decomposition.sql` (CREATE TABLE × 4 + index).
-- Story A2 — Script de backfill `backfill-keyword-serp.ts` idempotent + tests d'intégrité.
+- Story A1 — Application DDL × 4 (CREATE TABLE + index) sur la DB locale via script jetable `scripts/apply-keyword-serp-schema.ts`, puis `npm run db:snapshot`. Le diff de `server/db/schema.sql` est ce qui est commité. **Pas de fichier `migrations/NNN_*.sql`** (cf. commit `01f705b`).
+- Story A2 — Script de backfill `scripts/backfill-keyword-serp.ts` idempotent + tests d'intégrité.
 
 **Definition of Done** :
-- Les 4 tables existent en local et sont vides initialement.
+- Les 4 tables apparaissent dans `server/db/schema.sql` après `db:snapshot`.
+- `npm run db:check` est vert (empreinte DB live ≡ snapshot).
 - Le backfill exécuté sur les 7 lignes `serp_raw_json` actuelles produit les bons comptages (`COUNT(*)` `keyword_serp_results` = somme des `competitors.length` JSONB).
 - Le backfill est rejouable sans doublons (idempotent via `ON CONFLICT DO NOTHING` sur les PK composite).
 
@@ -102,7 +103,7 @@ synced_with:
 ## Hors scope (post-stabilisation)
 
 **Epic E (différé ≥ 2 semaines après stabilisation)** :
-- Story E1 — Migration SQL `016_drop_serp_raw_json.sql` : `ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json` (AC.SCHEMA.5).
+- Story E1 — `ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json` appliqué directement à la DB locale, puis `npm run db:snapshot` + commit du diff `schema.sql` (AC.SCHEMA.5). Pas de fichier de migration séparé.
 - Critère d'activation : 14 jours sans incident sur les nouvelles tables, observabilité confirmée (logs warn → 0).
 
 ---

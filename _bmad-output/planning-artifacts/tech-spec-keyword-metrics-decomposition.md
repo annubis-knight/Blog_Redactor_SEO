@@ -1,7 +1,7 @@
 ---
 title: 'Refonte schéma keyword_metrics — décomposition en 5 tables'
 slug: keyword-metrics-decomposition
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
 status: proposed
 owner: Arnaud
@@ -55,7 +55,7 @@ La table `keyword_metrics` est une **god-table à 17 colonnes** (vérifié DB li
 
 ### In Scope
 
-- Migration SQL `015_*.sql` créant les 4 nouvelles tables (PK, FK, index).
+- Application des **DDL CREATE TABLE × 4** (PK, FK, index) directement sur la DB locale, puis régénération de `server/db/schema.sql` via `npm run db:snapshot`. **Pas de fichier `migrations/NNN_*.sql`** : depuis le commit `01f705b` (2026-05-09), la source de vérité est `schema.sql` (snapshot horodaté + sha256). Le diff de `schema.sql` est ce qui est versionné. Le DDL est appliqué via un script TypeScript jetable (`scripts/apply-keyword-serp-schema.ts`) supprimé après merge.
 - Script de migration data idempotent qui éclate les 7 lignes `serp_raw_json` actuelles + tout futur résiduel vers les 4 nouvelles tables, sans perte (test de comptage).
 - Service `keyword-serp.service.ts` (nouveau) avec API `getSerpResults`, `getSerpScrapes`, `getPaaQuestions`, `getAutocomplete`, `upsertSerpResults`, `upsertSerpScrapes`, `upsertPaaQuestions`, `upsertAutocomplete` (chacun retourne le strict nécessaire).
 - Refactor `keyword-metrics.service.ts` : retirer `serpRawJson` du type `KeywordMetrics`, retirer `upsertKeywordSerp`, retirer `local_*` / `content_gap_*` du select par défaut (perf — relégués à des helpers spécifiques) — limité aux champs SERP pour rester dans le périmètre.
@@ -76,7 +76,7 @@ La table `keyword_metrics` est une **god-table à 17 colonnes** (vérifié DB li
 - Création de `scrape-corpus.service.ts` neutre — couvert par FR-INFRA-SCRAPE-CORPUS-NEUTRE.
 - Tout changement UI Lexique / Lieutenants.
 - Tout changement de TTL ou de stratégie de cache (les 7 jours actuels restent).
-- **Drop de `serp_raw_json`** (AC.SCHEMA.5) — migration SQL `016_*.sql` séparée, traitée hors-chantier après stabilisation (≥ 2 semaines de prod sans régression).
+- **Drop de `serp_raw_json`** (AC.SCHEMA.5) — `ALTER TABLE … DROP COLUMN` appliqué hors-chantier après stabilisation (≥ 2 semaines), suivi de `npm run db:snapshot` et commit du diff `schema.sql`. Pas de fichier de migration séparé.
 - Migration des autres JSONB monolithiques (`local_analysis`, `content_gap_analysis`, `local_comparison`) — rester scopé.
 
 ---
@@ -165,6 +165,8 @@ RELATED: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, NFR-INT-SERP-ONCE.
 ---
 
 ## 3. Schéma SQL cible
+
+> **Pattern d'application** (depuis 2026-05-09) : le DDL ci-dessous est appliqué via un script TypeScript jetable (`scripts/apply-keyword-serp-schema.ts`), puis `npm run db:snapshot` régénère `server/db/schema.sql`, et le **diff de `schema.sql` est ce qui part en commit**. Vérification : `npm run db:check` doit passer sur `main` après merge. Aucun fichier `server/db/migrations/NNN_*.sql` n'est créé.
 
 ### 3.1 `keyword_serp_results` (URLs Google)
 
@@ -258,7 +260,7 @@ CREATE INDEX idx_keyword_autocomplete_fetched ON keyword_autocomplete(fetched_at
 
 ### 3.5 `keyword_metrics` slim (après refonte)
 
-Aucune migration de structure dans la première phase — colonnes inchangées sauf que `serp_raw_json` est **lecture-seule transitoire**. Phase 4 (story 4) : retirer `serpRawJson` du type TS et de la requête SELECT par défaut. Phase ultérieure (hors scope, AC.SCHEMA.5) : `ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json;`.
+Aucun changement de structure dans la première phase — colonnes inchangées sauf que `serp_raw_json` est **lecture-seule transitoire**. Phase 4 (Story C4) : retirer `serpRawJson` du type TS et de la requête SELECT par défaut (refactor code, pas DDL). Phase ultérieure (hors scope, AC.SCHEMA.5) : `ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json;` appliqué directement à la DB + `npm run db:snapshot` + commit du diff `schema.sql`.
 
 ---
 
@@ -266,14 +268,16 @@ Aucune migration de structure dans la première phase — colonnes inchangées s
 
 Approche **expand-and-contract** classique (zéro downtime, code et schéma compatibles à chaque pas) :
 
-1. **Expand** : créer les 4 nouvelles tables sans toucher à `serp_raw_json`. Aucun consommateur ne change.
+1. **Expand** : créer les 4 nouvelles tables (DDL appliqué + `db:snapshot` regen) sans toucher à `serp_raw_json`. Aucun consommateur ne change.
 2. **Dual-write** : `analyzeSerpCompetitors` écrit en parallèle dans les nouvelles tables ET dans `serp_raw_json` (transaction unique pour cohérence).
 3. **Backfill** : script idempotent qui éclate les 7 lignes existantes (et tout résiduel) vers les nouvelles tables. Vérifie comptage avant/après (test AC.SCHEMA.2).
 4. **Switch reads** : un par un, les 6 consommateurs migrent vers les nouvelles tables. À chaque switch, `serp_raw_json` reste lue uniquement comme fallback en lecture (mais tracé via log warn).
 5. **Stop dual-write** : `analyzeSerpCompetitors` n'écrit plus dans `serp_raw_json`. Logs de fallback en lecture deviennent des erreurs.
-6. **(hors-scope)** Drop colonne `serp_raw_json`.
+6. **(hors-scope)** Drop colonne `serp_raw_json` (DDL appliqué + `db:snapshot` regen).
 
 Ce chantier livre les pas 1-5. Le pas 6 fait l'objet d'une story séparée différée (≥ 2 semaines de prod stable).
+
+À chaque story qui modifie la DB (A1, hypothétiquement E1) : avant le `git commit`, lancer `npm run db:snapshot` puis `npm run db:check` (doit être vert) et inclure le diff `schema.sql` dans le commit.
 
 ---
 

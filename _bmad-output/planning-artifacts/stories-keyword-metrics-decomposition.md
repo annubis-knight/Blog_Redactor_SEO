@@ -1,7 +1,7 @@
 ---
 title: 'Stories — Refonte schéma keyword_metrics'
 slug: stories-keyword-metrics-decomposition
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
 status: proposed
 related_nfr: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
@@ -26,22 +26,31 @@ synced_with:
 
 ## Epic A — Schéma & migration data
 
-### Story A1 — Migration SQL : créer les 4 tables
+### Story A1 — Application DDL des 4 tables + snapshot
 
 **Pourquoi** : sans le schéma, rien ne peut être écrit ni lu côté nouvelles tables.
 
-**Quoi** : créer `server/db/migrations/015_keyword_metrics_decomposition.sql` qui crée `keyword_serp_results`, `keyword_serp_scrapes`, `keyword_paa_questions`, `keyword_autocomplete` avec PK, FK, index (cf. tech-spec §3).
+**Quoi** :
+1. Créer un script TypeScript jetable `scripts/apply-keyword-serp-schema.ts` qui applique le DDL des 4 tables (cf. tech-spec §3) à la DB locale via `pg.Pool` + `dotenv`. Idempotent : `CREATE TABLE IF NOT EXISTS …`. Pas de DROP.
+2. Exécuter `node --import tsx scripts/apply-keyword-serp-schema.ts` (ou équivalent selon le runner du projet) sur la DB locale.
+3. Lancer `npm run db:snapshot` pour régénérer `server/db/schema.sql`.
+4. Vérifier `npm run db:check` vert (empreinte DB live ≡ snapshot).
+5. Commit du diff `schema.sql` (les 4 nouveaux `CREATE TABLE` apparaissent dans le snapshot).
+6. Le script `scripts/apply-keyword-serp-schema.ts` est **conservé pendant le sprint** (pour pouvoir rejouer sur une DB neuve si besoin) puis **supprimé en Story D3** (archivage). Sa trace reste dans `git log` et dans le diff `schema.sql`.
 
 **ACs** :
-- **AC.A1.1** [I] Given DB après migration, When `\d keyword_serp_results`, Then 7 colonnes attendues + PK composite `(keyword, lang, country, position)` + FK vers `keyword_metrics` + index `idx_keyword_serp_results_domain` et `idx_keyword_serp_results_fetched`.
-- **AC.A1.2** [I] Given DB après migration, When `\d keyword_serp_scrapes`, Then 8 colonnes + PK composite + FK vers `keyword_serp_results` (cascade delete) + index `idx_keyword_serp_scrapes_scraped`.
-- **AC.A1.3** [I] Given DB après migration, When `\d keyword_paa_questions`, Then `id BIGSERIAL PRIMARY KEY` + UNIQUE `(keyword, lang, country, question, depth)` + index `idx_keyword_paa_kw`.
-- **AC.A1.4** [I] Given DB après migration, When `\d keyword_autocomplete`, Then PK `(keyword, lang, country, position)` + index `idx_keyword_autocomplete_fetched`.
-- **AC.A1.5** [I] Given DB après migration, When INSERT dans `keyword_serp_scrapes` sans row parent dans `keyword_serp_results`, Then erreur FK violation.
-- **AC.A1.6** [I] Given DB après migration, When DELETE d'une row `keyword_metrics`, Then les rows enfants des 4 tables sont supprimées en cascade.
-- **AC.A1.7** [I] Migration **rollback** : un `down.sql` (ou commentaire SQL inverse) permet de retomber sur l'état pré-migration sans erreur.
+- **AC.A1.1** [I] Given DB après application du DDL, When `\d keyword_serp_results` (psql), Then 7 colonnes attendues + PK composite `(keyword, lang, country, position)` + FK vers `keyword_metrics` + index `idx_keyword_serp_results_domain` et `idx_keyword_serp_results_fetched`.
+- **AC.A1.2** [I] Given DB après application, When `\d keyword_serp_scrapes`, Then 8 colonnes + PK composite + FK vers `keyword_serp_results` (cascade delete) + index `idx_keyword_serp_scrapes_scraped`.
+- **AC.A1.3** [I] Given DB après application, When `\d keyword_paa_questions`, Then `id BIGSERIAL PRIMARY KEY` + UNIQUE `(keyword, lang, country, question, depth)` + index `idx_keyword_paa_kw`.
+- **AC.A1.4** [I] Given DB après application, When `\d keyword_autocomplete`, Then PK `(keyword, lang, country, position)` + index `idx_keyword_autocomplete_fetched`.
+- **AC.A1.5** [I] Given DB après application, When INSERT dans `keyword_serp_scrapes` sans row parent dans `keyword_serp_results`, Then erreur FK violation.
+- **AC.A1.6** [I] Given DB après application, When DELETE d'une row `keyword_metrics`, Then les rows enfants des 4 tables sont supprimées en cascade.
+- **AC.A1.7** [snapshot] `server/db/schema.sql` après `npm run db:snapshot` contient bien les 4 nouveaux `CREATE TABLE` ; `npm run db:check` est vert ; le compteur `Tables` du header passe de 21 à 25.
+- **AC.A1.8** [idempotence] Re-exécuter `apply-keyword-serp-schema.ts` deux fois ne génère ni erreur ni effet de bord (`CREATE TABLE IF NOT EXISTS`).
 
-**Files** : `server/db/migrations/015_keyword_metrics_decomposition.sql` (nouveau).
+**Files** :
+- `scripts/apply-keyword-serp-schema.ts` (nouveau, jetable supprimé en D3).
+- `server/db/schema.sql` (modif via `db:snapshot`, ne pas éditer à la main).
 
 **Estimation** : S (½ journée).
 
@@ -51,7 +60,7 @@ synced_with:
 
 **Pourquoi** : récupérer les 7 lignes existantes (vérifié DB live 2026-05-09) sans perte avant de basculer les consommateurs.
 
-**Quoi** : script `server/db/scripts/backfill-keyword-serp.ts` qui lit chaque `keyword_metrics` avec `serp_raw_json IS NOT NULL`, extrait `competitors[]` / `paaQuestions[]`, INSERT dans les 4 nouvelles tables (UPSERT idempotent : `ON CONFLICT DO NOTHING`). Tolère payloads partiels (champs `headings` / `textContent` / `isBlog` peuvent être absents).
+**Quoi** : script `scripts/backfill-keyword-serp.ts` qui lit chaque `keyword_metrics` avec `serp_raw_json IS NOT NULL`, extrait `competitors[]` / `paaQuestions[]`, INSERT dans les 4 nouvelles tables (UPSERT idempotent : `ON CONFLICT DO NOTHING`). Tolère payloads partiels (champs `headings` / `textContent` / `isBlog` peuvent être absents). Script jetable supprimé en Story D3.
 
 **ACs** :
 - **AC.A2.1** [I] Given DB avec N rows `serp_raw_json` non-null, When `backfill-keyword-serp.ts` est exécuté, Then `COUNT(keyword_serp_results)` = somme des `jsonb_array_length(serp_raw_json->'competitors')`.
@@ -62,7 +71,7 @@ synced_with:
 - **AC.A2.6** [I] Idempotence : exécuter le backfill **deux fois** d'affilée → comptages identiques (pas de doublons ; `ON CONFLICT DO NOTHING` actif).
 - **AC.A2.7** [U] Given un payload `serp_raw_json` malformé (ex: `competitors: null`), When backfill traite ce row, Then la fonction loggue un warning et continue avec les rows suivants (pas de crash).
 
-**Files** : `server/db/scripts/backfill-keyword-serp.ts` (nouveau), `tests/integration/backfill-keyword-serp.test.ts` (nouveau).
+**Files** : `scripts/backfill-keyword-serp.ts` (nouveau, jetable supprimé en D3), `tests/integration/backfill-keyword-serp.test.ts` (nouveau, conservé comme régression).
 
 **Estimation** : M (1 journée).
 
@@ -203,14 +212,14 @@ synced_with:
 
 **ACs** :
 - **AC.C4.1** [grep] `grep -r "serpRawJson\|upsertKeywordSerp" src/ server/ shared/` retourne 0 occurrence.
-- **AC.C4.2** [grep] `grep -r "serp_raw_json" server/services/ src/` retourne 0 occurrence (sauf dans le script `backfill-keyword-serp.ts` et la migration `015_*.sql`).
+- **AC.C4.2** [grep] `grep -r "serp_raw_json" server/services/ src/` retourne 0 occurrence. (Note : `server/db/schema.sql` peut encore contenir la colonne en lecture seule transitoire — c'est attendu, son drop est différé en Epic E1. Le marqueur cherchable de cet état est dans le header AUTHORITY de `keyword-metrics.service.ts`, cf. AC.C4.6.)
 - **AC.C4.3** [U] Le type `KeywordMetrics` exporté par `keyword-metrics.service.ts` n'a plus de champ `serpRawJson`.
 - **AC.C4.4** [I] Après merge de la story, `POST /api/serp/analyze` n'écrit **plus** dans `keyword_metrics.serp_raw_json` (vérifié : la valeur reste à ce qu'elle était avant la requête).
 - **AC.C4.5** [I] Aucune régression test : `npm run test:unit` vert ; `npm run test:browser` (parties Lexique/Lieutenants/Capitaine) vert.
-- **AC.C4.6** Header `AUTHORITY:` de `keyword-metrics.service.ts` mis à jour pour ne plus mentionner SERP.
-- **AC.C4.7** Ajout d'un commentaire SQL dans la migration : `-- serp_raw_json column kept read-only until 016_drop_serp_raw_json.sql (post-stabilization)`.
+- **AC.C4.6** Header `AUTHORITY:` de `keyword-metrics.service.ts` mis à jour pour ne plus mentionner SERP. Y inclure une ligne : `-- serp_raw_json column kept read-only until post-stabilization drop (Epic E1, ≥ 14 jours)` pour servir de marqueur cherchable en attendant le drop.
+- **AC.C4.7** `docs/data-flows/keyword-metrics.md` mentionne explicitement que `serp_raw_json` reste en DB en lecture seule transitoire (justification visible côté doc, pas seulement code).
 
-**Files** : `server/services/external/serp-analysis.service.ts` (modif), `server/services/keyword/keyword-metrics.service.ts` (modif), 5 fichiers de tests (modif), `docs/data-flows/keyword-metrics.md` (modif headers).
+**Files** : `server/services/external/serp-analysis.service.ts` (modif), `server/services/keyword/keyword-metrics.service.ts` (modif), 5 fichiers de tests (modif), `docs/data-flows/keyword-metrics.md` (modif headers + note transitoire).
 
 **Estimation** : M (1 journée).
 
@@ -222,7 +231,7 @@ synced_with:
 
 **Pourquoi** : prouver AC.SCHEMA.4 ("gain perf vérifiable") avec un chiffre concret.
 
-**Quoi** : script `server/db/scripts/bench-keyword-metrics.ts` qui :
+**Quoi** : script `scripts/bench-keyword-metrics.ts` qui :
 1. Sur une copie locale de la DB de prod (1821 lignes), mesure 3× le temps + payload size de :
    - `getKeywordMetrics('seo local')` **avant** le retrait de `serp_raw_json` du SELECT (commit avant Story C4).
    - `getKeywordMetrics('seo local')` **après** (commit après Story C4).
@@ -233,7 +242,7 @@ synced_with:
 - **AC.D1.2** Le bench montre que le SELECT Capitaine **n'inclut plus** la colonne `serp_raw_json` (vérifié par `EXPLAIN` ou trace SQL).
 - **AC.D1.3** Bench documenté dans la PR (commentaire ou fichier ad-hoc en `_archive/`).
 
-**Files** : `server/db/scripts/bench-keyword-metrics.ts` (nouveau, à supprimer après merge — script jetable), résultats inlinés dans la description de PR.
+**Files** : `scripts/bench-keyword-metrics.ts` (nouveau, jetable supprimé en D3), résultats inlinés dans la description de PR.
 
 **Estimation** : S (½ journée).
 
@@ -259,18 +268,20 @@ synced_with:
 
 ---
 
-### Story D3 — Archivage + sprint-status
+### Story D3 — Archivage + cleanup scripts jetables + sprint-status
 
 **Quoi** :
 1. Déplacer `tech-spec-keyword-metrics-decomposition.md`, `epics-*.md`, `stories-*.md`, `sprint-plan-*.md` dans `_bmad-output/planning-artifacts/_archive/` avec bandeau **ARCHIVED** en haut.
-2. Mettre à jour `_bmad-output/implementation-artifacts/sprint-status.yaml` : ajouter sprint terminé.
+2. **Supprimer les scripts jetables** : `scripts/apply-keyword-serp-schema.ts`, `scripts/backfill-keyword-serp.ts`, `scripts/bench-keyword-metrics.ts`. La trace reste dans `git log` et dans le diff `schema.sql`.
+3. Mettre à jour `_bmad-output/implementation-artifacts/sprint-status.yaml` : ajouter sprint terminé.
 
 **ACs** :
 - **AC.D3.1** Les 4 artefacts sont dans `_archive/` avec front-matter `status: archived`.
 - **AC.D3.2** `sprint-status.yaml` reflète l'avancement.
 - **AC.D3.3** Aucune référence `synced_with:` cassée vers ces fichiers depuis ailleurs.
+- **AC.D3.4** Les 3 scripts jetables (`apply-keyword-serp-schema.ts`, `backfill-keyword-serp.ts`, `bench-keyword-metrics.ts`) sont supprimés. `npm run check:dead` (knip) reste vert.
 
-**Files** : déplacements (move), `sprint-status.yaml` (modif).
+**Files** : déplacements (move), suppressions (rm), `sprint-status.yaml` (modif).
 
 **Estimation** : XS (1-2h).
 

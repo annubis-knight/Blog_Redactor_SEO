@@ -1,7 +1,7 @@
 ---
 title: 'Sprint Plan — Refonte schéma keyword_metrics'
 slug: sprint-plan-keyword-metrics-decomposition
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
 status: proposed
 related_nfr: NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
@@ -34,7 +34,7 @@ Ordonnancement strict par dépendance technique. Aucune story ne peut commencer 
 
 | # | Story | Branche | Dépend de | Estimation | Jour cible |
 |---|---|---|---|---|---|
-| 1 | **A1** Migration SQL | `feat/keyword-serp-tables-schema` | — | 0.5j | J1 (matin) |
+| 1 | **A1** DDL 4 tables + snapshot | `feat/keyword-serp-tables-schema` | — | 0.5j | J1 (matin) |
 | 2 | **A2** Script backfill | `feat/keyword-serp-backfill-script` | A1 | 1.0j | J1 (après-midi) → J2 |
 | 3 | **B1** Service `keyword-serp` | `feat/keyword-serp-service` | A1 (table existe) | 1.0j | J3 |
 | 4 | **B2** Dual-write `analyzeSerpCompetitors` | `refactor/serp-analysis-dual-write` | B1, A2 (backfill ok) | 1.0j | J4 |
@@ -83,6 +83,14 @@ Self-review CLAUDE.md §5  →  npm run lint           ✅
 ```
 
 Pour les stories qui touchent la DB (A1, A2, B2, C2) : test d'intégration sur DB locale obligatoire.
+
+**Pour Story A1 (DDL appliqué) en plus** :
+```
+npm run db:snapshot        # régénère server/db/schema.sql
+npm run db:check           # vérifie empreinte DB ≡ snapshot — DOIT être vert
+git diff server/db/schema.sql   # le diff doit contenir les 4 nouveaux CREATE TABLE
+```
+Le diff `schema.sql` est le livrable versionné. Aucun fichier `migrations/NNN_*.sql` n'est créé (cf. commit `01f705b` 2026-05-09).
 
 ---
 
@@ -152,9 +160,12 @@ Le sprint est **terminé** quand :
 ## Post-sprint (différé, hors scope)
 
 **Story E1 — Drop `serp_raw_json`** (AC.SCHEMA.5, déclenchable ≥ 2 semaines après merge sprint si stable) :
-- Migration `016_drop_serp_raw_json.sql` : `ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json;`
+- `ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json;` appliqué directement à la DB locale (via `psql` ou script jetable `scripts/drop-serp-raw-json.ts`).
+- `npm run db:snapshot` régénère `server/db/schema.sql`.
+- `npm run db:check` doit être vert.
+- Commit du diff `schema.sql` (la colonne disparaît). **Pas de fichier `migrations/NNN_*.sql`**.
 - Critères d'activation :
-  - 14 jours en prod sans incident lié aux nouvelles tables.
+  - 14 jours sans incident lié aux nouvelles tables.
   - Aucun log warn `legacy serp_raw_json fallback` dans les 14 derniers jours (instrumenté pendant Story C2/C4 si besoin).
   - PR séparée, taggée `[FOLLOW-UP]`, branche `chore/drop-serp-raw-json-column`.
 - Estimation : XS (≤ ½ journée).
