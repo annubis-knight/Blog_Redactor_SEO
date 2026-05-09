@@ -26,13 +26,28 @@ export { extractHeadings, extractTextContent }
 // keyword-serp.service. Cf. NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
 
 // ---------------------------------------------------------------------------
-// Core analysis function (legacy — bascule en wrapper deprecated en C1, supprimé en C3)
+// Core analysis function (legacy — @deprecated, supprimé en Story C3 chantier 2)
 // ---------------------------------------------------------------------------
 
+/**
+ * @deprecated Story C1 (chantier 2 — découplage Lieutenants/Lexique) : la route
+ * `POST /api/serp/analyze` est désormais branchée sur `scrape-corpus.fetchAndPersist`
+ * (single producer cross-domaine) au lieu de cette fonction. Conservée pendant la
+ * fenêtre C1→C3 pour les tests legacy uniquement (`tests/unit/services/serp-analysis.test.ts`,
+ * `tests/integration/serp-analyze-dual-write.test.ts`). Sera supprimée en Story C3.
+ *
+ * Migration : utilisez `scrape-corpus.fetchAndPersist(keyword, articleLevel)` directement
+ * (côté backend) ou consommez `lieutenants-analysis.proposeLieutenants` pour les contextes
+ * Lieutenants spécifiques.
+ */
 export async function analyzeSerpCompetitors(
   keyword: string,
   articleLevel: ArticleLevel,
 ): Promise<SerpAnalysisResult> {
+  log.warn(
+    `analyzeSerpCompetitors is deprecated (chantier 2 Story C1) — use scrape-corpus.fetchAndPersist or lieutenants-analysis.proposeLieutenants. Will be removed in Story C3.`,
+    { keyword, articleLevel },
+  )
   // Story C2 — la cache check est dans la route (`/serp/analyze`) via
   // getSerpResultsFresh. Ce service ne fait que l'external fetch + la persist.
   log.info(`Analyzing SERP competitors for "${keyword}" (level: ${articleLevel})`)
