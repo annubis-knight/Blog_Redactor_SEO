@@ -424,6 +424,76 @@ export async function upsertAutocomplete(
 }
 
 /**
+ * Story C2 — Reconstruit un SerpAnalysisResult-compatible payload à partir
+ * des 4 tables filles. Utilisé par /serp/analyze quand la cache check (via
+ * getSerpResultsFresh) renvoie un hit. La forme reproduit l'ancien
+ * keyword_metrics.serp_raw_json pour ne pas casser les consommateurs front.
+ *
+ * Cas mixte : si N rows dans keyword_serp_results mais < N dans
+ * keyword_serp_scrapes, on remplit avec headings=[] / textContent=null pour
+ * les positions sans scrape (cf. AC.C2.5).
+ */
+export interface ReconstructedSerpAnalysisResult {
+  keyword: string
+  competitors: Array<{
+    position: number
+    title: string
+    url: string
+    domain: string
+    headings: unknown[]
+    textContent: string
+    isBlog?: boolean | null
+  }>
+  paaQuestions: Array<{ question: string; answer: string | null }>
+  maxScraped: number
+  cachedAt: string
+  fromCache: boolean
+}
+
+export async function reconstructSerpAnalysisResult(
+  keyword: string,
+  lang: string = 'fr',
+  country: string = 'fr',
+): Promise<ReconstructedSerpAnalysisResult | null> {
+  const [results, scrapes, paa] = await Promise.all([
+    getSerpResults(keyword, lang, country),
+    getSerpScrapes(keyword, lang, country),
+    getPaaQuestions(keyword, lang, country),
+  ])
+  if (results.length === 0) return null
+
+  const scrapesByPosition = new Map<number, (typeof scrapes)[number]>()
+  for (const s of scrapes) scrapesByPosition.set(s.position, s)
+
+  const competitors = results.map((r) => {
+    const scrape = scrapesByPosition.get(r.position)
+    return {
+      position: r.position,
+      title: r.title ?? '',
+      url: r.url,
+      domain: r.domain ?? '',
+      headings: scrape?.headings ?? [],
+      textContent: scrape?.textContent ?? '',
+      isBlog: scrape?.isBlog ?? null,
+    }
+  })
+
+  const newest = results.reduce(
+    (max, r) => (r.fetchedAt > max ? r.fetchedAt : max),
+    results[0].fetchedAt,
+  )
+
+  return {
+    keyword,
+    competitors,
+    paaQuestions: paa.map((p) => ({ question: p.question, answer: p.answer })),
+    maxScraped: competitors.length,
+    cachedAt: newest,
+    fromCache: true,
+  }
+}
+
+/**
  * Helper transactionnel : ouvre une transaction, exécute la callback avec
  * un client pg dédié, commit/rollback automatique.
  *

@@ -11,15 +11,15 @@ vi.mock('../../../server/services/external/serp-analysis.service', () => ({
   analyzeSerpCompetitors: (...args: unknown[]) => mockAnalyze(...args),
 }))
 
-// Sprint 15.5-bis — route reads keyword_metrics before falling back to DataForSEO
-const mockGetKeywordMetrics = vi.fn()
-const mockUpsertKeywordSerp = vi.fn()
-const mockIsFresh = vi.fn()
+// Story C2 — la route lit maintenant keyword_serp_results pour le cache check.
+const mockGetSerpResultsFresh = vi.fn()
+const mockReconstructSerp = vi.fn()
+const mockGetSerpScrapes = vi.fn()
 
-vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
-  getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
-  upsertKeywordSerp: (...args: unknown[]) => mockUpsertKeywordSerp(...args),
-  isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
+vi.mock('../../../server/services/keyword/keyword-serp.service', () => ({
+  getSerpResultsFresh: (...args: unknown[]) => mockGetSerpResultsFresh(...args),
+  reconstructSerpAnalysisResult: (...args: unknown[]) => mockReconstructSerp(...args),
+  getSerpScrapes: (...args: unknown[]) => mockGetSerpScrapes(...args),
 }))
 
 import router from '../../../server/routes/serp-analysis.routes'
@@ -61,9 +61,10 @@ const MOCK_RESULT = {
 beforeEach(() => {
   vi.clearAllMocks()
   mockAnalyze.mockResolvedValue(MOCK_RESULT)
-  mockGetKeywordMetrics.mockResolvedValue(null)
-  mockUpsertKeywordSerp.mockResolvedValue(undefined)
-  mockIsFresh.mockReturnValue(false)
+  // Default cache miss → falls through to analyzeSerpCompetitors.
+  mockGetSerpResultsFresh.mockResolvedValue(null)
+  mockReconstructSerp.mockResolvedValue(null)
+  mockGetSerpScrapes.mockResolvedValue([])
 })
 
 describe('POST /api/serp/analyze', () => {
@@ -148,5 +149,36 @@ describe('POST /api/serp/analyze', () => {
     const res = makeRes()
     await handler(req, res)
     expect(res.status).toHaveBeenCalledWith(400)
+  })
+
+  it('AC.C2.1 cache hit (fresh keyword_serp_results) → fromCache:true, no external fetch', async () => {
+    mockGetSerpResultsFresh.mockResolvedValue([{ position: 1, url: 'https://example.com/1' }])
+    mockReconstructSerp.mockResolvedValue({
+      keyword: 'seo',
+      competitors: [
+        { position: 1, title: 'P1', url: 'https://example.com/1', domain: 'example.com', headings: [], textContent: '', isBlog: null },
+      ],
+      paaQuestions: [],
+      maxScraped: 1,
+      cachedAt: '2026-05-08T00:00:00.000Z',
+      fromCache: true,
+    })
+    const handler = getHandler()
+    const req = makeReq({ keyword: 'seo' })
+    const res = makeRes()
+    await handler(req, res)
+    expect(mockAnalyze).not.toHaveBeenCalled()
+    expect(res.json).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ fromCache: true }) }),
+    )
+  })
+
+  it('AC.C2.2 cache miss (stale or empty) → analyzeSerpCompetitors called once', async () => {
+    mockGetSerpResultsFresh.mockResolvedValue(null)
+    const handler = getHandler()
+    const req = makeReq({ keyword: 'seo' })
+    const res = makeRes()
+    await handler(req, res)
+    expect(mockAnalyze).toHaveBeenCalledTimes(1)
   })
 })

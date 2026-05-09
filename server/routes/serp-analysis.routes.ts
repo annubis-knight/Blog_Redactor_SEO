@@ -3,16 +3,16 @@ import { log } from '../utils/logger.js'
 import { analyzeSerpCompetitors } from '../services/external/serp-analysis.service.js'
 import { extractTfidf } from '../services/keyword/tfidf.service.js'
 import { serpAnalyzeBodySchema } from '../../shared/schemas/serp-analysis.schema.js'
-import type { SerpAnalysisResult } from '../../shared/types/serp-analysis.types.js'
 import { respondWithError } from '../utils/api-error.js'
 import {
-  getKeywordMetrics,
-  isKeywordMetricsFresh,
-} from '../services/keyword/keyword-metrics.service.js'
-import { getSerpScrapes } from '../services/keyword/keyword-serp.service.js'
+  getSerpResultsFresh,
+  getSerpScrapes,
+  reconstructSerpAnalysisResult,
+} from '../services/keyword/keyword-serp.service.js'
 
-// Sprint 15.5-bis — SERP scraping is cross-article (DB-first on
-// keyword_metrics.serp_raw_json). articleId params dropped.
+// Story C2 — la cache check freshness lit désormais `keyword_serp_results`
+// directement (pas `keyword_metrics.serp_raw_json`). Le hit reconstruit un
+// SerpAnalysisResult depuis les 4 tables filles via reconstructSerpAnalysisResult.
 
 const router = Router()
 
@@ -30,11 +30,15 @@ router.post('/serp/analyze', async (req, res) => {
 
     log.info(`POST /api/serp/analyze — keyword="${keyword}" level="${articleLevel}"`)
 
-    const existing = await getKeywordMetrics(keyword)
-    if (existing?.serpRawJson && isKeywordMetricsFresh(existing.fetchedAt)) {
-      log.info(`SERP DB hit for keyword="${keyword}"`)
-      res.json({ data: { ...(existing.serpRawJson as SerpAnalysisResult), fromCache: true } })
-      return
+    // Story C2 — cache check sur keyword_serp_results.fetched_at (TTL 7j).
+    const fresh = await getSerpResultsFresh(keyword)
+    if (fresh) {
+      const reconstructed = await reconstructSerpAnalysisResult(keyword)
+      if (reconstructed) {
+        log.info(`SERP DB hit for keyword="${keyword}" (reconstructed)`)
+        res.json({ data: { ...reconstructed, articleLevel } })
+        return
+      }
     }
 
     // Story B2 — analyzeSerpCompetitors persiste dual-write en transaction
@@ -47,7 +51,7 @@ router.post('/serp/analyze', async (req, res) => {
   }
 })
 
-/** POST /api/serp/tfidf — TF-IDF extraction (uses keyword_metrics.serp_raw_json) */
+/** POST /api/serp/tfidf — TF-IDF extraction (reads keyword_serp_scrapes) */
 router.post('/serp/tfidf', async (req, res) => {
   try {
     const { keyword, articleId } = req.body
