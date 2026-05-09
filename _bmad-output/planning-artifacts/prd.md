@@ -10,7 +10,7 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-kpi-types-nullable.md'
 workflowType: 'prd'
 completedAt: '2026-03-31'
-lastUpdated: '2026-05-09T22:00:00Z'
+lastUpdated: '2026-05-09T22:30:00Z'
 updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor). Ajout 2026-05-05 (chantier KPI nullable) : 4 nouvelles FRs §8.14 (FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE) qui formalisent la migration des types KPI marché (KeywordOverview, LocationMetrics, RadarKeywordKpis, ValidatePainResult.dataforseo, KeywordAuditResult) vers number | null de bout en bout. Chaque FR porte des AC testables Vitest (pas seulement narratives). Extension FR-INFRA-NO-SCORE-FALLBACK (ajout Difficulty/Cpc/Competition au scope ESLint), FR-INFRA-SCORE-MODULE (ajout helpers formatVolume/Cpc/Kd/Percent), FR-MOT-RAW-KPIS (placeholder "—" quand KPI absent). Source : tech-spec-kpi-types-nullable. Ajout 2026-05-05 (chantier fetch-to-wrapper-migration) : FR-INFRA-API-WRAPPER affiné (périmètre clarifié, dette résorbée, critère mesurable via audit), FR-INFRA-API-STREAM nouveau (wrapper SSE unifié pour POST → ReadableStream avec mêmes garanties cost-log + KNOWN_ERROR_CODES que apiPost), NFR-INT-API-WRAPPER affiné (critère d''acceptation = 0 violation audit), NFR-OBS-EXTERNAL-API-OPT-OUT nouveau (commentaire `// External API call — bypass wrapper by design` obligatoire sur les 14 fetch externes côté server/services/external/*). Section §12.5 dette technique : ligne `fetch() directs résiduels` marquée résorbée. Source : tech-spec-fetch-to-wrapper-migration. Ajout 2026-05-05 (chantier audit couverture DB) : 9 nouvelles FR-INFRA §8.14 formalisant les tables PostgreSQL jusqu''ici fantômes ou sous-couvertes au PRD (FR-INFRA-PAA-EXPLORATIONS, FR-INFRA-INTENT-EXPLORATIONS-LEGACY, FR-INFRA-KEYWORDS-SEO, FR-INFRA-LOCAL-ENTITIES, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-ARTICLE-STRATEGIES, FR-INFRA-COCOON-STRATEGIES, FR-INFRA-MICRO-CONTEXTS). Chaque FR documente le schéma + producteurs + consommateurs avec lignes de code source. Vérification DB live (psql) confirme 20 tables actives (vs 22 dans les CREATE TABLE — 2 renommées via migration 010, 1 jamais matérialisée : `intent_explorations`). Ajout d''une §8.14.bis Matrice de couverture tables ↔ FR (vue inverse FR↔table) qui répond aux questions opérationnelles : impact d''un changement schéma, impact d''un changement FR, détection de tables sans FR. Règle de maintenance : toute migration créant/modifiant une table doit ajouter/maj une ligne dans la matrice.'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -1245,26 +1245,34 @@ Service `lexique-exploration.service.ts` : input libre « tester ce mot-clé » 
 **Voir aussi :** FR-LEX-MULTI-KEYWORD (existant, étendu), FR-LEX-LECTURE-VS-VERROUILLAGE.
 
 #### FR-LEX-LECTURE-VS-VERROUILLAGE
-**Séparation stricte des responsabilités lecture vs verrouillage** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Deux familles de fonctions strictement séparées dans le LexiquePanel et son store associé :
+**Séparation stricte des responsabilités lecture vs verrouillage** *(actif 2026-05-09 — Stories E3-S1+S2+S3 chantier 3)*. Deux familles de fonctions strictement séparées via deux composables Vue dédiés :
 
-**Famille LECTURE** (consultation d'historique, sélection d'onglet, hydratation au mount) :
-- `getLexiqueExplorations(articleId)` — lit `lexique_explorations`.
-- `selectExploration(sourceKeyword)` — change l'onglet actif (mute uniquement le state UI local).
-- `hydrateFromDb()` — restore `tfidfResult` + `iaRecommendations` au mount.
-- **Aucune mutation** de `article_keywords.lexique`.
+**Famille LECTURE** — `src/composables/lexique/useLexiqueExplorations.ts` :
+- `pastExplorations`, `activeSourceKeyword`, `tfidfResult`, `iaRecommendations` (refs propres au composable).
+- `hydrateFromDb()` / `mergeFromDb()` — GET `/articles/:id/explorations` (lecture seule).
+- `selectExploration(sourceKeyword)` — switch onglet pur (lit le cache, 0 fetch).
+- `addExploration(entry)` — push local post-extractCustomKeyword.
+- `reset()` — purge cache sur switch d'article.
+- **Aucune mutation** de `article_keywords.lexique`. Aucun import de `article-keywords.store`. Le seul import depuis `api.service` est `apiGet`.
 
-**Famille VERROUILLAGE** (action utilisateur sur les checkboxes) :
-- `addLexiqueTerm(term)` / `removeLexiqueTerm(term)` — mute store.
-- `saveDecisions(articleId)` — PUT `/articles/:id/keywords`.
-- **Aucune lecture** de `lexique_explorations`.
+**Famille VERROUILLAGE** — `src/composables/lexique/useLexiqueLocking.ts` :
+- `lockedTerms` (proxy lecture `store.keywords.lexique`), `isLocked` (computed length>0).
+- `toggleTerm(term)` — délègue à `articleKeywordsStore.add/removeLexiqueTerm` puis `saveDecisions(id)` → 1 PUT `/articles/:id/keywords` par toggle.
+- **Aucune lecture** de `lexique_explorations`. Aucun appel `apiGet('/explorations')`.
+
+**Watcher gating workflow isolé** — `LexiquePanel.vue` conserve le watcher `isLocked` qui émet `check-completed`/`check-removed` `MOTEUR_LEXIQUE_VALIDATED`. C'est de la propagation de check workflow (orchestration MoteurView ↔ LexiquePanel), distincte des deux familles LECTURE/VERROUILLAGE (AC.LEX-SEP.4).
 
 **Critères d'acceptation testables** :
-- AC.LEX-SEP.1 : Test unitaire — appeler les fonctions LECTURE déclenche **0 PUT** vers `/articles/:id/keywords` (mock count).
-- AC.LEX-SEP.2 : Test unitaire — appeler les fonctions VERROUILLAGE déclenche **0 GET** vers `/articles/:id/explorations` (mock count).
-- AC.LEX-SEP.3 : Test architectural (grep) — aucune fonction de la famille LECTURE n'appelle de fonction de la famille VERROUILLAGE et vice-versa.
-- AC.LEX-SEP.4 : Le watcher `isLocked` (computed dérivé de `lexique.length > 0`, FR-LEX-CHECKBOX-LOCK-IMMEDIATE) reste actif et **observe** le store, mais n'appartient à aucune des deux familles (c'est de la propagation de check, pas de lecture/écriture du Lexique lui-même).
+- AC.LEX-SEP.1 : Test unitaire — appels aux fonctions LECTURE déclenchent **0 PUT** vers `/articles/:id/keywords`. *(test : `tests/unit/composables/lexique/useLexiqueExplorations.test.ts`, 5 verts)*
+- AC.LEX-SEP.2 : Test unitaire — appels aux fonctions VERROUILLAGE déclenchent **0 GET** vers `/articles/:id/explorations`. *(test : `tests/unit/composables/lexique/useLexiqueLocking.test.ts`, 4 verts)*
+- AC.LEX-SEP.3 : Test architectural (grep code, commentaires ignorés) — useLexiqueExplorations.ts n'importe que `apiGet` et n'appelle aucune fonction VERROUILLAGE ; useLexiqueLocking.ts n'utilise jamais `hydrateFromDb`/`mergeFromDb`/`pastExplorations`/`/explorations`. *(test : `tests/unit/architecture/lexique-separation.test.ts`, 4 verts)*
+- AC.LEX-SEP.4 : Test architectural — le watcher `isLocked` + emit `MOTEUR_LEXIQUE_VALIDATED` est présent dans LexiquePanel.vue mais absent des deux composables. *(test : `tests/unit/architecture/lexique-watcher-isolated.test.ts`, 3 verts)*
 
-**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Métriques refacto** :
+- LexiquePanel.vue `<script>` : 497 → 299 lignes (-40 %).
+- 9 stories livrées sur 1 branche unique `feat/chantier-3-ux-lexique`.
+
+**Statut :** **active** *(implémenté 2026-05-09 — Story E3 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
 **Voir aussi :** FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-MULTI-KEYWORD-TABS.
 
 ---

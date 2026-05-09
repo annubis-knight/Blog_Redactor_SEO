@@ -1,28 +1,34 @@
 ---
-version: 1.0.0
-last_updated: 2026-05-09
-status: ready-for-sprint
+version: 1.1.0
+last_updated: 2026-05-09T22:30:00Z
+status: ARCHIVED
 type: implementation-plan
 chantier: 3
 title: 'Chantier 3 — UX onglet Lexique : multi-keyword tabs + pré-check SERP + séparation lecture/verrouillage'
 synced_with:
-  - _bmad-output/planning-artifacts/prd.md  # FR-LEX-PRECHECK-SERP, FR-LEX-MULTI-KEYWORD-TABS, FR-LEX-LECTURE-VS-VERROUILLAGE
+  - _bmad-output/planning-artifacts/prd.md  # FR-LEX-PRECHECK-SERP, FR-LEX-MULTI-KEYWORD-TABS, FR-LEX-LECTURE-VS-VERROUILLAGE (3 actifs 2026-05-09)
   - _bmad-output/planning-artifacts/_archive/tech-spec-keyword-metrics-decomposition.md  # chantier 1 — tables filles SERP
   - _bmad-output/planning-artifacts/_archive/tech-spec-decouplage-lieutenants-lexique.md  # chantier 2 — services métier découplés
 prerequisites:
   - chantier-1: done (sprint-keyword-metrics-decomposition — 2026-05-09)
   - chantier-2: done (sprint-decouplage-lieutenants-lexique — 2026-05-09)
 target_frs:
-  - FR-LEX-PRECHECK-SERP (proposed → active à la livraison)
-  - FR-LEX-MULTI-KEYWORD-TABS (proposed → active à la livraison)
-  - FR-LEX-LECTURE-VS-VERROUILLAGE (proposed → active à la livraison)
+  - FR-LEX-PRECHECK-SERP (proposed → active 2026-05-09 ✅)
+  - FR-LEX-MULTI-KEYWORD-TABS (proposed → active 2026-05-09 ✅)
+  - FR-LEX-LECTURE-VS-VERROUILLAGE (proposed → active 2026-05-09 ✅)
 target_acs:
   - AC.LEX-PRECHECK.1..5 (5 ACs)
   - AC.LEX-TABS.1..5 (5 ACs)
   - AC.LEX-SEP.1..4 (4 ACs)
-  total: 14
-estimated_effort: 3 epics, 9 stories, ~3 jours dev solo
+  total: 14 (14 verts ✅)
+estimated_effort: 3 epics, 9 stories, ~3 jours dev solo (livré 2026-05-09 sur 1 branche)
 ---
+
+> **⚠️ ARCHIVED — chantier livré 2026-05-09** (sprint `sprint-chantier-3-ux-lexique`).
+> Branche : `feat/chantier-3-ux-lexique`. 14/14 ACs verts. PRD : 3 FRs `proposed → active`.
+> Métriques : `LexiquePanel.vue` script 497 → 299 lignes (-40 %). 8 tests UI ajoutés,
+> 4 tests architecturaux ajoutés, 1 test intégration backend, 2 nouveaux composables.
+> Conserver pour comprendre l'intention historique uniquement — code = source de vérité.
 
 # Chantier 3 — UX onglet Lexique
 

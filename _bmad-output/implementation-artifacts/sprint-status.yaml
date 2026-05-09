@@ -93,32 +93,43 @@ development_status:
   # IA-SSE Lieutenants explicitée, persistance lexique conditionnée à articleId.
   sprint-decouplage-lieutenants-lexique: done
 
-  # Sprint chantier 3 — UX onglet Lexique (en cours, 2026-05-09) ⏳
-  # plan: plan-chantier-3-ux-lexique.md (3 epics, 9 stories, 14 ACs)
-  # branche: feat/chantier-3-ux-lexique (1 seule branche, merge final)
-  # E1 (Endpoint pré-check SERP) ✅ done
-  #   - E1-S1 : service hasSerpScrape + handler GET /:keyword/serp/exists
-  #     (200 OK toujours, 400 si keyword invalide). 3 tests intégration verts.
-  #   - E1-S2 : composable useSerpExistsCheck (watch immediate + refetch).
-  #     4 tests unit verts.
-  #   - E1-S3 : LexiquePanel + ConfirmModal — gating watcher anti-404, CTA
-  #     conditionnel, modale coût $0.003. POST /serp/tfidf accepte
-  #     triggerScrapeIfMissing. 4 tests UI verts. PRD : FR-LEX-PRECHECK-SERP
-  #     proposed → active.
-  # E2 (Système d'onglets multi-keyword) ✅ done
-  #   - E2-S1 : composant TabBar partagé (src/components/shared/TabBar.vue),
-  #     ARIA role=tablist/tab/aria-selected, support disabled. 5 tests verts.
-  #   - E2-S2 : intégration TabBar dans LexiquePanel + rename
-  #     LexiqueMultiKeywordPanel → LexiqueCustomKeywordInput (chips → onglets).
-  #     Cohérence affichage/calcul §2.0 : tab.id = tab.label = sourceKeyword
-  #     brut (pas de lowercase/trim). extractCustomKeyword appelle mergeFromDb
-  #     après succès. 4 tests UI verts + 8 tests existants migrés (chips → tabs).
-  #   - E2-S3 : test architectural lexique-tabbar.test.ts (3 verts) — vérifie
-  #     que LexiquePanel importe TabBar depuis @/components/shared/, pas de
-  #     role=tablist hors TabBar, TabBar pur (aucun import métier Lexique).
-  #     PRD : FR-LEX-MULTI-KEYWORD-TABS proposed → active.
-  # E3 (Séparation lecture/verrouillage) ⏳ pending
-  sprint-chantier-3-ux-lexique: in-progress
+  # Sprint chantier 3 — UX onglet Lexique (livré 2026-05-09) ✅
+  # plan archivé: _archive/plan-chantier-3-ux-lexique.md (v1.1.0)
+  # branche: feat/chantier-3-ux-lexique (1 seule branche, merge final attendu)
+  # FRs : FR-LEX-PRECHECK-SERP / FR-LEX-MULTI-KEYWORD-TABS /
+  #       FR-LEX-LECTURE-VS-VERROUILLAGE — 3 passées proposed → active.
+  # ACs : 14/14 verts (AC.LEX-PRECHECK.1..5, AC.LEX-TABS.1..5, AC.LEX-SEP.1..4).
+  #
+  # E1 (Endpoint pré-check SERP) — élimine la trace 404 console au mount Lexique
+  # via GET /api/keywords/:keyword/serp/exists (service hasSerpScrape, sub-ms,
+  # MAX(scraped_at) sur keyword_serp_scrapes). UI : composable
+  # useSerpExistsCheck + ConfirmModal partagé + CTA conditionnel "Lancer
+  # l'analyse SERP (~$0.003)". Watcher auto-restore gated par exists !== false.
+  # POST /serp/tfidf accepte triggerScrapeIfMissing (default false → compat
+  # 404 verbatim AC.C1.1 / AC.C2.2 préservée).
+  #
+  # E2 (Système d'onglets multi-keyword) — chips collapsibles → TabBar
+  # partagé (src/components/shared/TabBar.vue, ARIA role=tablist/tab/aria-selected).
+  # 1 onglet par sourceKeyword (label brut, cohérence §2.0) + 1 onglet
+  # « Tester un mot-clé ». LexiqueMultiKeywordPanel renommé
+  # LexiqueCustomKeywordInput. extractCustomKeyword → mergeFromDb pour un
+  # nouvel onglet automatique post-fetch. Test architectural
+  # lexique-tabbar.test vérifie l'import depuis @/components/shared/.
+  #
+  # E3 (Séparation lecture/verrouillage) — 2 composables strictement séparés :
+  # useLexiqueExplorations (LECTURE — pastExplorations, hydrate/merge/select,
+  # n'importe que apiGet, jamais article-keywords.store) et useLexiqueLocking
+  # (VERROUILLAGE — toggleTerm délègue store + saveDecisions, jamais
+  # /explorations). Watcher gating MOTEUR_LEXIQUE_VALIDATED isolé dans
+  # LexiquePanel (orchestration métier, hors des deux familles — AC.LEX-SEP.4).
+  # Métriques refacto : LexiquePanel.vue script 497 → 299 lignes (-40 %).
+  # 4 tests architecturaux (lexique-separation.test + lexique-watcher-isolated.test)
+  # avec stripComments helper pour ne tester que la logique exécutable.
+  #
+  # Tests : 27 nouveaux verts (3 intégration + 17 unit composables/composants
+  # + 7 architecturaux). Net diff baseline 28 → 11 rouges (e2e dépendant d'un
+  # serveur dev démarré, pas régression code chantier 3).
+  sprint-chantier-3-ux-lexique: done
 
   # Sprint 10.5 — Nettoyage legacy painPoint (2026-05-06) ✅
   # tech-spec: tech-spec-sprint-10.5-cleanup-painpoint-legacy.md
