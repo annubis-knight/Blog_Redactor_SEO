@@ -1,19 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect } from 'vitest'
-import { tokenize, extractTfidf } from '../../../server/services/keyword/tfidf.service'
-import type { SerpCompetitor } from '../../../shared/types/serp-analysis.types'
-
-function makeCompetitor(textContent: string, fetchError?: string): SerpCompetitor {
-  return {
-    position: 1,
-    title: 'Page',
-    url: 'https://example.com',
-    domain: 'example.com',
-    headings: [],
-    textContent,
-    fetchError,
-  }
-}
+import { tokenize, computeTfidfFromTexts } from '../../../server/services/keyword/tfidf.service'
 
 describe('tokenize', () => {
   it('lowercases text', () => {
@@ -74,9 +61,9 @@ describe('tokenize', () => {
   })
 })
 
-describe('extractTfidf', () => {
-  it('returns empty result for empty competitors', () => {
-    const result = extractTfidf([], 'seo')
+describe('computeTfidfFromTexts', () => {
+  it('returns empty result for empty texts array', () => {
+    const result = computeTfidfFromTexts([], 'seo')
     expect(result).toEqual({
       keyword: 'seo',
       totalCompetitors: 0,
@@ -86,80 +73,58 @@ describe('extractTfidf', () => {
     })
   })
 
-  it('filters competitors with fetchError', () => {
-    const competitors = [
-      makeCompetitor('content valide ici'),
-      makeCompetitor('', 'Network error'),
-    ]
-    const result = extractTfidf(competitors, 'test')
-    expect(result.totalCompetitors).toBe(1)
-  })
-
-  it('filters competitors with empty textContent', () => {
-    const competitors = [
-      makeCompetitor('content valide ici'),
-      makeCompetitor(''),
-    ]
-    const result = extractTfidf(competitors, 'test')
-    expect(result.totalCompetitors).toBe(1)
-  })
-
   it('classifies terms as obligatoire when DF >= 0.7', () => {
-    // Term "seo" present in 8/10 competitors = 80%
-    const competitors = Array.from({ length: 10 }, (_, i) =>
-      makeCompetitor(i < 8 ? 'seo naturel référencement' : 'autre contenu différent'),
+    // Term "seo" present in 8/10 docs = 80%
+    const texts = Array.from({ length: 10 }, (_, i) =>
+      i < 8 ? 'seo naturel référencement' : 'autre contenu différent',
     )
-    const result = extractTfidf(competitors, 'test')
-    const seoTerm = result.obligatoire.find(t => t.term === 'seo')
+    const result = computeTfidfFromTexts(texts, 'test')
+    const seoTerm = result.obligatoire.find((t) => t.term === 'seo')
     expect(seoTerm).toBeDefined()
     expect(seoTerm!.level).toBe('obligatoire')
     expect(seoTerm!.documentFrequency).toBe(0.8)
   })
 
   it('classifies terms as differenciateur when 0.3 <= DF < 0.7', () => {
-    // Term present in 5/10 competitors = 50%
-    const competitors = Array.from({ length: 10 }, (_, i) =>
-      makeCompetitor(i < 5 ? 'stratégie marketing digital' : 'autre contenu différent'),
+    const texts = Array.from({ length: 10 }, (_, i) =>
+      i < 5 ? 'stratégie marketing digital' : 'autre contenu différent',
     )
-    const result = extractTfidf(competitors, 'test')
-    const term = result.differenciateur.find(t => t.term === 'stratégie')
+    const result = computeTfidfFromTexts(texts, 'test')
+    const term = result.differenciateur.find((t) => t.term === 'stratégie')
     expect(term).toBeDefined()
     expect(term!.level).toBe('differenciateur')
     expect(term!.documentFrequency).toBe(0.5)
   })
 
   it('classifies terms as optionnel when DF < 0.3', () => {
-    // Term present in 2/10 competitors = 20%
-    const competitors = Array.from({ length: 10 }, (_, i) =>
-      makeCompetitor(i < 2 ? 'niche spécifique rare' : 'contenu générique standard'),
+    const texts = Array.from({ length: 10 }, (_, i) =>
+      i < 2 ? 'niche spécifique rare' : 'contenu générique standard',
     )
-    const result = extractTfidf(competitors, 'test')
-    const term = result.optionnel.find(t => t.term === 'niche')
+    const result = computeTfidfFromTexts(texts, 'test')
+    const term = result.optionnel.find((t) => t.term === 'niche')
     expect(term).toBeDefined()
     expect(term!.level).toBe('optionnel')
     expect(term!.documentFrequency).toBe(0.2)
   })
 
   it('computes density as totalOccurrences / totalCompetitors', () => {
-    // Term "seo" appears 3 times in doc1, 2 times in doc2 → total 5, density = 5/2 = 2.5
-    const competitors = [
-      makeCompetitor('seo seo seo référencement naturel'),
-      makeCompetitor('seo seo référencement web'),
+    const texts = [
+      'seo seo seo référencement naturel',
+      'seo seo référencement web',
     ]
-    const result = extractTfidf(competitors, 'test')
+    const result = computeTfidfFromTexts(texts, 'test')
     const allTerms = [...result.obligatoire, ...result.differenciateur, ...result.optionnel]
-    const seoTerm = allTerms.find(t => t.term === 'seo')
+    const seoTerm = allTerms.find((t) => t.term === 'seo')
     expect(seoTerm).toBeDefined()
     expect(seoTerm!.density).toBe(2.5)
   })
 
   it('sorts terms by density descending within each level', () => {
-    // Two competitors with "content content content" (density 3) and "test" (density 1)
-    const competitors = [
-      makeCompetitor('content content content test'),
-      makeCompetitor('content content content test'),
+    const texts = [
+      'content content content test',
+      'content content content test',
     ]
-    const result = extractTfidf(competitors, 'test')
+    const result = computeTfidfFromTexts(texts, 'test')
     const obligatoire = result.obligatoire
     if (obligatoire.length >= 2) {
       expect(obligatoire[0].density).toBeGreaterThanOrEqual(obligatoire[1].density)
@@ -167,47 +132,40 @@ describe('extractTfidf', () => {
   })
 
   it('limits to 50 terms per level', () => {
-    // Generate 60 unique terms present in all competitors
     const terms = Array.from({ length: 60 }, (_, i) => `termunique${String(i).padStart(3, '0')}`)
     const text = terms.join(' ')
-    const competitors = [
-      makeCompetitor(text),
-      makeCompetitor(text),
-    ]
-    const result = extractTfidf(competitors, 'test')
+    const result = computeTfidfFromTexts([text, text], 'test')
     expect(result.obligatoire.length).toBeLessThanOrEqual(50)
   })
 
   it('sets keyword from parameter', () => {
-    const competitors = [makeCompetitor('contenu test')]
-    const result = extractTfidf(competitors, 'seo local')
+    const result = computeTfidfFromTexts(['contenu test'], 'seo local')
     expect(result.keyword).toBe('seo local')
   })
 
   it('includes competitorCount and totalCompetitors in each term', () => {
-    const competitors = [
-      makeCompetitor('optimisation contenu web'),
-      makeCompetitor('optimisation site internet'),
-      makeCompetitor('contenu digital marketing'),
+    const texts = [
+      'optimisation contenu web',
+      'optimisation site internet',
+      'contenu digital marketing',
     ]
-    const result = extractTfidf(competitors, 'test')
+    const result = computeTfidfFromTexts(texts, 'test')
     const allTerms = [...result.obligatoire, ...result.differenciateur, ...result.optionnel]
-    const optim = allTerms.find(t => t.term === 'optimisation')
+    const optim = allTerms.find((t) => t.term === 'optimisation')
     expect(optim).toBeDefined()
     expect(optim!.competitorCount).toBe(2)
     expect(optim!.totalCompetitors).toBe(3)
   })
 
   it('rounds documentFrequency to 2 decimal places', () => {
-    // 1/3 = 0.333... should round to 0.33
-    const competitors = [
-      makeCompetitor('unique terme spécial'),
-      makeCompetitor('autre contenu différent'),
-      makeCompetitor('encore différent ici'),
+    const texts = [
+      'unique terme spécial',
+      'autre contenu différent',
+      'encore différent ici',
     ]
-    const result = extractTfidf(competitors, 'test')
+    const result = computeTfidfFromTexts(texts, 'test')
     const allTerms = [...result.obligatoire, ...result.differenciateur, ...result.optionnel]
-    const uniqueTerm = allTerms.find(t => t.term === 'unique')
+    const uniqueTerm = allTerms.find((t) => t.term === 'unique')
     expect(uniqueTerm).toBeDefined()
     expect(uniqueTerm!.documentFrequency).toBe(0.33)
   })

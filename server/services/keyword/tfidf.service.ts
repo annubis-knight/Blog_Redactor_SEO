@@ -1,4 +1,5 @@
-import type { SerpCompetitor, TfidfTerm, TfidfResult } from '../../../shared/types/serp-analysis.types.js'
+import type { TfidfTerm, TfidfResult } from '../../../shared/types/serp-analysis.types.js'
+import { getSerpScrapes } from './keyword-serp.service.js'
 import { log } from '../../utils/logger.js'
 
 const FRENCH_STOPWORDS = new Set([
@@ -19,17 +20,22 @@ export function tokenize(text: string): string[] {
     .filter(t => t.length >= 3 && !FRENCH_STOPWORDS.has(t) && !/^\d+$/.test(t))
 }
 
-export function extractTfidf(competitors: SerpCompetitor[], keyword: string): TfidfResult {
-  const valid = competitors.filter(c => !c.fetchError && c.textContent.length > 0)
-  const total = valid.length
-  log.debug('extractTfidf', { keyword, competitors: competitors.length, valid: total })
+/**
+ * Pure function : calcule un TfidfResult à partir d'une liste de textes
+ * déjà filtrés (scrape valide ↔ text_content non-null/non-vide).
+ *
+ * Story C1 — extrait pour rester testable sans DB. `extractTfidf` charge
+ * désormais les scrapes via `getSerpScrapes` puis délègue ici.
+ */
+export function computeTfidfFromTexts(texts: string[], keyword: string): TfidfResult {
+  const total = texts.length
+  log.debug('computeTfidfFromTexts', { keyword, valid: total })
   if (total === 0) {
-    log.warn('extractTfidf — aucun concurrent valide', { keyword })
+    log.warn('computeTfidfFromTexts — aucun concurrent valide', { keyword })
     return { keyword, totalCompetitors: 0, obligatoire: [], differenciateur: [], optionnel: [] }
   }
 
-  // Tokenize each document
-  const docs = valid.map(c => tokenize(c.textContent))
+  const docs = texts.map((t) => tokenize(t))
 
   // Compute document frequency and total occurrences for each term
   const termStats = new Map<string, { docCount: number; totalOccurrences: number }>()
@@ -78,4 +84,21 @@ export function extractTfidf(competitors: SerpCompetitor[], keyword: string): Tf
   }
   log.info('extractTfidf — résultat', { keyword, obligatoire: result.obligatoire.length, differenciateur: result.differenciateur.length, optionnel: result.optionnel.length })
   return result
+}
+
+/**
+ * Story C1 — Async TF-IDF extraction reading directly from `keyword_serp_scrapes`.
+ * Cross-article : 1 ligne par (keyword, lang, country, position). Filtre les
+ * scrapes invalides (text_content null ou vide), passe le reste à computeTfidfFromTexts.
+ */
+export async function extractTfidf(
+  keyword: string,
+  lang: string = 'fr',
+  country: string = 'fr',
+): Promise<TfidfResult> {
+  const scrapes = await getSerpScrapes(keyword, lang, country)
+  const validTexts = scrapes
+    .filter((s) => s.textContent !== null && s.textContent.length > 0)
+    .map((s) => s.textContent as string)
+  return computeTfidfFromTexts(validTexts, keyword)
 }

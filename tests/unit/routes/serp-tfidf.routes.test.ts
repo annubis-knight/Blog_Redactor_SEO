@@ -6,7 +6,7 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-// Sprint 15.5-bis — TF-IDF reads from keyword_metrics.serp_raw_json, not api_cache.
+// Story C1 — TF-IDF reads from keyword_serp_scrapes (cross-article, dedicated table).
 const mockGetKeywordMetrics = vi.fn()
 const mockUpsertKeywordSerp = vi.fn()
 const mockIsFresh = vi.fn()
@@ -15,6 +15,11 @@ vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
   getKeywordMetrics: (...args: unknown[]) => mockGetKeywordMetrics(...args),
   upsertKeywordSerp: (...args: unknown[]) => mockUpsertKeywordSerp(...args),
   isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
+}))
+
+const mockGetSerpScrapes = vi.fn()
+vi.mock('../../../server/services/keyword/keyword-serp.service', () => ({
+  getSerpScrapes: (...args: unknown[]) => mockGetSerpScrapes(...args),
 }))
 
 const mockExtractTfidf = vi.fn()
@@ -80,9 +85,24 @@ const MOCK_CACHED_SERP = {
   fromCache: false,
 }
 
+const MOCK_SCRAPES = [
+  {
+    keyword: 'seo',
+    lang: 'fr',
+    country: 'fr',
+    position: 1,
+    url: 'https://example.com',
+    headings: [],
+    textContent: 'seo content',
+    isBlog: false,
+    scrapedAt: new Date().toISOString(),
+  },
+]
+
 beforeEach(() => {
   vi.clearAllMocks()
-  // Sprint 15.5-bis — DB returns a keyword_metrics row with serp_raw_json populated.
+  // Story C1 — TF-IDF reads from keyword_serp_scrapes table.
+  mockGetSerpScrapes.mockResolvedValue(MOCK_SCRAPES)
   mockGetKeywordMetrics.mockResolvedValue({
     keyword: 'seo',
     lang: 'fr',
@@ -92,7 +112,7 @@ beforeEach(() => {
   })
   mockUpsertKeywordSerp.mockResolvedValue(undefined)
   mockIsFresh.mockReturnValue(true)
-  mockExtractTfidf.mockReturnValue(MOCK_TFIDF_RESULT)
+  mockExtractTfidf.mockResolvedValue(MOCK_TFIDF_RESULT)
   mockAnalyze.mockResolvedValue(MOCK_CACHED_SERP)
 })
 
@@ -128,27 +148,24 @@ describe('POST /api/serp/tfidf', () => {
     expect(res.status).toHaveBeenCalledWith(400)
   })
 
-  it('returns 404 if keyword_metrics has no serp_raw_json', async () => {
-    mockGetKeywordMetrics.mockResolvedValue(null)
+  it('returns 404 if keyword_serp_scrapes is empty (preserve message verbatim — AC.C1.1)', async () => {
+    mockGetSerpScrapes.mockResolvedValue([])
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()
     await handler(req, res)
     expect(res.status).toHaveBeenCalledWith(404)
-    expect(res.jsonData).toEqual(expect.objectContaining({
-      error: expect.objectContaining({ code: 'NOT_FOUND' }),
-    }))
+    expect(res.jsonData).toEqual({
+      error: { code: 'NOT_FOUND', message: "Lancez d'abord l'analyse SERP dans l'onglet Lieutenants" },
+    })
   })
 
-  it('calls extractTfidf with cached competitors and keyword', async () => {
+  it('AC.C1.5 calls extractTfidf with keyword only (no competitors param)', async () => {
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()
     await handler(req, res)
-    expect(mockExtractTfidf).toHaveBeenCalledWith(
-      MOCK_CACHED_SERP.competitors,
-      'seo',
-    )
+    expect(mockExtractTfidf).toHaveBeenCalledWith('seo')
   })
 
   it('returns { data: TfidfResult }', async () => {
@@ -164,14 +181,11 @@ describe('POST /api/serp/tfidf', () => {
     const req = makeReq({ keyword: '  seo local  ' })
     const res = makeRes()
     await handler(req, res)
-    expect(mockExtractTfidf).toHaveBeenCalledWith(
-      expect.any(Array),
-      'seo local',
-    )
+    expect(mockExtractTfidf).toHaveBeenCalledWith('seo local')
   })
 
   it('returns 500 on unexpected error', async () => {
-    mockGetKeywordMetrics.mockRejectedValue(new Error('DB error'))
+    mockGetSerpScrapes.mockRejectedValue(new Error('DB error'))
     const handler = getTfidfHandler()
     const req = makeReq({ keyword: 'seo' })
     const res = makeRes()

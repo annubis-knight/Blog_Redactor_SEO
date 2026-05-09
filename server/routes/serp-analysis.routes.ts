@@ -9,6 +9,7 @@ import {
   getKeywordMetrics,
   isKeywordMetricsFresh,
 } from '../services/keyword/keyword-metrics.service.js'
+import { getSerpScrapes } from '../services/keyword/keyword-serp.service.js'
 
 // Sprint 15.5-bis — SERP scraping is cross-article (DB-first on
 // keyword_metrics.serp_raw_json). articleId params dropped.
@@ -60,14 +61,15 @@ router.post('/serp/tfidf', async (req, res) => {
     const articleIdNum = Number(articleId)
     const hasArticleId = Number.isInteger(articleIdNum) && articleIdNum > 0
 
-    const metrics = await getKeywordMetrics(trimmed)
-    const serpData = metrics?.serpRawJson as SerpAnalysisResult | null
-    if (!serpData?.competitors) {
+    // Story C1 — TF-IDF lit `keyword_serp_scrapes` directement.
+    // 404 si aucune scrape n'est dispo (texte préservé verbatim — cf. AC.C1.1).
+    const scrapes = await getSerpScrapes(trimmed)
+    if (scrapes.length === 0) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: "Lancez d'abord l'analyse SERP dans l'onglet Lieutenants" } })
       return
     }
 
-    const result = extractTfidf(serpData.competitors, trimmed)
+    const result = await extractTfidf(trimmed)
 
     if (hasArticleId) {
       try {
