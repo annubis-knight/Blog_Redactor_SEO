@@ -1,9 +1,9 @@
 ---
 title: 'Découplage services Lieutenants/Lexique + scrape-corpus neutre'
 slug: decouplage-lieutenants-lexique
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
-status: in-progress
+status: archived
 owner: Arnaud
 related_nfr: NFR-MOT-LEXIQUE-DECOUPLAGE
 related_fr:
@@ -25,6 +25,8 @@ synced_with:
   - docs/data-flows/lexique.md
   - docs/data-flows/keyword-metrics.md
 ---
+
+> ⚠️ **ARCHIVED 2026-05-09** — Sprint livré (branche `feat/decouplage-lieutenants-lexique` mergée). Les 4 FRs/NFR sont passés `active` dans le PRD (NFR-MOT-LEXIQUE-DECOUPLAGE §8.3, FR-LIE-SCRAPE-DEDIE §8.7, FR-LEX-SCRAPE-DEDIE §8.8, FR-INFRA-SCRAPE-CORPUS-NEUTRE §8.14). Document conservé pour comprendre l'intention historique uniquement — pour l'état courant, lire le code (`server/services/external/scrape-corpus.service.ts`, `server/services/keyword/lieutenants-analysis.service.ts`, `server/services/keyword/lexique-analysis.service.ts`) et `docs/data-flows/lieutenants.md` / `lexique.md` / `keyword-metrics.md`.
 
 # Tech-Spec — Découplage services Lieutenants/Lexique + `scrape-corpus` neutre
 

@@ -1,9 +1,9 @@
 ---
 title: 'Epics — Découplage Lieutenants/Lexique + scrape-corpus neutre'
 slug: epics-decouplage-lieutenants-lexique
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
-status: in-progress
+status: archived
 related_nfr: NFR-MOT-LEXIQUE-DECOUPLAGE
 related_fr:
   - FR-INFRA-SCRAPE-CORPUS-NEUTRE
@@ -15,6 +15,8 @@ synced_with:
   - _bmad-output/planning-artifacts/stories-decouplage-lieutenants-lexique.md
   - _bmad-output/planning-artifacts/sprint-plan-decouplage-lieutenants-lexique.md
 ---
+
+> ⚠️ **ARCHIVED 2026-05-09** — 4 epics livrés. Voir sprint-status.yaml.
 
 # Epics — Découplage Lieutenants/Lexique + `scrape-corpus`
 

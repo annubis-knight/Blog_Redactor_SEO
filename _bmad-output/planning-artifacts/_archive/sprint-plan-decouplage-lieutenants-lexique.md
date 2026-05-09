@@ -1,9 +1,9 @@
 ---
 title: 'Sprint Plan — Découplage Lieutenants/Lexique + scrape-corpus neutre'
 slug: sprint-plan-decouplage-lieutenants-lexique
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
-status: in-progress
+status: archived
 related_nfr: NFR-MOT-LEXIQUE-DECOUPLAGE
 related_fr:
   - FR-INFRA-SCRAPE-CORPUS-NEUTRE
@@ -15,6 +15,8 @@ synced_with:
   - _bmad-output/planning-artifacts/epics-decouplage-lieutenants-lexique.md
   - _bmad-output/planning-artifacts/stories-decouplage-lieutenants-lexique.md
 ---
+
+> ⚠️ **ARCHIVED 2026-05-09** — Sprint livré sur la branche `feat/decouplage-lieutenants-lexique` (11 commits, mergée `main`).
 
 # Sprint Plan — Découplage Lieutenants/Lexique + `scrape-corpus`
 

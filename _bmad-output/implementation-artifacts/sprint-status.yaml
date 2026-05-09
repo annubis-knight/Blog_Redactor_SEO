@@ -67,6 +67,32 @@ development_status:
   # Différé Epic E1 (≥ 14j) : ALTER TABLE keyword_metrics DROP COLUMN serp_raw_json.
   sprint-keyword-metrics-decomposition: done
 
+  # Sprint decouplage-lieutenants-lexique — Découplage services + scrape-corpus neutre (2026-05-09) ✅
+  # tech-spec: _archive/tech-spec-decouplage-lieutenants-lexique.md
+  # branche: feat/decouplage-lieutenants-lexique (mergée 2026-05-09)
+  # NFR : NFR-MOT-LEXIQUE-DECOUPLAGE → active.
+  # FRs : FR-INFRA-SCRAPE-CORPUS-NEUTRE, FR-LIE-SCRAPE-DEDIE, FR-LEX-SCRAPE-DEDIE
+  #       toutes passées proposed → active (PRD §8.3, §8.7, §8.8, §8.14).
+  # 11 stories livrées : A1 (scrape-corpus.service + cache mémoire 1h LRU),
+  # A2 (tests intégration + grep architectural), B1 (lieutenants-analysis.service),
+  # B2 (lexique-analysis.service), B3 (tests architecturaux croisés), C1 (bascule
+  # POST /serp/analyze), C2 (bascule POST /serp/tfidf), C3 (suppression
+  # analyzeSerpCompetitors + cleanup tests legacy), D1 (tests intégration
+  # AC.DECOUPLAGE.*), D2 (docs data-flows + PRD active), D3 (archivage).
+  # Garde-fous permanents conservés :
+  #   - tests/unit/architecture/decouplage-lieutenants-lexique.test.ts (no cross-import)
+  #   - tests/integration/decouplage-lieutenants-lexique.test.ts (cache mémoire partagé)
+  # Découverte : la route POST /serp/analyze appelle scrape-corpus.fetchAndPersist
+  # directement (pas via lieutenants-analysis.proposeLieutenants) pour préserver
+  # textContent dans SerpAnalysisResult sans contourner la discipline NEVER READS
+  # textContent du service Lieutenants. lieutenants-analysis reste pour les futurs
+  # consommateurs Lieutenants-spécifiques (refonte SSE, tests cross-service).
+  # PRD enrichi en cours d'implémentation (Story A1, B1, B2) avec précisions :
+  # MEMORY_CACHE_TTL_MS / MEMORY_CACHE_MAX_ENTRIES, fromCache: 'memory'|'db'|null,
+  # AC.SCRAPE.4 corrigé (pas de colonne fetch_error), séparation data-prep /
+  # IA-SSE Lieutenants explicitée, persistance lexique conditionnée à articleId.
+  sprint-decouplage-lieutenants-lexique: done
+
   # Sprint 10.5 — Nettoyage legacy painPoint (2026-05-06) ✅
   # tech-spec: tech-spec-sprint-10.5-cleanup-painpoint-legacy.md
   # branche: chore/sprint-10.5-cleanup-painpoint-legacy

@@ -1,9 +1,9 @@
 ---
 title: 'Stories — Découplage Lieutenants/Lexique + scrape-corpus neutre'
 slug: stories-decouplage-lieutenants-lexique
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-05-09
-status: in-progress
+status: archived
 related_nfr: NFR-MOT-LEXIQUE-DECOUPLAGE
 related_fr:
   - FR-INFRA-SCRAPE-CORPUS-NEUTRE
@@ -15,6 +15,8 @@ synced_with:
   - _bmad-output/planning-artifacts/epics-decouplage-lieutenants-lexique.md
   - _bmad-output/planning-artifacts/sprint-plan-decouplage-lieutenants-lexique.md
 ---
+
+> ⚠️ **ARCHIVED 2026-05-09** — 11 stories livrées (A1, A2, B1, B2, B3, C1, C2, C3, D1, D2, D3).
 
 # Stories — Découplage Lieutenants/Lexique + `scrape-corpus`
 
