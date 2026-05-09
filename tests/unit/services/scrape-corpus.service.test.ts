@@ -54,6 +54,8 @@ import {
   getHeadings,
   getTextContent,
   getPaaQuestions,
+  extractHeadings,
+  extractTextContent,
   __resetMemoryCacheForTests,
   __getMemoryCacheSizeForTests,
   MEMORY_CACHE_TTL_MS,
@@ -321,6 +323,64 @@ describe('header AUTHORITY (AC.A1.8)', () => {
     expect(src).toMatch(/keyword_paa_questions/)
     expect(src).toMatch(/NEVER IMPORTS:.*tfidf.*lieutenants.*lexique/i)
     expect(src).toMatch(/MEMORY_CACHE_TTL_MS/)
+  })
+})
+
+// --- Helpers HTML (migrés depuis tests/unit/services/serp-analysis.test.ts en C3) ---
+
+describe('extractHeadings (migré de serp-analysis.test.ts)', () => {
+  it('extracts H1, H2, H3 from HTML', () => {
+    const html = '<h1>Main Title</h1><h2>Sub Section</h2><h3>Detail</h3><h4>Ignored</h4>'
+    expect(extractHeadings(html)).toEqual([
+      { level: 1, text: 'Main Title' },
+      { level: 2, text: 'Sub Section' },
+      { level: 3, text: 'Detail' },
+    ])
+  })
+
+  it('strips inner HTML tags from headings', () => {
+    expect(extractHeadings('<h2><strong>Bold</strong> Title</h2>')).toEqual([
+      { level: 2, text: 'Bold Title' },
+    ])
+  })
+
+  it('decodes HTML entities', () => {
+    expect(extractHeadings('<h1>A &amp; B &lt;C&gt;</h1>')).toEqual([
+      { level: 1, text: 'A & B <C>' },
+    ])
+  })
+
+  it('returns empty array for no headings', () => {
+    expect(extractHeadings('<p>No headings here</p>')).toEqual([])
+  })
+
+  it('skips empty headings', () => {
+    expect(extractHeadings('<h1>  </h1><h2>Real Title</h2>')).toEqual([
+      { level: 2, text: 'Real Title' },
+    ])
+  })
+})
+
+describe('extractTextContent (migré de serp-analysis.test.ts)', () => {
+  it('strips tags and returns clean text', () => {
+    expect(extractTextContent('<p>Hello <strong>world</strong></p>')).toBe('Hello world')
+  })
+
+  it('removes script and style blocks', () => {
+    const html = '<script>alert("x")</script><style>body{}</style><p>Content</p>'
+    expect(extractTextContent(html)).toBe('Content')
+  })
+
+  it('removes noscript blocks', () => {
+    expect(extractTextContent('<noscript>Enable JS</noscript><p>Visible</p>')).toBe('Visible')
+  })
+
+  it('decodes HTML entities', () => {
+    expect(extractTextContent('<p>A&amp;B&nbsp;C</p>')).toBe('A&B C')
+  })
+
+  it('collapses whitespace', () => {
+    expect(extractTextContent('<p>  lots   of    spaces  </p>')).toBe('lots of spaces')
   })
 })
 

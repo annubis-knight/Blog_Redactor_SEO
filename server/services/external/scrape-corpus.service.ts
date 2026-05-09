@@ -249,10 +249,6 @@ export function classifyIsBlog(url: string, domain: string, headings: HnNode[]):
   return false
 }
 
-// Helper interne réutilisable par serp-analysis.service.ts pour limiter la duplication
-// jusqu'à ce que `analyzeSerpCompetitors` soit retiré (story C3).
-export { fetchPageHtml as __fetchPageHtmlInternal }
-
 // ---------------------------------------------------------------------------
 // Read API — SELECTs scopés
 // ---------------------------------------------------------------------------

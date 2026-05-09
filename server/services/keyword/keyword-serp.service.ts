@@ -497,8 +497,8 @@ export async function reconstructSerpAnalysisResult(
  * Helper transactionnel : ouvre une transaction, exécute la callback avec
  * un client pg dédié, commit/rollback automatique.
  *
- * Utilisé par `analyzeSerpCompetitors` (Story B2) pour garantir l'atomicité
- * du dual-write SERP/scrapes/PAA.
+ * Utilisé par `scrape-corpus.fetchAndPersist` (chantier 2 — Story A1+) pour
+ * garantir l'atomicité du dual-write SERP/scrapes/PAA.
  */
 export async function withSerpTransaction<T>(
   fn: (client: PoolClient) => Promise<T>,

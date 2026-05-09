@@ -15,8 +15,8 @@ import type { SerpAnalysisResult, SerpCompetitor, HnNode } from '../../shared/ty
 
 // Story C2 (chantier 1) — la cache check freshness lit `keyword_serp_results`.
 // Story C1 (chantier 2) — sur cache miss, la route appelle désormais
-// scrape-corpus.fetchAndPersist (single producer cross-domaine) au lieu de
-// analyzeSerpCompetitors (déprécié, supprimé en C3).
+// scrape-corpus.fetchAndPersist (single producer cross-domaine).
+// Story C3 (chantier 2) — analyzeSerpCompetitors a été supprimé.
 
 const router = Router()
 

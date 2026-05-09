@@ -150,3 +150,76 @@ describe('AC.SCRAPE.5 — getHeadings et getTextContent sont 2 fonctions distinc
     expect(mod.getHeadings).not.toBe(mod.getTextContent)
   })
 })
+
+// --- Transaction atomique (migré depuis serp-analyze-dual-write.test.ts en C3) ---
+
+describe('AC.SCRAPE.persist — transaction atomique scrape-corpus.fetchAndPersist', () => {
+  it('happy path : keyword vierge → 4 tables filles peuplées', async () => {
+    const { fetchAndPersist, __resetMemoryCacheForTests } = await import(
+      '../../server/services/external/scrape-corpus.service.js'
+    )
+    __resetMemoryCacheForTests()
+    await fetchAndPersist(FIXTURE_KEYWORD, 'pilier')
+
+    const newUrls = await query<{ url: string }>(
+      `SELECT url FROM keyword_serp_results WHERE keyword = $1 ORDER BY position`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(newUrls.rows).toHaveLength(10)
+
+    const scrapes = await query(
+      `SELECT COUNT(*)::int AS n FROM keyword_serp_scrapes WHERE keyword = $1`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(scrapes.rows[0].n).toBe(10)
+
+    const paa = await query(
+      `SELECT COUNT(*)::int AS n FROM keyword_paa_questions WHERE keyword = $1`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(paa.rows[0].n).toBe(1)
+
+    const km = await query(
+      `SELECT 1 FROM keyword_metrics WHERE keyword = $1`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(km.rowCount).toBe(1)
+  })
+
+  it('rollback : injection erreur sur upsertSerpScrapes → aucune écriture', async () => {
+    vi.resetModules()
+    vi.doMock('../../server/services/keyword/keyword-serp.service.js', async (importOriginal) => {
+      const actual = await importOriginal<
+        typeof import('../../server/services/keyword/keyword-serp.service.js')
+      >()
+      return {
+        ...actual,
+        upsertSerpScrapes: vi.fn(async () => {
+          throw new Error('forced fault')
+        }),
+      }
+    })
+
+    const { fetchAndPersist, __resetMemoryCacheForTests } = await import(
+      '../../server/services/external/scrape-corpus.service.js'
+    )
+    __resetMemoryCacheForTests()
+
+    await expect(fetchAndPersist(FIXTURE_KEYWORD, 'pilier')).rejects.toThrow(/forced fault/)
+
+    const km = await query(
+      `SELECT 1 FROM keyword_metrics WHERE keyword = $1`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(km.rowCount).toBe(0)
+
+    const results = await query(
+      `SELECT 1 FROM keyword_serp_results WHERE keyword = $1`,
+      [FIXTURE_KEYWORD],
+    )
+    expect(results.rowCount).toBe(0)
+
+    vi.doUnmock('../../server/services/keyword/keyword-serp.service.js')
+    vi.resetModules()
+  })
+})
