@@ -1136,7 +1136,9 @@ La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, 
 1. Lit les URLs SERP depuis `keyword_serp_results` (FR-INFRA-SCRAPE-CORPUS-NEUTRE).
 2. Déclenche le scrape via `scrape-corpus.service` si nécessaire (cache court mémoire 1h partagé avec Lexique).
 3. Extrait `headings[]` + classifie `isBlog` pour chaque concurrent.
-4. Propose les Lieutenants via IA et persiste dans `lieutenant_explorations`.
+4. Retourne un `ProposeLieutenantsServiceResult` (compétiteurs + headings + PAA) consommable par `/serp/analyze`.
+
+**Important — séparation `data prep` ↔ `IA SSE`** : ce service prépare uniquement les **données scrape** (compétiteurs + headings + PAA). L'appel IA qui propose effectivement les Lieutenants reste porté par la **route SSE existante** `POST /keywords/:keyword/propose-lieutenants` ([server/routes/keyword-ai-panel.routes.ts](server/routes/keyword-ai-panel.routes.ts)) — refonte de cette route hors-scope du chantier 2 (le SSE streaming est une mécanique distincte, complexe à transformer en sync, et pas nécessaire pour atteindre le découplage Lieutenants/Lexique cible). La persistance dans `lieutenant_explorations` reste également portée par la route SSE via `saveLieutenantExplorations`.
 
 **Aucun appel à `analyzeSerpCompetitors`** (déprécié dès qu'on a basculé). **Aucun import de service Lexique**.
 
