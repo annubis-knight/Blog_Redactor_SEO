@@ -512,6 +512,45 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 **Bouton "Vider le cache" du TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Action utilisateur qui purge **uniquement** les entrées `external_api_cache` (autocomplete, PAA, SERP, validate) liées au capitaine de l'article courant via `DELETE /api/articles/:id/external-cache`. Ne touche **pas** aux `*_explorations` (DB persistée — règle FR-MOT-CACHE-CASCADE). Permet à l'utilisateur de forcer un re-fetch DataForSEO sans perdre ses données métier.
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`clearExternalCacheForArticle`), `server/routes/articles.routes.ts` (endpoint external-cache DELETE).
 
+#### NFR-MOT-LEXIQUE-DECOUPLAGE
+**Indépendance Lieutenants ↔ Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique)*. Les onglets Lexique et Lieutenants doivent fonctionner comme **deux unités indépendantes** partageant un socle de données neutre (URLs SERP + scrapes HTML) côté DB. Aucun couplage de service côté backend, aucune dépendance d'ordre d'exécution côté UX.
+
+**Justification** : aujourd'hui, le service `analyzeSerpCompetitors` ([server/services/external/serp-analysis.service.ts:160](server/services/external/serp-analysis.service.ts#L160)) fait à la fois le scrape SERP, l'extraction `headings[]` (pour Lieutenants) et l'extraction `textContent` (pour Lexique). Le Lexique ne peut pas fonctionner sans qu'un appel côté Lieutenants ait préalablement peuplé `keyword_metrics.serp_raw_json`, ce qui crée un couplage d'ordre invisible (cause du 404 perçu sur l'article 64, 2026-05-08).
+
+**Critères d'acceptation testables** :
+- AC.DECOUPLAGE.1 : Un test d'intégration démarre l'analyse Lexique sur un keyword vierge (jamais touché par Lieutenants) → réussit sans erreur, sans appel au service Lieutenants.
+- AC.DECOUPLAGE.2 : Un test d'intégration démarre l'analyse Lieutenants sur un keyword vierge → réussit sans appel au service Lexique.
+- AC.DECOUPLAGE.3 : Un test grep vérifie qu'aucun import croisé n'existe entre `lexique-analysis.service.ts` et `lieutenants-analysis.service.ts`.
+- AC.DECOUPLAGE.4 : Si le scrape HTML d'une URL est déjà fait pour Lieutenants pendant la session, un appel Lexique sur le même keyword **réutilise** le scrape (cache mémoire 1h) au lieu de re-scraper — vérifié par mock count des appels HTTP.
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** FR-LEX-SCRAPE-DEDIE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION.
+
+#### NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION
+**Décomposition de `keyword_metrics`** *(ajout 2026-05-09, roadmap optimisation Lexique)*. La table `keyword_metrics` actuelle (god-table à 17 colonnes dont 6 JSONB héritées des sprints 15.5 et 15.5-bis qui visaient à minimiser le nombre de tables) doit être **décomposée en tables à responsabilité unique**, préfixées `keyword_*` pour signaler le scope cross-article :
+
+| Table cible | Rôle | Source des données |
+|---|---|---|
+| `keyword_metrics` (slim) | Métriques numériques + intent | DataForSEO (volume, difficulty, CPC, intent) |
+| `keyword_serp_results` | URLs Google (10 par keyword), position, title, domain | DataForSEO `/serp/google/organic` |
+| `keyword_serp_scrapes` | HTML scrapé (`headings[]` + `text_content` + `is_blog`) | Scraping HTTP du serveur |
+| `keyword_paa_questions` | Questions People Also Ask | DataForSEO `/serp/google/organic/advanced` |
+| `keyword_autocomplete` | Suggestions autocomplete | DataForSEO autocomplete |
+
+**Justification** : la colonne `serp_raw_json` (JSONB) charge ~500 ko de texte concurrent à chaque lecture, alors que **seul** TF-IDF a besoin de `textContent`. Lieutenants n'a besoin que de `headings[]`. La séparation permet (a) de ne lire que ce dont on a besoin, (b) de requêter finement (ex. "trouve les keywords dont le concurrent #1 est wikipedia.org"), (c) de poser des contraintes d'intégrité par table.
+
+**Conflits de nommage écartés** : `keyword_paa_questions` ne collisionne pas avec `paa_explorations` (article-scoped, autre rôle). `keyword_autocomplete` ne collisionne pas avec `keyword_intent_analyses` (existe déjà, autre rôle).
+
+**Critères d'acceptation testables** :
+- AC.SCHEMA.1 : Migration SQL crée les 4 nouvelles tables avec PK + FK + index appropriés.
+- AC.SCHEMA.2 : Script de migration data éclate les `serp_raw_json` existants vers `keyword_serp_results` + `keyword_serp_scrapes` sans perte (test de comptage avant/après).
+- AC.SCHEMA.3 : Tous les services qui lisent `serp_raw_json` aujourd'hui (5 fichiers identifiés via grep) sont basculés sur les nouvelles tables.
+- AC.SCHEMA.4 : Lecture des URLs SERP d'un keyword n'impose plus de désérialiser `textContent` (gain perf vérifiable).
+- AC.SCHEMA.5 : Phase finale : `serp_raw_json` est dropée de `keyword_metrics` (migration SQL séparée, après bascule de tous les consommateurs).
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
+
 ---
 
 ### 8.4 — Moteur — Discovery (FR-DIS)
@@ -1090,6 +1129,24 @@ La séparation visuelle est un contrat UX : l'utilisateur sait, à tout moment, 
 **Test verrou de référence** : `tests/unit/components/lieutenants-selection-architecture.test.ts` — tout test architectural ajouté dans cette zone DOIT pointer cette FR dans son commentaire de tête.
 **Source :** `src/components/moteur/LieutenantsSelection.vue:735-890`.
 
+#### FR-LIE-SCRAPE-DEDIE
+**Service métier dédié au Lexique côté Lieutenants** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Les Lieutenants consomment un service `lieutenants-analysis.service.ts` qui :
+1. Lit les URLs SERP depuis `keyword_serp_results` (FR-INFRA-SCRAPE-CORPUS-NEUTRE).
+2. Déclenche le scrape via `scrape-corpus.service` si nécessaire (cache court mémoire 1h partagé avec Lexique).
+3. Extrait `headings[]` + classifie `isBlog` pour chaque concurrent.
+4. Propose les Lieutenants via IA et persiste dans `lieutenant_explorations`.
+
+**Aucun appel à `analyzeSerpCompetitors`** (déprécié dès qu'on a basculé). **Aucun import de service Lexique**.
+
+**Critères d'acceptation testables** :
+- AC.LIE-SCRAPE.1 : `lieutenants-analysis.service.ts` n'importe ni `tfidf.service.ts` ni `lexique-analysis.service.ts` (test grep architectural).
+- AC.LIE-SCRAPE.2 : Mock `scrape-corpus.service` → un test unitaire vérifie que `lieutenants-analysis` ne lit jamais `textContent` des scrapes (utilise uniquement `headings`).
+- AC.LIE-SCRAPE.3 : Si `keyword_serp_results` est vide pour le keyword, le service déclenche le fetch SERP DataForSEO + scrape, persiste, puis propose. Pas de 404 silencieux.
+- AC.LIE-SCRAPE.4 : Le service est invocable depuis l'onglet Lieutenants ou depuis un test sans dépendance contextuelle.
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-LEX-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
+
 ---
 
 ### 8.8 — Moteur — Lexique (FR-LEX)
@@ -1114,6 +1171,85 @@ Service `lexique-exploration.service.ts` : input libre « tester ce mot-clé » 
 
 #### FR-LEX-CHECK
 Émet `moteur:lexique_validated` à la validation finale (écriture finale dans `article_keywords` : capitaine + lieutenants + lexique).
+
+#### FR-LEX-SCRAPE-DEDIE
+**Service métier dédié au Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Le Lexique consomme un service `lexique-analysis.service.ts` qui :
+1. Lit les URLs SERP du keyword cible depuis `keyword_serp_results` (FR-INFRA-SCRAPE-CORPUS-NEUTRE).
+2. Déclenche le scrape via `scrape-corpus.service` si nécessaire (cache court mémoire 1h partagé avec Lieutenants).
+3. Extrait `text_content` des scrapes et calcule TF-IDF.
+4. Persiste le résultat dans `lexique_explorations`.
+
+**Aucun appel à `analyzeSerpCompetitors`** (déprécié). **Aucun import de service Lieutenants**.
+
+**Critères d'acceptation testables** :
+- AC.LEX-SCRAPE.1 : `lexique-analysis.service.ts` n'importe ni le composant Lieutenants ni `lieutenants-analysis.service.ts` (test grep architectural).
+- AC.LEX-SCRAPE.2 : Mock `scrape-corpus.service` → un test unitaire vérifie que `lexique-analysis` ne lit jamais `headings[]` (utilise uniquement `text_content`).
+- AC.LEX-SCRAPE.3 : Si `keyword_serp_results` est vide pour le keyword, le service peut déclencher le fetch SERP DataForSEO + scrape (avec confirmation de coût côté UI via FR-LEX-PRECHECK-SERP).
+- AC.LEX-SCRAPE.4 : Le service est invocable depuis l'onglet Lexique ou depuis un test sans dépendance contextuelle.
+- AC.LEX-SCRAPE.5 : L'endpoint actuel `POST /api/serp/tfidf` est conservé temporairement (compatibilité), mais sa logique interne pointe vers `lexique-analysis.service`. Suppression différée à un PR ultérieur.
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, FR-LIE-SCRAPE-DEDIE, FR-INFRA-SCRAPE-CORPUS-NEUTRE.
+
+#### FR-LEX-PRECHECK-SERP
+**UX pré-check SERP au mount du Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Au mount du `LexiquePanel`, un endpoint léger `GET /api/keywords/:keyword/serp/exists` répond `{ exists: boolean, scrapedAt: timestamp | null }` sans charger le JSONB entier ni les scrapes.
+
+**Comportement UI** :
+- `exists: true` → bouton « Extraire le Lexique » actif immédiatement.
+- `exists: false` → message explicite *« Le scrape SERP n'est pas encore disponible pour ce mot-clé »* + CTA *« Lancer l'analyse SERP (consomme ~$0.003 DataForSEO) »* avec confirmation modale.
+- Plus de **404 dans la console** : c'est un état attendu, pas une erreur technique.
+
+**Critères d'acceptation testables** :
+- AC.LEX-PRECHECK.1 : Endpoint `GET /api/keywords/:keyword/serp/exists` répond `{ exists: false, scrapedAt: null }` pour un keyword jamais scrapé. 200 OK, pas 404.
+- AC.LEX-PRECHECK.2 : Endpoint répond `{ exists: true, scrapedAt: '2026-05-...' }` pour un keyword déjà scrapé.
+- AC.LEX-PRECHECK.3 : Au mount du LexiquePanel, ce GET est appelé une fois ; selon la réponse, le bouton « Extraire » est visible ou remplacé par le CTA « Lancer l'analyse SERP ».
+- AC.LEX-PRECHECK.4 : Le clic sur « Lancer l'analyse SERP » déclenche le scrape via `lexique-analysis.service` après confirmation modale, puis active le bouton « Extraire ».
+- AC.LEX-PRECHECK.5 : Aucun appel direct à `POST /api/serp/tfidf` qui aboutirait à un 404 (la logique pré-check empêche ce cas).
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** FR-LEX-SCRAPE-DEDIE.
+
+#### FR-LEX-MULTI-KEYWORD-TABS
+**Système d'onglets par `source_keyword` dans le container Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Le container Lexique affiche un système d'onglets, **un onglet par `source_keyword` exploré pour l'article courant** (lus depuis `lexique_explorations`).
+
+**Comportement** :
+- Le label de chaque onglet = `source_keyword` (ex. `creation site web entreprises`, `creation site Toulouse`).
+- L'onglet actif affiche le `tfidfResult` correspondant + ses recommandations IA.
+- Un onglet « + Tester un mot-clé » ouvre le champ libre existant (`extractCustomKeyword`).
+- Le composant **s'inspire des patterns d'onglets déjà présents** dans le projet (à identifier en phase d'exploration du chantier — ne pas réinventer).
+
+**Critères d'acceptation testables** :
+- AC.LEX-TABS.1 : Article avec 3 `lexique_explorations` (3 `source_keyword` distincts) → 3 onglets affichés + 1 onglet « + Tester un mot-clé ».
+- AC.LEX-TABS.2 : Cliquer sur un onglet change le `tfidfResult` affiché sans refetch DB (lecture du cache déjà chargé via `pastExplorations`).
+- AC.LEX-TABS.3 : Lancer une nouvelle extraction sur un keyword vierge ajoute un nouvel onglet et le sélectionne.
+- AC.LEX-TABS.4 : Article sans aucune exploration → un seul onglet « + Tester un mot-clé » (ou message d'invitation).
+- AC.LEX-TABS.5 : Le composant onglets utilise un pattern UI déjà existant (test architectural : grep d'un composant `Tab*` partagé importé).
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** FR-LEX-MULTI-KEYWORD (existant, à étendre), FR-LEX-LECTURE-VS-VERROUILLAGE.
+
+#### FR-LEX-LECTURE-VS-VERROUILLAGE
+**Séparation stricte des responsabilités lecture vs verrouillage** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Deux familles de fonctions strictement séparées dans le LexiquePanel et son store associé :
+
+**Famille LECTURE** (consultation d'historique, sélection d'onglet, hydratation au mount) :
+- `getLexiqueExplorations(articleId)` — lit `lexique_explorations`.
+- `selectExploration(sourceKeyword)` — change l'onglet actif (mute uniquement le state UI local).
+- `hydrateFromDb()` — restore `tfidfResult` + `iaRecommendations` au mount.
+- **Aucune mutation** de `article_keywords.lexique`.
+
+**Famille VERROUILLAGE** (action utilisateur sur les checkboxes) :
+- `addLexiqueTerm(term)` / `removeLexiqueTerm(term)` — mute store.
+- `saveDecisions(articleId)` — PUT `/articles/:id/keywords`.
+- **Aucune lecture** de `lexique_explorations`.
+
+**Critères d'acceptation testables** :
+- AC.LEX-SEP.1 : Test unitaire — appeler les fonctions LECTURE déclenche **0 PUT** vers `/articles/:id/keywords` (mock count).
+- AC.LEX-SEP.2 : Test unitaire — appeler les fonctions VERROUILLAGE déclenche **0 GET** vers `/articles/:id/explorations` (mock count).
+- AC.LEX-SEP.3 : Test architectural (grep) — aucune fonction de la famille LECTURE n'appelle de fonction de la famille VERROUILLAGE et vice-versa.
+- AC.LEX-SEP.4 : Le watcher `isLocked` (computed dérivé de `lexique.length > 0`, FR-LEX-CHECKBOX-LOCK-IMMEDIATE) reste actif et **observe** le store, mais n'appartient à aucune des deux familles (c'est de la propagation de check, pas de lecture/écriture du Lexique lui-même).
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-MULTI-KEYWORD-TABS.
 
 ---
 
@@ -1461,6 +1597,28 @@ Règles d'architecture dans `.dependency-cruiser.cjs` :
 - AC8 : navbar — clic sur le bouton toggle inverse `effective` (`'mock'` ↔ `'real'`) et déclenche un POST.
 
 **Statut :** active. **Depuis :** 2026-05-08. **Source :** `server/services/infra/runtime-mode.service.ts`, `server/routes/runtime-mode.routes.ts`, `src/stores/ui/runtime-mode.store.ts`, `src/components/shared/AppNavbar.vue`.
+
+#### FR-INFRA-SCRAPE-CORPUS-NEUTRE
+**Service de scraping HTTP neutre** *(ajout 2026-05-09, roadmap optimisation Lexique — proposed)*. Un service `scrape-corpus.service.ts` (à créer dans `server/services/external/`) fait le scraping HTTP des 10 URLs Google d'un keyword + extrait `headings[]` + `text_content` + `is_blog`. Il **ne sait rien** de Lieutenants ni de Lexique : c'est un service pur, sans logique métier d'onglet.
+
+**Responsabilités** :
+1. Lire les URLs cibles depuis `keyword_serp_results` (alimenté en amont par DataForSEO `fetchSerp`).
+2. Pour chaque URL : `fetchPageHtml` (timeout 10s, User-Agent custom).
+3. Pour chaque HTML : `extractHeadings`, `extractTextContent`, `classifyIsBlog`.
+4. Persister dans `keyword_serp_scrapes` (`url, headings JSONB, text_content TEXT, is_blog BOOLEAN, scraped_at`).
+5. Cache court mémoire (1h) pour éviter le double scrape pendant une session.
+
+**Décomposition de l'existant** : remplace progressivement `analyzeSerpCompetitors` ([server/services/external/serp-analysis.service.ts:160](server/services/external/serp-analysis.service.ts#L160)) qui faisait à la fois SERP + scraping + extraction (couplage à casser).
+
+**Critères d'acceptation testables** :
+- AC.SCRAPE.1 : `scrape-corpus.service` n'importe ni `tfidf.service` ni un fichier Lieutenants (test grep architectural).
+- AC.SCRAPE.2 : Appel sur un keyword dont les URLs sont déjà en cache mémoire (< 1h) → 0 nouveau fetch HTTP (mock count).
+- AC.SCRAPE.3 : Appel sur un keyword vierge → 10 fetchs HTTP en parallèle, persistance dans `keyword_serp_scrapes`.
+- AC.SCRAPE.4 : Si une URL répond 404/timeout → la ligne `keyword_serp_scrapes` est créée avec `fetch_error` rempli, les 9 autres scrapes réussissent.
+- AC.SCRAPE.5 : Le service expose deux fonctions distinctes : `getHeadings(keyword)` (lecture optimisée pour Lieutenants) et `getTextContent(keyword)` (lecture optimisée pour Lexique). Pas de blob monolithique retourné.
+
+**Statut :** proposed. **Depuis :** 2026-05-09. **Source :** chantier 2026-05-09 (roadmap optimisation Lexique).
+**Voir aussi :** NFR-MOT-LEXIQUE-DECOUPLAGE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-LEX-SCRAPE-DEDIE, FR-LIE-SCRAPE-DEDIE.
 
 #### FR-INFRA-LOGGER
 Logger central `server/utils/logger.ts` avec niveaux DEBUG / INFO / WARN / ERROR. Configurable via `logs.config.ts`.
