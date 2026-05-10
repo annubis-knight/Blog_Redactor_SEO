@@ -20,13 +20,6 @@ test.describe('Dashboard — page d\'accueil', () => {
     expect(body && body.length).toBeGreaterThan(0)
   })
 
-  test('navigation vers /labo', async ({ page }) => {
-    await page.goto('/labo')
-    await page.waitForLoadState('networkidle', { timeout: 10000 })
-    const url = page.url()
-    expect(url).toContain('/labo')
-  })
-
   test('route inexistante → fallback /:pathMatch', async ({ page }) => {
     await page.goto('/this-route-does-not-exist-xyz')
     await page.waitForLoadState('networkidle', { timeout: 10000 })

@@ -23,12 +23,3 @@ test.describe('Post-Publication', () => {
   })
 })
 
-test.describe('Explorateur', () => {
-  test('charge /explorateur sans erreur', async ({ page }) => {
-    const errors: string[] = []
-    page.on('pageerror', err => errors.push(err.message))
-    await page.goto('/explorateur')
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
-    expect(errors).toEqual([])
-  })
-})

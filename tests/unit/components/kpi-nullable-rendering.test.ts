@@ -21,12 +21,10 @@ import RadarKeywordCard from '@/components/intent/RadarKeywordCard.vue'
 import KeywordAuditTable from '@/components/keywords/KeywordAuditTable.vue'
 import DataForSeoPanel from '@/components/brief/DataForSeoPanel.vue'
 import SerpDataTab from '@/components/panels/SerpDataTab.vue'
-import RowDetail from '@/components/intent/RowDetail.vue'
 
 import type { RadarCard } from '@shared/types/intent.types.js'
 import type { KeywordAuditResult } from '@shared/types/keyword-audit.types.js'
 import type { DataForSeoCacheEntry } from '@shared/types/dataforseo.types.js'
-import type { ValidatePainResult, MultiSourceVerdict } from '@shared/types/intent.types.js'
 
 beforeEach(() => {
   setActivePinia(createPinia())
@@ -221,84 +219,3 @@ describe('FR-INFRA-KPI-DISPLAY-DASH — SerpDataTab avec KPIs null', () => {
   })
 })
 
-// =============================================================================
-// FR-INFRA-KPI-DISPLAY-DASH — RowDetail (validate-pain dataforseo)
-// =============================================================================
-
-describe('FR-INFRA-KPI-DISPLAY-DASH — RowDetail avec dataforseo null', () => {
-  function makeVerdict(): MultiSourceVerdict {
-    return {
-      category: 'incertaine',
-      confidence: 0,
-      consensusAgreement: 0,
-      sourcesAvailable: 0,
-      sourcesTotal: 3,
-      perSourceBreakdown: {},
-    }
-  }
-
-  function makeResult(overrides: Partial<ValidatePainResult> = {}): ValidatePainResult {
-    return {
-      keyword: 'kw-test',
-      dataforseo: null,
-      community: null,
-      autocomplete: null,
-      verdict: { category: 'incertaine', confidence: 0, sourcesAvailable: 0 },
-      ...overrides,
-    }
-  }
-
-  it('result.dataforseo = null → composant ne crash pas et indique "Non disponible"', () => {
-    const wrapper = mount(RowDetail, {
-      props: {
-        result: makeResult({ dataforseo: null }),
-        verdict: makeVerdict(),
-        explanation: null,
-      },
-    })
-    // Avec dataforseo = null, le summary est "Non disponible" (cf. dfSummary).
-    expect(wrapper.text()).toContain('Non disponible')
-  })
-
-  it('result.dataforseo avec KPIs null → cellules KPI affichent "—"', () => {
-    const wrapper = mount(RowDetail, {
-      props: {
-        result: makeResult({
-          dataforseo: {
-            searchVolume: null,
-            difficulty: null,
-            cpc: null,
-            competition: null,
-            relatedCount: 0,
-          },
-        }),
-        verdict: makeVerdict(),
-        explanation: null,
-      },
-    })
-    expect(wrapper.text()).toContain('—')
-    expect(wrapper.text()).not.toContain('0.00 €')
-  })
-
-  it('result.dataforseo avec mix → seuls les KPIs null donnent "—"', () => {
-    const wrapper = mount(RowDetail, {
-      props: {
-        result: makeResult({
-          dataforseo: {
-            searchVolume: 1234,
-            difficulty: null,
-            cpc: 2.5,
-            competition: 0.3,
-            relatedCount: 5,
-          },
-        }),
-        verdict: makeVerdict(),
-        explanation: null,
-      },
-    })
-    const text = wrapper.text()
-    expect(text).toContain('1.2k') // volume formaté
-    expect(text).toContain('2.50 €') // cpc formaté
-    expect(text).toContain('—') // KD null
-  })
-})

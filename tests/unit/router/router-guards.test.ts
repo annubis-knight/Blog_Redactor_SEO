@@ -9,8 +9,6 @@ function createTestRouter() {
     history: createMemoryHistory(),
     routes: [
       { path: '/', name: 'dashboard', component: Stub },
-      { path: '/labo', name: 'labo', component: Stub },
-      { path: '/explorateur', name: 'explorateur', component: Stub },
       { path: '/cocoon/:cocoonId', name: 'cocoon-landing', component: Stub },
       { path: '/cocoon/:cocoonId/article/:slug', name: 'article', component: Stub },
       { path: '/article/:slug/editor', name: 'article-editor', component: Stub },
@@ -55,14 +53,6 @@ describe('Router Guards', () => {
   it('redirige vers 404 pour les URLs inconnues', async () => {
     await router.push('/page-inexistante')
     expect(router.currentRoute.value.name).toBe('not-found')
-  })
-
-  it('laisse passer les routes sans params', async () => {
-    await router.push('/labo')
-    expect(router.currentRoute.value.name).toBe('labo')
-
-    await router.push('/explorateur')
-    expect(router.currentRoute.value.name).toBe('explorateur')
   })
 
   it('laisse passer les legacy redirects', async () => {

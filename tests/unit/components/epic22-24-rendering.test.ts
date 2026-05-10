@@ -22,137 +22,7 @@ vi.mock('../../../src/composables/editor/useStreaming', () => ({
 }))
 
 // ===================================================================
-// 1. PainTranslator — rendering tests
-// ===================================================================
-
-import PainTranslator from '../../../src/components/intent/PainTranslator.vue'
-
-describe('PainTranslator — rendering', () => {
-  beforeEach(() => {
-    setActivePinia(createPinia())
-  })
-
-  it('renders the component with header, textarea and button', () => {
-    const wrapper = mount(PainTranslator)
-
-    expect(wrapper.find('.pain-title').text()).toBe('Traduction Sémantique')
-    expect(wrapper.find('.pain-desc').exists()).toBe(true)
-    expect(wrapper.find('textarea.pain-textarea').exists()).toBe(true)
-    expect(wrapper.find('button.pain-btn').exists()).toBe(true)
-  })
-
-  it('button is disabled when textarea is empty', () => {
-    const wrapper = mount(PainTranslator)
-    const btn = wrapper.find('button.pain-btn')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-  })
-
-  it('button is enabled after typing text', async () => {
-    const wrapper = mount(PainTranslator)
-    await wrapper.find('textarea').setValue('Mon site web ne génère plus de leads')
-    const btn = wrapper.find('button.pain-btn')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(false)
-  })
-
-  it('button displays correct label when not loading', () => {
-    const wrapper = mount(PainTranslator)
-    expect(wrapper.find('button.pain-btn').text()).toBe('Traduire en mots-clés')
-  })
-
-  it('does not show results or error initially', () => {
-    const wrapper = mount(PainTranslator)
-    expect(wrapper.find('.pain-results').exists()).toBe(false)
-    expect(wrapper.find('.pain-error').exists()).toBe(false)
-  })
-
-  it('renders results with checkboxes when data is set', async () => {
-    const wrapper = mount(PainTranslator)
-
-    // Directly set component state to simulate API response
-    const vm = wrapper.vm as any
-    vm.results = [
-      { keyword: 'refonte site web toulouse', reasoning: 'Requête locale transactionnelle', selected: false },
-      { keyword: 'comment refaire son site', reasoning: 'Requête informationnelle', selected: false },
-    ]
-    await wrapper.vm.$nextTick()
-
-    const rows = wrapper.findAll('.pain-result-row')
-    expect(rows).toHaveLength(2)
-
-    // Check first row
-    expect(rows[0].find('.pain-keyword').text()).toBe('refonte site web toulouse')
-    expect(rows[0].find('.pain-reasoning').text()).toBe('Requête locale transactionnelle')
-    expect(rows[0].find('input[type="checkbox"]').exists()).toBe(true)
-  })
-
-  it('does not show "Explorer" button when no result is selected', async () => {
-    const wrapper = mount(PainTranslator)
-    const vm = wrapper.vm as any
-    vm.results = [
-      { keyword: 'kw1', reasoning: 'r1', selected: false },
-    ]
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('.pain-explore-btn').exists()).toBe(false)
-  })
-
-  it('shows "Explorer" button when a result is selected', async () => {
-    const wrapper = mount(PainTranslator)
-    const vm = wrapper.vm as any
-    vm.results = [
-      { keyword: 'kw1', reasoning: 'r1', selected: true },
-    ]
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('.pain-explore-btn').exists()).toBe(true)
-    expect(wrapper.find('.pain-explore-btn').text()).toContain('Explorer')
-  })
-
-  it('clicking a result row toggles selection', async () => {
-    const wrapper = mount(PainTranslator)
-    const vm = wrapper.vm as any
-    vm.results = [
-      { keyword: 'kw1', reasoning: 'r1', selected: false },
-    ]
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('.pain-result-row').trigger('click')
-    await wrapper.vm.$nextTick()
-    expect(vm.results[0].selected).toBe(true)
-    expect(wrapper.find('.pain-result-row').classes()).toContain('selected')
-  })
-
-  it('emits "explore" with selected keyword when "Explorer" is clicked', async () => {
-    const wrapper = mount(PainTranslator)
-    const vm = wrapper.vm as any
-    vm.results = [
-      { keyword: 'seo toulouse', reasoning: 'Local', selected: true },
-      { keyword: 'referencement', reasoning: 'Generic', selected: false },
-    ]
-    await wrapper.vm.$nextTick()
-
-    await wrapper.find('.pain-explore-btn').trigger('click')
-    expect(wrapper.emitted('explore')).toHaveLength(1)
-    expect(wrapper.emitted('explore')![0]).toEqual(['seo toulouse'])
-  })
-
-  it('renders error message when error is set', async () => {
-    const wrapper = mount(PainTranslator)
-    const vm = wrapper.vm as any
-    vm.error = 'API unavailable'
-    await wrapper.vm.$nextTick()
-    expect(wrapper.find('.pain-error').exists()).toBe(true)
-    expect(wrapper.find('.pain-error').text()).toBe('API unavailable')
-  })
-
-  it('textarea has correct placeholder text', () => {
-    const wrapper = mount(PainTranslator)
-    const textarea = wrapper.find('textarea')
-    expect(textarea.attributes('placeholder')).toContain('plombier')
-    expect(textarea.attributes('placeholder')).toContain('Toulouse')
-  })
-})
-
-// ===================================================================
-// 2. ArticleCard — opportunity badge rendering
+// 1. ArticleCard — opportunity badge rendering
 // ===================================================================
 
 import ArticleCard from '../../../src/components/dashboard/ArticleCard.vue'
@@ -268,7 +138,7 @@ describe('ArticleCard — opportunity badge', () => {
 })
 
 // ===================================================================
-// 3. KeywordAuditTable — verdict column + switcher rendering
+// 2. KeywordAuditTable — verdict column + switcher rendering
 // ===================================================================
 
 import KeywordAuditTable from '../../../src/components/keywords/KeywordAuditTable.vue'
@@ -493,7 +363,7 @@ describe('KeywordAuditTable — verdict & switcher rendering', () => {
 })
 
 // ===================================================================
-// 4. ContentGapPanel — enrichment rendering
+// 3. ContentGapPanel — enrichment rendering
 // ===================================================================
 
 import ContentGapPanel from '../../../src/components/brief/ContentGapPanel.vue'

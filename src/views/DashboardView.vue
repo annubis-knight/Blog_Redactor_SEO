@@ -22,8 +22,6 @@ onMounted(() => {
       <div class="dashboard-actions">
         <RouterLink to="/linking" class="btn-linking">Maillage</RouterLink>
         <RouterLink to="/post-publication" class="btn-linking">GSC</RouterLink>
-        <RouterLink to="/labo" class="btn-linking">Labo</RouterLink>
-        <RouterLink to="/explorateur" class="btn-linking">Explorateur</RouterLink>
         <RouterLink to="/config" class="btn-config" title="Configuration du thème">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <circle cx="8" cy="8" r="2" stroke="currentColor" stroke-width="1.2" />
