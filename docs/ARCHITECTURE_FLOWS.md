@@ -331,12 +331,10 @@ sequenceDiagram
 | `generateMeta(...)` | 4 strings | metaTitle + metaDescription | POST `/api/generate/meta` |
 | `saveArticle(articleId)` | string | persisté | PUT `/api/articles/:id` |
 
-#### intent.store (keyword/)
-| Action | Input | Output | API |
-|--------|-------|--------|-----|
-| `analyzeIntent(keyword, location?)` | string, number? | IntentAnalysis | POST `/api/intent/analyze` |
-| `compareLocalNational(keyword)` | string | LocalNationalComparison | POST `/api/keywords/compare-local` |
-| `validateAutocomplete(keyword, prefixes?)` | string, string[]? | AutocompleteResult | POST `/api/keywords/autocomplete` |
+#### intent.store (keyword/) — **simplifié 2026-05-10**
+Plus d'actions network. Refs (`intentData`, `comparisonData`, `autocompleteData`,
+`localComparisons`) hydratées par `useArticleResults` depuis
+`/articles/:id/explorations` et `/articles/:id/external-cache`. `reset()` clear-all.
 
 #### keyword-discovery.store (keyword/)
 | Action | Input | Output | API |
@@ -1204,7 +1202,7 @@ graph TB
 | POST | `/api/keywords/discover` | keyword-discovery | Discovery par seed |
 | POST | `/api/keywords/discover-domain` | keyword-discovery | Discovery par domaine |
 | POST | `/api/keywords/suggest-lexique` | article-keywords | Suggestion LSI |
-| POST | `/api/keywords/audit` | keyword-audit | Audit keywords |
+| POST | `/api/keywords/audit` | keyword-audit | Audit keywords (legacy — ex-Explorateur, plus appelé par UI active) |
 | POST | `/api/keywords/:keyword/validate` | — | Verdict GO/NO-GO Capitaine |
 | POST | `/api/keywords/:keyword/ai-panel` | — | Panel IA Capitaine (SSE) |
 | POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn recommandée |
@@ -1215,9 +1213,6 @@ graph TB
 | POST | `/api/keywords/intent-scan` | — | Radar intent |
 | POST | `/api/keywords/intent-scan/radar/generate` | — | Génération radar |
 | POST | `/api/keywords/intent-scan/radar/scan` | — | Scan radar |
-| POST | `/api/keywords/compare-local` | intent | Comparaison local/national |
-| POST | `/api/keywords/autocomplete` | intent | Validation autocomplete |
-| POST | `/api/intent/analyze` | intent | Analyse intention SERP |
 | POST | `/api/serp/analyze` | — | Scraping SERP top N |
 | POST | `/api/serp/tfidf` | — | TF-IDF contenus SERP |
 | POST | `/api/paa/batch` | — | PAA batch |
@@ -1229,7 +1224,6 @@ graph TB
 | GET | `/api/links/matrix` | linking | Matrice liens |
 | POST | `/api/links/suggest` | linking | Suggestions liens |
 | PUT | `/api/links` | linking | Sauvegarde liens |
-| POST | `/api/local/*` | local | Local SEO (maps, score, entities) |
 | POST | `/api/content-gap/*` | — | Content gap |
 | GET | `/api/gsc/auth` | gsc | OAuth2 GSC |
 | GET | `/api/gsc/callback` | gsc | Callback OAuth2 |

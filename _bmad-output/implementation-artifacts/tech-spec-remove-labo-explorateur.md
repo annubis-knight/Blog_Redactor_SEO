@@ -1,13 +1,35 @@
 ---
 name: tech-spec-remove-labo-explorateur
 type: tech-spec
-status: in-progress
-version: 0.1.0
+status: done
+version: 1.0.0
 last_updated: 2026-05-10
 synced_with:
-  - _bmad-output/planning-artifacts/prd.md (FR-LAB-*, FR-EXP-*, sections 8.11/8.12)
-  - _bmad-output/implementation-artifacts/sprint-status.yaml
+  - _bmad-output/planning-artifacts/prd.md (FR-LAB-*, FR-EXP-*, sections 8.11/8.12, Journey 2)
+  - _bmad-output/implementation-artifacts/sprint-status.yaml (entrée remove-labo-explorateur)
+  - docs/ARCHITECTURE_FLOWS.md (endpoints retirés du tableau API)
+  - docs/data-flows/local.md (marqué REMOVED)
 ---
+
+## Résultat livré (3 commits)
+
+- **Sprint A — UI** (commit `fd3ef10`) : -6728 lignes, 28 fichiers. Suppression vues `/labo` `/explorateur` + 12 composants intent/* exclusifs + `MapsStep` + `KeywordEditor` + `keywords/DiscoveryPanel` + boutons nav DashboardView + routes router + tests UI.
+- **Sprint B — Backend & stores** (commit `54c1320`) : -3626 lignes, 27 fichiers. Suppression `intent.routes.ts`, `local.routes.ts`, `intent.service.ts`, `local-seo.service.ts` + retrait `/keywords/translate-pain` ; simplification `intent.store` / `local.store` (refs hydratées par useArticleResults conservées, actions network retirées) ; cascade knip = 8 composants intent morts + `KeywordComparison.vue` ; tests contract/integration nettoyés.
+- **Sprint C — Doc** (ce commit) : PRD §8.11/§8.12 marqués REMOVED, FR-LAB-*/FR-EXP-* DEPRECATED sauf FR-EXP-CONTENT-GAP qui reste ACTIVE. Sprint-status, ARCHITECTURE_FLOWS, data-flows/local.md à jour.
+
+## Validation
+
+- type-check + lint + build : verts
+- test:check : 10 nouveaux rouges reportés MAIS tous préexistants (data.service.test ×9 + e2e moteur-lieutenants nécessitant serveur dev). 4 tests baseline rouges passent maintenant.
+- knip : seul `shared/types/branded.ts` reste (préexistant hors scope).
+
+## Stretch goals reportés
+
+Le chantier s'est volontairement arrêté avant ces nettoyages pour limiter la portée :
+- Retirer la prop `mode='libre'` des composants Moteur bimodaux (`DiscoveryPanel`, `CaptainPanel`) — plus aucun caller, mais simplification intrusive.
+- Supprimer `EnginePhase.vue` (production/) orphelin + son test.
+- Supprimer route `/keywords/audit` + `auditStore.fetchAudit` (dead-end après EnginePhase si retiré).
+- Retirer le KeywordSwitcher de `KeywordAuditTable.vue` (`localComparisons` jamais alimenté → switcher silencieusement inactif).
 
 # Tech-spec — Suppression onglets Labo & Explorateur du Dashboard
 

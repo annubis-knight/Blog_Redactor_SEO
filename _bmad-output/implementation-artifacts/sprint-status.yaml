@@ -1,5 +1,5 @@
 # generated: 2026-04-01
-# last_updated: 2026-05-09
+# last_updated: 2026-05-10
 # project: BMAD
 # project_key: NOKEY
 # tracking_system: file-system
@@ -609,6 +609,33 @@ development_status:
   #     race-conditions abort test (it.skip → mock apiPost)
   #   - Audit final : 0 violation dans la catégorie « fetch() directs hors wrapper »
   fetch-to-wrapper-migration: done
+
+  # Chantier suppression Labo & Explorateur (2026-05-10) — tech-spec-remove-labo-explorateur.md
+  # Retrait des onglets dashboard /labo et /explorateur, jugés inutiles par l'utilisateur.
+  # Sprint A — UI : suppression vues + 12 composants intent/* exclusifs +
+  #   MapsStep + KeywordEditor + keywords/DiscoveryPanel + boutons nav + routes router.
+  #   28 fichiers modifiés, -6728 lignes.
+  # Sprint B — Backend & stores : suppression intent.routes.ts, local.routes.ts,
+  #   intent.service.ts, local-seo.service.ts ; retrait /keywords/translate-pain ;
+  #   simplification intent.store / local.store (refs hydratées par useArticleResults
+  #   conservées, actions network supprimées) ; cascade knip = 8 composants intent
+  #   morts + KeywordComparison.vue ; tests contract/integration/unit nettoyés.
+  #   27 fichiers modifiés, -3626 lignes.
+  # Sprint C — Doc : PRD §8.11/§8.12 marqués REMOVED, FR-LAB-* et FR-EXP-* DEPRECATED
+  #   sauf FR-EXP-CONTENT-GAP qui reste ACTIVE (Moteur consumer).
+  # Validation : type-check + lint + build verts. test:check : aucun nouveau rouge
+  #   imputable au chantier (10 reportés tous préexistants — data.service.test ×9
+  #   + e2e moteur-lieutenants nécessitant serveur dev). 4 tests baseline rouges
+  #   passent maintenant (anti-régression test-quality + serp/analyze tab).
+  # Stretch goals reportés (chantiers ultérieurs) :
+  #   * Retirer prop `mode='libre'` des composants Moteur bimodaux (DiscoveryPanel,
+  #     CaptainPanel) — plus aucun caller, mais simplification intrusive sur Moteur.
+  #   * Supprimer EnginePhase.vue (production/) orphelin + son test.
+  #   * Supprimer route /keywords/audit + auditStore.fetchAudit (dead-end après
+  #     EnginePhase si retiré).
+  #   * Retirer le KeywordSwitcher de KeywordAuditTable.vue (localComparisons jamais
+  #     alimenté → switcher silencieusement inactif).
+  remove-labo-explorateur: done
 
 # ===== Backlog (non livré) =====
 #

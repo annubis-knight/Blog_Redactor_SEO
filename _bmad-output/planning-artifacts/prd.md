@@ -56,8 +56,8 @@ Chaque exigence a un identifiant **stable** préfixé par domaine. Les FR ne son
 | `FR-LEX` | Moteur — onglet Lexique (Phase ② Valider) |
 | `FR-FIN` | Moteur — onglet Finalisation (Phase ③) |
 | `FR-RED` | Rédaction (brief, sommaire, article, meta, éditeur) |
-| `FR-LAB` | Labo (recherche libre) |
-| `FR-EXP` | Explorateur (intent, autocomplete, local, content gap) |
+| ~~`FR-LAB`~~ | ~~Labo (recherche libre)~~ — **REMOVED 2026-05-10** (cf. §8.11) |
+| ~~`FR-EXP`~~ | ~~Explorateur (intent, autocomplete, local, content gap)~~ — **REMOVED 2026-05-10** (cf. §8.12) |
 | `FR-EXT` | Intégrations externes (DataForSEO, GSC, providers IA, HuggingFace) |
 | `FR-INFRA` | Infrastructure transversale (cache, persistance, validation, multi-provider) |
 | `NFR-PERF` | Performance |
@@ -138,7 +138,6 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 - **Facilité = Qualité** — La simplicité d'utilisation est au même niveau que la qualité des mots-clés validés et des textes produits.
 - **Guidage naturel** — L'utilisateur sait toujours où il en est dans le workflow (dots de progression, bandeaux de transition) sans documentation.
 - **Confiance avant rédaction** — Score Marché + Score Pertinence donnent un verdict bimodal clair sur le Capitaine. Lieutenants tirés de SERP réelle, Lexique extrait des concurrents, painPoint propagé dans tous les prompts IA. Au moment de rédiger, tout est verrouillé et validé.
-- **Recherche libre accessible** — Le Labo permet de vérifier une intuition en quelques clics, sans contexte article/cocon.
 
 ### Business Success
 
@@ -184,13 +183,9 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Article streamé section par section avec rate-limit 429 backoff (`generate-article-section.md`) → Meta titre + description (`generate-meta.md`) → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 12 actions contextuelles sur sélection.
 9. **Résultat** → Article rédigé, mots-clés validés, export HTML.
 
-### Journey 2 — Vérification au Labo (Recherche libre)
+### ~~Journey 2 — Vérification au Labo~~ — **REMOVED 2026-05-10**
 
-L'utilisateur a une intuition sur « erp cloud pme ». Vérification rapide avant intégration.
-
-1. **Navbar** → **Labo**
-2. **Labo** → Champ libre. Saisit « erp cloud pme ». Composants Moteur en mode `libre` (article virtuel id=0, niveau par défaut Intermédiaire, seuils par défaut Intermédiaire). Score Marché + Score Pertinence calculés et affichés sans gating.
-3. **Décision** → Mot-clé prometteur, retour au workflow.
+> Le Labo a été retiré du dashboard avec l'Explorateur (cf. §8.11/§8.12). L'utilisation de mots-clés en mode libre n'est plus exposée — le workflow Moteur reste le seul point d'entrée pour analyser un keyword.
 
 ### Journey 3 — Reprise d'un article en cours
 
@@ -1374,47 +1369,49 @@ Distinct de FR-RED-CONTEXTUAL-ACTIONS (qui agit sur sélection texte dans l'édi
 
 ---
 
-### 8.11 — Labo (FR-LAB)
+### 8.11 — Labo (FR-LAB) — **REMOVED 2026-05-10**
 
-#### FR-LAB-ACCESS
-Accessible depuis Navbar via `/labo`.
+> **Statut** : retiré du produit le 2026-05-10. La page `/labo` n'existe plus, les composants `PainTranslator`, `IntentStep` et la prop `mode='libre'` sur les composants Moteur partagés ne sont plus utilisés (la prop reste pour compatibilité interne mais aucun caller ne la passe). Les FRs ci-dessous sont marquées **DEPRECATED** ; l'historique d'intention reste accessible pour comprendre le contexte de conception initial.
 
-#### FR-LAB-MODE-LIBRE
-Réutilise les composants Moteur en mode `libre` (article virtuel id=0, type sélectionnable Pilier/Intermédiaire/Spécifique, défaut Intermédiaire). Pas de sélection article/cocon. Pas de checks émis.
+#### ~~FR-LAB-ACCESS~~ — DEPRECATED 2026-05-10
+~~Accessible depuis Navbar via `/labo`.~~
 
-#### FR-LAB-VERDICT-DEFAULT
-Verdict Capitaine seuils par défaut Intermédiaire (modifiables). Score Marché + Score Pertinence calculés selon les mêmes formules qu'en mode workflow.
+#### ~~FR-LAB-MODE-LIBRE~~ — DEPRECATED 2026-05-10
+~~Réutilisait les composants Moteur en mode `libre`. Pas de checks émis.~~
 
-#### FR-LAB-TABS
-Onglets disponibles au Labo : Discovery (KeywordDiscoveryTab.vue), Douleur (PainTranslator.vue), Capitaine (CaptainValidation.vue mode libre).
+#### ~~FR-LAB-VERDICT-DEFAULT~~ — DEPRECATED 2026-05-10
+~~Verdict Capitaine seuils par défaut Intermédiaire en libre.~~
+
+#### ~~FR-LAB-TABS~~ — DEPRECATED 2026-05-10
+~~Onglets Discovery / Douleur / Capitaine au Labo.~~
 
 ---
 
-### 8.12 — Explorateur (FR-EXP)
+### 8.12 — Explorateur (FR-EXP) — **REMOVED 2026-05-10**
 
-#### FR-EXP-INTENT-ANALYZE
-Endpoint `POST /api/intent/analyze`. SERP avancée DataForSEO → classification intent dominante (Navigational / Transactionnel / Informationnel / Local) + détection 9 modules SERP (Local Pack, Featured Snippet, PAA, Vidéo, Images, Shopping, Knowledge Graph, Top Stories). Scoring + recommandations. Stockage `keyword_intent_analyses` (cross-article).
-**Source :** `server/routes/intent-analyze.routes.ts` (à confirmer) — composant `IntentStep.vue`.
+> **Statut** : retiré du produit le 2026-05-10. La page `/explorateur` n'existe plus. Les routes API associées (`/api/intent/analyze`, `/api/keywords/compare-local`, `/api/keywords/autocomplete`, `/api/local/maps`, `/api/keywords/translate-pain`) ont été supprimées avec leurs services backend (`server/services/intent/intent.service.ts`, `server/services/strategy/local-seo.service.ts`). Les FRs ci-dessous sont marquées **DEPRECATED**.
+>
+> **Exception** : `FR-EXP-CONTENT-GAP` (endpoint `/api/content-gap/analyze`) reste **ACTIVE** — utilisée par le Moteur (`LieutenantsPanel.vue`, `ContentGapPanel.vue`).
 
-#### FR-EXP-AUTOCOMPLETE
-Endpoint `POST /api/keywords/autocomplete`. DataForSEO autocomplete. Calcul certitude d'intention par préfixes (CertaintyIndex). Détecte longue traîne.
-**Source :** composants `AutocompleteValidation.vue`, `AutocompleteChips.vue`.
+#### ~~FR-EXP-INTENT-ANALYZE~~ — DEPRECATED 2026-05-10
+~~Endpoint `POST /api/intent/analyze`. Classification intent + 9 modules SERP. Stockage `keyword_intent_analyses`.~~ Route supprimée. Le scan d'intent reste fait via `intent-scan.service.ts` (Radar workflow).
 
-#### FR-EXP-LOCAL-COMPARE
-Endpoint `POST /api/keywords/compare-local`. Volume local vs national, opportunité locale (`OpportunityAlert`). Stockage `keyword_metrics.local_comparison`.
-**Source :** composant `LocalComparisonStep.vue`.
+#### ~~FR-EXP-AUTOCOMPLETE~~ — DEPRECATED 2026-05-10
+~~Endpoint `POST /api/keywords/autocomplete`.~~ Route supprimée. L'autocomplete pour le validate-pain reste via `autocomplete.service.ts`.
 
-#### FR-EXP-MAPS
-Endpoint `POST /api/local/maps`. Détection Local Pack Google, listings concurrents (nombre, reviews, ratings), gap reviews vs concurrents.
-**Source :** composant `MapsStep.vue`.
+#### ~~FR-EXP-LOCAL-COMPARE~~ — DEPRECATED 2026-05-10
+~~Endpoint `POST /api/keywords/compare-local`.~~ Route supprimée.
 
-#### FR-EXP-CONTENT-GAP
+#### ~~FR-EXP-MAPS~~ — DEPRECATED 2026-05-10
+~~Endpoint `POST /api/local/maps`.~~ Route supprimée. Le service `local-seo.service.ts` a été retiré entièrement.
+
+#### FR-EXP-CONTENT-GAP — **ACTIVE** (re-classée hors §8.12 après retrait Explorateur)
 Endpoint `POST /api/content-gap/analyze`. Scrape top 10 → identifie topics manquants → suggestions de gaps. Stockage `keyword_metrics.content_gap_analysis`.
+**Consommée par** : `LieutenantsPanel.vue`, `LieutenantCard.vue`, `LieutenantProposals.vue`, `ContentGapPanel.vue` (Moteur).
 **Source :** `server/routes/content-gap.routes.ts` — `server/services/article/content-gap.service.ts`.
 
-#### FR-EXP-AUDIT
-Audit batch keywords d'un cocon via `POST /api/keywords/audit`. Composants `KeywordAuditTable.vue`, `KeywordComparison.vue`.
-**Source :** `server/routes/keywords.routes.ts:31-73`.
+#### ~~FR-EXP-AUDIT~~ — DEPRECATED 2026-05-10
+~~Audit batch keywords d'un cocon via `POST /api/keywords/audit`. Composants `KeywordAuditTable.vue`, `KeywordComparison.vue`.~~ La route subsiste côté backend (utilisée par `EnginePhase.vue` orphelin) mais n'est plus appelée par aucun composant Vue actif. Dette à nettoyer dans un chantier ultérieur de retrait des composants `production/`.
 
 ---
 

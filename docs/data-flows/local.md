@@ -1,15 +1,16 @@
 ---
 name: local
-description: "Flux des données SEO local — Google Maps analysis (Local Pack + GBP listings + review gap) et comparaison volume local vs national (opportunités tarifaires et compétitives). Tables: keyword_metrics.local_analysis, keyword_metrics.local_comparison. Stores: useLocalStore + useIntentStore. Cross-article, cache permanent."
-type: "{ local_analysis: MapsResult | null, local_comparison: LocalNationalComparison | null } où MapsResult = { keyword, locationCode, hasLocalPack, listings: GbpListing[], reviewGap: ReviewGap, cachedAt }, LocalNationalComparison = { keyword, local: LocationMetrics, national: LocationMetrics, opportunityIndex, alert?: OpportunityAlert, cachedAt }"
-last_updated: 2026-05-05
-related_fr: [FR-EXP-LOCAL-COMPARE, FR-EXP-MAPS, FR-EXT-DATAFORSEO, FR-DASH-NAV, FR-LIE-GEOFUNNEL-RULE, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE]
+description: "OBSOLETE 2026-05-10 — Le flux local SEO (Google Maps + comparaison local/national) a été retiré avec l'onglet Explorateur du dashboard. Routes /api/local/maps et /api/keywords/compare-local supprimées, services backend retirés. Document conservé pour archive uniquement."
+status: REMOVED
+last_updated: 2026-05-10
+related_fr: [FR-EXP-LOCAL-COMPARE (deprecated), FR-EXP-MAPS (deprecated)]
 ---
 
-# Data Flow — local
+# Data Flow — local — **REMOVED 2026-05-10**
 
-> **Description métier :** Analyse SEO local sur deux axes : (1) Google Maps discovery — détection Local Pack, listings GBP (position, rating, review count, statut claim), calcul du review gap (écart entre mes avis et moyenne compétiteurs) ; (2) comparaison volume de recherche local (région, ville) vs national pour identifier opportunités de prix / concurrence inférieure localement. Cross-article (un mot-clé analysé une fois, partagé). Freshness TTL 7j comme `keyword_metrics`.
-> **Type/format :** Deux colonnes JSONB de `keyword_metrics` : `local_analysis` (MapsResult) et `local_comparison` (LocalNationalComparison). Chacune peut être `null` indépendamment. Affichage front : composants `MapsStep.vue` (Explorateur, onglet Local Pack) et `LocalComparisonStep.vue` (onglet Comparaison Local/National). Store front `useLocalStore` cache front, `useIntentStore` pour comparaison.
+> **Statut :** Le flux décrit ici a été démantelé avec la suppression des onglets Labo & Explorateur (cf. `_bmad-output/implementation-artifacts/tech-spec-remove-labo-explorateur.md`). Les routes `/api/local/maps`, `/api/local/score`, `/api/local/entities` et `/api/keywords/compare-local` ont été supprimées. Les composants `MapsStep.vue` et `LocalComparisonStep.vue` n'existent plus. La colonne `keyword_metrics.local_analysis` n'est plus alimentée mais subsiste en DB (purge à programmer si nécessaire).
+>
+> Le contenu historique ci-dessous reste pour comprendre le contexte de conception.
 
 ## Producteurs
 
