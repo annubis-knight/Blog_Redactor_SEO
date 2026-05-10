@@ -97,22 +97,7 @@ describe('Tab moteur/discovery — Analyse IA (curate)', () => {
   })
 })
 
-describe('Tab moteur/discovery — Pain Translator', () => {
-  it('POST /keywords/translate-pain (stream consommé) retourne 5 kw', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
-    const res = await apiPost<{ keywords: unknown[] }>('/keywords/translate-pain', {
-      painText: `test-${ctx.runId} mon site ne génère pas de leads`,
-    })
-    expect(res.status).toBe(200)
-    expect(res.data?.keywords.length).toBeGreaterThan(0)
-  })
-
-  it('POST /keywords/translate-pain sans painText → 400', async () => {
-    if (requireServer().skip) return
-    const res = await apiPost('/keywords/translate-pain', {})
-    expect(res.status).toBe(400)
-  })
-
+describe('Tab moteur/discovery — Validate-pain (legacy)', () => {
   it('POST /keywords/validate-pain sans body → 400', async () => {
     if (requireServer().skip) return
     const { apiPost } = await import('../helpers/api-client.js')

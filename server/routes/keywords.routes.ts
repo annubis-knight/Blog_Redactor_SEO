@@ -460,38 +460,6 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
   }
 })
 
-/** POST /api/keywords/translate-pain — Translate a client pain point into SEO keywords */
-router.post('/keywords/translate-pain', async (req, res) => {
-  try {
-    const { painText, cocoonName: painCocoonName } = req.body as { painText: string; cocoonName?: string }
-    if (!painText || !painText.trim()) {
-      res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'painText is required' } })
-      return
-    }
-
-    const { loadPrompt } = await import('../utils/prompt-loader.js')
-    const { collectStreamWithUsage } = await import('../utils/stream-usage.js')
-
-    const painCocoonSlug = painCocoonName
-      ? painCocoonName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      : undefined
-
-    const prompt = await loadPrompt('pain-translate', {}, painCocoonSlug ? { cocoonSlug: painCocoonSlug } : undefined)
-
-    const { text: content, usage } = await collectStreamWithUsage(prompt, `Traduis cette douleur client en mots-clés SEO : "${painText}"`, 1024)
-
-    // Parse JSON from response
-    const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-    const result = JSON.parse(cleaned) as { keywords: Array<{ keyword: string; reasoning: string }> }
-
-    // usage remonté au front pour alimenter la pile d'activité
-    res.json({ data: { keywords: result.keywords, usage } })
-  } catch (err) {
-    log.error(`POST /api/keywords/translate-pain — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'TRANSLATION_ERROR', message: 'Failed to translate pain point into keywords' } })
-  }
-})
-
 const VALIDATION_CACHE_TTL_MS = 24 * 60 * 60 * 1000 // 1 day
 
 /** POST /api/keywords/validate-pain — Validate translated keywords via multi-source (DataForSEO + Discussions + Autocomplete) */

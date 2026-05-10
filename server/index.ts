@@ -10,8 +10,6 @@ import dataforseoRoutes from './routes/dataforseo.routes.js'
 import generateRoutes from './routes/generate.routes.js'
 import linksRoutes from './routes/links.routes.js'
 import exportRoutes from './routes/export.routes.js'
-import intentRoutes from './routes/intent.routes.js'
-import localRoutes from './routes/local.routes.js'
 import contentGapRoutes from './routes/content-gap.routes.js'
 import gscRoutes from './routes/gsc.routes.js'
 import siloRoutes from './routes/silos.routes.js'
@@ -64,8 +62,6 @@ app.use('/api/dataforseo', dataforseoRoutes)
 app.use('/api', generateRoutes)
 app.use('/api', linksRoutes)
 app.use('/api', exportRoutes)
-app.use('/api', intentRoutes)
-app.use('/api', localRoutes)
 app.use('/api', contentGapRoutes)
 app.use('/api', gscRoutes)
 app.use('/api', siloRoutes)
@@ -90,7 +86,7 @@ app.use(errorHandler)
 app.listen(PORT, () => {
   log.info(`Blog Redactor SEO API running on http://localhost:${PORT}`)
   log.debug('Registered routes', {
-    routes: ['/api/cocoons', '/api/keywords', '/api/articles', '/api/dataforseo', '/api/generate', '/api/links', '/api/export', '/api/intent', '/api/local', '/api/content-gap', '/api/gsc', '/api/silos', '/api/theme', '/api/strategy'],
+    routes: ['/api/cocoons', '/api/keywords', '/api/articles', '/api/dataforseo', '/api/generate', '/api/links', '/api/export', '/api/content-gap', '/api/gsc', '/api/silos', '/api/theme', '/api/strategy'],
   })
 
   // Verify PostgreSQL connection

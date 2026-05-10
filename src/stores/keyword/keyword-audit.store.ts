@@ -6,7 +6,7 @@
  *             PUT  /api/keywords (replaceKeyword)
  *             PATCH /api/keywords/:keyword/status (updateKeywordStatus)
  *             DELETE /api/keywords/:keyword (deleteKeyword)
- * CONSUMERS: KeywordAuditTable.vue, KeywordComparison.vue, MoteurValidationStep
+ * CONSUMERS: KeywordAuditTable.vue (lieutenants Moteur)
  * RELATED FR: FR-INFRA-API-WRAPPER, NFR-INT-API-WRAPPER, NFR-OBS-COST-LOG,
  *             NFR-OBS-DBOPS-TRACK, NFR-OBS-KNOWN-ERRORS
  */

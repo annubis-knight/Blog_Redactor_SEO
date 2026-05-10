@@ -120,23 +120,6 @@ describe('Contract /keywords/analyze-discovery', () => {
   })
 })
 
-describe('Contract /keywords/translate-pain', () => {
-  it('POST sans painText → 400', async () => {
-    if (requireServer().skip) return
-    const res = await apiPost('/keywords/translate-pain', {})
-    expect(res.status).toBe(400)
-  })
-
-  it('POST OK → { keywords: [{keyword, reasoning}] }', async () => {
-    if (requireServer().skip) return
-    const res = await apiPost<{ keywords: Array<{ keyword: string; reasoning: string }> }>('/keywords/translate-pain', {
-      painText: `test-${ctx.runId} fuite urgente`,
-    })
-    expect(res.status).toBe(200)
-    expect(Array.isArray(res.data?.keywords)).toBe(true)
-  })
-})
-
 describe('Contract /keywords/validate-pain', () => {
   it('POST sans keywords[] → 400', async () => {
     if (requireServer().skip) return

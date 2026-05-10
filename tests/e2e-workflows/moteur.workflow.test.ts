@@ -113,17 +113,6 @@ describe('Moteur Workflow — Onglet Discovery', () => {
     }
   })
 
-  it('POST /keywords/translate-pain (stream) retourne keywords[]', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
-    const res = await apiPost<{ keywords: Array<{ keyword: string; reasoning: string }> }>('/keywords/translate-pain', {
-      painText: `test-${ctx.runId} mon site web ne convertit pas`,
-    })
-    expect(res.status).toBe(200)
-    expect(Array.isArray(res.data?.keywords)).toBe(true)
-    expect(res.data?.keywords.length).toBeGreaterThan(0)
-    expect(res.data?.keywords[0].keyword).toBeDefined()
-    expect(res.data?.keywords[0].reasoning).toBeDefined()
-  })
 })
 
 // ---------------------------------------------------------------------------
