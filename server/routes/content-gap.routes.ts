@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { analyzeContentGap } from '../services/article/content-gap.service.js'
 
-// Sprint 15.5 — content-gap is now cross-article (DB-first on keyword_metrics.content_gap_analysis).
+
 // articleId param dropped: two articles testing the same keyword share the analysis.
 
 const router = Router()

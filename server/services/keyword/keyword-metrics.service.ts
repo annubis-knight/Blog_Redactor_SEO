@@ -70,9 +70,9 @@ export interface KeywordMetrics {
   autocompleteSuggestions: AutocompleteSuggestion[]
   autocompleteSource: 'google' | 'dataforseo' | null
   paaQuestions: PaaQuestion[]
-  localAnalysis: unknown | null           // Sprint 15.5 — MapsResult shape
-  contentGapAnalysis: unknown | null      // Sprint 15.5 — ContentGapAnalysis shape
-  localComparison: unknown | null         // Sprint 15.5 — LocalNationalComparison shape
+  localAnalysis: unknown | null           //  — MapsResult shape
+  contentGapAnalysis: unknown | null      //  — ContentGapAnalysis shape
+  localComparison: unknown | null         //  — LocalNationalComparison shape
   fetchedAt: string
 }
 
@@ -217,7 +217,7 @@ export async function upsertKeywordPaa(
   )
 }
 
-/** Sprint 15.5 — Local SEO maps analysis stored on keyword_metrics. */
+
 export async function upsertKeywordLocalAnalysis(
   keyword: string,
   analysis: unknown,
@@ -234,7 +234,7 @@ export async function upsertKeywordLocalAnalysis(
   )
 }
 
-/** Sprint 15.5 — Content gap analysis stored on keyword_metrics. */
+
 export async function upsertKeywordContentGap(
   keyword: string,
   analysis: unknown,
@@ -251,7 +251,7 @@ export async function upsertKeywordContentGap(
   )
 }
 
-/** Sprint 15.5 — Local vs national comparison stored on keyword_metrics. */
+
 export async function upsertKeywordLocalComparison(
   keyword: string,
   comparison: unknown,

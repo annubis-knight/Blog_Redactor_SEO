@@ -6,8 +6,7 @@ import type { ApiUsage } from '@shared/types/index.js'
 /**
  * Composable for consuming SSE streams from POST endpoints.
  *
- * Depuis le chantier fetch→wrapper migration, ce composable est un thin
- * wrapper autour de `apiStream` (FR-INFRA-API-STREAM). Il ajoute la couche
+ * Thin wrapper autour de `apiStream` (FR-INFRA-API-STREAM). Il ajoute la couche
  * réactive (refs Vue) au-dessus du helper stateless.
  */
 export type SectionStartInfo = ApiSectionStartInfo

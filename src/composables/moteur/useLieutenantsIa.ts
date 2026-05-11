@@ -20,8 +20,7 @@ import type { WordGroup } from '@shared/types/discovery-tab.types.js'
  *           POST /keywords/:keyword/ai-hn-structure (HN-only regen avec lockedHeadings)
  * CONSUMERS: LieutenantH2Structure (affichage + lock par titre + bouton Régénérer),
  *            useLieutenantsHn (saveHnStructure → PUT /articles/:id outline + keywords)
- * RELATED FR: FR-LIE-AI-FRONTIER, FR-MOT-HN-EMPTY-VISIBLE (2026-05-07),
- *             FR-MOT-HN-REGEN-LOCKED (2026-05-07)
+ * RELATED FR: FR-LIE-AI-FRONTIER, FR-MOT-HN-EMPTY-VISIBLE, FR-MOT-HN-REGEN-LOCKED
  *
  * Vague 3 — Composable extrait de LieutenantsPanel. Encapsule la Phase 2 IA :
  * streaming propose-lieutenants, cards selected/eliminated, structure Hn,
@@ -90,7 +89,7 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     captainKeyword, articleLevel, selectedArticle,
     serpResult, serpResultsByKeyword, resolvedRootKeywords,
     wordGroups, cocoonSlug,
-    // Sprint 17 — `isLocked` n'est plus utilisé dans le composable depuis
+
     // FR-LIE-CHECKBOX-LOCK-IMMEDIATE (toggleLieutenant fonctionne toujours,
     // pas de garde). Conservé dans LieutenantsIaDeps pour compat tests existants.
     articleKeywordsStore,
@@ -122,7 +121,7 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
   const currentStep = ref<AnalysisStep>('idle')
 
   function toggleLieutenant(card: ProposedLieutenant): void {
-    // Sprint 17 — Plus de garde isLocked : le verrouillage est désormais
+
     // par mot-clé (FR-LIE-CHECKBOX-LOCK-IMMEDIATE), pas par container.
     // Cocher = lock immédiat en DB. Décocher = unlock immédiat en DB.
     const next = new Map(selectedCards.value)
@@ -142,11 +141,8 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     selectedCards.value = next
     onLieutenantsUpdated(Array.from(next.keys()))
 
-    // 2026-05-08 — Persist the new statuses on `lieutenant_explorations`.
-    // saveDecisions seul met à jour la liste plate `article_keywords.lieutenants`
-    // mais ne touche PAS la table `lieutenant_explorations.status` (jointe au
-    // mount par getArticleKeywords pour reconstruire `richLieutenants`).
-    // Sans cet appel, un unlock individuel ne survivait pas au reload.
+    // Persist statuses on `lieutenant_explorations` (saveDecisions ne touche pas cette table).
+    // Sans cela, unlock ne survit pas au reload.
     const articleId = selectedArticle.value?.id
     const captainKw = captainKeyword.value
     const richLts = articleKeywordsStore.keywords?.richLieutenants

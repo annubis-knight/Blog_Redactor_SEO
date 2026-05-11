@@ -34,10 +34,8 @@ const props = defineProps<{
   showClearCache?: boolean
 }>()
 
-// Sprint 4 (2026-05-04) — friction #2 : les chips ne sont plus des actions de
-// navigation. Seul le bouton "Vider le cache" et le TabLoadPrompt voisin
-// portent une action. Les chips sont devenus de simples indicateurs visuels
-// (read-only) — la navigation passe par les onglets standards de la navbar.
+// Chips sont des indicateurs visuels read-only (pas d'actions au clic).
+// Navigation via onglets standards.
 const emit = defineEmits<{
   'clear-cache': []
 }>()
@@ -75,9 +73,7 @@ const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCoun
       </button>
     </div>
 
-    <!-- Chips — Sprint 4 (2026-05-04) : read-only, plus de navigation au clic.
-         La nav passe par les onglets standards de la navbar. La bordure bleue
-         "current" a été retirée (vocabulaire visuel jugé excessif par l'utilisateur). -->
+    <!-- Chips read-only (nav via onglets standards). -->
     <div class="tcp__chips">
       <span
         v-for="entry in entries"
@@ -177,7 +173,7 @@ const cacheTotal = computed(() => props.entries.reduce((n, e) => n + e.cacheCoun
   border: 1px solid transparent;
   background: none;
   font-family: inherit;
-  /* Sprint 4 (2026-05-04) — chip read-only : pas de hover, pas de cursor pointer. */
+  /* Chip read-only : pas de hover, cursor: default. */
   cursor: default;
 }
 

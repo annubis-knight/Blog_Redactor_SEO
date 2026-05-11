@@ -7,14 +7,14 @@ import { fetchRelatedKeywords, fetchKeywordOverview } from './keywords.js'
 // --- Orchestrator ---
 
 export async function getBrief(keyword: string, forceRefresh = false): Promise<DataForSeoCacheEntry & { fromCache: boolean }> {
-  // Sprint 15.8 — check keyword_metrics first (cross-article DB).
+
   if (!forceRefresh) {
     const { getKeywordMetrics, isKeywordMetricsFresh } = await import('../../keyword/keyword-metrics.service.js')
     const { getSerpResults } = await import('../../keyword/keyword-serp.service.js')
     const metrics = await getKeywordMetrics(keyword)
     if (metrics && isKeywordMetricsFresh(metrics.fetchedAt) && metrics.searchVolume !== null) {
       log.debug(`DB-first hit for brief "${keyword}"`)
-      // Story C3 — Capitaine n'a besoin que des URLs Top 10. On lit
+
       // keyword_serp_results (cross-article slim) au lieu du payload monolithique.
       const serpRows = await getSerpResults(keyword).catch(() => [])
       return {
@@ -86,7 +86,7 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
     cachedAt: new Date().toISOString(),
   }
 
-  // Sprint 15.8 — mirror the brief into keyword_metrics so other workflows benefit.
+
   try {
     const { upsertKeywordKpis, upsertKeywordPaa } = await import('../../keyword/keyword-metrics.service.js')
     await upsertKeywordKpis(keyword, {
@@ -103,7 +103,7 @@ export async function getBrief(keyword: string, forceRefresh = false): Promise<D
     log.warn(`brief: DB-first persist failed — ${(err as Error).message}`)
   }
 
-  // Keep the legacy api_cache write for now (will be removed in Sprint 15.10).
+  // Keep the legacy api_cache write for now (will be removed in ).
   await writeCache(entry)
 
   log.info(`SEO brief done for "${keyword}"`, {

@@ -26,7 +26,7 @@ export interface RelatedKeyword {
  * (DataForSEO sans signal, miss DB) — JAMAIS substitué par `0`.
  *
  * `monthlySearches` reste `number[]` : l'adapter filtre les éléments
- * absents au lieu de les remplacer par 0 (cf. tech-spec D2).
+ * absents au lieu de les remplacer par 0.
  */
 export interface KeywordOverview {
   searchVolume: number | null

@@ -193,9 +193,7 @@ function onRegenerate(): void {
               Sauvegardee
             </span>
           </Transition>
-          <!-- 2026-05-08 — Badge "Validée avec les lieutenants" SUPPRIMÉ (lié au
-               concept de panel locké, qui n'existe plus). Le statut "structure
-               sauvegardée" est porté par .hn-saved-badge ci-dessus. -->
+          <!-- Badge "Validée avec les lieutenants" supprimé. Statut porté par .hn-saved-badge. -->
 
         </div>
       </template>

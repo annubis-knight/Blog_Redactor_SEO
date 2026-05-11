@@ -27,9 +27,7 @@ const showTooltip = ref(false)
 </script>
 
 <template>
-  <!-- Sprint 3 (2026-05-04) — `@click.stop` empêche la propagation au parent
-       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
-       lors d'un clic sur le score-ring. -->
+  <!-- @click.stop empêche propagation parent (evite ouverture sidebar). -->
   <div
     class="radar-card__score-ring"
     :class="{ 'radar-card__score-ring--empty': !hasScore }"

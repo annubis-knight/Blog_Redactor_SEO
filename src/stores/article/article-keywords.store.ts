@@ -64,12 +64,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  /**
-   * 2026-05-01 — Variante merge-only de fetchKeywords. Récupère le payload DB
-   * (`GET /articles/:id/keywords`) et fusionne avec l'état courant SANS écraser
-   * ce que l'utilisateur a en mémoire. Utilisé par le TabLoadPrompt depuis les
-   * onglets Capitaine et Lieutenants.
-   */
+  // Merge-only variant of fetchKeywords (preserves in-memory state)
   async function fetchKeywordsMerge(id: number) {
     isLoading.value = true
     error.value = null
@@ -170,12 +165,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  /**
-   * Merge sans doublon des richLieutenants. Clé = `keyword` (lowercase trim).
-   * 2026-05-07 — `lockedAt` SUPPRIME. En cas de collision, on prefere l'incoming
-   * s'il a un status terminal ('locked' / 'archived' / 'eliminated'), sinon on
-   * conserve l'existant.
-   */
+  // Merge rich lieutenants without duplicates: prefer incoming if terminal status
   function mergeRichLieutenants(incoming: RichLieutenant[]) {
     if (!keywords.value) return
     const existing = keywords.value.richLieutenants ?? []
@@ -203,14 +193,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     isSaving.value = true
     error.value = null
     try {
-      // 2026-05-08 — On NE remplace PAS keywords.value avec la reponse du PUT.
-      // La reponse contient seulement les champs flat (capitaine, lieutenants,
-      // lexique, rootKeywords, hnStructure) — pas richCaptain ni richLieutenants.
-      // Si on remplaçait, on perdrait ces objets riches et l'UI verrait
-      // disparaitre les checkboxes cochees (etat 'locked' dans richLieutenants).
-      // On envoie le PUT, on log la response, mais on garde keywords.value tel quel.
-      // La DB est a jour, le store local aussi (mute par lockCaptain/lockLieutenant
-      // avant l'appel).
+      // Response contains only flat fields, not rich objects — preserve in-memory state
       await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
         capitaine: kw.capitaine,
         lieutenants: kw.lieutenants,
@@ -357,22 +340,10 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  /**
-   * Sprint 13 — Déverrouille le Capitaine (mirror de lockCaptain).
-   * Met richCaptain.status = 'suggested' et lockedAt = null.
-   * Préserve exploredKeywords et aiPanelMarkdown (le user peut re-locker).
-   *
-   * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
-   * du composant CaptainPanel.vue, sans propager au store ni à la DB.
-   * Conséquence : la DB conservait status='locked' éternellement après un unlock UI.
-   */
+  // Unlock captain (sets status='suggested', clears keyword/capitaine)
   function unlockCaptain() {
     if (!keywords.value?.richCaptain) return
     keywords.value.richCaptain.status = 'suggested'
-    // 2026-05-07 — `lockedAt` SUPPRIME du type RichCaptain.
-    // On vide aussi `capitaine` côté store : c'est cette valeur qui est
-    // envoyée au backend par saveDecisions, et le backend dérive le mirror
-    // sur articles.captain_keyword_locked à partir d'elle.
     keywords.value.richCaptain.keyword = ''
     keywords.value.capitaine = ''
   }
@@ -489,14 +460,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
    * lieutenants conservent leur historique mais ne sont plus considérés
    * comme actifs pour le nouveau Capitaine.
    */
-  /**
-   * Sprint 13 — Déverrouille les lieutenants verrouillés (mirror de setRichLieutenants).
-   * Tous les lieutenants en status 'locked' repassent à 'suggested'. lockedAt = null.
-   * Différent de archiveLockedLieutenants qui les passe à 'archived' (terminal).
-   *
-   * Avant Sprint 13, l'unlock se faisait UNIQUEMENT via la Ref locale isLocked
-   * du composant LieutenantsPanel.vue, sans propager au store ni à la DB.
-   */
+  // Unlock all locked lieutenants (sets status='suggested')
   function unlockLieutenants() {
     if (!keywords.value?.richLieutenants) return
     let unlocked = 0
@@ -515,14 +479,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
-  /**
-   * Sprint 17 — Lock immédiat d'un lieutenant individuel (déclenché par
-   * checkbox cochée, plus de bouton batch). Si le lieutenant n'existe pas
-   * encore dans richLieutenants, le crée avec status='locked'.
-   *
-   * Distinct de setRichLieutenants (batch). Cette méthode-ci permet le
-   * verrouillage atomique mot-clé par mot-clé, conforme à FR-LIE-CHECKBOX-LOCK-IMMEDIATE.
-   */
+  // Lock individual lieutenant (checkbox checked) — creates entry if missing
   function lockLieutenant(payload: {
     keyword: string
     reasoning: string
@@ -547,17 +504,12 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
       })
       keywords.value.richLieutenants = rich
     }
-    // Sync flat list pour rétro-compat
     if (!keywords.value.lieutenants.includes(payload.keyword)) {
       keywords.value.lieutenants = [...keywords.value.lieutenants, payload.keyword]
     }
   }
 
-  /**
-   * Sprint 17 — Unlock immédiat d'un lieutenant individuel (checkbox décochée).
-   * Passe le statut à 'suggested' (pas 'eliminated' — le lieutenant reste
-   * proposable, l'utilisateur peut le re-cocher).
-   */
+  // Unlock individual lieutenant (checkbox unchecked) — sets status='suggested'
   function unlockLieutenant(keyword: string) {
     if (!keywords.value?.richLieutenants) return
     const lt = keywords.value.richLieutenants.find(l => l.keyword === keyword)

@@ -18,8 +18,7 @@ const props = defineProps<{
   totalGenerated: number
   selectedCards: Map<string, ProposedLieutenant>
   contentGapInsights: string
-  // Sprint 1 (2026-05-04) — badge level article migré depuis le legacy
-  // `lieutenants-header` supprimé. Affiché dans le header de cette section.
+  // Badge level article, migré depuis le legacy `lieutenants-header`.
   articleLevel?: 'pilier' | 'intermediaire' | 'specifique' | null
 }>()
 
@@ -30,7 +29,7 @@ defineEmits<{
 
 const showEliminated = ref(false)
 
-// 2026-05-02 — Tri unifié pour la liste de Lieutenants. Score = `score` (IA, 0-100).
+// Tri unifié pour la liste de Lieutenants (score IA 0-100).
 const lieutenantSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
   { key: 'score', label: 'Score IA' },
@@ -61,7 +60,6 @@ function isCardSelected(keyword: string, selected: Map<string, ProposedLieutenan
   return selected.has(keyword)
 }
 
-// Sprint 4.3 — render contentGapInsights as markdown (same pipeline as Captain AI panel).
 const parsedInsights = computed(() =>
   props.contentGapInsights ? (marked.parse(props.contentGapInsights) as string) : '',
 )
@@ -74,7 +72,7 @@ const parsedInsights = computed(() =>
         Lieutenants proposes par l'IA
         <span v-if="iaIsStreaming" class="pulse-dot" />
       </h3>
-      <!-- Badge level migré depuis l'ancien `lieutenants-header` (Sprint 1, 2026-05-04). -->
+      <!-- Badge level, migré depuis `lieutenants-header`. -->
       <span v-if="articleLevel" class="level-badge" :title="`Niveau de l'article : ${articleLevel}`">
         {{ articleLevel }}
       </span>
@@ -210,7 +208,7 @@ const parsedInsights = computed(() =>
   border-radius: 6px;
   line-height: 1.5;
 }
-/* Sprint 4.3 — markdown styles for content-gap insights */
+
 .content-gap-md { margin-top: 0.25rem; }
 .content-gap-md :deep(h1),
 .content-gap-md :deep(h2),
@@ -266,7 +264,7 @@ const parsedInsights = computed(() =>
 
 .section-empty { margin: 0; padding: 0.5rem 0; font-size: 0.8125rem; color: var(--color-text-muted); font-style: italic; }
 
-/* Sprint 1 (2026-05-04) — header avec titre + badge level (migré depuis legacy lieutenants-header). */
+/* Header avec titre + badge level (migré depuis legacy lieutenants-header). */
 .ia-proposal-header {
   display: flex;
   align-items: center;

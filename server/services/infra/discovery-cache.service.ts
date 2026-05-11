@@ -6,7 +6,7 @@ import {
 } from '../keyword/keyword-discovery-db.service.js'
 import type { DiscoveryCacheEntry, DiscoveryCacheStatus } from '../../../shared/types/discovery-cache.types.js'
 
-// Sprint 15.6 — storage moved from api_cache[discovery] to keyword_discoveries
+
 // (seed, lang). TTL applicative 30 jours (au lieu de 7) via le champ fetched_at.
 // Le UI affiche un badge "Dernière analyse du X. [Rafraîchir]".
 

@@ -122,13 +122,6 @@ const keywordInput = ref('')
 const { warnings: compositionWarnings, allPass: compositionAllPass } = useCompositionCheck(keywordInput, articleLevel)
 
 // --- Lock/unlock Capitaine ---
-// Sprint 13 — `isLocked` est désormais DÉRIVÉ du store (source unique de vérité).
-// Avant : Ref locale + watcher Sprint 16 hotfix qui resynchait depuis le store.
-// Après : computed qui lit directement richCaptain.status. La Ref est éliminée,
-// les watchers de sync ne sont plus nécessaires (FR-MOT-LOCK-DERIVED).
-//
-// La prop `initialLocked` est conservée pour compat tests existants mais n'a
-// plus d'effet : si elle est `true`, c'est que le store a déjà richCaptain.status='locked'.
 const isLocked = computed(() => {
   const kw = articleKeywordsStore.keywords
   if (!kw) return props.initialLocked
@@ -210,9 +203,6 @@ function handleValidate() {
 watch(
   () => activeKeyword.value,
   (kw) => {
-    // Sprint 13 — `isLocked` n'est plus une Ref. Pas besoin de la reset ici :
-    // le computed dérive directement de richCaptain.status, qui sera bien
-    // resynchronisé par le store quand l'article change.
     if (kw) {
       keywordInput.value = kw
       log.debug('CaptainPanel — input pré-rempli', { keyword: kw })
@@ -224,15 +214,6 @@ watch(
   { immediate: true },
 )
 
-// Sprint 17 (Bug B) — Le watcher `keywords.capitaine` ne fait PLUS d'addEntry.
-// Avant : à chaque mutation de `capitaine` (lock, unlock, relock), si
-// `currentEntry.card.keyword !== persisted`, le code appelait `addEntry`
-// pour "garantir" que le mot-clé verrouillé soit dans la liste. Mais
-// `addEntry` ne dédupliquait pas → duplications cumulées à chaque toggle.
-// Maintenant : si l'entry n'existe pas, on log un warning (potentielle race
-// condition à investiguer) sans créer de duplication. Le restore via
-// exploredKeywords (watcher dédié plus bas) reste la voie normale d'apparition
-// des entries.
 watch(
   () => articleKeywordsStore.keywords?.capitaine,
   (persisted) => {
@@ -255,12 +236,6 @@ watch(
   { immediate: true },
 )
 
-// Sprint 13 — Le watcher Sprint 16 hotfix qui resynchait `isLocked` depuis
-// richCaptain.status est SUPPRIMÉ. `isLocked` est désormais un computed qui
-// lit directement le store, donc plus besoin de resync manuelle.
-// On garde uniquement le watcher pour synchroniser `lockedKeyword` (qui reste
-// une Ref locale parce qu'elle représente la sélection UI courante du carousel,
-// pas l'état de verrouillage).
 watch(
   () => articleKeywordsStore.keywords?.richCaptain?.status,
   (status) => {
@@ -361,8 +336,6 @@ watch(
 
 onUnmounted(() => aiAbort())
 
-// Sprint B (2026-05-02) — État AiPanel pour le mode libre (manual streaming).
-// Mapping props legacy → AiPanelState attendu par <AiPanel>.
 const manualAiState = computed<AiPanelState>(() => {
   if (aiError.value) return 'error'
   if (aiIsStreaming.value) return 'streaming'
@@ -375,7 +348,6 @@ const manualVerdictConfig = computed(() => {
   return v ? VERDICT_CONFIG[v.level] : null
 })
 
-// Sprint B — Régénération du panel IA en mode libre (re-stream sur le mot-clé courant).
 function handleManualAiRegenerate() {
   const kw = currentResult.value?.keyword
   if (!kw) return
@@ -394,8 +366,6 @@ function handleManualAiRegenerate() {
 }
 
 // --- Lock/Unlock (manual mode) ---
-// Sprint 13 — Plus d'écriture `isLocked.value = true`. C'est `lockCaptain` du store
-// qui passe richCaptain.status = 'locked', et le computed `isLocked` se réactive.
 function lockCaptaine() {
   const keyword = currentResult.value?.keyword
   log.info('CaptainPanel — Capitaine verrouillé', { keyword, verdict: effectiveVerdict.value })
@@ -429,9 +399,6 @@ function requestUnlock(source: UnlockSource) {
 }
 
 function performUnlock(source: UnlockSource) {
-  // Sprint 13 — Source unique de vérité : on déverrouille via le store, pas via
-  // une Ref locale. Le computed `isLocked` se réactive automatiquement quand
-  // richCaptain.status passe à 'suggested'.
   if (source === 'carousel') {
     lockedKeyword.value = null
   }
@@ -485,29 +452,14 @@ const carousel = useExploredKeywords()
 const carouselEntries = computed(() => carousel.entries.value)
 const lockedKeyword = ref<string | null>(null)
 
-// 2026-05-02 — Tri unifié de la radar-list (Capitaine).
 // L'item verrouillé reste TOUJOURS en tête, peu importe le critère choisi.
-//
-// Score = `card.relevanceScore.total` (Score Pertinence STRICT, sans fallback
-// sur combinedScore). Cohérent avec le score affiché par RadarKeywordCard en
-// mode `displayMode='relevance'` après la migration scoring du 2026-05-02.
-//
-// Items sans relevanceScore (painPoint absent ou cache obsolète) → valeur null
-// → toujours en bas du tri (gestion native de useSortableList). Le score
-// affiché sur ces cards est "—", donc l'absence de tri sur ces items est
-// visuellement cohérente.
-//
+// Score Pertinence STRICT (relevanceScore.total), cohérent avec l'affichage.
+// Items sans relevanceScore → null → en bas du tri.
 // Voir docs/scoring-kpi-vs-relevance.md.
 const captainSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
   { key: 'score', label: 'Score Pertinence' },
 ]
-// Sprint 17 (Bug A) — Tri et pin sur `originalCard.keyword`, pas `card.keyword`.
-// Quand l'utilisateur active/désactive une racine, `card` est remplacée par
-// la variante racine (le keyword change) — sans cette correction, la position
-// dans la liste change à chaque clic, ce que l'utilisateur ne veut pas.
-// Le tri reste basé sur le mot-clé d'origine (stable). L'affichage du score
-// continue de venir de la card active (la racine sélectionnée).
 const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<ExploredKeywordEntry>({
   items: carouselEntries,
   getValue: (entry, key) => {
@@ -517,9 +469,6 @@ const { sorted: sortedEntries, sortState: captainSortState } = useSortableList<E
   },
   pinnedPredicate: (entry) => {
     if (lockedKeyword.value === null) return false
-    // Sprint 18 — Décision produit : lock UNIQUEMENT sur originalCard.keyword.
-    // lockEntry capture toujours originalCard.keyword (jamais la racine active),
-    // donc lockedKeyword === entry.originalCard.keyword est l'unique condition.
     return entry.originalCard.keyword === lockedKeyword.value
   },
 })
@@ -534,8 +483,6 @@ function rawIndexOf(entry: ExploredKeywordEntry): number {
   return carousel.entries.value.findIndex(e => e.originalCard.keyword === entry.originalCard.keyword)
 }
 
-// Sprint 2026-04 — Pointeur de sélection UI pour la liste verticale (mode workflow).
-// Indépendant de carousel.currentIndex (qui sert l'auto-validation interne).
 const selectedIndex = ref<number | null>(null)
 const selectedEntry = computed<ExploredKeywordEntry | null>(() => {
   if (selectedIndex.value === null) return null
@@ -543,13 +490,13 @@ const selectedEntry = computed<ExploredKeywordEntry | null>(() => {
 })
 const lockedIndex = computed(() => {
   if (lockedKeyword.value === null) return -1
-  // Sprint 18 — Lock UNIQUEMENT sur originalCard.keyword (décision tranchée).
+
   return carousel.entries.value.findIndex(e => e.originalCard.keyword === lockedKeyword.value)
 })
 const lockedEntryExists = computed(() => lockedIndex.value !== -1)
 const selectedIsLocked = computed(() => {
   if (!selectedEntry.value || !lockedKeyword.value) return false
-  // Sprint 18 — Lock UNIQUEMENT sur originalCard.keyword.
+
   return selectedEntry.value.originalCard.keyword === lockedKeyword.value
 })
 
@@ -607,11 +554,8 @@ watch(
   { immediate: true },
 )
 
-// Note Sprint 10.5 (2026-05-06) — Le watcher painPoint qui re-fetchait
-// /captain-explorations sur changement de painPoint a été supprimé.
-// Le painPoint est désormais figé après la sortie du Cerveau (cf.
-// FR-PAIN-IMMUTABLE-AFTER-CEREVEAU). Le calcul live de la Pertinence reste
-// effectué côté backend à chaque hydratation initiale de l'onglet Capitaine.
+// painPoint est figé après la sortie du Cerveau (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU).
+// La Pertinence se calcule côté backend à chaque hydratation initiale.
 
 // --- Carousel AI streaming ---
 const carouselAiCache = ref(new Map<string, string>())
@@ -624,7 +568,7 @@ function touchAiStreaming() { carouselAiStreaming.value = new Set(carouselAiStre
 function touchAiErrors() { carouselAiErrors.value = new Map(carouselAiErrors.value) }
 
 function launchAiStream(keyword: string, validation: ScanResponse, force = false) {
-  // Sprint 3.2 — `force` allows the regenerate button to bypass the in-memory
+
   // cache and re-stream from Claude. We also drop the persistedAiPanels guard
   // so the new markdown is re-saved.
   if (!force && (carouselAiCache.value.has(keyword) || carouselAiStreaming.value.has(keyword))) return
@@ -707,7 +651,6 @@ const selectedParsedMarkdown = computed(() => {
   return ''
 })
 
-// Sprint 2026-04 — Regenerate l'IA pour l'entrée sélectionnée dans la side panel.
 function handleAiRegenerate() {
   const entry = selectedEntry.value
   if (!entry?.validation) return
@@ -736,11 +679,7 @@ const persistedRoots = new Set<string>()
 const persistedAiPanels = new Set<string>()
 
 // Pre-fill sets from existing persisted history AND restore carousel
-//
-// 2026-05-02 — `deep: true` indispensable : `mergeCaptainExploredKeywords` (TabLoadPrompt)
-// fait un `history.push(entry)` qui mute le tableau en place. Sans deep, le
-// watcher ne se déclenche pas et le carousel n'est pas rebuild → le tri n'a
-// aucun nouvel item à trier.
+// Note: deep: true indispensable — mergeCaptainExploredKeywords fait un push qui mute le tableau en place.
 watch(
   () => articleKeywordsStore.keywords?.richCaptain?.exploredKeywords,
   (history) => {
@@ -756,7 +695,6 @@ watch(
       if (entry.rootKeywords.length > 0) persistedRoots.add(`${entry.keyword}:${entry.rootKeywords.length}`)
     }
 
-    // Sprint 16 hotfix — restore whenever DB history brings MORE entries than
     // the carousel currently holds. Previously this watcher used
     // `!carousel.isActive.value`, which silently skipped the restore when a
     // race-condition watcher had already inserted 1 stub entry from
@@ -881,7 +819,6 @@ function carouselEffectiveVerdict(entry: ExploredKeywordEntry): VerdictLevel | n
   return carousel.effectiveVerdict(entry)
 }
 
-
 // Étape 3F — Mini résumé verdict injecté dans le slot AiPanel à la place
 // du CaptainVerdictPanel (qui prenait toute la largeur). On garde l'info
 // d'évaluation mais sans bloc dédié qui étouffait la lecture.
@@ -927,7 +864,7 @@ async function lockEntry(idx: number) {
     log.debug('[CaptainPanel] lockEntry no-op (entry incomplete)', { idx })
     return
   }
-  // Sprint 18 — Décision produit tranchée : on lock TOUJOURS le mot-clé d'origine
+
   // de la card (originalCard.keyword), JAMAIS la racine active. Si l'utilisateur
   // veut locker une racine, il doit la chercher explicitement (input Capitaine
   // ou recherche d'une RadarCard avec ce mot-clé comme original). Cela garantit :
@@ -1036,14 +973,8 @@ function handleWordToggleAt(idx: number, activeIndices: number[]) {
 }
 
 /**
- * Sprint 2 (2026-05-04) — Recalcul manuel du score Pertinence pour une card
- * du carousel. L'utilisateur clique sur le bouton "refresh" dans
- * `radar-card-lockable__actions` quand il voit que la Pertinence est null
- * malgré un painPoint défini (cas "no-signals").
- *
- * On délègue à `carousel.addEntry()` qui ré-injecte la card via
- * `scanKeyword(keyword, level, title, painPoint, articleId)` —
- * même chemin que la validation initiale, donc cohérent.
+ * Recalcul manuel du score Pertinence pour une card du carousel (bouton refresh).
+ * Délègue à carousel.addEntry() qui ré-injecte la card via scanKeyword().
  */
 async function handleRecomputeRelevance(card: { keyword: string }) {
   const articleId = props.selectedArticle?.id
@@ -1313,10 +1244,7 @@ onUnmounted(() => abortAllAiStreams())
   padding: 1rem 0;
 }
 
-/* 2026-04-30 — Le side-panel est désormais purement flottant (position: fixed,
-   redimensionnable sans limite). Il ne fait plus partie du grid et n'occupe
-   plus de colonne réservée. Le container de la radar list utilise toute la
-   largeur disponible en permanence — qu'une carte soit sélectionnée ou non. */
+/* Side-panel purement flottant (position: fixed, redimensionnable). */
 .captain-layout {
   display: block;
   margin-top: 1rem;
@@ -1338,12 +1266,8 @@ onUnmounted(() => abortAllAiStreams())
   font-size: 0.875rem;
 }
 
-/* 2026-04-30 — Refonte UX (demande utilisateur) :
-   - Sélection : effet "bouton enfoncé" au lieu d'une border bleue extérieure.
-     Léger background, ombre interne (creux), translation 1px verticale.
-   - Verrouillage : plus de border verte parent — le seul indicateur reste le
-     bouton cadenas (côté RadarCardLockable) qui passe en vert plein quand actif.
-   - Hover/focus : ombre douce élévée, sans border colorée. */
+/* Sélection : effet "bouton enfoncé". Verrouillage : cadenas indicateur.
+   Hover/focus : ombre douce, sans border colorée. */
 .radar-list-item {
   cursor: pointer;
   border-radius: 10px;
@@ -1568,7 +1492,6 @@ onUnmounted(() => abortAllAiStreams())
   color: var(--color-text-muted, #64748b);
 }
 
-/* Mini bandeau verdict en tête du slot AiPanel (Sprint B). */
 .ai-panel-verdict {
   display: flex;
   align-items: baseline;

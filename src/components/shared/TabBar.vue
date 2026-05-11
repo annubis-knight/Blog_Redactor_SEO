@@ -2,12 +2,12 @@
 /**
  * Composant partagé pour systèmes d'onglets — pur UI, sans logique métier.
  *
- * Premier consommateur : `LexiquePanel.vue` (chantier 3 E2-S2 —
+ * Premier consommateur : `LexiquePanel.vue` —
  * FR-LEX-MULTI-KEYWORD-TABS) qui affiche un onglet par `source_keyword`
  * exploré + un onglet « + Tester un mot-clé ».
  *
  * Conçu pour être réutilisable plus tard par SeoPanel/GeoPanel/CaptainPanel
- * (alignement visuel cross-Moteur, hors scope chantier 3).
+ * (alignement visuel cross-Moteur.).
  *
  * Pattern ARIA : `role="tablist"` sur le container, `role="tab"` +
  * `aria-selected` sur chaque bouton. Le parent gère le contenu du panneau

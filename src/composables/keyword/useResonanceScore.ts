@@ -10,7 +10,6 @@ import type {
   RadarKeyword,
 } from '@shared/types/intent.types.js'
 
-// Sprint 9 — DB-first radar exploration (per-article, replaces api_cache[radar]).
 export interface RadarExplorationStatus {
   exists: boolean
   scannedAt?: string
@@ -164,7 +163,7 @@ export function useKeywordRadar() {
   const heatLabel = computed(() => radarHeatLabel(scanResult.value?.heatLevel ?? null))
 
   /**
-   * Sprint 9 — DB-first radar: when articleId is provided we read from
+   * when articleId is provided we read from
    * `radar_explorations`; otherwise (libre mode) we still fall back to the
    * legacy api_cache seed-based lookup.
    */
@@ -230,13 +229,8 @@ export function useKeywordRadar() {
   }
 
   /**
-   * 2026-05-01 — Variante merge-only : fetch un payload Radar et fusionne
-   * dans l'état courant SANS doublon. Utilisé par le TabLoadPrompt pour ne pas
-   * écraser ce que l'utilisateur a déjà en mémoire.
-   *
-   * Clé d'unicité : `keyword` (lowercase trim). En cas de collision sur
-   * `generatedKeywords`, on garde l'entrée mémoire (l'utilisateur peut avoir
-   * édité). Pour `scanResult`, on n'écrase que si la mémoire est vide.
+   * Merge-only : fetch Radar et fusionne SANS doublon (TabLoadPrompt).
+   * Unicité: keyword (lowercase trim). Collision → garde mémoire si édité.
    *
    * @returns true si un payload non-vide a été récupéré, false sinon.
    */
@@ -427,7 +421,6 @@ export function useKeywordRadar() {
       })
       log.info(`[Radar] Scan complete: score=${scanResult.value.globalScore}, heat=${scanResult.value.heatLevel}`)
 
-      // Sprint 9 — prefer DB persistence when articleId is known; fallback to legacy cache.
       if (opts?.articleId && opts.seed) {
         _saveToExploration(opts.articleId, opts.seed)
       } else if (opts?.seed) {

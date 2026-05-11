@@ -2,22 +2,9 @@
 import AiPanelHeader from '@/components/moteur/ai-panel/AiPanelHeader.vue'
 
 /**
- * Sprint 1 (2026-05-04) — Panel IA Lieutenants PUR.
- *
- * Histoire : Sprint C-1 (2026-05-02, commit 890b285) avait wrappé
- * `LieutenantProposals` + `LieutenantH2Structure` dans ce composant pour
- * "regrouper sous coque commune". Effet pervers : les containers PRINCIPAUX
- * de l'onglet (cards Lieutenants, structure Hn) se retrouvaient affichés
- * dans la coque purple "Suggestions IA", brouillant la frontière entre
- * "données utilisateur" et "suggestions IA".
- *
- * Cette refonte (sprint 1, 2026-05-04) restaure la séparation : ce composant
- * affiche UNIQUEMENT le streaming IA brut + le CTA Régénérer + content-gap
- * insights. Les containers principaux remontent au niveau de
- * `LieutenantsPanel.vue` en sections de premier niveau.
- *
- * Test verrou anti-régression :
- *   tests/unit/components/lieutenants-selection-architecture.test.ts
+ * Panel IA Lieutenants (streaming brut, CTA Régénérer, content-gap insights).
+ * Main containers (cards, structure) sont au niveau LieutenantsPanel.
+ * Test: tests/unit/components/lieutenants-selection-architecture.test.ts
  */
 
 defineProps<{

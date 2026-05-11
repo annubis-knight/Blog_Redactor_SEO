@@ -26,9 +26,7 @@ const props = defineProps<{
   showGotoLocked: boolean
 }>()
 
-// 2026-04-28 — Side-panel mode pertinence : on affiche les KPIs marché en lecture seule
-// pour donner du contexte sans polluer la jauge de pertinence (cf. tech-spec
-// score-kpi-pertinence-separation, TD-7).
+// Side-panel: KPIs marché en lecture seule (contexte sans polluer la jauge pertinence).
 const marketKpis = computed(() => {
   const k = props.entry?.card.kpis
   if (!k) return null
@@ -49,12 +47,8 @@ const emit = defineEmits<{
   (e: 'close'): void
 }>()
 
-// Sprint B (2026-05-02) — Migration vers <AiPanel variant="advice">.
-// Mapping props legacy → AiPanelState attendu par le composant partagé :
-//   error présent  → 'error'
-//   streaming      → 'streaming'
-//   markdown vide  → 'idle'
-//   markdown rempli (et pas de stream/error) → 'success'
+// Mapping props legacy → AiPanelState : error → 'error', streaming → 'streaming',
+// markdown vide → 'idle', markdown rempli → 'success'.
 const aiState = computed<AiPanelState>(() => {
   if (props.aiError) return 'error'
   if (props.aiIsStreaming) return 'streaming'
@@ -450,7 +444,6 @@ useEventListener(document, 'pointerdown', (event: PointerEvent) => {
   font-style: italic;
 }
 
-/* Mini bandeau verdict en tête du slot AiPanel (Sprint B). */
 .ai-panel-verdict {
   display: flex;
   align-items: baseline;

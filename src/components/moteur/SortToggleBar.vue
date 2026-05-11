@@ -1,14 +1,8 @@
 <script setup lang="ts">
 /**
- * 2026-05-02 — Barre de tri unifiée pour les conteneurs de cards du Moteur
- * (Radar, Capitaine, Lieutenants, Lexique).
- *
- * Affiche une suite de chips cliquables (A-Z, Score, Densité, …). Chaque chip
- * a 3 états visuels selon `modelValue.direction` : neutral / desc / asc.
- * Cycle au clic : neutral → desc → asc → neutral.
- *
- * Le slot `#filters` permet d'insérer des contrôles de filtre dans la même
- * barre (ex: filtre CPC du Radar) pour cohérence visuelle.
+ * Barre de tri unifiée (Radar, Capitaine, Lieutenants, Lexique).
+ * Chips cliquables (A-Z, Score, Densité). Cycle: neutral→desc→asc→neutral.
+ * Slot #filters pour contrôles de filtre.
  */
 import type { SortState, SortOption } from '@/composables/moteur/useSortableList'
 
@@ -76,12 +70,7 @@ function ariaSort(option: SortOption, state: SortState): 'ascending' | 'descendi
 </template>
 
 <style scoped>
-/*
- * 2026-05-02 — Refonte design : sobre, neutre, moderne.
- * Plus de vert vif (la DA verte est réservée au TabCachePanel/TabLoadPrompt
- * qui sont des éléments contextuels persistants). Ici on a une barre d'outils
- * fonctionnelle, donc tons gris neutres avec accent foncé sur l'état actif.
- */
+/* Barre d'outils : tons gris neutres, accent foncé état actif. */
 .stb {
   display: flex;
   align-items: center;

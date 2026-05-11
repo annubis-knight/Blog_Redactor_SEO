@@ -62,21 +62,14 @@ export interface CaptainScanEntry {
   aiPanelMarkdown?: string | null           // AI-generated analysis per keyword
   exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
   /**
-   * 2026-05-05 — Refonte live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE).
-   *
-   * marketScore : rapatrié depuis `radar_explorations.scan_result.cards[k]` au
-   *   reload (snapshot stable, dépend uniquement du keyword).
-   * relevanceScore : CALCULÉ À LA VOLÉE par `computeRelevanceForCaptainTab`
-   *   à chaque hydratation Capitaine. JAMAIS persisté en DB.
-   *   Toujours cohérent avec le `painPoint` actuel de l'article.
-   *
+   * Live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE) :
+   * marketScore du radar snapshot, relevanceScore calculé volée (jamais persisté).
    * Voir docs/data-flows/relevance-score-live-computation.md.
    */
   marketScore?: MarketScoreResult | null
   relevanceScore?: RelevanceScoreResult | null
   /**
-   * 2026-05-05 — Cause typée renvoyée quand `relevanceScore` est null,
-   * pour que le frontend affiche un tooltip honnête sans deviner.
+   * Cause typée quand relevanceScore null → tooltip frontend honnête.
    * Voir FR-CAP-RELEVANCE-UNAVAILABLE-REASON.
    */
   relevanceUnavailableReason?: RelevanceUnavailableReason | null
@@ -84,8 +77,7 @@ export interface CaptainScanEntry {
 
 /**
  * Rich captain object with validation history and AI panel content.
- * 2026-05-07 — `lockedAt` SUPPRIME : le timestamp ne servait nulle part dans l'UI
- * et brouillait la source de verite. status est derive de `keyword` non-vide.
+ * lockedAt supprimé (inutile UI). status dérivé de keyword non-vide.
  */
 export interface RichCaptain {
   keyword: string
@@ -109,9 +101,7 @@ export interface RichRootKeyword {
 
 /**
  * Rich lieutenant object with AI-generated metadata.
- * 2026-05-07 — `lockedAt` SUPPRIME : le timestamp ne servait nulle part dans l'UI
- * et brouillait la source de verite. status (locked/suggested/eliminated/archived)
- * suffit pour determiner l'etat.
+ * lockedAt supprimé. status (locked/suggested/eliminated/archived) suffit.
  */
 export interface RichLieutenant {
   keyword: string

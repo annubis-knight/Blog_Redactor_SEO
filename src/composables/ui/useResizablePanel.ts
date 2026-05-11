@@ -8,10 +8,7 @@ const STORAGE_KEY = 'blog-redactor:panel-width'
 /**
  * Composable de redimensionnement du side-panel Capitaine.
  *
- * 2026-04-30 — Plus de borne `PANEL_MAX_WIDTH` (demande UX) :
- * le panel est `position: fixed` (flottant), donc l'utilisateur peut l'étirer
- * autant qu'il veut sans perturber le container de radar list. Seul le floor
- * minimum est conservé (240px) pour garder le panel ergonomique.
+ * Panel position: fixed (flottant) → sans limite max. Min: 240px (ergonomie).
  */
 export function useResizablePanel() {
   const storedWidth = useLocalStorage(STORAGE_KEY, PANEL_DEFAULT_WIDTH)

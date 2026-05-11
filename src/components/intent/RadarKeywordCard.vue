@@ -30,8 +30,7 @@ const props = withDefaults(defineProps<{
   modifiers?: (ModifierKind | null)[]
   /** Si true, un clic sur un mot cycle son tag local/persona/null (au lieu du toggle actif/inactif). */
   manualTagMode?: boolean
-  /** Sprint 2 (2026-05-04) — painPoint de l'article courant. Permet au tooltip
-   *  Pertinence absent de différencier "painPoint manquant" vs "signaux nuls". */
+  /** PainPoint article courant. Tooltip Pertinence absent différencie manquant vs signaux nuls. */
   articlePainPoint?: string | null
 }>(), {
   displayMode: 'kpi',
@@ -135,19 +134,8 @@ const kpiBreakdown = computed(() =>
 )
 
 /**
- * 2026-05-02 — Score affiché par mode, **strict** (plus de fallback combinedScore).
- *
- * - Mode `kpi` (Radar) : `computeKpiScore(card.kpis, articleLevel).total` —
- *   recalcul front, source de vérité pour le mode KPI. Toujours défini.
- *
- * - Mode `relevance` (Capitaine) : `card.relevanceScore.total` — strictement
- *   le score Pertinence backend. Peut être `null` si :
- *     • painPoint absent au moment du scan/validate
- *     • aucun signal d'alignement (PAA × douleur, autocomplete × douleur, etc.)
- *
- * `null` = chiffre indisponible → on affiche "—" au lieu de bricoler avec
- * combinedScore (legacy hybride qui mélange marché + pertinence et casse la
- * séparation documentée dans docs/scoring-kpi-vs-relevance.md).
+ * Score strict par mode : kpi (Radar) ou relevance (Capitaine).
+ * null → affiche "—". Pas de fallback combinedScore (separation docs/scoring-kpi-vs-relevance.md).
  */
 const displayedScore = computed<number | null>(() => {
   if (props.displayMode === 'kpi') {
@@ -160,13 +148,7 @@ const displayedScore = computed<number | null>(() => {
 const hasScore = computed(() => displayedScore.value !== null)
 
 /**
- * 2026-05-05 — Cause détectable de l'absence de score Pertinence.
- *
- * Priorité : on utilise `card.relevanceUnavailableReason` (typé backend,
- * FR-CAP-RELEVANCE-UNAVAILABLE-REASON) si disponible. Fallback sur
- * l'heuristique frontend uniquement si la card ne porte pas encore ce champ
- * (cards Radar en mode live scan, jamais passées par le backend Capitaine).
- *
+ * Cause détectable absence score Pertinence (backend si présent, sinon heuristique frontend).
  *   - 'no-pain'             : painPoint absent ou trop court (<10 chars).
  *   - 'long-tail'           : kpis null (longue traîne, non applicable).
  *   - 'missing-paa'         : métriques PAA absentes en DB.
@@ -248,10 +230,8 @@ const breakdownRows = computed<BreakdownRow[]>(() => {
       rawLabel: c.rawLabel,
     }))
   }
-  // 2026-05-02 — Mode `relevance` : breakdown depuis le vrai relevanceScore
-  // (composantes pondérées par computeRelevanceScore côté backend), au lieu
-  // de l'ancien scoreBreakdown legacy. Cohérent avec le total affiché.
-  // Fallback sur scoreBreakdown legacy si relevanceScore absent.
+  // Breakdown depuis relevanceScore (composantes pondérées backend).
+  // Fallback scoreBreakdown legacy si relevanceScore absent.
   const rs = props.card.relevanceScore
   if (rs?.breakdown) {
     const RELEVANCE_LABEL_DESC: Record<string, { label: string; desc: string }> = {
@@ -344,9 +324,7 @@ function handleChevronClick(e: MouseEvent) {
 <template>
   <div class="radar-card" :class="{ expanded, 'radar-card--off-pain': isOffPain }">
     <!-- Single-row header -->
-    <!-- FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) : seul le chevron ▶ stoppe la
-         propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
-         propage normalement au parent (radar-list-item → ouvre la sidebar). -->
+    <!-- Chevron ▶ stoppe propagation + toggle PAA. Keyword/KPIs propagent au parent. -->
     <div class="radar-card__header">
       <span class="radar-card__chevron" :class="{ 'chevron--open': expanded }" @click="handleChevronClick">&#9654;</span>
 

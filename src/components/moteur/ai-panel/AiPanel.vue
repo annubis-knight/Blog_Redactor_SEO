@@ -29,10 +29,8 @@ const props = withDefaults(defineProps<{
    */
   triggerDisabled?: boolean
   /**
-   * Sprint 3 (2026-05-04) — Le panel s'affiche replié par défaut. L'utilisateur
-   * clique sur le header pour le déployer. Auto-déploie si state devient
-   * 'streaming' ou 'error' (l'utilisateur veut voir l'opération en cours).
-   * `false` = comportement legacy (toujours déployé).
+   * Panel replié par défaut. Utilisateur clique sur header pour déployer.
+   * Auto-déploie si state devient 'streaming' ou 'error'.
    */
   defaultCollapsed?: boolean
 }>(), {
@@ -69,7 +67,7 @@ function toggle() {
     :class="[`aip--${variant}`, { 'aip--idle': state === 'idle', 'aip--collapsed': isCollapsed }]"
     :data-testid="`ai-panel-${variant}`"
   >
-    <!-- Sprint 3 (2026-05-04) — header cliquable pour collapse/expand. -->
+    <!-- Header cliquable pour collapse/expand. -->
     <button
       type="button"
       class="aip__toggle"
@@ -146,7 +144,6 @@ function toggle() {
   border-radius: 0 8px 8px 0;
 }
 
-/* Sprint 3 — header cliquable + chevron. */
 .aip__toggle {
   display: flex;
   align-items: center;

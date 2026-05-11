@@ -14,9 +14,8 @@ const props = defineProps<{
   articleLevel?: ArticleLevel
   modifiers?: (ModifierKind | null)[]
   validating?: boolean
-  /** Sprint 2 (2026-05-04) — painPoint pour le bouton recalcul Pertinence.
-   *  Si absent, le bouton est désactivé (rien à recalculer sans painPoint).
-   *  Aussi propagé à RadarKeywordCard pour le tooltip différencié. */
+  /** PainPoint pour bouton recalcul Pertinence.
+   *  Absent → bouton désactivé. Propagé à RadarKeywordCard pour tooltip. */
   articlePainPoint?: string | null
 }>()
 
@@ -25,12 +24,9 @@ const emit = defineEmits<{
   'word-toggle': [activeIndices: number[]]
   'modifier-untag': [index: number]
   'modifier-cycle': [payload: { index: number; next: ModifierKind | null }]
-  /** Sprint 2 — émis quand l'utilisateur clique sur le bouton recalcul Pertinence
-   *  dans la colonne d'actions. Le parent (CaptainPanel) re-validate la card. */
   'recompute-relevance': [card: RadarCard]
 }>()
 
-// Sprint 2 — bouton recompute visible UNIQUEMENT en mode 'relevance' (Capitaine).
 const PAIN_POINT_MIN_LENGTH = 10
 const showRecomputeBtn = computed(() => props.displayMode === 'relevance')
 const recomputeDisabled = computed(() => {
@@ -89,10 +85,8 @@ function toggleManualTagMode() {
         </svg>
       </button>
 
-      <!-- Sprint 2 (2026-05-04) — Bouton recalcul Pertinence.
-           Visible uniquement en mode 'relevance' (Capitaine), pas en Radar.
-           Désactivé si pas de painPoint OU validation en cours.
-           Émet `recompute-relevance` que le parent câble pour re-valider. -->
+      <!-- Bouton recalcul Pertinence (mode 'relevance', Capitaine).
+           Désactivé si pas painPoint ou validation en cours. -->
       <button
         v-if="showRecomputeBtn"
         class="radar-card-lockable__recompute"
@@ -133,8 +127,6 @@ function toggleManualTagMode() {
 
 <style scoped>
 .radar-card-lockable {
-  /* Sprint 3.3 — center the lock toggle vertically (was top-aligned, looked
-     lost when the card was tall). */
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -143,10 +135,7 @@ function toggleManualTagMode() {
   transition: background 0.15s;
 }
 
-/* 2026-04-30 — Plus de border verte (cf. demande UX : doublure visuelle gênante).
-   Le verrouillage est déjà signalé par le bouton cadenas qui passe en vert plein
-   (cf. .radar-card-lockable__toggle.active). On conserve juste un très léger
-   tint de background pour un indice supplémentaire discret. */
+/* Verrouillage signalé par cadenas (bouton vert plein). Léger tint background discret. */
 .radar-card-lockable.locked {
   background: rgba(34, 197, 94, 0.04);
 }
@@ -211,7 +200,7 @@ function toggleManualTagMode() {
   color: #0891b2;
 }
 
-/* Sprint 2 (2026-05-04) — Bouton recalcul Pertinence (mode relevance uniquement). */
+/* Bouton recalcul Pertinence (mode relevance). */
 .radar-card-lockable__recompute {
   display: flex;
   align-items: center;

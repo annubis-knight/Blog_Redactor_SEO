@@ -7,31 +7,13 @@
  *             TabCacheUIState (snapshot UI : isCaptaineLocked, captainKeyword,
  *             lockedLieutenantsCount, validatedLexiqueCount).
  * CONSUMERS: src/views/MoteurView.vue (computed `tabCacheEntries`), TabCachePanel.vue.
- * RELATED FR: FR-MOT-CACHE-PANEL-COUNT (2026-05-08, source unique du compteur),
- *             FR-MOT-EXPLORATION-COUNTS (counts d'explorations).
+ * RELATED FR: FR-MOT-CACHE-PANEL-COUNT (source unique compteur),
+ *             FR-MOT-EXPLORATION-COUNTS (counts explorations).
  *
- * Mapping pur des comptes DB + état UI vers les entrées du TabCachePanel.
- *
- * Sémantique du `dbCount` :
- *  - Radar : nombre d'explorations persistées (`counts.radar`). Pas de notion
- *    de "verrouillage utilisateur" sur cet onglet.
- *  - Capitaine : 1 si capitaine verrouillé en DB, 0 sinon.
- *  - Lieutenants : `lockedLieutenantsCount` (lieutenants avec status='locked').
- *  - Lexique : `validatedLexiqueCount` (taille de `article_keywords.lexique`).
- *
- * Les `counts.captain`, `counts.lieutenants`, `counts.lexique` (compte
- * d'explorations DB) restent disponibles dans les hints pour donner un
- * contexte ("8 mots-clés testés") mais ne pilotent plus le compteur principal.
- *
- * Historique :
- *  - bea9e4f : extraction depuis MoteurView, fix d'un dbCount qui était un
- *    flag binaire 0|1 calculé depuis un état métier flou. L'invariant alors
- *    posé ("dbCount = vraies entrées explorations") est partiellement révisé
- *    le 2026-05-08 par FR-MOT-CACHE-PANEL-COUNT pour Capitaine/Lieutenants/
- *    Lexique : le compteur reflète désormais l'état utilisateur, pas les
- *    explorations. Radar conserve la sémantique "explorations".
- *  - 2026-05-01 : Discovery retiré du panel (modèle de persistance
- *    cross-article seed-based, incompatible avec la notif articleId).
+ * Mapping pur comptes DB + état UI vers entrées TabCachePanel.
+ * Sémantique dbCount : Radar (explorations), Capitaine (1|0 locked),
+ * Lieutenants (locked count), Lexique (validated count).
+ * Radar conservation "explorations", autres = état utilisateur.
  */
 
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'

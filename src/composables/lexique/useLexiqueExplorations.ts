@@ -5,7 +5,7 @@
  * WRITES TO: rien — famille LECTURE stricte (FR-LEX-LECTURE-VS-VERROUILLAGE).
  *            Aucun appel apiPut/apiPost/apiDelete sur /articles/:id/keywords.
  *            Aucun import de useArticleKeywordsStore (sauf typage).
- * CONSUMERS: LexiquePanel.vue (chantier 3 E3-S3 — refacto LECTURE/VERROUILLAGE).
+ * CONSUMERS: LexiquePanel.vue).
  * RELATED FR: FR-LEX-LECTURE-VS-VERROUILLAGE (AC.LEX-SEP.1, AC.LEX-SEP.3),
  *             FR-LEX-MULTI-KEYWORD-TABS (cache pastExplorations alimenté ici),
  *             FR-MOT-CACHE-PANEL-COUNT (les compteurs DB tirent depuis le cache hydrate).

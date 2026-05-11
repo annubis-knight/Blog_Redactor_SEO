@@ -5,7 +5,7 @@ import { log } from '@/utils/logger'
 import type { ScanResponse, ArticleLevel, CaptainScanEntry } from '@shared/types/index.js'
 
 /**
- * Sprint 16 refinement — Global Pinia store for the Discovery→Captain pre-validation.
+ * Global Pinia store for the Discovery→Captain pre-validation.
  *
  * Why a store (not just a composable): the Gmail-style "Sending... Undo" toast lives
  * globally (rendered near the cost log), but the click happens inside a specific

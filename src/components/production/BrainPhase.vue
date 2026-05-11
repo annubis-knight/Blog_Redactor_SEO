@@ -93,7 +93,6 @@ const mergedCocoonArticles = computed(() => {
   return result
 })
 
-
 function hasAnyConfigData(cfg: typeof themeConfigStore.config): boolean {
   return !!(cfg.positioning.targetAudience || cfg.positioning.mainPromise || cfg.avatar.sector || cfg.toneOfVoice.style)
 }
@@ -438,17 +437,11 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 
 <template>
   <div class="brain-phase">
-    <!-- Sprint — Brainstorm header + progress bar removed. The final "Continuer
-         vers le Moteur" button at the end of step 6 remains the single CTA. -->
-
     <div v-if="store.isLoading" class="brain-loading">
       Chargement de la stratégie...
     </div>
 
     <template v-else-if="store.strategy">
-      <!-- Sprint — wizard stepper moved into AppNavbar via workflow-nav store. -->
-
-
       <!-- Context recap (collapsible) -->
       <ContextRecap :theme-name="silosStore.theme?.nom" :theme-description="silosStore.theme?.description"
         :silo-name="props.siloName" :silo-description="currentSilo?.description" :cocoon-name="props.cocoonName"

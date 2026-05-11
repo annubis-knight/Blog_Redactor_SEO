@@ -96,7 +96,7 @@ export async function apiGet<T>(path: string, options?: ApiOptions): Promise<T> 
   if (!res.ok) await handleApiError(res, 'GET', path)
   const json = await res.json()
   log.debug(`GET /api${path}`, json.data)
-  // Sprint 16b — Surface DB reads in the pile too (previously only writes were).
+
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
   return json.data as T

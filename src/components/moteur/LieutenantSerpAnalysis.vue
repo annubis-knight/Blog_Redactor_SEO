@@ -14,7 +14,7 @@ const props = defineProps<{
   iaIsStreaming: boolean
   serpDoneCount: number
   serpTotalCount: number
-  /** Sprint 4.1 — skeleton support */
+  
   serpPendingKeywords?: string[]
   serpCurrentKeyword?: string | null
   iaChunks: string
@@ -28,7 +28,6 @@ defineEmits<{
   'update:activeSerpTab': [value: string]
 }>()
 
-// Sprint 4.4 — Blog filter. null = tous, 'blog' = blogs only, 'other' = non-blogs only.
 type BlogFilter = 'blog' | 'other' | null
 const blogFilter = ref<BlogFilter>(null)
 
@@ -80,7 +79,6 @@ const blogStats = computed(() => {
       </button>
     </div>
 
-    <!-- Sprint 4.1 — Per-keyword skeleton during SERP scraping. -->
     <div v-if="isLoading && serpCurrentKeyword" class="serp-skeleton" data-testid="serp-skeleton">
       <div class="serp-skeleton-header">Analyse SERP en cours ({{ serpDoneCount }}/{{ serpTotalCount }})</div>
       <ul class="serp-skeleton-list">
@@ -160,7 +158,6 @@ const blogStats = computed(() => {
           {{ activeSerpTabResult.competitors.filter(c => !c.fetchError).length }} concurrents,
           {{ activeSerpTabResult.paaQuestions.length }} PAA
           <span v-if="activeSerpTabResult.fromCache" class="cache-badge">(cache)</span>
-          <!-- Sprint 4.4 — Blog filter chips. Toggle once to filter, again to clear. -->
           <span class="blog-filter" role="group" aria-label="Filtre blog / non-blog">
             <button
               type="button"
@@ -177,9 +174,6 @@ const blogStats = computed(() => {
           </span>
         </div>
         <div class="serp-urls" data-testid="serp-urls">
-          <!-- Sprint 4.5 — strike-through + tooltip explaining scraping failure.
-               Previously the strike-through alone made the user think the site
-               was deliberately excluded. -->
           <div
             v-for="comp in filteredCompetitors"
             :key="comp.url"
@@ -389,7 +383,7 @@ const blogStats = computed(() => {
   flex-shrink: 0;
   text-decoration: none;
 }
-/* Sprint 4.1 — SERP skeleton list during scraping */
+
 .serp-skeleton {
   margin-top: 0.75rem;
   padding: 0.75rem 1rem;
@@ -423,7 +417,6 @@ const blogStats = computed(() => {
 .spin-dot { display: inline-block; animation: spin 1.2s linear infinite; }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-/* Sprint 4.4 — Blog classification badges & filter */
 .serp-url-blog-badge {
   font-size: 0.5625rem;
   font-weight: 700;

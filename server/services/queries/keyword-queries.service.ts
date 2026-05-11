@@ -1,5 +1,5 @@
 /**
- * Sprint 15.9-bis — Helpers CRUD "lecture reconstruite"
+ * -bis — Helpers CRUD "lecture reconstruite"
  *
  * Après les Sprints 15.3 à 15.8, plusieurs tables article-scoped ont été
  * supprimées via migrations dédiées :
@@ -267,7 +267,7 @@ export async function listArticleExplorations(articleId: number) {
     local: metricsCapitaine?.localAnalysis ?? null,
     contentGap: metricsCapitaine?.contentGapAnalysis ?? null,
     comparison: metricsCapitaine?.localComparison ?? null,
-    // Story C3 — brief Capitaine ne charge plus le payload SERP complet
+
     // (~50-100 ko) ; il lit uniquement les URLs Top 10 depuis keyword_serp_results.
     serp: capitaineKeyword
       ? { competitors: await getSerpResults(capitaineKeyword).catch(() => []) }
@@ -326,7 +326,7 @@ export async function getCocoonKeywordMetrics(cocoonId: number): Promise<CocoonK
     }
   }
 
-  // Strategy (Sprint 15.7 — cocoon_strategies table)
+  // Strategy ( — cocoon_strategies table)
   const stratRes = await query<{ data: unknown }>(
     `SELECT data FROM cocoon_strategies WHERE cocoon_id = $1`,
     [cocoonId],

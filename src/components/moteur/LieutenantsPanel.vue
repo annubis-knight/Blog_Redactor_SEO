@@ -14,10 +14,8 @@ import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
-// Vague 3 (2026-05-04) — sous-composant Vue qui formalise FR-LIE-AI-FRONTIER.
-// Encapsule LieutenantProposals + LieutenantH2Structure + sources IA + lock
-// + LieutenantsAiPanel. Par construction, les containers principaux ne sont
-// JAMAIS descendants du panel IA.
+// LieutenantsResultsLayout formalise FR-LIE-AI-FRONTIER (containers principaux
+// ne sont JAMAIS descendants du panel IA).
 import LieutenantsResultsLayout from '@/components/moteur/lieutenants/LieutenantsResultsLayout.vue'
 import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
@@ -117,16 +115,9 @@ const resolvedRootKeywords = computed(() => {
 const wordGroupsRef = toRef(props, 'wordGroups')
 const cocoonSlugRef = toRef(props, 'cocoonSlug')
 
-// --- Gating Lieutenants (2026-05-08 — refonte) ---
-// L'ancien concept "panel locké" (`isLocked` au niveau du panel entier) est
-// SUPPRIMÉ. Le verrouillage est désormais individuel par checkbox
-// (FR-LIE-CHECKBOX-LOCK-IMMEDIATE depuis sprint 17). Mais la computed
-// `isLocked` était restée et désactivait toutes les checkboxes dès qu'UN seul
-// lieutenant était locké → cul-de-sac UX.
-//
-// Nouveau modèle :
-// - `hasAnyLockedLieutenant` : utilitaire interne pour les watchers de
-//   restauration / skip de régénération IA.
+// --- Gating Lieutenants ---
+// Verrouillage individuel par checkbox (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
+// `hasAnyLockedLieutenant` : utilitaire pour watchers restauration/skip regen.
 // - `lieutenantsCheckActive` : règle métier pour le check workflow
 //   `MOTEUR_LIEUTENANTS_LOCKED`. Actif ssi (≥1 lieutenant locked) ET
 //   (hn_structure non-vide). Reflète qu'on ne peut considérer l'étape
@@ -212,7 +203,6 @@ watch(
   { immediate: true },
 )
 
-// Sprint 17 — Le bouton "Verrouiller les Lieutenants" en bloc est SUPPRIMÉ
 // du template. La checkbox de chaque LieutenantCard appelle directement
 // `articleKeywordsStore.lockLieutenant` via toggleLieutenant du composable
 // useLieutenantsIa. Voir FR-LIE-CHECKBOX-LOCK-IMMEDIATE.
@@ -263,26 +253,14 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
   }
 }
 
-// Sprint 17 — Le bouton "Déverrouiller les Lieutenants" en bloc est SUPPRIMÉ
 // du template. Le déverrouillage individuel passe par toggleLieutenant
 // (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
 
 /**
- * Watcher de gating workflow (refonte 2026-05-08).
- *
- * Émet/retire le check `MOTEUR_LIEUTENANTS_LOCKED` selon `lieutenantsCheckActive` :
- *   - actif ssi (≥1 lieutenant locked) ET (hn_structure non-vide)
- *   - reflète la règle métier : l'étape Lieutenants n'est "faite" que quand
- *     l'utilisateur a ET sélectionné au moins un lieutenant ET généré la
- *     structure Hn.
- *
- * Side-effects sur transition false → true : sauvegarde hnStructure + outline
- * + recommandation wordCount (héritage sprint 17, reste pertinent).
- *
- * Au MOUNT (immediate), ne fait pas de transition false→false ni true→true (no-op),
- * MAIS si le check est present en DB alors que active=false (regle non remplie
- * mais check legacy persiste), on emit `check-removed` pour nettoyer l'etat.
- * Idem inversement : check absent mais active=true → emit `check-completed`.
+ * Gating workflow : émet/retire check `MOTEUR_LIEUTENANTS_LOCKED`.
+ * Actif ssi (≥1 verrouillé) ET (hn_structure non-vide).
+ * Sauvegarde hnStructure + outline + wordCount sur transition false→true.
+ * Au mount, réconcilie état réel vs check en DB.
  */
 let previousCheckActive = false
 let isFirstRun = true
@@ -312,8 +290,7 @@ watch(
         decision = 'add'
         emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
       } else if (!active && checkPresent) {
-        // Cas observe 2026-05-08 : check legacy en DB alors que la nouvelle
-        // regle (locked + hn_structure) n'est pas remplie → retirer le check.
+        // Check legacy en DB mais nouvelle règle (locked + hn_structure) non remplie → retirer.
         decision = 'remove'
         emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
       } else {
@@ -391,9 +368,7 @@ watch(
     // Le store sera resynchronisé par fetchKeywords() au changement d'article.
     iaAbort()
 
-    // 2026-05-08 — Restore est maintenant inconditionnel : si la DB contient
-    // une hn_structure ou des lieutenants, on les restaure. Plus de garde
-    // `isLocked` au niveau panel (concept supprimé).
+    // Restore inconditionnel : si DB contient hn_structure ou lieutenants, les restaurer.
     if (articleKeywordsStore.keywords?.hnStructure && articleKeywordsStore.keywords.hnStructure.length > 0) {
       hnStructure.value = articleKeywordsStore.keywords.hnStructure
     }
@@ -433,17 +408,8 @@ watch(
   { immediate: true },
 )
 
-// 2026-05-02 — Sync `lieutenantCards` quand `richLieutenants` change (TabLoadPrompt
-// déclenche `mergeRichLieutenants` qui réassigne le tableau côté store).
-// Le merge ajoute de nouveaux items que la liste UI doit refléter pour que le
-// tri puisse les voir. Watcher en `deep: true` pour capter aussi les push
-// éventuels en place.
-//
-// 2026-05-08 — Bug fix : le watcher peuplait `lieutenantCards` mais oubliait
-// `selectedCards` (la Map qui pilote l'état coché des checkboxes). Conséquence :
-// au clic "DB N" du TabLoadPrompt, les cards apparaissaient mais aucune checkbox
-// n'était cochée même pour les lieutenants `status='locked'`. Fix : on peuple
-// aussi `selectedCards` avec les locked.
+// Sync `lieutenantCards` quand `richLieutenants` change (mergeRichLieutenants).
+// Peuple aussi `selectedCards` avec locked (pour checkboxes état coché).
 watch(
   () => articleKeywordsStore.keywords?.richLieutenants,
   (richLts) => {
@@ -507,9 +473,7 @@ watch(
 // (cf. mergeRichLieutenants dans article-keywords.store.ts:156-181).
 
 // --- Auto-trigger IA proposal after SERP success ---
-// 2026-05-08 — la garde `isLocked` est SUPPRIMEE (concept disparu). On skip
-// uniquement si on a déjà des cards en mémoire ou un stream en cours.
-// U5 — règle TTL 7 jours : ne pas relancer l'IA si des propositions fraîches existent déjà en DB
+// Skip si cards en mémoire ou stream en cours. TTL 7 jours : pas regen si proposals fraîches en DB.
 watch(serpResult, (result) => {
   if (!result || iaIsStreaming.value || lieutenantCards.value.length !== 0) return
   const richLts = articleKeywordsStore.keywords?.richLieutenants ?? []
@@ -561,10 +525,7 @@ async function analyzeSERPWithStep(): Promise<void> {
 
 <template>
   <div class="lieutenants-selection">
-    <!-- Sprint 1 (2026-05-04) — `lieutenants-header` legacy supprimé.
-         Le rappel Capitaine était redondant avec MoteurContextRecap.
-         Le badge "level article" migre dans le header de LieutenantProposals
-         (= container principal n°1) pour rester visible. -->
+    <!-- legacy `lieutenants-header` supprimé. Badge "level article" migre dans LieutenantProposals. -->
 
     <!-- F5 — Soft gate uniquement au premier passage (avant toute analyse IA) -->
     <div v-if="!isCaptaineLocked && !hasEverAnalyzed" class="soft-gate-message">
@@ -606,13 +567,7 @@ async function analyzeSERPWithStep(): Promise<void> {
       <p>{{ error }}</p>
     </div>
 
-    <!-- Sprint 1 (2026-05-04) — condition élargie : on monte aussi la section
-         si l'utilisateur a déjà ajouté des cards depuis le basket
-         (`lieutenantCards.length > 0`). Avant, la section n'apparaissait que
-         si SERP ou lock — bloquant l'observation des cards "assist-add". -->
-    <!-- Vague 3 (2026-05-04) : LieutenantsResultsLayout encapsule l'ensemble
-         containers principaux + sources IA + lock + panel IA, en formalisant
-         FR-LIE-AI-FRONTIER (cf. PRD §8.7). -->
+    <!-- LieutenantsResultsLayout encapsule ensemble + formalise FR-LIE-AI-FRONTIER (PRD §8.7). -->
     <LieutenantsResultsLayout
       :serp-result="serpResult"
       :lieutenant-cards="lieutenantCards"
@@ -657,9 +612,7 @@ async function analyzeSERPWithStep(): Promise<void> {
   gap: 0.75rem;
 }
 
-/* Sprint 1 (2026-05-04) — styles legacy `.lieutenants-header`, `.captain-badge`,
-   `.captain-icon`, `.level-badge` supprimés. Le bloc DOM correspondant a été
-   supprimé du template. Le badge level migré dans LieutenantProposals.vue. */
+/* Legacy styles supprimés (.lieutenants-header, .captain-badge, .captain-icon, .level-badge). */
 
 /* --- Soft gate --- */
 .soft-gate-message {

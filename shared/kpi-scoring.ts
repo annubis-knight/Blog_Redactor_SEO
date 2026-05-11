@@ -73,7 +73,7 @@ export function scoreKpi(
 }
 
 /**
- * @deprecated Sprint S5 (2026-04-28) — Préférer `marketScore.verdict` issu de
+ * @deprecated Préférer `marketScore.verdict` issu de
  * `computeMarketScore` (shared/scoring-kpi.ts) qui produit un verdict basé sur le
  * Score KPI ajusté avec les nouveaux poids et seuils GO/ORANGE/NOGO unifiés à 70/40.
  *

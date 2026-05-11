@@ -1,13 +1,7 @@
 <script setup lang="ts">
 /**
- * 2026-05-01 — Notification "Charger depuis DB / Cache" qui s'affiche comme
- * une **extension visuelle du TabCachePanel** : même direction artistique
- * (gradient vert, border-radius, typographie). Le composant ne se positionne
- * pas tout seul — c'est le parent (MoteurView) qui le place à droite du
- * TabCachePanel via un wrapper flex sticky commun.
- *
- * Pas d'auto-dismiss : l'utilisateur clique soit "Charger DB", soit
- * "Charger Cache", soit "Fermer".
+ * Notification "Charger depuis DB/Cache" (extension visuelle TabCachePanel).
+ * Parent positionne via wrapper flex sticky. Pas d'auto-dismiss.
  */
 import type { TabLoadPromptData } from '@/composables/moteur/useTabLoadPrompt'
 

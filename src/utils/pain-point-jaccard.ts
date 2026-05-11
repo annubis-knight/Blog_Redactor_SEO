@@ -1,7 +1,7 @@
 /**
  * Similarité Jaccard front-only entre un terme et un painPoint.
  *
- * Utilisé par le toggle « Trier par alignement douleur » du Lexique (Sprint S2).
+ * Utilisé par le toggle « Trier par alignement douleur » du Lexique.
  * Calcul léger, pas d'appel API. Mots significatifs ≥ 4 caractères pour ignorer
  * les stopwords courts français (le, la, des, mes, …) sans avoir besoin
  * d'une liste explicite.

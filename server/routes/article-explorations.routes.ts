@@ -36,7 +36,7 @@ router.get('/articles/:id/explorations', async (req, res) => {
     const { data: articleKeywords } = await getArticleKeywords(articleId)
     const capitaineKeyword = articleKeywords?.capitaine ?? null
 
-    // Sprint 15.5 — intent/local/contentGap now cross-article on keyword_metrics
+
     // (capitaineKeyword) or keyword_intent_analyses (intent). Lists aggregate across
     // the article's capitaine + lieutenants.
     const [
@@ -108,7 +108,7 @@ router.get('/articles/:id/explorations/counts', async (req, res) => {
     return
   }
   try {
-    // Sprint 15.5 — intent/local/contentGap tables dropped. Counts are computed by
+
     // matching keywords attached to the article against the cross-article tables.
     const { query } = await import('../db/client.js')
     const rows = await query<{ source: string; count: string }>(
@@ -147,7 +147,7 @@ router.get('/articles/:id/explorations/counts', async (req, res) => {
 /**
  * DELETE /articles/:id/external-cache
  *
- * Sprint 13 — wipe the cross-article api_cache rows whose slug matches the
+ *  — wipe the cross-article api_cache rows whose slug matches the
  * article's capitaine keyword. Does NOT touch the article-scoped *_explorations
  * tables (those stay as the source of truth).
  */

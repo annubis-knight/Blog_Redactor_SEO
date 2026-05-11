@@ -329,7 +329,7 @@ export async function computeRelevanceForCaptainTab(
 async function loadMetricsBatch(keywords: string[]): Promise<Map<string, KeywordMetrics>> {
   const result = new Map<string, KeywordMetrics>()
   if (keywords.length === 0) return result
-  // TODO [chantier:metrics-batch-sql-in] — optimisation N+1 sur loadMetricsBatch
+  // TODO: optimisation N+1 sur loadMetricsBatch
   //
   // POURQUOI N appels parallèles aujourd'hui :
   //   On délègue à `getKeywordMetrics(kw)` une fois par keyword pour réutiliser

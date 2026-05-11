@@ -15,7 +15,7 @@ export interface SerpCompetitor {
   headings: HnNode[]
   textContent: string // Raw text for TF-IDF (Epic 8)
   fetchError?: string // If the HTML fetch failed
-  /** Sprint 4.4 — heuristic blog-vs-institutional classification from URL/domain. */
+  /** Heuristic blog-vs-institutional classification from URL/domain. */
   isBlog?: boolean
 }
 

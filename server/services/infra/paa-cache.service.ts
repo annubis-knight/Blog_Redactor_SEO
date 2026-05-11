@@ -6,7 +6,7 @@ import {
 } from '../keyword/keyword-metrics.service.js'
 import type { PaaCacheEntry } from '../../../shared/types/intent.types.js'
 
-// Sprint 15.3 — PAA storage moved to `keyword_metrics.paa_questions`.
+
 // Same keyword = same PAA regardless of article: Google's PAA depends only on
 // the search query. Freshness: 1 day for non-empty, 30 min for empty.
 

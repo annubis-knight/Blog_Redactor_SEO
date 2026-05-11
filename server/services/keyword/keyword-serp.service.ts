@@ -248,8 +248,7 @@ export async function getAutocomplete(
  * Consommé par `GET /api/keywords/:keyword/serp/exists` pour gater l'UI
  * Lexique : si `exists:false`, le composant affiche un CTA explicite *« Lancer
  * l'analyse SERP »* au lieu de tenter un POST /serp/tfidf qui répondrait 404
- * (origine de la trace rouge console pré-chantier 3).
- */
+ * (origine de la trace rouge console pré- */
 export async function hasSerpScrape(
   keyword: string,
   lang: string = 'fr',
@@ -452,15 +451,13 @@ export async function upsertAutocomplete(
 }
 
 /**
- * Story C2 — Reconstruit un SerpAnalysisResult-compatible payload à partir
- * des 4 tables filles. Utilisé par /serp/analyze quand la cache check (via
+ * * des 4 tables filles. Utilisé par /serp/analyze quand la cache check (via
  * getSerpResultsFresh) renvoie un hit. La forme reproduit l'ancien
  * keyword_metrics.serp_raw_json pour ne pas casser les consommateurs front.
  *
  * Cas mixte : si N rows dans keyword_serp_results mais < N dans
  * keyword_serp_scrapes, on remplit avec headings=[] / textContent=null pour
- * les positions sans scrape (cf. AC.C2.5).
- */
+ * les positions sans scrape (cf. */
 export interface ReconstructedSerpAnalysisResult {
   keyword: string
   competitors: Array<{
@@ -525,7 +522,7 @@ export async function reconstructSerpAnalysisResult(
  * Helper transactionnel : ouvre une transaction, exécute la callback avec
  * un client pg dédié, commit/rollback automatique.
  *
- * Utilisé par `scrape-corpus.fetchAndPersist` (chantier 2 — Story A1+) pour
+ * Utilisé par `scrape-corpus.fetchAndPersist` pour
  * garantir l'atomicité du dual-write SERP/scrapes/PAA.
  */
 export async function withSerpTransaction<T>(

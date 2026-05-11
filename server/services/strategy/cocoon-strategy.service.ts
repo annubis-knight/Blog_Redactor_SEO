@@ -3,7 +3,7 @@ import { cocoonStrategySchema } from '../../../shared/schemas/strategy.schema.js
 import type { CocoonStrategy, StrategyStepData } from '../../../shared/types/index.js'
 import { log } from '../../utils/logger.js'
 
-// Sprint 15.7 — Storage moved from api_cache[cocoon-strategy] to the dedicated
+
 // `cocoon_strategies` table. The getters/setters preserve the same public
 // interface so callers are unchanged.
 

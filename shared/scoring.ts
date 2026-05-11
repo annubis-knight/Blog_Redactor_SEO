@@ -308,7 +308,7 @@ function makeComponent(weight: number, normalized: number) {
 }
 
 // ---------------------------------------------------------------------------
-// Score racines — Sprint S4 (gestion fine doublons / divergence / absence)
+// Score racines (gestion fine doublons / divergence / absence)
 // ---------------------------------------------------------------------------
 
 export interface RootScoreInput {
@@ -353,7 +353,7 @@ function jaccardLexical(a: string, b: string): number {
 }
 
 /**
- * Calcule le Score Racines pour le `relevanceScore` (Sprint S4).
+ * Calcule le Score Racines pour le `relevanceScore`.
  *
  * Trois cas explicites distingués :
  *   🟢 Cas 1 — racines diverses + fortes : score = moyenne des relevances individuelles

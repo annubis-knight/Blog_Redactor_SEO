@@ -12,7 +12,7 @@ import type {
   ThematicGap,
 } from '../../../shared/types/index.js'
 
-// Sprint 15.5 — content gap analysis moved from api_cache[content-gap] to
+
 // keyword_metrics.content_gap_analysis (cross-article).
 
 async function searchWithTavily(
@@ -160,7 +160,7 @@ export async function analyzeContentGap(
   keyword: string,
   currentContent?: string,
 ): Promise<ContentGapAnalysis> {
-  // Sprint 15.5 — DB-first on keyword_metrics.content_gap_analysis.
+
   // NOTE: the `presentInArticle` flag depends on currentContent, so we recompute
   // it on every call even on a DB hit. The rest (competitors, themes) is shared.
   const existing = await getKeywordMetrics(keyword)

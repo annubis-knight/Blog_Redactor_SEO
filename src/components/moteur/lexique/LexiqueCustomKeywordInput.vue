@@ -2,7 +2,7 @@
 /**
  * Saisie libre d'un mot-clé pour déclencher une nouvelle exploration TF-IDF.
  *
- * Renommé depuis `LexiqueMultiKeywordPanel.vue` (chantier 3 E2-S2) — la
+ * Renommé depuis `LexiqueMultiKeywordPanel.vue` — la
  * liste des explorations passées (chips) est désormais portée par le
  * `<TabBar>` du parent `LexiquePanel.vue` (FR-LEX-MULTI-KEYWORD-TABS).
  *

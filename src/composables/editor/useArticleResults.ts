@@ -5,7 +5,6 @@ import { useLocalStore } from '@/stores/external/local.store'
 import { useKeywordDiscoveryStore } from '@/stores/keyword/keyword-discovery.store'
 import { log } from '@/utils/logger'
 
-// Sprint 14 — Response shapes from the split endpoints introduced in Sprint 10.
 interface ExplorationsResponse {
   intent?: { capitaine: unknown | null; all: unknown[] }
   local?: { capitaine: { hasLocalPack?: boolean; listings?: unknown[]; reviewGap?: unknown; comparison?: unknown } | null; all: unknown[] }
@@ -42,7 +41,7 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
     isLoading.value = true
 
     try {
-      // Sprint 14 — split endpoints: DB-scoped explorations + cross-article external cache.
+
       const [explorations, external] = await Promise.all([
         apiGet<ExplorationsResponse>(`/articles/${articleId}/explorations`),
         apiGet<ExternalCacheResponse>(`/articles/${articleId}/external-cache`).catch(() => ({ autocomplete: null } as ExternalCacheResponse)),

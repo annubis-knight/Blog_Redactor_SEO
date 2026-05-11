@@ -22,7 +22,7 @@ import {
  * de chaque onglet depuis le store `articleProgressStore`.
  *
  * Dépendances explicites en paramètres → testable en isolation
- * (cf. tech-spec V3 risque 3.3).
+ *.
  */
 export interface MoteurSoftGatingDeps {
   selectedArticle: Ref<SelectedArticle | null>

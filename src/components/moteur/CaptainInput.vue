@@ -1,5 +1,5 @@
 <script setup lang="ts">
-// Sprint 16 — composition-warnings messages removed: the warning is now
+
 // surfaced via an icon in the carousel header (CaptainCarousel.vue) with a
 // hover tooltip. Keeping props for backward compat but no longer rendered.
 defineProps<{

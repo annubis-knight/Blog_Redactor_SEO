@@ -1,17 +1,7 @@
 /**
- * 2026-05-02 — Composable de tri générique pour les conteneurs de cards du
- * Moteur (Radar, Capitaine, Lieutenants, Lexique).
- *
- * Fonctionnalités :
- *   - Tri sur N critères, key opaque (caller décide du sens : "score", "az", "density", …)
- *   - Direction cyclique : neutral → desc → asc → neutral
- *   - Item "épinglé" en haut, peu importe le tri (Capitaine : item verrouillé toujours en haut)
- *   - Filtre amont optionnel (Radar : filtre CPC) — appliqué AVANT tri
- *
- * Important : le caller fournit `getValue(item, key)` — c'est lui qui sait que
- * "score" sur Capitaine = `entry.card.relevanceScore.total` mais que "score"
- * sur Radar = `card.marketScore.total`. Le composable ne connaît rien du
- * domaine, il manipule juste des nombres et des strings.
+ * Composable tri générique (Radar, Capitaine, Lieutenants, Lexique).
+ * N critères, direction cyclique, item épinglé haut, filtre amont optionnel.
+ * Caller fournit getValue() : composable agnostique domaine.
  */
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 

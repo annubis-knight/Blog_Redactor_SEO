@@ -1,5 +1,5 @@
 /**
- * Sprint 15.9-bis — Endpoints CRUD de lecture reconstruite.
+ * -bis — Endpoints CRUD de lecture reconstruite.
  */
 import { Router } from 'express'
 import { log } from '../utils/logger.js'

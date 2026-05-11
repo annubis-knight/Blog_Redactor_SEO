@@ -2,7 +2,7 @@
 /**
  * Vague 5 — Sous-composant Vue extrait de DiscoveryPanel.
  *
- * Cache indicator (Sprint 15.6 — DB-first keyword_discoveries, TTL 30j applicatif).
+ * Cache indicator 
  * Affiche un badge "Dernière analyse" + boutons Charger / Rafraîchir, visible
  * tant que `cached === true` et que l'utilisateur n'a pas encore lancé une
  * nouvelle découverte (`hasDiscovered === false`).

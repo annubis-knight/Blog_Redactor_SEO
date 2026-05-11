@@ -346,9 +346,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
         />
       </div>
 
-      <!-- Sprint — workflow stepper moved into AppNavbar via workflow-nav store. -->
-
-
       <!-- Slug resolution error -->
       <div v-if="slugResolutionError" class="slug-error">
         <p>{{ slugResolutionError }}</p>

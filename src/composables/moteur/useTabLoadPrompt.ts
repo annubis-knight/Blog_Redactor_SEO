@@ -1,14 +1,6 @@
 /**
- * 2026-05-01 — Orchestrateur du TabLoadPrompt.
- *
- * Quand l'utilisateur visite un onglet du Moteur, ce composable décide si une
- * notification "Charger depuis DB / Cache" doit apparaître à droite du
- * TabCachePanel, et expose les actions de chargement qui MERGENT les données
- * sans créer de doublons.
- *
- * Périmètre : Radar, Capitaine, Lieutenants, Lexique. Discovery est exclu
- * (modèle de persistance cross-article seed-based, incompatible avec un
- * pilotage par articleId).
+ * Orchestrateur TabLoadPrompt : décide si notifier "Charger depuis DB/Cache",
+ * expose actions MERGE. Périmètre : Radar, Capitaine, Lieutenants, Lexique (pas Discovery).
  *
  * Comportement :
  *   - Le prompt apparaît à chaque visite d'onglet (pas de dismiss persistant).

@@ -14,7 +14,7 @@ export interface AutocompleteSignal {
   position: number | null
 }
 
-// Sprint 15.3 — Storage moved from api_cache[autocomplete] to the
+
 // `keyword_metrics` table (cross-article, keyed by keyword + lang + country).
 // Freshness: 1 day for non-empty, 30 min for empty (retry sooner).
 
@@ -58,7 +58,7 @@ export async function fetchAutocomplete(
   lang = 'fr',
   country = 'fr',
 ): Promise<AutocompleteSignal> {
-  // Sprint 15.3 — DB-first on keyword_metrics (cross-article, keyed by lang+country).
+
   const existing = await getKeywordMetrics(keyword, lang, country)
   if (existing && existing.autocompleteSource) {
     const ttlDays = existing.autocompleteSuggestions.length === 0 ? 0.02 : 1 // 30 min vs 24 h
@@ -147,7 +147,7 @@ export async function fetchAutocomplete(
       position: positionIndex >= 0 ? positionIndex + 1 : null,
     }
 
-    // Sprint 15.3 — persist in keyword_metrics.autocomplete_* instead of api_cache
+
     await upsertKeywordAutocomplete(
       keyword,
       signal.suggestions.map((text, idx) => ({ text, position: idx + 1 })),

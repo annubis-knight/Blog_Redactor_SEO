@@ -139,7 +139,7 @@ export async function fetchKeywordOverview(
   log.debug(`fetchKeywordOverview done`, { keyword, volume: item.keyword_info?.search_volume, difficulty: item.keyword_properties?.keyword_difficulty })
   // Adapter DataForSEO -> KeywordOverview (FR-INFRA-KPI-NULLABLE) :
   // null = donnée absente. monthlySearches : on filtre les éléments null
-  // au lieu de les remplacer par 0 (cf. tech-spec D2).
+  // au lieu de les remplacer par 0.
   return {
     searchVolume: item.keyword_info?.search_volume ?? null,
     difficulty: item.keyword_properties?.keyword_difficulty ?? null,

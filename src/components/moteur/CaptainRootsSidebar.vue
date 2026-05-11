@@ -36,14 +36,7 @@ function handleSelect(variant: KeywordRootVariant) {
   emit('select', variant)
 }
 
-// Étape 3C — Score moyen Pertinence des racines (information contextuelle).
-// 2026-05-02 — Migré vers relevanceScore.total (au lieu de combinedScore legacy).
-// Cohérent avec le score Pertinence affiché par la card Capitaine principale.
-// Voir docs/scoring-kpi-vs-relevance.md.
-//
-// Si un variant n'a pas de relevanceScore (painPoint absent), il est traité
-// comme 0 dans la moyenne — c'est honnête : on ne peut pas inventer un score
-// pertinence quand la donnée d'alignement n'existe pas.
+// Average relevance score of root variants (treats missing scores as 0)
 function relevanceTotalOf(v: { card: RadarCard }): number {
   return v.card.relevanceScore?.total ?? 0
 }
@@ -79,9 +72,6 @@ const rootsAverageColor = computed(() => {
         @click="handleSelect(variant)"
       >
         <span class="roots-sidebar__kw">{{ variant.keyword }}</span>
-        <!-- Sprint 3.6 — ScoreRing (réplique du score-ring principal) au lieu
-             du verdict catégoriel. Permet de comparer les variants racines
-             d'un coup d'oeil sur la même échelle 0-100 que la card principale. -->
         <ScoreRing
           :value="variant.card.relevanceScore?.total ?? 0"
           :size="22"
@@ -89,7 +79,6 @@ const rootsAverageColor = computed(() => {
         />
       </button>
 
-      <!-- Étape 3C — Score moyen pertinence des racines (info contextuelle SEO). -->
       <div
         v-if="rootsAverageScore !== null"
         class="roots-sidebar__average"
@@ -107,7 +96,6 @@ const rootsAverageColor = computed(() => {
     <template v-else-if="singleRoot">
       <div class="roots-sidebar__item roots-sidebar__item--readonly" data-testid="root-sidebar-single">
         <span class="roots-sidebar__kw">{{ singleRoot.keyword }}</span>
-        <!-- Sprint 3.6 — ScoreRing (verdict.greenCount/totalKpis projeté sur 0-100). -->
         <ScoreRing
           :value="(singleRoot.verdict.greenCount / singleRoot.verdict.totalKpis) * 100"
           :size="22"

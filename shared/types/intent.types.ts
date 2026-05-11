@@ -322,10 +322,9 @@ export interface RadarCard {
    *  `null` si painPoint absent ou aucun signal d'alignement disponible. */
   relevanceScore?: RelevanceScoreResult | null
   /**
-   * 2026-05-05 — Cause typée de l'absence de Score Pertinence (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
-   * Renvoyé par le backend (captain-relevance.service.ts) pour que le tooltip
-   * frontend soit honnête sans deviner.
-   * `null` si `relevanceScore` est présent.
+   * Cause typée absence Score Pertinence (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
+   * Backend (captain-relevance.service.ts) → tooltip frontend honnête.
+   * null si relevanceScore présent.
    */
   relevanceUnavailableReason?: RelevanceUnavailableReason | null
   /**

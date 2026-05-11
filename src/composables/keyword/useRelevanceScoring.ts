@@ -5,7 +5,7 @@ import type { DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 
 const RELEVANCE_THRESHOLD = 0.5
 const MAX_RELEVANCE_SCORES = 500
-// Sprint 1.1 — Batch size raised from 40 to 120 to cut Claude calls by ~3x.
+
 // Why: Claude handles a numbered list of 120 items well; the prompt is short,
 // the bottleneck was call count not input tokens. Also raises concurrency to 4.
 const SCORE_BATCH_SIZE = 120
@@ -165,7 +165,6 @@ export function useRelevanceScoring(deps: RelevanceScoringDeps) {
         .filter(([_, score]) => score >= RELEVANCE_THRESHOLD)
         .map(([kw]) => kw)
 
-      // Sprint 1.1 — Only run the strict pass-2 if pass-1 filtered out at
       // least STRICT_PASS_TRIGGER_RATIO of keywords. Cohesive topics where
       // pass-1 rejects almost nothing don't benefit from the strict recheck
       // and the extra call is pure cost.

@@ -596,32 +596,15 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   }
 }
 
-/**
- * Sauvegarde "decision-only" sur article_keywords + mirror sur articles.
- *
- * 2026-05-07 — Option A : SEUL le champ `capitaine` est utilise pour determiner
- * l'etat de verrouillage (capitaine non-vide = verrouille). La colonne
- * `captain_locked_at` est SUPPRIMEE de l'INSERT/UPDATE et de la lecture.
- *
- * Option A "preserve si non envoye" : chaque champ du payload est traite en
- * mode "remplace si fourni, conserve si undefined". Evite l'ecrasement
- * accidentel quand un PUT incomplet est envoye (ex: requestSave parasite
- * au mount qui n'inclut pas le champ).
- *
- * Champs traites :
- *   - capitaine, lieutenants, lexique, hnStructure, rootKeywords
- *   - articles.captain_keyword_locked (mirror) = capitaine non-vide ? capitaine : null
- */
+// Decision-only save: article_keywords + mirror on articles.captain_keyword_locked
 export async function saveArticleKeywords(id: number, data: Partial<Omit<ArticleKeywords, 'articleId'>>): Promise<ArticleKeywords> {
-  // Lit l'etat actuel pour preserver les champs non-fournis dans le payload
-  // (Option A : le PUT remplace les champs envoyes uniquement).
+  // Preserve fields not provided in payload (partial update strategy)
   const existing = await pool.query(
     'SELECT capitaine, lieutenants, lexique, hn_structure, root_keywords FROM article_keywords WHERE article_id = $1',
     [id],
   )
   const cur = existing.rows[0] ?? null
 
-  // Resolution "preserve si non envoye" champ par champ.
   const finalCapitaine = data.capitaine !== undefined ? (data.capitaine ?? '') : (cur?.capitaine ?? '')
   const finalLieutenants = data.lieutenants !== undefined ? data.lieutenants : (cur?.lieutenants ?? [])
   const finalLexique = data.lexique !== undefined ? data.lexique : (cur?.lexique ?? [])
@@ -630,7 +613,6 @@ export async function saveArticleKeywords(id: number, data: Partial<Omit<Article
     : (cur?.hn_structure ? JSON.stringify(cur.hn_structure) : null)
   const finalRootKeywords = data.rootKeywords !== undefined ? data.rootKeywords : (cur?.root_keywords ?? [])
 
-  // Decision layer only → article_keywords (sans captain_locked_at).
   await pool.query(`
     INSERT INTO article_keywords (article_id, capitaine, lieutenants, lexique, hn_structure, root_keywords)
     VALUES ($1, $2, $3, $4, $5, $6)
@@ -718,13 +700,9 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     paaByKeyword.set(p.keyword, list)
   }
 
-  // 2026-05-05 — Refonte live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE).
-  // marketScore : continue d'être rapatrié depuis radar_explorations (calcul
-  //   stable, ne dépend que du keyword). À terme, peut être recalculé front
-  //   à partir des kpis (FR-RAD-MARKET-COMPUTED-LIVE) — non bloquant ici.
-  // relevanceScore : N'EST PLUS lu depuis le snapshot Radar (FR-RAD-NO-RELEVANCE-IN-SCAN).
-  //   Calculé à la volée par computeRelevanceForCaptainTab (FR-CAP-RELEVANCE-COMPUTED-LIVE).
-  //   Le champ relevanceScore présent dans les anciens snapshots est IGNORÉ.
+  // Live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE) :
+  // marketScore depuis radar_explorations. relevanceScore ne vient plus du Radar snapshot
+  // (FR-RAD-NO-RELEVANCE-IN-SCAN) — calculé à la volée.
   const t3 = Date.now()
   const radarRes = await pool.query(
     `SELECT scan_result FROM radar_explorations WHERE article_id = $1`, [articleId]
@@ -749,9 +727,6 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     }
   }
   if (legacyRelevanceCount > 0) {
-    // Snapshot Radar legacy avec relevanceScore persisté. On ignore silencieusement
-    // (live computation remplace), log.warn pour traçabilité.
-    // FR-RAD-NO-RELEVANCE-IN-SCAN : les nouveaux scans ne stockent plus ce champ.
     log.warn('[captain-explorations] legacy relevanceScore in snapshot ignored (live computation)', {
       articleId,
       ignoredCount: legacyRelevanceCount,
@@ -763,9 +738,6 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     captainKeywords: res.rows.map(r => r.keyword),
   })
 
-  // Calcul Pertinence à la volée (FR-CAP-RELEVANCE-COMPUTED-LIVE).
-  // Mémoïsation des racines partagées via Map locale serveur (FR-CAP-RELEVANCE-MEMOIZATION).
-  // Source de vérité : docs/data-flows/relevance-score-live-computation.md.
   const t4 = Date.now()
   const captainKeywordsForRelevance = res.rows.map(r => ({
     keyword: r.keyword as string,
@@ -945,8 +917,7 @@ export async function getLieutenantExplorations(articleId: number): Promise<{ da
     `SELECT * FROM lieutenant_explorations WHERE article_id = $1 ORDER BY score DESC`, [articleId]
   )
   const dbOps: DbOp[] = [{ operation: 'select', table: 'lieutenant_explorations', rowCount: res.rows.length, ms: Date.now() - t }]
-  // 2026-05-07 — `lieutenant_explorations.locked_at` SUPPRIME (timestamp inutile
-  // dans l'UI). Source de verite du status = colonne `status`.
+  // locked_at supprimé (inutile UI). Source de vérité status = colonne status.
   const data = res.rows.map(lt => ({
     keyword: lt.keyword,
     status: lt.status,
@@ -966,10 +937,6 @@ export async function saveLieutenantExplorations(
 ): Promise<DbOp> {
   const t = Date.now()
   let rowCount = 0
-  // Pas de garde "no-downgrade locked → suggested" : le verrouillage est
-  // atomique par checkbox (FR-LIE-CHECKBOX-LOCK-IMMEDIATE), le payload reflète
-  // toujours l'état voulu par l'utilisateur. Une garde ici bloquerait un unlock
-  // individuel et la checkbox réapparaîtrait cochée au reload.
   for (const lt of entries) {
     const res = await pool.query(`
       INSERT INTO lieutenant_explorations (article_id, keyword, status, captain_keyword, reasoning, sources, suggested_hn_level, score, kpis, explored_at)

@@ -436,12 +436,9 @@ export async function scanRadarKeywords(
     })
      
 
-    // 2026-05-05 — FR-RAD-NO-RELEVANCE-IN-SCAN
-    // Le scan Radar ne calcule plus le Score Pertinence. Cette responsabilité
-    // est désormais portée exclusivement par l'onglet Capitaine via
-    // captain-relevance.service.ts (FR-CAP-RELEVANCE-COMPUTED-LIVE).
-    // Le scan Radar ne produit plus que :
-    //   - les KPIs marché bruts (Volume/KD/CPC/Intent/PAA/AC)
+    // FR-RAD-NO-RELEVANCE-IN-SCAN : Radar ne calcule plus Pertinence.
+    // Responsabilité exclusive Capitaine (captain-relevance.service.ts).
+    // Radar produit : KPIs marché bruts (Volume/KD/CPC/Intent/PAA/AC).
     //   - le marketScore (computeMarketScore — calcul stable, ne dépend pas du painPoint)
     // Le champ relevanceScore reste dans la structure pour rétro-compat avec
     // les anciens clients front, mais vaut TOUJOURS null. Les anciens snapshots

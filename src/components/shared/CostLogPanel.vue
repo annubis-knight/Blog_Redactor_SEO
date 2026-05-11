@@ -5,7 +5,6 @@ import { apiGet } from '@/services/api.service'
 
 const store = useCostLogStore()
 
-// Sprint 0.3 — DataForSEO sliding-window budget.
 // Polls the backend every 15s to show live spend in the pile header.
 interface CostStatus { spentUsd: number; budgetUsd: number; windowMin: number; entries: number; sandbox: boolean }
 const costStatus = ref<CostStatus | null>(null)

@@ -181,7 +181,7 @@ export function useLieutenantsSerp(deps: LieutenantsSerpDeps): LieutenantsSerpAp
 
     try {
       const results: SerpAnalysisResult[] = []
-      // Sprint 4.1 — Publish the full queue upfront so the UI can show skeleton
+
       // tabs for pending keywords (not just the one currently running).
       serpPendingKeywords.value = [...allKeywords]
 

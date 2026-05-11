@@ -3,7 +3,7 @@ import { computed } from 'vue'
 
 /**
  * Small circular score ring. Used on the main radar card (score 0-100) and,
- * since Sprint 16, on each root variant in the captain KPI row so the user
+ * since on each root variant in the captain KPI row so the user
  * can compare root candidates at a glance.
  */
 const props = withDefaults(defineProps<{

@@ -4,17 +4,8 @@ import AiPanel from '@/components/moteur/ai-panel/AiPanel.vue'
 import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 
 /**
- * Sprint C-2 (2026-05-02) — Panel IA Lexique en bas de page.
- *
- * L'extraction TF-IDF reste à sa place dans LexiquePanel.vue (les badges
- * IA-recommandés sont apposés sur les termes du tableau). Ce composant
- * agrège l'état IA et offre :
- *   - le CTA standardisé d'analyse / régénération (variant suggestion)
- *   - un récap des stats (nb termes analysés, recommandés, écartés)
- *   - le bandeau d'erreur unifié
- *
- * Pas de handoff — la sélection des termes valide directement vers le store
- * via le tableau TF-IDF en haut de page.
+ * Panel IA Lexique (bas de page). Agrège l'état IA, offre CTA standardisé
+ * et récap stats. TF-IDF en haut de page, pas de handoff.
  */
 const props = defineProps<{
   iaIsStreaming: boolean

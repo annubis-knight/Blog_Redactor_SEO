@@ -1,22 +1,9 @@
 <script setup lang="ts">
 /**
- * Vague 3 — Sous-composant Vue extrait de LieutenantsPanel.
- *
- * Référence FR PRD : FR-LIE-AI-FRONTIER (PRD §8.7).
- *
- * ⚠️ ARCHITECTURE — Sprint 1 (2026-05-04) restauré dans la Vague 3 :
- * Les containers PRINCIPAUX (LieutenantProposals + LieutenantH2Structure)
- * sont DESCENDANTS DIRECTS de ce composant, PAS de LieutenantsAiPanel.
- *
- * Sprint C-1 (commit 890b285) avait wrappé ces deux composants dans la coque
- * "Suggestions IA Lieutenants" — régression UX (l'utilisateur voyait ses
- * propres données sous l'étiquette "Suggestions IA"). Cette frontière est
- * formalisée dans FR-LIE-AI-FRONTIER et verrouillée par les tests
- * `lieutenants-selection-architecture.test.ts` et
- * `lieutenants-results-layout-architecture.test.ts`.
- *
- * NE JAMAIS re-wrapper LieutenantProposals ou LieutenantH2Structure dans
- * LieutenantsAiPanel.
+ * Sous-composant de LieutenantsPanel (FR-LIE-AI-FRONTIER, PRD §8.7).
+ * Containers PRINCIPAUX (Proposals + H2Structure) sont DESCENDANTS DIRECTS,
+ * PAS dans LieutenantsAiPanel.
+ * Tests: lieutenants-selection-architecture.test.ts, lieutenants-results-layout-architecture.test.ts
  */
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import LieutenantsAiPanel from '@/components/moteur/LieutenantsAiPanel.vue'
@@ -66,7 +53,7 @@ defineEmits<{
   (e: 'save-hn'): void
   (e: 'regenerate-hn', lockedHeadings: ProposeLieutenantsHnNode[]): void
   (e: 'update:active-hn-tab', tab: string): void
-  // Sprint 17 — `lock-lieutenants` / `unlock-lieutenants` supprimés (boutons batch enlevés).
+
   // La checkbox de chaque LieutenantCard fait le lock immédiat via toggleLieutenant.
 }>()
 </script>
@@ -105,7 +92,6 @@ defineEmits<{
       @update:active-hn-tab="(tab: string) => $emit('update:active-hn-tab', tab)"
     />
 
-    <!-- Sprint 4.6 — PAA section relabeled -->
     <CollapsableSection v-if="serpResult" title="Sources IA : questions Google (PAA)" :default-open="false">
       <p class="section-hint">Questions "People Also Ask" scrapees depuis Google pour tes mots-cles. Elles ont deja ete prises en compte par l'IA pour proposer les lieutenants ci-dessus — affichees ici pour transparence.</p>
       <ul v-if="serpResult.paaQuestions.length > 0" class="paa-list">
@@ -129,10 +115,7 @@ defineEmits<{
       <p v-else class="section-empty">Aucun cluster disponible. Lance un scan Discovery pour ce cocon, puis reviens ici.</p>
     </CollapsableSection>
 
-    <!-- 2026-05-08 — Le badge "Lieutenants verrouillés" + le concept de
-         "panel locké" sont SUPPRIMÉS. Le verrouillage est par checkbox
-         (FR-LIE-CHECKBOX-LOCK-IMMEDIATE). L'utilisateur sait qu'un lieutenant
-         est verrouillé directement par l'état coché de sa case. -->
+    <!-- Verrouillage par checkbox (FR-LIE-CHECKBOX-LOCK-IMMEDIATE). -->
 
     <!-- Section IA pure — coque purple commune avec les autres onglets.
          NE contient PAS de cards Lieutenants ni de structure Hn (FR-LIE-AI-FRONTIER). -->
@@ -221,7 +204,5 @@ defineEmits<{
   color: var(--color-text-muted);
 }
 
-/* 2026-05-08 — CSS du badge/boutons batch lock SUPPRIMÉ
-   (.lieutenant-lock, .lock-btn, .locked-state, .locked-badge, .unlock-btn) :
-   plus de mode "panel locké", verrouillage par checkbox uniquement. */
+/* Legacy CSS batch lock supprimé (.lieutenant-lock, .lock-btn, .locked-state, etc.). */
 </style>

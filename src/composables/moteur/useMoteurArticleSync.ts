@@ -26,11 +26,8 @@ export interface MoteurArticleSyncDeps {
 
 export interface MoteurArticleSyncApi {
   /**
-   * Map articleId (number) → captain-keyword pour les articles du cocon.
-   * Cohérent avec le contrat backend `/cocoons/:name/capitaines` qui renvoie
-   * `Record<number, string>` (clé = articleId). Bug F3 (2026-05-07) — ce
-   * type était `Record<string, string>` et créait un drift silencieux avec
-   * `MoteurContextRecap.props.capitainesMap` qui attend `Record<number, string>`.
+   * Map articleId (number) → captain-keyword. Cohérent contrat backend
+   * `/cocoons/:name/capitaines` : Record<number, string>.
    */
   capitainesMap: Ref<Record<number, string>>
   /** Counts persistés en DB par onglet pour l'article courant. */
@@ -107,9 +104,7 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
     articleProgressStore.addCheck(id, check).catch(err =>
       log.warn('[useMoteurArticleSync] addCheck failed', { articleId: id, check, error: err }),
     )
-    // Bug F2 (2026-05-07) — comparait la string littérale `'capitaine_locked'`
-    // alors que les checks sont préfixés (`MOTEUR_CAPITAINE_LOCKED ===
-    // 'moteur:capitaine_locked'`). refreshCapitainesMap ne firait jamais.
+    // Compare check constant (moteur:capitaine_locked, pas 'capitaine_locked').
     if (check === MOTEUR_CAPITAINE_LOCKED) refreshCapitainesMap()
     refreshExplorationCounts()
   }

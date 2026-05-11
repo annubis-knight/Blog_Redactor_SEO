@@ -11,8 +11,6 @@ const props = defineProps<{
   lockedKeyword: string | null
   articleLevel?: ArticleLevel
   articleId?: number | null
-  /** Sprint 2 — propagé jusqu'à RadarKeywordCard (tooltip différencié) et
-   *  RadarCardLockable (bouton recalcul Pertinence). */
   articlePainPoint?: string | null
 }>()
 
@@ -34,8 +32,7 @@ const emit = defineEmits<{
   'lock': []
   'unlock': []
   'word-toggle': [activeIndices: number[]]
-  /** Sprint 2 (2026-05-04) — propagé depuis RadarCardLockable.
-   *  Le parent (CaptainPanel) re-validate la card avec le painPoint courant. */
+  /** Propagé depuis RadarCardLockable. Parent re-validate la card. */
   'recompute-relevance': [card: RadarCard]
 }>()
 
@@ -45,13 +42,9 @@ const currentWords = computed(() => {
 
 /**
  * Configuration des mots interactifs côté Capitaine.
- * Règles (révision 2026-05-01) :
- *   1. Capitaine < 3 mots → pas de mots cliquables (pas de racines à explorer).
- *   2. Capitaine ≥ 3 mots → toujours des mots cliquables, même sans racines
- *      pré-validées en cache (cohérence visuelle, l'utilisateur n'attend pas
- *      le pré-chargement pour voir l'interface).
- *   3. Les 2 premiers mots SIGNIFICATIFS (non-stopwords) sont SANCTUARISÉS
- *      via `lockedLeftWords: 2` : visuellement non-cliquables, ancrent la
+ *   1. < 3 mots → pas de mots cliquables.
+ *   2. ≥ 3 mots → mots cliquables même sans cache.
+ *   3. 2 premiers mots non-stopwords sanctuarisés (lockedLeftWords: 2), non-cliquables, ancrent la
  *      racine du capitaine. Aligné sur la contrainte d'`extractRoots` qui
  *      exige déjà ≥ 2 mots significatifs (cf. useCapitaineScan.ts).
  */
@@ -67,7 +60,7 @@ const interactiveWordsProps = computed(() => {
 
 const isLocked = computed(() => {
   if (props.lockedKeyword === null) return false
-  // Sprint 18 — Décision tranchée : lock UNIQUEMENT sur originalCard.keyword.
+
   // L'utilisateur ne peut pas locker une racine active sur une RadarCard dont
   // l'originalCard est différent (s'il veut locker la racine, il la cherche
   // explicitement via l'input Capitaine).

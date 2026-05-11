@@ -17,7 +17,6 @@ import type { SelectedArticle, Article } from '@shared/types/index.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
-// Sprint 4 (2026-05-04) — SelectedArticlePanel retiré (friction #3 redondance).
 
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
 import BasketStrip from '@/components/moteur/BasketStrip.vue'
@@ -55,16 +54,11 @@ const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroup
 const basketStore = useMoteurBasketStore()
 const workflowNavStore = useWorkflowNavStore()
 
-// Sprint 4 (2026-05-04) — on conserve une référence pour pouvoir fermer
-// le panel ouvert lorsqu'un article est sélectionné (libère l'espace
-// vertical pour les contenus principaux du Moteur, cf. friction #4).
+// Keep reference to recap radio to close panels when article selected
 const recapRadioGroup = provideRecapRadioGroup()
 
 const selectedArticle = ref<SelectedArticle | null>(null)
 
-// (capitainesMap, explorationCounts, emitCheckCompleted, handleCheckRemoved,
-//  clearExternalCacheForArticle, watcher refresh moved to useMoteurArticleSync below
-//  — déclaré après cocoonName car en dépend.)
 
 const cocoonId = computed(() => Number(route.params.cocoonId))
 
@@ -74,7 +68,7 @@ const cocoon = computed(() =>
 
 const cocoonName = computed(() => cocoon.value?.name ?? '')
 
-// --- Article sync (Vague 5 — extracted to useMoteurArticleSync) ---
+// --- Article sync ---
 const {
   capitainesMap,
   explorationCounts,
@@ -131,10 +125,7 @@ const suggestedArticlesForRecap = computed<Article[]>(() =>
 )
 
 // FR-MOT-RECAP-PUBLISHED : la section récap "Articles publiés" ne doit afficher
-// QUE les articles `phase IN ('redaction', 'published')`. La dérivation est faite
-// côté backend dans `loadArticlesDb` ; on lit ici le champ déjà filtré pour ne
-// pas dupliquer le filtre (anti-régression : 2026-05-11, les articles `proposed`
-// fraîchement insérés par Cerveau apparaissaient à tort dans "publiés").
+// Articles `phase IN ('redaction', 'published')`. Backend filtre déjà ; lire champ filtré.
 const publishedArticles = computed(() =>
   cocoon.value?.publishedArticles ?? [],
 )
@@ -172,7 +163,6 @@ const {
   workflowNavStore,
 })
 
-// Sprint 1.3/5.1 — contextual next-tab button labels (utilisés par le template).
 const TAB_LABELS: Record<string, string> = {
   discovery: 'Discovery',
   radar: 'Radar',
@@ -202,7 +192,6 @@ function handleSelectArticle(article: SelectedArticle | null) {
   })
   selectedArticle.value = article
 
-  // Sprint 4 (2026-05-04) — friction #4 : referme le RecapToggle ouvert
   // (Articles suggérés / publiés) pour libérer la place au contenu principal.
   if (article && recapRadioGroup.openPanelId.value !== null) {
     recapRadioGroup.toggle(recapRadioGroup.openPanelId.value)
@@ -231,7 +220,6 @@ function handleSelectArticle(article: SelectedArticle | null) {
   // CaptainPanel, laissant souvent 0-1 carte affichée alors que la DB
   // en contenait davantage.
   //
-  // F6 (2026-05-07) — `$reset()` avant `fetchKeywordsMerge` pour éviter le
   // bleed-through pendant la fenêtre async : entre l'instant `selectedArticle`
   // change et la résolution du fetch, `articleKeywordsStore.keywords` contient
   // encore les keywords de l'article précédent. Sans reset, `getDisplayedKeyword`
@@ -244,7 +232,6 @@ function handleSelectArticle(article: SelectedArticle | null) {
     articleKeywordsStore.fetchKeywordsMerge(article.id)
     loadCachedResults(article.id)
 
-    // Sprint 5 (2026-05-04) — friction #6 : auto-load Radar depuis la DB
     // au sélection d'article. Discovery est exclu (modèle seed-based,
     // cf. docs/moteur-data-flow.md §8bis). L'utilisateur garde le bouton
     // manuel via TabLoadPrompt en filet de secours.
@@ -477,7 +464,7 @@ onMounted(() => {
         @select="handleSelectArticle"
       />
 
-      <!-- Sprint 4 (2026-05-04) — friction #3 : `SelectedArticlePanel`
+      <!--
            supprimé. Il dupliquait MoteurContextRecap (titre + type + douleur)
            et n'apportait que la progression, qui reste accessible via les
            ProgressDots de la navbar et les checks workflow. -->
@@ -504,7 +491,7 @@ onMounted(() => {
         </button>
       </div>
 
-      <!-- Sprint 2.4 — PhaseTransitionBanner retiré. Le bouton bas-de-page
+      <!--
            "Continuer vers {TabSuivant}" remplace ce banner d'attention. -->
 
       <!-- Basket strip (persistent across tabs) -->
@@ -523,7 +510,7 @@ onMounted(() => {
            Le wrapper gère le sticky bottom unique pour les deux composants ;
            chaque composant ne sait rien de l'autre. -->
       <div v-if="selectedArticle" class="cache-bar">
-        <!-- Sprint 4 (2026-05-04) — friction #2 : @navigate retiré. Les chips
+        <!--
              sont devenues read-only ; la nav passe par les onglets standards. -->
         <TabCachePanel
           :entries="tabCacheEntries"
@@ -531,7 +518,7 @@ onMounted(() => {
           :show-clear-cache="true"
           @clear-cache="clearExternalCacheForArticle"
         />
-        <!-- 2026-05-01 — Notification "Charger DB / Cache" pour l'onglet courant.
+        <!--
              Mêmes codes visuels que le TabCachePanel (extension naturelle). -->
         <TabLoadPrompt
           v-if="tabLoadPromptCurrent"
@@ -546,7 +533,7 @@ onMounted(() => {
       <!-- Tab content (only when article is selected) -->
       <template v-if="selectedArticle">
         <!-- Phase ① Générer — Discovery -->
-        <!-- Sprint 1.2 — PainTranslator retiré du workflow (toujours dispo dans LaboView pour expérimenter). -->
+        <!--  -->
         <div v-if="visitedTabs.discovery" v-show="activeTab === 'discovery'" class="tab-content">
           <DiscoveryPanel
             mode="workflow"

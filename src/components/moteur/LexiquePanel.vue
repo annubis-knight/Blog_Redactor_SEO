@@ -132,7 +132,6 @@ const selectedByLevel = computed(() => {
   }
 })
 
-// --- Onglets (chantier 3 E2-S2 — FR-LEX-MULTI-KEYWORD-TABS) ---
 const CUSTOM_TAB_ID = '__custom__'
 const lexiqueTabs = computed(() => {
   const explorationTabs = pastExplorations.value.map(e => ({ id: e.sourceKeyword, label: e.sourceKeyword }))
@@ -193,8 +192,6 @@ async function extractLexique() {
   await fetchTfidf(props.captainKeyword)
 }
 
-// Sprint 11 D4 + chantier 3 E1-S3/E2-S2 : triggerScrape=true (utilisateur
-// acte le coût) + mergeFromDb après succès → nouvel onglet via cache LECTURE.
 async function extractCustomKeyword() {
   const kw = customKeywordInput.value.trim()
   if (!kw || isLoading.value) return
@@ -319,12 +316,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       @add="handleAssistAdd"
     />
 
-    <!--
-      Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — gating : si aucun scrape SERP
-      n'existe pour le captain keyword, on n'expose pas le bouton « Extraire »
-      (qui produirait un 404 console). À la place : message explicite + CTA
-      *« Lancer l'analyse SERP »* qui ouvre la modale de confirmation coût.
-    -->
+    <!-- Gating: show SERP scrape prompt if no scrape exists for captain keyword -->
     <div
       v-if="serpExists === false && captainKeyword"
       class="precheck-prompt"
@@ -369,13 +361,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       @cancel="cancelSerpScrape"
     />
 
-    <!--
-      Chantier 3 E2-S2 (FR-LEX-MULTI-KEYWORD-TABS) — onglets multi-keyword
-      remplacent les chips collapsibles. Un onglet par sourceKeyword exploré
-      (label brut, cohérence affichage/calcul §2.0) + un onglet « + Tester
-      un mot-clé » qui révèle la saisie libre. Le clic onglet est un pur
-      switch UI (pas de refetch DB — lecture du cache pastExplorations).
-    -->
+    <!-- Multi-keyword tabs: UI-only switch reading from cache -->
     <div v-if="selectedArticle?.id" class="lexique-tabs-section">
       <TabBar
         :tabs="lexiqueTabs"
@@ -418,10 +404,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         </div>
       </div>
 
-      <!-- 2026-05-02 — Barre de tri unifiée (remplace l'ancien toggle "Trier par
-           alignement douleur" qui n'avait qu'un critère booléen). Cohérent avec
-           Radar / Capitaine / Lieutenants. Le compteur multi-niveau (O/D/Op) est
-           absorbé dans le countLabel. -->
+      <!-- Barre de tri unifiée. Compteur multi-niveau (O/D/Op) absorbé dans countLabel. -->
       <SortToggleBar
         :options="lexiqueSortOptions"
         :model-value="lexiqueSortState"
@@ -470,17 +453,12 @@ defineExpose({ hydrateFromDb, mergeFromDb })
 
     </div>
 
-    <!-- Sprint 17 — Plus de boutons batch "Verrouiller / Déverrouiller le Lexique".
-         Chaque checkbox de terme TF-IDF persiste immédiatement dans keywords.lexique
-         via toggleTerm. Voir FR-LEX-CHECKBOX-LOCK-IMMEDIATE. Badge d'état conservé
-         pour visibilité utilisateur. -->
+    <!-- Lock status badge: checkboxes persist immediately (no batch buttons) -->
     <div v-if="isLocked" class="lexique-lock-status" data-testid="lexique-lock-status">
       <span class="locked-badge">{{ selectedCount }} terme(s) verrouillé(s)</span>
     </div>
 
-    <!-- Sprint C-2 (2026-05-02) — Panel IA Lexique en bas de page. Reprend
-         l'analyse upfront (recommandations IA) sous la coque commune. Les
-         badges IA-recommandés restent dans le tableau TF-IDF en haut. -->
+    <!-- Lexique AI panel: displays upfront recommendations -->
     <LexiqueAiPanel
       v-if="tfidfResult"
       :ia-is-streaming="iaIsStreaming"
@@ -558,7 +536,6 @@ defineExpose({ hydrateFromDb, mergeFromDb })
   align-items: center;
 }
 
-/* Chantier 3 E1-S3 (FR-LEX-PRECHECK-SERP) — état pré-check missing. */
 .precheck-prompt {
   display: flex;
   flex-direction: column;

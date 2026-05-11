@@ -84,14 +84,8 @@ const checkedKeywords = ref(new Set<string>())
 // CPC filter (3 états : null / 'with' / 'without').
 const cpcFilter = ref<CpcFilter>(null)
 
-// 2026-05-02 — Tri unifié des radar cards.
-//
-// Score = `computeKpiScore(card.kpis, articleLevel).total` — exactement le
-// score affiché par RadarKeywordCard en mode `displayMode='kpi'`. Ce calcul
-// front garantit que "ce que je vois trié = ce que je vois affiché", peu
-// importe l'âge des cards persistées (recalcul à la demande).
-//
-// Voir docs/scoring-kpi-vs-relevance.md pour la séparation KPI / Pertinence.
+// Tri unifié radar cards : score = computeKpiScore (front, cohérent affichage).
+// Voir docs/scoring-kpi-vs-relevance.md.
 const radarCards = computed<RadarCard[]>(() => scanResult.value?.cards ?? [])
 const radarSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
@@ -363,8 +357,7 @@ function handleReset() {
 }
 
 /**
- * 2026-05-01 — Exposé pour le TabLoadPrompt : permet à MoteurView d'invoquer
- * le merge depuis DB ou cache sans écraser l'état mémoire.
+ * Exposé pour TabLoadPrompt : merge depuis DB/cache sans écraser état mémoire.
  */
 defineExpose({ mergeFromRadarSource })
 </script>

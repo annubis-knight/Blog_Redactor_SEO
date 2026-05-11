@@ -72,7 +72,7 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
 
     const articleLevel = level as ArticleLevel
 
-    // Sprint 15.3 — DB-first cross-article on keyword_metrics.
+
     // Raw metrics (volume, KD, CPC, autocomplete, PAA) are keyword-scoped.
     // Only the verdict (level-sensitive) and PAA scoring (article-title-sensitive)
     // are recomputed per article on every call.
@@ -294,7 +294,7 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
         const captainEntry: CaptainScanEntry = {
           keyword,
           articleLevel,
-          // kpis kept here only until Sprint 15.3-bis drops the column entirely.
+          // kpis kept here only until -bis drops the column entirely.
           kpis: kpis.map(k => ({ name: k.name, rawValue: k.rawValue })),
           rootKeywords: extractRoots(keyword),
           paaQuestions: response.paaQuestions,

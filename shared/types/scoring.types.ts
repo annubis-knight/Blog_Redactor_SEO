@@ -131,16 +131,9 @@ export interface RelevanceScoreResult {
 }
 
 /**
- * 2026-05-05 — Cause typée renvoyée par le backend quand `relevanceScore` est `null`.
- *
- * Voir docs/data-flows/relevance-score-live-computation.md §8 et FR-CAP-RELEVANCE-UNAVAILABLE-REASON.
- *
- * Mapping vers les messages UI :
- *   - 'no-pain'              → "Définis un point de douleur sur l'article"
- *   - 'long-tail'            → "Score non applicable (longue-traîne)"
- *   - 'missing-paa'          → "Pas de PAA disponible — relance un scan Radar pour ce keyword"
- *   - 'missing-autocomplete' → "Pas d'autocomplete — relance un scan Radar"
- *   - null                   → score présent (champ omis ou null)
+ * Cause typée backend quand relevanceScore est null (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
+ * Voir docs/data-flows/relevance-score-live-computation.md §8.
+ * Mapping UI : no-pain|long-tail|missing-paa|missing-autocomplete|null.
  */
 export type RelevanceUnavailableReason =
   | 'no-pain'
@@ -149,12 +142,8 @@ export type RelevanceUnavailableReason =
   | 'missing-autocomplete'
 
 /**
- * 2026-05-05 — Résultat du calcul Pertinence à la volée (architecture live computation).
- *
- * `total` peut être `null` quand le calcul n'est pas possible. Dans ce cas,
- * `unavailableReason` est rempli pour informer le frontend de la cause précise.
- *
- * Quand `total` est un nombre, `unavailableReason` est `null`.
+ * Résultat calcul Pertinence volée (live computation).
+ * total null → unavailableReason rempli. Nombre → unavailableReason null.
  */
 export interface RelevanceScoreLiveResult {
   total: number | null

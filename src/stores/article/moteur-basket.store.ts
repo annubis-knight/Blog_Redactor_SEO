@@ -11,9 +11,7 @@ export interface BasketKeyword {
   validated?: boolean
   score?: number
   /**
-   * Sprint D-1 (2026-05-02) — Marqué comme « poussé vers Radar » par le panel
-   * Discovery IA. Utilisé pour griser la coche dans le panel et éviter de
-   * pousser deux fois le même mot-clé.
+   * Marqué « poussé vers Radar » par panel Discovery IA. Évite double-push (grise coche).
    */
   pushedToRadar?: boolean
 }
@@ -85,7 +83,7 @@ export const useMoteurBasketStore = defineStore('moteurBasket', () => {
   }
 
   /**
-   * Sprint D-1 — Marque un mot-clé du basket comme poussé vers Radar.
+   * Marque un mot-clé du basket comme poussé vers Radar.
    * Idempotent ; lower-case match.
    */
   function markPushedToRadar(keywordsToPush: string[]) {

@@ -5,8 +5,7 @@
  * hn-structure, lexique-ai, lexique-upfront) pour injecter le painPoint dans
  * leurs prompts respectifs.
  *
- * Sprint S1 (cf. tech-spec score-kpi-pertinence-separation et
- * docs/pain-point-editorial-backbone.md).
+ * Voir docs/pain-point-editorial-backbone.md.
  */
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'

@@ -12,14 +12,12 @@
  * RELATED FR: FR-LEX-SCRAPE-DEDIE, FR-LEX-TFIDF, FR-LEX-MULTI-KEYWORD.
  *
  * NEVER IMPORTS: lieutenants-*.service, components/moteur/Lieutenants*
- *               (test grep architectural — AC.LEX-SCRAPE.1 / AC.DECOUPLAGE.3,
- *                vérifié en Story B3).
- * NEVER READS: headings du scrape (test mock count — AC.LEX-SCRAPE.2,
+ *               (test grep architectural — AC.LEX-SCRAPE.1 /,
+ *                vérifié en * NEVER READS: headings du scrape (test mock count — AC.LEX-SCRAPE.2,
  *             vérifié dans tests/unit/services/lexique-analysis.service.test.ts).
  *
  * Le service ne fait PAS l'appel IA Lexique : l'IA est portée par
- * keyword-ai-panel.routes.ts (FR-LEX-AI-PANEL — hors périmètre du chantier 2).
- * Si un appel IA est ajouté ici plus tard, ce sera une story dédiée.
+ * keyword-ai-panel.routes.ts (FR-LEX-AI-PANEL — hors périmètre du  * Si un appel IA est ajouté ici plus tard, ce sera une story dédiée.
  */
 import { log } from '../../utils/logger.js'
 import {
@@ -32,8 +30,7 @@ import type { TfidfResult } from '../../../shared/types/serp-analysis.types.js'
 
 /**
  * Erreur métier : pas de scrape SERP disponible pour ce keyword.
- * Message verbatim préservé pour compat front (AC.C2.2 — chantier 2 + chantier 1).
- */
+ * Message verbatim préservé pour compat front (AC.C2.2 —  */
 export class LexiqueScrapeMissingError extends Error {
   constructor() {
     super("Lancez d'abord l'analyse SERP dans l'onglet Lieutenants")

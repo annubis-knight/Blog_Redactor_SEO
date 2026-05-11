@@ -78,8 +78,7 @@ router.post('/keywords/audit', async (req, res) => {
 })
 
 /**
- * GET /api/keywords/:keyword/serp/exists — chantier 3 E1-S1 (FR-LEX-PRECHECK-SERP).
- *
+ * GET /api/keywords/:keyword/serp/exists —  *
  * Pré-check léger : un scrape SERP existe-t-il pour ce keyword ? Permet à
  * l'UI Lexique d'afficher un CTA explicite *« Lancer l'analyse SERP »* au
  * lieu de tenter un POST /serp/tfidf qui répondrait 404. 200 OK toujours
@@ -375,7 +374,7 @@ router.post('/articles/:id/lieutenant-explorations', async (req, res) => {
 
 /**
  * POST /api/articles/:id/lieutenants/archive
- * Sprint 12 (D3) — Flag all non-archived lieutenant rows as 'archived' so they
+ *  (D3) — Flag all non-archived lieutenant rows as 'archived' so they
  * disappear from the active UI while staying in DB for later audit.
  */
 router.post('/articles/:id/lieutenants/archive', async (req, res) => {

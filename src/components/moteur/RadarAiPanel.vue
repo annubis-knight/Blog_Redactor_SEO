@@ -61,10 +61,6 @@ function markCandidates() {
             @change="(e) => toggle(item.keyword, (e.target as HTMLInputElement).checked)"
           >
           <span class="radar-ai-keyword">{{ item.keyword }}</span>
-          <!-- Friction #8 : afficher "—" si score absent (cohérent avec
-               RadarKeywordCard tooltip "Pertinence indisponible"). Avant :
-               "M 0 / P 0" donnait l'impression d'un bug. On distingue
-               "absent" (marketTotalAvailable=false) vs "présent à 0". -->
           <span class="radar-ai-scores">
             <span class="radar-ai-score-pill" :title="item.marketTotalAvailable ? 'Score Marché' : 'Score Marché indisponible'">
               M {{ item.marketTotalAvailable ? Math.round(item.marketTotal) : '—' }}

@@ -65,10 +65,8 @@ export interface MoteurTabsApi {
   /** Setter type-safe ; ignore les ids inconnus. */
   setActiveTab: (tabId: string) => void
   /**
-   * Choisit le premier onglet "utile" pour un article donné selon ses checks.
-   * Aucun check → 'capitaine'. capitaine_locked → 'lieutenants'.
-   * lieutenants_locked → 'lexique'.
-   * Sprint 4 (2026-05-04) friction #1 : ne plus auto-naviguer vers Finalisation.
+   * Premier onglet utile par checks : aucun→'capitaine', capitaine_locked→'lieutenants',
+   * lieutenants_locked→'lexique'. Pas d'auto-nav vers Finalisation.
    */
   computeSmartTab: (articleId: number) => Tab
   /** Groupes nav publiés vers `workflowNavStore` (slot droit AppNavbar). */
@@ -134,7 +132,7 @@ export function useMoteurTabs(deps: MoteurTabsDeps): MoteurTabsApi {
     const progress = articleProgressStore.getProgress(articleId)
     const checks = progress?.completedChecks ?? []
     if (checks.length === 0) return 'capitaine'
-    // Sprint 4 (2026-05-04) — friction #1 : ne plus auto-naviguer vers Finalisation.
+    // Pas d'auto-nav vers Finalisation.
     if (checks.includes(MOTEUR_LIEUTENANTS_LOCKED)) return 'lexique'
     if (checks.includes(MOTEUR_CAPITAINE_LOCKED)) return 'lieutenants'
     return 'capitaine'

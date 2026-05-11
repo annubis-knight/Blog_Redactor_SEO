@@ -49,9 +49,6 @@ const greenRatio = computed(() => {
     <ConfidenceBar :value="greenRatio" class="verdict-bar__confidence" />
     <span v-if="fromCache" class="verdict-bar__cache" title="Résultat lu depuis le cache">cache</span>
 
-    <!-- Sprint — NO-GO message was previously in its own block below the
-         thermometer, pushing the KPI row down. Now it lives on the right of
-         the same single-line bar. Fixed height => no layout jump. -->
     <div v-if="noGoMessage" class="verdict-bar__nogo" :style="{ color: config.color }" data-testid="verdict-bar-nogo">
       <span class="verdict-bar__nogo-sep" :aria-hidden="true">·</span>
       <span class="verdict-bar__nogo-text">{{ noGoMessage }}</span>

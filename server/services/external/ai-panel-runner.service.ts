@@ -4,18 +4,9 @@ import { streamChatCompletion, USAGE_SENTINEL } from './ai-provider.service.js'
 import type { ApiUsage } from './claude.service.js'
 
 /**
- * Sprint E (2026-05-02) — Service runner unifié pour les Panels IA du Moteur.
- *
- * Factorise la séquence répétée dans les 4 handlers de
- * `keyword-ai-panel.routes.ts` :
- *
- *   1. ouvrir le canal SSE (writeHead text/event-stream)
- *   2. consommer le stream du provider IA (chunks → events 'chunk')
- *   3. extraire l'usage Claude depuis le sentinel
- *   4. (optionnel) parser le payload final (JSON tools)
- *   5. (optionnel) appeler un hook onSuccess pour persister en DB
- *   6. envoyer 'done' avec metadata + usage
- *   7. gérer les erreurs (avec gestion `headersSent` correcte)
+ * Service runner unifié Panels IA Moteur. Séquence SSE :
+ * 1. writeHead 2. stream chunks 3. usage Claude 4. parse JSON (opt) 5. hook onSuccess
+ * 6. send done 7. errors.
  *
  * **Contrats préservés** : les events SSE émis (`chunk`, `done`, `error`) ont
  * exactement la même forme qu'avant. Le payload `done` est composé par le

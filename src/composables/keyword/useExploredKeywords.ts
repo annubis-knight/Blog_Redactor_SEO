@@ -23,14 +23,7 @@ export interface ExploredKeywordEntry {
   pendingVariants: Set<string>
 }
 
-/**
- * Convert a ScanResponse into a fully hydrated RadarCard.
- *
- * 2026-05-02 — Propage `marketScore` et `relevanceScore` du backend vers la
- * card. Avant ce fix, ces deux scores étaient perdus, forçant l'UI Capitaine
- * à fallback sur `combinedScore` (legacy hybride) et brisant la séparation
- * KPI / Pertinence documentée dans docs/scoring-kpi-vs-relevance.md.
- */
+// Hydrate RadarCard from ScanResponse with marketScore and relevanceScore propagation
 export function hydrateCardFromValidation(keyword: string, response: ScanResponse): RadarCard {
   const kpiMap = Object.fromEntries(response.kpis.map(k => [k.name, k]))
 
@@ -70,13 +63,10 @@ export function hydrateCardFromValidation(keyword: string, response: ScanRespons
     scoreBreakdown,
     reasoning: '',
     cachedPaa: false,
-    // 2026-05-02 — Scores backend propagés. Onglet Radar consomme `marketScore`,
-    // onglet Capitaine consomme `relevanceScore`. Voir scoring-kpi-vs-relevance.md.
     marketScore: response.marketScore,
     relevanceScore: response.relevanceScore ?? null,
   }
 
-  // Log debug pour traçabilité du flux de scoring (à retirer si bruyant en prod).
   log.debug('[hydrateCardFromValidation]', {
     keyword,
     hasMarket: !!response.marketScore,
@@ -164,7 +154,7 @@ export function useExploredKeywords() {
 
   async function loadCards(cards: RadarCard[], level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
-    // Sprint 17 (Bug B) — Dédup les cards d'entrée par keyword (case-insensitive).
+
     // Conserve la première occurrence rencontrée. Sans cette dédup, un Radar
     // qui retourne 2 fois le même mot-clé créerait 2 entries identiques.
     const dedupedCards = Array.from(
@@ -231,20 +221,11 @@ export function useExploredKeywords() {
     return entry.validation.verdict.level
   }
 
-  /** Add a single keyword as a new carousel entry and validate it.
-   *
-   * Sprint 17 (Bug B) — Déduplication par originalCard.keyword. Si le mot-clé
-   * existe déjà dans `entries` (même casse normalisée), on ne crée pas une
-   * nouvelle entrée : on pointe `currentIndex` sur l'entry existante et on
-   * relance la validation pour rafraîchir les scores. Avant ce fix, locker /
-   * déverrouiller un mot-clé dupliquait la card via le watcher
-   * `keywords.capitaine` qui appelait `addEntry` sans vérifier l'existence.
-   */
+  // Add single keyword to carousel and validate, with deduplication by keyword
   async function addEntry(keyword: string, level: ArticleLevel, articleTitle?: string, articleId?: number, painPoint?: string) {
     const thisVersion = ++loadVersion
     const normalizedKeyword = keyword.trim().toLowerCase()
 
-    // Sprint 17 — dédup : si une entry existe déjà pour ce keyword, la réutiliser.
     const existingIndex = entries.value.findIndex(
       e => e.originalCard.keyword.trim().toLowerCase() === normalizedKeyword,
     )
@@ -386,7 +367,6 @@ export function useExploredKeywords() {
     ++loadVersion
     const config = getThresholds(level)
 
-    // Sprint 17 (Bug B) — Dédup l'historique par keyword (case-insensitive).
     // Le backend ne devrait pas retourner de doublons (UNIQUE constraint sur
     // captain_explorations) mais cette dédup défensive protège contre tout
     // payload malformé ou bug régression côté serveur.
@@ -412,10 +392,6 @@ export function useExploredKeywords() {
         fromCache: true,
         cachedAt: null,
         paaQuestions: h.paaQuestions,
-        // 2026-05-02 — Propage les scores hydratés par le backend
-        // (getCaptainExplorations rapatrie depuis radar_explorations).
-        // Sans ça, hydrateCardFromValidation produit relevanceScore=null
-        // et la card Capitaine affiche "—" au reload.
         marketScore: h.marketScore ?? undefined,
         relevanceScore: h.relevanceScore ?? null,
       }
@@ -431,11 +407,7 @@ export function useExploredKeywords() {
         card.relevanceUnavailableReason = h.relevanceUnavailableReason
       }
 
-      // Restore root variants if available.
-      // Note 2026-05-02 : `RichRootKeyword` n'inclut pas marketScore/relevanceScore
-      // (limitation persistance). Les root cards affichées dans CaptainRootsSidebar
-      // n'ont donc pas de score Pertinence individuel après restore — le ScoreRing
-      // affichera 0. Le scoring backend recalcule à la prochaine validation.
+      // Restore root variants if available
       const rootVariants = new Map<string, KeywordRootVariant>()
       const rootsForKeyword = richRootKeywords?.filter(r => r.parentKeyword === h.keyword) ?? []
       for (const root of rootsForKeyword) {

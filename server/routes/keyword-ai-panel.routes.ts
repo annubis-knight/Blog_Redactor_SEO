@@ -11,15 +11,9 @@ import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
 import { compareScores } from '../../shared/score/index.js'
 
 /**
- * Sprint E (2026-05-02) — Routes Panels IA refactorisées via
- * `runAiPanelStream`. Chaque handler ne fait plus que :
- *   1. valider l'input (Zod-light)
- *   2. charger les variables (painPoint, contextes)
- *   3. composer le prompt via `loadPrompt`
- *   4. déléguer au runner (SSE + stream + done + error)
- *
- * Les contrats de réponse SSE sont préservés à l'identique (events `chunk`,
- * `done`, `error` avec mêmes payloads).
+ * Routes Panels IA refactorisées via runAiPanelStream.
+ * Handler : valider input → charger variables → composer prompt → déléguer runner.
+ * Contrats SSE préservés (events chunk/done/error).
  */
 
 /**
@@ -445,7 +439,7 @@ router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
         recommended: recommendedCount,
         excluded: parsed.recommendations.length - recommendedCount,
       })
-      // Sprint 11 — persist IA recommendations in lexique_explorations BEFORE done.
+
       const articleIdNum = Number(articleId)
       if (Number.isInteger(articleIdNum) && articleIdNum > 0) {
         const { saveLexiqueAi } = await import('../services/keyword/lexique-exploration.service.js')

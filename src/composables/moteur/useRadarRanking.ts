@@ -2,20 +2,8 @@ import { computed, type ComputedRef } from 'vue'
 import type { RadarCard } from '@shared/types/intent.types'
 
 /**
- * Sprint D-2 (2026-05-02) — Ranking local des RadarCard pour proposer
- * les meilleurs candidats Capitaine. **Aucun appel IA**. Cf. tech-spec §4.2,
- * décision D3.
- *
- * Logique :
- *   - filtre toute carte dont les DEUX verdicts (market + relevance) sont
- *     NOGO (sans potentiel à la fois marché et pertinence) ;
- *   - score final = (marketScore + relevanceScore) / 2.
- *
- * 2026-05-02 (cleanup pertinence) : fallback `combinedScore` retiré. Les
- * scores doivent venir explicitement du backend via marketScore /
- * relevanceScore. Si une donnée est absente, on traite la composante comme 0
- * (la card sera mécaniquement tirée vers le bas du ranking).
- *
+ * Ranking local RadarCard proposer Capitaine (pas IA). Filtre NOGO × 2.
+ * Score final = (market + relevance) / 2. Pas de fallback combinedScore.
  * Voir docs/scoring-kpi-vs-relevance.md.
  */
 export interface RadarRankedCard {
@@ -23,10 +11,9 @@ export interface RadarRankedCard {
   keyword: string
   marketTotal: number
   relevanceTotal: number
-  /** Sprint 5 (2026-05-04) — true si marketScore réellement présent dans la card.
-   *  Permet à RadarAiPanel d'afficher "—" au lieu de "0" quand absent. */
+  /** true si marketScore réellement présent (RadarAiPanel affiche "—" vs "0"). */
   marketTotalAvailable: boolean
-  /** Sprint 5 (2026-05-04) — idem pour relevanceScore. */
+  /** true si relevanceScore présent. */
   relevanceTotalAvailable: boolean
   finalScore: number
 }
@@ -57,11 +44,7 @@ export function useRadarRanking(opts: UseRadarRankingOptions) {
     const enriched = list
       .filter(c => !isNogoBoth(c))
       .map<RadarRankedCard>((card) => {
-        // 2026-05-02 — Plus de fallback combinedScore (legacy hybride).
-        // Si un score est absent, la card est mécaniquement défavorisée.
-        // Sprint 5 (2026-05-04) — On distingue "absent" (null/undefined) de
-        // "présent à zéro" pour permettre à l'UI d'afficher "—" quand
-        // approprié au lieu de "0" trompeur.
+        // Pas de fallback combinedScore. Absent → défavorisé. "—" vs "0" via Available flags.
         const marketTotalAvailable = card.marketScore?.total != null
         const relevanceTotalAvailable = card.relevanceScore?.total != null
         const marketTotal = card.marketScore?.total ?? 0

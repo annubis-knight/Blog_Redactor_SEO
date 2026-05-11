@@ -224,7 +224,7 @@ export function computePaaWeightedScore(
 export const PAA_MAX_POINTS_PER_ITEM = 2.0
 
 /**
- * Score de Pertinence cumulatif normalisé sur les PAA — Sprint S3.
+ * Score de Pertinence cumulatif normalisé sur les PAA.
  *
  * Formule F1 (validée 2026-04-28) :
  *   score = (somme des points obtenus) / (nbPAA × maxPointsParPAA) × 100

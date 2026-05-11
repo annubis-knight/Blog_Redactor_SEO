@@ -8,7 +8,7 @@
  *            saveDecisions(id) → PUT /articles/:id/keywords (1 par toggle).
  *            Aucun GET /articles/:id/explorations — famille VERROUILLAGE
  *            stricte (FR-LEX-LECTURE-VS-VERROUILLAGE).
- * CONSUMERS: LexiquePanel.vue (chantier 3 E3-S3 — refacto LECTURE/VERROUILLAGE).
+ * CONSUMERS: LexiquePanel.vue).
  * RELATED FR: FR-LEX-LECTURE-VS-VERROUILLAGE (AC.LEX-SEP.2, AC.LEX-SEP.3),
  *             FR-LEX-CHECKBOX-LOCK-IMMEDIATE (toggle = lock/unlock immédiat
  *             persistant en DB).

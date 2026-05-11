@@ -6,7 +6,7 @@
  * via la prop `open`. Pas de portail, pas de focus-trap avancé : on reste
  * volontairement simple. Cohérent avec le style Moteur (var CSS).
  *
- * Premier consommateur : LexiquePanel.vue (chantier 3 E1-S3 — confirmation
+ * Premier consommateur : LexiquePanel.vue(
  * coût DataForSEO avant déclenchement scrape SERP).
  */
 defineProps<{

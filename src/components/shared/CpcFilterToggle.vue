@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { CpcFilter } from './cpc-filter-types'
 /**
- * Sprint 2.5 — Two mutually-exclusive toggle buttons ("Avec CPC" / "Sans CPC").
+ * Two mutually-exclusive toggle buttons ("Avec CPC" / "Sans CPC").
  * Exposes a v-model with three possible values: null (no filter), 'with', 'without'.
  *
  * Rule: pressing the active button returns to null — you can never have both

@@ -13,10 +13,10 @@ import {
 } from '../services/keyword/lexique-analysis.service.js'
 import type { SerpAnalysisResult, SerpCompetitor, HnNode } from '../../shared/types/serp-analysis.types.js'
 
-// Story C2 (chantier 1) — la cache check freshness lit `keyword_serp_results`.
-// Story C1 (chantier 2) — sur cache miss, la route appelle désormais
+
+
 // scrape-corpus.fetchAndPersist (single producer cross-domaine).
-// Story C3 (chantier 2) — analyzeSerpCompetitors a été supprimé.
+
 
 const router = Router()
 
@@ -46,7 +46,7 @@ router.post('/serp/analyze', async (req, res) => {
       }
     }
 
-    // Story C1 (chantier 2) — bascule vers scrape-corpus.fetchAndPersist.
+
     // Le cache mémoire 1h interne renforce NFR-INT-SERP-ONCE.
     const scrapeResult = await scrapeCorpusFetchAndPersist(keyword, articleLevel)
 
@@ -103,12 +103,9 @@ function toSerpAnalysisResult(
  * Body:
  *   - keyword (required): string, will be trimmed.
  *   - articleId (optional): number > 0.
- *   - triggerScrapeIfMissing (optional, chantier 3 E1-S3 / FR-LEX-PRECHECK-SERP):
- *     boolean. Si true et qu'aucun scrape SERP n'existe pour ce keyword,
+ *   - triggerScrapeIfMissing (optional): boolean. Si true et qu'aucun scrape SERP n'existe pour ce keyword,
  *     déclenche le scrape DataForSEO en amont avant l'extraction TF-IDF.
- *     Honoré par analyzeLexique (AC.LEX-SCRAPE.3 chantier 2 livré).
- *     Si false / absent : préserve le comportement legacy (404 verbatim si
- *     pas de scrape — compat AC.C1.1 chantier 1 + AC.C2.2 chantier 2).
+ *     Si false / absent : préserve le comportement legacy (404 verbatim si pas de scrape — compat).
  */
 router.post('/serp/tfidf', async (req, res) => {
   try {
@@ -128,23 +125,16 @@ router.post('/serp/tfidf', async (req, res) => {
     const hasArticleId = Number.isInteger(articleIdNum) && articleIdNum > 0
     const shouldTriggerScrape = triggerScrapeIfMissing === true
 
-    // Story C2 (chantier 2) — délègue à lexique-analysis.service.
-    // Sans triggerScrapeIfMissing, le service throw LexiqueScrapeMissingError
-    // → 404 verbatim (préservé pour compat AC.C1.1 chantier 1 + AC.C2.2).
-    try {
-      const { tfidfResult } = await analyzeLexique(trimmed, {
-        articleId: hasArticleId ? articleIdNum : undefined,
-        triggerScrapeIfMissing: shouldTriggerScrape,
-      })
-      res.json({ data: tfidfResult })
-    } catch (err) {
-      if (err instanceof LexiqueScrapeMissingError) {
-        res.status(404).json({ error: { code: 'NOT_FOUND', message: err.message } })
-        return
-      }
-      throw err
-    }
+    const { tfidfResult } = await analyzeLexique(trimmed, {
+      articleId: hasArticleId ? articleIdNum : undefined,
+      triggerScrapeIfMissing: shouldTriggerScrape,
+    })
+    res.json({ data: tfidfResult })
   } catch (err) {
+    if (err instanceof LexiqueScrapeMissingError) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: err.message } })
+      return
+    }
     log.error(`POST /api/serp/tfidf — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'TF-IDF extraction failed' } })
   }
