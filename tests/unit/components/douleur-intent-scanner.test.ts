@@ -190,8 +190,14 @@ describe('RadarPanel — phase 2 : keywords preview', () => {
   it('bouton "Lancer le scan" désactivé si liste vide', async () => {
     mockGeneratedKeywords.value = []
     const wrapper = mountScanner()
-    // Pas de phase keywords → pas de bouton Lancer visible
-    expect(wrapper.find('.keywords-preview').exists()).toBe(false)
+    // Squelette stable : la section keywords reste visible même vide sous
+    // forme de placeholder grisé. Le bouton "Lancer le scan" y est rendu mais
+    // désactivé.
+    const placeholder = wrapper.find('[data-testid="radar-keywords-empty"]')
+    expect(placeholder.exists()).toBe(true)
+    const launchBtn = placeholder.find('.btn-action')
+    expect(launchBtn.exists()).toBe(true)
+    expect(launchBtn.attributes('disabled')).toBeDefined()
   })
 })
 

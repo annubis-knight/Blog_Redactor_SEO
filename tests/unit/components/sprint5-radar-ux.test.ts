@@ -41,7 +41,7 @@ function makeCard(overrides: Partial<RadarCard> = {}): RadarCard {
 describe('RadarAiPanel — pills score (Sprint 5 #8)', () => {
   it('AC8 — pill Pertinence affiche "—" quand relevanceScore est null', () => {
     const w = mount(RadarAiPanel, {
-      props: { cards: [makeCard()], isLocked: false },
+      props: { cards: [makeCard()], isLocked: false, hasScanResult: true },
     })
     const html = w.html()
     // À la place de "P 0", on affiche "—"
@@ -64,7 +64,7 @@ describe('RadarAiPanel — pills score (Sprint 5 #8)', () => {
       relevanceScore: { total: 50, verdict: 'ORANGE', breakdown: {} as never, rootsContext: { rootsAverageScore: null, fallbackApplied: true } } as never,
     })
     const w = mount(RadarAiPanel, {
-      props: { cards: [card], isLocked: false },
+      props: { cards: [card], isLocked: false, hasScanResult: true },
     })
     expect(w.html()).toMatch(/M\s+—/)
   })
@@ -74,7 +74,7 @@ describe('RadarAiPanel — pills score (Sprint 5 #8)', () => {
       marketScore: { total: 67.4, verdict: 'ORANGE', components: [] } as never,
     })
     const w = mount(RadarAiPanel, {
-      props: { cards: [card], isLocked: false },
+      props: { cards: [card], isLocked: false, hasScanResult: true },
     })
     expect(w.html()).toMatch(/M\s+67/)
   })
@@ -94,14 +94,14 @@ describe('RadarAiPanel — pills score (Sprint 5 #8)', () => {
       } as never,
     })
     const w = mount(RadarAiPanel, {
-      props: { cards: [card], isLocked: false },
+      props: { cards: [card], isLocked: false, hasScanResult: true },
     })
     expect(w.html()).toMatch(/P\s+74/)
   })
 
   it('AC8 — title du tooltip mentionne "indisponible" quand score absent', () => {
     const w = mount(RadarAiPanel, {
-      props: { cards: [makeCard()], isLocked: false },
+      props: { cards: [makeCard()], isLocked: false, hasScanResult: true },
     })
     const html = w.html()
     expect(html).toContain('Pertinence indisponible')

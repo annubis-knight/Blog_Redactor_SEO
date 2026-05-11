@@ -18,8 +18,12 @@ withDefaults(defineProps<{
   isLoadingCache: boolean
   error: string | null
   showInputs?: boolean
+  /** Message d'avertissement affiché au-dessus des inputs en mode workflow
+   *  pour clarifier que la génération manuelle ne touche pas au basket. */
+  workflowHint?: string | null
 }>(), {
   showInputs: true,
+  workflowHint: null,
 })
 
 defineEmits<{
@@ -42,6 +46,10 @@ defineEmits<{
       <p class="scanner-desc">
         L'IA genere des mots-cles courts, puis chacun est scanne dans l'ecosysteme Google
         (PAA + Autocomplete) pour mesurer la resonance avec votre article.
+      </p>
+
+      <p v-if="workflowHint" class="scanner-workflow-hint" data-testid="scanner-workflow-hint">
+        {{ workflowHint }}
       </p>
 
       <div class="input-row">
@@ -160,6 +168,17 @@ defineEmits<{
   margin: 0 0 1rem;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
+}
+
+.scanner-workflow-hint {
+  margin: 0 0 0.75rem;
+  padding: 0.5rem 0.75rem;
+  font-size: 0.75rem;
+  color: var(--color-text);
+  background: var(--color-block-info-bg, rgba(59, 130, 246, 0.08));
+  border-left: 3px solid var(--color-primary, #2563eb);
+  border-radius: 4px;
+  line-height: 1.4;
 }
 
 .input-row {
