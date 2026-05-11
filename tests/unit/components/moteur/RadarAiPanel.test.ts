@@ -44,6 +44,9 @@ function makeCard(over: Partial<RadarCard> & { keyword: string }): RadarCard {
 }
 
 const COMMON = { cards: [] as RadarCard[], isLocked: false }
+// hasScanResult passe à true quand on veut tester le comportement post-scan
+// (cards rendues, handoff actif). Sans ce flag, le panel est en état "idle".
+const POST_SCAN = { hasScanResult: true }
 
 describe('RadarAiPanel', () => {
   it('rend la coque suggestion', () => {
@@ -51,9 +54,16 @@ describe('RadarAiPanel', () => {
     expect(w.find('[data-testid="ai-panel-suggestion"]').exists()).toBe(true)
   })
 
-  it('cards vide → empty hint', () => {
+  it('cards vide + pas de scan → empty hint "no-scan"', () => {
     const w = mount(RadarAiPanel, { props: COMMON })
-    expect(w.text()).toMatch(/scan|radar|aucun/i)
+    expect(w.find('[data-testid="radar-ai-empty-no-scan"]').exists()).toBe(true)
+    expect(w.find('[data-testid="radar-ai-list"]').exists()).toBe(false)
+  })
+
+  it('cards vide + scan exécuté → empty hint "no-candidates"', () => {
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN } })
+    expect(w.find('[data-testid="radar-ai-empty-no-candidates"]').exists()).toBe(true)
+    expect(w.find('[data-testid="radar-ai-list"]').exists()).toBe(false)
   })
 
   it('cards non vide → liste de candidats avec checkboxes', () => {
@@ -64,7 +74,7 @@ describe('RadarAiPanel', () => {
         relevanceScore: { total: 60, verdict: 'GO', breakdown: {} as any, rootsContext: null },
       }),
     ]
-    const w = mount(RadarAiPanel, { props: { ...COMMON, cards } })
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN, cards } })
     expect(w.find('[data-testid="radar-ai-list"]').exists()).toBe(true)
     expect(w.findAll('input[type="checkbox"]').length).toBe(1)
   })
@@ -82,7 +92,7 @@ describe('RadarAiPanel', () => {
         relevanceScore: { total: 55, verdict: 'GO', breakdown: {} as any, rootsContext: null },
       }),
     ]
-    const w = mount(RadarAiPanel, { props: { ...COMMON, cards } })
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN, cards } })
     const cbs = w.findAll('input[type="checkbox"]')
     await cbs[0].setValue(true)
     await w.find('[data-testid="radar-ai-handoff"]').trigger('click')
@@ -99,6 +109,19 @@ describe('RadarAiPanel', () => {
         relevanceScore: { total: 60, verdict: 'GO', breakdown: {} as any, rootsContext: null },
       }),
     ]
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN, cards } })
+    expect(w.find('[data-testid="radar-ai-handoff"]').attributes('disabled')).toBeDefined()
+  })
+
+  it('handoff désactivé tant qu\'aucun scan n\'a été exécuté (même avec cards)', () => {
+    const cards = [
+      makeCard({
+        keyword: 'kw',
+        marketScore: { total: 70, verdict: 'GO', components: [] as any },
+        relevanceScore: { total: 60, verdict: 'GO', breakdown: {} as any, rootsContext: null },
+      }),
+    ]
+    // hasScanResult: false → handoff disabled même si cards et checkbox cochée
     const w = mount(RadarAiPanel, { props: { ...COMMON, cards } })
     expect(w.find('[data-testid="radar-ai-handoff"]').attributes('disabled')).toBeDefined()
   })
@@ -111,7 +134,8 @@ describe('RadarAiPanel', () => {
         relevanceScore: { total: 30, verdict: 'NOGO', breakdown: {} as any, rootsContext: null },
       }),
     ]
-    const w = mount(RadarAiPanel, { props: { ...COMMON, cards } })
+    const w = mount(RadarAiPanel, { props: { ...COMMON, ...POST_SCAN, cards } })
     expect(w.find('[data-testid="radar-ai-list"]').exists()).toBe(false)
+    expect(w.find('[data-testid="radar-ai-empty-no-candidates"]').exists()).toBe(true)
   })
 })

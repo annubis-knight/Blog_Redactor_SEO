@@ -10,8 +10,10 @@
  *   .intent-scanner.
  * - DouleurScannerResults (Phase 3) est descendant direct de .intent-scanner,
  *   PAS dans .radar-cards (qui est un sous-bloc interne).
- * - En mode workflow (Sprint 5 friction #7), les inputs Phase 1 sont masqués
- *   (showInputs=false → la div .scanner-inputs n'est pas rendue).
+ * - Les inputs Phase 1 sont visibles dans les 2 modes (décision 2026-05-11 :
+ *   squelette stable, l'utilisateur peut toujours générer manuellement).
+ *   En mode workflow, un workflow-hint clarifie le comportement (le test du
+ *   hint vit dans douleur-intent-scanner-mode.test.ts).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -133,12 +135,12 @@ describe('RadarPanel — architecture des phases (Vague 1)', () => {
     expect(inputsIdx).toBeLessThan(resultsIdx)
   })
 
-  it('AC.E.3 — En mode workflow, showInputs=false (Sprint 5 friction #7)', async () => {
+  it('AC.E.3 — En mode workflow, showInputs=true (squelette stable, génération manuelle possible)', async () => {
     const wrapper = mountScanner({ mode: 'workflow' as const })
     await nextTick()
     const inputs = wrapper.find('[data-testid="douleur-scanner-inputs"]')
     expect(inputs.exists()).toBe(true)
-    expect(inputs.attributes('data-show-inputs')).toBe('false')
+    expect(inputs.attributes('data-show-inputs')).toBe('true')
   })
 
   it('AC.E.3.bis — En mode libre, showInputs=true (utilisateur saisit ses inputs)', async () => {

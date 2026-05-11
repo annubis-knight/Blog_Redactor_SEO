@@ -51,9 +51,9 @@ const emit = defineEmits<{
   (e: 'captain-candidates-marked', keywords: string[]): void
 }>()
 
-// Sprint D-2 (2026-05-02) — Handoff RadarAiPanel : remonte les keywords
-// sélectionnés au parent (MoteurView) qui pourra écrire dans
-// article_keywords.captainCandidates[]. Aucun appel IA ici.
+// Handoff RadarAiPanel : remonte les keywords sélectionnés au parent
+// (MoteurView) qui pourra écrire dans article_keywords.captainCandidates[].
+// Aucun appel IA ici.
 function handleMarkCaptainCandidates(keywords: string[]) {
   log.info(`[DouleurIntent] Marked ${keywords.length} keyword(s) as Capitaine candidate(s)`)
   emit('captain-candidates-marked', keywords)
@@ -81,7 +81,7 @@ const isLoadingCache = ref(false)
 // --- Checkbox selection for sending to Capitaine ---
 const checkedKeywords = ref(new Set<string>())
 
-// Sprint 2.5 — CPC filter (3 états : null / 'with' / 'without').
+// CPC filter (3 états : null / 'with' / 'without').
 const cpcFilter = ref<CpcFilter>(null)
 
 // 2026-05-02 — Tri unifié des radar cards.
@@ -121,7 +121,7 @@ const { sorted: filteredCards, sortState: radarSortState } = useSortableList<Rad
   filter: (card) => (card.kpis ? matchesCpcFilter(card.kpis.cpc, cpcFilter.value) : true),
 })
 
-// Sprint 2.5 — "Tout" opère sur le filtre courant (visibles uniquement).
+// "Tout" opère sur le filtre courant (visibles uniquement).
 const allChecked = computed(() =>
   filteredCards.value.length > 0 &&
   filteredCards.value.every(c => checkedKeywords.value.has(c.keyword)),
@@ -136,7 +136,7 @@ function toggleCheck(keyword: string) {
 
 function toggleAllChecked() {
   if (!scanResult.value) return
-  // Sprint 2.5 — toggle opère sur les cartes visibles (filtre CPC respecté).
+  // Toggle opère sur les cartes visibles (filtre CPC respecté).
   const visible = filteredCards.value
   const next = new Set(checkedKeywords.value)
   if (allChecked.value) {
@@ -248,7 +248,7 @@ function sendToCaptain() {
 const broadKeyword = ref(props.pilierKeyword)
 const specificTopic = ref(props.articleTopic || props.articleKeyword || props.pilierKeyword)
 const painPoint = ref(props.articlePainPoint || '')
-// Sprint 2.1 — Depth locked at N+2 (deeper PAA tree).
+// Depth locked at N+2 (deeper PAA tree).
 // Why: the N+1/N+2 toggle was causing confusion (user thought it might
 // trigger a keyword regeneration that would overwrite Discovery data).
 // Product decision is N+2 everywhere.
@@ -371,9 +371,6 @@ defineExpose({ mergeFromRadarSource })
 
 <template>
   <div class="intent-scanner">
-    <!-- Sprint 5 (2026-05-04) — friction #7 : inputs Phase 1 masqués en mode
-         `workflow`. La cache-indicator et l'error restent affichés dans les 2
-         modes via DouleurScannerInputs (showInputs=false en workflow). -->
     <DouleurScannerInputs
       :broad-keyword="broadKeyword"
       :specific-topic="specificTopic"
@@ -383,7 +380,8 @@ defineExpose({ mergeFromRadarSource })
       :radar-cache-status="radarCacheStatus"
       :is-loading-cache="isLoadingCache"
       :error="error"
-      :show-inputs="mode === 'libre'"
+      :show-inputs="true"
+      :workflow-hint="mode === 'workflow' ? 'Tu peux générer des mots-clés Radar manuellement à partir du contexte ci-dessous. Cela ne touche pas aux mots-clés déjà envoyés depuis Discovery ni au panier — la génération remplace uniquement la liste de mots-clés Radar en attente de scan.' : null"
       @update:broad-keyword="(v) => broadKeyword = v"
       @update:specific-topic="(v) => specificTopic = v"
       @update:pain-point="(v) => painPoint = v"
@@ -395,7 +393,7 @@ defineExpose({ mergeFromRadarSource })
     />
 
     <!-- Phase 2: Keywords Preview (editable tags) -->
-    <div v-if="phase === 'keywords' && !isScanning" class="keywords-preview">
+    <div v-if="phase === 'keywords' && !isScanning" class="keywords-preview" data-testid="radar-keywords-preview">
       <div class="keywords-header">
         <h4>{{ generatedKeywords.length }} mots-cles generes</h4>
         <button
@@ -418,6 +416,22 @@ defineExpose({ mergeFromRadarSource })
           <button class="tag-remove" @click="removeKeyword(i)">&times;</button>
         </span>
       </div>
+    </div>
+
+    <!-- Placeholder grisé quand aucun mot-clé n'est en attente de scan (skeleton stable). -->
+    <div
+      v-else-if="!isScanning && phase !== 'results'"
+      class="keywords-preview keywords-preview--empty"
+      data-testid="radar-keywords-empty"
+    >
+      <div class="keywords-header">
+        <h4>Mots-clés à scanner</h4>
+        <button class="btn-action" disabled>Lancer le scan</button>
+      </div>
+      <p class="keywords-empty-hint">
+        Aucun mot-clé en attente. Passe par l'onglet <strong>Discovery</strong> pour envoyer une sélection ici,
+        ou utilise les champs ci-dessus pour en générer manuellement.
+      </p>
     </div>
 
     <!-- Phase: Scanning with progress -->
@@ -466,12 +480,22 @@ defineExpose({ mergeFromRadarSource })
       @send-to-captain="sendToCaptain"
     />
 
-    <!-- Sprint D-2 (2026-05-02) — Panel suggestion bas-de-page : top
-         candidats Capitaine via tri local marketScore + relevanceScore
-         (verdicts NOGO/NOGO exclus). Aucun appel IA. -->
+    <!-- Placeholder grisé quand aucun scan n'a encore tourné (skeleton stable). -->
+    <div
+      v-else-if="!isScanning"
+      class="results-placeholder"
+      data-testid="radar-results-empty"
+    >
+      <h4 class="results-placeholder__title">Résultats du scan</h4>
+      <p class="results-placeholder__hint">
+        Le thermomètre de résonance, les radar cards et les suggestions Autocomplete
+        s'afficheront ici dès que tu auras lancé un scan.
+      </p>
+    </div>
+
     <RadarAiPanel
-      v-if="scanResult"
-      :cards="scanResult.cards"
+      :cards="scanResult?.cards ?? []"
+      :has-scan-result="scanResult !== null"
       :is-locked="false"
       @mark-captain-candidates="handleMarkCaptainCandidates"
     />
@@ -515,6 +539,40 @@ defineExpose({ mergeFromRadarSource })
   border: 1px solid var(--color-border);
   border-radius: 8px;
   animation: fadeSlideIn 0.3s ease;
+}
+
+.keywords-preview--empty {
+  opacity: 0.55;
+  animation: none;
+}
+
+.keywords-empty-hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
+}
+
+.results-placeholder {
+  padding: 1.25rem 1.5rem;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 8px;
+  opacity: 0.6;
+}
+
+.results-placeholder__title {
+  margin: 0 0 0.375rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-text-muted);
+}
+
+.results-placeholder__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.4;
 }
 
 .keywords-header {

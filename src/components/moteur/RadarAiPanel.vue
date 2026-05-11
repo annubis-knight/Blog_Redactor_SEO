@@ -4,18 +4,16 @@ import AiPanelHeader from '@/components/moteur/ai-panel/AiPanelHeader.vue'
 import { useRadarRanking } from '@/composables/moteur/useRadarRanking'
 import type { RadarCard } from '@shared/types/intent.types'
 
-/**
- * Sprint D-2 (2026-05-02) — Panel suggestion bas de page sur l'onglet Radar.
- * **Aucun appel IA** : tri local des RadarCard déjà scorées par mix
- * marketScore + relevanceScore. Cf. tech-spec §4.2, décision D3.
- *
- * Handoff : emit('mark-captain-candidates', selectedKeywords[]). Le parent
- * écrit ensuite dans `article_keywords.captainCandidates[]` côté store.
- */
-const props = defineProps<{
+const props = withDefaults(defineProps<{
   cards: RadarCard[]
   isLocked: boolean
-}>()
+  /** Vrai si un scan a été exécuté (même s'il a produit 0 cards). Permet de
+   *  différencier visuellement « pas encore de scan » (squelette d'invitation)
+   *  vs « scan terminé sans résultat » (message E1 inline). */
+  hasScanResult?: boolean
+}>(), {
+  hasScanResult: false,
+})
 
 const emit = defineEmits<{
   'mark-captain-candidates': [keywords: string[]]
@@ -43,18 +41,17 @@ function markCandidates() {
 </script>
 
 <template>
-  <section class="radar-ai-panel" data-testid="ai-panel-suggestion">
+  <section
+    class="radar-ai-panel"
+    :class="{ 'radar-ai-panel--idle': !hasScanResult }"
+    data-testid="ai-panel-suggestion"
+  >
     <AiPanelHeader
       title="Suggestions IA Radar"
       subtitle="Top candidats Capitaine — tri local par mix marché + pertinence (verdicts NOGO exclus)."
     />
 
-    <div v-if="ranked.length === 0" class="radar-ai-empty">
-      Aucun candidat à proposer pour l'instant. Lance un scan Radar ou ajuste
-      ta sélection — les cartes verdict NOGO/NOGO sont filtrées.
-    </div>
-
-    <ul v-else class="radar-ai-list" data-testid="radar-ai-list">
+    <ul v-if="ranked.length > 0" class="radar-ai-list" data-testid="radar-ai-list">
       <li v-for="item in ranked" :key="item.keyword" class="radar-ai-item">
         <label class="radar-ai-label">
           <input
@@ -64,10 +61,10 @@ function markCandidates() {
             @change="(e) => toggle(item.keyword, (e.target as HTMLInputElement).checked)"
           >
           <span class="radar-ai-keyword">{{ item.keyword }}</span>
-          <!-- Sprint 5 (2026-05-04) — friction #8 : afficher "—" si score absent
-               (cohérent avec RadarKeywordCard tooltip "Pertinence indisponible"
-               sprint 2). Avant : "M 0 / P 0" donnait l'impression d'un bug.
-               On distingue "absent" (marketTotalAvailable=false) vs "présent à 0". -->
+          <!-- Friction #8 : afficher "—" si score absent (cohérent avec
+               RadarKeywordCard tooltip "Pertinence indisponible"). Avant :
+               "M 0 / P 0" donnait l'impression d'un bug. On distingue
+               "absent" (marketTotalAvailable=false) vs "présent à 0". -->
           <span class="radar-ai-scores">
             <span class="radar-ai-score-pill" :title="item.marketTotalAvailable ? 'Score Marché' : 'Score Marché indisponible'">
               M {{ item.marketTotalAvailable ? Math.round(item.marketTotal) : '—' }}
@@ -80,12 +77,22 @@ function markCandidates() {
       </li>
     </ul>
 
+    <div v-else-if="!hasScanResult" class="radar-ai-empty" data-testid="radar-ai-empty-no-scan">
+      Lance un scan ci-dessus pour voir ici les meilleurs candidats à pousser vers
+      le Capitaine, triés par mix marché × pertinence.
+    </div>
+
+    <div v-else class="radar-ai-empty" data-testid="radar-ai-empty-no-candidates">
+      Aucun candidat à proposer pour l'instant. Élargis ta sélection ou relance
+      un scan — les cartes verdict NOGO/NOGO sont filtrées.
+    </div>
+
     <div class="radar-ai-footer">
       <button
         type="button"
         class="radar-ai-handoff"
         data-testid="radar-ai-handoff"
-        :disabled="selected.size === 0 || isLocked"
+        :disabled="!hasScanResult || selected.size === 0 || isLocked"
         @click="markCandidates"
       >
         Marquer comme candidats Capitaine ({{ selected.size }})
@@ -101,6 +108,9 @@ function markCandidates() {
   border-top: 2px solid var(--color-badge-purple-text);
   background: var(--color-badge-purple-bg);
   border-radius: 0 0 8px 8px;
+}
+.radar-ai-panel--idle {
+  opacity: 0.7;
 }
 .radar-ai-empty {
   margin: 1rem 0;

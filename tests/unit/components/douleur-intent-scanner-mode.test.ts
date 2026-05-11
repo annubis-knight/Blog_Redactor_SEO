@@ -1,13 +1,14 @@
 /**
- * Sprint 5 (2026-05-04) — Tests masquage scanner-inputs en mode workflow.
+ * Tests visibilité scanner-inputs par mode.
  *
- * Friction utilisateur (audit 2026-05-03) :
- *   #7 — « à quoi sert scanner-inputs dans l'onglet Radar alors qu'on a un
- *         onglet Discovery ? »
+ * Historique : la friction #7 (2026-05-04) masquait les inputs en mode workflow
+ * pour éviter la redondance avec Discovery. Conséquence indésirable : sur
+ * arrivée à froid sans keywords injectés, l'onglet Radar devenait un dead-end
+ * (aucun moyen de générer manuellement).
  *
- * En mode `workflow` (Moteur), broadKeyword/specificTopic/painPoint sont
- * injectés depuis l'article. Les inputs étaient redondants et gênants.
- * En mode `libre` (Labo), ils restent disponibles pour la saisie manuelle.
+ * Décision 2026-05-11 : les inputs sont désormais visibles dans les 2 modes.
+ * En mode workflow, un message d'avertissement (workflow-hint) clarifie que
+ * la génération manuelle ne touche pas au basket.
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -28,38 +29,31 @@ const COMMON_PROPS = {
   injectedKeywords: [],
 }
 
-describe('RadarPanel — scanner-inputs par mode (Sprint 5 #7)', () => {
-  it('AC7 — mode "workflow" : .scanner-inputs est masqué', () => {
+const COMMON_STUBS = {
+  RadarCardCheckable: true,
+  RadarLongTailSuggestions: true,
+  RadarThermometer: true,
+  RadarAiPanel: true,
+  CpcFilterToggle: true,
+  SortToggleBar: true,
+}
+
+describe('RadarPanel — scanner-inputs par mode', () => {
+  it('mode "workflow" : .scanner-inputs est visible + workflow-hint affiché', () => {
     const w = mount(RadarPanel, {
       props: { ...COMMON_PROPS, mode: 'workflow' },
-      global: {
-        stubs: {
-          RadarCardCheckable: true,
-          RadarLongTailSuggestions: true,
-          RadarThermometer: true,
-          RadarAiPanel: true,
-          CpcFilterToggle: true,
-          SortToggleBar: true,
-        },
-      },
-    })
-    expect(w.find('.scanner-inputs').exists()).toBe(false)
-  })
-
-  it('AC7 — mode "libre" : .scanner-inputs reste visible', () => {
-    const w = mount(RadarPanel, {
-      props: { ...COMMON_PROPS, mode: 'libre' },
-      global: {
-        stubs: {
-          RadarCardCheckable: true,
-          RadarLongTailSuggestions: true,
-          RadarThermometer: true,
-          RadarAiPanel: true,
-          CpcFilterToggle: true,
-          SortToggleBar: true,
-        },
-      },
+      global: { stubs: COMMON_STUBS },
     })
     expect(w.find('.scanner-inputs').exists()).toBe(true)
+    expect(w.find('[data-testid="scanner-workflow-hint"]').exists()).toBe(true)
+  })
+
+  it('mode "libre" : .scanner-inputs reste visible, sans workflow-hint', () => {
+    const w = mount(RadarPanel, {
+      props: { ...COMMON_PROPS, mode: 'libre' },
+      global: { stubs: COMMON_STUBS },
+    })
+    expect(w.find('.scanner-inputs').exists()).toBe(true)
+    expect(w.find('[data-testid="scanner-workflow-hint"]').exists()).toBe(false)
   })
 })
