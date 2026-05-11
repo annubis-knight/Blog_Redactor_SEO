@@ -80,11 +80,14 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
 
   async function addKeyword(keyword: string, reasoning?: string): Promise<boolean> {
     if (articleId.value === null) {
-      log.warn('[radar-exploration] addKeyword called without articleId')
+      log.warn('[radar-exploration] addKeyword IGNORED — articleId is null (store not yet hydrated). Keyword lost:', { keyword })
       return false
     }
     const trimmed = keyword.trim()
-    if (!trimmed) return false
+    if (!trimmed) {
+      log.warn('[radar-exploration] addKeyword IGNORED — empty keyword after trim')
+      return false
+    }
     isMutating.value = true
     try {
       const data = await apiPost<{ entry: RadarExplorationEntry; added: boolean }>(
@@ -102,7 +105,10 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
   }
 
   async function removeKeyword(keyword: string): Promise<void> {
-    if (articleId.value === null) return
+    if (articleId.value === null) {
+      log.warn('[radar-exploration] removeKeyword IGNORED — articleId is null. Keyword:', { keyword })
+      return
+    }
     isMutating.value = true
     try {
       const data = await apiDelete<{ entry: RadarExplorationEntry | null }>(
@@ -117,8 +123,19 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
   }
 
   async function addKeywordsBatch(keywords: Array<{ keyword: string; reasoning?: string }>): Promise<number> {
-    if (articleId.value === null) return 0
-    if (keywords.length === 0) return 0
+    if (articleId.value === null) {
+      // BUG diagnostic 2026-05-11 : silent fail historique qui a fait perdre des
+      // keywords envoyés depuis Discovery → Radar quand le store n'était pas
+      // encore hydraté. Le watcher réactif setArticle (hotfix 4670272) résout
+      // le cas nominal, mais on garde ce log pour détecter toute récurrence
+      // (race condition ou caller qui appelle avant setArticle).
+      log.warn(`[radar-exploration] addKeywordsBatch IGNORED — articleId is null. ${keywords.length} keyword(s) LOST:`, keywords.map(k => k.keyword))
+      return 0
+    }
+    if (keywords.length === 0) {
+      log.debug('[radar-exploration] addKeywordsBatch no-op — empty payload')
+      return 0
+    }
     isMutating.value = true
     try {
       const data = await apiPost<{ entry: RadarExplorationEntry; added: number }>(
