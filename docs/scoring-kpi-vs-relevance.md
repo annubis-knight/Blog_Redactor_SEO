@@ -465,7 +465,7 @@ La règle ESLint a immédiatement révélé 9 fallbacks silencieux :
 | `src/stores/article/moteur-basket.store.ts` (sort `bestKeyword`) | → `compareScores` |
 | `src/components/moteur/LieutenantProposals.vue` (sort) | → `compareScoresAsc` |
 | `server/routes/keyword-ai-panel.routes.ts` (sort lieutenants) | → `compareScores` |
-| `src/composables/moteur/useDiscoveryRanking.ts` (normalisation) | `eslint-disable-next-line` justifié |
+| `src/composables/moteur/useDiscoveryRanking.ts` (normalisation) | ~~`eslint-disable-next-line` justifié~~ — **supprimé 2026-05-11** (composable retiré, cf. tech-spec-discovery-ai-coque-persistante) |
 | `server/services/infra/data.service.ts` (mapping DB) | `eslint-disable-next-line` justifié |
 
 ---

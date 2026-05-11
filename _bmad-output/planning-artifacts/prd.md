@@ -557,8 +557,27 @@ Endpoint `POST /api/keywords/intent-scan` : analyse SERP avancée + extraction P
 **Source :** `server/routes/intent-scan.routes.ts:9-31` — `server/services/intent/intent-scan.service.ts`.
 
 #### FR-DIS-AI-PANEL
-Panel IA contextuel `DiscoveryAiPanel.vue` charge le pain point puis stream une analyse intent + traduction douleur en mots-clés candidats via SSE.
-**Source :** `server/routes/keyword-ai-panel.routes.ts` — prompts `discovery-*.md`.
+**Instance Discovery du pattern AI-panel Moteur** *(refonte 2026-05-11 — supersede l'ancienne description SSE qui ne correspondait à aucune implémentation existante)*. L'onglet Discovery consomme directement le composant générique `<AiPanel variant="suggestion">` depuis `DiscoveryPanel.vue` (sans wrapper dédié, ex-`DiscoveryAiPanel` supprimé). Le panel agrège l'action utilisateur principale de Discovery :
+- **CTA** : bouton « Analyser les résultats pertinents » qui POST `/api/keywords/analyze-discovery` (modèle Claude, curation 20-30 keywords stratégiques avec contexte thème/audience/douleur).
+- **Résultats** : composant `DiscoveryAnalysisResults` rendu dans le slot par défaut de `<AiPanel>` quand `analysisResult !== null`, affichant les keywords curés avec checkboxes individuelles + select-all.
+- **Slot `#idle`** : message d'invitation contextuel selon l'état métier (cf. ACs ci-dessous).
+- **Handoff** : la sélection alimente le Set `selection` du composable `useDiscoveryPanel`, consommé par le bouton sticky « Envoyer au Radar » (`getRadarKeywords()`) — indépendant de la coque.
+
+**Hérité de `FR-UI-AI-PANELS-PATTERN`** : présence DOM persistante au mount + états visuels (`idle/streaming/success/error`) + `triggerDisabled` pour les préconditions non remplies, **sans** insertion/suppression de DOM au fil des actions utilisateur.
+
+**Critères d'acceptation testables (spécifiques Discovery)** :
+- AC.DAIP.1 : Au mount initial de `DiscoveryPanel` (article sélectionné, aucune action déclenchée), `<AiPanel data-testid="ai-panel-suggestion">` est rendu dans le DOM.
+- AC.DAIP.2 : Si `!hasResults` (aucune découverte lancée) → CTA `triggerDisabled: true`, slot `#idle` affiche « Lance d'abord une découverte de mots-clés ci-dessus, puis l'IA pourra analyser et te proposer une sélection stratégique. »
+- AC.DAIP.3 : Si `hasResults && semanticLoading` (filtrage de pertinence en cours) → CTA `triggerDisabled: true`, slot `#idle` affiche « Filtrage de pertinence en cours… L'analyse IA sera disponible une fois le filtrage terminé. »
+- AC.DAIP.4 : Si `hasResults && !semanticLoading && relevantCount === 0` → CTA `triggerDisabled: true`, slot `#idle` affiche « Aucun mot-clé pertinent à analyser. Élargis ta recherche ou désactive le filtre de pertinence. »
+- AC.DAIP.5 : Si `analysisLoading === true` → `<AiPanel state="streaming">` (CTA spinner « Analyse en cours… »).
+- AC.DAIP.6 : Si `analysisResult !== null` → `<AiPanel state="success">` et `DiscoveryAnalysisResults` est enfant DOM de la coque (pas en dehors).
+- AC.DAIP.7 : Le handoff vers Radar (clic « Envoyer au Radar ») reste fonctionnel : `selection` lue par `getRadarKeywords()`, émission `send-to-radar`, `basketStore.markPushedToRadar` appelé après transition (régression du flux existant).
+- AC.DAIP.8 : Suppression effective : aucun fichier `DiscoveryAiPanel.vue` ni `useDiscoveryRanking.ts` ne subsiste dans `src/` (hors `_archive/`) — vérifié par test de garde grep + `npm run check:dead`.
+
+**Source :** `src/components/moteur/DiscoveryPanel.vue` (intégration), `src/components/moteur/discovery/DiscoveryAnalysisResults.vue` (résultats), `src/components/moteur/ai-panel/AiPanel.vue` (coque générique), `src/composables/keyword/useDiscoveryPanel.ts` (`analyzeResults`), `server/routes/keywords.routes.ts:759` (route `/keywords/analyze-discovery`, prompt construit inline avec contexte thème/audience/douleur).
+**Statut :** active. **Depuis :** 2026-05-11 (refonte UI). **Remplace :** ancienne formulation parlant de SSE + prompts `discovery-*.md` (jamais implémentée tel quel) ; **supprime :** `DiscoveryAiPanel.vue` + `useDiscoveryRanking.ts` (tri Jaccard local jamais utilisé dans le workflow utilisateur réel).
+**Voir aussi :** FR-UI-AI-PANELS-PATTERN (pattern transversal), NFR-UX-STABLE-SKELETON (règle UX), FR-DIS-RELEVANCE-FILTER (filtre amont).
 
 #### FR-DIS-BASKET
 Store `useMoteurBasketStore` accumule les keywords sélectionnés en mémoire (pas de DB) avec `{ keyword, source, score, validated, pushedToRadar }`. Actions `addKeywords`, `markValidated`, `markPushedToRadar`, `removeKeyword`.
@@ -572,8 +591,26 @@ Store `useMoteurBasketStore` accumule les keywords sélectionnés en mémoire (p
 **Source :** `src/components/moteur/discovery/KeywordDiscoveryCacheBar.vue`, `src/composables/keyword/useDiscoveryCache.ts`, `server/services/keyword/discovery-cache.service.ts`.
 
 #### FR-DIS-RELEVANCE-FILTER
-**Filtre de pertinence sémantique** *(ajout 2026-05-04, formalisation Vague 5)*. Toggle utilisateur dans Discovery qui active un scoring sémantique 2-passes (Claude embeddings + scoring) sur les mots-clés découverts. UI affiche : compteur **« X pertinents / N total »**, barre de progression **« Filtrage P/2 · scored/total »** pendant le scoring, badge **« X hors-sujet masqués »** quand actif. Les keywords non pertinents sont grisés (opacity 0.5) mais restent cliquables (libre arbitre, FR-MOT-RAW-KPIS). Une bannière warning apparaît si le filtrage n'a rien produit (probable failure API Claude).
-**Source :** `src/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue`, `src/composables/keyword/useSemanticScoring.ts`.
+**Filtre de pertinence sémantique 2-passes** *(ajout 2026-05-04, formalisation Vague 5 — ACs 2-pass formalisés 2026-05-11)*. Toggle utilisateur dans Discovery qui active un scoring sémantique 2-passes sur les mots-clés découverts. UI affiche : compteur **« X pertinents / N total »**, barre de progression **« Filtrage P/2 · scored/total »** pendant le scoring, badge **« X hors-sujet masqués »** quand actif. Les keywords non pertinents sont grisés (opacity 0.5) mais restent cliquables (libre arbitre, FR-MOT-RAW-KPIS). Une bannière warning apparaît si le filtrage n'a rien produit (probable failure API Claude).
+
+**Algorithme 2-passes** (`useRelevanceScoring.ts`) :
+- **Pass-1 (large/permissive)** : score tous les mots-clés non encore scorés via `POST /api/keywords/relevance-score` (`strict: false`). Batch de `SCORE_BATCH_SIZE = 120` keywords, concurrence `SCORE_CONCURRENCY = 4`. Seuil de conservation `RELEVANCE_THRESHOLD = 0.5`.
+- **Pass-2 (strict, conditionnelle)** : re-score uniquement les keywords passants du pass-1, avec `strict: true`. **Déclenchée uniquement si** le taux de rejet du pass-1 atteint `STRICT_PASS_TRIGGER_RATIO = 0.10` (≥ 10% de rejet). Justification : sur les topics cohérents où pass-1 ne rejette presque rien, le pass-2 strict est redondant et coûte des appels Claude inutiles.
+- **Re-trigger sur arrivées différées** : quand de nouveaux keywords arrivent (résultats IA Claude `/keywords/radar/generate`, DataForSEO `/keywords/discover` qui livrent après les suggest), un re-run de pass-1+pass-2 est déclenché via `_scoreQueuePending` sur les **nouveaux uniquement** (`unscored = allKeywordsFlat.filter(kw => !relevanceScores.has(kw))`).
+- **Sanity check** : si après scoring, ≥ 90% des keywords sont marqués pertinents sur un corpus ≥ 20 items, `filteringSuspect` est passé à `true` et une bannière d'avertissement s'affiche (probable failure API Claude — fallback silencieux qui retourne 1.0 pour tout).
+
+**Constantes** : `RELEVANCE_THRESHOLD = 0.5`, `SCORE_BATCH_SIZE = 120`, `SCORE_CONCURRENCY = 4`, `STRICT_PASS_TRIGGER_RATIO = 0.10`, `MAX_RELEVANCE_SCORES = 500` (cap LRU).
+
+**Critères d'acceptation testables** :
+- AC.RELFILT.1 : Quand `unscored.length > 0`, un appel à `fetchRelevanceScores()` log `Relevance pass-1: ${N} keywords scored`.
+- AC.RELFILT.2 : Si `pass1RejectRatio >= 0.10`, un pass-2 strict est exécuté et log `Relevance pass-2 (strict): ${N} re-checked, ${M} downgraded`.
+- AC.RELFILT.3 : Si `pass1RejectRatio < 0.10`, le pass-2 est sauté et log `Relevance pass-2 skipped: ...`.
+- AC.RELFILT.4 : Un re-trigger (nouveau batch de keywords arrivés après une analyse en cours) ne re-score **que** les keywords absents de `relevanceScores` (vérifié par taille du log `pass-1: ${N}` vs `allKeywordsFlat.length`).
+- AC.RELFILT.5 : Si ≥ 90% des keywords passent le filtre sur un corpus ≥ 20 items, `filteringSuspect.value === true` et la bannière warning est rendue.
+- AC.RELFILT.6 : Aucun appel concurrent à `fetchRelevanceScores()` (lock `_scoringInProgress` + queue `_scoreQueuePending`).
+
+**Source :** `src/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue`, `src/composables/keyword/useRelevanceScoring.ts`, `server/routes/keywords.routes.ts` (route `/keywords/relevance-score`).
+**Statut :** active. **Depuis :** 2026-05-04 (filtre), **ACs 2-pass formalisés** 2026-05-11.
 
 ---
 
@@ -1807,7 +1844,7 @@ Store front `useCostLogStore` accumule activity log entries (API usage + DB ops 
 **Panels consommateurs (6) :**
 | Panel | Onglet | Variant | FR métier |
 |---|---|---|---|
-| `DiscoveryAiPanel` | Discovery | `suggestion` | FR-DIS-AI-WORDS |
+| Usage direct de `<AiPanel>` dans `DiscoveryPanel.vue` *(refonte 2026-05-11, ex-`DiscoveryAiPanel`)* | Discovery | `suggestion` | FR-DIS-AI-PANEL |
 | `RadarAiPanel` | Radar | `suggestion` | FR-RAD-AI-LONGTAIL |
 | `CaptainAiPanel` (intégré `CaptainSidePanel`) | Capitaine | `advice` | FR-CAP-AI-VALIDATION |
 | `LexiqueAiPanel` | Lexique | `suggestion` | FR-LEX-AI-MULTIKW |
@@ -1816,13 +1853,29 @@ Store front `useCostLogStore` accumule activity log entries (API usage + DB ops 
 
 **Pattern partagé (props `AiPanel`) :**
 - `variant: 'suggestion' | 'advice'` — pilote rendu (liste ajoutables vs markdown narratif).
-- `state: AiPanelState` — état SSE streaming (`idle | loading | streaming | done | error`).
-- `error`, `isStale`, `ctaLabel`, `regenLabel`, `hideUntilTriggered`, `regenConfirmMessage` — props optionnelles partagées.
-- **SSE streaming + parse `marked.js` incrémental** pour le markdown advice.
+- `state: AiPanelState` — état (`idle | streaming | success | error`).
+- `error`, `isStale`, `ctaLabel`, `regenLabel`, `hideUntilTriggered`, `regenConfirmMessage`, `triggerDisabled`, `defaultCollapsed` — props optionnelles partagées.
+- **SSE streaming + parse `marked.js` incrémental** pour le markdown advice (variant `advice`).
 - **Bouton régénération** avec confirmation optionnelle.
 - **État empty** factorisé (`AiPanelSkeleton`).
 
 **Invariant architectural :** toute évolution du pattern AI (nouveau state, nouvelle prop, nouveau comportement de stream) se fait dans `src/components/moteur/ai-panel/` — **jamais en dupliquant** dans un panel consommateur. Les 6 panels consommateurs sont des **enveloppes minces** (fetch + state local) au-dessus d'`AiPanel`.
+
+**Invariant UX — Présence persistante + états visuels** *(ajout 2026-05-11)* : application transversale de `NFR-UX-STABLE-SKELETON` aux 6 panels IA Moteur. Chaque panel est **rendu dans le DOM dès le mount de son onglet**, sans `v-if` conditionné à une action utilisateur (clic, scroll, hover). Les états « pas encore prêt à agir » sont exprimés visuellement (CTA `triggerDisabled: true`, slot `#idle` avec message d'invitation explicite, opacity réduite si pertinent) — **jamais** par insertion/suppression de DOM.
+
+**Critères d'acceptation testables (transversaux à tous les panels IA Moteur)** :
+- AC.UIAIP.1 : Pour chaque panel consommateur listé, un test composant monte le parent dans un état initial (article fraîchement sélectionné, aucune action déclenchée) et vérifie la présence DOM de `[data-testid^="ai-panel-"]` ou équivalent.
+- AC.UIAIP.2 : Pour chaque panel consommateur, quand la précondition métier n'est pas remplie (Discovery : `!hasResults || relevantCount === 0` ; Lexique : `!canTrigger` ; etc.), le CTA est `disabled` avec un message d'invitation explicite dans le slot `#idle`.
+- AC.UIAIP.3 : Aucun panel consommateur n'utilise un `v-if` conditionné à un état utilisateur transitoire (`hasClickedX`, `analysisLoading === false && analysisResult === null`) dans son template parent pour décider de monter ou non `<AiPanel>`.
+- AC.UIAIP.4 : Tout nouveau panel IA introduit dans le Moteur DOIT passer ces 3 ACs — vérifié par un test architectural (`tests/unit/components/ai-panels-persistence.test.ts`) qui parcourt la liste fixée des panels consommateurs et applique les assertions.
+
+**Statut audit (au 2026-05-11)** :
+- Discovery : **conforme après refonte** (`tech-spec-discovery-ai-coque-persistante`).
+- Lexique : **conforme** depuis Sprint C-2 (panel rendu en permanence dans `LexiquePanel.vue`).
+- Lieutenants : **conforme** depuis Sprint 1 (refonte 2026-05-04).
+- Radar, Capitaine, Rédaction (`ArticleWorkflowIaBrief`) : **à auditer** lors d'un chantier ultérieur — pas dans le scope de ce chantier.
+
+**Voir aussi :** NFR-UX-STABLE-SKELETON (règle générale), FR-DIS-AI-PANEL (instance Discovery).
 
 #### FR-UI-ARTICLE-SHARED
 **Sous-composants partagés Workflow/Editor (V4 + V5 du chantier décou­page monstres Vue) :**
@@ -2145,6 +2198,41 @@ Câblage `package.json` :
 - AC5 : test unit qui appelle la fonction `freePort(port)` exportée par le script (mock de `child_process.exec`) → vérifie la commande émise selon `os.platform()`.
 
 **Statut :** active. **Depuis :** 2026-05-05.
+
+---
+
+### 9.9 — Expérience utilisateur (NFR-UX)
+
+#### NFR-UX-STABLE-SKELETON
+**Squelette d'interface stable, états visuels au lieu d'apparitions** *(ajout 2026-05-11)*. Les zones d'action significatives d'une page (panels d'action, CTA, sections de résultats, coques IA) doivent être **rendues dans le DOM dès l'ouverture de la page** plutôt que d'apparaître progressivement au fil des actions utilisateur. La désactivation, l'invitation à agir, l'état de chargement et l'erreur sont **exprimés par des états visuels** (grisé, disabled, spinner, bandeau d'erreur, message d'invitation) sur un même squelette plutôt que par insertion/suppression de DOM.
+
+**Pourquoi** : les apparitions/disparitions au fil des clics fragmentent la carte mentale de l'utilisateur (« où est passé le bouton ? »), produisent des sauts de mise en page (CLS), masquent les actions disponibles avant d'avoir agi, et compliquent l'apprentissage de l'app. Un squelette stable rend l'app lisible dès le premier rendu et offre des affordances visuelles claires (« cette zone existe, elle est juste pas encore activable »).
+
+**Périmètre d'application** :
+- Coques IA des onglets Moteur (`DiscoveryAiPanel` futur, `RadarAiPanel`, `LieutenantsAiPanel`, `LexiqueAiPanel`).
+- Panels d'action principaux (CaptainPanel, LieutenantsPanel, etc.).
+- CTA majeurs (« Envoyer au Radar », « Verrouiller le Capitaine », « Lancer la rédaction »).
+- Sections de résultats secondaires si visuellement attendues (préfèrent un état vide explicite à une absence).
+
+**Hors-périmètre** :
+- Éléments accessoires liés à une action ponctuelle (toasts, popovers de confirmation, side panels conditionnels au clic).
+- Sections lourdes en performance dont le mount coûte (rendre l'arbre PAA d'une RadarCard non expansée serait gaspilleur — `v-if` justifié).
+
+**États visuels recommandés** (cas généraux) :
+- `idle` : coque grisée (opacity ≈ 0.5), CTA `disabled`, message d'invitation explicite (« Lance d'abord X pour activer Y »).
+- `loading` : spinner sur le CTA, label « En cours… », autres actions non perturbées.
+- `success` : coque pleinement active, contenu rendu.
+- `error` : bandeau d'erreur dans la coque, CTA réactivé pour retry.
+
+**Tension avec la performance** : si une zone coûte cher à monter (≥ 100 ms de render ou requiert des données non chargées), préférer `v-if` au mount avec **skeleton/placeholder de la même taille** (pas un simple `<div v-if="..."/>` qui ferait sauter la mise en page). Le placeholder DOIT préserver la silhouette de la zone.
+
+**Critères d'acceptation testables (transversaux)** :
+- AC.UX.SKEL.1 : Pour chaque coque IA Moteur listée en périmètre, un test composant vérifie que le DOM `data-testid="*-ai-panel"` est présent au mount, sans qu'aucune action utilisateur n'ait été déclenchée.
+- AC.UX.SKEL.2 : Pour chaque CTA majeur listé, un test composant vérifie que l'élément `<button>` existe au mount et possède l'attribut `disabled` quand sa précondition n'est pas remplie.
+- AC.UX.SKEL.3 : Aucun élément du périmètre n'utilise un `v-if` qui dépend d'un état utilisateur transitoire (`hasClickedX`, `analysisLoading === false && analysisResult === null`). Les `v-if` autorisés sont ceux qui dépendent d'un coût de rendu (cf. hors-périmètre) ou d'une route différente.
+
+**Application en cours** : `FR-DIS-AI-COQUE-PERSISTANTE` est la première application concrète de cette NFR.
+**Statut :** active. **Depuis :** 2026-05-11.
 
 ---
 

@@ -1,21 +1,13 @@
 /**
- * Vague 1 — Tests architecturaux DiscoveryPanel.
+ * Tests architecturaux DiscoveryPanel.
  *
- * Référence FR PRD : FR-DIS-DECOUVRIR (l'utilisateur doit pouvoir explorer 6
- * sources de mots-clés en parallèle, regroupées par section, avec une sidebar
- * de groupes lexicaux séparée du contenu principal — voir prd.md).
+ * Référence FR PRD : FR-DIS-DECOUVRIR, FR-DIS-AI-PANEL, FR-UI-AI-PANELS-PATTERN.
  *
- * Ces tests verrouillent la POSITION DOM des sous-composants après l'extraction
- * Vague 1 : DiscoverySourcesList, DiscoveryAnalysisResults et
- * DiscoveryWordGroupsSidebar doivent rester chacun dans leur zone sémantique
- * (.discovery-main vs .discovery-sidebar) et ne pas se faire absorber par le
- * panel suggestion bas-de-page (DiscoveryAiPanel).
- *
- * Note pédagogique : un "container principal" (.discovery-main) = la zone DOM
- * où l'utilisateur voit ses propres mots-clés découverts. Un "panel IA" =
- * la zone DOM dédiée aux suggestions IA bas-de-page. La sidebar de groupes
- * lexicaux est encore un troisième espace, latéral, qui sert à filtrer.
- * Mélanger les trois rendrait l'UI illisible.
+ * Verrouille la position DOM des sous-composants principaux :
+ *   - DiscoverySourcesList = sources brutes, dans la zone main (pas la sidebar).
+ *   - DiscoveryWordGroupsSidebar = filtre groupes lexicaux, latéral (sidebar).
+ *   - DiscoveryAnalysisResults = résultats de l'analyse IA, rendu DANS la coque
+ *     AiPanel persistante (refonte 2026-05-11 : ex-rendu hors-coque).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -23,7 +15,6 @@ import { ref, nextTick } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import DiscoveryPanel from '../../../src/components/moteur/DiscoveryPanel.vue'
 
-// ===== Mock useDiscoveryPanel — état minimal =====
 const mockHasResults = ref(true)
 const mockWordGroups = ref([
   { word: 'design', normalized: 'design', count: 5 },
@@ -114,8 +105,10 @@ function mountTab() {
     props: baseProps,
     global: {
       stubs: {
-        DiscoveryAiPanel: {
-          template: '<div data-testid="discovery-ai-panel" class="ai-panel-suggestion"></div>',
+        AiPanel: {
+          template: '<section data-testid="discovery-ai-panel" class="ai-panel-suggestion"><slot /><slot name="idle" /></section>',
+          props: ['variant', 'title', 'subtitle', 'state', 'error', 'isStale', 'ctaLabel', 'regenLabel', 'hideUntilTriggered', 'regenConfirmMessage', 'triggerDisabled', 'defaultCollapsed'],
+          emits: ['trigger'],
         },
         DiscoverySourcesList: {
           template: '<div data-testid="discovery-sources-list"></div>',
@@ -148,7 +141,7 @@ beforeEach(() => {
   mockHasResults.value = true
 })
 
-describe('DiscoveryPanel — architecture des sections (Vague 1)', () => {
+describe('DiscoveryPanel — architecture des sections', () => {
   it('AC.A.1 — DiscoverySourcesList est descendant de .discovery-main', async () => {
     const wrapper = mountTab()
     await nextTick()
@@ -172,12 +165,12 @@ describe('DiscoveryPanel — architecture des sections (Vague 1)', () => {
       .toBe(false)
   })
 
-  it('AC.A.3 — DiscoveryAnalysisResults est descendant de .discovery-main, pas absorbé par DiscoveryAiPanel', async () => {
+  it('AC.A.3 — DiscoveryAnalysisResults est descendant de .discovery-main ET de la coque AiPanel', async () => {
     const wrapper = mountTab()
     await nextTick()
     expect(isDescendantOf(wrapper, '.discovery-main', '[data-testid="discovery-analysis-results"]'))
       .toBe(true)
     expect(isDescendantOf(wrapper, '[data-testid="discovery-ai-panel"]', '[data-testid="discovery-analysis-results"]'))
-      .toBe(false)
+      .toBe(true)
   })
 })

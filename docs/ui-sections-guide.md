@@ -1617,7 +1617,7 @@ Les 5 onglets du Moteur qui exposent (ou devraient exposer) un panel IA partagen
 ### 13.2 Panels par onglet
 | Onglet | Composant | Variant | Position | Appel IA |
 | --- | --- | --- | --- | --- |
-| Discovery | `DiscoveryAiPanel.vue` | suggestion | bas de page | **Non** — tri local (signal × Jaccard douleur) |
+| Discovery | Usage direct de `<AiPanel>` dans `DiscoveryPanel.vue` *(refonte 2026-05-11, ex-`DiscoveryAiPanel`)* | suggestion | bas de page | **Oui** — `POST /api/keywords/analyze-discovery` (Claude curation 20-30 keywords stratégiques) |
 | Radar | `RadarAiPanel.vue` | suggestion | bas de page | **Non** — tri local (marketScore + relevanceScore) |
 | Capitaine | `CaptainSidePanel.vue` (utilise `<AiPanel variant="advice">`) | advice | sidepanel droit | Oui — `/keywords/:kw/ai-panel` |
 | Lieutenants | `LieutenantsAiPanel.vue` | suggestion | bas de page (tabs Propositions / Hn) | Oui — propose-lieutenants + ai-hn-structure |
