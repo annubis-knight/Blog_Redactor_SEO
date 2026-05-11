@@ -1,12 +1,12 @@
 <script setup lang="ts">
-import { radarHeatIcon } from '@/composables/keyword/useResonanceScore'
-
-interface RadarCacheStatus {
-  exists: boolean
-  heatLevel?: string | null
-  globalScore?: number
-  keywordCount?: number
-}
+/**
+ * Phase 1 du flux Radar : inputs de génération + bandeau d'erreur.
+ *
+ * Le cache-indicator legacy (basé sur la table radar_cache + seed cross-article)
+ * a été supprimé 2026-05-11 : le mécanisme moderne TabCachePanel + TabLoadPrompt
+ * (basé sur articleId + radar_explorations, FR-MOT-EXPLORATION-COUNTS) fait le
+ * même job en mieux (sticky bottom, scoped par article, DB + cache séparés).
+ */
 
 withDefaults(defineProps<{
   broadKeyword: string
@@ -14,16 +14,10 @@ withDefaults(defineProps<{
   painPoint: string
   phase: 'input' | 'keywords' | 'scanning' | 'results'
   isGenerating: boolean
-  radarCacheStatus: RadarCacheStatus | null
-  isLoadingCache: boolean
   error: string | null
   showInputs?: boolean
-  /** Message d'avertissement affiché au-dessus des inputs en mode workflow
-   *  pour clarifier que la génération manuelle ne touche pas au basket. */
-  workflowHint?: string | null
 }>(), {
   showInputs: true,
-  workflowHint: null,
 })
 
 defineEmits<{
@@ -32,8 +26,6 @@ defineEmits<{
   (e: 'update:pain-point', value: string): void
   (e: 'generate'): void
   (e: 'reset-scan'): void
-  (e: 'load-cache'): void
-  (e: 'dismiss-cache'): void
   (e: 'clear-error'): void
 }>()
 </script>
@@ -46,10 +38,6 @@ defineEmits<{
       <p class="scanner-desc">
         L'IA genere des mots-cles courts, puis chacun est scanne dans l'ecosysteme Google
         (PAA + Autocomplete) pour mesurer la resonance avec votre article.
-      </p>
-
-      <p v-if="workflowHint" class="scanner-workflow-hint" data-testid="scanner-workflow-hint">
-        {{ workflowHint }}
       </p>
 
       <div class="input-row">
@@ -105,37 +93,6 @@ defineEmits<{
       </div>
     </div>
 
-    <!-- Cache indicator -->
-    <div
-      v-if="radarCacheStatus?.exists && phase === 'input'"
-      class="cache-indicator"
-    >
-      <div class="cache-indicator__info">
-        <span class="cache-indicator__icon">{{ radarHeatIcon(radarCacheStatus.heatLevel ?? null) }}</span>
-        <span class="cache-indicator__text">
-          Scan precedent disponible
-          <template v-if="radarCacheStatus.globalScore !== undefined">
-            &middot; Score {{ radarCacheStatus.globalScore }}/100
-          </template>
-          <template v-if="radarCacheStatus.keywordCount">
-            &middot; {{ radarCacheStatus.keywordCount }} mots-cles
-          </template>
-        </span>
-      </div>
-      <div class="cache-indicator__actions">
-        <button
-          class="btn-action"
-          :disabled="isLoadingCache"
-          @click="$emit('load-cache')"
-        >
-          {{ isLoadingCache ? 'Chargement...' : 'Charger depuis le cache' }}
-        </button>
-        <button class="btn-action btn-action--secondary" @click="$emit('dismiss-cache')">
-          Ignorer
-        </button>
-      </div>
-    </div>
-
     <!-- Error -->
     <div v-if="error" class="scanner-error">
       {{ error }}
@@ -168,17 +125,6 @@ defineEmits<{
   margin: 0 0 1rem;
   font-size: 0.8125rem;
   color: var(--color-text-muted);
-}
-
-.scanner-workflow-hint {
-  margin: 0 0 0.75rem;
-  padding: 0.5rem 0.75rem;
-  font-size: 0.75rem;
-  color: var(--color-text);
-  background: var(--color-block-info-bg, rgba(59, 130, 246, 0.08));
-  border-left: 3px solid var(--color-primary, #2563eb);
-  border-radius: 4px;
-  line-height: 1.4;
 }
 
 .input-row {
@@ -247,37 +193,6 @@ defineEmits<{
 
 .btn-action--secondary:hover:not(:disabled) {
   background: var(--color-primary-soft);
-}
-
-.cache-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  padding: 0.75rem 1rem;
-  background: var(--color-block-info-bg);
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-}
-
-.cache-indicator__info {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.cache-indicator__icon {
-  font-size: 1rem;
-}
-
-.cache-indicator__text {
-  color: var(--color-text);
-}
-
-.cache-indicator__actions {
-  display: flex;
-  gap: 0.5rem;
 }
 
 .scanner-error {

@@ -67,9 +67,6 @@ const {
   isScanning,
   scanProgress,
   error,
-  radarCacheStatus,
-  checkRadarCache,
-  loadFromRadarCache,
   mergeFromRadarSource,
   generate,
   scan,
@@ -86,7 +83,6 @@ const generatedKeywords = computed(() =>
   useDbFirst.value ? radarStore.generatedKeywords : composableGeneratedKeywords.value,
 )
 
-const isLoadingCache = ref(false)
 const manualInput = ref('')
 const manualSubmitting = ref(false)
 
@@ -269,17 +265,10 @@ const phase = computed<Phase>(() => {
   return 'input'
 })
 
-// Check cache for seed keyword
+// Seed conservé pour les besoins du scan (radar-cache backend, mode libre legacy).
 const cacheSeed = computed(() => props.articleKeyword || props.pilierKeyword)
 
-function triggerCacheCheck() {
-  if (cacheSeed.value && !scanResult.value) {
-    checkRadarCache(cacheSeed.value)
-  }
-}
-
 onMounted(() => {
-  triggerCacheCheck()
   // FR-RAD-DB-FIRST : hydrate le store DB depuis radar_explorations en mode workflow.
   if (useDbFirst.value && props.articleId) {
     radarStore.setArticle(props.articleId)
@@ -305,21 +294,7 @@ if (props.mode === 'workflow') {
     specificTopic.value = props.articleTopic || props.articleKeyword || props.pilierKeyword
     painPoint.value = props.articlePainPoint || ''
     reset()
-    triggerCacheCheck()
   })
-}
-
-async function handleLoadFromCache() {
-  if (!cacheSeed.value) return
-  isLoadingCache.value = true
-  try {
-    const loaded = await loadFromRadarCache(cacheSeed.value)
-    if (loaded && scanResult.value) {
-      emit('scanned', { globalScore: scanResult.value.globalScore, heatLevel: scanResult.value.heatLevel })
-    }
-  } finally {
-    isLoadingCache.value = false
-  }
 }
 
 // Receive keywords injected from Discovery tab.
@@ -443,15 +418,15 @@ defineExpose({ mergeFromRadarSource })
          Radar" (génération IA Haiku) est masquée car la génération est
          désormais sur l'onglet Discovery. L'input texte unitaire (Phase 2)
          remplace la voie d'ajout manuel ponctuelle. En mode libre (LaboView),
-         les inputs restent disponibles pour la saisie manuelle. -->
+         les inputs restent disponibles pour la saisie manuelle.
+         Cache indicator legacy supprimé 2026-05-11 → TabCachePanel + TabLoadPrompt
+         (sticky bottom) prennent le relais via articleId. -->
     <DouleurScannerInputs
       :broad-keyword="broadKeyword"
       :specific-topic="specificTopic"
       :pain-point="painPoint"
       :phase="phase"
       :is-generating="isGenerating"
-      :radar-cache-status="radarCacheStatus"
-      :is-loading-cache="isLoadingCache"
       :error="error"
       :show-inputs="mode === 'libre'"
       @update:broad-keyword="(v) => broadKeyword = v"
@@ -459,8 +434,6 @@ defineExpose({ mergeFromRadarSource })
       @update:pain-point="(v) => painPoint = v"
       @generate="handleGenerate"
       @reset-scan="handleReset"
-      @load-cache="handleLoadFromCache"
-      @dismiss-cache="radarCacheStatus = null"
       @clear-error="error = null"
     />
 
