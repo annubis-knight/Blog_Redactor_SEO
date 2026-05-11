@@ -2,6 +2,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useKeywordRadar } from '@/composables/keyword/useResonanceScore'
 import { useKeywordModifiersStore } from '@/stores/article/keyword-modifiers.store'
+import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
 import { log } from '@/utils/logger'
 import RadarAiPanel from '@/components/moteur/RadarAiPanel.vue'
 import DouleurScannerInputs from '@/components/intent/scanner/DouleurScannerInputs.vue'
@@ -60,7 +61,7 @@ function handleMarkCaptainCandidates(keywords: string[]) {
 }
 
 const {
-  generatedKeywords,
+  generatedKeywords: composableGeneratedKeywords,
   scanResult,
   isGenerating,
   isScanning,
@@ -72,11 +73,22 @@ const {
   mergeFromRadarSource,
   generate,
   scan,
-  removeKeyword,
+  removeKeyword: composableRemoveKeyword,
   reset,
 } = useKeywordRadar()
 
+// FR-RAD-DB-FIRST : en mode workflow, la liste des keywords en attente de scan
+// vient du store DB-first (hydraté depuis radar_explorations). En mode libre
+// (LaboView), on retombe sur le composable interne.
+const radarStore = useRadarExplorationStore()
+const useDbFirst = computed(() => props.mode === 'workflow' && (props.articleId ?? 0) > 0)
+const generatedKeywords = computed(() =>
+  useDbFirst.value ? radarStore.generatedKeywords : composableGeneratedKeywords.value,
+)
+
 const isLoadingCache = ref(false)
+const manualInput = ref('')
+const manualSubmitting = ref(false)
 
 // --- Checkbox selection for sending to Capitaine ---
 const checkedKeywords = ref(new Set<string>())
@@ -266,7 +278,20 @@ function triggerCacheCheck() {
   }
 }
 
-onMounted(triggerCacheCheck)
+onMounted(() => {
+  triggerCacheCheck()
+  // FR-RAD-DB-FIRST : hydrate le store DB depuis radar_explorations en mode workflow.
+  if (useDbFirst.value && props.articleId) {
+    radarStore.setArticle(props.articleId)
+  }
+})
+
+// Re-hydrate au switch d'article (mode workflow uniquement).
+watch(() => props.articleId, (newId) => {
+  if (useDbFirst.value) {
+    radarStore.setArticle(newId ?? null)
+  }
+})
 
 // Reset when article changes (workflow mode only — in libre mode, reset is handled by LaboView)
 if (props.mode === 'workflow') {
@@ -297,11 +322,17 @@ async function handleLoadFromCache() {
   }
 }
 
-// Receive keywords injected from Discovery tab
+// Receive keywords injected from Discovery tab.
+// FR-RAD-DB-FIRST : en mode workflow, on écrit en DB via le store (batch
+// idempotent). Le store devient source de vérité. En mode libre, on retombe
+// sur le composable comme avant.
 watch(() => props.injectedKeywords, (newKeywords) => {
-  if (newKeywords && newKeywords.length > 0) {
-    log.info(`[DouleurIntent] Received ${newKeywords.length} keywords from Discovery tab`)
-    generatedKeywords.value = [...newKeywords]
+  if (!newKeywords || newKeywords.length === 0) return
+  log.info(`[DouleurIntent] Received ${newKeywords.length} keywords from Discovery tab`)
+  if (useDbFirst.value) {
+    radarStore.addKeywordsBatch(newKeywords.map(k => ({ keyword: k.keyword, reasoning: k.reasoning })))
+  } else {
+    composableGeneratedKeywords.value = [...newKeywords]
     scanResult.value = null
   }
 }, { immediate: true })
@@ -335,18 +366,62 @@ async function handleGenerate() {
 }
 
 async function handleScan() {
-  if (generatedKeywords.value.length === 0) return
-  log.info(`[DouleurIntent] Scan clicked: ${generatedKeywords.value.length} keywords, depth=${depth.value}`)
+  const kws = generatedKeywords.value
+  if (kws.length === 0) return
+  log.info(`[DouleurIntent] Scan clicked: ${kws.length} keywords, depth=${depth.value}`)
   await scan(
     broadKeyword.value.trim(),
     specificTopic.value.trim(),
-    generatedKeywords.value,
+    [...kws],
     depth.value,
-    cacheSeed.value ? { seed: cacheSeed.value } : undefined,
+    cacheSeed.value ? { seed: cacheSeed.value, articleId: props.articleId ?? undefined } : undefined,
   )
   if (scanResult.value) {
     log.info(`[DouleurIntent] Scan result: score=${scanResult.value.globalScore}`)
+    // FR-RAD-DB-FIRST : synchronise le scan_result dans le store local.
+    if (useDbFirst.value) {
+      radarStore.setScanResultLocal(scanResult.value)
+    }
     emit('scanned', { globalScore: scanResult.value.globalScore, heatLevel: scanResult.value.heatLevel })
+  }
+}
+
+// FR-RAD-MANUAL-ADD : ajout d'un keyword unitaire dans Radar (modèle CaptainInput).
+async function handleManualAdd() {
+  const value = manualInput.value.trim()
+  if (!value || manualSubmitting.value) return
+  manualSubmitting.value = true
+  try {
+    if (useDbFirst.value) {
+      const added = await radarStore.addKeyword(value)
+      if (added) {
+        manualInput.value = ''
+        log.info(`[DouleurIntent] Manual keyword added: "${value}"`)
+      } else {
+        log.info(`[DouleurIntent] Manual keyword already present: "${value}"`)
+        manualInput.value = ''
+      }
+    } else {
+      // Mode libre (LaboView) : push direct dans le composable mémoire.
+      composableGeneratedKeywords.value = [
+        ...composableGeneratedKeywords.value,
+        { keyword: value, reasoning: '' },
+      ]
+      manualInput.value = ''
+    }
+  } finally {
+    manualSubmitting.value = false
+  }
+}
+
+// Suppression d'un keyword (× sur chip). En mode workflow, écrit en DB via le
+// store. En mode libre, retombe sur le splice mémoire du composable.
+function handleRemoveKeyword(index: number) {
+  if (useDbFirst.value) {
+    const kw = generatedKeywords.value[index]
+    if (kw) radarStore.removeKeyword(kw.keyword)
+  } else {
+    composableRemoveKeyword(index)
   }
 }
 
@@ -385,10 +460,15 @@ defineExpose({ mergeFromRadarSource })
       @clear-error="error = null"
     />
 
-    <!-- Phase 2: Keywords Preview (editable tags) -->
-    <div v-if="phase === 'keywords' && !isScanning" class="keywords-preview" data-testid="radar-keywords-preview">
+    <!-- Phase 2: Keywords à scanner (DB-first) — squelette stable + input unitaire -->
+    <div
+      v-if="!isScanning && phase !== 'results'"
+      class="keywords-preview"
+      :class="{ 'keywords-preview--empty': generatedKeywords.length === 0 }"
+      :data-testid="generatedKeywords.length > 0 ? 'radar-keywords-preview' : 'radar-keywords-empty'"
+    >
       <div class="keywords-header">
-        <h4>{{ generatedKeywords.length }} mots-cles generes</h4>
+        <h4>{{ generatedKeywords.length > 0 ? `${generatedKeywords.length} mots-clés à scanner` : 'Mots-clés à scanner' }}</h4>
         <button
           class="btn-action"
           :disabled="generatedKeywords.length === 0"
@@ -398,32 +478,41 @@ defineExpose({ mergeFromRadarSource })
         </button>
       </div>
 
-      <div class="keywords-tags">
+      <!-- FR-RAD-MANUAL-ADD : input texte unitaire (modèle CaptainInput). -->
+      <div v-if="useDbFirst" class="radar-manual-add" data-testid="radar-manual-add">
+        <input
+          v-model="manualInput"
+          type="text"
+          class="radar-manual-add__field"
+          placeholder="Ajouter un mot-clé à scanner…"
+          :disabled="manualSubmitting"
+          @keyup.enter="handleManualAdd"
+        />
+        <button
+          type="button"
+          class="radar-manual-add__btn"
+          :disabled="!manualInput.trim() || manualSubmitting"
+          @click="handleManualAdd"
+        >
+          + Ajouter
+        </button>
+      </div>
+
+      <div v-if="generatedKeywords.length > 0" class="keywords-tags">
         <span
           v-for="(kw, i) in generatedKeywords"
-          :key="i"
+          :key="kw.keyword + ':' + i"
           class="keyword-tag"
           :title="kw.reasoning"
         >
           {{ kw.keyword }}
-          <button class="tag-remove" @click="removeKeyword(i)">&times;</button>
+          <button class="tag-remove" @click="handleRemoveKeyword(i)">&times;</button>
         </span>
       </div>
-    </div>
 
-    <!-- Placeholder grisé quand aucun mot-clé n'est en attente de scan (skeleton stable). -->
-    <div
-      v-else-if="!isScanning && phase !== 'results'"
-      class="keywords-preview keywords-preview--empty"
-      data-testid="radar-keywords-empty"
-    >
-      <div class="keywords-header">
-        <h4>Mots-clés à scanner</h4>
-        <button class="btn-action" disabled>Lancer le scan</button>
-      </div>
-      <p class="keywords-empty-hint">
-        Aucun mot-clé en attente. Passe par l'onglet <strong>Discovery</strong> pour envoyer une sélection ici,
-        ou utilise les champs ci-dessus pour en générer manuellement.
+      <p v-else class="keywords-empty-hint">
+        Aucun mot-clé en attente. Passe par l'onglet <strong>Discovery</strong> pour envoyer une sélection,
+        ajoute un mot-clé manuellement ci-dessus, ou utilise les champs en haut pour en générer plusieurs.
       </p>
     </div>
 
@@ -544,6 +633,59 @@ defineExpose({ mergeFromRadarSource })
   font-size: 0.8125rem;
   color: var(--color-text-muted);
   line-height: 1.4;
+}
+
+.radar-manual-add {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  padding: 0.375rem 0.375rem 0.375rem 0.75rem;
+  background: var(--color-bg-elevated, #fff);
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 8px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.radar-manual-add:focus-within {
+  border-color: var(--color-primary, #2563eb);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
+}
+
+.radar-manual-add__field {
+  flex: 1;
+  min-width: 0;
+  padding: 0.375rem 0;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: 0.875rem;
+  color: var(--color-text);
+}
+
+.radar-manual-add__field::placeholder {
+  color: var(--color-text-muted);
+}
+
+.radar-manual-add__btn {
+  padding: 0.375rem 0.875rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: white;
+  background: var(--color-primary);
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.radar-manual-add__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.radar-manual-add__btn:hover:not(:disabled) {
+  background: var(--color-primary-hover, #1d4ed8);
 }
 
 .results-placeholder {

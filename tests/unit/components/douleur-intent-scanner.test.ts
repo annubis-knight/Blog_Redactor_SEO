@@ -152,31 +152,34 @@ afterEach(() => {
 // Phase 2 — Keywords générés (preview, suppression, scan)
 // ============================================================================
 describe('RadarPanel — phase 2 : keywords preview', () => {
-  it('phase keywords : tags affichés avec compteur', () => {
+  // FR-RAD-DB-FIRST : en mode workflow, generatedKeywords vient du store
+  // useRadarExplorationStore (DB-first). Ces tests utilisent mode='libre'
+  // pour rester sur le composable mémoire interne.
+  it('phase keywords : tags affichés avec compteur (mode libre)', () => {
     mockGeneratedKeywords.value = [
       { keyword: 'foo', reasoning: 'r1' },
       { keyword: 'bar', reasoning: 'r2' },
     ]
-    const wrapper = mountScanner()
+    const wrapper = mountScanner({ mode: 'libre' as const })
     expect(wrapper.find('.keywords-preview').exists()).toBe(true)
-    expect(wrapper.text()).toContain('2 mots-cles')
+    expect(wrapper.text()).toContain('2 mots-clés à scanner')
     expect(wrapper.findAll('.keyword-tag').length).toBe(2)
   })
 
-  it('clic sur × du tag supprime le keyword', async () => {
+  it('clic sur × du tag supprime le keyword (mode libre)', async () => {
     mockGeneratedKeywords.value = [
       { keyword: 'foo' },
       { keyword: 'bar' },
     ]
-    const wrapper = mountScanner()
+    const wrapper = mountScanner({ mode: 'libre' as const })
     const removeBtn = wrapper.findAll('.tag-remove')[0]!
     await removeBtn.trigger('click')
     expect(mockRemoveKeyword).toHaveBeenCalledWith(0)
   })
 
-  it('bouton "Lancer le scan" appelle scan() avec les paramètres bons', async () => {
+  it('bouton "Lancer le scan" appelle scan() avec les paramètres bons (mode libre)', async () => {
     mockGeneratedKeywords.value = [{ keyword: 'foo' }]
-    const wrapper = mountScanner()
+    const wrapper = mountScanner({ mode: 'libre' as const })
     const launchBtn = wrapper.find('.keywords-header .btn-action')
     await launchBtn.trigger('click')
     expect(mockScan).toHaveBeenCalledTimes(1)
@@ -415,17 +418,20 @@ describe('RadarPanel — gestion erreur', () => {
 // Watcher — keywords injectés depuis Discovery
 // ============================================================================
 describe('RadarPanel — keywords injectés depuis Discovery', () => {
-  it('injectedKeywords non-vide remplit generatedKeywords + reset scanResult', async () => {
+  // FR-RAD-DB-FIRST : en mode workflow, le watcher injectedKeywords écrit dans
+  // radar_explorations.generated_keywords via le store. En mode libre, on
+  // retombe sur le composable mémoire — c'est ce qu'on teste ici.
+  it('injectedKeywords non-vide remplit generatedKeywords + reset scanResult (mode libre)', async () => {
     const injected = [
       { keyword: 'kw-injected-1', reasoning: 'depuis Discovery' },
       { keyword: 'kw-injected-2', reasoning: 'depuis Discovery' },
     ]
-    const wrapper = mountScanner({ injectedKeywords: injected })
+    const wrapper = mountScanner({ mode: 'libre' as const, injectedKeywords: injected })
     await nextTick()
 
     expect(mockGeneratedKeywords.value.length).toBe(2)
     expect(mockGeneratedKeywords.value[0]!.keyword).toBe('kw-injected-1')
-    expect(wrapper.text()).toContain('2 mots-cles generes')
+    expect(wrapper.text()).toContain('2 mots-clés à scanner')
   })
 
   it('injectedKeywords vide n\'écrase PAS la liste existante', async () => {
