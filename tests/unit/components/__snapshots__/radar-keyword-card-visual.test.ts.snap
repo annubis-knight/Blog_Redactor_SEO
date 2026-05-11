@@ -3,17 +3,12 @@
 exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders collapsed state (default mode kpi) 1`] = `
 "<div data-v-71e76192="" class="radar-card">
   <!-- Single-row header -->
-  <!-- FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) : seul le chevron ▶ stoppe la
-         propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
-         propage normalement au parent (radar-list-item → ouvre la sidebar). -->
+  <!-- Chevron ▶ stoppe propagation + toggle PAA. Keyword/KPIs propagent au parent. -->
   <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
     <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
     <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
            fallback fantôme — CLAUDE.md §3.5). -->
-    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
-    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
-       lors d'un clic sur le score-ring. -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div><!-- @click.stop empêche propagation parent (evite ouverture sidebar). -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(101, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="30.159289474462017" transform="rotate(-90 34 34)"></circle>
       </svg><span data-v-7efb3981="" class="score-ring__value" style="color: rgb(85, 195, 34);">84</span><span data-v-7efb3981="" class="score-ring__label">Score KPI</span>
@@ -29,17 +24,12 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders collapsed state
 exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders expanded state with PAA tree 1`] = `
 "<div data-v-71e76192="" class="radar-card">
   <!-- Single-row header -->
-  <!-- FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) : seul le chevron ▶ stoppe la
-         propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
-         propage normalement au parent (radar-list-item → ouvre la sidebar). -->
+  <!-- Chevron ▶ stoppe propagation + toggle PAA. Keyword/KPIs propagent au parent. -->
   <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
     <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
     <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
            fallback fantôme — CLAUDE.md §3.5). -->
-    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
-    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
-       lors d'un clic sur le score-ring. -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div><!-- @click.stop empêche propagation parent (evite ouverture sidebar). -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(101, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="30.159289474462017" transform="rotate(-90 34 34)"></circle>
       </svg><span data-v-7efb3981="" class="score-ring__value" style="color: rgb(85, 195, 34);">84</span><span data-v-7efb3981="" class="score-ring__label">Score KPI</span>
@@ -55,17 +45,12 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders expanded state 
 exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance" with displayedScore = null + reason "no-pain" 1`] = `
 "<div data-v-71e76192="" class="radar-card">
   <!-- Single-row header -->
-  <!-- FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) : seul le chevron ▶ stoppe la
-         propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
-         propage normalement au parent (radar-list-item → ouvre la sidebar). -->
+  <!-- Chevron ▶ stoppe propagation + toggle PAA. Keyword/KPIs propagent au parent. -->
   <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
     <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
     <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
            fallback fantôme — CLAUDE.md §3.5). -->
-    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
-    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
-       lors d'un clic sur le score-ring. -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div><!-- @click.stop empêche propagation parent (evite ouverture sidebar). -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring radar-card__score-ring--empty"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="var(--color-text-muted, #94a3b8)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="188.49555921538757" transform="rotate(-90 34 34)"></circle>
       </svg><span data-v-7efb3981="" class="score-ring__value" style="color: var(--color-text-muted, #94a3b8);">—</span><span data-v-7efb3981="" class="score-ring__label">Score Pertinence</span>
@@ -81,17 +66,12 @@ exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance
 exports[`RadarKeywordCard — snapshots HTML (Vague 2) > renders mode "relevance" with score = 75 1`] = `
 "<div data-v-71e76192="" class="radar-card">
   <!-- Single-row header -->
-  <!-- FR-RAD-CARD-CHEVRON-TOGGLE (2026-05-05) : seul le chevron ▶ stoppe la
-         propagation et toggle le PAA. Un clic sur le keyword ou les KPIs
-         propage normalement au parent (radar-list-item → ouvre la sidebar). -->
+  <!-- Chevron ▶ stoppe propagation + toggle PAA. Keyword/KPIs propagent au parent. -->
   <div data-v-71e76192="" class="radar-card__header"><span data-v-71e76192="" class="radar-card__chevron">▶</span><span data-v-71e76192="" class="radar-card__keyword">seo local pme</span><!-- Intent badges (SVG) -->
     <div data-v-71e76192="" class="radar-card__intents"><span data-v-71e76192="" class="intent-badge" style="color: rgb(217, 119, 6);" title="Commercial"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span><span data-v-71e76192="" class="intent-badge" style="color: rgb(59, 130, 246);" title="Informationnel"><svg data-v-71e76192="" viewBox="0 0 24 24" width="18" height="18"></svg></span></div>
     <!-- KPIs : cachés si kpis === null (suggestion longue-traîne, pas de
            fallback fantôme — CLAUDE.md §3.5). -->
-    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div>
-    <!-- Sprint 3 (2026-05-04) — \`@click.stop\` empêche la propagation au parent
-       (radar-list-item dans CaptainPanel), qui ouvrait à tort la sidebar
-       lors d'un clic sur le score-ring. -->
+    <div data-v-71e76192="" class="radar-card__kpis"><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">vol</span><span data-v-71e76192="" class="kpi-num">2.9k</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">KD</span><span data-v-71e76192="" class="kpi-num">35</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">CPC</span><span data-v-71e76192="" class="kpi-num">2.40 €</span></span><span data-v-71e76192="" class="kpi-sep">·</span><span data-v-71e76192="" class="kpi-item"><span data-v-71e76192="" class="kpi-lbl">PAA</span><span data-v-71e76192="" class="kpi-num">4.2 pts</span></span></div><!-- @click.stop empêche propagation parent (evite ouverture sidebar). -->
     <div data-v-7efb3981="" data-v-71e76192="" class="radar-card__score-ring"><svg data-v-7efb3981="" width="68" height="68" viewBox="0 0 68 68">
         <circle data-v-7efb3981="" cx="34" cy="34" r="30" fill="none" stroke="hsl(90, 70%, 45%)" stroke-width="3" stroke-linecap="round" stroke-dasharray="188.49555921538757" stroke-dashoffset="47.12388980384689" transform="rotate(-90 34 34)"></circle>
       </svg><span data-v-7efb3981="" class="score-ring__value" style="color: rgb(115, 195, 34);">75</span><span data-v-7efb3981="" class="score-ring__label">Score Pertinence</span>
