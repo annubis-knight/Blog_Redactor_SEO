@@ -504,8 +504,20 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 - AC.CACHEPANEL.5 : Cliquer sur le bouton de chargement manuel re-trigger `fetchKeywords` même si le store est déjà hydraté (idempotent, no-op silencieux si rien ne change). Aucun appel à `/explorations/counts` n'est nécessaire pour les 3 onglets concernés.
 - AC.CACHEPANEL.6 : Au switch d'article, le compteur reflète l'`article_keywords` du nouvel article dans le même tick (pas de flash de l'ancienne valeur).
 
-**Statut :** active. **Depuis :** 2026-05-08. **Source :** chantier 2026-05-08 (cohérence Lexique TabCachePanel).
-**Voir aussi :** FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-SELECT, FR-MOT-EXPLORATION-COUNTS.
+**Extension Radar (ajout 2026-05-11, chantier `feat/radar-cache-cleanup`)** :
+Le compteur Radar utilise un mécanisme similaire mais distinct, puisque Radar n'a pas de « keywords verrouillés » au sens Capitaine/Lieutenants/Lexique — il a une liste de keywords en attente de scan dans `radar_explorations.generated_keywords` JSONB.
+
+- **Source primaire (réactif)** : `useRadarExplorationStore.generatedKeywords.length`, accessible via la prop `radarGeneratedKeywordsCount` de `TabCacheUIState`. Réactif à chaque mutation du store (ajout via input manuel, batch depuis Discovery, suppression chip).
+- **Fallback transitoire** : `counts.radar` (issu de `GET /articles/:id/explorations/counts` via `SUM(jsonb_array_length(generated_keywords))`). Utilisé quand le store n'est pas synchronisé avec l'article courant.
+- **Garde-fou timing** : la valeur du store ne prime que si **(a)** `radarExplorationStore.articleId !== null`, **(b)** `radarExplorationStore.articleId === selectedArticle.id`, et **(c)** `!radarExplorationStore.isLoading`. Évite un flash "Radar DB 0" pendant le fetch d'hydratation. Cf. AC.RAD-DBFIRST.8.
+
+**Critères d'acceptation Radar** :
+- AC.CACHEPANEL.7 : Article avec `radar_explorations.generated_keywords` = 30 entrées en DB → onglet Radar affiche **30** dès que le store est hydraté pour cet article (même sans cliquer sur l'onglet Radar — hydratation via watcher `selectedArticle.id`).
+- AC.CACHEPANEL.8 : Ajouter un keyword via l'input manuel Radar incrémente le chip "Radar DB N" dans le même tick (réactivité Pinia via le store).
+- AC.CACHEPANEL.9 : Pendant le fetch d'hydratation (`isLoading === true`), le chip "Radar DB" affiche la valeur de `counts.radar` issue de l'API (fallback), pas `0` du store vide.
+
+**Statut :** active. **Depuis :** 2026-05-08. **Étendue Radar :** 2026-05-11. **Source :** chantier 2026-05-08 (cohérence Lexique TabCachePanel) + chantier `feat/radar-cache-cleanup`.
+**Voir aussi :** FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-SELECT, FR-MOT-EXPLORATION-COUNTS, FR-RAD-DB-FIRST.
 
 #### FR-MOT-CHECK-RECONCILIATION
 **Réconciliation défensive des checks workflow au mount** *(ajout 2026-05-08, transversal — supersede AC.GATING.4 de FR-MOT-WORKFLOW-GATING-DUAL en l'étendant)*. Au mount d'un panel ayant un check workflow lié à un état persisté (`MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`), une **réconciliation défensive** s'exécute après l'hydratation du store : si la DB indique que la condition d'émission n'est plus vraie (ex : `article_keywords.lexique = []`) mais que `articles.completed_checks` contient encore le check, ce dernier est retiré (`removeCheck`). La règle s'applique en sens inverse : condition vraie + check absent → `addCheck`.
@@ -676,9 +688,11 @@ Endpoint `POST /api/keywords/intent-scan` : analyse SERP avancée + extraction P
 - AC.DIS-LONGTAIL.2 : Les keywords produits par cette source apparaissent dans `DiscoverySourcesList` avec un libellé identifiable (« Courte-traîne IA » ou équivalent).
 - AC.DIS-LONGTAIL.3 : Le filtre relevance 2-pass (FR-DIS-RELEVANCE-FILTER) s'applique aussi à ces keywords (cohérence avec les 6 sources existantes).
 - AC.DIS-LONGTAIL-4 : `RadarPanel.vue` ne contient plus d'appel à `POST /api/keywords/radar/generate` ni de bouton « Générer les mots-clés » (la section `DouleurScannerInputs` mode workflow est simplifiée ou réorientée).
+- AC.DIS-LONGTAIL-5 : **Compteur `(0)` toujours visible** *(ajout 2026-05-11)*. Dans `DiscoverySourcesList`, chaque section affiche son compteur **même quand `list.length === 0`** (le `v-else-if="section.list.length > 0"` historique a été remplacé par `v-else`). Garantit la découvrabilité visuelle des sources vides — l'utilisateur voit `(0)` partout au lieu d'un header anonyme.
+- AC.DIS-LONGTAIL-6 : **Bouton `actionLabel` inline pour les sections vides** *(ajout 2026-05-11)*. Nouvelle prop optionnelle `actionLabel?: string` sur `SourceSection`. Quand fournie ET que la section est vide, un bouton purple inline apparaît dans le header de la section. Le clic émet `section-action` avec la `key` de la section. La section `longtail-ai` utilise `actionLabel: 'Générer'` qui route vers `handleGenerateLongTail()`. Permet à l'utilisateur de déclencher la génération directement depuis la section vide visible (en plus du bouton "Courte-traîne IA" en haut).
 
-**Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier (`tech-spec-radar-dbfirst-refactor`).
-**Voir aussi :** FR-RAD-GENERATE (route inchangée, caller changé), FR-RAD-DB-FIRST.
+**Statut :** active. **Depuis :** 2026-05-11. **Source :** chantier `tech-spec-radar-dbfirst-refactor` (Sprint C) + `feat/radar-discovery-skeleton-fixes` (option C pour AC.5/6).
+**Voir aussi :** FR-RAD-GENERATE (route inchangée, caller changé), FR-RAD-DB-FIRST, NFR-UX-STABLE-SKELETON.
 
 ---
 
@@ -707,9 +721,11 @@ Génération courte-traîne (~20 keywords, 1 passe IA) via `POST /api/keywords/r
 - AC.RAD-DBFIRST.4 : Aucun champ `generatedKeywords` ref mémoire indépendant de la DB dans `useResonanceScore` après refonte.
 - AC.RAD-DBFIRST.5 : Le composable `useMoteurCrossTabState` ne contient plus `discoveryRadarKeywords` ni `handleKeywordsCleared`.
 - AC.RAD-DBFIRST.6 : Au reload de la page sur l'onglet Radar d'un article ayant des `generated_keywords`, ces keywords s'affichent sans intervention utilisateur (vrai test DB-first).
+- AC.RAD-DBFIRST.7 : **Hydratation réactive cross-onglet** *(ajout 2026-05-11, hotfix `4670272`)*. `MoteurView` expose un watcher `{ immediate: true }` sur `selectedArticle.value?.id` qui appelle `radarExplorationStore.setArticle(id)`. Couvre tous les chemins de changement d'article (clic recap, restauration au mount/refresh, navigation deep link). Le store est donc hydraté **dès que** l'utilisateur a un article sélectionné, sans attendre le clic sur l'onglet Radar.
+- AC.RAD-DBFIRST.8 : **Garde-fou timing pour le `radarGeneratedKeywordsCount` du TabCachePanel** *(ajout 2026-05-11, hotfix `4670272`)*. La valeur réactive du store n'est passée à `buildTabCacheEntries` que si **(a)** `radarExplorationStore.articleId !== null`, **(b)** `radarExplorationStore.articleId === selectedArticle.value?.id` (synchronisé), et **(c)** `!radarExplorationStore.isLoading`. Si une de ces conditions est fausse → fallback sur `counts.radar` (issu de `GET /articles/:id/explorations/counts`). Évite le flash "Radar DB 0" pendant le fetch d'hydratation.
 
 **Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier.
-**Voir aussi :** FR-RAD-PERSIST (CRUD existant), FR-RAD-MANUAL-ADD, FR-MOT-BASKET-DEPRECATED.
+**Voir aussi :** FR-RAD-PERSIST (CRUD existant), FR-RAD-MANUAL-ADD, FR-MOT-BASKET-DEPRECATED, FR-MOT-CACHE-PANEL-COUNT.
 
 #### FR-RAD-MANUAL-ADD
 **Input texte unitaire dans Radar pour ajout manuel de keywords** *(ajout 2026-05-11, chantier `radar-dbfirst-refactor`)*. Comble le trou fonctionnel signalé par l'utilisateur : impossible aujourd'hui d'ajouter un seul keyword à la liste à scanner sans passer par Discovery ou la regen IA complète.
@@ -811,8 +827,21 @@ Bouton « Envoyer au Capitaine » agrège dédupliqué cards racines cochées �
 **Statut :** active. **Depuis :** 2026-05-03. **Source :** tech-spec-radar-long-tail-suggestions.
 
 #### FR-RAD-PERSIST
-Persistance article-scoped via table `radar_explorations(article_id PK, JSONB scan_result)`. Routes CRUD : GET full / GET status (lightweight) / POST upsert / DELETE clear.
-**Source :** `server/routes/radar-exploration.routes.ts`.
+Persistance article-scoped via table `radar_explorations(article_id PK, JSONB scan_result, JSONB generated_keywords)`. Routes CRUD :
+- `GET /articles/:id/radar-exploration` (full payload)
+- `GET /articles/:id/radar-exploration/status` (lightweight : scannedAt, score, heatLevel, isFresh)
+- `POST /articles/:id/radar-exploration` (upsert complet)
+- `DELETE /articles/:id/radar-exploration` (clear)
+- `POST /articles/:id/radar-exploration/keyword` (add unitaire, idempotent) — *ajout 2026-05-11, FR-RAD-DB-FIRST*
+- `DELETE /articles/:id/radar-exploration/keyword?keyword=…` (remove unitaire) — *ajout 2026-05-11*
+- `POST /articles/:id/radar-exploration/keywords` (batch add, idempotent) — *ajout 2026-05-11*
+
+**Source :** `server/routes/radar-exploration.routes.ts`, `server/services/infra/radar-exploration.service.ts`.
+
+**Dépréciation cache-indicator legacy (2026-05-11, chantier `feat/radar-cache-cleanup`)** :
+- L'ancien bloc `<div class="cache-indicator">` de `DouleurScannerInputs.vue` (basé sur seed cross-article via `/radar-cache/check?seed=…` et la table legacy `radar_cache`) **a été supprimé**.
+- Remplacé fonctionnellement par le couple **`TabCachePanel` + `TabLoadPrompt`** (sticky bottom, scope par `articleId`, sépare DB/Cache, gère les 4 onglets Moteur). Cf. FR-MOT-CACHE-PANEL-COUNT (extension Radar).
+- Routes legacy `/radar-cache/check`, `/radar-cache/save` conservées en backend pour rétrocompatibilité, mais aucun caller frontend production ne les utilise plus.
 
 #### FR-RAD-CHECK
 Émet `moteur:radar_done` après un scan réussi.
@@ -2362,7 +2391,25 @@ Câblage `package.json` :
 - AC.UX.SKEL.2 : Pour chaque CTA majeur listé, un test composant vérifie que l'élément `<button>` existe au mount et possède l'attribut `disabled` quand sa précondition n'est pas remplie.
 - AC.UX.SKEL.3 : Aucun élément du périmètre n'utilise un `v-if` qui dépend d'un état utilisateur transitoire (`hasClickedX`, `analysisLoading === false && analysisResult === null`). Les `v-if` autorisés sont ceux qui dépendent d'un coût de rendu (cf. hors-périmètre) ou d'une route différente.
 
-**Application en cours** : `FR-DIS-AI-COQUE-PERSISTANTE` est la première application concrète de cette NFR.
+**Applications concrètes (2026-05-11)** :
+
+| Zone | Application |
+|---|---|
+| Discovery — coque IA `<AiPanel>` | Toujours rendue au mount avec slot `#idle` contextuel ; CTA "Analyser" `triggerDisabled` selon `hasResults / semanticLoading / relevantCount`. Cf. FR-DIS-AI-PANEL. |
+| Discovery — sections sources (alphabet, questions, IA, longtail-ai, …) | Compteur `(0)` toujours visible (même listes vides). Section vide peut afficher un bouton `actionLabel` inline (ex: "Générer" pour longtail). Cf. FR-DIS-LONGTAIL-GENERATION ACs 5-6. |
+| Radar — section "Mots-clés à scanner" | Toujours rendue (sauf pendant scan), avec input texte unitaire + chips éditables. Bouton "Lancer le scan" `disabled` si liste vide. |
+| Radar — résultats du scan | `DouleurScannerResults` accepte `scanResult: null` → rend toujours les 3 vraies sections (Thermomètre, Autocomplete `<details>`, Cards) dans leur ordre réel. `RadarThermometer` accepte `globalScore/heatLevel: null` → affiche `—/100` + label "En attente" + classe `--empty`. Plus de réorganisation visuelle au passage idle → success. |
+
+**Pattern de mise en œuvre — composants réels en état vide vs placeholder mock séparé** :
+La bonne approche (option B, validée sur Radar) consiste à **rendre les vrais composants** dans leur état vide (`null` props, classes `--empty`, opacity réduite). C'est **mieux que** créer un placeholder mock distinct qui mime visuellement le contenu : le mock crée toujours un risque de divergence (ordre des sous-sections, classes CSS, sémantique) au passage état vide → état rempli. Le composant unique garantit que la silhouette ne change jamais.
+
+**Statut audit panels Moteur (2026-05-11)** :
+- Discovery : ✅ conforme (chantier `feat/discovery-ai-coque-persistante`).
+- Radar : ✅ conforme (chantiers `feat/radar-stable-skeleton` → `feat/radar-dbfirst-refactor` → `feat/radar-skeleton-completion` → `feat/radar-discovery-skeleton-fixes`).
+- Lexique : ✅ conforme depuis Sprint C-2 (panel rendu en permanence).
+- Lieutenants : ✅ conforme depuis Sprint 1 (refonte 2026-05-04).
+- Capitaine, Rédaction (`ArticleWorkflowIaBrief`) : ⚠️ **à auditer** (it.skip dans `tests/unit/components/moteur/ai-panels-persistence.test.ts`).
+
 **Statut :** active. **Depuis :** 2026-05-11.
 
 ---
