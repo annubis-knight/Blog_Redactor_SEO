@@ -147,6 +147,128 @@ export function isRadarFresh(scannedAt: string | Date | null | undefined): boole
 }
 
 // ---------------------------------------------------------------------------
+// Public API — Unitary keyword mutations (FR-RAD-DB-FIRST, FR-RAD-MANUAL-ADD)
+// ---------------------------------------------------------------------------
+
+function normalizeKeywordForDedup(keyword: string): string {
+  return keyword.trim().toLowerCase()
+}
+
+/**
+ * Persiste la liste `generatedKeywords` mise à jour sans toucher à
+ * `scan_result`. Crée une row minimale si elle n'existe pas.
+ */
+async function persistGeneratedKeywords(
+  articleId: number,
+  existing: RadarExploration | null,
+  generatedKeywords: RadarKeyword[],
+): Promise<RadarExploration> {
+  const res = await query<RadarExplorationRow>(
+    `INSERT INTO radar_explorations
+       (article_id, seed, broad_keyword, specific_topic, pain_point, depth, generated_keywords, scan_result, scanned_at)
+     VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb, $8::jsonb, NOW())
+     ON CONFLICT (article_id) DO UPDATE
+       SET generated_keywords = EXCLUDED.generated_keywords,
+           scanned_at = NOW()
+     RETURNING article_id, seed, broad_keyword, specific_topic, pain_point, depth,
+               generated_keywords, scan_result, scanned_at`,
+    [
+      articleId,
+      existing?.seed ?? '',
+      existing?.context.broadKeyword ?? null,
+      existing?.context.specificTopic ?? null,
+      existing?.context.painPoint ?? null,
+      existing?.context.depth ?? 1,
+      JSON.stringify(generatedKeywords),
+      JSON.stringify(existing?.scanResult ?? {}),
+    ],
+  )
+  return rowToExploration(res.rows[0])
+}
+
+export interface AddKeywordResult {
+  entry: RadarExploration
+  added: boolean
+}
+
+export async function addKeywordToRadarExploration(
+  articleId: number,
+  keyword: string,
+  reasoning?: string,
+): Promise<AddKeywordResult> {
+  const trimmed = keyword.trim()
+  if (!trimmed) {
+    throw new Error('keyword cannot be empty')
+  }
+  const existing = await getRadarExploration(articleId)
+  const current = existing?.generatedKeywords ?? []
+  const normalized = normalizeKeywordForDedup(trimmed)
+  const alreadyPresent = current.some(k => normalizeKeywordForDedup(k.keyword) === normalized)
+  if (alreadyPresent) {
+    log.debug(`radar-exploration: keyword "${trimmed}" already present for article ${articleId} (no-op)`)
+    return { entry: existing!, added: false }
+  }
+  const updated: RadarKeyword[] = [...current, { keyword: trimmed, reasoning: reasoning ?? '' }]
+  const entry = await persistGeneratedKeywords(articleId, existing, updated)
+  log.info(`radar-exploration: added "${trimmed}" to article ${articleId} (${updated.length} keywords total)`)
+  return { entry, added: true }
+}
+
+export async function removeKeywordFromRadarExploration(
+  articleId: number,
+  keyword: string,
+): Promise<RadarExploration | null> {
+  const existing = await getRadarExploration(articleId)
+  if (!existing) return null
+  const normalized = normalizeKeywordForDedup(keyword)
+  const updated = existing.generatedKeywords.filter(
+    k => normalizeKeywordForDedup(k.keyword) !== normalized,
+  )
+  if (updated.length === existing.generatedKeywords.length) {
+    log.debug(`radar-exploration: keyword "${keyword}" not found for article ${articleId} (no-op)`)
+    return existing
+  }
+  const entry = await persistGeneratedKeywords(articleId, existing, updated)
+  log.info(`radar-exploration: removed "${keyword}" from article ${articleId} (${updated.length} keywords remaining)`)
+  return entry
+}
+
+export interface AddKeywordsBatchResult {
+  entry: RadarExploration
+  added: number
+}
+
+export async function addKeywordsBatchToRadarExploration(
+  articleId: number,
+  keywords: Array<{ keyword: string; reasoning?: string }>,
+): Promise<AddKeywordsBatchResult> {
+  if (keywords.length === 0) {
+    const existing = await getRadarExploration(articleId)
+    return { entry: existing ?? await persistGeneratedKeywords(articleId, null, []), added: 0 }
+  }
+  const existing = await getRadarExploration(articleId)
+  const current = existing?.generatedKeywords ?? []
+  const seenNormalized = new Set(current.map(k => normalizeKeywordForDedup(k.keyword)))
+  const toAdd: RadarKeyword[] = []
+  for (const kw of keywords) {
+    const trimmed = kw.keyword.trim()
+    if (!trimmed) continue
+    const normalized = normalizeKeywordForDedup(trimmed)
+    if (seenNormalized.has(normalized)) continue
+    seenNormalized.add(normalized)
+    toAdd.push({ keyword: trimmed, reasoning: kw.reasoning ?? '' })
+  }
+  if (toAdd.length === 0) {
+    log.debug(`radar-exploration: batch add no-op for article ${articleId} (all duplicates)`)
+    return { entry: existing!, added: 0 }
+  }
+  const updated: RadarKeyword[] = [...current, ...toAdd]
+  const entry = await persistGeneratedKeywords(articleId, existing, updated)
+  log.info(`radar-exploration: batch added ${toAdd.length} keywords to article ${articleId} (${updated.length} total)`)
+  return { entry, added: toAdd.length }
+}
+
+// ---------------------------------------------------------------------------
 // Long-tail suggestions (S2 — extension JSONB scan_result)
 // ---------------------------------------------------------------------------
 
