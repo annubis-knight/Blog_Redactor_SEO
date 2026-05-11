@@ -27,6 +27,7 @@ import { useSerpExistsCheck } from '@/composables/lexique/useSerpExistsCheck'
 import { useLexiqueExplorations } from '@/composables/lexique/useLexiqueExplorations'
 import { useLexiqueLocking } from '@/composables/lexique/useLexiqueLocking'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
+import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
 import LexiqueAiPanel from '@/components/moteur/LexiqueAiPanel.vue'
 import LexiqueTermsList from '@/components/moteur/lexique/LexiqueTermsList.vue'
 import LexiqueCustomKeywordInput from '@/components/moteur/lexique/LexiqueCustomKeywordInput.vue'
@@ -56,6 +57,25 @@ const emit = defineEmits<{
 }>()
 
 const articleKeywordsStore = useArticleKeywordsStore()
+const radarStore = useRadarExplorationStore()
+
+// FR-MOT-BASKET-DEPRECATED : keywords proposés au KeywordAssistPanel viennent
+// du store Radar DB-first (union scan_result.cards + generated_keywords). Plus
+// de dépendance au basket mémoire.
+const assistKeywords = computed<string[]>(() => {
+  const fromScan = radarStore.scanCards.map(c => c.keyword)
+  const fromGenerated = radarStore.generatedKeywords.map(k => k.keyword)
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const kw of [...fromScan, ...fromGenerated]) {
+    const norm = kw.toLowerCase()
+    if (!seen.has(norm)) {
+      seen.add(norm)
+      out.push(kw)
+    }
+  }
+  return out
+})
 
 // --- État UI local ---
 // `selectedTerms` = candidats UI (pre-check obligatoire post-fetchTfidf + basket).
@@ -309,9 +329,10 @@ defineExpose({ hydrateFromDb, mergeFromDb })
       <span v-if="articleLevel" class="level-badge">{{ articleLevel }}</span>
     </div>
 
-    <!-- F3 — Suggestions depuis le basket, ajoutées aux termes lexique sélectionnés -->
+    <!-- Suggestions de keywords issues du Radar DB-first, à ajouter aux termes lexique sélectionnés. -->
     <KeywordAssistPanel
       context="lexique"
+      :keywords="assistKeywords"
       :exclude-keywords="Array.from(selectedTerms)"
       @add="handleAssistAdd"
     />

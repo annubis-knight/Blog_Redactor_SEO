@@ -25,6 +25,7 @@ const SOURCE_COLORS: Record<DiscoverySource, string> = {
   'ai': '#db2777',
   'dataforseo': '#b45309',
   'autocomplete': '#64748b',
+  'longtail-ai': '#9333ea',
 }
 
 // --- Module-level state (singleton) — persists across tab switches ---
@@ -39,11 +40,15 @@ const suggestIntentsKw = ref<DiscoveredKeyword[]>([])
 const suggestPrepositionsKw = ref<DiscoveredKeyword[]>([])
 const aiKeywords = ref<DiscoveredKeyword[]>([])
 const dataforseoKeywords = ref<DiscoveredKeyword[]>([])
+// FR-DIS-LONGTAIL-GENERATION : section "Courte-traîne IA (PAA-friendly)"
+// déplacée depuis l'onglet Radar vers Discovery.
+const longtailKeywords = ref<DiscoveredKeyword[]>([])
 
 // Loading states
 const suggestLoading = ref(false)
 const aiLoading = ref(false)
 const dataforseoLoading = ref(false)
+const longtailLoading = ref(false)
 
 const error = ref<string | null>(null)
 
@@ -65,7 +70,7 @@ function buildFetchKey(seed: string, articleTitle?: string, articleKeyword?: str
 
 export function useDiscoveryPanel() {
   const isAnyLoading = computed(() =>
-    suggestLoading.value || aiLoading.value || dataforseoLoading.value,
+    suggestLoading.value || aiLoading.value || dataforseoLoading.value || longtailLoading.value,
   )
 
   const hasResults = computed(() =>
@@ -74,7 +79,8 @@ export function useDiscoveryPanel() {
     suggestIntentsKw.value.length > 0 ||
     suggestPrepositionsKw.value.length > 0 ||
     aiKeywords.value.length > 0 ||
-    dataforseoKeywords.value.length > 0,
+    dataforseoKeywords.value.length > 0 ||
+    longtailKeywords.value.length > 0,
   )
 
   const allKeywordsFlat = computed(() => [
@@ -84,6 +90,7 @@ export function useDiscoveryPanel() {
     ...suggestPrepositionsKw.value,
     ...aiKeywords.value,
     ...dataforseoKeywords.value,
+    ...longtailKeywords.value,
   ])
 
   const uniqueKeywordCount = computed(() => {
@@ -154,6 +161,7 @@ export function useDiscoveryPanel() {
       case 'suggest-prepositions': return suggestPrepositionsKw.value
       case 'ai': return aiKeywords.value
       case 'dataforseo': return dataforseoKeywords.value
+      case 'longtail-ai': return longtailKeywords.value
       default: return []
     }
   }
@@ -203,6 +211,7 @@ export function useDiscoveryPanel() {
     suggestPrepositionsKw.value = []
     aiKeywords.value = []
     dataforseoKeywords.value = []
+    longtailKeywords.value = []
     wordGroups.value = []
     activeGroupFilter.value = null
     selection.resetSelection()
@@ -418,6 +427,41 @@ export function useDiscoveryPanel() {
     }
   }
 
+  // FR-DIS-LONGTAIL-GENERATION : génération courte-traîne IA Haiku (route
+  // backend inchangée /keywords/radar/generate, caller déplacé depuis Radar).
+  async function generateLongTail(seed: string, articleTitle?: string, articleKeyword?: string, painPoint?: string): Promise<number> {
+    if (longtailLoading.value) return 0
+    longtailLoading.value = true
+    try {
+      const data = await apiPost<KeywordRadarGenerateResult & { _apiUsage?: ApiUsage }>(
+        '/keywords/radar/generate',
+        {
+          title: articleTitle || seed,
+          keyword: articleKeyword || seed,
+          painPoint: painPoint || seed,
+        },
+      )
+      if (data._apiUsage) {
+        try { useCostLogStore().addEntry('Courte-traîne IA', data._apiUsage) } catch { /* noop */ }
+      }
+      longtailKeywords.value = data.keywords.map(k => ({
+        keyword: k.keyword,
+        source: 'longtail-ai' as const,
+        reasoning: k.reasoning,
+      }))
+      log.info(`Discovery longtail: ${data.keywords.length} keywords generated`)
+      // Re-score si nécessaire (les nouveaux keywords sont scorés par useRelevanceScoring).
+      relevance.fetchRelevanceScores()
+      return data.keywords.length
+    } catch (err) {
+      log.warn(`Discovery longtail generation failed: ${(err as Error).message}`)
+      longtailKeywords.value = []
+      return 0
+    } finally {
+      longtailLoading.value = false
+    }
+  }
+
   function reset() {
     suggestAlphabetKw.value = []
     suggestQuestionsKw.value = []
@@ -425,9 +469,11 @@ export function useDiscoveryPanel() {
     suggestPrepositionsKw.value = []
     aiKeywords.value = []
     dataforseoKeywords.value = []
+    longtailKeywords.value = []
     suggestLoading.value = false
     aiLoading.value = false
     dataforseoLoading.value = false
+    longtailLoading.value = false
     wordGroups.value = []
     wordGroupsLoading.value = false
     activeGroupFilter.value = null
@@ -450,10 +496,12 @@ export function useDiscoveryPanel() {
     suggestPrepositionsKw,
     aiKeywords,
     dataforseoKeywords,
+    longtailKeywords,
     // Loading
     suggestLoading,
     aiLoading,
     dataforseoLoading,
+    longtailLoading,
     isAnyLoading,
     // Word groups
     wordGroups,
@@ -492,6 +540,8 @@ export function useDiscoveryPanel() {
     setGroupFilter,
     matchesGroupFilter,
     getRadarKeywords,
+    // Longtail IA generation (déplacée depuis Radar)
+    generateLongTail,
     // AI Analysis
     analysisResult,
     analysisLoading,

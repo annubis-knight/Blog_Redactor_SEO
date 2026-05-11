@@ -529,6 +529,33 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 **Bouton "Vider le cache" du TabCachePanel** *(ajout 2026-05-04, formalisation Vague 5)*. Action utilisateur qui purge **uniquement** les entrées `external_api_cache` (autocomplete, PAA, SERP, validate) liées au capitaine de l'article courant via `DELETE /api/articles/:id/external-cache`. Ne touche **pas** aux `*_explorations` (DB persistée — règle FR-MOT-CACHE-CASCADE). Permet à l'utilisateur de forcer un re-fetch DataForSEO sans perdre ses données métier.
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`clearExternalCacheForArticle`), `server/routes/articles.routes.ts` (endpoint external-cache DELETE).
 
+#### FR-MOT-BASKET-DEPRECATED
+**Dépréciation et suppression du basket store / strip / floating panel** *(ajout 2026-05-11, chantier `radar-dbfirst-refactor`)*. Le store `useMoteurBasketStore` et les composants visuels associés sont supprimés du Moteur : redondance mémoire d'une donnée déjà destinée à la DB (`radar_explorations` pour les keywords Radar, `captain_explorations` pour les keywords Capitaine, etc.).
+
+**Audit producteurs (effectué 2026-05-11)** : sur 6 sources typées (`discovery | radar | pain-translator | validation | exploration | manual`), seule `discovery` était réellement alimentée (1 caller : `useMoteurCrossTabState.handleSendToRadar`). Les 5 autres = code mort de conception, jamais matérialisé.
+
+**Périmètre de suppression** :
+- `src/stores/article/moteur-basket.store.ts` (store entier)
+- `src/components/moteur/BasketStrip.vue` (strip horizontal en haut des onglets Moteur)
+- `src/components/shared/BasketFloatingPanel.vue` (pillule flottante bas-droite)
+- Tous les imports / usages dans `MoteurView.vue`, `useMoteurCrossTabState.ts`, `DiscoveryPanel.vue` (déjà nettoyé)
+- Tests unitaires associés
+
+**Périmètre de refactorisation (pas suppression)** :
+- `KeywordAssistPanel.vue` (Capitaine / Lieutenants / Lexique) : refondé pour recevoir une **prop `keywords: string[]`** depuis le parent. Le parent fait la lecture DB (typiquement `radar_explorations.scan_result.cards[].keyword` ∪ `radar_explorations.generated_keywords`) et passe la liste filtrée. Aucune dépendance directe au basket.
+
+**Critères d'acceptation testables** :
+- AC.BASKET-DEP.1 : `git grep useMoteurBasketStore` retourne 0 résultat dans `src/` (hors `_archive`).
+- AC.BASKET-DEP.2 : Les fichiers `moteur-basket.store.ts`, `BasketStrip.vue`, `BasketFloatingPanel.vue` n'existent plus.
+- AC.BASKET-DEP.3 : `KeywordAssistPanel.vue` accepte une prop `keywords: string[]` et ne référence plus `useMoteurBasketStore`.
+- AC.BASKET-DEP.4 : Les tests unitaires de Capitaine, Lieutenants, Lexique passent toujours après refonte du `KeywordAssistPanel` (non-régression).
+- AC.BASKET-DEP.5 : Le test de garde `tests/unit/coherence/db-tables-coverage.test.ts` (ou équivalent) confirme qu'aucune fonctionnalité utilisateur n'a perdu de capacité (les keywords du basket sont accessibles via lecture DB).
+
+**Justification** : alignement avec le principe DB-first qui sous-tend Capitaine/Lieutenants/Lexique (FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-SELECT, FR-MOT-EXPLORATION-COUNTS). Le basket était l'**exception** mémoire dans un projet déjà DB-first partout ailleurs.
+
+**Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier (`tech-spec-radar-dbfirst-refactor`).
+**Voir aussi :** FR-DIS-BASKET (deprecated, remplacé), FR-RAD-DB-FIRST, `docs/data-flows/radar-keywords.md`.
+
 #### NFR-MOT-LEXIQUE-DECOUPLAGE
 **Indépendance Lieutenants ↔ Lexique** *(ajout 2026-05-09, roadmap optimisation Lexique)*. Les onglets Lexique et Lieutenants doivent fonctionner comme **deux unités indépendantes** partageant un socle de données neutre (URLs SERP + scrapes HTML) côté DB. Aucun couplage de service côté backend, aucune dépendance d'ordre d'exécution côté UX.
 
@@ -602,8 +629,11 @@ Endpoint `POST /api/keywords/intent-scan` : analyse SERP avancée + extraction P
 **Voir aussi :** FR-UI-AI-PANELS-PATTERN (pattern transversal), NFR-UX-STABLE-SKELETON (règle UX), FR-DIS-RELEVANCE-FILTER (filtre amont).
 
 #### FR-DIS-BASKET
-Store `useMoteurBasketStore` accumule les keywords sélectionnés en mémoire (pas de DB) avec `{ keyword, source, score, validated, pushedToRadar }`. Actions `addKeywords`, `markValidated`, `markPushedToRadar`, `removeKeyword`.
-**Source :** `src/stores/article/moteur-basket.store.ts`.
+**DEPRECATED 2026-05-11** *(superseded by `FR-MOT-BASKET-DEPRECATED` et chantier `radar-dbfirst-refactor`)*. Description historique : store `useMoteurBasketStore` accumulait en mémoire les keywords sélectionnés avec `{ keyword, source, score, validated, pushedToRadar }`.
+
+**Audit 2026-05-11** : sur les 6 sources typées (`discovery`, `radar`, `pain-translator`, `validation`, `exploration`, `manual`), une seule était réellement alimentée (`discovery` via `handleSendToRadar`). Le basket = redondance mémoire d'une donnée déjà destinée à `radar_explorations` (DB). Aucun caller backend, aucun prompt ne le consommait.
+
+**Statut :** **deprecated**. **Remplacement :** lecture directe DB (`radar_explorations.generated_keywords` + `scan_result.cards`) via `useRadarExplorationStore` (cf. FR-RAD-DB-FIRST). **Voir aussi :** FR-MOT-BASKET-DEPRECATED (transverse), `docs/data-flows/radar-keywords.md` §2.4.
 
 #### FR-DIS-CHECK
 Émet `moteur:discovery_done` après une analyse réussie.
@@ -634,6 +664,22 @@ Store `useMoteurBasketStore` accumule les keywords sélectionnés en mémoire (p
 **Source :** `src/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue`, `src/composables/keyword/useRelevanceScoring.ts`, `server/routes/keywords.routes.ts` (route `/keywords/relevance-score`).
 **Statut :** active. **Depuis :** 2026-05-04 (filtre), **ACs 2-pass formalisés** 2026-05-11.
 
+#### FR-DIS-LONGTAIL-GENERATION
+**Source « Génération courte-traîne PAA-friendly » dans Discovery** *(ajout 2026-05-11, chantier `radar-dbfirst-refactor`)*. La génération courte-traîne IA Haiku (ex-section « Keyword Radar » de l'onglet Radar) est déplacée dans Discovery comme une 7ᵉ source à côté des sources existantes (Alphabet, Questions, Intent Modifiers, Prepositions, IA Sonnet, DataForSEO). Justification : Discovery = lieu unique de **production de candidats**, Radar = lieu unique de **qualification SEO**.
+
+**Route consommée** : `POST /api/keywords/radar/generate` (route inchangée). Entrée `{ title, keyword, painPoint, cocoonSlug }`. Sortie `RadarKeyword[]` (max 25, dédupliquées). Modèle Haiku 4.5, optimisé pour produire des keywords courts adaptés au scan PAA + Autocomplete.
+
+**Affichage** : nouvelle section dans `DiscoverySourcesList.vue` (icône 🎯 ou similaire), au même format que les autres sources (cliquables, multi-source highlight, filtre relevance applicable).
+
+**Critères d'acceptation testables** :
+- AC.DIS-LONGTAIL.1 : `DiscoveryPanel.vue` n'utilise plus l'import direct de génération Radar — la génération est invoquée via `useDiscoveryPanel` (ou composable dédié).
+- AC.DIS-LONGTAIL.2 : Les keywords produits par cette source apparaissent dans `DiscoverySourcesList` avec un libellé identifiable (« Courte-traîne IA » ou équivalent).
+- AC.DIS-LONGTAIL.3 : Le filtre relevance 2-pass (FR-DIS-RELEVANCE-FILTER) s'applique aussi à ces keywords (cohérence avec les 6 sources existantes).
+- AC.DIS-LONGTAIL-4 : `RadarPanel.vue` ne contient plus d'appel à `POST /api/keywords/radar/generate` ni de bouton « Générer les mots-clés » (la section `DouleurScannerInputs` mode workflow est simplifiée ou réorientée).
+
+**Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier (`tech-spec-radar-dbfirst-refactor`).
+**Voir aussi :** FR-RAD-GENERATE (route inchangée, caller changé), FR-RAD-DB-FIRST.
+
 ---
 
 ### 8.5 — Moteur — Radar (FR-RAD)
@@ -641,6 +687,69 @@ Store `useMoteurBasketStore` accumule les keywords sélectionnés en mémoire (p
 #### FR-RAD-GENERATE
 Génération courte-traîne (~20 keywords, 1 passe IA) via `POST /api/keywords/radar/generate`. Modèle Haiku 4.5 (1024 tokens max). Entrée `{ title, keyword, painPoint, cocoonSlug }`. Sortie `RadarKeyword[]` (max 25, dédupliquées par forme normalisée). Tool use + Zod validation.
 **Source :** `server/routes/intent-scan.routes.ts:34-63` — `server/services/keyword/keyword-radar.service.ts:41-127`.
+**Caller mis à jour 2026-05-11** : route consommée désormais depuis Discovery (cf. FR-DIS-LONGTAIL-GENERATION), plus depuis Radar. La route backend est inchangée.
+
+#### FR-RAD-DB-FIRST
+**`radar_explorations` source de vérité unique pour les keywords Radar** *(ajout 2026-05-11, chantier `radar-dbfirst-refactor`)*. La table `radar_explorations` (PK `article_id`, 1 ligne par article) contient désormais :
+- `generated_keywords` JSONB : keywords en attente de scan (signal d'intention utilisateur, **avant** consommation API DataForSEO).
+- `scan_result` JSONB : keywords scannés avec leurs métriques marché (signaux SEO objectifs, **après** consommation API).
+- L'union des deux donne la liste complète des keywords « explorés » pour cet article — qu'ils aient consommé du crédit API ou pas.
+
+**Conséquences architecturales** :
+- Les états mémoire `discoveryRadarKeywords` (composable `useMoteurCrossTabState`), `generatedKeywords` (composable `useResonanceScore`), et `basket.keywords` (`useMoteurBasketStore`) **sont supprimés**. Remplacés par un store Pinia `useRadarExplorationStore` qui hydrate depuis `GET /articles/:id/radar-exploration` au mount et expose `addKeyword`/`removeKeyword`/`scanAll` qui POST en DB puis re-hydratent.
+- Le store devient un **cache local réactif de la DB**, jamais une source de vérité indépendante.
+- L'envoi Discovery → Radar (`handleSendToRadar`) écrit directement en DB via `POST /articles/:id/radar-exploration/keywords` (batch), plus de propagation mémoire.
+
+**Critères d'acceptation testables** :
+- AC.RAD-DBFIRST.1 : Au mount de `RadarPanel`, un `GET /articles/:id/radar-exploration` est émis. Si réponse 200, la liste affichée Phase 2 vient du store hydraté, jamais d'un état mémoire indépendant.
+- AC.RAD-DBFIRST.2 : Ajouter un keyword via l'input unitaire émet un `POST /articles/:id/radar-exploration/keyword` AVANT toute mutation du store. Le store n'est mis à jour qu'à la réponse 200.
+- AC.RAD-DBFIRST.3 : Retirer un keyword via le `×` Phase 2 émet un `DELETE /articles/:id/radar-exploration/keyword?keyword=…` AVANT toute mutation du store.
+- AC.RAD-DBFIRST.4 : Aucun champ `generatedKeywords` ref mémoire indépendant de la DB dans `useResonanceScore` après refonte.
+- AC.RAD-DBFIRST.5 : Le composable `useMoteurCrossTabState` ne contient plus `discoveryRadarKeywords` ni `handleKeywordsCleared`.
+- AC.RAD-DBFIRST.6 : Au reload de la page sur l'onglet Radar d'un article ayant des `generated_keywords`, ces keywords s'affichent sans intervention utilisateur (vrai test DB-first).
+
+**Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier.
+**Voir aussi :** FR-RAD-PERSIST (CRUD existant), FR-RAD-MANUAL-ADD, FR-MOT-BASKET-DEPRECATED.
+
+#### FR-RAD-MANUAL-ADD
+**Input texte unitaire dans Radar pour ajout manuel de keywords** *(ajout 2026-05-11, chantier `radar-dbfirst-refactor`)*. Comble le trou fonctionnel signalé par l'utilisateur : impossible aujourd'hui d'ajouter un seul keyword à la liste à scanner sans passer par Discovery ou la regen IA complète.
+
+**Pattern visuel** : modèle `CaptainInput.vue` (icône loupe + champ texte + bouton « + Ajouter », hint `<kbd>Entrée</kbd>` quand le champ est vide). Placé dans la section « Mots-clés à scanner » (Phase 2) de `RadarPanel.vue`, au-dessus de la liste de chips.
+
+**Comportement** :
+- Saisie + `Enter` ou clic « + Ajouter » → `POST /articles/:id/radar-exploration/keyword` (body : `{ keyword }`).
+- Réponse 200 → store re-hydraté → chip apparaît dans la liste.
+- Réponse 409 (duplicat) → message inline « Ce mot-clé est déjà dans la liste ».
+- Validation côté front : trim + lowercase pour la dédup, refus si chaîne vide.
+- Idempotent : le POST avec un keyword déjà présent n'écrase rien (UPSERT côté backend).
+
+**Critères d'acceptation testables** :
+- AC.RAD-MANUAL.1 : Le composant `RadarPanel` rend un input avec `placeholder="Ajouter un mot-clé à scanner…"` ET un bouton `+`.
+- AC.RAD-MANUAL.2 : Soumettre un keyword non-vide émet `POST /articles/:id/radar-exploration/keyword` avec le body attendu.
+- AC.RAD-MANUAL.3 : Si le keyword est déjà présent dans `generated_keywords`, la requête est idempotente (200 sans duplicat) et l'UI affiche un toast/message.
+- AC.RAD-MANUAL.4 : L'input est désactivé si `selectedArticle === null` (workflow only).
+- AC.RAD-MANUAL.5 : `Enter` dans l'input équivaut au clic sur `+`.
+
+**Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier.
+**Voir aussi :** FR-RAD-DB-FIRST, pattern de référence `src/components/moteur/CaptainInput.vue`.
+
+#### FR-RAD-AUTOCOMPLETE-PER-KEYWORD
+**Fetch autocomplete par keyword au lieu d'un appel global sur le sujet article** *(ajout 2026-05-11, chantier `radar-dbfirst-refactor`)*. Correction de l'aberration identifiée durant l'audit : aujourd'hui `scanRadarKeywords` fait **1 seul appel** `fetchAutocompleteMergedGrouped(specificTopic)` global, alors que la table `keyword_autocomplete` permet un stockage par keyword. Conséquence : le score `autocompleteMatchCount` par card mesurait « ce keyword apparaît-il dans les autocomplete du sujet article » au lieu de « ce keyword génère-t-il ses propres autocomplete sur Google ».
+
+**Refonte** : pour chaque keyword scanné, fetch autocomplete dédié via `fetchAutocomplete(keyword)` (service existant `server/services/keyword/autocomplete.service.ts`). Cache cross-article TTL 90 jours via `keyword_autocomplete` (pattern identique au PAA).
+
+**Concurrence** : aligner sur la concurrence PAA (3 requêtes parallèles, configurable). Le scan reste rapide à l'échelle d'un cocon typique (~10-25 keywords).
+
+**Critères d'acceptation testables** :
+- AC.RAD-AC.1 : `scanRadarKeywords` n'appelle plus `fetchAutocompleteMergedGrouped(specificTopic)`. Tous les appels autocomplete passent par `fetchAutocomplete(keyword)` à raison d'un appel par keyword scanné.
+- AC.RAD-AC.2 : Les résultats sont persistés dans `keyword_autocomplete` (UPSERT idempotent par (keyword, lang, country, position)).
+- AC.RAD-AC.3 : Un cache hit (entrée existante < 90j pour le keyword) court-circuite l'appel DataForSEO.
+- AC.RAD-AC.4 : Le champ `autocompleteMatchCount` par card reflète désormais le nombre de suggestions autocomplete du keyword lui-même, pas celles du sujet article.
+- AC.RAD-AC.5 : Test contract-api : `POST /radar/scan` avec un keyword inconnu déclenche 1 INSERT dans `keyword_autocomplete`. Re-scan du même keyword dans la fenêtre TTL = 0 INSERT.
+
+**Statut :** active. **Depuis :** 2026-05-11. **Source :** ce chantier.
+**Coût** : multiplie le coût DataForSEO autocomplete par N keywords. Accepté car cache TTL 90j amortit dès la 2ᵉ itération sur le même keyword (potentiellement gratuit si keyword déjà scanné par un autre article du même cocon).
+**Voir aussi :** FR-RAD-SCAN-2PASS, FR-RAD-SCORING-BIMODAL.
 
 #### FR-RAD-SCAN-2PASS
 Scan en 2 passes (broad → specific) via `POST /api/keywords/radar/scan`. Entrée `{ broadKeyword, specificTopic, keywords[], depth (1|2), painPoint }`. Concurrence PAA = 3 requêtes parallèles. Cache PAA TTL 90 jours par `keyword + depth`.

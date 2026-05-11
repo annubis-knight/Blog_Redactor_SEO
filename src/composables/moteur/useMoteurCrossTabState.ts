@@ -3,7 +3,7 @@ import type { RadarKeyword, RadarCard } from '@shared/types/intent.types.js'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
-import type { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
+import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
 import { log } from '@/utils/logger'
 import { MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE } from '@shared/constants/workflow-checks.constants.js'
 
@@ -25,7 +25,6 @@ import { MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE } from '@shared/constants/work
 export interface MoteurCrossTabStateDeps {
   selectedArticle: Ref<SelectedArticle | null>
   articleKeywordsStore: ReturnType<typeof useArticleKeywordsStore>
-  basketStore: ReturnType<typeof useMoteurBasketStore>
   setActiveTab: (tabId: string) => void
   emitCheckCompleted: (check: string) => void
 }
@@ -67,7 +66,8 @@ export interface MoteurCrossTabStateApi {
 }
 
 export function useMoteurCrossTabState(deps: MoteurCrossTabStateDeps): MoteurCrossTabStateApi {
-  const { articleKeywordsStore, basketStore, setActiveTab, emitCheckCompleted } = deps
+  const { articleKeywordsStore, setActiveTab, emitCheckCompleted } = deps
+  const radarStore = useRadarExplorationStore()
 
   const discoveryRadarKeywords = ref<RadarKeyword[]>([])
   const radarScanResult = ref<{ globalScore: number; heatLevel: string } | null>(null)
@@ -118,10 +118,11 @@ export function useMoteurCrossTabState(deps: MoteurCrossTabStateDeps): MoteurCro
     setActiveTab('radar')
     emitCheckCompleted(MOTEUR_DISCOVERY_DONE)
 
-    // Add to basket
-    basketStore.addKeywords(keywords.map(k => ({
+    // FR-RAD-DB-FIRST : écrit en DB via le store. Le watcher injectedKeywords
+    // du RadarPanel re-déclenche aussi addKeywordsBatch en mode workflow ;
+    // les deux chemins sont idempotents (UPSERT côté backend).
+    radarStore.addKeywordsBatch(keywords.map(k => ({
       keyword: k.keyword,
-      source: 'discovery' as const,
       reasoning: k.reasoning,
     })))
   }

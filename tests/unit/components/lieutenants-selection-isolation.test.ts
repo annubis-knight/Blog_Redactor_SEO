@@ -36,6 +36,17 @@ import type { SelectedArticle } from '../../../shared/types/index'
 import type { FilteredProposeLieutenantsResult } from '../../../shared/types/serp-analysis.types'
 import type { RichLieutenant } from '../../../shared/types/keyword.types'
 
+
+vi.mock('../../../src/stores/article/radar-exploration.store', () => ({
+  useRadarExplorationStore: () => ({
+    entry: null, articleId: null, isLoading: false, isMutating: false,
+    generatedKeywords: [], scanCards: [], hasScanResult: false, scanResult: null,
+    setArticle: vi.fn(), hydrate: vi.fn(), addKeyword: vi.fn(),
+    removeKeyword: vi.fn(), addKeywordsBatch: vi.fn(), setScanResultLocal: vi.fn(),
+    $reset: vi.fn(),
+  }),
+}))
+
 // --- Mocks api/streaming/store (alignés sur lieutenants-selection.gaps.test.ts) ---
 const mockApiPost = vi.fn()
 const mockApiGet = vi.fn()
@@ -92,14 +103,6 @@ vi.mock('../../../src/stores/ui/cost-log.store', () => ({
   }),
 }))
 
-vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
-  useMoteurBasketStore: () => ({
-    keywords: [], keywordStrings: [], count: 0, isEmpty: true, bestKeyword: null,
-    validatedKeywords: [], articleId: null,
-    setArticle: vi.fn(), addKeywords: vi.fn(), removeKeyword: vi.fn(),
-    markValidated: vi.fn(), clear: vi.fn(), $reset: vi.fn(),
-  }),
-}))
 
 // --- Données de test : trois articles distincts du cocon « Création de site web » ---
 const ARTICLE_A: SelectedArticle = {

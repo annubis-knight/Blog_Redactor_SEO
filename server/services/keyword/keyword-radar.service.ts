@@ -7,7 +7,6 @@ import {
   fetchSerpAdvanced,
   extractPaaFromSerp,
   extractTopicWords,
-  matchResonance,
   matchResonanceDetailed,
   bestMatch,
   getHeatLevel,
@@ -16,6 +15,7 @@ import {
   normalize,
   computePaaWeightedScore,
 } from '../intent/intent-scan.service.js'
+import { fetchAutocomplete, type AutocompleteSignal } from './autocomplete.service.js'
 import { readPaaCache, writePaaCache } from '../infra/paa-cache.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
 import { computeCombinedScore } from '../../../shared/scoring.js'
@@ -219,8 +219,12 @@ export async function scanRadarKeywords(
 
   log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${effectiveDepth}${hasPain ? ' | pain-aware' : ''}`)
 
-  // Phase 1: Parallel fetch — autocomplete, keyword overview, intent, PAA per keyword
-  // Autocomplete uses specificTopic (article subject) instead of broadKeyword (silo name)
+  // Phase 1: Parallel fetch.
+  // - fetchAutocompleteMergedGrouped(specificTopic) : pool global pour l'affichage UI
+  //   et le calcul de pain-alignment moyen (cf. FR-RAD-AUTOCOMPLETE-PER-KEYWORD :
+  //   le pool global est conservé, mais autocompleteMatchCount par card vient
+  //   désormais d'un fetch par keyword — cf. plus bas).
+  // - fetchKeywordOverviewBatch / fetchSearchIntentBatch : batch sur tous les keywords.
   const [autocompleteResult, overviewMap, intentMap] = await Promise.all([
     fetchAutocompleteMergedGrouped(specificTopic),
     fetchKeywordOverviewBatch(keywordStrings).catch((err: Error) => {
@@ -232,6 +236,26 @@ export async function scanRadarKeywords(
       return new Map<string, { intent: string; intentProbability: number }>()
     }),
   ])
+
+  // FR-RAD-AUTOCOMPLETE-PER-KEYWORD : fetch autocomplete par keyword avec cache
+  // cross-article via keyword_autocomplete (TTL 1j non-vide / 30min vide).
+  // Concurrence alignée sur PAA_CONCURRENCY pour respecter le rate limit
+  // Google Suggest (1 req/s côté autocomplete.service).
+  const autocompleteByKeyword = new Map<string, AutocompleteSignal>()
+  for (let i = 0; i < keywordStrings.length; i += PAA_CONCURRENCY) {
+    const batch = keywordStrings.slice(i, i + PAA_CONCURRENCY)
+    const results = await Promise.allSettled(batch.map(kw => fetchAutocomplete(kw)))
+    for (let j = 0; j < batch.length; j++) {
+      const r = results[j]
+      if (r.status === 'fulfilled') {
+        autocompleteByKeyword.set(batch[j], r.value)
+      } else {
+        log.warn(`[Radar] Autocomplete fetch failed for "${batch[j]}": ${(r.reason as Error).message}`)
+        autocompleteByKeyword.set(batch[j], { suggestionsCount: 0, suggestions: [], hasKeyword: false, position: null })
+      }
+    }
+  }
+  log.info(`[Radar] Per-keyword autocomplete done: ${autocompleteByKeyword.size} keywords`)
 
   // Fetch PAA per keyword with concurrency limit
   const paaResults = new Map<string, { paaItems: PaaCacheEntry['paaItems']; fromCache: boolean }>()
@@ -380,10 +404,12 @@ export async function scanRadarKeywords(
       }
     }
 
-    // Count autocomplete matches for this keyword's topic
-    const autoMatchCount = autoSuggestions.filter(s =>
-      matchResonance(s.text, extractTopicWords(kw.keyword)) !== 'none',
-    ).length
+    // FR-RAD-AUTOCOMPLETE-PER-KEYWORD : matchCount désormais issu de l'appel
+    // autocomplete dédié à ce keyword (signal SEO objectif par keyword).
+    // L'ancien calcul (filtrage du pool global sur les mots du keyword) est
+    // remplacé par le suggestionsCount retourné par Google pour ce keyword.
+    const perKeywordAutocomplete = autocompleteByKeyword.get(kw.keyword)
+    const autoMatchCount = perKeywordAutocomplete?.suggestionsCount ?? 0
 
     // Avg semantic score across PAA items that have it
     const semanticScores = paaItems.filter(p => p.semanticScore != null).map(p => p.semanticScore!)

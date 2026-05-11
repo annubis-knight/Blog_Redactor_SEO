@@ -1,14 +1,14 @@
 /**
  * Tests visibilité scanner-inputs par mode.
  *
- * Historique : la friction #7 (2026-05-04) masquait les inputs en mode workflow
- * pour éviter la redondance avec Discovery. Conséquence indésirable : sur
- * arrivée à froid sans keywords injectés, l'onglet Radar devenait un dead-end
- * (aucun moyen de générer manuellement).
- *
- * Décision 2026-05-11 : les inputs sont désormais visibles dans les 2 modes.
- * En mode workflow, un message d'avertissement (workflow-hint) clarifie que
- * la génération manuelle ne touche pas au basket.
+ * Décision 2026-05-11 (chantier radar-dbfirst-refactor) :
+ * - La génération courte-traîne IA Haiku (ex-section "Keyword Radar") est
+ *   déplacée vers Discovery (cf. FR-DIS-LONGTAIL-GENERATION).
+ * - En mode workflow, DouleurScannerInputs est donc masqué (show-inputs=false).
+ *   L'input texte unitaire (Sprint B, FR-RAD-MANUAL-ADD) remplace la voie
+ *   d'ajout manuel.
+ * - En mode libre (LaboView), les inputs restent disponibles pour la saisie
+ *   manuelle complète.
  */
 import { describe, it, expect, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -39,21 +39,19 @@ const COMMON_STUBS = {
 }
 
 describe('RadarPanel — scanner-inputs par mode', () => {
-  it('mode "workflow" : .scanner-inputs est visible + workflow-hint affiché', () => {
+  it('mode "workflow" : .scanner-inputs est masqué (génération déplacée vers Discovery)', () => {
     const w = mount(RadarPanel, {
       props: { ...COMMON_PROPS, mode: 'workflow' },
       global: { stubs: COMMON_STUBS },
     })
-    expect(w.find('.scanner-inputs').exists()).toBe(true)
-    expect(w.find('[data-testid="scanner-workflow-hint"]').exists()).toBe(true)
+    expect(w.find('.scanner-inputs').exists()).toBe(false)
   })
 
-  it('mode "libre" : .scanner-inputs reste visible, sans workflow-hint', () => {
+  it('mode "libre" : .scanner-inputs reste visible (saisie manuelle complète)', () => {
     const w = mount(RadarPanel, {
       props: { ...COMMON_PROPS, mode: 'libre' },
       global: { stubs: COMMON_STUBS },
     })
     expect(w.find('.scanner-inputs').exists()).toBe(true)
-    expect(w.find('[data-testid="scanner-workflow-hint"]').exists()).toBe(false)
   })
 })

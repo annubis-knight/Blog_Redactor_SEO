@@ -20,6 +20,17 @@ import { ref, nextTick } from 'vue'
 import LexiquePanel from '../../../src/components/moteur/LexiquePanel.vue'
 import type { LexiqueAnalysisResult } from '../../../shared/types/serp-analysis.types'
 
+
+vi.mock('../../../src/stores/article/radar-exploration.store', () => ({
+  useRadarExplorationStore: () => ({
+    entry: null, articleId: null, isLoading: false, isMutating: false,
+    generatedKeywords: [], scanCards: [], hasScanResult: false, scanResult: null,
+    setArticle: vi.fn(), hydrate: vi.fn(), addKeyword: vi.fn(),
+    removeKeyword: vi.fn(), addKeywordsBatch: vi.fn(), setScanResultLocal: vi.fn(),
+    $reset: vi.fn(),
+  }),
+}))
+
 // --- Mocks api / streaming / basket (copies du fichier lexique-extraction.test.ts) ---
 const mockApiPost = vi.fn()
 const mockApiGet = vi.fn()
@@ -80,14 +91,6 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
-  useMoteurBasketStore: () => ({
-    keywords: [], keywordStrings: [], count: 0, isEmpty: true, bestKeyword: null,
-    validatedKeywords: [], articleId: null,
-    setArticle: vi.fn(), addKeywords: vi.fn(), removeKeyword: vi.fn(),
-    markValidated: vi.fn(), clear: vi.fn(), $reset: vi.fn(),
-  }),
-}))
 
 function mountComponent(overrides: Record<string, unknown> = {}) {
   return mount(LexiquePanel, {

@@ -135,12 +135,12 @@ describe('RadarPanel — architecture des phases (Vague 1)', () => {
     expect(inputsIdx).toBeLessThan(resultsIdx)
   })
 
-  it('AC.E.3 — En mode workflow, showInputs=true (squelette stable, génération manuelle possible)', async () => {
+  it('AC.E.3 — En mode workflow, showInputs=false (génération déplacée vers Discovery)', async () => {
     const wrapper = mountScanner({ mode: 'workflow' as const })
     await nextTick()
     const inputs = wrapper.find('[data-testid="douleur-scanner-inputs"]')
     expect(inputs.exists()).toBe(true)
-    expect(inputs.attributes('data-show-inputs')).toBe('true')
+    expect(inputs.attributes('data-show-inputs')).toBe('false')
   })
 
   it('AC.E.3.bis — En mode libre, showInputs=true (utilisateur saisit ses inputs)', async () => {

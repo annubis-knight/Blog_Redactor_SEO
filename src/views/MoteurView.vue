@@ -8,7 +8,7 @@ import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useArticleResults } from '@/composables/editor/useArticleResults'
-import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
+import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
 import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
 import { apiGet } from '@/services/api.service'
 import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
@@ -19,7 +19,6 @@ import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 
 import MoteurStrategyContext from '@/components/moteur/MoteurStrategyContext.vue'
-import BasketStrip from '@/components/moteur/BasketStrip.vue'
 import TabCachePanel from '@/components/moteur/TabCachePanel.vue'
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 import TabLoadPrompt from '@/components/moteur/TabLoadPrompt.vue'
@@ -51,7 +50,7 @@ const strategyStore = useCocoonStrategyStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const articleProgressStore = useArticleProgressStore()
 const { reset: resetDiscovery, checkCacheForSeed, wordGroups: discoveryWordGroups } = useDiscoveryPanel()
-const basketStore = useMoteurBasketStore()
+const radarExplorationStore = useRadarExplorationStore()
 const workflowNavStore = useWorkflowNavStore()
 
 // Keep reference to recap radio to close panels when article selected
@@ -203,8 +202,10 @@ function handleSelectArticle(article: SelectedArticle | null) {
   setActiveTab(smartTab)
   visitedTabs.value[smartTab] = true
 
-  // Sync basket with article
-  basketStore.setArticle(article?.id ?? null)
+  // FR-RAD-DB-FIRST : hydrate le store radar_explorations pour l'article
+  // sélectionné. Permet aux onglets Lieutenants/Lexique de proposer des
+  // keywords via KeywordAssistPanel sans dépendre du basket déprécié.
+  radarExplorationStore.setArticle(article?.id ?? null)
 
   // Reset cross-tab state (Vague 3 — déléguée au composable)
   resetCrossTabState()
@@ -289,7 +290,6 @@ const {
 } = useMoteurCrossTabState({
   selectedArticle,
   articleKeywordsStore,
-  basketStore,
   setActiveTab,
   emitCheckCompleted,
 })
@@ -432,7 +432,7 @@ onMounted(() => {
   log.debug('[MoteurView] onMounted — full reset + loadData', { cocoonId: cocoonId.value })
   resetDiscovery()
   articleKeywordsStore.$reset()
-  basketStore.$reset()
+  radarExplorationStore.$reset()
   resetCrossTabState()
   loadData()
 })
@@ -494,13 +494,8 @@ onMounted(() => {
       <!--
            "Continuer vers {TabSuivant}" remplace ce banner d'attention. -->
 
-      <!-- Basket strip (persistent across tabs) -->
-      <BasketStrip
-        v-if="selectedArticle && !basketStore.isEmpty"
-        :keywords="basketStore.keywords"
-        @remove="basketStore.removeKeyword"
-        @clear="basketStore.clear"
-      />
+      <!-- BasketStrip supprimé 2026-05-11 (chantier radar-dbfirst-refactor, FR-MOT-BASKET-DEPRECATED).
+           Les keywords accumulés vivent désormais en DB via radar_explorations. -->
 
       <!-- Unified cache panel — sticky bottom, toujours visible quand un article est sélectionné.
            Conditions plus restrictives retirées pour que les `C=0` (caches lus mais vides) restent
