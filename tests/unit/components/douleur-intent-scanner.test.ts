@@ -345,55 +345,10 @@ describe('RadarPanel — phase results', () => {
 })
 
 // ============================================================================
-// Cache (Sprint 2.X — radar_cache table)
-// ============================================================================
-describe('RadarPanel — cache', () => {
-  // Note : depuis Sprint 15.7 le cache-indicator est rendu via <Teleport to="body">,
-  // donc on l'inspecte via document.querySelector au lieu du wrapper de mount.
-  it('cache-indicator visible si exists=true et phase=input', () => {
-    mockRadarCacheStatus.value = {
-      exists: true,
-      heatLevel: 'chaude',
-      globalScore: 65,
-      keywordCount: 12,
-    }
-    mountScanner()
-    const indicator = document.querySelector('.cache-indicator')
-    expect(indicator).not.toBeNull()
-    expect(indicator!.textContent).toContain('65')
-    expect(indicator!.textContent).toContain('12')
-  })
-
-  it('cache-indicator masqué dès qu\'on a un scanResult', () => {
-    mockRadarCacheStatus.value = { exists: true, globalScore: 50 }
-    mockScanResult.value = {
-      globalScore: 70, heatLevel: 'chaude', cards: [],
-      autocomplete: { suggestions: [], totalCount: 0 },
-    }
-    mountScanner()
-    expect(document.querySelector('.cache-indicator')).toBeNull()
-  })
-
-  it('clic "Charger depuis le cache" appelle loadFromRadarCache', async () => {
-    mockRadarCacheStatus.value = { exists: true, globalScore: 50 }
-    mountScanner()
-    const btn = document.querySelector<HTMLButtonElement>('.cache-indicator__actions .btn-action')
-    expect(btn).not.toBeNull()
-    btn!.click()
-    await nextTick()
-    expect(mockLoadFromRadarCache).toHaveBeenCalledWith('seo local boulanger')
-  })
-
-  it('clic "Ignorer" cache la cache-indicator', async () => {
-    mockRadarCacheStatus.value = { exists: true, globalScore: 50 }
-    mountScanner()
-    const btn = document.querySelector<HTMLButtonElement>('.cache-indicator .btn-action--secondary')
-    expect(btn).not.toBeNull()
-    btn!.click()
-    await nextTick()
-    expect(document.querySelector('.cache-indicator')).toBeNull()
-  })
-})
+// Cache : section retirée 2026-05-11 (chantier feat/radar-cache-cleanup).
+// Le cache-indicator legacy de DouleurScannerInputs a été supprimé au profit
+// du mécanisme moderne TabCachePanel + TabLoadPrompt (testé séparément). Les
+// tests de cache spécifiques au Radar via seed sont donc obsolètes.
 
 // ============================================================================
 // Erreur

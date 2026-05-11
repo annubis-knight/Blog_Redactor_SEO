@@ -37,6 +37,14 @@ export interface TabCacheUIState {
   // Radar : le scan est unique (pk article_id) mais on affiche le nombre de keywords générés
   radarScanResult: { globalScore: number } | null
   radarCacheStatus: { exists: boolean; globalScore?: number } | null
+  /**
+   * Nombre de keywords actuellement dans `radar_explorations.generated_keywords`
+   * pour l'article courant, **réactif** (lu depuis le store Pinia DB-first).
+   * Si fourni (≥ 0), prime sur `counts.radar` (qui n'est rafraîchi qu'au switch
+   * d'article et aux check completed/removed, donc devient périmé après un
+   * ajout via input manuel ou Discovery).
+   */
+  radarGeneratedKeywordsCount?: number
   // Capitaine : verrouillage et mot-clé pour le hint
   isCaptaineLocked: boolean
   captainKeyword: string | null
@@ -62,11 +70,17 @@ export function buildTabCacheEntries(
   counts: ExplorationCounts,
   ui: TabCacheUIState,
 ): TabCacheEntry[] {
+  // Pour Radar : `radarGeneratedKeywordsCount` (réactif via store DB-first) prime
+  // sur `counts.radar` (fetché ponctuellement et non rafraîchi sur ajout/suppression
+  // unitaire de keyword). Cf. bug observé : ajouter un keyword via l'input manuel
+  // ou via Discovery → store mis à jour mais counts.radar reste périmé jusqu'au
+  // prochain switch d'article ou check workflow.
+  const radarDbCount = ui.radarGeneratedKeywordsCount ?? counts.radar ?? 0
   return [
     {
       tabId: 'radar',
       tabLabel: 'Radar',
-      dbCount: counts.radar ?? 0,
+      dbCount: radarDbCount,
       cacheCount: ui.radarScanResult !== null && !ui.radarCacheStatus?.exists ? 1 : 0,
       isCurrentTab: ui.activeTab === 'radar',
       hint: ui.radarScanResult
