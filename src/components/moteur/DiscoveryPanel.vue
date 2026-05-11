@@ -41,9 +41,11 @@ const {
   suggestPrepositionsKw,
   aiKeywords,
   dataforseoKeywords,
+  longtailKeywords,
   suggestLoading,
   aiLoading,
   dataforseoLoading,
+  longtailLoading,
   isAnyLoading,
   wordGroups,
   wordGroupsLoading,
@@ -74,6 +76,8 @@ const {
   isAllSourceSelected,
   setGroupFilter,
   getRadarKeywords,
+  // Longtail IA (FR-DIS-LONGTAIL-GENERATION)
+  generateLongTail,
   // AI Analysis
   analysisResult,
   analysisLoading,
@@ -229,7 +233,19 @@ const sections = computed<SourceSection[]>(() => [
   { key: 'suggest-prepositions', icon: '🔗', label: 'Prepositions', list: suggestPrepositionsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
   { key: 'ai', icon: '🤖', label: 'IA Claude', list: aiKeywords.value, loading: aiLoading.value, showReasoning: true, showKpis: false },
   { key: 'dataforseo', icon: '📊', label: 'DataForSEO', list: dataforseoKeywords.value, loading: dataforseoLoading.value, showReasoning: false, showKpis: true },
+  { key: 'longtail-ai', icon: '🎯', label: 'Courte-traîne IA (PAA-friendly)', list: longtailKeywords.value, loading: longtailLoading.value, showReasoning: true, showKpis: false },
 ])
+
+// FR-DIS-LONGTAIL-GENERATION : génération courte-traîne IA déplacée depuis Radar.
+async function handleGenerateLongTail() {
+  if (!seedInput.value.trim()) return
+  await generateLongTail(
+    seedInput.value.trim(),
+    props.articleTitle,
+    props.articleKeyword,
+    props.articlePainPoint,
+  )
+}
 
 function sourceCountLabel(keyword: string): string | null {
   const sources = getKeywordSources(keyword)
@@ -349,6 +365,14 @@ const aiCtaLabel = computed(() => {
             @click="handleDiscover"
           >
             {{ isAnyLoading ? 'Recherche...' : 'Découvrir' }}
+          </button>
+          <button
+            class="discovery-input__btn discovery-input__btn--longtail"
+            :disabled="!seedInput.trim() || isAnyLoading"
+            :title="'Génère ~20 mots-clés courts adaptés au scan PAA + Autocomplete (Haiku IA)'"
+            @click="handleGenerateLongTail"
+          >
+            {{ longtailLoading ? 'Génération…' : 'Courte-traîne IA' }}
           </button>
         </div>
         <p v-if="props.articleTitle" class="discovery-input__context">
@@ -578,6 +602,14 @@ const aiCtaLabel = computed(() => {
 .discovery-input__btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.discovery-input__btn--longtail {
+  background: #9333ea;
+}
+
+.discovery-input__btn--longtail:hover:not(:disabled) {
+  background: #7c2eca;
 }
 
 .discovery-input__context {

@@ -439,6 +439,11 @@ defineExpose({ mergeFromRadarSource })
 
 <template>
   <div class="intent-scanner">
+    <!-- FR-DIS-LONGTAIL-GENERATION : en mode workflow, la section "Keyword
+         Radar" (génération IA Haiku) est masquée car la génération est
+         désormais sur l'onglet Discovery. L'input texte unitaire (Phase 2)
+         remplace la voie d'ajout manuel ponctuelle. En mode libre (LaboView),
+         les inputs restent disponibles pour la saisie manuelle. -->
     <DouleurScannerInputs
       :broad-keyword="broadKeyword"
       :specific-topic="specificTopic"
@@ -448,8 +453,7 @@ defineExpose({ mergeFromRadarSource })
       :radar-cache-status="radarCacheStatus"
       :is-loading-cache="isLoadingCache"
       :error="error"
-      :show-inputs="true"
-      :workflow-hint="mode === 'workflow' ? 'Tu peux générer des mots-clés Radar manuellement à partir du contexte ci-dessous. Cela ne touche pas aux mots-clés déjà envoyés depuis Discovery ni au panier — la génération remplace uniquement la liste de mots-clés Radar en attente de scan.' : null"
+      :show-inputs="mode === 'libre'"
       @update:broad-keyword="(v) => broadKeyword = v"
       @update:specific-topic="(v) => specificTopic = v"
       @update:pain-point="(v) => painPoint = v"

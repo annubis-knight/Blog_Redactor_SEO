@@ -9,6 +9,7 @@ export type DiscoverySource =
   | 'suggest-questions'
   | 'suggest-intents'
   | 'suggest-prepositions'
+  | 'longtail-ai'
 
 export interface DiscoveredKeyword {
   keyword: string
