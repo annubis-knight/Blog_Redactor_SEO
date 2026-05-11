@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
@@ -57,6 +57,18 @@ const workflowNavStore = useWorkflowNavStore()
 const recapRadioGroup = provideRecapRadioGroup()
 
 const selectedArticle = ref<SelectedArticle | null>(null)
+
+// FR-RAD-DB-FIRST : sync radar_explorations dès que selectedArticle change,
+// peu importe le chemin (clic recap, restauration au mount, navigation deep
+// link). `immediate: true` couvre le cas mount avec selectedArticle null →
+// store reste vide jusqu'à sélection. Quand un id valide est setté, le store
+// fetche radar_explorations.generated_keywords pour afficher les keywords
+// envoyés lors des sessions précédentes.
+watch(
+  () => selectedArticle.value?.id ?? null,
+  (newId) => { radarExplorationStore.setArticle(newId) },
+  { immediate: true },
+)
 
 
 const cocoonId = computed(() => Number(route.params.cocoonId))
@@ -202,10 +214,11 @@ function handleSelectArticle(article: SelectedArticle | null) {
   setActiveTab(smartTab)
   visitedTabs.value[smartTab] = true
 
-  // FR-RAD-DB-FIRST : hydrate le store radar_explorations pour l'article
-  // sélectionné. Permet aux onglets Lieutenants/Lexique de proposer des
-  // keywords via KeywordAssistPanel sans dépendre du basket déprécié.
-  radarExplorationStore.setArticle(article?.id ?? null)
+  // FR-RAD-DB-FIRST : le watcher réactif (plus bas) hydrate
+  // radarExplorationStore dès que selectedArticle.value?.id change. Pas
+  // d'appel explicite ici — couvre aussi les chemins de restauration au
+  // mount (refresh page) où selectedArticle est setté sans passer par ce
+  // handler.
 
   // Reset cross-tab state (Vague 3 — déléguée au composable)
   resetCrossTabState()
@@ -345,9 +358,15 @@ const tabCacheEntries = computed<TabCacheEntry[]>(() => buildTabCacheEntries(
       : null,
     // Réactif : reflète immédiatement les ajouts/suppressions via le store
     // DB-first (input manuel Radar ou batch Discovery), sans attendre un
-    // refresh d'explorationCounts (qui ne se déclenche qu'au switch d'article
-    // et aux check workflow).
-    radarGeneratedKeywordsCount: radarExplorationStore.generatedKeywords.length,
+    // refresh d'explorationCounts. Garde-fou : on ne passe la valeur du
+    // store **que** si l'article courant correspond bien (sinon le store est
+    // en cours d'hydratation ou désynchronisé, et counts.radar reste la
+    // source fiable issue de GET /explorations/counts).
+    radarGeneratedKeywordsCount: radarExplorationStore.articleId !== null
+      && radarExplorationStore.articleId === (selectedArticle.value?.id ?? null)
+      && !radarExplorationStore.isLoading
+      ? radarExplorationStore.generatedKeywords.length
+      : undefined,
     isCaptaineLocked: isCaptaineLocked.value,
     captainKeyword: captainKeyword.value ?? null,
     lockedLieutenantsCount: articleKeywordsStore.keywords?.lieutenants?.length ?? 0,
