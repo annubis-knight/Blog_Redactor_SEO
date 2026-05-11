@@ -45,7 +45,7 @@
 # Voir _bmad-output/planning-artifacts/epics.md pour le détail.
 
 generated: 2026-04-01
-last_updated: 2026-05-09
+last_updated: 2026-05-11
 project: BMAD
 project_key: NOKEY
 tracking_system: file-system
@@ -636,6 +636,45 @@ development_status:
   #   * Retirer le KeywordSwitcher de KeywordAuditTable.vue (localComparisons jamais
   #     alimenté → switcher silencieusement inactif).
   remove-labo-explorateur: done
+
+  # Chantier refonte coque IA Discovery (2026-05-11) — tech-spec-discovery-ai-coque-persistante.md
+  # Habillage de l'analyse IA Discovery dans la coque générique <AiPanel variant="suggestion">
+  # et suppression de DiscoveryAiPanel.vue (tri Jaccard local jamais utilisé dans le
+  # workflow utilisateur réel) + useDiscoveryRanking.ts associé.
+  # Motivation : analyse de logs session 2026-05-11 — l'utilisateur passe naturellement
+  # par le bouton « Analyser » (vrai appel IA Claude /api/keywords/analyze-discovery)
+  # sans jamais utiliser le panel violet qui lisait le basket Pinia (déconnecté du
+  # Set selection alimenté par les checkboxes). En plus, le bouton n'apparaissait que
+  # conditionnellement → critique UX explicite « pas user-friendly ».
+  # Sprint A — UI :
+  #   * DiscoveryPanel.vue : import AiPanel + computeds (aiPanelState/aiCtaDisabled/
+  #     aiIdleMessage/aiCtaLabel), template refondu, styles obsolètes retirés.
+  #   * Suppressions : DiscoveryAiPanel.vue, useDiscoveryRanking.ts + leurs tests.
+  #   * Nettoyage commentaires-sprint dans DiscoveryPanel.vue (Sprint D-1, Sprint 1.4).
+  # Sprint B — Tests :
+  #   * Adaptation discovery-tab-architecture.test.ts (AC.A.3 inversée : Analysis
+  #     enfant DOM de la coque AiPanel maintenant).
+  #   * Création DiscoveryAiPanelPersistence.test.ts (8 ACs DAIP.1-8 : présence DOM,
+  #     états idle/streaming/success, slot idle contextuel, handoff Radar, garde
+  #     anti-régression d'imports supprimés).
+  #   * Création ai-panels-persistence.test.ts (architectural transversal,
+  #     AC.UIAIP.1-3 pour Discovery/Lexique/Lieutenants + 3 it.skip dette pour
+  #     Radar/Capitaine/Rédaction).
+  #   * Adaptation keyword-discovery-tab.test.ts (6 tests bouton Analyser + section
+  #     analyse — nouveaux sélecteurs [data-testid="ai-trigger-primary"] +
+  #     expandAiPanel pour déployer le panel collapse-par-défaut).
+  # Sprint C — Doc & validation :
+  #   * PRD : FR-DIS-AI-PANEL réécrite (8 ACs DAIP), FR-UI-AI-PANELS-PATTERN enrichie
+  #     invariant UX + 4 ACs UIAIP transversaux + statut audit, FR-DIS-RELEVANCE-FILTER
+  #     enrichie 2-pass (6 ACs RELFILT chiffrant les seuils), §9.9 UX (NFR-UX) nouvelle
+  #     avec NFR-UX-STABLE-SKELETON.
+  #   * docs/ui-sections-guide.md §13.2 : ligne Discovery mise à jour.
+  #   * docs/scoring-kpi-vs-relevance.md : entrée useDiscoveryRanking marquée
+  #     supprimée.
+  # Validation : type-check + lint + build verts. test:check : 21 rouges courants
+  # vs 28 baseline (net positif de 7) — les 8 rouges restants sont préexistants
+  # (_setup-sanity.test nécessite dev server + data.service.test backend).
+  discovery-ai-coque-persistante: done
 
 # ===== Backlog (non livré) =====
 #

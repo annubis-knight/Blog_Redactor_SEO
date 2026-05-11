@@ -531,24 +531,36 @@ describe('DiscoveryPanel — cache', () => {
 // Analyse IA
 // ============================================================================
 describe('DiscoveryPanel — analyse IA', () => {
-  it('bouton "Analyser" visible si hasResults + relevantCount > 0', () => {
+  // Le panel AiPanel est `defaultCollapsed: true` — l'utilisateur doit cliquer
+  // le toggle pour déployer le body. On simule ce clic pour les tests qui
+  // inspectent le contenu interne.
+  async function expandAiPanel(wrapper: ReturnType<typeof mountTab>) {
+    const toggle = wrapper.find('[data-testid="ai-panel-toggle"]')
+    if (toggle.exists()) await toggle.trigger('click')
+  }
+
+  it('bouton "Analyser" actif si hasResults + relevantCount > 0', async () => {
     mockHasResults.value = true
     mockRelevantCount.value = 25
     mockIsAnyLoading.value = false
     mockSemanticLoading.value = false
     const wrapper = mountTab()
-    expect(wrapper.find('.analysis-action__btn').exists()).toBe(true)
+    await expandAiPanel(wrapper)
+    const btn = wrapper.find('[data-testid="ai-trigger-primary"]')
+    expect(btn.exists()).toBe(true)
+    expect(btn.attributes('disabled')).toBeUndefined()
   })
 
   it('clic Analyser → analyzeResults', async () => {
     mockHasResults.value = true
     mockRelevantCount.value = 25
     const wrapper = mountTab()
-    await wrapper.find('.analysis-action__btn').trigger('click')
+    await expandAiPanel(wrapper)
+    await wrapper.find('[data-testid="ai-trigger-primary"]').trigger('click')
     expect(mockAnalyzeResults).toHaveBeenCalledTimes(1)
   })
 
-  it('section analysis-results visible si analysisResult défini', () => {
+  it('section analysis-results visible si analysisResult défini', async () => {
     mockAnalysisResult.value = {
       keywords: [
         { keyword: 'kw1', reasoning: 'r1', priority: 'high' },
@@ -557,6 +569,7 @@ describe('DiscoveryPanel — analyse IA', () => {
       summary: 'Récap IA',
     }
     const wrapper = mountTab()
+    await expandAiPanel(wrapper)
     expect(wrapper.find('.analysis-results').exists()).toBe(true)
     expect(wrapper.findAll('.analysis-item').length).toBe(2)
   })
@@ -567,6 +580,7 @@ describe('DiscoveryPanel — analyse IA', () => {
       summary: 's',
     }
     const wrapper = mountTab()
+    await expandAiPanel(wrapper)
     await wrapper.find('.analysis-item').trigger('click')
     expect(mockToggleSelect).toHaveBeenCalledWith('kw1')
   })
@@ -578,6 +592,7 @@ describe('DiscoveryPanel — analyse IA', () => {
     }
     mockIsAllAnalysisSelected.mockReturnValue(false)
     const wrapper = mountTab()
+    await expandAiPanel(wrapper)
     await wrapper.find('.analysis-results__check-all input').trigger('change')
     expect(mockSelectAllAnalysis).toHaveBeenCalled()
   })
@@ -589,6 +604,7 @@ describe('DiscoveryPanel — analyse IA', () => {
     }
     mockIsAllAnalysisSelected.mockReturnValue(true)
     const wrapper = mountTab()
+    await expandAiPanel(wrapper)
     await wrapper.find('.analysis-results__check-all input').trigger('change')
     expect(mockDeselectAllAnalysis).toHaveBeenCalled()
   })

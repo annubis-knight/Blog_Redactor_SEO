@@ -2,14 +2,14 @@
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
-import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 import { articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
-import DiscoveryAiPanel from '@/components/moteur/DiscoveryAiPanel.vue'
+import AiPanel from '@/components/moteur/ai-panel/AiPanel.vue'
 import DiscoveryWordGroupsSidebar from '@/components/moteur/discovery/DiscoveryWordGroupsSidebar.vue'
 import DiscoveryAnalysisResults from '@/components/moteur/discovery/DiscoveryAnalysisResults.vue'
 import DiscoverySourcesList from '@/components/moteur/discovery/DiscoverySourcesList.vue'
 import KeywordDiscoveryCacheBar from '@/components/moteur/discovery/KeywordDiscoveryCacheBar.vue'
 import KeywordDiscoveryRelevanceToggle from '@/components/moteur/discovery/KeywordDiscoveryRelevanceToggle.vue'
+import type { AiPanelState } from '@/composables/moteur/useAiPanel'
 import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
@@ -33,16 +33,6 @@ const props = withDefaults(defineProps<{
 const emit = defineEmits<{
   (e: 'send-to-radar', keywords: RadarKeyword[]): void
 }>()
-
-// Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page (sans appel IA).
-const basketStore = useMoteurBasketStore()
-function handlePushToRadar(selectedKeywords: string[]) {
-  if (selectedKeywords.length === 0) return
-  basketStore.markPushedToRadar(selectedKeywords)
-  // Délègue au parent pour la transition vers Radar avec le payload formaté.
-  const payload: RadarKeyword[] = selectedKeywords.map(kw => ({ keyword: kw, reasoning: '' }))
-  emit('send-to-radar', payload)
-}
 
 const {
   suggestAlphabetKw,
@@ -180,17 +170,12 @@ function handleToggleSource(source: DiscoverySource) {
   }
 }
 
-// Sprint 1.4 / Sprint 16-refinement — pre-validate clicked keywords to the
-// Capitaine tab with a 5s window. The countdown is rendered globally as a toast
-// (Gmail-style) via CaptainTriggerToast so the user sees it and can cancel
-// either by re-clicking the keyword OR by clicking "Annuler" in the toast.
 const captainTrigger = useCaptainTriggerStore()
 function handleKeywordClick(keyword: string) {
   const alreadySelected = isSelected(keyword)
   toggleSelect(keyword)
   const articleId = props.articleId
   if (!articleId) return
-  // After toggle: if now selected → schedule validation; if deselected → cancel.
   if (!alreadySelected) {
     captainTrigger.schedule(
       keyword,
@@ -313,6 +298,35 @@ function handleToggleAnalysisSelectAll() {
     selectAllAnalysis()
   }
 }
+
+const aiPanelState = computed<AiPanelState>(() => {
+  if (error.value) return 'error'
+  if (analysisLoading.value) return 'streaming'
+  if (analysisResult.value) return 'success'
+  return 'idle'
+})
+
+const aiCtaDisabled = computed(() =>
+  !hasResults.value || semanticLoading.value || relevantCount.value === 0,
+)
+
+const aiIdleMessage = computed(() => {
+  if (!hasResults.value) {
+    return 'Lance d\'abord une découverte de mots-clés ci-dessus, puis l\'IA pourra analyser et te proposer une sélection stratégique.'
+  }
+  if (semanticLoading.value) {
+    return 'Filtrage de pertinence en cours… L\'analyse IA sera disponible une fois le filtrage terminé.'
+  }
+  if (relevantCount.value === 0) {
+    return 'Aucun mot-clé pertinent à analyser. Élargis ta recherche ou désactive le filtre de pertinence.'
+  }
+  return `Prêt à analyser ${relevantCount.value} mot${relevantCount.value > 1 ? 's' : ''}-clé${relevantCount.value > 1 ? 's' : ''} pertinent${relevantCount.value > 1 ? 's' : ''}.`
+})
+
+const aiCtaLabel = computed(() => {
+  if (!hasResults.value || relevantCount.value === 0) return 'Analyser les résultats pertinents'
+  return `Analyser les ${relevantCount.value} résultat${relevantCount.value > 1 ? 's' : ''} pertinent${relevantCount.value > 1 ? 's' : ''}`
+})
 </script>
 
 <template>
@@ -407,28 +421,23 @@ function handleToggleAnalysisSelectAll() {
         >
           Aucun mot-clé trouvé. Essayez un autre mot-clé racine.
         </p>
+      </div>
 
-        <!-- AI Analysis button -->
-        <div v-if="hasResults && !isAnyLoading && !semanticLoading && relevantCount > 0" class="analysis-action">
-          <button
-            class="analysis-action__btn"
-            :disabled="analysisLoading"
-            @click="handleAnalyze"
-          >
-            <template v-if="analysisLoading">
-              <span class="spinner-small" /> Analyse en cours...
-            </template>
-            <template v-else>
-              🔍 Analyser les {{ relevantCount }} résultats pertinents
-            </template>
-          </button>
-          <p class="analysis-action__hint">
-            L'IA analyse vos mots-clés, les groupes thématiques et les métriques pour sélectionner les 20-30 mots-clés les plus stratégiques.
-          </p>
-        </div>
-
-        <!-- AI Analysis results -->
+      <AiPanel
+        variant="suggestion"
+        title="Analyse IA Discovery"
+        subtitle="Sélection intelligente des 20-30 mots-clés les plus stratégiques (groupes, métriques, douleur)."
+        :state="aiPanelState"
+        :error="error"
+        :trigger-disabled="aiCtaDisabled"
+        :cta-label="aiCtaLabel"
+        regen-label="Relancer l'analyse"
+        regen-confirm-message="Relancer l'analyse IA ? Cela consommera un appel Claude."
+        data-testid="discovery-ai-panel"
+        @trigger="handleAnalyze"
+      >
         <DiscoveryAnalysisResults
+          v-if="analysisResult"
           :analysis-result="analysisResult"
           :is-all-analysis-selected="isAllAnalysisSelected"
           :is-selected="isSelected"
@@ -437,18 +446,10 @@ function handleToggleAnalysisSelectAll() {
           @toggle-select="toggleSelect"
           @toggle-select-all="handleToggleAnalysisSelectAll"
         />
-      </div>
-
-      <!-- Sprint D-1 (2026-05-02) — Panel suggestion bas-de-page : tri local
-           du basket par signal × alignement douleur. Aucun appel IA.
-           Placé dans .discovery-main pour être sous les sections de mots-clés
-           (et non à côté de la sidebar). -->
-      <DiscoveryAiPanel
-        :basket="basketStore.keywords"
-        :pain-point="props.articlePainPoint"
-        :is-locked="false"
-        @push-to-radar="handlePushToRadar"
-      />
+        <template #idle>
+          <p class="discovery-ai-idle" data-testid="discovery-ai-idle">{{ aiIdleMessage }}</p>
+        </template>
+      </AiPanel>
     </div>
 
     <!-- Sidebar: Word Groups -->
@@ -594,26 +595,16 @@ function handleToggleAnalysisSelectAll() {
   border-radius: 6px;
 }
 
-/* --- Source sections wrapper (kept for analysis-action layout) --- */
 .discovery-sources {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-/* --- Spinner --- */
-.spinner-small {
-  display: inline-block;
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--color-border);
-  border-top-color: var(--color-primary);
-  border-radius: 50%;
-  animation: spin 0.6s linear infinite;
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+.discovery-ai-idle {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
 }
 
 /* --- Sticky bottom bar --- */
@@ -660,47 +651,6 @@ function handleToggleAnalysisSelectAll() {
   color: var(--color-text-muted);
   font-size: 0.8125rem;
   padding: 24px;
-}
-
-/* --- Analysis action button --- */
-.analysis-action {
-  text-align: center;
-  padding: 16px;
-  border: 2px dashed var(--color-border);
-  border-radius: 8px;
-  background: var(--color-surface);
-}
-
-.analysis-action__btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 24px;
-  background: linear-gradient(135deg, #7c3aed, #2563eb);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.875rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.analysis-action__btn:hover:not(:disabled) {
-  opacity: 0.9;
-}
-
-.analysis-action__btn:disabled {
-  opacity: 0.7;
-  cursor: wait;
-}
-
-.analysis-action__hint {
-  font-size: 0.75rem;
-  color: var(--color-text-muted);
-  margin-top: 8px;
-  max-width: 500px;
-  margin-inline: auto;
 }
 
 /* --- Transition --- */
