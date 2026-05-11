@@ -224,6 +224,13 @@ interface SourceSection {
   loading: boolean
   showReasoning: boolean
   showKpis: boolean
+  actionLabel?: string
+}
+
+function handleSectionAction(key: DiscoverySource) {
+  if (key === 'longtail-ai') {
+    handleGenerateLongTail()
+  }
 }
 
 const sections = computed<SourceSection[]>(() => [
@@ -233,7 +240,7 @@ const sections = computed<SourceSection[]>(() => [
   { key: 'suggest-prepositions', icon: '🔗', label: 'Prepositions', list: suggestPrepositionsKw.value, loading: suggestLoading.value, showReasoning: false, showKpis: false },
   { key: 'ai', icon: '🤖', label: 'IA Claude', list: aiKeywords.value, loading: aiLoading.value, showReasoning: true, showKpis: false },
   { key: 'dataforseo', icon: '📊', label: 'DataForSEO', list: dataforseoKeywords.value, loading: dataforseoLoading.value, showReasoning: false, showKpis: true },
-  { key: 'longtail-ai', icon: '🎯', label: 'Courte-traîne IA (PAA-friendly)', list: longtailKeywords.value, loading: longtailLoading.value, showReasoning: true, showKpis: false },
+  { key: 'longtail-ai', icon: '🎯', label: 'Courte-traîne IA (PAA-friendly)', list: longtailKeywords.value, loading: longtailLoading.value, showReasoning: true, showKpis: false, actionLabel: 'Générer' },
 ])
 
 // FR-DIS-LONGTAIL-GENERATION : génération courte-traîne IA déplacée depuis Radar.
@@ -435,6 +442,7 @@ const aiCtaLabel = computed(() => {
         @toggle-source="handleToggleSource"
         @keyword-click="handleKeywordClick"
         @toggle-section-expanded="toggleSectionExpanded"
+        @section-action="handleSectionAction"
       />
 
       <div class="discovery-sources">

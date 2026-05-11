@@ -4,8 +4,10 @@ import { radarHeatColor, radarHeatIcon, radarHeatLabel } from '@/composables/key
 import ConfidenceBar from '@/components/intent/ConfidenceBar.vue'
 
 const props = withDefaults(defineProps<{
-  globalScore: number
-  heatLevel: string
+  /** Score 0-100, ou null en état "vide" (avant scan). */
+  globalScore: number | null
+  /** Heat level ('brulante' | 'chaude' | 'tiede' | 'froide' | null en état vide). */
+  heatLevel: string | null
   keywordsCount?: number
   autocompleteCount?: number
   paaTotal?: number
@@ -15,9 +17,17 @@ const props = withDefaults(defineProps<{
   compact: false,
 })
 
-const color = computed(() => radarHeatColor(props.heatLevel as any))
-const icon = computed(() => radarHeatIcon(props.heatLevel))
-const label = computed(() => radarHeatLabel(props.heatLevel as any))
+const isEmpty = computed(() => props.globalScore === null || props.heatLevel === null)
+const color = computed(() => isEmpty.value ? 'var(--color-border, #e2e8f0)' : radarHeatColor(props.heatLevel as never))
+const icon = computed(() => isEmpty.value ? '○' : radarHeatIcon(props.heatLevel ?? ''))
+const label = computed(() => isEmpty.value ? 'En attente' : radarHeatLabel(props.heatLevel as never))
+const scoreText = computed(() => isEmpty.value ? '—' : String(props.globalScore))
+const confidenceValue = computed(() => {
+  // isEmpty garantit globalScore !== null sur la branche else (cf. computed
+  // isEmpty), donc pas de fallback silencieux.
+  if (isEmpty.value || props.globalScore === null) return 0
+  return props.globalScore / 100
+})
 const hasKpis = computed(() =>
   !props.compact && (props.keywordsCount != null || props.autocompleteCount != null || props.paaTotal != null),
 )
@@ -26,13 +36,13 @@ const hasKpis = computed(() =>
 <template>
   <div
     class="thermometer"
-    :class="{ 'thermometer--compact': compact }"
+    :class="{ 'thermometer--compact': compact, 'thermometer--empty': isEmpty }"
     :style="{ borderColor: color }"
   >
     <div class="thermo-header">
       <div class="thermo-left">
         <span class="thermo-icon">{{ icon }}</span>
-        <span class="thermo-score" :style="{ color }">{{ globalScore }}/100</span>
+        <span class="thermo-score" :style="{ color }">{{ scoreText }}/100</span>
         <span class="thermo-label" :style="{ color }">{{ label }}</span>
       </div>
       <div v-if="hasKpis" class="thermo-kpis">
@@ -51,7 +61,7 @@ const hasKpis = computed(() =>
       </div>
     </div>
     <p v-if="verdict && !compact" class="thermo-verdict">{{ verdict }}</p>
-    <ConfidenceBar :value="globalScore / 100" />
+    <ConfidenceBar :value="confidenceValue" />
   </div>
 </template>
 
@@ -67,6 +77,11 @@ const hasKpis = computed(() =>
 .thermometer--compact {
   padding: 0.75rem 1rem;
   border-radius: 8px;
+}
+
+.thermometer--empty {
+  opacity: 0.55;
+  border-style: dashed;
 }
 
 .thermo-header {

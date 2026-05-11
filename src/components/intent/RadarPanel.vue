@@ -541,9 +541,11 @@ defineExpose({ mergeFromRadarSource })
       </div>
     </div>
 
-    <!-- Phase 3: Results -->
+    <!-- Phase 3: Results — DouleurScannerResults rendu toujours (sauf pendant
+         scan), avec scanResult null en état vide. Garantit silhouette UI stable
+         entre avant/après scan (NFR-UX-STABLE-SKELETON, option B refonte). -->
     <DouleurScannerResults
-      v-if="phase === 'results' && scanResult"
+      v-if="!isScanning"
       :scan-result="scanResult"
       :filtered-cards="filteredCards"
       :radar-sort-options="radarSortOptions"
@@ -567,40 +569,6 @@ defineExpose({ mergeFromRadarSource })
       @long-tail-selected="handleLongTailSelected"
       @send-to-captain="sendToCaptain"
     />
-
-    <!-- Squelette stable des résultats du scan : 3 sous-sections grisées avec
-         leurs vrais labels, rendues même avant scan pour donner à l'utilisateur
-         la silhouette de ce qui apparaîtra. NFR-UX-STABLE-SKELETON. -->
-    <div
-      v-else-if="!isScanning"
-      class="results-skeleton"
-      data-testid="radar-results-empty"
-    >
-      <!-- Thermomètre vide (score —, heat neutre) -->
-      <section class="results-skeleton__section results-skeleton__section--thermometer">
-        <h4 class="results-skeleton__title">Thermomètre de résonance</h4>
-        <div class="results-skeleton__thermo">
-          <span class="results-skeleton__thermo-score">—</span>
-          <span class="results-skeleton__thermo-label">/100</span>
-        </div>
-        <p class="results-skeleton__hint">Le score global de résonance s'affichera ici après le scan.</p>
-      </section>
-
-      <!-- Cartes radar vides -->
-      <section class="results-skeleton__section results-skeleton__section--cards">
-        <h4 class="results-skeleton__title">Cartes radar (0)</h4>
-        <p class="results-skeleton__hint">
-          Les cartes radar avec leurs métriques marché (Volume, KD, CPC, PAA, Autocomplete) apparaîtront
-          ici une fois le scan terminé.
-        </p>
-      </section>
-
-      <!-- Autocomplete vide -->
-      <section class="results-skeleton__section results-skeleton__section--autocomplete">
-        <h4 class="results-skeleton__title">Suggestions Autocomplete (0)</h4>
-        <p class="results-skeleton__hint">Les suggestions Google Autocomplete autour du sujet article s'afficheront ici.</p>
-      </section>
-    </div>
 
     <RadarAiPanel
       :cards="scanResult?.cards ?? []"
@@ -713,61 +681,6 @@ defineExpose({ mergeFromRadarSource })
 
 .radar-manual-add__btn:hover:not(:disabled) {
   background: var(--color-primary-hover, #1d4ed8);
-}
-
-.results-skeleton {
-  display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
-}
-
-.results-skeleton__section {
-  padding: 1rem 1.25rem;
-  background: var(--color-surface);
-  border: 1px dashed var(--color-border);
-  border-radius: 8px;
-  opacity: 0.55;
-}
-
-.results-skeleton__title {
-  margin: 0 0 0.5rem;
-  font-size: 0.9375rem;
-  font-weight: 600;
-  color: var(--color-text-muted);
-}
-
-.results-skeleton__hint {
-  margin: 0;
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-  line-height: 1.5;
-}
-
-.results-skeleton__section--thermometer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.results-skeleton__thermo {
-  display: flex;
-  align-items: baseline;
-  gap: 0.25rem;
-  font-variant-numeric: tabular-nums;
-  color: var(--color-text-muted);
-}
-
-.results-skeleton__thermo-score {
-  font-size: 2.5rem;
-  font-weight: 700;
-  line-height: 1;
-}
-
-.results-skeleton__thermo-label {
-  font-size: 1rem;
-  font-weight: 500;
 }
 
 .keywords-header {
