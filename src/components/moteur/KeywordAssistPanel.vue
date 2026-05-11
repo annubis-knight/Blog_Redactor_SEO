@@ -1,24 +1,30 @@
 <script setup lang="ts">
 /**
- * F3 — KeywordAssistPanel
+ * KeywordAssistPanel — panneau de suggestions de keywords partagé entre
+ * Capitaine / Lieutenants / Lexique.
  *
- * Composant partagé entre les onglets Capitaine, Lieutenants et Lexique du Moteur.
- * Affiche une liste minimaliste de mots-clés suggérés (issus du basket Moteur) avec
- * un unique bouton d'action contextuel (Tester / Ajouter).
+ * Refonte 2026-05-11 (chantier `radar-dbfirst-refactor`, FR-MOT-BASKET-DEPRECATED) :
+ * le composant ne lit plus le `useMoteurBasketStore` (déprécié) ; il reçoit
+ * désormais la liste de keywords à proposer **en prop** depuis son parent.
+ * Le parent fait la lecture DB pertinente (typiquement
+ * `useRadarExplorationStore.scanCards[].keyword + generatedKeywords[].keyword`)
+ * et passe la liste filtrée.
  *
  * Masquage automatique quand il n'y a aucune suggestion pertinente.
  */
 import { computed, ref } from 'vue'
-import { useMoteurBasketStore } from '@/stores/article/moteur-basket.store'
 
 const props = withDefaults(defineProps<{
   /** Onglet qui héberge le panel : détermine le libellé du bouton et la sémantique. */
   context: 'capitaine' | 'lieutenants' | 'lexique'
+  /** Liste de keywords à proposer (lecture DB faite par le parent). */
+  keywords?: string[]
   /** Mots-clés déjà utilisés dans l'onglet courant : ils sont filtrés de la liste. */
   excludeKeywords?: string[]
   /** Nombre max de suggestions affichées. */
   maxItems?: number
 }>(), {
+  keywords: () => [],
   excludeKeywords: () => [],
   maxItems: 10,
 })
@@ -28,7 +34,6 @@ const emit = defineEmits<{
   (e: 'add', keyword: string): void
 }>()
 
-const basketStore = useMoteurBasketStore()
 const isHidden = ref(false)
 
 const titleByContext: Record<typeof props.context, string> = {
@@ -46,8 +51,8 @@ const actionLabelByContext: Record<typeof props.context, string> = {
 const exclude = computed(() => new Set(props.excludeKeywords.map(k => k.toLowerCase())))
 
 const suggestions = computed(() => {
-  return basketStore.keywords
-    .filter(k => !exclude.value.has(k.keyword.toLowerCase()))
+  return props.keywords
+    .filter(k => !exclude.value.has(k.toLowerCase()))
     .slice(0, props.maxItems)
 })
 
@@ -72,14 +77,14 @@ function hide() {
     <ul class="keyword-assist-panel__list">
       <li
         v-for="kw in suggestions"
-        :key="`assist-${kw.keyword}`"
+        :key="`assist-${kw}`"
         class="keyword-assist-panel__item"
       >
-        <span class="keyword-assist-panel__keyword">{{ kw.keyword }}</span>
+        <span class="keyword-assist-panel__keyword">{{ kw }}</span>
         <button
           type="button"
           class="keyword-assist-panel__action"
-          @click="emit('add', kw.keyword)"
+          @click="emit('add', kw)"
         >{{ actionLabelByContext[context] }}</button>
       </li>
     </ul>
@@ -92,14 +97,13 @@ function hide() {
   padding: 0.75rem 1rem;
   border: 1px solid var(--color-border, #e2e8f0);
   border-radius: 8px;
-  background: var(--color-surface-subtle, rgba(100, 116, 139, 0.04));
+  background: var(--color-bg-subtle, #f8fafc);
 }
 
 .keyword-assist-panel__header {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
+  align-items: center;
   margin-bottom: 0.5rem;
 }
 
@@ -111,27 +115,23 @@ function hide() {
 }
 
 .keyword-assist-panel__hide {
-  width: 22px;
-  height: 22px;
-  padding: 0;
-  font-size: 1rem;
-  line-height: 1;
-  color: var(--color-text-muted, #64748b);
-  background: transparent;
   border: none;
+  background: transparent;
   cursor: pointer;
-  border-radius: 4px;
+  font-size: 1.125rem;
+  color: var(--color-text-muted, #94a3b8);
+  padding: 0 0.25rem;
+  line-height: 1;
 }
 
 .keyword-assist-panel__hide:hover {
-  background: var(--color-bg-hover, #f1f5f9);
   color: var(--color-text, #1e293b);
 }
 
 .keyword-assist-panel__list {
-  margin: 0;
-  padding: 0;
   list-style: none;
+  padding: 0;
+  margin: 0;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
@@ -139,38 +139,31 @@ function hide() {
 
 .keyword-assist-panel__item {
   display: flex;
-  align-items: center;
   justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.375rem 0.5rem;
-  border-radius: 4px;
-  transition: background 0.15s;
-}
-
-.keyword-assist-panel__item:hover {
-  background: var(--color-bg-hover, #f1f5f9);
+  align-items: center;
+  padding: 0.375rem 0;
+  font-size: 0.8125rem;
 }
 
 .keyword-assist-panel__keyword {
-  font-size: 0.8125rem;
+  flex: 1;
   color: var(--color-text, #1e293b);
 }
 
 .keyword-assist-panel__action {
-  padding: 0.25rem 0.75rem;
+  padding: 0.25rem 0.625rem;
   font-size: 0.75rem;
-  font-weight: 600;
-  color: var(--color-primary, #3b82f6);
+  font-weight: 500;
+  color: var(--color-primary, #2563eb);
   background: transparent;
-  border: 1px solid var(--color-primary, #3b82f6);
+  border: 1px solid var(--color-primary, #2563eb);
   border-radius: 4px;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
+  transition: background 0.15s;
 }
 
 .keyword-assist-panel__action:hover {
-  background: var(--color-primary, #3b82f6);
+  background: var(--color-primary, #2563eb);
   color: white;
 }
 </style>

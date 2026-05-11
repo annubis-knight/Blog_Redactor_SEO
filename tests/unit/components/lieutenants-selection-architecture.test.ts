@@ -81,12 +81,15 @@ vi.mock('../../../src/stores/ui/cost-log.store', () => ({
     clearAll: vi.fn(), toggleCollapsed: vi.fn(),
   }),
 }))
-vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
-  useMoteurBasketStore: () => ({
-    keywords: [], keywordStrings: [], count: 0, isEmpty: true, bestKeyword: null,
-    validatedKeywords: [], articleId: null,
-    setArticle: vi.fn(), addKeywords: vi.fn(), removeKeyword: vi.fn(),
-    markValidated: vi.fn(), clear: vi.fn(), $reset: vi.fn(),
+
+
+vi.mock('../../../src/stores/article/radar-exploration.store', () => ({
+  useRadarExplorationStore: () => ({
+    entry: null, articleId: null, isLoading: false, isMutating: false,
+    generatedKeywords: [], scanCards: [], hasScanResult: false, scanResult: null,
+    setArticle: vi.fn(), hydrate: vi.fn(), addKeyword: vi.fn(),
+    removeKeyword: vi.fn(), addKeywordsBatch: vi.fn(), setScanResultLocal: vi.fn(),
+    $reset: vi.fn(),
   }),
 }))
 

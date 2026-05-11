@@ -126,6 +126,27 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
+// Mock du store Radar DB-first (consommé par KeywordAssistPanel via prop).
+vi.mock('../../../src/stores/article/radar-exploration.store', () => ({
+  useRadarExplorationStore: () => ({
+    entry: null,
+    articleId: null,
+    isLoading: false,
+    isMutating: false,
+    generatedKeywords: [],
+    scanCards: [],
+    hasScanResult: false,
+    scanResult: null,
+    setArticle: vi.fn(),
+    hydrate: vi.fn(),
+    addKeyword: vi.fn(),
+    removeKeyword: vi.fn(),
+    addKeywordsBatch: vi.fn(),
+    setScanResultLocal: vi.fn(),
+    $reset: vi.fn(),
+  }),
+}))
+
 // Sprint 7 P1 — Mock du store pile de messages (utilisé pour logs scan SERP)
 vi.mock('../../../src/stores/ui/cost-log.store', () => ({
   useCostLogStore: () => ({
@@ -138,25 +159,6 @@ vi.mock('../../../src/stores/ui/cost-log.store', () => ({
     removeEntry: vi.fn(),
     clearAll: vi.fn(),
     toggleCollapsed: vi.fn(),
-  }),
-}))
-
-// F3 — Mock du store basket (utilisé par KeywordAssistPanel)
-vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
-  useMoteurBasketStore: () => ({
-    keywords: [],
-    keywordStrings: [],
-    count: 0,
-    isEmpty: true,
-    bestKeyword: null,
-    validatedKeywords: [],
-    articleId: null,
-    setArticle: vi.fn(),
-    addKeywords: vi.fn(),
-    removeKeyword: vi.fn(),
-    markValidated: vi.fn(),
-    clear: vi.fn(),
-    $reset: vi.fn(),
   }),
 }))
 

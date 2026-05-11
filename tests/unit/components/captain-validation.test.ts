@@ -189,25 +189,6 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-// F3 — Mock du store basket (utilisé par KeywordAssistPanel, sous-composant de CaptainPanel)
-vi.mock('../../../src/stores/article/moteur-basket.store', () => ({
-  useMoteurBasketStore: () => ({
-    keywords: [],
-    keywordStrings: [],
-    count: 0,
-    isEmpty: true,
-    bestKeyword: null,
-    validatedKeywords: [],
-    articleId: null,
-    setArticle: vi.fn(),
-    addKeywords: vi.fn(),
-    removeKeyword: vi.fn(),
-    markValidated: vi.fn(),
-    clear: vi.fn(),
-    $reset: vi.fn(),
-  }),
-}))
-
 const mockArticle: SelectedArticle = {
   id: 1,
   slug: 'test-article',

@@ -11,7 +11,6 @@ import { ref } from 'vue'
 import { setActivePinia, createPinia } from 'pinia'
 import { useMoteurCrossTabState } from '../../../../src/composables/moteur/useMoteurCrossTabState'
 import { useArticleKeywordsStore } from '../../../../src/stores/article/article-keywords.store'
-import { useMoteurBasketStore } from '../../../../src/stores/article/moteur-basket.store'
 import type { SelectedArticle } from '../../../../shared/types/index'
 import type { RadarCard } from '../../../../shared/types/intent.types'
 import { MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE } from '../../../../shared/constants/workflow-checks.constants.js'
@@ -46,7 +45,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore: useArticleKeywordsStore(),
-      basketStore: useMoteurBasketStore(),
       setActiveTab,
       emitCheckCompleted,
     })
@@ -68,7 +66,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore: useArticleKeywordsStore(),
-      basketStore: useMoteurBasketStore(),
       setActiveTab,
       emitCheckCompleted,
     })
@@ -79,16 +76,13 @@ describe('useMoteurCrossTabState', () => {
     expect(emitCheckCompleted).toHaveBeenCalledWith(MOTEUR_RADAR_DONE)
   })
 
-  it('AC.I.12 — handleSendToRadar publie keywords + ajoute au basket + switch tab + émet check', () => {
+  it('AC.I.12 — handleSendToRadar publie keywords + switch tab + émet check (DB-first)', () => {
     const setActiveTab = vi.fn()
     const emitCheckCompleted = vi.fn()
-    const basketStore = useMoteurBasketStore()
-    const addKeywordsSpy = vi.spyOn(basketStore, 'addKeywords')
 
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore: useArticleKeywordsStore(),
-      basketStore,
       setActiveTab,
       emitCheckCompleted,
     })
@@ -101,8 +95,8 @@ describe('useMoteurCrossTabState', () => {
     expect(api.discoveryRadarKeywords.value).toHaveLength(2)
     expect(setActiveTab).toHaveBeenCalledWith('radar')
     expect(emitCheckCompleted).toHaveBeenCalledWith(MOTEUR_DISCOVERY_DONE)
-    expect(addKeywordsSpy).toHaveBeenCalled()
-    expect(addKeywordsSpy.mock.calls[0]![0][0].source).toBe('discovery')
+    // L'écriture en DB se fait via useRadarExplorationStore.addKeywordsBatch
+    // (testé séparément dans tests/unit/stores/radar-exploration.store.test.ts).
   })
 
   it('AC.I.13 — handleSendToLieutenants propage rootKeywords sans perte + switch tab', () => {
@@ -110,7 +104,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore: useArticleKeywordsStore(),
-      basketStore: useMoteurBasketStore(),
       setActiveTab,
       emitCheckCompleted: vi.fn(),
     })
@@ -128,7 +121,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore,
-      basketStore: useMoteurBasketStore(),
       setActiveTab: vi.fn(),
       emitCheckCompleted: vi.fn(),
     })
@@ -148,7 +140,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore,
-      basketStore: useMoteurBasketStore(),
       setActiveTab: vi.fn(),
       emitCheckCompleted: vi.fn(),
     })
@@ -163,7 +154,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore: useArticleKeywordsStore(),
-      basketStore: useMoteurBasketStore(),
       setActiveTab: vi.fn(),
       emitCheckCompleted: vi.fn(),
     })
@@ -186,7 +176,6 @@ describe('useMoteurCrossTabState', () => {
     const api = useMoteurCrossTabState({
       selectedArticle: ref(makeArticle()),
       articleKeywordsStore: useArticleKeywordsStore(),
-      basketStore: useMoteurBasketStore(),
       setActiveTab: vi.fn(),
       emitCheckCompleted: vi.fn(),
     })

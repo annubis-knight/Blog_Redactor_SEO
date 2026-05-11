@@ -14,6 +14,7 @@ import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
+import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
 // LieutenantsResultsLayout formalise FR-LIE-AI-FRONTIER (containers principaux
 // ne sont JAMAIS descendants du panel IA).
 import LieutenantsResultsLayout from '@/components/moteur/lieutenants/LieutenantsResultsLayout.vue'
@@ -49,6 +50,25 @@ const emit = defineEmits<{
 
 const articleKeywordsStore = useArticleKeywordsStore()
 const activityLog = useCostLogStore()
+const radarStore = useRadarExplorationStore()
+
+// FR-MOT-BASKET-DEPRECATED : keywords proposés au KeywordAssistPanel viennent
+// du store Radar DB-first (union scan_result.cards + generated_keywords). Plus
+// de dépendance au basket mémoire.
+const assistKeywords = computed<string[]>(() => {
+  const fromScan = radarStore.scanCards.map(c => c.keyword)
+  const fromGenerated = radarStore.generatedKeywords.map(k => k.keyword)
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const kw of [...fromScan, ...fromGenerated]) {
+    const norm = kw.toLowerCase()
+    if (!seen.has(norm)) {
+      seen.add(norm)
+      out.push(kw)
+    }
+  }
+  return out
+})
 
 // Direct exploration saves — each event persists to its dedicated table
 
@@ -532,9 +552,10 @@ async function analyzeSERPWithStep(): Promise<void> {
       <p>Verrouillez votre Capitaine dans l'onglet precedent pour analyser la SERP.</p>
     </div>
 
-    <!-- F3 — Suggestions depuis le basket, ajoutées comme lieutenants candidats -->
+    <!-- Suggestions de keywords issues du Radar DB-first, à ajouter comme lieutenants candidats. -->
     <KeywordAssistPanel
       context="lieutenants"
+      :keywords="assistKeywords"
       :exclude-keywords="lieutenantCards.map(c => c.keyword)"
       @add="handleAssistAdd"
     />
