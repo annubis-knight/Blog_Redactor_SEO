@@ -13,6 +13,7 @@ const mockCocoon: Cocoon = {
     { title: 'Article 1', type: 'Pilier', slug: 'article-1', topic: null, status: 'à rédiger' },
     { title: 'Article 2', type: 'Intermédiaire', slug: 'article-2', topic: null, status: 'brouillon' },
   ],
+  publishedArticles: [],
   stats: {
     totalArticles: 2,
     byType: { pilier: 1, intermediaire: 1, specialise: 0 },

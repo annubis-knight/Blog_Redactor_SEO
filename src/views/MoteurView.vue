@@ -130,8 +130,13 @@ const suggestedArticlesForRecap = computed<Article[]>(() =>
   })),
 )
 
+// FR-MOT-RECAP-PUBLISHED : la section récap "Articles publiés" ne doit afficher
+// QUE les articles `phase IN ('redaction', 'published')`. La dérivation est faite
+// côté backend dans `loadArticlesDb` ; on lit ici le champ déjà filtré pour ne
+// pas dupliquer le filtre (anti-régression : 2026-05-11, les articles `proposed`
+// fraîchement insérés par Cerveau apparaissaient à tort dans "publiés").
 const publishedArticles = computed(() =>
-  cocoon.value?.articles ?? [],
+  cocoon.value?.publishedArticles ?? [],
 )
 
 const pilierKeyword = computed(() =>

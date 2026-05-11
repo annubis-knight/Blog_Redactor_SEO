@@ -27,5 +27,13 @@ export interface Cocoon {
   name: string
   siloName: string
   articles: Article[]
+  /**
+   * FR-MOT-RECAP-PUBLISHED — sous-ensemble de `articles` filtré sur
+   * `phase IN ('redaction', 'published')`. Dérivé côté backend dans
+   * `loadArticlesDb`. Consommé par la section récap "Articles publiés" du
+   * `MoteurContextRecap` via `MoteurView`. Ne pas confondre avec les articles
+   * suggérés (qui vivent dans `strategyStore.proposedArticles`, hors payload Cocoon).
+   */
+  publishedArticles: Article[]
   stats: CocoonStats
 }

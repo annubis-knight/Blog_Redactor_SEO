@@ -34,6 +34,7 @@ const MOCK_COCOON: Cocoon = {
     { id: 4, title: 'Micro-interactions CSS', type: 'Spécialisé', slug: 'micro-interactions-css', topic: null, status: 'à rédiger' },
     { id: 5, title: 'Dark mode design', type: 'Spécialisé', slug: 'dark-mode-design', topic: null, status: 'à rédiger' },
   ],
+  publishedArticles: [],
   stats: { totalArticles: 5, byType: { pilier: 1, intermediaire: 2, specialise: 2 }, byStatus: { aRediger: 5, brouillon: 0, publie: 0 }, completionPercent: 0 },
 }
 

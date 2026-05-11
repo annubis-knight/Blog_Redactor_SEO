@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-05-09T19:14:59.941Z",
+  "generated_at": "2026-05-11T09:31:28.616Z",
   "git": {
-    "commit": "0cb1283",
-    "branch": "feat/chantier-3-ux-lexique",
-    "subject": "Merge branch 'feat/decouplage-lieutenants-lexique' into main",
+    "commit": "ca63332",
+    "branch": "fix/moteur-recap-published-filter",
+    "subject": "Merge branch 'feat/discovery-ai-coque-persistante'",
     "clean": false
   },
   "totals": {
-    "passed": 4088,
-    "failed": 28,
-    "skipped": 244
+    "passed": 3965,
+    "failed": 33,
+    "skipped": 247
   },
-  "fingerprint": "sha256:1bf8da62a2ea0f2c416681c371c2db513b07d6a0810d035aa0edb3246bed67d0",
+  "fingerprint": "sha256:9c70a9b4e1d37142a76e02507608bb60e7d70da6abe1b05bd8d1f84c7e5825c8",
   "failures": [
     {
       "file": "tests/contract-api/article-explorations-counts.contract.test.ts",
@@ -24,6 +24,10 @@
     {
       "file": "tests/contract-api/cocoons-id-stability.contract.test.ts",
       "name": "Contract /cocoons — stabilité des identifiants GET /cocoons/:id/articles résout par id DB et survit à la suppression d'un cocon antérieur"
+    },
+    {
+      "file": "tests/contract-api/intent-local-gap.contract.test.ts",
+      "name": "Contract /serp/analyze POST OK → { keyword, competitors[] }"
     },
     {
       "file": "tests/contract-api/keywords.contract.test.ts",
@@ -118,12 +122,28 @@
       "name": "Test quality — anti-régression qualité de la suite it.skip / describe.skip ne doivent pas augmenter (baseline: 88)"
     },
     {
-      "file": "tests/unit/coherence/test-quality.test.ts",
-      "name": "Test quality — anti-régression qualité de la suite it.todo() ne doit pas augmenter (baseline: 132)"
+      "file": "tests/unit/services/data.service.test.ts",
+      "name": "data.service — getArticleBySlug returned article has all expected fields"
     },
     {
-      "file": "tests/unit/coherence/test-quality.test.ts",
-      "name": "Test quality — anti-régression qualité de la suite zéro pattern conditionnel silencieux (limite stricte: 0)"
+      "file": "tests/unit/services/data.service.test.ts",
+      "name": "data.service — getArticleBySlug returns article and cocoonName for valid slug"
+    },
+    {
+      "file": "tests/unit/services/data.service.test.ts",
+      "name": "data.service — getCocoonsBySilo returns cocoons for valid silo name"
+    },
+    {
+      "file": "tests/unit/services/data.service.test.ts",
+      "name": "data.service — getKeywordsByCocoon all keywords belong to the requested cocoon"
+    },
+    {
+      "file": "tests/unit/services/data.service.test.ts",
+      "name": "data.service — getKeywordsByCocoon keywords have camelCase properties"
+    },
+    {
+      "file": "tests/unit/services/data.service.test.ts",
+      "name": "data.service — getKeywordsByCocoon returns keywords for valid cocoon name"
     }
   ],
   "note": "Fichier généré par `npm run test:snapshot`. Ne pas éditer à la main. Régénérer après réparation/ajout de tests."

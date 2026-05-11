@@ -92,6 +92,17 @@ function rowToArticle(row: Record<string, unknown>): Article {
 // Articles DB (Silos → Cocoons → Articles)
 // ---------------------------------------------------------------------------
 
+/**
+ * AUTHORITY: PostgreSQL `articles` table (jointe à `silos` + `cocoons`)
+ * READS FROM: GET /api/cocoons, GET /api/silos (via getSilos), GET /api/cocoons/:id/articles
+ * WRITES TO: (lecture seule — les mutations passent par addArticlesToCocoon / updateArticle)
+ * CONSUMERS:
+ *   - cocoon.articles            → liste complète (LinkingMatrix, BriefStructureStep,
+ *                                   useArticleProposals, sélecteur article Moteur)
+ *   - cocoon.publishedArticles   → sous-ensemble `phase IN ('redaction','published')`,
+ *                                   consommé par MoteurContextRecap (section "Articles publiés")
+ * RELATED FR: FR-MOT-PHASES, FR-MOT-RECAP-PUBLISHED
+ */
 export async function loadArticlesDb(): Promise<Cocoon[]> {
   const res = await pool.query(`
     SELECT
@@ -121,6 +132,7 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
         name: row.cocoon_nom,
         siloName: row.silo_nom,
         articles: [],
+        publishedArticles: [],
         stats: computeStats([]),
       })
     }
@@ -130,10 +142,13 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
     }
   }
 
-  // Recompute stats
+  // Recompute stats + derive publishedArticles (FR-MOT-RECAP-PUBLISHED)
   const cocoons = Array.from(cocoonMap.values())
   for (const c of cocoons) {
     c.stats = computeStats(c.articles)
+    c.publishedArticles = c.articles.filter(
+      a => a.phase === 'redaction' || a.phase === 'published',
+    )
   }
 
   return cocoons
@@ -183,6 +198,10 @@ export async function getSilos(): Promise<Silo[]> {
       name: row.cocoon_nom,
       siloName: row.silo_nom,
       articles,
+      // FR-MOT-RECAP-PUBLISHED
+      publishedArticles: articles.filter(
+        a => a.phase === 'redaction' || a.phase === 'published',
+      ),
       stats: computeStats(articles),
     }
     if (!siloCocoonsMap.has(row.silo_id)) siloCocoonsMap.set(row.silo_id, [])
@@ -388,7 +407,7 @@ export async function addCocoonToSilo(siloName: string, cocoonName: string): Pro
   }
 
   log.info('addCocoonToSilo', { cocoonName, siloName, id: cocoonDbId })
-  return { id: id >= 0 ? id : cocoonDbId, name: cocoonName, siloName, articles: [], stats: emptyStats }
+  return { id: id >= 0 ? id : cocoonDbId, name: cocoonName, siloName, articles: [], publishedArticles: [], stats: emptyStats }
 }
 
 export async function addArticlesToCocoon(
@@ -539,13 +558,11 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   ops.push(...lieutOps)
 
   // Build richCaptain from decision + exploration data.
-  // NOTE: we also build it when exploredKeywords is non-empty even without a
-  // locked captain — otherwise the carousel on the Captain tab can't rehydrate
-  // past explorations after a refresh. (Bug fix Sprint 0.1.)
-  //
-  // 2026-05-07 — `captain_locked_at` SUPPRIME : status est derive directement
-  // de `capitaine` non-vide. Source unique de verite = article_keywords.capitaine.
-  // Plus de champ `lockedAt` dans le type RichCaptain.
+  // NOTE: on le build aussi quand exploredKeywords est non-vide même sans
+  // capitaine verrouillé — sinon le carousel de l'onglet Capitaine ne peut
+  // pas rehydrater les explorations passées après un refresh.
+  // `status` est dérivé directement de `capitaine` non-vide (source unique
+  // de vérité = article_keywords.capitaine).
   const captainKeyword = row.capitaine ?? ''
   const hasExplorations = exploredKeywords.length > 0
   const captainTest = captainKeyword
@@ -654,8 +671,8 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
   const tTotal = Date.now()
   log.debug('[getCaptainExplorations] démarrage', { articleId })
   const ops: DbOp[] = []
-  // Sprint 15.3-bis — JOIN keyword_metrics to rebuild KPIs on the fly.
-  // captain_explorations no longer stores `kpis` (migration 011).
+  // JOIN keyword_metrics pour reconstruire les KPIs à la volée.
+  // captain_explorations ne stocke plus `kpis` (migration 011).
   const t1 = Date.now()
   const res = await pool.query(
     `SELECT
@@ -732,9 +749,9 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     }
   }
   if (legacyRelevanceCount > 0) {
-    // Sprint 9 — snapshot Radar ancien avec relevanceScore persisté. On ignore
-    // silencieusement (live computation remplace), mais on log.warn pour traçabilité
-    // (FR-RAD-NO-RELEVANCE-IN-SCAN : les nouveaux scans ne stockent plus ce champ).
+    // Snapshot Radar legacy avec relevanceScore persisté. On ignore silencieusement
+    // (live computation remplace), log.warn pour traçabilité.
+    // FR-RAD-NO-RELEVANCE-IN-SCAN : les nouveaux scans ne stockent plus ce champ.
     log.warn('[captain-explorations] legacy relevanceScore in snapshot ignored (live computation)', {
       articleId,
       ignoredCount: legacyRelevanceCount,
@@ -746,32 +763,30 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     captainKeywords: res.rows.map(r => r.keyword),
   })
 
-  // 2026-05-05 — Calcul Pertinence à la volée (FR-CAP-RELEVANCE-COMPUTED-LIVE).
+  // Calcul Pertinence à la volée (FR-CAP-RELEVANCE-COMPUTED-LIVE).
   // Mémoïsation des racines partagées via Map locale serveur (FR-CAP-RELEVANCE-MEMOIZATION).
   // Source de vérité : docs/data-flows/relevance-score-live-computation.md.
   const t4 = Date.now()
   const captainKeywordsForRelevance = res.rows.map(r => ({
     keyword: r.keyword as string,
     rootKeywords: (r.root_keywords ?? []) as string[],
-    // TODO [chantier:long-tail-detection] — détection longue-traîne pour Pertinence
+    // TODO long-tail-detection — détection longue-traîne pour Pertinence
     //
     // POURQUOI codé en dur à `false` :
-    //   Au moment du chantier "calcul Pertinence à la volée" (2026-05-05), il
-    //   n'existait aucun signal fiable côté DB pour distinguer une card
-    //   longue-traîne (issue de la combinaison IA Radar) d'une card SERP
-    //   classique. Les deux atterrissent dans `captain_explorations` sans flag
-    //   distinctif. On a donc passé `false` partout — conséquence : aucune
-    //   card ne déclenche aujourd'hui le cas `'long-tail'` du tooltip Pertinence.
-    //   Les longues-traînes sans KPIs marché tombent dans `'missing-paa'` au
-    //   lieu de `'long-tail'` — le tooltip est moins précis mais pas faux.
+    //   Aucun signal fiable côté DB pour distinguer une card longue-traîne
+    //   (issue de la combinaison IA Radar) d'une card SERP classique. Les
+    //   deux atterrissent dans `captain_explorations` sans flag distinctif.
+    //   Conséquence : aucune card ne déclenche aujourd'hui le cas
+    //   `'long-tail'` du tooltip Pertinence. Les longues-traînes sans KPIs
+    //   marché tombent dans `'missing-paa'` — le tooltip est moins précis
+    //   mais pas faux.
     //
     // QUAND s'y attaquer :
     //   - Soit ajouter une colonne `is_long_tail` dans `captain_explorations`
     //     (alimentée à l'écriture par radar-exploration.routes / send-captain).
-    //   - Soit détecter dynamiquement via `kpis === null` côté reader (plus
-    //     fragile, dépend de l'état DataForSEO).
-    //   La 1re option est la plus robuste — c'est elle qui était envisagée
-    //   dans la tech-spec initiale.
+    //   - Soit détecter dynamiquement via `kpis === null` côté reader
+    //     (plus fragile, dépend de l'état DataForSEO).
+    //   La 1re option est la plus robuste.
     //
     // FR/NFR concernés :
     //   - FR-CAP-RELEVANCE-UNAVAILABLE-REASON (PRD §FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
@@ -951,13 +966,10 @@ export async function saveLieutenantExplorations(
 ): Promise<DbOp> {
   const t = Date.now()
   let rowCount = 0
-  // 2026-05-08 — Protection "no-downgrade locked → suggested" SUPPRIMEE.
-  // Cette garde datait de l'epoque ou les batch saves IA pouvaient ecraser
-  // les decisions utilisateur. Depuis sprint 17 (FR-LIE-CHECKBOX-LOCK-IMMEDIATE)
-  // le verrouillage est atomique par checkbox, et le payload reflete TOUJOURS
-  // l'etat voulu par l'utilisateur. Sans suppression, un unlock individuel
-  // (status='suggested') ne pouvait pas persister, le row restait `locked`
-  // en DB et au reload la checkbox reapparaissait cochee.
+  // Pas de garde "no-downgrade locked → suggested" : le verrouillage est
+  // atomique par checkbox (FR-LIE-CHECKBOX-LOCK-IMMEDIATE), le payload reflète
+  // toujours l'état voulu par l'utilisateur. Une garde ici bloquerait un unlock
+  // individuel et la checkbox réapparaîtrait cochée au reload.
   for (const lt of entries) {
     const res = await pool.query(`
       INSERT INTO lieutenant_explorations (article_id, keyword, status, captain_keyword, reasoning, sources, suggested_hn_level, score, kpis, explored_at)
@@ -980,9 +992,9 @@ export async function saveLieutenantExplorations(
 }
 
 /**
- * Sprint 12 (D3) — Mark all non-archived lieutenant rows as archived so they
- * stop being displayed by default in the UI while staying in DB for audit.
- * Used when the user unlocks the Capitaine and chooses "Archiver".
+ * Marque toutes les rows lieutenant non-archivées comme archived : elles
+ * cessent d'être affichées par défaut dans l'UI tout en restant en DB pour audit.
+ * Appelé quand l'utilisateur déverrouille le Capitaine et choisit "Archiver".
  */
 export async function archiveLieutenantExplorations(articleId: number): Promise<number> {
   const res = await pool.query(

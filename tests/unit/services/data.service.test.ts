@@ -74,6 +74,62 @@ describe('data.service — getCocoons', () => {
   })
 })
 
+/**
+ * FR-MOT-RECAP-PUBLISHED — `publishedArticles` est un champ dérivé sur la payload
+ * Cocoon, filtré sur `phase IN ('redaction', 'published')`. Garantit que les sections
+ * récap "Articles suggérés" et "Articles publiés" du MoteurContextRecap ne se
+ * chevauchent jamais (bug 2026-05-11 : 13 articles Cerveau apparaissaient dans
+ * les deux listes simultanément).
+ */
+describe('data.service — getCocoons.publishedArticles (FR-MOT-RECAP-PUBLISHED)', () => {
+  it('AC.RECAP-PUB.3: chaque cocon expose un champ publishedArticles (Article[])', async () => {
+    const cocoons = await getCocoons()
+    for (const cocoon of cocoons) {
+      expect(cocoon).toHaveProperty('publishedArticles')
+      expect(Array.isArray(cocoon.publishedArticles)).toBe(true)
+    }
+  })
+
+  it('AC.RECAP-PUB.2: publishedArticles ne contient aucun article phase=proposed ni phase=moteur', async () => {
+    const cocoons = await getCocoons()
+    for (const cocoon of cocoons) {
+      for (const article of cocoon.publishedArticles) {
+        expect(article.phase).not.toBe('proposed')
+        expect(article.phase).not.toBe('moteur')
+      }
+    }
+  })
+
+  it('publishedArticles ne contient QUE des articles phase=redaction ou phase=published', async () => {
+    const cocoons = await getCocoons()
+    for (const cocoon of cocoons) {
+      for (const article of cocoon.publishedArticles) {
+        expect(['redaction', 'published']).toContain(article.phase)
+      }
+    }
+  })
+
+  it('AC.RECAP-PUB.1: publishedArticles.length === count(articles where phase IN (redaction, published))', async () => {
+    const cocoons = await getCocoons()
+    for (const cocoon of cocoons) {
+      const expected = cocoon.articles.filter(
+        a => a.phase === 'redaction' || a.phase === 'published',
+      ).length
+      expect(cocoon.publishedArticles.length).toBe(expected)
+    }
+  })
+
+  it('publishedArticles ⊂ articles (chaque entrée est référencée dans articles par id)', async () => {
+    const cocoons = await getCocoons()
+    for (const cocoon of cocoons) {
+      const articleIds = new Set(cocoon.articles.map(a => a.id))
+      for (const published of cocoon.publishedArticles) {
+        expect(articleIds.has(published.id)).toBe(true)
+      }
+    }
+  })
+})
+
 describe('data.service — getArticlesByCocoon', () => {
   it('returns articles for valid cocoon index', async () => {
     const articles = await getArticlesByCocoon(0)
