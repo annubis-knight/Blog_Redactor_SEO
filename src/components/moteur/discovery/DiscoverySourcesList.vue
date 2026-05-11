@@ -9,6 +9,9 @@ interface SourceSection {
   loading: boolean
   showReasoning: boolean
   showKpis: boolean
+  /** Si fourni, affiche un bouton inline dans le header quand la section est vide.
+   *  Le clic émet `section-action` avec la `key` de la section. */
+  actionLabel?: string
 }
 
 defineProps<{
@@ -32,6 +35,7 @@ defineEmits<{
   (e: 'toggle-source', source: DiscoverySource): void
   (e: 'keyword-click', keyword: string): void
   (e: 'toggle-section-expanded', key: DiscoverySource): void
+  (e: 'section-action', key: DiscoverySource): void
 }>()
 </script>
 
@@ -47,10 +51,19 @@ defineEmits<{
             <template v-if="section.loading">
               <span class="spinner-small" />
             </template>
-            <template v-else-if="section.list.length > 0">
+            <template v-else>
               ({{ filteredList(section.list).length }}<template v-if="filteredList(section.list).length !== section.list.length">/{{ section.list.length }}</template>)
             </template>
           </span>
+          <button
+            v-if="section.actionLabel && section.list.length === 0 && !section.loading"
+            type="button"
+            class="source-header__action"
+            data-testid="source-header-action"
+            @click.stop="$emit('section-action', section.key)"
+          >
+            {{ section.actionLabel }}
+          </button>
           <label
             v-if="filteredList(section.list).length > 0"
             class="source-header__check-all"
@@ -180,6 +193,22 @@ defineEmits<{
   display: flex;
   align-items: center;
   gap: 4px;
+}
+
+.source-header__action {
+  margin-left: auto;
+  padding: 3px 10px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: white;
+  background: #9333ea;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.source-header__action:hover {
+  background: #7c2eca;
 }
 
 .source-header__check-all {

@@ -16,8 +16,15 @@ interface AutoGroup {
   items: KeywordRadarScanResult['autocomplete']['suggestions']
 }
 
+/**
+ * Accepte `scanResult: null` pour rendre un squelette identique au vrai
+ * layout (NFR-UX-STABLE-SKELETON) : RadarThermometer en état vide,
+ * autocomplete <details> vide, section cards avec message d'invitation.
+ * Conserve les vrais composants et leur ordre/structure → l'utilisateur
+ * voit les sections se REMPLIR au lieu de la silhouette qui change.
+ */
 defineProps<{
-  scanResult: KeywordRadarScanResult
+  scanResult: KeywordRadarScanResult | null
   filteredCards: RadarCard[]
   radarSortOptions: SortOption[]
   radarSortState: { key: string | null; direction: 'asc' | 'desc' | 'neutral' }
@@ -46,24 +53,28 @@ defineEmits<{
 </script>
 
 <template>
-  <div class="scanner-results">
-    <!-- Global thermometer -->
+  <div class="scanner-results" :data-empty="!scanResult">
+    <!-- Global thermometer (rendu toujours, état vide quand scanResult null). -->
     <RadarThermometer
-      :global-score="scanResult.globalScore"
-      :heat-level="scanResult.heatLevel"
-      :keywords-count="scanResult.cards.length"
-      :autocomplete-count="scanResult.autocomplete.totalCount"
-      :paa-total="scanResult.cards.reduce((s, c) => s + (c.kpis?.paaTotal ?? 0), 0)"
-      :verdict="scanResult.verdict"
+      :global-score="scanResult ? scanResult.globalScore : null"
+      :heat-level="scanResult ? scanResult.heatLevel : null"
+      :keywords-count="scanResult ? scanResult.cards.length : 0"
+      :autocomplete-count="scanResult ? scanResult.autocomplete.totalCount : 0"
+      :paa-total="scanResult ? scanResult.cards.reduce((s, c) => s + (c.kpis?.paaTotal ?? 0), 0) : 0"
+      :verdict="scanResult ? scanResult.verdict : undefined"
     />
 
-    <!-- Autocomplete section (collapsed by default) -->
-    <details v-if="scanResult.autocomplete.totalCount > 0" class="autocomplete-section">
+    <!-- Autocomplete section : toujours rendue, summary affiche (0) si pas de scan. -->
+    <details class="autocomplete-section" :class="{ 'autocomplete-section--empty': !scanResult || scanResult.autocomplete.totalCount === 0 }">
       <summary class="autocomplete-summary">
-        <h4 class="section-title section-title--inline">Autocomplete ({{ scanResult.autocomplete.totalCount }})</h4>
-        <span class="autocomplete-hint">Cliquer pour d&eacute;ployer</span>
+        <h4 class="section-title section-title--inline">
+          Autocomplete ({{ scanResult ? scanResult.autocomplete.totalCount : 0 }})
+        </h4>
+        <span class="autocomplete-hint">
+          {{ scanResult && scanResult.autocomplete.totalCount > 0 ? 'Cliquer pour déployer' : 'Aucune suggestion — lance un scan' }}
+        </span>
       </summary>
-      <div class="auto-groups">
+      <div v-if="scanResult && scanResult.autocomplete.totalCount > 0" class="auto-groups">
         <div v-for="(group, gIdx) in autoGroups" :key="'ag-' + gIdx" class="auto-group">
           <span class="auto-group-label">
             <span class="auto-query-icon">{{ group.query.startsWith('*') ? '\u2190 ' : '\u2192 ' }}</span>
@@ -79,9 +90,10 @@ defineEmits<{
       </div>
     </details>
 
-    <!-- Keyword cards with checkboxes -->
-    <div class="radar-cards">
+    <!-- Keyword cards with checkboxes (ou placeholder vide). -->
+    <div class="radar-cards" :class="{ 'radar-cards--empty': !scanResult }">
       <SortToggleBar
+        v-if="scanResult"
         :options="radarSortOptions"
         :model-value="radarSortState"
         :count-label="filteredCards.length !== scanResult.cards.length ? `${filteredCards.length} / ${scanResult.cards.length} mots-clés` : `${filteredCards.length} mots-clés`"
@@ -102,6 +114,12 @@ defineEmits<{
           </label>
         </template>
       </SortToggleBar>
+      <!-- Header placeholder à l'identique pour l'état vide. -->
+      <div v-else class="radar-cards__empty-header">
+        <h4 class="section-title section-title--inline">Cartes radar (0)</h4>
+        <span class="autocomplete-hint">Les cartes apparaîtront après le scan</span>
+      </div>
+
       <RadarCardCheckable
         v-for="card in filteredCards"
         :key="card.keyword"
@@ -116,7 +134,7 @@ defineEmits<{
       />
 
       <RadarLongTailSuggestions
-        v-if="articleId"
+        v-if="articleId && scanResult"
         :article-id="articleId"
         :article-title="articleTopic"
         :article-pain-point="painPoint"
@@ -147,6 +165,26 @@ defineEmits<{
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: 6px;
+}
+
+.autocomplete-section--empty {
+  opacity: 0.55;
+  border-style: dashed;
+  pointer-events: none;
+}
+
+.radar-cards--empty {
+  opacity: 0.55;
+}
+
+.radar-cards__empty-header {
+  padding: 0.75rem 1rem;
+  background: var(--color-surface);
+  border: 1px dashed var(--color-border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
 .autocomplete-summary {
