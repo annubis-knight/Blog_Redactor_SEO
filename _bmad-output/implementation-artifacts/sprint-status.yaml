@@ -676,6 +676,60 @@ development_status:
   # (_setup-sanity.test nécessite dev server + data.service.test backend).
   discovery-ai-coque-persistante: done
 
+  # Chantier refonte DB-first de l'onglet Radar (2026-05-11)
+  # tech-spec-radar-dbfirst-refactor.md.
+  # Audit complet docs/data-flows/radar-keywords.md.
+  # Sprint A — backend :
+  #   * radar-exploration.service.ts : +3 fonctions idempotentes
+  #     (addKeyword / removeKeyword / addKeywordsBatch).
+  #   * radar-exploration.routes.ts : +3 routes (POST/DELETE/POST batch).
+  #   * keyword-radar.service.ts : correction de l'aberration autocomplete —
+  #     fetch par keyword avec cache cross-article TTL via keyword_autocomplete
+  #     (au lieu d'1 appel global sur specificTopic). Conserve le pool global
+  #     pour le pain alignment moyen.
+  #   * tests contract-api/radar-exploration-keyword.contract.test.ts (14 ACs).
+  # Sprint B — front Radar DB-first :
+  #   * src/stores/article/radar-exploration.store.ts (nouveau Pinia, header
+  #     AUTHORITY explicite). Cache local hydraté depuis la DB au setArticle.
+  #   * RadarPanel.vue : computed useDbFirst (workflow + articleId valide),
+  #     generatedKeywords adaptive (store en workflow, composable en libre).
+  #   * Watcher injectedKeywords écrit en DB via store.addKeywordsBatch
+  #     en mode workflow (Discovery → Radar passe désormais par la DB).
+  #   * Input texte unitaire pattern CaptainInput dans Phase 2 (FR-RAD-MANUAL-ADD).
+  #   * tests/unit/stores/radar-exploration.store.test.ts (11 ACs).
+  # Sprint C — déplacement génération courte-traîne vers Discovery :
+  #   * shared/types/discovery-tab.types.ts : nouvelle valeur 'longtail-ai'.
+  #   * useDiscoveryPanel.ts : nouvelle source longtailKeywords + generateLongTail
+  #     (POST /api/keywords/radar/generate, modèle Haiku, route inchangée).
+  #   * DiscoveryPanel.vue : 7ᵉ section, bouton purple "Courte-traîne IA"
+  #     à côté de "Découvrir".
+  #   * RadarPanel.vue : DouleurScannerInputs repasse à show-inputs=false en
+  #     mode workflow (la génération est sur Discovery désormais).
+  # Sprint D — dépréciation complète du basket :
+  #   * Suppressions : moteur-basket.store.ts (store entier), BasketStrip.vue,
+  #     BasketFloatingPanel.vue, et leurs tests dédiés.
+  #   * Refonte KeywordAssistPanel.vue : prop `keywords: string[]` à la place
+  #     de useMoteurBasketStore. Le parent (Lieutenants/Lexique) fait la
+  #     lecture DB via useRadarExplorationStore.
+  #   * LieutenantsPanel.vue + LexiquePanel.vue : computed assistKeywords
+  #     (union scan_result.cards + generated_keywords dédupliqués).
+  #   * MoteurView.vue : basketStore remplacé par radarExplorationStore
+  #     pour setArticle/$reset. <BasketStrip> retiré.
+  #   * App.vue : <BasketFloatingPanel> retiré.
+  #   * useMoteurCrossTabState.ts : retire la dep basketStore, handleSendToRadar
+  #     écrit désormais en DB via radarStore.addKeywordsBatch (idempotent).
+  #   * 8 fichiers tests adaptés : suppression des vi.mock basket + ajout d'un
+  #     mock radar-exploration.store pour le mount Pinia.
+  # PRD enrichi :
+  #   * FR-DIS-BASKET deprecated, FR-DIS-LONGTAIL-GENERATION nouvelle,
+  #     FR-RAD-DB-FIRST nouvelle, FR-RAD-MANUAL-ADD nouvelle,
+  #     FR-RAD-AUTOCOMPLETE-PER-KEYWORD nouvelle,
+  #     FR-MOT-BASKET-DEPRECATED nouvelle.
+  # Validation : type-check + lint (0 errors) + build verts. test:check :
+  # **13 rouges courants vs 33 baseline** (net positif de 20 rouges en moins).
+  # 11 cycles d'imports restants préexistants (mock-fixtures, scoring types).
+  radar-dbfirst-refactor: done
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur

@@ -1,13 +1,46 @@
 ---
 name: tech-spec-radar-dbfirst-refactor
 type: tech-spec
-status: in-progress
-version: 1.0.0
+status: done
+version: 1.1.0
 last_updated: 2026-05-11
 synced_with:
   - _bmad-output/planning-artifacts/prd.md (FR-RAD-DB-FIRST, FR-RAD-MANUAL-ADD, FR-RAD-AUTOCOMPLETE-PER-KEYWORD, FR-DIS-LONGTAIL-GENERATION, FR-MOT-BASKET-DEPRECATED, FR-DIS-BASKET deprecated)
   - _bmad-output/implementation-artifacts/sprint-status.yaml (entrée radar-dbfirst-refactor)
   - docs/data-flows/radar-keywords.md (audit + décisions architecturales)
+---
+
+## Résultat livré (5 sprints commités)
+
+- **Sprint A — Backend** (commit `b252326`) : +1125 lignes, 7 fichiers. Routes
+  POST/DELETE/POST batch sur `radar_explorations/keyword`, correction
+  autocomplete par keyword, tests contract-api (14 ACs).
+- **Sprint B — Front Radar DB-first** (commit `ece3830`) : +549/-41 lignes,
+  4 fichiers. Nouveau `useRadarExplorationStore` (Pinia, header AUTHORITY),
+  input texte unitaire pattern `CaptainInput`, refonte `RadarPanel`, tests
+  store (11 ACs).
+- **Sprint C — Discovery longtail** (commit `a14a0d6`) : +113/-19 lignes,
+  9 fichiers. Source `'longtail-ai'` dans `useDiscoveryPanel`, bouton purple
+  dans `DiscoveryPanel`, `RadarPanel` masque ses inputs en mode workflow.
+- **Sprint D — Dépréciation basket** (commit `0432095`) : +225/-1039 lignes,
+  21 fichiers. Suppression complète du store basket + 2 composants visuels,
+  refonte `KeywordAssistPanel` (prop `keywords`), adaptation
+  `Lieutenants/Lexique/MoteurView/App/useMoteurCrossTabState`.
+
+**Total** : +2012/-1099 lignes nettes (+913), couvrant 5 nouvelles FRs + 1
+dépréciation + 1 NFR transverse.
+
+## Validation
+
+- `npm run type-check` : vert.
+- `npm run lint` : 0 erreurs (267 warnings préexistants `no-explicit-any`).
+- `npm run test:check` : **13 rouges courants vs 33 baseline** (net positif
+  de 20 rouges en moins). 22 baseline rouges passent maintenant, 2 nouveaux
+  rouges sont préexistants (`_setup-sanity` nécessite dev server).
+- `npm run build` : vert (~9-13s).
+- `npm run check:cycles` : 11 cycles préexistants
+  (mock-fixtures, scoring types), non liés au chantier.
+
 ---
 
 # Tech-spec — Refonte DB-first de l'onglet Radar

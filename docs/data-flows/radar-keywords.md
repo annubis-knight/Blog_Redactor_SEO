@@ -15,7 +15,7 @@ related_fr:
 
 # Data Flow — Radar keywords (audit + plan de migration)
 
-> **Statut :** AUDIT validé, chantier d'implémentation en cours sur `feat/radar-dbfirst-refactor`.
+> **Statut :** **IMPLÉMENTÉ** 2026-05-11 sur branche `feat/radar-dbfirst-refactor` (cf. tech-spec).
 > **Décisions actées** : DB-first via `radar_explorations`, dépréciation du basket mémoire, correction de l'aberration autocomplete, déplacement de la génération courte-traîne vers Discovery, input texte unitaire sur Radar.
 
 ## 1. Contexte et problème
@@ -311,4 +311,18 @@ flowchart TD
 
 ---
 
-**Validation utilisateur** : à confirmer avant lancement du Sprint A.
+## 11. Livraison (mise à jour 2026-05-11)
+
+5 sprints commités sur `feat/radar-dbfirst-refactor` :
+
+| Sprint | Commit | Périmètre |
+|---|---|---|
+| A | `b252326` | Backend (routes + service + autocomplete par keyword + tests contract) |
+| B | `ece3830` | Front Radar DB-first (store Pinia + input unitaire + tests store) |
+| C | `a14a0d6` | Discovery longtail (source `longtail-ai` + bouton purple) |
+| D | `0432095` | Suppression complète basket + refonte KeywordAssistPanel |
+| E | doc clôture | sprint-status.yaml + tech-spec status=done + audit doc IMPLÉMENTÉ |
+
+**Bilan tests** : 13 rouges courants vs 33 baseline (net positif de **20 rouges en moins**, 22 baseline rouges passent maintenant). 0 nouveau rouge imputable au chantier.
+
+**Bilan code** : +2012/-1099 lignes nettes. Architecture mémoire indépendante du basket complètement éliminée, remplacée par lecture/écriture DB-first via `radar_explorations`. Aberration autocomplete corrigée. Génération courte-traîne IA déplacée vers Discovery.
