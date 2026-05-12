@@ -1736,14 +1736,15 @@ Pendant un calcul Pertinence pour N cartes Capitaine, l'app reconnaît les **rac
 
 #### FR-CAP-RELEVANCE-UNAVAILABLE-REASON — Raison précise quand le Score Pertinence est indisponible
 
-Quand le Score Pertinence ne peut pas être calculé pour un mot-clé, l'app affiche `—` à la place du score et expose une **raison précise** dans le tooltip. Quatre raisons sont possibles : pas de point de douleur défini, mot-clé longue traîne sans KPI, pas de questions PAA scrapées, pas de suggestions autocomplete capturées. L'utilisateur sait toujours **pourquoi** un score manque et **quoi faire** pour le débloquer.
+Quand le Score Pertinence ne peut pas être calculé pour un mot-clé, l'app affiche `—` à la place du score et expose une **raison précise** dans le tooltip. Cinq raisons sont possibles : pas de point de douleur défini, mot-clé longue traîne sans KPI, pas de questions PAA scrapées, pas de suggestions autocomplete capturées, ou jugement IA Haiku indisponible. L'utilisateur sait toujours **pourquoi** un score manque et **quoi faire** pour le débloquer.
 
 **Critères d'acceptation**
-- Quand `score === null`, le tooltip affiche un des 4 messages : *« Définis un point de douleur »*, *« Score non applicable (longue traîne) »*, *« Pas de PAA — relance un scan Radar »*, *« Pas d'autocomplete — relance un scan Radar »*.
+- Quand `score === null`, le tooltip affiche un des 5 messages : *« Définis un point de douleur »*, *« Score non applicable (longue traîne) »*, *« Pas de PAA — relance un scan Radar »*, *« Pas d'autocomplete — relance un scan Radar »*, *« Jugement IA Haiku indisponible — réessaye »*.
 - Aucune devinette côté front : le message vient du backend, le front l'affiche tel quel.
 - Le score est toujours `—` et jamais `0` quand la raison est l'absence de donnée.
+- Cas particulier *« Jugement IA Haiku indisponible »* : le score peut quand même être calculé avec une dégradation gracieuse (fallback sur l'ancien calcul lexical), le tooltip signale que l'IA est en panne sans bloquer l'utilisateur.
 
-> **En situation.** L'utilisateur voit un Score Pertinence à `—` sur une de ses cartes. Il survole : *« Pas de PAA disponible — relance un scan Radar pour ce keyword »*. Action immédiate, plus de mystère.
+> **En situation.** L'utilisateur voit un Score Pertinence à `—` sur une de ses cartes. Il survole : *« Pas de PAA disponible — relance un scan Radar pour ce keyword »*. Action immédiate, plus de mystère. Sur une autre carte, le score s'affiche en `73/100` mais le tooltip mentionne discrètement *« Jugement IA Haiku indisponible — fallback en cours »* : il sait que le score est légèrement dégradé sans bloquer son flux.
 
 → Conception : [DESIGN-CAP-RELEVANCE-UNAVAILABLE-REASON](./design-registry.md#design-cap-relevance-unavailable-reason)
 
@@ -1762,6 +1763,54 @@ Le Score Pertinence intègre un **signal d'alignement entre l'intent dominant de
 > **En situation.** L'utilisateur a renseigné « intent commercial » côté Cerveau pour son article rupture conventionnelle. Sur sa liste Capitaine, le mot-clé « comprendre la rupture conventionnelle » (intent SERP informational) reçoit un léger malus Pertinence : signal de désalignement. À l'inverse, « simulateur indemnité rupture conventionnelle » (intent commercial) reçoit un bonus.
 
 → Conception : [DESIGN-CAP-RELEVANCE-INTENT-SIGNAL](./design-registry.md#design-cap-relevance-intent-signal)
+
+---
+
+#### FR-CAP-PAA-JUDGE-HAIKU — L'IA juge directement la pertinence des questions PAA par rapport à la douleur
+
+Pour mesurer si les questions « People Also Ask » scrapées sur la SERP **collent vraiment** au point de douleur de l'article, l'app fait appel à **Claude Haiku** plutôt qu'à un calcul de mots partagés. Un seul appel IA examine en bloc toutes les questions PAA d'un mot-clé donné, en croisant le sujet de l'article et son point de douleur. Pour chaque question, l'IA retourne un verdict (pertinent / partiel / hors-sujet) et une justification courte. Bénéfice utilisateur : la mesure de pertinence du signal PAA devient sémantique — fini les faux positifs sur des questions qui partagent les bons mots mais qui parlent à côté.
+
+**Critères d'acceptation**
+- L'appel IA est déclenché à l'ouverture de l'onglet Capitaine, une seule fois par mot-clé étudié.
+- Pour chaque question PAA scrapée, l'utilisateur reçoit un verdict typé (pertinent / partiel / hors-sujet) et une justification courte (≤ 10 mots).
+- Si l'IA échoue (rate limit, timeout, réponse invalide), l'app retombe automatiquement sur l'ancien calcul lexical sans interrompre l'utilisateur — le Score Pertinence reste calculé, juste avec un signal 2 dégradé.
+- Le poids du signal 2 (PAA × douleur) dans le Score Pertinence reste à 25 %.
+
+> **En situation.** Sur la carte « calcul indemnité rupture conventionnelle 2026 », l'utilisateur voit 4 questions PAA scrapées. À l'ouverture de l'onglet Capitaine, l'app fait un appel Haiku qui juge les 4 d'un coup. Résultat : « Comment calculer son indemnité ? » → *pertinent* ; « Quel est le minimum légal ? » → *pertinent* ; « Quel est le délai de rétractation ? » → *partiel* ; « Quels sont les droits du salarié en CDI ? » → *hors-sujet*. Le Score Pertinence reflète cette qualité réelle — les bonnes questions remontent, les hors-sujet sont pénalisés.
+
+→ Conception : [DESIGN-CAP-PAA-JUDGE-HAIKU](./design-registry.md#design-cap-paa-judge-haiku)
+
+---
+
+#### FR-CAP-PAA-BADGE-SINGLE — Un seul chip par question PAA sur le Capitaine, valeur issue de l'IA
+
+Sur l'onglet Capitaine, chaque question PAA d'une carte affiche **un seul chip de verdict** dont la valeur vient directement du jugement IA : *pertinent* (vert), *partiel* (orange), *hors-sujet* (gris). Le tooltip du chip donne la justification courte fournie par l'IA. Côté onglet Radar (qui mesure le potentiel marché, pas la pertinence à la douleur), le badge reste basé sur l'ancien calcul lexical historique — pas de jugement IA, pas le même angle.
+
+**Critères d'acceptation**
+- Sur l'onglet Capitaine, chaque PAA d'une carte ne porte qu'**un seul** chip de verdict, coloré selon la valeur (vert / orange / gris).
+- Le tooltip du chip affiche la justification courte fournie par l'IA.
+- Le compteur « PAA pts » du header de la carte affiche un score sur 100 (mode Capitaine) ou le total brut historique (mode Radar) — deux angles distincts, deux affichages.
+- Si le jugement IA n'est pas encore disponible (mot-clé tout juste arrivé, ou IA en cours), le chip retombe proprement sur l'ancien rendu lexical — pas d'erreur, pas de saut visuel.
+
+> **En situation.** L'utilisateur ouvre l'arbre PAA d'une carte sur le Capitaine. Les 4 questions sont là, chacune avec son chip coloré. Il survole la première : *« sujet et douleur directement matchés »*. Limpide. Au-dessus de la carte, le compteur PAA affiche `73/100`. Plus tard, sur l'onglet Radar (angle marché) qui montre la même carte, les chips PAA sont toujours là mais basés sur l'ancien calcul lexical — c'est volontaire, le Radar mesure autre chose que la pertinence à la douleur.
+
+→ Conception : [DESIGN-CAP-PAA-BADGE-SINGLE](./design-registry.md#design-cap-paa-badge-single)
+
+---
+
+#### FR-CAP-PAA-JUDGE-CACHE-SESSION — Les jugements IA restent en mémoire pendant la session navigateur
+
+Pour ne pas refaire des appels IA payants à chaque switch d'article ou d'onglet, l'app **garde les jugements en mémoire JavaScript** pendant toute la session navigateur courante. L'utilisateur peut basculer entre plusieurs articles, revenir au premier — les chips PAA sont déjà là, pas de nouvel appel. Un F5 vide tout, c'est volontaire (rafraîchissement contrôlé). Aucune persistance en base ni en localStorage.
+
+**Critères d'acceptation**
+- Un switch d'article puis retour à un article déjà ouvert ne déclenche aucun nouvel appel IA pour ses cartes Capitaine.
+- F5 du navigateur efface tous les jugements en mémoire ; le prochain mount déclenche les appels IA frais.
+- Aucune table de base de données ne contient les jugements (pas de persistance hors-session).
+- Aucun stockage navigateur (localStorage, sessionStorage) ne contient les jugements.
+
+> **En situation.** Le matin, l'utilisateur ouvre 3 articles d'un cocon pour comparer leurs Capitaines. Chaque article déclenche son appel IA (environ 3 secondes pour 6-8 questions PAA). Quand il revient sur le premier article 10 minutes plus tard, les chips PAA sont instantanés — pas d'appel facturé. Le lendemain matin il rouvre le navigateur : tout est recalculé frais (mémoire vidée à la fermeture). Pas de mauvaise surprise sur la facture IA.
+
+→ Conception : [DESIGN-CAP-PAA-JUDGE-CACHE-SESSION](./design-registry.md#design-cap-paa-judge-cache-session)
 
 ---
 

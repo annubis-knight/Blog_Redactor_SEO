@@ -2363,19 +2363,24 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - [server/services/keyword/captain-relevance.service.ts](../../server/services/keyword/captain-relevance.service.ts) — retourne `unavailableReason` typé.
 - [src/components/intent/radar-card/RadarCardScoreRing.vue](../../src/components/intent/radar-card/RadarCardScoreRing.vue) — affichage tooltip côté front.
 
-**Type** : `'no-pain' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | null`.
+**Type** : `'no-pain' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | 'haiku-unavailable' | null`.
 
 **Mapping**
 - `no-pain` : painPoint absent ou < 10 chars.
 - `long-tail` : `kpis === null` (longue traîne sans appel DataForSEO).
 - `missing-paa` : pas de questions PAA scrapées en DB.
 - `missing-autocomplete` : pas de suggestions autocomplete en DB.
+- `haiku-unavailable` : appel Haiku au signal 2 (PAA × douleur) échoué (timeout, rate limit, schéma malformé). **Le score reste calculable** via fallback lexical historique côté signal 2 — dégradation gracieuse, pas un blocage. Le tooltip signale l'état dégradé sans masquer le score.
 
 **Décisions d'architecture**
 - Message vient du backend — pas de devinette côté front.
 - Backend logge la cause à chaque retour `null` (observabilité).
+- Cas `haiku-unavailable` : signalé dans le tooltip même quand le score reste calculé — l'utilisateur sait qu'il regarde un signal 2 lexical et non IA.
 
-**Voir aussi** : `DESIGN-RAD-SCORE-RING-TOOLTIP`, `DESIGN-CAP-PAINPOINT-FALLBACK`.
+**Historique**
+- 2026-05-12 : ajout de `'haiku-unavailable'` lors de l'intégration de `FR-CAP-PAA-JUDGE-HAIKU` (source `tech-spec-captain-paa-pertinence-unify`).
+
+**Voir aussi** : `DESIGN-RAD-SCORE-RING-TOOLTIP`, `DESIGN-CAP-PAINPOINT-FALLBACK`, `DESIGN-CAP-PAA-JUDGE-HAIKU`.
 
 ---
 
@@ -2395,6 +2400,82 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - Migration `014_articles_pain_intent_expected.sql` ajoute la colonne.
 
 **Voir aussi** : `DESIGN-CER-CHECKS` (génération de l'intent par l'IA Cerveau).
+
+---
+
+### DESIGN-CAP-PAA-JUDGE-HAIKU
+
+**Réf PRD :** [FR-CAP-PAA-JUDGE-HAIKU](./prd.md#fr-cap-paa-judge-haiku--lia-juge-directement-la-pertinence-des-questions-paa-par-rapport-à-la-douleur)
+
+**Refs code**
+- [server/services/keyword/captain-paa-judge.service.ts](../../server/services/keyword/captain-paa-judge.service.ts) — orchestration de l'appel Haiku + parsing tool_use + fallback lexical.
+- [server/prompts/captain-paa-judge.md](../../server/prompts/captain-paa-judge.md) — prompt système avec injection `{{articleTitle}}`, `{{painPoint}}`, `{{paaItems}}`.
+- [server/services/keyword/captain-relevance.service.ts](../../server/services/keyword/captain-relevance.service.ts) — intégration : utilise `paaPainAlignmentOverride` du jugement Haiku en priorité sur le calcul lexical (`avgLexicalPainAlignment`).
+- Tests : [tests/unit/services/captain-paa-judge.service.test.ts](../../tests/unit/services/captain-paa-judge.service.test.ts), [tests/unit/services/captain-relevance-haiku-override.service.test.ts](../../tests/unit/services/captain-relevance-haiku-override.service.test.ts).
+
+**Tables consommées (lecture)** : `paa_explorations`, `keyword_paa_questions`, `articles.pain_point`, `articles.title`.
+
+**Flux DB** : **aucune écriture en base** — le jugement est éphémère, vit en mémoire JS (cf. `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION`).
+
+**Décisions d'architecture**
+- **Modèle** : Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) — léger et rapide, suffisant pour un jugement structuré sur 4-16 PAA.
+- **Tool use forcé** sur `submit_paa_judgments` avec schéma strict (cf. tech-spec) — garantit une sortie parsable, pas de prose libre.
+- **`temperature: 0`** pour réduire la variabilité — un même mot-clé donne la même structure de jugement à chaque appel.
+- **Appel par mot-clé** (pas par question) — économise des tokens et offre un raisonnement contextuel global sur l'ensemble des PAA d'un mot-clé.
+- **Fallback lexical silencieux** : en cas d'échec Haiku (timeout, rate limit, schéma malformé, `HaikuJudgmentError`), le calcul lexical historique (`avgLexicalPainAlignment`) prend le relais — le score reste calculé, signalé via `'haiku-unavailable'` dans `DESIGN-CAP-RELEVANCE-UNAVAILABLE-REASON`.
+- **Poids signal 2 conservé à 25 %** dans le Score Pertinence — pas de rééquilibrage de la formule globale.
+- **Mode mock** : la fixture `submit_paa_judgments` retourne un schéma valide déterministe en `AI_PROVIDER=mock`.
+
+**Voir aussi** : `DESIGN-CAP-RELEVANCE-LIVE`, `DESIGN-CAP-PAA-BADGE-SINGLE`, `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION`, `DESIGN-CAP-RELEVANCE-UNAVAILABLE-REASON`.
+
+---
+
+### DESIGN-CAP-PAA-BADGE-SINGLE
+
+**Réf PRD :** [FR-CAP-PAA-BADGE-SINGLE](./prd.md#fr-cap-paa-badge-single--un-seul-chip-par-question-paa-sur-le-capitaine-valeur-issue-de-lia)
+
+**Refs code**
+- [src/components/intent/RadarKeywordCard.vue](../../src/components/intent/RadarKeywordCard.vue) — prop bimodale `cardContext: 'radar' | 'capitaine'` (default `'radar'`).
+- [src/components/intent/radar-card/RadarCardPaaTree.vue](../../src/components/intent/radar-card/RadarCardPaaTree.vue) — rendu de l'arbre PAA avec un seul chip par feuille (mode Capitaine).
+- Tests : [tests/unit/components/radar-keyword-card-paa-badge-capitaine.test.ts](../../tests/unit/components/radar-keyword-card-paa-badge-capitaine.test.ts).
+
+**Décisions d'architecture**
+- **Composant bimodal** via prop `cardContext` (cf. CLAUDE.md §3.8 « composants Moteur bimodaux ») — pas de duplication entre Radar et Capitaine.
+- **Mapping couleur** : `pertinent` → palette `--color-badge-green-*` ; `partiel` → palette `--color-badge-amber-*` ; `hors-sujet` → palette `--color-bg-soft` / `--color-text-muted`.
+- **Tooltip** : affiche `reasonShort` (justification ≤ 10 mots issue du jugement Haiku).
+- **Header « PAA pts »** :
+  - Mode `capitaine` + jugement disponible → `<overallPaaScore>/100`.
+  - Mode `capitaine` + chargement → `'...'`.
+  - Mode `radar` (ou capitaine fallback) → `<paaWeightedScore.toFixed(1)> pts` (somme brute historique).
+- **Fallback transparent** : si `cardContext='capitaine'` mais `paaJudgment` absent (premier scan, ou Haiku échoué), le badge revient au rendu lexical historique — pas de cassure visuelle.
+
+**Voir aussi** : `DESIGN-CAP-PAA-JUDGE-HAIKU`, `DESIGN-RAD-PAA-TREE` (rendu Radar inchangé), `DESIGN-RAD-CARD-CHEVRON-TOGGLE`.
+
+---
+
+### DESIGN-CAP-PAA-JUDGE-CACHE-SESSION
+
+**Réf PRD :** [FR-CAP-PAA-JUDGE-CACHE-SESSION](./prd.md#fr-cap-paa-judge-cache-session--les-jugements-ia-restent-en-mémoire-pendant-la-session-navigateur)
+
+**Refs code**
+- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — champ `paaJudgment` (type `PaaJudgmentBlock`) attaché à chaque entrée `richCaptain.exploredKeywords`.
+
+**Flux DB** : **aucune persistance**. Strictement mémoire JS (store Pinia).
+
+**Stores Pinia** : `useArticleKeywordsStore` (`AUTHORITY:` sur `article_keywords` — le champ `paaJudgment` est un compagnon non-persisté du store).
+
+**Watchers & réactivité**
+- Pas de watcher dédié — le store hydrate `paaJudgment` au mount Capitaine, le conserve sur switch d'article (Map cross-switch), et s'efface au F5 navigateur.
+
+**Décisions d'architecture**
+- **Justification produit** : `painPoint` immutable post-Cerveau (cf. `DESIGN-MOT-PAIN-IMMUTABLE-AFTER-CEREVEAU`) ⇒ jugement Haiku stable pendant toute la session ⇒ cache cross-switch sûr (pas de risque de divergence entre le jugement caché et la donnée source).
+- **F5 = vide tout** : choix assumé. Le rafraîchissement complet est une action explicite de l'utilisateur — il sait qu'il déclenche un nouveau coût IA.
+- **Cohabitation avec `DESIGN-CAP-RELEVANCE-NO-CACHE`** : cette dernière régit le **score Pertinence algorithmique legacy** (lexical). Pour la composante PAA × douleur (devenue jugement Haiku), c'est `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION` qui s'applique. Pas de contradiction — champs distincts du store.
+- **Tests d'invariant** :
+  - `grep CREATE TABLE.*paa_judg` dans `server/db/schema.sql` doit retourner 0 résultat (interdiction de persistance DB).
+  - Spy `pg.query` sur tous les `INSERT` du store ne doit jamais capturer un payload contenant `paaJudgment`.
+
+**Voir aussi** : `DESIGN-CAP-PAA-JUDGE-HAIKU`, `DESIGN-CAP-RELEVANCE-LIVE`, `DESIGN-CAP-RELEVANCE-NO-CACHE`, `DESIGN-MOT-PAIN-IMMUTABLE-AFTER-CEREVEAU`.
 
 ---
 
