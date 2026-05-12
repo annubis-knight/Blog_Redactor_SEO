@@ -3,6 +3,7 @@ import { log } from '../utils/logger.js'
 import { respondWithError } from '../utils/api-error.js'
 import { getCached, setCached, slugify } from '../db/cache-helpers.js'
 import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords, saveCaptainExploration, updateCaptainExplorationAiPanel, getCaptainExplorations, saveLieutenantExplorations, getLieutenantExplorations } from '../services/infra/data.service.js'
+import { runPaaJudgmentsForArticle } from '../services/keyword/captain-paa-judge.service.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
@@ -322,6 +323,31 @@ router.post('/articles/:id/captain-explorations', async (req, res) => {
   } catch (err) {
     log.error(`POST /api/articles/${id}/captain-explorations — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save captain exploration' } })
+  }
+})
+
+/**
+ * POST /api/articles/:id/captain/judge-paa — Déclenche le jugement Haiku PAA × douleur
+ * pour tous les keywords explorés de l'article. Appelé au mount de l'onglet Capitaine
+ * (lazy on tab — FR-CAP-PAA-JUDGE-HAIKU + FR-CAP-PAA-JUDGE-CACHE-SESSION).
+ *
+ * Retourne :
+ *   - judgments      : Record<keyword, PaaJudgmentBlock> pour les keywords ayant un jugement
+ *   - relevanceScores: Record<keyword, RelevanceScoreLiveResult> recalculé avec override
+ *                      Haiku sur le signal 2. Le front remplace les `relevanceScore`
+ *                      des cards correspondantes.
+ *
+ * Aucune écriture DB (FR-CAP-RELEVANCE-NO-DB-WRITE). Cache géré côté store Pinia.
+ */
+router.post('/articles/:id/captain/judge-paa', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
+  try {
+    const result = await runPaaJudgmentsForArticle(id)
+    res.json({ data: result })
+  } catch (err) {
+    log.error(`POST /api/articles/${id}/captain/judge-paa — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to compute Haiku PAA judgments' } })
   }
 })
 

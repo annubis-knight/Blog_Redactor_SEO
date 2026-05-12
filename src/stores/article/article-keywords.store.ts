@@ -22,6 +22,8 @@ import { apiGet, apiPut, apiPost, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ArticleKeywords, CaptainScanEntry, RichRootKeyword, RichLieutenant } from '@shared/types/index.js'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
+import type { PaaJudgmentBlock } from '@shared/types/captain-paa-judgment.types.js'
+import type { RelevanceScoreResult, RelevanceUnavailableReason } from '@shared/types/scoring.types.js'
 
 const MAX_VALIDATION_HISTORY = 30
 
@@ -31,6 +33,16 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   const isSaving = ref(false)
   const isSuggestingLexique = ref(false)
   const error = ref<string | null>(null)
+
+  /**
+   * Cache session des jugements Haiku PAA × douleur par article (FR-CAP-PAA-JUDGE-CACHE-SESSION).
+   * Survit aux switch d'onglet ET aux switch d'article dans la même session.
+   * F5 vide la Map (mémoire JS uniquement, pas de persistance DB ni localStorage).
+   * Justification : `painPoint` immutable post-Cerveau ⇒ jugement stable pendant la session.
+   */
+  const paaJudgmentsByArticle = ref<Map<number, Map<string, PaaJudgmentBlock>>>(new Map())
+  /** Drapeau de chargement par articleId (true pendant l'appel Haiku). Pilote les skeletons UI. */
+  const paaJudgmentsLoadingByArticle = ref<Map<number, boolean>>(new Map())
 
   const hasKeywords = computed(() => !!keywords.value?.capitaine)
 
@@ -564,17 +576,105 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     }
   }
 
+  // ---- Jugement Haiku PAA × douleur (FR-CAP-PAA-JUDGE-HAIKU + CACHE-SESSION) ----
+
+  /**
+   * Charge les jugements Haiku pour les keywords explorés de l'article donné.
+   * Cache hit (no-op) si l'article est déjà jugé dans la session.
+   *
+   * Met à jour conjointement :
+   *   - `paaJudgmentsByArticle[articleId]` (badges + summary)
+   *   - `keywords.richCaptain.exploredKeywords[i].relevanceScore` (recalculé
+   *     côté backend avec override Haiku sur le signal 2)
+   *
+   * Appelée par CaptainPanel via watcher local (prop `active` + `selectedArticle.id`).
+   */
+  async function loadCaptainPaaJudgments(articleId: number): Promise<void> {
+    // Cache hit : déjà chargé ou en cours de chargement → no-op
+    if (paaJudgmentsByArticle.value.has(articleId)) return
+    if (paaJudgmentsLoadingByArticle.value.get(articleId) === true) return
+
+    paaJudgmentsLoadingByArticle.value.set(articleId, true)
+    try {
+      const response = await apiPost<{
+        judgments: Record<string, PaaJudgmentBlock>
+        relevanceScores: Record<string, {
+          total: number | null
+          verdict: RelevanceScoreResult['verdict'] | null
+          breakdown: RelevanceScoreResult['breakdown'] | null
+          rootsContext: RelevanceScoreResult['rootsContext'] | null
+          unavailableReason: RelevanceUnavailableReason | null
+        }>
+      }>(`/articles/${articleId}/captain/judge-paa`, {})
+
+      // Hydrater le cache Haiku
+      const map = new Map<string, PaaJudgmentBlock>()
+      for (const [keyword, block] of Object.entries(response.judgments)) {
+        map.set(keyword, block)
+      }
+      paaJudgmentsByArticle.value.set(articleId, map)
+
+      // Remplacer les relevanceScore + paaJudgment dans les cards correspondantes
+      // (uniquement si le store contient toujours cet article — switch concurrent safe)
+      const local = keywords.value
+      if (local?.articleId === articleId && local.richCaptain?.exploredKeywords) {
+        for (const entry of local.richCaptain.exploredKeywords) {
+          const fresh = response.relevanceScores[entry.keyword]
+          if (fresh && fresh.total !== null && fresh.verdict !== null && fresh.breakdown !== null && fresh.rootsContext !== null) {
+            entry.relevanceScore = {
+              total: fresh.total,
+              verdict: fresh.verdict,
+              breakdown: fresh.breakdown,
+              rootsContext: fresh.rootsContext,
+            }
+            entry.relevanceUnavailableReason = null
+          } else if (fresh) {
+            entry.relevanceScore = null
+            entry.relevanceUnavailableReason = fresh.unavailableReason
+          }
+          const judgment = map.get(entry.keyword)
+          if (judgment) entry.paaJudgment = judgment
+        }
+      }
+
+      log.info('[article-keywords] paa judgments loaded', {
+        articleId,
+        judgedCount: map.size,
+      })
+    } catch (err) {
+      log.warn('[article-keywords] loadCaptainPaaJudgments failed', {
+        articleId,
+        error: err instanceof Error ? err.message : 'Unknown',
+      })
+    } finally {
+      paaJudgmentsLoadingByArticle.value.set(articleId, false)
+    }
+  }
+
+  /** Lookup d'un jugement pour un keyword donné (cache session). */
+  function getPaaJudgment(articleId: number, keyword: string): PaaJudgmentBlock | null {
+    return paaJudgmentsByArticle.value.get(articleId)?.get(keyword) ?? null
+  }
+
+  /** True pendant l'appel Haiku pour un article. */
+  function isPaaJudgmentLoading(articleId: number): boolean {
+    return paaJudgmentsLoadingByArticle.value.get(articleId) === true
+  }
+
   function $reset() {
     keywords.value = null
     isLoading.value = false
     isSaving.value = false
     isSuggestingLexique.value = false
     error.value = null
+    // NOTE : paaJudgmentsByArticle volontairement NON vidée (cache cross-switch).
+    // Voir FR-CAP-PAA-JUDGE-CACHE-SESSION : survit aux switch d'article dans la session.
   }
 
   return {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     captainExploredKeywords, lockedLieutenants, eliminatedLieutenants,
+    paaJudgmentsByArticle, paaJudgmentsLoadingByArticle,
     fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
     mergeCaptainExploredKeywords, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
@@ -585,6 +685,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     lockLieutenant, unlockLieutenant,
     archiveLockedLieutenants,
     addLexiqueTerm, removeLexiqueTerm,
+    loadCaptainPaaJudgments, getPaaJudgment, isPaaJudgmentLoading,
     initEmpty, $reset,
   }
 })
