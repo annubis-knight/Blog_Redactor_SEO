@@ -21,12 +21,72 @@ async function importService() {
 }
 
 describe('data.service — getArticleKeywords', () => {
-  it('returns null when article id is not found', async () => {
+  it('returns null when article id is not found (no row, no explorations)', async () => {
+    // FR-MOT-EXPLORATIONS-HYDRATATION (AC.HYDRAT.3) : article fantôme
+    // = aucune row dans article_keywords + aucune exploration → null.
     mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
     const { getArticleKeywords } = await importService()
 
     const result = await getArticleKeywords(99)
     expect(result.data).toBeNull()
+  })
+
+  it('hydrates richCaptain.exploredKeywords when article_keywords absent but captain_explorations exists', async () => {
+    // FR-MOT-EXPLORATIONS-HYDRATATION (AC.HYDRAT.1, AC.HYDRAT.5).
+    // Cas user : envoi keywords Radar → Capitaine sans verrouillage.
+    // article_keywords = absent
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // captain_explorations + keyword_metrics = 3 rows
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { keyword: 'kw1', article_level: 'pilier', status: 'tested', root_keywords: [], ai_panel_markdown: null, explored_at: new Date(), locked_at: null, search_volume: null, keyword_difficulty: null, cpc: null, competition: null, intent_raw: null, autocomplete_suggestions: [], metrics_fetched_at: null },
+        { keyword: 'kw2', article_level: 'pilier', status: 'tested', root_keywords: [], ai_panel_markdown: null, explored_at: new Date(), locked_at: null, search_volume: null, keyword_difficulty: null, cpc: null, competition: null, intent_raw: null, autocomplete_suggestions: [], metrics_fetched_at: null },
+        { keyword: 'kw3', article_level: 'pilier', status: 'tested', root_keywords: [], ai_panel_markdown: null, explored_at: new Date(), locked_at: null, search_volume: null, keyword_difficulty: null, cpc: null, competition: null, intent_raw: null, autocomplete_suggestions: [], metrics_fetched_at: null },
+      ],
+      rowCount: 3,
+    })
+    // Default vide pour les queries restantes (paa, radar, lieutenant, etc.)
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    const { getArticleKeywords } = await importService()
+    const { data: result } = await getArticleKeywords(64)
+
+    expect(result).not.toBeNull()
+    expect(result!.articleId).toBe(64)
+    expect(result!.capitaine).toBe('')
+    expect(result!.richCaptain).toBeDefined()
+    expect(result!.richCaptain!.status).toBe('suggested') // AC.HYDRAT.5
+    expect(result!.richCaptain!.exploredKeywords).toHaveLength(3) // AC.HYDRAT.1
+    expect(result!.lieutenants).toEqual([])
+    expect(result!.lexique).toEqual([])
+  })
+
+  it('hydrates richLieutenants when article_keywords absent but lieutenant_explorations exists', async () => {
+    // FR-MOT-EXPLORATIONS-HYDRATATION (AC.HYDRAT.2).
+    // article_keywords = absent
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // captain_explorations vide
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // paa_explorations vide
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // radar_explorations vide
+    mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 0 })
+    // lieutenant_explorations = 2 rows
+    mockQuery.mockResolvedValueOnce({
+      rows: [
+        { keyword: 'lt1', status: 'suggested', reasoning: null, sources: ['paa'], suggested_hn_level: 2, score: 80, kpis: null, locked_at: null },
+        { keyword: 'lt2', status: 'suggested', reasoning: null, sources: ['paa'], suggested_hn_level: 2, score: 75, kpis: null, locked_at: null },
+      ],
+      rowCount: 2,
+    })
+    mockQuery.mockResolvedValue({ rows: [], rowCount: 0 })
+
+    const { getArticleKeywords } = await importService()
+    const { data: result } = await getArticleKeywords(64)
+
+    expect(result).not.toBeNull()
+    expect(result!.capitaine).toBe('')
+    expect(result!.richLieutenants).toHaveLength(2)
   })
 
   it('returns matching entry for existing id', async () => {

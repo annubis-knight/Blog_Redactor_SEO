@@ -1,26 +1,21 @@
 /**
  * Tests pour `buildTabCacheEntries`.
  *
- * Sémantique du `dbCount` (FR-MOT-CACHE-PANEL-COUNT, ajout 2026-05-08) :
- *  - Radar : nombre d'explorations persistées (`radar_explorations`) — pas de
- *    notion de "verrouillage utilisateur" sur cet onglet.
- *  - Capitaine / Lieutenants / Lexique : **nombre de mots-clés verrouillés
- *    par l'utilisateur** (`article_keywords.capitaine|lieutenants|lexique`),
- *    PAS le nombre d'explorations SERP/IA persistées. Une exploration qui a
- *    produit 150 termes proposés mais 0 verrouillé doit afficher `0`.
+ * Sémantique du `dbCount` (FR-MOT-CACHE-PANEL-COUNT, refonte 2026-05-12) :
+ * **Tous les onglets** affichent le nombre total de mots-clés sauvegardés
+ * en base, peu importe leur statut (en attente, scannés, testés, verrouillés,
+ * validés). La source unique est `GET /articles/:id/explorations/counts`
+ * (`ExplorationCounts`). Le snapshot UI (`TabCacheUIState`) pilote uniquement
+ * les hints au survol et l'indicateur de cache mémoire (`cacheCount`).
  *
- * Historique (avant 2026-05-08) : pour Capitaine/Lieutenants/Lexique, le
- * `dbCount` reflétait le compte d'explorations (`captain_explorations`,
- * `lieutenant_explorations`, `lexique_explorations`). C'était cohérent avec
- * un usage "je veux savoir combien j'ai déjà testé" mais incohérent avec
- * l'attente utilisateur (cf. cas article 64 : 2 lexique_explorations
- * orphelines, 0 lexique verrouillé → afficher 0).
+ * Historique :
+ *  - <= 2026-05-07 : dbCount Capitaine/Lieutenants/Lexique = explorations DB.
+ *  - 2026-05-08 → 2026-05-11 : dbCount = mots-clés verrouillés (pivot 1).
+ *  - 2026-05-12+ : dbCount = total DB par onglet (pivot 2, logique base).
  *
- * Garde-fou historique du fix bea9e4f (dbCount n'est PAS un flag binaire 0|1
- * calculé à partir d'un état métier flou) : conservé pour Radar uniquement.
- *
- * 2026-05-01 — Discovery retiré du panel (modèle de persistance cross-article
- * incompatible avec la notif "Charger DB/Cache" pilotée par articleId).
+ * Cas user déclencheur du pivot 2 (article 64) : 31 capitaines envoyés depuis
+ * Radar sans verrouillage → DB Capitaine = 0 (faux) alors que 31 sont
+ * persistés et visibles dans le carousel.
  */
 import { describe, it, expect } from 'vitest'
 import {
@@ -56,77 +51,75 @@ describe('buildTabCacheEntries — invariants critiques', () => {
   })
 
   // ────────────────────────────────────────────────────────────────────
-  // FR-MOT-CACHE-PANEL-COUNT (2026-05-08) — Capitaine/Lieutenants/Lexique
-  // dbCount = nombre de mots-clés verrouillés par l'utilisateur.
+  // FR-MOT-CACHE-PANEL-COUNT (refonte 2026-05-12) — logique base
+  // dbCount = total DB par onglet, peu importe l'état utilisateur.
   // ────────────────────────────────────────────────────────────────────
 
-  it('AC.CACHEPANEL.1 : Lexique avec 2 explorations DB mais 0 terme verrouillé → dbCount = 0', () => {
-    // Reproduction exacte du bug article 64 : lexique_explorations a 2 lignes
-    // orphelines (sourceKeyword ≠ capitaine actuel), article_keywords.lexique = [].
-    // Le compteur doit refléter l'état utilisateur (0), pas les explorations (2).
+  it('AC.CACHEPANEL.1 : Lexique avec 2 explorations DB (0 validé) → dbCount = 2', () => {
     const counts: ExplorationCounts = { lexique: 2 }
     const ui: TabCacheUIState = { ...EMPTY_UI, validatedLexiqueCount: 0 }
     const entries = buildTabCacheEntries(counts, ui)
-    expect(entries.find(e => e.tabId === 'lexique')!.dbCount).toBe(0)
+    expect(entries.find(e => e.tabId === 'lexique')!.dbCount).toBe(2)
   })
 
-  it('AC.CACHEPANEL.2 : Lieutenants avec 5 explorations DB mais 1 verrouillé → dbCount = 1', () => {
+  it('AC.CACHEPANEL.2 : Lieutenants avec 5 propositions DB (1 verrouillé) → dbCount = 5', () => {
     const counts: ExplorationCounts = { lieutenants: 5 }
     const ui: TabCacheUIState = { ...EMPTY_UI, lockedLieutenantsCount: 1 }
     const entries = buildTabCacheEntries(counts, ui)
-    expect(entries.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(1)
+    expect(entries.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(5)
   })
 
-  it('AC.CACHEPANEL.3 : Capitaine avec 3 explorations DB mais aucun verrouillé → dbCount = 0', () => {
-    const counts: ExplorationCounts = { captain: 3 }
+  it('AC.CACHEPANEL.3 : Capitaine avec 31 explorations DB (aucun verrouillé) → dbCount = 31', () => {
+    // Reproduction exacte du bug article 64 — 31 captain_explorations sans verrou.
+    const counts: ExplorationCounts = { captain: 31 }
     const ui: TabCacheUIState = { ...EMPTY_UI, isCaptaineLocked: false, captainKeyword: null }
     const entries = buildTabCacheEntries(counts, ui)
-    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(0)
+    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(31)
   })
 
-  it('Capitaine verrouillé → dbCount = 1', () => {
-    const counts: ExplorationCounts = { captain: 10 }
-    const ui: TabCacheUIState = {
+  it('AC.CACHEPANEL.4 : Radar avec 57 keywords (12 en attente + 45 scannés) → dbCount = 57', () => {
+    // Le calcul SQL côté backend somme generated_keywords + scan_result.cards.
+    // La fonction frontend lit la valeur agrégée — ici on simule le total reçu.
+    const counts: ExplorationCounts = { radar: 57 }
+    const entries = buildTabCacheEntries(counts, EMPTY_UI)
+    expect(entries.find(e => e.tabId === 'radar')!.dbCount).toBe(57)
+  })
+
+  it('AC.CACHEPANEL.5 : Radar avec aucun row radar_explorations → dbCount = 0', () => {
+    const entries = buildTabCacheEntries({ radar: 0 }, EMPTY_UI)
+    expect(entries.find(e => e.tabId === 'radar')!.dbCount).toBe(0)
+  })
+
+  it('AC.CACHEPANEL.6 : Verrouiller un Capitaine ne change pas dbCount (toujours 31)', () => {
+    const counts: ExplorationCounts = { captain: 31 }
+    // Avant verrou
+    let entries = buildTabCacheEntries(counts, { ...EMPTY_UI, isCaptaineLocked: false })
+    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(31)
+    // Après verrou
+    entries = buildTabCacheEntries(counts, {
       ...EMPTY_UI,
       isCaptaineLocked: true,
-      captainKeyword: 'creation site web Toulouse',
-    }
-    const entries = buildTabCacheEntries(counts, ui)
-    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(1)
+      captainKeyword: 'creation site web entreprises Toulouse',
+    })
+    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(31) // inchangé
   })
 
-  it('Lexique avec 12 termes verrouillés → dbCount = 12 (peu importe les explorations)', () => {
-    const counts: ExplorationCounts = { lexique: 1 } // une seule exploration
-    const ui: TabCacheUIState = { ...EMPTY_UI, validatedLexiqueCount: 12 }
+  it('Lexique avec 12 termes en base → dbCount = 12 (peu importe les validations)', () => {
+    const counts: ExplorationCounts = { lexique: 12 }
+    const ui: TabCacheUIState = { ...EMPTY_UI, validatedLexiqueCount: 3 }
     const entries = buildTabCacheEntries(counts, ui)
     expect(entries.find(e => e.tabId === 'lexique')!.dbCount).toBe(12)
   })
 
-  it('Lieutenants avec 8 verrouillés → dbCount = 8 (peu importe les propositions DB)', () => {
-    const counts: ExplorationCounts = { lieutenants: 25 }
-    const ui: TabCacheUIState = { ...EMPTY_UI, lockedLieutenantsCount: 8 }
+  it('Lieutenants avec 8 propositions DB → dbCount = 8 (peu importe les verrouillages)', () => {
+    const counts: ExplorationCounts = { lieutenants: 8 }
+    const ui: TabCacheUIState = { ...EMPTY_UI, lockedLieutenantsCount: 3 }
     const entries = buildTabCacheEntries(counts, ui)
     expect(entries.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(8)
   })
 
   // ────────────────────────────────────────────────────────────────────
-  // Radar — comportement inchangé : dbCount = explorations persistées.
-  // ────────────────────────────────────────────────────────────────────
-
-  it('Radar : dbCount = counts.radar (compte d\'explorations, sémantique inchangée)', () => {
-    const counts: ExplorationCounts = { radar: 25 }
-    const entries = buildTabCacheEntries(counts, EMPTY_UI)
-    expect(entries.find(e => e.tabId === 'radar')!.dbCount).toBe(25)
-  })
-
-  it('Radar : dbCount n\'est PAS un flag 0|1 (régression guard bea9e4f)', () => {
-    const counts: ExplorationCounts = { radar: 7 }
-    const entries = buildTabCacheEntries(counts, EMPTY_UI)
-    expect(entries.find(e => e.tabId === 'radar')!.dbCount).toBe(7)
-  })
-
-  // ────────────────────────────────────────────────────────────────────
-  // Hints — informatifs, mentionnent les explorations dispos.
+  // Hints — détaillent l'état verrouillé/validé en plus du total.
   // ────────────────────────────────────────────────────────────────────
 
   it('hint Capitaine : 0 verrouillé + 8 explorations → "8 mots-clés testés"', () => {
@@ -152,7 +145,7 @@ describe('buildTabCacheEntries — invariants critiques', () => {
     expect(hint).toBe('12 propositions en base · 5 verrouillés')
   })
 
-  it('hint Lexique : combine extractions + termes verrouillés', () => {
+  it('hint Lexique : combine extractions + termes validés', () => {
     const ui: TabCacheUIState = { ...EMPTY_UI, validatedLexiqueCount: 8 }
     const hint = buildTabCacheEntries({ lexique: 3 }, ui).find(e => e.tabId === 'lexique')!.hint
     expect(hint).toBe('3 extractions · 8 termes validés')
@@ -164,16 +157,16 @@ describe('buildTabCacheEntries — invariants critiques', () => {
 
   it('multi-articles : pas de fuite — appels séparés produisent des résultats indépendants', () => {
     const a1 = buildTabCacheEntries(
-      { captain: 10, lieutenants: 12 },
+      { captain: 31, lieutenants: 12 },
       { ...EMPTY_UI, isCaptaineLocked: true, captainKeyword: 'kw1', lockedLieutenantsCount: 3 },
     )
     const a2 = buildTabCacheEntries(
       { captain: 3, lieutenants: 0 },
       { ...EMPTY_UI, isCaptaineLocked: false, captainKeyword: null, lockedLieutenantsCount: 0 },
     )
-    expect(a1.find(e => e.tabId === 'capitaine')!.dbCount).toBe(1) // verrouillé
-    expect(a2.find(e => e.tabId === 'capitaine')!.dbCount).toBe(0) // pas verrouillé
-    expect(a1.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(3)
+    expect(a1.find(e => e.tabId === 'capitaine')!.dbCount).toBe(31)
+    expect(a2.find(e => e.tabId === 'capitaine')!.dbCount).toBe(3)
+    expect(a1.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(12)
     expect(a2.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(0)
   })
 
@@ -200,11 +193,10 @@ describe('buildTabCacheEntries — invariants critiques', () => {
   })
 
   it('protection : counts undefined dans le payload → 0 (pas NaN)', () => {
-    const entries = buildTabCacheEntries({ captain: 5 }, EMPTY_UI)
+    const entries = buildTabCacheEntries({}, EMPTY_UI)
     expect(entries.find(e => e.tabId === 'radar')!.dbCount).toBe(0)
+    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(0)
     expect(entries.find(e => e.tabId === 'lieutenants')!.dbCount).toBe(0)
     expect(entries.find(e => e.tabId === 'lexique')!.dbCount).toBe(0)
-    // Capitaine : isCaptaineLocked=false → dbCount=0 même si captain count présent
-    expect(entries.find(e => e.tabId === 'capitaine')!.dbCount).toBe(0)
   })
 })

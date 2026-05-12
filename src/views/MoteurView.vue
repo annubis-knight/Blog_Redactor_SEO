@@ -356,17 +356,6 @@ const tabCacheEntries = computed<TabCacheEntry[]>(() => buildTabCacheEntries(
     radarCacheStatus: radarCacheStatus.value
       ? { exists: radarCacheStatus.value.exists, globalScore: radarCacheStatus.value.globalScore }
       : null,
-    // Réactif : reflète immédiatement les ajouts/suppressions via le store
-    // DB-first (input manuel Radar ou batch Discovery), sans attendre un
-    // refresh d'explorationCounts. Garde-fou : on ne passe la valeur du
-    // store **que** si l'article courant correspond bien (sinon le store est
-    // en cours d'hydratation ou désynchronisé, et counts.radar reste la
-    // source fiable issue de GET /explorations/counts).
-    radarGeneratedKeywordsCount: radarExplorationStore.articleId !== null
-      && radarExplorationStore.articleId === (selectedArticle.value?.id ?? null)
-      && !radarExplorationStore.isLoading
-      ? radarExplorationStore.generatedKeywords.length
-      : undefined,
     isCaptaineLocked: isCaptaineLocked.value,
     captainKeyword: captainKeyword.value ?? null,
     lockedLieutenantsCount: articleKeywordsStore.keywords?.lieutenants?.length ?? 0,
