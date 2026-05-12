@@ -1,7 +1,7 @@
 ---
 purpose: 'Registre de conception — détails d''implémentation des exigences PRD'
 companion: '_bmad-output/planning-artifacts/prd.md'
-lastUpdated: '2026-05-12T00:00:00Z'
+lastUpdated: '2026-05-13T00:00:00Z'
 updateReason: 'Création initiale — extraction des détails techniques hors PRD (chantier docs/prd-split-spec-design). Premier lot : §8.2 Dashboard. Lot §8.9 Finalisation (3 entrées DESIGN-FIN-RECAP / DESIGN-FIN-LINK-REDACTION / DESIGN-FIN-CHECK). Tranché au passage : le check `moteur:finalisation_completed` mentionné en suspens dans le PRD n''existe pas dans le code — l''onglet Finalisation est read-only, le Moteur reste à 5 checks (Discovery, Radar, Capitaine, Lieutenants, Lexique). Lot §8.15 Composants UI partagés (DESIGN-UI-RADAR-CARD / DESIGN-UI-AI-PANELS-PATTERN / DESIGN-UI-ARTICLE-SHARED / DESIGN-UI-MOTEUR-SHARED) — 4 entrées formalisant les invariants de cohérence cross-contextes. Constats : `BasketStrip.vue` listé dans le PRD a été supprimé 2026-05-11 (cf. DRIFT-011), `LaboView` et `KeywordRadarTab` mentionnés dans le PRD historique n''existent pas dans le code (cf. DRIFT-012), `ArticleWordCountBar` réellement consommé par `ArticleWorkflowView` et non `ArticleEditorView` (cf. DRIFT-013). Lot §8.4 Moteur — Discovery (6 entrées DESIGN-DIS-SOURCES / DESIGN-DIS-RELEVANCE-FILTER / DESIGN-DIS-AI-ANALYSIS / DESIGN-DIS-CACHE / DESIGN-DIS-SEND-TO-RADAR / DESIGN-DIS-CHECK). Recadrages au passage : (1) PRD initial citait `FR-DIS-INTENT-SCAN` sur Discovery alors que `/api/keywords/intent-scan` est exclusivement consommé par Radar via `useResonanceScore` (DRIFT-008) ; (2) Discovery utilise 7 sources parallèles (4 angles Google Suggest + IA Claude + DataForSEO + courte-traîne IA), filtre relevance 2-passes conditionnel `STRICT_PASS_TRIGGER_RATIO = 0.10` cap LRU 500, cache DB-first 30 j sur `keyword_discoveries(seed, lang)` avec auto-save au repos, envoi au Radar via UPSERT direct `radar_explorations.generated_keywords` (basket mémoire supprimé 2026-05-11), check `MOTEUR_DISCOVERY_DONE` émis exclusivement depuis `useMoteurCrossTabState.handleSendToRadar` (pas depuis `DiscoveryPanel.vue`) ; (3) refonte 2026-05-11 a aussi supprimé `DiscoveryAiPanel.vue` + `useDiscoveryRanking.ts` au profit d''un usage direct de `<AiPanel>` + curation backend. Lot §8.3 Moteur règles transversales (24 entrées DESIGN-MOT-* couvrant les phases, gating souple, sélection article, recap publié, mode bimodal, checks, transitions, KPIs bruts, cache cascade, injection painPoint/strategy, cross-tab payload, cannibalisation, compteurs DB, réconciliation, cache externe, basket déprécié, NFR découplage Lieutenants/Lexique, NFR décomposition keyword_metrics). Tranchés au passage : (a) `DELETE /progress/check` n''existe pas — c''est `POST /articles/:id/progress/uncheck` (cf. DRIFT-008) ; (b) `getOrFetch` n''est pas un helper centralisé exporté par `cache-helpers.ts` mais un pattern réimplémenté localement par service (cf. DRIFT-009) ; (c) migration `020_normalize_completed_checks.sql` est dans `migrations/_archive/`, donc historique appliqué, pas source de vérité courante (cf. DRIFT-010). Lot §8.10 Rédaction (13 entrées DESIGN-RED-* couvrant brief IA, outline, génération article section-by-section, méta, éditeur TipTap, scoring SEO live, 12 actions contextuelles, internal linking, reduce-section, humanize-section, word count target, progress, checks, panels layout, IA Brief). Stores Pinia vérifiés : `useEditorStore`, `useOutlineStore`, `useSeoStore`, `useGeoStore`, `useBriefStore`, `useLinkingStore`, `useArticleProgressStore` — tous présents et conformes (cf. exports `defineStore` dans `src/stores/article/`). Constat : `useInternalLinking` consomme `useLinkingStore` (kebab-case dans `src/stores/keyword/linking.store.ts`), pas un store dédié article — cohérent avec la matrice cocon globale. Surprise consignée DRIFT-015 (référence ProseMirror position dans `internal_links.position` flottante après remaniement lourd, problème connu mais non bloquant). Lot §8.13 Intégrations externes (12 entrées DESIGN-EXT-* : DATAFORSEO, DATAFORSEO-COSTGUARD, DATAFORSEO-SANDBOX, GSC-OAUTH, GSC-PERFORMANCE, GSC-KEYWORD-GAP, AI-MULTI-PROVIDER, AI-FALLBACK, CLAUDE, GEMINI, EMBEDDINGS, AUTOCOMPLETE-GOOGLE). Stores Pinia vérifiés via grep `export const use` sur `src/stores/external/` et `src/stores/ui/` : `useGscStore`, `useLocalStore`, `useCaptainTriggerStore`, `useCostLogStore`, `useNotificationStore`, `useRuntimeModeStore`, `useWorkflowNavStore` — tous présents et conformes. Constats : (1) toggle navbar mock/real unique pilote à la fois DataForSEO sandbox ET provider IA (cohérence UX assumée) ; (2) GSC token persisté en fichier JSON `data/gsc-token.json`, pas en DB — décision historique outil solo ; (3) embedding multilingue local Xenova/multilingual-e5-small, dégradation gracieuse si non chargeable (60s lazy-load au premier usage) ; (4) `autocomplete.service.ts` localisé dans `services/keyword/`, pas `services/external/` — drift historique consigné DRIFT-016. Lot §8.14 Infrastructure transversale (28 entrées DESIGN-INFRA-* couvrant caches courts/permanents `external_api_cache`/`keyword_metrics`/`paa-cache`/`keyword_discoveries`, wrapper API `apiGet/Post/Put/Patch/Delete/Stream`, validation Zod, prompt loader + escape hardening, constantes workflow `MOTEUR_*`/`CERVEAU_*`/`REDACTION_*`, module score unifié + ESLint no-fallback + KPI nullable/display-dash/consistency/scoring-nullsafe, check:health + dependency-cruiser, runtime-mode toggle mock/réel, scrape-corpus neutre, logger structuré, error handler central, health-check + DB connection check, cost-log store, tables persistées `paa_explorations`/`intent_explorations` legacy/`keywords_seo`/`local_entities`/`lieutenant_explorations`/`keyword_discoveries`/`article_strategies`/`cocoon_strategies`/`article_micro_contexts`). Stores Pinia vérifiés : `useCostLogStore`, `useRuntimeModeStore`, `useArticleKeywordsStore`, `useRadarExplorationStore`, `useKeywordDiscoveryStore`, `useArticleStrategyStore` — tous présents conformes. Surprises consignées : DRIFT-017 (`shared/schemas/` contient 13 fichiers, pas 41 comme annoncé PRD pré-migration), DRIFT-018 (`paa-cache.service.ts` lit/écrit `keyword_metrics.paa_questions` avec freshness 1j, pas une table `paa_cache` dédiée 90j comme annoncé PRD), DRIFT-019 (règle ESLint `no-restricted-syntax` couvre uniquement `Score`, pas `Density/Volume/Difficulty/Cpc/Competition` annoncés PRD), DRIFT-020 (`lieutenant_explorations.locked_at` mentionné PRD pré-migration mais absent du schéma snapshot courant).'
 synced_with:
   - '_bmad-output/planning-artifacts/prd.md'
@@ -2032,16 +2032,34 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Réf PRD :** [FR-RAD-NO-RELEVANCE-IN-SCAN](./prd.md#fr-rad-no-relevance-in-scan)
 
 **Refs code**
-- [server/services/keyword/keyword-radar.service.ts](../../server/services/keyword/keyword-radar.service.ts) — pipeline scan.
+- [server/services/keyword/keyword-radar.service.ts](../../server/services/keyword/keyword-radar.service.ts) — pipeline scan, axe marché pur (depuis 2026-05-13).
+- [server/services/intent/intent-scan.service.ts](../../server/services/intent/intent-scan.service.ts) — `computePaaWeightedScore` devient topic-pur (depuis 2026-05-13, suppression de la composante `painWeight`).
+- [src/components/intent/RadarKeywordCard.vue](../../src/components/intent/RadarKeywordCard.vue) — `matchLabel` / `badgeClass` / `itemBorderClass` ne consomment plus `paa.painAlignment` en mode `cardContext='radar'` (suffixes `· douleur` / `· hors-douleur` retirés).
 
 **Flux DB**
 
 *Écriture* : le snapshot `radar_explorations.scan_result.cards[]` ne contient pas de `relevanceScore`. Les anciennes lignes (avant 2026-05-05) qui en contenaient sont **ignorées à la lecture**.
 
 **Décisions d'architecture**
-- Modification du painPoint ne nécessite jamais de re-scanner — le Score Pertinence sera recalculé live à l'hydratation Capitaine.
+- **Pas de Score Pertinence dans le scan** : modification du painPoint ne nécessite jamais de re-scanner — le Score Pertinence sera recalculé live à l'hydratation Capitaine.
+- **Pas de signal intermédiaire d'alignement douleur dans le scan** (depuis 2026-05-13, Chantier 1 `feat/captain-paa-lazy-and-radar-cleanup`) :
+  - Suppression du calcul `painAlignmentMap` (embedding keyword × painPoint).
+  - Suppression du calcul `autocompletePainAlignmentAvg` (embedding autocomplete × painPoint).
+  - Suppression du calcul `paaPainAlignmentByKw` et de l'assignation `painAlignment` (`'aligned' / 'partial' / 'off'`) sur chaque `RadarPaaItem`.
+  - `computePaaWeightedScore` devient topic-pur (formule `0.5×topic + 0.5×pain` → `topic` seul). Échelle inchangée (max 2.0 par PAA).
+  - `RadarKeywordKpis.painAlignmentScore` n'est plus alimenté (champ optional, devient undefined → traité comme neutre 50 par le scoring legacy).
+- **Param `painPoint` accepté mais non consommé** par `scanRadarKeywords` (compat de signature, journal de scan retire le marker "pain-aware").
+- **Justification produit** : Radar = vue marché. La pertinence article (PAA × douleur) vit exclusivement dans l'onglet Capitaine via Haiku (cf. `DESIGN-CAP-PAA-JUDGE-HAIKU`). Toute logique de pertinence dans Radar créait un drift d'axes (marché ⇄ article) déjà observé avant le chantier.
 
-**Voir aussi** : `DESIGN-CAP-RELEVANCE-COMPUTED-LIVE`.
+**Tests**
+- [tests/unit/services/keyword-radar.service.test.ts](../../tests/unit/services/keyword-radar.service.test.ts) — pas de signal d'alignement douleur produit par le scan.
+- Tests `radar-keyword-card-visual.test.ts` + `radar-keyword-card-paa-badge-capitaine.test.ts` — vérifient que le mode `radar` n'affiche plus de suffixe douleur sur les badges.
+
+**Historique**
+- 2026-05-05 : `relevanceScore` retiré du snapshot scan (lecture seule pour Capitaine live).
+- 2026-05-13 : **suppression complète des signaux intermédiaires d'alignement douleur** dans le scan + badges Radar (Chantier 1). Code mort retiré : `painWeight`, `computePaaPainAlignmentCumulative`, type `RadarPainAlignment` (côté intent-scan).
+
+**Voir aussi** : `DESIGN-CAP-RELEVANCE-COMPUTED-LIVE`, `DESIGN-CAP-PAA-JUDGE-HAIKU` (où vit désormais le signal douleur).
 
 ---
 
@@ -2408,23 +2426,51 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Réf PRD :** [FR-CAP-PAA-JUDGE-HAIKU](./prd.md#fr-cap-paa-judge-haiku--lia-juge-directement-la-pertinence-des-questions-paa-par-rapport-à-la-douleur)
 
 **Refs code**
-- [server/services/keyword/captain-paa-judge.service.ts](../../server/services/keyword/captain-paa-judge.service.ts) — orchestration de l'appel Haiku + parsing tool_use + fallback lexical.
-- [server/prompts/captain-paa-judge.md](../../server/prompts/captain-paa-judge.md) — prompt système avec injection `{{articleTitle}}`, `{{painPoint}}`, `{{paaItems}}`.
-- [server/services/keyword/captain-relevance.service.ts](../../server/services/keyword/captain-relevance.service.ts) — intégration : utilise `paaPainAlignmentOverride` du jugement Haiku en priorité sur le calcul lexical (`avgLexicalPainAlignment`).
-- Tests : [tests/unit/services/captain-paa-judge.service.test.ts](../../tests/unit/services/captain-paa-judge.service.test.ts), [tests/unit/services/captain-relevance-haiku-override.service.test.ts](../../tests/unit/services/captain-relevance-haiku-override.service.test.ts).
+- [server/services/keyword/captain-paa-judge.service.ts](../../server/services/keyword/captain-paa-judge.service.ts) :
+  - `judgePaaForKeyword(...)` — un appel Haiku pour un keyword + ses PAA, parsing `tool_use`, throws `HaikuJudgmentError` en cas d'échec.
+  - `runPaaJudgmentsForArticle(articleId)` (depuis 2026-05-13) — orchestrateur dédié : lit `articles.titre`/`pain_point`/`pain_intent_expected` + `captain_explorations` + `paa_explorations`, appelle `judgePaaForKeyword` en parallèle (`Promise.all`) pour chaque keyword exploré, puis recalcule `computeRelevanceForCaptainTab` avec override Haiku sur signal 2. Retourne `{ judgments, relevanceScores }`.
+- [server/prompts/captain-paa-judge.md](../../server/prompts/captain-paa-judge.md) — prompt système avec injection `{{article_title}}`, `{{pain_point}}`, `{{pain_intent_expected}}`, `{{keyword}}`, `{{paa_list_formatted}}` (escapeKeys appliqué via `loadPrompt`).
+- [server/services/keyword/captain-relevance.service.ts](../../server/services/keyword/captain-relevance.service.ts) — accepte un paramètre `paaJudgmentOverrides: Map<keyword, number> | null` ; quand fourni, injecte `overallPaaScore` en lieu et place du calcul lexical (`avgLexicalPainAlignment`) sur le signal 2.
 
-**Tables consommées (lecture)** : `paa_explorations`, `keyword_paa_questions`, `articles.pain_point`, `articles.title`.
+**Endpoints**
+- `POST /api/articles/:id/captain/judge-paa` (depuis 2026-05-13) — déclenche `runPaaJudgmentsForArticle`. Réponse `{ data: { judgments: Record<keyword, PaaJudgmentBlock>, relevanceScores: Record<keyword, RelevanceScoreLiveResult> } }`. Pas d'écriture DB.
+- `getCaptainExplorations` (`GET /articles/:id/captain-explorations` / agrégat `/keywords`) ne déclenche **plus** Haiku depuis 2026-05-13. Il retourne le Score Pertinence en fallback lexical pur, mode rapide. Haiku est lazy via la route dédiée ci-dessus.
+
+**Watchers & réactivité (déclenchement lazy)**
+- [src/views/MoteurView.vue](../../src/views/MoteurView.vue) passe `:active="activeTab === 'capitaine'"` à `<CaptainPanel>`.
+- [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — watcher local :
+  ```ts
+  watch(
+    [() => props.active, () => props.selectedArticle?.id],
+    ([active, id]) => { if (active && id) void articleKeywordsStore.loadCaptainPaaJudgments(id) },
+    { immediate: true },
+  )
+  ```
+- Cas couverts : (1) 1ère entrée Capitaine → appel ; (2) switch d'article tout en restant sur Capitaine → re-appel pour le nouvel article ; (3) switch d'onglet sans changer d'article → 0 appel (les refs n'ont pas changé) ; (4) retour sur un article déjà jugé dans la session → cache hit (cf. `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION`).
+
+**Tables consommées (lecture)** : `articles.titre`, `articles.pain_point`, `articles.pain_intent_expected`, `captain_explorations.keyword`/`root_keywords`, `paa_explorations.question`/`answer`.
 
 **Flux DB** : **aucune écriture en base** — le jugement est éphémère, vit en mémoire JS (cf. `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION`).
 
+**Tests**
+- [tests/unit/services/captain-paa-judge.service.test.ts](../../tests/unit/services/captain-paa-judge.service.test.ts) — 10 tests : tool name forcé, modèle Haiku 4.5, parité 4 vs 16 PAA, cas null (`no-pain`, `missing-paa`), échec → `HaikuJudgmentError`, injection variables sans placeholder résiduel.
+- [tests/unit/services/captain-relevance-haiku-override.service.test.ts](../../tests/unit/services/captain-relevance-haiku-override.service.test.ts) — 8 tests : override prime sur lexical, fallback transparent, isolation des autres signaux.
+- [tests/unit/stores/article-keywords-paa-judgments.test.ts](../../tests/unit/stores/article-keywords-paa-judgments.test.ts) — 8 tests sur l'action store `loadCaptainPaaJudgments` + cache cross-switch.
+
 **Décisions d'architecture**
 - **Modèle** : Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) — léger et rapide, suffisant pour un jugement structuré sur 4-16 PAA.
-- **Tool use forcé** sur `submit_paa_judgments` avec schéma strict (cf. tech-spec) — garantit une sortie parsable, pas de prose libre.
+- **Tool use forcé** sur `submit_paa_judgments` avec schéma strict — garantit une sortie parsable, pas de prose libre.
 - **`temperature: 0`** pour réduire la variabilité — un même mot-clé donne la même structure de jugement à chaque appel.
 - **Appel par mot-clé** (pas par question) — économise des tokens et offre un raisonnement contextuel global sur l'ensemble des PAA d'un mot-clé.
+- **Lazy via prop `active` + watcher local** (pattern parent→enfant, depuis 2026-05-13) — `getCaptainExplorations` redevient rapide (lexical pur), Haiku n'est invoqué qu'à l'entrée de l'onglet Capitaine. Pas d'appel inutile quand l'utilisateur reste sur Radar/Lexique/Lieutenants.
+- **Route dédiée** (séparée de `getCaptainExplorations`) — permet au backend de retourner `getCaptainExplorations` en quelques ms (utile pour les autres consommateurs : Lieutenants, Lexique, compteurs onglets) et de payer le coût Haiku seulement à l'entrée Capitaine.
 - **Fallback lexical silencieux** : en cas d'échec Haiku (timeout, rate limit, schéma malformé, `HaikuJudgmentError`), le calcul lexical historique (`avgLexicalPainAlignment`) prend le relais — le score reste calculé, signalé via `'haiku-unavailable'` dans `DESIGN-CAP-RELEVANCE-UNAVAILABLE-REASON`.
 - **Poids signal 2 conservé à 25 %** dans le Score Pertinence — pas de rééquilibrage de la formule globale.
 - **Mode mock** : la fixture `submit_paa_judgments` retourne un schéma valide déterministe en `AI_PROVIDER=mock`.
+
+**Historique**
+- 2026-05-12 : création de la FR + service + endpoint mutualisé dans `getCaptainExplorations`.
+- 2026-05-13 : **extraction du calcul Haiku hors `getCaptainExplorations`** (Chantier 2) — nouvelle route dédiée `POST /captain/judge-paa`, `runPaaJudgmentsForArticle`, déclenchement lazy via prop `active` + watcher local CaptainPanel. Pattern parent→enfant pour l'orchestration.
 
 **Voir aussi** : `DESIGN-CAP-RELEVANCE-LIVE`, `DESIGN-CAP-PAA-BADGE-SINGLE`, `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION`, `DESIGN-CAP-RELEVANCE-UNAVAILABLE-REASON`.
 
@@ -2458,22 +2504,39 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Réf PRD :** [FR-CAP-PAA-JUDGE-CACHE-SESSION](./prd.md#fr-cap-paa-judge-cache-session--les-jugements-ia-restent-en-mémoire-pendant-la-session-navigateur)
 
 **Refs code**
-- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — champ `paaJudgment` (type `PaaJudgmentBlock`) attaché à chaque entrée `richCaptain.exploredKeywords`.
+- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) (depuis 2026-05-13) :
+  - État : `paaJudgmentsByArticle: Map<number, Map<string, PaaJudgmentBlock>>` (cache cross-switch d'article).
+  - État : `paaJudgmentsLoadingByArticle: Map<number, boolean>` (drapeau loading par article, pilote le skeleton UI).
+  - Action `loadCaptainPaaJudgments(articleId)` : appelle `POST /articles/:id/captain/judge-paa`, hydrate la Map, **remplace** `relevanceScore` + `paaJudgment` dans `richCaptain.exploredKeywords[i]` pour les keywords concernés. Cache hit silencieux si déjà chargé (early return) ou en cours de chargement (anti-doublon concurrent).
+  - Getter `getPaaJudgment(articleId, keyword): PaaJudgmentBlock | null` — lookup du cache.
+  - Getter `isPaaJudgmentLoading(articleId): boolean`.
+  - `$reset()` : préserve volontairement le cache `paaJudgmentsByArticle` (justification ci-dessous). Vide uniquement les autres slots.
 
 **Flux DB** : **aucune persistance**. Strictement mémoire JS (store Pinia).
 
-**Stores Pinia** : `useArticleKeywordsStore` (`AUTHORITY:` sur `article_keywords` — le champ `paaJudgment` est un compagnon non-persisté du store).
+**Stores Pinia** : `useArticleKeywordsStore` (`AUTHORITY:` sur `article_keywords` — les jugements Haiku sont un compagnon non-persisté du store, isolés dans une Map dédiée).
 
-**Watchers & réactivité**
-- Pas de watcher dédié — le store hydrate `paaJudgment` au mount Capitaine, le conserve sur switch d'article (Map cross-switch), et s'efface au F5 navigateur.
+**Watchers & réactivité (déclenchement)**
+- Déclenché par le watcher local de [CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) sur `[() => props.active, () => props.selectedArticle?.id]` (cf. `DESIGN-CAP-PAA-JUDGE-HAIKU`).
+- Pas de watcher dans le store lui-même — l'action est appelée depuis le composant qui orchestre.
 
 **Décisions d'architecture**
+- **Map par articleId** (et non champ direct sur `exploredKeywords[i]`) — permet le cache cross-switch d'article sans dépendre du store `richCaptain` qui peut être muté par `fetchKeywordsMerge` à chaque switch.
+- **`$reset()` préserve volontairement le cache** : conforme à l'esprit "cross-switch" de la FR. Sinon un switch d'article suivi d'un `$reset()` ferait perdre les jugements de l'article précédent — anti-pattern.
+- **Anti-doublon concurrent** : si `loadCaptainPaaJudgments(id)` est appelée 2× en parallèle (race condition watcher + 1ère interaction utilisateur), la 2ᵉ détecte que le loading flag est `true` et retourne immédiatement — un seul appel HTTP.
 - **Justification produit** : `painPoint` immutable post-Cerveau (cf. `DESIGN-MOT-PAIN-IMMUTABLE-AFTER-CEREVEAU`) ⇒ jugement Haiku stable pendant toute la session ⇒ cache cross-switch sûr (pas de risque de divergence entre le jugement caché et la donnée source).
 - **F5 = vide tout** : choix assumé. Le rafraîchissement complet est une action explicite de l'utilisateur — il sait qu'il déclenche un nouveau coût IA.
-- **Cohabitation avec `DESIGN-CAP-RELEVANCE-NO-CACHE`** : cette dernière régit le **score Pertinence algorithmique legacy** (lexical). Pour la composante PAA × douleur (devenue jugement Haiku), c'est `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION` qui s'applique. Pas de contradiction — champs distincts du store.
-- **Tests d'invariant** :
-  - `grep CREATE TABLE.*paa_judg` dans `server/db/schema.sql` doit retourner 0 résultat (interdiction de persistance DB).
-  - Spy `pg.query` sur tous les `INSERT` du store ne doit jamais capturer un payload contenant `paaJudgment`.
+- **Cohabitation avec `DESIGN-CAP-RELEVANCE-NO-CACHE`** : cette dernière régit le **score Pertinence algorithmique legacy** (lexical). Pour la composante PAA × douleur (devenue jugement Haiku), c'est `DESIGN-CAP-PAA-JUDGE-CACHE-SESSION` qui s'applique. Pas de contradiction — Maps distinctes du store.
+- **Borne mémoire** : pas de LRU dans v1. Ordre de grandeur estimé : 100 articles × 10 keywords × ~quelques Ko ≈ ~1 Mo en mémoire JS. Négligeable.
+
+**Tests d'invariant**
+- `grep CREATE TABLE.*paa_judg` dans `server/db/schema.sql` doit retourner 0 résultat (interdiction de persistance DB).
+- Spy `pg.query` sur tous les `INSERT` du store ne doit jamais capturer un payload contenant `paaJudgment`.
+- [tests/unit/stores/article-keywords-paa-judgments.test.ts](../../tests/unit/stores/article-keywords-paa-judgments.test.ts) — 8 tests : 1er call hit API, 2e call cache hit, cross-switch A → B → A cache hit, `$reset()` préserve le cache, loading flag toggle, échec API → cache vide, appels concurrents → 1 seul call.
+
+**Historique**
+- 2026-05-12 : 1ère implémentation — `paaJudgment` champ direct sur `richCaptain.exploredKeywords[i]`.
+- 2026-05-13 : **refonte cache cross-switch d'article** (Chantier 2) — Map dédiée `paaJudgmentsByArticle` + action `loadCaptainPaaJudgments` + getters. Survit aux switch d'article dans la même session.
 
 **Voir aussi** : `DESIGN-CAP-PAA-JUDGE-HAIKU`, `DESIGN-CAP-RELEVANCE-LIVE`, `DESIGN-CAP-RELEVANCE-NO-CACHE`, `DESIGN-MOT-PAIN-IMMUTABLE-AFTER-CEREVEAU`.
 

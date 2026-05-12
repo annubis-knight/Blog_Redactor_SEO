@@ -1439,16 +1439,22 @@ Le Score Marché d'une carte n'est **jamais persisté** : il est recalculé à l
 
 ---
 
-#### FR-RAD-NO-RELEVANCE-IN-SCAN — Le scan ne calcule jamais le Score Pertinence
+#### FR-RAD-NO-RELEVANCE-IN-SCAN — Le scan ne calcule jamais le Score Pertinence ni aucun signal d'alignement douleur
 
-Le scan Radar produit **uniquement** les KPIs bruts et le Score Marché — il ne calcule jamais le Score Pertinence. Le Score Pertinence est calculé séparément, à la volée, côté backend lors de l'hydratation de l'onglet Capitaine (cf. `FR-CAP-RELEVANCE-COMPUTED-LIVE`). Garantit qu'une modification de la formule Pertinence ou du point de douleur de l'article ne nécessite jamais de re-scanner.
+Le scan Radar produit **uniquement** les KPIs bruts et le Score Marché — il ne calcule **jamais** le Score Pertinence ni aucun signal intermédiaire d'alignement entre le mot-clé scanné et le point de douleur de l'article. La pertinence article (le « est-ce que ce mot-clé sert vraiment ma douleur ? ») vit **exclusivement** dans l'onglet Capitaine via le jugement Haiku (cf. `FR-CAP-PAA-JUDGE-HAIKU`).
+
+Côté badges Radar des questions PAA : étiquette purement lexicale (`Exact` / `Match` / `Partiel` / `Hors sujet`), aucune mention d'alignement douleur (`· douleur` / `· hors-douleur` retirés). Le suffixe douleur ne fait sens que dans l'onglet Capitaine où la douleur est en jeu.
+
+Garantit qu'une modification de la formule Pertinence ou du point de douleur de l'article ne nécessite jamais de re-scanner, et que l'onglet Radar reste rapide (pas d'embedding lourd sur le painPoint au scan).
 
 **Critères d'acceptation**
 - Le scan ne sérialise pas de Score Pertinence dans son résultat.
-- Les anciennes lignes en base qui contenaient encore un Score Pertinence sont ignorées à la lecture (pas de migration destructive).
+- Le scan ne calcule aucun embedding `painPoint × keyword`, `painPoint × autocomplete`, ni `painPoint × PAA`.
+- Les badges Radar n'affichent jamais de suffixe `· douleur` / `· hors-douleur`.
+- Les anciennes lignes en base qui contenaient encore un Score Pertinence ou un signal douleur sont ignorées à la lecture (pas de migration destructive).
 - Le Score Pertinence affiché côté Radar (mode Pertinence) vient de la même mécanique live que côté Capitaine — pas d'un cache du scan.
 
-> **En situation.** L'utilisateur modifie le point de douleur de son article rupture conventionnelle (il l'a affiné pendant la rédaction). Sans toucher au Radar, il bascule le toggle sur « Pertinence » — les scores affichés ont changé immédiatement, reflètent la nouvelle douleur. Aucun re-scan, aucune écriture en base.
+> **En situation.** L'utilisateur modifie le point de douleur de son article rupture conventionnelle (il l'a affiné pendant la rédaction). Sans toucher au Radar, il bascule le toggle sur « Pertinence » — les scores affichés ont changé immédiatement, reflètent la nouvelle douleur. Aucun re-scan, aucune écriture en base. À l'inverse, sur l'onglet Radar lui-même, les badges des questions PAA continuent d'afficher leur match lexical pur (« Exact », « Partiel »…) — pas de mélange visuel avec la douleur de l'article.
 
 → Conception : [DESIGN-RAD-NO-RELEVANCE-IN-SCAN](./design-registry.md#design-rad-no-relevance-in-scan)
 
