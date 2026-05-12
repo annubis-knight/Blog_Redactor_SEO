@@ -1012,19 +1012,20 @@ Pendant un calcul Pertinence pour N cards, chaque racine partagée est calculée
 
 #### FR-CAP-RELEVANCE-UNAVAILABLE-REASON
 Quand `relevanceScore.total === null`, le backend retourne un champ `unavailableReason` typé qui décrit la cause précise. Le frontend affiche un message correspondant honnête.
-Type : `'no-pain' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | null`.
+Type : `'no-pain' | 'long-tail' | 'missing-paa' | 'missing-autocomplete' | 'haiku-unavailable' | null`.
 **Mapping** :
 - `painPoint` absent ou < 10 chars → `'no-pain'` → *"Définis un point de douleur sur l'article"*.
 - `kpis === null` (longue-traîne) → `'long-tail'` → *"Score non applicable (longue-traîne)"*.
 - `paa_questions` vide en DB → `'missing-paa'` → *"Pas de PAA disponible — relance un scan Radar pour ce keyword"*.
 - `autocomplete_suggestions` vide en DB → `'missing-autocomplete'` → *"Pas d'autocomplete — relance un scan Radar"*.
+- Appel Haiku échoué (timeout, rate limit, schéma malformé) → `'haiku-unavailable'` → *"Jugement Haiku indisponible — réessayer"*. Le fallback lexical reste appliqué côté signal 2 pour ne pas perdre le score total (dégradation gracieuse).
 - Score présent → champ absent ou `null`.
 
 **Critères d'acceptation testables** :
-- Tests unitaires couvrant les 5 cas (4 causes + 1 cas score présent).
+- Tests unitaires couvrant les 6 cas (5 causes + 1 cas score présent).
 - Backend logge la cause à chaque retour `null` : `log.info('[Capitaine] relevanceScore null', { articleId, keyword, reason })`.
 - Frontend affiche le message correspondant dans le tooltip du score-ring (pas de devinette).
-**Statut :** active. **Depuis :** 2026-05-05. **Remplace :** ancien tooltip 3 causes deviné par le frontend. **Source :** tech-spec-relevance-live-computation.
+**Statut :** active. **Depuis :** 2026-05-05. **Mis à jour :** 2026-05-12 (ajout `'haiku-unavailable'` — source tech-spec-captain-paa-pertinence-unify). **Remplace :** ancien tooltip 3 causes deviné par le frontend. **Source :** tech-spec-relevance-live-computation, tech-spec-captain-paa-pertinence-unify.
 
 #### FR-CAP-RELEVANCE-LINEAR-ROOTS
 L'algorithme d'extraction des racines `extractRoots()` reste **linéaire** (troncature progressive depuis la fin, max 5 racines, minimum 2 mots significatifs hors stopwords). Toute évolution vers une extraction sémantique (LLM ou parsing) requiert une nouvelle tech-spec dédiée.
@@ -1047,6 +1048,60 @@ Le 5e signal du Score Pertinence (« Intent SERP × Intent éditorial attendu »
 - Test d'intégration `getCaptainExplorations` : vérifie que `painIntentExpected` est lu depuis DB et passé à `computeRelevanceForCaptainTab`.
 - Article créé sans `pain_intent_expected` → score Pertinence calculé sur 4 signaux (5e neutre à 50).
 **Statut :** active. **Depuis :** 2026-05-06. **Source :** tech-spec-pain-intent-expected-signal.
+
+#### FR-CAP-PAA-JUDGE-HAIKU
+Le **signal 2 du score Pertinence Capitaine (PAA × douleur)** est produit par un appel **Claude Haiku 4.5** (`claude-haiku-4-5-20251001`) à la volée à chaque hydratation de l'onglet Capitaine. Un seul appel par keyword juge en bloc tous les PAA scannés du keyword vis-à-vis du sujet (titre article) **et** du point de douleur (`articles.pain_point`). Retour via `tool_use` Anthropic forcé sur le tool `submit_paa_judgments` au schéma strict (cf. tech-spec). Le LLM raisonne en interne sur sujet + douleur et synthétise un verdict unique par PAA. `temperature: 0` pour réduire la variabilité.
+
+**Comportement** :
+- Remplace `avgLexicalPainAlignment` (calcul lexical historique) dans le chemin Capitaine.
+- Fallback lexical silencieux si Haiku échoue (préservation du score total via `'haiku-unavailable'` dans FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
+- Poids 25 % du score total conservé.
+- Conforme FR-CAP-RELEVANCE-NO-DB-WRITE (aucune écriture DB du jugement).
+
+**Critères d'acceptation testables** :
+- Tests `tests/unit/services/captain-paa-judge.service.test.ts` couvrent : retour valide, tool name `submit_paa_judgments`, modèle `claude-haiku-4-5-*`, painPoint absent → null no-pain, paaItems vide → null, échec Haiku → `HaikuJudgmentError`, parité 4 vs 16 PAA, injection variables prompt sans placeholder résiduel.
+- En mode `AI_PROVIDER=mock` la fixture `submit_paa_judgments` retourne un schéma valide déterministe.
+- Tests `tests/unit/services/captain-relevance-haiku-override.service.test.ts` vérifient que `paaPainAlignmentOverride` est utilisé en priorité sur le calcul lexical.
+
+**Statut :** active. **Depuis :** 2026-05-12. **Source :** tech-spec-captain-paa-pertinence-unify v0.3.0.
+
+#### FR-CAP-PAA-BADGE-SINGLE
+Sur l'onglet Capitaine, chaque PAA d'une card Radar affiche **un seul chip** dont la valeur (`pertinent` / `partiel` / `hors-sujet`) vient directement du LLM via le champ `badge` de `PaaJudgment`. Le tooltip du chip affiche `reasonShort` (justification ≤ 10 mots). Côté Radar (axe marché), le badge reste lexical pur basé sur `paa.match` + `paa.matchQuality` (comportement historique inchangé).
+
+**Composant bimodal** via prop `cardContext: 'radar' | 'capitaine'` (default `'radar'`) sur `RadarKeywordCard.vue`. Cf. CLAUDE.md §3.8 (composants Moteur bimodaux).
+
+**Mapping couleur** :
+- `pertinent` → chip vert (palette `--color-badge-green-*`).
+- `partiel` → chip orange (palette `--color-badge-amber-*`).
+- `hors-sujet` → chip gris (palette `--color-bg-soft` / `--color-text-muted`).
+
+**Fallback** : si `cardContext='capitaine'` mais `paaJudgment` absent (premier scan d'un keyword pas encore dans `captain_explorations`, ou Haiku échoué), le badge revient au rendu lexical historique — pas de cassure visuelle.
+
+**Affichage "PAA pts" du header** :
+- Mode `capitaine` + jugement disponible → `<overallPaaScore>/100`.
+- Mode `capitaine` + chargement → `'...'`.
+- Mode `radar` (ou capitaine fallback) → `<paaWeightedScore.toFixed(1)> pts` (somme brute historique).
+
+**Critères d'acceptation testables** :
+- Tests `tests/unit/components/radar-keyword-card-paa-badge-capitaine.test.ts` (11 tests) couvrent : default `radar` → somme brute, capitaine + judgment → overallPaaScore/100, loading → `...`, fallback transparent, 3 couleurs de chip, multi-PAA chacun son badge, tooltip = reasonShort, fallback lexical sans cassure.
+- Pas de régression sur les 8 tests existants `radar-keyword-card-*.test.ts`.
+
+**Statut :** active. **Depuis :** 2026-05-12. **Source :** tech-spec-captain-paa-pertinence-unify v0.3.0.
+
+#### FR-CAP-PAA-JUDGE-CACHE-SESSION
+Les jugements Haiku `PaaJudgmentBlock` produits par FR-CAP-PAA-JUDGE-HAIKU sont stockés **strictement en mémoire JS** dans le store Pinia `article-keywords.store.ts` (champ `paaJudgment` de chaque entrée `richCaptain.exploredKeywords`). Le cache **survit aux switch d'onglet ET aux switch d'article** dans la même session navigateur. **F5 vide tout**. Pas de persistance DB ni localStorage.
+
+**Justification** : `painPoint` immutable post-Cerveau (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU) ⇒ jugement stable pendant la session ⇒ cache cross-switch sûr (pas de risque de divergence).
+
+**Cohabitation avec FR-CAP-RELEVANCE-NO-CACHE** : cette dernière régit le score Pertinence algorithmique legacy. Pour la composante PAA × douleur (devenue jugement Haiku), c'est FR-CAP-PAA-JUDGE-CACHE-SESSION qui s'applique. Pas de contradiction — champs distincts du store.
+
+**Critères d'acceptation testables** :
+- Aucune table DB `paa_judgments` ou similaire ne contient les jugements (`grep CREATE TABLE.*paa_judg` dans `server/db/schema.sql` ne retourne rien).
+- Aucun `INSERT` SQL ne contient `paaJudgment` dans son payload (vérifiable par spy `pg.query`).
+- F5 navigateur vide complètement les jugements (store Pinia volatile).
+- Switch article A → B → A → la card de A retrouve son jugement Haiku sans nouvel appel API (test store).
+
+**Statut :** active. **Depuis :** 2026-05-12. **Source :** tech-spec-captain-paa-pertinence-unify v0.3.0.
 
 #### FR-PAIN-IMMUTABLE-AFTER-CEREVEAU
 Le `painPoint` d'un article (`articles.pain_point`) ne peut être modifié qu'à partir de l'interface Cerveau (étapes de stratégie cocon, création/édition d'article par lot). Aucun composant Moteur ou Rédaction n'expose de chemin de mutation du `painPoint`.

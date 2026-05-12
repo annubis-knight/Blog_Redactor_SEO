@@ -1,6 +1,6 @@
 ---
 title: Radar Card — anatomie du composant central du Moteur
-last_updated: 2026-05-05
+last_updated: 2026-05-12
 synced_with:
   - src/components/intent/RadarKeywordCard.vue
   - src/components/intent/RadarCardCheckable.vue
@@ -24,7 +24,11 @@ synced_with:
 - **Deux wrappers** :
   - `RadarCardCheckable.vue` → onglet **Radar** (checkbox de sélection).
   - `RadarCardLockable.vue` → onglet **Capitaine** (cadenas + tag manuel + recalcul Pertinence).
-- **Une prop pivot** : `displayMode: 'kpi' | 'relevance'` qui change la **source du score** affiché.
+- **Deux props pivot** :
+  - `displayMode: 'kpi' | 'relevance'` change la **source du score** affiché (anneau).
+  - `cardContext: 'radar' | 'capitaine'` (depuis 2026-05-12, FR-CAP-PAA-BADGE-SINGLE) change la **source du badge PAA** et de l'affichage "PAA pts" du header :
+    - `'radar'` → badge lexical historique + somme brute `paaWeightedScore`.
+    - `'capitaine'` → chip unique Haiku (`pertinent` / `partiel` / `hors-sujet`) + `overallPaaScore/100`. Fallback lexical transparent si jugement absent.
 - **Trois sous-composants visuels** consommés par le cœur : `RadarCardScoreRing`, `RadarCardPaaTree`, `KeywordWords`.
 
 ## 1. Schéma global — qui contient qui

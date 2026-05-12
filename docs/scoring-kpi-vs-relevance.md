@@ -1,5 +1,8 @@
 # Score KPI vs Score de Pertinence — Guide produit & technique
 
+> Mis à jour : **2026-05-12**
+> **2026-05-12 — Signal 2 (PAA × douleur) produit par Claude Haiku 4.5.** Le calcul lexical `avgLexicalPainAlignment` est remplacé par un appel LLM à la volée à chaque hydratation Capitaine. Le LLM raisonne explicitement sur sujet + douleur et synthétise un verdict unique par PAA (`pertinent` / `partiel` / `hors-sujet`). Voir tech-spec : [_bmad-output/implementation-artifacts/tech-spec-captain-paa-pertinence-unify.md](../_bmad-output/implementation-artifacts/tech-spec-captain-paa-pertinence-unify.md) et FR-CAP-PAA-JUDGE-HAIKU. Le badge PAA en mode Capitaine devient bimodal via `RadarKeywordCard.cardContext='capitaine'` (FR-CAP-PAA-BADGE-SINGLE). Le score reste calculé à la volée, jamais persisté en DB (FR-CAP-PAA-JUDGE-CACHE-SESSION, cache session mémoire JS). Côté Radar, le score `paaWeightedScore` brut continue d'alimenter le score marché (axe volume), inchangé.
+>
 > Mis à jour : **2026-05-04**
 > **Doc complémentaire** : [docs/pain-point-editorial-backbone.md](./pain-point-editorial-backbone.md) — explique pourquoi le painPoint est l'oxygène du score de pertinence et comment il irrigue le pipeline éditorial complet.
 > Source de vérité technique : [shared/score/index.ts](../shared/score/index.ts) (helpers unifiés), [shared/scoring.ts](../shared/scoring.ts) (calcul historique relevance), [shared/scoring-kpi.ts](../shared/scoring-kpi.ts) (calcul historique market), [shared/types/scoring.types.ts](../shared/types/scoring.types.ts)
