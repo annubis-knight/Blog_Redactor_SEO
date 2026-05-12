@@ -583,6 +583,7 @@ onMounted(() => {
             :initial-locked="isCaptaineLocked"
             :suggested-keywords="suggestedKeywordsForArticle"
             :radar-cards="radarCardsForCaptain"
+            :active="activeTab === 'capitaine'"
             @check-completed="emitCheckCompleted"
             @check-removed="handleCheckRemoved"
             @send-to-lieutenants="handleSendToLieutenants"

@@ -322,11 +322,10 @@ function matchLabel(paa: RadarPaaItem): string {
   const judgment = findJudgmentForPaa(paa)
   if (judgment) return judgment.badge // 'pertinent' / 'partiel' / 'hors-sujet' — sortie directe LLM
 
-  // Mode radar (ou capitaine fallback lexical) : comportement historique
-  const base = baseMatchLabel(paa)
-  if (paa.painAlignment === 'off') return `${base} · hors-douleur`
-  if (paa.painAlignment === 'aligned' && paa.match === 'total') return `${base} · douleur`
-  return base
+  // Mode radar (ou capitaine fallback lexical) : badge lexical pur.
+  // 2026-05-12 — Les suffixes `· douleur` / `· hors-douleur` ont été retirés
+  // car Radar ne calcule plus de signal de pertinence (FR-CAP-PAA-JUDGE-HAIKU).
+  return baseMatchLabel(paa)
 }
 
 /** Tooltip sur le badge : justification Haiku si disponible, sinon vide. */
@@ -335,8 +334,6 @@ function matchTitle(paa: RadarPaaItem): string {
   return judgment?.reasonShort ?? ''
 }
 
-// QW5 — Combine lexical match + painAlignment. Une PAA "total+exact" mais "off-pain"
-// est downgradee visuellement a un badge partiel pour refleter la dissonance.
 function badgeClass(paa: RadarPaaItem): string {
   const judgment = findJudgmentForPaa(paa)
   if (judgment) {
@@ -344,7 +341,7 @@ function badgeClass(paa: RadarPaaItem): string {
     if (judgment.badge === 'partiel') return 'badge--judge-partiel'
     return 'badge--judge-hors-sujet'
   }
-  if (paa.painAlignment === 'off' && paa.match === 'total') return 'badge--partial'
+  // 2026-05-12 — Plus de downgrade visuel basé sur painAlignment (Radar = marché pur).
   if (paa.match === 'total') return 'badge--total'
   if (paa.match === 'partial') return 'badge--partial'
   return 'badge--none'
@@ -365,9 +362,9 @@ const paaDisplayValue = computed<string>(() => {
   return `${raw.toFixed(1)} pts`
 })
 
-// EXACT badge → green border, MATCH/PARTIEL → subtle gray border, rest → no border
+// EXACT badge → green border, MATCH → subtle gray border, rest → no border.
+// 2026-05-12 — Plus de downgrade visuel basé sur painAlignment (Radar = marché pur).
 function itemBorderClass(paa: RadarPaaItem): string {
-  if (paa.painAlignment === 'off' && paa.match === 'total') return 'paa-item--match'
   if (paa.match === 'total' && paa.matchQuality === 'exact') return 'paa-item--exact'
   if (paa.match === 'total') return 'paa-item--match'
   return ''

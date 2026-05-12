@@ -56,11 +56,19 @@ const props = withDefaults(defineProps<{
   initialLocked?: boolean
   suggestedKeywords?: string[]
   radarCards?: RadarCard[]
+  /**
+   * True quand l'onglet Capitaine est l'onglet actif côté parent (MoteurView).
+   * Sert au pattern "parent navigation → enfant décide" : déclenche le jugement
+   * Haiku via `loadCaptainPaaJudgments` au mount + au switch d'article + au
+   * passage sur l'onglet (FR-CAP-PAA-JUDGE-HAIKU + lazy on tab).
+   */
+  active?: boolean
 }>(), {
   mode: 'workflow',
   initialLocked: false,
   suggestedKeywords: () => [],
   radarCards: () => [],
+  active: false,
 })
 
 const emit = defineEmits<{
@@ -112,16 +120,41 @@ const {
 
 /**
  * Lookup du jugement Haiku PAA × douleur pour le keyword actuellement scanné.
- * Source : `articleKeywordsStore.keywords.richCaptain.exploredKeywords` —
- * `paaJudgment` est attaché par `getCaptainExplorations` (FR-CAP-PAA-JUDGE-HAIKU).
- * Null si le keyword n'est pas encore dans `captain_explorations` (premier scan).
+ * Source : cache session `paaJudgmentsByArticle` du store (alimenté par
+ * `loadCaptainPaaJudgments` au mount/watch ci-dessous).
+ * Null si le keyword n'a pas (encore) été jugé par Haiku.
  */
 const captainPaaJudgment = computed(() => {
   const card = radarCard.value
-  if (!card) return null
-  const explored = articleKeywordsStore.keywords?.richCaptain?.exploredKeywords ?? []
-  return explored.find(e => e.keyword === card.keyword)?.paaJudgment ?? null
+  const articleId = props.selectedArticle?.id
+  if (!card || !articleId) return null
+  return articleKeywordsStore.getPaaJudgment(articleId, card.keyword)
 })
+
+const captainPaaJudgmentLoading = computed(() => {
+  const articleId = props.selectedArticle?.id
+  if (!articleId) return false
+  return articleKeywordsStore.isPaaJudgmentLoading(articleId)
+})
+
+/**
+ * Watcher local : déclenche le calcul Haiku quand
+ *   (a) l'onglet Capitaine devient actif, OU
+ *   (b) l'article change tout en restant sur Capitaine.
+ *
+ * Cache cross-switch d'article via `paaJudgmentsByArticle` du store
+ * (FR-CAP-PAA-JUDGE-CACHE-SESSION) → cache hit silencieux pour les articles
+ * déjà jugés dans la session. F5 = recalcul intégral.
+ */
+watch(
+  [() => props.active, () => props.selectedArticle?.id],
+  ([active, id]) => {
+    if (active && id) {
+      void articleKeywordsStore.loadCaptainPaaJudgments(id)
+    }
+  },
+  { immediate: true },
+)
 
 const articleLevel = computed<ArticleLevel>(() => {
   if (props.mode === 'libre' || !props.selectedArticle) return 'intermediaire'
@@ -1168,6 +1201,7 @@ onUnmounted(() => abortAllAiStreams())
             :article-level="articleLevel"
             card-context="capitaine"
             :paa-judgment="captainPaaJudgment"
+            :paa-judgment-loading="captainPaaJudgmentLoading"
             data-testid="captain-radar-card"
           />
           <div v-else-if="isLoadingRadar" class="radar-loading captain-card-with-sidebar__card" data-testid="radar-loading">

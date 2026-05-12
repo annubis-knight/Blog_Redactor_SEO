@@ -17,8 +17,13 @@ import type Anthropic from '@anthropic-ai/sdk'
 import { classifyWithTool } from '../external/ai-provider.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { log } from '../../utils/logger.js'
+import { pool } from '../../db/client.js'
 import type { PaaJudgmentBlock } from '../../../shared/types/captain-paa-judgment.types.js'
-import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
+import type {
+  PainIntentExpected,
+  RelevanceScoreLiveResult,
+} from '../../../shared/types/scoring.types.js'
+import { computeRelevanceForCaptainTab } from './captain-relevance.service.js'
 
 /** Longueur minimale du painPoint pour qu'un jugement Haiku soit tenté. */
 export const PAIN_POINT_MIN_LENGTH = 10
@@ -200,6 +205,129 @@ export async function judgePaaForKeyword(input: {
     })
     throw new HaikuJudgmentError(`Haiku PAA judgment failed: ${(err as Error).message}`, err)
   }
+}
+
+/**
+ * Orchestre les appels Haiku pour tous les keywords explorés d'un article + recalcule
+ * le score Pertinence avec les overrides Haiku injectés dans le signal 2.
+ *
+ * Appelée par l'endpoint POST /articles/:id/captain/judge-paa au mount de
+ * l'onglet Capitaine (lazy on tab). Pas appelée par getCaptainExplorations
+ * (qui reste calcul lexical pur côté Moteur, rapide).
+ *
+ * Retourne :
+ *   - judgments      : Map keyword → PaaJudgmentBlock pour les keywords ayant un jugement
+ *   - relevanceScores: Map keyword → RelevanceScoreLiveResult recalculé avec override Haiku
+ *                      pour le signal 2 (mêmes shape que ce que retourne getCaptainExplorations).
+ *
+ * Échec Haiku sur un keyword → fallback lexical silencieux pour ce keyword
+ * (le score reste calculé, juste sans la précision Haiku sur le signal 2).
+ */
+export async function runPaaJudgmentsForArticle(articleId: number): Promise<{
+  judgments: Record<string, PaaJudgmentBlock>
+  relevanceScores: Record<string, RelevanceScoreLiveResult>
+}> {
+  const tTotal = Date.now()
+
+  // Lecture article (titre + painPoint + intent)
+  const articleRes = await pool.query(
+    `SELECT a.titre, a.pain_point, a.pain_intent_expected
+     FROM articles a WHERE a.id = $1`,
+    [articleId],
+  )
+  const articleTitle = (articleRes.rows[0]?.titre as string | undefined) ?? ''
+  const painPointRaw = (articleRes.rows[0]?.pain_point as string | null | undefined) ?? ''
+  const painIntentExpected = (articleRes.rows[0]?.pain_intent_expected as PainIntentExpected | null | undefined) ?? null
+  const painPoint = painPointRaw ?? ''
+
+  // Lecture captain_explorations
+  const captainRes = await pool.query(
+    `SELECT keyword, root_keywords FROM captain_explorations WHERE article_id = $1 ORDER BY explored_at`,
+    [articleId],
+  )
+
+  // Lecture paa_explorations
+  const paaRes = await pool.query(
+    `SELECT keyword, question, answer FROM paa_explorations WHERE article_id = $1`,
+    [articleId],
+  )
+  const paaByKeyword = new Map<string, Array<{ question: string; answer: string }>>()
+  for (const r of paaRes.rows) {
+    const list = paaByKeyword.get(r.keyword) ?? []
+    list.push({ question: r.question, answer: r.answer ?? '' })
+    paaByKeyword.set(r.keyword, list)
+  }
+
+  // Appels Haiku parallèles
+  const judgmentsMap = new Map<string, PaaJudgmentBlock>()
+  const overridesMap = new Map<string, number>()
+  await Promise.all(
+    captainRes.rows.map(async (row) => {
+      const keyword = row.keyword as string
+      const paaItems = paaByKeyword.get(keyword) ?? []
+      try {
+        const judgment = await judgePaaForKeyword({
+          articleId,
+          keyword,
+          paaItems,
+          painPoint,
+          articleTitle,
+          painIntentExpected,
+        })
+        if (judgment !== null) {
+          judgmentsMap.set(keyword, judgment)
+          overridesMap.set(keyword, judgment.overallPaaScore)
+        }
+      } catch (err) {
+        if (err instanceof HaikuJudgmentError) {
+          log.warn('[runPaaJudgmentsForArticle] Haiku skipped for keyword (fallback lexical)', {
+            articleId,
+            keyword,
+            error: err.message,
+          })
+        } else {
+          throw err
+        }
+      }
+    }),
+  )
+
+  // Recalcul Pertinence avec override Haiku injecté dans signal 2
+  const captainKeywords = captainRes.rows.map(r => ({
+    keyword: r.keyword as string,
+    rootKeywords: (r.root_keywords ?? []) as string[],
+    isLongTail: false,
+  }))
+  const relevanceResult = await computeRelevanceForCaptainTab(
+    articleId,
+    captainKeywords,
+    overridesMap.size > 0 ? overridesMap : null,
+  )
+
+  // Sérialisation des Maps → Records pour transit HTTP
+  const judgments: Record<string, PaaJudgmentBlock> = {}
+  for (const [kw, j] of judgmentsMap) judgments[kw] = j
+
+  const relevanceScores: Record<string, RelevanceScoreLiveResult> = {}
+  for (const [kw, entry] of relevanceResult.cards) {
+    relevanceScores[kw] = {
+      total: entry.total,
+      verdict: entry.verdict,
+      breakdown: entry.breakdown,
+      rootsContext: entry.rootsContext,
+      unavailableReason: entry.unavailableReason,
+    }
+  }
+
+  log.info('[runPaaJudgmentsForArticle] DONE', {
+    articleId,
+    keywordsCount: captainRes.rows.length,
+    judged: judgmentsMap.size,
+    skippedNoPain: painPoint.length < PAIN_POINT_MIN_LENGTH ? captainRes.rows.length : 0,
+    totalMs: Date.now() - tTotal,
+  })
+
+  return { judgments, relevanceScores }
 }
 
 /** Helper exporté pour tests unitaires uniquement. */

@@ -182,6 +182,10 @@ vi.mock('../../../src/stores/article/article-keywords.store', () => ({
     saveCaptainExplorationEntry: mockSaveCaptainExplorationEntry,
     saveCaptainExplorationAiPanel: mockSaveCaptainExplorationAiPanel,
     archiveLockedLieutenants: vi.fn(),
+    // Cache jugement Haiku (FR-CAP-PAA-JUDGE-CACHE-SESSION) — stubs vides en test composant
+    loadCaptainPaaJudgments: vi.fn(),
+    getPaaJudgment: vi.fn(() => null),
+    isPaaJudgmentLoading: vi.fn(() => false),
   }),
 }))
 
