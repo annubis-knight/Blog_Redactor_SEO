@@ -4,14 +4,18 @@
  * READS FROM: articles.pain_point (DB), articles.pain_intent_expected (DB),
  *             captain_explorations.root_keywords (DB),
  *             keyword_metrics (DB) — paa_questions, autocomplete_suggestions,
- *             intent_raw, intent_label
+ *             intent_raw, intent_label.
+ *             Signal 2 (PAA × douleur) : override Haiku via `paaJudgmentOverrides`
+ *             (cf. FR-CAP-PAA-JUDGE-HAIKU), fallback lexical via `avgLexicalPainAlignment`
+ *             si Haiku indisponible.
  * WRITES TO: rien (read-only par contrat)
  * CONSUMERS: data.service.ts → getCaptainExplorations,
  *            futurs endpoints /articles/:id/relevance et /relevance/compute
  * RELATED FR: FR-CAP-RELEVANCE-COMPUTED-LIVE, FR-CAP-RELEVANCE-NO-DB-WRITE,
  *             FR-CAP-RELEVANCE-NO-CACHE, FR-CAP-RELEVANCE-ROOTS-FROM-DB,
  *             FR-CAP-RELEVANCE-MEMOIZATION, FR-CAP-RELEVANCE-UNAVAILABLE-REASON,
- *             FR-CAP-RELEVANCE-INTENT-SIGNAL (5e signal Intent SERP × Intent éditorial)
+ *             FR-CAP-RELEVANCE-INTENT-SIGNAL (5e signal Intent SERP × Intent éditorial),
+ *             FR-CAP-PAA-JUDGE-HAIKU (signal 2 produit par Haiku au lieu de lexical)
  *
  * Architecture (cf. docs/data-flows/relevance-score-live-computation.md §2) :
  *   PHASE 1 — lecture DB parallèle (painPoint + painIntentExpected + métriques keyword)
@@ -106,6 +110,12 @@ function computeRelevanceForSingleKeyword(
   rootsAverageScore: number | null,
   isLongTail: boolean,
   painIntentExpected: PainIntentExpected | null,
+  /**
+   * Override signal 2 (PAA × douleur) — score 0-100 produit par Haiku
+   * (FR-CAP-PAA-JUDGE-HAIKU). Si fourni → utilisé directement.
+   * Si null/undefined → fallback sur calcul lexical via `avgLexicalPainAlignment`.
+   */
+  paaPainAlignmentOverride: number | null = null,
 ): RelevanceScoreLiveResult {
   // Cas 1 — Pas de painPoint utilisable
   if (!painPoint || painPoint === PAIN_POINT_FALLBACK || painPoint.length < PAIN_POINT_MIN_LENGTH) {
@@ -139,11 +149,20 @@ function computeRelevanceForSingleKeyword(
   // Signal 1 — Pain × Mot-clé (alignement lexical keyword ↔ painPoint)
   const painAlignmentScore = lexicalPainAlignment(keyword, painWords)
 
-  // Signal 2 — PAA × Douleur (moyenne d'alignement de chaque PAA avec le painPoint)
-  const paaTexts = metrics.paaQuestions
-    .map(p => `${p.question}${p.answer ? ` ${p.answer}` : ''}`)
-    .filter(t => t.length > 0)
-  const paaPainAlignmentAvg = avgLexicalPainAlignment(paaTexts, painWords)
+  // Signal 2 — PAA × Douleur.
+  // Si Haiku a produit un overallPaaScore (FR-CAP-PAA-JUDGE-HAIKU), on l'utilise
+  // directement (jugement sémantique fin, combine sujet + douleur). Sinon,
+  // fallback transparent sur le calcul lexical historique pour ne pas casser
+  // les flows sans Haiku (mode mock, articles sans PAA jugés, etc.).
+  let paaPainAlignmentAvg: number | null
+  if (paaPainAlignmentOverride !== null) {
+    paaPainAlignmentAvg = paaPainAlignmentOverride
+  } else {
+    const paaTexts = metrics.paaQuestions
+      .map(p => `${p.question}${p.answer ? ` ${p.answer}` : ''}`)
+      .filter(t => t.length > 0)
+    paaPainAlignmentAvg = avgLexicalPainAlignment(paaTexts, painWords)
+  }
 
   // Signal 3 — Autocomplete × Douleur
   const acTexts = metrics.autocompleteSuggestions.map(a => a.text).filter(Boolean)
@@ -200,6 +219,13 @@ function makeUnavailableResult(reason: RelevanceUnavailableReason): RelevanceSco
 export async function computeRelevanceForCaptainTab(
   articleId: number,
   keywords: CaptainKeywordInput[],
+  /**
+   * Map optionnelle `keyword → overallPaaScore` (0-100) produite par
+   * `judgePaaForKeyword` (FR-CAP-PAA-JUDGE-HAIKU). Quand fournie, l'override
+   * s'applique au signal 2 des **cards** (pas des racines — Haiku n'est pas
+   * appelé sur les racines dans ce sprint). Si une card n'a pas d'entrée → fallback lexical silencieux.
+   */
+  paaJudgmentOverrides: Map<string, number> | null = null,
 ): Promise<CaptainTabRelevanceResult> {
   const tTotal = Date.now()
   log.debug('[captain-relevance] PHASE 1 — démarrage', {
@@ -283,6 +309,7 @@ export async function computeRelevanceForCaptainTab(
       ? Math.round(myRootScores.reduce((a, b) => a + b, 0) / myRootScores.length)
       : null
 
+    const haikuOverride = paaJudgmentOverrides?.get(kw.keyword) ?? null
     const result = computeRelevanceForSingleKeyword(
       kw.keyword,
       painPoint,
@@ -290,6 +317,7 @@ export async function computeRelevanceForCaptainTab(
       rootsAverage,
       kw.isLongTail ?? false,
       painIntentExpected,
+      haikuOverride,
     )
     cardScores.set(kw.keyword, { keyword: kw.keyword, ...result })
     log.debug('[captain-relevance] PHASE 2B — card calculée', {
@@ -299,6 +327,7 @@ export async function computeRelevanceForCaptainTab(
       unavailableReason: result.unavailableReason,
       rootsUsed: kw.rootKeywords.length,
       rootsAverage,
+      paaSource: haikuOverride !== null ? 'haiku' : 'lexical-fallback',
       breakdown: result.breakdown,
     })
   }

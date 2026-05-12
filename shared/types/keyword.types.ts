@@ -1,6 +1,7 @@
 import type { ProposeLieutenantsHnNode } from './serp-analysis.types.js'
 import type { ArticleLevel, PaaQuestionScan } from './keyword-validate.types.js'
 import type { MarketScoreResult, RelevanceScoreResult, RelevanceUnavailableReason } from './scoring.types.js'
+import type { PaaJudgmentBlock } from './captain-paa-judgment.types.js'
 
 /**
  * Lightweight KPI for persistence — only name and raw value.
@@ -73,6 +74,13 @@ export interface CaptainScanEntry {
    * Voir FR-CAP-RELEVANCE-UNAVAILABLE-REASON.
    */
   relevanceUnavailableReason?: RelevanceUnavailableReason | null
+  /**
+   * Jugement Haiku des PAA × douleur (FR-CAP-PAA-JUDGE-HAIKU).
+   * Calculé à la volée à chaque mount Capitaine, jamais persisté.
+   * Null si painPoint absent, paaQuestions vide, ou appel Haiku échoué.
+   * Voir docs/data-flows/captain-relevance.md.
+   */
+  paaJudgment?: PaaJudgmentBlock | null
 }
 
 /**
