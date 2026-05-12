@@ -2,7 +2,7 @@ import { log } from '../../utils/logger.js'
 import { fetchAutocomplete, type AutocompleteSignal } from '../keyword/autocomplete.service.js'
 import { fetchDataForSeo, fetchKeywordOverview } from '../external/dataforseo.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
-import type { IntentScanResult, ResonanceItem, ResonanceMatch, RadarMatchQuality, RadarPainAlignment } from '../../../shared/types/intent.types.js'
+import type { IntentScanResult, ResonanceItem, ResonanceMatch, RadarMatchQuality } from '../../../shared/types/intent.types.js'
 
 export interface SerpAdvancedRawResult {
   items: Array<{
@@ -183,12 +183,15 @@ export function matchResonanceDetailed(
 }
 
 /**
- * Compute a weighted PAA score based on match quality.
- * Topic barème: none=0, partial+stem/semantic=0.25, partial+exact=0.5,
- *               total+stem/semantic=1.0, total+exact=2.0
- * QW5 — Quand un `painAlignment` est fourni sur l'item, le score combine titre/douleur
- * 50/50 : painScore { aligned=2.0, partial=0.5, off=0 }.
- * Si painAlignment absent (pas de painPoint pour l'article), le score dégénère sur le barème topic seul.
+ * Compute a weighted PAA score based on match quality (TOPIC ONLY).
+ * Barème : none=0, partial+stem/semantic=0.25, partial+exact=0.5,
+ *          total+stem/semantic=1.0, total+exact=2.0.
+ *
+ * 2026-05-12 — Suppression du mix `painAlignment`. Radar = axe marché pur
+ * (volume + match lexical avec le sujet). La pertinence article (PAA × douleur)
+ * vit exclusivement dans l'onglet Capitaine via Haiku (FR-CAP-PAA-JUDGE-HAIKU).
+ * Avant ce nettoyage, la formule était `0.5 × topic + 0.5 × pain`, désormais
+ * `topic` seul. Échelle inchangée (max 2.0 par PAA).
  */
 function topicWeight(item: { match: ResonanceMatch; matchQuality?: RadarMatchQuality }): number {
   if (item.match === 'none') return 0
@@ -197,60 +200,18 @@ function topicWeight(item: { match: ResonanceMatch; matchQuality?: RadarMatchQua
   return quality === 'exact' ? 0.5 : 0.25
 }
 
-function painWeight(alignment: RadarPainAlignment | undefined): number | null {
-  if (!alignment) return null
-  if (alignment === 'aligned') return 2.0
-  if (alignment === 'partial') return 0.5
-  return 0
-}
-
 export function computePaaWeightedScore(
-  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality; painAlignment?: RadarPainAlignment }>,
+  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality }>,
 ): number {
   let sum = 0
   for (const item of items) {
-    const topic = topicWeight(item)
-    const pain = painWeight(item.painAlignment)
-    if (pain === null) {
-      sum += topic
-    } else {
-      sum += 0.5 * topic + 0.5 * pain
-    }
+    sum += topicWeight(item)
   }
   return sum
 }
 
-/** Score maximal théorique par PAA (atteint quand match=total+exact ET painAlignment=aligned). */
+/** Score maximal théorique par PAA (atteint quand match=total+exact). */
 export const PAA_MAX_POINTS_PER_ITEM = 2.0
-
-/**
- * Score de Pertinence cumulatif normalisé sur les PAA.
- *
- * Formule F1 (validée 2026-04-28) :
- *   score = (somme des points obtenus) / (nbPAA × maxPointsParPAA) × 100
- *
- * Exemple concret : 8 PAA dont 3 marquent 2.0 (parfait), 3 marquent 1.25
- * (mix qualité), 2 marquent 0 (off) → somme 9.75, max 16, score ≈ 61.
- *
- * Avantages vs moyenne classique :
- *   - Exploite la richesse des 5 niveaux topicWeight × 3 niveaux painWeight
- *     (au lieu de lisser via une moyenne)
- *   - Comparable entre articles avec N différents (toujours plage 0-100)
- *
- * Cas particuliers :
- *   - Liste vide → 0 (aucun signal exploitable)
- *   - Aucun item avec painAlignment → on retombe sur la même formule
- *     mais sur le barème topic seul (la fonction sous-jacente
- *     `computePaaWeightedScore` gère ce cas)
- */
-export function computePaaPainAlignmentCumulative(
-  items: Array<{ match: ResonanceMatch; matchQuality?: RadarMatchQuality; painAlignment?: RadarPainAlignment }>,
-): number {
-  if (items.length === 0) return 0
-  const sum = computePaaWeightedScore(items)
-  const maxPossible = items.length * PAA_MAX_POINTS_PER_ITEM
-  return Math.round((sum / maxPossible) * 100)
-}
 
 export interface PaaExtracted {
   question: string

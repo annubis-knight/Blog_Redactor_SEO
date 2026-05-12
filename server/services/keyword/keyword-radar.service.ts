@@ -214,10 +214,12 @@ export async function scanRadarKeywords(
   const effectiveDepth = Math.min(Math.max(depth, 1), 2)
   const keywordStrings = keywords.map(k => k.keyword)
   const topicWords = extractTopicWords(specificTopic)
-  const painPointTrim = painPoint?.trim() ?? ''
-  const hasPain = painPointTrim.length >= 10
+  // 2026-05-12 — `painPoint` n'est plus exploité par le scan Radar
+  // (Radar = axe marché pur). Le param reste accepté pour compat de signature
+  // mais n'est plus consommé. La pertinence article vit en Capitaine.
+  void painPoint
 
-  log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${effectiveDepth}${hasPain ? ' | pain-aware' : ''}`)
+  log.info(`[Radar] Scanning ${keywords.length} keywords, depth=${effectiveDepth}`)
 
   // Phase 1: Parallel fetch.
   // - fetchAutocompleteMergedGrouped(specificTopic) : pool global pour l'affichage UI
@@ -279,31 +281,6 @@ export async function scanRadarKeywords(
   const cachedCount = Array.from(paaResults.values()).filter(r => r.fromCache).length
   log.info(`[Radar] PAA fetch done: ${paaResults.size} keywords (${cachedCount} cached, ${paaResults.size - cachedCount} fresh)`)
 
-  // QW3 — Pain alignment: one batch of embeddings (painPoint vs keyword+reasoning)
-  // Gracefully degrades if painPoint is absent/too short or if embedding fails.
-  const painAlignmentMap = new Map<string, number>()
-  if (hasPain) {
-    const kwTexts = keywords.map(k =>
-      k.reasoning?.trim() ? `${k.keyword} — ${k.reasoning}` : k.keyword,
-    )
-    try {
-      const sims = await computeSemanticScores(painPointTrim, kwTexts)
-      if (sims) {
-        for (let i = 0; i < keywords.length; i++) {
-          // sim is in [-1, 1] for normalized vectors but e5 stays mostly in [0, 1].
-          // Clamp then map to 0-100.
-          const s = Math.max(0, Math.min(1, sims[i]))
-          painAlignmentMap.set(keywords[i].keyword, Math.round(s * 100))
-        }
-        log.info(`[Radar] Pain alignment computed for ${painAlignmentMap.size} keywords`)
-      } else {
-        log.warn(`[Radar] Pain alignment skipped: embeddings unavailable`)
-      }
-    } catch (err) {
-      log.warn(`[Radar] Pain alignment failed: ${(err as Error).message}`)
-    }
-  }
-
   // Phase 2: Match resonance for autocomplete items
   const autoSuggestions = autocompleteResult.suggestions.map(s => ({
     text: s.text,
@@ -312,24 +289,10 @@ export async function scanRadarKeywords(
   }))
   log.debug(`[Radar] Autocomplete: ${autoSuggestions.length} suggestions for "${specificTopic}"`)
 
-  // Étape 3B — moyenne embedding autocomplete × douleur (unique, partagée par toutes les cards)
-  let autocompletePainAlignmentAvg: number | null = null
-  if (hasPain && autoSuggestions.length > 0) {
-    try {
-      const texts = autoSuggestions.map(s => s.text)
-      const sims = await computeSemanticScores(painPointTrim, texts)
-      if (sims) {
-        const avg = sims.reduce((a, b) => a + Math.max(0, Math.min(1, b)), 0) / sims.length
-        autocompletePainAlignmentAvg = Math.round(avg * 100)
-        log.info(`[Radar] Autocomplete pain alignment computed: avg=${autocompletePainAlignmentAvg}`)
-      }
-    } catch (err) {
-      log.warn(`[Radar] Autocomplete pain alignment failed: ${(err as Error).message}`)
-    }
-  }
-
-  // Étape 3A — stockage moyenne PAA × douleur par keyword (alimenté dans la boucle)
-  const paaPainAlignmentByKw = new Map<string, number>()
+  // 2026-05-12 — Suppression des 3 calculs embedding × painPoint (keyword,
+  // autocomplete, PAA). Radar est désormais purement axe marché : aucun signal
+  // de pertinence article ne s'y calcule. La pertinence PAA × douleur vit
+  // exclusivement dans l'onglet Capitaine via Haiku (FR-CAP-PAA-JUDGE-HAIKU).
 
   // Phase 3: Build cards
   const cards: RadarCard[] = []
@@ -364,7 +327,7 @@ export async function scanRadarKeywords(
       }
     })
 
-    // Semantic scoring for PAA items
+    // Semantic scoring for PAA items (vs `specificTopic` — axe marché, pas douleur)
     if (paaItems.length > 0) {
       const paaTexts = paaItems.map(p =>
         p.answer ? `${p.question} ${p.answer}` : p.question,
@@ -386,22 +349,9 @@ export async function scanRadarKeywords(
           }
         }
       }
-
-      // QW5 — PAA painAlignment (independant du match lexical)
-      if (hasPain) {
-        const painSims = await computeSemanticScores(painPointTrim, paaTexts)
-        if (painSims) {
-          for (let i = 0; i < paaItems.length; i++) {
-            const s = painSims[i]
-            if (s >= 0.6) paaItems[i].painAlignment = 'aligned'
-            else if (s >= 0.35) paaItems[i].painAlignment = 'partial'
-            else paaItems[i].painAlignment = 'off'
-          }
-          // Étape 3A : moyenne numérique pour alimenter computeCombinedScore
-          const avg = painSims.reduce((a, b) => a + Math.max(0, Math.min(1, b)), 0) / painSims.length
-          paaPainAlignmentByKw.set(kw.keyword, Math.round(avg * 100))
-        }
-      }
+      // 2026-05-12 — Le calcul `painAlignment` (PAA × painPoint) a été retiré.
+      // Désormais ce signal est produit uniquement en Capitaine via Haiku
+      // (FR-CAP-PAA-JUDGE-HAIKU) à l'entrée de l'onglet.
     }
 
     // FR-RAD-AUTOCOMPLETE-PER-KEYWORD : matchCount désormais issu de l'appel
@@ -417,7 +367,9 @@ export async function scanRadarKeywords(
       ? Math.round((semanticScores.reduce((a, b) => a + b, 0) / semanticScores.length) * 1000) / 1000
       : null
 
-    const painAlignmentScore = painAlignmentMap.get(kw.keyword)
+    // 2026-05-12 — `painAlignmentScore` (keyword × painPoint) supprimé du scan.
+    // Radar n'expose plus que des signaux marché purs. Le champ reste optional
+    // sur le type pour rétro-compat des snapshots DB existants (lecture).
 
     // Adapter overview DataForSEO -> RadarKeywordKpis (FR-INFRA-KPI-NULLABLE) :
     // les champs marché restent `null` quand DataForSEO n'a renvoyé aucun signal.
@@ -433,21 +385,12 @@ export async function scanRadarKeywords(
       paaWeightedScore: Math.round(computePaaWeightedScore(paaItems) * 100) / 100,
       paaTotal: paaItems.length,
       avgSemanticScore,
-      painAlignmentScore,
     }
 
-    // Étapes 3A/3B — enrichir avec les signaux "pertinence × douleur".
-    // computeCombinedScore (legacy) attend des nombres non nullable : on
-    // remplace null par 0 ici uniquement parce que ce score legacy
-    // (`combinedScore`) est conservé pour compatibilité JSONB persistée et
-    // n'est plus utilisé pour de nouveaux affichages — voir RadarCard.combinedScore @deprecated.
-    const paaPainAvg = paaPainAlignmentByKw.get(kw.keyword)
-    // computeCombinedScore (legacy `combinedScore`) attend des nombres
-    // non nullable. On encapsule le fallback ici : il ne sort jamais de cette
-    // expression — `combinedScore` est @deprecated et n'est plus consommé pour
-    // un nouvel affichage (cf. RadarCard.combinedScore). Le score frais est
-    // `marketScore` / `relevanceScore` calculés juste après, eux null-safe.
-     
+    // computeCombinedScore (legacy `combinedScore`) — conservé pour rétro-compat
+    // JSONB persistée. Plus aucun signal de pertinence (paaPainAlignmentAvg,
+    // autocompletePainAlignmentAvg, painAlignmentScore) ne lui est passé depuis
+    // 2026-05-12. Radar = marché pur.
     const scoreBreakdown = computeCombinedScore({
       searchVolume: kpis.searchVolume ?? 0,
       difficulty: kpis.difficulty ?? 0,
@@ -456,11 +399,7 @@ export async function scanRadarKeywords(
       autocompleteMatchCount: kpis.autocompleteMatchCount,
       avgSemanticScore: kpis.avgSemanticScore,
       intentTypes: kpis.intentTypes,
-      painAlignmentScore: kpis.painAlignmentScore,
-      paaPainAlignmentAvg: paaPainAvg,
-      autocompletePainAlignmentAvg: autocompletePainAlignmentAvg ?? undefined,
     })
-     
 
     // FR-RAD-NO-RELEVANCE-IN-SCAN : Radar ne calcule plus Pertinence.
     // Responsabilité exclusive Capitaine (captain-relevance.service.ts).
