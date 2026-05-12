@@ -110,6 +110,19 @@ const {
   scanKeyword, navigateHistory, reset,
 } = useCapitaineScan()
 
+/**
+ * Lookup du jugement Haiku PAA × douleur pour le keyword actuellement scanné.
+ * Source : `articleKeywordsStore.keywords.richCaptain.exploredKeywords` —
+ * `paaJudgment` est attaché par `getCaptainExplorations` (FR-CAP-PAA-JUDGE-HAIKU).
+ * Null si le keyword n'est pas encore dans `captain_explorations` (premier scan).
+ */
+const captainPaaJudgment = computed(() => {
+  const card = radarCard.value
+  if (!card) return null
+  const explored = articleKeywordsStore.keywords?.richCaptain?.exploredKeywords ?? []
+  return explored.find(e => e.keyword === card.keyword)?.paaJudgment ?? null
+})
+
 const articleLevel = computed<ArticleLevel>(() => {
   if (props.mode === 'libre' || !props.selectedArticle) return 'intermediaire'
   return articleTypeToLevel(props.selectedArticle.type)
@@ -1153,6 +1166,8 @@ onUnmounted(() => abortAllAiStreams())
             :card="radarCard"
             display-mode="relevance"
             :article-level="articleLevel"
+            card-context="capitaine"
+            :paa-judgment="captainPaaJudgment"
             data-testid="captain-radar-card"
           />
           <div v-else-if="isLoadingRadar" class="radar-loading captain-card-with-sidebar__card" data-testid="radar-loading">

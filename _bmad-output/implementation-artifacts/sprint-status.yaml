@@ -730,6 +730,61 @@ development_status:
   # 11 cycles d'imports restants préexistants (mock-fixtures, scoring types).
   radar-dbfirst-refactor: done
 
+  # Sprint captain-paa-pertinence-unify (2026-05-12) ✅
+  # tech-spec: _bmad-output/implementation-artifacts/tech-spec-captain-paa-pertinence-unify.md (v0.3.0)
+  # branche : feat/captain-paa-pertinence-unify (à merger dans main)
+  # FRs PRD : FR-CAP-PAA-JUDGE-HAIKU, FR-CAP-PAA-BADGE-SINGLE, FR-CAP-PAA-JUDGE-CACHE-SESSION
+  #          (+ extension FR-CAP-RELEVANCE-UNAVAILABLE-REASON avec 'haiku-unavailable').
+  # Doc cartographie : docs/data-flows/captain-relevance.md (nouvelle).
+  # Décision produit : remplacer le signal 2 (PAA × douleur) du score Pertinence
+  # Capitaine par un appel Claude Haiku 4.5 à la volée. Le LLM raisonne en interne
+  # sur sujet + douleur et synthétise un verdict unique par PAA (pertinent /
+  # partiel / hors-sujet). Badge devient bimodal via prop cardContext sur
+  # RadarKeywordCard. Cache session mémoire JS dans article-keywords.store
+  # (pas de table DB, F5 vide).
+  # Sprints livrés :
+  #   Sprint A.0 — Audit + cartographie : docs/data-flows/captain-relevance.md.
+  #   Sprint A.1 — Backend TDD :
+  #     * shared/types/captain-paa-judgment.types.ts (PaaJudgmentBlock + types).
+  #     * server/prompts/captain-paa-judge.md (prompt Haiku avec variables).
+  #     * server/services/keyword/captain-paa-judge.service.ts (judgePaaForKeyword
+  #       + HaikuJudgmentError + PAA_JUDGE_TOOL via classifyWithTool).
+  #     * server/services/external/mock-fixtures/captain-paa-judge.ts (fixture
+  #       déterministe pour CI sans clé Anthropic).
+  #     * server/services/keyword/captain-relevance.service.ts : nouveau param
+  #       paaPainAlignmentOverride + Map paaJudgmentOverrides. Signal 2 lit
+  #       le score Haiku, fallback lexical silencieux.
+  #     * server/services/infra/data.service.ts : orchestration Promise.all des
+  #       appels Haiku dans getCaptainExplorations + JOIN articles.titre +
+  #       injection paaJudgment sur chaque CaptainScanEntry.
+  #     * server/services/external/claude.service.ts : instanciation lazy de
+  #       new Anthropic() pour ne pas crasher l'environnement test (5 lignes,
+  #       comportement runtime strictement identique).
+  #     * Tests Vitest : 10/10 captain-paa-judge.service + 8/8
+  #       captain-relevance-haiku-override.service.
+  #   Sprint A.2 — Frontend TDD :
+  #     * RadarKeywordCard.vue : props cardContext + paaJudgment + paaJudgmentLoading.
+  #       Functions matchLabel / badgeClass / matchTitle switchent selon le
+  #       contexte. paaDisplayValue computed pour le header.
+  #     * RadarCardPaaTree.vue : prop matchTitle (tooltip badge) + 3 classes CSS
+  #       badge--judge-pertinent / -partiel / -hors-sujet.
+  #     * CaptainPanel.vue : captainPaaJudgment computed (lookup store par
+  #       keyword) + passe cardContext='capitaine' + :paa-judgment.
+  #     * Tests Vitest : 11/11 radar-keyword-card-paa-badge-capitaine.
+  #   Sprint A.3 — Doc + PRD :
+  #     * PRD : 3 nouvelles FR + extension UNAVAILABLE-REASON ('haiku-unavailable').
+  #     * docs/scoring-kpi-vs-relevance.md : note 2026-05-12 signal 2 Haiku.
+  #     * docs/radar-card-component.md : note prop cardContext bimodale.
+  #     * docs/data-flows/captain-relevance.md : cartographie Phase 1.bis complète.
+  # Validation : lint 0 erreurs, type-check vert, build 9s, test:check net positif
+  # (-4 rouges vs baseline 33→29, 7 nouveaux verts).
+  # Hors-scope (chantier séparé futur) :
+  #   * Suppression du painAlignment zombie dans le scan Radar (devenu inutilisé).
+  #   * Lazy-load Capitaine : aujourd'hui les jugements Haiku sont calculés au
+  #     mount Moteur (via fetchKeywordsMerge → getCaptainExplorations), pas
+  #     strictement au mount onglet Capitaine. Sprint B futur si nécessaire.
+  captain-paa-pertinence-unify: done
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur

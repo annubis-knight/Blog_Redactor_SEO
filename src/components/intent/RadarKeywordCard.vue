@@ -4,6 +4,7 @@ import { log } from '@/utils/logger'
 import type { RadarCard, RadarIntentType, RadarPaaItem } from '@shared/types/intent.types.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
+import type { PaaJudgmentBlock } from '@shared/types/captain-paa-judgment.types.js'
 import { computeKpiScore } from '@shared/scoring-kpi.js'
 import { formatVolume as fmtVolumeShared, formatCpc as fmtCpcShared, formatKd as fmtKdShared } from '@shared/score/index.js'
 import KeywordWords from './KeywordWords.vue'
@@ -20,6 +21,7 @@ export interface InteractiveWordsProps {
 }
 
 export type RadarDisplayMode = 'kpi' | 'relevance'
+export type RadarCardContext = 'radar' | 'capitaine'
 
 const props = withDefaults(defineProps<{
   card: RadarCard
@@ -32,11 +34,28 @@ const props = withDefaults(defineProps<{
   manualTagMode?: boolean
   /** PainPoint article courant. Tooltip Pertinence absent différencie manquant vs signaux nuls. */
   articlePainPoint?: string | null
+  /**
+   * Contexte d'affichage de la card (FR-CAP-PAA-BADGE-SINGLE).
+   * - `'radar'` (default) : badge PAA lexical pur, "PAA pts" = somme brute paaWeightedScore.
+   * - `'capitaine'` : badge PAA synthétique produit par Haiku, "PAA pts" = overallPaaScore Haiku / 100.
+   * Si `cardContext='capitaine'` sans `paaJudgment` → fallback lexical transparent.
+   */
+  cardContext?: RadarCardContext
+  /**
+   * Jugement Haiku PAA × douleur (FR-CAP-PAA-JUDGE-HAIKU).
+   * Consommé uniquement quand `cardContext='capitaine'`.
+   */
+  paaJudgment?: PaaJudgmentBlock | null
+  /** True pendant l'appel Haiku. Affiche "..." au lieu de la valeur. */
+  paaJudgmentLoading?: boolean
 }>(), {
   displayMode: 'kpi',
   articleLevel: 'intermediaire',
   manualTagMode: false,
   articlePainPoint: null,
+  cardContext: 'radar',
+  paaJudgment: null,
+  paaJudgmentLoading: false,
 })
 
 const emit = defineEmits<{
@@ -285,21 +304,66 @@ function baseMatchLabel(paa: RadarPaaItem): string {
   return 'Hors sujet'
 }
 
+/**
+ * Lookup du jugement Haiku pour un PAA donné via son index dans `card.paaItems`.
+ * Retourne null si :
+ *   - mode radar (badge lexical), ou
+ *   - paaJudgment absent (fallback lexical transparent), ou
+ *   - paaIndex hors plage (sécurité).
+ */
+function findJudgmentForPaa(paa: RadarPaaItem) {
+  if (props.cardContext !== 'capitaine' || !props.paaJudgment) return null
+  const idx = props.card.paaItems.indexOf(paa)
+  if (idx < 0) return null
+  return props.paaJudgment.paaJudgments.find(j => j.paaIndex === idx) ?? null
+}
+
 function matchLabel(paa: RadarPaaItem): string {
+  const judgment = findJudgmentForPaa(paa)
+  if (judgment) return judgment.badge // 'pertinent' / 'partiel' / 'hors-sujet' — sortie directe LLM
+
+  // Mode radar (ou capitaine fallback lexical) : comportement historique
   const base = baseMatchLabel(paa)
   if (paa.painAlignment === 'off') return `${base} · hors-douleur`
   if (paa.painAlignment === 'aligned' && paa.match === 'total') return `${base} · douleur`
   return base
 }
 
+/** Tooltip sur le badge : justification Haiku si disponible, sinon vide. */
+function matchTitle(paa: RadarPaaItem): string {
+  const judgment = findJudgmentForPaa(paa)
+  return judgment?.reasonShort ?? ''
+}
+
 // QW5 — Combine lexical match + painAlignment. Une PAA "total+exact" mais "off-pain"
 // est downgradee visuellement a un badge partiel pour refleter la dissonance.
 function badgeClass(paa: RadarPaaItem): string {
+  const judgment = findJudgmentForPaa(paa)
+  if (judgment) {
+    if (judgment.badge === 'pertinent') return 'badge--judge-pertinent'
+    if (judgment.badge === 'partiel') return 'badge--judge-partiel'
+    return 'badge--judge-hors-sujet'
+  }
   if (paa.painAlignment === 'off' && paa.match === 'total') return 'badge--partial'
   if (paa.match === 'total') return 'badge--total'
   if (paa.match === 'partial') return 'badge--partial'
   return 'badge--none'
 }
+
+/**
+ * Affichage du KPI "PAA pts" dans le header.
+ * - Mode capitaine + loading → "..."
+ * - Mode capitaine + paaJudgment → "<overallPaaScore>/100"
+ * - Sinon (radar, ou capitaine sans jugement) → "<paaWeightedScore.toFixed(1)> pts"
+ */
+const paaDisplayValue = computed<string>(() => {
+  if (props.cardContext === 'capitaine' && props.paaJudgmentLoading) return '...'
+  if (props.cardContext === 'capitaine' && props.paaJudgment) {
+    return `${props.paaJudgment.overallPaaScore}/100`
+  }
+  const raw = props.card.kpis?.paaWeightedScore ?? 0
+  return `${raw.toFixed(1)} pts`
+})
 
 // EXACT badge → green border, MATCH/PARTIEL → subtle gray border, rest → no border
 function itemBorderClass(paa: RadarPaaItem): string {
@@ -372,7 +436,7 @@ function handleChevronClick(e: MouseEvent) {
         <span class="kpi-sep">·</span>
         <span class="kpi-item">
           <span class="kpi-lbl">PAA</span>
-          <span class="kpi-num">{{ card.kpis.paaWeightedScore.toFixed(1) }} pts</span>
+          <span class="kpi-num">{{ paaDisplayValue }}</span>
         </span>
       </div>
 
@@ -402,6 +466,7 @@ function handleChevronClick(e: MouseEvent) {
         :item-border-class="itemBorderClass"
         :badge-class="badgeClass"
         :match-label="matchLabel"
+        :match-title="matchTitle"
         @toggle-children="toggleChildren"
         @toggle-answer="toggleAnswer"
       />

@@ -191,3 +191,10 @@ export {
   SCORE_VERDICT_THRESHOLDS,
   verdictFromScore,
 } from './scoring.types.js'
+
+export type {
+  PaaBadge,
+  PaaJudgment,
+  PaaJudgmentBlock,
+  PaaJudgmentUnavailableReason,
+} from './captain-paa-judgment.types.js'

@@ -7,7 +7,7 @@ interface PaaTreeNode {
   children: PaaTreeNode[]
 }
 
-defineProps<{
+withDefaults(defineProps<{
   paaTree: PaaTreeNode[]
   expandedPaa: Set<number>
   expandedParents: Set<number>
@@ -15,7 +15,11 @@ defineProps<{
   itemBorderClass: (paa: RadarPaaItem) => string
   badgeClass: (paa: RadarPaaItem) => string
   matchLabel: (paa: RadarPaaItem) => string
-}>()
+  /** Tooltip optionnel sur le badge (justification Haiku reasonShort en mode capitaine). */
+  matchTitle?: (paa: RadarPaaItem) => string
+}>(), {
+  matchTitle: () => () => '',
+})
 
 defineEmits<{
   (e: 'toggle-children', index: number): void
@@ -37,7 +41,7 @@ defineEmits<{
           @click.stop="$emit('toggle-children', node.index)">&#9654;</span>
         <span v-else class="paa-tree-chevron paa-tree-chevron--empty" />
 
-        <span class="paa-badge" :class="badgeClass(node.paa)">{{ matchLabel(node.paa) }}</span>
+        <span class="paa-badge" :class="badgeClass(node.paa)" :title="matchTitle(node.paa) || undefined">{{ matchLabel(node.paa) }}</span>
         <span class="paa-question" @click.stop="node.paa.answer ? $emit('toggle-answer', node.index) : undefined">{{
           node.paa.question }}</span>
         <span v-if="node.paa.semanticScore != null" class="paa-semantic">{{ Math.round(node.paa.semanticScore * 100)
@@ -60,7 +64,7 @@ defineEmits<{
             <span v-if="child.paa.answer" class="paa-chevron"
               :class="{ 'paa-chevron--open': expandedPaa.has(child.index) }">&#9654;</span>
             <span v-else class="paa-chevron paa-chevron--empty" />
-            <span class="paa-badge" :class="badgeClass(child.paa)">{{ matchLabel(child.paa) }}</span>
+            <span class="paa-badge" :class="badgeClass(child.paa)" :title="matchTitle(child.paa) || undefined">{{ matchLabel(child.paa) }}</span>
             <span class="paa-question">{{ child.paa.question }}</span>
             <span v-if="child.paa.semanticScore != null" class="paa-semantic">{{ Math.round(child.paa.semanticScore
               * 100) }}%</span>
@@ -170,6 +174,23 @@ defineEmits<{
 }
 
 .badge--none {
+  background: var(--color-bg-soft);
+  color: var(--color-text-muted);
+}
+
+/* Badges produits par Haiku en mode Capitaine (FR-CAP-PAA-BADGE-SINGLE).
+   Réutilise la palette de tokens existante pour rester cohérent avec le design system. */
+.badge--judge-pertinent {
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green-text);
+}
+
+.badge--judge-partiel {
+  background: var(--color-badge-amber-bg);
+  color: var(--color-badge-amber-text);
+}
+
+.badge--judge-hors-sujet {
   background: var(--color-bg-soft);
   color: var(--color-text-muted);
 }

@@ -1,9 +1,16 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { log } from '../../utils/logger.js'
 
-const client = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-})
+// Lazy-init du client Anthropic : évite que l'import de ce module déclenche
+// `new Anthropic()` au top-level (sinon les environnements de test browser-like
+// crashent à l'import même quand l'appel API est mocké en aval).
+let _client: Anthropic | null = null
+function getClient(): Anthropic {
+  if (_client === null) {
+    _client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+  }
+  return _client
+}
 
 export interface ApiUsage {
   inputTokens: number
@@ -54,7 +61,7 @@ export async function classifyWithTool<T>(
   const start = Date.now()
   let response: Anthropic.Message
   try {
-    response = await client.messages.create({
+    response = await getClient().messages.create({
       model,
       max_tokens: maxTokens,
       system: systemPrompt,
@@ -127,9 +134,9 @@ export async function* streamChatCompletion(
   log.info(`Claude API stream start`, { model, maxTokens, promptChars, toolCount: tools?.length ?? 0 })
 
   const start = Date.now()
-  let stream: ReturnType<typeof client.messages.stream>
+  let stream: ReturnType<Anthropic['messages']['stream']>
   try {
-    stream = client.messages.stream({
+    stream = getClient().messages.stream({
       model,
       max_tokens: maxTokens,
       system: [{ type: 'text' as const, text: systemPrompt, cache_control: { type: 'ephemeral' as const } }],

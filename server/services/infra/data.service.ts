@@ -26,7 +26,11 @@ import type {
 } from '../../../shared/types/index.js'
 import type { PaaQuestionScan } from '../../../shared/types/keyword-validate.types.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
+import type { PaaJudgmentBlock } from '../../../shared/types/captain-paa-judgment.types.js'
 import { computeRelevanceForCaptainTab } from '../keyword/captain-relevance.service.js'
+import { judgePaaForKeyword, HaikuJudgmentError } from '../keyword/captain-paa-judge.service.js'
+import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../queries/article-pain-point.service.js'
+import { getArticlePainIntent } from '../queries/article-pain-intent.service.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -668,10 +672,12 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
        ce.article_id, ce.keyword, ce.article_level, ce.status,
        ce.root_keywords, ce.ai_panel_markdown, ce.explored_at, ce.locked_at,
        km.search_volume, km.keyword_difficulty, km.cpc, km.competition,
-       km.intent_raw, km.autocomplete_suggestions, km.fetched_at AS metrics_fetched_at
+       km.intent_raw, km.autocomplete_suggestions, km.fetched_at AS metrics_fetched_at,
+       a.titre AS article_title
        FROM captain_explorations ce
        LEFT JOIN keyword_metrics km
          ON km.keyword = ce.keyword AND km.lang = 'fr' AND km.country = 'fr'
+       LEFT JOIN articles a ON a.id = ce.article_id
       WHERE ce.article_id = $1
       ORDER BY ce.explored_at`,
     [articleId],
@@ -745,6 +751,61 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     captainKeywords: res.rows.map(r => r.keyword),
   })
 
+  // PHASE Haiku — jugement PAA × douleur pour chaque keyword en parallèle
+  // (FR-CAP-PAA-JUDGE-HAIKU). Échec sur un keyword → fallback lexical silencieux
+  // pour ce keyword via captain-relevance.service. Pas de re-throw.
+  const tHaiku = Date.now()
+  const articleTitle = (res.rows[0]?.article_title as string | undefined) ?? ''
+  const [painPointForHaiku, painIntentExpected] = await Promise.all([
+    getArticlePainPoint(articleId),
+    getArticlePainIntent(articleId),
+  ])
+  const effectivePainPoint = painPointForHaiku === PAIN_POINT_FALLBACK ? '' : painPointForHaiku
+  const paaJudgmentByKeyword = new Map<string, PaaJudgmentBlock>()
+  const haikuOverridesByKeyword = new Map<string, number>()
+
+  await Promise.all(
+    res.rows.map(async (row) => {
+      const keyword = row.keyword as string
+      const paaItems = (paaByKeyword.get(keyword) ?? []).map(p => ({
+        question: p.question,
+        answer: p.answer ?? '',
+      }))
+      try {
+        const judgment = await judgePaaForKeyword({
+          articleId,
+          keyword,
+          paaItems,
+          painPoint: effectivePainPoint,
+          articleTitle,
+          painIntentExpected,
+        })
+        if (judgment !== null) {
+          paaJudgmentByKeyword.set(keyword, judgment)
+          haikuOverridesByKeyword.set(keyword, judgment.overallPaaScore)
+        }
+      } catch (err) {
+        if (err instanceof HaikuJudgmentError) {
+          log.warn('[getCaptainExplorations] Haiku skipped, fallback lexical for this keyword', {
+            articleId,
+            keyword,
+            error: err.message,
+          })
+        } else {
+          throw err
+        }
+      }
+    }),
+  )
+  ops.push({ operation: 'select', table: 'captain-paa-judge-haiku', rowCount: paaJudgmentByKeyword.size, ms: Date.now() - tHaiku })
+  log.info('[getCaptainExplorations] Haiku PAA judgments', {
+    articleId,
+    judged: paaJudgmentByKeyword.size,
+    total: res.rows.length,
+    skippedNoPain: effectivePainPoint === '' ? res.rows.length : 0,
+    ms: Date.now() - tHaiku,
+  })
+
   const t4 = Date.now()
   const captainKeywordsForRelevance = res.rows.map(r => ({
     keyword: r.keyword as string,
@@ -780,7 +841,11 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     //   - Snapshot `radar-keyword-card-visual` : vérifier le tooltip "long-tail".
     isLongTail: false,
   }))
-  const relevanceResult = await computeRelevanceForCaptainTab(articleId, captainKeywordsForRelevance)
+  const relevanceResult = await computeRelevanceForCaptainTab(
+    articleId,
+    captainKeywordsForRelevance,
+    haikuOverridesByKeyword.size > 0 ? haikuOverridesByKeyword : null,
+  )
   // 'select' marker — le calcul Pertinence ne fait que des lectures (FR-CAP-RELEVANCE-NO-DB-WRITE).
   // Le timing inclut les SELECTs sur articles.pain_point + keyword_metrics + le calcul lexical.
   ops.push({ operation: 'select', table: 'captain-relevance-live', rowCount: relevanceResult.cards.size, ms: Date.now() - t4 })
@@ -841,6 +906,9 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
         : null) as CaptainScanEntry['relevanceScore'],
       // Cause typée renvoyée au front pour le tooltip (FR-CAP-RELEVANCE-UNAVAILABLE-REASON).
       relevanceUnavailableReason: liveRelevance?.unavailableReason ?? null,
+      // Jugement Haiku PAA × douleur (FR-CAP-PAA-JUDGE-HAIKU).
+      // Null si painPoint absent, paaQuestions vide, ou appel Haiku échoué.
+      paaJudgment: paaJudgmentByKeyword.get(t.keyword) ?? null,
     }
   })
   log.debug('[getCaptainExplorations] DONE', {
