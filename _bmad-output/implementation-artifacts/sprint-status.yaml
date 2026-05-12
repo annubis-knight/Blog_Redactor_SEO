@@ -785,6 +785,71 @@ development_status:
   #     strictement au mount onglet Capitaine. Sprint B futur si nécessaire.
   captain-paa-pertinence-unify: done
 
+  # Sprint captain-paa-lazy-and-radar-cleanup (2026-05-12 → 2026-05-13) ✅
+  # branche : feat/captain-paa-lazy-and-radar-cleanup (mergée dans main)
+  # Suite directe du sprint captain-paa-pertinence-unify ci-dessus — rattrape
+  # les 2 hors-scope qui y étaient reportés (cleanup Radar + lazy-load strict).
+  # FRs PRD touchées : FR-RAD-NO-RELEVANCE-IN-SCAN étendue (langage spec utilisateur),
+  # FR-CAP-PAA-JUDGE-HAIKU complétée (lazy via prop active + watcher local),
+  # FR-CAP-PAA-JUDGE-CACHE-SESSION refonte cache Map cross-switch.
+  # Entrées Design Registry touchées : DESIGN-RAD-NO-RELEVANCE-IN-SCAN (refonte),
+  # DESIGN-CAP-PAA-JUDGE-HAIKU (extraction + route dédiée + watchers documentés),
+  # DESIGN-CAP-PAA-JUDGE-CACHE-SESSION (Map cross-switch + action store).
+  # Sprints livrés :
+  #   Chantier 1 — Nettoyage pertinence Radar :
+  #     * server/services/keyword/keyword-radar.service.ts : suppression des 3
+  #       calculs embedding × painPoint (keyword, autocomplete, PAA). Le param
+  #       painPoint reste accepté mais n'est plus consommé.
+  #     * server/services/intent/intent-scan.service.ts : computePaaWeightedScore
+  #       devient topic-pur (formule 0.5×topic + 0.5×pain → topic seul). Suppression
+  #       de painWeight() et computePaaPainAlignmentCumulative (mortes).
+  #     * src/components/intent/RadarKeywordCard.vue : matchLabel / badgeClass /
+  #       itemBorderClass ne consomment plus paa.painAlignment. Suffixes badges
+  #       Radar "· douleur" / "· hors-douleur" retirés.
+  #     * shared/types/intent.types.ts : import RadarPainAlignment retiré
+  #       (devenu inutile côté intent-scan).
+  #     * Tests adaptés : suppression tests/unit/services/paa-pain-cumulative.test.ts
+  #       (testait une fonction supprimée). Tests visuels radar-keyword-card-*
+  #       restent verts (badges lexicaux purs).
+  #   Chantier 2 — Lazy-load Capitaine via prop active + watcher local :
+  #     * server/services/infra/data.service.ts : retire le bloc PHASE Haiku de
+  #       getCaptainExplorations qui redevient lexical pur, rapide.
+  #     * server/services/keyword/captain-paa-judge.service.ts : nouveau
+  #       runPaaJudgmentsForArticle(articleId) — orchestrateur dédié qui lit la
+  #       DB + appelle Haiku en parallèle (Promise.all) + recalcule
+  #       computeRelevanceForCaptainTab avec override Haiku signal 2.
+  #     * server/routes/keywords.routes.ts : nouvelle route
+  #       POST /api/articles/:id/captain/judge-paa.
+  #     * src/stores/article/article-keywords.store.ts : Map cache session
+  #       paaJudgmentsByArticle (cross-switch d'article), action
+  #       loadCaptainPaaJudgments(articleId) avec anti-doublon concurrent,
+  #       getters getPaaJudgment / isPaaJudgmentLoading. $reset() préserve
+  #       volontairement la Map (conforme FR-CAP-PAA-JUDGE-CACHE-SESSION).
+  #     * src/views/MoteurView.vue : passe :active="activeTab === 'capitaine'"
+  #       au CaptainPanel.
+  #     * src/components/moteur/CaptainPanel.vue : nouvelle prop active +
+  #       watcher local watch([active, selectedArticle.id]) qui déclenche
+  #       loadCaptainPaaJudgments quand active && id. Couvre les 4 cas :
+  #       1ère entrée onglet, switch d'article sur Capitaine, switch d'onglet
+  #       sans changer article (0 appel), retour cache hit.
+  #     * Tests : tests/unit/stores/article-keywords-paa-judgments.test.ts
+  #       (8 tests : cache hit, cross-switch, $reset préserve, loading flag,
+  #       échec API, appels concurrents).
+  # Comportement final :
+  #   - Mount Moteur sur Radar → 0 appel Haiku.
+  #   - Switch vers Capitaine → 1 appel Haiku (skeleton sur badges + PAA pts).
+  #   - Switch d'article tout en restant sur Capitaine → 1 nouvel appel Haiku.
+  #   - Switch d'onglet sans changer d'article → cache hit (0 appel).
+  #   - Retour sur article déjà jugé dans la session → cache hit (0 appel).
+  #   - F5 → cache vide → recalcul intégral au prochain mount Capitaine.
+  # Doc complémentaire mergée séparément (docs/captain-paa-design-update) :
+  #   propage l'état réel dans PRD + design-registry au format split adopté
+  #   par la branche docs/prd-split-spec-design.
+  # Validation : lint 0 erreur, type-check vert, build vert (~10s),
+  # test:check net -4 rouges vs baseline (33→29) + 7 nouveaux verts au sprint
+  # captain-paa-pertinence-unify, stabilisé sur captain-paa-lazy-and-radar-cleanup.
+  captain-paa-lazy-and-radar-cleanup: done
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur
