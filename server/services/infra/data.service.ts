@@ -548,27 +548,34 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
   const t1 = Date.now()
   const res = await pool.query(`SELECT * FROM article_keywords WHERE article_id = $1`, [id])
   ops.push({ operation: 'select', table: 'article_keywords', rowCount: res.rows.length, ms: Date.now() - t1 })
-  if (res.rows.length === 0) return { data: null, dbOps: ops }
-  const row = res.rows[0]
 
-  // Hydrate from exploration tables
+  // FR-MOT-EXPLORATIONS-HYDRATATION : on charge TOUJOURS les explorations,
+  // même quand `article_keywords` est vide. Cas typique : l'utilisateur a
+  // envoyé des keywords du Radar au Capitaine sans encore en verrouiller un.
+  // Sans cette hydratation, le carousel Capitaine reste vide au reload
+  // alors que `captain_explorations` contient déjà ses explorations.
   const { data: exploredKeywords, dbOps: captainOps } = await getCaptainExplorations(id)
   ops.push(...captainOps)
   const { data: richLieutenants, dbOps: lieutOps } = await getLieutenantExplorations(id)
   ops.push(...lieutOps)
 
-  // Build richCaptain from decision + exploration data.
-  // NOTE: on le build aussi quand exploredKeywords est non-vide même sans
-  // capitaine verrouillé — sinon le carousel de l'onglet Capitaine ne peut
-  // pas rehydrater les explorations passées après un refresh.
-  // `status` est dérivé directement de `capitaine` non-vide (source unique
-  // de vérité = article_keywords.capitaine).
-  const captainKeyword = row.capitaine ?? ''
-  const hasExplorations = exploredKeywords.length > 0
+  const hasArticleKeywordsRow = res.rows.length > 0
+  const hasExplorations = exploredKeywords.length > 0 || richLieutenants.length > 0
+
+  // Article fantôme : ni décision, ni exploration → null (contrat préservé).
+  if (!hasArticleKeywordsRow && !hasExplorations) {
+    return { data: null, dbOps: ops }
+  }
+
+  const row = hasArticleKeywordsRow ? res.rows[0] : null
+  const captainKeyword = row?.capitaine ?? ''
   const captainTest = captainKeyword
     ? exploredKeywords.find(v => v.keyword === captainKeyword)
     : undefined
-  const richCaptain: RichCaptain | undefined = (captainKeyword || hasExplorations) ? {
+  // `status` reste dérivé du verrouillage utilisateur (`article_keywords.capitaine`
+  // non-vide). Un richCaptain synthétique (cas explorations sans verrou) porte
+  // `status: 'suggested'`.
+  const richCaptain: RichCaptain | undefined = (captainKeyword || exploredKeywords.length > 0) ? {
     keyword: captainKeyword,
     status: captainKeyword ? 'locked' : 'suggested',
     exploredKeywords,
@@ -579,10 +586,10 @@ export async function getArticleKeywords(id: number): Promise<{ data: ArticleKey
     data: {
       articleId: id,
       capitaine: captainKeyword,
-      lieutenants: row.lieutenants ?? [],
-      lexique: row.lexique ?? [],
-      rootKeywords: row.root_keywords ?? [],
-      hnStructure: Array.isArray(row.hn_structure) ? row.hn_structure : [],
+      lieutenants: row?.lieutenants ?? [],
+      lexique: row?.lexique ?? [],
+      rootKeywords: row?.root_keywords ?? [],
+      hnStructure: Array.isArray(row?.hn_structure) ? row.hn_structure : [],
       richCaptain,
       richRootKeywords: exploredKeywords.flatMap(v =>
         (v.rootKeywords ?? []).map(rk => ({

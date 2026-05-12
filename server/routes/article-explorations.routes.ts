@@ -117,11 +117,15 @@ router.get('/articles/:id/explorations/counts', async (req, res) => {
          UNION
          SELECT unnest(lieutenants) FROM article_keywords WHERE article_id = $1
        )
-       -- Radar: count the number of generated keywords inside the scan (not the number of scans).
-       -- The table has PRIMARY KEY article_id so there's always 0 or 1 scan row;
-       -- what the user cares about is how many keywords are stored in it.
+       -- Radar: total keywords sauvegardés = en attente de scan (generated_keywords)
+       -- + déjà scannés (scan_result.cards). Les deux listes sont disjointes :
+       -- un keyword scanné quitte generated_keywords pour rejoindre scan_result.cards.
+       -- FR-MOT-CACHE-PANEL-COUNT (refonte 2026-05-12) : logique base, pas workflow.
        SELECT 'radar' AS source,
-              COALESCE(SUM(jsonb_array_length(generated_keywords)), 0)::text AS count
+              COALESCE(SUM(
+                jsonb_array_length(COALESCE(generated_keywords, '[]'::jsonb))
+                + jsonb_array_length(COALESCE(scan_result->'cards', '[]'::jsonb))
+              ), 0)::text AS count
          FROM radar_explorations WHERE article_id = $1
        UNION ALL SELECT 'captain', COUNT(*)::text FROM captain_explorations WHERE article_id = $1
        UNION ALL SELECT 'lieutenants', COUNT(*)::text FROM lieutenant_explorations WHERE article_id = $1

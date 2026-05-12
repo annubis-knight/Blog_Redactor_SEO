@@ -483,40 +483,58 @@ Aucune action automatique au changement d'onglet (cf. FR-MOT-NO-AUTO-ACTION). Le
 **Source :** `src/composables/moteur/useMoteurArticleSync.ts` (`explorationCounts`, `refreshExplorationCounts`), `server/routes/article-explorations.routes.ts`.
 
 #### FR-MOT-CACHE-PANEL-COUNT
-**Compteur "DB N" du TabCachePanel : nombre de mots-clés verrouillés** *(ajout 2026-05-08, transversal Capitaine/Lieutenants/Lexique)*. Pour les onglets Moteur dont la livraison utilisateur est un ensemble de mots-clés verrouillés (Capitaine, Lieutenants, Lexique), le compteur "DB N" affiché par `TabCachePanel.vue` reflète le **nombre de mots-clés effectivement verrouillés par l'utilisateur** pour l'article courant, **pas** le nombre d'explorations SERP/IA persistées.
+**Compteur "DB N" du TabCachePanel : total des mots-clés sauvegardés en base, peu importe leur statut** *(refonte 2026-05-12, chantier `feat/explorations-db-first`)*. Le compteur "DB N" affiché par `TabCachePanel.vue` reflète **tout ce qui est persisté en base pour l'onglet courant** — keywords explorés, scannés, testés, verrouillés, validés confondus. Le compteur répond à la question utilisateur : *"combien de mots-clés sont sauvegardés sur cet onglet ?"*, pas *"combien sont verrouillés ?"*.
 
-**Source unique** : la ligne `article_keywords` de l'article :
-- Capitaine : `1` si `article_keywords.capitaine` est non-null/non-vide, sinon `0`.
-- Lieutenants : `article_keywords.lieutenants.length` (TEXT[]).
-- Lexique : `article_keywords.lexique.length` (TEXT[]).
+**Source unique** : le endpoint `GET /articles/:id/explorations/counts` (cf. FR-MOT-EXPLORATION-COUNTS), qui renvoie un compte total par onglet calculé via SQL sur les tables `*_explorations` :
+- **Radar** : `SUM(jsonb_array_length(generated_keywords) + jsonb_array_length(scan_result->'cards'))` — keywords en attente + déjà scannés (les deux listes sont disjointes : un keyword scanné quitte `generated_keywords` pour rejoindre `scan_result.cards`).
+- **Capitaine** : `COUNT(*) FROM captain_explorations WHERE article_id = $1` — tous les keywords envoyés/testés au Capitaine, verrouillés ou non.
+- **Lieutenants** : `COUNT(*) FROM lieutenant_explorations WHERE article_id = $1` — toutes les propositions persistées, verrouillées ou non.
+- **Lexique** : `COUNT(*) FROM lexique_explorations WHERE article_id = $1` — tous les termes extraits, validés ou non.
 
-**Distinct des explorations** : les tables `*_explorations` (caches de propositions/SERP/TF-IDF) restent consultables via `GET /articles/:id/explorations/counts` (FR-MOT-EXPLORATION-COUNTS) pour les onglets Radar/Discovery et pour les sections "Explorations passées" internes aux panels — mais elles ne pilotent plus le compteur "DB N" du TabCachePanel pour les 3 onglets ci-dessus.
+**Distinction état utilisateur** : le statut individuel (verrouillé/validé/exploré) reste lisible via les structures dédiées (`article_keywords.capitaine` non-null, `lieutenants[]`, `lexique[]`, `richLieutenants.status='locked'`, etc.) et sert aux **hints** au survol du chip (« 31 testés · 3 verrouillés ») et aux **dots de progression workflow**, pas au compteur principal.
 
-**Bouton de chargement manuel ("Recharger DB")** : filet de sécurité pour les cas où l'hydratation au mount aurait échoué silencieusement (race condition, erreur réseau transitoire, etc.). Le clic appelle `articleKeywordsStore.fetchKeywords(articleId)` (idempotent), recharge la ligne `article_keywords` depuis la DB, et le compteur se rafraîchit naturellement par réactivité.
+**Bouton de chargement manuel ("Recharger DB")** : filet de sécurité quand l'hydratation au mount aurait échoué silencieusement. Le clic re-trigger `refreshExplorationCounts(articleId)` (idempotent, depuis `useMoteurArticleSync`).
 
-**Justification** : le compteur "DB N" doit refléter ce qui appartient à l'utilisateur (son état de décision verrouillé), pas l'état d'un cache technique. Une exploration SERP qui a produit 150 termes proposés mais 0 verrouillé doit afficher `0` au TabCachePanel — pas `1` ou `2`.
+**Justification du pivot 2026-05-12** : la sémantique précédente (« compteur = nombre de verrouillés ») était trompeuse dès qu'un utilisateur explorait sans verrouiller : 31 capitaines testés mais 0 verrouillé affichait `DB 0`, donnant l'impression visuelle d'une perte de données alors que tout était persisté. Le nouveau compteur représente *"ce qui est en base"* (logique base), pas *"ce qui est décidé"* (logique workflow).
 
 **Critères d'acceptation testables** :
-- AC.CACHEPANEL.1 : Article avec `article_keywords.lexique = []` mais `lexique_explorations` à 2 rows → onglet Lexique du TabCachePanel affiche **0**, pas 2.
-- AC.CACHEPANEL.2 : Article avec `article_keywords.lieutenants = ['kw1']` mais `lieutenant_explorations` à 5 rows → onglet Lieutenants affiche **1**.
-- AC.CACHEPANEL.3 : Article avec `article_keywords.capitaine = null` mais `captain_explorations` à 3 rows → onglet Capitaine affiche **0**.
-- AC.CACHEPANEL.4 : Cocher un terme Lexique met à jour le compteur de **0 → 1** dans le même tick (réactivité Pinia, pas besoin de refetch).
-- AC.CACHEPANEL.5 : Cliquer sur le bouton de chargement manuel re-trigger `fetchKeywords` même si le store est déjà hydraté (idempotent, no-op silencieux si rien ne change). Aucun appel à `/explorations/counts` n'est nécessaire pour les 3 onglets concernés.
-- AC.CACHEPANEL.6 : Au switch d'article, le compteur reflète l'`article_keywords` du nouvel article dans le même tick (pas de flash de l'ancienne valeur).
+- AC.CACHEPANEL.1 : Article avec `article_keywords.lexique = []` mais `lexique_explorations` à 2 rows → onglet Lexique du TabCachePanel affiche **2**, pas 0.
+- AC.CACHEPANEL.2 : Article avec `article_keywords.lieutenants = ['kw1']` mais `lieutenant_explorations` à 5 rows → onglet Lieutenants affiche **5**, pas 1.
+- AC.CACHEPANEL.3 : Article avec `article_keywords.capitaine = null` mais `captain_explorations` à 31 rows → onglet Capitaine affiche **31**, pas 0.
+- AC.CACHEPANEL.4 : Article avec `radar_explorations.generated_keywords` = 12 et `scan_result.cards` = 45 → onglet Radar affiche **57** (12 + 45).
+- AC.CACHEPANEL.5 : Article avec `radar_explorations` row absente → onglet Radar affiche **0**.
+- AC.CACHEPANEL.6 : Verrouiller un Capitaine n'incrémente pas le compteur Radar/Capitaine (le keyword était déjà compté comme exploré ; verrouiller change le hint, pas le compteur).
+- AC.CACHEPANEL.7 : Ajouter un keyword via l'input manuel Radar incrémente le chip "Radar DB N" dans le même tick (réactivité Pinia via `useRadarExplorationStore` + invalidation `refreshExplorationCounts`).
+- AC.CACHEPANEL.8 : Au switch d'article, le compteur reflète les totaux du nouvel article dans le même tick (pas de flash de l'ancienne valeur).
+- AC.CACHEPANEL.9 : Le hint au survol mentionne le détail (« 31 testés · 0 verrouillé », « 45 scannés · 12 en attente »).
 
-**Extension Radar (ajout 2026-05-11, chantier `feat/radar-cache-cleanup`)** :
-Le compteur Radar utilise un mécanisme similaire mais distinct, puisque Radar n'a pas de « keywords verrouillés » au sens Capitaine/Lieutenants/Lexique — il a une liste de keywords en attente de scan dans `radar_explorations.generated_keywords` JSONB.
+**Statut :** active. **Depuis :** 2026-05-12 (sémantique « total DB »). **Historique :** créée 2026-05-08 avec sémantique « verrouillés », pivotée 2026-05-12. **Source :** chantier `feat/explorations-db-first`.
+**Voir aussi :** FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-EXPLORATION-COUNTS.
 
-- **Source primaire (réactif)** : `useRadarExplorationStore.generatedKeywords.length`, accessible via la prop `radarGeneratedKeywordsCount` de `TabCacheUIState`. Réactif à chaque mutation du store (ajout via input manuel, batch depuis Discovery, suppression chip).
-- **Fallback transitoire** : `counts.radar` (issu de `GET /articles/:id/explorations/counts` via `SUM(jsonb_array_length(generated_keywords))`). Utilisé quand le store n'est pas synchronisé avec l'article courant.
-- **Garde-fou timing** : la valeur du store ne prime que si **(a)** `radarExplorationStore.articleId !== null`, **(b)** `radarExplorationStore.articleId === selectedArticle.id`, et **(c)** `!radarExplorationStore.isLoading`. Évite un flash "Radar DB 0" pendant le fetch d'hydratation. Cf. AC.RAD-DBFIRST.8.
+#### FR-MOT-EXPLORATIONS-HYDRATATION
+**Hydratation des explorations indépendante de l'état de verrouillage** *(ajout 2026-05-12, chantier `feat/explorations-db-first`)*. Le endpoint `GET /articles/:id/keywords` (handler `getArticleKeywords`) doit hydrater `richCaptain.exploredKeywords` et `richLieutenants` à partir des tables `captain_explorations` et `lieutenant_explorations` **même si la ligne `article_keywords` est absente** (cas : utilisateur a exploré des keywords sans encore verrouiller de Capitaine).
 
-**Critères d'acceptation Radar** :
-- AC.CACHEPANEL.7 : Article avec `radar_explorations.generated_keywords` = 30 entrées en DB → onglet Radar affiche **30** dès que le store est hydraté pour cet article (même sans cliquer sur l'onglet Radar — hydratation via watcher `selectedArticle.id`).
-- AC.CACHEPANEL.8 : Ajouter un keyword via l'input manuel Radar incrémente le chip "Radar DB N" dans le même tick (réactivité Pinia via le store).
-- AC.CACHEPANEL.9 : Pendant le fetch d'hydratation (`isLoading === true`), le chip "Radar DB" affiche la valeur de `counts.radar` issue de l'API (fallback), pas `0` du store vide.
+**Bug historique** : un early-return `if (res.rows.length === 0) return { data: null, dbOps: ops }` placé avant l'hydratation des explorations rendait invisibles tous les `captain_explorations` tant que l'utilisateur n'avait rien verrouillé. Le commentaire en ligne 561-566 de `data.service.ts` documentait pourtant l'intention inverse (« on le build aussi quand exploredKeywords est non-vide même sans capitaine verrouillé »), mais le early-return court-circuitait ce code. Le bug est devenu visible avec l'évolution du workflow Radar DB-first (envoi vers Capitaine sans verrouillage immédiat).
 
-**Statut :** active. **Depuis :** 2026-05-08. **Étendue Radar :** 2026-05-11. **Source :** chantier 2026-05-08 (cohérence Lexique TabCachePanel) + chantier `feat/radar-cache-cleanup`.
+**Comportement attendu** :
+- Article avec ligne `article_keywords` → comportement inchangé.
+- Article **sans** ligne `article_keywords` mais avec `captain_explorations` non-vide → renvoie un `ArticleKeywords` synthétique avec :
+  - `articleId = id`
+  - `capitaine = ''`, `lieutenants = []`, `lexique = []`, `rootKeywords = []`, `hnStructure = []`
+  - `richCaptain = { keyword: '', status: 'suggested', exploredKeywords: [...], aiPanelMarkdown: null }`
+  - `richLieutenants` rempli si `lieutenant_explorations` non-vide
+  - `richRootKeywords` reconstitué depuis les explorations
+- Article **totalement** vide (aucune row dans `article_keywords` NI dans `captain_explorations` NI dans `lieutenant_explorations`) → renvoie `null` (contrat préservé pour les vrais articles fantômes).
+
+**Critères d'acceptation testables** :
+- AC.HYDRAT.1 : `getArticleKeywords(id)` sur article sans `article_keywords` mais avec 3 `captain_explorations` → renvoie un objet avec `richCaptain.exploredKeywords.length === 3` et `capitaine === ''`.
+- AC.HYDRAT.2 : Même cas + 2 `lieutenant_explorations` → renvoie `richLieutenants.length === 2`.
+- AC.HYDRAT.3 : Article totalement vide (aucune row sur les 3 tables) → renvoie `{ data: null, dbOps }`.
+- AC.HYDRAT.4 : Article avec `article_keywords.capitaine = 'X'` non-vide → comportement inchangé (régression test).
+- AC.HYDRAT.5 : Le `richCaptain.status` du cas synthétique est `'suggested'`, jamais `'locked'`.
+
+**Statut :** active. **Depuis :** 2026-05-12. **Source :** chantier `feat/explorations-db-first`.
+**Voir aussi :** FR-CAP-EXPLORED-KEYWORDS-NAMING, FR-CAP-PERSIST, FR-MOT-CACHE-PANEL-COUNT.
 **Voir aussi :** FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-SELECT, FR-MOT-EXPLORATION-COUNTS, FR-RAD-DB-FIRST.
 
 #### FR-MOT-CHECK-RECONCILIATION
