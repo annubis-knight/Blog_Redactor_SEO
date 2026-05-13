@@ -47,34 +47,40 @@ export default defineConfigWithVueTs(
       '@typescript-eslint/no-explicit-any': 'warn',
 
       // S3.3 — Anti-régression CLAUDE.md §2.0 : interdit le fallback silencieux
-      // `?? 0` sur une variable contenant "Score" dans son nom. Symptôme typique :
-      // l'affichage montre "—" mais le tri traite la valeur comme 0.
-      // Solution : utiliser `compareScores()` de shared/score/, ou laisser null.
+      // `?? 0` sur une variable représentant un score ou un KPI marché.
+      // Symptôme typique : l'affichage montre "—" mais le tri traite la valeur
+      // comme 0, ce qui mélange les cartes "pas mesuré" avec les vraies "mesuré
+      // à 0".
+      // Périmètre :
+      //   - Score (générique : relevanceScore, compositeScore, marketScore…)
+      //   - KPI marché : Volume, Cpc, Difficulty, Density, Competition.
+      // Solution : utiliser compareScores/averageScores de shared/score/ pour
+      // les Score, ou laisser null + afficher "—" pour les KPI.
       'no-restricted-syntax': [
         'error',
         {
-          // Matche : `xxxScore ?? 0` (Identifier directement)
+          // Matche : `xxxScore ?? 0`, `searchVolume ?? 0`, `keywordDifficulty ?? 0`, etc. (Identifier direct)
           selector:
-            "LogicalExpression[operator='??'][left.type='Identifier'][left.name=/[Ss]core/][right.type='Literal'][right.value=0]",
+            "LogicalExpression[operator='??'][left.type='Identifier'][left.name=/[Ss]core|[Vv]olume|[Dd]ifficulty|[Cc]pc|[Cc]ompetition|[Dd]ensity/][right.type='Literal'][right.value=0]",
           message:
-            'Fallback silencieux interdit sur un score (CLAUDE.md §2.0). ' +
-            'Utiliser compareScores/averageScores de shared/score/ ou laisser null.',
+            'Fallback silencieux interdit sur un score ou un KPI marché (CLAUDE.md §2.0). ' +
+            'Utiliser compareScores/averageScores de shared/score/ pour les Score, ou laisser null + afficher "—" pour les KPI.',
         },
         {
-          // Matche : `obj.someScore ?? 0` (MemberExpression, dernière propriété)
+          // Matche : `obj.someScore ?? 0`, `card.kpis.searchVolume ?? 0`, etc. (MemberExpression, dernière propriété)
           selector:
-            "LogicalExpression[operator='??'][left.type='MemberExpression'][left.property.name=/[Ss]core/][right.type='Literal'][right.value=0]",
+            "LogicalExpression[operator='??'][left.type='MemberExpression'][left.property.name=/[Ss]core|[Vv]olume|[Dd]ifficulty|[Cc]pc|[Cc]ompetition|[Dd]ensity/][right.type='Literal'][right.value=0]",
           message:
-            'Fallback silencieux interdit sur un score (CLAUDE.md §2.0). ' +
-            'Utiliser compareScores/averageScores de shared/score/ ou laisser null.',
+            'Fallback silencieux interdit sur un score ou un KPI marché (CLAUDE.md §2.0). ' +
+            'Utiliser compareScores/averageScores de shared/score/ pour les Score, ou laisser null + afficher "—" pour les KPI.',
         },
         {
-          // Matche : `obj.something.score?.total ?? 0` (le penultième est *Score*)
+          // Matche : `obj.something.score?.total ?? 0`, `obj.kpis.volume?.normalized ?? 0`, etc. (penultième est le KPI)
           selector:
-            "LogicalExpression[operator='??'][left.type='MemberExpression'][left.object.property.name=/[Ss]core/][right.type='Literal'][right.value=0]",
+            "LogicalExpression[operator='??'][left.type='MemberExpression'][left.object.property.name=/[Ss]core|[Vv]olume|[Dd]ifficulty|[Cc]pc|[Cc]ompetition|[Dd]ensity/][right.type='Literal'][right.value=0]",
           message:
-            'Fallback silencieux interdit sur un score (CLAUDE.md §2.0). ' +
-            'Utiliser compareScores/averageScores de shared/score/ ou laisser null.',
+            'Fallback silencieux interdit sur un score ou un KPI marché (CLAUDE.md §2.0). ' +
+            'Utiliser compareScores/averageScores de shared/score/ pour les Score, ou laisser null + afficher "—" pour les KPI.',
         },
       ],
     },

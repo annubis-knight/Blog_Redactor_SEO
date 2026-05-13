@@ -134,12 +134,14 @@ describe('FinalisationPanel', () => {
     expect(wrapper.text()).toContain('Lieutenants (2)')
   })
 
-  it('lieutenants : fallback sur flat list si aucun lock', () => {
+  it('lieutenants : `richLieutenants` vide → état vide (TD-DRIFT-006, fallback flat supprimé 2026-05-13)', () => {
     const store = useArticleKeywordsStore()
     store.keywords = {
       articleId: 1,
       capitaine: null,
       richCaptain: null,
+      // La liste flat `lieutenants` n'est PLUS un fallback d'affichage : si
+      // `richLieutenants` ne contient aucun lock, on affiche l'état vide.
       lieutenants: ['kw1', 'kw2'],
       richLieutenants: [],
       lexique: [],
@@ -152,9 +154,10 @@ describe('FinalisationPanel', () => {
       global: { stubs: STUBS },
     })
 
-    expect(wrapper.text()).toContain('kw1')
-    expect(wrapper.text()).toContain('kw2')
-    expect(wrapper.text()).toContain('Lieutenants (2)')
+    expect(wrapper.text()).not.toContain('kw1')
+    expect(wrapper.text()).not.toContain('kw2')
+    expect(wrapper.text()).toContain('Lieutenants (0)')
+    expect(wrapper.text()).toContain('Aucun lieutenant verrouillé.')
   })
 
   it('lieutenants vides → message dédié', () => {

@@ -65,12 +65,11 @@ export function normalizeDataForSeoSignal(data: {
   // pondérée existante (volumeScore + cpcScore + kdScore + relatedScore). Le
   // fallback est encapsulé : on ne propage PAS un faux 0 hors de cette fonction.
   // Si tout est absent ET relatedCount=0, on retourne 0 = "pas de signal".
-   
+  /* eslint-disable no-restricted-syntax -- fallback encapsulé, ne fuit jamais en dehors de localScore() */
   const sv = data.searchVolume ?? 0
-   
   const cpc = data.cpc ?? 0
-   
   const kd = data.difficulty ?? 0
+  /* eslint-enable no-restricted-syntax */
 
   // All zeros = no data, not "easy keyword"
   if (sv === 0 && cpc === 0 && kd === 0 && data.relatedCount === 0) return 0
