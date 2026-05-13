@@ -166,9 +166,17 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
     const autocompletePosition = autocompleteSuggestions.findIndex(s => s.text.toLowerCase() === keywordLower)
 
     const config = getThresholds(articleLevel)
+    // Calculs internes de scoring : `scoreKpi(name, raw, config)` attend un
+    // `number`. Quand DataForSEO renvoie `null`, on ramène à 0 pour la formule
+    // (= « absence vaut zéro dans la note KPI »). C'est un calcul interne, pas
+    // un fallback affichage — la valeur brute (potentiellement `null`) est
+    // persistée séparément dans `kpisForMarket` plus bas.
     const kpis = [
+      // eslint-disable-next-line no-restricted-syntax -- voir commentaire ci-dessus
       scoreKpi('volume', rawVolume ?? 0, config),
+       
       scoreKpi('kd', rawKd ?? 0, config),
+      // eslint-disable-next-line no-restricted-syntax -- voir commentaire ci-dessus
       scoreKpi('cpc', rawCpc ?? 0, config),
       scoreKpi('paa', computePaaWeightedScore(matchedPaaItems), config),
       scoreKpi('intent', intentValue, config),
@@ -185,11 +193,14 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
     }))
 
     // ----- Score KPI / Marché — toujours calculé (séparation KPI vs Pertinence, V1) -----
+    // On propage les `null` bruts : `RadarKeywordKpis` accepte `number | null`
+    // pour searchVolume/difficulty/cpc/competition, le front affiche `—` quand
+    // c'est `null`, et le tri pousse ces cards en bas (TD-DRIFT-019 2026-05-13).
     const kpisForMarket: RadarKeywordKpis = {
-      searchVolume: rawVolume ?? 0,
-      difficulty: rawKd ?? 0,
-      cpc: rawCpc ?? 0,
-      competition: rawCompetition ?? 0,
+      searchVolume: rawVolume,
+      difficulty: rawKd,
+      cpc: rawCpc,
+      competition: rawCompetition,
       intentTypes: [],
       intentProbability: rawIntentScore,
       autocompleteMatchCount: autocompletePosition >= 0 ? autocompletePosition + 1 : 0,

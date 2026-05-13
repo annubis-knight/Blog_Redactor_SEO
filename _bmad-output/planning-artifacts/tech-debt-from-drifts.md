@@ -10,7 +10,7 @@ lastUpdated: '2026-05-13T00:00:00Z'
 
 | ID | Sujet | Priorité |
 |---|---|---|
-| TD-DRIFT-019 | Étendre la règle ESLint anti-fallback à tous les KPI marché | **HIGH** |
+| ~~TD-DRIFT-019~~ | ~~Étendre la règle ESLint anti-fallback à tous les KPI marché~~ | ✅ traité 2026-05-13 |
 | ~~TD-DRIFT-006~~ | ~~Retirer le fallback legacy `richLieutenants` dans `FinalisationPanel.vue`~~ | ✅ traité 2026-05-13 |
 | TD-DRIFT-004 | Unifier `ArticleType` (PascalCase français) vs `ArticleLevel` (kebab-case ASCII) | **MEDIUM** |
 | TD-DRIFT-009 | Factoriser `getOrFetch` dans `cache-helpers.ts` | **LOW** |

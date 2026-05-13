@@ -391,6 +391,11 @@ export async function scanRadarKeywords(
     // JSONB persistée. Plus aucun signal de pertinence (paaPainAlignmentAvg,
     // autocompletePainAlignmentAvg, painAlignmentScore) ne lui est passé depuis
     // 2026-05-12. Radar = marché pur.
+    // Les `?? 0` ci-dessous nourrissent la formule legacy qui attend `number` :
+    // une absence vaut zéro dans le calcul agrégé. Le marketScore lisible (qui
+    // est la VRAIE source de tri/affichage côté front) est calculé ailleurs et
+    // gère les `null` proprement (cf. `computeMarketScore`).
+    /* eslint-disable no-restricted-syntax -- formule legacy: null = 0 dans le calcul agrégé */
     const scoreBreakdown = computeCombinedScore({
       searchVolume: kpis.searchVolume ?? 0,
       difficulty: kpis.difficulty ?? 0,
@@ -400,6 +405,7 @@ export async function scanRadarKeywords(
       avgSemanticScore: kpis.avgSemanticScore,
       intentTypes: kpis.intentTypes,
     })
+    /* eslint-enable no-restricted-syntax */
 
     // FR-RAD-NO-RELEVANCE-IN-SCAN : Radar ne calcule plus Pertinence.
     // Responsabilité exclusive Capitaine (captain-relevance.service.ts).

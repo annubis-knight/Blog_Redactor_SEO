@@ -140,6 +140,7 @@ describe('useSortableList — filter', () => {
     const { sorted } = useSortableList<Item>({
       items,
       getValue: (it, key) => (key === 'az' ? it.keyword : it.score),
+      // eslint-disable-next-line no-restricted-syntax -- fixture de test : cpc absent = exclu, pattern attendu
       filter: (it) => (it.cpc ?? 0) > 0,
     })
     expect(sorted.value).toHaveLength(1)
