@@ -14,7 +14,7 @@ lastUpdated: '2026-05-13T00:00:00Z'
 | ~~TD-DRIFT-006~~ | ~~Retirer le fallback legacy `richLieutenants` dans `FinalisationPanel.vue`~~ | ✅ traité 2026-05-13 |
 | TD-DRIFT-004 | Unifier `ArticleType` (PascalCase français) vs `ArticleLevel` (kebab-case ASCII) | **MEDIUM** |
 | TD-DRIFT-009 | Factoriser `getOrFetch` dans `cache-helpers.ts` | **LOW** |
-| TD-DRIFT-016 | Déplacer `autocomplete.service.ts` dans `services/external/` | **LOW** |
+| ~~TD-DRIFT-016~~ | ~~Déplacer `autocomplete.service.ts` dans `services/external/`~~ | ✅ traité 2026-05-13 |
 
 ---
 

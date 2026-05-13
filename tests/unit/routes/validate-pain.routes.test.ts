@@ -39,7 +39,7 @@ vi.mock('../../../server/services/intent/community-discussions.service', () => (
   fetchCommunityDiscussions: mockFetchCommunityDiscussions,
 }))
 
-vi.mock('../../../server/services/keyword/autocomplete.service', () => ({
+vi.mock('../../../server/services/external/autocomplete.service', () => ({
   fetchAutocomplete: mockFetchAutocomplete,
 }))
 

@@ -20,7 +20,7 @@ vi.mock('../../../server/services/external/dataforseo.service', () => ({
   },
 }))
 
-vi.mock('../../../server/services/keyword/autocomplete.service', () => ({
+vi.mock('../../../server/services/external/autocomplete.service', () => ({
   fetchAutocomplete: vi.fn(),
 }))
 
@@ -51,7 +51,7 @@ vi.mock('../../../server/utils/logger', () => ({
 }))
 
 import { fetchKeywordOverview, fetchPaa, fetchSearchIntentBatch } from '../../../server/services/external/dataforseo.service'
-import { fetchAutocomplete } from '../../../server/services/keyword/autocomplete.service'
+import { fetchAutocomplete } from '../../../server/services/external/autocomplete.service'
 import { fetchSerpAdvanced, extractPaaFromSerp, matchResonanceDetailed, extractTopicWords, bestMatch, computePaaWeightedScore } from '../../../server/services/intent/intent-scan.service'
 import { getKeywordMetrics, upsertKeywordKpis, upsertKeywordPaa, isKeywordMetricsFresh } from '../../../server/services/keyword/keyword-metrics.service'
 

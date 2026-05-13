@@ -15,7 +15,7 @@ import {
   normalize,
   computePaaWeightedScore,
 } from '../intent/intent-scan.service.js'
-import { fetchAutocomplete, type AutocompleteSignal } from './autocomplete.service.js'
+import { fetchAutocomplete, type AutocompleteSignal } from '../external/autocomplete.service.js'
 import { readPaaCache, writePaaCache } from '../infra/paa-cache.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
 import { computeCombinedScore } from '../../../shared/scoring.js'
