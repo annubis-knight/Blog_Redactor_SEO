@@ -32,16 +32,11 @@ const captain = computed(() => {
   }
 })
 
-const lieutenants = computed(() => {
-  const rich = articleKeywordsStore.keywords?.richLieutenants ?? []
-  const locked = rich.filter(l => l.status === 'locked')
-  if (locked.length > 0) {
-    return locked.map(l => ({ keyword: l.keyword, reasoning: l.reasoning, hnLevel: l.suggestedHnLevel }))
-  }
-  // Fallback : liste flat
-  const flat = articleKeywordsStore.keywords?.lieutenants ?? []
-  return flat.map(k => ({ keyword: k, reasoning: '', hnLevel: 2 as const }))
-})
+const lieutenants = computed(() =>
+  (articleKeywordsStore.keywords?.richLieutenants ?? [])
+    .filter(l => l.status === 'locked')
+    .map(l => ({ keyword: l.keyword, reasoning: l.reasoning, hnLevel: l.suggestedHnLevel })),
+)
 
 const lexique = computed(() => articleKeywordsStore.keywords?.lexique ?? [])
 
