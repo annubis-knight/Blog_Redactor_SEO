@@ -367,14 +367,14 @@ describe('Cocoon strategy schemas', () => {
 
     const valid = proposedArticleSchema.parse({
       title: 'Mon article',
-      type: 'Pilier',
+      type: 'pilier',
       parentTitle: null,
       rationale: 'Article principal du cocon',
       suggestedKeyword: 'refonte site web',
       accepted: true,
     })
     expect(valid.title).toBe('Mon article')
-    expect(valid.type).toBe('Pilier')
+    expect(valid.type).toBe('pilier')
   })
 
   it('batchCreateArticlesSchema validates', async () => {
@@ -383,8 +383,8 @@ describe('Cocoon strategy schemas', () => {
     const valid = batchCreateArticlesSchema.parse({
       cocoonName: 'Mon cocon',
       articles: [
-        { title: 'Article 1', type: 'Pilier' },
-        { title: 'Article 2', type: 'Spécialisé' },
+        { title: 'Article 1', type: 'pilier' },
+        { title: 'Article 2', type: 'specifique' },
       ],
     })
     expect(valid.articles).toHaveLength(2)

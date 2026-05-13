@@ -333,7 +333,7 @@ const {
   truncationWarning,
   generationPhase,
   generationWarning,
-  addingArticleType,
+  addingArticleLevel,
   articleColumns,
   articleWarnings,
   globalWarnings,
@@ -471,7 +471,7 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
         :truncation-warning="truncationWarning"
         :generation-warning="generationWarning"
         :generation-phase="generationPhase"
-        :adding-article-type="addingArticleType"
+        :adding-article-level="addingArticleLevel"
         :topics-loading="topicsLoading"
         :topics-error="topicsError"
         :proposed-articles-count="store.strategy.proposedArticles.length"

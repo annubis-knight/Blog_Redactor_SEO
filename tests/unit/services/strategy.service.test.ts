@@ -17,7 +17,7 @@ const validStrategy: ArticleStrategy = {
   id: 1,
   cible: { input: 'PME du BTP', suggestion: 'Ciblez les artisans', validated: 'PME du BTP validé' },
   douleur: { input: 'Manque de visibilité', suggestion: null, validated: '' },
-  aiguillage: { suggestedType: 'Pilier', suggestedParent: null, suggestedChildren: ['article-enfant'], validated: false },
+  aiguillage: { suggestedType: 'pilier', suggestedParent: null, suggestedChildren: ['article-enfant'], validated: false },
   angle: { input: '', suggestion: null, validated: '' },
   promesse: { input: '', suggestion: null, validated: '' },
   cta: { type: 'service', target: '', suggestion: null },

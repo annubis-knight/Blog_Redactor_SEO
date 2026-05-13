@@ -31,9 +31,9 @@ export async function previewMigration(cocoonName: string): Promise<MigrationPre
   const intermediaireKws = keywords.filter(k => k.type === 'Intermédiaire')
   const specialiseKws = keywords.filter(k => k.type === 'Spécialisé')
 
-  const pilierArticles = cocoon.articles.filter(a => a.type === 'Pilier')
-  const interArticles = cocoon.articles.filter(a => a.type === 'Intermédiaire')
-  const specArticles = cocoon.articles.filter(a => a.type === 'Spécialisé')
+  const pilierArticles = cocoon.articles.filter(a => a.type === 'pilier')
+  const interArticles = cocoon.articles.filter(a => a.type === 'intermediaire')
+  const specArticles = cocoon.articles.filter(a => a.type === 'specifique')
 
   const assignments: ArticleKeywordAssignment[] = []
   const warnings: string[] = []

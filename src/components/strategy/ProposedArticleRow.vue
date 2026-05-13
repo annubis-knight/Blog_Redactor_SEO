@@ -96,9 +96,9 @@ const hasAnyIssue = computed(() => {
 
 const keywordColorClass = computed(() => {
   switch (props.article.type) {
-    case 'Pilier': return 'keyword-badge--pilier'
-    case 'Intermédiaire': return 'keyword-badge--inter'
-    case 'Spécialisé': return 'keyword-badge--spe'
+    case 'pilier': return 'keyword-badge--pilier'
+    case 'intermediaire': return 'keyword-badge--inter'
+    case 'specifique': return 'keyword-badge--spe'
     default: return ''
   }
 })

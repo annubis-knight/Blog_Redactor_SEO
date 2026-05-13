@@ -96,7 +96,7 @@ const SELECTED_ARTICLE = {
   slug: 'test-article',
   title: 'Test',
   keyword: 'seo',
-  type: 'Pilier' as const,
+  type: 'pilier' as const,
   locked: false,
   source: 'proposed' as const,
 }

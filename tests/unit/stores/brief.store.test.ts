@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { useBriefStore, calculateContentLength } from '../../../src/stores/strategy/brief.store'
-import type { ArticleType } from '../../../shared/types/index'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types'
 
 vi.mock('../../../src/services/api.service', () => ({
   apiGet: vi.fn(),
@@ -13,7 +13,7 @@ const mockApiGet = vi.mocked(apiGet)
 const mockApiPost = vi.mocked(apiPost)
 
 const mockArticleResponse = {
-  article: { title: 'Test Article', type: 'Pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const },
+  article: { title: 'Test Article', type: 'pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const },
   cocoonName: 'Test Cocoon',
 }
 
@@ -192,18 +192,18 @@ describe('calculateContentLength (fallback heuristique)', () => {
   // target-word-count.service.ts. Elles servent de fallback synchrone tant
   // que la recommandation IA serveur n'a pas répondu.
   it('returns 2650 for Pilier (midpoint 1800-3500)', () => {
-    expect(calculateContentLength('Pilier')).toBe(2650)
+    expect(calculateContentLength('pilier')).toBe(2650)
   })
 
   it('returns 1850 for Intermédiaire (midpoint 1200-2500)', () => {
-    expect(calculateContentLength('Intermédiaire')).toBe(1850)
+    expect(calculateContentLength('intermediaire')).toBe(1850)
   })
 
   it('returns 1150 for Spécialisé (midpoint 800-1500)', () => {
-    expect(calculateContentLength('Spécialisé')).toBe(1150)
+    expect(calculateContentLength('specifique')).toBe(1150)
   })
 
   it('returns 1500 for unknown type', () => {
-    expect(calculateContentLength('unknown' as ArticleType)).toBe(1500)
+    expect(calculateContentLength('unknown' as ArticleLevel)).toBe(1500)
   })
 })

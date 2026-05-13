@@ -9,7 +9,7 @@ vi.mock('../../../src/utils/logger', () => ({
 }))
 
 import { apiPost } from '../../../src/services/api.service'
-import { useCapitaineScan, articleTypeToLevel, extractRoot, extractRoots } from '../../../src/composables/keyword/useCapitaineScan'
+import { useCapitaineScan, extractRoot, extractRoots } from '../../../src/composables/keyword/useCapitaineScan'
 import type { ScanResponse } from '../../../shared/types/keyword-validate.types'
 
 const mockApiPost = vi.mocked(apiPost)
@@ -239,11 +239,9 @@ describe('useCapitaineScan', () => {
   })
 })
 
-describe('articleTypeToLevel', () => {
-  it('maps Pilier to pilier', () => { expect(articleTypeToLevel('Pilier')).toBe('pilier') })
-  it('maps Intermédiaire to intermediaire', () => { expect(articleTypeToLevel('Intermédiaire')).toBe('intermediaire') })
-  it('maps Spécialisé to specifique', () => { expect(articleTypeToLevel('Spécialisé')).toBe('specifique') })
-})
+// `articleTypeToLevel` retirée 2026-05-13 (cf. TD-DRIFT-004) — le type
+// canonique côté code est désormais `ArticleLevel` (kebab-case), la conversion
+// PascalCase ↔ kebab vit aux frontières DB via shared/utils/article-level.ts.
 
 describe('extractRoot', () => {
   it('returns first 2 significant words for 3+ word keywords', () => {

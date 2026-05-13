@@ -9,24 +9,24 @@ import type { LinkingMatrix, InternalLink } from '../../../shared/types/linking.
 describe('linking.service', () => {
   describe('isValidHierarchyLink', () => {
     it('allows Pilier → Intermédiaire', () => {
-      expect(isValidHierarchyLink('Pilier', 'Intermédiaire')).toBe(true)
+      expect(isValidHierarchyLink('pilier', 'intermediaire')).toBe(true)
     })
 
     it('allows Intermédiaire → Spécialisé', () => {
-      expect(isValidHierarchyLink('Intermédiaire', 'Spécialisé')).toBe(true)
+      expect(isValidHierarchyLink('intermediaire', 'specifique')).toBe(true)
     })
 
     it('allows Pilier → Spécialisé (distance 2)', () => {
-      expect(isValidHierarchyLink('Pilier', 'Spécialisé')).toBe(true)
+      expect(isValidHierarchyLink('pilier', 'specifique')).toBe(true)
     })
 
     it('allows same level links', () => {
-      expect(isValidHierarchyLink('Pilier', 'Pilier')).toBe(true)
-      expect(isValidHierarchyLink('Intermédiaire', 'Intermédiaire')).toBe(true)
+      expect(isValidHierarchyLink('pilier', 'pilier')).toBe(true)
+      expect(isValidHierarchyLink('intermediaire', 'intermediaire')).toBe(true)
     })
 
     it('allows reverse direction', () => {
-      expect(isValidHierarchyLink('Spécialisé', 'Pilier')).toBe(true)
+      expect(isValidHierarchyLink('specifique', 'pilier')).toBe(true)
     })
   })
 

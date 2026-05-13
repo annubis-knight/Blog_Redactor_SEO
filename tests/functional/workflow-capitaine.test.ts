@@ -17,7 +17,6 @@ import { describe, it, expect } from 'vitest'
 import {
   extractRoots,
   extractRoot,
-  articleTypeToLevel,
   FRENCH_STOPWORDS,
 } from '../../src/composables/keyword/useCapitaineScan'
 
@@ -138,26 +137,8 @@ describe('Workflow ② — Capitaine Validation', () => {
     })
   })
 
-  // -----------------------------------------------------------------------
-  // Step 4: articleTypeToLevel mapping
-  // -----------------------------------------------------------------------
-  describe('Step 4 — articleTypeToLevel mapping', () => {
-    it('Pilier → pilier', () => {
-      expect(articleTypeToLevel('Pilier')).toBe('pilier')
-    })
-
-    it('Intermédiaire → intermediaire', () => {
-      expect(articleTypeToLevel('Intermédiaire')).toBe('intermediaire')
-    })
-
-    it('Spécialisé → specifique', () => {
-      expect(articleTypeToLevel('Spécialisé')).toBe('specifique')
-    })
-
-    it('unknown type → intermediaire (default)', () => {
-      expect(articleTypeToLevel('Unknown' as never)).toBe('intermediaire')
-    })
-  })
+  // Step 4 retiré 2026-05-13 (TD-DRIFT-004) — la fonction `articleTypeToLevel`
+  // a disparu, le code utilise directement le type canonique `ArticleLevel`.
 
   // -----------------------------------------------------------------------
   // Step 5: checkKeywordComposition — client-side rules
@@ -300,11 +281,11 @@ describe('Workflow ② — Capitaine Validation', () => {
   // -----------------------------------------------------------------------
   describe('Step 9 — Full Captain workflow simulation', () => {
     const CAPTAIN_KEYWORD = 'creation site web entreprises Toulouse'
-    const ARTICLE_TYPE = 'Pilier'
+    const ARTICLE_LEVEL = 'pilier' as const
 
-    it('complete workflow: type → level → composition → roots → lock → navigate', () => {
-      // 1. Article type → level
-      const level = articleTypeToLevel(ARTICLE_TYPE)
+    it('complete workflow: level → composition → roots → lock → navigate', () => {
+      // 1. Article level (canonique côté code, cf. TD-DRIFT-004)
+      const level = ARTICLE_LEVEL
       expect(level).toBe('pilier')
 
       // 2. Composition check

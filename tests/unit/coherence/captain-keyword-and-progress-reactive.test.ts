@@ -83,7 +83,7 @@ const SUGGESTED_KEYWORD_B = 'typographie'
 const articleA: Article = {
   id: ARTICLE_ID_A,
   title: 'Design émotionnel',
-  type: 'Pilier',
+  type: 'pilier',
   slug: 'design-emotionnel',
   topic: null,
   status: 'à rédiger',
@@ -97,7 +97,7 @@ const articleA: Article = {
 const articleB: Article = {
   id: ARTICLE_ID_B,
   title: 'Typographie web',
-  type: 'Pilier',
+  type: 'pilier',
   slug: 'typographie-web',
   topic: null,
   status: 'à rédiger',

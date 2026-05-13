@@ -7,7 +7,7 @@ function makeArticle(overrides: Partial<ProposedArticle> = {}): ProposedArticle 
   return {
     title: 'Test article Spécialisé',
     suggestedTitles: ['Test article Spécialisé'],
-    type: 'Spécialisé',
+    type: 'specifique',
     parentTitle: null,
     rationale: 'Test rationale',
     painPoint: 'Test pain point',
@@ -523,7 +523,7 @@ describe('ProposedArticleRow — inline edit', () => {
 describe('ProposedArticleRow — keyword badge color by type', () => {
   it('applies pilier color class for Pilier type', async () => {
     const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ type: 'Pilier' }), index: 0 },
+      props: { article: makeArticle({ type: 'pilier' }), index: 0 },
     })
     await wrapper.find('.proposal-item').trigger('click')
 
@@ -533,7 +533,7 @@ describe('ProposedArticleRow — keyword badge color by type', () => {
 
   it('applies inter color class for Intermédiaire type', async () => {
     const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ type: 'Intermédiaire' }), index: 0 },
+      props: { article: makeArticle({ type: 'intermediaire' }), index: 0 },
     })
     await wrapper.find('.proposal-item').trigger('click')
 
@@ -543,7 +543,7 @@ describe('ProposedArticleRow — keyword badge color by type', () => {
 
   it('applies spe color class for Spécialisé type', async () => {
     const wrapper = mount(ProposedArticleRow, {
-      props: { article: makeArticle({ type: 'Spécialisé' }), index: 0 },
+      props: { article: makeArticle({ type: 'specifique' }), index: 0 },
     })
     await wrapper.find('.proposal-item').trigger('click')
 

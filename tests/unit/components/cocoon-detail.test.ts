@@ -7,7 +7,7 @@ import type { Article, Keyword } from '../../../shared/types/index.js'
 const mockArticle: Article = {
   id: 10,
   title: 'Pourquoi refondre votre site web en 2025',
-  type: 'Pilier',
+  type: 'pilier',
   slug: 'pourquoi-refondre-votre-site',
   topic: null,
   status: 'à rédiger',

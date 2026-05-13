@@ -16,7 +16,7 @@ function makeSeoScore(overrides: Partial<SeoScore> = {}): SeoScore {
     slugHasKeyword: true,
     hasArticleKeywords: true,
     keywordDensities: [
-      { keyword: 'seo', type: 'Pilier', occurrences: 15, density: 2.0, target: { min: 1.5, max: 2.5 }, inTarget: true, matchMethod: 'exact' },
+      { keyword: 'seo', type: 'pilier', occurrences: 15, density: 2.0, target: { min: 1.5, max: 2.5 }, inTarget: true, matchMethod: 'exact' },
       { keyword: 'référencement', type: 'Moyenne traine', occurrences: 8, density: 1.1, target: { min: 0.8, max: 1.5 }, inTarget: true, matchMethod: 'semantic' },
     ],
     headingValidation: { isValid: true, h1Count: 1, h2Count: 3, h3Count: 2, errors: [] },
@@ -171,7 +171,7 @@ describe('IndicatorsTab', () => {
     const seoStore = useSeoStore()
     seoStore.score = makeSeoScore({
       keywordDensities: [
-        { keyword: 'seo', type: 'Pilier', occurrences: 30, density: 4.0, target: { min: 1.5, max: 2.5 }, inTarget: false, matchMethod: 'exact' },
+        { keyword: 'seo', type: 'pilier', occurrences: 30, density: 4.0, target: { min: 1.5, max: 2.5 }, inTarget: false, matchMethod: 'exact' },
       ],
     })
 

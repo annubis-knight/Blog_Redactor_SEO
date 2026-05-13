@@ -1,7 +1,5 @@
 import type { PainIntentExpected } from './scoring.types.js'
-
-/** Article type in the cocoon hierarchy */
-export type ArticleType = 'Pilier' | 'Intermédiaire' | 'Spécialisé'
+import type { ArticleLevel } from './keyword-validate.types.js'
 
 /** Article publication status */
 export type ArticleStatus = 'à rédiger' | 'brouillon' | 'publié'
@@ -13,7 +11,10 @@ export type ArticlePhase = 'proposed' | 'moteur' | 'redaction' | 'published'
 export interface RawArticle {
   id: number              // stable unique identifier
   titre: string
-  type: ArticleType
+  /** Niveau de l'article dans la hiérarchie cocon — canonique kebab-case côté
+   * code (`'pilier' | 'intermediaire' | 'specifique'`). Cf. `articleTypeDbToLevel`
+   * pour la conversion depuis la valeur DB PascalCase (`articles.type`). */
+  type: ArticleLevel
   slug: string            // kept for SEO/export
   topic: string | null
   status?: ArticleStatus           // publication status (default: 'à rédiger')
@@ -61,7 +62,9 @@ export interface RawArticlesDb {
 export interface Article {
   id: number              // stable unique identifier
   title: string
-  type: ArticleType
+  /** Niveau de l'article dans la hiérarchie cocon — canonique kebab-case côté
+   * code (`'pilier' | 'intermediaire' | 'specifique'`). Cf. `articleTypeDbToLevel`. */
+  type: ArticleLevel
   slug: string            // kept for SEO/export
   topic: string | null
   status: ArticleStatus

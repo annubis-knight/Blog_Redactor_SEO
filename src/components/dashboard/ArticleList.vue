@@ -9,13 +9,13 @@ const props = defineProps<{
 }>()
 
 const pilierArticles = computed(() =>
-  props.articles.filter(a => a.type === 'Pilier'),
+  props.articles.filter(a => a.type === 'pilier'),
 )
 const interArticles = computed(() =>
-  props.articles.filter(a => a.type === 'Intermédiaire'),
+  props.articles.filter(a => a.type === 'intermediaire'),
 )
 const specArticles = computed(() =>
-  props.articles.filter(a => a.type === 'Spécialisé'),
+  props.articles.filter(a => a.type === 'specifique'),
 )
 
 const columns = computed(() => [

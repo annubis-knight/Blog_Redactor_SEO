@@ -6,7 +6,7 @@ import ArticleColumn from '@/components/production/ArticleColumn.vue'
 import GenerationStepper from '@/components/production/GenerationStepper.vue'
 import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
 import type { ProposedArticle, SuggestedTopic, CompositionCheckResult } from '@shared/types/index.js'
-import type { ArticleType } from '@shared/types/article.types.js'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 
 export type GenerationPhase = 'idle' | 'structure' | 'paa-queries' | 'paa-fetch' | 'specialises' | 'done' | 'error'
@@ -37,7 +37,7 @@ defineProps<{
   truncationWarning: string | null
   generationWarning: string | null
   generationPhase: GenerationPhase
-  addingArticleType: ArticleType | null
+  addingArticleLevel: ArticleLevel | null
   topicsLoading: boolean
   topicsError: string | null
   proposedArticlesCount: number
@@ -53,8 +53,8 @@ const emit = defineEmits<{
   (e: 'add-topic', topic: string): void
   (e: 'regenerate-topics'): void
   (e: 'update:user-context', ctx: string): void
-  (e: 'add-empty', type: ArticleType): void
-  (e: 'add-smart', type: ArticleType, hint?: string): void
+  (e: 'add-empty', type: ArticleLevel): void
+  (e: 'add-smart', type: ArticleLevel, hint?: string): void
   (e: 'remove-proposed', index: number): void
   (e: 'toggle-accept', index: number): void
   (e: 'regenerate-title', index: number): void
@@ -240,12 +240,12 @@ function isProcessing(phase: GenerationPhase): boolean {
               @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)"
               @update:pain-intent-expected="(v: PainIntentExpected | null) => emit('update-pain-intent', article.originalIndex, v)" />
             <AddArticleMenu
-              :is-loading="addingArticleType === 'Pilier'"
-              :disabled="addingArticleType !== null"
+              :is-loading="addingArticleLevel === 'pilier'"
+              :disabled="addingArticleLevel !== null"
               label="+ Ajouter un pilier"
-              @add-empty="emit('add-empty', 'Pilier')"
-              @add-smart="emit('add-smart', 'Pilier')"
-              @add-guided="(hint: string) => emit('add-smart', 'Pilier', hint)"
+              @add-empty="emit('add-empty', 'pilier')"
+              @add-smart="emit('add-smart', 'pilier')"
+              @add-guided="(hint: string) => emit('add-smart', 'pilier', hint)"
             />
           </ArticleColumn>
 
@@ -272,12 +272,12 @@ function isProcessing(phase: GenerationPhase): boolean {
               @edit-slug="(i: number, v: string) => emit('edit-slug', i, v)"
               @update:pain-intent-expected="(v: PainIntentExpected | null) => emit('update-pain-intent', article.originalIndex, v)" />
             <AddArticleMenu
-              :is-loading="addingArticleType === 'Intermédiaire'"
-              :disabled="addingArticleType !== null"
+              :is-loading="addingArticleLevel === 'intermediaire'"
+              :disabled="addingArticleLevel !== null"
               label="+ Ajouter un intermédiaire"
-              @add-empty="emit('add-empty', 'Intermédiaire')"
-              @add-smart="emit('add-smart', 'Intermédiaire')"
-              @add-guided="(hint: string) => emit('add-smart', 'Intermédiaire', hint)"
+              @add-empty="emit('add-empty', 'intermediaire')"
+              @add-smart="emit('add-smart', 'intermediaire')"
+              @add-guided="(hint: string) => emit('add-smart', 'intermediaire', hint)"
             />
           </ArticleColumn>
 
@@ -315,12 +315,12 @@ function isProcessing(phase: GenerationPhase): boolean {
                 @update:pain-intent-expected="(v: PainIntentExpected | null) => emit('update-pain-intent', article.originalIndex, v)" />
             </div>
             <AddArticleMenu
-              :is-loading="addingArticleType === 'Spécialisé'"
-              :disabled="addingArticleType !== null"
+              :is-loading="addingArticleLevel === 'specifique'"
+              :disabled="addingArticleLevel !== null"
               label="+ Ajouter un spécialisé"
-              @add-empty="emit('add-empty', 'Spécialisé')"
-              @add-smart="emit('add-smart', 'Spécialisé')"
-              @add-guided="(hint: string) => emit('add-smart', 'Spécialisé', hint)"
+              @add-empty="emit('add-empty', 'specifique')"
+              @add-smart="emit('add-smart', 'specifique')"
+              @add-guided="(hint: string) => emit('add-smart', 'specifique', hint)"
             />
           </ArticleColumn>
         </div>

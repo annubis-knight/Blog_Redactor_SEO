@@ -5,8 +5,15 @@ import { z } from 'zod/v4'
  * Single source of truth — modify values here only.
  */
 
-/** Article type (3 levels of strategic depth) */
-export const articleTypeSchema = z.enum(['Pilier', 'Intermédiaire', 'Spécialisé'])
+/**
+ * Article type (3 levels of strategic depth) — canonique kebab-case côté code
+ * (cf. TD-DRIFT-004). Pour le format DB PascalCase français de `articles.type`,
+ * utiliser `articleTypeDbToLevel` / `articleLevelToDbType` (shared/utils/article-level.ts).
+ *
+ * Note : alias `articleTypeSchema` conservé pour retrocompat — c'est le même
+ * enum que `articleLevelSchema` ci-dessous.
+ */
+export const articleTypeSchema = z.enum(['pilier', 'intermediaire', 'specifique'])
 
 /** Article publication status */
 export const articleStatusSchema = z.enum(['à rédiger', 'brouillon', 'publié'])

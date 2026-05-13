@@ -5,7 +5,7 @@ export interface DiscoveryContext {
   cocoonTheme?: string
   articleTitle?: string
   articleKeyword?: string
-  articleType?: 'Pilier' | 'Intermédiaire' | 'Spécialisé'
+  articleType?: 'pilier' | 'intermediaire' | 'specifique'
   painPoint?: string
   seedKeyword: string
 }

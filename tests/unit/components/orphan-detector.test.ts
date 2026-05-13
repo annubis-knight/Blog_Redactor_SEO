@@ -21,7 +21,7 @@ const RouterLinkStub = {
   template: '<a class="stub-router-link" :href="typeof to === \'string\' ? to : \'\'"><slot /></a>',
 }
 
-function makeOrphan(id: number, type: 'Pilier' | 'Intermédiaire' | 'Spécialisé', over: Partial<OrphanArticle> = {}): OrphanArticle {
+function makeOrphan(id: number, type: 'pilier' | 'Intermédiaire' | 'Spécialisé', over: Partial<OrphanArticle> = {}): OrphanArticle {
   return {
     id,
     slug: `orphan-${id}`,
@@ -35,7 +35,7 @@ function makeOrphan(id: number, type: 'Pilier' | 'Intermédiaire' | 'Spécialis�
 describe('OrphanDetector', () => {
   it('compteur affiché dans le titre', () => {
     const wrapper = mount(OrphanDetector, {
-      props: { orphans: [makeOrphan(1, 'Pilier'), makeOrphan(2, 'Intermédiaire')] },
+      props: { orphans: [makeOrphan(1, 'pilier'), makeOrphan(2, 'intermediaire')] },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
     expect(wrapper.find('.orphan-count').text()).toBe('2')
@@ -56,9 +56,9 @@ describe('OrphanDetector', () => {
     const wrapper = mount(OrphanDetector, {
       props: {
         orphans: [
-          makeOrphan(1, 'Pilier'),
-          makeOrphan(2, 'Intermédiaire'),
-          makeOrphan(3, 'Spécialisé'),
+          makeOrphan(1, 'pilier'),
+          makeOrphan(2, 'intermediaire'),
+          makeOrphan(3, 'specifique'),
         ],
       },
       global: { stubs: { RouterLink: RouterLinkStub } },
@@ -69,7 +69,7 @@ describe('OrphanDetector', () => {
 
   it('chaque RouterLink pointe vers /article/:id/editor', () => {
     const wrapper = mount(OrphanDetector, {
-      props: { orphans: [makeOrphan(42, 'Pilier'), makeOrphan(99, 'Spécialisé')] },
+      props: { orphans: [makeOrphan(42, 'pilier'), makeOrphan(99, 'specifique')] },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
     const links = wrapper.findAll('.stub-router-link')
@@ -92,18 +92,18 @@ describe('OrphanDetector', () => {
     const wrapper = mount(OrphanDetector, {
       props: {
         orphans: [
-          makeOrphan(1, 'Pilier'),
-          makeOrphan(2, 'Intermédiaire'),
-          makeOrphan(3, 'Spécialisé'),
+          makeOrphan(1, 'pilier'),
+          makeOrphan(2, 'intermediaire'),
+          makeOrphan(3, 'specifique'),
         ],
       },
       global: { stubs: { RouterLink: RouterLinkStub } },
     })
     const types = wrapper.findAll('.orphan-type')
-    expect(types[0].classes()).toContain('Pilier')
-    expect(types[1].classes()).toContain('Intermédiaire')
-    expect(types[2].classes()).toContain('Spécialisé')
-    expect(types[0].text()).toBe('Pilier')
+    expect(types[0].classes()).toContain('pilier')
+    expect(types[1].classes()).toContain('intermediaire')
+    expect(types[2].classes()).toContain('specifique')
+    expect(types[0].text()).toBe('pilier')
   })
 
   it('REGRESSION GUARD : l\'élément racine reste visible même sans orphelins', () => {

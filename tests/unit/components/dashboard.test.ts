@@ -10,7 +10,7 @@ const mockCocoon: Cocoon = {
   name: 'Refonte de site web pour PME',
   siloName: 'Création de site',
   articles: [
-    { title: 'Article 1', type: 'Pilier', slug: 'article-1', topic: null, status: 'à rédiger' },
+    { title: 'Article 1', type: 'pilier', slug: 'article-1', topic: null, status: 'à rédiger' },
   ],
   publishedArticles: [],
   stats: {

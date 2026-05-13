@@ -77,7 +77,7 @@ const stubs = {
   BrainArticleProposalView: {
     name: 'BrainArticleProposalView',
     template: '<div data-testid="brain-article-proposal-view"></div>',
-    props: ['articleColumns', 'groupedSpecArticles', 'compositionResults', 'articleWarnings', 'intermediateTitles', 'globalWarnings', 'truncationWarning', 'generationWarning', 'generationPhase', 'addingArticleType', 'topicsLoading', 'topicsError', 'proposedArticlesCount', 'suggestedTopics', 'topicsUserContext'],
+    props: ['articleColumns', 'groupedSpecArticles', 'compositionResults', 'articleWarnings', 'intermediateTitles', 'globalWarnings', 'truncationWarning', 'generationWarning', 'generationPhase', 'addingArticleLevel', 'topicsLoading', 'topicsError', 'proposedArticlesCount', 'suggestedTopics', 'topicsUserContext'],
   },
 }
 

@@ -202,7 +202,7 @@ const baseProps = {
   articleTitle: 'Article test',
   articleKeyword: 'seo local boulanger',
   articlePainPoint: 'pas assez de clients',
-  articleType: 'Pilier',
+  articleType: 'pilier',
   cocoonName: 'cocon-test',
 }
 

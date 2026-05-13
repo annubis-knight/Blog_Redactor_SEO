@@ -115,7 +115,7 @@ const stubs = {
 }
 
 const baseProps = {
-  selectedArticle: { id: 1, slug: 'art', title: 'Article', keyword: 'seo', painPoint: 'p', type: 'Pilier', locked: false, source: 'proposed' } as never,
+  selectedArticle: { id: 1, slug: 'art', title: 'Article', keyword: 'seo', painPoint: 'p', type: 'pilier', locked: false, source: 'proposed' } as never,
   initialLocked: false,
   suggestedKeywords: [],
   radarCards: [],

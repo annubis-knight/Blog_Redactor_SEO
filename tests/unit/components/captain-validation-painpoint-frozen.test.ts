@@ -157,7 +157,7 @@ const baseArticle: SelectedArticle = {
   title: 'Article de test',
   keyword: 'seo',
   painPoint: 'Premier painPoint suffisamment long',
-  type: 'Pilier',
+  type: 'pilier',
   locked: false,
   source: 'proposed',
 }

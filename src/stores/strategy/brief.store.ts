@@ -2,18 +2,19 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
 import { apiGet, apiPost } from '@/services/api.service'
-import type { Article, ArticleType, Keyword, DataForSeoCacheEntry, BriefData } from '@shared/types/index.js'
+import type { Article, Keyword, DataForSeoCacheEntry, BriefData } from '@shared/types/index.js'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 
 /**
  * Recommandation synchrone fallback basée sur le type d'article. Utilisée tant
  * que la recommandation IA côté serveur n'a pas répondu (ou en offline).
  * Valeurs = midpoints des bornes TYPE_BASE de target-word-count.service.ts.
  */
-export function calculateContentLength(articleType: ArticleType): number {
+export function calculateContentLength(articleType: ArticleLevel): number {
   const baseByType: Record<string, number> = {
-    'Pilier': 2650,
-    'Intermédiaire': 1850,
-    'Spécialisé': 1150,
+    'pilier': 2650,
+    'intermediaire': 1850,
+    'specifique': 1150,
   }
   return baseByType[articleType] ?? 1500
 }
@@ -23,7 +24,7 @@ export function calculateContentLength(articleType: ArticleType): number {
  * prend en compte SERP avg + sommaire HN + type d'article, via IA.
  * Fallback sur le calcul heuristique si l'endpoint échoue.
  */
-async function fetchContentLengthRecommendation(articleId: number, articleType: ArticleType): Promise<number> {
+async function fetchContentLengthRecommendation(articleId: number, articleType: ArticleLevel): Promise<number> {
   try {
     const res = await apiPost<{ recommended: number }>(`/articles/${articleId}/recommend-word-count`, {})
     if (res?.recommended && res.recommended > 0) return res.recommended

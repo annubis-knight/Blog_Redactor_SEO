@@ -19,7 +19,7 @@ const ArticleCardStub = {
   template: '<div class="stub-card" :data-slug="article.slug" :data-cocoon="cocoonId">{{ article.title }}</div>',
 }
 
-function makeArticle(slug: string, type: 'Pilier' | 'Intermédiaire' | 'Spécialisé', title?: string) {
+function makeArticle(slug: string, type: 'pilier' | 'intermediaire' | 'specifique', title?: string) {
   return {
     id: Math.random(),
     slug,
@@ -48,9 +48,9 @@ describe('ArticleList', () => {
     const wrapper = mount(ArticleList, {
       props: {
         articles: [
-          makeArticle('p1', 'Pilier'),
-          makeArticle('i1', 'Intermédiaire'),
-          makeArticle('s1', 'Spécialisé'),
+          makeArticle('p1', 'pilier'),
+          makeArticle('i1', 'intermediaire'),
+          makeArticle('s1', 'specifique'),
         ],
       },
       global: { stubs: { ArticleCard: ArticleCardStub } },
@@ -62,12 +62,12 @@ describe('ArticleList', () => {
     const wrapper = mount(ArticleList, {
       props: {
         articles: [
-          makeArticle('p1', 'Pilier'),
-          makeArticle('p2', 'Pilier'),
-          makeArticle('i1', 'Intermédiaire'),
-          makeArticle('s1', 'Spécialisé'),
-          makeArticle('s2', 'Spécialisé'),
-          makeArticle('s3', 'Spécialisé'),
+          makeArticle('p1', 'pilier'),
+          makeArticle('p2', 'pilier'),
+          makeArticle('i1', 'intermediaire'),
+          makeArticle('s1', 'specifique'),
+          makeArticle('s2', 'specifique'),
+          makeArticle('s3', 'specifique'),
         ],
       },
       global: { stubs: { ArticleCard: ArticleCardStub } },
@@ -80,7 +80,7 @@ describe('ArticleList', () => {
   it('REGRESSION GUARD : ordre des colonnes Pilier → Intermédiaire → Spécialisé', () => {
     const wrapper = mount(ArticleList, {
       props: {
-        articles: [makeArticle('s1', 'Spécialisé'), makeArticle('p1', 'Pilier'), makeArticle('i1', 'Intermédiaire')],
+        articles: [makeArticle('s1', 'specifique'), makeArticle('p1', 'pilier'), makeArticle('i1', 'intermediaire')],
       },
       global: { stubs: { ArticleCard: ArticleCardStub } },
     })
@@ -90,7 +90,7 @@ describe('ArticleList', () => {
 
   it('colonne vide → message "Aucun article" dans la colonne', () => {
     const wrapper = mount(ArticleList, {
-      props: { articles: [makeArticle('p1', 'Pilier')] },
+      props: { articles: [makeArticle('p1', 'pilier')] },
       global: { stubs: { ArticleCard: ArticleCardStub } },
     })
     // Pilier a 1 carte, Intermédiaire et Spécialisé ont chacune leur message vide.
@@ -101,7 +101,7 @@ describe('ArticleList', () => {
   it('cocoonId transmis aux ArticleCard enfants', () => {
     const wrapper = mount(ArticleList, {
       props: {
-        articles: [makeArticle('p1', 'Pilier')],
+        articles: [makeArticle('p1', 'pilier')],
         cocoonId: 42,
       },
       global: { stubs: { ArticleCard: ArticleCardStub } },
@@ -112,7 +112,7 @@ describe('ArticleList', () => {
 
   it('cocoonId optionnel : pas d\'erreur si absent', () => {
     const wrapper = mount(ArticleList, {
-      props: { articles: [makeArticle('p1', 'Pilier')] },
+      props: { articles: [makeArticle('p1', 'pilier')] },
       global: { stubs: { ArticleCard: ArticleCardStub } },
     })
     expect(wrapper.find('.stub-card').exists()).toBe(true)
@@ -122,9 +122,9 @@ describe('ArticleList', () => {
     const wrapper = mount(ArticleList, {
       props: {
         articles: [
-          makeArticle('p1', 'Pilier'),
-          makeArticle('i1', 'Intermédiaire'),
-          makeArticle('s1', 'Spécialisé'),
+          makeArticle('p1', 'pilier'),
+          makeArticle('i1', 'intermediaire'),
+          makeArticle('s1', 'specifique'),
         ],
       },
       global: { stubs: { ArticleCard: ArticleCardStub } },

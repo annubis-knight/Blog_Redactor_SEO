@@ -98,7 +98,7 @@ const baseProps = {
   articleTitle: 'Test',
   articleKeyword: 'design émotionnel',
   articlePainPoint: 'pain',
-  articleType: 'Pilier',
+  articleType: 'pilier',
   cocoonName: 'Cocoon',
   mode: 'workflow' as const,
 }

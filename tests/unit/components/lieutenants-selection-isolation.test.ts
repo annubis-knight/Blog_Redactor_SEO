@@ -109,7 +109,7 @@ const ARTICLE_A: SelectedArticle = {
   id: 64, slug: 'creation-site-web-pilier',
   title: 'Création de site web sur mesure à Toulouse',
   keyword: 'creation site web entreprises Toulouse',
-  painPoint: 'pain A', type: 'Pilier',
+  painPoint: 'pain A', type: 'pilier',
   locked: false, source: 'proposed',
 } as never as SelectedArticle
 
@@ -117,7 +117,7 @@ const ARTICLE_B: SelectedArticle = {
   id: 66, slug: 'architecture-structure',
   title: 'Architecture et structure de site web',
   keyword: 'structure arborescence',
-  painPoint: 'pain B', type: 'Intermédiaire',
+  painPoint: 'pain B', type: 'intermediaire',
   locked: false, source: 'proposed',
 } as never as SelectedArticle
 
@@ -125,7 +125,7 @@ const ARTICLE_C: SelectedArticle = {
   id: 65, slug: 'design-ux-conversion',
   title: 'Design UX et conversion',
   keyword: 'design UX site conversion professionnels',
-  painPoint: 'pain C', type: 'Intermédiaire',
+  painPoint: 'pain C', type: 'intermediaire',
   locked: false, source: 'proposed',
 } as never as SelectedArticle
 

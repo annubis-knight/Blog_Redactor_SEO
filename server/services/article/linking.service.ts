@@ -9,7 +9,7 @@ import type {
   AnchorDiversityAlert,
   CrossCocoonOpportunity,
 } from '../../../shared/types/linking.types.js'
-import type { ArticleType } from '../../../shared/types/index.js'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 
 const _DEFAULT_MATRIX: LinkingMatrix = {
   links: [],
@@ -17,10 +17,10 @@ const _DEFAULT_MATRIX: LinkingMatrix = {
 }
 
 /** Allowed linking directions in cocoon hierarchy */
-const HIERARCHY_ORDER: Record<ArticleType, number> = {
-  'Pilier': 0,
-  'Intermédiaire': 1,
-  'Spécialisé': 2,
+const HIERARCHY_ORDER: Record<ArticleLevel, number> = {
+  'pilier': 0,
+  'intermediaire': 1,
+  'specifique': 2,
 }
 
 /**
@@ -28,7 +28,7 @@ const HIERARCHY_ORDER: Record<ArticleType, number> = {
  * Pilier <-> Intermédiaire, Intermédiaire <-> Spécialisé.
  * Pilier -> Spécialisé is allowed but not recommended (distance = 2).
  */
-export function isValidHierarchyLink(sourceType: ArticleType, targetType: ArticleType): boolean {
+export function isValidHierarchyLink(sourceType: ArticleLevel, targetType: ArticleLevel): boolean {
   const distance = Math.abs(HIERARCHY_ORDER[sourceType]! - HIERARCHY_ORDER[targetType]!)
   return distance <= 2
 }
@@ -104,7 +104,7 @@ export async function suggestLinks(articleId: number, content: string): Promise<
 
   // Find source article and its cocoon
   let sourceCocoonName: string | null = null
-  let sourceType: ArticleType | null = null
+  let sourceType: ArticleLevel | null = null
   for (const cocoon of cocoons) {
     const found = cocoon.articles.find((a) => a.id === articleId)
     if (found) {
@@ -214,7 +214,7 @@ export async function findCrossCocoonOpportunities(): Promise<CrossCocoonOpportu
   const opportunities: CrossCocoonOpportunity[] = []
 
   // Build cocoon lookup
-  const articleCocoon = new Map<number, { cocoonName: string; title: string; type: ArticleType }>()
+  const articleCocoon = new Map<number, { cocoonName: string; title: string; type: ArticleLevel }>()
   for (const cocoon of cocoons) {
     for (const article of cocoon.articles) {
       articleCocoon.set(article.id, { cocoonName: cocoon.name, title: article.title, type: article.type })
@@ -232,7 +232,7 @@ export async function findCrossCocoonOpportunities(): Promise<CrossCocoonOpportu
   }
 
   // Suggest cross-cocoon links for Pilier articles
-  const pilierArticles = [...articleCocoon.entries()].filter(([, info]) => info.type === 'Pilier')
+  const pilierArticles = [...articleCocoon.entries()].filter(([, info]) => info.type === 'pilier')
 
   for (const [sourceId, sourceInfo] of pilierArticles) {
     for (const [targetId, targetInfo] of pilierArticles) {

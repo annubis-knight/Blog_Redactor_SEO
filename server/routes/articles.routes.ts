@@ -255,7 +255,7 @@ router.post('/articles/:id/recommend-word-count', async (req, res) => {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article ${id} not found` } })
       return
     }
-    const articleType = result.article.type as 'Pilier' | 'Intermédiaire' | 'Spécialisé'
+    const articleType = result.article.type
 
     // 1. Récupère le sommaire HN persisté (depuis article_keywords.hn_structure)
     const { data: articleKeywords } = await getArticleKeywords(id)

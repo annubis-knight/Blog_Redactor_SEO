@@ -115,7 +115,7 @@ describe('FR-INFRA-KPI-DISPLAY-DASH — KeywordAuditTable avec KPIs null', () =>
   function makeAuditResult(overrides: Partial<KeywordAuditResult> = {}): KeywordAuditResult {
     return {
       keyword: 'kw-test',
-      type: 'Pilier',
+      type: 'pilier',
       status: 'suggested',
       cocoonName: 'cocon-x',
       searchVolume: null,
