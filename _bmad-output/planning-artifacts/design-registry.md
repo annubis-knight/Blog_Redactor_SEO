@@ -138,7 +138,7 @@ Ce bloc est important parce que c'est typiquement là que se cachent les bugs de
 - [server/prompts/strategy-suggest.md](../../server/prompts/strategy-suggest.md), [strategy-deepen.md](../../server/prompts/strategy-deepen.md), [strategy-consolidate.md](../../server/prompts/strategy-consolidate.md) — prompts IA d'aide à la stratégie.
 
 **Persistance**
-- Table `article_strategies(article_id PK, data JSONB, completed_steps TEXT[], updated_at)` — cf. `DESIGN-INFRA-ARTICLE-STRATEGIES`.
+- Table `article_strategies(article_id PK, data JSONB, completed_steps INTEGER DEFAULT 0, updated_at)` — cf. `DESIGN-INFRA-ARTICLE-STRATEGIES`. **`completed_steps` est un compteur INTEGER** (pas un tableau TEXT[] comme le suggérait le PRD pré-migration, cf. DRIFT-003).
 - Le champ `data` stocke les 6 réponses validées ; `completed_steps` trace l'avancement (utilisé pour reprise).
 
 **Flux DB**
@@ -406,7 +406,7 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Refs code**
 - [server/routes/cocoons.routes.ts](../../server/routes/cocoons.routes.ts) — endpoint `GET /api/cocoons/:id/strategy/context`.
-- [src/composables/moteur/useMoteurBridge.ts](../../src/composables/moteur/useMoteurBridge.ts) — composable côté front.
+- [src/stores/strategy/cocoon-strategy.store.ts](../../src/stores/strategy/cocoon-strategy.store.ts) — `useCocoonStrategyStore` qui porte `strategicContext` et expose `fetchContext(cocoonId)`. Appelé directement depuis `MoteurView.vue` et `RedactionView.vue` au mount (pas de composable bridge dédié — la ref historique `useMoteurBridge.ts` n'a jamais existé, cf. DRIFT-001).
 - [src/components/moteur/MoteurStrategyContext.vue](../../src/components/moteur/MoteurStrategyContext.vue) — composant d'affichage en lecture seule.
 
 **Contrat de réponse**
@@ -426,7 +426,7 @@ Seules les valeurs **validated** sont incluses. Les valeurs non-validées ou vid
 *Écriture* : aucune — endpoint purement lecture. La source `cocoon_strategies.data` est écrite par le Cerveau (cf. `DESIGN-CER-STEPS-COCOON`).
 
 **Stores Pinia**
-- `useCocoonStrategyStore` — c'est ce store (et non un store dédié) qui porte `strategicContext`. La méthode `fetchContext(cocoonId)` est appelée directement depuis `MoteurView.vue` et `RedactionView.vue` au mount. Le `MoteurStrategyContext.vue` lit ensuite `strategyStore.strategicContext.*` en propriétés. *Note : la référence à `src/composables/moteur/useMoteurBridge.ts` dans les Refs code est obsolète — pas de composable bridge dédié, l'intégration est directe view → store.*
+- `useCocoonStrategyStore` — c'est ce store (et non un store dédié) qui porte `strategicContext`. La méthode `fetchContext(cocoonId)` est appelée directement depuis `MoteurView.vue` et `RedactionView.vue` au mount. Le `MoteurStrategyContext.vue` lit ensuite `strategyStore.strategicContext.*` en propriétés. Pas de composable bridge dédié — l'intégration est directe view → store.
 
 **Watchers & réactivité**
 - Aucun watcher actif — le contexte est figé au mount de l'écran Moteur/Rédaction. Si l'utilisateur retourne au Cerveau, modifie la stratégie cocon, puis revient au Moteur, le contexte ne sera **pas** rafraîchi automatiquement : un remount de l'écran est nécessaire (navigation Vue Router) pour redéclencher `fetchContext`.
@@ -3480,7 +3480,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - `DESIGN-RED-WORD-COUNT-TARGET` — consommateur de `editorStore.wordCount`.
 - `DESIGN-RED-SEO-LIVE` — watcher sur `content` pour scorer.
 - `DESIGN-RED-CONTEXTUAL-ACTIONS` — bubble menu sur sélection.
-- `DRIFT-013` — `ArticleWordCountBar` n'est consommé que par `ArticleWorkflowView`, pas par `ArticleEditorView` (à trancher produit).
+- `DRIFT-013` — `ArticleWordCountBar` est consommé par `ArticleWorkflowView` uniquement (PRD pré-migration disait `ArticleEditorView`, inversé — décision tranchée 2026-05-13 : la version code reste la bonne, l'éditeur libre n'expose pas le compteur de mots par design).
 
 ---
 

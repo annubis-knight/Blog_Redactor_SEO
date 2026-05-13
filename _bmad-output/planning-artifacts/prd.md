@@ -107,7 +107,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 1. **Verdict bimodal qui donne confiance** — Score Marché (Volume / KD / CPC / PAA / Intent / Autocomplete) ET Score Pertinence (Pain alignment / PAA×douleur / Autocomplete×douleur / Racines / Intent×douleur) calculés et affichés séparément. Verdicts informatifs, l'utilisateur lock librement.
 
-2. **Sophistication invisible** — Cache à 3 niveaux (`external_api_cache` TTL, `keyword_metrics` cross-article permanent, `paa_cache` hiérarchique). Cost-guard sliding-window sur DataForSEO. Multi-provider IA (Claude / Gemini / OpenRouter / Mock) avec fallback automatique 429/503. Progression cochée silencieusement via `articles.completed_checks` TEXT[].
+2. **Sophistication invisible** — Cache à 3 niveaux (`external_api_cache` TTL, `keyword_metrics` cross-article permanent, cache PAA hiérarchique adossé à `keyword_metrics.paa_questions`). Cost-guard sliding-window sur DataForSEO. Multi-provider IA (Claude / Gemini / OpenRouter / Mock) avec fallback automatique 429/503. Progression cochée silencieusement via `articles.completed_checks` TEXT[].
 
 3. **Outil taillé sur mesure** — Workflow consultant : Cerveau → Moteur → Rédaction. Hiérarchie Silos / Cocons / Articles avec niveaux Pilier / Intermédiaire / Spécifique. Injection automatique du contexte stratégique et du painPoint dans **6+ prompts IA** via `loadPrompt()` avec variables `{{strategy_context}}` et `{{painPoint}}`.
 
@@ -147,7 +147,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 ### Technical Success
 
-- **Zéro appel API redondant** — Cache à 3 niveaux : `external_api_cache` (TTL par type), `keyword_metrics` (cross-article permanent), `paa_cache` (90 jours, hiérarchique).
+- **Zéro appel API redondant** — Cache à 3 niveaux : `external_api_cache` (TTL par type), `keyword_metrics` (cross-article permanent), cache PAA hiérarchique (logique adossée à `keyword_metrics.paa_questions`, freshness 1 jour si non-vide).
 - **Persistance PostgreSQL** — Articles, keywords, progress, strategies, cache en base. Purge horaire `external_api_cache` expirées.
 - **Réactivité** — Streaming SSE pour appels longs (Claude). Cost-guard DataForSEO en sliding-window pour bloquer les dépassements budget avant l'appel.
 - **Observabilité** — Activity log front + logger central back + health check.
@@ -156,7 +156,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 
 | Indicateur | Cible |
 |---|---|
-| Appels API redondants | 0 (cache `external_api_cache` + `keyword_metrics` + `paa_cache`) |
+| Appels API redondants | 0 (cache `external_api_cache` + `keyword_metrics` + cache PAA hiérarchique sur `keyword_metrics.paa_questions`) |
 | Phases du Moteur identifiables | 3 phases visuelles sur 6 onglets |
 | Progression par article | 5 checks `moteur:*` + 3 checks `cerveau:*` + 5 checks `redaction:*` automatiquement écrits |
 | Persistance | 100% PostgreSQL (pas de fichier JSON côté chaud) |
@@ -192,7 +192,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 Article commencé la semaine dernière. Checks Discovery + Radar faits.
 
 1. **Moteur** → Sélection article. Dots montrent Discovery et Radar faits.
-2. **Cache à 3 niveaux** → `external_api_cache` + `keyword_metrics` + `paa_cache`. Aucun re-call API.
+2. **Cache à 3 niveaux** → `external_api_cache` + `keyword_metrics` + cache PAA hiérarchique (`keyword_metrics.paa_questions`). Aucun re-call API.
 3. **Phase ② Valider** → Reprise exactement là où il s'était arrêté.
 4. **Contexte stratégique** → Toujours accessible via `MoteurStrategyContext`. PainPoint propagé dans tous les prompts via `getArticlePainPoint()`.
 
@@ -224,7 +224,7 @@ Injection automatique du contexte stratégique (cible, douleur, angle, promesse,
 
 - `external_api_cache` (TTL par type, purge horaire) pour les appels d'API.
 - `keyword_metrics` (cross-article, permanent) pour Volume / KD / CPC / PAA / Intent / Autocomplete / SERP raw.
-- `paa_cache` (TTL 90 jours, hiérarchique par keyword + depth).
+- Cache PAA hiérarchique (par `keyword` + `depth`) adossé à la colonne JSONB `keyword_metrics.paa_questions` — pas de table dédiée. Freshness 1 jour si non-vide / 30 minutes si vide.
 
 ### 5.4 Scoring bimodal et verdict informatif
 
@@ -248,7 +248,7 @@ Avant chaque appel : estimation du coût via `endpointPricing` + `perItemSurchar
 | Migration JSON → PostgreSQL | Scripts `migrate-slug-to-id.ts` + backup `_backup_pg_20260418.sql` |
 | Quota IA dépassé | Multi-provider fallback (Claude → Gemini → OpenRouter) |
 | Budget DataForSEO dépassé | Cost-guard prévient avant l'appel |
-| Composants > 1000 lignes (CaptainValidation, KeywordDiscoveryTab, BrainPhase) | Cible stabilisation `< 400L` (NFR-MAIN-FILE-SIZE), à découper |
+| Fichiers > 1000 lignes (au 2026-05-12 : `CaptainPanel.vue` 1509 L, `data.service.ts` 1052 L — anciens offenders `CaptainValidation`/`KeywordDiscoveryTab`/`BrainPhase` disparus, cf. DRIFT-021) | Cible stabilisation `< 400 L` (NFR-MAIN-FILE-SIZE), à découper |
 
 ---
 
@@ -268,7 +268,7 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 **Contraintes brownfield :**
 - Réutiliser les 100+ composants existants — Labo réutilise les composants Moteur en mode `libre`.
 - Store `article-progress` (dans `stores/article/`) exploite `articles.completed_checks` TEXT[].
-- Cache `external_api_cache` + `keyword_metrics` + `paa_cache`.
+- Cache `external_api_cache` + `keyword_metrics` (+ cache PAA hiérarchique sur `keyword_metrics.paa_questions`).
 - Prompts IA dans `server/prompts/*.md` — enrichissement via `loadPrompt()` et variables `{{...}}`.
 
 ---
@@ -4425,8 +4425,7 @@ Bénéfice pour l'utilisateur : sa carte mentale de l'écran reste stable, il ne
 | `theme_config` | id, data JSONB | 1 ligne unique |
 | `internal_links` | source_id, target_id, anchor_text, position | Linking matrix |
 | `external_api_cache` | cache_key, cache_type, data JSONB, expires_at, cached_at | Cache TTL global |
-| `keyword_metrics` | keyword PK, search_volume, kd, cpc, paa[], intent, autocomplete[], serp_raw_json, local_comparison, content_gap_analysis, fetched_at | Cache cross-article permanent |
-| `paa_cache` | keyword, depth, data, fetched_at | Cache hiérarchique PAA |
+| `keyword_metrics` | keyword PK, search_volume, kd, cpc, paa_questions JSONB, intent, autocomplete[], serp_raw_json, local_comparison, content_gap_analysis, fetched_at | Cache cross-article permanent (porte aussi le cache PAA hiérarchique via `paa_questions`) |
 | `radar_explorations` | article_id PK, scan_result JSONB | Persistance Radar (cards + longTailSuggestions) |
 | `captain_explorations` | article_id, keyword, source, validation JSONB | Persistance Capitaine |
 | `lexique_explorations` | article_id, source_keyword, tfidfTerms, aiRecommendations, aiMissingTerms, aiSummary | Persistance Lexique multi-keyword |
@@ -4512,7 +4511,7 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 
 1. **Strings de checks hardcodées** : plusieurs composants hardcodent `'capitaine_locked'` au lieu d'importer la constante `MOTEUR_CHECKS.CAPITAINE_LOCKED` (FR-MOT-CHECKS-CONSTANTS partiellement violé).
 2. ~~**`fetch()` directs résiduels**~~ : **résorbé 2026-05-05** via `tech-spec-fetch-to-wrapper-migration`. Tous les appels HTTP côté `src/` passent par `apiGet/apiPost/apiPut/apiPatch/apiDelete/apiStream`. Les fetch externes côté `server/services/external/*` sont documentés via `NFR-OBS-EXTERNAL-API-OPT-OUT`.
-3. **Fichiers > 1000 lignes** : `CaptainValidation.vue`, `KeywordDiscoveryTab.vue`, `BrainPhase.vue` (NFR-MAIN-FILE-SIZE violé).
+3. **Fichiers > 1000 lignes au 2026-05-12** : `src/components/moteur/CaptainPanel.vue` (1509 L) et `server/services/infra/data.service.ts` (1052 L) (NFR-MAIN-FILE-SIZE violé). Les anciens offenders historiquement cités (`CaptainValidation.vue`, `KeywordDiscoveryTab.vue`, `BrainPhase.vue`) ont depuis été refactorisés ou supprimés — cf. DRIFT-021.
 4. **NFR-PERF-* non monitorées** : aucun middleware timing, pas d'instrumentation cache hit rate.
 5. **Tokens GSC en plain** : pas de chiffrement (acceptable en local single-user mais à noter).
 

@@ -4,6 +4,8 @@ companion: '_bmad-output/planning-artifacts/prd.md, _bmad-output/planning-artifa
 lastUpdated: '2026-05-13T00:00:00Z'
 ---
 
+> **Mise à jour 2026-05-13 (session `docs/treat-drifts-batch`)** : passe de clôture sur le Groupe D et les drifts 021-023 — corrections résiduelles appliquées (refs `paa_cache` PRD, anciens offenders NFR-MAIN-FILE-SIZE).
+
 # Drift code vs doc — chantier `docs/prd-split-spec-design`
 
 > Au fil de la migration PRD → spec + design-registry, les sub-agents et l'agent principal ont découvert des **divergences entre ce que disait la doc et ce que fait réellement le code**. Au lieu d'alourdir le PRD ou le registry avec ces notes, on les consigne ici pour traitement groupé en fin de chantier.
@@ -14,19 +16,19 @@ lastUpdated: '2026-05-13T00:00:00Z'
 
 ## Tri par catégorie (mis à jour 2026-05-13)
 
-Les 20 drifts ont été triés en 4 groupes pour faciliter le traitement.
+Les 23 drifts ont été triés en 4 groupes pour faciliter le traitement (les 3 drifts numérotés 021-023 ont été ajoutés au Groupe D après vérification de clôture le 2026-05-13).
 
-### Groupe A — Doc obsolète, correction simple sans toucher au code *(7 drifts)*
+### Groupe A — Doc obsolète, correction simple sans toucher au code *(7 drifts — tous traités 2026-05-13)*
 
 Le PRD initial citait un fichier, un chiffre ou un comportement qui ne correspond plus à la réalité, mais le code fonctionne. Action : corriger la référence dans le registry (ou le PRD si la formulation utilisateur est affectée). Aucune décision produit nécessaire.
 
-- **DRIFT-001** — `useMoteurBridge.ts` n'existe pas (c'est `useCocoonStrategyStore`).
-- **DRIFT-003** — `article_strategies.completed_steps` est INTEGER, pas TEXT[].
-- **DRIFT-011** — `BasketStrip.vue` a été supprimé 2026-05-11, encore cité dans le PRD pré-migration.
-- **DRIFT-012** — `LaboView` et `KeywordRadarTab` cités mais inexistants — vrais consommateurs : `DouleurScannerResults`, `CaptainInteractiveWords`, `CaptainPanel`.
-- **DRIFT-013** — `ArticleWordCountBar` est dans `ArticleWorkflowView`, pas `ArticleEditorView`.
-- **DRIFT-017** — `shared/schemas/` contient 13 fichiers, pas 41.
-- **DRIFT-020** — Colonne `lieutenant_explorations.locked_at` absente du schéma actuel.
+- **DRIFT-001** ✅ — `useMoteurBridge.ts` n'existe pas. Ref retirée des Refs code de `DESIGN-CER-CONTEXT-FOR-MOTEUR`, remplacée par `useCocoonStrategyStore` qui est le vrai porteur de `strategicContext`.
+- **DRIFT-003** ✅ — `article_strategies.completed_steps` est INTEGER (compteur), pas TEXT[]. Corrigé dans le bloc Persistance de `DESIGN-CER-STEPS-ARTICLE` (registry §8.1) + déjà documenté dans `DESIGN-INFRA-ARTICLE-STRATEGIES` (§8.14).
+- **DRIFT-011** ✅ — `BasketStrip.vue` supprimé 2026-05-11. PRD purgé (0 ref grep). Registry §8.15 documente la suppression. (Refs résiduelles dans `architecture.md`/`epics.md` hors scope du chantier doc.)
+- **DRIFT-012** ✅ — `LaboView` / `KeywordRadarTab` inexistants. PRD purgé (0 ref grep). Registry §8.15 cite les 3 vrais consommateurs (`DouleurScannerResults`, `CaptainInteractiveWords`, `CaptainPanel`). (Refs résiduelles dans `architecture.md`/`epics.md` hors scope.)
+- **DRIFT-013** ✅ — `ArticleWordCountBar` est seulement dans `ArticleWorkflowView`. PRD purgé (0 ref grep). Registry §8.15 acte la localisation réelle, sans question ouverte.
+- **DRIFT-017** ✅ — `shared/schemas/` contient 13 fichiers. PRD purgé (0 ref au comptage "41"). Registry `DESIGN-INFRA-ZOD-SHARED` cite le count exact + liste.
+- **DRIFT-020** ✅ — Pas de colonne `locked_at` sur `lieutenant_explorations`. Registry `DESIGN-INFRA-LIEUTENANT-EXPLORATIONS` cite le schéma exact + renvoi DRIFT-020. PRD ne mentionne pas le schéma (0 ref grep).
 
 ### Groupe B — Décision produit à arbitrer *(1 drift)*
 
@@ -44,7 +46,7 @@ Pas des bugs critiques, mais des nettoyages à faire indépendamment du chantier
 - **DRIFT-016** — `autocomplete.service.ts` est dans `server/services/keyword/`, pas `server/services/external/` (où sont les autres intégrations tierces). Action : déplacer dans un cleanup de rangement.
 - **DRIFT-019** — Règle ESLint `no-score-fallback` ne couvre que `Score` (regex `/[Ss]core/`), pas `Density/Volume/Difficulty/Cpc/Competition` annoncés dans le PRD. Action : étendre la regex.
 
-### Groupe D — Déjà tranchés ou assumés *(7 drifts)*
+### Groupe D — Déjà tranchés ou assumés *(10 drifts)*
 
 Pas d'action à prendre. À marquer ✅ pour clore.
 
@@ -54,7 +56,10 @@ Pas d'action à prendre. À marquer ✅ pour clore.
 - **DRIFT-010** ✅ — Migration `020_normalize_completed_checks.sql` archivée — cohérent avec `migrations/_archive/`.
 - **DRIFT-014** ✅ — `FR-DIS-INTENT-SCAN` réattribuée à `FR-RAD-RESONANCE` (consommée par Radar, pas Discovery).
 - **DRIFT-015** ✅ — `internal_links.position` est un offset caractère (`char-<index>`), pas une position ProseMirror stable. Limite acceptée — pas bloquant pour la matrice cocon actuelle.
-- **DRIFT-018** ✅ — Table `paa_cache` n'existe pas, c'est la colonne `paa_questions` de `keyword_metrics`. Description corrigée dans le registry §8.14.
+- **DRIFT-018** ✅ — Table `paa_cache` n'existe pas, c'est la colonne `paa_questions` de `keyword_metrics`. Description corrigée dans le registry §8.14 + **8 refs résiduelles nettoyées dans le PRD 2026-05-13** (sections §1, §2, §3, §5.3, §6, §8.4 table DB).
+- **DRIFT-021** ✅ — Anciens offenders > 1000 L disparus. Corrigé dans NFR-MAIN-FILE-SIZE §9.4 + `DESIGN-MAIN-FILE-SIZE` + **§5 « Risques et mitigations » + §12.5 « Dette technique » du PRD nettoyés 2026-05-13** (refs `CaptainValidation`/`KeywordDiscoveryTab`/`BrainPhase` remplacées par `CaptainPanel.vue` 1509 L + `data.service.ts` 1052 L).
+- **DRIFT-022** ✅ — Noms env vars retirés du PRD post-migration, formulation utilisateur générique.
+- **DRIFT-023** ✅ — Composables en 8 domaines (pas 5). Corrigé dans NFR-MAIN-ORG-COMPOSABLES + `DESIGN-MAIN-ORG-COMPOSABLES`.
 
 ---
 
@@ -68,7 +73,7 @@ Pas d'action à prendre. À marquer ✅ pour clore.
 
 **Impact** : la ref code dans `DESIGN-CER-CONTEXT-FOR-MOTEUR` est fausse.
 
-**Action recommandée** : corriger la ref dans le registry (remplacer `useMoteurBridge.ts` par `useCocoonStrategyStore` + ajouter `fetchContext(cocoonId)` côté composants vues).
+**Action recommandée** : ✅ corrigé 2026-05-13 — ref retirée des « Refs code » de `DESIGN-CER-CONTEXT-FOR-MOTEUR` ; ligne reformulée pour pointer sur `useCocoonStrategyStore` (`src/stores/strategy/cocoon-strategy.store.ts`) avec mention explicite de `fetchContext(cocoonId)` appelé depuis `MoteurView.vue`/`RedactionView.vue`. Note historique sur l'absence de composable bridge dédiée conservée dans le bloc « Stores Pinia ».
 
 ---
 
@@ -92,7 +97,7 @@ Pas d'action à prendre. À marquer ✅ pour clore.
 
 **Impact** : description fausse dans le registry. Pas d'impact côté code.
 
-**Action recommandée** : corriger le bloc Persistance.
+**Action recommandée** : ✅ corrigé 2026-05-13 — bloc Persistance de `DESIGN-CER-STEPS-ARTICLE` corrigé en `completed_steps INTEGER DEFAULT 0` avec note explicative renvoyant à DRIFT-003. Cohérent avec la description déjà à jour dans `DESIGN-INFRA-ARTICLE-STRATEGIES` (§8.14).
 
 ---
 
@@ -228,7 +233,7 @@ Les consommateurs réels identifiés par `grep RadarKeywordCard|RadarCardCheckab
 
 **Impact** : description PRD inversée, sans impact code. Toutefois, soulève une question : est-il intentionnel que l'éditeur libre n'expose pas le compteur de mots, ou est-ce une régression silencieuse du chantier découpage monstres Vue ?
 
-**Action recommandée** : décision produit à prendre — soit câbler `ArticleWordCountBar` aussi dans `ArticleEditorView` si l'intention initiale était bien le partage, soit retirer la mention « partagé » dans le PRD si seul Workflow doit l'exposer. Documenté en attendant dans `DESIGN-UI-ARTICLE-SHARED`.
+**Action recommandée** : ✅ tranché 2026-05-13 — la version code (`ArticleWordCountBar` dans `ArticleWorkflowView` uniquement) est la bonne ; l'éditeur libre n'expose pas le compteur de mots par design. PRD pré-migration purgé (0 ref grep) ; `DESIGN-UI-ARTICLE-SHARED` (§8.15) acte la localisation réelle. Décision produit fermée.
 
 ---
 
