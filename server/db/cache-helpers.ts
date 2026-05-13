@@ -1,4 +1,5 @@
 import { query } from './client.js'
+import { log } from '../utils/logger.js'
 
 // Source unique de slugify — tous les services cache l'importent ici
 export function slugify(text: string): string {
@@ -47,4 +48,30 @@ export async function deleteCached(
     `DELETE FROM external_api_cache WHERE cache_type = $1 AND cache_key = $2`,
     [cacheType, cacheKey]
   )
+}
+
+/**
+ * Pattern composite « regarde dans le cache, sinon appelle le fournisseur et
+ * écris le résultat ». Mutualise le combo `getCached` + `setCached` que les
+ * services keyword (community-discussions, keyword-discovery, suggest)
+ * réimplémentaient à l'identique avant 2026-05-13 (TD-DRIFT-009).
+ *
+ * Cf. NFR-MAIN-NO-SCORE-FALLBACK / cache cascade `cache-helpers.ts:42` doc
+ * pour le rationale métier (DataForSEO TTL court, keyword_metrics permanent).
+ */
+export async function getOrFetch<T>(
+  cacheType: string,
+  cacheKey: string,
+  ttlMs: number,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  const cached = await getCached<T>(cacheType, cacheKey)
+  if (cached) {
+    log.debug(`Cache HIT: ${cacheKey}`)
+    return cached
+  }
+  log.debug(`Cache MISS: ${cacheKey}`)
+  const data = await fetcher()
+  await setCached(cacheType, cacheKey, data, ttlMs)
+  return data
 }

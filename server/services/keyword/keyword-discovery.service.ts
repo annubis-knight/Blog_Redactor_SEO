@@ -5,17 +5,8 @@ import {
   computeCompositeScore,
 } from '../external/dataforseo.service.js'
 import { log } from '../../utils/logger.js'
-import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
+import { slugify, getOrFetch } from '../../db/cache-helpers.js'
 import { compareScores } from '../../../shared/score/index.js'
-
-async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
-  const cached = await getCached<T>(cacheType, key)
-  if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
-  log.debug(`Cache MISS: ${key}`)
-  const data = await fetcher()
-  await setCached(cacheType, key, data, ttlMs)
-  return data
-}
 import type {
   KeywordType,
   ClassifiedKeyword,

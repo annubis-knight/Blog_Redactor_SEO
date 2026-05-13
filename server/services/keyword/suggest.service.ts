@@ -9,20 +9,11 @@
  */
 
 import { log } from '../../utils/logger.js'
-import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
+import { slugify, getOrFetch } from '../../db/cache-helpers.js'
 
 const SUGGEST_URL = 'https://suggestqueries.google.com/complete/search'
 const MAX_CONCURRENT = 5
 const CACHE_TTL_MS = 60 * 60 * 1000 // 1h
-
-async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
-  const cached = await getCached<T>(cacheType, key)
-  if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
-  log.debug(`Cache MISS: ${key}`)
-  const data = await fetcher()
-  await setCached(cacheType, key, data, ttlMs)
-  return data
-}
 
 /**
  * Split a multi-word seed into sub-queries for better coverage.

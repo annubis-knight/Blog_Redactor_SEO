@@ -1,15 +1,6 @@
 import { log } from '../../utils/logger.js'
 import { fetchDataForSeo } from '../external/dataforseo.service.js'
-import { getCached, setCached, slugify } from '../../db/cache-helpers.js'
-
-async function getOrFetch<T>(cacheType: string, key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
-  const cached = await getCached<T>(cacheType, key)
-  if (cached) { log.debug(`Cache HIT: ${key}`); return cached }
-  log.debug(`Cache MISS: ${key}`)
-  const data = await fetcher()
-  await setCached(cacheType, key, data, ttlMs)
-  return data
-}
+import { slugify, getOrFetch } from '../../db/cache-helpers.js'
 
 // --- Types (local until Story 25.2 moves them to shared/types) ---
 
