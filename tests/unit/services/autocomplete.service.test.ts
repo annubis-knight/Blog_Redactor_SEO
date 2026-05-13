@@ -19,7 +19,7 @@ vi.mock('../../../server/utils/logger', () => ({
 const mockFetch = vi.fn()
 vi.stubGlobal('fetch', mockFetch)
 
-import { fetchAutocomplete } from '../../../server/services/keyword/autocomplete.service'
+import { fetchAutocomplete } from '../../../server/services/external/autocomplete.service'
 
 beforeEach(() => {
   mockFetch.mockReset()

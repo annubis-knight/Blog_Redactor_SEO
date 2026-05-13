@@ -3,7 +3,7 @@ import {
   getKeywordMetrics,
   upsertKeywordAutocomplete,
   isKeywordMetricsFresh,
-} from './keyword-metrics.service.js'
+} from '../keyword/keyword-metrics.service.js'
 
 // --- Types (local until Story 25.2 moves them to shared/types) ---
 

@@ -1,5 +1,5 @@
 import { log } from '../../utils/logger.js'
-import { fetchAutocomplete, type AutocompleteSignal } from '../keyword/autocomplete.service.js'
+import { fetchAutocomplete, type AutocompleteSignal } from '../external/autocomplete.service.js'
 import { fetchDataForSeo, fetchKeywordOverview } from '../external/dataforseo.service.js'
 import { computeSemanticScores } from '../external/embedding.service.js'
 import type { IntentScanResult, ResonanceItem, ResonanceMatch, RadarMatchQuality } from '../../../shared/types/intent.types.js'

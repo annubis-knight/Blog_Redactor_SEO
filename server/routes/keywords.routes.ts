@@ -8,7 +8,7 @@ import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
 import { previewMigration, applyMigration } from '../services/keyword/keyword-assignment.service.js'
-import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
+import { fetchAutocomplete } from '../services/external/autocomplete.service.js'
 import { suggestAll } from '../services/keyword/suggest.service.js'
 import { computeWordGroups } from '../services/keyword/word-groups.service.js'
 import { hasSerpScrape } from '../services/keyword/keyword-serp.service.js'
@@ -508,7 +508,7 @@ router.post('/keywords/validate-pain', async (req, res) => {
 
     const { fetchKeywordOverviewBatch, fetchRelatedKeywords } = await import('../services/external/dataforseo.service.js')
     const { fetchCommunityDiscussions } = await import('../services/intent/community-discussions.service.js')
-    const { fetchAutocomplete } = await import('../services/keyword/autocomplete.service.js')
+    const { fetchAutocomplete } = await import('../services/external/autocomplete.service.js')
 
     const overviews = await fetchKeywordOverviewBatch(keywords)
 

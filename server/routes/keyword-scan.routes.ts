@@ -19,7 +19,7 @@ function coerceIntentLabel(value: unknown): PainIntentExpected | null {
   return VALID_INTENT_LABELS.has(value) ? (value as PainIntentExpected) : null
 }
 import type { CaptainScanEntry } from '../../shared/types/keyword.types.js'
-import { fetchAutocomplete } from '../services/keyword/autocomplete.service.js'
+import { fetchAutocomplete } from '../services/external/autocomplete.service.js'
 import {
   getKeywordMetrics,
   upsertKeywordKpis,

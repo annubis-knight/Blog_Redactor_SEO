@@ -1729,7 +1729,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 **Refs code**
 - [server/services/keyword/keyword-radar.service.ts](../../server/services/keyword/keyword-radar.service.ts) — orchestration scan.
-- [server/services/keyword/autocomplete.service.ts](../../server/services/keyword/autocomplete.service.ts) — fetch unitaire Google Suggest.
+- [server/services/external/autocomplete.service.ts](../../server/services/external/autocomplete.service.ts) — fetch unitaire Google Suggest.
 
 **Tables consommées** : `keyword_autocomplete(keyword, lang, country, position, ...)` — cache cross-article TTL 90 j.
 
@@ -4223,7 +4223,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Réf PRD :** [FR-EXT-AUTOCOMPLETE-GOOGLE](./prd.md#fr-ext-autocomplete-google--suggestions-dautocomplétion-google)
 
 **Refs code**
-- [server/services/keyword/autocomplete.service.ts](../../server/services/keyword/autocomplete.service.ts) — `fetchAutocomplete(keyword)`. Rate-limited à 1 req/s (cf. `rateLimitWait`). Retourne `AutocompleteSignal { autocompleteSource: 'google', autocompleteSuggestions: AutocompleteEntry[] }` ou liste vide en cas de rejet Google.
+- [server/services/external/autocomplete.service.ts](../../server/services/external/autocomplete.service.ts) — `fetchAutocomplete(keyword)`. Rate-limited à 1 req/s (cf. `rateLimitWait`). Retourne `AutocompleteSignal { autocompleteSource: 'google', autocompleteSuggestions: AutocompleteEntry[] }` ou liste vide en cas de rejet Google.
 - Endpoint Google consommé : `https://suggestqueries.google.com/complete/search?client=firefox&q=...` (JSON public).
 - Consommateurs principaux : `server/routes/keyword-scan.routes.ts` (scan Radar), `server/routes/keywords.routes.ts` (validate-pain + audit), `server/services/intent/intent-scan.service.ts` (résonance topic).
 
@@ -4235,7 +4235,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - **Rate-limit 1 req/s in-process** : Google quarantines vite si on tape trop fort. `rateLimitWait` introduit une attente minimale entre deux requêtes au sein du process serveur.
 - **Liste vide = signal valide, pas erreur** : si Google rejette ou ne propose rien, on enregistre `autocompleteSuggestions: []` plutôt que de remonter une erreur bloquante. L'utilisateur voit juste « pas de pépite » à cette racine.
 - **Cache DB-first** : `fetchAutocomplete` consulte d'abord `keyword_metrics` via la jointure ; si la donnée est fraîche, aucun appel à Google n'est émis.
-- **Localisation dans `services/keyword/`, pas `services/external/`** : conséquence historique — la fonction sert aussi des étapes purement métier (validate-pain) et reste dans le domaine `keyword/`. Voir DRIFT-016.
+- **Localisation dans `services/external/`** : déplacé depuis `services/keyword/` le 2026-05-13 (cf. DRIFT-016 ✅) pour rejoindre les autres intégrations API tierces (DataForSEO, GSC, Claude, Gemini, etc.). La fonction continue d'être appelée par le pipeline keyword (Radar, validate-pain) et intent — les imports ont été mis à jour côté consommateurs.
 
 **Voir aussi**
 - `DESIGN-INFRA-KEYWORD-METRICS` — backing store du cache permanent.
@@ -5895,7 +5895,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Réf PRD :** [NFR-MAIN-ORG-SERVICES](./prd.md#nfr-main-org-services--services-backend-organisés-par-domaine)
 
 **Refs code**
-- [server/services/keyword/](../../server/services/keyword/) (autocomplete, keyword-metrics, keyword-radar, paa, scoring, intent…).
+- [server/services/keyword/](../../server/services/keyword/) (keyword-metrics, keyword-radar, paa, scoring, intent…). *(`autocomplete.service.ts` a été déplacé dans `external/` le 2026-05-13, cf. DRIFT-016.)*
 - [server/services/external/](../../server/services/external/) (DataForSEO, GSC, Claude, Gemini, OpenRouter, Mock, AI-provider, embedding, scrape-corpus).
 - [server/services/intent/](../../server/services/intent/) (intent-scan, captain-paa).
 - [server/services/article/](../../server/services/article/) (article-keywords, content-gap…).
@@ -5906,14 +5906,14 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Décisions d'architecture**
 - **7 domaines stables** : `keyword`, `external`, `intent`, `article`, `strategy`, `infra`, `queries`.
 - **Routes Express délèguent** : pas de logique métier dans les `routes/*.routes.ts` — seulement validation Zod, appel service, format réponse `{ data: T }`.
-- **Drift connu** : `autocomplete.service.ts` est dans `keyword/` au lieu de `external/` malgré son rôle d'API tierce (cf. `DRIFT-016`).
+- **DRIFT-016 ✅ tranché 2026-05-13** : `autocomplete.service.ts` a été déplacé de `keyword/` vers `external/`, rejoignant les autres intégrations API tierces.
 
 **Critères d'acceptation techniques**
 - AC.MAINOSV.1 : `ls server/services/` retourne 7 dossiers.
 - AC.MAINOSV.2 : aucune route Express ne contient une query SQL ou un appel API tierce inline.
 
 **Voir aussi**
-- `DRIFT-016` — autocomplete mal placé.
+- `DRIFT-016` ✅ — autocomplete déplacé dans `external/` (2026-05-13).
 
 ---
 
