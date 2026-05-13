@@ -444,11 +444,7 @@ graph TB
         CONSOLIDATE --> VALIDATE
     end
 
-    subgraph Checks["Checks Cerveau"]
-        C1["cerveau:strategy_defined"]
-        C2["cerveau:hierarchy_built"]
-        C3["cerveau:articles_proposed"]
-    end
+    %% Checks Cerveau retirés 2026-05-13 (cf. DRIFT-002) — la progression Cerveau passe désormais par `article_strategies.completed_steps` INTEGER, pas par des checks workflow.
 ```
 
 ### Flux de données par étape
@@ -635,7 +631,7 @@ graph TB
         BRIEF_DATA["briefData<br>{ article, keywords[], dataForSeo, contentLengthRecommendation }"]
         GEN_OUTLINE["🤖 generateOutline(briefData)<br>POST /api/generate/outline (SSE)"]
         EDIT_OUTLINE["✏️ OutlineEditor<br>add/remove/update/reorder"]
-        VALIDATE["✅ validateOutline(articleId)<br>→ redaction:outline_validated"]
+        VALIDATE["✅ validateOutline(articleId)<br>(plus de check workflow émis depuis 2026-05-13 — cf. DRIFT-002)"]
 
         FETCH --> BRIEF_DATA --> GEN_OUTLINE --> EDIT_OUTLINE --> VALIDATE
     end
@@ -657,13 +653,7 @@ graph TB
 
     VALIDATE --> GEN_ARTICLE
 
-    subgraph Checks["Checks Rédaction"]
-        RC1["redaction:brief_validated"]
-        RC2["redaction:outline_validated"]
-        RC3["redaction:content_written"]
-        RC4["redaction:seo_validated"]
-        RC5["redaction:published"]
-    end
+    %% Checks Rédaction retirés 2026-05-13 (cf. DRIFT-002) — la progression Rédaction est lisible directement via l'état métier (sommaire présent, contenu présent, etc.), pas via des checks workflow.
 ```
 
 ### ArticleWorkflowView — Panneaux
@@ -1171,7 +1161,7 @@ graph TB
 | `KeywordMatchResult` | detected, score (0-1), method (exact\|semantic\|partial), occurrences |
 | `CaptainVerdict` | overall (GO\|ORANGE\|NO_GO), kpis: { volume, kd, cpc, paa, intent, autocomplete }, reasons[] |
 | `SerpAnalysisResult` | hnData[], paaData[], groupCrossData[], rawContents[] |
-| `WorkflowCheck` | `moteur:*` \| `cerveau:*` \| `redaction:*` (constantes dans shared/constants/workflow-checks.constants.ts) |
+| `WorkflowCheck` | `moteur:*` (constantes dans shared/constants/workflow-checks.constants.ts ; familles `cerveau:*` / `redaction:*` retirées 2026-05-13, cf. DRIFT-002) |
 
 ---
 

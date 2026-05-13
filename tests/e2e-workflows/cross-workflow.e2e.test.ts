@@ -97,10 +97,11 @@ describe('Cross-Workflow — Happy path complet', () => {
       metaDescription: 'Description test cross-workflow',
     })
 
-    // 10. Progress : check toutes les étapes
+    // 10. Progress : check toutes les étapes Moteur (les familles cerveau:* et
+    // redaction:* ont été retirées 2026-05-13, cf. DRIFT-002).
     await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'redaction:brief_validated' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'redaction:content_written' })
+    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
+    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
 
     // === VÉRIFICATIONS DB ===
     // L'article a accumulé toutes les traces
@@ -110,7 +111,7 @@ describe('Cross-Workflow — Happy path complet', () => {
     )
     expect(articleDb.rows[0].meta_title).toContain('Journey')
     expect(articleDb.rows[0].completed_checks).toContain('moteur:capitaine_locked')
-    expect(articleDb.rows[0].completed_checks).toContain('redaction:brief_validated')
+    expect(articleDb.rows[0].completed_checks).toContain('moteur:lieutenants_locked')
 
     // Le radar exploration est persisté
     const radarDb = await query<{ article_id: number }>(

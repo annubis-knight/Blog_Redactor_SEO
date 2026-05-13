@@ -141,6 +141,8 @@ describe('Tab cerveau/strategy — Enchaînement', () => {
     }
   })
 
-  it.todo('Cocon complet → CERVEAU_STRATEGY_DEFINED check émis (frontend décide)')
+  // Les checks workflow Cerveau ont été retirés 2026-05-13 (cf. DRIFT-002) —
+  // la progression Cerveau est désormais lisible directement via
+  // `article_strategies.completed_steps` INTEGER.
   it.todo('Pas de cascade au unlock — semblable à F5 (frontend)')
 })

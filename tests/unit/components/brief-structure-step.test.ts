@@ -6,10 +6,10 @@
  * et on cible les COMPORTEMENTS LOGIQUES :
  *   1. dérivation cocoonSlug (normalisation NFD + kebab-case)
  *   2. loadMicroContext au mount → GET /articles/:id/micro-context
- *   3. saveMicroContext → PUT + emit check-completed quand contenu suffisant
- *   4. saveMicroContext + champ vide → pas d'emit check-completed
- *   5. handleOutlineValidated → store.validateOutline + emit outline-validated
- *   6. handleTargetWordCountUpdate → met à jour la valeur + déclenche save
+ *   3. saveMicroContext → PUT (le composant n'émet plus de check workflow
+ *      Rédaction depuis 2026-05-13, cf. DRIFT-002).
+ *   4. handleOutlineValidated → store.validateOutline + emit outline-validated
+ *   5. handleTargetWordCountUpdate → met à jour la valeur + déclenche save
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount, flushPromises } from '@vue/test-utils'
@@ -118,7 +118,7 @@ describe('BriefStructureStep — comportements macro user-facing', () => {
     expect(vm.directives).toBe('consignes existantes')
   })
 
-  it('saveMicroContext (via blur sur l\'angle) → PUT avec le payload + emit check-completed quand suffisant', async () => {
+  it('saveMicroContext (via blur sur l\'angle) → PUT avec le payload', async () => {
     mockedGet.mockResolvedValueOnce(null)
 
     const wrapper = mount(BriefStructureStep, {
@@ -127,7 +127,6 @@ describe('BriefStructureStep — comportements macro user-facing', () => {
     })
     await flushPromises()
 
-    // On remplit angle + tone (suffisant pour que brief-validated soit émis)
     const angleArea = wrapper.find('textarea')
     await angleArea.setValue('mon angle differenciant')
     const toneInput = wrapper.find('input[type="text"]')
@@ -142,15 +141,12 @@ describe('BriefStructureStep — comportements macro user-facing', () => {
         tone: 'pedagogique',
       }),
     )
-    // Émis quand angle + (tone || directives) sont remplis
-    expect(wrapper.emitted('check-completed')).toBeTruthy()
-    const events = wrapper.emitted('check-completed')!
-    // 2026-05-08 — emit utilise la constante REDACTION_BRIEF_VALIDATED
-    // ('redaction:brief_validated') au lieu de la legacy 'brief-validated'.
-    expect(events.some(e => e[0] === 'redaction:brief_validated')).toBe(true)
+    // Retrait des checks Rédaction 2026-05-13 (cf. DRIFT-002) : aucun event
+    // `check-completed` ne doit être émis, quel que soit le contenu.
+    expect(wrapper.emitted('check-completed')).toBeFalsy()
   })
 
-  it('REGRESSION GUARD : angle vide seul → PUT mais PAS d\'emit check-completed', async () => {
+  it('REGRESSION GUARD : aucun emit check-completed même quand angle+tone sont remplis (checks Rédaction retirés 2026-05-13)', async () => {
     mockedGet.mockResolvedValueOnce(null)
 
     const wrapper = mount(BriefStructureStep, {
@@ -160,11 +156,12 @@ describe('BriefStructureStep — comportements macro user-facing', () => {
     await flushPromises()
 
     const angleArea = wrapper.find('textarea')
-    await angleArea.setValue('')
+    await angleArea.setValue('un angle')
     await angleArea.trigger('blur')
     await flushPromises()
 
-    // PUT a lieu (pour persister le reset) mais pas l'emit (champ critique vide).
+    // Garantit qu'on ne rebranche pas accidentellement un emit `check-completed`
+    // côté Rédaction. Source : DRIFT-002 — décision produit retrait.
     expect(wrapper.emitted('check-completed')).toBeFalsy()
   })
 

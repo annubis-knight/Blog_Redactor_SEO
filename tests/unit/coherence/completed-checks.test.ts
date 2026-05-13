@@ -4,6 +4,10 @@
  * Verifie que les checks utilisent les constantes (pas de strings hardcodees)
  * et que les producteurs ecrivent avec les memes prefixes que les consommateurs lisent.
  *
+ * Depuis 2026-05-13 (cf. DRIFT-002), seul le workflow Moteur emet des checks
+ * dans `articles.completed_checks` ; les familles `cerveau:*` et `redaction:*`
+ * ont ete retirees par decision produit.
+ *
  * Voir docs/data-flows/completed-checks.md pour la cartographie complete.
  */
 import { describe, it, expect } from 'vitest'
@@ -11,57 +15,35 @@ import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { resolve, join } from 'node:path'
 import {
   MOTEUR_CHECKS,
-  CERVEAU_CHECKS,
-  REDACTION_CHECKS,
   ALL_WORKFLOW_CHECKS,
   MOTEUR_DISCOVERY_DONE,
   MOTEUR_RADAR_DONE,
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
-  CERVEAU_STRATEGY_DEFINED,
-  CERVEAU_HIERARCHY_BUILT,
-  CERVEAU_ARTICLES_PROPOSED,
-  REDACTION_BRIEF_VALIDATED,
-  REDACTION_OUTLINE_VALIDATED,
-  REDACTION_CONTENT_WRITTEN,
-  REDACTION_SEO_VALIDATED,
-  REDACTION_PUBLISHED,
 } from '../../../shared/constants/workflow-checks.constants.js'
 import { addCheckSchema } from '../../../shared/schemas/article-progress.schema.js'
 
 // =====================================================
-// FR-MOT-CHECKS — namespace par workflow
+// FR-MOT-CHECKS — namespace par workflow (Moteur uniquement depuis 2026-05-13)
 // =====================================================
 
-describe('FR-MOT-CHECKS / FR-CER-CHECKS / FR-RED-CHECKS — namespace par workflow', () => {
+describe('FR-MOT-CHECKS — namespace Moteur', () => {
   it('tous les checks Moteur ont le prefixe "moteur:"', () => {
     MOTEUR_CHECKS.forEach(check => {
       expect(check.startsWith('moteur:')).toBe(true)
     })
   })
 
-  it('tous les checks Cerveau ont le prefixe "cerveau:"', () => {
-    CERVEAU_CHECKS.forEach(check => {
-      expect(check.startsWith('cerveau:')).toBe(true)
-    })
-  })
-
-  it('tous les checks Redaction ont le prefixe "redaction:"', () => {
-    REDACTION_CHECKS.forEach(check => {
-      expect(check.startsWith('redaction:')).toBe(true)
-    })
-  })
-
-  it('aucune collision de noms entre workflows (namespaces disjoints)', () => {
+  it('aucune collision de noms dans ALL_WORKFLOW_CHECKS', () => {
     const all = ALL_WORKFLOW_CHECKS
     const unique = new Set(all)
     expect(unique.size).toBe(all.length)
   })
 
-  it('les 3 listes couvrent ALL_WORKFLOW_CHECKS', () => {
-    const sum = MOTEUR_CHECKS.length + CERVEAU_CHECKS.length + REDACTION_CHECKS.length
-    expect(ALL_WORKFLOW_CHECKS.length).toBe(sum)
+  it('ALL_WORKFLOW_CHECKS = MOTEUR_CHECKS depuis 2026-05-13 (cf. DRIFT-002)', () => {
+    expect(ALL_WORKFLOW_CHECKS.length).toBe(MOTEUR_CHECKS.length)
+    expect([...ALL_WORKFLOW_CHECKS]).toEqual([...MOTEUR_CHECKS])
   })
 })
 
@@ -89,38 +71,6 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
   it('MOTEUR_LEXIQUE_VALIDATED = "moteur:lexique_validated"', () => {
     expect(MOTEUR_LEXIQUE_VALIDATED).toBe('moteur:lexique_validated')
   })
-
-  it('CERVEAU_STRATEGY_DEFINED = "cerveau:strategy_defined"', () => {
-    expect(CERVEAU_STRATEGY_DEFINED).toBe('cerveau:strategy_defined')
-  })
-
-  it('CERVEAU_HIERARCHY_BUILT = "cerveau:hierarchy_built"', () => {
-    expect(CERVEAU_HIERARCHY_BUILT).toBe('cerveau:hierarchy_built')
-  })
-
-  it('CERVEAU_ARTICLES_PROPOSED = "cerveau:articles_proposed"', () => {
-    expect(CERVEAU_ARTICLES_PROPOSED).toBe('cerveau:articles_proposed')
-  })
-
-  it('REDACTION_BRIEF_VALIDATED = "redaction:brief_validated"', () => {
-    expect(REDACTION_BRIEF_VALIDATED).toBe('redaction:brief_validated')
-  })
-
-  it('REDACTION_OUTLINE_VALIDATED = "redaction:outline_validated"', () => {
-    expect(REDACTION_OUTLINE_VALIDATED).toBe('redaction:outline_validated')
-  })
-
-  it('REDACTION_CONTENT_WRITTEN = "redaction:content_written"', () => {
-    expect(REDACTION_CONTENT_WRITTEN).toBe('redaction:content_written')
-  })
-
-  it('REDACTION_SEO_VALIDATED = "redaction:seo_validated"', () => {
-    expect(REDACTION_SEO_VALIDATED).toBe('redaction:seo_validated')
-  })
-
-  it('REDACTION_PUBLISHED = "redaction:published"', () => {
-    expect(REDACTION_PUBLISHED).toBe('redaction:published')
-  })
 })
 
 // =====================================================
@@ -128,11 +78,11 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
 // =====================================================
 
 describe('NFR-INT-COMPLETED-CHECKS-SSOT — TEXT[] unique flat', () => {
-  it('tous les workflows partagent la meme structure (string[])', () => {
+  it('tous les checks suivent le format moteur:snake_case', () => {
     const all: readonly string[] = ALL_WORKFLOW_CHECKS
     all.forEach(check => {
       expect(typeof check).toBe('string')
-      expect(check).toMatch(/^(moteur|cerveau|redaction):[a-z_]+$/)
+      expect(check).toMatch(/^moteur:[a-z_]+$/)
     })
   })
 
@@ -145,17 +95,16 @@ describe('NFR-INT-COMPLETED-CHECKS-SSOT — TEXT[] unique flat', () => {
 })
 
 // =====================================================
-// Reload coherence (placeholder)
-// =====================================================
-
-// =====================================================
 // FR-MOT-CHECKS-CONSTANTS — anti-regression "no legacy strings"
 // 2026-05-08 — Apres detection de checks 'capitaine_locked' /
 // 'brief-validated' / etc. en DB faute de constante prefixee utilisee a
 // l'emit cote frontend.
+// 2026-05-13 — Apres retrait des familles cerveau:* / redaction:*, on accepte
+// uniquement le prefixe moteur: cote schema (toute valeur autre prefix est
+// rejetee a l'ecriture, toleree en lecture sur d'anciennes lignes).
 // =====================================================
 
-describe('FR-MOT-CHECKS-CONSTANTS — schema Zod rejette tout check non-prefixe', () => {
+describe('FR-MOT-CHECKS-CONSTANTS — schema Zod accepte uniquement moteur:*', () => {
   it('refuse "capitaine_locked" (legacy sans prefixe)', () => {
     const result = addCheckSchema.safeParse({ check: 'capitaine_locked' })
     expect(result.success).toBe(false)
@@ -168,6 +117,16 @@ describe('FR-MOT-CHECKS-CONSTANTS — schema Zod rejette tout check non-prefixe'
 
   it('refuse "moteur:CapitaineLocked" (camelCase)', () => {
     const result = addCheckSchema.safeParse({ check: 'moteur:CapitaineLocked' })
+    expect(result.success).toBe(false)
+  })
+
+  it('refuse "cerveau:strategy_defined" (famille retiree 2026-05-13, cf. DRIFT-002)', () => {
+    const result = addCheckSchema.safeParse({ check: 'cerveau:strategy_defined' })
+    expect(result.success).toBe(false)
+  })
+
+  it('refuse "redaction:brief_validated" (famille retiree 2026-05-13, cf. DRIFT-002)', () => {
+    const result = addCheckSchema.safeParse({ check: 'redaction:brief_validated' })
     expect(result.success).toBe(false)
   })
 

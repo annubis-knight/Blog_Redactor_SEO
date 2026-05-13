@@ -9,6 +9,7 @@ import { useEditorStore } from '@/stores/article/editor.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
+import { useStrategyStore } from '@/stores/strategy/strategy.store'
 import { apiGet } from '@/services/api.service'
 import { usePanelToggle } from '@/composables/ui/usePanelToggle'
 import { useSeoScoring } from '@/composables/seo/useSeoScoring'
@@ -17,11 +18,6 @@ import { useInternalLinking } from '@/composables/seo/useInternalLinking'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { marked } from 'marked'
 import type { ArticleContent } from '@shared/types/index.js'
-import { useArticleProgressStore } from '@/stores/article/article-progress.store'
-import {
-  REDACTION_BRIEF_VALIDATED,
-  REDACTION_OUTLINE_VALIDATED,
-} from '@shared/constants/workflow-checks.constants'
 import { log } from '@/utils/logger'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
@@ -50,7 +46,7 @@ const editorStore = useEditorStore()
 const keywordsStore = useKeywordsStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const cocoonsStore = useCocoonsStore()
-const articleProgressStore = useArticleProgressStore()
+const strategyStore = useStrategyStore()
 
 const cocoonId = route.params.cocoonId as string | undefined
 
@@ -104,11 +100,6 @@ function _isStepCompleted(stepId: string): boolean {
 
 // --- Body gating for scoring panels ---
 const hasBody = computed(() => !!editorStore.content)
-
-function handleBriefCheck(check: string) {
-  if (!articleId.value) return
-  articleProgressStore.addCheck(articleId.value, check)
-}
 
 const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
 
@@ -258,6 +249,11 @@ onMounted(async () => {
     briefKeywordsList: briefStore.briefData?.keywords.map(k => k.keyword).join(', '),
   })
 
+  // FR-RED-GEN-UNLOCK : hydrate la stratégie Cerveau pour piloter le verrouillage
+  // de l'étape « Article » (génération). Pas await — le gating se met à jour
+  // réactivement dès que `strategyStore.strategy` est posé.
+  void strategyStore.fetchStrategy(id)
+
   // Hydrate outline & editor stores with existing saved content
   try {
     log.info('[workflow] Loading saved article content', { articleId: id })
@@ -286,8 +282,11 @@ onMounted(async () => {
 })
 
 // --- AppNavbar integration ---
-// Rédaction = 2 linear steps. Step "article" is locked until the brief is
-// completed; we detect that via the article-progress store's check list.
+// Rédaction = 2 linear steps. L'étape « Article » est verrouillée tant que
+// la stratégie Cerveau n'est pas complète (6 étapes validées) — cf.
+// FR-RED-GEN-UNLOCK. Les checks `redaction:*` historiques ont été retirés
+// 2026-05-13 (cf. DRIFT-002) ; le signal de déverrouillage est désormais lu
+// directement sur `article_strategies.completed_steps` via useStrategyStore.
 const workflowNavStore = useWorkflowNavStore()
 
 const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = [
@@ -296,18 +295,16 @@ const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = 
 ]
 
 const redactionNavSteps = computed<NavItem[]>(() => {
-  const id = articleId.value
-   
-  const checks = id ? articleProgressStore.getProgress(id)?.completedChecks ?? [] : []
-  const briefDone = checks.includes(REDACTION_BRIEF_VALIDATED) || checks.includes(REDACTION_OUTLINE_VALIDATED)
+  const cerveauComplete = strategyStore.isComplete
   return REDACTION_STEPS.map((s, idx) => ({
     id: s.id,
     label: s.label,
     number: idx + 1,
-    done: s.id === 'brief-structure' ? briefDone : false,
-    // Article step stays locked until the brief has been validated.
-    locked: s.id === 'article' && !briefDone,
-    hint: s.id === 'article' && !briefDone ? 'Validez le brief pour accéder à l\'éditeur' : undefined,
+    done: false,
+    locked: s.id === 'article' && !cerveauComplete,
+    hint: s.id === 'article' && !cerveauComplete
+      ? 'Complétez le Cerveau pour générer cet article'
+      : undefined,
   }))
 })
 
@@ -365,7 +362,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
               :silo-name="siloName"
               :article-title="articleTitle"
               @outline-validated="goToStep('article')"
-              @check-completed="handleBriefCheck"
             />
           </div>
 

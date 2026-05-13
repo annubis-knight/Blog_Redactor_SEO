@@ -138,7 +138,7 @@ Ce bloc est important parce que c'est typiquement là que se cachent les bugs de
 - [server/prompts/strategy-suggest.md](../../server/prompts/strategy-suggest.md), [strategy-deepen.md](../../server/prompts/strategy-deepen.md), [strategy-consolidate.md](../../server/prompts/strategy-consolidate.md) — prompts IA d'aide à la stratégie.
 
 **Persistance**
-- Table `article_strategies(article_id PK, data JSONB, completed_steps TEXT[], updated_at)` — cf. `DESIGN-INFRA-ARTICLE-STRATEGIES`.
+- Table `article_strategies(article_id PK, data JSONB, completed_steps INTEGER DEFAULT 0, updated_at)` — cf. `DESIGN-INFRA-ARTICLE-STRATEGIES`. **`completed_steps` est un compteur INTEGER** (pas un tableau TEXT[] comme le suggérait le PRD pré-migration, cf. DRIFT-003).
 - Le champ `data` stocke les 6 réponses validées ; `completed_steps` trace l'avancement (utilisé pour reprise).
 
 **Flux DB**
@@ -368,35 +368,16 @@ Response : { created: Article[], failed: { index, error }[] }
 
 ---
 
-### DESIGN-CER-CHECKS
+### ~~DESIGN-CER-CHECKS~~ — RETIRÉE 2026-05-13
 
-**Réf PRD :** [FR-CER-CHECKS](./prd.md#fr-cer-checks)
+**Réf PRD :** ~~FR-CER-CHECKS~~ retirée (cf. DRIFT-002).
 
-**Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — constantes `CERVEAU_*` : `cerveau:strategy_defined`, `cerveau:hierarchy_built`, `cerveau:articles_proposed`.
+**Décision** : entrée retirée en même temps que la FR. Les 3 constantes `CERVEAU_STRATEGY_DEFINED`, `CERVEAU_HIERARCHY_BUILT`, `CERVEAU_ARTICLES_PROPOSED` ont été supprimées de `shared/constants/workflow-checks.constants.ts` (chantier `chore/remove-cerveau-redaction-checks`, 2026-05-13). Pas de dots Cerveau au dashboard, pas d'émetteur prévu.
 
-**Émission**
-- `cerveau:strategy_defined` : émis à la consolidation de l'étape 6 (CTA) côté article ou cocon.
-- `cerveau:hierarchy_built` : émis à la validation de la structure cocon (Pilier + ≥1 Intermédiaire).
-- `cerveau:articles_proposed` : émis après `DESIGN-CER-BATCH-CREATE` (succès du lot).
-
-**Persistance**
-- Stockés dans `articles.completed_checks` TEXT[] (cf. `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS`).
-
-**Flux DB**
-
-*Lecture* : les checks `cerveau:*` arrivent piggy-back sur `articles.completed_checks` lors du fetch global des articles d'un cocon (`useArticlesStore` / `useArticleProgressStore`). Pas de fetch dédié — partagent le même canal que les checks `moteur:*` et `redaction:*`.
-
-*Écriture* : append d'un check au tableau via `POST /api/articles/:id/progress/check` (cf. `DESIGN-DASH-PROGRESS`). À la date de mise à jour de cette entrée, **aucun émetteur front n'appelle encore ces constantes** : la stack technique est prête (constantes définies, endpoint disponible, migration `_archive/020_normalize_completed_checks.sql` ayant aligné les valeurs historiques) mais aucun composant Cerveau ne dispatche `addCheck(CERVEAU_*)` aujourd'hui. C'est un trou d'implémentation à combler — les dots Cerveau du dashboard restent éteints.
-
-**Stores Pinia**
-- `useArticleProgressStore` — destination des checks `cerveau:*` une fois qu'un émetteur sera branché. Même flux que les checks Moteur (cf. `DESIGN-DASH-PROGRESS`).
-
-**Watchers & réactivité**
-- Pas de watcher actif tant que les checks ne sont pas émis. Quand un émetteur sera branché : `progressMap[articleId]` mutera et les composants qui en dépendent (cartes article du dashboard, bannières de transition) se rerenderont automatiquement. Le pattern réactif est déjà éprouvé côté Moteur (cf. `DESIGN-DASH-PROGRESS`).
+**Conséquence sur les flux** : `articles.completed_checks` ne porte plus que des valeurs `moteur:*` côté écriture. Si des valeurs `cerveau:*` historiques sont encore en DB sur d'anciens articles, elles sont tolérées en lecture (préfixe inconnu → ignoré silencieusement par `ProgressDots.vue` qui ne lit que `MOTEUR_CHECKS`).
 
 **Voir aussi**
-- `DESIGN-DASH-PROGRESS` (les dots remontent ces checks).
+- `DRIFT-002` (historique de la décision).
 
 ---
 
@@ -406,7 +387,7 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Refs code**
 - [server/routes/cocoons.routes.ts](../../server/routes/cocoons.routes.ts) — endpoint `GET /api/cocoons/:id/strategy/context`.
-- [src/composables/moteur/useMoteurBridge.ts](../../src/composables/moteur/useMoteurBridge.ts) — composable côté front.
+- [src/stores/strategy/cocoon-strategy.store.ts](../../src/stores/strategy/cocoon-strategy.store.ts) — `useCocoonStrategyStore` qui porte `strategicContext` et expose `fetchContext(cocoonId)`. Appelé directement depuis `MoteurView.vue` et `RedactionView.vue` au mount (pas de composable bridge dédié — la ref historique `useMoteurBridge.ts` n'a jamais existé, cf. DRIFT-001).
 - [src/components/moteur/MoteurStrategyContext.vue](../../src/components/moteur/MoteurStrategyContext.vue) — composant d'affichage en lecture seule.
 
 **Contrat de réponse**
@@ -426,7 +407,7 @@ Seules les valeurs **validated** sont incluses. Les valeurs non-validées ou vid
 *Écriture* : aucune — endpoint purement lecture. La source `cocoon_strategies.data` est écrite par le Cerveau (cf. `DESIGN-CER-STEPS-COCOON`).
 
 **Stores Pinia**
-- `useCocoonStrategyStore` — c'est ce store (et non un store dédié) qui porte `strategicContext`. La méthode `fetchContext(cocoonId)` est appelée directement depuis `MoteurView.vue` et `RedactionView.vue` au mount. Le `MoteurStrategyContext.vue` lit ensuite `strategyStore.strategicContext.*` en propriétés. *Note : la référence à `src/composables/moteur/useMoteurBridge.ts` dans les Refs code est obsolète — pas de composable bridge dédié, l'intégration est directe view → store.*
+- `useCocoonStrategyStore` — c'est ce store (et non un store dédié) qui porte `strategicContext`. La méthode `fetchContext(cocoonId)` est appelée directement depuis `MoteurView.vue` et `RedactionView.vue` au mount. Le `MoteurStrategyContext.vue` lit ensuite `strategyStore.strategicContext.*` en propriétés. Pas de composable bridge dédié — l'intégration est directe view → store.
 
 **Watchers & réactivité**
 - Aucun watcher actif — le contexte est figé au mount de l'écran Moteur/Rédaction. Si l'utilisateur retourne au Cerveau, modifie la stratégie cocon, puis revient au Moteur, le contexte ne sera **pas** rafraîchi automatiquement : un remount de l'écran est nécessaire (navigation Vue Router) pour redéclencher `fetchContext`.
@@ -927,7 +908,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 *Lecture* : chaque service Moteur qui déclenche un appel IA charge l'article via `getArticleById(id)` et passe `article.painPoint || '(non défini)'` au pré-processeur de prompt.
 
-*Écriture* : aucune côté Moteur. Le `pain_point` est posé via le Cerveau (cf. `FR-CER-CHECKS`).
+*Écriture* : aucune côté Moteur. Le `pain_point` est posé via le Cerveau lors de l'étape « Douleur » (cf. `DESIGN-CER-STEPS-ARTICLE`).
 
 **Décisions d'architecture**
 - **Pré-traitement, pas modification du prompt** : on ne touche jamais au `.md` pour y inscrire le contexte. Toute interpolation se fait dans `loadPrompt()`.
@@ -2417,7 +2398,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - Match → bonus. Mismatch → malus appliqué à la composante `intentPain.normalized`.
 - Migration `014_articles_pain_intent_expected.sql` ajoute la colonne.
 
-**Voir aussi** : `DESIGN-CER-CHECKS` (génération de l'intent par l'IA Cerveau).
+**Voir aussi** : `DESIGN-CER-STEPS-ARTICLE` (génération de l'intent par l'IA Cerveau).
 
 ---
 
@@ -3301,7 +3282,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - [server/prompts/generate-outline.md](../../server/prompts/generate-outline.md) — prompt système, variables `{{articleTitle}}`, `{{articleType}}`, `{{keyword}}`, `{{secondaryKeywords}}` (lieutenants), `{{cocoonName}}`, `{{theme}}`, `{{paaQuestions}}`, `{{strategyContext}}`, `{{keywordContext}}`, `{{microContext}}`.
 - [server/routes/generate/_helpers.ts](../../server/routes/generate/_helpers.ts) — fonction `parseOutlineFromText(fullContent)` qui transforme la sortie JSON brute du LLM en `Outline` typé.
 - [src/stores/article/outline.store.ts](../../src/stores/article/outline.store.ts) — store Pinia `useOutlineStore` : actions `generateOutline(briefData)`, `updateSection`, `moveSection`, `addSection`, `removeSection`, `undo`, `redo`, `setValidated`. État `outline`, `isGenerating`, `isValidated`, `undoStack`, `redoStack`.
-- [src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue) — composant qui déclenche la génération et expose l'édition du sommaire ; émet `check-completed` avec `REDACTION_OUTLINE_VALIDATED` (constante partagée).
+- [src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue) — composant qui déclenche la génération et expose l'édition du sommaire. (N'émet plus de check workflow depuis 2026-05-13 — la validation du sommaire ne pose plus de check `redaction:*`, cf. DRIFT-002.)
 
 **Endpoints**
 - `POST /api/generate/outline` — SSE (chunks markdown puis `event: done` avec `outline` parsé).
@@ -3316,12 +3297,12 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 *Lecture* : 1️⃣ utilisateur clique « Générer le sommaire » → 2️⃣ `outlineStore.generateOutline(briefData)` ouvre un stream SSE → 3️⃣ côté serveur, lecture de `article_strategies`, `article_keywords`, `article_micro_contexts` pour bâtir le prompt → 4️⃣ chunks SSE accumulés dans `outlineStore.streamedText` → 5️⃣ à `event: done`, `parseOutlineFromText` produit l'`Outline` typé → 6️⃣ store met `outline.value = parsedOutline`.
 
-*Écriture* : utilisateur valide le sommaire → `outlineStore.saveOutline(articleId)` → `PUT /api/articles/:id/outline` → UPSERT dans `article_content (article_id, outline)` JSONB. Le validate-flag passe en check workflow `REDACTION_OUTLINE_VALIDATED` via `useArticleProgressStore.addCheck`.
+*Écriture* : utilisateur valide le sommaire → `outlineStore.saveOutline(articleId)` → `PUT /api/articles/:id/outline` → UPSERT dans `article_content (article_id, outline)` JSONB. (Plus de check workflow Rédaction posé à cette occasion depuis 2026-05-13, cf. DRIFT-002.)
 
 **Stores Pinia**
 - `useOutlineStore` — héberge l'outline en cours de session, gère undo/redo (stack profondeur 20), persiste vers `article_content.outline` JSONB.
 - `useBriefStore` — fournit `briefData` (article + keywords + dataForSeo.paa) lu pour construire le payload de génération.
-- `useArticleProgressStore` — destinataire du check `REDACTION_OUTLINE_VALIDATED` à la validation manuelle.
+- `useArticleProgressStore` — non utilisé pour le sommaire depuis 2026-05-13 (pas de check workflow Rédaction posé, cf. DRIFT-002).
 
 **Watchers & réactivité**
 - `streamedText` accumulé chunk par chunk → rendu progressif possible côté UI pendant la génération.
@@ -3336,7 +3317,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Voir aussi**
 - `DESIGN-RED-ARTICLE` — consommateur direct de l'outline (split en groupes H2 puis stream par section).
 - `DESIGN-LIE-HN-STRUCTURE` (à créer §8.7) — passerelle Moteur → Rédaction via `hnToOutline()`.
-- `DESIGN-RED-CHECKS` — émetteur de `REDACTION_OUTLINE_VALIDATED`.
+- ~~`DESIGN-RED-CHECKS`~~ — retirée 2026-05-13 (la validation du sommaire ne pose plus de check workflow, cf. DRIFT-002).
 
 ---
 
@@ -3480,7 +3461,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - `DESIGN-RED-WORD-COUNT-TARGET` — consommateur de `editorStore.wordCount`.
 - `DESIGN-RED-SEO-LIVE` — watcher sur `content` pour scorer.
 - `DESIGN-RED-CONTEXTUAL-ACTIONS` — bubble menu sur sélection.
-- `DRIFT-013` — `ArticleWordCountBar` n'est consommé que par `ArticleWorkflowView`, pas par `ArticleEditorView` (à trancher produit).
+- `DRIFT-013` — `ArticleWordCountBar` est consommé par `ArticleWorkflowView` uniquement (PRD pré-migration disait `ArticleEditorView`, inversé — décision tranchée 2026-05-13 : la version code reste la bonne, l'éditeur libre n'expose pas le compteur de mots par design).
 
 ---
 
@@ -3776,54 +3757,68 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 **Décisions d'architecture**
 - **Enum de phases fermé** : `proposed | brief | outline | writing | seo | published`. Lu identique côté DB (`articles.phase`), côté types front (`ArticleProgress.phase`), côté dashboard. Cf. `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS`.
-- **Phase ≠ check** : la phase est l'**état actuel**, les checks sont les **étapes validées**. La transition de phase est dérivée des checks côté backend (un check `redaction:outline_validated` posé peut faire passer la phase de `brief` à `outline`). Évite la divergence phase/checks.
+- **Phase ≠ check** : la phase est l'**état actuel** de l'article. Depuis le retrait des checks Rédaction 2026-05-13 (cf. DRIFT-002), les transitions de phase ne sont plus pilotées par des checks workflow `redaction:*` — elles s'appuient sur l'état métier (sommaire présent, contenu présent) ou des gestes utilisateur explicites côté UI (à arbitrer si une logique de phase auto est rétablie un jour).
 - **Cache LRU** : 50 articles max en mémoire côté store pour éviter l'enflure mémoire sur un dashboard à 200 articles. Eviction du plus ancien à chaque ajout.
 
 **Voir aussi**
-- `DESIGN-RED-CHECKS` — émetteurs des 5 constantes Rédaction.
+- ~~`DESIGN-RED-CHECKS`~~ — retirée 2026-05-13 (plus de checks workflow Rédaction, cf. DRIFT-002).
 - `DESIGN-DASH-PROGRESS` — consommateur dashboard.
 - `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue des constantes.
 
 ---
 
-### DESIGN-RED-CHECKS
+### ~~DESIGN-RED-CHECKS~~ — RETIRÉE 2026-05-13
 
-**Réf PRD :** [FR-RED-CHECKS](./prd.md#fr-red-checks)
+**Réf PRD :** ~~FR-RED-CHECKS~~ retirée (cf. DRIFT-002).
 
-**Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue : `REDACTION_BRIEF_VALIDATED`, `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED` (lignes 41-45). Agrégation dans `REDACTION_CHECKS` (lignes 47-53) et `ALL_WORKFLOW_CHECKS`.
-- [src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue) — émetteur de `REDACTION_BRIEF_VALIDATED` (ligne 101) + import (ligne 22).
-- [src/views/ArticleWorkflowView.vue](../../src/views/ArticleWorkflowView.vue) — émetteur de `REDACTION_OUTLINE_VALIDATED` (importé lignes 22-24).
-- [src/stores/article/article-progress.store.ts](../../src/stores/article/article-progress.store.ts) — récepteur via `addCheck(id, check)` / `removeCheck(id, check)`.
+**Décision** : entrée retirée en même temps que la FR. Les 5 constantes `REDACTION_BRIEF_VALIDATED`, `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED` ont été supprimées de `shared/constants/workflow-checks.constants.ts`. L'unique émetteur historique (`BriefStructureStep.vue` ligne 101) a été débranché. Le gating UI `ArticleWorkflowView.vue` qui dérivait `briefDone` de `REDACTION_BRIEF_VALIDATED` est remplacé par un nouvel invariant lisible directement sur l'état Cerveau (cf. `DESIGN-RED-GEN-UNLOCK`). (Chantier `chore/remove-cerveau-redaction-checks`, 2026-05-13.)
 
-**Endpoints**
-- `POST /api/articles/:id/progress/check` — pose un check.
-- `POST /api/articles/:id/progress/uncheck` — retire un check (cf. `DRIFT-008`).
-
-**Tables consommées**
-- `articles.completed_checks` (TEXT[]) — colonne unique pour les 5 + checks Moteur + Cerveau.
-
-**Flux DB**
-
-*Lecture* : `useArticleProgressStore` hydrate `completed_checks` au mount via `fetchProgress(id)`. Les composants (`BriefStructureStep`, `OutlineRecap`, `FinalisationPanel` côté Moteur) lisent ce tableau pour cocher/dé-cocher leurs cases.
-
-*Écriture* : `articleProgressStore.addCheck(id, REDACTION_*)` → endpoint → `UPDATE articles SET completed_checks = array_append(...)` côté backend, idempotent (pas de doublon).
-
-**Stores Pinia**
-- `useArticleProgressStore` — SSOT.
-
-**Watchers & réactivité**
-- Les composants qui affichent la liste des checks sont réactifs sur `progressMap[id].completed_checks` — toute mutation (`addCheck` / `removeCheck`) propage immédiatement.
-
-**Décisions d'architecture**
-- **5 constantes Rédaction, partagées via `shared/constants/`** : pas de string libre dans les composants. Toute écriture passe par la constante importée (cf. CLAUDE.md §3 règle 3 : « Jamais hardcoder la string »).
-- **Tous les checks dans la même colonne `completed_checks` TEXT[]** : Moteur + Cerveau + Rédaction cohabitent. Pas de table normalisée par phase — simplifie les requêtes et le typage.
-- **Idempotence côté backend** : `addCheck` ne crée pas de doublon si la constante est déjà présente. Permet de re-cliquer sans casser l'état.
+**Conséquence sur les flux** : `articles.completed_checks` ne porte plus que des valeurs `moteur:*` côté écriture. Les valeurs `redaction:*` éventuellement persistées sur d'anciens articles sont tolérées en lecture (ignorées par `ProgressDots.vue`).
 
 **Voir aussi**
-- `DESIGN-RED-PROGRESS` — consommateur des checks.
-- `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue complet (Moteur + Cerveau + Rédaction).
-- `DESIGN-DASH-PROGRESS` — affichage des dots dérivés.
+- `DRIFT-002` (historique de la décision).
+- `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue restant (Moteur uniquement).
+- `DESIGN-RED-GEN-UNLOCK` — nouveau gating cross-workflow Cerveau → Rédaction.
+
+---
+
+### DESIGN-RED-GEN-UNLOCK
+
+**Réf PRD :** [FR-RED-GEN-UNLOCK](./prd.md#fr-red-gen-unlock--la-génération-darticle-ne-se-déverrouille-quune-fois-le-cerveau-complet)
+
+**Refs code**
+- [src/stores/strategy/strategy.store.ts](../../src/stores/strategy/strategy.store.ts):22 — getter `isComplete` (computed) qui retourne `(strategy.value?.completedSteps ?? 0) >= 6`. Source du signal.
+- [src/views/ArticleWorkflowView.vue](../../src/views/ArticleWorkflowView.vue) — hydrate `useStrategyStore.fetchStrategy(articleId)` au mount/change-article et dérive le `locked` de l'étape `Article` de la nav workflow depuis `strategyStore.isComplete`.
+
+**Endpoints**
+- `GET /api/strategy/:articleId` (lecture de `article_strategies`) — alimente `strategy.value.completedSteps` (INTEGER 0-6, cf. `DESIGN-INFRA-ARTICLE-STRATEGIES`).
+
+**Tables consommées**
+- `article_strategies(article_id PK, data JSONB, completed_steps INTEGER DEFAULT 0, updated_at)` — la colonne `completed_steps` est le compteur d'avancement Cerveau article-scoped (cf. `DRIFT-003`).
+
+**Flux UI**
+
+*Lecture* : au mount de `ArticleWorkflowView`, `strategyStore.fetchStrategy(articleId)` hydrate la stratégie article. La nav workflow re-évalue `redactionNavSteps` à chaque mutation de `strategyStore.strategy` — l'étape `Article` reçoit `locked: !strategyStore.isComplete` + un `hint` explicite quand verrouillée.
+
+*Réactivité cross-workflow* : si l'utilisateur passe du Cerveau à la Rédaction sans recharger la page (Vue Router navigation), `ArticleWorkflowView` se remonte → re-fetch de la stratégie → le déverrouillage est appliqué dans le même tick que le mount.
+
+**Stores Pinia**
+- `useStrategyStore` — porte `strategy: ArticleStrategy | null` + getter `isComplete`. SSOT du gating.
+
+**Décisions d'architecture**
+- **Signal réactif, pas check workflow** : on lit `completed_steps INTEGER` directement plutôt qu'un check `cerveau:strategy_defined` (retiré 2026-05-13, cf. DRIFT-002). Le compteur évolue à chaque validation d'étape — pas besoin d'émettre un check séparé.
+- **Article-scoped uniquement** : on vérifie la stratégie article, pas la stratégie cocon. La stratégie cocon est utilisée comme fallback pour les variables de prompt, mais l'invariant minimum pour lancer la génération est que l'article ait sa propre stratégie complète.
+- **Pas d'éditeur libre concerné** : `ArticleEditorView` (URL `/article/:id/editor`) ne fait pas partie du workflow guidé et reste librement accessible — c'est l'usage hors pipeline.
+
+**Critères d'acceptation techniques**
+- AC.REDGU.1 : au mount de `ArticleWorkflowView`, `useStrategyStore.fetchStrategy(articleId)` est appelée exactement une fois par changement d'article.
+- AC.REDGU.2 : `redactionNavSteps[id=='article'].locked === !strategyStore.isComplete` à tout instant.
+- AC.REDGU.3 : une mutation de `strategyStore.strategy.completedSteps` (par exemple via le Cerveau) propage le déverrouillage sans intervention utilisateur (pas de reload).
+
+**Voir aussi**
+- `DESIGN-INFRA-ARTICLE-STRATEGIES` — porte la table backing.
+- `DESIGN-CER-STEPS-ARTICLE` — producteur des 6 étapes Cerveau.
+- `DRIFT-002` — historique du remplacement des checks Rédaction par ce gating.
 
 ---
 
@@ -4463,7 +4458,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Refs code**
 - [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) lignes 1-63 — sources de toutes les chaînes de checks workflow.
 
-**Inventaire des constantes (vérifié 2026-05-12)**
+**Inventaire des constantes (mis à jour 2026-05-13)**
 | Workflow | Constante | Valeur string |
 |---|---|---|
 | Moteur (5) | `MOTEUR_DISCOVERY_DONE` | `moteur:discovery_done` |
@@ -4471,27 +4466,19 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 | | `MOTEUR_CAPITAINE_LOCKED` | `moteur:capitaine_locked` |
 | | `MOTEUR_LIEUTENANTS_LOCKED` | `moteur:lieutenants_locked` |
 | | `MOTEUR_LEXIQUE_VALIDATED` | `moteur:lexique_validated` |
-| Cerveau (3) | `CERVEAU_STRATEGY_DEFINED` | `cerveau:strategy_defined` |
-| | `CERVEAU_HIERARCHY_BUILT` | `cerveau:hierarchy_built` |
-| | `CERVEAU_ARTICLES_PROPOSED` | `cerveau:articles_proposed` |
-| Rédaction (5) | `REDACTION_BRIEF_VALIDATED` | `redaction:brief_validated` |
-| | `REDACTION_OUTLINE_VALIDATED` | `redaction:outline_validated` |
-| | `REDACTION_CONTENT_WRITTEN` | `redaction:content_written` |
-| | `REDACTION_SEO_VALIDATED` | `redaction:seo_validated` |
-| | `REDACTION_PUBLISHED` | `redaction:published` |
 
-Plus les agrégats : `MOTEUR_CHECKS`, `CERVEAU_CHECKS`, `REDACTION_CHECKS`, `ALL_WORKFLOW_CHECKS`, type `WorkflowCheck`.
+Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS[number]`. (Les constantes Cerveau et Rédaction historiques ont été retirées 2026-05-13, cf. DRIFT-002.)
 
-**Stockage** : colonne `articles.completed_checks` TEXT[] (cf. [server/db/schema.sql](../../server/db/schema.sql) ligne 74). SSOT unique pour la progression (cf. NFR-INT-COMPLETED-CHECKS-SSOT).
+**Stockage** : colonne `articles.completed_checks` TEXT[] (cf. [server/db/schema.sql](../../server/db/schema.sql) ligne 74). SSOT unique pour la progression Moteur (cf. NFR-INT-COMPLETED-CHECKS-SSOT). D'éventuelles valeurs legacy `cerveau:*` / `redaction:*` persistées avant 2026-05-13 sont tolérées en lecture (ignorées côté affichage).
 
 **Décisions d'architecture**
-- **Préfixe par workflow** : `moteur:*` / `cerveau:*` / `redaction:*` évite les collisions dans une seule colonne flat.
-- **Constantes immuables `as const`** : tableaux et types dérivés via `typeof ALL_WORKFLOW_CHECKS[number]`.
-- **Status `CERVEAU_*`** : les 3 constantes existent mais aucun composant front ne les émet à ce jour (cf. DRIFT-002). C'est une promesse PRD non câblée — pas un bug de cette FR-INFRA, mais à signaler dans `DESIGN-CER-CHECKS`.
+- **Préfixe `moteur:`** : prefix unique côté écriture. Tout check sans ce préfixe lu depuis la DB est ignoré.
+- **Constantes immuables `as const`** : tableaux et types dérivés via `typeof MOTEUR_CHECKS[number]`.
+- **Retrait Cerveau + Rédaction 2026-05-13** : les promesses FR-CER-CHECKS (jamais émise) et FR-RED-CHECKS (1 émetteur sur 5) ont été retirées par décision produit (cf. DRIFT-002).
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS-CONSTANTS` (§8.3) — application côté Moteur.
-- `DRIFT-002` — constantes Cerveau non émises.
+- `DRIFT-002` — historique de la décision retrait Cerveau + Rédaction.
 - `DRIFT-010` — migration `020_normalize_completed_checks.sql` archivée (post-normalisation).
 
 ---
@@ -5650,7 +5637,7 @@ Plus les agrégats : `MOTEUR_CHECKS`, `CERVEAU_CHECKS`, `REDACTION_CHECKS`, `ALL
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — endpoints `POST /articles/:id/progress/check` et `POST /articles/:id/progress/uncheck`.
 
 **Persistance**
-- Table `articles(completed_checks TEXT[])` — colonne flat, valeurs préfixées (`moteur:*`, `cerveau:*`, `redaction:*`).
+- Table `articles(completed_checks TEXT[])` — colonne flat, valeurs préfixées `moteur:*` côté écriture. (Valeurs legacy `cerveau:*` / `redaction:*` éventuellement persistées avant 2026-05-13 tolérées en lecture, cf. DRIFT-002.)
 
 **Décisions d'architecture**
 - **AUTHORITY explicite** : le store porte un header `AUTHORITY:` consultable via grep (cf. CLAUDE.md §3.2). Tout consommateur de la progression lit ce store, pas la table directement.
@@ -5671,15 +5658,13 @@ Plus les agrégats : `MOTEUR_CHECKS`, `CERVEAU_CHECKS`, `REDACTION_CHECKS`, `ALL
 **Réf PRD :** [NFR-INT-CHECKS-NAMESPACE](./prd.md#nfr-int-checks-namespace--préfixes-de-workflow-pour-ranger-les-checks)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts):15-45 — toutes les constantes préfixées :
-  - Moteur : `MOTEUR_DISCOVERY_DONE` = `'moteur:discovery_done'`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`.
-  - Cerveau : `CERVEAU_STRATEGY_DEFINED`, `CERVEAU_HIERARCHY_BUILT`, `CERVEAU_ARTICLES_PROPOSED`.
-  - Rédaction : `REDACTION_BRIEF_VALIDATED`, `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED`.
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue Moteur uniquement depuis 2026-05-13 :
+  - `MOTEUR_DISCOVERY_DONE` = `'moteur:discovery_done'`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`.
 
 **Décisions d'architecture**
-- **Convention `domain:snake_case`** : préfixe lowercase + `:` + nom en snake_case lowercase. La constante TS est `DOMAIN_NAME` (uppercase + `_`) pour distinguer la valeur stockée vs la référence code.
-- **Colonne unique flat** : pas de colonne séparée par domaine (sinon évolution coûteuse). Le filtrage se fait en mémoire (ex : `completedChecks.filter(c => c.startsWith('moteur:'))`).
-- **Cerveau prêt mais non émis** : les 3 constantes `CERVEAU_*` existent mais aucun composant ne les émet (cf. `DRIFT-002` — décision produit à prendre).
+- **Convention `moteur:snake_case`** : préfixe lowercase + `:` + nom en snake_case lowercase. La constante TS est `MOTEUR_NAME` (uppercase + `_`) pour distinguer la valeur stockée vs la référence code.
+- **Colonne unique flat** : pas de colonne dédiée par check (sinon évolution coûteuse). Lecture filtrée par préfixe `moteur:` (cf. NFR-INT-CHECKS-NAMESPACE).
+- **Retrait Cerveau + Rédaction 2026-05-13** : les constantes `CERVEAU_*` (3) et `REDACTION_*` (5) ont été supprimées par décision produit (cf. `DRIFT-002`). Pour rétablir ultérieurement, recréer les constantes côté `shared/constants/` et brancher des émetteurs côté composants — la persistance accepte déjà tout préfixe.
 
 **Critères d'acceptation techniques**
 - AC.INTCN.1 : aucun composant n'écrit directement une string `'moteur:xxx'` — il utilise une constante.
@@ -5944,7 +5929,7 @@ Plus les agrégats : `MOTEUR_CHECKS`, `CERVEAU_CHECKS`, `REDACTION_CHECKS`, `ALL
 
 **Décisions d'architecture**
 - **Tests miroirs** : `tests/unit/stores/article-progress.store.test.ts` ↔ `src/stores/article/article-progress.store.ts`. Convention de chemin = découverte facile.
-- **Préfixes par domaine** : `describe('moteur: ...', ...)`, `describe('cerveau: ...', ...)` pour grep et filter.
+- **Préfixes par domaine** : `describe('moteur: ...', ...)` pour grep et filter.
 - **Baseline diff** : `npm run test:snapshot` enregistre `tests/.baseline.json` (rouges/verts) ; `npm run test:check` compare un run actuel à la baseline — répond « mon chantier a-t-il cassé un test ? ».
 
 **Critères d'acceptation techniques**

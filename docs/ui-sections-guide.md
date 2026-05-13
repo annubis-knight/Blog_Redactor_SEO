@@ -86,7 +86,7 @@ Page d'accueil d'un cocon, porte d'entrée vers les 3 workflows.
 
 ## 2. Workflow Cerveau (stratégie du cocon)
 
-> **Checks de progression (S3)** — Le workflow Cerveau n'émet **pas encore** de valeurs dans `articles.completed_checks`. Trois constantes sont réservées côté `shared/constants/workflow-checks.constants.ts` pour le jour où ce sera câblé : `CERVEAU_STRATEGY_DEFINED` (= `'cerveau:strategy_defined'`), `CERVEAU_HIERARCHY_BUILT`, `CERVEAU_ARTICLES_PROPOSED`. Le stepper interne (`store.completedSteps`, 0–6) reste le mécanisme actuel de progression visible.
+> **Checks de progression — RETIRÉS 2026-05-13 (cf. DRIFT-002)** — Le workflow Cerveau n'émet plus de checks dans `articles.completed_checks` et les 3 constantes `CERVEAU_*` ont été supprimées. La progression Cerveau reste visible via le stepper interne (`store.completedSteps`, 0–6) et la persistance `article_strategies.completed_steps` INTEGER — pas via un check workflow.
 
 ### 2.1 `CerveauView` — `/cocoon/:cocoonId/cerveau`
 
@@ -163,7 +163,7 @@ Boutons Précédent / Suivant (ou "Terminer" sur step 6).
 > - **Flux & UX (F/U)** : Discovery/Radar toujours cliquables (F1), radar cards DB-first (F2), composant partagé `KeywordAssistPanel` (F3), suppression arbitraire de mots dans les racines (F4), pas d'invalidation en cascade à l'unlock Capitaine (F5), suppression de `article_semantic_fields` (F6), nouvel onglet **Finalisation** lecture seule (F7/U7), sections Discovery toujours visibles (U1), règle **TTL 7 jours** sur toutes les régénérations IA (U5), garde anti-pollution UI au changement d'article (U6).
 > - **Erreurs (E)** : scan Radar vide → message dans la pile d'activité (E1) ; propositions Lieutenants persistées côté serveur avant `done` (E2) ; quota DataForSEO 429 intercepté → message `error` (E3) ; paramètre `articleId` optionnel sur `POST /keywords/:kw/validate` → persistance serveur-side dans `captain_explorations` (E4, résout le cas "switch d'article en vol").
 > - **Performance (P)** : message `info` au lancement d'un scan SERP (P1), pagination simple Discovery > 100 items (P3), suppression du panel IA legacy Lexique (P4).
-> - **Sémantique (S)** : Phase ① renommée **« Explorer »** (S1, ID interne `generer` conservé) ; checks `completed_checks` préfixés par workflow (`moteur:*`, `cerveau:*`, `redaction:*` — S3).
+> - **Sémantique (S)** : Phase ① renommée **« Explorer »** (S1, ID interne `generer` conservé) ; checks `completed_checks` préfixés `moteur:*` (S3 — les préfixes `cerveau:*` / `redaction:*` historiques ont été retirés 2026-05-13, cf. DRIFT-002).
 > - **DB-first (D1–D5, Sprints 9/11/12)** : prop `radarCards` supprimée, les cartes Radar cochées alimentent directement le basket (D1) ; Radar scan persisté dans `radar_explorations` par article (Sprint 9) ; Lexique multi-keyword avec champ de saisie libre + chips d'explorations passées + hydratation DB (D4, Sprint 11) ; `TabCachePanel` utilise désormais des compteurs réels via `GET /articles/:id/explorations/counts` (D5, Sprint 12) ; modal `UnlockLieutenantsModal` au déverrouillage Capitaine qui propose Garder / Archiver / Annuler (D3, Sprint 12).
 > - **Sortie du cache (Cat.7, Sprints 9/10/11/13)** : toutes les données article-specific vivent maintenant dans des tables `*_explorations` dédiées (`radar_explorations`, `intent_explorations`, `local_explorations`, `content_gap_explorations`, `lexique_explorations`, `serp_explorations`). Endpoints split : `GET /articles/:id/explorations` (DB agrégé) + `GET /articles/:id/external-cache` (api_cache partagé). Bouton « Vider cache externe » dans `MoteurView` + `DELETE /articles/:id/external-cache` (Sprint 13).
 > - **Pile d'activité transverse (Sprint 5)** : `CostLogPanel` étendu à 4 niveaux (`api | info | warning | error`). Visible globalement, utilisé par E1/E3/P1.
@@ -189,10 +189,9 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 - **Phase ① Explorer** (S1 — anciennement « Générer ») : onglets `discovery` + `radar` (toujours accessibles — F1).
 - **Phase ② Valider** : onglets `capitaine` → `lieutenants` → `lexique` → `finalisation` (récap lecture seule — F7).
 
-**Checks possibles** (S3 — préfixés par workflow, constants exportées depuis `shared/constants/workflow-checks.constants.ts`) :
+**Checks possibles** (S3 — Moteur uniquement depuis 2026-05-13, constants exportées depuis `shared/constants/workflow-checks.constants.ts`) :
 - Moteur : `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:lexique_validated`.
-- Cerveau (imaginés, pas encore produits) : `cerveau:strategy_defined`, `cerveau:hierarchy_built`, `cerveau:articles_proposed`.
-- Rédaction (imaginés) : `redaction:brief_validated`, `redaction:outline_validated`, `redaction:content_written`, `redaction:seo_validated`, `redaction:published`.
+- ~~Cerveau / Rédaction~~ : familles retirées 2026-05-13 (cf. DRIFT-002).
 
 **Règles produit transversales** :
 - **F1 — Cliquabilité permanente** : Discovery et Radar restent consultables à tout moment, même après validation des keywords. Aucun lock banner.
@@ -377,7 +376,7 @@ Dans le bottom-nav de `MoteurView.vue` :
 | Section | Composant | Rôle | Déclencheurs | Sorties | Gate |
 |---|---|---|---|---|---|
 | **Contexte stratégique** | `ContextRecap` | Résumé read-only (thème, silo, cocon, articles, config) | Montage + `fetchCocoons/fetchConfig` | Affichage | — |
-| **Micro-contexte article** | inline (form) | Angle différenciant, ton, consignes, target word count | Montage → `GET /articles/:id/micro-context` ; `@blur` → `saveMicroContext()` ; "Suggérer par IA" → streaming | `PUT /articles/:id/micro-context` ; `POST /api/generate/micro-context-suggest` (stream) ; `check-completed(REDACTION_BRIEF_VALIDATED)` (= `'redaction:brief_validated'`, cf. S3 — constante définie mais pas encore émise par le code actif) si angle + (tone OU directives) | — |
+| **Micro-contexte article** | inline (form) | Angle différenciant, ton, consignes, target word count | Montage → `GET /articles/:id/micro-context` ; `@blur` → `saveMicroContext()` ; "Suggérer par IA" → streaming | `PUT /articles/:id/micro-context` ; `POST /api/generate/micro-context-suggest` (stream). *(Plus de check workflow Rédaction émis depuis 2026-05-13, cf. DRIFT-002.)* | — |
 | **Liste mots-clés du brief** | `KeywordList` + `ArticleKeywordsPanel` | Affichage mots-clés cocon groupés + gestion décisions article (Capitaine, Lieutenants, Lexique) | Montage → `articleKeywordsStore.fetchKeywords(id)` ; édition live + "Sauvegarder" | Mutation store ; `PUT /articles/:id/keywords` ; `POST /keywords/lexique-suggest` | — |
 | **Recommandation longueur** | `ContentRecommendation` | Plage recommandée min-max + ajustement ± 100 mots | `briefData.contentLengthRecommendation` non null | emit `update:customTarget` → `saveMicroContext()` | — |
 | **Éditeur/Affichage sommaire** | `OutlineEditor` / `OutlineDisplay` / `OutlineNode` | Édition drag-drop H1/H2/H3 + undo/redo 20 niv. ; mode validé read-only | Outline chargé ; modification → mutation store (pas de save auto) | Bouton "Valider" → `PUT /articles/:id/outline` + `isValidated = true` ; "Modifier" → unvalidate | — |
@@ -706,7 +705,7 @@ Exemple de cases de test générables depuis le guide :
 - *Moteur — E3 quota 429* : mock `/validate` qui renvoie `{ status: 429, error: { code: 'DATAFORSEO_QUOTA_EXCEEDED' } }`, vérifier entrée `error` dans la pile avec message "Quota DataForSEO atteint".
 - *Moteur — E4 switch article en vol* : appeler `POST /keywords/:kw/validate` avec `articleId=1`, vérifier immédiatement après la réponse que `captain_explorations` a une ligne pour `article_id=1, keyword=kw`.
 - *Moteur — P3 pagination Discovery* : charger une source avec 250 items, vérifier que le DOM contient 100 `<li>` + bouton « Afficher tout (150 de plus) ». Cliquer le bouton → 250 `<li>` + bouton devient « Réduire la liste ».
-- *Moteur — S3 préfixes* : vérifier que chaque `completed_checks` stocké commence par `moteur:` / `cerveau:` / `redaction:` (regex `/^(moteur|cerveau|redaction):/`).
+- *Moteur — S3 préfixe* : vérifier que chaque `completed_checks` émis commence par `moteur:` (regex `/^moteur:/`). Les préfixes `cerveau:` / `redaction:` historiques ont été retirés 2026-05-13 (cf. DRIFT-002) — tolérés en lecture mais plus émis.
 - *Moteur — D1 alimentation basket* : cocher une `RadarCardCheckable` dans `DouleurIntentScanner` → vérifier que `basketStore.keywords` contient un item `{ source: 'radar', keyword: <kw> }`. Décocher → retrait. Aucun emit `cards-selected` ou bouton « Envoyer au Capitaine » n'existe.
 - *Moteur — Sprint 9 Radar DB-first* : POST `/articles/:id/radar-exploration` puis GET → vérifier la row. GET `/status` retourne `{ exists: true, isFresh: true, globalScore, heatLevel }`. Après 8 jours simulés, `isFresh: false`.
 - *Moteur — Sprint 11 Lexique multi-keyword* : extraire pour « coach sportif Paris » puis « préparateur physique Paris » → `GET /articles/:id/explorations` retourne 2 rows dans `lexique`. Clic sur une chip passée → affichage switch sans nouvel appel serveur.
@@ -732,7 +731,7 @@ Exemple de cases de test générables depuis le guide :
   - `api` (existant) : coût d'un appel Claude (model, tokens in/out, coût estimé) via `addEntry(label, ApiUsage)`. Pipeline câblé dans `useStreaming.ts::pushCostEntry`.
   - `info` / `warning` / `error` (nouveau — Sprint 5) : messages utilisateur via `addMessage(level, label, detail?)`. Utilisés par E1 (scan radar vide, `warning`), E3 (quota DataForSEO 429, `error` automatique via `api.service.ts::reportKnownError`), P1 (lancement scan SERP, `info`).
   - Panneau : icône colorée par niveau (info bleu, warning orange, error rouge), détail optionnel sous le label, bouton suppression par entrée, bouton « Effacer » global.
-- **Préfixage des checks (S3)** : toute valeur de `articles.completed_checks` passe désormais par les constantes de `shared/constants/workflow-checks.constants.ts`. Format : `'moteur:…'`, `'cerveau:…'`, `'redaction:…'`. Ne jamais hardcoder la chaîne. Ajouter un nouveau check = ajouter une constante + mettre à jour l'array de workflow correspondant (`MOTEUR_CHECKS` / `CERVEAU_CHECKS` / `REDACTION_CHECKS`).
+- **Préfixage des checks (S3)** : toute valeur de `articles.completed_checks` passe par les constantes de `shared/constants/workflow-checks.constants.ts`. Format : `'moteur:…'` (préfixe unique depuis 2026-05-13, cf. DRIFT-002). Ne jamais hardcoder la chaîne. Ajouter un nouveau check = ajouter une constante + mettre à jour `MOTEUR_CHECKS`.
 - **Gestion erreurs serveur (E3)** : les erreurs connues (ex. quota DataForSEO) remontent avec un code stable (`DATAFORSEO_QUOTA_EXCEEDED`) via `server/utils/api-error.ts::respondWithError`. Côté client, `src/services/api.service.ts::reportKnownError` mappe ces codes vers des entrées `error` de la pile d'activité. Ajouter un nouveau code connu = étendre `KNOWN_ERROR_CODES`.
 - **Pattern `*_explorations` (Sprints 9-13)** : chaque nouvelle donnée article-specific doit suivre le pattern existant :
   1. Table PostgreSQL `{domain}_explorations(id, article_id REFERENCES articles(id) ON DELETE CASCADE, keyword|source_keyword|…, payload JSONB, explored_at TIMESTAMPTZ DEFAULT NOW(), UNIQUE(article_id, keyword))`.
@@ -1531,7 +1530,7 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | Suggérer lexique | `api_cache` C | C |
 | ContentRecommendation | `article_micro_contexts.target_word_count` | R + W |
 | **OutlineEditor / OutlineDisplay** | `article_content.outline` | R + W (à la validation) |
-| Bouton "Continuer" (outline validé) | `articles.completed_checks += 'redaction:brief_validated'` (cible S3 — constante `REDACTION_BRIEF_VALIDATED` disponible, producteur à câbler) | W |
+| Bouton "Continuer" (outline validé) | Plus de check workflow émis depuis 2026-05-13 (cf. DRIFT-002). La validation du sommaire persiste l'`article_content.outline` JSONB, sans check `redaction:*`. | W |
 | **Bouton Générer article** | `article_content.content`, `articles.meta_title`, `meta_description` | W (stream + save) |
 | Réduction / Humanisation | `article_content.content` (sections réécrites) | W |
 | `ApiCostBadge` | store `editorStore.lastXxxUsage` (non persisté) | — |
@@ -1584,7 +1583,7 @@ Pour rappel, en plus des tests composants, le projet a aussi :
   - PAA : `paa_explorations` (déduplication par `article_id, keyword, question`).
 - **Cascade** : `cocoons` → delete SET NULL sur `articles.cocoon_id` ; `articles` → CASCADE delete sur toutes les tables filles (`article_content`, `article_keywords`, `article_strategies`, `article_micro_contexts`, `captain_explorations`, `lieutenant_explorations`, `paa_explorations`, **`radar_explorations`, `intent_explorations`, `local_explorations`, `content_gap_explorations`, `lexique_explorations`, `serp_explorations`** — ajoutées par les migrations 006, 007, 008, 009).
 - **F6 (21 avril 2026)** : la table `article_semantic_fields` (fonctionnalité orpheline — aucun composant front ne la consommait) a été supprimée via la migration 005. Le lexique visible côté SEO panel est désormais entièrement calculé dynamiquement via `seoStore.score.lexiqueCoverage` à partir de `article_keywords.lexique[]` + le HTML de l'éditeur.
-- **S3 (21 avril 2026)** : `articles.completed_checks text[]` stocke désormais des valeurs **préfixées par workflow** (`moteur:*`, `cerveau:*`, `redaction:*`). Source unique de vérité : `shared/constants/workflow-checks.constants.ts`. Aucune migration SQL nécessaire (les 77 articles de la DB avaient tous `completed_checks = []` au moment du sprint).
+- **S3 (21 avril 2026, MAJ 2026-05-13)** : `articles.completed_checks text[]` stocke des valeurs préfixées `moteur:*` uniquement (les préfixes `cerveau:*` / `redaction:*` historiques ont été retirés 2026-05-13, cf. DRIFT-002). Source unique de vérité : `shared/constants/workflow-checks.constants.ts`.
 - **Checks de progression** : `articles.completed_checks text[]` + `check_timestamps jsonb` (horodatage par check).
 - **E2 / E4 / Sprint 11 — Persistance serveur-side transverse** : trois routes critiques persistent côté serveur **avant** de répondre, pour garantir la survie des données en cas de déconnexion client tardive :
   - `POST /keywords/:keyword/validate` — si `articleId` dans le body, upsert `captain_explorations` via `saveCaptainExploration()` avant `res.json()`.

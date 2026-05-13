@@ -676,7 +676,7 @@ flowchart TB
 | `TfidfResult` | obligatoire[], differenciateur[], optionnel[], density | `shared/types/serp-analysis.types.ts` |
 | `ArticleKeywords` | articleId, capitaine, lieutenants[], lexique[], hnStructure | `shared/schemas/article-keywords.schema.ts` |
 | `ArticleProgress` | articleId, completedChecks[] (TEXT[]) | `shared/types/article-progress.types.ts` |
-| `WorkflowCheck` | `moteur:*` \| `cerveau:*` \| `redaction:*` | `shared/constants/workflow-checks.constants.ts` |
+| `WorkflowCheck` | `moteur:*` (familles `cerveau:*` / `redaction:*` retirées 2026-05-13, cf. DRIFT-002) | `shared/constants/workflow-checks.constants.ts` |
 
 ## 13bis. Scoring : KPI Marché vs Pertinence (depuis 2026-04-28)
 
