@@ -3,7 +3,7 @@ name: seo
 description: SEO score live — Score composé de 6 facteurs calculés en temps réel lors de la rédaction (densité mots-clés, hiérarchie headings, méta-tags, longueur contenu, checklist positionnement).
 type: "{ global: number | null, factors: { keywordPilierScore, keywordSecondaryScore, headingScore, metaTitleScore, metaDescriptionScore, contentLengthScore }, keywordDensities[], headingValidation, metaAnalysis, wordCount, scoreLevel: 'good'|'fair'|'poor' | null }"
 last_updated: 2026-05-04
-related_fr: [FR-RED-SEO-LIVE, FR-RED-INTERNAL-LINKING, FR-RED-PROGRESS, FR-RED-CHECKS, FR-RED-EDITOR-TIPTAP, FR-RED-META, NFR-PERF-SEO-DEBOUNCE]
+related_fr: [FR-RED-SEO-LIVE, FR-RED-INTERNAL-LINKING, FR-RED-PROGRESS, FR-RED-EDITOR-TIPTAP, FR-RED-META, NFR-PERF-SEO-DEBOUNCE]
 ---
 
 # Data Flow — seo

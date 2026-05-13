@@ -17,11 +17,6 @@ import { useInternalLinking } from '@/composables/seo/useInternalLinking'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { marked } from 'marked'
 import type { ArticleContent } from '@shared/types/index.js'
-import { useArticleProgressStore } from '@/stores/article/article-progress.store'
-import {
-  REDACTION_BRIEF_VALIDATED,
-  REDACTION_OUTLINE_VALIDATED,
-} from '@shared/constants/workflow-checks.constants'
 import { log } from '@/utils/logger'
 import AsyncContent from '@/components/shared/AsyncContent.vue'
 import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
@@ -50,7 +45,6 @@ const editorStore = useEditorStore()
 const keywordsStore = useKeywordsStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const cocoonsStore = useCocoonsStore()
-const articleProgressStore = useArticleProgressStore()
 
 const cocoonId = route.params.cocoonId as string | undefined
 
@@ -104,11 +98,6 @@ function _isStepCompleted(stepId: string): boolean {
 
 // --- Body gating for scoring panels ---
 const hasBody = computed(() => !!editorStore.content)
-
-function handleBriefCheck(check: string) {
-  if (!articleId.value) return
-  articleProgressStore.addCheck(articleId.value, check)
-}
 
 const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
 
@@ -286,8 +275,9 @@ onMounted(async () => {
 })
 
 // --- AppNavbar integration ---
-// Rédaction = 2 linear steps. Step "article" is locked until the brief is
-// completed; we detect that via the article-progress store's check list.
+// Rédaction = 2 linear steps. Navigation libre entre les deux : depuis le
+// retrait des checks `redaction:*` (2026-05-13, cf. DRIFT-002), il n'y a plus
+// de gating cross-step côté Rédaction.
 const workflowNavStore = useWorkflowNavStore()
 
 const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = [
@@ -295,21 +285,15 @@ const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = 
   { id: 'article',         label: 'Article' },
 ]
 
-const redactionNavSteps = computed<NavItem[]>(() => {
-  const id = articleId.value
-   
-  const checks = id ? articleProgressStore.getProgress(id)?.completedChecks ?? [] : []
-  const briefDone = checks.includes(REDACTION_BRIEF_VALIDATED) || checks.includes(REDACTION_OUTLINE_VALIDATED)
-  return REDACTION_STEPS.map((s, idx) => ({
+const redactionNavSteps = computed<NavItem[]>(() =>
+  REDACTION_STEPS.map((s, idx) => ({
     id: s.id,
     label: s.label,
     number: idx + 1,
-    done: s.id === 'brief-structure' ? briefDone : false,
-    // Article step stays locked until the brief has been validated.
-    locked: s.id === 'article' && !briefDone,
-    hint: s.id === 'article' && !briefDone ? 'Validez le brief pour accéder à l\'éditeur' : undefined,
-  }))
-})
+    done: false,
+    locked: false,
+  })),
+)
 
 watch(
   [redactionNavSteps, currentStep],
@@ -365,7 +349,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
               :silo-name="siloName"
               :article-title="articleTitle"
               @outline-validated="goToStep('article')"
-              @check-completed="handleBriefCheck"
             />
           </div>
 

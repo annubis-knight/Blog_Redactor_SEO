@@ -3,13 +3,13 @@ name: strategy
 description: Stratégies articles et cocon — 6-étapes Brain-First (Cerveau) validées et persistées en JSONB (article_strategies + cocoon_strategies), consommées par le Moteur via buildStrategyContext() pour l'injection IA. Flux d'édition (suggérer/fusionner/deepening/consolidation), validation pas-à-pas, cas de risque sauvegarde partielle.
 type: "{ article: ArticleStrategy, cocoon: CocoonStrategy }"
 last_updated: 2026-05-04
-related_fr: [FR-CER-STEPS-ARTICLE, FR-CER-STEPS-COCOON, FR-CER-AIGUILLAGE, FR-CER-CONTEXT-FOR-MOTEUR, FR-CER-CHECKS, FR-CER-THEME-CONFIG]
+related_fr: [FR-CER-STEPS-ARTICLE, FR-CER-STEPS-COCOON, FR-CER-AIGUILLAGE, FR-CER-CONTEXT-FOR-MOTEUR, FR-CER-THEME-CONFIG]
 ---
 
 # Data Flow — strategy
 
 > **Description métier :** Les stratégies articles et cocon encapsulent le travail du Cerveau (Brain-First workflow). Chaque stratégie est un objet JSONB contenant 6 étapes pour article (cible, douleur, aiguillage, angle, promesse, cta) ou 5 pour cocon (sans aiguillage), où chaque étape progresse dans un cycle : input → suggestion IA → validation utilisateur → consolidation optionnelle. Ces données sont persistées en DB (autorité) et cacheées en Pinia, puis propagées au Moteur via `buildStrategyContext()` pour enrichir les prompts IA (Fr-MOT-STRATEGY-INJECTION, visible dans `strategy-context.md`).
-> **Type/format :** JSONB structures `ArticleStrategy` et `CocoonStrategy` avec sous-champs `StrategyStepData { input, suggestion, validated, subQuestions[] }` et `CtaData { type, target, suggestion }`. Chaque étape émet des checks `moteur:strategy_*` via le store à mesure de sa progression.
+> **Type/format :** JSONB structures `ArticleStrategy` et `CocoonStrategy` avec sous-champs `StrategyStepData { input, suggestion, validated, subQuestions[] }` et `CtaData { type, target, suggestion }`. (Les checks workflow Cerveau historiques `cerveau:strategy_defined` / `cerveau:hierarchy_built` / `cerveau:articles_proposed` ont été retirés 2026-05-13, cf. DRIFT-002 — la progression Cerveau est désormais lisible directement via `article_strategies.completed_steps` INTEGER, pas via un check workflow.)
 
 ---
 

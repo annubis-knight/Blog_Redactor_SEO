@@ -89,17 +89,14 @@ describe('Rédaction Workflow — Étape 1 : Brief', () => {
     expect([400, 500]).toContain(res.status)
   })
 
-  it('Check REDACTION_BRIEF_VALIDATED ajouté via /progress/check', async () => {
+  it('POST /progress/check rejette les checks redaction:* (famille retirée 2026-05-13, cf. DRIFT-002)', async () => {
     if (requireServer().skip) return
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'BriefV Cocon')
     const article = await ctx.createArticle(cocoon.id, 'BriefV Article')
 
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'redaction:brief_validated' })
-    const res = await apiGet<{ completed_checks?: string[]; completedChecks?: string[] }>(`/articles/${article.id}/progress`)
-    const checks = res.data as { completedChecks?: string[]; completed_checks?: string[] }
-    const list = checks.completedChecks ?? checks.completed_checks ?? []
-    expect(list).toContain('redaction:brief_validated')
+    const res = await apiPost(`/articles/${article.id}/progress/check`, { check: 'redaction:brief_validated' })
+    expect(res.status).toBe(400)
   })
 })
 
@@ -240,35 +237,35 @@ describe('Rédaction Workflow — Étape 3 : SEO', () => {
 // ---------------------------------------------------------------------------
 
 describe('Rédaction Workflow — Étape 4 : Progress', () => {
-  it('Cycle complet : check → progress GET → uncheck', async () => {
+  it('Cycle complet check / uncheck sur des checks moteur:* (les familles redaction:* / cerveau:* ont été retirées 2026-05-13, cf. DRIFT-002)', async () => {
     if (requireServer().skip) return
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Cycle Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Cycle Article')
 
     // check 1
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'redaction:brief_validated' })
+    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
     let res = await apiGet<{ completedChecks?: string[] } | { completed_checks?: string[] }>(`/articles/${article.id}/progress`)
     expect(res.status).toBe(200)
     const checks = (res.data as { completedChecks?: string[]; completed_checks?: string[] })
     const list = checks.completedChecks ?? checks.completed_checks ?? []
-    expect(list).toContain('redaction:brief_validated')
+    expect(list).toContain('moteur:capitaine_locked')
 
     // check 2
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'redaction:content_written' })
+    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
     res = await apiGet(`/articles/${article.id}/progress`)
     const checks2 = (res.data as { completedChecks?: string[]; completed_checks?: string[] })
     const list2 = checks2.completedChecks ?? checks2.completed_checks ?? []
-    expect(list2).toContain('redaction:brief_validated')
-    expect(list2).toContain('redaction:content_written')
+    expect(list2).toContain('moteur:capitaine_locked')
+    expect(list2).toContain('moteur:lieutenants_locked')
 
     // uncheck 1
-    await apiPost(`/articles/${article.id}/progress/uncheck`, { check: 'redaction:brief_validated' })
+    await apiPost(`/articles/${article.id}/progress/uncheck`, { check: 'moteur:capitaine_locked' })
     res = await apiGet(`/articles/${article.id}/progress`)
     const checks3 = (res.data as { completedChecks?: string[]; completed_checks?: string[] })
     const list3 = checks3.completedChecks ?? checks3.completed_checks ?? []
-    expect(list3).not.toContain('redaction:brief_validated')
-    expect(list3).toContain('redaction:content_written')
+    expect(list3).not.toContain('moteur:capitaine_locked')
+    expect(list3).toContain('moteur:lieutenants_locked')
   })
 
   it('PUT /articles/:id/status publié met à jour le statut (pas d\'endpoint /publish dédié)', async () => {

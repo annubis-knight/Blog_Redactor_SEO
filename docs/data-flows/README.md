@@ -27,7 +27,7 @@ docs/data-flows/
 └── ...
 ```
 
-Préfixes de checks détectés/configurés dans ce projet : `moteur:`, `cerveau:`, `redaction:` (cf. `shared/constants/workflow-checks.constants.ts`).
+Préfixe de check utilisé dans ce projet : `moteur:` (depuis 2026-05-13 — les préfixes `cerveau:` et `redaction:` ont été retirés, cf. DRIFT-002). Source : `shared/constants/workflow-checks.constants.ts`.
 
 ## Comment ajouter une cartographie
 

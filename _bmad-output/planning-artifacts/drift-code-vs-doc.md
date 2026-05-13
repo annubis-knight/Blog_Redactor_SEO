@@ -30,11 +30,9 @@ Le PRD initial citait un fichier, un chiffre ou un comportement qui ne correspon
 - **DRIFT-017** ✅ — `shared/schemas/` contient 13 fichiers. PRD purgé (0 ref au comptage "41"). Registry `DESIGN-INFRA-ZOD-SHARED` cite le count exact + liste.
 - **DRIFT-020** ✅ — Pas de colonne `locked_at` sur `lieutenant_explorations`. Registry `DESIGN-INFRA-LIEUTENANT-EXPLORATIONS` cite le schéma exact + renvoi DRIFT-020. PRD ne mentionne pas le schéma (0 ref grep).
 
-### Groupe B — Décision produit à arbitrer *(1 drift)*
+### Groupe B — Décision produit à arbitrer *(0 drift restant — DRIFT-002 tranché 2026-05-13)*
 
-Demande un choix utilisateur, pas une simple correction. Question ouverte.
-
-- **DRIFT-002** — Constantes `cerveau:strategy_defined` / `cerveau:hierarchy_built` / `cerveau:articles_proposed` définies mais **jamais émises par le code**. La chaîne est prête (constantes + endpoint + migration) mais le dispatch côté composants Cerveau manque. **Question** : faut-il câbler les emits manquants pour tenir la promesse PRD, ou retirer ces 3 checks (et leurs dots de progression Cerveau) si l'intention a changé ?
+- **DRIFT-002** ✅ — Décision produit 2026-05-13 : retrait des promesses Cerveau **ET** Rédaction (un audit pendant l'arbitrage a révélé que la Rédaction non plus n'émettait que 1 check sur 5 — symétrique à Cerveau qui en émettait 0 sur 3). Implémentation : suppression des 3 constantes `CERVEAU_*` + des 5 constantes `REDACTION_*`, retrait de l'unique émetteur Rédaction (`BriefStructureStep.vue` ligne 101), restriction de la regex Zod côté écriture à `moteur:` uniquement, retrait du gating UI `briefDone`/`locked` dans `ArticleWorkflowView.vue` (navigation libre entre les deux étapes du flux Rédaction). Doc alignée (PRD §8.1/§8.10, DESIGN-CER-CHECKS et DESIGN-RED-CHECKS marquées RETIRÉES, FR-MOT-CHECKS-CONSTANTS simplifiée, NFR-INT-CHECKS-NAMESPACE reformulée). Chantier `chore/remove-cerveau-redaction-checks`. **Cf. aussi DRIFT-024** (mention symétrique côté Rédaction).
 
 ### Groupe C — Dette technique, sprint dédié à planifier *(5 drifts)*
 
@@ -77,15 +75,25 @@ Pas d'action à prendre. À marquer ✅ pour clore.
 
 ---
 
-## DRIFT-002 — Constantes `CERVEAU_*` jamais émises côté front
+## DRIFT-002 — Constantes `CERVEAU_*` (et par symétrie `REDACTION_*`) jamais émises côté front
 
-**Source** : retrofit §8.1 Cerveau.
+**Source** : retrofit §8.1 Cerveau + audit symétrique §8.10 Rédaction (2026-05-13).
 
-**Constat** : `CERVEAU_STRATEGY_DEFINED`, `CERVEAU_HIERARCHY_BUILT`, `CERVEAU_ARTICLES_PROPOSED` existent dans `shared/constants/workflow-checks.constants.ts` mais **aucun composant front ne les émet**. La chaîne est prête (constantes + endpoint `POST /progress/check` + migration historique) mais le dispatch manque.
+**Constat initial** : `CERVEAU_STRATEGY_DEFINED`, `CERVEAU_HIERARCHY_BUILT`, `CERVEAU_ARTICLES_PROPOSED` existent dans `shared/constants/workflow-checks.constants.ts` mais **aucun composant front ne les émet**. La chaîne est prête (constantes + endpoint `POST /progress/check` + migration historique) mais le dispatch manque.
 
-**Impact** : `FR-CER-CHECKS` du PRD promet 3 checks automatiques au franchissement d'étapes Cerveau — promesse non tenue dans le code actuel.
+**Audit complémentaire 2026-05-13** : symétriquement côté Rédaction, seul `REDACTION_BRIEF_VALIDATED` est émis (par `BriefStructureStep.vue:101`) — les 4 autres constantes `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED` ne sont jamais écrites. Bilan : 8 emits manquants sur 13 promesses.
 
-**Action recommandée** : décision produit à prendre — soit câbler les emits manquants côté composants Cerveau, soit retirer ces 3 checks du PRD si l'intention a changé.
+**Impact** : `FR-CER-CHECKS` (3 checks) et `FR-RED-CHECKS` (5 checks) du PRD promettent des écritures automatiques au franchissement d'étapes — promesses non tenues dans le code actuel.
+
+**Action prise 2026-05-13** : ✅ **retrait des deux familles** par décision produit utilisateur. Chantier `chore/remove-cerveau-redaction-checks` :
+- `shared/constants/workflow-checks.constants.ts` : suppression des 8 constantes (3 Cerveau + 5 Rédaction).
+- `shared/schemas/article-progress.schema.ts` : regex Zod côté écriture restreinte à `moteur:` uniquement ; regex côté lecture conserve `moteur|cerveau|redaction` pour tolérer les valeurs legacy persistées avant 2026-05-13.
+- `src/components/workflow/BriefStructureStep.vue` : retrait de l'import + de l'emit `REDACTION_BRIEF_VALIDATED`.
+- `src/views/ArticleWorkflowView.vue` : retrait du gating UI `briefDone` / `locked` (navigation libre entre Brief & Structure ↔ Article).
+- PRD : `FR-CER-CHECKS` et `FR-RED-CHECKS` marquées RETIRÉES, `FR-MOT-CHECKS-CONSTANTS` reformulée pour ne plus mentionner les préfixes retirés, `NFR-INT-CHECKS-NAMESPACE` simplifiée.
+- design-registry : `DESIGN-CER-CHECKS` et `DESIGN-RED-CHECKS` remplacées par stubs RETIRÉE, `DESIGN-INT-CHECKS-NAMESPACE` simplifiée.
+- Docs satellites alignés (`docs/data-flows/completed-checks.md`, `docs/ui-sections-guide.md`, `docs/ARCHITECTURE_FLOWS.md`, etc.).
+- Tests adaptés (regex Zod, e2e cross-workflow, brief-structure-step).
 
 ---
 

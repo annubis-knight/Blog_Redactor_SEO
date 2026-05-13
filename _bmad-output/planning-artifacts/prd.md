@@ -158,7 +158,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 |---|---|
 | Appels API redondants | 0 (cache `external_api_cache` + `keyword_metrics` + cache PAA hiérarchique sur `keyword_metrics.paa_questions`) |
 | Phases du Moteur identifiables | 3 phases visuelles sur 6 onglets |
-| Progression par article | 5 checks `moteur:*` + 3 checks `cerveau:*` + 5 checks `redaction:*` automatiquement écrits |
+| Progression par article | 5 checks `moteur:*` automatiquement écrits (Cerveau et Rédaction ne posent plus de checks workflow — décision 2026-05-13, cf. DRIFT-002) |
 | Persistance | 100% PostgreSQL (pas de fichier JSON côté chaud) |
 | Workflow sans outil externe | Oui |
 | Cache hit rate DataForSEO après première utilisation | > 90% |
@@ -283,8 +283,8 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 | Verdict GO/NO-GO Capitaine seuils contextuels | ✅ | PRD initial |
 | Scraping SERP unique cascade Lieutenants → Lexique TF-IDF | ✅ | PRD initial |
 | 5 checks `moteur:*` automatiques | ✅ | PRD initial |
-| 3 checks `cerveau:*` (strategy_defined, hierarchy_built, articles_proposed) | ✅ | shared/constants/workflow-checks.constants.ts |
-| 5 checks `redaction:*` (brief_validated, outline_validated, content_written, seo_validated, published) | ✅ | shared/constants/workflow-checks.constants.ts |
+| ~~3 checks `cerveau:*`~~ retirés 2026-05-13 — promesse non tenue côté code (jamais émis), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
+| ~~5 checks `redaction:*`~~ retirés 2026-05-13 — promesse partiellement câblée (1 émetteur sur 5), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
 | Enrichissement prompts Cerveau → Moteur (`{{strategy_context}}`) | ✅ | PRD initial |
 | Labo & Explorateur découplés | ✅ | PRD initial |
 | Migration PostgreSQL | ✅ | tech-spec-migration-json-to-postgresql (archivé) |
@@ -427,19 +427,11 @@ Au démarrage de son projet, l'utilisateur renseigne **une fois** une configurat
 
 ---
 
-#### FR-CER-CHECKS — Trois checks Cerveau écrits automatiquement
+#### ~~FR-CER-CHECKS~~ — RETIRÉE 2026-05-13
 
-Au fur et à mesure que l'utilisateur progresse dans le Cerveau, l'app coche **automatiquement** trois jalons de progression sans qu'il ait à le déclencher : un check quand la stratégie article est posée (les 6 étapes validées), un check quand la hiérarchie cocon est construite, un check quand les articles ont été proposés et créés. Ces checks remontent dans les dots du dashboard et dans le récap Moteur — l'utilisateur visualise immédiatement son avancement Cerveau.
+Promesse historique de 3 checks `cerveau:*` (stratégie définie, hiérarchie construite, articles proposés) écrits automatiquement. **Décision produit 2026-05-13** (cf. DRIFT-002) : la promesse est retirée — le Cerveau n'écrit plus de checks workflow. Seul le Moteur trace une progression visible via les dots de l'article (cf. `FR-DASH-PROGRESS` et `FR-MOT-CHECKS`).
 
-**Critères d'acceptation**
-- Le check « stratégie définie » s'inscrit dès que les 6 étapes stratégie (article ou cocon) sont validées.
-- Le check « hiérarchie construite » s'inscrit dès qu'un cocon a au moins un Pilier + un Intermédiaire validés.
-- Le check « articles proposés » s'inscrit dès que le batch d'articles est créé (cf. `FR-CER-BATCH-CREATE`).
-- L'utilisateur ne déclenche jamais ces checks à la main — c'est l'app qui les écrit.
-
-> **En situation.** L'utilisateur valide la 6ᵉ étape stratégie de son cocon « Création d'entreprise ». Sans qu'il fasse rien d'autre, le dot Cerveau de tous les articles du cocon passe à `●` au dashboard. Quand il cliquera plus tard sur un article et entrera dans le Moteur, la barre de contexte stratégique affichera bien sa cible et sa douleur — preuve que tout est branché.
-
-→ Conception : [DESIGN-CER-CHECKS](./design-registry.md#design-cer-checks)
+> **Conséquence** : pas de dots Cerveau au dashboard. L'utilisateur sait qu'il a posé sa stratégie parce que les écrans Cerveau le lui montrent (étapes affichées comme validées), pas via un compteur global d'article. Les constantes `CERVEAU_STRATEGY_DEFINED`, `CERVEAU_HIERARCHY_BUILT`, `CERVEAU_ARTICLES_PROPOSED` ont été retirées du code et de la migration.
 
 ---
 
@@ -661,7 +653,7 @@ Le Moteur écrit automatiquement **5 marqueurs de progression** dans l'avancemen
 ---
 
 #### FR-MOT-CHECKS-CONSTANTS — Catalogue strict des étapes de progression
-Les noms des étapes de progression sont définis dans **un catalogue unique** côté code. Chaque nom suit un format strict : un préfixe de workflow (`moteur`, `cerveau`, `redaction`) suivi de l'action en minuscules. Aucun nom hors catalogue n'est accepté côté serveur — une tentative d'écriture avec un nom non conforme est rejetée.
+Les noms des étapes de progression sont définis dans **un catalogue unique** côté code. Chaque nom suit un format strict : préfixe `moteur:` suivi de l'action en minuscules. Aucun nom hors catalogue n'est accepté côté serveur — une tentative d'écriture avec un nom non conforme est rejetée. (Les préfixes `cerveau:` et `redaction:` historiques ne sont plus utilisés depuis 2026-05-13, cf. DRIFT-002.)
 
 L'objectif utilisateur : **garantir que les dots de progression et les verrous Moteur lisent et écrivent toujours le même nom**, sans risque qu'une string en doublon se balade et fasse mentir l'affichage (« dot vert mais condition non remplie »).
 
@@ -2593,11 +2585,11 @@ Chaque article porte une **longueur cible en mots**, calculée en amont à parti
 
 #### FR-RED-PROGRESS — Suivi de l'avancement éditorial d'un article
 
-L'outil suit pour chaque article une **phase éditoriale** qui reflète où il en est dans son cycle de vie (à l'état brouillon proposé par le Cerveau, en cours de brief, sommaire validé, en cours d'écriture, en cours de validation SEO, publié). Cette phase est lue par le dashboard pour afficher le bon état visuel de l'article, par la liste des articles d'un cocon pour trier les articles non terminés, et par le panneau de progression de l'article pour situer l'utilisateur dans son flux. Les transitions entre phases sont déclenchées par les actions de validation explicites de l'utilisateur (cf. FR-RED-CHECKS) — pas par des heuristiques.
+L'outil suit pour chaque article une **phase éditoriale** qui reflète où il en est dans son cycle de vie (à l'état brouillon proposé par le Cerveau, en cours de brief, sommaire validé, en cours d'écriture, en cours de validation SEO, publié). Cette phase est lue par le dashboard pour afficher le bon état visuel de l'article, par la liste des articles d'un cocon pour trier les articles non terminés, et par le panneau de progression de l'article pour situer l'utilisateur dans son flux. Les transitions entre phases sont déclenchées par les actions explicites de l'utilisateur côté écran (validation d'un brief, génération d'un sommaire, etc.) — pas par des heuristiques implicites.
 
 **Critères d'acceptation**
 - Chaque article porte une phase parmi un ensemble fermé connu de tous les écrans qui l'affichent (le dashboard, le suivi d'article et la liste cocon n'ont jamais d'état hors enum).
-- La phase évolue uniquement quand l'utilisateur valide explicitement une étape (brief, sommaire, contenu, SEO, publication) — jamais par un calcul implicite « il y a du texte donc on bascule ».
+- La phase évolue uniquement quand l'utilisateur fait un geste explicite (brief validé, sommaire validé, etc.) — jamais par un calcul implicite « il y a du texte donc on bascule ».
 - Le retour à une phase antérieure (par exemple repasser de « en SEO » à « en écriture ») est possible et reflété partout sans incohérence cross-vues.
 - La phase courante est persistée et survit aux rechargements de page.
 
@@ -2607,20 +2599,11 @@ L'outil suit pour chaque article une **phase éditoriale** qui reflète où il e
 
 ---
 
-#### FR-RED-CHECKS — 5 étapes validables manuellement dans la Rédaction
+#### ~~FR-RED-CHECKS~~ — RETIRÉE 2026-05-13
 
-L'utilisateur valide explicitement 5 étapes qui jalonnent la rédaction d'un article : **brief validé**, **sommaire validé**, **contenu écrit**, **SEO validé**, **article publié**. Chacune de ces validations est posée par un clic identifiable (case à cocher ou bouton de finalisation), pas par une heuristique. Une validation déjà posée peut être retirée (l'utilisateur revient en arrière sur une étape). L'ensemble des étapes validées d'un article est visible dans la progression et affecté au dashboard pour les dots de progression de l'article.
+Promesse historique de 5 checks `redaction:*` validables manuellement (brief, sommaire, contenu, SEO, publication). **Décision produit 2026-05-13** (cf. DRIFT-002) : la promesse est retirée — la Rédaction n'écrit plus de checks workflow. La progression Rédaction visible à l'utilisateur passe désormais uniquement par l'état de l'article lui-même (contenu présent, brief renseigné, etc.), pas par des cases à cocher dédiées.
 
-**Critères d'acceptation**
-- 5 étapes validables existent dans le flux Rédaction : brief, sommaire, contenu, SEO, publication.
-- Chaque étape se valide par un geste utilisateur explicite (clic case ou bouton) — jamais automatiquement parce que l'IA a produit du contenu.
-- Chaque étape se dé-valide d'un clic (le check peut être retiré, l'utilisateur n'est pas piégé).
-- Le code de chaque check est posé via la même constante partagée que les autres modules (Moteur, Cerveau) — pas de chaîne libre dans le composant Rédaction.
-- L'ordre des checks affiché à l'utilisateur correspond à l'ordre logique du flux (brief avant sommaire, sommaire avant contenu, etc.) — pas de réorganisation cosmétique.
-
-> **En situation.** Vendredi 14h, l'utilisateur termine la passe SEO de son article. Il coche la case *« SEO validé »* dans le panneau de progression. Le 4ᵉ dot Rédaction se remplit sur la carte du dashboard. Il garde la dernière case *« Article publié »* décochée car il attend lundi pour la mise en ligne définitive. Lundi matin, après publication réelle, il coche la dernière case — l'article passe en phase finale et apparaît dans le filtre *« publiés »* du dashboard.
-
-→ Conception : [DESIGN-RED-CHECKS](./design-registry.md#design-red-checks)
+> **Conséquence** : pas de dots Rédaction au dashboard. Pas de case « article publié » côté progression — le statut publié sera porté par un champ dédié si besoin futur, pas par un check workflow. Les constantes `REDACTION_BRIEF_VALIDATED`, `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED` ont été retirées du code, l'unique émetteur (`BriefStructureStep.vue`) débranché.
 
 ---
 
@@ -3030,10 +3013,10 @@ Les prompts envoyés à Claude / Gemini sont stockés en fichiers `.md` **sans l
 ---
 
 #### FR-INFRA-WORKFLOW-CHECKS-CONSTANTS — Source unique des checks workflow
-Les **checks de progression** (Discovery fait, Radar fait, Capitaine verrouillé, etc.) ne sont jamais écrits comme des strings libres dans le code — ils passent par une liste centralisée de constantes préfixées (`moteur:*`, `cerveau:*`, `redaction:*`). Pour l'utilisateur, cela garantit que **les dots de progression et les bannières de transition affichent toujours le même état** quel que soit l'endroit qui a déclenché l'avancement.
+Les **checks de progression Moteur** (Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Lexique validé) ne sont jamais écrits comme des strings libres dans le code — ils passent par une liste centralisée de constantes préfixées `moteur:*`. Pour l'utilisateur, cela garantit que **les dots de progression et les bannières de transition affichent toujours le même état** quel que soit l'endroit qui a déclenché l'avancement. (Les préfixes `cerveau:*` / `redaction:*` historiques ont été retirés 2026-05-13, cf. DRIFT-002.)
 
 **Critères d'acceptation**
-- Toute progression utilisateur (verrouillage Capitaine, validation Lexique, publication article) émet exactement la constante correspondante — pas de variante orthographique.
+- Toute progression utilisateur Moteur (verrouillage Capitaine, validation Lexique, etc.) émet exactement la constante `moteur:*` correspondante — pas de variante orthographique.
 - Tout consommateur (dots du header, bannière de transition, finalisation gating) lit la même constante — pas de duplication.
 
 → Conception : [DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS](./design-registry.md#design-infra-workflow-checks-constants)
@@ -3723,7 +3706,7 @@ Les composants principaux du Moteur (Discovery, Radar, Capitaine, Lieutenants, L
 
 #### NFR-INT-COMPLETED-CHECKS-SSOT — Une seule source pour la progression d'un article
 
-L'avancement d'un article dans son pipeline (étapes Moteur cochées, étapes Cerveau acquises, étapes Rédaction validées) est stocké dans **un seul endroit** : la colonne `completed_checks` de l'article. Tous les composants qui affichent une progression (dots du dashboard, bannières de transition, panneau de finalisation) **lisent ce même endroit** — aucune copie locale dérivée, pas de cache divergent.
+L'avancement d'un article dans le pipeline Moteur (les 5 étapes : Discovery, Radar, Capitaine, Lieutenants, Lexique) est stocké dans **un seul endroit** : la colonne `completed_checks` de l'article. Tous les composants qui affichent une progression (dots du dashboard, bannières de transition, panneau de finalisation) **lisent ce même endroit** — aucune copie locale dérivée, pas de cache divergent. (Cerveau et Rédaction ne posent plus de checks workflow depuis 2026-05-13, cf. DRIFT-002.)
 
 **Critères d'acceptation**
 - L'état de progression d'un article est unique en base et n'a pas de doublon dans une autre table.
@@ -3738,14 +3721,14 @@ L'avancement d'un article dans son pipeline (étapes Moteur cochées, étapes Ce
 
 ---
 
-#### NFR-INT-CHECKS-NAMESPACE — Préfixes de workflow pour ranger les checks
+#### NFR-INT-CHECKS-NAMESPACE — Préfixe `moteur:` pour ranger les checks
 
-Chaque check de progression est **préfixé par le workflow auquel il appartient** : Cerveau (`cerveau:*`), Moteur (`moteur:*`), Rédaction (`redaction:*`). Tous coexistent dans la même colonne flat de l'article, mais leur préfixe permet de filtrer/grouper sans ambiguïté. L'utilisateur ne voit jamais ces préfixes — mais ils garantissent que les compteurs de chaque module ne se mélangent pas.
+Chaque check de progression écrit par l'app est **préfixé `moteur:`**. Le préfixe permet de filtrer les checks Moteur de tout autre payload (et garantit la rétro-compatibilité avec d'éventuels checks legacy `cerveau:*` / `redaction:*` qui auraient été persistés avant le retrait 2026-05-13 — ces valeurs résiduelles sont tolérées en lecture mais plus émises).
 
 **Critères d'acceptation**
-- Tous les checks émis par l'app portent un préfixe `cerveau:`, `moteur:` ou `redaction:`.
+- Tous les checks émis par l'app portent le préfixe `moteur:`.
 - Les constantes correspondantes sont définies dans un fichier partagé et **jamais** hardcodées sous forme de string dans les composants.
-- Un composant qui veut compter « les checks Moteur » filtre par préfixe — pas par énumération exhaustive.
+- Tout check sans préfixe `moteur:` lu depuis la DB est ignoré côté affichage (pas d'erreur, pas de dot).
 
 **Statut :** active.
 

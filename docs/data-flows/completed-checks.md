@@ -1,25 +1,23 @@
 ---
 name: completed-checks
-description: Progression d'un article à travers trois workflows (Moteur, Cerveau, Rédaction) — suivi des étapes achevées via un tableau TEXT[] de checks préfixés en PostgreSQL.
+description: Progression Moteur d'un article — suivi des 5 étapes achevées via un tableau TEXT[] de checks préfixés `moteur:*` en PostgreSQL.
 type: "TEXT[] (PostgreSQL)" 
-last_updated: 2026-05-07
-related_fr: [FR-MOT-CHECKS, FR-CER-CHECKS, FR-RED-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE]
+last_updated: 2026-05-13
+related_fr: [FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE]
 synced_with: [captain-keyword-locked.md]
 ---
 
 # Data Flow — completed-checks
 
-> **Description métier :** Colonne `articles.completed_checks` (TEXT[] en PostgreSQL) stocke la progression d'un article à travers les trois workflows (Moteur : 5 checks / Cerveau : 3 checks / Rédaction : 5 checks). Chaque check est une string préfixée (`moteur:*`, `cerveau:*`, `redaction:*`) pour éviter les collisions de noms. Source unique de vérité du workflow.
+> **Description métier :** Colonne `articles.completed_checks` (TEXT[] en PostgreSQL) stocke la progression Moteur d'un article (5 checks préfixés `moteur:*`). Source unique de vérité de la progression Moteur. (Les familles `cerveau:*` et `redaction:*` ont été retirées 2026-05-13, cf. DRIFT-002 — les valeurs legacy éventuellement persistées sont tolérées en lecture mais plus émises.)
 > **Type/format :** `TEXT[]` — array de strings, ex. `['moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked']`
 
 ## Producteurs
 
 Qui crée ou met à jour cette donnée :
 
-- **Constantes centralisées** : `shared/constants/workflow-checks.constants.ts` ([lignes 14-62](../../shared/constants/workflow-checks.constants.ts)) — catalogue unique de tous les checks :
+- **Constantes centralisées** : `shared/constants/workflow-checks.constants.ts` — catalogue Moteur uniquement depuis 2026-05-13 :
   - `MOTEUR_CHECKS` : `DISCOVERY_DONE`, `RADAR_DONE`, `CAPITAINE_LOCKED`, `LIEUTENANTS_LOCKED`, `LEXIQUE_VALIDATED`
-  - `CERVEAU_CHECKS` : `STRATEGY_DEFINED`, `HIERARCHY_BUILT`, `ARTICLES_PROPOSED`
-  - `REDACTION_CHECKS` : `BRIEF_VALIDATED`, `OUTLINE_VALIDATED`, `CONTENT_WRITTEN`, `SEO_VALIDATED`, `PUBLISHED`
 
 - **Endpoints REST** :
   - `POST /api/articles/:id/progress/check` ([server/routes/articles.routes.ts:341-360](../../server/routes/articles.routes.ts)) — reçoit `{ check: string }`, valide via Zod `addCheckSchema`, appelle `addArticleCheck()`.
@@ -126,7 +124,7 @@ Qui crée ou met à jour cette donnée :
 ```mermaid
 flowchart TD
     subgraph Producteurs["Producteurs"]
-        Const["MOTEUR/CERVEAU/REDACTION_CHECKS<br/>shared/constants/workflow-checks.constants.ts"]
+        Const["MOTEUR_CHECKS<br/>shared/constants/workflow-checks.constants.ts"]
         EP1["POST /articles/:id/progress/check<br/>articles.routes.ts:341"]
         EP2["POST /articles/:id/progress/uncheck<br/>articles.routes.ts:362"]
         EP3["PUT /articles/:id/progress<br/>articles.routes.ts:320"]
@@ -198,9 +196,9 @@ flowchart TD
    - Test avec `['moteur:capitaine_locked', 'moteur:lieutenants_locked']` → retour `false` (Lexique manque).
    - Test avec `['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated']` → retour `true`.
 
-4. **`describe('NFR-INT-CHECKS-NAMESPACE — pas de collision')`** :
-   - Vérifier que les 5 checks Moteur, 3 Cerveau, 5 Rédaction utilisent les bons préfixes.
-   - Test : vérifier que `MOTEUR_CHECKS` union avec `CERVEAU_CHECKS` ne produit aucun doublon de nom.
+4. **`describe('NFR-INT-CHECKS-NAMESPACE — préfixe moteur:')`** :
+   - Vérifier que les 5 checks Moteur utilisent tous le préfixe `moteur:`.
+   - Test : tout check sans préfixe `moteur:` lu en DB est ignoré côté affichage.
 
 5. **`describe('article-progress.store — LRU cache eviction')`** (déjà partiellement couvert en [store.test.ts:154-172](../../tests/unit/stores/article-progress.store.test.ts)):
    - Vérifier qu'ajouter 52 articles à progressMap évince l'ancien, garde les 50 les plus récents.

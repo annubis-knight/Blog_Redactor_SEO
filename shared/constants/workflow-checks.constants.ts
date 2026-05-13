@@ -1,14 +1,19 @@
 /**
  * Centralized catalog of workflow-scoped progression checks.
  *
- * Each check is prefixed by the workflow it belongs to (`moteur:*`, `cerveau:*`,
- * `redaction:*`) so the same flat `articles.completed_checks` TEXT[] column can
- * safely host checks from all three workflows without name collisions.
+ * Only the Moteur workflow emits checks (5 constants). The Cerveau (3) and
+ * Rédaction (5) families were removed on 2026-05-13 (cf. DRIFT-002) after the
+ * product decision that progress in those two workflows is better surfaced
+ * directly via business state (`article_strategies.completed_steps` INTEGER
+ * for Cerveau ; article content presence / brief presence for Rédaction)
+ * rather than via opaque workflow checks.
  *
  * Rules:
  * - Always write and read via these constants — never hardcode the raw string.
- * - Adding a new check: add the constant + update the corresponding workflow array.
- * - Removing a check requires a data migration if it was ever persisted.
+ * - Adding a new Moteur check: add the constant + push it to `MOTEUR_CHECKS`.
+ * - Legacy `cerveau:*` / `redaction:*` values that may still sit on old rows
+ *   in `articles.completed_checks` are tolerated on read (silently ignored
+ *   by consumers like `ProgressDots.vue`) but never emitted anymore.
  */
 
 // --- Moteur workflow (5 checks) ---
@@ -26,37 +31,7 @@ export const MOTEUR_CHECKS = [
   MOTEUR_LEXIQUE_VALIDATED,
 ] as const
 
-// --- Cerveau workflow (stratégie de cocon) ---
-export const CERVEAU_STRATEGY_DEFINED = 'cerveau:strategy_defined'
-export const CERVEAU_HIERARCHY_BUILT = 'cerveau:hierarchy_built'
-export const CERVEAU_ARTICLES_PROPOSED = 'cerveau:articles_proposed'
-
-export const CERVEAU_CHECKS = [
-  CERVEAU_STRATEGY_DEFINED,
-  CERVEAU_HIERARCHY_BUILT,
-  CERVEAU_ARTICLES_PROPOSED,
-] as const
-
-// --- Rédaction workflow (brief + éditeur + publication) ---
-export const REDACTION_BRIEF_VALIDATED = 'redaction:brief_validated'
-export const REDACTION_OUTLINE_VALIDATED = 'redaction:outline_validated'
-export const REDACTION_CONTENT_WRITTEN = 'redaction:content_written'
-export const REDACTION_SEO_VALIDATED = 'redaction:seo_validated'
-export const REDACTION_PUBLISHED = 'redaction:published'
-
-export const REDACTION_CHECKS = [
-  REDACTION_BRIEF_VALIDATED,
-  REDACTION_OUTLINE_VALIDATED,
-  REDACTION_CONTENT_WRITTEN,
-  REDACTION_SEO_VALIDATED,
-  REDACTION_PUBLISHED,
-] as const
-
 // --- Aggregate ---
-export const ALL_WORKFLOW_CHECKS = [
-  ...MOTEUR_CHECKS,
-  ...CERVEAU_CHECKS,
-  ...REDACTION_CHECKS,
-] as const
+export const ALL_WORKFLOW_CHECKS = [...MOTEUR_CHECKS] as const
 
 export type WorkflowCheck = typeof ALL_WORKFLOW_CHECKS[number]
