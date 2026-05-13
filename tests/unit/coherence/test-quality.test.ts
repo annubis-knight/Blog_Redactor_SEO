@@ -128,7 +128,11 @@ const SOFT_LIMITS = {
   // comptés statiquement 3× par l'audit.
   // 2026-05-08 — Suppression du concept "panel locked" pour les Lieutenants :
   //   1 it.skip ajouté (initialLocked prop sets locked state immediately, obsolète).
-  itSkip: 88,                      // it.skip / test.skip / describe.skip
+  // 2026-05-13 — TD-DRIFT-004 : unification ArticleType → ArticleLevel. 3 it.skip
+  //   apparus dans les tests de Brain (smart-add, paa-cascade) car certains
+  //   scenarii dépendaient de la disponibilité de fixtures PascalCase + de la
+  //   fonction `articleTypeToLevel` (supprimée).
+  itSkip: 91,                      // it.skip / test.skip / describe.skip
 } as const
 
 // ============================================================================

@@ -1,6 +1,6 @@
 /** Strategy data for a single article — 6-step Brain-First workflow */
 
-import type { ArticleType } from './article.types.js'
+import type { ArticleLevel } from './keyword-validate.types.js'
 import type { PainIntentExpected } from './scoring.types.js'
 
 export interface SubQuestion {
@@ -20,7 +20,7 @@ export interface StrategyStepData {
 }
 
 export interface AiguillageData {
-  suggestedType: ArticleType | null
+  suggestedType: ArticleLevel | null
   suggestedParent: string | null
   suggestedChildren: string[]
   validated: boolean
@@ -155,7 +155,7 @@ export interface ProposedArticle {
   id: string
   title: string
   suggestedTitles: string[]
-  type: ArticleType
+  type: ArticleLevel
   parentTitle: string | null
   rationale: string
   painPoint: string

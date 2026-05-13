@@ -97,7 +97,7 @@ const ARTICLE: SelectedArticle = {
   id: 64, slug: 'creation-site-web-pilier',
   title: 'Création de site web sur mesure à Toulouse',
   keyword: 'creation site web entreprises Toulouse',
-  painPoint: 'pain', type: 'Pilier',
+  painPoint: 'pain', type: 'pilier',
   locked: false, source: 'proposed',
 } as never as SelectedArticle
 

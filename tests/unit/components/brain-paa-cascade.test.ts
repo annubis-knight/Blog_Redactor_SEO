@@ -96,9 +96,9 @@ function makeEmptyStrategy() {
 
 // Phase 1 JSON response (Pilier + 2 Intermédiaires)
 const PHASE1_JSON = JSON.stringify([
-  { title: 'Pilier SEO Toulouse', type: 'Pilier', parentTitle: null, suggestedKeyword: 'seo entreprises Toulouse', painPoint: 'Visibilité', rationale: 'Fondation' },
-  { title: 'Inter Technique', type: 'Intermédiaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'audit technique site', painPoint: 'Performance', rationale: 'Technique' },
-  { title: 'Inter Contenu', type: 'Intermédiaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'stratégie contenu site', painPoint: 'Contenu', rationale: 'Rédaction' },
+  { title: 'Pilier SEO Toulouse', type: 'pilier', parentTitle: null, suggestedKeyword: 'seo entreprises Toulouse', painPoint: 'Visibilité', rationale: 'Fondation' },
+  { title: 'Inter Technique', type: 'intermediaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'audit technique site', painPoint: 'Performance', rationale: 'Technique' },
+  { title: 'Inter Contenu', type: 'intermediaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'stratégie contenu site', painPoint: 'Contenu', rationale: 'Rédaction' },
 ])
 
 // Phase 2 JSON response (PAA queries per Inter)
@@ -109,10 +109,10 @@ const PHASE2_JSON = JSON.stringify([
 
 // Phase 3 JSON response (Spécialisés)
 const PHASE3_JSON = JSON.stringify([
-  { title: 'Spé Tech 1', type: 'Spécialisé', parentTitle: 'Inter Technique', suggestedKeyword: 'comment optimiser vitesse site professionnel', painPoint: 'Lenteur', rationale: 'Perf' },
-  { title: 'Spé Tech 2', type: 'Spécialisé', parentTitle: 'Inter Technique', suggestedKeyword: 'pourquoi mon site est lent mobile', painPoint: 'Mobile', rationale: 'Responsive' },
-  { title: 'Spé Contenu 1', type: 'Spécialisé', parentTitle: 'Inter Contenu', suggestedKeyword: 'comment rédiger article blog efficace entreprise', painPoint: 'Rédaction', rationale: 'Blog' },
-  { title: 'Spé Contenu 2', type: 'Spécialisé', parentTitle: 'Inter Contenu', suggestedKeyword: 'quelle fréquence publier articles blog entreprise', painPoint: 'Rythme', rationale: 'Planning' },
+  { title: 'Spé Tech 1', type: 'specifique', parentTitle: 'Inter Technique', suggestedKeyword: 'comment optimiser vitesse site professionnel', painPoint: 'Lenteur', rationale: 'Perf' },
+  { title: 'Spé Tech 2', type: 'specifique', parentTitle: 'Inter Technique', suggestedKeyword: 'pourquoi mon site est lent mobile', painPoint: 'Mobile', rationale: 'Responsive' },
+  { title: 'Spé Contenu 1', type: 'specifique', parentTitle: 'Inter Contenu', suggestedKeyword: 'comment rédiger article blog efficace entreprise', painPoint: 'Rédaction', rationale: 'Blog' },
+  { title: 'Spé Contenu 2', type: 'specifique', parentTitle: 'Inter Contenu', suggestedKeyword: 'quelle fréquence publier articles blog entreprise', painPoint: 'Rythme', rationale: 'Planning' },
 ])
 
 // Mock PAA batch result
@@ -264,9 +264,9 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     expect(articles.length).toBe(7) // 1 Pilier + 2 Inter + 4 Spé
 
     const types = articles.map(a => a.type)
-    expect(types.filter(t => t === 'Pilier').length).toBe(1)
-    expect(types.filter(t => t === 'Intermédiaire').length).toBe(2)
-    expect(types.filter(t => t === 'Spécialisé').length).toBe(4)
+    expect(types.filter(t => t === 'pilier').length).toBe(1)
+    expect(types.filter(t => t === 'intermediaire').length).toBe(2)
+    expect(types.filter(t => t === 'specifique').length).toBe(4)
   })
 
   it('falls back gracefully when PAA fetch returns 0 results', async () => {
@@ -324,7 +324,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     // Phase 1 articles should be preserved
     const articles = store.strategy!.proposedArticles
     expect(articles.length).toBe(3) // 1 Pilier + 2 Inter only
-    expect(articles.every(a => a.type !== 'Spécialisé')).toBe(true)
+    expect(articles.every(a => a.type !== 'specifique')).toBe(true)
   })
 
   it('shows stepper with correct phase during generation', async () => {

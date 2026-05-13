@@ -1,4 +1,4 @@
-import type { ArticleType } from './article.types.js'
+import type { ArticleLevel } from './keyword-validate.types.js'
 
 export interface ArticleProgress {
   phase: 'proposed' | 'moteur' | 'redaction' | 'published'
@@ -11,7 +11,7 @@ export interface SelectedArticle {
   slug: string
   title: string
   keyword: string
-  type: ArticleType
+  type: ArticleLevel
   locked: boolean
   source: 'proposed' | 'published'
   painPoint?: string

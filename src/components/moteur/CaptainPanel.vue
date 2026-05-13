@@ -19,7 +19,7 @@
 import { ref, computed, watch, nextTick, onMounted, onUnmounted, onBeforeUnmount } from 'vue'
 import { useDebounceFn } from '@vueuse/core'
 import { marked } from 'marked'
-import { useCapitaineScan, articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
+import { useCapitaineScan } from '@/composables/keyword/useCapitaineScan'
 import { useCompositionCheck } from '@/composables/seo/useCompositionCheck'
 import { useExploredKeywords } from '@/composables/keyword/useExploredKeywords'
 import type { ExploredKeywordEntry } from '@/composables/keyword/useExploredKeywords'
@@ -158,7 +158,7 @@ watch(
 
 const articleLevel = computed<ArticleLevel>(() => {
   if (props.mode === 'libre' || !props.selectedArticle) return 'intermediaire'
-  return articleTypeToLevel(props.selectedArticle.type)
+  return props.selectedArticle.type
 })
 
 const activeKeyword = computed(() => props.selectedArticle?.keyword ?? '')

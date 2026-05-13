@@ -2,22 +2,10 @@ import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ScanResponse, ArticleLevel } from '@shared/types/index.js'
-import type { ArticleType } from '@shared/types/article.types.js'
 import type { RadarCard, KeywordRadarScanResult } from '@shared/types/intent.types.js'
 import { FRENCH_STOPWORDS, extractRoots as extractRootsShared } from '@shared/utils/keyword-roots.js'
 
 export { FRENCH_STOPWORDS, extractRootsShared as extractRoots }
-
-/** Map ArticleType (display) to ArticleLevel (API) */
-const LEVEL_MAP: Record<ArticleType, ArticleLevel> = {
-  'Pilier': 'pilier',
-  'Intermédiaire': 'intermediaire',
-  'Spécialisé': 'specifique',
-}
-
-export function articleTypeToLevel(type: ArticleType): ArticleLevel {
-  return LEVEL_MAP[type] ?? 'intermediaire'
-}
 
 /** Extract root keyword (first 2 significant words) for long-tail keywords (3+ words) — retro-compatible alias */
 export function extractRoot(keyword: string): string | null {

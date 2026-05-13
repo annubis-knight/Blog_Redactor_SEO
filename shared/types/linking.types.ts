@@ -1,4 +1,4 @@
-import type { ArticleType } from './article.types.js'
+import type { ArticleLevel } from './keyword-validate.types.js'
 
 /** A single internal link between two articles */
 export interface InternalLink {
@@ -18,7 +18,7 @@ export interface LinkingMatrix {
 export interface LinkSuggestion {
   targetId: number
   targetTitle: string
-  targetType: ArticleType
+  targetType: ArticleLevel
   suggestedAnchor: string
   reason: string
 }
@@ -36,7 +36,7 @@ export interface OrphanArticle {
   slug: string
   title: string
   cocoonName: string
-  type: ArticleType
+  type: ArticleLevel
 }
 
 /** Cross-cocoon link opportunity */

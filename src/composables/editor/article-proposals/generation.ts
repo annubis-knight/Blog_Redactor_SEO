@@ -116,7 +116,7 @@ export function createGenerationPipeline(deps: {
           const cocoonPaaResult = await cocoonPaaPromise
           const cocoonPaa = cocoonPaaResult[cocoonName.value] ?? []
           if (cocoonPaa.length > 0) {
-            const inters = pilierAndInterArticles.filter(a => a.type === 'Intermédiaire')
+            const inters = pilierAndInterArticles.filter(a => a.type === 'intermediaire')
             for (const inter of inters) {
               paaContext[inter.title] = cocoonPaa
             }

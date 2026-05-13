@@ -94,7 +94,7 @@ function makeArticle(overrides: Partial<ProposedArticle> = {}): ProposedArticle 
   return {
     title: 'Test article',
     suggestedTitles: ['Test article'],
-    type: 'Spécialisé',
+    type: 'specifique',
     parentTitle: null,
     rationale: '',
     painPoint: '',
@@ -114,13 +114,13 @@ function makeArticle(overrides: Partial<ProposedArticle> = {}): ProposedArticle 
 
 function makeWellFormedArticles(): ProposedArticle[] {
   return [
-    makeArticle({ title: 'Pilier SEO Toulouse', type: 'Pilier', parentTitle: null, suggestedKeyword: 'seo entreprises Toulouse' }),
-    makeArticle({ title: 'Inter Technique', type: 'Intermédiaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'audit technique site professionnel' }),
-    makeArticle({ title: 'Inter Contenu', type: 'Intermédiaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'stratégie contenu site professionnel' }),
-    makeArticle({ title: 'Spé Tech 1', type: 'Spécialisé', parentTitle: 'Inter Technique', suggestedKeyword: 'comment optimiser vitesse chargement site professionnel' }),
-    makeArticle({ title: 'Spé Tech 2', type: 'Spécialisé', parentTitle: 'Inter Technique', suggestedKeyword: 'pourquoi mon site est lent sur mobile' }),
-    makeArticle({ title: 'Spé Contenu 1', type: 'Spécialisé', parentTitle: 'Inter Contenu', suggestedKeyword: 'comment rédiger article blog professionnel efficace' }),
-    makeArticle({ title: 'Spé Contenu 2', type: 'Spécialisé', parentTitle: 'Inter Contenu', suggestedKeyword: 'quelle fréquence publier articles blog entreprise' }),
+    makeArticle({ title: 'Pilier SEO Toulouse', type: 'pilier', parentTitle: null, suggestedKeyword: 'seo entreprises Toulouse' }),
+    makeArticle({ title: 'Inter Technique', type: 'intermediaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'audit technique site professionnel' }),
+    makeArticle({ title: 'Inter Contenu', type: 'intermediaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'stratégie contenu site professionnel' }),
+    makeArticle({ title: 'Spé Tech 1', type: 'specifique', parentTitle: 'Inter Technique', suggestedKeyword: 'comment optimiser vitesse chargement site professionnel' }),
+    makeArticle({ title: 'Spé Tech 2', type: 'specifique', parentTitle: 'Inter Technique', suggestedKeyword: 'pourquoi mon site est lent sur mobile' }),
+    makeArticle({ title: 'Spé Contenu 1', type: 'specifique', parentTitle: 'Inter Contenu', suggestedKeyword: 'comment rédiger article blog professionnel efficace' }),
+    makeArticle({ title: 'Spé Contenu 2', type: 'specifique', parentTitle: 'Inter Contenu', suggestedKeyword: 'quelle fréquence publier articles blog entreprise' }),
   ]
 }
 
@@ -241,8 +241,8 @@ describe('BrainPhase — structural warnings (per-article props)', () => {
   it('passes ratio_high warning to Inter with 4+ Spé', async () => {
     const articles = makeWellFormedArticles()
     articles.push(
-      makeArticle({ title: 'Spé Tech 3', type: 'Spécialisé', parentTitle: 'Inter Technique' }),
-      makeArticle({ title: 'Spé Tech 4', type: 'Spécialisé', parentTitle: 'Inter Technique' }),
+      makeArticle({ title: 'Spé Tech 3', type: 'specifique', parentTitle: 'Inter Technique' }),
+      makeArticle({ title: 'Spé Tech 4', type: 'specifique', parentTitle: 'Inter Technique' }),
     )
     const wrapper = mountBrainPhase(articles)
     await flushPromises()
@@ -251,7 +251,7 @@ describe('BrainPhase — structural warnings (per-article props)', () => {
   })
 
   it('shows no_pilier in global banner when no Pilier exists', async () => {
-    const articles = makeWellFormedArticles().filter(a => a.type !== 'Pilier')
+    const articles = makeWellFormedArticles().filter(a => a.type !== 'pilier')
     const wrapper = mountBrainPhase(articles)
     await flushPromises()
     const banner = wrapper.find('[data-testid="structural-warnings"]')
@@ -286,7 +286,7 @@ describe('BrainPhase — Spé grouped by parentTitle', () => {
 
   it('shows orphan Spé in "Non rattachés" group', async () => {
     const articles = makeWellFormedArticles()
-    articles.push(makeArticle({ title: 'Spé Orphelin', type: 'Spécialisé', parentTitle: 'Parent Inconnu' }))
+    articles.push(makeArticle({ title: 'Spé Orphelin', type: 'specifique', parentTitle: 'Parent Inconnu' }))
     const wrapper = mountBrainPhase(articles)
     await flushPromises()
 

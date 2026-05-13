@@ -251,10 +251,10 @@ export function aggregateUsage(total: ApiUsage, section: ApiUsage | null): void 
 }
 
 /** Default target word counts per article type (used as fallback when client/microCtx don't provide one) */
-export const DEFAULT_TARGET_WORDS_BY_TYPE: Record<'Pilier' | 'Intermédiaire' | 'Spécialisé', number> = {
-  'Pilier': 2500,
-  'Intermédiaire': 1800,
-  'Spécialisé': 1200,
+export const DEFAULT_TARGET_WORDS_BY_TYPE: Record<'pilier' | 'intermediaire' | 'specifique', number> = {
+  'pilier': 2500,
+  'intermediaire': 1800,
+  'specifique': 1200,
 }
 export const DEFAULT_TARGET_WORDS_FALLBACK = 2000
 

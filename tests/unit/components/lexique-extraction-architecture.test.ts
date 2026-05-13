@@ -98,7 +98,7 @@ const stubs = {
 }
 
 const baseProps = {
-  selectedArticle: { id: 1, slug: 'article', title: 'Article', keyword: 'seo', painPoint: '', type: 'Pilier', locked: false, source: 'proposed' } as never,
+  selectedArticle: { id: 1, slug: 'article', title: 'Article', keyword: 'seo', painPoint: '', type: 'pilier', locked: false, source: 'proposed' } as never,
   captainKeyword: 'seo',
   articleLevel: 'pilier' as const,
   selectedLieutenants: [],

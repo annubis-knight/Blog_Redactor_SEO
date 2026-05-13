@@ -198,7 +198,7 @@ const mockArticle: SelectedArticle = {
   slug: 'test-article',
   title: 'Test Article',
   keyword: 'seo local',
-  type: 'Pilier',
+  type: 'pilier',
   locked: false,
   source: 'proposed',
 }
@@ -760,7 +760,7 @@ describe('CaptainPanel', () => {
       slug: '',
       title: '',
       keyword: 'seo local',
-      type: 'Intermédiaire',
+      type: 'intermediaire',
       locked: false,
       source: 'proposed',
     }

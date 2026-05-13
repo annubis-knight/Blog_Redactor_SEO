@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, watch } from 'vue'
-import type { Article, ArticleType, SelectedArticle } from '@shared/types/index.js'
+import type { Article, SelectedArticle } from '@shared/types/index.js'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { hasCannibalization as hasCannibalizationPure } from '@/composables/moteur/useCannibalizationDetection'
@@ -30,15 +31,15 @@ const emit = defineEmits<{
   (e: 'select', article: SelectedArticle | null): void
 }>()
 
-const TYPE_ORDER: ArticleType[] = ['Pilier', 'Intermédiaire', 'Spécialisé']
+const TYPE_ORDER: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
 
 interface GroupedArticle {
   id: number; slug: string; title: string; keyword: string
-  keywordLocked: boolean; type: ArticleType; source: 'proposed' | 'published'; painPoint?: string
+  keywordLocked: boolean; type: ArticleLevel; source: 'proposed' | 'published'; painPoint?: string
 }
 
 interface GroupedArticles {
-  type: ArticleType
+  type: ArticleLevel
   articles: GroupedArticle[]
 }
 

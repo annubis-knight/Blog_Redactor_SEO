@@ -1,5 +1,5 @@
 import type { ProposedArticle } from '@shared/types/index.js'
-import type { ArticleType } from './types'
+import type { ArticleLevel } from './types'
 import { buildSingleArticle } from './builders'
 
 /**
@@ -15,7 +15,7 @@ import { buildSingleArticle } from './builders'
  */
 export function parseSingleArticle(
   text: string,
-  fallbackType: ArticleType,
+  fallbackType: ArticleLevel,
 ): ProposedArticle | null {
   const stripped = text.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim()
   try {
@@ -52,7 +52,7 @@ export function extractArticlesFromJson(text: string): ProposedArticle[] {
     try {
       const obj = JSON.parse(raw) as Record<string, unknown>
       if (typeof obj.title === 'string' && obj.title.trim()) {
-        articles.push(buildSingleArticle(obj, 'Spécialisé'))
+        articles.push(buildSingleArticle(obj, 'specifique'))
       }
     } catch { /* skip malformed object */ }
   }
@@ -102,7 +102,7 @@ export function parseArticlesFromSuggestion(suggestion: string): ProposedArticle
     const jsonMatch = suggestion.match(/\[[\s\S]*\]/)
     if (jsonMatch) {
       const rawArticles = JSON.parse(jsonMatch[0]) as Array<Record<string, unknown>>
-      return rawArticles.map(a => buildSingleArticle(a, 'Spécialisé'))
+      return rawArticles.map(a => buildSingleArticle(a, 'specifique'))
     }
   } catch { /* try object-by-object */ }
   return extractArticlesFromJson(suggestion)

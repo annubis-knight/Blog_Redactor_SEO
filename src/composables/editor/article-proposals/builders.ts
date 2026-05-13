@@ -1,7 +1,7 @@
 import type { ProposedArticle } from '@shared/types/index.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { PAIN_INTENT_EXPECTED_VALUES } from '@shared/types/scoring.types.js'
-import type { ArticleType } from './types'
+import type { ArticleLevel } from './types'
 
 /**
  * Normalise une valeur arbitraire en `PainIntentExpected | null`. Utilisé pour
@@ -53,10 +53,10 @@ export function keywordToSlug(keyword: string): string {
  */
 export function buildSingleArticle(
   obj: Record<string, unknown>,
-  fallbackType: ArticleType,
+  fallbackType: ArticleLevel,
 ): ProposedArticle {
-  const validTypes = ['Pilier', 'Intermédiaire', 'Spécialisé'] as const
-  const type = validTypes.includes(obj.type as typeof validTypes[number])
+  const validTypes = ['pilier', 'intermediaire', 'specifique'] as const
+  const type: ArticleLevel = validTypes.includes(obj.type as typeof validTypes[number])
     ? (obj.type as typeof validTypes[number])
     : fallbackType
   const title = String(obj.title ?? '').trim()
@@ -89,7 +89,7 @@ export function buildSingleArticle(
  * Construit un `ProposedArticle` vide (utilisé par "ajouter manuellement").
  * Pure : pas d'effet de bord.
  */
-export function buildEmptyArticle(type: ArticleType): ProposedArticle {
+export function buildEmptyArticle(type: ArticleLevel): ProposedArticle {
   return {
     id: crypto.randomUUID(),
     title: '',

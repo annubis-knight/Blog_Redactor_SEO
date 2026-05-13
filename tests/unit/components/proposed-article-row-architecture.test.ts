@@ -26,7 +26,7 @@ function makeArticle(overrides: Partial<ProposedArticle> = {}): ProposedArticle 
   return {
     title: 'Mon article test',
     suggestedTitles: ['Titre A', 'Titre B', 'Titre C'],
-    type: 'Pilier',
+    type: 'pilier',
     parentTitle: null,
     rationale: '',
     painPoint: '',

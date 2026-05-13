@@ -109,7 +109,7 @@ function makeStrategy(articles: ProposedArticle[] = []) {
 const EXISTING_PILIER: ProposedArticle = {
   title: 'Pilier SEO Toulouse',
   suggestedTitles: ['Pilier SEO Toulouse'],
-  type: 'Pilier',
+  type: 'pilier',
   parentTitle: null,
   rationale: 'Fondation du cocon',
   painPoint: 'Visibilité',
@@ -128,7 +128,7 @@ const EXISTING_PILIER: ProposedArticle = {
 const EXISTING_INTER: ProposedArticle = {
   title: 'Inter Technique',
   suggestedTitles: ['Inter Technique'],
-  type: 'Intermédiaire',
+  type: 'intermediaire',
   parentTitle: 'Pilier SEO Toulouse',
   rationale: 'Aspect technique',
   painPoint: 'Performance',
@@ -146,7 +146,7 @@ const EXISTING_INTER: ProposedArticle = {
 
 const SMART_INTER_RESPONSE = JSON.stringify({
   title: 'Inter Contenu éditorial',
-  type: 'Intermédiaire',
+  type: 'intermediaire',
   parentTitle: 'Pilier SEO Toulouse',
   suggestedKeyword: 'stratégie contenu site professionnel',
   painPoint: 'Pas de stratégie de contenu',
@@ -155,7 +155,7 @@ const SMART_INTER_RESPONSE = JSON.stringify({
 
 const SMART_SPE_RESPONSE = JSON.stringify({
   title: 'Comment rédiger un article optimisé pour Google ?',
-  type: 'Spécialisé',
+  type: 'specifique',
   parentTitle: 'Inter Technique',
   suggestedKeyword: 'comment rédiger article optimisé google entreprise',
   painPoint: 'Ne sait pas rédiger pour le SEO',
@@ -250,7 +250,7 @@ describe('BrainPhase — Smart add article', () => {
       expect(store.strategy!.proposedArticles).toHaveLength(initialCount + 1)
       const added = store.strategy!.proposedArticles[initialCount]
       expect(added.title).toBe('')
-      expect(added.type).toBe('Intermédiaire')
+      expect(added.type).toBe('intermediaire')
     })
   })
 
@@ -275,7 +275,7 @@ describe('BrainPhase — Smart add article', () => {
       expect(body.step).toBe('add-article')
 
       const input = JSON.parse(body.currentInput)
-      expect(input.articleType).toBe('Intermédiaire')
+      expect(input.articleType).toBe('intermediaire')
       expect(input.userInput).toBeUndefined()
 
       const detail = JSON.parse(input.existingArticlesDetail)
@@ -298,7 +298,7 @@ describe('BrainPhase — Smart add article', () => {
       expect(store.strategy!.proposedArticles).toHaveLength(initialCount + 1)
       const added = store.strategy!.proposedArticles[initialCount]
       expect(added.title).toBe('Inter Contenu éditorial')
-      expect(added.type).toBe('Intermédiaire')
+      expect(added.type).toBe('intermediaire')
       expect(added.parentTitle).toBe('Pilier SEO Toulouse')
       expect(added.suggestedKeyword).toBe('stratégie contenu site professionnel')
       expect(added.accepted).toBe(false)
@@ -320,7 +320,7 @@ describe('BrainPhase — Smart add article', () => {
 
       const added = store.strategy!.proposedArticles[initialCount]
       expect(added.title).toBe('Comment rédiger un article optimisé pour Google ?')
-      expect(added.type).toBe('Spécialisé')
+      expect(added.type).toBe('specifique')
       expect(added.parentTitle).toBe('Inter Technique')
     })
 
@@ -344,7 +344,7 @@ describe('BrainPhase — Smart add article', () => {
 
     it('handles response as array (takes first element)', async () => {
       const arrayResponse = JSON.stringify([
-        { title: 'Article A', type: 'Intermédiaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'kw a', painPoint: 'pain a', rationale: 'why a' },
+        { title: 'Article A', type: 'intermediaire', parentTitle: 'Pilier SEO Toulouse', suggestedKeyword: 'kw a', painPoint: 'pain a', rationale: 'why a' },
       ])
 
       mockApiPost.mockImplementation((path: string) => {
@@ -382,7 +382,7 @@ describe('BrainPhase — Smart add article', () => {
       expect(suggestCall).toBeTruthy()
       const parsed = JSON.parse(suggestCall![1].currentInput)
       expect(parsed.userInput).toBe('Les réseaux sociaux pour les artisans')
-      expect(parsed.articleType).toBe('Intermédiaire')
+      expect(parsed.articleType).toBe('intermediaire')
     })
   })
 
@@ -403,7 +403,7 @@ describe('BrainPhase — Smart add article', () => {
       expect(store.strategy!.proposedArticles).toHaveLength(initialCount + 1)
       const added = store.strategy!.proposedArticles[initialCount]
       expect(added.title).toBe('')
-      expect(added.type).toBe('Intermédiaire')
+      expect(added.type).toBe('intermediaire')
     })
 
     it('adds empty article when response is unparseable', async () => {
@@ -422,7 +422,7 @@ describe('BrainPhase — Smart add article', () => {
       expect(store.strategy!.proposedArticles).toHaveLength(initialCount + 1)
       const added = store.strategy!.proposedArticles[initialCount]
       expect(added.title).toBe('')
-      expect(added.type).toBe('Spécialisé')
+      expect(added.type).toBe('specifique')
     })
   })
 
@@ -486,7 +486,7 @@ describe('BrainPhase — Smart add article', () => {
       const emptyArticle: ProposedArticle = {
         title: '',
         suggestedTitles: [],
-        type: 'Intermédiaire',
+        type: 'intermediaire',
         parentTitle: null,
         rationale: '',
         painPoint: '',

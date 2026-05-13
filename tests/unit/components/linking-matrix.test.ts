@@ -21,7 +21,7 @@ function makeArticle(id: number, title: string) {
     id,
     slug: `art-${id}`,
     title,
-    type: 'Pilier' as const,
+    type: 'pilier' as const,
     cocoonId: 1,
     keyword: '',
     painPoint: null,

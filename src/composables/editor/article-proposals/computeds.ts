@@ -1,6 +1,5 @@
 import { computed } from 'vue'
 import { checkKeywordComposition } from '@/composables/seo/useCompositionCheck'
-import { articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
 import type { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { GROUP_COLORS, normalizeTitle } from './builders'
 
@@ -15,16 +14,16 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
   const intermediateTitles = computed(() => {
     if (!store.strategy) return [] as string[]
     return store.strategy.proposedArticles
-      .filter(a => a.type === 'Intermédiaire' && a.title.trim())
+      .filter(a => a.type === 'intermediaire' && a.title.trim())
       .map(a => a.title)
   })
 
   const articleColumns = computed(() => {
     if (!store.strategy) return []
     const cols = [
-      { key: 'pilier', label: 'Pilier', cssClass: 'col-pilier', type: 'Pilier' as const, tooltip: 'Mot-clé : moyenne traîne (3-4 mots), inclure cible + ville.\nTitre : ancrage local naturel, pas de « PME » brut.\nEx : stratégie digitale entreprises Toulouse' },
-      { key: 'inter', label: 'Intermédiaire', cssClass: 'col-inter', type: 'Intermédiaire' as const, tooltip: 'Mot-clé : moyenne traîne (3-4 mots), sans ville.\nTitre : spécifique métier/technique.\nEx : design émotionnel site professionnel' },
-      { key: 'spec', label: 'Spécialisé', cssClass: 'col-spec', type: 'Spécialisé' as const, tooltip: 'Mot-clé : longue traîne (5+ mots), forme question.\nTitre : problème concret, langage du dirigeant.\nEx : comment choisir couleurs site web professionnel' },
+      { key: 'pilier', label: 'Pilier', cssClass: 'col-pilier', type: 'pilier' as const, tooltip: 'Mot-clé : moyenne traîne (3-4 mots), inclure cible + ville.\nTitre : ancrage local naturel, pas de « PME » brut.\nEx : stratégie digitale entreprises Toulouse' },
+      { key: 'inter', label: 'Intermédiaire', cssClass: 'col-inter', type: 'intermediaire' as const, tooltip: 'Mot-clé : moyenne traîne (3-4 mots), sans ville.\nTitre : spécifique métier/technique.\nEx : design émotionnel site professionnel' },
+      { key: 'spec', label: 'Spécialisé', cssClass: 'col-spec', type: 'specifique' as const, tooltip: 'Mot-clé : longue traîne (5+ mots), forme question.\nTitre : problème concret, langage du dirigeant.\nEx : comment choisir couleurs site web professionnel' },
     ]
     return cols.map(col => ({
       ...col,
@@ -39,9 +38,9 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
     const articles = store.strategy.proposedArticles
     const map = new Map<number, Array<{ type: string; message: string }>>()
 
-    const piliers = articles.filter(a => a.type === 'Pilier')
-    const inters = articles.filter(a => a.type === 'Intermédiaire')
-    const specs = articles.filter(a => a.type === 'Spécialisé')
+    const piliers = articles.filter(a => a.type === 'pilier')
+    const inters = articles.filter(a => a.type === 'intermediaire')
+    const specs = articles.filter(a => a.type === 'specifique')
 
     const pilierTitles = new Set(piliers.map(a => normalizeTitle(a.title)))
     const interTitles = new Set(inters.map(a => normalizeTitle(a.title)))
@@ -52,7 +51,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
     }
 
     articles.forEach((article, i) => {
-      if (article.type === 'Intermédiaire') {
+      if (article.type === 'intermediaire') {
         if (!article.parentTitle || !article.parentTitle.trim()) {
           pushWarning(i, 'missing_parent', 'Pas de lien vers le Pilier (parentTitle manquant).')
         } else if (!pilierTitles.has(normalizeTitle(article.parentTitle))) {
@@ -66,7 +65,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
           pushWarning(i, 'ratio_high', `${childCount} Spécialisés rattachés (maximum 3).`)
         }
       }
-      if (article.type === 'Spécialisé') {
+      if (article.type === 'specifique') {
         if (!article.parentTitle || !article.parentTitle.trim()) {
           pushWarning(i, 'missing_parent', 'Pas de lien vers un Intermédiaire (parentTitle manquant).')
         } else if (!interTitles.has(normalizeTitle(article.parentTitle))) {
@@ -81,7 +80,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
   const globalWarnings = computed(() => {
     if (!store.strategy) return []
     const warnings: Array<{ type: string; message: string }> = []
-    const hasPilier = store.strategy.proposedArticles.some(a => a.type === 'Pilier')
+    const hasPilier = store.strategy.proposedArticles.some(a => a.type === 'pilier')
     if (!hasPilier) {
       warnings.push({ type: 'no_pilier', message: 'Aucun article Pilier dans la liste.' })
     }
@@ -91,7 +90,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
   const groupColors = computed(() => {
     if (!store.strategy) return new Map<string, string>()
     const map = new Map<string, string>()
-    const inters = store.strategy.proposedArticles.filter(a => a.type === 'Intermédiaire')
+    const inters = store.strategy.proposedArticles.filter(a => a.type === 'intermediaire')
     inters.forEach((inter, i) => {
       map.set(normalizeTitle(inter.title), GROUP_COLORS[i % GROUP_COLORS.length]!)
     })
@@ -102,7 +101,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
     if (!store.strategy) return []
     const specs = store.strategy.proposedArticles
       .map((a, i) => ({ ...a, originalIndex: i }))
-      .filter(a => a.type === 'Spécialisé')
+      .filter(a => a.type === 'specifique')
 
     const groups: Array<{ parentTitle: string; color: string; articles: typeof specs }> = []
     const groupMap = new Map<string, typeof specs>()
@@ -113,7 +112,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
       groupMap.get(key)!.push(spec)
     }
 
-    const inters = store.strategy.proposedArticles.filter(a => a.type === 'Intermédiaire')
+    const inters = store.strategy.proposedArticles.filter(a => a.type === 'intermediaire')
     for (const inter of inters) {
       const key = normalizeTitle(inter.title)
       const arts = groupMap.get(key)
@@ -139,7 +138,7 @@ export function createArticleComputeds(store: ReturnType<typeof useCocoonStrateg
     const map = new Map<number, ReturnType<typeof checkKeywordComposition>>()
     store.strategy.proposedArticles.forEach((a, i) => {
       if (a.suggestedKeyword.trim().length >= 2) {
-        map.set(i, checkKeywordComposition(a.suggestedKeyword, articleTypeToLevel(a.type)))
+        map.set(i, checkKeywordComposition(a.suggestedKeyword, a.type))
       }
     })
     return map

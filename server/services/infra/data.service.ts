@@ -2,9 +2,10 @@ import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import { measureDb } from '../../utils/db-telemetry.js'
 import { microContextDbSchema } from '../../../shared/schemas/article-micro-context.schema.js'
+import { articleTypeDbToLevel, articleLevelToDbType } from '../../../shared/utils/article-level.js'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type {
   Article,
-  ArticleType,
   ArticleStatus,
   ArticlePhase,
   ArticleKeywords,
@@ -46,8 +47,8 @@ function computeStats(articles: Article[]): CocoonStats {
   const byStatus: CountByStatus = { aRediger: 0, brouillon: 0, publie: 0 }
 
   for (const a of articles) {
-    if (a.type === 'Pilier') byType.pilier++
-    else if (a.type === 'Intermédiaire') byType.intermediaire++
+    if (a.type === 'pilier') byType.pilier++
+    else if (a.type === 'intermediaire') byType.intermediaire++
     else byType.specialise++
 
     if (a.status === 'à rédiger') byStatus.aRediger++
@@ -67,12 +68,14 @@ function computeSiloStats(cocoons: Cocoon[]): SiloStats {
   return computeStats(allArticles)
 }
 
-// Map a DB row to an Article
+// Map a DB row to an Article. La colonne `articles.type` est stockée en
+// PascalCase français (CHECK constraint, cf. server/db/schema.sql) ; on
+// convertit ici vers le canonique code `ArticleLevel` (kebab-case ASCII).
 function rowToArticle(row: Record<string, unknown>): Article {
   return {
     id: row.id as number,
     title: row.titre as string,
-    type: row.type as ArticleType,
+    type: articleTypeDbToLevel(row.type as string),
     slug: extractSlug(row.slug as string),
     topic: (row.topic as string | null) ?? null,
     status: (row.status as ArticleStatus) ?? 'à rédiger',
@@ -414,7 +417,7 @@ export async function addArticlesToCocoon(
   cocoonName: string,
   articles: {
     title: string
-    type: ArticleType
+    type: ArticleLevel
     slug?: string
     suggestedKeyword?: string | null
     painPoint?: string | null
@@ -450,7 +453,9 @@ export async function addArticlesToCocoon(
         nextId,
         cocoonId,
         article.title,
-        article.type,
+        // Conversion canonical → DB : la colonne `articles.type` impose le
+        // format PascalCase français (CHECK constraint).
+        articleLevelToDbType(article.type),
         slug,
         article.suggestedKeyword ?? null,
         article.painPoint ?? null,

@@ -155,8 +155,8 @@ vi.mock('@/services/api.service', () => ({
 
 describe('MoteurContextRecap — ProgressDots integration', () => {
   const suggestedArticles = [
-    { id: 42, title: 'Article Pilier A', type: 'Pilier', slug: 'article-pilier-a', topic: null, status: 'draft', phase: 'generer', completedChecks: [], suggestedKeyword: 'kw1', captainKeywordLocked: null, painPoint: '' },
-    { id: 43, title: 'Article Spécialisé B', type: 'Spécialisé', slug: 'article-specialise-b', topic: null, status: 'draft', phase: 'generer', completedChecks: [], suggestedKeyword: 'kw2', captainKeywordLocked: null, painPoint: '' },
+    { id: 42, title: 'Article Pilier A', type: 'pilier', slug: 'article-pilier-a', topic: null, status: 'draft', phase: 'generer', completedChecks: [], suggestedKeyword: 'kw1', captainKeywordLocked: null, painPoint: '' },
+    { id: 43, title: 'Article Spécialisé B', type: 'specifique', slug: 'article-specialise-b', topic: null, status: 'draft', phase: 'generer', completedChecks: [], suggestedKeyword: 'kw2', captainKeywordLocked: null, painPoint: '' },
   ]
 
   beforeEach(() => {

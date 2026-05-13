@@ -24,7 +24,7 @@ function makeArticle(overrides: Partial<ProposedArticle> = {}): ProposedArticle 
   return {
     title: 'Comment optimiser le SEO local pour PME',
     suggestedTitles: ['Comment optimiser le SEO local pour PME', 'SEO local : guide PME'],
-    type: 'Pilier',
+    type: 'pilier',
     parentTitle: null,
     rationale: 'Article pilier pour le cocon SEO local.',
     painPoint: 'Manque de visibilité Google Maps',

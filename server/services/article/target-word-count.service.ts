@@ -14,11 +14,10 @@
  */
 import { log } from '../../utils/logger.js'
 import { classifyWithTool } from '../external/ai-provider.service.js'
-
-export type ArticleType = 'Pilier' | 'Intermédiaire' | 'Spécialisé'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 
 export interface TargetWordCountInput {
-  articleType: ArticleType
+  articleType: ArticleLevel
   /** Moyenne des wordCount des Top 10 SERP concurrents. Null si pas analysé. */
   competitorsAvgWordCount: number | null
   /** Sommaire structuré (H2/H3) — fortement conseillé pour calibrer la longueur. */
@@ -41,17 +40,17 @@ export interface TargetWordCountResult {
   usage?: import('../external/claude.service.js').ApiUsage
 }
 
-const TYPE_BASE: Record<ArticleType, { min: number; max: number }> = {
-  Pilier: { min: 1800, max: 3500 },
-  Intermédiaire: { min: 1200, max: 2500 },
-  Spécialisé: { min: 800, max: 1500 },
+const TYPE_BASE: Record<ArticleLevel, { min: number; max: number }> = {
+  pilier: { min: 1800, max: 3500 },
+  intermediaire: { min: 1200, max: 2500 },
+  specifique: { min: 800, max: 1500 },
 }
 
 function midpoint(min: number, max: number): number {
   return Math.round((min + max) / 2)
 }
 
-function clampToBounds(value: number, type: ArticleType): number {
+function clampToBounds(value: number, type: ArticleLevel): number {
   const { min, max } = TYPE_BASE[type]
   return Math.max(min, Math.min(max, Math.round(value)))
 }

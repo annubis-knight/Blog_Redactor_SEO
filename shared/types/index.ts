@@ -1,5 +1,4 @@
 export type {
-  ArticleType,
   ArticleStatus,
   ArticlePhase,
   RawArticle,

@@ -122,7 +122,7 @@ defineProps<{
   font-weight: 600;
 }
 
-.orphan-type.Pilier { background: var(--color-badge-blue-bg); color: var(--color-badge-blue-text); }
-.orphan-type.Intermédiaire { background: var(--color-badge-amber-bg); color: var(--color-badge-amber-text); }
-.orphan-type.Spécialisé { background: var(--color-badge-green-bg); color: var(--color-badge-green-text); }
+.orphan-type.pilier { background: var(--color-badge-blue-bg); color: var(--color-badge-blue-text); }
+.orphan-type.intermediaire { background: var(--color-badge-amber-bg); color: var(--color-badge-amber-text); }
+.orphan-type.specifique { background: var(--color-badge-green-bg); color: var(--color-badge-green-text); }
 </style>

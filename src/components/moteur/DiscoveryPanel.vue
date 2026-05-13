@@ -2,7 +2,6 @@
 import { ref, watch, computed, onBeforeUnmount } from 'vue'
 import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useCaptainTriggerStore } from '@/stores/ui/captain-trigger.store'
-import { articleTypeToLevel } from '@/composables/keyword/useCapitaineScan'
 import AiPanel from '@/components/moteur/ai-panel/AiPanel.vue'
 import DiscoveryWordGroupsSidebar from '@/components/moteur/discovery/DiscoveryWordGroupsSidebar.vue'
 import DiscoveryAnalysisResults from '@/components/moteur/discovery/DiscoveryAnalysisResults.vue'
@@ -14,7 +13,7 @@ import { log } from '@/utils/logger'
 import type { DiscoverySource, DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 import type { RadarKeyword } from '@shared/types/intent.types'
 import type { DiscoveryContext } from '@shared/types/discovery-cache.types'
-import type { ArticleType } from '@shared/types/article.types.js'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 
 const props = withDefaults(defineProps<{
   pilierKeyword: string
@@ -184,7 +183,7 @@ function handleKeywordClick(keyword: string) {
     captainTrigger.schedule(
       keyword,
       articleId,
-      articleTypeToLevel((props.articleType as ArticleType) ?? 'Intermédiaire'),
+      (props.articleType as ArticleLevel) ?? 'intermediaire',
       props.articlePainPoint || undefined,
     )
   } else {

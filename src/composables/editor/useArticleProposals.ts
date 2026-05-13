@@ -6,7 +6,7 @@ import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 
-import type { ArticleType } from './article-proposals/types'
+import type { ArticleLevel } from './article-proposals/types'
 import {
   buildEmptyArticle,
   keywordToSlug,
@@ -44,7 +44,7 @@ export function useArticleProposals(params: {
   const truncationWarning = ref<string | null>(null)
   const generationPhase = ref<'idle' | 'structure' | 'paa-queries' | 'paa-fetch' | 'specialises' | 'done' | 'error'>('idle')
   const generationWarning = ref<string | null>(null)
-  const addingArticleType = ref<ArticleType | null>(null)
+  const addingArticleLevel = ref<ArticleLevel | null>(null)
 
   // --- Migrate existing articles: derive slugs + assign IDs + backfill dbId ---
   watch(() => store.strategy?.proposedArticles, (articles) => {
@@ -86,14 +86,14 @@ export function useArticleProposals(params: {
 
   // --- Article CRUD ---
 
-  function addEmptyArticle(type: ArticleType) {
+  function addEmptyArticle(type: ArticleLevel) {
     if (!store.strategy) return
     store.strategy.proposedArticles.push(buildEmptyArticle(type))
   }
 
-  async function addSmartArticle(type: ArticleType, userInput?: string) {
+  async function addSmartArticle(type: ArticleLevel, userInput?: string) {
     if (!store.strategy) return
-    addingArticleType.value = type
+    addingArticleLevel.value = type
 
     try {
       const existingDetail = store.strategy.proposedArticles
@@ -134,7 +134,7 @@ export function useArticleProposals(params: {
       log.error('addSmartArticle failed', { type, error: (err as Error).message })
       addEmptyArticle(type)
     } finally {
-      addingArticleType.value = null
+      addingArticleLevel.value = null
     }
   }
 
@@ -323,7 +323,7 @@ export function useArticleProposals(params: {
     truncationWarning,
     generationPhase,
     generationWarning,
-    addingArticleType,
+    addingArticleLevel,
     topicsLoading: topics.topicsLoading,
     topicsError: topics.topicsError,
     // Computeds

@@ -30,7 +30,7 @@ import ArticleCard from '../../../src/components/dashboard/ArticleCard.vue'
 describe('ArticleCard — opportunity badge', () => {
   const baseArticle = {
     title: 'Comment choisir son agence SEO',
-    type: 'Pilier' as const,
+    type: 'pilier' as const,
     slug: 'comment-choisir-agence-seo',
     topic: null,
     status: 'à rédiger' as const,
@@ -147,7 +147,7 @@ import type { KeywordAuditResult } from '../../../shared/types/index'
 function makeKw(overrides: Partial<KeywordAuditResult> = {}): KeywordAuditResult {
   return {
     keyword: 'test keyword',
-    type: 'Pilier',
+    type: 'pilier',
     status: 'suggested',
     cocoonName: 'Test',
     searchVolume: 100,

@@ -14,7 +14,7 @@ describe('article.schema — rawArticlesDbSchema', () => {
             {
               nom: 'Test Cocoon',
               articles: [
-                { id: 1, titre: 'Article 1', type: 'Pilier', slug: 'https://example.com/pages/article-1', topic: null },
+                { id: 1, titre: 'Article 1', type: 'pilier', slug: 'https://example.com/pages/article-1', topic: null },
               ],
             },
           ],
@@ -54,7 +54,7 @@ describe('article.schema — rawArticlesDbSchema', () => {
   })
 
   it('accepts all valid article types', () => {
-    for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé']) {
+    for (const type of ['pilier', 'intermediaire', 'specifique']) {
       const data = {
         theme: { nom: 'T', description: '' },
         silos: [

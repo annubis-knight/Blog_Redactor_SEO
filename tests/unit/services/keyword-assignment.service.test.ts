@@ -28,11 +28,11 @@ const MOCK_COCOON: Cocoon = {
   name: 'Design Web',
   siloName: 'Web',
   articles: [
-    { id: 1, title: 'Guide du design web', type: 'Pilier', slug: 'guide-design-web', topic: null, status: 'à rédiger' },
-    { id: 2, title: 'Couleurs en web design', type: 'Intermédiaire', slug: 'couleurs-web-design', topic: null, status: 'à rédiger' },
-    { id: 3, title: 'Typographie web', type: 'Intermédiaire', slug: 'typographie-web', topic: null, status: 'à rédiger' },
-    { id: 4, title: 'Micro-interactions CSS', type: 'Spécialisé', slug: 'micro-interactions-css', topic: null, status: 'à rédiger' },
-    { id: 5, title: 'Dark mode design', type: 'Spécialisé', slug: 'dark-mode-design', topic: null, status: 'à rédiger' },
+    { id: 1, title: 'Guide du design web', type: 'pilier', slug: 'guide-design-web', topic: null, status: 'à rédiger' },
+    { id: 2, title: 'Couleurs en web design', type: 'intermediaire', slug: 'couleurs-web-design', topic: null, status: 'à rédiger' },
+    { id: 3, title: 'Typographie web', type: 'intermediaire', slug: 'typographie-web', topic: null, status: 'à rédiger' },
+    { id: 4, title: 'Micro-interactions CSS', type: 'specifique', slug: 'micro-interactions-css', topic: null, status: 'à rédiger' },
+    { id: 5, title: 'Dark mode design', type: 'specifique', slug: 'dark-mode-design', topic: null, status: 'à rédiger' },
   ],
   publishedArticles: [],
   stats: { totalArticles: 5, byType: { pilier: 1, intermediaire: 2, specialise: 2 }, byStatus: { aRediger: 5, brouillon: 0, publie: 0 }, completionPercent: 0 },
@@ -72,10 +72,10 @@ describe('keyword-assignment.service — previewMigration', () => {
     const pilierAssignment = preview.assignments.find(a => a.articleId === 1)
     expect(pilierAssignment).toBeDefined()
     expect(pilierAssignment!.capitaine).toBe('design web')
-    expect(pilierAssignment!.articleType).toBe('Pilier')
+    expect(pilierAssignment!.articleType).toBe('pilier')
 
     // Intermédiaire articles get Moyenne traine keywords
-    const interAssignments = preview.assignments.filter(a => a.articleType === 'Intermédiaire')
+    const interAssignments = preview.assignments.filter(a => a.articleType === 'intermediaire')
     expect(interAssignments).toHaveLength(2)
     // First intermédiaire should get first share of moyenne keywords
     expect(interAssignments[0]!.capitaine).toBeTruthy()
@@ -83,7 +83,7 @@ describe('keyword-assignment.service — previewMigration', () => {
     expect(interAssignments[1]!.capitaine).toBeTruthy()
 
     // Spécialisé articles get Longue traine keywords
-    const specAssignments = preview.assignments.filter(a => a.articleType === 'Spécialisé')
+    const specAssignments = preview.assignments.filter(a => a.articleType === 'specifique')
     expect(specAssignments).toHaveLength(2)
     expect(specAssignments[0]!.capitaine).toBeTruthy()
     expect(specAssignments[1]!.capitaine).toBeTruthy()
@@ -103,8 +103,8 @@ describe('keyword-assignment.service — previewMigration', () => {
     const cocoonWithTwoPiliers: Cocoon = {
       ...MOCK_COCOON,
       articles: [
-        { id: 10, title: 'Article A', type: 'Pilier', slug: 'article-a', topic: null, status: 'à rédiger' },
-        { id: 11, title: 'Article B', type: 'Pilier', slug: 'article-b', topic: null, status: 'à rédiger' },
+        { id: 10, title: 'Article A', type: 'pilier', slug: 'article-a', topic: null, status: 'à rédiger' },
+        { id: 11, title: 'Article B', type: 'pilier', slug: 'article-b', topic: null, status: 'à rédiger' },
       ],
       stats: { totalArticles: 2, byType: { pilier: 2, intermediaire: 0, specialise: 0 }, byStatus: { aRediger: 2, brouillon: 0, publie: 0 }, completionPercent: 0 },
     }
@@ -159,8 +159,8 @@ describe('keyword-assignment.service — applyMigration', () => {
     }))
 
     const assignments = [
-      { articleId: 10, articleTitle: 'A', articleType: 'Pilier', capitaine: 'kw1', lieutenants: ['kw2'], lexique: [] },
-      { articleId: 11, articleTitle: 'B', articleType: 'Intermédiaire', capitaine: 'kw3', lieutenants: [], lexique: [] },
+      { articleId: 10, articleTitle: 'A', articleType: 'pilier', capitaine: 'kw1', lieutenants: ['kw2'], lexique: [] },
+      { articleId: 11, articleTitle: 'B', articleType: 'intermediaire', capitaine: 'kw3', lieutenants: [], lexique: [] },
     ]
 
     const results = await applyMigration(assignments)

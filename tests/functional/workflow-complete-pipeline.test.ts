@@ -59,7 +59,7 @@ vi.mock('../../server/db/cache-helpers', () => ({
 
 import { getCached, slugify } from '../../server/db/cache-helpers'
 import { loadPrompt } from '../../server/utils/prompt-loader'
-import { extractRoots, articleTypeToLevel } from '../../src/composables/keyword/useCapitaineScan'
+import { extractRoots } from '../../src/composables/keyword/useCapitaineScan'
 import { checkKeywordComposition } from '../../shared/composition-rules'
 import type { SerpAnalysisResult, SerpCompetitor } from '../../shared/types/serp-analysis.types'
 import type { PaaQuestion } from '../../shared/types/dataforseo.types'
@@ -69,7 +69,6 @@ import type { PaaQuestion } from '../../shared/types/dataforseo.types'
 // ---------------------------------------------------------------------------
 const CAPTAIN_KEYWORD = 'creation site web entreprises Toulouse'
 const ARTICLE_LEVEL = 'pilier' as const
-const ARTICLE_TYPE = 'Pilier'
 
 // Root keywords from Captain's extractRoots
 const ROOT_KEYWORDS = extractRoots(CAPTAIN_KEYWORD)
@@ -185,9 +184,8 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
   // Phase A: Captain validation (pure functions)
   // -----------------------------------------------------------------------
   describe('Phase A — Captain validation (pure functions)', () => {
-    it('article type maps to correct level', () => {
-      expect(articleTypeToLevel(ARTICLE_TYPE)).toBe(ARTICLE_LEVEL)
-    })
+    // Test 'article type maps to correct level' retiré 2026-05-13 (TD-DRIFT-004) —
+    // `articleTypeToLevel` n'existe plus, le code utilise directement ArticleLevel.
 
     it('captain keyword passes composition check', () => {
       const result = checkKeywordComposition(CAPTAIN_KEYWORD, ARTICLE_LEVEL)
