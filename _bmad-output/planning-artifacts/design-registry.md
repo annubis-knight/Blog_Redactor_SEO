@@ -3771,13 +3771,54 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 **Réf PRD :** ~~FR-RED-CHECKS~~ retirée (cf. DRIFT-002).
 
-**Décision** : entrée retirée en même temps que la FR. Les 5 constantes `REDACTION_BRIEF_VALIDATED`, `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED` ont été supprimées de `shared/constants/workflow-checks.constants.ts`. L'unique émetteur historique (`BriefStructureStep.vue` ligne 101) a été débranché. Le gating UI `ArticleWorkflowView.vue` qui dérivait `briefDone` de `REDACTION_BRIEF_VALIDATED` est lui aussi retiré — la navigation entre les deux étapes du flux Rédaction (Brief & Structure / Article) devient libre, sans verrouillage cross-step. (Chantier `chore/remove-cerveau-redaction-checks`, 2026-05-13.)
+**Décision** : entrée retirée en même temps que la FR. Les 5 constantes `REDACTION_BRIEF_VALIDATED`, `REDACTION_OUTLINE_VALIDATED`, `REDACTION_CONTENT_WRITTEN`, `REDACTION_SEO_VALIDATED`, `REDACTION_PUBLISHED` ont été supprimées de `shared/constants/workflow-checks.constants.ts`. L'unique émetteur historique (`BriefStructureStep.vue` ligne 101) a été débranché. Le gating UI `ArticleWorkflowView.vue` qui dérivait `briefDone` de `REDACTION_BRIEF_VALIDATED` est remplacé par un nouvel invariant lisible directement sur l'état Cerveau (cf. `DESIGN-RED-GEN-UNLOCK`). (Chantier `chore/remove-cerveau-redaction-checks`, 2026-05-13.)
 
 **Conséquence sur les flux** : `articles.completed_checks` ne porte plus que des valeurs `moteur:*` côté écriture. Les valeurs `redaction:*` éventuellement persistées sur d'anciens articles sont tolérées en lecture (ignorées par `ProgressDots.vue`).
 
 **Voir aussi**
 - `DRIFT-002` (historique de la décision).
 - `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue restant (Moteur uniquement).
+- `DESIGN-RED-GEN-UNLOCK` — nouveau gating cross-workflow Cerveau → Rédaction.
+
+---
+
+### DESIGN-RED-GEN-UNLOCK
+
+**Réf PRD :** [FR-RED-GEN-UNLOCK](./prd.md#fr-red-gen-unlock--la-génération-darticle-ne-se-déverrouille-quune-fois-le-cerveau-complet)
+
+**Refs code**
+- [src/stores/strategy/strategy.store.ts](../../src/stores/strategy/strategy.store.ts):22 — getter `isComplete` (computed) qui retourne `(strategy.value?.completedSteps ?? 0) >= 6`. Source du signal.
+- [src/views/ArticleWorkflowView.vue](../../src/views/ArticleWorkflowView.vue) — hydrate `useStrategyStore.fetchStrategy(articleId)` au mount/change-article et dérive le `locked` de l'étape `Article` de la nav workflow depuis `strategyStore.isComplete`.
+
+**Endpoints**
+- `GET /api/strategy/:articleId` (lecture de `article_strategies`) — alimente `strategy.value.completedSteps` (INTEGER 0-6, cf. `DESIGN-INFRA-ARTICLE-STRATEGIES`).
+
+**Tables consommées**
+- `article_strategies(article_id PK, data JSONB, completed_steps INTEGER DEFAULT 0, updated_at)` — la colonne `completed_steps` est le compteur d'avancement Cerveau article-scoped (cf. `DRIFT-003`).
+
+**Flux UI**
+
+*Lecture* : au mount de `ArticleWorkflowView`, `strategyStore.fetchStrategy(articleId)` hydrate la stratégie article. La nav workflow re-évalue `redactionNavSteps` à chaque mutation de `strategyStore.strategy` — l'étape `Article` reçoit `locked: !strategyStore.isComplete` + un `hint` explicite quand verrouillée.
+
+*Réactivité cross-workflow* : si l'utilisateur passe du Cerveau à la Rédaction sans recharger la page (Vue Router navigation), `ArticleWorkflowView` se remonte → re-fetch de la stratégie → le déverrouillage est appliqué dans le même tick que le mount.
+
+**Stores Pinia**
+- `useStrategyStore` — porte `strategy: ArticleStrategy | null` + getter `isComplete`. SSOT du gating.
+
+**Décisions d'architecture**
+- **Signal réactif, pas check workflow** : on lit `completed_steps INTEGER` directement plutôt qu'un check `cerveau:strategy_defined` (retiré 2026-05-13, cf. DRIFT-002). Le compteur évolue à chaque validation d'étape — pas besoin d'émettre un check séparé.
+- **Article-scoped uniquement** : on vérifie la stratégie article, pas la stratégie cocon. La stratégie cocon est utilisée comme fallback pour les variables de prompt, mais l'invariant minimum pour lancer la génération est que l'article ait sa propre stratégie complète.
+- **Pas d'éditeur libre concerné** : `ArticleEditorView` (URL `/article/:id/editor`) ne fait pas partie du workflow guidé et reste librement accessible — c'est l'usage hors pipeline.
+
+**Critères d'acceptation techniques**
+- AC.REDGU.1 : au mount de `ArticleWorkflowView`, `useStrategyStore.fetchStrategy(articleId)` est appelée exactement une fois par changement d'article.
+- AC.REDGU.2 : `redactionNavSteps[id=='article'].locked === !strategyStore.isComplete` à tout instant.
+- AC.REDGU.3 : une mutation de `strategyStore.strategy.completedSteps` (par exemple via le Cerveau) propage le déverrouillage sans intervention utilisateur (pas de reload).
+
+**Voir aussi**
+- `DESIGN-INFRA-ARTICLE-STRATEGIES` — porte la table backing.
+- `DESIGN-CER-STEPS-ARTICLE` — producteur des 6 étapes Cerveau.
+- `DRIFT-002` — historique du remplacement des checks Rédaction par ce gating.
 
 ---
 

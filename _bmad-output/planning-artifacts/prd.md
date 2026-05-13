@@ -2607,6 +2607,22 @@ Promesse historique de 5 checks `redaction:*` validables manuellement (brief, so
 
 ---
 
+#### FR-RED-GEN-UNLOCK — La génération d'article ne se déverrouille qu'une fois le Cerveau complet
+
+L'étape de génération de l'article (saisie / génération IA du contenu) **n'est ouverte qu'une fois la stratégie Cerveau de l'article entièrement remplie**. Tant que l'utilisateur n'a pas validé les 6 étapes du Cerveau (cible, douleur, aiguillage, angle, promesse, CTA), le bouton qui mène à l'éditeur est désactivé avec un message explicite — l'app guide vers le Cerveau plutôt que de laisser produire un article sans contexte stratégique.
+
+**Critères d'acceptation**
+- Quand l'utilisateur ouvre un article sans stratégie Cerveau complète, la 2ᵉ étape du workflow Rédaction (« Article ») est visuellement désactivée et accompagnée d'un hint explicite (« Complétez le Cerveau pour générer cet article »).
+- Dès que la 6ᵉ étape Cerveau est validée, l'étape « Article » se déverrouille **dans le même tick** — pas besoin de recharger la page.
+- Si l'utilisateur revient en arrière et dé-valide une étape Cerveau (passe de 6 à 5 étapes complétées), la génération se reverrouille immédiatement.
+- L'éditeur libre (accès direct par l'URL `/article/:id/editor`, hors workflow guidé) n'est pas concerné — il reste librement accessible, c'est l'usage hors pipeline.
+
+> **En situation.** Lundi matin, l'utilisateur crée un nouvel article dans le cocon « Rupture conventionnelle ». Il clique sur « Rédaction » : la barre de progression affiche **Brief & Structure → Article (🔒)**. Survol du verrou : « Complétez le Cerveau pour générer cet article ». Il bascule sur le Cerveau, valide ses 6 étapes (cible, douleur, aiguillage, angle, promesse, CTA), revient sur la Rédaction. Le verrou a disparu, il peut cliquer sur l'étape Article et lancer la génération IA.
+
+→ Conception : [DESIGN-RED-GEN-UNLOCK](./design-registry.md#design-red-gen-unlock)
+
+---
+
 #### FR-RED-PANELS-LAYOUT — Toolbar et panneaux d'analyse redimensionnables
 
 L'écran de rédaction expose en permanence une **toolbar de panneaux d'analyse** à droite de l'éditeur. Cinq boutons toggle permettent de basculer entre cinq panneaux : SEO, GEO (scoring spécifique pour l'optimisation pour les moteurs génératifs / IA / réponses), Maillage (liens internes), Blocs (bibliothèque de blocs dynamiques — éditeur libre uniquement), IA Brief (analyse stratégique — workflow uniquement). Un seul panneau est visible à la fois ; le panneau actif est rendu dans une zone latérale **redimensionnable** (l'utilisateur peut élargir ou rétrécir la zone à la souris). Tant qu'aucun article n'est généré, les panneaux SEO / GEO / Maillage / Blocs sont visibles mais désactivés (boutons grisés avec libellé explicite) — l'IA Brief reste accessible parce qu'il analyse le brief, pas le contenu. La touche Échap ferme le panneau ouvert.

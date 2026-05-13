@@ -9,6 +9,7 @@ import { useEditorStore } from '@/stores/article/editor.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
+import { useStrategyStore } from '@/stores/strategy/strategy.store'
 import { apiGet } from '@/services/api.service'
 import { usePanelToggle } from '@/composables/ui/usePanelToggle'
 import { useSeoScoring } from '@/composables/seo/useSeoScoring'
@@ -45,6 +46,7 @@ const editorStore = useEditorStore()
 const keywordsStore = useKeywordsStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const cocoonsStore = useCocoonsStore()
+const strategyStore = useStrategyStore()
 
 const cocoonId = route.params.cocoonId as string | undefined
 
@@ -247,6 +249,11 @@ onMounted(async () => {
     briefKeywordsList: briefStore.briefData?.keywords.map(k => k.keyword).join(', '),
   })
 
+  // FR-RED-GEN-UNLOCK : hydrate la stratégie Cerveau pour piloter le verrouillage
+  // de l'étape « Article » (génération). Pas await — le gating se met à jour
+  // réactivement dès que `strategyStore.strategy` est posé.
+  void strategyStore.fetchStrategy(id)
+
   // Hydrate outline & editor stores with existing saved content
   try {
     log.info('[workflow] Loading saved article content', { articleId: id })
@@ -275,9 +282,11 @@ onMounted(async () => {
 })
 
 // --- AppNavbar integration ---
-// Rédaction = 2 linear steps. Navigation libre entre les deux : depuis le
-// retrait des checks `redaction:*` (2026-05-13, cf. DRIFT-002), il n'y a plus
-// de gating cross-step côté Rédaction.
+// Rédaction = 2 linear steps. L'étape « Article » est verrouillée tant que
+// la stratégie Cerveau n'est pas complète (6 étapes validées) — cf.
+// FR-RED-GEN-UNLOCK. Les checks `redaction:*` historiques ont été retirés
+// 2026-05-13 (cf. DRIFT-002) ; le signal de déverrouillage est désormais lu
+// directement sur `article_strategies.completed_steps` via useStrategyStore.
 const workflowNavStore = useWorkflowNavStore()
 
 const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = [
@@ -285,15 +294,19 @@ const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = 
   { id: 'article',         label: 'Article' },
 ]
 
-const redactionNavSteps = computed<NavItem[]>(() =>
-  REDACTION_STEPS.map((s, idx) => ({
+const redactionNavSteps = computed<NavItem[]>(() => {
+  const cerveauComplete = strategyStore.isComplete
+  return REDACTION_STEPS.map((s, idx) => ({
     id: s.id,
     label: s.label,
     number: idx + 1,
     done: false,
-    locked: false,
-  })),
-)
+    locked: s.id === 'article' && !cerveauComplete,
+    hint: s.id === 'article' && !cerveauComplete
+      ? 'Complétez le Cerveau pour générer cet article'
+      : undefined,
+  }))
+})
 
 watch(
   [redactionNavSteps, currentStep],
