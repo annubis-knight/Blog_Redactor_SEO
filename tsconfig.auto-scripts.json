@@ -1,0 +1,18 @@
+// Type-check scopé du CLI auto-article + ses tests, SANS toucher au gate
+// `npm run type-check` existant (qui ne couvre pas scripts/). Invoqué via
+// `npm run auto:typecheck`.
+{
+  "extends": "@tsconfig/node24/tsconfig.json",
+  "compilerOptions": {
+    "module": "preserve",
+    "moduleResolution": "bundler",
+    "types": ["node"],
+    "noEmit": true,
+    "strict": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.auto-scripts.tsbuildinfo"
+  },
+  "include": [
+    "scripts/auto-article/**/*.ts",
+    "tests/unit/scripts/auto-article/**/*.ts"
+  ]
+}

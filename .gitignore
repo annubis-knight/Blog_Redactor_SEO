@@ -66,3 +66,6 @@ data/_archive/
 
 # DB backups (volumineux, à conserver localement uniquement)
 data/_backup_*.sql
+
+# Sorties du CLI auto:article
+_auto-output/

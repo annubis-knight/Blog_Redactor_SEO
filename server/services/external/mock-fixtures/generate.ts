@@ -82,6 +82,30 @@ registerStreamFixture(
   },
 )
 
+// generate/outline — sommaire structuré (JSON { sections: [{level,title}] })
+registerStreamFixture(
+  'generate-outline',
+  ({ userPrompt }) => /sommaire pour l['’]article|g[eé]n[eè]re le sommaire/i.test(userPrompt),
+  ({ userPrompt }) => {
+    const titleMatch = userPrompt.match(/article\s+"([^"]{3,120})"/i)
+    const title = titleMatch?.[1]?.trim() ?? 'Article'
+    const kwMatch = userPrompt.match(/mot-cl[eé]\s*:\s*([^)\n.]{2,60})/i)
+    const kw = kwMatch?.[1]?.trim() ?? title
+    const outline = {
+      sections: [
+        { level: 1, title },
+        { level: 2, title: `Comprendre ${kw}` },
+        { level: 3, title: `Pourquoi ${kw} compte pour une TPE locale` },
+        { level: 2, title: `Mettre en place ${kw} étape par étape` },
+        { level: 3, title: 'Les actions prioritaires' },
+        { level: 2, title: `Mesurer les résultats de ${kw}` },
+        { level: 2, title: 'Conclusion et prochaines étapes' },
+      ],
+    }
+    return JSON.stringify(outline)
+  },
+)
+
 // generate/article — section par section
 registerStreamFixture(
   'generate-article-section',

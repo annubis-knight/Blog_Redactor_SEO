@@ -52,6 +52,41 @@ tracking_system: file-system
 story_location: _bmad-output/implementation-artifacts/_archive
 
 development_status:
+  # Epic auto-article-pipeline — CLI de génération automatique (2026-07-18) ✅
+  # epic: _bmad-output/implementation-artifacts/epic-auto-article-pipeline.md
+  # doc: docs/auto-article-cli.md
+  # CLI `npm run auto:article` : sujet vague → Cerveau → (Gate 1) → Moteur →
+  # (Gate 2) → Rédaction → export HTML. Pilote l'API HTTP (serveur dev requis),
+  # mode mock|real, --config (non-interactif), --resume (idempotent).
+  # 6 stories : (1) socle CLI+SSE+orchestrateur, (2) Cerveau + endpoint additif
+  # POST /generate/auto-intake, (3) Moteur Explorer (radar generate+scan),
+  # (4) Moteur Valider (scan Capitaine + serp/analyze + tfidf + PUT
+  # /articles/:id/keywords + 5 checks moteur:*), (5) Rédaction (outline+article
+  # SSE, meta, export _auto-output/), (6) --resume + doc + clôture.
+  # Écarts : Lieutenants dérivés des candidats Radar (pas propose-lieutenants) ;
+  # persistance via PUT /articles/:id/keywords.
+  # Fixtures mock ajoutées : auto-intake, auto-placement, generate-outline,
+  # generate-meta-priority.
+  #
+  # Livré en complément (2026-07-19) :
+  #   - Arbre SEO affiché dès le lancement (silos ◆ / cocons ● peuplé ○ vide,
+  #     composition P·I·S) + gate d'emplacement : le script PROPOSE le cocon et
+  #     le niveau, l'utilisateur valide. Aucune écriture avant validation
+  #     (commitCerveau). Endpoint additif POST /generate/placement-suggest.
+  #   - P1-1 rapport de coût réel (GET /api/cost-status) : IA + SEO + total.
+  #   - P2-1 détection de cannibalisation (Jaccard sur les Capitaines du thème),
+  #     jamais bloquante, confirmation explicite ≥ 85 % en interactif.
+  #
+  # 147 tests unitaires (heuristiques pures TDD strict). Validé E2E mock + réel.
+  # Banc d'essai placement en mode réel : 7 sujets, 3/7 → 7/7 après 4 correctifs
+  # (biais du contexte business, morphologie FR, scores transmis à l'IA,
+  # champ outOfScope). Coût réel mesuré : ~$0.35/run complet.
+  #
+  # Audit + backlog : audit-auto-article-pipeline.md (26 étapes ; P2-2, P2-3 et
+  # les P3 restent ouverts). Non-régression sur le flux manuel prouvée par
+  # protocole stash/pop (mêmes échecs préexistants avant/après, liste identique).
+  epic-auto-article-pipeline: done
+
   # Sprint keyword-metrics-decomposition (2026-05-09) ✅
   # tech-spec: _archive/tech-spec-keyword-metrics-decomposition.md
   # branche : feat/keyword-metrics-decomposition (mergée dans main)

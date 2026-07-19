@@ -31,6 +31,8 @@
     "check:arch": "depcruise shared server src --config .dependency-cruiser.cjs --no-progress",
     "check:health": "run-s lint type-check check:cycles check:dead check:arch",
     "test:mutation": "stryker run",
+    "auto:article": "tsx scripts/auto-article/index.ts",
+    "auto:typecheck": "tsc -p tsconfig.auto-scripts.json",
     "prepare": "husky",
     "postinstall": "patch-package"
   },

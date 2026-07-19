@@ -27,6 +27,7 @@ import keywordAiPanelRoutes from './routes/keyword-ai-panel.routes.js'
 import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
 import paaRoutes from './routes/paa.routes.js'
 import runtimeModeRoutes from './routes/runtime-mode.routes.js'
+import costStatusRoutes from './routes/cost-status.routes.js'
 
 const app = express()
 const PORT = process.env.PORT || 3400
@@ -55,6 +56,7 @@ app.get('/api/health', (_req, res) => {
 })
 
 // API routes
+app.use('/api', costStatusRoutes)
 app.use('/api', cocoonRoutes)
 app.use('/api', keywordRoutes)
 app.use('/api', articlesRoutes)
