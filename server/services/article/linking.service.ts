@@ -96,6 +96,48 @@ export function getLinksForArticle(
   }
 }
 
+/**
+ * Meilleure ancre pour lier `title` depuis `content` : le plus long groupe de
+ * mots **contigus** du titre effectivement présent dans le contenu.
+ *
+ * Sans ça, `suggestLinks` renvoyait une ancre faite des mots du titre présents
+ * mais **collés** (`matchingWords.join(' ')`) — une chaîne qui n'existe presque
+ * jamais telle quelle dans le texte. Résultat : côté éditeur comme côté CLI,
+ * `indexOf(anchor)` échouait et le lien ne se posait jamais. Cette fonction
+ * garantit une ancre réellement présente, donc plaçable.
+ */
+const ANCHOR_STOPWORDS = new Set([
+  'de', 'la', 'le', 'les', 'du', 'des', 'un', 'une', 'a', 'au', 'aux', 'et', 'ou',
+  'en', 'pour', 'sur', 'dans', 'par', 'ce', 'ces', 'cet', 'cette', 'son', 'sa', 'ses',
+  'votre', 'vos', 'notre', 'nos', 'leur', 'leurs', 'qui', 'que', 'quoi', 'dont', 'se',
+  'ne', 'pas', 'plus', 'avec', 'sans', 'mais', 'donc', 'or', 'ni', 'car', 'the', 'of', 'to',
+])
+
+const DIACRITICS = new RegExp('[\\u0300-\\u036f]', 'g')
+const stripAccents = (w: string): string => w.toLowerCase().normalize('NFD').replace(DIACRITICS, '')
+const isSubstantive = (w: string): boolean => /[a-zà-ÿ0-9]/i.test(w) && !ANCHOR_STOPWORDS.has(stripAccents(w))
+
+export function bestContiguousAnchor(title: string, content: string): string | null {
+  const contentLower = content.toLowerCase()
+  const words = title.split(/\s+/).filter((w) => w.length > 0)
+  // n-grams du plus long (max 6 mots) au plus court, minimum 2 mots : une ancre
+  // d'un seul mot est trop générique (« comment », « design ») et gonfle la
+  // répétition d'ancres. Parcours gauche→droite à longueur égale.
+  for (let len = Math.min(6, words.length); len >= 2; len--) {
+    for (let i = 0; i + len <= words.length; i++) {
+      const slice = words.slice(i, i + len)
+      // Bords substantiels : une ancre ne doit ni commencer ni finir par un mot
+      // vide (« de la », « pour le »…) — c'est ce qui produisait des ancres
+      // inutiles. Elle reste plaçable puisque le n-gram existe dans le contenu.
+      if (!isSubstantive(slice[0]!) || !isSubstantive(slice[len - 1]!)) continue
+      const phrase = slice.join(' ')
+      if (phrase.length < 5) continue
+      if (contentLower.includes(phrase.toLowerCase())) return phrase
+    }
+  }
+  return null
+}
+
 /** Suggest internal links for an article based on content analysis */
 export async function suggestLinks(articleId: number, content: string): Promise<LinkSuggestion[]> {
   log.info(`Suggesting links for article ${articleId}`)
@@ -138,11 +180,16 @@ export async function suggestLinks(articleId: number, content: string): Promise<
         const hierarchyValid = isValidHierarchyLink(sourceType!, article.type)
 
         if (hierarchyValid) {
+          // L'ancre doit exister telle quelle dans le contenu, sinon le lien
+          // est impossible à poser (côté éditeur comme CLI). Pas d'ancre
+          // plaçable → on n'émet pas une suggestion morte.
+          const anchor = bestContiguousAnchor(article.title, content)
+          if (!anchor) continue
           suggestions.push({
             targetId: article.id,
             targetTitle: article.title,
             targetType: article.type,
-            suggestedAnchor: matchingWords.slice(0, 4).join(' '),
+            suggestedAnchor: anchor,
             reason: isSameCocoon
               ? `Même cocon (${cocoon.name}), hiérarchie ${sourceType} → ${article.type}`
               : `Cross-cocon (${cocoon.name}), mots communs détectés`,

@@ -212,9 +212,11 @@ describe('data.service — getTheme', () => {
 })
 
 describe('data.service — getSilos', () => {
-  it('returns 3 silos', async () => {
+  it('returns at least the seeded silos', async () => {
+    // Robuste à la croissance de l'arbre : l'utilisateur peut ajouter des silos
+    // (POST /api/silos), on n'ancre donc plus un nombre figé.
     const silos = await getSilos()
-    expect(silos).toHaveLength(3)
+    expect(silos.length).toBeGreaterThanOrEqual(3)
   })
 
   it('each silo has id, nom, description, cocons, and stats', async () => {

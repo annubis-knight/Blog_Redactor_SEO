@@ -272,6 +272,46 @@ l'unité), et le lot a absorbé un run mis au rebut plus deux reprises après é
 > octets NUL, les articles ont été repris sans repayer les phases déjà faites
 > (0,43 $ au lieu de 0,85 $ quand seule la Rédaction restait).
 
+## Maillage interne — parité de traçabilité (2026-07-19)
+
+Question soulevée après le lot : un article auto laisse-t-il les mêmes traces
+qu'un article manuel ? Vérification par lecture du code — parité **partielle**.
+
+**Traçé à l'identique** : `article_keywords` (capitaine, lieutenants, lexique,
+`hnStructure`), `captain_explorations`, `article_strategies`, contenu/meta/statut.
+
+**Non traçé par l'auto** (constaté) :
+- `internal_links` — **le maillage interne** : l'auto n'appelait jamais `/links`.
+  Conséquence directe : les 6 piliers ressortaient tous **orphelins** dans la
+  matrice, et leur corps ne contenait aucun `<a>` vers les articles frères.
+- `lieutenant_explorations` / `radar_explorations` — l'historique riche
+  d'exploration (non bloquant : l'article fonctionne, seule la provenance manque).
+
+**Comblé — le maillage** (`phases/linking.ts`, `heuristics/inject-internal-links.ts`,
+flag `--relink`) : après la Rédaction (et rétroactivement), on réutilise le
+**même service déterministe** que le manuel (`/links/suggest`, zéro IA) pour poser
+les `<a>` **et** écrire la matrice, exactement comme `useInternalLinking`.
+
+**Deux bugs du service partagé `suggestLinks`, corrigés — ils affectaient aussi
+le flux manuel :**
+1. L'ancre était fabriquée en **collant** les mots du titre présents
+   (`matchingWords.join(' ')`) — une chaîne quasi jamais contiguë, donc
+   `indexOf(anchor)` échouait et **aucun lien ne se posait** (éditeur comme CLI).
+   Mesuré sur les piliers : **10 suggestions → 0 posable**. `bestContiguousAnchor`
+   renvoie le plus long n-gram du titre réellement présent → **8 posables**.
+2. Ces ancres étaient en plus des mots vides (« de la »). Ajout de **bords
+   substantiels** + **minimum 2 mots** : ancres exploitables (« stratégie
+   digitale ») au lieu de bruit.
+
+**Résultat rétroactif** : 6-8 liens par pilier (36 au total, 1 seule alerte de
+diversité). Les piliers **restent orphelins** (aucun lien entrant) — attendu et
+signalé à l'utilisateur : un pilier se fait mailler par ses enfants, qui
+n'existent pas encore dans ces cocons neufs.
+
+> **Limite assumée** : l'ancre reste un n-gram lexical du titre présent dans le
+> texte ; des fragments grammaticaux subsistent (« clients vous »). Un ancrage
+> par mot-clé Capitaine de la cible serait plus propre — piste future.
+
 ## Réserves hors périmètre CLI
 
 - **Score de Pertinence produit non-discriminant** : en run réel, les 8 candidats

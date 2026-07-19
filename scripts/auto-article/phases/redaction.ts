@@ -16,6 +16,7 @@ import type { PhaseDeps } from '../deps.js'
 import type { ApiUsageLike, AutoRunContext, SseEvent } from '../types.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
+import { runInternalLinking } from './linking.js'
 
 const OUTPUT_DIR = '_auto-output'
 
@@ -131,10 +132,13 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       metaTitle: ctx.metaTitle,
       metaDescription: ctx.metaDescription,
     })
-    // 5. Statut brouillon
+    // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens.
+    await runInternalLinking(deps, ctx.articleId)
+
+    // 6. Statut brouillon
     await client.apiPut(`/articles/${ctx.articleId}/status`, { status: 'brouillon' })
 
-    // 6. Export HTML sur disque
+    // 7. Export HTML sur disque (recharge le contenu, liens compris)
     await exportArticle(deps, ctx)
   }
 }

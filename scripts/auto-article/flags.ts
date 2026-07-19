@@ -23,9 +23,11 @@ export interface ParsedFlags {
   cocoon?: string
   /** Impose le niveau de l'article. */
   level?: CanonicalArticleType
+  /** Ne relance QUE le maillage interne sur un article existant. */
+  relink?: number
 }
 
-const VALUE_FLAGS = new Set(['--mode', '--config', '--resume', '--port', '--cocoon', '--level'])
+const VALUE_FLAGS = new Set(['--mode', '--config', '--resume', '--port', '--cocoon', '--level', '--relink'])
 
 const LEVELS: CanonicalArticleType[] = ['pilier', 'intermediaire', 'specifique']
 
@@ -75,6 +77,9 @@ export function parseArgs(argv: string[]): ParsedFlags {
         break
       case '--level':
         flags.level = assertLevel(value)
+        break
+      case '--relink':
+        flags.relink = assertPositiveInt(key, value)
         break
       default:
         throw new Error(`Argument inconnu : ${arg}`)

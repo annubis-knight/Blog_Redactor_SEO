@@ -39,6 +39,7 @@ contexte business optionnel.
 | `--cocoon=<nom>` | **Impose** le cocon cible (pas de proposition d'emplacement). Utile pour un lot ciblé ; économise aussi l'appel IA de placement. |
 | `--level=<niveau>` | Impose `pilier`, `intermediaire` ou `specifique`. |
 | `--resume=<id>` | Reprend un article existant : saute les phases déjà réalisées (idempotent). |
+| `--relink=<id>` | Relance **uniquement** le maillage interne sur un article existant (déterministe, gratuit). |
 | `--verbose`, `-v` | Logs détaillés. |
 | `--help`, `-h` | Aide. |
 

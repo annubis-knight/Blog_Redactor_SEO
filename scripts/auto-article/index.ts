@@ -28,6 +28,7 @@ import { buildTree, renderTree } from './tree.js'
 import { COLOR_TREE_THEME } from './tree-theme.js'
 import { makeMoteurPhase } from './phases/moteur.js'
 import { makeRedactionPhase } from './phases/redaction.js'
+import { runInternalLinking } from './phases/linking.js'
 import type { AutoRunConfig, InitialInput, PhaseName, RuntimeMode } from './types.js'
 
 const HELP = `
@@ -42,6 +43,7 @@ Options :
   --cocoon=<nom>     Impose le cocon cible (pas de proposition d'emplacement).
   --level=<niveau>   Impose pilier | intermediaire | specifique.
   --resume=<id>      Reprend un article existant par son id.
+  --relink=<id>      Relance le maillage interne seul sur un article existant.
   --config=<file>    (à venir) rejoue un run sans prompts.
   --verbose, -v      Logs détaillés.
   --help, -h         Cette aide.
@@ -123,6 +125,15 @@ async function main(): Promise<void> {
     logger.warn('MODE MOCK (défaut) — brief et données SEO SIMULÉS, sans rapport avec ton sujet.')
     logger.warn('Pour un vrai résultat : npm run auto:article -- --mode=real')
     logger.dim(`  (effectif serveur : ${rt.effective})`)
+  }
+
+  // --- Mode rétroactif : maillage interne seul sur un article existant ---
+  if (flags.relink != null) {
+    const relinkReport = new RunReport()
+    logger.phase(`Maillage interne — article #${flags.relink}`)
+    await runInternalLinking({ client, logger, report: relinkReport }, flags.relink)
+    logger.info('\n' + relinkReport.render())
+    return
   }
 
   // --- Saisie initiale : config non-interactive OU prompts ---
