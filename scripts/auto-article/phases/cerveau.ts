@@ -24,7 +24,7 @@ import { findCocoonByName, type CocoonSummary } from '../cocoon.js'
 import { slugify } from '../slug.js'
 import { buildTree, renderTree } from '../tree.js'
 import { COLOR_TREE_THEME } from '../tree-theme.js'
-import { preselectPlacements } from '../heuristics/pick-placement.js'
+import { preselectPlacements, suggestLevel } from '../heuristics/pick-placement.js'
 import { buildStrategyPayload, buildStrategyRecap } from './cerveau-map.js'
 
 /**
@@ -81,26 +81,50 @@ export function makeCerveauPhase(deps: PhaseDeps): PhaseFn {
     const tree = buildTree(silos)
     if (tree.length === 0) throw new Error('Arbre SEO vide : aucun silo en base')
 
-    // 3. Présélection heuristique
-    const candidates = preselectPlacements(tree, placementTopic(ctx), 3)
-    if (candidates.length === 0) throw new Error('Arbre SEO sans cocon : impossible de placer l\'article')
-    logger.dim(`candidats : ${candidates.map((c) => `${c.cocoonName} (${(c.affinity * 100).toFixed(0)}%)`).join(' · ')}`)
+    // 3-4. Emplacement : imposé (--cocoon/--level) ou proposé puis arbitré par l'IA.
+    let placement: PlacementDecision
+    let candidates = preselectPlacements(tree, placementTopic(ctx), 3)
 
-    // 4. L'IA tranche
-    logger.step('Proposition d\'emplacement dans l\'arbre…')
-    const { placement, usage: placementUsage } = await client.apiPost<{
-      placement: PlacementDecision
-      usage: ApiUsageLike | null
-    }>('/generate/placement-suggest', {
-      idea: ctx.input.topic,
-      businessContext: ctx.input.businessContext,
-      articleTitle: intake.articleTitle,
-      pilierKeyword: intake.pilierKeyword,
-      painPoint: intake.painPoint,
-      candidates,
-    })
-    report.addUsage(placementUsage)
-    report.addStep('Cerveau · emplacement')
+    if (ctx.config.forcedCocoon) {
+      const target = tree
+        .flatMap((s) => s.cocoons.map((c) => ({ silo: s.name, cocoon: c })))
+        .find((e) => e.cocoon.name.trim().toLowerCase() === ctx.config.forcedCocoon!.trim().toLowerCase())
+      if (!target) {
+        const available = tree.flatMap((s) => s.cocoons.map((c) => c.name)).join(', ')
+        throw new Error(`Cocon imposé « ${ctx.config.forcedCocoon} » introuvable. Disponibles : ${available}`)
+      }
+      const level = ctx.config.forcedLevel ?? suggestLevel(target.cocoon)
+      placement = {
+        siloName: target.silo,
+        cocoonName: target.cocoon.name,
+        level,
+        rationale: 'emplacement imposé en ligne de commande',
+        createCocoon: false,
+      }
+      // Le cocon imposé doit figurer parmi les options affichées au Gate.
+      candidates = candidates.filter((c) => c.cocoonName !== target.cocoon.name)
+      report.addStep('Cerveau · emplacement (imposé)')
+      logger.dim(`emplacement imposé : « ${placement.cocoonName} » (${level})`)
+    } else {
+      if (candidates.length === 0) throw new Error('Arbre SEO sans cocon : impossible de placer l\'article')
+      logger.dim(`candidats : ${candidates.map((c) => `${c.cocoonName} (${(c.affinity * 100).toFixed(0)}%)`).join(' · ')}`)
+
+      logger.step('Proposition d\'emplacement dans l\'arbre…')
+      const suggested = await client.apiPost<{
+        placement: PlacementDecision
+        usage: ApiUsageLike | null
+      }>('/generate/placement-suggest', {
+        idea: ctx.input.topic,
+        businessContext: ctx.input.businessContext,
+        articleTitle: intake.articleTitle,
+        pilierKeyword: intake.pilierKeyword,
+        painPoint: intake.painPoint,
+        candidates,
+      })
+      placement = suggested.placement
+      report.addUsage(suggested.usage)
+      report.addStep('Cerveau · emplacement')
+    }
 
     // 5. Contexte pour le Gate 1 (aucune écriture à ce stade)
     ctx.placement = placement

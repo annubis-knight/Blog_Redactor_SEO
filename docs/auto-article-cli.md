@@ -36,6 +36,8 @@ contexte business optionnel.
 | `--mode=real` | Appels **réels** DataForSEO + Claude (**facturés**), cache multi-niveau + cost-guard actifs. |
 | `--port=<n>` | Port du serveur dev (défaut `$PORT` ou 3400). |
 | `--config=<file>` | Run non-interactif depuis un JSON (gates auto-validés). Voir ci-dessous. |
+| `--cocoon=<nom>` | **Impose** le cocon cible (pas de proposition d'emplacement). Utile pour un lot ciblé ; économise aussi l'appel IA de placement. |
+| `--level=<niveau>` | Impose `pilier`, `intermediaire` ou `specifique`. |
 | `--resume=<id>` | Reprend un article existant : saute les phases déjà réalisées (idempotent). |
 | `--verbose`, `-v` | Logs détaillés. |
 | `--help`, `-h` | Aide. |

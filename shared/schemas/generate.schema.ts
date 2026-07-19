@@ -13,6 +13,12 @@ export const generateOutlineRequestSchema = z.object({
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
   topic: z.string().nullable(),
+  /**
+   * Chapitres récurrents des concurrents SERP, déjà formatés (markdown).
+   * Optionnel : le flux manuel ne l'envoie pas et son prompt reste inchangé.
+   * Alimenté par le CLI `auto:article`, qui dispose de l'analyse SERP.
+   */
+  competitorStructure: z.string().optional().default(''),
 })
 
 export type GenerateOutlineRequest = z.infer<typeof generateOutlineRequestSchema>

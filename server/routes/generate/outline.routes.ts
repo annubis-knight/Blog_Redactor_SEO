@@ -52,6 +52,11 @@ router.post('/generate/outline', async (req, res) => {
       cocoonName,
       theme: topic || 'Non spécifié',
       paaQuestions: paaFormatted,
+      // Toujours transmis (défaut '') pour que le placeholder ne fuite jamais
+      // dans le prompt quand l'appelant ne fournit rien (cas du flux manuel).
+      competitorStructure: parsed.data.competitorStructure
+        ? `## Structure des concurrents qui rankent\n\n${parsed.data.competitorStructure}`
+        : '',
       strategyContext: buildStrategyContext(strategy),
       keywordContext: buildKeywordContext(articleKw),
       microContext: microContextBlock,

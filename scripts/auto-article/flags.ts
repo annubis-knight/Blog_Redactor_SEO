@@ -10,7 +10,7 @@
  *   --help | -h
  */
 
-import type { RuntimeMode } from './types.js'
+import type { CanonicalArticleType, RuntimeMode } from './types.js'
 
 export interface ParsedFlags {
   mode?: RuntimeMode
@@ -19,9 +19,15 @@ export interface ParsedFlags {
   resumeArticleId?: number
   port?: number
   help?: boolean
+  /** Impose le cocon cible (court-circuite la proposition d'emplacement). */
+  cocoon?: string
+  /** Impose le niveau de l'article. */
+  level?: CanonicalArticleType
 }
 
-const VALUE_FLAGS = new Set(['--mode', '--config', '--resume', '--port'])
+const VALUE_FLAGS = new Set(['--mode', '--config', '--resume', '--port', '--cocoon', '--level'])
+
+const LEVELS: CanonicalArticleType[] = ['pilier', 'intermediaire', 'specifique']
 
 export function parseArgs(argv: string[]): ParsedFlags {
   const flags: ParsedFlags = {}
@@ -64,6 +70,12 @@ export function parseArgs(argv: string[]): ParsedFlags {
       case '--port':
         flags.port = assertPositiveInt(key, value)
         break
+      case '--cocoon':
+        flags.cocoon = requireValue(key, value)
+        break
+      case '--level':
+        flags.level = assertLevel(value)
+        break
       default:
         throw new Error(`Argument inconnu : ${arg}`)
     }
@@ -75,6 +87,11 @@ export function parseArgs(argv: string[]): ParsedFlags {
 function requireValue(key: string, value: string | undefined): string {
   if (value == null || value === '') throw new Error(`${key} attend une valeur`)
   return value
+}
+
+function assertLevel(value: string | undefined): CanonicalArticleType {
+  if (value && (LEVELS as string[]).includes(value)) return value as CanonicalArticleType
+  throw new Error(`--level attend ${LEVELS.join(' | ')} (reçu : ${value ?? 'rien'})`)
 }
 
 function assertMode(value: string | undefined): RuntimeMode {

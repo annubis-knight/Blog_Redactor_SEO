@@ -31,6 +31,13 @@ export interface AutoRunConfig {
   configPath: string | null
   resumeArticleId: number | null
   nonInteractive: boolean
+  /**
+   * Emplacement imposé (`--cocoon` / `--level`) : court-circuite la proposition
+   * d'emplacement par l'IA. Indispensable pour un lot ciblé (« créer le pilier
+   * manquant de tel cocon »), et accessoirement moins cher d'un appel IA.
+   */
+  forcedCocoon: string | null
+  forcedLevel: CanonicalArticleType | null
 }
 
 /** Saisie minimale demandée à l'utilisateur au démarrage. */
@@ -74,6 +81,14 @@ export interface AutoRunContext {
   /** Alternatives présélectionnées (avec scores), affichées au Gate 1. */
   placementOptions: PlacementOption[]
   radarCandidates: RadarCandidate[]
+  /**
+   * Signal SERP capté en phase Moteur et réutilisé en Rédaction — il est déjà
+   * facturé, le jeter serait du gaspillage (audit défauts n°14, 16, 18).
+   */
+  serpPaa: { question: string; answer: string | null }[]
+  hnStructure: { level: number; text: string }[]
+  /** Structure Hn formatée pour injection dans le prompt du sommaire. */
+  hnStructureBrief: string
   capitaine: string | null
   /** Collisions de mots-clés détectées avec les articles existants du thème. */
   cannibalization: CannibalizationHit[]

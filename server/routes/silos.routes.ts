@@ -2,7 +2,7 @@ import { Router } from 'express'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { log } from '../utils/logger.js'
-import { getTheme, getSilos, getSiloByName, addCocoonToSilo } from '../services/infra/data.service.js'
+import { getTheme, getSilos, getSiloByName, addCocoonToSilo, addSilo } from '../services/infra/data.service.js'
 import { getThemeConfig, saveThemeConfig } from '../services/strategy/theme-config.service.js'
 import { themeConfigSchema } from '../../shared/schemas/theme-config.schema.js'
 import { collectStreamWithUsage } from '../utils/stream-usage.js'
@@ -43,6 +43,27 @@ router.get('/silos/:name', async (req, res) => {
   } catch (err) {
     log.error(`GET /api/silos/${req.params.name} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load silo' } })
+  }
+})
+
+/** POST /api/silos — Create a new silo (new strategic axis in the SEO tree) */
+router.post('/silos', async (req, res) => {
+  try {
+    const { name, description } = req.body as { name?: string; description?: string }
+    if (!name || !name.trim()) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Silo name is required' } })
+      return
+    }
+    const silo = await addSilo(name.trim(), description?.trim() ?? '')
+    res.status(201).json({ data: silo })
+  } catch (err) {
+    const message = (err as Error).message
+    if (message.includes('already exists')) {
+      res.status(409).json({ error: { code: 'CONFLICT', message } })
+    } else {
+      log.error(`POST /api/silos — ${message}`)
+      res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create silo' } })
+    }
   }
 })
 

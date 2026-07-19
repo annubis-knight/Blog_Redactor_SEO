@@ -39,6 +39,8 @@ Usage :
 Options :
   --mode=mock|real   Sources externes mock (défaut) ou réelles (coûts API).
   --port=<n>         Port du serveur dev (défaut : $PORT ou 3400).
+  --cocoon=<nom>     Impose le cocon cible (pas de proposition d'emplacement).
+  --level=<niveau>   Impose pilier | intermediaire | specifique.
   --resume=<id>      Reprend un article existant par son id.
   --config=<file>    (à venir) rejoue un run sans prompts.
   --verbose, -v      Logs détaillés.
@@ -94,6 +96,8 @@ async function main(): Promise<void> {
     configPath: flags.configPath ?? null,
     resumeArticleId: flags.resumeArticleId ?? null,
     nonInteractive: false,
+    forcedCocoon: flags.cocoon ?? null,
+    forcedLevel: flags.level ?? null,
   }
 
   const client = createHttpClient(baseUrl)

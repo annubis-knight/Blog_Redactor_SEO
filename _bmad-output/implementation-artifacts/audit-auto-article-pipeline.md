@@ -64,20 +64,20 @@ synced_with:
 
 | # | Étape | Code | Verdict | Constat |
 |---|---|---|---|---|
-| 12 | Scan Capitaine (×8) | `phases/moteur-valider.ts` | 🟠 | **8 scans séquentiels** = principal poste de coût *et* de latence. Ni parallélisation, ni court-circuit. |
+| 12 | Scan Capitaine (×8) | `phases/moteur-valider.ts` · `concurrency.ts` | ✅ | **Parallélisé** (concurrence bornée à 3) : latence ÷ ~3 sans perdre un seul candidat. Borne volontaire — DataForSEO applique des rate-limits et le cost-guard raisonne par fenêtre. |
 | 13 | Choix Capitaine | `heuristics/pick-capitaine.ts` | ✅ | v3 validée en réel (affinité 100 %, pertinence 60 vs 6 en v1). Réserve : affinité **lexicale** → un synonyme ne matche pas. |
 | 13bis | Cannibalisation | `heuristics/detect-cannibalization.ts` | ✅ | **Ajouté (P2-1, 2026-07-19)** — Jaccard sur les Capitaines de tout le thème (1 seul appel `/cocoons`). Jamais bloquant : signalé ≥ 50 %, confirmation explicite ≥ 85 % en interactif, avertissement appuyé en non-interactif. |
-| 14 | Lieutenants | `heuristics/pick-lieutenants.ts` | 🟠 | Résultats corrects mais dérivés du Radar. **Le SERP est appelé puis son contenu riche (Hn concurrents, PAA) est jeté** — signal payé, gaspillé. |
+| 14 | Lieutenants | `heuristics/pick-lieutenants.ts` | ✅ | **Ancrés SERP** : score = 0,6 × présence dans les titres concurrents + 0,4 × marché normalisé. Un mot-clé que les pages qui rankent traitent réellement l'emporte sur un fort volume hors-sujet. Retombe sur le marché seul si le SERP est indisponible. |
 | 15 | Lexique | `heuristics/pick-lexique.ts` | ✅ | Propre après correctif (stopwords FR + exclusion Capitaine/Lieutenants). Quelques termes limites subsistent (`temps`, `accueil`). |
-| 16 | Persistance décisions | `phases/moteur-valider.ts` | 🟠 | `PUT /articles/:id/keywords` OK, mais **`hnStructure: []` toujours vide** alors que le SERP fournit la structure des concurrents. |
+| 16 | Persistance décisions | `phases/moteur-valider.ts` · `extract-hn-structure.ts` | ✅ | `hnStructure` **alimentée** par les chapitres récurrents des concurrents (clustering Jaccard). Profite aussi au brief IA et à la recommandation de longueur côté app. |
 | 17 | **Gate 2** | `gate.ts` | 🟡 | Idem Gate 1. |
 
 ## Phase 3 — Rédaction
 
 | # | Étape | Code | Verdict | Constat |
 |---|---|---|---|---|
-| 18 | Sommaire | `phases/redaction.ts` | 🟡 | 13-18 sections, non ancré sur la structure des concurrents → c'est lui qui gonfle la longueur. |
-| 19 | Article (SSE) | `phases/redaction.ts` | 🟡 | Structure éditoriale excellente. Mais `webSearchEnabled: false` **codé en dur** → perte d'ancrage factuel. Séquentiel + délais inter-sections → lent. |
+| 18 | Sommaire | `phases/redaction.ts` | ✅ | **Ancré SERP** : reçoit les vraies PAA (on envoyait `[]`, le prompt répondait « Aucune question PAA disponible ») et les chapitres récurrents des concurrents, via un champ **optionnel** du schéma outline — le flux manuel ne l'envoie pas, son prompt reste identique. |
+| 19 | Article (SSE) | `phases/redaction.ts` | 🟡 | Structure éditoriale excellente. `webSearchEnabled` n'est plus codé en dur : **activée en réel** (ancrage factuel), désactivée en mock. Reste séquentiel avec délais inter-sections → lent par construction (rate-limits IA). |
 | 20 | Meta | `phases/redaction.ts` | ✅ | Respecte 60/160 caractères. Troncature parfois en plein mot. |
 | 21 | Save + statut | `phases/redaction.ts` | ✅ | Contenu + meta + statut `brouillon`. |
 | 22 | Export HTML | `phases/redaction.ts` | ✅ | Fichier propre dans `_auto-output/`. |
@@ -123,10 +123,10 @@ Claude). Écart ~13 %, dû aux tarifs de référence du cost-guard — d'où le 
 - [x] **P1-2 · Ne plus payer un appel IA pour un cocon erroné** — ✅ absorbé par le
       gate d'emplacement : le cocon n'est plus saisi, il est **proposé** puis validé.
       Plus rien n'est créé avant validation (`commitCerveau`).
-- [ ] **P1-3 · Exploiter le SERP déjà payé** (défauts 🟠 n°14 et n°16). Alimenter
-      `hnStructure` depuis les Hn des concurrents (`SerpAnalysisResult.competitors[].headings`)
-      et le transmettre au sommaire. Triple gain : meilleur ancrage SEO, longueur
-      maîtrisée, fin du gaspillage d'un signal facturé.
+- [x] **P1-3 · Exploiter le SERP déjà payé** — ✅ fait le 2026-07-19.
+      Une seule analyse SERP nourrit désormais trois usages : Lieutenants ancrés,
+      `hnStructure` persistée, PAA + chapitres transmis au sommaire.
+      Détail de la calibration ci-dessous.
 
 ### P2 — Qualité SEO (~4 h)
 
@@ -218,6 +218,59 @@ G→placé + ⚠ hors périmètre.
 **Aussi corrigé** : bandeau `⚠ MODE MOCK` au Gate 1 (le brief simulé était pris
 pour une incompréhension du script), libellé `[e] changer l'emplacement`,
 troncature des titres à la frontière de mot.
+
+## Exploitation du SERP — calibrée sur données réelles (2026-07-19)
+
+Le SERP était appelé puis jeté. Il alimente maintenant **trois** usages à partir
+d'un unique appel déjà facturé : Lieutenants ancrés, `hnStructure` persistée,
+PAA + chapitres récurrents transmis au sommaire.
+
+L'extraction des chapitres a été **mesurée sur de vrais SERP**, pas réglée
+a priori. Trois itérations :
+
+| Constat sur données réelles | Correctif |
+|---|---|
+| Regroupement par ensemble de tokens **identique** : sur 200 titres réels, seuls 3 chapitres émergeaient — « Hébergement mutualisé : pour qui ? » ne rejoignait pas « L'hébergement mutualisé ». | Clustering glouton par **similarité Jaccard ≥ 0,6**. |
+| `&nbsp;` non décodé devenait un token parasite (« nbsp », 4 caractères donc conservé) ; la numérotation des listicles (« 1. », « 17 - ») empêchait tout rapprochement. | `cleanHeading` : décodage des entités HTML + retrait de la numérotation. |
+| Seuil de récurrence à 30 % : **0 chapitre** sur une requête informationnelle, alors que « Créer un sitemap » et « Remplir les balises meta » étaient manifestement attendus. | Seuil abaissé à **25 %**, mesuré : la convergence réelle plafonne à ~40 % (requête commerciale) et ~25 % (informationnelle). Garde-fou : **≥ 2 concurrents distincts**. |
+
+**Résultat** : 5 chapitres exploitables sur la requête informationnelle,
+4 sur la commerciale (dont 2 H2 à 30-40 %).
+
+> **Limite assumée** : la convergence structurelle réelle est faible sur les
+> listicles — chaque page invente sa liste. « 10 conseils pour améliorer le
+> référencement » et « 30 conseils pour améliorer son référencement SEO » sont le
+> même chapitre mais ne partagent que 43 % de tokens. Un rapprochement
+> **sémantique** (P2-3) les capterait ; le lexical non.
+
+## Lot de production — 6 articles piliers (2026-07-19)
+
+Premier usage réel en volume : création du silo « Automatisation par
+intelligence artificielle » (2 cocons) puis rédaction des **6 piliers manquants**
+de l'arbre. Chaque cocon dispose désormais de sa fondation (8/8).
+
+**Deux capacités ajoutées pour rendre le lot possible :**
+- `POST /api/silos` — l'arbre ne pouvait grandir que par les cocons ; aucun
+  endpoint ne permettait d'ouvrir un nouvel axe stratégique.
+- `--cocoon` / `--level` — le CLI *proposait* l'emplacement, impossible de viser
+  un pilier précis. Le forçage court-circuite aussi l'appel IA de placement.
+
+**Trois défauts trouvés — que seule une exécution en volume pouvait révéler :**
+
+| Défaut | Symptôme | Correctif |
+|---|---|---|
+| **Capitaine agnostique au niveau** | Un pilier sur la visibilité locale a retenu « zone de chalandise » (terme de niche cité dans le brief) plutôt que « référencement local ». Le meta title et le premier H2 en héritaient. | Pondérations **par niveau** : un pilier privilégie l'ampleur (marché 0,5), un spécifique la précision (affinité 0,6). |
+| **Octets NUL et PostgreSQL** ⚠️ | `POST /serp/analyze` échouait en entier (« séquence d'octets invalide pour l'encodage UTF8 : 0x00 ») dès qu'une page concurrente contenait un NUL. **Bug applicatif, pas CLI : le flux manuel est touché à l'identique.** | `stripNullBytes` dans `scrape-corpus.service` (extraction titres + texte). |
+| **Reprise sans ancrage SERP** | `--resume` restaurait capitaine/lieutenants/lexique mais pas la structure concurrents : le sommaire repartait non ancré alors que le SERP était payé. | `hydrateResume` relit `hnStructure` depuis la base. |
+
+**Coût réel du lot : ~$5.6** ($3.16 DataForSEO mesuré au solde + ~$2.4 Claude),
+pour 6 piliers de 7 000 à 8 500 mots. Mon estimation initiale ($3.00–4.80) était
+**basse** : un pilier génère 20-25 sections avec recherche web (~$0.75-0.85
+l'unité), et le lot a absorbé un run mis au rebut plus deux reprises après échec.
+
+> `--resume` a prouvé sa valeur : après l'échec du cost-guard puis celui des
+> octets NUL, les articles ont été repris sans repayer les phases déjà faites
+> (0,43 $ au lieu de 0,85 $ quand seule la Rédaction restait).
 
 ## Réserves hors périmètre CLI
 

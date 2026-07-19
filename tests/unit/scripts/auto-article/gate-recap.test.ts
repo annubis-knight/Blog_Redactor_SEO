@@ -11,6 +11,8 @@ function makeCtx(): AutoRunContext {
     configPath: null,
     resumeArticleId: null,
     nonInteractive: false,
+    forcedCocoon: null,
+    forcedLevel: null,
   }
   return createContext(config, {
     topic: 'visibilité locale artisans',

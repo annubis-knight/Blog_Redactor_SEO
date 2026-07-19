@@ -39,9 +39,35 @@ export interface CapitaineChoice {
   affinity: number
 }
 
-export const AFFINITY_WEIGHT = 0.5
-export const RELEVANCE_WEIGHT = 0.2
-export const MARKET_WEIGHT = 0.3
+export interface Weights {
+  affinity: number
+  relevance: number
+  market: number
+}
+
+/**
+ * Pondérations **par niveau d'article** (v4, 2026-07-19).
+ *
+ * v3 était agnostique au niveau, ce qui a produit un pilier ciblant « zone de
+ * chalandise » — un terme de niche — alors que « référencement local » et
+ * « visibilité locale » figuraient parmi les candidats. Or les trois niveaux
+ * n'ont pas le même métier :
+ *   - un **pilier** vise le terme de tête : l'ampleur (marché) prime ;
+ *   - un **spécifique** vise une requête précise : la proximité au sujet prime ;
+ *   - l'**intermédiaire** équilibre les deux.
+ */
+export const WEIGHTS_BY_LEVEL: Record<string, Weights> = {
+  pilier: { affinity: 0.35, relevance: 0.15, market: 0.5 },
+  intermediaire: { affinity: 0.5, relevance: 0.2, market: 0.3 },
+  specifique: { affinity: 0.6, relevance: 0.25, market: 0.15 },
+}
+
+export const DEFAULT_WEIGHTS: Weights = WEIGHTS_BY_LEVEL.intermediaire
+
+/** @deprecated conservés pour compatibilité — voir WEIGHTS_BY_LEVEL. */
+export const AFFINITY_WEIGHT = DEFAULT_WEIGHTS.affinity
+export const RELEVANCE_WEIGHT = DEFAULT_WEIGHTS.relevance
+export const MARKET_WEIGHT = DEFAULT_WEIGHTS.market
 
 interface Scored extends CapitaineInput {
   affinity: number
@@ -59,8 +85,13 @@ function normalize(value: number | null, min: number, max: number): number {
  * @param candidates mots-clés scannés
  * @param topic texte du sujet (titre + mot-clé pilier + point de douleur)
  */
-export function pickCapitaine(candidates: CapitaineInput[], topic = ''): CapitaineChoice | null {
+export function pickCapitaine(
+  candidates: CapitaineInput[],
+  topic = '',
+  level = 'intermediaire',
+): CapitaineChoice | null {
   if (candidates.length === 0) return null
+  const w = WEIGHTS_BY_LEVEL[level] ?? DEFAULT_WEIGHTS
 
   const relValues = candidates.map((c) => c.relevance ?? 0)
   const mktValues = candidates.map((c) => c.market ?? 0)
@@ -72,9 +103,9 @@ export function pickCapitaine(candidates: CapitaineInput[], topic = ''): Capitai
   const scored: Scored[] = candidates.map((c) => {
     const affinity = topicalAffinity(c.keyword, topic)
     const composite =
-      AFFINITY_WEIGHT * affinity +
-      RELEVANCE_WEIGHT * normalize(c.relevance, relMin, relMax) +
-      MARKET_WEIGHT * normalize(c.market, mktMin, mktMax)
+      w.affinity * affinity +
+      w.relevance * normalize(c.relevance, relMin, relMax) +
+      w.market * normalize(c.market, mktMin, mktMax)
     return { ...c, affinity, composite }
   })
 

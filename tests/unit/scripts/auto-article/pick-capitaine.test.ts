@@ -71,6 +71,38 @@ describe('auto:pick-capitaine — régression run réel 2026-07-18', () => {
   })
 })
 
+describe('auto:pick-capitaine — pondération par niveau (régression pilier 2026-07-19)', () => {
+  /**
+   * Cas réel : un pilier sur la visibilité locale avait retenu « zone de
+   * chalandise » (terme de niche cité dans le brief, donc affinité 1) au lieu
+   * de « référencement local » (terme de tête, marché bien supérieur).
+   * Un pilier doit viser l'ampleur.
+   */
+  const niche = c('zone de chalandise', 'GO', 50, 10) // affinité max, marché faible
+  const tete = c('référencement local', 'GO', 50, 100) // marché de tête
+  const TOPIC_LOCAL = 'visibilité web locale à Toulouse zone de chalandise'
+
+  it('un pilier privilégie le terme de tête', () => {
+    expect(pickCapitaine([niche, tete], TOPIC_LOCAL, 'pilier')?.keyword).toBe('référencement local')
+  })
+
+  it('un spécifique privilégie la précision au sujet', () => {
+    expect(pickCapitaine([niche, tete], TOPIC_LOCAL, 'specifique')?.keyword).toBe('zone de chalandise')
+  })
+
+  it('le niveau par défaut reste l\'équilibre intermédiaire', () => {
+    const parDefaut = pickCapitaine([niche, tete], TOPIC_LOCAL)
+    const explicite = pickCapitaine([niche, tete], TOPIC_LOCAL, 'intermediaire')
+    expect(parDefaut?.keyword).toBe(explicite?.keyword)
+  })
+
+  it('un niveau inconnu retombe sur les poids par défaut', () => {
+    const inconnu = pickCapitaine([niche, tete], TOPIC_LOCAL, 'wat')
+    const defaut = pickCapitaine([niche, tete], TOPIC_LOCAL, 'intermediaire')
+    expect(inconnu?.keyword).toBe(defaut?.keyword)
+  })
+})
+
 describe('auto:pick-capitaine — drapeau forced & cas limites', () => {
   it('forced=false si le verdict retenu est GO', () => {
     expect(pickCapitaine([c('SEO naturel', 'GO', 50, 50)], TOPIC)?.forced).toBe(false)

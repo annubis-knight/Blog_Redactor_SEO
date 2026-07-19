@@ -7,6 +7,7 @@
 import type { HttpClient } from './http-client.js'
 import type { AutoRunContext } from './types.js'
 import { fromCanonicalType } from './canonical.js'
+import { formatHnStructure } from './heuristics/extract-hn-structure.js'
 import { planResume } from './resume-plan.js'
 
 interface ArticleResp {
@@ -32,12 +33,24 @@ export async function hydrateResume(client: HttpClient, ctx: AutoRunContext): Pr
   ctx.pilierKeyword = art.article.suggestedKeyword ?? art.article.captainKeywordLocked ?? ''
 
   const kw = await client
-    .apiGet<{ capitaine: string; lieutenants: string[]; lexique: string[] } | null>(`/articles/${id}/keywords`)
+    .apiGet<{
+      capitaine: string
+      lieutenants: string[]
+      lexique: string[]
+      hnStructure?: { level: number; text: string }[]
+    } | null>(`/articles/${id}/keywords`)
     .catch(() => null)
   if (kw) {
     ctx.capitaine = kw.capitaine || null
     ctx.lieutenants = kw.lieutenants ?? []
     ctx.lexique = kw.lexique ?? []
+    // La structure des concurrents est persistée : sans cette restauration, une
+    // reprise repartait sur un sommaire NON ancré alors que le SERP était payé
+    // (constaté sur le lot de piliers du 2026-07-19).
+    ctx.hnStructure = kw.hnStructure ?? []
+    ctx.hnStructureBrief = formatHnStructure(
+      ctx.hnStructure.map((h) => ({ ...h, recurrence: 0, competitorCount: 0 })),
+    )
   }
 
   const prog = await client

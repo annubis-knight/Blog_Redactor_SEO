@@ -17,6 +17,8 @@ Tu es un expert SEO et rédacteur web spécialisé dans la création de sommaire
 
 {{paaQuestions}}
 
+{{competitorStructure}}
+
 ## Consignes
 
 Génère un sommaire structuré en H1, H2 et H3 pour cet article. Le sommaire doit :
@@ -40,7 +42,12 @@ Génère un sommaire structuré en H1, H2 et H3 pour cet article. Le sommaire do
    - Intégrer les mots-clés secondaires naturellement dans les H2/H3
    - Varier les formulations (questions, affirmations, "comment faire...")
 
-6. **Adapter au type d'article** (STRICT — ne pas dépasser ces limites) :
+6. **Couvrir les chapitres récurrents des concurrents** s'ils sont fournis
+   ci-dessus : un sujet traité par une large majorité des pages qui rankent est
+   attendu par Google — ne l'omets pas. Reformule-le à ta manière plutôt que de
+   le recopier, et ignore ceux qui ne servent pas l'angle de l'article.
+
+7. **Adapter au type d'article** (STRICT — ne pas dépasser ces limites) :
    - Pilier : sommaire complet (6-8 H2, couvrir les aspects essentiels sans diluer)
    - Intermédiaire : sommaire modéré (4-6 H2)
    - Spécialisé : sommaire ciblé (3-5 H2, très précis)

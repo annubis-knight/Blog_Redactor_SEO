@@ -385,6 +385,29 @@ export async function removeArticleFromCocoon(id: number): Promise<boolean> {
   return (res.rowCount ?? 0) > 0
 }
 
+/**
+ * Crée un silo (racine de l'arbre SEO sous le thème).
+ *
+ * Ajouté pour que l'arborescence puisse grandir par le haut : jusqu'ici seuls
+ * les cocons étaient créables via l'API (`addCocoonToSilo`), ce qui interdisait
+ * d'ouvrir un nouvel axe stratégique sans passer par la base.
+ * `silos.nom` n'a pas de contrainte d'unicité en base — on la fait respecter ici.
+ */
+export async function addSilo(
+  nom: string,
+  description = '',
+): Promise<{ id: number; nom: string; description: string }> {
+  const exists = await pool.query(`SELECT id FROM silos WHERE nom = $1`, [nom])
+  if (exists.rows.length > 0) throw new Error(`Silo "${nom}" already exists`)
+
+  const res = await pool.query(
+    `INSERT INTO silos (nom, description) VALUES ($1, $2) RETURNING id, nom, description`,
+    [nom, description],
+  )
+  log.info('addSilo', { nom })
+  return res.rows[0] as { id: number; nom: string; description: string }
+}
+
 export async function addCocoonToSilo(siloName: string, cocoonName: string): Promise<Cocoon> {
   const siloRes = await pool.query(`SELECT id FROM silos WHERE nom = $1`, [siloName])
   if (siloRes.rows.length === 0) throw new Error(`Silo "${siloName}" not found`)

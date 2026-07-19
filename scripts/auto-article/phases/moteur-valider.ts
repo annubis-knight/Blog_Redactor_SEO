@@ -17,6 +17,8 @@ import { pickCapitaine, type CapitaineInput } from '../heuristics/pick-capitaine
 import { pickLieutenants } from '../heuristics/pick-lieutenants.js'
 import { pickLexique, type TfidfResultLite } from '../heuristics/pick-lexique.js'
 import { detectCannibalization, requiresConfirmation, type ExistingCapitaine } from '../heuristics/detect-cannibalization.js'
+import { extractHnStructure, formatHnStructure } from '../heuristics/extract-hn-structure.js'
+import { mapLimit, DEFAULT_CONCURRENCY } from '../concurrency.js'
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
@@ -27,6 +29,11 @@ interface ScanResp {
   verdict: { level: string }
   relevanceScore: { total: number } | null
   marketScore: { total: number } | null
+}
+
+interface SerpResp {
+  competitors?: { headings?: { level: number; text: string }[] }[]
+  paaQuestions?: { question: string; answer?: string | null }[]
 }
 
 interface CocoonWithArticles {
@@ -46,26 +53,30 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
 
     const level = toCanonicalType(ctx.articleType)
 
-    // 1. Capitaine — scan de chaque candidat
-    logger.step(`Capitaine — scan de ${ctx.radarCandidates.length} candidats…`)
-    const scanned: CapitaineInput[] = []
-    for (const cand of ctx.radarCandidates) {
-      const r = await client.apiPost<ScanResp>(
-        `/keywords/${encodeURIComponent(cand.keyword)}/scan`,
-        { level, articleTitle: ctx.articleTitle, articleId: ctx.articleId, painPoint: ctx.painPoint },
-      )
-      scanned.push({
-        keyword: cand.keyword,
-        verdict: r.verdict.level,
-        relevance: r.relevanceScore?.total ?? null,
-        market: r.marketScore?.total ?? null,
-      })
-    }
+    // 1. Capitaine — scan des candidats, en parallèle borné (latence ÷ ~3,
+    //    couverture inchangée : tous les candidats restent scannés).
+    logger.step(`Capitaine — scan de ${ctx.radarCandidates.length} candidats (parallèle)…`)
+    const scanned: CapitaineInput[] = await mapLimit(
+      ctx.radarCandidates,
+      DEFAULT_CONCURRENCY,
+      async (cand) => {
+        const r = await client.apiPost<ScanResp>(
+          `/keywords/${encodeURIComponent(cand.keyword)}/scan`,
+          { level, articleTitle: ctx.articleTitle, articleId: ctx.articleId, painPoint: ctx.painPoint },
+        )
+        return {
+          keyword: cand.keyword,
+          verdict: r.verdict.level,
+          relevance: r.relevanceScore?.total ?? null,
+          market: r.marketScore?.total ?? null,
+        }
+      },
+    )
 
     // Le sujet sert à calculer l'affinité topique (le relevanceScore produit
     // s'étant révélé non-discriminant en run réel).
     const topic = `${ctx.articleTitle} ${ctx.pilierKeyword} ${ctx.painPoint}`
-    const choice = pickCapitaine(scanned, topic)
+    const choice = pickCapitaine(scanned, topic, level)
     if (!choice) throw new Error('Moteur : aucun Capitaine sélectionnable')
     ctx.capitaine = choice.keyword
     const scores = `affinité ${(choice.affinity * 100).toFixed(0)}%, pertinence ${choice.relevance ?? '—'}, marché ${choice.market ?? '—'}`
@@ -100,12 +111,37 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
       report.addStep(`Moteur · cannibalisation (${ctx.cannibalization.length} proche(s)${strong ? ', dont forte' : ''})`)
     }
 
-    // 2. Lieutenants — SERP analyze (peuple le scrape) puis sélection
+    // 2. SERP — une seule analyse, exploitée trois fois : Lieutenants ancrés,
+    //    structure Hn persistée, PAA transmises au sommaire (défauts 14/16/18).
     logger.step('Lieutenants — analyse SERP du Capitaine…')
-    await client.apiPost('/serp/analyze', { keyword: ctx.capitaine, topN: 10, articleLevel: level })
-    ctx.lieutenants = pickLieutenants(ctx.radarCandidates, ctx.capitaine, level)
+    const serp = await client.apiPost<SerpResp>('/serp/analyze', {
+      keyword: ctx.capitaine,
+      topN: 10,
+      articleLevel: level,
+    })
+
+    const competitors = serp.competitors ?? []
+    const headings = competitors.flatMap((c) => (c.headings ?? []).map((h) => h.text))
+    ctx.serpPaa = (serp.paaQuestions ?? []).map((p) => ({
+      question: p.question,
+      answer: p.answer ?? null,
+    }))
+
+    const hn = extractHnStructure(competitors)
+    ctx.hnStructure = hn.map((h) => ({ level: h.level, text: h.text }))
+    ctx.hnStructureBrief = formatHnStructure(hn)
+    if (hn.length > 0) {
+      logger.dim(`structure concurrents : ${hn.length} chapitres récurrents (top ${Math.round(hn[0].recurrence * 100)} %)`)
+    }
+    if (ctx.serpPaa.length > 0) logger.dim(`PAA récupérées : ${ctx.serpPaa.length}`)
+
+    ctx.lieutenants = pickLieutenants(ctx.radarCandidates, ctx.capitaine, level, {
+      competitorHeadings: headings,
+    })
     await emitCheck(client, ctx.articleId, MOTEUR_LIEUTENANTS_LOCKED)
-    report.addStep(`Moteur · Lieutenants (${ctx.lieutenants.length})`)
+    report.addStep(
+      `Moteur · Lieutenants (${ctx.lieutenants.length}${headings.length > 0 ? ', ancrés SERP' : ''})`,
+    )
     logger.success(`Lieutenants : ${ctx.lieutenants.length} retenus.`)
 
     // 3. Lexique — TF-IDF (lit le scrape SERP hérité)
@@ -121,12 +157,14 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     report.addStep(`Moteur · Lexique (${ctx.lexique.length} termes)`)
     logger.success(`Lexique : ${ctx.lexique.length} termes.`)
 
-    // 4. Persistance des décisions (lu par la Rédaction via getArticleKeywords)
+    // 4. Persistance des décisions (lu par la Rédaction via getArticleKeywords).
+    //    `hnStructure` alimente aussi le brief IA et la recommandation de
+    //    longueur côté app — elle n'est plus vide (défaut n°16).
     await client.apiPut(`/articles/${ctx.articleId}/keywords`, {
       capitaine: ctx.capitaine,
       lieutenants: ctx.lieutenants,
       lexique: ctx.lexique,
-      hnStructure: [],
+      hnStructure: ctx.hnStructure,
     })
     logger.success('Décisions Moteur persistées (article_keywords).')
   }

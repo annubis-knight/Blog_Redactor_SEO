@@ -43,6 +43,27 @@ describe('auto:flags — parseArgs', () => {
     expect(() => parseArgs(['--wat'])).toThrow(/inconnu/)
   })
 
+  it('parse --cocoon et --level (emplacement imposé)', () => {
+    const f = parseArgs(['--cocoon=Stratégie de croissance', '--level=pilier'])
+    expect(f.cocoon).toBe('Stratégie de croissance')
+    expect(f.level).toBe('pilier')
+  })
+
+  it('accepte les trois niveaux canoniques', () => {
+    for (const level of ['pilier', 'intermediaire', 'specifique']) {
+      expect(parseArgs([`--level=${level}`]).level).toBe(level)
+    }
+  })
+
+  it('rejette un niveau invalide', () => {
+    expect(() => parseArgs(['--level=Pilier'])).toThrow(/pilier/)
+    expect(() => parseArgs(['--level=wat'])).toThrow(/pilier/)
+  })
+
+  it('rejette --cocoon sans valeur', () => {
+    expect(() => parseArgs(['--cocoon='])).toThrow(/valeur/)
+  })
+
   it('combine plusieurs flags', () => {
     const f = parseArgs(['--mode=real', '--verbose', '--port=5000'])
     expect(f).toEqual({ mode: 'real', verbose: true, port: 5000 })

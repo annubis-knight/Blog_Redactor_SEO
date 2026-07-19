@@ -71,16 +71,23 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       articleId: ctx.articleId,
       keyword: ctx.capitaine,
       keywords,
-      paa: [] as { question: string; answer: string | null }[],
+      // PAA issues du SERP déjà payé en phase Moteur. On envoyait `[]` et le
+      // prompt répondait « Aucune question PAA disponible » (audit défaut n°18).
+      paa: ctx.serpPaa,
       articleType,
       articleTitle: ctx.articleTitle,
       cocoonName: ctx.cocoonName,
       topic: null as string | null,
     }
 
-    // 1. Outline
-    logger.step('Sommaire — génération…')
-    const outlineDone = await collectSse(deps, '/generate/outline', base)
+    // 1. Outline — ancré sur la structure des concurrents quand elle existe
+    logger.step(
+      `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
+    )
+    const outlineDone = await collectSse(deps, '/generate/outline', {
+      ...base,
+      competitorStructure: ctx.hnStructureBrief,
+    })
     const outline = outlineDone.outline
     report.addUsage(outlineDone.usage as ApiUsageLike | null)
     await client.apiPut(`/articles/${ctx.articleId}`, { outline })
@@ -94,7 +101,9 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     const articleDone = await collectSse(
       deps,
       '/generate/article',
-      { ...base, outline, webSearchEnabled: false },
+      // Recherche web activée en réel seulement : elle ancre factuellement les
+      // sections (chiffres, sources) mais coûte et rallonge — inutile en mock.
+      { ...base, outline, webSearchEnabled: ctx.config.mode === 'real' },
       (ev) => {
         if (ev.event === 'section-start') {
           const d = ev.data as { index: number; total: number; title: string }
