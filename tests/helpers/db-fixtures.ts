@@ -132,7 +132,13 @@ export async function cleanupTestFixtures(runId: string): Promise<void> {
   const pattern = `${TEST_PREFIX}${runId}]%`
 
   // 1. Articles (cascade sur *_explorations, article_keywords, article_content, etc.)
+  //    Deux filets, car un test peut RENOMMER l'article (PATCH /articles/:id) :
+  //    le titre perd alors son tag et n'est plus retrouvé. Le slug, lui, n'est
+  //    jamais modifié — c'est la clé de nettoyage fiable.
+  //    Sans ce second DELETE, 28 articles « Renamed <timestamp> » s'étaient
+  //    accumulés dans la base de dev (audit 2026-09-19).
   await query(`DELETE FROM articles WHERE titre LIKE $1`, [pattern])
+  await query(`DELETE FROM articles WHERE slug LIKE $1`, [testSlugPattern(runId)])
 
   // 2. Cocoons (cascade sur articles restants + cocoon_strategies)
   await query(`DELETE FROM cocoons WHERE nom LIKE $1`, [pattern])
@@ -175,6 +181,19 @@ export async function cleanupOrphanedFixtures(maxAgeMs = 60 * 60 * 1000): Promis
     }
   }
 
+  // Articles renommés par un test : le titre n'est plus tagué, mais le slug
+  // reste `test-<timestamp>-…`. C'est l'origine des « Renamed … » orphelins.
+  const renamedRes = await query<{ id: number; slug: string }>(
+    `SELECT id, slug FROM articles WHERE slug LIKE 'test-%'`,
+  )
+  for (const row of renamedRes.rows) {
+    const ts = parseTimestampFromSlug(row.slug)
+    if (ts !== null && ts < cutoff) {
+      await query(`DELETE FROM articles WHERE id = $1`, [row.id])
+      deleted++
+    }
+  }
+
   const cocoonsRes = await query<{ id: number; nom: string }>(
     `SELECT id, nom FROM cocoons WHERE nom LIKE $1`,
     [`${TEST_PREFIX}%`],
@@ -203,6 +222,23 @@ export async function cleanupOrphanedFixtures(maxAgeMs = 60 * 60 * 1000): Promis
 
 function parseTimestampFromTag(tagged: string): number | null {
   const match = tagged.match(/\[test:(\d+)-/)
+  if (!match || !match[1]) return null
+  const ts = Number(match[1])
+  return Number.isFinite(ts) ? ts : null
+}
+
+/** Motif SQL des slugs d'un run : `test-<runId>-%`. */
+export function testSlugPattern(runId: string): string {
+  return `test-${runId}-%`
+}
+
+/**
+ * Horodatage contenu dans un slug de test (`test-<timestamp>-<rand>-…`).
+ * Renvoie `null` si le slug n'est pas un slug de test — garde-fou contre toute
+ * suppression d'une row utilisateur.
+ */
+export function parseTimestampFromSlug(slug: string): number | null {
+  const match = /^test-(\d{10,})-/.exec(slug)
   if (!match || !match[1]) return null
   const ts = Number(match[1])
   return Number.isFinite(ts) ? ts : null
