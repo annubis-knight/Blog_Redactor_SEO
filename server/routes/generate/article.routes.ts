@@ -8,6 +8,7 @@ import { getStrategy } from '../../services/strategy/strategy.service.js'
 import { getArticleKeywords, loadArticleMicroContext } from '../../services/infra/data.service.js'
 import type { Outline } from '../../../shared/types/index.js'
 import { mergeConsecutiveElements } from '../../../shared/html-utils.js'
+import { stripAiPreamble } from '../../../shared/ai-text.js'
 import {
   DEFAULT_TARGET_WORDS_BY_TYPE,
   DEFAULT_TARGET_WORDS_FALLBACK,
@@ -155,7 +156,12 @@ router.post('/generate/article', async (req, res) => {
             streamChatCompletion(systemPrompt, sectionPrompt, maxTokens, webSearchEnabled ? [WEB_SEARCH_TOOL] : undefined),
             (chunk) => res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk })}\n\n`),
           )
-          sectionContent = repairHtmlTail(mergeConsecutiveElements(stripCodeFences(result.fullContent)))
+          // stripAiPreamble : 2e filet après `filterToolPreambles`. Le bloc de
+          // texte final peut encore s'ouvrir sur « Voici la section demandée : »,
+          // que le filtre par blocs ne peut pas voir (audit 2026-09-19).
+          sectionContent = repairHtmlTail(
+            mergeConsecutiveElements(stripAiPreamble(stripCodeFences(result.fullContent))),
+          )
           sectionUsage = result.usage
           sectionChunks = result.chunkCount
           break // success

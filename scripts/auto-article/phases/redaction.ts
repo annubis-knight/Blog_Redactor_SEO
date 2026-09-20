@@ -17,6 +17,10 @@ import type { ApiUsageLike, AutoRunContext, SseEvent } from '../types.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
 import { runInternalLinking } from './linking.js'
+import {
+  checkContentBeforeExport,
+  detectUnverifiableClaims,
+} from '../heuristics/check-content-quality.js'
 
 const OUTPUT_DIR = '_auto-output'
 
@@ -40,9 +44,53 @@ async function collectSse(
   return donePayload
 }
 
+/**
+ * Garde-fou qualité avant export (audit 2026-09-19).
+ *
+ * Bloquant : le monologue de l'IA (« Je vais d'abord faire une recherche… »).
+ * Le contenu reste en base — seul le fichier n'est pas écrit, pour qu'aucun
+ * article pollué ne parte en publication par inadvertance.
+ *
+ * Non bloquant : les preuves invérifiables, simplement listées à relire.
+ *
+ * @returns `true` si l'export peut avoir lieu
+ */
+function guardContent(deps: PhaseDeps, ctx: AutoRunContext): boolean {
+  const { logger, report } = deps
+  const content = ctx.articleContent ?? ''
+
+  const claims = detectUnverifiableClaims(content)
+  if (claims.length > 0) {
+    logger.warn(`${claims.length} affirmation(s) invérifiable(s) à relire avant publication :`)
+    for (const claim of claims.slice(0, 5)) logger.dim(`  • …${claim.excerpt}…`)
+    report.addStep(`Rédaction · ${claims.length} preuve(s) à vérifier`)
+  }
+
+  const verdict = checkContentBeforeExport(content)
+  if (verdict.ok) return true
+
+  logger.error('Export refusé — le texte contient le monologue de l\'IA :')
+  logger.info(verdict.report)
+  logger.info('  → L\'article est enregistré en base : corrige-le dans l\'éditeur,')
+  logger.info('    puis relance l\'export depuis l\'application.')
+  report.addStep(`Rédaction · EXPORT REFUSÉ (${verdict.leaks.length} fuite(s) IA)`)
+  return false
+}
+
 /** Export HTML PropulSite → écriture disque. Réutilisé par le run normal et la reprise. */
 async function exportArticle(deps: PhaseDeps, ctx: AutoRunContext): Promise<void> {
   const { client, logger, report } = deps
+
+  // En reprise (`--resume`), le contenu n'a pas transité par ce process : on le
+  // relit pour que le garde-fou ait bien un texte à inspecter.
+  if (!ctx.articleContent) {
+    const stored = await client
+      .apiGet<{ content?: string | null }>(`/articles/${ctx.articleId}/content`)
+      .catch(() => null)
+    ctx.articleContent = stored?.content ?? ''
+  }
+
+  if (!guardContent(deps, ctx)) return
   logger.step('Export — HTML PropulSite…')
   const exported = await client.apiPost<{ html: string }>(`/export/${ctx.articleId}`, {})
   await mkdir(OUTPUT_DIR, { recursive: true })

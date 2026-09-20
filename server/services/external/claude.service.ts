@@ -1,5 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { log } from '../../utils/logger.js'
+import { filterToolPreambles, type StreamBlockEvent } from './claude-stream.js'
 
 // Lazy-init du client Anthropic : évite que l'import de ce module déclenche
 // `new Anthropic()` au top-level (sinon les environnements de test browser-like
@@ -150,10 +151,23 @@ export async function* streamChatCompletion(
 
   let chunkCount = 0
   try {
-    for await (const event of stream) {
-      if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+    if (tools && tools.length > 0) {
+      // Outils actifs (recherche web) : Claude annonce ses recherches dans des
+      // blocs de texte séparés (« Je vais d'abord faire une recherche… »).
+      // `filterToolPreambles` les écarte — sans ce filtre, le monologue part
+      // dans l'article (audit 2026-09-19). Émission bloc par bloc.
+      for await (const chunk of filterToolPreambles(stream as unknown as AsyncIterable<StreamBlockEvent>)) {
         chunkCount++
-        yield event.delta.text
+        yield chunk
+      }
+    } else {
+      // Sans outil, aucun préambule possible : streaming token par token,
+      // comportement historique inchangé.
+      for await (const event of stream) {
+        if (event.type === 'content_block_delta' && event.delta.type === 'text_delta') {
+          chunkCount++
+          yield event.delta.text
+        }
       }
     }
   } catch (err) {

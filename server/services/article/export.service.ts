@@ -2,6 +2,7 @@ import { readFile } from 'fs/promises'
 import { join } from 'path'
 import { log } from '../../utils/logger.js'
 import { splitByH2Regex } from '../../../shared/html-utils.js'
+import { stripContentH1 } from '../../../shared/ai-text.js'
 
 const DOCS_DIR = join(process.cwd(), 'docs')
 
@@ -85,7 +86,11 @@ export async function generateExportHtml(options: ExportOptions): Promise<string
   const { title, metaTitle, metaDescription, cocoonName, content, jsonLd, embedCss } = options
   log.info(`generateExportHtml: ${title}`, { contentLength: content.length, hasJsonLd: !!jsonLd, embedCss: !!embedCss })
 
-  const { intro, chapters, conclusion } = parseSections(content)
+  // Le bandeau ci-dessous pose déjà le `<h1>` de la page. Le contenu généré en
+  // porte un lui aussi (consigne d'intro du prompt) → deux H1 sur la page
+  // exportée, constaté sur #455 (audit 2026-09-19). On retire celui du corps,
+  // ce qui répare aussi les articles déjà en base au prochain export.
+  const { intro, chapters, conclusion } = parseSections(stripContentH1(content))
   log.debug(`generateExportHtml: parsed ${chapters.length} chapters, intro=${intro.length > 0}, conclusion=${conclusion.length > 0}`)
   const sommaire = buildSommaire(chapters, conclusion.length > 0)
 
