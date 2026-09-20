@@ -14,6 +14,7 @@ import {
   MAX_PARAGRAPH_WORDS,
   JARGON_DICTIONARY,
 } from '@shared/constants/geo.constants.js'
+import { startsWithQuestionWord } from '@shared/french-text.js'
 import { stripHtml } from './text-utils'
 
 /**
@@ -22,9 +23,9 @@ import { stripHtml } from './text-utils'
 function isQuestion(text: string): boolean {
   const trimmed = text.trim()
   if (trimmed.endsWith('?')) return true
-  // French question patterns
-  const questionPatterns = /^(comment|pourquoi|quand|où|quel|quelle|quels|quelles|combien|est-ce que|qu['']est-ce|que faire|qui|quoi)\b/i
-  return questionPatterns.test(trimmed)
+  // Détection partagée avec l'export : le motif local utilisait `\b`, qui ne
+  // matche jamais après une lettre accentuée — « Où … » n'était pas compté.
+  return startsWithQuestionWord(trimmed)
 }
 
 /**

@@ -3,6 +3,7 @@ import { join } from 'path'
 import { log } from '../../utils/logger.js'
 import { splitByH2Regex } from '../../../shared/html-utils.js'
 import { stripContentH1 } from '../../../shared/ai-text.js'
+import { startsWithQuestionWord } from '../../../shared/french-text.js'
 
 const DOCS_DIR = join(process.cwd(), 'docs')
 
@@ -234,7 +235,10 @@ export function generateJsonLd(options: {
 
   for (const section of split.sections) {
     // Check if heading is a question
-    if (section.title.includes('?') || /^(comment|pourquoi|quand|où|quel|quelle|quels|quelles)\b/i.test(section.title)) {
+    // `startsWithQuestionWord` remplace un motif maison qui utilisait `\b` :
+    // en JS, `où\b` ne matche jamais (« ù » n'est pas un caractère de mot),
+    // donc les sections « Où … » n'entraient pas dans le FAQPage.
+    if (section.title.includes('?') || startsWithQuestionWord(section.title)) {
       // Extract first paragraph as answer
       const pMatch = /<p[^>]*>(.*?)<\/p>/is.exec(section.bodyHtml)
       const answer = pMatch ? pMatch[1]!.replace(/<[^>]+>/g, '').trim() : ''
