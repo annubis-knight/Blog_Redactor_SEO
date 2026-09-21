@@ -73,9 +73,7 @@ function guardContent(deps: PhaseDeps, ctx: AutoRunContext): boolean {
   logger.info(verdict.report)
   logger.info('  → L\'article est enregistré en base : corrige-le dans l\'éditeur,')
   logger.info('    ou lance « npm run content:clean -- --id=' + String(ctx.articleId) + ' ».')
-  report.addStep(
-    `Rédaction · EXPORT REFUSÉ (${verdict.leaks.length} fuite(s) IA, ${verdict.orphans.length} texte(s) hors paragraphe)`,
-  )
+  report.addStep(`Rédaction · EXPORT REFUSÉ (${verdict.errors.length} défaut(s) au sens de npm run verify)`)
   return false
 }
 

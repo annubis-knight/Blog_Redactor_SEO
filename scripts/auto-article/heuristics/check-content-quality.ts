@@ -16,6 +16,7 @@
 
 import { detectAiMetaLeaks, type AiMetaLeak } from '../../../shared/ai-text.js'
 import { detectOrphanBlockText } from '../../../shared/content-repair.js'
+import { validateArticleContent, type ContentIssue } from '../../../shared/content-validators.js'
 
 /** Nombre de défauts détaillés dans le rapport CLI (les suivants sont comptés). */
 const REPORTED_LEAKS = 5
@@ -30,9 +31,19 @@ export interface ContentCheckResult {
    * sur #456, qu'aucun motif ne connaissait (2026-09-21).
    */
   orphans: string[]
+  /**
+   * Toutes les erreurs au sens de `npm run verify` (content-validators).
+   * Unifié le 2026-09-21 : le garde-fou ne regardait que le monologue et le
+   * texte orphelin, et a laissé exporter un pilier aux paragraphes tronqués
+   * que `verify` refusait. Une règle, un seul endroit.
+   */
+  errors: ContentIssue[]
   /** Rapport prêt à afficher dans le terminal (vide si tout va bien). */
   report: string
 }
+
+/** Règles déjà détaillées dans leur propre section du rapport. */
+const DETAILED_RULES = new Set(['ai-monologue', 'orphan-text'])
 
 /**
  * Motifs de preuve sociale invérifiable.
@@ -111,13 +122,14 @@ export function detectUnverifiableClaims(content: string): UnverifiableClaim[] {
  */
 export function checkContentBeforeExport(content: string): ContentCheckResult {
   if (!content || !content.trim()) {
-    return { ok: false, leaks: [], orphans: [], report: '  Contenu vide — rien à exporter.' }
+    return { ok: false, leaks: [], orphans: [], errors: [], report: '  Contenu vide — rien à exporter.' }
   }
 
+  const errors = validateArticleContent(content).filter((i) => i.severity === 'error')
   const leaks = detectAiMetaLeaks(content, { max: REPORTED_LEAKS })
   const orphans = detectOrphanBlockText(content)
-  if (leaks.length === 0 && orphans.length === 0) {
-    return { ok: true, leaks: [], orphans: [], report: '' }
+  if (errors.length === 0) {
+    return { ok: true, leaks: [], orphans: [], errors: [], report: '' }
   }
 
   const lines: string[] = []
@@ -139,5 +151,16 @@ export function checkContentBeforeExport(content: string): ContentCheckResult {
     }
   }
 
-  return { ok: false, leaks, orphans, report: lines.join('\n') }
+  const others = errors.filter((e) => !DETAILED_RULES.has(e.rule))
+  if (others.length > 0) {
+    lines.push('  Autres défauts :')
+    others.slice(0, REPORTED_LEAKS).forEach((e, i) => {
+      lines.push(`  ${i + 1}. [${e.rule}] ${e.message}${e.excerpt ? ` « ${e.excerpt} »` : ''}`)
+    })
+    if (others.length > REPORTED_LEAKS) {
+      lines.push(`  (+ ${others.length - REPORTED_LEAKS} autre(s))`)
+    }
+  }
+
+  return { ok: false, leaks, orphans, errors, report: lines.join('\n') }
 }

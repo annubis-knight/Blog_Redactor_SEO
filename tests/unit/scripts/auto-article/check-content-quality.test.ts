@@ -56,6 +56,23 @@ describe('checkContentBeforeExport', () => {
     expect(result.report).toContain('Texte hors paragraphe')
   })
 
+  it('bloque un paragraphe tronqué, comme verify (cas réel du pilier #1012)', () => {
+    // Le garde-fou ne regardait que le monologue : il a laissé exporter ce
+    // défaut que `npm run verify` refusait. Il applique désormais les mêmes règles.
+    const result = checkContentBeforeExport(
+      '<h2>Le marché local</h2><p>Phrase complète. À Toulouse, vous êtes en concurrence</p>',
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.errors.map((e) => e.rule)).toContain('truncated-block')
+    expect(result.report).toContain('Autres défauts')
+  })
+
+  it('bloque une balise de mise en page avalée', () => {
+    const result = checkContentBeforeExport('<h2>T</h2><p>Les repères <nav></nav> du site.</p>')
+    expect(result.errors.map((e) => e.rule)).toContain('forbidden-tag')
+  })
+
   it('contenu vide → bloqué, car rien à exporter', () => {
     expect(checkContentBeforeExport('').ok).toBe(false)
     expect(checkContentBeforeExport('   ').ok).toBe(false)
