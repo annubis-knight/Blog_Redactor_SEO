@@ -69,3 +69,17 @@ describe('auto:flags — parseArgs', () => {
     expect(f).toEqual({ mode: 'real', verbose: true, port: 5000 })
   })
 })
+
+describe('auto:flags — --capitaine', () => {
+  it('lit la forme --capitaine=<mot-clé>', () => {
+    expect(parseArgs(['--capitaine=création de site web Toulouse']).capitaine).toBe('création de site web Toulouse')
+  })
+
+  it('lit la forme séparée --capitaine <mot-clé> et retire les espaces de bord', () => {
+    expect(parseArgs(['--capitaine', '  prix site vitrine ']).capitaine).toBe('prix site vitrine')
+  })
+
+  it('refuse une valeur absente', () => {
+    expect(() => parseArgs(['--capitaine'])).toThrow()
+  })
+})

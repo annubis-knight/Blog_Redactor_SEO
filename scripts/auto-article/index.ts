@@ -42,6 +42,8 @@ Options :
   --port=<n>         Port du serveur dev (défaut : $PORT ou 3400).
   --cocoon=<nom>     Impose le cocon cible (pas de proposition d'emplacement).
   --level=<niveau>   Impose pilier | intermediaire | specifique.
+  --capitaine=<mot>  Impose le mot-clé principal (l'heuristique est court-circuitée).
+                     Avec --resume, un Capitaine différent relance Moteur + Rédaction.
   --resume=<id>      Reprend un article existant par son id.
   --relink=<id>      Relance le maillage interne seul sur un article existant.
   --config=<file>    (à venir) rejoue un run sans prompts.
@@ -100,6 +102,7 @@ async function main(): Promise<void> {
     nonInteractive: false,
     forcedCocoon: flags.cocoon ?? null,
     forcedLevel: flags.level ?? null,
+    forcedCapitaine: flags.capitaine ?? null,
   }
 
   const client = createHttpClient(baseUrl)

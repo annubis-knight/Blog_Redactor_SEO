@@ -25,9 +25,18 @@ export interface ParsedFlags {
   level?: CanonicalArticleType
   /** Ne relance QUE le maillage interne sur un article existant. */
   relink?: number
+  /**
+   * Impose le mot-clé Capitaine : l'heuristique est court-circuitée, le reste
+   * du Moteur (SERP, Lieutenants, Lexique) est recalculé sur ce mot-clé.
+   * Né du run réel du 2026-09-21 : l'heuristique avait retenu « site e-commerce »
+   * pour une agence qui ne fait pas d'e-commerce.
+   */
+  capitaine?: string
 }
 
-const VALUE_FLAGS = new Set(['--mode', '--config', '--resume', '--port', '--cocoon', '--level', '--relink'])
+const VALUE_FLAGS = new Set([
+  '--mode', '--config', '--resume', '--port', '--cocoon', '--level', '--relink', '--capitaine',
+])
 
 const LEVELS: CanonicalArticleType[] = ['pilier', 'intermediaire', 'specifique']
 
@@ -80,6 +89,9 @@ export function parseArgs(argv: string[]): ParsedFlags {
         break
       case '--relink':
         flags.relink = assertPositiveInt(key, value)
+        break
+      case '--capitaine':
+        flags.capitaine = requireValue(key, value).trim()
         break
       default:
         throw new Error(`Argument inconnu : ${arg}`)

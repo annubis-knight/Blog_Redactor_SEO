@@ -38,6 +38,8 @@ export interface AutoRunConfig {
    */
   forcedCocoon: string | null
   forcedLevel: CanonicalArticleType | null
+  /** Capitaine imposé en ligne de commande (`--capitaine`), sinon `null`. */
+  forcedCapitaine: string | null
 }
 
 /** Saisie minimale demandée à l'utilisateur au démarrage. */

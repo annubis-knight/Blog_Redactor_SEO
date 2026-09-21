@@ -26,3 +26,20 @@ export function planResume(s: ResumeState): ResumeSkips {
     skipRedaction: s.hasContent,
   }
 }
+
+/**
+ * Un Capitaine imposé qui diffère du Capitaine en base invalide tout ce qui en
+ * découle : Lieutenants, Lexique et structure viennent de SA page de résultats,
+ * et le texte a été écrit pour lui. On refait donc Moteur ET Rédaction.
+ * Imposer le Capitaine déjà en place ne change rien.
+ */
+export function applyForcedCapitaine(
+  skips: ResumeSkips,
+  stored: string | null,
+  forced: string | null,
+): ResumeSkips {
+  if (!forced) return skips
+  const same = (stored ?? '').trim().toLowerCase() === forced.trim().toLowerCase()
+  if (same) return skips
+  return { ...skips, skipMoteur: false, skipRedaction: false }
+}

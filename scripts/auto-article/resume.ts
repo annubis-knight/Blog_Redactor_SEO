@@ -8,7 +8,7 @@ import type { HttpClient } from './http-client.js'
 import type { AutoRunContext } from './types.js'
 import { fromCanonicalType } from './canonical.js'
 import { formatHnStructure } from './heuristics/extract-hn-structure.js'
-import { planResume } from './resume-plan.js'
+import { applyForcedCapitaine, planResume } from './resume-plan.js'
 
 interface ArticleResp {
   article: {
@@ -63,11 +63,15 @@ export async function hydrateResume(client: HttpClient, ctx: AutoRunContext): Pr
     .apiGet<{ content?: string | null }>(`/articles/${id}/content`)
     .catch(() => ({ content: null }))
 
-  const skips = planResume({
-    checks: prog.completedChecks ?? [],
-    capitaine: ctx.capitaine,
-    hasContent: Boolean(content.content),
-    hasStrategy: Boolean(strat && (strat.completedSteps ?? 0) > 0),
-  })
+  const skips = applyForcedCapitaine(
+    planResume({
+      checks: prog.completedChecks ?? [],
+      capitaine: ctx.capitaine,
+      hasContent: Boolean(content.content),
+      hasStrategy: Boolean(strat && (strat.completedSteps ?? 0) > 0),
+    }),
+    ctx.capitaine,
+    ctx.config.forcedCapitaine,
+  )
   ctx.resume = { active: true, ...skips }
 }

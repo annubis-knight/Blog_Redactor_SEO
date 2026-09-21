@@ -19,6 +19,7 @@ import { pickLexique, type TfidfResultLite } from '../heuristics/pick-lexique.js
 import { detectCannibalization, requiresConfirmation, type ExistingCapitaine } from '../heuristics/detect-cannibalization.js'
 import { extractHnStructure, formatHnStructure } from '../heuristics/extract-hn-structure.js'
 import { mapLimit, DEFAULT_CONCURRENCY } from '../concurrency.js'
+import { offOfferTerm } from '../../../shared/seo-validators.js'
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
@@ -44,6 +45,49 @@ interface CocoonWithArticles {
   }[]
 }
 
+/**
+ * Choix automatique du Capitaine : scan de chaque candidat Radar, puis
+ * `pickCapitaine`. Court-circuité quand l'utilisateur impose le mot-clé.
+ */
+async function pickFromScans(
+  deps: PhaseDeps,
+  ctx: AutoRunContext,
+  level: ReturnType<typeof toCanonicalType>,
+): Promise<{ keyword: string; forced: boolean }> {
+  const { client, logger } = deps
+  logger.step(`Capitaine — scan de ${ctx.radarCandidates.length} candidats (parallèle)…`)
+  const scanned: CapitaineInput[] = await mapLimit(
+    ctx.radarCandidates,
+    DEFAULT_CONCURRENCY,
+    async (cand) => {
+      const r = await client.apiPost<ScanResp>(
+        `/keywords/${encodeURIComponent(cand.keyword)}/scan`,
+        { level, articleTitle: ctx.articleTitle, articleId: ctx.articleId, painPoint: ctx.painPoint },
+      )
+      return {
+        keyword: cand.keyword,
+        verdict: r.verdict.level,
+        relevance: r.relevanceScore?.total ?? null,
+        market: r.marketScore?.total ?? null,
+      }
+    },
+  )
+
+  // Le sujet sert à calculer l'affinité topique (le relevanceScore produit
+  // s'étant révélé non-discriminant en run réel).
+  const topic = `${ctx.articleTitle} ${ctx.pilierKeyword} ${ctx.painPoint}`
+  const choice = pickCapitaine(scanned, topic, level)
+  if (!choice) throw new Error('Moteur : aucun Capitaine sélectionnable')
+
+  const scores = `affinité ${(choice.affinity * 100).toFixed(0)}%, pertinence ${choice.relevance ?? '—'}, marché ${choice.market ?? '—'}`
+  if (choice.forced) {
+    logger.warn(`Capitaine « ${choice.keyword} » — verdict ${choice.verdict} forcé (${scores})`)
+  } else {
+    logger.success(`Capitaine : « ${choice.keyword} » (GO, ${scores})`)
+  }
+  return { keyword: choice.keyword, forced: choice.forced }
+}
+
 export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Promise<void> {
   const { client, logger, report } = deps
 
@@ -51,42 +95,30 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     if (ctx.articleId == null) throw new Error('Moteur : articleId manquant (phase Explorer requise)')
     if (ctx.radarCandidates.length === 0) throw new Error('Moteur : aucun candidat Radar à valider')
 
+    // Hors offre : un mot-clé qui attire un trafic ne pouvant pas devenir client
+    // n'a rien à faire en Capitaine ni en Lieutenant. Le run réel du 2026-09-21
+    // avait retenu « site e-commerce » pour une agence qui n'en fait pas.
+    const excluded = ctx.radarCandidates.filter((c) => offOfferTerm(c.keyword))
+    if (excluded.length > 0) {
+      ctx.radarCandidates = ctx.radarCandidates.filter((c) => !offOfferTerm(c.keyword))
+      logger.dim(`hors offre, écartés : ${excluded.map((c) => c.keyword).join(', ')}`)
+      if (ctx.radarCandidates.length === 0) throw new Error('Moteur : tous les candidats sont hors offre')
+    }
+
     const level = toCanonicalType(ctx.articleType)
 
-    // 1. Capitaine — scan des candidats, en parallèle borné (latence ÷ ~3,
-    //    couverture inchangée : tous les candidats restent scannés).
-    logger.step(`Capitaine — scan de ${ctx.radarCandidates.length} candidats (parallèle)…`)
-    const scanned: CapitaineInput[] = await mapLimit(
-      ctx.radarCandidates,
-      DEFAULT_CONCURRENCY,
-      async (cand) => {
-        const r = await client.apiPost<ScanResp>(
-          `/keywords/${encodeURIComponent(cand.keyword)}/scan`,
-          { level, articleTitle: ctx.articleTitle, articleId: ctx.articleId, painPoint: ctx.painPoint },
-        )
-        return {
-          keyword: cand.keyword,
-          verdict: r.verdict.level,
-          relevance: r.relevanceScore?.total ?? null,
-          market: r.marketScore?.total ?? null,
-        }
-      },
-    )
+    // 1. Capitaine — imposé par l'utilisateur (`--capitaine`), ou choisi par
+    //    l'heuristique après un scan des candidats en parallèle borné.
+    const choice = ctx.config.forcedCapitaine
+      ? { keyword: ctx.config.forcedCapitaine, forced: false, imposed: true }
+      : { ...(await pickFromScans(deps, ctx, level)), imposed: false }
 
-    // Le sujet sert à calculer l'affinité topique (le relevanceScore produit
-    // s'étant révélé non-discriminant en run réel).
-    const topic = `${ctx.articleTitle} ${ctx.pilierKeyword} ${ctx.painPoint}`
-    const choice = pickCapitaine(scanned, topic, level)
-    if (!choice) throw new Error('Moteur : aucun Capitaine sélectionnable')
     ctx.capitaine = choice.keyword
-    const scores = `affinité ${(choice.affinity * 100).toFixed(0)}%, pertinence ${choice.relevance ?? '—'}, marché ${choice.market ?? '—'}`
-    if (choice.forced) {
-      logger.warn(`Capitaine « ${choice.keyword} » — verdict ${choice.verdict} forcé (${scores})`)
-    } else {
-      logger.success(`Capitaine : « ${choice.keyword} » (GO, ${scores})`)
-    }
+    if (choice.imposed) logger.success(`Capitaine imposé : « ${choice.keyword} » (heuristique court-circuitée)`)
     await emitCheck(client, ctx.articleId, MOTEUR_CAPITAINE_LOCKED)
-    report.addStep(`Moteur · Capitaine (${choice.keyword}${choice.forced ? ' — forcé' : ''})`)
+    report.addStep(
+      `Moteur · Capitaine (${choice.keyword}${choice.imposed ? ' — imposé' : choice.forced ? ' — forcé' : ''})`,
+    )
 
     // 1bis. Cannibalisation — compare aux Capitaines des autres articles du thème.
     // Un seul appel : le payload /cocoons porte déjà les mots-clés de chaque article.

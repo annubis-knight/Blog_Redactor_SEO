@@ -13,6 +13,7 @@ function makeCtx(): AutoRunContext {
     nonInteractive: false,
     forcedCocoon: null,
     forcedLevel: null,
+    forcedCapitaine: null,
   }
   return createContext(config, {
     topic: 'sujet test',

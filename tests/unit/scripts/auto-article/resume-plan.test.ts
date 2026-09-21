@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { planResume } from '../../../../scripts/auto-article/resume-plan.js'
+import { applyForcedCapitaine, planResume } from '../../../../scripts/auto-article/resume-plan.js'
 import { fromCanonicalType, toCanonicalType } from '../../../../scripts/auto-article/canonical.js'
 import { MOTEUR_LEXIQUE_VALIDATED, MOTEUR_CAPITAINE_LOCKED } from '../../../../shared/constants/workflow-checks.constants.js'
 
@@ -35,5 +35,29 @@ describe('auto:resume-plan — planResume', () => {
 
   it('contenu présent → skip Rédaction', () => {
     expect(planResume({ checks: [], capitaine: null, hasContent: true, hasStrategy: false }).skipRedaction).toBe(true)
+  })
+})
+
+// Capitaine imposé (`--capitaine`) — né du run réel du 2026-09-21 : l'heuristique
+// avait retenu « site e-commerce » pour une agence qui n'en fait pas.
+describe('applyForcedCapitaine', () => {
+  const ALL_SKIPPED = { skipCerveau: true, skipMoteur: true, skipRedaction: true }
+
+  it('sans Capitaine imposé → plan inchangé', () => {
+    expect(applyForcedCapitaine(ALL_SKIPPED, 'site e-commerce', null)).toEqual(ALL_SKIPPED)
+  })
+
+  it('Capitaine imposé différent → refait Moteur ET Rédaction, garde le Cerveau', () => {
+    expect(applyForcedCapitaine(ALL_SKIPPED, 'site e-commerce', 'création de site web Toulouse')).toEqual({
+      skipCerveau: true,
+      skipMoteur: false,
+      skipRedaction: false,
+    })
+  })
+
+  it('Capitaine imposé identique (casse et espaces ignorés) → rien à refaire', () => {
+    expect(applyForcedCapitaine(ALL_SKIPPED, 'Création de site web Toulouse ', 'création de site web toulouse')).toEqual(
+      ALL_SKIPPED,
+    )
   })
 })
