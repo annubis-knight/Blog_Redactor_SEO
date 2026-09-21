@@ -303,11 +303,23 @@ export function computeSectionBudget(
   const ratio = Math.round((budget / targetWordCount) * 100)
   const hint = `~${budget} mots, soit ~${ratio}% du budget total`
 
-  // max_tokens: ~4 tokens/word for HTML output (tags, attributes, structured lists consume ~60% of tokens).
-  // Clamped [2048, 8192] — 2048 minimum so even small sections aren't truncated.
-  const maxTokens = Math.min(8192, Math.max(2048, Math.ceil(budget * 4)))
+  return { role, budget, hint, maxTokens: sectionMaxTokens(budget) }
+}
 
-  return { role, budget, hint, maxTokens }
+/**
+ * Plafond de jetons d'un groupe de sections.
+ *
+ * Le budget de mots est une consigne MOLLE : le modèle écrit couramment deux à
+ * trois fois plus (audit de juillet), et la recherche web ajoute ses propres
+ * phrases de sortie. Avec l'ancien plafond (budget × 4, plancher 2 048), il
+ * était coupé en plein mot — 31 blocs tronqués sur les six piliers de juillet,
+ * encore 4 sur le pilier du 2026-09-21.
+ *
+ * Un plafond plus haut ne coûte rien de plus : on ne paie que les jetons
+ * réellement écrits. Il laisse simplement au modèle le droit de finir sa phrase.
+ */
+export function sectionMaxTokens(budgetWords: number): number {
+  return Math.min(8192, Math.max(4096, Math.ceil(budgetWords * 6)))
 }
 
 /** Build micro-context block from article data */

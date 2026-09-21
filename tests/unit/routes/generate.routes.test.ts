@@ -2,6 +2,7 @@
  
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
+import { sectionMaxTokens } from '../../../server/routes/generate/_helpers'
 
 const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext, mockValidateHtmlStructurePreserved } = vi.hoisted(() => ({
   mockStreamChatCompletion: vi.fn(),
@@ -1168,10 +1169,11 @@ describe('POST /generate/article (dynamic maxTokens & targetWordCount)', () => {
     const maxTokensArg = callArgs[2]
     // Must be a number computed dynamically (NOT the old hardcoded 4096)
     expect(typeof maxTokensArg).toBe('number')
-    expect(maxTokensArg).toBeGreaterThanOrEqual(2048)
+    expect(maxTokensArg).toBeGreaterThanOrEqual(4096)
     expect(maxTokensArg).toBeLessThanOrEqual(8192)
-    // For Pilier (2500 words), single group: budget = 2500, maxTokens = min(8192, ceil(2500*4)) = 8192
-    expect(maxTokensArg).toBe(Math.min(8192, Math.max(2048, Math.ceil(2500 * 4))))
+    // Plafond relevé le 2026-09-21 (budget × 6, plancher 4 096) : l'ancien coupait
+    // le modèle en plein mot. Pilier (2500 mots), un seul groupe → 8192.
+    expect(maxTokensArg).toBe(Math.min(8192, Math.max(4096, Math.ceil(2500 * 6))))
   })
 
   it('passes targetWordCount from parsed.data when provided (F7)', async () => {
@@ -1184,10 +1186,28 @@ describe('POST /generate/article (dynamic maxTokens & targetWordCount)', () => {
 
     await handler(req, res)
 
-    // With targetWordCount = 1200 and 1 group: budget = 1200, maxTokens = ceil(1200*4) = 4800
+    // With targetWordCount = 1200 and 1 group: budget = 1200, maxTokens = ceil(1200*6) = 7200
     const callArgs = mockStreamChatCompletion.mock.calls[0]
     const maxTokensArg = callArgs[2]
-    const expectedMaxTokens = Math.min(8192, Math.max(2048, Math.ceil(customTarget * 4)))
+    const expectedMaxTokens = Math.min(8192, Math.max(4096, Math.ceil(customTarget * 6)))
     expect(maxTokensArg).toBe(expectedMaxTokens)
+  })
+})
+
+// ---------------------------------------------------------------------------
+// sectionMaxTokens — plafond de jetons d'un groupe de sections
+// ---------------------------------------------------------------------------
+
+describe('sectionMaxTokens', () => {
+  it('garde un plancher de 4 096 jetons, même pour un petit budget', () => {
+    expect(sectionMaxTokens(150)).toBe(4096)
+  })
+
+  it('laisse une marge de ×6 sur le budget de mots (le modèle le dépasse)', () => {
+    expect(sectionMaxTokens(1000)).toBe(6000)
+  })
+
+  it('plafonne à 8 192 jetons', () => {
+    expect(sectionMaxTokens(5000)).toBe(8192)
   })
 })

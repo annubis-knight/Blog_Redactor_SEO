@@ -58,7 +58,15 @@ const PATTERNS: NamedPattern[] = [
   {
     name: 'annonce-de-redaction',
     re: new RegExp(
-      `\\bje vais (?:d'abord |maintenant |ensuite |donc )?(?:rédiger|écrire|générer|produire|procéder|commencer)${WORD_END}`,
+      `\\bje vais (?:d'abord |maintenant |ensuite |donc )?(?:rédiger|écrire|générer|produire|procéder|commencer|structurer|organiser|synthétiser|intégrer|compléter|enrichir|construire|reformuler)${WORD_END}`,
+      'giu',
+    ),
+  },
+  {
+    // « Parfait. J'ai… » / « Excellent. Je… » : l'IA qui se félicite avant d'écrire.
+    name: 'auto-satisfecit',
+    re: new RegExp(
+      `\\b(?:parfait|excellent|très bien|d'accord|entendu)\\s*[.!,]\\s*(?:j'ai|je |voici|maintenant)`,
       'giu',
     ),
   },
@@ -72,7 +80,14 @@ const PATTERNS: NamedPattern[] = [
   {
     name: 'sources-obtenues',
     re: new RegExp(
-      `\\bj'ai (?:mes|les|suffisamment de|assez de) (?:sources|données|informations|éléments|chiffres)${WORD_END}`,
+      `\\bj'ai (?:maintenant |désormais |à présent |enfin )?(?:mes |les |des |toutes les |suffisamment d'|suffisamment de |assez d'|assez de )(?:sources|données|informations|éléments|chiffres)${WORD_END}`,
+      'giu',
+    ),
+  },
+  {
+    name: 'livraison-html',
+    re: new RegExp(
+      `\\bvoici (?:le |la )?(?:contenu|section|rédaction|texte)(?: html)?(?: (?:demandée?|rédigée?|complète?|finale?))?\\s*:`,
       'giu',
     ),
   },
@@ -172,10 +187,21 @@ export function stripAiPreamble(html: string): string {
 
   const lead = html.slice(0, firstTag)
   if (!lead.trim()) return html
-  if (detectAiMetaLeaks(lead, { max: 1 }).length === 0) return html
+
+  const looksLikeChatter =
+    detectAiMetaLeaks(lead, { max: 1 }).length > 0 || META_OPENER.test(normalize(lead))
+  if (!looksLikeChatter) return html
 
   return html.slice(firstTag)
 }
+
+/**
+ * Premiers mots typiques du bavardage de l'IA en tête de réponse. Un contenu
+ * éditorial commence par une balise ; du texte nu qui s'ouvre ainsi est
+ * toujours une adresse de l'IA à son commanditaire (run réel #1012).
+ */
+const META_OPENER =
+  /^\s*(?:parfait|excellent|très bien|d'accord|entendu|bien sûr|voici|maintenant|je |j'ai |avant de |laissez-moi)/
 
 /**
  * Retire les `<h1>` du corps d'un article.

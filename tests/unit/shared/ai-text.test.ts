@@ -19,6 +19,11 @@ describe('detectAiMetaLeaks', () => {
       'Avant de commencer, je dois vérifier les données chiffrées.',
       "J'ai suffisamment de données chiffrées et vérifiées.",
       "Je vais d'abord effectuer des recherches pour vérifier les données chiffrées",
+      // Run réel du 2026-09-21 (article #1012) : passées entre les mailles,
+      // rattrapées par la détection structurelle du garde-fou.
+      "Parfait. J'ai suffisamment d'informations pour rédiger une introduction puissante et sourcée.",
+      'Parfait. J’ai maintenant des données solides et récentes pour rédiger cette section. Voici le contenu HTML :',
+      'Excellent. J’ai maintenant les informations actualisées pour rédiger cette section. Je vais structurer le contenu.',
     ]
 
     for (const leak of REAL_LEAKS) {
@@ -88,6 +93,17 @@ describe('stripAiPreamble', () => {
   it('retire un préambule court sans ponctuation finale', () => {
     const input = '<h2>Titre</h2>'
     expect(stripAiPreamble(`Je vais rédiger cette section\n${input}`)).toBe(input)
+  })
+
+  it('retire une amorce réelle du 2026-09-21 (#1012)', () => {
+    const input =
+      'Parfait. J’ai maintenant des données solides et récentes pour rédiger cette section. Voici le contenu HTML :\n\n<h2>Titre</h2><p>Texte.</p>'
+    expect(stripAiPreamble(input)).toBe('<h2>Titre</h2><p>Texte.</p>')
+  })
+
+  it('retire une amorce qui commence par une formule de politesse de l’IA', () => {
+    const input = 'Excellent, c’est noté pour la suite.\n<h2>Titre</h2>'
+    expect(stripAiPreamble(input)).toBe('<h2>Titre</h2>')
   })
 
   it('ne touche pas un contenu qui commence déjà par une balise', () => {

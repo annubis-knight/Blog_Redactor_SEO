@@ -9,6 +9,22 @@ import { getArticleKeywords, loadArticleMicroContext } from '../../services/infr
 import type { Outline } from '../../../shared/types/index.js'
 import { mergeConsecutiveElements } from '../../../shared/html-utils.js'
 import { stripAiPreamble } from '../../../shared/ai-text.js'
+import { stripOrphanBlockText, trimTruncatedBlocks } from '../../../shared/content-repair.js'
+
+/**
+ * Dernier filet structurel sur chaque section générée : aucun texte hors
+ * paragraphe, aucun bloc coupé en plein mot. Ce sont exactement les défauts
+ * que `npm run verify` refuse (audit 2026-09-19, pilier du 2026-09-21) :
+ * mieux vaut les empêcher ici que les réparer après coup.
+ */
+function repairStructure(html: string): string {
+  const withoutOrphans = stripOrphanBlockText(html).html
+  const repaired = trimTruncatedBlocks(withoutOrphans)
+  if (repaired.trimmed.length > 0) {
+    log.warn('[generate-article] blocs tronqués réparés', { count: repaired.trimmed.length })
+  }
+  return repaired.html.replace(/<p>\s*<\/p>/g, '')
+}
 import {
   DEFAULT_TARGET_WORDS_BY_TYPE,
   DEFAULT_TARGET_WORDS_FALLBACK,
@@ -159,8 +175,8 @@ router.post('/generate/article', async (req, res) => {
           // stripAiPreamble : 2e filet après `filterToolPreambles`. Le bloc de
           // texte final peut encore s'ouvrir sur « Voici la section demandée : »,
           // que le filtre par blocs ne peut pas voir (audit 2026-09-19).
-          sectionContent = repairHtmlTail(
-            mergeConsecutiveElements(stripAiPreamble(stripCodeFences(result.fullContent))),
+          sectionContent = repairStructure(
+            repairHtmlTail(mergeConsecutiveElements(stripAiPreamble(stripCodeFences(result.fullContent)))),
           )
           sectionUsage = result.usage
           sectionChunks = result.chunkCount
