@@ -309,6 +309,14 @@ paieras plus jamais.
 | `npm run db:snapshot` | Reprend la photo après une modification de structure. |
 | `npm run db:clean-tests` | Liste les articles laissés par les tests (simulation). Ajoute `-- --confirm` pour les supprimer. |
 
+### Qualité — la commande à retenir
+
+| Commande | Rôle |
+|---|---|
+| **`npm run verify`** | **Le contrôle complet** : style, types, qualité des articles en base, et comparaison des tests à la référence. C'est la commande qui répond à « est-ce que tout va bien ? ». |
+| `npm run verify:content` | Seulement les articles : monologue de l'IA, blocs tronqués, Markdown résiduel, metas coupées, liens morts, articles de test oubliés, fraîcheur de la sauvegarde. |
+| `npm run content:clean -- --id=455` | Répare un article déjà rédigé (simulation ; `--confirm` pour écrire). |
+
 ### Qualité du code
 
 | Commande | Rôle |

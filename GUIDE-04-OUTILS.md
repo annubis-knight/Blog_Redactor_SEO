@@ -301,6 +301,7 @@ Ils ne servent pas à écrire des articles, mais à garder le code sain.
 | **madge** | Les dépendances circulaires (A a besoin de B qui a besoin de A). | `npm run check:cycles` |
 | **dependency-cruiser** | Que les règles d'architecture sont respectées (ex. `src/` n'importe jamais `server/`). | `npm run check:arch` |
 | **Stryker** | Les tests de mutation : il casse volontairement le code pour voir si les tests s'en aperçoivent. | `npm run test:mutation` |
+| **Valideurs de contenu** | Les défauts trouvés pendant l'audit : monologue de l'IA, texte hors paragraphe, bloc tronqué, Markdown résiduel, balise interdite, meta coupée, lien mort, double H1. | `npm run verify:content` |
 | **husky + lint-staged** | Passe le linter automatiquement avant chaque commit git. | automatique |
 | **patch-package** | Applique un correctif maison à une librairie externe. Ici : `patches/knip+6.4.1.patch`. | automatique |
 | **concurrently / npm-run-all** | Lancent plusieurs commandes à la fois (`npm run dev` = serveur + application). | automatique |
@@ -320,6 +321,8 @@ Ils ne servent pas à écrire des articles, mais à garder le code sain.
 | `db-snapshot.ts` | `npm run db:snapshot` | Reprend la photo de la structure de la base. |
 | `db-check.ts` | `npm run db:check` | Compare la base réelle à cette photo (empreinte sha256). |
 | `db-clean-tests.ts` | `npm run db:clean-tests` | Évacue les articles laissés par les tests. Simulation par défaut. |
+| `verify-content.ts` | `npm run verify:content` | Contrôle la qualité de tous les articles en base (un valideur par défaut connu). |
+| `clean-article-content.ts` | `npm run content:clean -- --id=455` | Répare un article déjà rédigé. Simulation par défaut. |
 | `test-snapshot.ts` / `test-check.ts` | `npm run test:snapshot` / `test:check` | Enregistre l'état des tests, puis dit si ton chantier a cassé quelque chose. |
 
 ### Ceux qui dorment (outils d'époque, gardés pour mémoire)

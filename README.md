@@ -157,6 +157,7 @@ Détail complet dans [GUIDE-02-ARCHITECTURE.md](GUIDE-02-ARCHITECTURE.md).
 | `npm run auto:article -- --relink=123` | Repose seulement les liens internes de l'article 123. Gratuit. |
 | `npm run auto:preview` | Ouvre un aperçu local de tous les articles produits. |
 | `npm run kill-ports` | Libère les ports 3400 et 5400 quand ça bloque. |
+| `npm run verify` | **Le contrôle complet** : code, types, qualité des articles, tests. |
 | `npm run db:check` | Vérifie que la photo de la base est à jour. |
 | `npm run db:snapshot` | Reprend une photo de la structure de la base. |
 | `npm run test:unit` | Lance les tests automatiques. |
@@ -179,19 +180,21 @@ La liste complète et les options se trouvent dans [GUIDE-01-UTILISATION.md](GUI
 
 ### Pièges connus (audit du 19/09/2026)
 
-- ✅ **Corrigé le 20/09** — l'IA laissait son brouillon de réflexion dans les
-  articles (« Je vais d'abord faire une recherche… »). Le pipeline est réparé et
-  le robot **refuse désormais d'exporter** un texte pollué.
-  ⚠️ Mais les **7 piliers écrits en juillet** (#454 à #461) contiennent toujours
-  ces phrases et des cas clients inventés : à régénérer ou nettoyer à la main
-  avant publication.
-- ✅ **Corrigé le 20/09** — double titre H1 sur les pages exportées, et
-  accumulation d'articles fantômes « Renamed… » créés par les tests.
-- Les liens internes posés automatiquement pointent souvent vers des articles
-  **pas encore écrits**.
-- En mode simulé, le robot réutilise et écrase l'article #441.
+**Réglé les 20 et 21/09** : l'IA laissait son brouillon de réflexion dans les
+articles, inventait des cas clients, produisait un double H1 et des paragraphes
+coupés en plein mot. Le pipeline est réparé, **les 6 piliers existants ont été
+nettoyés**, et `npm run verify` contrôle désormais tout ça automatiquement.
+
+Ce qui reste à surveiller :
+
+- Les liens internes posés automatiquement visaient des articles **pas encore
+  écrits** : ils ont été retirés. Ils reviendront, proprement, quand la hiérarchie
+  parent-enfant sera en base (chantier P1).
+- En mode simulé, le robot réutilisait et écrasait un article existant.
 - `--resume` sur un article seulement *planifié* (statut « à rédiger ») ne
   fonctionne pas comme attendu.
+- Les mots-clés « Capitaine » de trois piliers restent discutables
+  (« accessibilité web » pour un article sur la conversion, par exemple).
 
 Détail complet, causes et corrections : `_bmad-output/implementation-artifacts/audit-auto-article-pipeline.md`
 (audit du CLI, juillet 2026) et l'audit complet de septembre 2026.
