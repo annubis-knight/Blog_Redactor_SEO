@@ -12,7 +12,7 @@
     "db:backup": "tsx scripts/db-backup.ts",
     "db:clean-tests": "tsx scripts/db-clean-tests.ts",
     "content:clean": "tsx scripts/clean-article-content.ts",
-    "verify": "run-p --print-label verify:lint verify:types verify:unit verify:content",
+    "verify": "run-p --print-label verify:lint verify:types verify:unit verify:content db:check",
     "verify:lint": "oxlint .",
     "verify:types": "run-p --print-label type-check auto:typecheck",
     "verify:unit": "vitest run --config vitest.verify.config.ts --reporter=dot --silent",
