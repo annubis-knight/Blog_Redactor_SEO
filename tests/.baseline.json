@@ -1,17 +1,17 @@
 {
-  "generated_at": "2026-09-21T00:14:21.718Z",
+  "generated_at": "2026-09-21T11:42:21.133Z",
   "git": {
-    "commit": "17282b2",
+    "commit": "f6281f4",
     "branch": "fix/audit-p0",
-    "subject": "fix(seo): détecte les titres en « Où », piégés par le \\b de JavaScript",
+    "subject": "test: suite réalignée sur schema.sql et la base réelle (19 → 2 rouges)",
     "clean": false
   },
   "totals": {
-    "passed": 4353,
-    "failed": 19,
+    "passed": 4427,
+    "failed": 2,
     "skipped": 246
   },
-  "fingerprint": "sha256:edcb0fd5075c86defd4f2f43f7ce73f70d940535f8c46db9d3a1251c4d2585f9",
+  "fingerprint": "sha256:96caca312af32658827df5224412e8a65f3b7b53b98a6f815617c1c0d27ecd10",
   "failures": [
     {
       "file": "tests/e2e-workflows/_setup-sanity.test.ts",
@@ -20,74 +20,6 @@
     {
       "file": "tests/e2e-workflows/_setup-sanity.test.ts",
       "name": "Test harness sanity serveur dev est joignable"
-    },
-    {
-      "file": "tests/unit/coherence/completed-checks.test.ts",
-      "name": "FR-MOT-CHECKS-CONSTANTS — aucune string en dur dans src/ aucun fichier .ts ou .vue de src/ ne contient un litteral check legacy"
-    },
-    {
-      "file": "tests/unit/coherence/prd-tables-matrix.test.ts",
-      "name": "PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations) au moins 20 tables vivantes (sentinelle anti-régression)"
-    },
-    {
-      "file": "tests/unit/coherence/prd-tables-matrix.test.ts",
-      "name": "PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations) intent_explorations est bien drop par migration 016 (FR-INFRA-INTENT-EXPLORATIONS-LEGACY)"
-    },
-    {
-      "file": "tests/unit/coherence/prd-tables-matrix.test.ts",
-      "name": "PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations) la matrice ne référence pas de table fantôme (drop ou jamais créée)"
-    },
-    {
-      "file": "tests/unit/coherence/relevance-live-computation.test.ts",
-      "name": "FR-CAP-RELEVANCE-INTENT-SIGNAL — câblage painIntentExpected articles.pain_intent_expected est TEXT single-value, pas TEXT[]"
-    },
-    {
-      "file": "tests/unit/coherence/test-quality.test.ts",
-      "name": "Test quality — anti-régression qualité de la suite zéro tautologie expect(true).toBe(true) (limite stricte: 0)"
-    },
-    {
-      "file": "tests/unit/components/moteur/DiscoveryAiPanelPersistence.test.ts",
-      "name": "DiscoveryPanel — coque IA persistante (FR-DIS-AI-PANEL) AC.DAIP.8 — garde de suppression : aucun import de DiscoveryAiPanel ni useDiscoveryRanking dans src/"
-    },
-    {
-      "file": "tests/unit/services/community-discussions.service.test.ts",
-      "name": "community-discussions.service — fetchCommunityDiscussions aggregates CommunitySignal correctly (domains, freshness, votes)"
-    },
-    {
-      "file": "tests/unit/services/community-discussions.service.test.ts",
-      "name": "community-discussions.service — fetchCommunityDiscussions deduplicates discussions by URL"
-    },
-    {
-      "file": "tests/unit/services/community-discussions.service.test.ts",
-      "name": "community-discussions.service — fetchCommunityDiscussions returns cached signal when cache is fresh (no API call)"
-    },
-    {
-      "file": "tests/unit/services/community-discussions.service.test.ts",
-      "name": "community-discussions.service — fetchCommunityDiscussions sends 3 SERP query variants for a keyword"
-    },
-    {
-      "file": "tests/unit/services/data.service.test.ts",
-      "name": "data.service — getArticleBySlug returned article has all expected fields"
-    },
-    {
-      "file": "tests/unit/services/data.service.test.ts",
-      "name": "data.service — getArticleBySlug returns article and cocoonName for valid slug"
-    },
-    {
-      "file": "tests/unit/services/data.service.test.ts",
-      "name": "data.service — getCocoonsBySilo returns cocoons for valid silo name"
-    },
-    {
-      "file": "tests/unit/services/data.service.test.ts",
-      "name": "data.service — getKeywordsByCocoon all keywords belong to the requested cocoon"
-    },
-    {
-      "file": "tests/unit/services/data.service.test.ts",
-      "name": "data.service — getKeywordsByCocoon keywords have camelCase properties"
-    },
-    {
-      "file": "tests/unit/services/data.service.test.ts",
-      "name": "data.service — getKeywordsByCocoon returns keywords for valid cocoon name"
     }
   ],
   "note": "Fichier généré par `npm run test:snapshot`. Ne pas éditer à la main. Régénérer après réparation/ajout de tests."
