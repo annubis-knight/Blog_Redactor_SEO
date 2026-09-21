@@ -6,6 +6,14 @@ const mockSetCached = vi.fn()
 vi.mock('../../../server/db/cache-helpers', () => ({
   getCached: (...args: unknown[]) => mockGetCached(...args),
   setCached: (...args: unknown[]) => mockSetCached(...args),
+  // Même logique que le vrai getOrFetch, branchée sur les deux faux ci-dessus.
+  getOrFetch: async (type: string, key: string, ttl: number, fetcher: () => Promise<unknown>) => {
+    const cached = await mockGetCached(type, key)
+    if (cached) return cached
+    const data = await fetcher()
+    await mockSetCached(type, key, data, ttl)
+    return data
+  },
   slugify: (s: string) => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
 }))
 

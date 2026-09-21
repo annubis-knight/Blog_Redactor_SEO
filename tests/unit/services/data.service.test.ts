@@ -15,6 +15,23 @@ beforeEach(() => {
   resetCache()
 })
 
+/**
+ * Ces tests lisent la base réelle. Le contenu éditorial (articles) est
+ * remis à zéro de temps en temps : on ne fige donc aucun titre ni slug,
+ * on prend le premier article réellement présent. Une base sans aucun
+ * article fait échouer le test, jamais passer en silence.
+ */
+async function firstArticleInDb() {
+  const cocoons = await getCocoons()
+  const cocoonIndex = cocoons.findIndex(c => c.articles.length > 0)
+  expect(cocoonIndex, 'aucun article en base : impossible de tester la lecture').toBeGreaterThanOrEqual(0)
+  const cocoon = cocoons[cocoonIndex]!
+  return { cocoonIndex, cocoon, article: cocoon.articles[0]! }
+}
+
+// Mots-clés semés à l'initialisation, indépendants des articles.
+const SEEDED_KEYWORDS_COCOON = 'Croissance digitale Toulouse'
+
 describe('data.service — getCocoons', () => {
   it('returns all cocoons', async () => {
     const cocoons = await getCocoons()
@@ -57,8 +74,7 @@ describe('data.service — getCocoons', () => {
   })
 
   it('articles have camelCase properties', async () => {
-    const cocoons = await getCocoons()
-    const article = cocoons[0]!.articles[0]!
+    const { article } = await firstArticleInDb()
     expect(article).toHaveProperty('title')
     expect(article).toHaveProperty('type')
     expect(article).toHaveProperty('slug')
@@ -67,8 +83,7 @@ describe('data.service — getCocoons', () => {
   })
 
   it('slug is extracted from URL (not full URL)', async () => {
-    const cocoons = await getCocoons()
-    const article = cocoons[0]!.articles[0]!
+    const { article } = await firstArticleInDb()
     expect(article.slug).not.toContain('https://')
     expect(article.slug).not.toContain('http://')
   })
@@ -132,9 +147,10 @@ describe('data.service — getCocoons.publishedArticles (FR-MOT-RECAP-PUBLISHED)
 
 describe('data.service — getArticlesByCocoon', () => {
   it('returns articles for valid cocoon index', async () => {
-    const articles = await getArticlesByCocoon(0)
+    const { cocoonIndex, cocoon } = await firstArticleInDb()
+    const articles = await getArticlesByCocoon(cocoonIndex)
     expect(articles).not.toBeNull()
-    expect(articles!.length).toBeGreaterThan(0)
+    expect(articles!.map(a => a.id)).toEqual(cocoon.articles.map(a => a.id))
   })
 
   it('returns null for out-of-range index', async () => {
@@ -150,11 +166,19 @@ describe('data.service — getArticlesByCocoon', () => {
 
 describe('data.service — getArticleBySlug', () => {
   it('returns article and cocoonName for valid slug', async () => {
-    const result = await getArticleBySlug('pourquoi-la-refonte-de-votre-site-web-est-essentielle-a-la-croissance-de-votre-pme')
+    const { cocoon, article } = await firstArticleInDb()
+    const result = await getArticleBySlug(article.slug)
     expect(result).not.toBeNull()
-    expect(result!.article.title).toBe('Pourquoi la refonte de votre site web est essentielle à la croissance de votre PME')
-    expect(result!.article.type).toBe('Pilier')
-    expect(result!.cocoonName).toBe('Refonte de site web pour PME')
+    expect(result!.article.id).toBe(article.id)
+    expect(result!.article.title).toBe(article.title)
+    expect(result!.article.type).toBe(article.type)
+    expect(result!.cocoonName).toBe(cocoon.name)
+  })
+
+  it('accepts a full URL and extracts the slug', async () => {
+    const { article } = await firstArticleInDb()
+    const result = await getArticleBySlug(`https://www.propulsitetoulouse.website/blog/${article.slug}`)
+    expect(result!.article.id).toBe(article.id)
   })
 
   it('returns null for non-existent slug', async () => {
@@ -163,7 +187,8 @@ describe('data.service — getArticleBySlug', () => {
   })
 
   it('returned article has all expected fields', async () => {
-    const result = await getArticleBySlug('pourquoi-la-refonte-de-votre-site-web-est-essentielle-a-la-croissance-de-votre-pme')
+    const { article } = await firstArticleInDb()
+    const result = await getArticleBySlug(article.slug)
     expect(result!.article).toHaveProperty('title')
     expect(result!.article).toHaveProperty('type')
     expect(result!.article).toHaveProperty('slug')
@@ -174,13 +199,13 @@ describe('data.service — getArticleBySlug', () => {
 
 describe('data.service — getKeywordsByCocoon', () => {
   it('returns keywords for valid cocoon name', async () => {
-    const keywords = await getKeywordsByCocoon('Refonte de site web pour PME')
+    const keywords = await getKeywordsByCocoon(SEEDED_KEYWORDS_COCOON)
     expect(keywords).not.toBeNull()
     expect(keywords!.length).toBeGreaterThan(0)
   })
 
   it('keywords have camelCase properties', async () => {
-    const keywords = await getKeywordsByCocoon('Refonte de site web pour PME')
+    const keywords = await getKeywordsByCocoon(SEEDED_KEYWORDS_COCOON)
     const kw = keywords![0]!
     expect(kw).toHaveProperty('keyword')
     expect(kw).toHaveProperty('cocoonName')
@@ -193,7 +218,7 @@ describe('data.service — getKeywordsByCocoon', () => {
   })
 
   it('all keywords belong to the requested cocoon', async () => {
-    const cocoonName = 'Refonte de site web pour PME'
+    const cocoonName = SEEDED_KEYWORDS_COCOON
     const keywords = await getKeywordsByCocoon(cocoonName)
     for (const kw of keywords!) {
       expect(kw.cocoonName).toBe(cocoonName)
@@ -261,8 +286,11 @@ describe('data.service — getSiloByName', () => {
 
 describe('data.service — getCocoonsBySilo', () => {
   it('returns cocoons for valid silo name', async () => {
+    // Le nombre de cocons évolue avec la stratégie : on compare à la source.
+    const expected = (await getCocoons()).filter(c => c.siloName === 'Création de site')
     const cocoons = await getCocoonsBySilo('Création de site')
-    expect(cocoons.length).toBe(4)
+    expect(cocoons.length).toBeGreaterThan(0)
+    expect(cocoons.map(c => c.id)).toEqual(expected.map(c => c.id))
   })
 
   it('returns empty array for non-existent silo', async () => {

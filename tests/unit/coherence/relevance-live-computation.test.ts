@@ -197,19 +197,15 @@ describe('FR-RAD-NO-RELEVANCE-IN-SCAN — scan Radar ne calcule plus la Pertinen
 // =====================================================
 
 describe('Garde-fous structurels — décisions architecturales 2026-05-05', () => {
-  it('aucune migration SQL ne crée de colonne relevance_score ou market_score', async () => {
+  it('le schéma DB ne contient aucune colonne relevance_score ou market_score', async () => {
     const fs = await import('node:fs/promises')
     const path = await import('node:path')
-    const migrationsDir = path.resolve('server/db/migrations')
-    const files = await fs.readdir(migrationsDir)
-    for (const file of files) {
-      if (!file.endsWith('.sql')) continue
-      const content = await fs.readFile(path.join(migrationsDir, file), 'utf-8')
-      // Tolérance : commentaires explicatifs OK, mais pas de CREATE/ALTER avec ces noms
-      const hasForbiddenColumn =
-        /\b(ADD\s+COLUMN|CREATE\s+TABLE[^;]*?)\s+(relevance_score|market_score|relevance_total|market_total)\b/i.test(content)
-      expect(hasForbiddenColumn, `Migration ${file} ne doit pas créer de colonne score persistée`).toBe(false)
-    }
+    // schema.sql = état courant (les migrations sont archivées).
+    const schema = await fs.readFile(path.resolve('server/db/schema.sql'), 'utf-8')
+    expect(schema).toMatch(/CREATE TABLE "articles"/)
+    expect(schema, 'aucune colonne score persistée : la Pertinence se calcule à la volée').not.toMatch(
+      /"(relevance_score|market_score|relevance_total|market_total)"/i,
+    )
   })
 
   it('shared/scoring.ts exporte toujours computeRelevanceScore (utilisé par le calcul live)', async () => {
@@ -273,13 +269,10 @@ describe('FR-CAP-RELEVANCE-INTENT-SIGNAL — câblage painIntentExpected', () =>
   it('articles.pain_intent_expected est TEXT single-value, pas TEXT[]', async () => {
     const fs = await import('node:fs')
     const path = await import('node:path')
-    const migrationPath = path.resolve(
-      process.cwd(),
-      'server/db/migrations/014_articles_pain_intent_expected.sql',
-    )
-    const content = fs.readFileSync(migrationPath, 'utf-8')
-    // Single-value : `pain_intent_expected TEXT` (pas TEXT[])
-    expect(content).toMatch(/pain_intent_expected\s+TEXT\b(?!\[)/)
+    // schema.sql = état courant (la migration 014 d'origine est archivée).
+    const content = fs.readFileSync(path.resolve(process.cwd(), 'server/db/schema.sql'), 'utf-8')
+    // Single-value : `"pain_intent_expected" TEXT` (pas TEXT[])
+    expect(content).toMatch(/"?pain_intent_expected"?\s+TEXT\b(?!\[)/)
     // CHECK contraint sur les 4 valeurs
     for (const v of ['commercial', 'transactional', 'informational', 'navigational']) {
       expect(content).toContain(`'${v}'`)

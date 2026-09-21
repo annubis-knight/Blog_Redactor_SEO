@@ -1,10 +1,10 @@
 // @vitest-environment node
 /**
- * Cohérence migrations SQL ↔ matrice de couverture PRD §8.14.bis
+ * Cohérence schéma SQL ↔ matrice de couverture PRD §8.14.bis
  *
  * Ce test garantit qu'aucune table vivante en DB n'est invisible au PRD :
- *   1. Parse les migrations `server/db/migrations/*.sql` pour calculer la liste
- *      des tables actuellement vivantes (CREATE TABLE - DROP TABLE + RENAME TO).
+ *   1. Parse le snapshot `server/db/schema.sql` (état courant du schéma ; les
+ *      anciennes migrations sont archivées et ne font plus foi).
  *   2. Parse la matrice PRD (§8.14.bis) pour extraire les tables référencées.
  *   3. Assertion : tout `live_table` doit avoir une ligne dans la matrice.
  *
@@ -18,61 +18,24 @@
  */
 
 import { describe, it, expect } from 'vitest'
-import { readFile, readdir } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
 const PROJECT_ROOT = join(__dirname, '..', '..', '..')
-const MIGRATIONS_DIR = join(PROJECT_ROOT, 'server', 'db', 'migrations')
+const SCHEMA_PATH = join(PROJECT_ROOT, 'server', 'db', 'schema.sql')
 const PRD_PATH = join(PROJECT_ROOT, '_bmad-output', 'planning-artifacts', 'prd.md')
 
 // ============================================================================
-// PART 1: Helpers — parse migrations
+// PART 1: Helpers — parse schema.sql
 // ============================================================================
 
-/**
- * Parse l'ensemble des migrations et retourne la liste des tables actuellement
- * vivantes en DB. Algorithme :
- *   live = (UNION CREATE TABLE) - (UNION DROP TABLE) puis applique les RENAME.
- */
+/** Tables vivantes en DB, lues dans le snapshot `schema.sql` (`CREATE TABLE "foo" (`). */
 async function getLiveTables(): Promise<Set<string>> {
-  const files = (await readdir(MIGRATIONS_DIR))
-    .filter(f => f.endsWith('.sql'))
-    .sort() // ordre numérique de migration
-
-  const created = new Set<string>()
-  const dropped = new Set<string>()
-  const renames = new Map<string, string>() // old → new
-
-  for (const file of files) {
-    const sql = await readFile(join(MIGRATIONS_DIR, file), 'utf8')
-
-    // CREATE TABLE [IF NOT EXISTS] foo
-    for (const m of sql.matchAll(/CREATE TABLE(?:\s+IF NOT EXISTS)?\s+([a-z_]+)/gi)) {
-      created.add(m[1].toLowerCase())
-    }
-
-    // DROP TABLE [IF EXISTS] foo
-    for (const m of sql.matchAll(/DROP TABLE(?:\s+IF EXISTS)?\s+([a-z_]+)/gi)) {
-      dropped.add(m[1].toLowerCase())
-    }
-
-    // ALTER TABLE foo RENAME TO bar
-    for (const m of sql.matchAll(/ALTER TABLE\s+([a-z_]+)\s+RENAME\s+TO\s+([a-z_]+)/gi)) {
-      renames.set(m[1].toLowerCase(), m[2].toLowerCase())
-    }
-  }
-
-  // Tables vivantes = créées - droppées + appliquer renames
+  const sql = await readFile(SCHEMA_PATH, 'utf8')
   const live = new Set<string>()
-  for (const t of created) {
-    if (dropped.has(t)) continue
-    // Si la table a été renommée, on ne garde que le nouveau nom
-    const renamedTo = renames.get(t)
-    live.add(renamedTo ?? t)
+  for (const m of sql.matchAll(/^CREATE TABLE\s+"?([a-z_]+)"?\s*\(/gim)) {
+    live.add(m[1]!.toLowerCase())
   }
-  // Une table renommée peut ne pas avoir un CREATE TABLE direct sous son nouveau nom
-  for (const [, newName] of renames) live.add(newName)
-
   return live
 }
 
@@ -106,8 +69,8 @@ async function getMatrixTables(): Promise<Set<string>> {
 // PART 3: Tests
 // ============================================================================
 
-describe('PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations)', () => {
-  it('toute table vivante en migration figure dans la matrice du PRD', async () => {
+describe('PRD §8.14.bis — matrice tables ↔ FR (cohérence schéma)', () => {
+  it('toute table vivante du schéma figure dans la matrice du PRD', async () => {
     const live = await getLiveTables()
     const matrix = await getMatrixTables()
     const missing: string[] = []
@@ -133,7 +96,7 @@ describe('PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations)', () 
     const realGhosts = ghosts.filter(t => !allowedLegacy.has(t))
     expect(
       realGhosts,
-      `La matrice référence des tables qui n'existent pas en migration : ${realGhosts.join(', ') || '(aucune)'}`,
+      `La matrice référence des tables absentes de schema.sql : ${realGhosts.join(', ') || '(aucune)'}`,
     ).toEqual([])
   })
 
@@ -145,12 +108,9 @@ describe('PRD §8.14.bis — matrice tables ↔ FR (cohérence migrations)', () 
     expect(live.size).toBeGreaterThanOrEqual(20)
   })
 
-  it('intent_explorations est bien drop par migration 016 (FR-INFRA-INTENT-EXPLORATIONS-LEGACY)', async () => {
-    const file = await readFile(join(MIGRATIONS_DIR, '016_drop_intent_explorations.sql'), 'utf8')
-    expect(file).toMatch(/DROP TABLE IF EXISTS intent_explorations/i)
-    // Idempotent (ne casse pas un replay sur DB déjà nettoyée)
-    expect(file).toMatch(/IF EXISTS/i)
-    // CASCADE pour gérer d'éventuelles FK
-    expect(file).toMatch(/CASCADE/i)
+  it('intent_explorations a bien disparu du schéma (FR-INFRA-INTENT-EXPLORATIONS-LEGACY)', async () => {
+    // Supprimée par l'ancienne migration 016 (archivée) : le schéma courant ne la contient plus.
+    const live = await getLiveTables()
+    expect(live.has('intent_explorations')).toBe(false)
   })
 })
