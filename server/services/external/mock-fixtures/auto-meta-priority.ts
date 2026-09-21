@@ -8,7 +8,7 @@
  * avant toute collision, via un matcher sur le texte d'instruction unique du
  * prompt (`generate-meta.md` ligne 1).
  */
-import { registerStreamFixture } from '../mock.service.js'
+import { registerStreamFixture } from '../mock-registry.js'
 
 registerStreamFixture(
   'generate-meta-priority',

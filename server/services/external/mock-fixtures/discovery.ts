@@ -7,7 +7,7 @@
  * curate_keywords — POST /keywords/analyze-discovery : retourne une shortlist
  * curée avec reasoning + priorité.
  */
-import { registerToolFixture } from '../mock.service.js'
+import { registerToolFixture } from '../mock-registry.js'
 
 // ---------------------------------------------------------------------------
 // classify_relevance

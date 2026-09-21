@@ -12,7 +12,7 @@
  *
  * Permet aux tests CI et au mode démo de fonctionner sans clé Anthropic.
  */
-import { registerToolFixture } from '../mock.service.js'
+import { registerToolFixture } from '../mock-registry.js'
 
 interface MockPaaJudgment {
   paaIndex: number

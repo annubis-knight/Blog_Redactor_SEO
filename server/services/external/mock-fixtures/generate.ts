@@ -11,7 +11,7 @@
  *   - generate/humanize-section
  *   - generate/reduce-section
  */
-import { registerStreamFixture, registerToolFixture } from '../mock.service.js'
+import { registerStreamFixture, registerToolFixture } from '../mock-registry.js'
 
 // ---------------------------------------------------------------------------
 // Tool fixtures (JSON structuré)

@@ -3,7 +3,7 @@
  * Tool utilisé par keyword-radar.service.ts::generateRadarKeywords pour
  * proposer ~20 mots-clés short-tail liés à un pain point article.
  */
-import { registerToolFixture } from '../mock.service.js'
+import { registerToolFixture } from '../mock-registry.js'
 
 registerToolFixture('generate_radar_keywords', ({ userPrompt }) => {
   // Le prompt Radar contient "Mot-clé principal** : <kw>" ou similaire.

@@ -2,7 +2,7 @@
  * Mock fixture pour POST /api/generate/auto-intake (pipeline CLI `auto:article`).
  * Retourne un brief éditorial JSON déterministe, orienté PropulSite.
  */
-import { registerStreamFixture } from '../mock.service.js'
+import { registerStreamFixture } from '../mock-registry.js'
 
 registerStreamFixture(
   'auto-intake',

@@ -15,6 +15,7 @@
  */
 import { log } from '../../utils/logger.js'
 import type { ApiUsage } from './claude.service.js'
+import { streamFixtures, toolFixtures } from './mock-registry.js'
 
 const MODEL = 'mock-provider-v1'
 const USAGE_SENTINEL_LOCAL = '__USAGE__'
@@ -46,18 +47,7 @@ function makeUsage(inputTokens = 100, outputTokens = 150): ApiUsage {
  * `userPrompt` est fourni pour que la fixture puisse extraire des données
  * contextuelles (ex: le keyword dans le prompt) et produire une réponse réaliste.
  */
-type FixtureBuilder = (ctx: {
-  systemPrompt: string
-  userPrompt: string
-  schema: Record<string, unknown>
-}) => unknown
-
-const toolFixtures = new Map<string, FixtureBuilder>()
-
-/** Enregistre une fixture pour un tool name donné. */
-export function registerToolFixture(toolName: string, builder: FixtureBuilder): void {
-  toolFixtures.set(toolName, builder)
-}
+// Le registre vit dans `mock-registry.ts` (évite un cycle avec les fixtures).
 
 // ---------------------------------------------------------------------------
 // Fixture par défaut : génère une réponse à partir du JSON schema
@@ -175,25 +165,7 @@ function findMatchingFixture(
 // Registry de fixtures pour streamChatCompletion (texte libre)
 // ---------------------------------------------------------------------------
 
-type StreamFixtureBuilder = (ctx: {
-  systemPrompt: string
-  userPrompt: string
-}) => string | string[]
-
-const streamFixtures: { matcher: (ctx: { systemPrompt: string; userPrompt: string }) => boolean; builder: StreamFixtureBuilder; name: string }[] = []
-
-/**
- * Enregistre une fixture stream. Le matcher décide si elle s'applique au
- * contexte actuel (prompts). Builder retourne soit une string (chunked
- * auto), soit un array de chunks explicites.
- */
-export function registerStreamFixture(
-  name: string,
-  matcher: (ctx: { systemPrompt: string; userPrompt: string }) => boolean,
-  builder: StreamFixtureBuilder,
-): void {
-  streamFixtures.push({ name, matcher, builder })
-}
+// Le registre vit dans `mock-registry.ts` (évite un cycle avec les fixtures).
 
 export async function* streamChatCompletionMock(
   systemPrompt: string,

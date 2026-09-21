@@ -5,7 +5,7 @@
  * (le plus affine selon l'heuristique) et son niveau conseillé, ce qui rend le
  * run mock déterministe tout en restant cohérent avec l'arbre réel.
  */
-import { registerStreamFixture } from '../mock.service.js'
+import { registerStreamFixture } from '../mock-registry.js'
 
 registerStreamFixture(
   'auto-placement',

@@ -5,7 +5,7 @@
  * l'intention de recherche (informational / transactional_local / navigational / mixed)
  * à partir des signaux SERP (modules présents + top organic results).
  */
-import { registerToolFixture } from '../mock.service.js'
+import { registerToolFixture } from '../mock-registry.js'
 
 registerToolFixture('classify_intent', ({ userPrompt }) => {
   // On regarde les modules SERP mentionnés dans le prompt pour déduire l'intent

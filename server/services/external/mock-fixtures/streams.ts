@@ -6,7 +6,7 @@
  * fixture a un matcher qui identifie le contexte et un builder qui retourne
  * soit une chaîne complète, soit des chunks pré-découpés.
  */
-import { registerStreamFixture } from '../mock.service.js'
+import { registerStreamFixture } from '../mock-registry.js'
 
 // ---------------------------------------------------------------------------
 // translate-pain — retourne un JSON { keywords: [{keyword, reasoning}] }

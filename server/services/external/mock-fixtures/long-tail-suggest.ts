@@ -6,7 +6,7 @@
  * racines Radar. Le mock retourne un set determine de suggestions stables
  * et pertinentes pour les tests E2E et unit (AI_PROVIDER=mock).
  */
-import { registerToolFixture } from '../mock.service.js'
+import { registerToolFixture } from '../mock-registry.js'
 
 interface LongTailSuggestion {
   keyword: string

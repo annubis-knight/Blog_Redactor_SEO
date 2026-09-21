@@ -7,7 +7,7 @@
  *   - cocoon-strategy/enrich (fusionne sous-question dans la réponse principale)
  *   - cocoon-strategy/topics (propose 5-10 topics complémentaires)
  */
-import { registerStreamFixture } from '../mock.service.js'
+import { registerStreamFixture } from '../mock-registry.js'
 
 const STEP_ANSWERS: Record<string, string> = {
   cible: 'TPE et PME locales (5-50 salariés) en Occitanie, dirigées par un fondateur impliqué dans le digital mais sans expertise SEO interne.',

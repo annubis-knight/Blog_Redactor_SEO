@@ -4,7 +4,7 @@
  * Tool utilisé par content-gap.service.ts pour analyser les concurrents et
  * identifier les thèmes partagés + entités locales.
  */
-import { registerToolFixture } from '../mock.service.js'
+import { registerToolFixture } from '../mock-registry.js'
 
 registerToolFixture('analyze_content_gap', ({ userPrompt }) => {
   // Extrait les URLs des concurrents du prompt
