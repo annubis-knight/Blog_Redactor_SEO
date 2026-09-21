@@ -24,13 +24,29 @@ const HIERARCHY_ORDER: Record<ArticleLevel, number> = {
 }
 
 /**
- * Check if a link respects the cocoon hierarchy.
- * Pilier <-> Intermédiaire, Intermédiaire <-> Spécialisé.
- * Pilier -> Spécialisé is allowed but not recommended (distance = 2).
+ * Un lien respecte-t-il la hiérarchie du cocon ?
+ *
+ * Autorisé : un niveau d'écart (Pilier ↔ Intermédiaire, Intermédiaire ↔
+ * Spécialisé) et le même niveau (articles frères).
+ *
+ * Refusé : Pilier ↔ Spécialisé. Dans un cocon sémantique, le pilier parle à ses
+ * intermédiaires, qui parlent à leurs fiches — sauter un cran dilue la structure
+ * qu'on cherche justement à donner à lire à Google.
+ *
+ * Avant le 2026-09-21, ce contrôle acceptait `distance <= 2`, soit la distance
+ * maximale possible : il ne refusait donc jamais rien (audit 2026-09-19).
  */
 export function isValidHierarchyLink(sourceType: ArticleLevel, targetType: ArticleLevel): boolean {
   const distance = Math.abs(HIERARCHY_ORDER[sourceType]! - HIERARCHY_ORDER[targetType]!)
-  return distance <= 2
+  return distance <= 1
+}
+
+/** Ids des articles réellement rédigés — seules cibles de lien acceptables. */
+async function loadWrittenArticleIds(): Promise<Set<number>> {
+  const res = await pool.query<{ article_id: number }>(
+    `SELECT article_id FROM article_content WHERE length(coalesce(content, '')) > 200`,
+  )
+  return new Set(res.rows.map((r) => r.article_id))
 }
 
 /** Load the linking matrix from PG */
@@ -163,6 +179,10 @@ export async function suggestLinks(articleId: number, content: string): Promise<
     matrix.links.filter((l) => l.sourceId === articleId).map((l) => l.targetId),
   )
 
+  // Un lien vers un article pas encore rédigé est une erreur 404 en puissance.
+  // 35 des 36 liens de la base pointaient ainsi dans le vide (audit 2026-09-19).
+  const written = await loadWrittenArticleIds()
+
   const contentLower = content.toLowerCase()
 
   // Look for potential link targets in the same cocoon first, then others
@@ -170,6 +190,7 @@ export async function suggestLinks(articleId: number, content: string): Promise<
     for (const article of cocoon.articles) {
       if (article.id === articleId) continue
       if (existingTargets.has(article.id)) continue
+      if (!written.has(article.id)) continue
 
       // Check if article title words appear in content
       const titleWords = article.title.toLowerCase().split(/\s+/).filter((w) => w.length > 3)

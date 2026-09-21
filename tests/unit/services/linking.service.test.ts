@@ -16,17 +16,27 @@ describe('linking.service', () => {
       expect(isValidHierarchyLink('intermediaire', 'specifique')).toBe(true)
     })
 
-    it('allows Pilier → Spécialisé (distance 2)', () => {
-      expect(isValidHierarchyLink('pilier', 'specifique')).toBe(true)
+    // Changement volontaire du 2026-09-21 : la règle acceptait `distance <= 2`,
+    // soit la distance maximale possible — elle ne refusait donc jamais rien.
+    // Dans un cocon sémantique, le pilier parle à ses intermédiaires, qui
+    // parlent à leurs fiches. Sauter un cran dilue la structure.
+    it('refuse Pilier → Spécialisé (saut de niveau)', () => {
+      expect(isValidHierarchyLink('pilier', 'specifique')).toBe(false)
     })
 
-    it('allows same level links', () => {
+    it('refuse aussi le sens inverse Spécialisé → Pilier', () => {
+      expect(isValidHierarchyLink('specifique', 'pilier')).toBe(false)
+    })
+
+    it('allows same level links (articles frères)', () => {
       expect(isValidHierarchyLink('pilier', 'pilier')).toBe(true)
       expect(isValidHierarchyLink('intermediaire', 'intermediaire')).toBe(true)
+      expect(isValidHierarchyLink('specifique', 'specifique')).toBe(true)
     })
 
-    it('allows reverse direction', () => {
-      expect(isValidHierarchyLink('specifique', 'pilier')).toBe(true)
+    it('allows reverse direction sur un seul cran', () => {
+      expect(isValidHierarchyLink('specifique', 'intermediaire')).toBe(true)
+      expect(isValidHierarchyLink('intermediaire', 'pilier')).toBe(true)
     })
   })
 
