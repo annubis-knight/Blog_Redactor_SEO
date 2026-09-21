@@ -46,6 +46,16 @@ describe('checkContentBeforeExport', () => {
     expect(result.report).toContain('4 autre')
   })
 
+  it('bloque un texte hors paragraphe que les motifs ne reconnaissent pas (cas réel #456)', () => {
+    const result = checkContentBeforeExport(
+      '<p>Fin.</p>Voici la rédaction de la section demandée :\n<h2>Suite</h2><p>Texte.</p>',
+    )
+
+    expect(result.ok).toBe(false)
+    expect(result.orphans).toEqual(['Voici la rédaction de la section demandée :'])
+    expect(result.report).toContain('Texte hors paragraphe')
+  })
+
   it('contenu vide → bloqué, car rien à exporter', () => {
     expect(checkContentBeforeExport('').ok).toBe(false)
     expect(checkContentBeforeExport('   ').ok).toBe(false)

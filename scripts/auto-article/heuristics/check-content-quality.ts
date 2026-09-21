@@ -15,14 +15,21 @@
  */
 
 import { detectAiMetaLeaks, type AiMetaLeak } from '../../../shared/ai-text.js'
+import { detectOrphanBlockText } from '../../../shared/content-repair.js'
 
-/** Nombre de fuites détaillées dans le rapport CLI (les suivantes sont comptées). */
+/** Nombre de défauts détaillés dans le rapport CLI (les suivants sont comptés). */
 const REPORTED_LEAKS = 5
 
 export interface ContentCheckResult {
   /** `false` → ne pas exporter. */
   ok: boolean
   leaks: AiMetaLeak[]
+  /**
+   * Texte nu hors de tout paragraphe. Détection structurelle, complémentaire
+   * des motifs : elle a attrapé « Voici la rédaction de la section demandée : »
+   * sur #456, qu'aucun motif ne connaissait (2026-09-21).
+   */
+  orphans: string[]
   /** Rapport prêt à afficher dans le terminal (vide si tout va bien). */
   report: string
 }
@@ -104,17 +111,33 @@ export function detectUnverifiableClaims(content: string): UnverifiableClaim[] {
  */
 export function checkContentBeforeExport(content: string): ContentCheckResult {
   if (!content || !content.trim()) {
-    return { ok: false, leaks: [], report: '  Contenu vide — rien à exporter.' }
+    return { ok: false, leaks: [], orphans: [], report: '  Contenu vide — rien à exporter.' }
   }
 
   const leaks = detectAiMetaLeaks(content, { max: REPORTED_LEAKS })
-  if (leaks.length === 0) return { ok: true, leaks: [], report: '' }
-
-  const all = detectAiMetaLeaks(content, { max: 100 })
-  const lines = leaks.map((leak, i) => `  ${i + 1}. « …${leak.excerpt}… »`)
-  if (all.length > leaks.length) {
-    lines.push(`  (+ ${all.length - leaks.length} autre(s) occurrence(s))`)
+  const orphans = detectOrphanBlockText(content)
+  if (leaks.length === 0 && orphans.length === 0) {
+    return { ok: true, leaks: [], orphans: [], report: '' }
   }
 
-  return { ok: false, leaks, report: lines.join('\n') }
+  const lines: string[] = []
+  if (leaks.length > 0) {
+    lines.push('  Monologue de l\'IA :')
+    leaks.forEach((leak, i) => lines.push(`  ${i + 1}. « …${leak.excerpt}… »`))
+    const all = detectAiMetaLeaks(content, { max: 100 })
+    if (all.length > leaks.length) {
+      lines.push(`  (+ ${all.length - leaks.length} autre(s) occurrence(s))`)
+    }
+  }
+  if (orphans.length > 0) {
+    lines.push('  Texte hors paragraphe :')
+    orphans
+      .slice(0, REPORTED_LEAKS)
+      .forEach((text, i) => lines.push(`  ${i + 1}. « ${text.slice(0, 110)}${text.length > 110 ? '…' : ''} »`))
+    if (orphans.length > REPORTED_LEAKS) {
+      lines.push(`  (+ ${orphans.length - REPORTED_LEAKS} autre(s))`)
+    }
+  }
+
+  return { ok: false, leaks, orphans, report: lines.join('\n') }
 }

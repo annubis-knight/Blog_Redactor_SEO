@@ -69,11 +69,13 @@ function guardContent(deps: PhaseDeps, ctx: AutoRunContext): boolean {
   const verdict = checkContentBeforeExport(content)
   if (verdict.ok) return true
 
-  logger.error('Export refusé — le texte contient le monologue de l\'IA :')
+  logger.error('Export refusé — le texte contient des défauts de génération :')
   logger.info(verdict.report)
   logger.info('  → L\'article est enregistré en base : corrige-le dans l\'éditeur,')
-  logger.info('    puis relance l\'export depuis l\'application.')
-  report.addStep(`Rédaction · EXPORT REFUSÉ (${verdict.leaks.length} fuite(s) IA)`)
+  logger.info('    ou lance « npm run content:clean -- --id=' + String(ctx.articleId) + ' ».')
+  report.addStep(
+    `Rédaction · EXPORT REFUSÉ (${verdict.leaks.length} fuite(s) IA, ${verdict.orphans.length} texte(s) hors paragraphe)`,
+  )
   return false
 }
 
