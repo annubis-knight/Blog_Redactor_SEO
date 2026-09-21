@@ -34,7 +34,7 @@ export interface SeoInput {
  * un trafic qui ne peut pas devenir client. Né du run réel du 2026-09-21 :
  * l'heuristique avait choisi « site e-commerce » comme Capitaine du pilier.
  */
-export const EXCLUDED_OFFER_TERMS = ['e-commerce', 'ecommerce', 'boutique en ligne', 'marketplace']
+const EXCLUDED_OFFER_TERMS = ['e-commerce', 'ecommerce', 'boutique en ligne', 'marketplace']
 
 /** Terme hors offre contenu dans un mot-clé, ou `null`. */
 export function offOfferTerm(keyword: string): string | null {

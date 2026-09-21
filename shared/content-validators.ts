@@ -36,8 +36,8 @@ export interface ContentIssue {
 }
 
 /** Longueurs utiles dans les résultats Google. */
-export const META_TITLE_MAX = 60
-export const META_DESCRIPTION_MAX = 160
+const META_TITLE_MAX = 60
+const META_DESCRIPTION_MAX = 160
 
 /** Balises éditoriales admises dans le corps d'un article. */
 const ALLOWED_TAGS = new Set([

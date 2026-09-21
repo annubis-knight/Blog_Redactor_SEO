@@ -14,14 +14,14 @@
 
 import { blogPath } from './constants/site.constants.js'
 
-export interface RewriteOptions {
+interface RewriteOptions {
   /** slug de chaque article connu, par id — pour résoudre `#article-<id>`. */
   slugById?: Record<number, string>
   /** slugs autorisés comme cible. Absent = tout slug est accepté. */
   knownSlugs?: string[]
 }
 
-export interface RewriteResult {
+interface RewriteResult {
   html: string
   /** Liens conservés, en forme canonique. */
   rewritten: string[]

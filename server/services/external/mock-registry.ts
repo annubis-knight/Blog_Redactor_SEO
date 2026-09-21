@@ -12,18 +12,18 @@
  * `userPrompt` est fourni pour que la fixture puisse extraire des données
  * contextuelles (ex: le keyword dans le prompt) et produire une réponse réaliste.
  */
-export type FixtureBuilder = (ctx: {
+type FixtureBuilder = (ctx: {
   systemPrompt: string
   userPrompt: string
   schema: Record<string, unknown>
 }) => unknown
 
-export type StreamFixtureBuilder = (ctx: {
+type StreamFixtureBuilder = (ctx: {
   systemPrompt: string
   userPrompt: string
 }) => string | string[]
 
-export interface StreamFixture {
+interface StreamFixture {
   name: string
   matcher: (ctx: { systemPrompt: string; userPrompt: string }) => boolean
   builder: StreamFixtureBuilder
