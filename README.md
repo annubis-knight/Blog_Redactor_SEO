@@ -157,7 +157,8 @@ Détail complet dans [GUIDE-02-ARCHITECTURE.md](GUIDE-02-ARCHITECTURE.md).
 | `npm run auto:article -- --relink=123` | Repose seulement les liens internes de l'article 123. Gratuit. |
 | `npm run auto:preview` | Ouvre un aperçu local de tous les articles produits. |
 | `npm run kill-ports` | Libère les ports 3400 et 5400 quand ça bloque. |
-| `npm run verify` | **Le contrôle complet** : code, types, qualité des articles, tests. |
+| `npm run verify` | **Le contrôle rapide (~35 s)** : style, types, tests purs, qualité SEO des articles rédigés, photo de la base à jour. À lancer tout le temps. |
+| `npm run verify:full` | Le contrôle exhaustif (~6 min), avant un merge. Serveur **éteint** : sinon les tests de bout en bout écrivent dans la vraie base. |
 | `npm run db:check` | Vérifie que la photo de la base est à jour. |
 | `npm run db:snapshot` | Reprend une photo de la structure de la base. |
 | `npm run test:unit` | Lance les tests automatiques. |
@@ -182,19 +183,22 @@ La liste complète et les options se trouvent dans [GUIDE-01-UTILISATION.md](GUI
 
 **Réglé les 20 et 21/09** : l'IA laissait son brouillon de réflexion dans les
 articles, inventait des cas clients, produisait un double H1 et des paragraphes
-coupés en plein mot. Le pipeline est réparé, **les 6 piliers existants ont été
-nettoyés**, et `npm run verify` contrôle désormais tout ça automatiquement.
+coupés en plein mot. Le pipeline est réparé et `npm run verify` contrôle
+désormais tout ça automatiquement, avec la qualité SEO de chaque article.
+
+**Redémarrage éditorial le 21/09** : table rase des articles, domaine tranché
+(`www.propulsitetoulouse.website`, articles sous `/blog/<slug>`), et un seul cocon
+en travail — « Création de site internet à Toulouse ». Son pilier est écrit ;
+ses 12 articles enfants sont planifiés.
 
 Ce qui reste à surveiller :
 
-- Les liens internes posés automatiquement visaient des articles **pas encore
-  écrits** : ils ont été retirés. Ils reviendront, proprement, quand la hiérarchie
-  parent-enfant sera en base (chantier P1).
-- En mode simulé, le robot réutilisait et écrasait un article existant.
+- **Le choix automatique du Capitaine se trompe encore** : impose-le avec
+  `--capitaine`, données à l'appui.
 - `--resume` sur un article seulement *planifié* (statut « à rédiger ») ne
-  fonctionne pas comme attendu.
-- Les mots-clés « Capitaine » de trois piliers restent discutables
-  (« accessibilité web » pour un article sur la conversion, par exemple).
+  fonctionne pas comme attendu : passe par l'application pour ces articles.
+- Il n'existe pas encore de lien parent-enfant entre articles en base : le
+  maillage hiérarchique complet viendra avec (chantier P1).
 
 Détail complet, causes et corrections : `_bmad-output/implementation-artifacts/audit-auto-article-pipeline.md`
 (audit du CLI, juillet 2026) et l'audit complet de septembre 2026.

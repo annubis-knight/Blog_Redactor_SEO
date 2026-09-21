@@ -127,6 +127,37 @@ npm run auto:article -- --mode=real --cocoon="Création de site web pour entrepr
 - `--level` accepte `pilier`, `intermediaire` ou `specifique`.
 - Bonus : forcer l'emplacement **économise un appel IA**.
 
+### La recette complète, telle qu'utilisée pour le pilier du cocon n°1
+
+```bash
+npm run auto:article -- --mode=real \
+  --cocoon="Création de site internet à Toulouse" \
+  --level=pilier \
+  --capitaine="création de site web Toulouse"
+```
+
+Pourquoi imposer le Capitaine ? Parce que le choix automatique se trompe encore :
+lors du premier essai, il a retenu « site e-commerce » pour une agence qui n'en fait
+pas. Choisis le mot-clé toi-même, données à l'appui (volume, difficulté), et laisse
+l'outil faire le reste.
+
+---
+
+## Cas 2 bis — Le Capitaine choisi est mauvais : le corriger sans tout refaire
+
+Le Cerveau est bon, mais le mot-clé principal ne l'est pas. Relance avec le bon :
+
+```bash
+npm run auto:article -- --mode=real --resume=1012 --capitaine="création de site web Toulouse"
+```
+
+Le robot garde la stratégie (Cerveau), mais **refait le Moteur** sur le nouveau
+mot-clé (pages concurrentes, Lieutenants, Lexique) **et la Rédaction**, puisque le
+texte avait été écrit pour l'ancien. Coût : environ 0,45 $ pour un pilier.
+
+Pense ensuite à renommer l'article pour qu'il porte le mot-clé (titre et adresse) :
+`npm run verify` te le rappellera sinon (`seo-capitaine-not-in-title`).
+
 ---
 
 ## Cas 3 — Mon run s'est arrêté en plein milieu

@@ -301,7 +301,9 @@ Ils ne servent pas à écrire des articles, mais à garder le code sain.
 | **madge** | Les dépendances circulaires (A a besoin de B qui a besoin de A). | `npm run check:cycles` |
 | **dependency-cruiser** | Que les règles d'architecture sont respectées (ex. `src/` n'importe jamais `server/`). | `npm run check:arch` |
 | **Stryker** | Les tests de mutation : il casse volontairement le code pour voir si les tests s'en aperçoivent. | `npm run test:mutation` |
-| **Valideurs de contenu** | Les défauts trouvés pendant l'audit : monologue de l'IA, texte hors paragraphe, bloc tronqué, Markdown résiduel, balise interdite, meta coupée, lien mort, double H1. | `npm run verify:content` |
+| **Valideurs de contenu** | Propreté du texte : monologue de l'IA, texte hors paragraphe, bloc tronqué, Markdown résiduel, balise interdite, meta coupée, lien mort, double H1. | `npm run verify:content` |
+| **Valideurs SEO** | Qualité du livrable : Capitaine dans le titre, l'intro, le titre Google et l'adresse ; longueur selon le niveau ; ancrage local ; mots-clés hors offre ; cannibalisation ; ordre du cocon ; pages exportées. | `npm run verify:content` |
+| **`npm run verify`** | Tout ce qui précède, plus style, types, ~570 tests purs et fraîcheur de la photo de la base, en parallèle. ~35 s. | `npm run verify` |
 | **husky + lint-staged** | Passe le linter automatiquement avant chaque commit git. | automatique |
 | **patch-package** | Applique un correctif maison à une librairie externe. Ici : `patches/knip+6.4.1.patch`. | automatique |
 | **concurrently / npm-run-all** | Lancent plusieurs commandes à la fois (`npm run dev` = serveur + application). | automatique |

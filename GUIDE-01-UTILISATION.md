@@ -218,6 +218,7 @@ Deux détails qui comptent :
 | `--mode=real` | Vrais appels IA et DataForSEO. **Facturé.** | |
 | `--cocoon=<nom>` | Impose le cocon, sans proposition. Économise un appel IA. | `--cocoon="Croissance digitale Toulouse"` |
 | `--level=<niveau>` | Impose le niveau : `pilier`, `intermediaire` ou `specifique`. | `--level=pilier` |
+| `--capitaine=<mot>` | **Impose le mot-clé principal.** L'heuristique est court-circuitée ; SERP, Lieutenants et Lexique sont recalculés sur ce mot. Avec `--resume`, un Capitaine différent relance Moteur + Rédaction. | `--capitaine="prix site vitrine artisan"` |
 | `--resume=<id>` | Reprend un article commencé, saute les étapes déjà faites. | `--resume=452` |
 | `--relink=<id>` | Repose **uniquement** les liens internes. Gratuit. | `--relink=455` |
 | `--config=<fichier>` | Lance sans questions, depuis un fichier JSON. Les pauses sont auto-validées. | `--config=run.json` |
@@ -313,8 +314,9 @@ paieras plus jamais.
 
 | Commande | Rôle |
 |---|---|
-| **`npm run verify`** | **Le contrôle complet** : style, types, qualité des articles en base, et comparaison des tests à la référence. C'est la commande qui répond à « est-ce que tout va bien ? ». |
-| `npm run verify:content` | Seulement les articles : monologue de l'IA, blocs tronqués, Markdown résiduel, metas coupées, liens morts, articles de test oubliés, fraîcheur de la sauvegarde. |
+| **`npm run verify`** | **Le contrôle rapide, à lancer tout le temps** (~35 s). Cinq vérifications en parallèle : style, types, ~570 tests purs, **qualité des articles rédigés**, et photo de la base à jour (`db:check`). Répond à « est-ce que tout va bien ? ». |
+| `npm run verify:full` | Le contrôle exhaustif (~6 min) : `verify` + ESLint complet + cycles d'import + toute la suite de tests comparée à la référence. Avant un merge, **serveur éteint** : sinon les tests de bout en bout écrivent dans la vraie base. Serveur éteint, 2 tests restent rouges (ceux qui réclament le serveur) : c'est normal. |
+| `npm run verify:content` | Seulement les livrables (< 1 s) : propreté du texte, metas, liens, **qualité SEO** (Capitaine dans le titre et l'intro, longueur selon le niveau, ancrage local, offre respectée), cannibalisation entre articles, ordre du cocon, hygiène du dépôt. |
 | `npm run content:clean -- --id=455` | Répare un article déjà rédigé (simulation ; `--confirm` pour écrire). |
 
 ### Qualité du code

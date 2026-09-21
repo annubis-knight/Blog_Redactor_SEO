@@ -273,6 +273,15 @@ change ici, il change partout — d'où l'importance de ne pas y toucher à la l
 Il contient les 5 noms de cases à cocher. On ne doit **jamais** écrire
 `'moteur:capitaine_locked'` à la main : on importe la constante.
 
+**Deuxième fichier à connaître** : `shared/constants/site.constants.ts`. C'est la
+seule source de vérité pour le domaine (`www.propulsitetoulouse.website`) et la forme
+des adresses (`/blog/<slug>`). Changer de domaine = changer une ligne ici (ou poser
+`SITE_URL` dans `.env` côté serveur).
+
+**Les valideurs** vivent aussi dans `shared/` : `content-validators.ts` (le texte
+est-il propre ?) et `seo-validators.ts` (l'article remplit-il son rôle SEO ?). Le
+robot, l'export et `npm run verify` utilisent exactement les mêmes règles.
+
 ---
 
 ## 8. Le robot (`scripts/auto-article/`)
