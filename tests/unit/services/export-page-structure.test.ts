@@ -20,11 +20,41 @@ describe('generateExportHtml — structure de la page', () => {
   it('ne produit qu’un seul H1, même si le contenu en porte un', async () => {
     const html = await generateExportHtml({
       ...BASE,
+      slug: 'creer-son-site-a-toulouse',
       content: '<h1>Créer son site à Toulouse</h1><h2>Combien ça coûte ?</h2><p>Entre 2 000 et 8 000 €.</p>',
     })
 
     expect([...html.matchAll(/<h1\b/gi)]).toHaveLength(1)
     expect(validateExportedPage(html)).toEqual([])
+  })
+
+  it('pose le lien canonique et les balises de partage sur le domaine validé', async () => {
+    const html = await generateExportHtml({
+      ...BASE,
+      slug: 'creer-son-site-a-toulouse',
+      content: '<h2>Titre</h2><p>Texte.</p>',
+    })
+
+    expect(html).toContain(
+      '<link rel="canonical" href="https://www.propulsitetoulouse.website/blog/creer-son-site-a-toulouse">',
+    )
+    expect(html).toContain('property="og:type" content="article"')
+    expect(html).not.toContain('propulsite.fr')
+  })
+
+  it('ramène les liens internes à /blog/ et déballe les cibles non publiées', async () => {
+    const html = await generateExportHtml({
+      ...BASE,
+      slug: 'creer-son-site-a-toulouse',
+      content:
+        '<h2>T</h2><p>Voir <a href="#article-7">les prix</a> et <a href="/brouillon">ce projet</a>.</p>',
+      linkSlugById: { 7: 'prix-site-internet-tpe' },
+      publishedSlugs: ['prix-site-internet-tpe'],
+    })
+
+    expect(html).toContain('<a href="/blog/prix-site-internet-tpe">les prix</a>')
+    expect(html).toContain('et ce projet.')
+    expect(validateExportedPage(html, { publishedSlugs: ['prix-site-internet-tpe'] })).toEqual([])
   })
 
   it('garde le contenu éditorial intact', async () => {

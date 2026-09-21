@@ -24,6 +24,7 @@
 
 import { detectAiMetaLeaks } from './ai-text.js'
 import { detectOrphanBlockText, trimTruncatedBlocks } from './content-repair.js'
+import { BLOG_PATH, SITE_ORIGIN } from './constants/site.constants.js'
 
 export type IssueSeverity = 'error' | 'warning'
 
@@ -268,10 +269,37 @@ export function validateArticleMeta(meta: {
  */
 export function validateExportedPage(
   html: string,
-  options: { publishedSlugs?: string[] } = {},
+  options: { publishedSlugs?: string[]; expectCanonical?: boolean } = {},
 ): ContentIssue[] {
   const issues: ContentIssue[] = []
   const h1Count = [...html.matchAll(/<h1\b[^>]*>/gi)].length
+
+  if (options.expectCanonical !== false) {
+    const canonical = /<link\s+rel="canonical"\s+href="([^"]+)"/i.exec(html)?.[1]
+    if (!canonical) {
+      issues.push({
+        rule: 'page-missing-canonical',
+        severity: 'error',
+        message: 'Aucun lien canonique : deux adresses du même article se feraient concurrence.',
+      })
+    } else if (!canonical.startsWith(`${SITE_ORIGIN}${BLOG_PATH}/`)) {
+      issues.push({
+        rule: 'page-wrong-canonical',
+        severity: 'error',
+        message: `Lien canonique hors du domaine validé : ${canonical}`,
+      })
+    }
+  }
+
+  // Le domaine historique `propulsite.fr` n'est pas celui du site.
+  for (const match of html.matchAll(/https?:\/\/(?:www\.)?propulsite\.fr[^"'\s]*/gi)) {
+    issues.push({
+      rule: 'page-wrong-domain',
+      severity: 'error',
+      message: `Adresse pointant vers un domaine obsolète : ${match[0]}`,
+    })
+    break
+  }
 
   if (h1Count === 0) {
     issues.push({ rule: 'page-missing-h1', severity: 'error', message: 'La page n\'a aucun H1.' })
@@ -285,13 +313,25 @@ export function validateExportedPage(
 
   const published = new Set(options.publishedSlugs ?? [])
   for (const match of html.matchAll(/<a\b[^>]*href="\/([^"#?]+)"[^>]*>/gi)) {
-    const slug = match[1]!.replace(/\/$/, '')
-    if (slug.startsWith('css/') || slug.startsWith('assets/')) continue
+    const path = match[1]!.replace(/\/$/, '')
+    if (path.startsWith('css/') || path.startsWith('assets/') || path.startsWith('components/')) continue
+
+    const prefix = `${BLOG_PATH.replace(/^\//, '')}/`
+    if (!path.startsWith(prefix)) {
+      issues.push({
+        rule: 'internal-link-not-canonical',
+        severity: 'error',
+        message: `Lien interne « /${path} » : les articles vivent sous ${BLOG_PATH}/.`,
+      })
+      continue
+    }
+
+    const slug = path.slice(prefix.length)
     if (!published.has(slug)) {
       issues.push({
         rule: 'dead-internal-link',
         severity: 'error',
-        message: `Lien interne vers « /${slug} », qui ne correspond à aucun article publié.`,
+        message: `Lien interne vers « ${BLOG_PATH}/${slug} », qui ne correspond à aucun article publié.`,
       })
     }
   }

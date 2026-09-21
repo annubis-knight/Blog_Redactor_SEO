@@ -4,8 +4,13 @@ import { log } from '../../utils/logger.js'
 import { splitByH2Regex } from '../../../shared/html-utils.js'
 import { stripContentH1 } from '../../../shared/ai-text.js'
 import { startsWithQuestionWord } from '../../../shared/french-text.js'
+import { SITE_ORIGIN, blogUrl } from '../../../shared/constants/site.constants.js'
+import { rewriteInternalLinks } from '../../../shared/internal-links.js'
 
 const DOCS_DIR = join(process.cwd(), 'docs')
+
+/** Origine du site : `.env` peut remplacer le domaine validé (pré-production). */
+const siteOrigin = (): string => (process.env.SITE_URL ?? SITE_ORIGIN).replace(/\/+$/, '')
 
 /** Read and concatenate the Propulsite CSS files for inline embedding */
 async function loadPropulsiteCss(): Promise<string> {
@@ -32,6 +37,12 @@ interface ExportOptions {
   jsonLd?: string
   /** When true, CSS is inlined as <style> instead of external <link> tags (for iframe preview) */
   embedCss?: boolean
+  /** Slug de l'article — pose le lien canonique et les balises Open Graph. */
+  slug?: string
+  /** Slug de chaque article connu, par id : résout les liens `#article-<id>`. */
+  linkSlugById?: Record<number, string>
+  /** Slugs des articles rédigés : les liens vers le reste sont déballés. */
+  publishedSlugs?: string[]
 }
 
 /** Parse TipTap HTML to extract structured sections (uses shared splitByH2Regex) */
@@ -61,6 +72,27 @@ function slugify(text: string): string {
     .replace(/^-|-$/g, '')
 }
 
+/**
+ * Lien canonique + balises Open Graph.
+ *
+ * Sans canonique, deux adresses menant au même article se font concurrence
+ * dans Google. Sans Open Graph, un partage sur LinkedIn ou WhatsApp affiche
+ * une vignette vide.
+ */
+function canonicalBlock(slug: string | undefined, metaTitle: string, metaDescription: string): string {
+  if (!slug) return ''
+  const url = blogUrl(slug, siteOrigin())
+  return [
+    `    <link rel="canonical" href="${url}">`,
+    `    <meta property="og:type" content="article">`,
+    `    <meta property="og:title" content="${escapeHtml(metaTitle)}">`,
+    `    <meta property="og:description" content="${escapeHtml(metaDescription)}">`,
+    `    <meta property="og:url" content="${url}">`,
+    `    <meta property="og:locale" content="fr_FR">`,
+    '',
+  ].join('\n')
+}
+
 /** Build the sommaire (table of contents) HTML */
 function buildSommaire(chapters: { title: string; id: string }[], hasConclusion: boolean): string {
   const items = chapters.map((ch) => `                                    <li><a href="#${ch.id}">${ch.title}</a></li>`)
@@ -84,14 +116,27 @@ function buildChapters(chapters: { title: string; id: string; body: string }[]):
 
 /** Generate full Propulsite-compliant HTML from article data */
 export async function generateExportHtml(options: ExportOptions): Promise<string> {
-  const { title, metaTitle, metaDescription, cocoonName, content, jsonLd, embedCss } = options
+  const { title, metaTitle, metaDescription, cocoonName, content, jsonLd, embedCss, slug } = options
   log.info(`generateExportHtml: ${title}`, { contentLength: content.length, hasJsonLd: !!jsonLd, embedCss: !!embedCss })
+
+  // Les liens internes du contenu portent la forme de l'outil qui les a écrits
+  // (`#article-<id>` côté éditeur, `/<slug>` côté robot). L'export les ramène à
+  // `/blog/<slug>` et déballe ceux dont la cible n'est pas publiée.
+  const linked = rewriteInternalLinks(content, {
+    slugById: options.linkSlugById,
+    knownSlugs: options.publishedSlugs,
+  })
+  if (linked.unwrapped.length > 0) {
+    log.warn(`generateExportHtml: ${linked.unwrapped.length} lien(s) interne(s) déballé(s)`, {
+      anchors: linked.unwrapped.slice(0, 5),
+    })
+  }
 
   // Le bandeau ci-dessous pose déjà le `<h1>` de la page. Le contenu généré en
   // porte un lui aussi (consigne d'intro du prompt) → deux H1 sur la page
   // exportée, constaté sur #455 (audit 2026-09-19). On retire celui du corps,
   // ce qui répare aussi les articles déjà en base au prochain export.
-  const { intro, chapters, conclusion } = parseSections(stripContentH1(content))
+  const { intro, chapters, conclusion } = parseSections(stripContentH1(linked.html))
   log.debug(`generateExportHtml: parsed ${chapters.length} chapters, intro=${intro.length > 0}, conclusion=${conclusion.length > 0}`)
   const sommaire = buildSommaire(chapters, conclusion.length > 0)
 
@@ -130,7 +175,7 @@ export async function generateExportHtml(options: ExportOptions): Promise<string
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 ${baseTag}    <title>${escapeHtml(metaTitle)}</title>
     <meta name="description" content="${escapeHtml(metaDescription)}">
-    <link
+${canonicalBlock(slug, metaTitle, metaDescription)}    <link
         href="https://fonts.googleapis.com/css2?family=DM+Serif+Text&family=Red+Hat+Text:wght@400;500;600;700&display=swap"
         rel="stylesheet">
     <link
@@ -264,7 +309,7 @@ export function generateJsonLd(options: {
     dateModified: now,
     mainEntityOfPage: {
       '@type': 'WebPage',
-      '@id': `https://propulsite.fr/pages/${slug}`,
+      '@id': blogUrl(slug, siteOrigin()),
     },
   })
 
@@ -293,25 +338,25 @@ export function generateJsonLd(options: {
         '@type': 'ListItem',
         position: 1,
         name: 'PropulSite',
-        item: 'https://propulsite.fr',
+        item: siteOrigin(),
       },
       {
         '@type': 'ListItem',
         position: 2,
         name: 'Blog',
-        item: 'https://propulsite.fr/blog',
+        item: `${siteOrigin()}/blog`,
       },
       {
         '@type': 'ListItem',
         position: 3,
         name: cocoonName,
-        item: `https://propulsite.fr/blog/${slugify(cocoonName)}`,
+        item: `${siteOrigin()}/blog/${slugify(cocoonName)}`,
       },
       {
         '@type': 'ListItem',
         position: 4,
         name: title,
-        item: `https://propulsite.fr/pages/${slug}`,
+        item: blogUrl(slug, siteOrigin()),
       },
     ],
   })

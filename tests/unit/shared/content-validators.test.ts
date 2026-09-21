@@ -137,24 +137,52 @@ describe('validateArticleMeta', () => {
 // ============================================================================
 
 describe('validateExportedPage', () => {
+  const CANONICAL =
+    '<link rel="canonical" href="https://www.propulsitetoulouse.website/blog/page-publiee">'
+
   it('exige exactement un H1', () => {
-    expect(validateExportedPage('<html><body><h1>Titre</h1><h2>S</h2></body></html>')).toEqual([])
-    expect(codes(validateExportedPage('<h1>A</h1><h1>A</h1>'))).toContain('page-multiple-h1')
-    expect(codes(validateExportedPage('<h2>Sans titre principal</h2>'))).toContain('page-missing-h1')
+    expect(validateExportedPage(`${CANONICAL}<h1>Titre</h1><h2>S</h2>`)).toEqual([])
+    expect(codes(validateExportedPage(`${CANONICAL}<h1>A</h1><h1>A</h1>`))).toContain('page-multiple-h1')
+    expect(codes(validateExportedPage(`${CANONICAL}<h2>Sans titre</h2>`))).toContain('page-missing-h1')
   })
 
-  it('signale un lien interne mort', () => {
-    const issues = validateExportedPage('<h1>T</h1><a href="/page-inexistante">texte</a>', {
-      publishedSlugs: ['page-publiee'],
+  describe('adresse canonique', () => {
+    it('refuse une page sans canonique', () => {
+      expect(codes(validateExportedPage('<h1>T</h1>'))).toContain('page-missing-canonical')
     })
-    expect(codes(issues)).toContain('dead-internal-link')
+
+    it('refuse un canonique hors du domaine validé', () => {
+      const issues = validateExportedPage('<link rel="canonical" href="https://exemple.fr/blog/x"><h1>T</h1>')
+      expect(codes(issues)).toContain('page-wrong-canonical')
+    })
+
+    it('refuse une adresse vers l’ancien domaine propulsite.fr', () => {
+      const issues = validateExportedPage(`${CANONICAL}<h1>T</h1><a href="https://propulsite.fr/blog">x</a>`)
+      expect(codes(issues)).toContain('page-wrong-domain')
+    })
   })
 
-  it('accepte un lien vers une page publiée et les liens externes', () => {
-    const issues = validateExportedPage(
-      '<h1>T</h1><a href="/page-publiee">a</a><a href="https://google.com">b</a><a href="#ancre">c</a>',
-      { publishedSlugs: ['page-publiee'] },
-    )
-    expect(issues).toEqual([])
+  describe('liens internes', () => {
+    it('signale un lien vers un article non publié', () => {
+      const issues = validateExportedPage(`${CANONICAL}<h1>T</h1><a href="/blog/fantome">texte</a>`, {
+        publishedSlugs: ['page-publiee'],
+      })
+      expect(codes(issues)).toContain('dead-internal-link')
+    })
+
+    it('refuse un lien interne hors de /blog/', () => {
+      const issues = validateExportedPage(`${CANONICAL}<h1>T</h1><a href="/page-publiee">texte</a>`, {
+        publishedSlugs: ['page-publiee'],
+      })
+      expect(codes(issues)).toContain('internal-link-not-canonical')
+    })
+
+    it('accepte un lien canonique publié, les liens externes et les ancres', () => {
+      const issues = validateExportedPage(
+        `${CANONICAL}<h1>T</h1><a href="/blog/page-publiee">a</a><a href="https://google.com">b</a><a href="#ancre">c</a><link href="/css/styles.css">`,
+        { publishedSlugs: ['page-publiee'] },
+      )
+      expect(issues).toEqual([])
+    })
   })
 })

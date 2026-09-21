@@ -3,6 +3,7 @@ import { log } from '../utils/logger.js'
 import { getArticleById } from '../services/infra/data.service.js'
 import { getArticleContent } from '../services/article/article-content.service.js'
 import { generateExportHtml, generateJsonLd } from '../services/article/export.service.js'
+import { pool } from '../db/client.js'
 
 const router = Router()
 
@@ -43,6 +44,15 @@ router.post('/export/:id', async (req, res) => {
       content: content.content,
     })
 
+    // Les liens internes sont normalisés à l'export : il faut donc savoir quel
+    // slug porte chaque id, et lesquels sont réellement rédigés.
+    const written = await pool.query<{ id: number; slug: string }>(
+      `SELECT a.id, a.slug FROM articles a
+       JOIN article_content ac ON ac.article_id = a.id
+       WHERE length(coalesce(ac.content, '')) > 200`,
+    )
+    const linkSlugById = Object.fromEntries(written.rows.map((r) => [r.id, r.slug]))
+
     // Generate export HTML
     const html = await generateExportHtml({
       title: articleInfo.article.title,
@@ -51,6 +61,9 @@ router.post('/export/:id', async (req, res) => {
       cocoonName: articleInfo.cocoonName,
       content: content.content,
       jsonLd,
+      slug: articleInfo.article.slug,
+      linkSlugById,
+      publishedSlugs: written.rows.map((r) => r.slug),
     })
 
     res.json({ data: { html, id } })
@@ -102,6 +115,7 @@ router.get('/preview/:id', async (req, res) => {
       content: content.content,
       jsonLd,
       embedCss: true,
+      slug: articleInfo.article.slug,
     })
 
     res.json({ data: { html, id, title: articleInfo.article.title } })
