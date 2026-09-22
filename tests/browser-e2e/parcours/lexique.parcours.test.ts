@@ -153,11 +153,18 @@ for (const level of LEVELS) {
       const cases = page.locator('[data-testid="lexique-results"] .term-checkbox')
       const total = await cases.count()
       if (total === 0) {
-        test.skip(true, 'corpus du bac à sable sans terme : rien à cocher')
+        // Corpus du bac à sable sans terme : l'écran doit le dire clairement.
+        await expect(page.locator('.section-empty').first(), 'liste vide → message explicite')
+          .toBeVisible({ timeout: 10000 })
+        return
       }
+
       const première = cases.first()
       if (await première.isDisabled()) {
-        test.skip(true, 'liste verrouillée : la décision a déjà été prise')
+        // Liste verrouillée : la décision a déjà été enregistrée, on le vérifie.
+        expect(await progression(), 'liste verrouillée → étape déjà validée')
+          .toContain('moteur:lexique_validated')
+        return
       }
 
       // Un seul terme suffit : dès qu'un terme est retenu, la liste se verrouille.
