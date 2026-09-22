@@ -81,11 +81,21 @@ export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
+/**
+ * Le garde-fou de coût protège de l'argent réel. En bac à sable, DataForSEO
+ * renvoie `cost: 0` : compter un budget y bloquerait des tests et des
+ * explorations gratuites (constaté le 2026-09-22 : la suite de parcours
+ * épuisait les 2 $ de la fenêtre sans qu'un centime ne soit dépensé).
+ */
+function budgetApplicable(): boolean {
+  return !isSandbox()
+}
+
 export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Promise<T> {
   const url = `${getBaseUrl()}${endpoint}`
   const auth = getAuthHeader()
 
-  await costGuard.reserve(endpoint, body)
+  if (budgetApplicable()) await costGuard.reserve(endpoint, body)
 
   let lastError: Error | null = null
   let count50000 = 0
@@ -131,7 +141,7 @@ export async function fetchDataForSeo<T>(endpoint: string, body: unknown[]): Pro
         log.warn(`DataForSEO empty result for ${endpoint}`, { ms: Date.now() - start })
         throw new Error('DataForSEO: empty result')
       }
-      costGuard.commit(endpoint, body)
+      if (budgetApplicable()) costGuard.commit(endpoint, body)
       log.debug(`DataForSEO response OK ← ${endpoint}`, { ms: Date.now() - start, resultCount: json.tasks[0].result.length })
       return json.tasks[0].result[0] as T
     }
@@ -158,7 +168,7 @@ export async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[])
   const url = `${getBaseUrl()}${endpoint}`
   const auth = getAuthHeader()
 
-  await costGuard.reserve(endpoint, body)
+  if (budgetApplicable()) await costGuard.reserve(endpoint, body)
 
   let lastError: Error | null = null
   let count50000 = 0
@@ -201,7 +211,7 @@ export async function fetchDataForSeoBatch<T>(endpoint: string, body: unknown[])
         throw new Error(`DataForSEO error: status ${json.status_code}`)
       }
       const results = json.tasks?.[0]?.result ?? []
-      costGuard.commit(endpoint, body)
+      if (budgetApplicable()) costGuard.commit(endpoint, body)
       log.debug(`DataForSEO batch response OK ← ${endpoint}`, { ms: Date.now() - start, resultCount: results.length })
       return results
     }
