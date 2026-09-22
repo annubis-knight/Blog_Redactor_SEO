@@ -100,6 +100,7 @@ describe('useRadarExplorationStore', () => {
     expect(mockApi.apiPost).toHaveBeenCalledWith(
       '/articles/64/radar-exploration/keyword',
       { keyword: 'new-kw', reasoning: undefined },
+      { contract: expect.objectContaining({ name: 'radar-exploration-add' }) },
     )
     expect(store.generatedKeywords).toHaveLength(1)
   })
@@ -128,6 +129,7 @@ describe('useRadarExplorationStore', () => {
     await store.removeKeyword('kw-a')
     expect(mockApi.apiDelete).toHaveBeenCalledWith(
       '/articles/64/radar-exploration/keyword?keyword=kw-a',
+      { contract: expect.objectContaining({ name: 'radar-exploration-remove' }) },
     )
     expect(store.generatedKeywords.map(k => k.keyword)).toEqual(['kw-b'])
   })
@@ -149,6 +151,7 @@ describe('useRadarExplorationStore', () => {
     expect(mockApi.apiPost).toHaveBeenCalledWith(
       '/articles/64/radar-exploration/keywords',
       { keywords: [{ keyword: 'kw1' }, { keyword: 'kw2' }, { keyword: 'kw3' }] },
+      { contract: expect.objectContaining({ name: 'radar-exploration-batch' }) },
     )
     expect(store.generatedKeywords).toHaveLength(3)
   })

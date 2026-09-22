@@ -46,6 +46,7 @@ describe('useSerpExistsCheck — chantier 3 E1-S2', () => {
 
     expect(mockApiGet).toHaveBeenCalledWith(
       `/keywords/${encodeURIComponent('marketing digital')}/serp/exists`,
+      { contract: expect.objectContaining({ name: 'serp-exists' }) },
     )
     expect(exists.value).toBe(true)
     expect(scrapedAt.value).toBe('2026-05-08T10:00:00.000Z')

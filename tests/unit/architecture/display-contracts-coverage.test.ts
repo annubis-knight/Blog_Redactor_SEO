@@ -20,10 +20,12 @@ import { join, relative } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Familles dont le contrat est posé partout (client et serveur). */
-const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations', 'discovery', 'discovery-cache', 'ai-advice'])
+const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations', 'discovery', 'discovery-cache', 'ai-advice',
+  'radar-waiting-list', 'word-groups', 'serp-exists',
+])
 
 /**
- * Cliquet : ces nombres ne peuvent que baisser. Les 7 lots sont livrés : à 0,
+ * Cliquet : ces nombres ne peuvent que baisser. Les 8 lots sont livrés : à 0,
  * tout nouvel appel ou route du Moteur listé ici arrive avec son contrat.
  */
 const BASELINE_CLIENT_UNCOVERED = 0
@@ -35,7 +37,7 @@ const BASELINE_SERVER_UNCOVERED = 0
 
 interface ClientEndpoint {
   family: string
-  method: 'Get' | 'Post' | 'Put' | 'Patch' | 'Stream'
+  method: 'Get' | 'Post' | 'Put' | 'Patch' | 'Delete' | 'Stream'
   path: RegExp
 }
 
@@ -53,7 +55,12 @@ const CLIENT_ENDPOINTS: ClientEndpoint[] = [
   { family: 'tfidf', method: 'Post', path: /^\/serp\/tfidf$/ },
   { family: 'discovery', method: 'Post', path: /^\/keywords\/(suggest-all|discover|discover-from-site|analyze-discovery|relevance-score)$/ },
   { family: 'explorations', method: 'Get', path: new RegExp(`^/articles/${V}/explorations$`) },
-  { family: 'discovery-cache', method: 'Get', path: /^\/discovery-cache\/load\?/ },
+  { family: 'discovery-cache', method: 'Get', path: /^\/discovery-cache\/(load|check)\?/ },
+  { family: 'word-groups', method: 'Post', path: /^\/keywords\/word-groups$/ },
+  { family: 'serp-exists', method: 'Get', path: new RegExp(`^/keywords/${V}/serp/exists$`) },
+  // Liste d'attente du Radar : l'exploration renvoyée remplace celle affichée.
+  { family: 'radar-waiting-list', method: 'Post', path: new RegExp(`^/articles/${V}/radar-exploration/keywords?$`) },
+  { family: 'radar-waiting-list', method: 'Delete', path: new RegExp(`^/articles/${V}/radar-exploration/keyword\\?`) },
   // Flux SSE : le résultat de l'événement `done` est affiché.
   { family: 'lieutenants-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/(propose-lieutenants|ai-hn-structure)$`) },
   { family: 'lexique-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-lexique-upfront$`) },
@@ -93,7 +100,7 @@ interface Site {
 function clientSites(): Site[] {
   const sites: Site[] = []
   // `apiPost('/x', …)` et flux SSE `iaStartStream(`/api/x`, …)` / `apiStream('/x', …)`.
-  const call = /\b(?:api(Get|Post|Put|Patch)|\w*[sS]tartStream(?:Once)?|apiStream)\s*(?:<[^()]*?>)?\s*(\()\s*([`'"])([^`'"]*)\3/g
+  const call = /\b(?:api(Get|Post|Put|Patch|Delete)|\w*[sS]tartStream(?:Once)?|apiStream)\s*(?:<[^()]*?>)?\s*(\()\s*([`'"])([^`'"]*)\3/g
   for (const file of walk(join(ROOT, 'src'))) {
     const source = readFileSync(file, 'utf8')
     let m: RegExpExecArray | null
@@ -121,7 +128,7 @@ function clientSites(): Site[] {
 interface ServerRoute {
   family: string
   file: string
-  method: 'get' | 'post'
+  method: 'get' | 'post' | 'delete'
   path: string
 }
 
@@ -142,6 +149,12 @@ const SERVER_ROUTES: ServerRoute[] = [
   { family: 'discovery', file: 'keywords.routes.ts', method: 'post', path: '/keywords/relevance-score' },
   { family: 'explorations', file: 'article-explorations.routes.ts', method: 'get', path: '/articles/:id/explorations' },
   { family: 'discovery-cache', file: 'discovery-cache.routes.ts', method: 'get', path: '/discovery-cache/load' },
+  { family: 'discovery-cache', file: 'discovery-cache.routes.ts', method: 'get', path: '/discovery-cache/check' },
+  { family: 'word-groups', file: 'keywords.routes.ts', method: 'post', path: '/keywords/word-groups' },
+  { family: 'serp-exists', file: 'keywords.routes.ts', method: 'get', path: '/keywords/:keyword/serp/exists' },
+  { family: 'radar-waiting-list', file: 'radar-exploration.routes.ts', method: 'post', path: '/articles/:id/radar-exploration/keyword' },
+  { family: 'radar-waiting-list', file: 'radar-exploration.routes.ts', method: 'delete', path: '/articles/:id/radar-exploration/keyword' },
+  { family: 'radar-waiting-list', file: 'radar-exploration.routes.ts', method: 'post', path: '/articles/:id/radar-exploration/keywords' },
   { family: 'ai-advice', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-panel' },
   { family: 'lieutenants-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/propose-lieutenants' },
   { family: 'lieutenants-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-hn-structure' },

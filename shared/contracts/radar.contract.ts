@@ -154,28 +154,58 @@ export const radarGenerateContract = defineContract<KeywordRadarGenerateResult>(
   }),
 )
 
+/**
+ * Exploration pas encore scannée : la base stocke `scan_result = '{}'`. C'est un
+ * état normal (« pas de scan »), pas une anomalie : il est mis en forme sans alerte.
+ */
+const NOT_SCANNED: KeywordRadarScanResult = {
+  specificTopic: '', broadKeyword: '', autocomplete: { suggestions: [], totalCount: 0 },
+  cards: [], globalScore: null, heatLevel: null, verdict: '', scannedAt: '',
+}
+const isEmptyObject = (value: unknown) =>
+  typeof value === 'object' && value !== null && !Array.isArray(value) && Object.keys(value).length === 0
+
+const radarExplorationSchema: z.ZodType<RadarExploration, unknown> = z.looseObject({
+  articleId: z.number(),
+  seed: text('seed', ''),
+  context: withFallback(
+    z.looseObject({
+      broadKeyword: text('context.broadKeyword', ''),
+      specificTopic: text('context.specificTopic', ''),
+      painPoint: text('context.painPoint', ''),
+      depth: count('context.depth'),
+    }),
+    { broadKeyword: '', specificTopic: '', painPoint: '', depth: 0 },
+    'context',
+  ),
+  generatedKeywords: tolerantArray(radarKeywordSchema, 'generatedKeywords'),
+  scanResult: z.preprocess(value => (isEmptyObject(value) ? NOT_SCANNED : value), radarScanResultSchema),
+  scannedAt: text('scannedAt', ''),
+})
+
 /** Réponse de GET /articles/:id/radar-exploration : `null` quand l'article n'a pas encore de scan. */
 export const radarExplorationContract = defineContract<RadarExploration | null>(
   'radar-exploration',
-  z
-    .looseObject({
-      articleId: z.number(),
-      seed: text('seed', ''),
-      context: withFallback(
-        z.looseObject({
-          broadKeyword: text('context.broadKeyword', ''),
-          specificTopic: text('context.specificTopic', ''),
-          painPoint: text('context.painPoint', ''),
-          depth: count('context.depth'),
-        }),
-        { broadKeyword: '', specificTopic: '', painPoint: '', depth: 0 },
-        'context',
-      ),
-      generatedKeywords: tolerantArray(radarKeywordSchema, 'generatedKeywords'),
-      scanResult: radarScanResultSchema,
-      scannedAt: text('scannedAt', ''),
-    })
-    .nullable(),
+  radarExplorationSchema.nullable(),
+)
+
+/**
+ * Réponses des ajouts / retraits de la liste d'attente du Radar : l'exploration
+ * renvoyée remplace celle affichée (puces « à scanner », cartes).
+ */
+export const radarKeywordAddedContract = defineContract<{ entry: RadarExploration; added: boolean }>(
+  'radar-exploration-add',
+  z.looseObject({ entry: radarExplorationSchema, added: withFallback(z.boolean(), false, 'added') }),
+)
+
+export const radarKeywordsBatchContract = defineContract<{ entry: RadarExploration; added: number }>(
+  'radar-exploration-batch',
+  z.looseObject({ entry: radarExplorationSchema, added: count('added') }),
+)
+
+export const radarKeywordRemovedContract = defineContract<{ entry: RadarExploration | null }>(
+  'radar-exploration-remove',
+  z.looseObject({ entry: radarExplorationSchema.nullable() }),
 )
 
 /**

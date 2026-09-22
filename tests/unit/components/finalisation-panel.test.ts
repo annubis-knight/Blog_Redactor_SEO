@@ -104,6 +104,27 @@ describe('FinalisationPanel', () => {
     expect(wrapper.text()).toContain('flat-only')
   })
 
+  it('NFR-INT-DISPLAY-CONTRACTS — capitaine vide (forme du contrat) → « — », pas une case vide', () => {
+    const store = useArticleKeywordsStore()
+    store.keywords = {
+      articleId: 1,
+      capitaine: '',
+      richCaptain: { keyword: '', status: 'suggested', exploredKeywords: [], aiPanelMarkdown: null },
+      lieutenants: [],
+      richLieutenants: [],
+      lexique: [],
+      richRootKeywords: [],
+      hnStructure: [],
+    } as never
+
+    const wrapper = mount(FinalisationPanel, {
+      props: { selectedArticle: SELECTED_ARTICLE as never },
+      global: { stubs: STUBS },
+    })
+
+    expect(wrapper.find('[data-testid="finalisation-capitaine"]').text()).toContain('—')
+  })
+
   it('lieutenants : affiche richLieutenants filtrés sur status="locked"', () => {
     const store = useArticleKeywordsStore()
     store.keywords = {

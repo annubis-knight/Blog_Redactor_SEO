@@ -11,11 +11,8 @@
 import { ref, watch, type Ref } from 'vue'
 import { apiGet } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { serpExistsContract } from '@shared/contracts/serp.contract.js'
 
-interface SerpExistsResponse {
-  exists: boolean
-  scrapedAt: string | null
-}
 
 export function useSerpExistsCheck(keyword: Ref<string | null>) {
   // null = pas encore checké (état initial avant premier fetch)
@@ -35,8 +32,9 @@ export function useSerpExistsCheck(keyword: Ref<string | null>) {
     isChecking.value = true
     error.value = null
     try {
-      const res = await apiGet<SerpExistsResponse>(
+      const res = await apiGet(
         `/keywords/${encodeURIComponent(kw)}/serp/exists`,
+        { contract: serpExistsContract },
       )
       exists.value = res.exists
       scrapedAt.value = res.scrapedAt

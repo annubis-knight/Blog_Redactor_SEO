@@ -27,7 +27,8 @@ const articleKeywordsStore = useArticleKeywordsStore()
 const captain = computed(() => {
   const kw = articleKeywordsStore.keywords
   return {
-    keyword: kw?.richCaptain?.keyword ?? kw?.capitaine ?? '—',
+    // Chaîne vide = pas de Capitaine (contrat `article-keywords`) → « — ».
+    keyword: kw?.richCaptain?.keyword || kw?.capitaine || '—',
     history: kw?.richCaptain?.exploredKeywords ?? [],
   }
 })

@@ -18,7 +18,12 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { apiGet, apiPost, apiDelete } from '@/services/api.service'
-import { radarExplorationContract } from '@shared/contracts/radar.contract.js'
+import {
+  radarExplorationContract,
+  radarKeywordAddedContract,
+  radarKeywordRemovedContract,
+  radarKeywordsBatchContract,
+} from '@shared/contracts/radar.contract.js'
 import { log } from '@/utils/logger'
 import type {
   RadarKeyword,
@@ -81,9 +86,10 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
     }
     isMutating.value = true
     try {
-      const data = await apiPost<{ entry: RadarExplorationEntry; added: boolean }>(
+      const data = await apiPost(
         `/articles/${articleId.value}/radar-exploration/keyword`,
         { keyword: trimmed, reasoning },
+        { contract: radarKeywordAddedContract },
       )
       entry.value = data.entry
       return data.added
@@ -102,8 +108,9 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
     }
     isMutating.value = true
     try {
-      const data = await apiDelete<{ entry: RadarExplorationEntry | null }>(
+      const data = await apiDelete(
         `/articles/${articleId.value}/radar-exploration/keyword?keyword=${encodeURIComponent(keyword)}`,
+        { contract: radarKeywordRemovedContract },
       )
       entry.value = data.entry
     } catch (err) {
@@ -129,9 +136,10 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
     }
     isMutating.value = true
     try {
-      const data = await apiPost<{ entry: RadarExplorationEntry; added: number }>(
+      const data = await apiPost(
         `/articles/${articleId.value}/radar-exploration/keywords`,
         { keywords },
+        { contract: radarKeywordsBatchContract },
       )
       entry.value = data.entry
       return data.added

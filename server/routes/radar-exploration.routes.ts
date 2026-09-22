@@ -1,6 +1,11 @@
 import { Router } from 'express'
 import { parseContract } from '../../shared/contracts/core.js'
-import { radarExplorationContract } from '../../shared/contracts/radar.contract.js'
+import {
+  radarExplorationContract,
+  radarKeywordAddedContract,
+  radarKeywordRemovedContract,
+  radarKeywordsBatchContract,
+} from '../../shared/contracts/radar.contract.js'
 import { log } from '../utils/logger.js'
 import {
   getRadarExploration,
@@ -108,7 +113,8 @@ router.post('/articles/:id/radar-exploration/keyword', async (req, res) => {
       return
     }
     const result = await addKeywordToRadarExploration(articleId, keyword, typeof reasoning === 'string' ? reasoning : undefined)
-    res.json({ data: result })
+    // Frontière relecture : l'exploration renvoyée remplace celle affichée.
+    res.json({ data: parseContract(radarKeywordAddedContract, result, 'db') })
   } catch (err) {
     log.error(`POST /articles/:id/radar-exploration/keyword — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to add keyword' } })
@@ -129,7 +135,7 @@ router.delete('/articles/:id/radar-exploration/keyword', async (req, res) => {
       return
     }
     const entry = await removeKeywordFromRadarExploration(articleId, keyword)
-    res.json({ data: { entry } })
+    res.json({ data: parseContract(radarKeywordRemovedContract, { entry }, 'db') })
   } catch (err) {
     log.error(`DELETE /articles/:id/radar-exploration/keyword — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to remove keyword' } })
@@ -159,7 +165,7 @@ router.post('/articles/:id/radar-exploration/keywords', async (req, res) => {
       }
     }
     const result = await addKeywordsBatchToRadarExploration(articleId, normalized)
-    res.json({ data: result })
+    res.json({ data: parseContract(radarKeywordsBatchContract, result, 'db') })
   } catch (err) {
     log.error(`POST /articles/:id/radar-exploration/keywords — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to add keywords batch' } })

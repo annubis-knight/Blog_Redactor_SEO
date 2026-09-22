@@ -3,7 +3,7 @@ import { log } from '../utils/logger.js'
 import { checkCache, loadCache, saveCache, clearCache } from '../services/infra/discovery-cache.service.js'
 import { saveDiscoveryCacheSchema } from '../../shared/schemas/discovery-cache.schema.js'
 import { parseContract } from '../../shared/contracts/core.js'
-import { discoveryCacheEntryContract } from '../../shared/contracts/discovery.contract.js'
+import { discoveryCacheEntryContract, discoveryCacheStatusContract } from '../../shared/contracts/discovery.contract.js'
 
 const router = Router()
 
@@ -16,7 +16,7 @@ router.get('/discovery-cache/check', async (req, res) => {
       return
     }
     const status = await checkCache(seed.trim())
-    res.json({ data: status })
+    res.json({ data: parseContract(discoveryCacheStatusContract, status, 'db') })
   } catch (err) {
     log.error(`GET /api/discovery-cache/check — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to check discovery cache' } })

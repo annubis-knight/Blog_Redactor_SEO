@@ -15,7 +15,7 @@
 import { z } from 'zod'
 import { count, defineContract, nullableText, text, tolerantArray, withFallback } from './core.js'
 import { ARTICLE_LEVELS } from './score-blocks.js'
-import type { HnNode, SerpAnalysisResult, SerpCompetitor, TfidfResult, TfidfTerm } from '../types/serp-analysis.types.js'
+import type { HnNode, SerpAnalysisResult, SerpCompetitor, SerpExistsResponse, TfidfResult, TfidfTerm } from '../types/serp-analysis.types.js'
 import type { PaaQuestion } from '../types/dataforseo.types.js'
 
 /**
@@ -70,14 +70,29 @@ export const serpAnalysisContract = defineContract<SerpAnalysisResult>(
 
 const TFIDF_LEVELS = ['obligatoire', 'differenciateur', 'optionnel'] as const
 
+// Fréquence et densité sont calculées localement : illisibles (cache abîmé), le
+// terme est écarté plutôt qu'affiché « ×0/page · 0 % » (un faux zéro).
 const tfidfTermSchema: z.ZodType<TfidfTerm, unknown> = z.looseObject({
   term: z.string().min(1),
   level: z.enum(TFIDF_LEVELS),
-  documentFrequency: withFallback(z.number(), 0, 'tfidf.documentFrequency'),
-  density: withFallback(z.number(), 0, 'tfidf.density'),
+  documentFrequency: z.number(),
+  density: z.number(),
   competitorCount: count('tfidf.competitorCount'),
   totalCompetitors: count('tfidf.totalCompetitors'),
 })
+
+/**
+ * Réponse de GET /keywords/:keyword/serp/exists (pré-contrôle du Lexique) :
+ * une réponse illisible donne « inconnu » (`null`) — l'écran garde le bouton
+ * « Extraire » au lieu de proposer un scrape payant.
+ */
+export const serpExistsContract = defineContract<SerpExistsResponse>(
+  'serp-exists',
+  z.looseObject({
+    exists: withFallback(z.boolean().nullable(), null, 'exists'),
+    scrapedAt: nullableText('scrapedAt'),
+  }),
+)
 
 /** Réponse de POST /serp/tfidf. */
 export const tfidfResultContract = defineContract<TfidfResult>(

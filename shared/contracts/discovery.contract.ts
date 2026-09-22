@@ -8,7 +8,8 @@
  *   - POST /keywords/discover et /keywords/discover-from-site (DataForSEO) ;
  *   - POST /keywords/analyze-discovery (sélection IA) ;
  *   - POST /keywords/relevance-score (tri IA pertinent / hors sujet) ;
- *   - GET /discovery-cache/load (relecture du cache 30 jours).
+ *   - GET /discovery-cache/load (relecture du cache 30 jours) et /discovery-cache/check ;
+ *   - POST /keywords/word-groups (groupes de mots, calcul local).
  *
  * KPI marché absents → `null` (« — »), jamais 0. Une priorité IA illisible
  * reste affichée comme « bonus » (vert), comme avant le contrat.
@@ -24,7 +25,7 @@
 import { z } from 'zod'
 import { count, defineContract, kpiValue, oneOf, optionalObject, text, toKpiValue, tolerantArray, tolerantRecord, withFallback } from './core.js'
 import type { ApiUsage } from '../types/api.types.js'
-import type { DiscoveryCacheEntry, DiscoveryContext } from '../types/discovery-cache.types.js'
+import type { DiscoveryCacheEntry, DiscoveryCacheStatus, DiscoveryContext } from '../types/discovery-cache.types.js'
 import type {
   AnalysisResult,
   AnalyzeDiscoveryResponse,
@@ -199,6 +200,23 @@ const wordGroupSchema: z.ZodType<WordGroup, unknown> = z.looseObject({
   count: count('wordGroups.count'),
   normalized: text('wordGroups.normalized', ''),
 })
+
+/** Réponse de POST /keywords/word-groups (colonne « Groupes de mots »). */
+export const wordGroupsContract = defineContract<{ groups: WordGroup[] }>(
+  'word-groups',
+  z.looseObject({ groups: tolerantArray(wordGroupSchema, 'groups') }),
+)
+
+/** Réponse de GET /discovery-cache/check (barre de cache : date, nombre de mots-clés). */
+export const discoveryCacheStatusContract = defineContract<DiscoveryCacheStatus>(
+  'discovery-cache-status',
+  z.looseObject({
+    cached: withFallback(z.boolean(), false, 'cached'),
+    cachedAt: optionalString('cachedAt'),
+    keywordCount: withFallback(z.number().int().min(0).optional(), undefined, 'keywordCount'),
+    hasAnalysis: withFallback(z.boolean().optional(), undefined, 'hasAnalysis'),
+  }),
+)
 
 const discoveryContextSchema: z.ZodType<DiscoveryContext, unknown> = z.looseObject({
   cocoonName: text('context.cocoonName', ''),

@@ -1,7 +1,7 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { radarGenerateContract } from '@shared/contracts/radar.contract.js'
-import { discoveryAnalysisContract, keywordDiscoveryContract, suggestAllContract } from '@shared/contracts/discovery.contract.js'
+import { discoveryAnalysisContract, keywordDiscoveryContract, suggestAllContract, wordGroupsContract } from '@shared/contracts/discovery.contract.js'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
@@ -183,7 +183,7 @@ export function useDiscoveryPanel() {
     if (allKw.length < 5) return
 
     wordGroupsLoading.value = true
-    apiPost<{ groups: WordGroup[] }>('/keywords/word-groups', { keywords: allKw })
+    apiPost('/keywords/word-groups', { keywords: allKw }, { contract: wordGroupsContract })
       .then(data => {
         wordGroups.value = data.groups
         log.info(`Discovery: ${data.groups.length} word groups`)

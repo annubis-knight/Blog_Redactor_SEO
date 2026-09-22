@@ -33,6 +33,12 @@ export interface HnRecurrenceItem {
   percent: number
 }
 
+/** Réponse de GET /keywords/:keyword/serp/exists : `exists: null` = inconnu (l'écran garde le bouton « Extraire »). */
+export interface SerpExistsResponse {
+  exists: boolean | null
+  scrapedAt: string | null
+}
+
 export interface SerpAnalysisResult {
   keyword: string
   articleLevel: ArticleLevel

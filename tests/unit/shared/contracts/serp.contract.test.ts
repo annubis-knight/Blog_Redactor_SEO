@@ -99,6 +99,15 @@ describe('tfidfResultContract', () => {
     expect(parseContract(tfidfResultContract, raw, 'client').obligatoire.map(t => t.term)).toEqual(['hébergement'])
   })
 
+  it('une densité ou une fréquence illisible écarte le terme (jamais « ×0/page · 0 % » inventé)', () => {
+    const raw = {
+      keyword: 'création site web', totalCompetitors: 10,
+      obligatoire: [term('hébergement'), { ...term('maintenance'), density: null }, { ...term('domaine'), documentFrequency: 'n/a' }],
+      differenciateur: [], optionnel: [],
+    }
+    expect(parseContract(tfidfResultContract, raw, 'db').obligatoire.map(t => t.term)).toEqual(['hébergement'])
+  })
+
   it('une liste absente devient vide (l’écran ne plante pas)', () => {
     const raw = { keyword: 'x', totalCompetitors: 0 }
     const out = parseContract(tfidfResultContract, raw, 'client')

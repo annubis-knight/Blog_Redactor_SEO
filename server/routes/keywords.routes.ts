@@ -12,7 +12,9 @@ import {
   keywordDiscoveryContract,
   relevanceScoreContract,
   suggestAllContract,
+  wordGroupsContract,
 } from '../../shared/contracts/discovery.contract.js'
+import { serpExistsContract } from '../../shared/contracts/serp.contract.js'
 import { runPaaJudgmentsForArticle } from '../services/keyword/captain-paa-judge.service.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
@@ -105,7 +107,7 @@ router.get('/keywords/:keyword/serp/exists', async (req, res) => {
       return
     }
     const result = await hasSerpScrape(raw)
-    res.json({ data: result })
+    res.json({ data: parseContract(serpExistsContract, result, 'server') })
   } catch (err) {
     log.error(`GET /api/keywords/:keyword/serp/exists — ${(err as Error).message}`)
     res.status(500).json({
@@ -941,7 +943,7 @@ router.post('/keywords/word-groups', async (req, res) => {
 
     const groups = computeWordGroups(keywords, minCount ?? 2, maxGroups ?? 50)
     log.info(`Word groups: ${groups.length} groups from ${keywords.length} keywords`)
-    res.json({ data: { groups } })
+    res.json({ data: parseContract(wordGroupsContract, { groups }, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/word-groups — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'WORD_GROUPS_ERROR', message: 'Failed to compute word groups' } })
