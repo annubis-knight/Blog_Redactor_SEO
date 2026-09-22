@@ -222,3 +222,43 @@ describe('api.service — option contract', () => {
     await expect(apiPost('/x', {}, { contract })).rejects.toBeInstanceOf(ContractViolationError)
   })
 })
+
+describe('api.service — apiStream et contrat (NFR-INT-DISPLAY-CONTRACTS)', () => {
+  const doneEvent = (outline: unknown) => `event: done\ndata: ${JSON.stringify({ outline })}\n\n`
+
+  it('le résultat final passe le contrat avant onDone', async () => {
+    const { z } = await import('zod')
+    const { defineContract, kpiValue } = await import('../../../shared/contracts/core.js')
+    const contract = defineContract('test-flux', z.looseObject({ score: kpiValue('score') }))
+    mockFetch.mockResolvedValue({ ok: true, body: makeSseStream([doneEvent({ score: 'illisible' })]) })
+    const onDone = vi.fn()
+    const out = await apiStream('/keywords/seo/ai-hn-structure', {}, { onDone }, { contract })
+    expect(onDone).toHaveBeenCalledWith({ score: null })
+    expect(out.result).toEqual({ score: null })
+  })
+
+  it('un résultat inutilisable suit le chemin d’erreur : onError, pas onDone', async () => {
+    const { z } = await import('zod')
+    const { defineContract } = await import('../../../shared/contracts/core.js')
+    const contract = defineContract('test-flux', z.looseObject({ hnStructure: z.array(z.unknown()) }))
+    mockFetch.mockResolvedValue({ ok: true, body: makeSseStream([doneEvent({ justification: 'sans plan' })]) })
+    const onDone = vi.fn()
+    const onError = vi.fn()
+    const out = await apiStream('/keywords/seo/ai-hn-structure', {}, { onDone, onError }, { contract })
+    expect(onDone).not.toHaveBeenCalled()
+    expect(onError).toHaveBeenCalledWith(expect.stringContaining('format inattendu'))
+    expect(out.errorMessage).toContain('relancez')
+    expect(out.result).toBeNull()
+  })
+
+  it('une erreur dans un callback de l’écran ne coupe pas la lecture du flux', async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      body: makeSseStream(['event: chunk\ndata: {"content":"a"}\n\n', doneEvent({ ok: true })]),
+    })
+    const onDone = vi.fn()
+    const out = await apiStream('/x', {}, { onChunk: () => { throw new Error('bug écran') }, onDone })
+    expect(onDone).toHaveBeenCalledWith({ ok: true })
+    expect(out.errorMessage).toBeNull()
+  })
+})

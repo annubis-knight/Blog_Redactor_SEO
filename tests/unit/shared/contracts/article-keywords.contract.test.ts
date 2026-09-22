@@ -31,7 +31,10 @@ function payload(): Record<string, unknown> {
       aiPanelMarkdown: null,
     },
     richRootKeywords: [],
-    richLieutenants: [{ keyword: 'prix création site web', status: 'locked' }],
+    richLieutenants: [{
+      keyword: 'prix création site web', status: 'locked', reasoning: 'Question budget', sources: ['paa', 'serp'],
+      suggestedHnLevel: 2, score: 82, kpis: null, exploredAt: '2026-09-22T10:00:00.000Z',
+    }],
   }
 }
 

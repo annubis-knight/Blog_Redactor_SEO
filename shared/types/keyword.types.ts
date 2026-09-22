@@ -117,7 +117,7 @@ export interface RichLieutenant {
   reasoning: string
   sources: ('paa' | 'serp' | 'group' | 'root' | 'content-gap')[]
   suggestedHnLevel: 2 | 3
-  score: number                             // 0-100 AI quality score
+  score: number | null                      // 0-100 AI quality score ; null = non fourni (« — »)
   kpis: KpiSummary[] | null                 // null if not individually validated
   exploredAt?: string | null                // ISO 8601 — date de dernière exploration (règle TTL 7j)
 }

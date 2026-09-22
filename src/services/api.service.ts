@@ -2,9 +2,9 @@ import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { labelFromUrl } from '@/utils/api-label'
 import type { ApiUsage, DbOp } from '@shared/types/index.js'
-import { parseContract, type DisplayContract } from '@shared/contracts/core.js'
+import { ContractViolationError, parseContract, type DisplayContract } from '@shared/contracts/core.js'
 
-interface ApiOptions<T = unknown> {
+export interface ApiOptions<T = unknown> {
   signal?: AbortSignal
   /**
    * Contrat d'affichage (NFR-INT-DISPLAY-CONTRACTS) : met la réponse dans la
@@ -210,8 +210,10 @@ export interface ApiStreamResult<T> {
 }
 
 async function consumeSseBody<T>(
+  path: string,
   reader: ReadableStreamDefaultReader<Uint8Array>,
   callbacks?: ApiStreamCallbacks<T>,
+  options?: ApiOptions<T>,
 ): Promise<ApiStreamResult<T>> {
   const decoder = new TextDecoder()
   let buffer = ''
@@ -233,9 +235,15 @@ async function consumeSseBody<T>(
       if (line.startsWith('event: ')) {
         eventType = line.slice(7).trim()
       } else if (line.startsWith('data: ')) {
-        const data = line.slice(6)
+        let parsed
         try {
-          const parsed = JSON.parse(data)
+          parsed = JSON.parse(line.slice(6))
+        } catch {
+          // Ignore malformed JSON lines
+          eventType = ''
+          continue
+        }
+        try {
           if (eventType === 'chunk') {
             // Support legacy `content` key (generate/article) and unified `html` key (generate/reduce, humanize-section)
             const piece: string = typeof parsed.content === 'string'
@@ -253,8 +261,16 @@ async function consumeSseBody<T>(
               usage = parsed.usage as ApiUsage
               callbacks?.onUsage?.(parsed.usage as ApiUsage)
             }
-            result = (parsed.outline ?? parsed.metadata ?? parsed) as T
-            callbacks?.onDone?.(result as T)
+            // Temps « mise en format » : le résultat final passe le contrat de l'écran.
+            // Inutilisable → même chemin qu'une erreur du serveur, onDone n'est pas appelé.
+            const done = conformStreamResult(path, parsed.outline ?? parsed.metadata ?? parsed, options)
+            if (done.ok) {
+              result = done.value
+              callbacks?.onDone?.(done.value)
+            } else {
+              errorMessage = done.message
+              callbacks?.onError?.(done.message)
+            }
           } else if (eventType === 'section-start') {
             callbacks?.onSectionStart?.(parsed as SectionStartInfo)
           } else if (eventType === 'section-done') {
@@ -264,8 +280,9 @@ async function consumeSseBody<T>(
             errorMessage = msg
             callbacks?.onError?.(msg)
           }
-        } catch {
-          // Ignore malformed JSON lines
+        } catch (err) {
+          // Une erreur dans un callback de l'écran ne coupe pas le flux, mais se voit dans le journal.
+          log.error(`SSE /api${path} — traitement de l'événement « ${eventType} » impossible : ${(err as Error).message}`)
         }
         eventType = ''
       }
@@ -273,6 +290,18 @@ async function consumeSseBody<T>(
   }
 
   return { result, usage, errorMessage, aborted: false }
+}
+
+type StreamConformity<T> = { ok: true; value: T } | { ok: false; message: string }
+
+function conformStreamResult<T>(path: string, data: unknown, options?: ApiOptions<T>): StreamConformity<T> {
+  try {
+    return { ok: true, value: conform(data, options) }
+  } catch (err) {
+    if (!(err instanceof ContractViolationError)) throw err
+    log.error(`SSE /api${path} — ${err.message}`, { issues: err.issues })
+    return { ok: false, message: err.message }
+  }
 }
 
 /**
@@ -288,7 +317,7 @@ export async function apiStream<T>(
   path: string,
   body: unknown,
   callbacks?: ApiStreamCallbacks<T>,
-  options?: ApiOptions,
+  options?: ApiOptions<T>,
 ): Promise<ApiStreamResult<T>> {
   log.debug(`SSE stream start → /api${path}`)
   try {
@@ -309,7 +338,7 @@ export async function apiStream<T>(
     }
 
     const reader = res.body.getReader()
-    const out = await consumeSseBody<T>(reader, callbacks)
+    const out = await consumeSseBody<T>(path, reader, callbacks, options)
     if (out.usage) {
       try {
         const store = useCostLogStore()

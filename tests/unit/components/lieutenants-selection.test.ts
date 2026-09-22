@@ -692,6 +692,7 @@ describe('LieutenantsPanel', () => {
           articleId: 1,
         }),
         expect.any(Object),
+        { contract: expect.objectContaining({ name: 'propose-lieutenants' }) },
       )
     })
 
@@ -707,6 +708,7 @@ describe('LieutenantsPanel', () => {
           rootKeywords: ['seo'],
         }),
         expect.any(Object),
+        { contract: expect.objectContaining({ name: 'propose-lieutenants' }) },
       )
     })
 

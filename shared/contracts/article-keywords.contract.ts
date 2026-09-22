@@ -16,8 +16,8 @@
 import { z } from 'zod'
 import { defineContract, nullableText, oneOf, text, tolerantArray, optionalObject } from './core.js'
 import { captainScanEntrySchema, kpiSummarySchema } from './captain-scan.contract.js'
-import type { ArticleKeywords, RichCaptain, RichLieutenant, RichRootKeyword } from '../types/keyword.types.js'
-import type { ProposeLieutenantsHnNode } from '../types/serp-analysis.types.js'
+import { proposeHnNodeSchema, richLieutenantSchema } from './lieutenants.contract.js'
+import type { ArticleKeywords, RichCaptain, RichRootKeyword } from '../types/keyword.types.js'
 
 const ARTICLE_LEVELS = ['pilier', 'intermediaire', 'specifique'] as const
 
@@ -36,21 +36,16 @@ const richCaptainSchema: z.ZodType<RichCaptain, unknown> = z.looseObject({
   aiPanelMarkdown: nullableText('richCaptain.aiPanelMarkdown'),
 })
 
-/** Lot 4 (Lieutenants) : durci plus tard ; ici, seule la forme « liste » est garantie. */
-const richLieutenantsSchema = z.custom<RichLieutenant[]>(value => Array.isArray(value))
-/** Lot 4 (plan Hn) : idem. */
-const hnStructureSchema = z.custom<ProposeLieutenantsHnNode[]>(value => Array.isArray(value))
-
 export const articleKeywordsSchema: z.ZodType<ArticleKeywords, unknown> = z.looseObject({
   articleId: z.number(),
   capitaine: text('capitaine', ''),
   lieutenants: tolerantArray(z.string(), 'lieutenants'),
   lexique: tolerantArray(z.string(), 'lexique'),
   rootKeywords: tolerantArray(z.string(), 'rootKeywords').optional(),
-  hnStructure: hnStructureSchema.optional(),
+  hnStructure: tolerantArray(proposeHnNodeSchema, 'hnStructure').optional(),
   richCaptain: optionalObject(richCaptainSchema, 'richCaptain').transform(value => value ?? undefined),
   richRootKeywords: tolerantArray(richRootKeywordSchema, 'richRootKeywords').optional(),
-  richLieutenants: richLieutenantsSchema.optional(),
+  richLieutenants: tolerantArray(richLieutenantSchema, 'richLieutenants').optional(),
 })
 
 /** Réponse de GET /articles/:id/keywords : `null` quand l'article n'a encore rien. */

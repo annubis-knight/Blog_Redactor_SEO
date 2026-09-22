@@ -4,7 +4,7 @@ import { marked } from 'marked'
 import LieutenantCard from '@/components/moteur/LieutenantCard.vue'
 import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import { useSortableList, type SortOption } from '@/composables/moteur/useSortableList'
-import { compareScoresAsc } from '@shared/score'
+import { compareScores, compareScoresAsc } from '@shared/score'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
 marked.setOptions({ breaks: true, gfm: true })
@@ -38,7 +38,7 @@ const { sorted: sortedLieutenants, sortState: lieutenantSortState } = useSortabl
   items: toRef(props, 'lieutenantCards'),
   getValue: (lt, key) => {
     if (key === 'az') return lt.keyword
-    if (key === 'score') return lt.score ?? null
+    if (key === 'score') return lt.score
     return null
   },
 })
@@ -51,8 +51,9 @@ const sortedEliminated = computed<ProposedLieutenant[]>(() => {
   const sign = direction === 'desc' ? -1 : 1
   return list.sort((a, b) => {
     if (key === 'az') return sign * a.keyword.localeCompare(b.keyword, 'fr', { sensitivity: 'base' })
-    // null en bas peu importe le sens (CLAUDE.md §2.0). Tri inversé via sign.
-    return sign * compareScoresAsc(a.score ?? null, b.score ?? null)
+    // null en bas peu importe le sens (CLAUDE.md §2.0), comme useSortableList
+    // pour la liste principale : on choisit le comparateur, on n'inverse pas son signe.
+    return direction === 'desc' ? compareScores(a.score, b.score) : compareScoresAsc(a.score, b.score)
   })
 })
 

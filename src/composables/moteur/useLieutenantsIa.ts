@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { isResponseForCurrentArticle } from '@/utils/article-scope'
 import { log } from '@/utils/logger'
+import { hnOutlineContract, proposeLieutenantsContract, type HnOutlineResult } from '@shared/contracts/lieutenants.contract.js'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import type {
   FilteredProposeLieutenantsResult,
@@ -20,7 +21,8 @@ import type { WordGroup } from '@shared/types/discovery-tab.types.js'
  *           POST /keywords/:keyword/ai-hn-structure (HN-only regen avec lockedHeadings)
  * CONSUMERS: LieutenantH2Structure (affichage + lock par titre + bouton Régénérer),
  *            useLieutenantsHn (saveHnStructure → PUT /articles/:id outline + keywords)
- * RELATED FR: FR-LIE-AI-FRONTIER, FR-MOT-HN-EMPTY-VISIBLE, FR-MOT-HN-REGEN-LOCKED
+ * RELATED FR: FR-LIE-AI-FRONTIER, FR-MOT-HN-EMPTY-VISIBLE, FR-MOT-HN-REGEN-LOCKED,
+ *             NFR-INT-DISPLAY-CONTRACTS (contrats `propose-lieutenants`, `ai-hn-structure`)
  *
  * Vague 3 — Composable extrait de LieutenantsPanel. Encapsule la Phase 2 IA :
  * streaming propose-lieutenants, cards selected/eliminated, structure Hn,
@@ -110,7 +112,7 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     isStreaming: hnRegenStreaming,
     error: hnRegenError,
     startStream: hnRegenStartStream,
-  } = useStreaming<{ hnStructure: ProposeLieutenantsHnNode[]; justification?: string }>()
+  } = useStreaming<HnOutlineResult>()
 
   const lieutenantCards = ref<ProposedLieutenant[]>([])
   const eliminatedCards = ref<ProposedLieutenant[]>([])
@@ -167,7 +169,8 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
         reasoning: 'Proposé depuis votre panier',
         sources: [],
         suggestedHnLevel: 2 as const,
-        score: 0,
+        // Pas évalué par l'IA : « — », pas un faux 0.
+        score: null,
       },
     ]
     log.info('[useLieutenantsIa] Assist add', { keyword, total: lieutenantCards.value.length })
@@ -226,7 +229,8 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
       reasoning: '',
       sources: [],
       suggestedHnLevel: 2 as const,
-      score: 0,
+      // Ancienne liste sans détail : score inconnu → « — ».
+      score: null,
     }))
     lieutenantCards.value = cards
     const selected = new Map<string, ProposedLieutenant>()
@@ -302,8 +306,8 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
         onDone: (data) => {
           log.info(`[useLieutenantsIa] IA generated ${data.totalGenerated} lieutenants, selected ${data.selectedLieutenants.length}, eliminated ${data.eliminatedLieutenants.length}`)
           totalGenerated.value = data.totalGenerated
-          hnStructure.value = data.hnStructure ?? []
-          contentGapInsights.value = data.contentGapInsights ?? ''
+          hnStructure.value = data.hnStructure
+          contentGapInsights.value = data.contentGapInsights
 
           // Step 3: Assign cards directly from AI data (no batch KPI)
           currentStep.value = 'filtering'
@@ -348,6 +352,7 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
           }
         },
       },
+      { contract: proposeLieutenantsContract },
     )
   }
 
@@ -396,15 +401,14 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
         ...(cocoonSlug.value ? { cocoonSlug: cocoonSlug.value } : {}),
       },
       {
+        // Le contrat garantit la liste de titres ; sans elle, `hnRegenError`
+        // s'affiche et le plan en place est conservé.
         onDone: (data) => {
-          if (!Array.isArray(data?.hnStructure)) {
-            log.warn('[useLieutenantsIa] HN regenerate: missing hnStructure in response')
-            return
-          }
           hnStructure.value = data.hnStructure
           log.info(`[useLieutenantsIa] HN regenerate done: ${data.hnStructure.length} top-level nodes`)
         },
       },
+      { contract: hnOutlineContract },
     )
   }
 

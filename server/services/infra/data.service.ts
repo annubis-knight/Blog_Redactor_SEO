@@ -963,7 +963,8 @@ export async function updateCaptainExplorationAiPanel(
 export async function getLieutenantExplorations(articleId: number): Promise<{ data: RichLieutenant[]; dbOps: DbOp[] }> {
   const t = Date.now()
   const res = await pool.query(
-    `SELECT * FROM lieutenant_explorations WHERE article_id = $1 ORDER BY score DESC`, [articleId]
+    // NULLS LAST : un score absent (« — ») reste en bas, comme à l'écran.
+    `SELECT * FROM lieutenant_explorations WHERE article_id = $1 ORDER BY score DESC NULLS LAST`, [articleId]
   )
   const dbOps: DbOp[] = [{ operation: 'select', table: 'lieutenant_explorations', rowCount: res.rows.length, ms: Date.now() - t }]
   // locked_at supprimé (inutile UI). Source de vérité status = colonne status.
@@ -973,8 +974,8 @@ export async function getLieutenantExplorations(articleId: number): Promise<{ da
     reasoning: lt.reasoning ?? '',
     sources: lt.sources ?? [],
     suggestedHnLevel: lt.suggested_hn_level ?? 2,
-    // eslint-disable-next-line no-restricted-syntax -- mapping DB : 0 est valeur par défaut historique de cette colonne (avant nullable)
-    score: lt.score ?? 0,
+    // Score IA non fourni → absent (« — »), pas 0 (NFR-INT-DISPLAY-CONTRACTS).
+    score: lt.score ?? null,
     kpis: lt.kpis ?? null,
     exploredAt: lt.explored_at?.toISOString() ?? null,
   }))

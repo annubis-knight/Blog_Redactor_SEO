@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { runAiPanelStream } from '../services/external/ai-panel-runner.service.js'
 import { parseAiJson } from '../utils/ai-json-parser.js'
+import { parseContract } from '../../shared/contracts/core.js'
+import { hnOutlineContract, proposeLieutenantsAiContract, type HnOutlineResult } from '../../shared/contracts/lieutenants.contract.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
@@ -138,7 +140,7 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
 
   const userPrompt = `Recommande une structure Hn pour un article "${keyword}" de niveau ${level} utilisant ces Lieutenants: ${lieutenants.join(', ')}`
 
-  await runAiPanelStream<{ hnStructure: ProposeLieutenantsHnNode[]; justification?: string }>({
+  await runAiPanelStream<HnOutlineResult>({
     req,
     res,
     keyword,
@@ -147,13 +149,9 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
     userPrompt,
     maxTokens: 4096,
     logTag: 'ai-hn-structure',
-    parser: (fullContent) => {
-      const parsed = parseAiJson<{ hnStructure?: ProposeLieutenantsHnNode[]; justification?: string }>(fullContent)
-      if (!Array.isArray(parsed.hnStructure)) {
-        throw new Error('AI response missing hnStructure array')
-      }
-      return { hnStructure: parsed.hnStructure, justification: parsed.justification }
-    },
+    // Frontière serveur : sans liste de titres, la sortie de l'IA est refusée
+    // (événement `error`) ; les titres vides ou sans niveau lisible sont écartés.
+    parser: (fullContent) => parseContract(hnOutlineContract, parseAiJson<unknown>(fullContent), 'server'),
     buildDonePayload: (parsed, usage) => ({
       outline: parsed ?? { hnStructure: [], justification: '' },
       metadata: { keyword, level },
@@ -173,7 +171,7 @@ const MAX_SELECTED: Record<ArticleLevel, number> = {
 function filterLieutenants(parsed: ProposeLieutenantsResult, level: ArticleLevel): FilteredProposeLieutenantsResult {
   const maxKeep = MAX_SELECTED[level] ?? 5
   // null en bas — cohérent avec affichage (CLAUDE.md §2.0)
-  const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score ?? null, b.score ?? null))
+  const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score, b.score))
 
   return {
     selectedLieutenants: sorted.slice(0, maxKeep),
@@ -280,13 +278,11 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
     userPrompt,
     maxTokens: 8192,
     logTag: 'propose-lieutenants',
-    parser: (fullContent) => {
-      const parsed = parseAiJson<ProposeLieutenantsResult>(fullContent)
-      if (!Array.isArray(parsed.lieutenants)) {
-        throw new Error('AI response missing lieutenants array')
-      }
-      return filterLieutenants(parsed, level as ArticleLevel)
-    },
+    // Frontière serveur, avant tri et sauvegarde : sans liste de Lieutenants la
+    // sortie est refusée ; score hors 0-100 → absent, niveau Hn illisible → H2,
+    // doublons écartés (la base et l'écran reçoivent la même forme).
+    parser: (fullContent) =>
+      filterLieutenants(parseContract(proposeLieutenantsAiContract, parseAiJson<unknown>(fullContent), 'server'), level as ArticleLevel),
     onSuccess: async (filtered) => {
       if (!filtered) return
       // E2 — Persist server-side BEFORE notifying the client. Survit aux

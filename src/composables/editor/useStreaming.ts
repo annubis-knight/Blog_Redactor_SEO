@@ -2,6 +2,7 @@ import { ref } from 'vue'
 import { log } from '@/utils/logger'
 import { apiStream, type ApiStreamCallbacks, type SectionStartInfo as ApiSectionStartInfo } from '@/services/api.service'
 import type { ApiUsage } from '@shared/types/index.js'
+import type { DisplayContract } from '@shared/contracts/core.js'
 
 /**
  * Composable for consuming SSE streams from POST endpoints.
@@ -12,6 +13,11 @@ import type { ApiUsage } from '@shared/types/index.js'
 export type SectionStartInfo = ApiSectionStartInfo
 
 export type StreamingCallbacks<T> = ApiStreamCallbacks<T>
+
+export interface StreamingOptions<T> {
+  /** Contrat d'affichage du résultat final (NFR-INT-DISPLAY-CONTRACTS). */
+  contract?: DisplayContract<T>
+}
 
 /**
  * Convertit une URL absolue type "/api/foo/bar" en path relatif "/foo/bar"
@@ -30,7 +36,7 @@ export function useStreaming<T>() {
   const usage = ref<ApiUsage | null>(null)
   let abortController: AbortController | null = null
 
-  async function startStream(url: string, body: unknown, callbacks?: StreamingCallbacks<T>) {
+  async function startStream(url: string, body: unknown, callbacks?: StreamingCallbacks<T>, options?: StreamingOptions<T>) {
     log.debug(`SSE stream start → ${url}`)
     abortController = new AbortController()
     isStreaming.value = true
@@ -59,7 +65,7 @@ export function useStreaming<T>() {
           callbacks?.onDone?.(data)
         },
       },
-      { signal: abortController.signal },
+      { signal: abortController.signal, contract: options?.contract },
     )
 
     if (out.errorMessage) error.value = out.errorMessage
@@ -84,7 +90,7 @@ export function useStreaming<T>() {
  *
  * Depuis FR-INFRA-API-STREAM, c'est un thin wrapper autour de apiStream.
  */
-export interface StreamOnceOptions<T> {
+export interface StreamOnceOptions<T> extends StreamingOptions<T> {
   signal?: AbortSignal
   callbacks?: StreamingCallbacks<T>
 }
@@ -101,5 +107,5 @@ export async function startStreamOnce<T>(
   body: unknown,
   options?: StreamOnceOptions<T>,
 ): Promise<StreamOnceResult<T>> {
-  return apiStream<T>(urlToApiPath(url), body, options?.callbacks, { signal: options?.signal })
+  return apiStream<T>(urlToApiPath(url), body, options?.callbacks, { signal: options?.signal, contract: options?.contract })
 }

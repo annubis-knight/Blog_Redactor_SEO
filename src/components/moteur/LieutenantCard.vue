@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { formatScore } from '@shared/score'
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 
 defineProps<{
@@ -33,7 +34,10 @@ function sourceBadge(s: string) {
     <div class="lt-card__body">
       <div class="lt-card__header">
         <span class="lt-card__keyword">{{ lieutenant.keyword }}</span>
-        <span class="lt-card__score" :title="`Score IA: ${lieutenant.score}/100`">{{ lieutenant.score }}</span>
+        <span
+          class="lt-card__score"
+          :title="lieutenant.score === null ? 'Score IA non fourni' : `Score IA: ${lieutenant.score}/100`"
+        >{{ formatScore(lieutenant.score) }}</span>
         <span class="lt-card__hn-tag">H{{ lieutenant.suggestedHnLevel }}</span>
       </div>
 

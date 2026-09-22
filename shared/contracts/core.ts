@@ -86,7 +86,8 @@ export class ContractViolationError extends Error {
   readonly issues: string[]
 
   constructor(contract: string, issues: string[]) {
-    super(`Réponse non conforme au contrat « ${contract} » : ${issues.join(' ; ')}`)
+    // Message lisible à l'écran ; le détail des écarts part dans le journal (`issues`).
+    super(`Réponse reçue dans un format inattendu (contrat « ${contract} ») — relancez l'action.`)
     this.name = 'ContractViolationError'
     this.contract = contract
     this.issues = issues
@@ -224,14 +225,26 @@ export function tolerantArray<T>(item: z.ZodType<T, unknown>, field: string) {
       report('coerced', field, `${describe(value)} → liste vide`)
       return []
     }
-    const kept: T[] = []
-    value.forEach((element, index) => {
-      const result = item.safeParse(element)
-      if (result.success) kept.push(result.data)
-      else report('dropped', `${field}[${index}]`, formatIssues(result.error).join(' | '))
-    })
-    return kept
+    return keepConforming(value, item, field)
   })
+}
+
+/**
+ * Comme `tolerantArray`, mais la liste elle-même est obligatoire : sans liste,
+ * la réponse est refusée (ex. une sortie d'IA sans la liste demandée).
+ */
+export function requiredList<T>(item: z.ZodType<T, unknown>, field: string) {
+  return z.array(z.unknown()).transform((value): T[] => keepConforming(value, item, field))
+}
+
+function keepConforming<T>(value: unknown[], item: z.ZodType<T, unknown>, field: string): T[] {
+  const kept: T[] = []
+  value.forEach((element, index) => {
+    const result = item.safeParse(element)
+    if (result.success) kept.push(result.data)
+    else report('dropped', `${field}[${index}]`, formatIssues(result.error).join(' | '))
+  })
+  return kept
 }
 
 /**

@@ -50,7 +50,8 @@ export interface ProposedLieutenant {
   reasoning: string
   sources: ('paa' | 'serp' | 'group' | 'root' | 'content-gap')[]
   suggestedHnLevel: 2 | 3
-  score: number // 0-100, AI-generated quality score for filtering
+  /** Score IA 0-100 ; `null` = non fourni (carte du panier, ancienne liste) → « — », trié en bas. */
+  score: number | null
 }
 
 export interface ProposeLieutenantsHnNode {

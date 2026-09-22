@@ -125,4 +125,12 @@ describe('LieutenantCard', () => {
     })
     expect(wrapper.find('.lt-card__score').attributes('title')).toBe('Score IA: 90/100')
   })
+
+  it('NFR-INT-DISPLAY-CONTRACTS — score IA absent → « — », jamais « 0 »', () => {
+    const wrapper = mount(LieutenantCard, {
+      props: { lieutenant: makeLieutenant({ score: null }), checked: false },
+    })
+    expect(wrapper.find('.lt-card__score').text()).toBe('—')
+    expect(wrapper.find('.lt-card__score').attributes('title')).toBe('Score IA non fourni')
+  })
 })

@@ -5,7 +5,8 @@
  * Toute réponse que le Moteur affiche doit passer un contrat d'affichage :
  *   - côté serveur, la route appelle `parseContract` (ou passe un `contract`
  *     au moteur de flux SSE) avant de répondre ;
- *   - côté client, l'appel `apiGet/apiPost…` passe l'option `{ contract }`.
+ *   - côté client, l'appel `apiGet/apiPost…` passe l'option `{ contract }` ;
+ *     pour un flux SSE (`…StartStream(…)`), le dernier argument `{ contract }`.
  *
  * Deux règles :
  *   1. Une famille terminée (`DONE_FAMILIES`) ne peut plus perdre son contrat.
@@ -19,11 +20,14 @@ import { join, relative } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Familles dont le contrat est posé partout (client et serveur). */
-const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf'])
+const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai'])
 
-/** Cliquet : ces nombres ne peuvent que baisser. */
-const BASELINE_CLIENT_UNCOVERED = 9
-const BASELINE_SERVER_UNCOVERED = 11
+/**
+ * Cliquet : ces nombres ne peuvent que baisser. (Lot 4 : le scanner voit aussi
+ * les flux SSE — 3 appels de plus observés, d'où la remontée ponctuelle à 12.)
+ */
+const BASELINE_CLIENT_UNCOVERED = 12
+const BASELINE_SERVER_UNCOVERED = 9
 
 // ---------------------------------------------------------------------------
 // Frontière client : appels du front vers les réponses affichées au Moteur
@@ -31,7 +35,7 @@ const BASELINE_SERVER_UNCOVERED = 11
 
 interface ClientEndpoint {
   family: string
-  method: 'Get' | 'Post' | 'Put' | 'Patch'
+  method: 'Get' | 'Post' | 'Put' | 'Patch' | 'Stream'
   path: RegExp
 }
 
@@ -49,6 +53,10 @@ const CLIENT_ENDPOINTS: ClientEndpoint[] = [
   { family: 'tfidf', method: 'Post', path: /^\/serp\/tfidf$/ },
   { family: 'discovery', method: 'Post', path: /^\/keywords\/(suggest-all|discover|discover-from-site|analyze-discovery|relevance-score)$/ },
   { family: 'explorations', method: 'Get', path: new RegExp(`^/articles/${V}/explorations$`) },
+  // Flux SSE : le résultat de l'événement `done` est affiché.
+  { family: 'lieutenants-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/(propose-lieutenants|ai-hn-structure)$`) },
+  { family: 'lexique-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-lexique(-upfront)?$`) },
+  { family: 'ai-advice', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-panel$`) },
 ]
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -82,18 +90,21 @@ interface Site {
 
 function clientSites(): Site[] {
   const sites: Site[] = []
-  const call = /\bapi(Get|Post|Put|Patch)\s*(?:<[^()]*?>)?\s*(\()\s*([`'"])([^`'"]*)\3/g
+  // `apiPost('/x', …)` et flux SSE `iaStartStream(`/api/x`, …)` / `apiStream('/x', …)`.
+  const call = /\b(?:api(Get|Post|Put|Patch)|\w*[sS]tartStream(?:Once)?|apiStream)\s*(?:<[^()]*?>)?\s*(\()\s*([`'"])([^`'"]*)\3/g
   for (const file of walk(join(ROOT, 'src'))) {
     const source = readFileSync(file, 'utf8')
     let m: RegExpExecArray | null
     while ((m = call.exec(source))) {
-      const endpoint = CLIENT_ENDPOINTS.find(e => e.method === m![1] && e.path.test(m![4]!))
+      const method = m[1] ?? 'Stream'
+      const path = m[4]!.replace(/^\/api(?=\/)/, '')
+      const endpoint = CLIENT_ENDPOINTS.find(e => e.method === method && e.path.test(path))
       if (!endpoint) continue
       const open = m.index + m[0].indexOf('(')
       const line = source.slice(0, m.index).split('\n').length
       sites.push({
         family: endpoint.family,
-        where: `${relative(ROOT, file).replace(/\\/g, '/')}:${line} ${m[1]!.toUpperCase()} ${m[4]}`,
+        where: `${relative(ROOT, file).replace(/\\/g, '/')}:${line} ${method.toUpperCase()} ${path}`,
         covered: /\bcontract\s*:/.test(callText(source, open)),
       })
     }

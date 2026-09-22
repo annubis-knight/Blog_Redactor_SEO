@@ -108,6 +108,8 @@ describe('useLieutenantsIa', () => {
     expect(api.lieutenantCards.value).toHaveLength(1)
     expect(api.lieutenantCards.value[0]!.keyword).toBe('nouveau-kw')
     expect(api.lieutenantCards.value[0]!.reasoning).toBe('Proposé depuis votre panier')
+    // NFR-INT-DISPLAY-CONTRACTS : pas évalué par l'IA → « — », pas un faux 0.
+    expect(api.lieutenantCards.value[0]!.score).toBeNull()
   })
 
   it('AC.J.8.bis — handleAssistAdd ignore si keyword déjà présent (case-insensitive)', () => {

@@ -499,7 +499,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     reasoning: string
     sources: ('paa' | 'serp' | 'group' | 'root' | 'content-gap')[]
     suggestedHnLevel: 2 | 3
-    score: number
+    score: number | null
   }) {
     if (!keywords.value) return
     const rich = keywords.value.richLieutenants ?? []

@@ -14,8 +14,10 @@
  *  10. checked reflète selectedCards.has(keyword)
  */
 import { describe, it, expect } from 'vitest'
+import { nextTick } from 'vue'
 import { mount } from '@vue/test-utils'
 import LieutenantProposals from '../../../src/components/moteur/LieutenantProposals.vue'
+import SortToggleBar from '../../../src/components/moteur/SortToggleBar.vue'
 import type { ProposedLieutenant } from '../../../shared/types/serp-analysis.types'
 
 const safeHtmlStub = {
@@ -255,5 +257,23 @@ describe('LieutenantProposals', () => {
       global: GLOBAL,
     })
     expect(wrapper.find('.content-gap-section').exists()).toBe(false)
+  })
+
+  it('NFR-INT-DISPLAY-CONTRACTS — tri par score décroissant : un éliminé sans score reste en bas', async () => {
+    const wrapper = mount(LieutenantProposals, {
+      props: {
+        ...BASE,
+        lieutenantCards: [makeLt('a')],
+        eliminatedCards: [{ ...makeLt('sans-score'), score: null }, makeLt('faible', 20), makeLt('fort', 60)],
+        selectedCards: new Map(),
+        totalGenerated: 4,
+      },
+      global: GLOBAL,
+    })
+    wrapper.findComponent(SortToggleBar).vm.$emit('update:modelValue', { key: 'score', direction: 'desc' })
+    await nextTick()
+    await wrapper.find('.eliminated-toggle').trigger('click')
+    const order = wrapper.find('[data-testid="eliminated-cards-list"]').findAll('.stub-lt-card').map(c => c.attributes('data-keyword'))
+    expect(order).toEqual(['fort', 'faible', 'sans-score'])
   })
 })
