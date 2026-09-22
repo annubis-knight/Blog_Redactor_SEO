@@ -1,8 +1,8 @@
 ---
 name: tech-spec-contrats-affichage
 type: tech-spec
-status: in-progress
-version: 0.1.0
+status: done
+version: 1.0.0
 last_updated: 2026-09-22
 synced_with:
   - _bmad-output/planning-artifacts/prd.md (NFR-INT-DISPLAY-CONTRACTS nouveau ; FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE, NFR-INT-ZOD-VALIDATION)
@@ -62,9 +62,12 @@ base (relecture) ──► [contrat relecture] ┘
 
 | Fichier | Rôle |
 |---|---|
-| `core.ts` | `defineContract`, `parseContract`, `ContractViolationError`, rapporteur injectable, primitives tolérantes |
+| `core.ts` | `defineContract`, `parseContract`, `parseContractList`, `ContractViolationError`, rapporteur injectable, primitives tolérantes |
+| `score-blocks.ts` | Blocs Score marché / Pertinence partagés par plusieurs familles |
 | `<famille>.contract.ts` | Un schéma Zod par famille de résultat, typé contre l'interface de `shared/types/` |
-| `index.ts` | Point d'entrée unique |
+
+Pas de fichier `index.ts` : chaque appelant importe le contrat de sa famille
+(seuls les contrats utilisés sont exportés — `npm run check:dead` au niveau de `main`).
 
 **Primitives tolérantes** (la même valeur produit toujours la même sortie) :
 
@@ -72,36 +75,45 @@ base (relecture) ──► [contrat relecture] ┘
   nombre ; `null`/`undefined` → `null` ; `NaN`, `Infinity`, texte → `null` + signalement.
 - `tolerantArray(item)` : garde les éléments conformes, écarte les autres avec
   signalement (une question PAA cassée ne fait pas tomber toute la carte).
+- `requiredList(item)` : idem, mais la liste est obligatoire (sortie d'IA sans la
+  liste demandée → refus, donc message d'erreur et « Relancer »).
 - Champs de présentation (`label`, `color`) : valeur neutre de repli + signalement.
 
 **Trois états honnêtes** : valeur, absente (`null` → « — »), en échec (même rendu
-« — », info-bulle « donnée indisponible », signalé dans les journaux).
+« — », signalé dans les journaux ; aucune info-bulle ajoutée, pour ne rien changer
+à l'interface).
 
 **Rapporteur** : `setContractReporter(fn)` — branché sur `log.warn` côté serveur
 (`server/index.ts`) et côté client (`src/main.ts`). Invisible pour l'utilisateur.
 
 **Refus** : si la réponse est inutilisable (pas d'objet, champ identifiant absent),
 `parseContract` lève `ContractViolationError` ; le chemin d'erreur existant de
-l'écran s'applique (aucun nouvel écran d'erreur).
+l'écran s'applique (aucun nouvel écran d'erreur). Message affiché : « Réponse reçue
+dans un format inattendu (contrat « x ») — relancez l'action. » ; le détail des
+écarts part dans le journal. Pour un flux SSE, `apiStream` applique le contrat à
+l'événement `done` : refus → `onError` (même chemin qu'un `event: error`), pas `onDone`.
 
 ### Les trois frontières
 
-1. **Serveur**, juste avant `res.json` / l'événement SSE `done` des routes Moteur.
-2. **Client**, dans le wrapper : `apiPost(path, body, { contract })`.
-3. **Relecture depuis la base**, là où naissent la plupart des faux zéros.
+1. **Serveur**, juste avant `res.json`, ou dans le `parser` de `runAiPanelStream`
+   (avant sauvegarde et avant l'événement SSE `done`).
+2. **Client**, dans le wrapper : `apiPost(path, body, { contract })`, et
+   `startStream(url, body, callbacks, { contract })` pour les flux SSE.
+3. **Relecture depuis la base** (`parseContract(…, 'db')`), là où naissent la plupart des faux zéros.
 
 ## Familles et lots
 
-| Lot | Famille | Contrat | Composants servis |
+| Lot | Famille | Contrats (nom journalisé) | Composants servis |
 |---|---|---|---|
-| 1 (pilote) | Scan du Capitaine | `captainScanContract`, `captainHistoryEntryContract` | `CaptainRadarList`, `CaptainSidePanel`, `CaptainVerdictPanel`, `VerdictBar`, `CaptainRootsSidebar` |
-| 2 | Carte de mot-clé (Radar) | `radarScanResultContract` (bloc `keywordKpis` commun) | `DouleurScannerResults`, `RadarKeywordCard` et sous-parties, `RadarAiPanel` |
-| 3 | Analyse SERP | `serpAnalysisContract` | `LieutenantSerpAnalysis`, `LieutenantH2Structure` (récurrence) |
-| 4 | Lieutenants IA | `lieutenantProposalsContract`, `hnStructureContract` | `LieutenantProposals`, `LieutenantCard`, `LieutenantH2Structure` |
-| 5 | Lexique | `tfidfResultContract`, `lexiqueRecommendationsContract` | `LexiqueTermsList`, `LexiqueAiPanel` |
-| 6 | Discovery | `discoveryContract`, `discoveryAnalysisContract` | `DiscoverySourcesList`, `DiscoveryAnalysisResults` |
-| 7 | Conseil IA (texte) | `aiAdviceContract` | `AiAdviceMarkdown`, `LieutenantsAiPanel` |
-| 8 | Validateurs transverses | — | tous |
+| 1 (pilote) | Scan du Capitaine | `captainScanContract` (`captain-scan`), `captainScanEntryContract` (`captain-history`), `articleKeywordsContract` (`article-keywords`), `paaJudgmentBlockContract` / `captainPaaJudgeContract` | `CaptainRadarList`, `CaptainSidePanel`, `CaptainVerdictPanel`, `VerdictBar`, `CaptainRootsSidebar`, `ScoreRing` |
+| 2 | Radar | `radarScanResultContract` (`radar-scan`), `radarGenerateContract`, `radarExplorationContract`, `longTailSuggestionsContract` | `DouleurScannerResults`, `RadarKeywordCard` et sous-parties, `RadarAiPanel`, `RadarThermometer` |
+| 3 | Analyse SERP, TF-IDF | `serpAnalysisContract` (`serp-analysis`), `tfidfResultContract` (`tfidf`) | `LieutenantSerpAnalysis`, `LieutenantH2Structure` (récurrence), `LexiqueTermsList` |
+| 4 | Lieutenants IA, plan Hn | `proposeLieutenantsAiContract` (serveur), `proposeLieutenantsContract`, `hnOutlineContract` (`ai-hn-structure`) | `LieutenantProposals`, `LieutenantCard`, `LieutenantH2Structure` |
+| 5 | Lexique IA, explorations relues | `lexiqueAnalysisContract` (`lexique-ai`), `articleExplorationsContract` (`explorations`) | `LexiqueTermsList`, `LexiqueAiPanel`, onglets Lexique, thermomètre Radar relu |
+| 6 | Découverte | `suggestAllContract`, `keywordDiscoveryContract`, `domainDiscoveryContract`, `discoveryAnalysisContract`, `relevanceScoreContract`, `discoveryCacheEntryContract` | `DiscoverySourcesList`, `DiscoveryAnalysisResults`, `DiscoveryWordGroupsSidebar`, filtre de pertinence |
+| 7 | Conseil IA (texte) | `aiAdviceContract` (serveur), `aiAdviceDoneContract` (client), `adviceMarkdown()` (affichage) | `AiAdviceMarkdown` (panneau manuel et carrousel du Capitaine) |
+| 8 | Compléments (repérés par l'inventaire) | `radarKeywordAddedContract`, `radarKeywordsBatchContract`, `radarKeywordRemovedContract`, `wordGroupsContract`, `discoveryCacheStatusContract`, `serpExistsContract` | liste d'attente du Radar, `DiscoveryWordGroupsSidebar`, barre de cache, pré-contrôle du Lexique |
+| — | Validateurs transverses | cliquet, ESLint, tests « absent n'est pas zéro » | tous |
 
 ## Valideurs (règle « un valideur par correction »)
 
@@ -139,4 +151,29 @@ l'écran s'applique (aucun nouvel écran d'erreur).
 
 ## Journal des lots
 
-_(complété au fil de l'eau)_
+| Commit | Lot | Ce qui change pour l'utilisateur (hors « — » à la place d'un faux chiffre) |
+|---|---|---|
+| `5790a4d` | 1 — Capitaine | Plus de NO-GO « Aucun signal » inventé ; « KD 0 » vert disparu ; rechargement = premier chargement (PAA, autocomplétion, intention) ; moyenne des racines sans faux zéros. |
+| `c35642f` | 2 — Radar | Thermomètre « En attente — » au lieu de « froide 0 » ; classement sans zéros d'absence ; plus de « Score null/100 » dans les info-bulles. |
+| `4c7d8e2` | 3 — SERP, TF-IDF | Une page concurrente illisible relue en base est marquée « ! » et sort de la récurrence des titres (100 % au lieu de 50 %). |
+| `2eacc91` | 4 — Lieutenants IA | Score IA absent → « — » (carte du panier, ancienne liste) ; niveau « H3 » lu ; doublons écartés ; éliminés sans score en bas du tri décroissant ; `apiStream` accepte un contrat et journalise les erreurs de callback au lieu de les avaler. |
+| `d31955d` | 5 — Lexique IA, explorations | Analyse IA sans recommandations → message + « Relancer » (au lieu d'un écran figé) ; décision illisible → terme sans badge ; ancien scan Radar sans score → « En attente — ». |
+| `ced3c1b` | — | 19 exports inutilisés rendus internes (code mort au niveau de `main`). |
+| `b1a2ebe` | — | La règle ESLint anti « `?? 0` » voit le chaînage optionnel ; 3 cas justifiés annotés. |
+| `ea323d2` | 6 — Découverte | KPI absents « — » au premier chargement comme depuis le cache ; **correctif** : la sauvegarde du cache refusait un KPI `null` (400 silencieux) → Découverte relancée et refacturée au retour sur la graine. |
+| `79a2c3e` | 7 — Conseil IA | Conseil vide → erreur + « Régénérer » (au lieu d'un panneau blanc) ; emballage « ```markdown » retiré à l'affichage. |
+| `d78e4c6` | 8 — Compléments | Liste d'attente du Radar, groupes de mots, état du cache et pré-contrôle SERP sous contrat ; exploration non scannée sans alerte ; Finalisation : Capitaine vide → « — » ; terme TF-IDF à densité illisible écarté (plus de « ×0/page »). |
+
+**Cliquet final** : 0 appel client et 0 route serveur du Moteur sans contrat
+(`tests/unit/architecture/display-contracts-coverage.test.ts`, 18 familles terminées).
+
+### Restes volontairement hors périmètre
+
+- `RelatedKeyword` (brief Rédaction, audit) garde des KPI non nullables :
+  `server/services/external/dataforseo/keywords.ts` (annoté) — à migrer avec
+  FR-INFRA-KPI-NULLABLE côté Rédaction.
+- `detectSpecialCase` (`useMultiSourceVerdict.ts`) tolère un volume absent comme
+  « nul » pour les verdicts latente / émergente : décision métier documentée par
+  `kpi-nullable-composables.test.ts`, non modifiée.
+- Ordre par défaut du Radar : trié par l'ancien `combinedScore` alors que la carte
+  affiche le score KPI — décision produit à prendre, non modifiée.

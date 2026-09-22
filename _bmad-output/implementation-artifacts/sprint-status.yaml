@@ -885,6 +885,16 @@ development_status:
   # captain-paa-pertinence-unify, stabilisé sur captain-paa-lazy-and-radar-cleanup.
   captain-paa-lazy-and-radar-cleanup: done
 
+  # ----- Contrats d'affichage (branche feat/contrats-affichage, 2026-09-22) -----
+  # Tech-spec : tech-spec-contrats-affichage.md (v1.0.0). PRD : NFR-INT-DISPLAY-CONTRACTS.
+  # Temps « mise en format » de la grille en 8 temps : 15 familles de résultats
+  # du Moteur sous contrat Zod (shared/contracts/), aux frontières serveur,
+  # client (apiX + flux SSE) et relecture en base. 7 lots, un commit chacun.
+  # Correctif au passage : la sauvegarde du cache de Découverte refusait les KPI null.
+  # Validation : verify vert, test:check identique au baseline (2 rouges attendus,
+  # serveur requis), cliquet display-contracts-coverage à 0/0, code mort = main.
+  contrats-affichage: done
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur
