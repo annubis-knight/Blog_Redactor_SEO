@@ -358,8 +358,9 @@ const paaDisplayValue = computed<string>(() => {
   if (props.cardContext === 'capitaine' && props.paaJudgment) {
     return `${props.paaJudgment.overallPaaScore}/100`
   }
-  const raw = props.card.kpis?.paaWeightedScore ?? 0
-  return `${raw.toFixed(1)} pts`
+  // Ligne des KPI masquée quand `kpis` est absent ; par sécurité, absent → « — ».
+  const raw = props.card.kpis?.paaWeightedScore
+  return raw === undefined ? '—' : `${raw.toFixed(1)} pts`
 })
 
 // EXACT badge → green border, MATCH → subtle gray border, rest → no border.

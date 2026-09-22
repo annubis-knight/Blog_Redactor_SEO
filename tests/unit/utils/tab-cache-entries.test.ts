@@ -200,3 +200,20 @@ describe('buildTabCacheEntries — invariants critiques', () => {
     expect(entries.find(e => e.tabId === 'lexique')!.dbCount).toBe(0)
   })
 })
+
+// Contrats d'affichage : un score global absent s'affiche « — », jamais « null » ni « undefined ».
+describe('buildTabCacheEntries — score global absent', async () => {
+  const { buildTabCacheEntries: build } = await import('../../../src/utils/tab-cache-entries')
+  const counts = { radar: 1, capitaine: 0, lieutenants: 0, lexique: 0 } as never
+  const base = { activeTab: 'radar', isCaptaineLocked: false, captainKeyword: null } as never
+
+  it('scan en mémoire sans score → « Score —/100 »', () => {
+    const entries = build(counts, { ...(base as object), radarScanResult: { globalScore: null }, radarCacheStatus: null } as never)
+    expect(entries.find(e => e.tabId === 'radar')?.hint).toBe('Score —/100')
+  })
+
+  it('cache sans score → « Score —/100 (cache) »', () => {
+    const entries = build(counts, { ...(base as object), radarScanResult: null, radarCacheStatus: { exists: true } } as never)
+    expect(entries.find(e => e.tabId === 'radar')?.hint).toBe('Score —/100 (cache)')
+  })
+})

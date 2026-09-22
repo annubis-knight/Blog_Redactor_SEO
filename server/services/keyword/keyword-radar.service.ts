@@ -435,11 +435,7 @@ export async function scanRadarKeywords(
   // Sort by combined score descending
   cards.sort((a, b) => b.combinedScore - a.combinedScore)
 
-  // Global score = weighted average of top cards
-  const globalScore = cards.length > 0
-    ? Math.round(cards.reduce((sum, c) => sum + c.combinedScore, 0) / cards.length)
-    : 0
-  const heatLevel = getHeatLevel(globalScore)
+  const { globalScore, heatLevel, verdict } = radarGlobalHeat(cards)
 
   const result: KeywordRadarScanResult = {
     specificTopic,
@@ -451,10 +447,26 @@ export async function scanRadarKeywords(
     cards,
     globalScore,
     heatLevel,
-    verdict: getVerdict(heatLevel),
+    verdict,
     scannedAt: new Date().toISOString(),
   }
 
   log.info(`[Radar] Scan complete: ${cards.length} cards, global=${globalScore}, heat=${heatLevel}`)
   return result
+}/**
+ * Chaleur globale d'un scan : moyenne du score historique des cartes.
+ * Aucune carte → aucune chaleur mesurée : `null` (thermomètre « En attente — »),
+ * et non plus « froide 0 » (NFR-INT-DISPLAY-CONTRACTS).
+ */
+export function radarGlobalHeat(cards: Array<{ combinedScore: number }>): {
+  globalScore: number | null
+  heatLevel: KeywordRadarScanResult['heatLevel']
+  verdict: string
+} {
+  if (cards.length === 0) return { globalScore: null, heatLevel: null, verdict: '' }
+  const globalScore = Math.round(cards.reduce((sum, c) => sum + c.combinedScore, 0) / cards.length)
+  const heatLevel = getHeatLevel(globalScore)
+  return { globalScore, heatLevel, verdict: getVerdict(heatLevel) }
 }
+
+

@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { scanIntent } from '../services/intent/intent-scan.service.js'
 import { generateRadarKeywords, scanRadarKeywords } from '../services/keyword/keyword-radar.service.js'
+import { parseContract } from '../../shared/contracts/core.js'
+import { radarGenerateContract, radarScanResultContract } from '../../shared/contracts/radar.contract.js'
 
 const router = Router()
 
@@ -54,7 +56,8 @@ router.post('/keywords/radar/generate', async (req, res) => {
     log.info(`Radar generate done: ${result.keywords.length} keywords in ${Date.now() - startGen}ms`)
     // Alias `usage` pour la pile d'activité (convention unifiée avec apiPost::pushUsageIfPresent)
     const usage = (result as { _apiUsage?: unknown })._apiUsage
-    res.json({ data: { ...result, usage } })
+    // Frontière serveur : idées de l'IA mises en forme (une idée vide est écartée).
+    res.json({ data: parseContract(radarGenerateContract, { ...result, usage }, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/radar/generate — ${(err as Error).message}`)
     const message = err instanceof Error ? err.message : 'Erreur génération radar'
@@ -87,7 +90,8 @@ router.post('/keywords/radar/scan', async (req, res) => {
   try {
     const result = await scanRadarKeywords(broadKeyword, specificTopic, keywords, effectiveDepth, painPointClean || undefined)
     log.info(`Radar scan done: ${result.cards.length} cards, score=${result.globalScore}, heat=${result.heatLevel} in ${Date.now() - startScan}ms`)
-    res.json({ data: result })
+    // Frontière serveur : cartes dans la forme promise aux écrans du Radar.
+    res.json({ data: parseContract(radarScanResultContract, result, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/radar/scan — ${(err as Error).message}`)
     const message = err instanceof Error ? err.message : 'Erreur scan radar'

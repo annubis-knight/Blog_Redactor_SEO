@@ -3,6 +3,7 @@ import { computed, ref, toRef } from 'vue'
 import AiPanelHeader from '@/components/moteur/ai-panel/AiPanelHeader.vue'
 import { useRadarRanking } from '@/composables/moteur/useRadarRanking'
 import type { RadarCard } from '@shared/types/intent.types'
+import { formatScore } from '@shared/score/index.js'
 
 const props = withDefaults(defineProps<{
   cards: RadarCard[]
@@ -63,10 +64,10 @@ function markCandidates() {
           <span class="radar-ai-keyword">{{ item.keyword }}</span>
           <span class="radar-ai-scores">
             <span class="radar-ai-score-pill" :title="item.marketTotalAvailable ? 'Score Marché' : 'Score Marché indisponible'">
-              M {{ item.marketTotalAvailable ? Math.round(item.marketTotal) : '—' }}
+              M {{ formatScore(item.marketTotal) }}
             </span>
             <span class="radar-ai-score-pill radar-ai-score-pill--rel" :title="item.relevanceTotalAvailable ? 'Score Pertinence' : 'Score Pertinence indisponible (PainPoint absent ou signaux nuls)'">
-              P {{ item.relevanceTotalAvailable ? Math.round(item.relevanceTotal) : '—' }}
+              P {{ formatScore(item.relevanceTotal) }}
             </span>
           </span>
         </label>

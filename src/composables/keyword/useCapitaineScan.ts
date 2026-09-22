@@ -5,6 +5,7 @@ import type { ScanResponse, ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard, KeywordRadarScanResult } from '@shared/types/intent.types.js'
 import { FRENCH_STOPWORDS, extractRoots as extractRootsShared } from '@shared/utils/keyword-roots.js'
 import { captainScanContract } from '@shared/contracts/captain-scan.contract.js'
+import { radarScanResultContract } from '@shared/contracts/radar.contract.js'
 
 export { FRENCH_STOPWORDS, extractRootsShared as extractRoots }
 
@@ -66,6 +67,7 @@ export function useCapitaineScan() {
         depth: 1,
         painPoint: articlePainPoint,
       },
+      { contract: radarScanResultContract },
     ).then(scanResult => {
       if (thisVersion !== validationVersion) return
       radarCard.value = scanResult.cards?.[0] ?? null

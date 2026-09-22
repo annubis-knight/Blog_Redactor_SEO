@@ -139,3 +139,27 @@ describe('useRadarRanking', () => {
     expect(top.finalScore).toBeGreaterThan(0)
   })
 })
+
+// Contrats d'affichage — un score absent n'est pas un zéro (FR-INFRA-KPI-CONSISTENCY)
+describe('useRadarRanking — score absent', () => {
+  it('la moyenne ignore un score absent (marché 80 seul > marché 60 + pertinence 60)', () => {
+    const cards = ref<RadarCard[]>([
+      makeCard({ keyword: 'equilibre', marketScore: { total: 60, verdict: 'ORANGE', components: [] as never }, relevanceScore: { total: 60, verdict: 'ORANGE', breakdown: {} as never, rootsContext: null as never } }),
+      makeCard({ keyword: 'marche-seul', marketScore: { total: 80, verdict: 'GO', components: [] as never }, relevanceScore: null }),
+    ])
+    const { ranked } = useRadarRanking({ cards: computed(() => cards.value) })
+    expect(ranked.value.map(c => c.keyword)).toEqual(['marche-seul', 'equilibre'])
+    expect(ranked.value[0]!.relevanceTotal).toBeNull()
+    expect(ranked.value[0]!.finalScore).toBe(80)
+  })
+
+  it('sans aucun score, la carte reste en bas avec un score final absent', () => {
+    const cards = ref<RadarCard[]>([
+      makeCard({ keyword: 'sans-score' }),
+      makeCard({ keyword: 'note', marketScore: { total: 30, verdict: 'NOGO', components: [] as never }, relevanceScore: { total: 50, verdict: 'ORANGE', breakdown: {} as never, rootsContext: null as never } }),
+    ])
+    const { ranked } = useRadarRanking({ cards: computed(() => cards.value) })
+    expect(ranked.value.map(c => c.keyword)).toEqual(['note', 'sans-score'])
+    expect(ranked.value[1]!.finalScore).toBeNull()
+  })
+})

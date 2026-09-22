@@ -85,7 +85,7 @@ describe('useCapitaineScan', () => {
       specificTopic: 'Mon article SEO',
       keywords: [{ keyword: 'seo', reasoning: '' }],
       depth: 1,
-    })
+    }, { contract: expect.objectContaining({ name: 'radar-scan' }) })
   })
 
   it('uses keyword as specificTopic when no articleTitle', async () => {
@@ -94,7 +94,7 @@ describe('useCapitaineScan', () => {
     await scanKeyword('seo', 'pilier')
     expect(mockApiPost).toHaveBeenCalledWith('/keywords/radar/scan', expect.objectContaining({
       specificTopic: 'seo',
-    }))
+    }), { contract: expect.objectContaining({ name: 'radar-scan' }) })
   })
 
   it('populates radarCard from scan result', async () => {

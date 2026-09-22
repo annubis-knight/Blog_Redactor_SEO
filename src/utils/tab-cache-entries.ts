@@ -18,6 +18,8 @@
  * tous statuts confondus (en attente, scannés, testés, verrouillés, validés).
  * Les hints au survol détaillent l'état utilisateur (verrouillé, en attente).
  */
+import { formatScore } from '@shared/score/index.js'
+
 
 import type { TabCacheEntry } from '@/components/moteur/TabCachePanel.vue'
 
@@ -45,7 +47,7 @@ export interface ExplorationCounts {
 export interface TabCacheUIState {
   activeTab: string
   /** Radar : indicateur de scan en mémoire pas encore persisté. */
-  radarScanResult: { globalScore: number } | null
+  radarScanResult: { globalScore: number | null } | null
   radarCacheStatus: { exists: boolean; globalScore?: number } | null
   /** Capitaine verrouillé : pilote le hint au survol, pas le compteur. */
   isCaptaineLocked: boolean
@@ -79,9 +81,9 @@ export function buildTabCacheEntries(
       cacheCount: ui.radarScanResult !== null && !ui.radarCacheStatus?.exists ? 1 : 0,
       isCurrentTab: ui.activeTab === 'radar',
       hint: ui.radarScanResult
-        ? `Score ${ui.radarScanResult.globalScore}/100`
+        ? `Score ${formatScore(ui.radarScanResult.globalScore)}/100`
         : ui.radarCacheStatus?.exists
-          ? `Score ${ui.radarCacheStatus.globalScore}/100 (cache)`
+          ? `Score ${formatScore(ui.radarCacheStatus.globalScore ?? null)}/100 (cache)`
           : undefined,
     },
     {

@@ -69,6 +69,7 @@ describe('moteur:radar useLongTailSuggestions', () => {
           articleTitle: 'Title',
           articlePainPoint: 'Pain',
         }),
+        { contract: expect.objectContaining({ name: 'long-tail-suggestions' }) },
       )
     })
 

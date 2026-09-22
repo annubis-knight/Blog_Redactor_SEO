@@ -18,28 +18,19 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { apiGet, apiPost, apiDelete } from '@/services/api.service'
+import { radarExplorationContract } from '@shared/contracts/radar.contract.js'
 import { log } from '@/utils/logger'
 import type {
   RadarKeyword,
   RadarCard,
   KeywordRadarScanResult,
+  RadarExploration,
 } from '@shared/types/intent.types'
 
-export interface RadarExplorationContext {
-  broadKeyword: string
-  specificTopic: string
-  painPoint: string
-  depth: number
-}
-
-export interface RadarExplorationEntry {
-  articleId: number
-  seed: string
-  context: RadarExplorationContext
-  generatedKeywords: RadarKeyword[]
-  scanResult: KeywordRadarScanResult
-  scannedAt: string
-}
+// Une seule forme d'exploration, partagée avec le serveur et le contrat
+// d'affichage (shared/types/intent.types.ts, NFR-INT-DISPLAY-CONTRACTS).
+export type { RadarExplorationContext } from '@shared/types/intent.types'
+export type RadarExplorationEntry = RadarExploration
 
 export const useRadarExplorationStore = defineStore('radar-exploration', () => {
   const entry = ref<RadarExplorationEntry | null>(null)
@@ -67,7 +58,7 @@ export const useRadarExplorationStore = defineStore('radar-exploration', () => {
     if (articleId.value === null) return
     isLoading.value = true
     try {
-      const data = await apiGet<RadarExplorationEntry | null>(`/articles/${articleId.value}/radar-exploration`)
+      const data = await apiGet<RadarExplorationEntry | null>(`/articles/${articleId.value}/radar-exploration`, { contract: radarExplorationContract })
       entry.value = data
       log.debug(`[radar-exploration] hydrated article ${articleId.value} (${data?.generatedKeywords?.length ?? 0} keywords, scan=${data?.scanResult?.cards?.length ?? 0})`)
     } catch (err) {

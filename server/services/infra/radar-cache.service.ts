@@ -45,8 +45,8 @@ export async function checkRadarCache(seed: string): Promise<RadarCacheStatus> {
     cached: true,
     cachedAt: entry.cachedAt,
     keywordCount: entry.generatedKeywords.length,
-    globalScore: entry.scanResult.globalScore,
-    heatLevel: entry.scanResult.heatLevel,
+    globalScore: entry.scanResult.globalScore ?? undefined,
+    heatLevel: entry.scanResult.heatLevel ?? undefined,
   }
 }
 

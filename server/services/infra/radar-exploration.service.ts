@@ -1,27 +1,14 @@
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
-import type { RadarKeyword, KeywordRadarScanResult } from '../../../shared/types/intent.types.js'
+import type { RadarKeyword, KeywordRadarScanResult, RadarExploration } from '../../../shared/types/intent.types.js'
 import type { LongTailSuggestion } from '../../../shared/schemas/long-tail-suggestions.schema.js'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export interface RadarExplorationContext {
-  broadKeyword: string
-  specificTopic: string
-  painPoint: string
-  depth: number
-}
-
-export interface RadarExploration {
-  articleId: number
-  seed: string
-  context: RadarExplorationContext
-  generatedKeywords: RadarKeyword[]
-  scanResult: KeywordRadarScanResult
-  scannedAt: string
-}
+// Types partagés avec le front et le contrat d'affichage (shared/types/intent.types.ts).
+export type { RadarExplorationContext, RadarExploration } from '../../../shared/types/intent.types.js'
 
 export interface RadarExplorationStatus {
   exists: boolean
@@ -96,8 +83,8 @@ export async function getRadarExplorationStatus(articleId: number): Promise<Rada
     exists: true,
     scannedAt: exploration.scannedAt,
     keywordCount: exploration.generatedKeywords.length,
-    globalScore: exploration.scanResult?.globalScore,
-    heatLevel: exploration.scanResult?.heatLevel,
+    globalScore: exploration.scanResult?.globalScore ?? undefined,
+    heatLevel: exploration.scanResult?.heatLevel ?? undefined,
     isFresh: computeFreshness(exploration.scannedAt),
   }
 }
@@ -296,13 +283,11 @@ export async function persistLongTailSuggestions(
     broadKeyword: existing?.scanResult?.broadKeyword ?? '',
     autocomplete: existing?.scanResult?.autocomplete ?? { suggestions: [], totalCount: 0 },
     cards: existing?.scanResult?.cards ?? [],
-    // globalScore : merge JSONB defensive coding ; la valeur officielle vient du dernier
-    // scan persiste, ce branche n'est atteinte que si scan_result est partiellement vide
-    // (cas de migration de schema ou ecriture concurrente). 0 est ici un placeholder
-    // qui sera ecrase au prochain scan complet.
-     
-    globalScore: existing?.scanResult?.globalScore ?? 0,
-    heatLevel: existing?.scanResult?.heatLevel ?? 'froide',
+    // Sans scan préalable, aucune chaleur n'a été mesurée : absente (le
+    // thermomètre affiche « En attente — »), et non plus « froide 0 » inventé.
+    // Le prochain scan complet écrira la vraie valeur.
+    globalScore: existing?.scanResult?.globalScore ?? null,
+    heatLevel: existing?.scanResult?.heatLevel ?? null,
     verdict: existing?.scanResult?.verdict ?? '',
     scannedAt: existing?.scanResult?.scannedAt ?? new Date().toISOString(),
     longTailSuggestions: suggestions,

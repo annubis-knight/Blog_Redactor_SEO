@@ -2,7 +2,9 @@ import { ref, computed, onBeforeUnmount } from 'vue'
 import { apiGet, apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
+import type { RadarExploration } from '@shared/types/intent.types.js'
 import type { ApiUsage } from '@shared/types/index.js'
+import { radarExplorationContract, radarGenerateContract, radarScanResultContract } from '@shared/contracts/radar.contract.js'
 import type {
   IntentScanResult,
   KeywordRadarGenerateResult,
@@ -19,14 +21,8 @@ export interface RadarExplorationStatus {
   isFresh?: boolean
 }
 
-interface RadarExplorationData {
-  articleId: number
-  seed: string
-  context: { broadKeyword: string; specificTopic: string; painPoint: string; depth: number }
-  generatedKeywords: RadarKeyword[]
-  scanResult: KeywordRadarScanResult
-  scannedAt: string
-}
+/** Exploration relue en base : même forme que côté serveur (shared/types). */
+type RadarExplorationData = RadarExploration
 
 // Legacy alias kept for the libre mode (no articleId yet) — falls back to api_cache[radar].
 export type RadarCacheStatus = RadarExplorationStatus
@@ -200,6 +196,7 @@ export function useKeywordRadar() {
       if (typeof seedOrArticleId === 'number') {
         const data = await apiGet<RadarExplorationData | null>(
           `/articles/${seedOrArticleId}/radar-exploration`,
+          { contract: radarExplorationContract },
         )
         if (data) {
           generatedKeywords.value = data.generatedKeywords
@@ -317,8 +314,8 @@ export function useKeywordRadar() {
         exists: true,
         scannedAt: new Date().toISOString(),
         keywordCount: generatedKeywords.value.length,
-        globalScore: scanResult.value.globalScore,
-        heatLevel: scanResult.value.heatLevel,
+        globalScore: scanResult.value.globalScore ?? undefined,
+        heatLevel: scanResult.value.heatLevel ?? undefined,
         isFresh: true,
       }
       log.info(`[Radar] Saved DB exploration for article ${articleId}`)
@@ -343,7 +340,7 @@ export function useKeywordRadar() {
         title,
         keyword,
         painPoint,
-      })
+      }, { contract: radarGenerateContract })
       if (result._apiUsage) {
         try { useCostLogStore().addEntry('Génération keywords radar', result._apiUsage) } catch { /* noop */ }
       }
@@ -418,7 +415,7 @@ export function useKeywordRadar() {
         keywords,
         depth,
         painPoint: opts?.painPoint,
-      })
+      }, { contract: radarScanResultContract })
       log.info(`[Radar] Scan complete: score=${scanResult.value.globalScore}, heat=${scanResult.value.heatLevel}`)
 
       if (opts?.articleId && opts.seed) {

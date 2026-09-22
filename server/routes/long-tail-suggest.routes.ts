@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { parseContract } from '../../shared/contracts/core.js'
+import { longTailSuggestionsContract } from '../../shared/contracts/radar.contract.js'
 import { log } from '../utils/logger.js'
 import {
   generateLongTailSuggestions,
@@ -45,7 +47,8 @@ router.post('/articles/:id/radar-exploration/long-tail', async (req, res) => {
       articleId,
     })
 
-    res.json({ data: { suggestions, fromCache } })
+    // Frontière serveur : suggestions dans la forme promise au panneau longue traîne.
+    res.json({ data: parseContract(longTailSuggestionsContract, { suggestions, fromCache }, 'server') })
   } catch (err) {
     if (err instanceof LongTailSuggestionsValidationError) {
       log.warn(`POST long-tail — AI invalid output: ${err.message}`)

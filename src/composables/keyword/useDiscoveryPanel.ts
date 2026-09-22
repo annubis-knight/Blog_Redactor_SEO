@@ -1,5 +1,6 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
+import { radarGenerateContract } from '@shared/contracts/radar.contract.js'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
@@ -258,7 +259,7 @@ export function useDiscoveryPanel() {
         title: articleTitle || seed,
         keyword: articleKeyword || seed,
         painPoint: painPoint || seed,
-      })
+      }, { contract: radarGenerateContract })
         .then(data => {
           if (data._apiUsage) {
             try { useCostLogStore().addEntry('Génération keywords radar', data._apiUsage) } catch { /* noop */ }
@@ -440,6 +441,7 @@ export function useDiscoveryPanel() {
           keyword: articleKeyword || seed,
           painPoint: painPoint || seed,
         },
+        { contract: radarGenerateContract },
       )
       if (data._apiUsage) {
         try { useCostLogStore().addEntry('Courte-traîne IA', data._apiUsage) } catch { /* noop */ }

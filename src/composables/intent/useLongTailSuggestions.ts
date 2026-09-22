@@ -9,6 +9,7 @@
  */
 import { ref, type Ref } from 'vue'
 import { apiPost, apiPatch } from '@/services/api.service'
+import { longTailSuggestionsContract } from '@shared/contracts/radar.contract.js'
 import { log } from '@/utils/logger'
 import type { LongTailSuggestion } from '@shared/types/long-tail.types'
 
@@ -56,6 +57,7 @@ export function useLongTailSuggestions(articleId: number): UseLongTailSuggestion
     const res = await apiPost<{ suggestions: LongTailSuggestion[]; fromCache: boolean }>(
       `/articles/${articleId}/radar-exploration/long-tail`,
       { radarKeywords, articleTitle, articlePainPoint, strategyContext: '' },
+      { contract: longTailSuggestionsContract },
     )
     return res.suggestions ?? []
   }

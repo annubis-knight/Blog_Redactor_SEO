@@ -46,7 +46,7 @@ const props = withDefaults(defineProps<{
 })
 
 const emit = defineEmits<{
-  (e: 'scanned', payload: { globalScore: number; heatLevel: string }): void
+  (e: 'scanned', payload: { globalScore: number | null; heatLevel: string | null }): void
   (e: 'keywords-cleared'): void
   (e: 'cards-selected', cards: RadarCard[]): void
   (e: 'captain-candidates-marked', keywords: string[]): void

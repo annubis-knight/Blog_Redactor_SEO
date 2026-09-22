@@ -352,6 +352,8 @@ export interface KeywordRootVariant {
   validation: ScanResponse
 }
 
+export type RadarHeatLevel = 'brulante' | 'chaude' | 'tiede' | 'froide'
+
 export interface KeywordRadarScanResult {
   specificTopic: string
   broadKeyword: string
@@ -360,9 +362,32 @@ export interface KeywordRadarScanResult {
     totalCount: number
   }
   cards: RadarCard[]
-  globalScore: number
-  heatLevel: 'brulante' | 'chaude' | 'tiede' | 'froide'
+  /**
+   * Chaleur globale du sujet (0-100). `null` quand aucune carte n'a été
+   * scannée (ex. longue traîne enregistrée sans scan) : le thermomètre
+   * affiche alors « En attente — », jamais un faux « froide 0 ».
+   */
+  globalScore: number | null
+  heatLevel: RadarHeatLevel | null
   verdict: string
+  scannedAt: string
+}
+
+/** Contexte d'un scan Radar enregistré pour un article. */
+export interface RadarExplorationContext {
+  broadKeyword: string
+  specificTopic: string
+  painPoint: string
+  depth: number
+}
+
+/** Exploration Radar d'un article, relue en base (`radar_explorations`). */
+export interface RadarExploration {
+  articleId: number
+  seed: string
+  context: RadarExplorationContext
+  generatedKeywords: RadarKeyword[]
+  scanResult: KeywordRadarScanResult
   scannedAt: string
 }
 

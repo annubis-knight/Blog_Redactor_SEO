@@ -62,7 +62,7 @@ describe('useRadarExplorationStore', () => {
     mockApi.apiGet.mockResolvedValueOnce(makeEntry(64, ['kw-a', 'kw-b']))
     const store = useRadarExplorationStore()
     await store.setArticle(64)
-    expect(mockApi.apiGet).toHaveBeenCalledWith('/articles/64/radar-exploration')
+    expect(mockApi.apiGet).toHaveBeenCalledWith('/articles/64/radar-exploration', { contract: expect.objectContaining({ name: 'radar-exploration' }) })
     expect(store.generatedKeywords).toHaveLength(2)
     expect(store.generatedKeywords[0].keyword).toBe('kw-a')
   })

@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { parseContract } from '../../shared/contracts/core.js'
+import { radarExplorationContract } from '../../shared/contracts/radar.contract.js'
 import { log } from '../utils/logger.js'
 import {
   getRadarExploration,
@@ -26,7 +28,8 @@ router.get('/articles/:id/radar-exploration', async (req, res) => {
       return
     }
     const entry = await getRadarExploration(articleId)
-    res.json({ data: entry })
+    // Frontière relecture : un ancien instantané JSONB est remis dans la forme actuelle.
+    res.json({ data: parseContract(radarExplorationContract, entry, 'db') })
   } catch (err) {
     log.error(`GET /articles/:id/radar-exploration — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load radar exploration' } })

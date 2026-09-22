@@ -33,7 +33,7 @@ export interface MoteurCrossTabStateApi {
   /** Keywords envoyés depuis Discovery vers Radar. */
   discoveryRadarKeywords: Ref<RadarKeyword[]>
   /** Résultat du dernier scan Radar (globalScore + heatLevel). Mutable depuis useArticleResults.onRadarLoaded. */
-  radarScanResult: Ref<{ globalScore: number; heatLevel: string } | null>
+  radarScanResult: Ref<{ globalScore: number | null; heatLevel: string | null } | null>
   /** Statut du cache Radar pour le keyword courant. Mutable depuis handleSelectArticle. */
   radarCacheStatus: Ref<RadarCacheStatus | null>
   /** Cards Radar envoyées au Capitaine via "Envoyer au Capitaine". */
@@ -52,7 +52,7 @@ export interface MoteurCrossTabStateApi {
 
   /** Handlers d'événements cross-tab. */
   handleCardsSelected: (cards: RadarCard[]) => void
-  handleRadarScanned: (payload: { globalScore: number; heatLevel: string }) => void
+  handleRadarScanned: (payload: { globalScore: number | null; heatLevel: string | null }) => void
   handleSendToRadar: (keywords: RadarKeyword[]) => void
   handleKeywordsCleared: () => void
   handleSendToLieutenants: (payload: { keyword: string; rootKeywords: string[] }) => void
@@ -70,7 +70,7 @@ export function useMoteurCrossTabState(deps: MoteurCrossTabStateDeps): MoteurCro
   const radarStore = useRadarExplorationStore()
 
   const discoveryRadarKeywords = ref<RadarKeyword[]>([])
-  const radarScanResult = ref<{ globalScore: number; heatLevel: string } | null>(null)
+  const radarScanResult = ref<{ globalScore: number | null; heatLevel: string | null } | null>(null)
   const radarCacheStatus = ref<RadarCacheStatus | null>(null)
   const radarCardsForCaptain = ref<RadarCard[]>([])
   const captainRootKeywords = ref<string[]>([])
@@ -106,7 +106,7 @@ export function useMoteurCrossTabState(deps: MoteurCrossTabStateDeps): MoteurCro
     setActiveTab('capitaine')
   }
 
-  function handleRadarScanned(payload: { globalScore: number; heatLevel: string }): void {
+  function handleRadarScanned(payload: { globalScore: number | null; heatLevel: string | null }): void {
     log.debug('[MoteurCrossTabState] Radar scanned', payload)
     radarScanResult.value = payload
     emitCheckCompleted(MOTEUR_RADAR_DONE)

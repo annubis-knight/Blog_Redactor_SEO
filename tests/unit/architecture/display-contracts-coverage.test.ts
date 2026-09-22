@@ -19,11 +19,11 @@ import { join, relative } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Familles dont le contrat est posé partout (client et serveur). */
-const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge'])
+const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail'])
 
 /** Cliquet : ces nombres ne peuvent que baisser. */
-const BASELINE_CLIENT_UNCOVERED = 19
-const BASELINE_SERVER_UNCOVERED = 17
+const BASELINE_CLIENT_UNCOVERED = 11
+const BASELINE_SERVER_UNCOVERED = 13
 
 // ---------------------------------------------------------------------------
 // Frontière client : appels du front vers les réponses affichées au Moteur

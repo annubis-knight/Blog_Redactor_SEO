@@ -1,5 +1,6 @@
 import { computed, type ComputedRef } from 'vue'
 import type { RadarCard } from '@shared/types/intent.types'
+import { averageScores, compareScores } from '@shared/score/index.js'
 
 /**
  * Ranking local RadarCard proposer Capitaine (pas IA). Filtre NOGO × 2.
@@ -9,13 +10,15 @@ import type { RadarCard } from '@shared/types/intent.types'
 export interface RadarRankedCard {
   card: RadarCard
   keyword: string
-  marketTotal: number
-  relevanceTotal: number
+  /** `null` = score absent (affiché « — »), jamais 0. */
+  marketTotal: number | null
+  relevanceTotal: number | null
   /** true si marketScore réellement présent (RadarAiPanel affiche "—" vs "0"). */
   marketTotalAvailable: boolean
   /** true si relevanceScore présent. */
   relevanceTotalAvailable: boolean
-  finalScore: number
+  /** Moyenne des scores disponibles ; `null` si aucun (carte en bas du classement). */
+  finalScore: number | null
 }
 
 export interface UseRadarRankingOptions {
@@ -44,12 +47,13 @@ export function useRadarRanking(opts: UseRadarRankingOptions) {
     const enriched = list
       .filter(c => !isNogoBoth(c))
       .map<RadarRankedCard>((card) => {
-        // Pas de fallback combinedScore. Absent → défavorisé. "—" vs "0" via Available flags.
-        const marketTotalAvailable = card.marketScore?.total != null
-        const relevanceTotalAvailable = card.relevanceScore?.total != null
-        const marketTotal = card.marketScore?.total ?? 0
-        const relevanceTotal = card.relevanceScore?.total ?? 0
-        const finalScore = (marketTotal + relevanceTotal) / 2
+        // Pas de fallback combinedScore. Moyenne sur les seuls scores disponibles
+        // (FR-INFRA-KPI-CONSISTENCY) : un score absent n'est plus compté comme 0.
+        const marketTotal = card.marketScore?.total ?? null
+        const relevanceTotal = card.relevanceScore?.total ?? null
+        const marketTotalAvailable = marketTotal !== null
+        const relevanceTotalAvailable = relevanceTotal !== null
+        const finalScore = averageScores([marketTotal, relevanceTotal])
         return {
           card, keyword: card.keyword,
           marketTotal, relevanceTotal,
@@ -58,7 +62,7 @@ export function useRadarRanking(opts: UseRadarRankingOptions) {
         }
       })
 
-    enriched.sort((a, b) => b.finalScore - a.finalScore)
+    enriched.sort((a, b) => compareScores(a.finalScore, b.finalScore))
     return enriched.slice(0, topN)
   })
 

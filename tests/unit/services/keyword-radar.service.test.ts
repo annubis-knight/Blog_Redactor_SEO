@@ -173,3 +173,23 @@ describe('moteur:keyword-radar:generateRadarKeywords', () => {
     expect(result.painPoint).toBe(painPoint)
   })
 })
+
+// Contrats d'affichage — la chaleur globale n'est jamais inventée (NFR-INT-DISPLAY-CONTRACTS)
+describe('radarGlobalHeat', async () => {
+  const { radarGlobalHeat } = await import('../../../server/services/keyword/keyword-radar.service')
+
+  it('aucune carte → chaleur absente (thermomètre « En attente — »), pas « froide 0 »', () => {
+    expect(radarGlobalHeat([])).toEqual({ globalScore: null, heatLevel: null, verdict: '' })
+  })
+
+  it('des cartes → moyenne arrondie, chaleur et verdict associés', async () => {
+    const intent = await import('../../../server/services/intent/intent-scan.service')
+    vi.mocked(intent.getHeatLevel).mockReturnValue('brulante')
+    vi.mocked(intent.getVerdict).mockReturnValue('Douleur d’urgence.')
+    const heat = radarGlobalHeat([{ combinedScore: 80 }, { combinedScore: 61 }])
+    expect(heat.globalScore).toBe(71)
+    expect(intent.getHeatLevel).toHaveBeenCalledWith(71)
+    expect(heat.heatLevel).toBe('brulante')
+    expect(heat.verdict).toBe('Douleur d’urgence.')
+  })
+})
