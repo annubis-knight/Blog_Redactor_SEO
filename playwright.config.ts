@@ -12,7 +12,8 @@ import { defineConfig, devices } from '@playwright/test'
 export default defineConfig({
   testDir: './tests/browser-e2e',
   // Pattern stricte pour éviter de scanner les autres tests/
-  testMatch: '**/*.browser.test.ts',
+  // `*.parcours.test.ts` : parcours « 8 temps » par sous-phase (tech-spec-parcours-8-temps).
+  testMatch: ['**/*.browser.test.ts', '**/*.parcours.test.ts'],
   fullyParallel: false,             // Tests UI séquentiels — évite collisions DB
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
