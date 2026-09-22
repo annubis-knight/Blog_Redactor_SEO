@@ -141,18 +141,33 @@ aucun appel vers `api.dataforseo.com` (production).
 | `05116d3` | Socle (cocon + stratégie + 3 articles + mode simulé + nettoyage) et parcours du Capitaine. |
 | `8bd65b7` | Parcours Radar et Lieutenants. |
 | `c7ab5e0` | **Correctif produit** : le garde-fou de coût comptait les appels du bac à sable (gratuits) et refusait les scans en HTTP 429 après ~2 $ fictifs. Valideur : `tests/unit/services/dataforseo-cost-guard-sandbox.test.ts`. |
-| (ce commit) | Parcours Lexique et Découverte, mise en commun du verrouillage Capitaine, fiabilisation des attentes. |
+| `ce1c204` | Parcours Lexique et Découverte, mise en commun du verrouillage Capitaine, fiabilisation des attentes. |
+| `84c8b95` | Les `skip` du Lexique remplacés par de vraies vérifications (garde-fou `test-quality`). |
+| `b3a4f30` | **Décision produit** : l'IA propose, l'utilisateur valide — les cartes Lieutenants arrivent décochées. |
+| (ce commit) | **Interactions internes** : 4 fichiers (Capitaine, Radar, Lieutenants, panneaux IA). |
 
-**État** : 21 tests verts (5 sous-phases × 3 niveaux + 6 tests de socle), ~2 min 40
-en mode simulé, sans un centime dépensé. Deux exécutions consécutives vertes.
+**État** : 39 tests verts, ~3 min 20 en mode simulé, sans un centime dépensé.
+Deux exécutions consécutives vertes.
+
+- **Parcours de sous-phase** (21) : 5 sous-phases × 3 niveaux d'article + 6 tests de socle.
+- **Interactions internes** (18) : les gestes *dans* les composants, qui ne
+  changent pas d'onglet et n'apparaissent donc dans aucun parcours.
+
+| Fichier | Ce qu'il couvre |
+|---|---|
+| `interactions-capitaine` | mots cliquables du mot-clé → scan d'une variante racine ; choix d'une racine ; moyenne des racines ; ouverture / fermeture du tiroir ; conseil IA (repli, lancement, texte rendu) |
+| `interactions-radar` | dépliage d'une carte ; arbre PAA (enfants, réponse) ; info-bulle de l'anneau (calcul détaillé, ou raison de l'absence) ; cocher / tout cocher / trier / filtrer CPC ; suggestions longue traîne |
+| `interactions-lieutenants` | carte (score « — », niveau Hn, sources, case) ; section « Autres candidats » ; tri sans perte ; **titre du plan Hn verrouillé qui survit à une régénération** ; panneau IA |
+| `interactions-panneaux-ia` | les conteneurs « résumé IA » de Découverte, Radar et Lexique : jamais muets, toujours un moyen de relancer |
 
 ### Ce que les parcours ont révélé
 
 1. **Garde-fou de coût vs bac à sable** — corrigé (`c7ab5e0`).
-2. **Lieutenants pré-cochés mais non verrouillés** : après la proposition IA, les
-   cartes apparaissent cochées alors qu'aucun Lieutenant n'est verrouillé en
-   base ; le check workflow n'arrive qu'après un vrai clic. Le parcours reproduit
-   le geste (décoche puis recoche) — à trancher côté produit.
+2. **Lieutenants pré-cochés mais non verrouillés** — tranché (`b3a4f30`) : l'IA
+   propose, l'utilisateur valide. Les cartes arrivent décochées ; chaque case
+   cochée verrouille immédiatement. Motif : ces mots-clés deviennent les H2/H3
+   de l'article, et l'écran ne doit pas afficher « retenu » ce que la base
+   ignore.
 3. **Les tests navigateur existants étaient permissifs** : `moteur-navigation`
    vérifie des repères `phase-tab-*` qui n'existent pas (la nav utilise
    `wf-item-*`), sous un `if (count > 0)` — vert sans rien contrôler.
