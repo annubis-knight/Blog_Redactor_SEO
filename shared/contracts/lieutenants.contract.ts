@@ -37,7 +37,7 @@ const LIEUTENANT_STATUSES = ['suggested', 'locked', 'eliminated', 'archived'] as
 const nonBlank = z.string().refine(value => value.trim() !== '', 'texte vide')
 
 /** Score IA sur 100 : entier, ou `null` si absent ou hors échelle (jamais inventé). */
-export function aiScore(field: string) {
+function aiScore(field: string) {
   return z.unknown().transform((value): number | null => {
     const score = toKpiValue(value, field)
     if (score === null) return null
@@ -65,7 +65,7 @@ function suggestedHnLevel(field: string) {
   })
 }
 
-export const proposedLieutenantSchema: z.ZodType<ProposedLieutenant, unknown> = z.looseObject({
+const proposedLieutenantSchema: z.ZodType<ProposedLieutenant, unknown> = z.looseObject({
   keyword: nonBlank,
   reasoning: text('lieutenants.reasoning', ''),
   sources: tolerantArray(z.enum(LIEUTENANT_SOURCES), 'lieutenants.sources'),

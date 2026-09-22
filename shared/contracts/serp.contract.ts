@@ -13,7 +13,7 @@
  * RELATED FR: NFR-INT-DISPLAY-CONTRACTS, FR-LIE-SERP-ANALYZE, FR-LEX-TFIDF, NFR-INT-SERP-ONCE
  */
 import { z } from 'zod'
-import { count, defineContract, nullableText, oneOf, text, tolerantArray, withFallback } from './core.js'
+import { count, defineContract, nullableText, text, tolerantArray, withFallback } from './core.js'
 import { ARTICLE_LEVELS } from './score-blocks.js'
 import type { HnNode, SerpAnalysisResult, SerpCompetitor, TfidfResult, TfidfTerm } from '../types/serp-analysis.types.js'
 import type { PaaQuestion } from '../types/dataforseo.types.js'
@@ -31,7 +31,7 @@ const hnNodeSchema: z.ZodType<HnNode, unknown> = z.looseObject({
   text: z.string().min(1),
 })
 
-export const serpCompetitorSchema: z.ZodType<SerpCompetitor, unknown> = z
+const serpCompetitorSchema: z.ZodType<SerpCompetitor, unknown> = z
   .looseObject({
     position: count('competitors.position'),
     title: text('competitors.title', ''),
@@ -90,8 +90,3 @@ export const tfidfResultContract = defineContract<TfidfResult>(
     optionnel: tolerantArray(tfidfTermSchema, 'optionnel'),
   }),
 )
-
-// Exporté pour les contrats qui relisent un plan de titres (lot 4).
-export { hnNodeSchema }
-// Niveau d'un terme, réutilisé par le contrat des recommandations IA du Lexique (lot 5).
-export const tfidfLevel = (field: string) => oneOf(TFIDF_LEVELS, 'optionnel', field)

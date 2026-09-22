@@ -49,7 +49,7 @@ const optionalNumber = (field: string) => withFallback(z.number().optional(), un
 const optionalString = (field: string) => withFallback(z.string().optional(), undefined, field)
 
 /** KPI d'une carte : les 4 KPI marché et les signaux dérivés restent `null` quand absents. */
-export const keywordKpisSchema: z.ZodType<RadarKeywordKpis, unknown> = z.looseObject({
+const keywordKpisSchema: z.ZodType<RadarKeywordKpis, unknown> = z.looseObject({
   searchVolume: kpiValue('kpis.searchVolume'),
   difficulty: kpiValue('kpis.difficulty'),
   cpc: kpiValue('kpis.cpc'),
@@ -64,7 +64,7 @@ export const keywordKpisSchema: z.ZodType<RadarKeywordKpis, unknown> = z.looseOb
   painAlignmentScore: optionalNumber('kpis.painAlignmentScore'),
 })
 
-export const radarPaaItemSchema: z.ZodType<RadarPaaItem, unknown> = z.looseObject({
+const radarPaaItemSchema: z.ZodType<RadarPaaItem, unknown> = z.looseObject({
   question: z.string().min(1),
   answer: optionalString('paaItems.answer'),
   depth: count('paaItems.depth'),
@@ -94,7 +94,7 @@ const combinedBreakdownSchema: z.ZodType<RadarCombinedScoreBreakdown, unknown> =
   'scoreBreakdown',
 )
 
-export const radarCardSchema: z.ZodType<RadarCard, unknown> = z.looseObject({
+const radarCardSchema: z.ZodType<RadarCard, unknown> = z.looseObject({
   keyword: z.string().min(1),
   reasoning: text('reasoning', ''),
   // `null` = longue traîne sans KPI (explicite) ; bloc KPI illisible → `null` aussi.
@@ -112,7 +112,7 @@ export const radarCardSchema: z.ZodType<RadarCard, unknown> = z.looseObject({
   derivedFromRoots: tolerantArray(z.string(), 'derivedFromRoots').optional(),
 })
 
-export const radarScanResultSchema: z.ZodType<KeywordRadarScanResult, unknown> = z.looseObject({
+const radarScanResultSchema: z.ZodType<KeywordRadarScanResult, unknown> = z.looseObject({
   specificTopic: text('specificTopic', ''),
   broadKeyword: text('broadKeyword', ''),
   autocomplete: withFallback(
@@ -183,7 +183,7 @@ export const radarExplorationContract = defineContract<RadarExploration | null>(
  * l'IA déjà validées par `longTailSuggestionSchema` à la génération ; le
  * contrat garde les conformes (une suggestion abîmée en cache est écartée).
  */
-export interface LongTailSuggestionsResponseWithCache {
+interface LongTailSuggestionsResponseWithCache {
   suggestions: LongTailSuggestion[]
   fromCache: boolean
 }

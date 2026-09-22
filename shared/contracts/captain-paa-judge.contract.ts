@@ -30,7 +30,7 @@ const paaJudgmentSchema: z.ZodType<PaaJudgment, unknown> = z.looseObject({
   reasonShort: text('paaJudgments.reasonShort', ''),
 })
 
-export const paaJudgmentBlockSchema: z.ZodType<PaaJudgmentBlock, unknown> = z.looseObject({
+const paaJudgmentBlockSchema: z.ZodType<PaaJudgmentBlock, unknown> = z.looseObject({
   paaJudgments: tolerantArray(paaJudgmentSchema, 'paaJudgments'),
   overallPaaScore: boundedScore,
   summary: text('summary', ''),
@@ -50,7 +50,7 @@ const relevanceLiveSchema = z
   })
   .transform(value => value as unknown as RelevanceScoreLiveResult)
 
-export interface CaptainPaaJudgeResponse {
+interface CaptainPaaJudgeResponse {
   judgments: Record<string, PaaJudgmentBlock>
   relevanceScores: Record<string, RelevanceScoreLiveResult>
 }

@@ -46,7 +46,7 @@ const MATCH_QUALITIES = ['exact', 'stem'] as const
  * Cohérence affichage : un KPI absent s'affiche toujours « — » en neutre,
  * quel que soit le libellé reçu (ex. « NaN rech/m »).
  */
-export const kpiResultSchema: z.ZodType<KpiResult, unknown> = z
+const kpiResultSchema: z.ZodType<KpiResult, unknown> = z
   .looseObject({
     name: z.string().min(1),
     rawValue: kpiValue('kpis.rawValue'),
@@ -71,7 +71,7 @@ export const kpiSummarySchema: z.ZodType<KpiSummary, unknown> = z.looseObject({
 })
 
 /** Un verdict inconnu ou illisible devient GRAY (neutre), jamais NO-GO. */
-export const scanVerdictSchema: z.ZodType<ScanVerdict, unknown> = z.looseObject({
+const scanVerdictSchema: z.ZodType<ScanVerdict, unknown> = z.looseObject({
   level: oneOf(VERDICT_LEVELS, 'GRAY', 'verdict.level'),
   greenCount: count('verdict.greenCount'),
   totalKpis: count('verdict.totalKpis'),
@@ -79,7 +79,7 @@ export const scanVerdictSchema: z.ZodType<ScanVerdict, unknown> = z.looseObject(
   autoNoGo: withFallback(z.boolean(), false, 'verdict.autoNoGo'),
 })
 
-export const paaQuestionScanSchema: z.ZodType<PaaQuestionScan, unknown> = z.looseObject({
+const paaQuestionScanSchema: z.ZodType<PaaQuestionScan, unknown> = z.looseObject({
   question: z.string().min(1),
   answer: nullableText('paaQuestions.answer'),
   match: withFallback(z.enum(PAA_MATCHES).optional(), undefined, 'paaQuestions.match'),

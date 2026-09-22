@@ -9,7 +9,7 @@
 import { z } from 'zod'
 import type { MarketScoreResult, RelevanceScoreResult } from '../types/scoring.types.js'
 
-export const SCORE_VERDICTS = ['GO', 'ORANGE', 'NOGO'] as const
+const SCORE_VERDICTS = ['GO', 'ORANGE', 'NOGO'] as const
 export const ARTICLE_LEVELS = ['pilier', 'intermediaire', 'specifique'] as const
 export const UNAVAILABLE_REASONS = ['no-pain', 'long-tail', 'missing-paa', 'missing-autocomplete'] as const
 

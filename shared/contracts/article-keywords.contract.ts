@@ -36,7 +36,7 @@ const richCaptainSchema: z.ZodType<RichCaptain, unknown> = z.looseObject({
   aiPanelMarkdown: nullableText('richCaptain.aiPanelMarkdown'),
 })
 
-export const articleKeywordsSchema: z.ZodType<ArticleKeywords, unknown> = z.looseObject({
+const articleKeywordsSchema: z.ZodType<ArticleKeywords, unknown> = z.looseObject({
   articleId: z.number(),
   capitaine: text('capitaine', ''),
   lieutenants: tolerantArray(z.string(), 'lieutenants'),

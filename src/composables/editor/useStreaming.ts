@@ -14,7 +14,7 @@ export type SectionStartInfo = ApiSectionStartInfo
 
 export type StreamingCallbacks<T> = ApiStreamCallbacks<T>
 
-export interface StreamingOptions<T> {
+interface StreamingOptions<T> {
   /** Contrat d'affichage du résultat final (NFR-INT-DISPLAY-CONTRACTS). */
   contract?: DisplayContract<T>
 }

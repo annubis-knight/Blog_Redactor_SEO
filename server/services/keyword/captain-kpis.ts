@@ -20,7 +20,7 @@ import {
   matchResonanceDetailed,
 } from '../intent/intent-scan.service.js'
 
-export interface CaptainPaaMatch {
+interface CaptainPaaMatch {
   match: ResonanceMatch
   /** Correspondance lexicale uniquement : jamais « semantic » au Capitaine. */
   matchQuality?: Exclude<RadarMatchQuality, 'semantic'>
@@ -78,7 +78,7 @@ export function captainIntentValue(rawIntent: unknown): number | null {
   return value === null ? null : Math.max(0, Math.min(1, value))
 }
 
-export interface CaptainMetricsRow {
+interface CaptainMetricsRow {
   keyword: string
   search_volume: unknown
   keyword_difficulty: unknown
