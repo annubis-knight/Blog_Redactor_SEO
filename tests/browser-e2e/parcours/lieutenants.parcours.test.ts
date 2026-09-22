@@ -173,13 +173,8 @@ for (const level of LEVELS) {
     await test.step('⑧ décision — un Lieutenant coché et un plan Hn enregistré valident l’étape', async () => {
       const cases = page.locator('[data-testid="lt-card-checkbox"]')
       await expect(cases.first()).toBeVisible({ timeout: 30000 })
-      // Les propositions arrivent pré-cochées à l'écran sans être verrouillées en
-      // base : seul un vrai geste de l'utilisateur verrouille. On décoche puis
-      // recoche pour reproduire ce geste.
-      if (await cases.first().isChecked()) {
-        await cases.first().uncheck()
-        await page.waitForTimeout(500)
-      }
+      // L'IA propose, l'utilisateur valide : les cartes arrivent décochées.
+      expect(await cases.first().isChecked(), 'une proposition n’est pas validée d’office').toBe(false)
       await cases.first().check()
 
       // Le clic doit se traduire en base : statut « locked » sur le Lieutenant.

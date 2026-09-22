@@ -176,6 +176,31 @@ describe('useLieutenantsIa', () => {
     expect(mockStartStream).not.toHaveBeenCalled()
   })
 
+  it('FR-LIE-PROPOSE-AI — les propositions de l’IA arrivent à valider, pas déjà validées', () => {
+    const onLieutenantsUpdated = vi.fn()
+    const api = useLieutenantsIa(buildDeps({
+      serpResult: ref({ keyword: 'seo local', competitors: [], paaQuestions: [] } as never),
+      onLieutenantsUpdated,
+    }))
+
+    api.proposeLieutenants()
+    expect(mockStartStream).toHaveBeenCalled()
+
+    // Simule l'arrivée du flux IA.
+    const callbacks = mockStartStream.mock.calls.at(-1)![2] as { onDone: (d: unknown) => void }
+    callbacks.onDone({
+      totalGenerated: 3,
+      selectedLieutenants: [makeLt('plombier urgence'), makeLt('plombier chauffagiste')],
+      eliminatedLieutenants: [makeLt('plombier pas cher')],
+      hnStructure: [],
+      contentGapInsights: '',
+    })
+
+    expect(api.lieutenantCards.value, 'les propositions sont affichées').toHaveLength(2)
+    expect(api.selectedCards.value.size, 'aucune n’est cochée d’office : c’est l’utilisateur qui valide').toBe(0)
+    expect(onLieutenantsUpdated, 'rien n’est annoncé comme retenu').toHaveBeenLastCalledWith([])
+  })
+
   it('AC.J.11 — resetIaState remet à zéro tous les refs IA', () => {
     const api = useLieutenantsIa(buildDeps())
     api.lieutenantCards.value = [makeLt('a')]

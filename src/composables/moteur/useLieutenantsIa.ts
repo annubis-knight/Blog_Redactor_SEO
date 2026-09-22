@@ -314,15 +314,16 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
           lieutenantCards.value = data.selectedLieutenants
           eliminatedCards.value = data.eliminatedLieutenants
 
-          // Pre-select all filtered-in lieutenants
-          const preSelected = new Map<string, ProposedLieutenant>()
-          for (const lt of data.selectedLieutenants) {
-            preSelected.set(lt.keyword, lt)
-          }
-          selectedCards.value = preSelected
-          onLieutenantsUpdated(Array.from(preSelected.keys()))
+          // FR-LIE-CHECKBOX-LOCK-IMMEDIATE : l'IA propose, l'utilisateur valide.
+          // Les cartes arrivent donc décochées. Pré-cocher afficherait des
+          // Lieutenants « retenus » sans qu'aucun ne soit verrouillé en base :
+          // l'écran et la base se contrediraient, et l'étape passerait au vert
+          // sans décision humaine — alors que ces mots-clés deviennent les H2/H3
+          // de l'article.
+          selectedCards.value = new Map()
+          onLieutenantsUpdated([])
           currentStep.value = 'done'
-          log.info(`[useLieutenantsIa] Selection complete: ${preSelected.size} pre-selected`)
+          log.info(`[useLieutenantsIa] ${data.selectedLieutenants.length} propositions à valider`)
 
           // Auto-save lieutenant explorations directly to lieutenant_explorations table.
           const articleId = selectedArticle.value?.id
