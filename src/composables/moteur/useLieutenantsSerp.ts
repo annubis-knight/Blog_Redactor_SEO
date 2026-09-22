@@ -1,5 +1,6 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { apiPost } from '@/services/api.service'
+import { serpAnalysisContract } from '@shared/contracts/serp.contract.js'
 import { log } from '@/utils/logger'
 import type { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { SerpAnalysisResult, SerpCompetitor, PaaQuestion } from '@shared/types/index.js'
@@ -193,7 +194,7 @@ export function useLieutenantsSerp(deps: LieutenantsSerpDeps): LieutenantsSerpAp
           topN: 10,
           articleLevel: articleLevel.value ?? 'intermediaire',
           articleId: selectedArticleId.value ?? undefined,
-        })
+        }, { contract: serpAnalysisContract })
         results.push(result)
         serpResultsByKeyword.value = new Map(serpResultsByKeyword.value).set(kw, result)
         serpDoneCount.value++

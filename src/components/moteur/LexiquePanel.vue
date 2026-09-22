@@ -19,6 +19,7 @@
  */
 import { ref, computed, watch, onUnmounted, toRef } from 'vue'
 import { apiPost } from '@/services/api.service'
+import { tfidfResultContract } from '@shared/contracts/serp.contract.js'
 import { log } from '@/utils/logger'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
@@ -242,7 +243,7 @@ async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = fal
       keyword,
       articleId: props.selectedArticle?.id ?? undefined,
       triggerScrapeIfMissing: triggerScrape,
-    })
+    }, { contract: tfidfResultContract })
     tfidfResult.value = result
     const preChecked = new Set<string>()
     for (const term of result.obligatoire) preChecked.add(term.term)

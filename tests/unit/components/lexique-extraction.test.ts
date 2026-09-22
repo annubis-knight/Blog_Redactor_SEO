@@ -208,7 +208,7 @@ describe('LexiquePanel', () => {
         keyword: 'seo',
         articleId: 1,
         triggerScrapeIfMissing: false,
-      })
+      }, { contract: expect.objectContaining({ name: 'tfidf' }) })
     })
 
     it('shows loading text while extracting', async () => {

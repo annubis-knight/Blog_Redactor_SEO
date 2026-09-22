@@ -10,6 +10,8 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useLieutenantsSerp } from '../../../../src/composables/moteur/useLieutenantsSerp'
 import { useCostLogStore } from '../../../../src/stores/ui/cost-log.store'
 import type { SerpAnalysisResult, SerpCompetitor } from '../../../../shared/types/index'
+import { serpAnalysisContract } from '../../../../shared/contracts/serp.contract'
+import { parseContract } from '../../../../shared/contracts/core'
 
 const mockApiPost = vi.fn()
 vi.mock('../../../../src/services/api.service', () => ({
@@ -127,6 +129,31 @@ describe('useLieutenantsSerp', () => {
     const comm = recurrence.find(r => r.text === 'Comm')
     expect(comm).toBeDefined()
     expect(comm!.count).toBe(2)
+    expect(comm!.percent).toBe(100)
+  })
+
+  it('NFR-INT-DISPLAY-CONTRACTS — une page non lue relue en base ne fausse plus la récurrence', () => {
+    const api = useLieutenantsSerp({
+      captainKeyword: ref('seo'),
+      articleLevel: ref('intermediaire'),
+      selectedArticleId: ref(1),
+      canAnalyze: ref(true),
+      resolvedRootKeywords: ref([]),
+      activityLog: useCostLogStore(),
+    })
+
+    // Relecture en base : la page 2 n'a ni titre ni texte, et son erreur n'a pas été enregistrée.
+    const reloaded = parseContract(serpAnalysisContract, {
+      keyword: 'seo', articleLevel: 'intermediaire', maxScraped: 2, cachedAt: '', fromCache: true, paaQuestions: [],
+      competitors: [
+        { url: 'u1', domain: 'u1', title: 't', position: 1, headings: [{ level: 2, text: 'Comm' }], textContent: 'Texte' },
+        { url: 'u2', domain: 'u2', title: 't', position: 2, headings: [], textContent: null },
+      ],
+    }, 'db')
+
+    const comm = api.computeHnRecurrenceFrom(reloaded.competitors).find(r => r.text === 'Comm')
+    // Sans contrat : 1 page sur 2 (50 %) ; avec : 1 page lue sur 1 (100 %), comme au premier chargement.
+    expect(comm!.total).toBe(1)
     expect(comm!.percent).toBe(100)
   })
 

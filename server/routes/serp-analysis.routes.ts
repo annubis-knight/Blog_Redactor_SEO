@@ -1,4 +1,6 @@
 import { Router } from 'express'
+import { parseContract } from '../../shared/contracts/core.js'
+import { serpAnalysisContract, tfidfResultContract } from '../../shared/contracts/serp.contract.js'
 import { log } from '../utils/logger.js'
 import { serpAnalyzeBodySchema } from '../../shared/schemas/serp-analysis.schema.js'
 import { respondWithError } from '../utils/api-error.js'
@@ -41,7 +43,8 @@ router.post('/serp/analyze', async (req, res) => {
       const reconstructed = await reconstructSerpAnalysisResult(keyword)
       if (reconstructed) {
         log.info(`SERP DB hit for keyword="${keyword}" (reconstructed)`)
-        res.json({ data: { ...reconstructed, articleLevel } })
+        // Frontière relecture : pages non lues marquées, `isBlog: null` → inconnu.
+        res.json({ data: parseContract(serpAnalysisContract, { ...reconstructed, articleLevel }, 'db') })
         return
       }
     }
@@ -51,7 +54,8 @@ router.post('/serp/analyze', async (req, res) => {
     const scrapeResult = await scrapeCorpusFetchAndPersist(keyword, articleLevel)
 
     const result = toSerpAnalysisResult(scrapeResult, articleLevel)
-    res.json({ data: result })
+    // Frontière serveur : même mise en forme qu'à la relecture (CLAUDE.md §2.0).
+    res.json({ data: parseContract(serpAnalysisContract, result, 'server') })
   } catch (err) {
     log.error(`POST /api/serp/analyze — ${(err as Error).message}`)
     respondWithError(res, err, { message: 'SERP analysis failed' })
@@ -129,7 +133,8 @@ router.post('/serp/tfidf', async (req, res) => {
       articleId: hasArticleId ? articleIdNum : undefined,
       triggerScrapeIfMissing: shouldTriggerScrape,
     })
-    res.json({ data: tfidfResult })
+    // Frontière serveur : termes dans la forme promise à la liste du Lexique.
+    res.json({ data: parseContract(tfidfResultContract, tfidfResult, 'server') })
   } catch (err) {
     if (err instanceof LexiqueScrapeMissingError) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: err.message } })

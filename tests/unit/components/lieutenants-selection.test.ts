@@ -413,7 +413,7 @@ describe('LieutenantsPanel', () => {
         articleLevel: 'intermediaire',
         // Sprint 13 — optional articleId piped through for DB-first serp_explorations persistence.
         articleId: expect.anything(),
-      })
+      }, { contract: expect.objectContaining({ name: 'serp-analysis' }) })
     })
 
     it('emits serp-loaded after successful analysis', async () => {
