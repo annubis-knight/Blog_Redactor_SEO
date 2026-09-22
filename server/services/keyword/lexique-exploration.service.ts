@@ -2,23 +2,14 @@ import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import type {
   LexiqueAnalysisResult,
+  LexiqueExploration,
   LexiqueTermRecommendation,
   TfidfResult,
 } from '../../../shared/types/serp-analysis.types.js'
 
 // ---------------------------------------------------------------------------
-// Types
+// Types (LexiqueExploration : partagé avec l'écran, contrat `explorations`)
 // ---------------------------------------------------------------------------
-
-export interface LexiqueExploration {
-  articleId: number
-  sourceKeyword: string
-  tfidfTerms: TfidfResult | null
-  aiRecommendations: LexiqueTermRecommendation[]
-  aiMissingTerms: string[]
-  aiSummary: string | null
-  exploredAt: string
-}
 
 interface LexiqueRow {
   article_id: number

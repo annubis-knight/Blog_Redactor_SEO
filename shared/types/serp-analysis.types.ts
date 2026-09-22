@@ -90,6 +90,17 @@ export interface LexiqueAnalysisResult {
   summary: string
 }
 
+/** Exploration Lexique d'un article relue en base (`lexique_explorations`), une par mot-clé source. */
+export interface LexiqueExploration {
+  articleId: number
+  sourceKeyword: string
+  tfidfTerms: TfidfResult | null
+  aiRecommendations: LexiqueTermRecommendation[]
+  aiMissingTerms: string[]
+  aiSummary: string | null
+  exploredAt: string
+}
+
 export interface TfidfTerm {
   term: string
   level: 'obligatoire' | 'differenciateur' | 'optionnel'

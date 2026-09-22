@@ -1,5 +1,7 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
+import { parseContract } from '../../shared/contracts/core.js'
+import { articleExplorationsContract } from '../../shared/contracts/article-explorations.contract.js'
 import { getCached, slugify } from '../db/cache-helpers.js'
 import { getArticleKeywords, getCaptainExplorations, getLieutenantExplorations } from '../services/infra/data.service.js'
 import { getRadarExploration } from '../services/infra/radar-exploration.service.js'
@@ -77,8 +79,10 @@ router.get('/articles/:id/explorations', async (req, res) => {
       }
     }
 
+    // Frontière relecture : chaque bloc passe le contrat de sa famille ; une
+    // ligne abîmée est écartée et signalée, les autres sont servies.
     res.json({
-      data: {
+      data: parseContract(articleExplorationsContract, {
         capitaineKeyword,
         radar: radar ?? null,
         captain: captainExplorations ?? [],
@@ -87,7 +91,7 @@ router.get('/articles/:id/explorations', async (req, res) => {
         local: { capitaine: metricsCapitaine?.localAnalysis ?? null, all: localAll },
         contentGap: { capitaine: metricsCapitaine?.contentGapAnalysis ?? null, all: contentGapAll },
         lexique: lexiqueList,
-      },
+      }, 'db'),
     })
   } catch (err) {
     log.error(`GET /articles/:id/explorations — ${(err as Error).message}`)

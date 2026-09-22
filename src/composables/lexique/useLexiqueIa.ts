@@ -1,6 +1,7 @@
 import { ref, computed, type Ref, type ComputedRef } from 'vue'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { log } from '@/utils/logger'
+import { lexiqueAnalysisContract } from '@shared/contracts/lexique.contract.js'
 import type { TfidfResult, LexiqueAnalysisResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 
@@ -134,6 +135,7 @@ export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
           }
         },
       },
+      { contract: lexiqueAnalysisContract },
     )
   }
 

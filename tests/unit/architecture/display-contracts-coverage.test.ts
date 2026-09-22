@@ -20,14 +20,14 @@ import { join, relative } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Familles dont le contrat est posé partout (client et serveur). */
-const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai'])
+const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations'])
 
 /**
  * Cliquet : ces nombres ne peuvent que baisser. (Lot 4 : le scanner voit aussi
  * les flux SSE — 3 appels de plus observés, d'où la remontée ponctuelle à 12.)
  */
-const BASELINE_CLIENT_UNCOVERED = 12
-const BASELINE_SERVER_UNCOVERED = 9
+const BASELINE_CLIENT_UNCOVERED = 8
+const BASELINE_SERVER_UNCOVERED = 7
 
 // ---------------------------------------------------------------------------
 // Frontière client : appels du front vers les réponses affichées au Moteur
@@ -55,8 +55,9 @@ const CLIENT_ENDPOINTS: ClientEndpoint[] = [
   { family: 'explorations', method: 'Get', path: new RegExp(`^/articles/${V}/explorations$`) },
   // Flux SSE : le résultat de l'événement `done` est affiché.
   { family: 'lieutenants-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/(propose-lieutenants|ai-hn-structure)$`) },
-  { family: 'lexique-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-lexique(-upfront)?$`) },
-  { family: 'ai-advice', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-panel$`) },
+  { family: 'lexique-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-lexique-upfront$`) },
+  // Conseils IA rédigés (texte Markdown en flux).
+  { family: 'ai-advice', method: 'Stream', path: new RegExp(`^/keywords/${V}/(ai-panel|ai-lexique)$`) },
 ]
 
 function walk(dir: string, out: string[] = []): string[] {
@@ -143,7 +144,7 @@ const SERVER_ROUTES: ServerRoute[] = [
   { family: 'lieutenants-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/propose-lieutenants' },
   { family: 'lieutenants-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-hn-structure' },
   { family: 'lexique-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-lexique-upfront' },
-  { family: 'lexique-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-lexique' },
+  { family: 'ai-advice', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-lexique' },
 ]
 
 function serverSites(): Site[] {

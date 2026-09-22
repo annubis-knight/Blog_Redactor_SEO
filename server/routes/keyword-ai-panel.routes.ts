@@ -4,6 +4,7 @@ import { runAiPanelStream } from '../services/external/ai-panel-runner.service.j
 import { parseAiJson } from '../utils/ai-json-parser.js'
 import { parseContract } from '../../shared/contracts/core.js'
 import { hnOutlineContract, proposeLieutenantsAiContract, type HnOutlineResult } from '../../shared/contracts/lieutenants.contract.js'
+import { lexiqueAnalysisContract } from '../../shared/contracts/lexique.contract.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
@@ -426,7 +427,9 @@ router.post('/keywords/:keyword/ai-lexique-upfront', async (req, res) => {
     userPrompt,
     maxTokens,
     logTag: 'ai-lexique-upfront',
-    parser: (fullContent) => parseAiJson<LexiqueAnalysisResult>(fullContent),
+    // Frontière serveur, avant sauvegarde : sans liste de recommandations la
+    // sortie est refusée ; une décision illisible est écartée (terme sans badge).
+    parser: (fullContent) => parseContract(lexiqueAnalysisContract, parseAiJson<unknown>(fullContent), 'server'),
     onSuccess: async (parsed) => {
       if (!parsed) return
       const recommendedCount = parsed.recommendations.filter(r => r.aiRecommended).length

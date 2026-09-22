@@ -4,19 +4,16 @@ import { useIntentStore } from '@/stores/keyword/intent.store'
 import { useLocalStore } from '@/stores/external/local.store'
 import { useKeywordDiscoveryStore } from '@/stores/keyword/keyword-discovery.store'
 import { log } from '@/utils/logger'
+import { articleExplorationsContract } from '@shared/contracts/article-explorations.contract.js'
+import type { KeywordRadarScanResult } from '@shared/types/intent.types.js'
 
-interface ExplorationsResponse {
-  intent?: { capitaine: unknown | null; all: unknown[] }
-  local?: { capitaine: { hasLocalPack?: boolean; listings?: unknown[]; reviewGap?: unknown; comparison?: unknown } | null; all: unknown[] }
-  contentGap?: { capitaine: { data?: unknown } | null; all: unknown[] }
-  radar?: { scanResult?: { globalScore: number; heatLevel: string } } | null
-}
 interface ExternalCacheResponse {
   autocomplete: unknown | null
 }
 
 export interface ArticleResultsOptions {
-  onRadarLoaded?: (scanResult: { globalScore: number; heatLevel: string }) => void
+  /** Thermomètre Radar relu en base : score et chaleur absents → `null` (« En attente — »). */
+  onRadarLoaded?: (scanResult: Pick<KeywordRadarScanResult, 'globalScore' | 'heatLevel'>) => void
 }
 
 export function useArticleResults(options: ArticleResultsOptions = {}) {
@@ -43,7 +40,7 @@ export function useArticleResults(options: ArticleResultsOptions = {}) {
     try {
 
       const [explorations, external] = await Promise.all([
-        apiGet<ExplorationsResponse>(`/articles/${articleId}/explorations`),
+        apiGet(`/articles/${articleId}/explorations`, { contract: articleExplorationsContract }),
         apiGet<ExternalCacheResponse>(`/articles/${articleId}/external-cache`).catch(() => ({ autocomplete: null } as ExternalCacheResponse)),
       ])
 

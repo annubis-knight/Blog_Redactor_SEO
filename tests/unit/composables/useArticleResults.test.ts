@@ -87,7 +87,7 @@ describe('useArticleResults', () => {
       await promise
       expect(isLoading.value).toBe(false)
 
-      expect(mockApiGet).toHaveBeenCalledWith('/articles/1/explorations')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/1/explorations', { contract: expect.objectContaining({ name: 'explorations' }) })
       expect(mockApiGet).toHaveBeenCalledWith('/articles/1/external-cache')
 
       expect(intentStore.intentData).toEqual(explorations.intent.capitaine)
@@ -102,7 +102,7 @@ describe('useArticleResults', () => {
       const { loadCachedResults } = useArticleResults()
       await loadCachedResults(42)
 
-      expect(mockApiGet).toHaveBeenCalledWith('/articles/42/explorations')
+      expect(mockApiGet).toHaveBeenCalledWith('/articles/42/explorations', { contract: expect.objectContaining({ name: 'explorations' }) })
       expect(mockApiGet).toHaveBeenCalledWith('/articles/42/external-cache')
     })
 

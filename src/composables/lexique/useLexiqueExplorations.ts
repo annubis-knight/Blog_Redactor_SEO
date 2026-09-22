@@ -1,7 +1,8 @@
 /**
  * AUTHORITY: PostgreSQL `lexique_explorations` (cache article-scoped des
  *            propositions TF-IDF + IA upfront pour chaque sourceKeyword exploré).
- * READS FROM: GET /articles/:id/explorations (hydrateFromDb / mergeFromDb).
+ * READS FROM: GET /articles/:id/explorations (hydrateFromDb / mergeFromDb),
+ *             sous contrat `explorations` (NFR-INT-DISPLAY-CONTRACTS).
  * WRITES TO: rien — famille LECTURE stricte (FR-LEX-LECTURE-VS-VERROUILLAGE).
  *            Aucun appel apiPut/apiPost/apiDelete sur /articles/:id/keywords.
  *            Aucun import de useArticleKeywordsStore (sauf typage).
@@ -14,17 +15,10 @@ import { ref, type Ref } from 'vue'
 import { apiGet } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
-import type { TfidfResult, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
+import { articleExplorationsContract } from '@shared/contracts/article-explorations.contract.js'
+import type { TfidfResult, LexiqueExploration, LexiqueTermRecommendation } from '@shared/types/serp-analysis.types.js'
 
-export interface LexiqueExplorationEntry {
-  articleId: number
-  sourceKeyword: string
-  tfidfTerms: TfidfResult | null
-  aiRecommendations: LexiqueTermRecommendation[]
-  aiMissingTerms: string[]
-  aiSummary: string | null
-  exploredAt: string
-}
+export type LexiqueExplorationEntry = LexiqueExploration
 
 export interface UseLexiqueExplorationsInput {
   articleId: Ref<number | undefined>
@@ -60,10 +54,8 @@ export function useLexiqueExplorations(
     const id = input.articleId.value
     if (!id) return
     try {
-      const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(
-        `/articles/${id}/explorations`,
-      )
-      pastExplorations.value = payload.lexique ?? []
+      const payload = await apiGet(`/articles/${id}/explorations`, { contract: articleExplorationsContract })
+      pastExplorations.value = payload.lexique
       log.debug('[useLexiqueExplorations] DB hydration', { count: pastExplorations.value.length })
 
       const active = activeSourceKeyword.value || input.captainKeyword.value || ''
@@ -94,10 +86,8 @@ export function useLexiqueExplorations(
     const id = input.articleId.value
     if (!id) return
     try {
-      const payload = await apiGet<{ lexique: LexiqueExplorationEntry[] }>(
-        `/articles/${id}/explorations`,
-      )
-      const incoming = payload.lexique ?? []
+      const payload = await apiGet(`/articles/${id}/explorations`, { contract: articleExplorationsContract })
+      const incoming = payload.lexique
       const seen = new Set(
         pastExplorations.value.map(e => e.sourceKeyword.trim().toLowerCase()),
       )

@@ -467,6 +467,7 @@ describe('LexiquePanel', () => {
         expect.objectContaining({
           onDone: expect.any(Function),
         }),
+        { contract: expect.objectContaining({ name: 'lexique-ai' }) },
       )
     })
 
@@ -724,6 +725,7 @@ describe('LexiquePanel', () => {
         expect.stringContaining('/ai-lexique-upfront'),
         expect.any(Object),
         expect.any(Object),
+        { contract: expect.objectContaining({ name: 'lexique-ai' }) },
       )
     })
   })
