@@ -23,6 +23,22 @@ flowchart TD
 **Objectif** : partir d'une idée floue et obtenir un article complet.
 **Durée** : le temps d'un café, plus pour un Pilier. **Coût** : environ 0,35 $.
 
+### La grille du run, en un coup d'œil
+
+Les 8 temps de chaque atelier, tels que le robot les vit
+(la grille est expliquée dans [GUIDE-01-UTILISATION.md](GUIDE-01-UTILISATION.md) § 2) :
+
+| Temps | Cerveau | Moteur | Rédaction |
+|---|---|---|---|
+| 1 · Déclencheur | ta phrase | ton Entrée à la pause 1 | ton Entrée à la pause 2 |
+| 2 · Mémoire | aucune | `keyword_metrics` (1 à 7 jours), top 10 déjà analysés (7 jours) | aucune : tout vient du Moteur |
+| 3 · Service(s) | 🧠 ×2 (brief, cocon) + 🏠 présélection | 🧠 idées · 📊 chiffres, questions, top 10 · 🌐 autocomplétion, 10 pages · 🏠 sens, TF-IDF | 🧠 sommaire, sections, metas · 🔎 recherches web |
+| 4 · Réponse | d'un bloc | d'un bloc | en flux (sommaire, sections), d'un bloc (metas) |
+| 5 · Mise en forme | cocon, niveau, justification | cartes et scores ; Lieutenants et Lexique choisis par calcul | chaque section nettoyée ; metas coupées à 60 et 160 caractères |
+| 6 · Sauvegarde | **rien avant ta validation** | au fil de l'eau : mémoire d'achat, puis les mots-clés retenus | sommaire, article, metas, liens, puis le fichier HTML |
+| 7 · Affichage | le terminal, à la pause 1 | le terminal, à la pause 2 | la progression, puis la facture |
+| 8 · Décision | Entrée, `e`, `r` ou `a` | Entrée, `r` ou `a` | ta relecture (étape 7) |
+
 ### Étape 1 — Allumer le serveur
 
 ```bash
@@ -53,6 +69,10 @@ Contexte business (optionnel) › PropulSite, création de sites pour TPE, Toulo
 Écris le sujet **avec tes mots**. C'est sur cette phrase, et elle seule, que le
 robot calcule dans quel cocon ranger l'article.
 
+> **En coulisses** (colonne Cerveau de la grille) : **2 appels d'IA, 0 appel
+> DataForSEO, rien d'écrit en base.** Le schéma complet d'un run, service par
+> service, est dans [GUIDE-04-OUTILS.md](GUIDE-04-OUTILS.md) § 3.
+
 ### Étape 4 — La pause 1 : emplacement et brief
 
 Tu vois l'arbre, le cocon proposé, les alternatives avec leur pourcentage de
@@ -66,6 +86,10 @@ proximité, puis le brief (titre, mot-clé, douleur, cible, angle, promesse, CTA
 - [ ] Pas d'alerte « hors périmètre » ?
 
 Tape `[Entrée]` pour valider. **C'est seulement ici que l'article est créé en base.**
+
+> **En coulisses** (colonne Moteur de la grille) : **c'est ici que part presque tout
+> l'argent de DataForSEO.** Chaque candidat Capitaine coûte 3 appels, sauf s'il a été
+> mesuré il y a moins de 7 jours, ou si tu as imposé le Capitaine avec `--capitaine`.
 
 ### Étape 5 — La pause 2 : les mots-clés
 
@@ -81,6 +105,10 @@ ressemblance avec d'autres articles.
 
 En cas de doute sur le Capitaine, `r` relance le Moteur. C'est le moment le plus
 important du run : un mauvais Capitaine, et l'article entier vise à côté.
+
+> **En coulisses** (colonne Rédaction de la grille) : **une section à la fois, avec
+> 15 s de pause entre deux.** Pour un pilier de 20 à 25 sections, compte souvent plus
+> d'une demi-heure. DataForSEO ne travaille plus.
 
 ### Étape 6 — Lire le résultat
 
@@ -119,7 +147,7 @@ Quand tu construis une famille d'articles, tu ne veux pas que le robot choisisse
 à ta place.
 
 ```bash
-npm run auto:article -- --mode=real --cocoon="Création de site web pour entreprises" --level=pilier
+npm run auto:article -- --mode=real --cocoon="Création de site internet à Toulouse" --level=intermediaire
 ```
 
 - Le nom du cocon doit être **exactement** celui de l'arbre (guillemets obligatoires
@@ -154,6 +182,35 @@ npm run auto:article -- --mode=real --resume=1012 --capitaine="création de site
 Le robot garde la stratégie (Cerveau), mais **refait le Moteur** sur le nouveau
 mot-clé (pages concurrentes, Lieutenants, Lexique) **et la Rédaction**, puisque le
 texte avait été écrit pour l'ancien. Coût : environ 0,45 $ pour un pilier.
+
+Ce qui est racheté, et ce qui vient de la mémoire :
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant R as 🤖 Robot
+  participant S as ⚙️ Serveur
+  participant DB as 💾 Base
+  participant AI as 🧠 Claude
+  participant D as 📊 DataForSEO
+  R->>S: reprend l'article 1012
+  S->>DB: stratégie présente ?
+  DB-->>R: oui : Cerveau sauté, 0 $
+  R->>S: Radar
+  S->>AI: nouvelles idées de mots-clés (quelques centimes)
+  S->>D: chiffres et intention du lot : toujours rachetés
+  S->>DB: questions et autocomplétion vues aujourd'hui ?
+  Note over S,DB: oui : 0 $ · non : rachetées
+  Note over R: Capitaine imposé : aucun scan, 0 $
+  R->>S: analyse du top 10 du nouveau Capitaine
+  S->>DB: analysé il y a moins de 7 jours ?
+  alt non
+    S->>D: 2 SERP, puis lecture des 10 pages (gratuite)
+  end
+  R->>S: Rédaction complète
+  S->>AI: sommaire, toutes les sections, metas
+  Note over R,AI: le gros de la facture : tout le texte est réécrit
+```
 
 Pense ensuite à renommer l'article pour qu'il porte le mot-clé (titre et adresse) :
 `npm run verify` te le rappellera sinon (`seo-capitaine-not-in-title`).
@@ -206,6 +263,16 @@ encore les reprendre (il part toujours d'une idée neuve, ce qui créerait un do
 C'est plus long que le robot, mais tu gardes le titre et l'adresse prévus au plan —
 donc pas de doublon, et les liens internes déjà posés vers cet article continuent
 de fonctionner.
+
+> **À savoir avant de commencer** :
+>
+> - Dans l'application, **la stratégie d'article n'est pas remplie** (l'écran n'est
+>   branché à aucun bouton). Écris tes consignes dans le **micro-contexte** de l'étape
+>   brief : c'est ce que la Rédaction lira.
+> - L'application appelle **plus de services que le robot** : trois récoltes en
+>   Discovery, le jugement des questions et les conseils de l'IA à chaque onglet. Les
+>   schémas « En coulisses » de [GUIDE-01-UTILISATION.md](GUIDE-01-UTILISATION.md) § 4
+>   montrent chaque appel.
 
 ---
 

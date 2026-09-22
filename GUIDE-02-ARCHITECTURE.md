@@ -16,7 +16,8 @@ flowchart TD
   CLI --> API
   API --> SVC["server/services/<br/>les ateliers<br/>(le vrai travail)"]
   SVC --> DB[("PostgreSQL<br/>la mémoire")]
-  SVC --> EXT["APIs externes<br/>IA + DataForSEO"]
+  SVC --> EXT["Services externes<br/>Claude · DataForSEO · Google"]
+  SVC --> LOC["Calculs locaux<br/>e5-small · TF-IDF"]
   SHARED["shared/<br/>le langage commun"] -.-> FRONT
   SHARED -.-> API
   SHARED -.-> CLI
@@ -40,29 +41,61 @@ sans rien dupliquer : il est juste un troisième client du comptoir.
 
 ## 2. Le chemin d'une action, de bout en bout
 
-Exemple : tu cliques sur « Valider le Capitaine ».
+Exemple : dans l'onglet Capitaine, tu cliques sur « création de site web Toulouse ».
+Chaque colonne est un étage de la maison, de l'écran jusqu'à Internet.
 
 ```mermaid
 sequenceDiagram
-  participant V as Composant Vue<br/>CaptainPanel
-  participant S as Store Pinia<br/>article-keywords
-  participant W as Wrapper API<br/>api.service.ts
-  participant R as Route Express
-  participant SV as Service
-  participant DB as PostgreSQL
-
-  V->>S: action validerCapitaine()
-  S->>W: apiPost /articles/12/keywords
-  W->>R: POST /api/articles/12/keywords
-  R->>R: vérifie les données (Zod)
-  R->>SV: appelle le service
-  SV->>DB: écrit dans article_keywords
-  DB-->>SV: ok
-  SV-->>R: résultat
-  R-->>W: réponse enveloppée dans data
-  W-->>S: data déplié
-  S-->>V: l'écran se met à jour
+  autonumber
+  participant V as 🖥️ CaptainPanel.vue<br/>l'écran
+  participant C as useCapitaineScan.ts<br/>le composable
+  participant W as api.service.ts<br/>le wrapper
+  participant R as keyword-scan.routes.ts<br/>la route
+  participant DB as 💾 PostgreSQL
+  participant X as 📊 DataForSEO<br/>🌐 Google
+  V->>C: scanKeyword(« création de site web Toulouse »)
+  C->>W: apiPost('/keywords/…/scan')
+  W->>R: POST /api/keywords/…/scan (proxy Vite 5400 vers 3400)
+  R->>R: lit le mot-clé dans l'adresse
+  R->>DB: keyword_metrics : mesuré il y a moins de 7 jours ?
+  alt déjà connu
+    DB-->>R: chiffres gardés, 0 $
+  else inconnu
+    R->>X: 4 appels en même temps (DataForSEO ×3, Google ×1)
+    X-->>R: volume, difficulté, questions, intention
+    R->>DB: range dans keyword_metrics
+  end
+  R->>DB: lit la carte du Radar, pour la pertinence
+  R->>R: verdict et scores (shared/scoring-kpi.ts)
+  R->>DB: écrit captain_explorations
+  R-->>W: réponse emballée dans data
+  W-->>C: data déballé
+  C-->>V: la carte s'affiche : 480 recherches, difficulté 83
 ```
+
+**Les 8 temps de la grille** ([GUIDE-01-UTILISATION.md](GUIDE-01-UTILISATION.md) § 2),
+et où les chercher dans le code :
+
+| Temps | Flèches | Qui s'en occupe | Où regarder |
+|---|---|---|---|
+| 1 · Déclencheur | 1 à 3 | l'écran, puis le composable, puis le wrapper | `src/components/moteur/CaptainPanel.vue`, `src/composables/keyword/useCapitaineScan.ts` |
+| 2 · Mémoire | 5 et 6 | la route | `server/routes/keyword-scan.routes.ts` (lecture de `keyword_metrics`) |
+| 3 · Service(s) | 7 | la route, via le client DataForSEO | `server/services/external/dataforseo/` |
+| 4 · Réponse | 8 | DataForSEO et Google | — |
+| 5 · Mise en forme | 10 et 11, puis 13 et 14 | la route (verdict, scores), puis le wrapper (déballe `data`) | `shared/scoring-kpi.ts`, `src/services/api.service.ts` |
+| 6 · Sauvegarde | 9 et 12 | la route, **avant** de répondre | `keyword_metrics` (mémoire d'achat), `captain_explorations` (résultat) |
+| 7 · Affichage | 15 | l'écran | `CaptainPanel.vue` |
+| 8 · Décision | hors du schéma | « Verrouiller » lance un **second trajet** : `PUT /api/articles/:id/keywords` | `article_keywords` + case `capitaine_locked` |
+
+Retiens ceci : quand un chiffre est faux à l'écran, remonte les temps à l'envers.
+L'affichage (7) montre-t-il ce que la route a renvoyé (5) ? La route a-t-elle lu une
+vieille mémoire (2) ou un vrai appel (3) ?
+
+> **Une exception à la règle, visible ici** : cette route fait elle-même le travail
+> (cache, appels, calculs) au lieu de le confier à un service de `server/services/`,
+> et elle ne passe pas par un contrôle Zod.
+> Ça marche, mais c'est le seul endroit où chercher cette logique : ne la cherche pas
+> dans les services.
 
 **Les quatre règles que suit ce chemin :**
 
@@ -192,7 +225,7 @@ lettres de consignes, avec des trous `{{...}}` remplis automatiquement.
 
 | Fichier | Sert à |
 |---|---|
-| `system-propulsite.md` | Le socle : identité, ton, règles SEO, formulations interdites. Injecté partout. |
+| `system-propulsite.md` | Le socle : identité, ton, règles SEO, formulations interdites. Sert à écrire les sections et les metas (le sommaire et le Cerveau du robot ont leurs propres consignes). |
 | `generate-outline.md` | Fabriquer le sommaire. |
 | `generate-article-section.md` | Écrire une section. |
 | `generate-meta.md` | Écrire le titre et la description Google. |
@@ -200,6 +233,11 @@ lettres de consignes, avec des trous `{{...}}` remplis automatiquement.
 | `strategy-*.md` | Aider à remplir les étapes de stratégie. |
 | `auto-intake.md` | Transformer ton idée floue en brief (utilisé par le robot). |
 | `auto-placement.md` | Décider dans quel cocon ranger un article. |
+| `intent-keywords.md`, `captain-paa-judge.md` | Proposer des idées de mots-clés, juger les questions de Google (le « trieur » Haiku). |
+| `propose-lieutenants.md`, `lexique-analysis-upfront.md`, `capitaine-ai-panel.md` | Les conseils de l'IA dans les onglets du Moteur (application). |
+
+Quel prompt sert à quelle étape, et avec quel modèle : voir
+[GUIDE-04-OUTILS.md](GUIDE-04-OUTILS.md) § 5.2.
 
 > **Règle absolue** : on ne met jamais de contexte en dur dans un prompt.
 > Le contexte arrive par les variables `{{...}}`.
@@ -223,33 +261,36 @@ erDiagram
 
 ### Les tables à connaître
 
-| Table | Ce qu'elle garde | Lignes (19/09/2026) |
+| Table | Ce qu'elle garde | Lignes (21/09/2026) |
 |---|---|---|
 | `silos` | Les rayons du blog. | 4 |
 | `cocoons` | Les étagères, rattachées à un silo. | 8 |
-| `articles` | La fiche d'identité de chaque article : titre, niveau, statut, adresse, cases cochées, Capitaine verrouillé, douleur. | 67 |
-| `article_content` | Le texte et le sommaire. | 12 |
-| `article_keywords` | Capitaine, Lieutenants, Lexique, structure des titres. | 14 |
-| `article_strategies` | Les 6 étapes du Cerveau, en JSON. | 13 |
+| `articles` | La fiche d'identité de chaque article : titre, niveau, statut, adresse, cases cochées, Capitaine verrouillé, douleur. | 13 (le cocon n°1) |
+| `article_content` | Le texte et le sommaire. | 1 (le pilier) |
+| `article_keywords` | Capitaine, Lieutenants, Lexique, structure des titres. | 1 |
+| `article_strategies` | Les 6 étapes du Cerveau, en JSON. | 1 |
 | `cocoon_strategies` | La stratégie du cocon **et le plan d'articles** proposé. | 6 |
-| `internal_links` | Le maillage : qui pointe vers qui, avec quelle ancre. | 36 |
+| `internal_links` | Le maillage : qui pointe vers qui, avec quelle ancre. | 0 (aucune cible écrite) |
 | `theme_config` | La carte d'identité de PropulSite. | 1 |
 
 ### Les tables « mémoire d'achat » (ce qui t'évite de repayer)
 
-| Table | Ce qu'elle garde | Lignes |
-|---|---|---|
-| `keyword_metrics` | **Le cache permanent** : volume, difficulté, CPC de chaque mot-clé déjà payé. | 3 184 |
-| `keyword_autocomplete` | Les suggestions de complétion Google. | 8 570 |
-| `keyword_paa_questions` | Les questions « Autres questions posées ». | 304 |
-| `keyword_serp_results` / `keyword_serp_scrapes` | Les pages concurrentes et leur contenu. | 181 / 181 |
-| `external_api_cache` | Le cache à durée limitée pour tout le reste. | 9 |
+La table rase du 21/09 n'a touché qu'aux articles : toute cette mémoire est restée.
+
+| Table | Ce qu'elle garde | Durée de validité | Lignes |
+|---|---|---|---|
+| `keyword_metrics` | Volume, difficulté, CPC, questions PAA et autocomplétion de chaque mot-clé déjà vu. | 7 jours (1 jour pour questions et autocomplétion) | 3 258, dont 169 avec leurs chiffres complets |
+| `keyword_paa_questions` | Les questions « Autres questions posées » d'une SERP analysée. | 7 jours | 306 |
+| `keyword_serp_results` / `keyword_serp_scrapes` | Le top 10 d'un mot-clé et le texte de ces pages. | 7 jours | 200 / 200 |
+| `external_api_cache` | Le cache à durée limitée pour le reste (suggestions, récoltes Discovery, brief…). | 1 h à 7 jours | 9 |
+| `keyword_autocomplete` | Ancienne table de suggestions, **plus alimentée** (l'autocomplétion vit désormais dans `keyword_metrics`). | — | 8 570 |
 
 ### Les tables « journal de bord »
 
-`captain_explorations` (178), `paa_explorations` (681), `lexique_explorations` (13),
-`radar_explorations` (1), `lieutenant_explorations` (0) : elles gardent l'historique
-des essais, pour pouvoir revenir en arrière et comprendre une décision.
+`captain_explorations` (15), `paa_explorations` (58), `lexique_explorations` (2),
+`radar_explorations` (0), `lieutenant_explorations` (0) : elles gardent l'historique
+des essais, pour pouvoir revenir en arrière et comprendre une décision. Le robot
+n'écrit pas dans `radar_explorations` : seul l'onglet Radar de l'application le fait.
 
 > ⚠️ `server/db/schema.sql` est une **photo de lecture** régénérée par
 > `npm run db:snapshot`. Ce n'est pas un script d'installation : on ne peut pas le
