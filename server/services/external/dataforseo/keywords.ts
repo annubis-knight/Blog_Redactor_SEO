@@ -51,9 +51,13 @@ export async function fetchRelatedKeywords(
     .filter((rk) => rk.keyword != null)
     .map((rk) => ({
       keyword: rk.keyword,
+      // RelatedKeyword (brief Rédaction, audit) garde des KPI non nullables : hors
+      // périmètre des contrats du Moteur, à migrer avec FR-INFRA-KPI-NULLABLE côté Rédaction.
+      /* eslint-disable no-restricted-syntax -- voir ci-dessus */
       searchVolume: rk.keyword_info?.search_volume ?? 0,
       competition: rk.keyword_info?.competition ?? 0,
       cpc: rk.keyword_info?.cpc ?? 0,
+      /* eslint-enable no-restricted-syntax */
     }))
   log.debug(`fetchRelatedKeywords done`, { keyword, relatedCount: related.length })
   return related
@@ -93,9 +97,11 @@ export async function fetchKeywordSuggestions(
     .filter((item) => item.keyword != null)
     .map((item) => ({
       keyword: item.keyword,
+      /* eslint-disable no-restricted-syntax -- RelatedKeyword non nullable, cf. fetchRelatedKeywords */
       searchVolume: item.keyword_info?.search_volume ?? 0,
       competition: item.keyword_info?.competition ?? 0,
       cpc: item.keyword_info?.cpc ?? 0,
+      /* eslint-enable no-restricted-syntax */
     }))
   log.debug(`fetchKeywordSuggestions done`, { keyword, suggestionsCount: suggestions.length })
   return suggestions

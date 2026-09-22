@@ -82,6 +82,24 @@ export default defineConfigWithVueTs(
             'Fallback silencieux interdit sur un score ou un KPI marché (CLAUDE.md §2.0). ' +
             'Utiliser compareScores/averageScores de shared/score/ pour les Score, ou laisser null + afficher "—" pour les KPI.',
         },
+        {
+          // Contrats d'affichage (NFR-INT-DISPLAY-CONTRACTS) — mêmes formes avec
+          // chaînage optionnel, que l'analyseur emballe dans un ChainExpression :
+          // `card.kpis?.searchVolume ?? 0` (dernière propriété)…
+          selector:
+            "LogicalExpression[operator='??'][left.type='ChainExpression'][left.expression.property.name=/[Ss]core|[Vv]olume|[Dd]ifficulty|[Cc]pc|[Cc]ompetition|[Dd]ensity/][right.type='Literal'][right.value=0]",
+          message:
+            'Fallback silencieux interdit sur un score ou un KPI marché (CLAUDE.md §2.0, NFR-INT-DISPLAY-CONTRACTS). ' +
+            'Laisser null + afficher "—", ou passer par un contrat d\'affichage (shared/contracts/).',
+        },
+        {
+          // …et `kpiMap.volume?.rawValue ?? 0` (pénultième propriété = le KPI).
+          selector:
+            "LogicalExpression[operator='??'][left.type='ChainExpression'][left.expression.object.property.name=/[Ss]core|[Vv]olume|[Dd]ifficulty|[Cc]pc|[Cc]ompetition|[Dd]ensity/][right.type='Literal'][right.value=0]",
+          message:
+            'Fallback silencieux interdit sur un score ou un KPI marché (CLAUDE.md §2.0, NFR-INT-DISPLAY-CONTRACTS). ' +
+            'Laisser null + afficher "—", ou passer par un contrat d\'affichage (shared/contracts/).',
+        },
       ],
     },
   },

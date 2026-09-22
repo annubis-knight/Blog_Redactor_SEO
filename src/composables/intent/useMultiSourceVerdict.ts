@@ -156,6 +156,9 @@ export function detectSpecialCase(
   dataforseo: { searchVolume: number | null; relatedCount: number } | null,
   community: CommunitySignal | null,
 ): PainVerdictCategory | null {
+  // Décision métier documentée (tests kpi-nullable-composables) : un volume
+  // absent est toléré comme « nul » pour les verdicts latente / émergente.
+  // eslint-disable-next-line no-restricted-syntax -- cf. ci-dessus
   const volume = dataforseo?.searchVolume ?? 0
   const discCount = community?.discussionsCount ?? 0
   const relatedCount = dataforseo?.relatedCount ?? 0
