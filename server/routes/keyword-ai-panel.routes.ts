@@ -5,6 +5,7 @@ import { parseAiJson } from '../utils/ai-json-parser.js'
 import { parseContract } from '../../shared/contracts/core.js'
 import { hnOutlineContract, proposeLieutenantsAiContract, type HnOutlineResult } from '../../shared/contracts/lieutenants.contract.js'
 import { lexiqueAnalysisContract } from '../../shared/contracts/lexique.contract.js'
+import { aiAdviceContract } from '../../shared/contracts/ai-advice.contract.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
@@ -71,6 +72,8 @@ router.post('/keywords/:keyword/ai-panel', async (req, res) => {
     systemPrompt,
     userPrompt: `Analyse le mot-clé "${keyword}" pour un article de niveau ${level}.`,
     logTag: 'ai-panel',
+    // Frontière serveur : un conseil vide part en événement `error` (« Régénérer »).
+    parser: (fullContent) => parseContract(aiAdviceContract, fullContent, 'server'),
     buildDonePayload: (_parsed, usage) => ({ metadata: { keyword, level }, usage }),
   })
 })
@@ -368,6 +371,7 @@ router.post('/keywords/:keyword/ai-lexique', async (req, res) => {
     systemPrompt,
     userPrompt,
     logTag: 'ai-lexique',
+    parser: (fullContent) => parseContract(aiAdviceContract, fullContent, 'server'),
     buildDonePayload: (_parsed, usage) => ({ metadata: { keyword, level }, usage }),
   })
 })

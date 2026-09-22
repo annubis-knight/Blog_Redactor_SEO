@@ -528,6 +528,8 @@ describe('CaptainPanel', () => {
           kpis: expect.any(Array),
           verdict: expect.objectContaining({ level: 'GO' }),
         }),
+        undefined,
+        { contract: expect.objectContaining({ name: 'ai-advice-done' }) },
       )
     })
 

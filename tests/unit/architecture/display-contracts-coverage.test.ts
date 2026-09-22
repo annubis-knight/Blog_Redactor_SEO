@@ -20,14 +20,14 @@ import { join, relative } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Familles dont le contrat est posé partout (client et serveur). */
-const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations', 'discovery', 'discovery-cache'])
+const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations', 'discovery', 'discovery-cache', 'ai-advice'])
 
 /**
- * Cliquet : ces nombres ne peuvent que baisser. (Lot 4 : le scanner voit aussi
- * les flux SSE — 3 appels de plus observés, d'où la remontée ponctuelle à 12.)
+ * Cliquet : ces nombres ne peuvent que baisser. Les 7 lots sont livrés : à 0,
+ * tout nouvel appel ou route du Moteur listé ici arrive avec son contrat.
  */
-const BASELINE_CLIENT_UNCOVERED = 2
-const BASELINE_SERVER_UNCOVERED = 2
+const BASELINE_CLIENT_UNCOVERED = 0
+const BASELINE_SERVER_UNCOVERED = 0
 
 // ---------------------------------------------------------------------------
 // Frontière client : appels du front vers les réponses affichées au Moteur

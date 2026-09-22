@@ -30,6 +30,7 @@ import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
+import { adviceMarkdown, aiAdviceDoneContract } from '@shared/contracts/ai-advice.contract.js'
 import { useNotify } from '@/composables/ui/useNotify'
 import { log } from '@/utils/logger'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
@@ -355,7 +356,7 @@ const { chunks: aiChunks, isStreaming: aiIsStreaming, error: aiError, startStrea
 
 const parsedMarkdown = computed(() => {
   if (!aiChunks.value) return ''
-  return marked.parse(aiChunks.value) as string
+  return marked.parse(adviceMarkdown(aiChunks.value)) as string
 })
 
 watch(
@@ -376,6 +377,8 @@ watch(
         kpis: res.kpis.map((k: KpiResult) => ({ name: k.name, color: k.color, label: k.label })),
         verdict: { level: res.verdict.level, greenCount: res.verdict.greenCount, totalKpis: res.verdict.totalKpis },
       },
+      undefined,
+      { contract: aiAdviceDoneContract },
     )
   },
 )
@@ -408,6 +411,8 @@ function handleManualAiRegenerate() {
       kpis: currentResult.value!.kpis.map((k: KpiResult) => ({ name: k.name, color: k.color, label: k.label })),
       verdict: { level: currentResult.value!.verdict.level, greenCount: currentResult.value!.verdict.greenCount, totalKpis: currentResult.value!.verdict.totalKpis },
     },
+    undefined,
+    { contract: aiAdviceDoneContract },
   )
 }
 
@@ -653,7 +658,7 @@ function launchAiStream(keyword: string, validation: ScanResponse, force = false
       carouselAiErrors.value.set(keyword, msg)
       touchAiErrors()
     },
-  }, { signal: controller.signal })
+  }, { signal: controller.signal, contract: aiAdviceDoneContract })
     .then((out) => {
       if (out.aborted) return
       if (out.errorMessage) {
@@ -693,7 +698,8 @@ const selectedParsedMarkdown = computed(() => {
   const entry = selectedEntry.value
   if (!entry) return ''
   const text = carouselAiCache.value.get(entry.card.keyword)
-  if (text) return marked.parse(text) as string
+  // Même mise en forme qu'au premier chargement, conseil relu en base compris.
+  if (text) return marked.parse(adviceMarkdown(text)) as string
   return ''
 })
 
