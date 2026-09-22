@@ -58,7 +58,7 @@ export function scoreKpi(
   config: ThresholdConfig,
 ): KpiResult {
   if (rawValue === null) {
-    return { name, rawValue: 0, color: 'neutral', label: '—', thresholds: { green: 0 } }
+    return { name, rawValue: null, color: 'neutral', label: '—', thresholds: { green: 0 } }
   }
   switch (name) {
     case 'volume':       return scoreVolume(rawValue, config)
@@ -99,13 +99,16 @@ export function scoreKpi(
  *  - `ORANGE`: signaux mixtes (fallback)
  */
 export function computeVerdict(kpis: KpiResult[]): ScanVerdict {
-  const volume = kpis.find(k => k.name === 'volume')
-  const kd = kpis.find(k => k.name === 'kd')
-  const paa = kpis.find(k => k.name === 'paa')
-  const autocomplete = kpis.find(k => k.name === 'autocomplete')
+  // Un KPI dont la donnée manque (`rawValue: null`) est traité comme absent,
+  // jamais comme un zéro (FR-INFRA-KPI-SCORING-NULLSAFE).
+  const present = (name: string) => kpis.find(k => k.name === name && k.rawValue !== null)
+  const volume = present('volume')
+  const kd = present('kd')
+  const paa = present('paa')
+  const autocomplete = present('autocomplete')
 
-  // GRAY : données insuffisantes — aucun des 3 KPI principaux n'est présent dans les résultats.
-  // Distinct du NO-GO (où les KPI existent mais sont à zéro).
+  // GRAY : données insuffisantes — aucun des 3 KPI principaux n'a de donnée.
+  // Distinct du NO-GO (où les KPI ont une donnée, et elle vaut zéro).
   if (!volume && !paa && !autocomplete) {
     return {
       level: 'GRAY',

@@ -72,7 +72,7 @@ describe('useCapitaineScan', () => {
     setupRoutedMock([makeMockResult('seo')])
     const { result, scanKeyword } = useCapitaineScan()
     await scanKeyword('seo', 'pilier')
-    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo/scan', { level: 'pilier' })
+    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo/scan', { level: 'pilier' }, { contract: expect.objectContaining({ name: 'captain-scan' }) })
     expect(result.value?.keyword).toBe('seo')
   })
 
@@ -128,7 +128,7 @@ describe('useCapitaineScan', () => {
     setupRoutedMock([makeMockResult('mot clé')])
     const { scanKeyword } = useCapitaineScan()
     await scanKeyword('mot clé', 'pilier')
-    expect(mockApiPost).toHaveBeenCalledWith(`/keywords/${encodeURIComponent('mot clé')}/scan`, { level: 'pilier' })
+    expect(mockApiPost).toHaveBeenCalledWith(`/keywords/${encodeURIComponent('mot clé')}/scan`, { level: 'pilier' }, { contract: expect.objectContaining({ name: 'captain-scan' }) })
   })
 
   it('sets error on API failure', async () => {

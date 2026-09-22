@@ -193,3 +193,32 @@ describe('api.service — apiStream (FR-INFRA-API-STREAM)', () => {
     expect(out.aborted).toBe(false)
   })
 })
+
+// ---------------------------------------------------------------------------
+// Frontière client des contrats d'affichage (NFR-INT-DISPLAY-CONTRACTS)
+// ---------------------------------------------------------------------------
+describe('api.service — option contract', () => {
+  it('sans contrat, la réponse est rendue telle quelle (comportement inchangé)', async () => {
+    const payload = { keyword: 'seo', rawValue: 'abc' }
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: payload }) })
+    expect(await apiPost('/x', {})).toEqual(payload)
+  })
+
+  it('avec contrat, la réponse est mise en forme (valeur illisible → absente)', async () => {
+    const { z } = await import('zod')
+    const { defineContract, kpiValue } = await import('../../../shared/contracts/core.js')
+    const contract = defineContract('test-api', z.looseObject({ keyword: z.string().min(1), rawValue: kpiValue('rawValue') }))
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: { keyword: 'seo', rawValue: 'abc' } }) })
+    expect(await apiPost('/x', {}, { contract })).toEqual({ keyword: 'seo', rawValue: null })
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: { keyword: 'seo', rawValue: '12' } }) })
+    expect(await apiGet('/x', { contract })).toEqual({ keyword: 'seo', rawValue: 12 })
+  })
+
+  it('une réponse inutilisable rejette la promesse (chemin d’erreur existant de l’écran)', async () => {
+    const { z } = await import('zod')
+    const { defineContract, ContractViolationError } = await import('../../../shared/contracts/core.js')
+    const contract = defineContract('test-api', z.looseObject({ keyword: z.string().min(1) }))
+    mockFetch.mockResolvedValue({ ok: true, json: () => Promise.resolve({ data: { keyword: '' } }) })
+    await expect(apiPost('/x', {}, { contract })).rejects.toBeInstanceOf(ContractViolationError)
+  })
+})

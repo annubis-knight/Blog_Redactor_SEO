@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
+import { formatScore } from '@shared/score/index.js'
 
 /**
  * Small circular score ring. Used on the main radar card (score 0-100) and,
@@ -7,7 +8,8 @@ import { computed } from 'vue'
  * can compare root candidates at a glance.
  */
 const props = withDefaults(defineProps<{
-  value: number
+  /** Score 0-100. `null` = score absent : anneau vide et « — », jamais 0. */
+  value: number | null
   size?: number
   strokeWidth?: number
   /** When true, render the numeric value inside the ring */
@@ -21,17 +23,15 @@ const props = withDefaults(defineProps<{
 const radius = computed(() => (props.size - props.strokeWidth * 2) / 2)
 const circumference = computed(() => 2 * Math.PI * radius.value)
 const center = computed(() => props.size / 2)
+const ratio = computed(() => (props.value === null ? 0 : Math.max(0, Math.min(1, props.value / 100))))
 
 const color = computed(() => {
-  const t = Math.max(0, Math.min(1, props.value / 100))
-  const hue = Math.round(t * 120)
+  if (props.value === null) return 'var(--color-text-muted, #94a3b8)'
+  const hue = Math.round(ratio.value * 120)
   return `hsl(${hue}, 70%, 45%)`
 })
 
-const dashoffset = computed(() => {
-  const t = Math.max(0, Math.min(1, props.value / 100))
-  return circumference.value * (1 - t)
-})
+const dashoffset = computed(() => circumference.value * (1 - ratio.value))
 </script>
 
 <template>
@@ -52,7 +52,7 @@ const dashoffset = computed(() => {
         :transform="`rotate(-90 ${center} ${center})`"
       />
     </svg>
-    <span v-if="showValue" class="score-ring__value" :style="{ color }">{{ Math.round(value) }}</span>
+    <span v-if="showValue" class="score-ring__value" :style="{ color }">{{ formatScore(value) }}</span>
   </div>
 </template>
 

@@ -3,6 +3,9 @@ import { log } from '../utils/logger.js'
 import { respondWithError } from '../utils/api-error.js'
 import { getCached, setCached, slugify } from '../db/cache-helpers.js'
 import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateKeywordStatus, loadKeywordsDb, getArticleKeywords, saveArticleKeywords, saveCaptainExploration, updateCaptainExplorationAiPanel, getCaptainExplorations, saveLieutenantExplorations, getLieutenantExplorations } from '../services/infra/data.service.js'
+import { parseContract } from '../../shared/contracts/core.js'
+import { articleKeywordsContract } from '../../shared/contracts/article-keywords.contract.js'
+import { captainPaaJudgeContract } from '../../shared/contracts/captain-paa-judge.contract.js'
 import { runPaaJudgmentsForArticle } from '../services/keyword/captain-paa-judge.service.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
@@ -253,7 +256,8 @@ router.get('/articles/:id/keywords', async (req, res) => {
 
   try {
     const { data, dbOps } = await getArticleKeywords(id)
-    res.json({ data, dbOps })
+    // Frontière serveur : forme promise aux onglets du Moteur (NFR-INT-DISPLAY-CONTRACTS).
+    res.json({ data: parseContract(articleKeywordsContract, data, 'server'), dbOps })
   } catch (err) {
     log.error(`GET /api/articles/${id}/keywords — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load article keywords' } })
@@ -344,7 +348,7 @@ router.post('/articles/:id/captain/judge-paa', async (req, res) => {
   if (isNaN(id)) { res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } }); return }
   try {
     const result = await runPaaJudgmentsForArticle(id)
-    res.json({ data: result })
+    res.json({ data: parseContract(captainPaaJudgeContract, result, 'server') })
   } catch (err) {
     log.error(`POST /api/articles/${id}/captain/judge-paa — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to compute Haiku PAA judgments' } })

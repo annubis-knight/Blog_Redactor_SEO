@@ -31,13 +31,12 @@ import { lexicalPainAlignment, avgLexicalPainAlignment } from '../services/keywo
 import {
   fetchSerpAdvanced,
   extractPaaFromSerp,
-  matchResonanceDetailed,
   extractTopicWords,
-  bestMatch,
-  computePaaWeightedScore,
 } from '../services/intent/intent-scan.service.js'
-import type { ResonanceMatch, RadarMatchQuality } from '../../shared/types/intent.types.js'
+import { scoreCaptainPaa, captainAutocompletePosition, captainIntentValue } from '../services/keyword/captain-kpis.js'
 import type { ArticleLevel, ScanResponse } from '../../shared/types/keyword-validate.types.js'
+import { parseContract, toKpiValue } from '../../shared/contracts/core.js'
+import { captainScanContract } from '../../shared/contracts/captain-scan.contract.js'
 
 const router = Router()
 
@@ -94,6 +93,8 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
       autocompleteSuggestions.length >= 0 && // autocomplete peut être vide légitimement
       paaQuestionsRaw.length >= 0 // idem
     const hitDb = metricsFresh && hasAllRawData && (cachedMetrics?.autocompleteSource !== null)
+    // SERP en panne pendant cet appel : les questions PAA sont inconnues, pas « zéro question ».
+    let serpUnavailable = false
 
     if (!hitDb) {
       log.info(`Validating keyword "${keyword}" for level "${articleLevel}" — DB miss or stale, fetching external APIs`)
@@ -105,11 +106,13 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
         fetchSearchIntentBatch([keyword]),
       ])
       const paa = extractPaaFromSerp(serpResult)
+      serpUnavailable = serpResult === null
 
-      rawVolume = overview.searchVolume
-      rawKd = overview.difficulty
-      rawCpc = overview.cpc
-      rawCompetition = overview.competition
+      // Frontière de la source : une valeur illisible (NaN, texte) devient absente.
+      rawVolume = toKpiValue(overview.searchVolume, 'overview.searchVolume')
+      rawKd = toKpiValue(overview.difficulty, 'overview.difficulty')
+      rawCpc = toKpiValue(overview.cpc, 'overview.cpc')
+      rawCompetition = toKpiValue(overview.competition, 'overview.competition')
       const intentData = intentMap.get(keyword)
       // computeIntentScore applies level context, so keep it for verdict. For raw
       // storage we keep the DataForSEO intentProbability when available.
@@ -137,50 +140,28 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
     }
 
     // Always recompute contextualised fields: level-sensitive verdict + article-title-sensitive PAA scoring.
-    const topicSource = articleTitle ? `${keyword} ${articleTitle}` : keyword
-    const topicWords = extractTopicWords(topicSource)
+    // Même expression qu'au rechargement (captain-kpis.ts, CLAUDE.md §2.0).
+    const { matched: matchedPaaItems, weightedScore: paaWeightedScore } =
+      scoreCaptainPaa(keyword, articleTitle, paaQuestionsRaw)
 
-    const matchedPaaItems = paaQuestionsRaw.map(p => {
-      const qDetail = matchResonanceDetailed(p.question, topicWords)
-      const aDetail = p.answer
-        ? matchResonanceDetailed(p.answer, topicWords)
-        : { match: 'none' as ResonanceMatch, quality: 'stem' as const }
-      const match = bestMatch(qDetail.match, aDetail.match)
-      const quality: RadarMatchQuality =
-        qDetail.match === aDetail.match
-          ? (qDetail.quality === 'exact' || aDetail.quality === 'exact' ? 'exact' : 'stem')
-          : (bestMatch(qDetail.match, aDetail.match) === qDetail.match ? qDetail.quality : aDetail.quality)
-      return { match, matchQuality: match !== 'none' ? quality : undefined }
-    })
+    // Intention : probabilité DataForSEO bornée à 0-1 ; inconnue → absente (« — »),
+    // comme au rechargement (captain-kpis.ts).
+    const intentValue = captainIntentValue(rawIntentScore)
 
-    // Rebuild intent score with level context
-    let intentValue = 0.5
-    if (rawIntentScore !== null) {
-      // computeIntentScore needs the DataForSEO `intent` string too; fallback on mid-value if unavailable.
-      // When reading from DB we don't have the intent type label (only the numeric probability).
-      // Acceptable trade-off: the DataForSEO scoring in our system uses intentProbability directly anyway.
-      intentValue = Math.max(0, Math.min(1, rawIntentScore))
-    }
-
-    const keywordLower = keyword.toLowerCase()
-    const autocompletePosition = autocompleteSuggestions.findIndex(s => s.text.toLowerCase() === keywordLower)
+    // Ici les suggestions viennent d'être récupérées (ou relues fraîches) : mot absent → 0 « Non trouvé ».
+    const autocompleteValue = captainAutocompletePosition(keyword, autocompleteSuggestions, true)
 
     const config = getThresholds(articleLevel)
-    // Calculs internes de scoring : `scoreKpi(name, raw, config)` attend un
-    // `number`. Quand DataForSEO renvoie `null`, on ramène à 0 pour la formule
-    // (= « absence vaut zéro dans la note KPI »). C'est un calcul interne, pas
-    // un fallback affichage — la valeur brute (potentiellement `null`) est
-    // persistée séparément dans `kpisForMarket` plus bas.
+    // Une donnée absente reste absente : `scoreKpi(null)` produit un KPI neutre
+    // « — » que le verdict ignore (FR-INFRA-KPI-SCORING-NULLSAFE). L'ancien
+    // `?? 0` affichait « KD 0 » en vert et pouvait inventer un NO-GO.
     const kpis = [
-      // eslint-disable-next-line no-restricted-syntax -- voir commentaire ci-dessus
-      scoreKpi('volume', rawVolume ?? 0, config),
-       
-      scoreKpi('kd', rawKd ?? 0, config),
-      // eslint-disable-next-line no-restricted-syntax -- voir commentaire ci-dessus
-      scoreKpi('cpc', rawCpc ?? 0, config),
-      scoreKpi('paa', computePaaWeightedScore(matchedPaaItems), config),
+      scoreKpi('volume', rawVolume, config),
+      scoreKpi('kd', rawKd, config),
+      scoreKpi('cpc', rawCpc, config),
+      scoreKpi('paa', serpUnavailable ? null : paaWeightedScore, config),
       scoreKpi('intent', intentValue, config),
-      scoreKpi('autocomplete', autocompletePosition >= 0 ? autocompletePosition + 1 : 0, config),
+      scoreKpi('autocomplete', autocompleteValue, config),
     ]
 
     const verdict = computeVerdict(kpis)
@@ -203,9 +184,9 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
       competition: rawCompetition,
       intentTypes: [],
       intentProbability: rawIntentScore,
-      autocompleteMatchCount: autocompletePosition >= 0 ? autocompletePosition + 1 : 0,
+      autocompleteMatchCount: autocompleteValue ?? 0,
       paaMatchCount: matchedPaaItems.filter(p => p.match !== 'none').length,
-      paaWeightedScore: computePaaWeightedScore(matchedPaaItems),
+      paaWeightedScore,
       paaTotal: paaQuestionsRaw.length,
       avgSemanticScore: null,
     }
@@ -317,7 +298,8 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
       }
     }
 
-    res.json({ data: response })
+    // Frontière serveur : la réponse sort dans la forme promise aux écrans.
+    res.json({ data: parseContract(captainScanContract, response, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/:keyword/scan — ${(err as Error).message}`)
     respondWithError(res, err, { message: 'Keyword validation failed' })

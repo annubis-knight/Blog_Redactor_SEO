@@ -316,3 +316,48 @@ describe('POST /keywords/:keyword/scan', () => {
     })
   })
 })
+
+// ---------------------------------------------------------------------------
+// Contrat d'affichage — « absent n'est pas zéro » (NFR-INT-DISPLAY-CONTRACTS,
+// FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-SCORING-NULLSAFE)
+// ---------------------------------------------------------------------------
+describe('POST /keywords/:keyword/scan — absent n’est pas zéro', () => {
+  async function scan() {
+    const res = makeRes()
+    await getHandler()(makeReq('seo', { level: 'pilier' }), res)
+    return res.json.mock.calls[0][0].data
+  }
+  const kpi = (data: any, name: string) => data.kpis.find((k: any) => k.name === name)
+
+  it('volume, KD et CPC inconnus restent absents (« — »), jamais 0', async () => {
+    mockFetchOverview.mockResolvedValue({ searchVolume: null, difficulty: null, cpc: null, competition: null } as any)
+    const data = await scan()
+    for (const name of ['volume', 'kd', 'cpc']) {
+      expect(kpi(data, name).rawValue).toBeNull()
+      expect(kpi(data, name).label).toBe('—')
+      expect(kpi(data, name).color).toBe('neutral')
+    }
+  })
+
+  it('une SERP en panne rend le KPI PAA absent, pas « 0 question »', async () => {
+    mockFetchSerpAdvanced.mockResolvedValue(null as any)
+    const data = await scan()
+    expect(kpi(data, 'paa').rawValue).toBeNull()
+    expect(kpi(data, 'paa').label).toBe('—')
+  })
+
+  it('volume inconnu + SERP en panne → aucun NO-GO « Aucun signal » inventé', async () => {
+    mockFetchOverview.mockResolvedValue({ searchVolume: null, difficulty: null, cpc: null, competition: null } as any)
+    mockFetchSerpAdvanced.mockResolvedValue(null as any)
+    mockFetchAutocomplete.mockResolvedValue({ suggestionsCount: 0, suggestions: [], hasKeyword: false, position: null } as any)
+    const data = await scan()
+    expect(data.verdict.autoNoGo).toBe(false)
+    expect(data.verdict.reason).not.toBe('Aucun signal détecté')
+  })
+
+  it('une valeur illisible de DataForSEO est mise en forme par le contrat (absente)', async () => {
+    mockFetchOverview.mockResolvedValue({ searchVolume: Number.NaN, difficulty: 30, cpc: 2.5, competition: 0.5 } as any)
+    const data = await scan()
+    expect(kpi(data, 'volume').rawValue).toBeNull()
+  })
+})

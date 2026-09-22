@@ -14,6 +14,8 @@
  */
 
 import type Anthropic from '@anthropic-ai/sdk'
+import { parseContract } from '../../../shared/contracts/core.js'
+import { paaJudgmentBlockContract } from '../../../shared/contracts/captain-paa-judge.contract.js'
 import { classifyWithTool } from '../external/ai-provider.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { log } from '../../utils/logger.js'
@@ -172,12 +174,16 @@ export async function judgePaaForKeyword(input: {
 
   const tStart = Date.now()
   try {
-    const { result, usage } = await classifyWithTool<PaaJudgmentBlock>(
+    const { result: rawResult, usage } = await classifyWithTool<PaaJudgmentBlock>(
       SYSTEM_PROMPT,
       userPrompt,
       PAA_JUDGE_TOOL,
       { model: DEFAULT_HAIKU_MODEL },
     )
+    // Frontière de la source : la réponse de l'IA est mise en forme dès sa
+    // réception (jugements illisibles écartés, scores bornés). Inutilisable →
+    // ContractViolationError → chemin « Haiku indisponible » ci-dessous.
+    const result = parseContract(paaJudgmentBlockContract, rawResult, 'server')
 
     const badgeDistribution = {
       pertinent: result.paaJudgments.filter(j => j.badge === 'pertinent').length,

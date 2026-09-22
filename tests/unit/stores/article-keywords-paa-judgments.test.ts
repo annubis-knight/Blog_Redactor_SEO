@@ -73,7 +73,7 @@ describe('moteur:paa-judgments-store — cache session', () => {
     await store.loadCaptainPaaJudgments(1)
 
     expect(mockApiPost).toHaveBeenCalledTimes(1)
-    expect(mockApiPost).toHaveBeenCalledWith('/articles/1/captain/judge-paa', {})
+    expect(mockApiPost).toHaveBeenCalledWith('/articles/1/captain/judge-paa', {}, { contract: expect.objectContaining({ name: 'captain-paa-judge' }) })
     expect(store.getPaaJudgment(1, 'site web')?.overallPaaScore).toBe(85)
   })
 

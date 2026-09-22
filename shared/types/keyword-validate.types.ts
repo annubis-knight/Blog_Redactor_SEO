@@ -8,7 +8,8 @@ export type KpiColor = 'green' | 'orange' | 'red' | 'neutral' | 'bonus'
 
 export interface KpiResult {
   name: string           // 'volume' | 'kd' | 'cpc' | 'paa' | 'intent' | 'autocomplete'
-  rawValue: number
+  /** `null` = donnée absente (affichée « — »), jamais confondue avec 0 (FR-INFRA-KPI-NULLABLE). */
+  rawValue: number | null
   color: KpiColor
   label: string          // Ex: "1 250 recherches/mois"
   thresholds: {          // Seuils appliqués (pour tooltip frontend)

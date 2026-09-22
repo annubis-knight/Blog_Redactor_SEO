@@ -207,3 +207,37 @@ describe('CaptainRootsSidebar', () => {
     expect(wrapper.find('[data-testid="root-sidebar-single"]').exists()).toBe(false)
   })
 })
+
+// Contrats d'affichage — « absent n'est pas zéro » (NFR-INT-DISPLAY-CONTRACTS,
+// FR-INFRA-KPI-CONSISTENCY : une moyenne ignore les valeurs absentes).
+describe('CaptainRootsSidebar — racine sans score de pertinence', () => {
+  function withoutRelevance(keyword: string): KeywordRootVariant {
+    const variant = makeVariant(keyword, 0)
+    variant.card.relevanceScore = null
+    return variant
+  }
+
+  it('la moyenne ignore la racine sans score (80, absent → 80, pas 40)', () => {
+    const wrapper = mount(CaptainRootsSidebar, {
+      props: { variants: [makeVariant('a', 80), withoutRelevance('b')] },
+      global: { stubs: STUBS },
+    })
+    expect(wrapper.find('[data-testid="roots-sidebar-average"]').text()).toContain('80')
+  })
+
+  it('son anneau reçoit « absent », pas 0', () => {
+    const wrapper = mount(CaptainRootsSidebar, {
+      props: { variants: [withoutRelevance('b')] },
+      global: { stubs: STUBS },
+    })
+    expect(wrapper.find('.stub-ring').attributes('data-value')).toBeUndefined()
+  })
+
+  it('aucune racine notée → pas de moyenne affichée', () => {
+    const wrapper = mount(CaptainRootsSidebar, {
+      props: { variants: [withoutRelevance('b'), withoutRelevance('c')] },
+      global: { stubs: STUBS },
+    })
+    expect(wrapper.find('[data-testid="roots-sidebar-average"]').exists()).toBe(false)
+  })
+})

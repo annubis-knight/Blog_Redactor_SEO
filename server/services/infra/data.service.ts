@@ -28,6 +28,9 @@ import type {
 import type { PaaQuestionScan } from '../../../shared/types/keyword-validate.types.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import { computeRelevanceForCaptainTab } from '../keyword/captain-relevance.service.js'
+import { captainKpisFromMetricsRow, scoreCaptainPaa } from '../keyword/captain-kpis.js'
+import { parseContractList } from '../../../shared/contracts/core.js'
+import { captainScanEntryContract } from '../../../shared/contracts/captain-scan.contract.js'
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -696,7 +699,8 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
        ce.article_id, ce.keyword, ce.article_level, ce.status,
        ce.root_keywords, ce.ai_panel_markdown, ce.explored_at, ce.locked_at,
        km.search_volume, km.keyword_difficulty, km.cpc, km.competition,
-       km.intent_raw, km.autocomplete_suggestions, km.fetched_at AS metrics_fetched_at,
+       km.intent_raw, km.autocomplete_suggestions, km.autocomplete_source,
+       km.fetched_at AS metrics_fetched_at,
        a.titre AS article_title
        FROM captain_explorations ce
        LEFT JOIN keyword_metrics km
@@ -832,28 +836,19 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
     ms: Date.now() - t4,
   })
 
-  const data = res.rows.map(t => {
-    // Adapter DB -> KPIs (FR-INFRA-KPI-NULLABLE) : la garde `metrics_fetched_at`
-    // non-null indique que la ligne a été fetchée au moins une fois, mais les
-    // colonnes individuelles peuvent rester `NULL` (pas de signal DataForSEO
-    // sur ce KPI). On propage `null` plutôt que `0` pour que l'UI affiche
-    // `'—'` au lieu d'un faux zéro trompeur.
-    const kpis: Array<{ name: string; rawValue: number | null }> = []
-    if (t.metrics_fetched_at) {
-      kpis.push({ name: 'volume', rawValue: t.search_volume === null || t.search_volume === undefined ? null : Number(t.search_volume) })
-      kpis.push({ name: 'kd', rawValue: t.keyword_difficulty === null || t.keyword_difficulty === undefined ? null : Number(t.keyword_difficulty) })
-      kpis.push({ name: 'cpc', rawValue: t.cpc === null || t.cpc === undefined ? null : Number(t.cpc) })
-      // intent_raw : 0.5 = neutre par convention historique, pas un signal absent.
-      // Si vraiment NULL, on remonte null pour cohérence.
-      kpis.push({ name: 'intent', rawValue: t.intent_raw === null || t.intent_raw === undefined ? null : Number(t.intent_raw) })
-      const suggestions = (t.autocomplete_suggestions ?? []) as Array<{ text: string; position: number }>
-      const keywordLower = (t.keyword as string).toLowerCase()
-      // autocomplete : position dans la liste de suggestions. Si le keyword n'est
-      // pas dans la liste, position = null (pas 0, qui suggérerait "première position").
-      const autoPos = suggestions.find(s => s.text.toLowerCase() === keywordLower)?.position ?? null
-      kpis.push({ name: 'autocomplete', rawValue: autoPos })
-      kpis.push({ name: 'paa', rawValue: 0 })
-    }
+  const rawEntries = res.rows.map(t => {
+    // Rechargement = premier clic (CLAUDE.md §2.0) : mêmes règles de calcul que
+    // POST /scan via captain-kpis.ts — KPI absents absents, PAA recalculé contre
+    // le titre de l'article (et non plus figé à 0), autocomplétion « Non trouvé »
+    // seulement si les suggestions ont bien été récupérées.
+    const storedPaa = paaByKeyword.get(t.keyword) ?? []
+    const kpis = captainKpisFromMetricsRow(t, storedPaa)
+    const { matched } = scoreCaptainPaa(t.keyword, t.article_title, storedPaa)
+    const paaQuestions: PaaQuestionScan[] = storedPaa.map((p, idx) => ({
+      ...p,
+      match: matched[idx]?.match ?? p.match,
+      matchQuality: matched[idx]?.matchQuality,
+    }))
     const marketScoreFromRadar = marketScoresByKeyword.get(t.keyword) ?? null
     const liveRelevance = relevanceResult.cards.get(t.keyword) ?? null
     return {
@@ -861,7 +856,7 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       kpis,
       articleLevel: t.article_level,
       rootKeywords: t.root_keywords ?? [],
-      paaQuestions: paaByKeyword.get(t.keyword) ?? [],
+      paaQuestions,
       aiPanelMarkdown: t.ai_panel_markdown ?? null,
       exploredAt: t.explored_at?.toISOString() ?? null,
       // marketScore : rapatrié depuis radar_explorations (snapshot stable).
@@ -887,6 +882,9 @@ export async function getCaptainExplorations(articleId: number): Promise<{ data:
       paaJudgment: null,
     }
   })
+  // Frontière relecture : chaque entrée sort dans la forme promise aux écrans ;
+  // une entrée inutilisable est écartée et signalée, les autres sont servies.
+  const data = parseContractList(captainScanEntryContract, rawEntries, 'db')
   log.debug('[getCaptainExplorations] DONE', {
     articleId,
     entries: data.length,

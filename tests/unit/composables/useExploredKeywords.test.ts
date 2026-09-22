@@ -79,8 +79,8 @@ describe('useExploredKeywords', () => {
     expect(c.isActive.value).toBe(true)
     expect(c.count.value).toBe(2)
     expect(mockApiPost).toHaveBeenCalledTimes(2)
-    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20local/scan', { level: 'pilier' })
-    expect(mockApiPost).toHaveBeenCalledWith('/keywords/copywriting%20web/scan', { level: 'pilier' })
+    expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20local/scan', { level: 'pilier' }, { contract: expect.objectContaining({ name: 'captain-scan' }) })
+    expect(mockApiPost).toHaveBeenCalledWith('/keywords/copywriting%20web/scan', { level: 'pilier' }, { contract: expect.objectContaining({ name: 'captain-scan' }) })
   })
 
   it('stores validation results in entries', async () => {
@@ -204,7 +204,7 @@ describe('useExploredKeywords', () => {
 
       await c.addEntry('seo test', 'intermediaire')
 
-      expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20test/scan', { level: 'intermediaire' })
+      expect(mockApiPost).toHaveBeenCalledWith('/keywords/seo%20test/scan', { level: 'intermediaire' }, { contract: expect.objectContaining({ name: 'captain-scan' }) })
       expect(c.entries.value[0]?.validation).not.toBeNull()
       expect(c.entries.value[0]?.isLoading).toBe(false)
     })

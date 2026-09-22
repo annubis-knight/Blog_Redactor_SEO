@@ -166,7 +166,7 @@ describe('moteur:captain-paa-judge — judgePaaForKeyword', () => {
 
     expect(r4?.overallPaaScore).toBe(85)
     expect(r16?.overallPaaScore).toBe(85)
-    expect(Math.abs((r4?.overallPaaScore ?? 0) - (r16?.overallPaaScore ?? 0))).toBeLessThanOrEqual(5)
+    expect(Math.abs(Number(r4?.overallPaaScore) - Number(r16?.overallPaaScore))).toBeLessThanOrEqual(5)
   })
 
   it('injecte les variables {{keyword}} et {{pain_point}} et {{article_title}} dans le prompt user', async () => {
@@ -194,5 +194,23 @@ describe('moteur:captain-paa-judge — judgePaaForKeyword', () => {
     expect(props.paaJudgments).toBeDefined()
     expect(props.overallPaaScore).toBeDefined()
     expect(props.summary).toBeDefined()
+  })
+})
+
+// Contrat d'affichage — frontière de la source IA (NFR-INT-DISPLAY-CONTRACTS)
+describe('moteur:captain-paa-judge — la réponse brute de Haiku passe un contrat', () => {
+  const usage = { inputTokens: 1, outputTokens: 1, estimatedCost: 0, model: 'haiku' }
+
+  it('un jugement au badge inventé est écarté, les autres gardés', async () => {
+    const block = makeBlock(['pertinent', 'partiel'])
+    const raw = { ...block, paaJudgments: [...block.paaJudgments, { paaIndex: 2, badge: 'génial', paaScore: 99, reasonShort: '' }] }
+    mockClassifyWithTool.mockResolvedValue({ result: raw, usage })
+    const out = await judgePaaForKeyword(makeInput())
+    expect(out?.paaJudgments.map(j => j.badge)).toEqual(['pertinent', 'partiel'])
+  })
+
+  it('une réponse sans score global emprunte le chemin « Haiku indisponible »', async () => {
+    mockClassifyWithTool.mockResolvedValue({ result: { paaJudgments: [], summary: 'x' }, usage })
+    await expect(judgePaaForKeyword(makeInput())).rejects.toThrow(/Haiku PAA judgment failed/)
   })
 })

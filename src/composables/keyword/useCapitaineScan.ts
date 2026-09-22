@@ -4,6 +4,7 @@ import { log } from '@/utils/logger'
 import type { ScanResponse, ArticleLevel } from '@shared/types/index.js'
 import type { RadarCard, KeywordRadarScanResult } from '@shared/types/intent.types.js'
 import { FRENCH_STOPWORDS, extractRoots as extractRootsShared } from '@shared/utils/keyword-roots.js'
+import { captainScanContract } from '@shared/contracts/captain-scan.contract.js'
 
 export { FRENCH_STOPWORDS, extractRootsShared as extractRoots }
 
@@ -51,6 +52,7 @@ export function useCapitaineScan() {
     const validatePromise = apiPost<ScanResponse>(
       `/keywords/${encodeURIComponent(keyword)}/scan`,
       { level, articleTitle, articleId, painPoint: articlePainPoint },
+      { contract: captainScanContract },
     )
 
     // Radar scan: best-effort, non-blocking
@@ -99,6 +101,7 @@ export function useCapitaineScan() {
           const rootResponse = await apiPost<ScanResponse>(
             `/keywords/${encodeURIComponent(root)}/scan`,
             { level, articleTitle, articleId, painPoint: articlePainPoint },
+            { contract: captainScanContract },
           )
           if (thisVersion !== validationVersion) return // stale root
           rootResult.value = rootResponse

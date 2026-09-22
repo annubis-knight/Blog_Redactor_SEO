@@ -2,9 +2,21 @@ import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import { labelFromUrl } from '@/utils/api-label'
 import type { ApiUsage, DbOp } from '@shared/types/index.js'
+import { parseContract, type DisplayContract } from '@shared/contracts/core.js'
 
-interface ApiOptions {
+interface ApiOptions<T = unknown> {
   signal?: AbortSignal
+  /**
+   * Contrat d'affichage (NFR-INT-DISPLAY-CONTRACTS) : met la réponse dans la
+   * forme attendue par l'écran. Une réponse inutilisable rejette la promesse,
+   * comme une erreur réseau : le chemin d'erreur existant de l'écran s'applique.
+   */
+  contract?: DisplayContract<T>
+}
+
+/** Temps « mise en format » côté client : sans contrat, la réponse passe telle quelle. */
+function conform<T>(data: unknown, options?: ApiOptions<T>): T {
+  return options?.contract ? parseContract(options.contract, data, 'client') : (data as T)
 }
 
 /**
@@ -91,7 +103,7 @@ async function handleApiError(res: Response, method: string, path: string): Prom
 }
 
 /** Fetch wrapper for the backend API — GET */
-export async function apiGet<T>(path: string, options?: ApiOptions): Promise<T> {
+export async function apiGet<T>(path: string, options?: ApiOptions<T>): Promise<T> {
   const res = await fetch(`/api${path}`, { signal: options?.signal })
   if (!res.ok) await handleApiError(res, 'GET', path)
   const json = await res.json()
@@ -99,11 +111,11 @@ export async function apiGet<T>(path: string, options?: ApiOptions): Promise<T> 
 
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
-  return json.data as T
+  return conform(json.data, options)
 }
 
 /** Fetch wrapper for the backend API — POST */
-export async function apiPost<T>(path: string, body: unknown, options?: ApiOptions): Promise<T> {
+export async function apiPost<T>(path: string, body: unknown, options?: ApiOptions<T>): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -117,22 +129,22 @@ export async function apiPost<T>(path: string, body: unknown, options?: ApiOptio
   pushUsageIfPresent(path, json)
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
-  return json.data as T
+  return conform(json.data, options)
 }
 
 /** Fetch wrapper for the backend API — DELETE */
-export async function apiDelete<T>(path: string, options?: ApiOptions): Promise<T> {
+export async function apiDelete<T>(path: string, options?: ApiOptions<T>): Promise<T> {
   const res = await fetch(`/api${path}`, { method: 'DELETE', signal: options?.signal })
   if (!res.ok) await handleApiError(res, 'DELETE', path)
   const json = await res.json()
   log.debug(`DELETE /api${path}`, json.data)
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
-  return json.data as T
+  return conform(json.data, options)
 }
 
 /** Fetch wrapper for the backend API — PATCH */
-export async function apiPatch<T>(path: string, body: unknown, options?: ApiOptions): Promise<T> {
+export async function apiPatch<T>(path: string, body: unknown, options?: ApiOptions<T>): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
@@ -144,11 +156,11 @@ export async function apiPatch<T>(path: string, body: unknown, options?: ApiOpti
   log.debug(`PATCH /api${path}`, json.data)
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
-  return json.data as T
+  return conform(json.data, options)
 }
 
 /** Fetch wrapper for the backend API — PUT */
-export async function apiPut<T>(path: string, body: unknown, options?: ApiOptions): Promise<T> {
+export async function apiPut<T>(path: string, body: unknown, options?: ApiOptions<T>): Promise<T> {
   const res = await fetch(`/api${path}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
@@ -160,7 +172,7 @@ export async function apiPut<T>(path: string, body: unknown, options?: ApiOption
   log.debug(`PUT /api${path}`, json.data)
   pushDbOpsIfPresent(path, json.data)
   pushDbOpsIfPresent(path, json)
-  return json.data as T
+  return conform(json.data, options)
 }
 
 // ============================================================

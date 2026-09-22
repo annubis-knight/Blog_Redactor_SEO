@@ -28,6 +28,12 @@ import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
 import paaRoutes from './routes/paa.routes.js'
 import runtimeModeRoutes from './routes/runtime-mode.routes.js'
 import costStatusRoutes from './routes/cost-status.routes.js'
+import { setContractReporter } from '../shared/contracts/core.js'
+
+// Contrats d'affichage : chaque correction ou refus est journalisé (NFR-INT-DISPLAY-CONTRACTS).
+setContractReporter(event => {
+  log.warn(`[contrat ${event.contract}] ${event.kind} · ${event.field} — ${event.detail}`, { boundary: event.boundary })
+})
 
 const app = express()
 const PORT = process.env.PORT || 3400

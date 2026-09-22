@@ -50,7 +50,7 @@ describe('article-keywords.store — fetchKeywords', () => {
 
     await store.fetchKeywords('design-emotionnel')
 
-    expect(mockApiGet).toHaveBeenCalledWith('/articles/design-emotionnel/keywords')
+    expect(mockApiGet).toHaveBeenCalledWith('/articles/design-emotionnel/keywords', { contract: expect.objectContaining({ name: 'article-keywords' }) })
     expect(store.keywords).toEqual(mockKeywords)
     expect(store.isLoading).toBe(false)
     expect(store.error).toBeNull()

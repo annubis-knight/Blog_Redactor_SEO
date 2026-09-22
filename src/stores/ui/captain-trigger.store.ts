@@ -3,6 +3,7 @@ import { defineStore } from 'pinia'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ScanResponse, ArticleLevel, CaptainScanEntry } from '@shared/types/index.js'
+import { captainScanContract } from '@shared/contracts/captain-scan.contract.js'
 
 /**
  * Global Pinia store for the Discovery→Captain pre-validation.
@@ -82,6 +83,7 @@ export const useCaptainTriggerStore = defineStore('captain-trigger', () => {
       const response = await apiPost<ScanResponse>(
         `/keywords/${encodeURIComponent(entry.keyword)}/scan`,
         { level: entry.articleLevel, articleId: entry.articleId, ...(entry.painPoint ? { painPoint: entry.painPoint } : {}) },
+        { contract: captainScanContract },
       )
       const exploration: CaptainScanEntry = {
         keyword: response.keyword,

@@ -7,6 +7,12 @@ import App from './App.vue'
 import router from './router'
 import { safeHtmlDirective, safeSvgDirective } from '@/directives/v-safe-html'
 import { log } from '@/utils/logger'
+import { setContractReporter } from '@shared/contracts/core.js'
+
+// Contrats d'affichage : chaque correction ou refus est journalisé, jamais montré (NFR-INT-DISPLAY-CONTRACTS).
+setContractReporter(event => {
+  log.warn(`[contrat ${event.contract}] ${event.kind} · ${event.field} — ${event.detail}`, { boundary: event.boundary })
+})
 
 const app = createApp(App)
 

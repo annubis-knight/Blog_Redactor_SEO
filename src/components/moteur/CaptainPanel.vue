@@ -771,7 +771,8 @@ watch(
   { immediate: true, deep: true },
 )
 
-const toKpiSummary = (kpis: { name: string; rawValue: number }[]) =>
+// `rawValue: null` = donnée absente, conservée telle quelle (FR-INFRA-KPI-NULLABLE).
+const toKpiSummary = (kpis: Pick<KpiResult, 'name' | 'rawValue'>[]) =>
   kpis.map(({ name, rawValue }) => ({ name, rawValue }))
 
 // Watcher 1: fires when a carousel entry gets its validation result

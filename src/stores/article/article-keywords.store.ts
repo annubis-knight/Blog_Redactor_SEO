@@ -24,6 +24,8 @@ import type { ArticleKeywords, CaptainScanEntry, RichRootKeyword, RichLieutenant
 import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 import type { PaaJudgmentBlock } from '@shared/types/captain-paa-judgment.types.js'
 import type { RelevanceScoreResult, RelevanceUnavailableReason } from '@shared/types/scoring.types.js'
+import { articleKeywordsContract } from '@shared/contracts/article-keywords.contract.js'
+import { captainPaaJudgeContract } from '@shared/contracts/captain-paa-judge.contract.js'
 
 const MAX_VALIDATION_HISTORY = 30
 
@@ -66,7 +68,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     isLoading.value = true
     error.value = null
     try {
-      keywords.value = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`)
+      keywords.value = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`, { contract: articleKeywordsContract })
       log.debug(`[article-keywords] fetched for article ${id}`, { capitaine: keywords.value?.capitaine })
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur inconnue'
@@ -81,7 +83,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     isLoading.value = true
     error.value = null
     try {
-      const remote = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`)
+      const remote = await apiGet<ArticleKeywords | null>(`/articles/${id}/keywords`, { contract: articleKeywordsContract })
       if (!remote) return
       if (!keywords.value) {
         keywords.value = remote
@@ -605,7 +607,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
           rootsContext: RelevanceScoreResult['rootsContext'] | null
           unavailableReason: RelevanceUnavailableReason | null
         }>
-      }>(`/articles/${articleId}/captain/judge-paa`, {})
+      }>(`/articles/${articleId}/captain/judge-paa`, {}, { contract: captainPaaJudgeContract })
 
       // Hydrater le cache Haiku
       const map = new Map<string, PaaJudgmentBlock>()

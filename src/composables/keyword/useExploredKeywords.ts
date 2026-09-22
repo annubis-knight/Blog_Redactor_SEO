@@ -7,6 +7,7 @@ import { getThresholds, scoreKpi, computeVerdict } from '@shared/kpi-scoring.js'
 import type { ScanResponse, ArticleLevel, VerdictLevel } from '@shared/types/index.js'
 import type { CaptainScanEntry, RichRootKeyword } from '@shared/types/keyword.types.js'
 import type { RadarCard, RadarPaaItem, KeywordRootVariant } from '@shared/types/intent.types.js'
+import { captainScanContract } from '@shared/contracts/captain-scan.contract.js'
 
 export interface ExploredKeywordEntry {
   card: RadarCard
@@ -23,9 +24,21 @@ export interface ExploredKeywordEntry {
   pendingVariants: Set<string>
 }
 
+/**
+ * Score historique déprécié (`combinedScore`) : sa formule exige des nombres,
+ * l'absence y vaut donc 0 par construction. Il n'est ni affiché comme valeur
+ * de KPI ni utilisé pour trier au Capitaine (tri par pertinence) : ce zéro ne
+ * sort jamais à l'écran comme une donnée.
+ */
+function absentAsZeroForLegacyScore(value: number | null | undefined): number {
+  return typeof value === 'number' ? value : 0
+}
+
 // Hydrate RadarCard from ScanResponse with marketScore and relevanceScore propagation
 export function hydrateCardFromValidation(keyword: string, response: ScanResponse): RadarCard {
   const kpiMap = Object.fromEntries(response.kpis.map(k => [k.name, k]))
+  // Une donnée absente reste absente jusqu'à l'affichage (« — »), FR-INFRA-KPI-NULLABLE.
+  const valueOf = (name: string): number | null => kpiMap[name]?.rawValue ?? null
 
   const paaItems: RadarPaaItem[] = (response.paaQuestions || []).map(p => ({
     question: p.question,
@@ -36,22 +49,25 @@ export function hydrateCardFromValidation(keyword: string, response: ScanRespons
   }))
 
   const scoreBreakdown = computeCombinedScore({
-    searchVolume: kpiMap.volume?.rawValue ?? 0,
-    difficulty: kpiMap.kd?.rawValue ?? 0,
-    cpc: kpiMap.cpc?.rawValue ?? 0,
-    paaWeightedScore: kpiMap.paa?.rawValue ?? 0,
-    autocompleteMatchCount: kpiMap.autocomplete?.rawValue ?? 0,
+    searchVolume: absentAsZeroForLegacyScore(valueOf('volume')),
+    difficulty: absentAsZeroForLegacyScore(valueOf('kd')),
+    cpc: absentAsZeroForLegacyScore(valueOf('cpc')),
+    paaWeightedScore: absentAsZeroForLegacyScore(valueOf('paa')),
+    autocompleteMatchCount: absentAsZeroForLegacyScore(valueOf('autocomplete')),
   })
 
   const out: RadarCard = {
     keyword,
     kpis: {
-      searchVolume: kpiMap.volume?.rawValue ?? 0,
-      difficulty: kpiMap.kd?.rawValue ?? 0,
-      cpc: kpiMap.cpc?.rawValue ?? 0,
-      competition: 0,
-      paaWeightedScore: kpiMap.paa?.rawValue ?? 0,
-      autocompleteMatchCount: kpiMap.autocomplete?.rawValue ?? 0,
+      searchVolume: valueOf('volume'),
+      difficulty: valueOf('kd'),
+      cpc: valueOf('cpc'),
+      // La réponse du scan ne transporte pas la concurrence : inconnue, pas nulle.
+      competition: null,
+      // Compteurs : « pas de question » et « question inconnue » se confondent ici
+      // (types non nullables du Radar) — traité au lot Radar.
+      paaWeightedScore: absentAsZeroForLegacyScore(valueOf('paa')),
+      autocompleteMatchCount: absentAsZeroForLegacyScore(valueOf('autocomplete')),
       paaTotal: paaItems.length,
       paaMatchCount: paaItems.filter(p => p.match !== 'none').length,
       intentTypes: [],
@@ -138,6 +154,7 @@ export function useExploredKeywords() {
           const rootResponse = await apiPost<ScanResponse>(
             `/keywords/${encodeURIComponent(rootKw)}/scan`,
             { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+            { contract: captainScanContract },
           )
           if (thisVersion !== loadVersion) return
           const rootCard = hydrateCardFromValidation(rootKw, rootResponse)
@@ -182,6 +199,7 @@ export function useExploredKeywords() {
           const response = await apiPost<ScanResponse>(
             `/keywords/${encodeURIComponent(card.keyword)}/scan`,
             { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+            { contract: captainScanContract },
           )
           if (thisVersion !== loadVersion) return
           patch(i, { validation: response, originalCard: card, isLoading: false })
@@ -240,6 +258,7 @@ export function useExploredKeywords() {
         const response = await apiPost<ScanResponse>(
           `/keywords/${encodeURIComponent(keyword)}/scan`,
           { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+          { contract: captainScanContract },
         )
         if (thisVersion !== loadVersion) return
         const hydratedCard = hydrateCardFromValidation(keyword, response)
@@ -251,12 +270,13 @@ export function useExploredKeywords() {
       return
     }
 
-    // Build a minimal RadarCard for a manually-entered keyword
+    // Build a minimal RadarCard for a manually-entered keyword.
+    // KPI marché inconnus tant que le scan n'a pas répondu : absents (« — »), pas 0.
     const card: RadarCard = {
       keyword,
       combinedScore: 0,
       scoreBreakdown: { paaMatchScore: 0, resonanceBonus: 0, opportunityScore: 0, intentValueScore: 0, cpcScore: 0, painAlignmentScore: 0, total: 0 },
-      kpis: { searchVolume: 0, difficulty: 0, cpc: 0, competition: 0, paaTotal: 0, paaMatchCount: 0, paaWeightedScore: 0, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, avgSemanticScore: null },
+      kpis: { searchVolume: null, difficulty: null, cpc: null, competition: null, paaTotal: 0, paaMatchCount: 0, paaWeightedScore: 0, intentTypes: [], intentProbability: null, autocompleteMatchCount: 0, avgSemanticScore: null },
       paaItems: [],
       reasoning: '',
       cachedPaa: false,
@@ -271,6 +291,7 @@ export function useExploredKeywords() {
       const response = await apiPost<ScanResponse>(
         `/keywords/${encodeURIComponent(keyword)}/scan`,
         { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+        { contract: captainScanContract },
       )
       if (thisVersion !== loadVersion) return
       const hydratedCard = hydrateCardFromValidation(keyword, response)
@@ -324,6 +345,7 @@ export function useExploredKeywords() {
       const response = await apiPost<ScanResponse>(
         `/keywords/${encodeURIComponent(newRootKeyword)}/scan`,
         { level, articleTitle, ...(articleId ? { articleId } : {}), ...(painPoint ? { painPoint } : {}) },
+        { contract: captainScanContract },
       )
       if (thisVersion !== loadVersion) return
 

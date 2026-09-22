@@ -3,6 +3,7 @@ import { computed } from 'vue'
 import type { ScanResponse } from '@shared/types/index.js'
 import type { RadarCard, KeywordRootVariant } from '@shared/types/intent.types.js'
 import ScoreRing from '@/components/shared/ScoreRing.vue'
+import { averageScores } from '@shared/score/index.js'
 
 /**
  * Étape 3E — Sidebar latérale qui liste les variantes "racines" du capitaine
@@ -36,15 +37,17 @@ function handleSelect(variant: KeywordRootVariant) {
   emit('select', variant)
 }
 
-// Average relevance score of root variants (treats missing scores as 0)
-function relevanceTotalOf(v: { card: RadarCard }): number {
-  return v.card.relevanceScore?.total ?? 0
+// Score pertinence d'une racine : absent reste absent (anneau « — »), jamais 0.
+function relevanceTotalOf(v: { card: RadarCard }): number | null {
+  return v.card.relevanceScore?.total ?? null
 }
 
+// Moyenne sur les seules racines notées (FR-INFRA-KPI-CONSISTENCY) :
+// une racine sans score ne tire plus la moyenne vers le bas.
 const rootsAverageScore = computed(() => {
   if (!props.variants || props.variants.length === 0) return null
-  const sum = props.variants.reduce((acc, v) => acc + relevanceTotalOf(v), 0)
-  return Math.round(sum / props.variants.length)
+  const average = averageScores(props.variants.map(relevanceTotalOf))
+  return average === null ? null : Math.round(average)
 })
 
 const rootsAverageColor = computed(() => {
@@ -73,7 +76,7 @@ const rootsAverageColor = computed(() => {
       >
         <span class="roots-sidebar__kw">{{ variant.keyword }}</span>
         <ScoreRing
-          :value="variant.card.relevanceScore?.total ?? 0"
+          :value="relevanceTotalOf(variant)"
           :size="22"
           :stroke-width="2.5"
         />
