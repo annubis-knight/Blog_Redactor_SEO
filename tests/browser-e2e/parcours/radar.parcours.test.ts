@@ -136,14 +136,17 @@ for (const level of LEVELS) {
       await selectArticle(page, parcours, level)
       await openRadar(page)
 
-      const prompt = page.locator('[data-testid="tlp-load-db"]')
-      if (await prompt.count() > 0) await prompt.first().click()
-
-      // La restauration est asynchrone : on laisse l'écran se stabiliser.
+      // La restauration attend un clic (« Charger Radar ») qui peut apparaître
+      // après coup : on le cherche à chaque tour, puis on lit le thermomètre.
       const score = page.locator('.thermo-score').first()
-      await expect(score).toBeVisible({ timeout: 20000 })
+      await expect(score).toBeVisible({ timeout: 30000 })
       const attendu = scan.globalScore === null ? /^—\/100$/ : /^\d+\/100$/
-      await expect.poll(async () => (await score.innerText()).trim(), { timeout: 20000 })
+      await expect
+        .poll(async () => {
+          const prompt = page.locator('[data-testid="tlp-load-db"]')
+          if (await prompt.count() > 0) await prompt.first().click().catch(() => {})
+          return (await score.innerText()).trim()
+        }, { timeout: 60000, intervals: [500, 1000, 2000] })
         .toMatch(attendu)
     })
 

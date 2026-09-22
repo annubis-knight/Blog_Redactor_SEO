@@ -17,7 +17,7 @@
  * précisément le cas que le contrat doit rendre honnête.
  */
 import { test, expect, type Page, type Response } from '@playwright/test'
-import { selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { scanAndLockCaptain, selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -38,7 +38,6 @@ interface SerpAnalysisLike {
 }
 
 const API = `http://localhost:${process.env.PORT ?? 3400}/api`
-const SCAN_URL = /\/api\/keywords\/.+\/scan$/
 const SERP_URL = /\/api\/serp\/analyze$/
 
 async function apiJson<T>(page: Page, path: string): Promise<T> {
@@ -47,23 +46,6 @@ async function apiJson<T>(page: Page, path: string): Promise<T> {
   return (await res.json()).data as T
 }
 
-/** Prépare la sous-phase : scan du Capitaine puis verrouillage (préalable au SERP). */
-async function lockCaptain(page: Page, keyword: string): Promise<void> {
-  const field = page.locator('[data-testid="keyword-input"] input').first()
-  await expect(field).toBeVisible({ timeout: 15000 })
-  await field.fill(keyword)
-  await Promise.all([
-    page.waitForResponse((r: Response) => SCAN_URL.test(r.url()) && r.request().method() === 'POST', { timeout: 60000 }),
-    field.press('Enter'),
-  ])
-
-  const item = page.locator('[data-testid="radar-list-item-0"]')
-  await expect(item, 'la carte du Capitaine doit apparaître').toBeVisible({ timeout: 30000 })
-  const lock = page.locator('[data-testid="radar-card-lock"]').first()
-  await expect(lock).toBeVisible({ timeout: 15000 })
-  await lock.click()
-  await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 10000 })
-}
 
 async function openLieutenants(page: Page): Promise<void> {
   const tab = page.locator('[data-testid="wf-item-lieutenants"]')
@@ -81,7 +63,7 @@ for (const level of LEVELS) {
 
     await test.step('① déclencheur — Capitaine verrouillé puis « Analyser SERP »', async () => {
       await selectArticle(page, parcours, level)
-      await lockCaptain(page, article.keyword)
+      await scanAndLockCaptain(page, article.keyword)
       await openLieutenants(page)
 
       // L'analyse porte sur le Capitaine ET ses mots-clés racines : on collecte

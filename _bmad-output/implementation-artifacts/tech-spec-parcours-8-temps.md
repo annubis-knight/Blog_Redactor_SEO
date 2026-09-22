@@ -1,8 +1,8 @@
 ---
 name: tech-spec-parcours-8-temps
 type: tech-spec
-status: in-progress
-version: 0.1.0
+status: done
+version: 1.0.0
 last_updated: 2026-09-22
 synced_with:
   - docs/testing-guide.md (niveau browser-e2e)
@@ -87,10 +87,31 @@ Chaque fichier : un `describe` par niveau d'article (Pilier → Intermédiaire �
 Spécifique) et un test par temps (ou par groupe de temps quand ils sont
 indissociables), pour que le rapport dise exactement **quel temps** a lâché.
 
-## Cartographie (à compléter)
+## Cartographie
 
-_(chaîne cocon → stratégie → article → Moteur, et repères `data-testid` par
-sous-phase : voir §Journal)_
+**Pour qu'un article soit pilotable dans le Moteur** (relevé du 2026-09-22) :
+
+1. `silos` → `cocoons` (SQL direct, étiquetés `[test:<runId>]`).
+2. `POST /api/articles/batch-create` (`{ cocoonName, articles: [{ title, type:
+   'pilier'|'intermediaire'|'specifique', slug, suggestedKeyword, painPoint }] }`)
+   — il n'existe pas de `POST /articles`. Le point de douleur ne peut être posé
+   qu'à la création (aucun endpoint ne le modifie ensuite) et doit faire ≥ 10
+   caractères pour que le score de Pertinence se calcule.
+3. `PUT /api/strategy/cocoon/:slug` avec `proposedArticles[].dbId` : **c'est la
+   stratégie du cocon que lit la barre du haut**, pas la table `articles`.
+   `validated` y est un texte, pas un booléen.
+4. `GET /api/cocoons` pour résoudre l'**index** du cocon : `data.service.ts`
+   réécrit `id: globalCocoonIndex++`, et c'est cet index que l'URL attend.
+
+**Pièges d'interface rencontrés** (absorbés par le socle) :
+
+- le panneau « Articles suggérés » est replié et intercepte les clics ;
+- une carte du Capitaine se sélectionne au clavier : un clic au centre tombe sur
+  les mots interactifs du mot-clé, qui arrêtent la propagation ;
+- après un rechargement, l'écran propose « Charger <onglet> » au lieu de
+  restaurer tout seul, et rouvre le dernier onglet visité (le Capitaine peut
+  donc être monté mais masqué) ;
+- la liste du Lexique se verrouille dès qu'un terme est retenu.
 
 ## Critères d'acceptation
 
@@ -115,4 +136,32 @@ aucun appel vers `api.dataforseo.com` (production).
 
 ## Journal
 
-_(complété au fil de l'eau)_
+| Commit | Contenu |
+|---|---|
+| `05116d3` | Socle (cocon + stratégie + 3 articles + mode simulé + nettoyage) et parcours du Capitaine. |
+| `8bd65b7` | Parcours Radar et Lieutenants. |
+| `c7ab5e0` | **Correctif produit** : le garde-fou de coût comptait les appels du bac à sable (gratuits) et refusait les scans en HTTP 429 après ~2 $ fictifs. Valideur : `tests/unit/services/dataforseo-cost-guard-sandbox.test.ts`. |
+| (ce commit) | Parcours Lexique et Découverte, mise en commun du verrouillage Capitaine, fiabilisation des attentes. |
+
+**État** : 21 tests verts (5 sous-phases × 3 niveaux + 6 tests de socle), ~2 min 40
+en mode simulé, sans un centime dépensé. Deux exécutions consécutives vertes.
+
+### Ce que les parcours ont révélé
+
+1. **Garde-fou de coût vs bac à sable** — corrigé (`c7ab5e0`).
+2. **Lieutenants pré-cochés mais non verrouillés** : après la proposition IA, les
+   cartes apparaissent cochées alors qu'aucun Lieutenant n'est verrouillé en
+   base ; le check workflow n'arrive qu'après un vrai clic. Le parcours reproduit
+   le geste (décoche puis recoche) — à trancher côté produit.
+3. **Les tests navigateur existants étaient permissifs** : `moteur-navigation`
+   vérifie des repères `phase-tab-*` qui n'existent pas (la nav utilise
+   `wf-item-*`), sous un `if (count > 0)` — vert sans rien contrôler.
+4. **Résidus anciens en base** : des `keyword_metrics` étiquetés `test-…` de
+   sessions antérieures subsistent (les parcours, eux, nettoient tout).
+
+### Reste à faire
+
+- Variante « mode réel » (coût DataForSEO) : mêmes scénarios, exécution manuelle.
+- Ajouter les repères `data-testid` manquants (déclencheurs Découverte et Radar,
+  résumé SERP, cases du Lexique) pour des sélecteurs moins fragiles.
+- Décider du sort des tests permissifs existants (les durcir ou les retirer).

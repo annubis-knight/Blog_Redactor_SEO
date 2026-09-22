@@ -227,6 +227,31 @@ export function useParcours(): ParcoursCtx {
   return ctx
 }
 
+/**
+ * Scanne un mot-clé Capitaine puis le verrouille — préalable des sous-phases
+ * Lieutenants et Lexique. Attend la fin de la validation : tant que la carte
+ * est en cours de scan, elle n'affiche pas encore son cadenas.
+ */
+export async function scanAndLockCaptain(page: Page, keyword: string): Promise<void> {
+  const field = page.locator('[data-testid="keyword-input"] input').first()
+  await expect(field, 'le champ Capitaine doit être présent').toBeVisible({ timeout: 15000 })
+  await field.fill(keyword)
+  await Promise.all([
+    page.waitForResponse(r => /\/api\/keywords\/.+\/scan$/.test(r.url()) && r.request().method() === 'POST', { timeout: 60000 }),
+    field.press('Enter'),
+  ])
+
+  const item = page.locator('[data-testid="radar-list-item-0"]')
+  await expect(item, 'la carte du Capitaine doit apparaître').toBeVisible({ timeout: 30000 })
+  await expect(page.locator('[data-testid="radar-list-item-0-loading"]'), 'la validation doit être terminée')
+    .toHaveCount(0, { timeout: 60000 })
+
+  const lock = page.locator('[data-testid="radar-card-lock"]').first()
+  await expect(lock, 'le cadenas de la carte doit être rendu').toBeVisible({ timeout: 30000 })
+  await lock.click()
+  await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 })
+}
+
 /** Ouvre le Moteur sur le cocon de test et sélectionne l'article du niveau demandé. */
 export async function selectArticle(page: Page, ctx: ParcoursCtx, level: ParcoursLevel): Promise<void> {
   await page.goto(ctx.moteurUrl())
@@ -242,5 +267,8 @@ export async function selectArticle(page: Page, ctx: ParcoursCtx, level: Parcour
   const button = page.locator('.tree-article-btn', { hasText: ctx.articles[level].title })
   await expect(button, `l'article ${level} doit apparaître dans la barre du haut`).toHaveCount(1, { timeout: 10000 })
   await button.first().click()
-  await expect(page.locator('[data-testid="captain-layout"]')).toBeVisible({ timeout: 15000 })
+  // L'article est monté : le Capitaine est dans la page. Il peut être masqué si
+  // un autre onglet est actif (l'application rouvre le dernier onglet visité).
+  await expect(page.locator('[data-testid="captain-layout"]'), 'l’article doit être monté dans le Moteur')
+    .toBeAttached({ timeout: 15000 })
 }
