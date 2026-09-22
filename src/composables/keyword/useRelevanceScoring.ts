@@ -1,6 +1,7 @@
 import { ref, computed, type ComputedRef, type Ref } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { relevanceScoreContract } from '@shared/contracts/discovery.contract.js'
 import type { DiscoveredKeyword } from '@shared/types/discovery-tab.types'
 
 const RELEVANCE_THRESHOLD = 0.5
@@ -87,9 +88,10 @@ export function useRelevanceScoring(deps: RelevanceScoringDeps) {
     strict: boolean,
   ): Promise<Record<string, number> | null> {
     try {
-      const result = await apiPost<{ scores: Record<string, number>; fallback: boolean }>(
+      const result = await apiPost(
         '/keywords/relevance-score',
         { seed, keywords, strict, articleContext: deps.lastArticleContext.value },
+        { contract: relevanceScoreContract },
       )
       return result.fallback ? null : result.scores
     } catch (err) {

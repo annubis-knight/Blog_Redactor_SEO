@@ -20,14 +20,14 @@ import { join, relative } from 'node:path'
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Familles dont le contrat est posé partout (client et serveur). */
-const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations'])
+const DONE_FAMILIES = new Set(['captain-scan', 'article-keywords', 'paa-judge', 'radar-scan', 'radar-generate', 'radar-exploration', 'long-tail', 'serp-analysis', 'tfidf', 'lieutenants-ai', 'lexique-ai', 'explorations', 'discovery', 'discovery-cache'])
 
 /**
  * Cliquet : ces nombres ne peuvent que baisser. (Lot 4 : le scanner voit aussi
  * les flux SSE — 3 appels de plus observés, d'où la remontée ponctuelle à 12.)
  */
-const BASELINE_CLIENT_UNCOVERED = 8
-const BASELINE_SERVER_UNCOVERED = 7
+const BASELINE_CLIENT_UNCOVERED = 2
+const BASELINE_SERVER_UNCOVERED = 2
 
 // ---------------------------------------------------------------------------
 // Frontière client : appels du front vers les réponses affichées au Moteur
@@ -53,6 +53,7 @@ const CLIENT_ENDPOINTS: ClientEndpoint[] = [
   { family: 'tfidf', method: 'Post', path: /^\/serp\/tfidf$/ },
   { family: 'discovery', method: 'Post', path: /^\/keywords\/(suggest-all|discover|discover-from-site|analyze-discovery|relevance-score)$/ },
   { family: 'explorations', method: 'Get', path: new RegExp(`^/articles/${V}/explorations$`) },
+  { family: 'discovery-cache', method: 'Get', path: /^\/discovery-cache\/load\?/ },
   // Flux SSE : le résultat de l'événement `done` est affiché.
   { family: 'lieutenants-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/(propose-lieutenants|ai-hn-structure)$`) },
   { family: 'lexique-ai', method: 'Stream', path: new RegExp(`^/keywords/${V}/ai-lexique-upfront$`) },
@@ -140,6 +141,7 @@ const SERVER_ROUTES: ServerRoute[] = [
   { family: 'discovery', file: 'keywords.routes.ts', method: 'post', path: '/keywords/analyze-discovery' },
   { family: 'discovery', file: 'keywords.routes.ts', method: 'post', path: '/keywords/relevance-score' },
   { family: 'explorations', file: 'article-explorations.routes.ts', method: 'get', path: '/articles/:id/explorations' },
+  { family: 'discovery-cache', file: 'discovery-cache.routes.ts', method: 'get', path: '/discovery-cache/load' },
   { family: 'ai-advice', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-panel' },
   { family: 'lieutenants-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/propose-lieutenants' },
   { family: 'lieutenants-ai', file: 'keyword-ai-panel.routes.ts', method: 'post', path: '/keywords/:keyword/ai-hn-structure' },

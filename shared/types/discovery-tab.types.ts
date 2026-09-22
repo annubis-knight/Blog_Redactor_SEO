@@ -1,5 +1,6 @@
 import type { RadarKeyword } from './intent.types.js'
 import type { KeywordType } from './keyword.types.js'
+import type { ApiUsage } from './api.types.js'
 
 export type DiscoverySource =
   | 'autocomplete'
@@ -51,6 +52,18 @@ export interface AnalyzedKeyword {
 export interface AnalysisResult {
   keywords: AnalyzedKeyword[]
   summary: string
+}
+
+/** Réponse de POST /keywords/analyze-discovery (sélection IA + coût). */
+export interface AnalyzeDiscoveryResponse extends AnalysisResult {
+  usage?: ApiUsage
+}
+
+/** Réponse de POST /keywords/relevance-score : 1 = pertinent, 0 = hors sujet, par mot-clé en minuscules. */
+export interface RelevanceScoreResponse {
+  scores: Record<string, number>
+  fallback: boolean
+  usage?: ApiUsage
 }
 
 /** Convert checked DiscoveredKeywords to RadarKeyword[] for DouleurIntentScanner */

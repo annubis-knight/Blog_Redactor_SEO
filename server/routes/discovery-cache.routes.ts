@@ -2,6 +2,8 @@ import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { checkCache, loadCache, saveCache, clearCache } from '../services/infra/discovery-cache.service.js'
 import { saveDiscoveryCacheSchema } from '../../shared/schemas/discovery-cache.schema.js'
+import { parseContract } from '../../shared/contracts/core.js'
+import { discoveryCacheEntryContract } from '../../shared/contracts/discovery.contract.js'
 
 const router = Router()
 
@@ -30,7 +32,8 @@ router.get('/discovery-cache/load', async (req, res) => {
       return
     }
     const entry = await loadCache(seed.trim())
-    res.json({ data: entry })
+    // Frontière relecture : même forme qu'au premier chargement (KPI absents → null).
+    res.json({ data: parseContract(discoveryCacheEntryContract, entry, 'db') })
   } catch (err) {
     log.error(`GET /api/discovery-cache/load — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load discovery cache' } })

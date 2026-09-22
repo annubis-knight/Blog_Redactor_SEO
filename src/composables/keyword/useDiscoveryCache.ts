@@ -1,6 +1,7 @@
 import { ref } from 'vue'
 import { apiGet, apiPost, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { discoveryCacheEntryContract } from '@shared/contracts/discovery.contract.js'
 import type { DiscoveryCacheEntry, DiscoveryCacheStatus, DiscoveryContext } from '@shared/types/discovery-cache.types'
 
 export function useDiscoveryCache() {
@@ -29,6 +30,7 @@ export function useDiscoveryCache() {
     try {
       const entry = await apiGet<DiscoveryCacheEntry | null>(
         `/discovery-cache/load?seed=${encodeURIComponent(seed.trim())}`,
+        { contract: discoveryCacheEntryContract },
       )
       if (!entry) return null
       log.info(`Discovery: loaded from cache for "${seed}"`)

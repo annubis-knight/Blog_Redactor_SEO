@@ -12,6 +12,7 @@ import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
 import { apiPost } from '@/services/api.service'
+import { domainDiscoveryContract, keywordDiscoveryContract } from '@shared/contracts/discovery.contract.js'
 import type { ClassifiedKeyword, KeywordDiscoveryResult, DomainDiscoveryResult, KeywordType } from '@shared/types/index.js'
 
 export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
@@ -85,7 +86,7 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
       const data = await apiPost<KeywordDiscoveryResult>(
         '/keywords/discover',
         { keyword, options: maxResults ? { maxResults } : undefined },
-        { signal: myController.signal },
+        { signal: myController.signal, contract: keywordDiscoveryContract },
       )
       log.info(`Discovered ${data.keywords.length} keywords for "${keyword}"`)
       results.value = data.keywords
@@ -115,7 +116,7 @@ export const useKeywordDiscoveryStore = defineStore('keywordDiscovery', () => {
       const data = await apiPost<DomainDiscoveryResult>(
         '/keywords/discover-from-site',
         { domain: domainName, options: maxResults ? { maxResults } : undefined },
-        { signal: myController.signal },
+        { signal: myController.signal, contract: domainDiscoveryContract },
       )
       log.info(`Discovered ${data.keywords.length} keywords from "${domainName}"`)
       results.value = data.keywords

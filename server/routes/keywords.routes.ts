@@ -6,6 +6,13 @@ import { getKeywordsByCocoon, addKeyword, replaceKeyword, deleteKeyword, updateK
 import { parseContract } from '../../shared/contracts/core.js'
 import { articleKeywordsContract } from '../../shared/contracts/article-keywords.contract.js'
 import { captainPaaJudgeContract } from '../../shared/contracts/captain-paa-judge.contract.js'
+import {
+  discoveryAnalysisContract,
+  domainDiscoveryContract,
+  keywordDiscoveryContract,
+  relevanceScoreContract,
+  suggestAllContract,
+} from '../../shared/contracts/discovery.contract.js'
 import { runPaaJudgmentsForArticle } from '../services/keyword/captain-paa-judge.service.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
@@ -218,7 +225,8 @@ router.post('/keywords/discover', async (req, res) => {
     }
 
     const result = await discoverKeywords(keyword, options)
-    res.json({ data: result })
+    // Frontière serveur (réponse fraîche ou cache 24 h) : KPI absents → null.
+    res.json({ data: parseContract(keywordDiscoveryContract, result, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/discover — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'DISCOVERY_ERROR', message: 'Failed to discover keywords' } })
@@ -239,7 +247,7 @@ router.post('/keywords/discover-from-site', async (req, res) => {
     const existingKeywords = allKeywords.map(k => k.keyword)
 
     const result = await discoverFromDomain(domain, options, existingKeywords)
-    res.json({ data: result })
+    res.json({ data: parseContract(domainDiscoveryContract, result, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/discover-from-site — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'DISCOVERY_ERROR', message: 'Failed to discover keywords from site' } })
@@ -656,13 +664,13 @@ router.post('/keywords/suggest-all', async (req, res) => {
 
     const result = await suggestAll(keyword.trim(), language ?? 'fr', country ?? 'fr')
     res.json({
-      data: {
+      data: parseContract(suggestAllContract, {
         alphabet: { items: result.alphabet, count: result.alphabet.length },
         questions: { items: result.questions, count: result.questions.length },
         intents: { items: result.intents, count: result.intents.length },
         prepositions: { items: result.prepositions, count: result.prepositions.length },
         totalUnique: result.totalUnique,
-      },
+      }, 'server'),
     })
   } catch (err) {
     log.error(`POST /api/keywords/suggest-all — ${(err as Error).message}`)
@@ -777,7 +785,7 @@ ${numberedList}`
     const painLogSuffix = hasPainPoint ? ` | pain: "${painPoint.slice(0, 80)}"` : ''
     log.info(`Relevance ${strict ? 'STRICT' : 'pass-1'}: ${keywords.length} kw, ${irrelevantSet.size} irrelevant for "${seed.trim()}"${painLogSuffix}`)
     // `usage` est remonté au frontend pour que la pile d'activité affiche le coût de la requête
-    res.json({ data: { scores: scoreMap, fallback: false, usage } })
+    res.json({ data: parseContract(relevanceScoreContract, { scores: scoreMap, fallback: false, usage }, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/relevance-score — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'SCORING_ERROR', message: 'Failed to classify keyword relevance' } })
@@ -914,7 +922,8 @@ Analyse ce pool en suivant la méthodologie (comprendre la douleur → évaluer 
     )
 
     log.info(`Discovery analysis: ${result.keywords.length} keywords selected from ${keywords.length} (cost: $${usage.estimatedCost.toFixed(4)})`)
-    res.json({ data: { ...result, usage } })
+    // Frontière serveur : sortie de l'IA mise en forme (mot-clé vide écarté, priorité lisible).
+    res.json({ data: parseContract(discoveryAnalysisContract, { ...result, usage }, 'server') })
   } catch (err) {
     log.error(`POST /api/keywords/analyze-discovery — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'ANALYSIS_ERROR', message: 'Failed to analyze discovery results' } })

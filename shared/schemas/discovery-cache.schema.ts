@@ -12,9 +12,11 @@ const discoveredKeywordSchema = z.object({
   source: discoverySourceSchema,
   reasoning: z.string().optional(),
   sourceDetail: z.string().optional(),
-  searchVolume: z.number().optional(),
-  difficulty: z.number().optional(),
-  cpc: z.number().optional(),
+  // KPI absent (`null`, FR-INFRA-KPI-NULLABLE) : accepté, sinon la sauvegarde
+  // échouait dès qu'un mot-clé DataForSEO n'avait pas de difficulté ou de CPC.
+  searchVolume: z.number().nullable().optional(),
+  difficulty: z.number().nullable().optional(),
+  cpc: z.number().nullable().optional(),
   intent: z.string().optional(),
   type: keywordTypeSchema.optional(),
 })

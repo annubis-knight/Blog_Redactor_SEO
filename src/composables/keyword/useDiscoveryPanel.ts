@@ -1,10 +1,11 @@
 import { ref, computed } from 'vue'
 import { apiPost } from '@/services/api.service'
 import { radarGenerateContract } from '@shared/contracts/radar.contract.js'
+import { discoveryAnalysisContract, keywordDiscoveryContract, suggestAllContract } from '@shared/contracts/discovery.contract.js'
 import { log } from '@/utils/logger'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { ApiUsage } from '@shared/types/index.js'
-import type { DiscoveredKeyword, DiscoverySource, WordGroup, SuggestAllResult, AnalysisResult } from '@shared/types/discovery-tab.types'
+import type { DiscoveredKeyword, DiscoverySource, WordGroup, SuggestAllResult, AnalysisResult, AnalyzeDiscoveryResponse } from '@shared/types/discovery-tab.types'
 import { toRadarKeywords } from '@shared/types/discovery-tab.types'
 import type { KeywordRadarGenerateResult } from '@shared/types/intent.types'
 import type { KeywordDiscoveryResult } from '@shared/types/keyword-discovery.types'
@@ -220,7 +221,7 @@ export function useDiscoveryPanel() {
 
     // 1. Google Suggest — all 4 strategies in one call
     suggestLoading.value = true
-    apiPost<SuggestAllResult>('/keywords/suggest-all', { keyword: seed })
+    apiPost<SuggestAllResult>('/keywords/suggest-all', { keyword: seed }, { contract: suggestAllContract })
       .then(data => {
         suggestAlphabetKw.value = data.alphabet.items.map(i => ({
           keyword: i.query,
@@ -281,7 +282,7 @@ export function useDiscoveryPanel() {
 
     // 3. DataForSEO discovery
     dataforseoLoading.value = true
-    apiPost<KeywordDiscoveryResult>('/keywords/discover', { keyword: seed, options: { maxResults: 100 } })
+    apiPost<KeywordDiscoveryResult>('/keywords/discover', { keyword: seed, options: { maxResults: 100 } }, { contract: keywordDiscoveryContract })
       .then(data => {
         dataforseoKeywords.value = data.keywords.map(k => ({
           keyword: k.keyword,
@@ -406,7 +407,7 @@ export function useDiscoveryPanel() {
         })
       }
 
-      const result = await apiPost<AnalysisResult & { usage?: ApiUsage }>(
+      const result = await apiPost<AnalyzeDiscoveryResponse>(
         '/keywords/analyze-discovery',
         {
           seed: lastSeed.value,
@@ -414,9 +415,10 @@ export function useDiscoveryPanel() {
           wordGroups: wordGroups.value.map(g => ({ word: g.word, count: g.count })),
           articleContext: lastArticleContext.value,
         },
+        { contract: discoveryAnalysisContract },
       )
       if (result.usage) {
-        try { useCostLogStore().addEntry('Analyse discovery', result.usage as ApiUsage) } catch { /* noop */ }
+        try { useCostLogStore().addEntry('Analyse discovery', result.usage) } catch { /* noop */ }
       }
       analysisResult.value = { keywords: result.keywords, summary: result.summary }
       log.info(`Discovery analysis: ${result.keywords.length} keywords curated`)
