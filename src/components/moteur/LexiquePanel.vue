@@ -249,9 +249,15 @@ async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = fal
       triggerScrapeIfMissing: triggerScrape,
     }, { contract: tfidfResultContract })
     tfidfResult.value = result
+    // FR-LEX-PRECHECK-PERSISTE — les termes obligatoires arrivent cochés :
+    // c'est le chemin principal, l'analyse IA ne fait ensuite qu'y ajouter des
+    // différenciateurs. Ce que l'écran coche doit exister en base, sans quoi
+    // la liste annonce « N termes sélectionnés » sur un lexique vide et
+    // l'étape ne se valide jamais.
     const preChecked = new Set<string>()
     for (const term of result.obligatoire) preChecked.add(term.term)
     selectedTerms.value = preChecked
+    lockMany([...preChecked])
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erreur inconnue'
     log.error(`[LexiquePanel] TF-IDF fetch failed`, { error: error.value })
