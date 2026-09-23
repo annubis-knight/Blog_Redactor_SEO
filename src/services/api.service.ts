@@ -221,6 +221,13 @@ async function consumeSseBody<T>(
   let usage: ApiUsage | null = null
   let errorMessage: string | null = null
   let accumulated = ''
+  // Le type d'événement survit d'une lecture à l'autre : un message SSE se
+  // découpe librement en paquets réseau. Déclaré dans la boucle, il repartait
+  // à zéro dès que `event: done` et ses données tombaient dans deux paquets
+  // distincts — ce qui arrive systématiquement au-delà de quelques kilo-octets.
+  // La rédaction d'un article long ne se terminait donc jamais côté écran : le
+  // texte s'affichait, puis plus rien — ni méta, ni accès à l'éditeur.
+  let eventType = ''
 
   while (true) {
     const { done, value } = await reader.read()
@@ -230,7 +237,6 @@ async function consumeSseBody<T>(
     const lines = buffer.split('\n')
     buffer = lines.pop() ?? ''
 
-    let eventType = ''
     for (const line of lines) {
       if (line.startsWith('event: ')) {
         eventType = line.slice(7).trim()
