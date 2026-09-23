@@ -253,14 +253,21 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
         .toBeVisible({ timeout: 60000 })
       await generer.click()
 
-      // Le contenu arrive en flux, et il est enregistré au fil des sections :
-      // un pilier réel en compte une vingtaine, soit ~20 min de rédaction.
+      // Le texte est enregistré au fil des sections : voir arriver les premiers
+      // caractères prouve que la rédaction a démarré, pas qu'elle est finie.
       await expect.poll(async () => {
         const r = await query<{ content: string | null }>(
           `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
         return r.rows[0]?.content?.length ?? 0
-      }, { timeout: REEL ? 2_400_000 : 300_000, message: 'le contenu rédigé doit arriver en base' })
+      }, { timeout: REEL ? 600_000 : 300_000, message: 'la rédaction doit démarrer' })
         .toBeGreaterThan(200)
+
+      // La fin, c'est le retour du bouton de régénération : un pilier réel
+      // compte une vingtaine de sections, soit ~20 min.
+      // Le bouton n'apparaît qu'une fois le texte complet posé, et reste
+      // désactivé tant que la génération tourne : son activation est le signal.
+      await expect(page.locator('[data-testid="regenerate-button"]'), 'la rédaction doit aller à son terme')
+        .toBeEnabled({ timeout: REEL ? 2_400_000 : 300_000 })
     })
 
     await test.step('la méta suit automatiquement', async () => {
@@ -269,7 +276,7 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
           `SELECT meta_title, meta_description FROM articles WHERE id = $1`, [article.id])
         const row = r.rows[0]
         return Boolean(row?.meta_title && row?.meta_description)
-      }, { timeout: REEL ? 300_000 : 120_000, message: 'titre et description doivent être générés' }).toBe(true)
+      }, { timeout: REEL ? 600_000 : 120_000, message: 'titre et description doivent être générés' }).toBe(true)
     })
   })
 
