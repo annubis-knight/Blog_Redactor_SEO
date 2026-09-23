@@ -93,6 +93,27 @@ export class AIProviderQuotaError extends Error {
   }
 }
 
+/**
+ * Le fournisseur est inutilisable **par configuration** : modèle renommé ou
+ * retiré, clé invalide, accès refusé. Ce n'est pas la demande qui est en
+ * cause, donc la chaîne doit passer au fournisseur suivant.
+ *
+ * Rencontré le 2026-09-23 : `gemini-2.0-flash` a été retiré par Google
+ * (404 « no longer available »). Le crédit Anthropic étant par ailleurs
+ * épuisé, la chaîne basculait bien de Claude vers Gemini — puis s'arrêtait
+ * là, sur cette 404 non reconnue, sans jamais essayer OpenRouter pourtant
+ * configuré. Une rédaction de vingt minutes s'interrompait à la troisième
+ * section alors qu'un fournisseur restait disponible.
+ */
+export class AIProviderUnavailableError extends Error {
+  public readonly provider: AIProvider
+  constructor(provider: AIProvider, message = 'AI provider unavailable') {
+    super(message)
+    this.name = 'AIProviderUnavailableError'
+    this.provider = provider
+  }
+}
+
 export class AIProviderOverloadedError extends Error {
   public readonly provider: AIProvider
   constructor(provider: AIProvider, message = 'AI provider is overloaded') {
@@ -145,6 +166,17 @@ function mapToKnownError(err: unknown, provider: AIProvider): Error {
   if (status === 503 || /overload|UNAVAILABLE/i.test(msg)) {
     return new AIProviderOverloadedError(provider)
   }
+  // Modèle retiré ou renommé, clé invalide, accès refusé : ce fournisseur est
+  // hors service, les suivants ne le sont pas forcément.
+  if (
+    status === 401 || status === 403 || status === 404 ||
+    /no longer available|NOT_FOUND|model.*not found|invalid.*api.?key|unauthorized|permission.?denied/i.test(msg)
+  ) {
+    const detail = /no longer available|NOT_FOUND|model.*not found/i.test(msg)
+      ? `Modèle ${provider} introuvable ou retiré — vérifiez ${provider.toUpperCase()}_MODEL dans .env.`
+      : `Accès ${provider} refusé — vérifiez la clé d'API.`
+    return new AIProviderUnavailableError(provider, detail)
+  }
   return err as Error
 }
 
@@ -190,7 +222,9 @@ async function withFallbackChain<T>(
       return await withRetry(() => runOnProvider(provider), ctx, provider)
     } catch (err) {
       lastErr = err
-      const isRecoverable = err instanceof AIProviderQuotaError || err instanceof AIProviderOverloadedError
+      const isRecoverable = err instanceof AIProviderQuotaError
+        || err instanceof AIProviderOverloadedError
+        || err instanceof AIProviderUnavailableError
       if (!isRecoverable) throw err
       // Continue to next provider
     }
