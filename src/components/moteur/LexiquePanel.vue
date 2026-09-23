@@ -197,7 +197,9 @@ const canExtract = computed(() =>
 // --- Actions UI ---
 
 function handleAssistAdd(term: string) {
-  if (isLocked.value) return
+  // La sélection reste ajustable à tout moment (FR-LEX-CHECKBOX-LOCK-IMMEDIATE) :
+  // refuser un ajout parce que des termes sont déjà retenus fermerait la porte
+  // au geste que l'exigence décrit — ajouter, retirer, au fil de la lecture.
   const next = new Set(selectedTerms.value); next.add(term)
   selectedTerms.value = next
 }

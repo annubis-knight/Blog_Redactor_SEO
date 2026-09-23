@@ -1,7 +1,7 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
 exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed default state 1`] = `
-"<div data-v-6ebf81e5="" class="proposal-item">
+"<div data-v-6ebf81e5="" class="proposal-item" data-testid="proposal-item" data-accepted="false" data-created="false">
   <!-- Header row -->
   <div data-v-6ebf81e5="" class="proposal-header">
     <div data-v-6ebf81e5="" class="proposal-title-block">
@@ -15,13 +15,13 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed def
         </svg></button></div>
     <!--v-if-->
     <!-- Header (collapsed only) -->
-    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" data-testid="proposal-accept-header" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle cx="8" cy="3.5" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="12.5" r="1.2" fill="currentColor"></circle>
-        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" title="Supprimer cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" data-testid="proposal-delete-header" title="Supprimer cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
         </svg></button></div><!-- Kebab dropdown (collapsed only) -->
     <!--v-if-->
@@ -36,7 +36,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders collapsed def
 `;
 
 exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded state with all details 1`] = `
-"<div data-v-6ebf81e5="" class="proposal-item expanded">
+"<div data-v-6ebf81e5="" class="proposal-item expanded" data-testid="proposal-item" data-accepted="false" data-created="false">
   <!-- Header row -->
   <div data-v-6ebf81e5="" class="proposal-header">
     <div data-v-6ebf81e5="" class="proposal-title-block">
@@ -98,7 +98,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
     <!-- Kebab dropdown (collapsed only) -->
     <!--v-if-->
     <!-- Bottom (expanded only) -->
-    <div data-v-33c5c761="" class="proposal-actions proposal-actions--bottom"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" title="Valider cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <div data-v-33c5c761="" class="proposal-actions proposal-actions--bottom"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" data-testid="proposal-accept-bottom" title="Valider cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg><span data-v-33c5c761="" class="action-label">Valider</span></button>
       <div data-v-33c5c761="" class="regen-dropdown-wrapper"><button data-v-33c5c761="" class="proposal-action-btn" title="Régénérer" data-testid="regen-dropdown-btn"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -107,7 +107,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
           </svg><span data-v-33c5c761="" class="action-label">Régénérer ▾</span></button>
         <!--v-if-->
       </div>
-      <!--v-if--><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" title="Supprimer cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+      <!--v-if--><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" data-testid="proposal-delete-bottom" title="Supprimer cet article"><svg data-v-33c5c761="" width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
         </svg><span data-v-33c5c761="" class="action-label">Supprimer</span></button>
     </div>
@@ -116,7 +116,7 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders expanded stat
 `;
 
 exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders with composition warnings (badge + tooltip-eligible) 1`] = `
-"<div data-v-6ebf81e5="" class="proposal-item">
+"<div data-v-6ebf81e5="" class="proposal-item" data-testid="proposal-item" data-accepted="false" data-created="false">
   <!-- Header row -->
   <div data-v-6ebf81e5="" class="proposal-header">
     <div data-v-6ebf81e5="" class="proposal-title-block">
@@ -129,13 +129,13 @@ exports[`ProposedArticleRow — snapshots HTML (Vague 2) > renders with composit
         </svg></button></div>
     <!--v-if-->
     <!-- Header (collapsed only) -->
-    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+    <div data-v-33c5c761="" class="proposal-actions"><button data-v-33c5c761="" class="proposal-action-btn proposal-action-accept" data-testid="proposal-accept-header" title="Valider cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
         </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-kebab" title="Plus d'actions" data-testid="kebab-btn"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <circle cx="8" cy="3.5" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="8" r="1.2" fill="currentColor"></circle>
           <circle cx="8" cy="12.5" r="1.2" fill="currentColor"></circle>
-        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" title="Supprimer cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+        </svg></button><button data-v-33c5c761="" class="proposal-action-btn proposal-action-delete" data-testid="proposal-delete-header" title="Supprimer cet article"><svg data-v-33c5c761="" width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"></path>
         </svg></button></div><!-- Kebab dropdown (collapsed only) -->
     <!--v-if-->

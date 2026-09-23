@@ -124,10 +124,13 @@ describe('useArticleGeneration', () => {
     const api = useArticleGeneration(deps)
     await api.handleGenerateArticle()
 
+    // Le 4e argument est l'identifiant de l'article : il permet d'enregistrer
+    // le texte au fil des sections (FR-RED-GEN-SAUVEGARDE-AU-FIL).
     expect(deps.editorStore.generateArticle).toHaveBeenCalledWith(
       deps.briefStore.briefData,
       deps.outlineStore.outline,
       1500,
+      expect.any(Number),
     )
     expect(deps.editorStore.saveArticle).toHaveBeenCalledTimes(2) // après article + après meta
     expect(deps.editorStore.generateMeta).toHaveBeenCalledWith(

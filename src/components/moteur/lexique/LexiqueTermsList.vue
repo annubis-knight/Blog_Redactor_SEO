@@ -31,7 +31,6 @@ defineEmits<{
         <input
           type="checkbox"
           :checked="selectedTerms.has(term.term)"
-          :disabled="isLocked"
           class="term-checkbox"
           @change="$emit('toggle-term', term.term)"
         />
