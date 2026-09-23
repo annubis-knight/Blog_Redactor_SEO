@@ -2,8 +2,8 @@
 name: tech-spec-parcours-8-temps
 type: tech-spec
 status: done
-version: 1.0.0
-last_updated: 2026-09-22
+version: 1.1.0
+last_updated: 2026-09-23
 synced_with:
   - docs/testing-guide.md (niveau browser-e2e)
   - docs/contrats-affichage-moteur.md (inventaire des composants et formats attendus)
@@ -144,10 +144,13 @@ aucun appel vers `api.dataforseo.com` (production).
 | `ce1c204` | Parcours Lexique et Découverte, mise en commun du verrouillage Capitaine, fiabilisation des attentes. |
 | `84c8b95` | Les `skip` du Lexique remplacés par de vraies vérifications (garde-fou `test-quality`). |
 | `b3a4f30` | **Décision produit** : l'IA propose, l'utilisateur valide — les cartes Lieutenants arrivent décochées. |
-| (ce commit) | **Interactions internes** : 4 fichiers (Capitaine, Radar, Lieutenants, panneaux IA). |
+| `260664a` | **Interactions internes** : 4 fichiers (Capitaine, Radar, Lieutenants, panneaux IA). |
+| `e31b5de` | **Correctif produit** : la barre du haut affichait « suggéré » même Capitaine verrouillé (`captainKeywordLocked: null` en dur). FR-MOT-RECAP-LOCK-SYNC. |
+| `64e474a` | **Correctif produit** : le bouton « Aller à la Rédaction » du panneau Finalisation n'était gardé par aucun verrou, contrairement à celui du bas. |
+| `7e54331` | **Durcissement** : socle réparé (index du cocon + stratégie) et tests permissifs remis d'aplomb. |
 
-**État** : 39 tests verts, ~3 min 20 en mode simulé, sans un centime dépensé.
-Deux exécutions consécutives vertes.
+**État** : 39 parcours + 58 tests navigateur historiques = **97 tests verts**,
+aucun en pause, sans un centime dépensé (sources simulées).
 
 - **Parcours de sous-phase** (21) : 5 sous-phases × 3 niveaux d'article + 6 tests de socle.
 - **Interactions internes** (18) : les gestes *dans* les composants, qui ne
@@ -174,9 +177,63 @@ Deux exécutions consécutives vertes.
 4. **Résidus anciens en base** : des `keyword_metrics` étiquetés `test-…` de
    sessions antérieures subsistent (les parcours, eux, nettoient tout).
 
+## Volet 2 — durcissement des tests permissifs (2026-09-23)
+
+### Pourquoi ils ne vérifiaient rien
+
+Deux défauts du socle historique (`helpers/test-fixtures.ts`), pas de la paresse :
+
+1. `createArticle()` renvoyait la **clé primaire** du cocon, alors que l'URL
+   `/cocoon/:id/...` attend son **index** dans `GET /cocoons`. Les tests
+   ouvraient donc un cocon quelconque, le plus souvent inexistant.
+2. Aucune stratégie de cocon n'était posée : la barre du haut n'avait aucun
+   article à lister, donc la navigation n'était jamais rendue.
+
+Faute de pouvoir afficher quoi que ce soit, les auteurs ont enrobé chaque
+assertion d'un `if (count > 0)` toujours faux, ou écrit des tautologies
+(`expect(count).toBeGreaterThanOrEqual(0)`, `expect(['true','false',null]).toContain(x)`).
+Onze tests se mettaient eux-mêmes en pause avec le motif
+« Selection article impossible : fixture incompatible MoteurContextRecap ».
+
+### Ce que leur réveil a révélé
+
+| Attente du test | Réalité du code |
+|---|---|
+| repère `phase-tab-*` | la nav émet `wf-item-*` ([WorkflowNav.vue:117](../../src/components/shared/WorkflowNav.vue)) |
+| l'onglet Finalisation n'existe pas sans les 3 verrous | navigation libre (FR-MOT-FREE-NAV) ; c'est la **sortie** qui est gardée |
+| `is-suggested` sur `.tree-article-btn` | la classe vit sur `.tree-article-keyword` |
+| l'article sélectionné est persisté en localStorage | **jamais implémenté** : la clé `blog-redactor:moteur-selected-article` n'est dans aucun fichier de `src/`, seuls les 3 tests existaient (Sprint 18) |
+| la liste du Capitaine est vide sur un article neuf | un article issu de la stratégie arrive **avec** son mot-clé suggéré |
+
+Plus les deux correctifs produit (`e31b5de`, `64e474a`).
+
+### Décisions
+
+- **Tautologies supprimées** : une assertion qui ne peut pas échouer ment sur la
+  couverture.
+- **Attentes périmées réécrites** sur la règle réelle, jamais l'inverse.
+- **Tests d'une fonctionnalité absente retirés** (persistance de la sélection) :
+  un test qui décrit du vide n'est pas un garde-fou. À rouvrir comme demande
+  produit si la persistance est souhaitée.
+- **Smoke tests conservés** (`pageerror`, page non blanche) : faibles mais honnêtes.
+- **Gestes communs mutualisés** dans `helpers/moteur-ui.ts`, bascule en sources
+  simulées dans `helpers/runtime-mode.ts` — désormais appliquée **aux deux
+  socles**, donc plus aucun test navigateur ne peut dépenser un centime.
+
 ### Reste à faire
 
 - Variante « mode réel » (coût DataForSEO) : mêmes scénarios, exécution manuelle.
 - Ajouter les repères `data-testid` manquants (déclencheurs Découverte et Radar,
   résumé SERP, cases du Lexique) pour des sélecteurs moins fragiles.
-- Décider du sort des tests permissifs existants (les durcir ou les retirer).
+- **Ordre de tri par défaut du Radar** : les cartes sont ordonnées par
+  `combinedScore` (legacy, `@deprecated`, KPI absent compté 0) alors qu'elles
+  affichent le score KPI (absent → « — »). Décision produit en attente ; aucun
+  `FR-RAD-*` ne couvre le tri, contrairement au Lexique (`FR-LEX-SORT`).
+- **Les suites `contract-api` et `e2e-workflows` appellent la production
+  DataForSEO payante** : elles ne posent aucun override, et `DATAFORSEO_SANDBOX`
+  est commenté dans `.env`. Trois exécutions de `npm run test:check` épuisent le
+  budget (2 $ / 30 min) et font rougir une douzaine de tests en HTTP 429. Les
+  mêmes passent en bac à sable. À basculer.
+- **Baseline `tests/.baseline.json` périmé** : pris sur `f6281f4` (branche
+  `fix/audit-p0`), il annonce 2 rouges là où la branche en compte 12 sans aucune
+  modification. À régénérer une fois le point précédent réglé.

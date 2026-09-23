@@ -578,6 +578,7 @@ Si la navigation entre onglets est libre, l'app applique un **verrouillage doux*
 - L'utilisateur peut toujours *ouvrir* un onglet, même si une condition d'écriture n'est pas remplie.
 - Quand un bouton d'écriture est désactivé pour cause de verrou, il porte un libellé ou un tooltip qui explique *pourquoi* (ex. « Capitaine à verrouiller d'abord »).
 - Quand l'utilisateur pose la dernière étape manquante, les boutons précédemment désactivés s'activent dans le même tick — pas besoin de rafraîchir la page.
+- **Toutes** les portes vers la Rédaction obéissent à cette règle, y compris le bouton « Aller à la Rédaction » du récapitulatif Finalisation — deux chemins vers la même action ne peuvent pas avoir deux règles. Et l'écran n'annonce jamais « Prêt pour la Rédaction » au-dessus de sections encore vides.
 
 > **En situation.** L'utilisateur arrive sur l'article « Refus rupture conventionnelle par l'employeur ». Il clique sur Lexique pour voir ce qu'il y a — le panneau s'ouvre normalement mais le gros bouton « Extraire le lexique » est grisé, avec « Verrouille d'abord un Capitaine » écrit dessous. Il file sur l'onglet Capitaine, sélectionne et verrouille « refus rupture conventionnelle employeur ». Il revient sur Lexique : le bouton est devenu actif. À aucun moment l'app ne l'a empêché de *regarder*, mais elle l'a empêché de *commettre une bêtise* — il aurait extrait un lexique sur un Capitaine vide.
 
@@ -614,6 +615,24 @@ En haut du Moteur, deux listes repliables segmentent les articles du cocon coura
 > **En situation.** Bug rencontré le 11 mai : l'utilisateur a généré 13 articles via le Cerveau. Sans cette règle, les 13 apparaissaient à la fois dans « Articles suggérés » (parce que la stratégie les compte comme propositions) **et** dans « Articles publiés » (parce qu'ils ont été insérés en base avec un statut par défaut). Confusion totale. Après application de cette règle, les 13 apparaissent uniquement dans « Articles suggérés » — la section « Articles publiés » reste vide tant qu'aucun article n'a été *réellement* promu en rédaction. La liste reflète la réalité du pipeline.
 
 → Conception : [DESIGN-MOT-RECAP-PUBLISHED](./design-registry.md#design-mot-recap-published)
+
+---
+
+#### FR-MOT-RECAP-LOCK-SYNC — Le mot-clé affiché en haut dit la vérité
+
+Dans la barre du haut du Moteur, chaque article affiche son mot-clé principal. Ce mot-clé est présenté différemment selon son état : **en suggestion** (contour pointillé, estompé) tant qu'il n'est qu'une proposition, **en verrouillé** (plein) une fois que l'utilisateur a arrêté son choix. Cette distinction doit refléter l'état réel, immédiatement — pas après un rechargement de page.
+
+**Critères d'acceptation**
+- Verrouiller un Capitaine change l'aspect du mot-clé dans la barre du haut sans avoir à recharger.
+- Déverrouiller le remet en suggestion, toujours sans rechargement.
+- L'aspect affiché correspond à ce qui est enregistré en base, pas à ce qui est en mémoire côté navigateur.
+- Un mot-clé enregistré vide est traité comme une absence, jamais comme un mot-clé verrouillé sans nom.
+
+**Statut** : active. **Depuis** : 2026-09-23.
+
+> **En situation.** L'utilisateur verrouille « création site internet toulouse » comme Capitaine de son article pilier. Il remonte les yeux vers la barre du haut : le mot-clé y est toujours en pointillés, comme s'il n'avait rien décidé. Il reverrouille, croyant que son clic n'a pas pris. En réalité la base était à jour depuis le début — seul l'affichage mentait, jusqu'au prochain F5. Désormais le mot-clé passe en plein dès le clic, et l'utilisateur sait que c'est fait.
+
+→ Conception : [DESIGN-MOT-RECAP-LOCK-SYNC](./design-registry.md#design-mot-recap-lock-sync)
 
 ---
 

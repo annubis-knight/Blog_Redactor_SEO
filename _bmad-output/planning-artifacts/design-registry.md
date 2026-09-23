@@ -715,6 +715,41 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 ---
 
+### DESIGN-MOT-RECAP-LOCK-SYNC
+
+**Réf PRD :** [FR-MOT-RECAP-LOCK-SYNC](./prd.md#fr-mot-recap-lock-sync--le-mot-clé-affiché-en-haut-dit-la-vérité)
+
+**Refs code**
+- [src/utils/recap-articles.ts](../../src/utils/recap-articles.ts) — `buildRecapArticles(proposed, capitaines)` : construit les `Article[]` de la barre du haut à partir de la stratégie du cocon + `capitainesMap`. Porte le header `AUTHORITY:`.
+- [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — `suggestedArticlesForRecap` délègue à cette fonction. Écrivait `captainKeywordLocked: null` en dur avant le 2026-09-23.
+- [src/composables/moteur/useMoteurArticleSync.ts](../../src/composables/moteur/useMoteurArticleSync.ts) — `refreshCapitainesMap()`, déjà appelée sur `moteur:capitaine_locked` à l'ajout comme au retrait du check.
+- [src/components/moteur/MoteurContextRecap.vue](../../src/components/moteur/MoteurContextRecap.vue) — `keywordLocked: !!a.captainKeywordLocked` pilote la classe `is-suggested` du `<span class="tree-article-keyword">` (et non du bouton parent).
+- [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — `lockCaptaine()`, `lockEntry()` et `performUnlock()` attendent `saveKeywords()` avant d'émettre le check.
+
+**Tables consommées** : `articles.captain_keyword_locked` (miroir écrit par `saveDecisions`), lue par `GET /cocoons/:name/capitaines`.
+
+**Flux DB**
+
+*Lecture* : `refreshCapitainesMap()` → `GET /cocoons/:name/capitaines` → `Record<articleId, captainKeyword>`. La barre du haut n'interroge donc plus `GET /cocoons`, qui n'est chargé qu'au montage.
+
+*Écriture* : `saveKeywords(articleId)` → `PUT /articles/:id/keywords` → `data.service.ts` met à jour `article_keywords` **et** le miroir `articles.captain_keyword_locked`.
+
+**Décisions d'architecture**
+- **Réutiliser `capitainesMap` plutôt qu'ajouter une synchronisation.** Elle est déjà chargée (détection de cannibalisation) et déjà rafraîchie aux deux moments utiles. Aucune plomberie nouvelle, aucune requête supplémentaire.
+- **Émettre le check après la persistance.** Le check déclenche une relecture serveur : l'émettre avant le `PUT` faisait lire l'état d'avant. Les trois chemins de verrouillage `await` désormais la sauvegarde.
+- **Fonction pure extraite.** `MoteurView` est trop lourde à monter en test ; `buildRecapArticles` se teste en 6 assertions (cf. `tests/unit/utils/recap-articles.test.ts`), sur le modèle de `buildTabCacheEntries`.
+- **Chaîne vide = absence.** `captainKeywordLocked: locked || null` — un mot-clé enregistré vide ne doit pas compter comme un verrou.
+
+**Critères d'acceptation techniques**
+- Unitaire : `buildRecapArticles` renvoie le mot-clé verrouillé quand `capitaines[dbId]` existe, `null` sinon, `null` sur chaîne vide, et n'attribue le verrou qu'à l'article concerné.
+- Navigateur : après verrouillage, `.tree-article-keyword` perd `is-suggested` sans rechargement ; après déverrouillage, il la retrouve (`tests/browser-e2e/moteur-capitaine-radar-list.browser.test.ts`).
+
+**Voir aussi**
+- `DESIGN-MOT-RECAP-PUBLISHED` (l'autre liste de la même barre).
+- `DESIGN-MOT-SOFT-GATING` (les checks dont dépend l'affichage).
+
+---
+
 ### DESIGN-MOT-MODE-BIMODAL
 
 **Réf PRD :** [FR-MOT-MODE-BIMODAL](./prd.md#fr-mot-mode-bimodal--composants-moteur-réutilisables-en-mode-workflow-ou-libre)

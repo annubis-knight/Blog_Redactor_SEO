@@ -7,7 +7,8 @@
  * aucune source payante.
  */
 import { test, expect } from '@playwright/test'
-import { effectiveMode, selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { effectiveMode } from '../helpers/runtime-mode'
 
 test.describe.configure({ mode: 'serial' })
 
