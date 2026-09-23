@@ -33,10 +33,11 @@ describe('Tab cerveau/proposals — Création batch', () => {
 
     const res = await apiPost('/articles/batch-create', {
       cocoonName: cocoon.nom,
+      // Format canonique attendu par l'API depuis l'unification du 2026-05-13.
       articles: [
-        { title: `[test:${ctx.runId}] Tab Batch P1`, type: 'Pilier' },
-        { title: `[test:${ctx.runId}] Tab Batch I1`, type: 'Intermédiaire' },
-        { title: `[test:${ctx.runId}] Tab Batch S1`, type: 'Spécialisé' },
+        { title: `[test:${ctx.runId}] Tab Batch P1`, type: 'pilier' },
+        { title: `[test:${ctx.runId}] Tab Batch I1`, type: 'intermediaire' },
+        { title: `[test:${ctx.runId}] Tab Batch S1`, type: 'specifique' },
       ],
     })
     expect([200, 201]).toContain(res.status)

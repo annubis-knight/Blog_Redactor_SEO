@@ -19,6 +19,9 @@ export default mergeConfig(
         '.stryker-tmp/**',       // sandbox Stryker (mutation testing) — éviter double exécution
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
+      // Sources externes simulées pour toute la suite (voir le module) :
+      // posées une seule fois, car le mode est global au serveur.
+      globalSetup: ['./tests/helpers/global-runtime-mode.ts'],
     },
   }),
 )

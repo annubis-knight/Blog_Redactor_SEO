@@ -23,10 +23,9 @@ beforeEach(() => {
  */
 async function firstArticleInDb() {
   const cocoons = await getCocoons()
-  const cocoonIndex = cocoons.findIndex(c => c.articles.length > 0)
-  expect(cocoonIndex, 'aucun article en base : impossible de tester la lecture').toBeGreaterThanOrEqual(0)
-  const cocoon = cocoons[cocoonIndex]!
-  return { cocoonIndex, cocoon, article: cocoon.articles[0]! }
+  const cocoon = cocoons.find(c => c.articles.length > 0)
+  expect(cocoon, 'aucun article en base : impossible de tester la lecture').toBeDefined()
+  return { cocoon: cocoon!, article: cocoon!.articles[0]! }
 }
 
 // Mots-clés semés à l'initialisation, indépendants des articles.
@@ -146,19 +145,21 @@ describe('data.service — getCocoons.publishedArticles (FR-MOT-RECAP-PUBLISHED)
 })
 
 describe('data.service — getArticlesByCocoon', () => {
-  it('returns articles for valid cocoon index', async () => {
-    const { cocoonIndex, cocoon } = await firstArticleInDb()
-    const articles = await getArticlesByCocoon(cocoonIndex)
+  // La résolution se fait par identifiant de cocon, pas par rang dans la
+  // liste : un rang glisse dès qu'un cocon antérieur est supprimé.
+  it('rend les articles du cocon demandé', async () => {
+    const { cocoon } = await firstArticleInDb()
+    const articles = await getArticlesByCocoon(cocoon.id)
     expect(articles).not.toBeNull()
     expect(articles!.map(a => a.id)).toEqual(cocoon.articles.map(a => a.id))
   })
 
-  it('returns null for out-of-range index', async () => {
-    const articles = await getArticlesByCocoon(99)
+  it('rend null sur un identifiant inconnu', async () => {
+    const articles = await getArticlesByCocoon(999_999_999)
     expect(articles).toBeNull()
   })
 
-  it('returns null for negative index', async () => {
+  it('rend null sur un identifiant négatif', async () => {
     const articles = await getArticlesByCocoon(-1)
     expect(articles).toBeNull()
   })

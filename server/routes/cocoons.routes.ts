@@ -19,15 +19,15 @@ router.get('/cocoons', async (_req, res) => {
 /** GET /api/cocoons/:id/articles — Articles for a specific cocoon */
 router.get('/cocoons/:id/articles', async (req, res) => {
   try {
-    const cocoonIndex = parseInt(req.params.id, 10)
-    if (isNaN(cocoonIndex)) {
+    const cocoonId = parseInt(req.params.id, 10)
+    if (isNaN(cocoonId)) {
       res.status(400).json({ error: { code: 'INVALID_ID', message: 'Cocoon ID must be a number' } })
       return
     }
 
-    const articles = await getArticlesByCocoon(cocoonIndex)
+    const articles = await getArticlesByCocoon(cocoonId)
     if (!articles) {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: `Cocoon ${cocoonIndex} not found` } })
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: `Cocoon ${cocoonId} not found` } })
       return
     }
 

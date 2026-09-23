@@ -31,7 +31,7 @@ describe('Contract /generate/outline', () => {
       keyword: 'plombier toulouse',
       keywords: [],
       paa: [],
-      articleType: 'Pilier',
+      articleType: 'pilier',
       articleTitle: article.titre,
       cocoonName: cocoon.nom,
       topic: null,
@@ -113,7 +113,7 @@ describe('Contract /generate/micro-context-suggest', () => {
       articleId: 1,
       articleTitle: 'Test',
       keyword: `test-${ctx.runId}-mc`,
-      articleType: 'Pilier',
+      articleType: 'pilier',
     })
     expect([200, 400, 500]).toContain(res.status)
   })

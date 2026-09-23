@@ -32,6 +32,8 @@ import {
 export interface TestContext {
   runId: string
   serverOk: boolean
+  /** Vrai si la suite tourne sur les vraies API (TESTS_REELS=1), donc en payant. */
+  modeReel?: boolean
   getSilo: (base?: string) => Promise<TestSilo>
   createCocoon: (siloId: number, base?: string) => Promise<TestCocoon>
   createArticle: (cocoonId: number, base?: string, type?: 'Pilier' | 'Intermédiaire' | 'Spécialisé') => Promise<TestArticle>
@@ -49,6 +51,7 @@ export function setupTestContext(): TestContext {
   const ctx: TestContext = {
     runId: makeTestRunId(),
     serverOk: false,
+    modeReel: false,
     getSilo: async (base = 'Silo') => {
       return getOrCreateTestSilo(ctx.runId, base)
     },
@@ -74,11 +77,11 @@ export function setupTestContext(): TestContext {
       const { TEST_API_BASE_URL } = await import('./base-url')
       console.warn(`[test-context] server not reachable at ${TEST_API_BASE_URL} — HTTP tests will be skipped`)
     }
-    // 3. Warning si provider != mock (les tests assument des fixtures déterministes)
-    const provider = (process.env.AI_PROVIDER ?? 'claude').toLowerCase()
-    if (provider !== 'mock') {
-      console.warn(`[test-context] AI_PROVIDER=${provider} (not "mock") — AI-dependent assertions may be flaky`)
-    }
+    // 3. Le mode des sources externes est posé une fois pour toute la suite
+    //    (`tests/helpers/global-runtime-mode.ts`) : le poser ici, par fichier,
+    //    faisait que le premier terminé rendait la main aux vraies API pendant
+    //    que les autres tournaient encore.
+    ctx.modeReel = process.env.TESTS_REELS === '1'
   })
 
   afterAll(async () => {

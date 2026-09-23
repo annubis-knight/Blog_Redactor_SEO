@@ -126,7 +126,10 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
   `)
 
   // Rebuild Cocoon[] via Map
-  let globalCocoonIndex = 0
+  // L'identifiant exposé est celui de la table `cocoons`, pas un rang dans la
+  // liste. Un compteur séquentiel glissait à chaque suppression d'un cocon
+  // antérieur : une URL /cocoon/:id/moteur mise en favori se mettait alors à
+  // ouvrir un autre cocon, sans rien signaler (cf. cocoons-id-stability).
   const cocoonMap = new Map<number, Cocoon>()
   const siloNames = new Map<number, string>()
 
@@ -134,7 +137,7 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
     siloNames.set(row.silo_id, row.silo_nom)
     if (!cocoonMap.has(row.cocoon_id)) {
       cocoonMap.set(row.cocoon_id, {
-        id: globalCocoonIndex++,
+        id: row.cocoon_id,
         name: row.cocoon_nom,
         siloName: row.silo_nom,
         articles: [],
@@ -183,7 +186,10 @@ export async function getSilos(): Promise<Silo[]> {
   for (const c of cocoonsRes.rows) cocoonSiloMap.set(c.id, c.silo_id)
 
   // Group cocoons by silo
-  let globalCocoonIndex = 0
+  // L'identifiant exposé est celui de la table `cocoons`, pas un rang dans la
+  // liste. Un compteur séquentiel glissait à chaque suppression d'un cocon
+  // antérieur : une URL /cocoon/:id/moteur mise en favori se mettait alors à
+  // ouvrir un autre cocon, sans rien signaler (cf. cocoons-id-stability).
   const siloCocoonsMap = new Map<number, Cocoon[]>()
 
   const fullCocoonsRes = await pool.query(`
@@ -200,7 +206,7 @@ export async function getSilos(): Promise<Silo[]> {
   for (const row of fullCocoonsRes.rows) {
     const articles = articlesByCocoonName.get(row.cocoon_nom) ?? []
     const cocoon: Cocoon = {
-      id: globalCocoonIndex++,
+      id: row.cocoon_id,
       name: row.cocoon_nom,
       siloName: row.silo_nom,
       articles,
@@ -240,9 +246,16 @@ export async function getCocoons(): Promise<Cocoon[]> {
   return loadArticlesDb()
 }
 
-export async function getArticlesByCocoon(cocoonIndex: number): Promise<Article[] | null> {
+/**
+ * Articles d'un cocon, résolus par **son identifiant**, pas par sa position.
+ *
+ * `cocoons[cocoonId]` lisait le tableau comme un rang : supprimer un cocon
+ * antérieur décalait tout, et une URL /cocoon/:id/... mise en favori ouvrait
+ * alors un autre cocon — ou renvoyait 404 (cf. cocoons-id-stability).
+ */
+export async function getArticlesByCocoon(cocoonId: number): Promise<Article[] | null> {
   const cocoons = await loadArticlesDb()
-  const cocoon = cocoons[cocoonIndex]
+  const cocoon = cocoons.find(c => c.id === cocoonId)
   return cocoon ? cocoon.articles : null
 }
 
@@ -425,9 +438,6 @@ export async function addCocoonToSilo(siloName: string, cocoonName: string): Pro
   )
   const cocoonDbId = res.rows[0].id
 
-  const allCocoons = await loadArticlesDb()
-  const id = allCocoons.findIndex(c => c.name === cocoonName)
-
   const emptyStats: CocoonStats = {
     totalArticles: 0,
     byType: { pilier: 0, intermediaire: 0, specialise: 0 },
@@ -436,7 +446,10 @@ export async function addCocoonToSilo(siloName: string, cocoonName: string): Pro
   }
 
   log.info('addCocoonToSilo', { cocoonName, siloName, id: cocoonDbId })
-  return { id: id >= 0 ? id : cocoonDbId, name: cocoonName, siloName, articles: [], publishedArticles: [], stats: emptyStats }
+  // L'identifiant rendu est celui de la table, pas un rang dans la liste :
+  // c'est lui qui part dans les URLs, et il doit survivre à la suppression
+  // d'un cocon antérieur (cf. cocoons-id-stability).
+  return { id: cocoonDbId, name: cocoonName, siloName, articles: [], publishedArticles: [], stats: emptyStats }
 }
 
 export async function addArticlesToCocoon(
@@ -469,31 +482,51 @@ export async function addArticlesToCocoon(
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '')
 
-    try {
-      const res = await pool.query(`
-        INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps, suggested_keyword, pain_point, pain_intent_expected)
-        VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7, $8)
-        ON CONFLICT (slug) DO NOTHING
-        RETURNING *
-      `, [
-        nextId,
-        cocoonId,
-        article.title,
-        // Conversion canonical → DB : la colonne `articles.type` impose le
-        // format PascalCase français (CHECK constraint).
-        articleLevelToDbType(article.type),
-        slug,
-        article.suggestedKeyword ?? null,
-        article.painPoint ?? null,
-        article.painIntentExpected ?? null,
-      ])
+    // `articles.id` n'a pas de séquence : le numéro est calculé à la main
+    // (MAX(id)+1). Deux créations simultanées — deux onglets ouverts, un
+    // double-clic sur « Tout valider » — tombent alors sur le même, et
+    // l'insertion viole la clé primaire. L'article était silencieusement
+    // sauté ; on relit le maximum et on retente.
+    let insere = false
+    for (let essai = 0; essai < 5 && !insere; essai++) {
+      try {
+        const res = await pool.query(`
+          INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps, suggested_keyword, pain_point, pain_intent_expected)
+          VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7, $8)
+          ON CONFLICT (slug) DO NOTHING
+          RETURNING *
+        `, [
+          nextId,
+          cocoonId,
+          article.title,
+          // Conversion canonical → DB : la colonne `articles.type` impose le
+          // format PascalCase français (CHECK constraint).
+          articleLevelToDbType(article.type),
+          slug,
+          article.suggestedKeyword ?? null,
+          article.painPoint ?? null,
+          article.painIntentExpected ?? null,
+        ])
 
-      if (res.rows.length > 0) {
-        created.push(rowToArticle(res.rows[0]))
-        nextId++
+        insere = true
+        if (res.rows.length > 0) {
+          created.push(rowToArticle(res.rows[0]))
+          nextId++
+        } else {
+          // Slug déjà pris : l'appelant le voit à l'absence de la ligne.
+          log.warn('addArticlesToCocoon — slug déjà utilisé', { slug })
+        }
+      } catch (err) {
+        const message = (err as Error).message
+        if (/articles_pkey|duplicate key/i.test(message)) {
+          const relu = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM articles`)
+          nextId = (relu.rows[0].max_id as number) + 1
+          log.debug('addArticlesToCocoon — identifiant repris', { slug, nextId, essai: essai + 1 })
+          continue
+        }
+        log.warn('addArticlesToCocoon — skip article', { slug, error: message })
+        insere = true
       }
-    } catch (err) {
-      log.warn('addArticlesToCocoon — skip article', { slug, error: (err as Error).message })
     }
   }
 

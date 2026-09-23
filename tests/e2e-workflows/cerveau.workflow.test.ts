@@ -208,9 +208,11 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
 
     const res = await apiPost<unknown>('/articles/batch-create', {
       cocoonName: cocoon.nom,
+      // L'API parle le format canonique depuis l'unification du 2026-05-13
+      // (`ArticleLevel`) ; la base, elle, stocke toujours le PascalCase.
       articles: [
-        { title: `[test:${ctx.runId}] Batch P1`, type: 'Pilier' },
-        { title: `[test:${ctx.runId}] Batch S1`, type: 'Spécialisé' },
+        { title: `[test:${ctx.runId}] Batch P1`, type: 'pilier' },
+        { title: `[test:${ctx.runId}] Batch S1`, type: 'specifique' },
       ],
     })
     expect([200, 201]).toContain(res.status)
@@ -232,7 +234,8 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     const res = await apiGet<{ article: { id: number; type: string }; cocoonName: string }>(`/articles/${article.id}`)
     expect(res.status).toBe(200)
     expect(res.data?.article?.id).toBe(article.id)
-    expect(res.data?.article?.type).toBe('Pilier')
+    // `rowToArticle` convertit le PascalCase de la base vers le canonique.
+    expect(res.data?.article?.type).toBe('pilier')
     expect(res.data?.cocoonName).toBeDefined()
   })
 

@@ -194,7 +194,11 @@ registerStreamFixture(
 // ---------------------------------------------------------------------------
 registerStreamFixture(
   'ai-lexique-upfront',
-  ({ userPrompt }) => /lexique|termes.*obligatoires|TF-?IDF/i.test(userPrompt),
+  ({ userPrompt }) =>
+    /lexique|termes.*obligatoires|TF-?IDF/i.test(userPrompt)
+    // `lexique-suggest` attend un tableau de termes, pas des recommandations :
+    // il a sa propre fixture (`lexique-suggest-array`).
+    && !/g[eé]n[eè]re le lexique LSI/i.test(userPrompt),
   () => {
     const json = {
       recommendations: [
@@ -226,4 +230,28 @@ registerStreamFixture(
     }
     return JSON.stringify(json, null, 2)
   },
+)
+
+
+/**
+ * `POST /keywords/lexique-suggest` — la route fait `JSON.parse(...) as string[]`
+ * et son prompt réclame explicitement `["terme1", "terme2", …]`. La fixture des
+ * recommandations de Lexique captait ce prompt et rendait un objet : le contrat
+ * de l'endpoint n'était jamais respecté en mode simulé.
+ */
+registerStreamFixture(
+  'lexique-suggest-array',
+  ({ userPrompt }) => /g[eé]n[eè]re le lexique LSI/i.test(userPrompt),
+  () => JSON.stringify([
+    'intervention rapide',
+    'devis gratuit',
+    'artisan certifié',
+    'dépannage urgence',
+    'tarif transparent',
+    'garantie décennale',
+    'déplacement offert',
+    'intervention 24h',
+    'diagnostic gratuit',
+    'entreprise locale',
+  ]),
 )

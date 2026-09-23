@@ -37,7 +37,7 @@ describe('Contract GET /articles/:id/explorations/counts', () => {
     const article = await ctx.createArticle(cocoon.id, 'Counts Empty Article')
 
     const res = await apiGet<CountsResponse>(`/articles/${article.id}/explorations/counts`)
-    expect(res.error).toBeUndefined()
+    expect(res.error, 'pas d’erreur').toBeNull()
     expect(res.data).toBeDefined()
 
     // Toutes les sources attendues sont présentes (pas d'omission silencieuse)

@@ -61,7 +61,7 @@ describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
       `/articles/${article.id}/radar-exploration/keyword`,
       { keyword: 'seo local boulangerie' },
     )
-    expect(res.error).toBeUndefined()
+    expect(res.error, 'pas d’erreur').toBeNull()
     expect(res.data?.added).toBe(true)
     expect(res.data?.entry.generatedKeywords).toHaveLength(1)
     expect(res.data?.entry.generatedKeywords[0].keyword).toBe('seo local boulangerie')
@@ -126,7 +126,7 @@ describe('Contract DELETE /articles/:id/radar-exploration/keyword', () => {
     const res = await apiDelete<{ entry: RadarExplorationResponse['entry'] | null }>(
       `/articles/${article.id}/radar-exploration/keyword?keyword=kw-a`,
     )
-    expect(res.error).toBeUndefined()
+    expect(res.error, 'pas d’erreur').toBeNull()
     expect(res.data?.entry?.generatedKeywords).toHaveLength(1)
     expect(res.data?.entry?.generatedKeywords[0].keyword).toBe('kw-b')
   })
@@ -141,7 +141,7 @@ describe('Contract DELETE /articles/:id/radar-exploration/keyword', () => {
     const res = await apiDelete<{ entry: RadarExplorationResponse['entry'] | null }>(
       `/articles/${article.id}/radar-exploration/keyword?keyword=kw-z`,
     )
-    expect(res.error).toBeUndefined()
+    expect(res.error, 'pas d’erreur').toBeNull()
     expect(res.data?.entry?.generatedKeywords).toHaveLength(1)
     expect(res.data?.entry?.generatedKeywords[0].keyword).toBe('kw-a')
   })

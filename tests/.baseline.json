@@ -1,26 +1,17 @@
 {
-  "generated_at": "2026-09-21T11:42:21.133Z",
+  "generated_at": "2026-09-23T21:01:16.828Z",
   "git": {
-    "commit": "f6281f4",
-    "branch": "fix/audit-p0",
-    "subject": "test: suite réalignée sur schema.sql et la base réelle (19 → 2 rouges)",
+    "commit": "2cca61f",
+    "branch": "test/parcours-8-temps",
+    "subject": "fix(lexique): une case cochée doit rester décochable",
     "clean": false
   },
   "totals": {
-    "passed": 4427,
-    "failed": 2,
+    "passed": 4655,
+    "failed": 0,
     "skipped": 246
   },
-  "fingerprint": "sha256:96caca312af32658827df5224412e8a65f3b7b53b98a6f815617c1c0d27ecd10",
-  "failures": [
-    {
-      "file": "tests/e2e-workflows/_setup-sanity.test.ts",
-      "name": "Test harness sanity GET /health renvoie ok"
-    },
-    {
-      "file": "tests/e2e-workflows/_setup-sanity.test.ts",
-      "name": "Test harness sanity serveur dev est joignable"
-    }
-  ],
+  "fingerprint": "sha256:4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+  "failures": [],
   "note": "Fichier généré par `npm run test:snapshot`. Ne pas éditer à la main. Régénérer après réparation/ajout de tests."
 }
