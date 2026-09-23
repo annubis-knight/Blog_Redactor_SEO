@@ -10,7 +10,17 @@
  */
 import { computed } from 'vue'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import {
+  isFinalisationUnlocked,
+  finalisationButtonTitle,
+} from '@/composables/moteur/useFinalisationGating'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
+import {
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants.js'
 import type { SelectedArticle } from '@shared/types/index.js'
 
 const props = defineProps<{
@@ -41,14 +51,43 @@ const lieutenants = computed(() =>
 
 const lexique = computed(() => articleKeywordsStore.keywords?.lexique ?? [])
 
+/**
+ * FR-MOT-FINAL-CTA-GATED — L'onglet Finalisation est librement accessible
+ * (FR-MOT-FREE-NAV), mais la sortie vers la Rédaction obéit à la même règle
+ * que le bouton du bas de page : les 3 verrous Phase ② doivent être posés.
+ *
+ * Sans cela, deux portes menaient à la Rédaction pour la même action — l'une
+ * gardée, l'autre non — et l'en-tête annonçait « Prêt pour la Rédaction » sur
+ * un article dont les sections affichaient « Aucun lieutenant verrouillé ».
+ */
+const articleProgressStore = useArticleProgressStore()
+
+const checks = computed(() => {
+  const id = props.selectedArticle?.id
+  const done = (id ? articleProgressStore.getProgress(id)?.completedChecks : null) ?? []
+  return {
+    capitaineLocked: done.includes(MOTEUR_CAPITAINE_LOCKED),
+    lieutenantsLocked: done.includes(MOTEUR_LIEUTENANTS_LOCKED),
+    lexiqueValidated: done.includes(MOTEUR_LEXIQUE_VALIDATED),
+  }
+})
+
+const ready = computed(() => isFinalisationUnlocked(checks.value))
+const ctaTitle = computed(() => finalisationButtonTitle(checks.value))
+
 </script>
 
 <template>
   <div class="finalisation" data-testid="finalisation-panel">
     <header class="finalisation__header">
-      <h2 class="finalisation__title">✅ Prêt pour la Rédaction</h2>
+      <h2 class="finalisation__title" data-testid="finalisation-title">
+        {{ ready ? '✅ Prêt pour la Rédaction' : '⏳ Préparation en cours' }}
+      </h2>
       <p class="finalisation__subtitle">
         Récapitulatif des décisions validées pour <strong>{{ selectedArticle?.title ?? 'cet article' }}</strong>.
+      </p>
+      <p v-if="!ready" class="finalisation__pending" data-testid="finalisation-pending">
+        {{ ctaTitle }}
       </p>
     </header>
 
@@ -93,6 +132,8 @@ const lexique = computed(() => articleKeywordsStore.keywords?.lexique ?? [])
         type="button"
         class="finalisation__cta"
         data-testid="finalisation-cta-redaction"
+        :disabled="!ready"
+        :title="ctaTitle"
         @click="emit('navigate-redaction')"
       >Aller à la Rédaction →</button>
     </div>
@@ -226,7 +267,19 @@ const lexique = computed(() => articleKeywordsStore.keywords?.lexique ?? [])
   transition: background 0.15s, transform 0.15s;
 }
 
-.finalisation__cta:hover {
+.finalisation__cta:disabled {
+  background: var(--color-border, #cbd5e1);
+  color: var(--color-text-muted, #64748b);
+  cursor: not-allowed;
+}
+
+.finalisation__pending {
+  margin: 0.25rem 0 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted, #64748b);
+}
+
+.finalisation__cta:not(:disabled):hover {
   background: var(--color-primary-hover, #2563eb);
   transform: translateY(-1px);
 }

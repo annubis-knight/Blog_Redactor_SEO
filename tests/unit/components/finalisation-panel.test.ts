@@ -17,6 +17,24 @@ import { mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import FinalisationPanel from '../../../src/components/moteur/FinalisationPanel.vue'
 import { useArticleKeywordsStore } from '../../../src/stores/article/article-keywords.store'
+import { useArticleProgressStore } from '../../../src/stores/article/article-progress.store'
+import {
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '../../../shared/constants/workflow-checks.constants.js'
+
+/** Pose les checks Phase ② voulus pour l'article de test. */
+function withChecks(...checks: string[]) {
+  const progress = useArticleProgressStore()
+  progress.progressMap['1'] = {
+    articleId: 1,
+    completedChecks: checks,
+    checkTimestamps: {},
+  } as never
+}
+
+const TOUS_LES_VERROUS = [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED]
 
 const STUBS = {
   CollapsableSection: {
@@ -229,6 +247,7 @@ describe('FinalisationPanel', () => {
   })
 
   it('clic sur "Aller à la Rédaction" → emit navigate-redaction', async () => {
+    withChecks(...TOUS_LES_VERROUS)
     const wrapper = mount(FinalisationPanel, {
       props: { selectedArticle: SELECTED_ARTICLE as never },
       global: { stubs: STUBS },
@@ -257,5 +276,69 @@ describe('FinalisationPanel', () => {
       global: { stubs: STUBS },
     })
     expect(wrapper.text()).not.toContain('Verrouillé le')
+  })
+})
+
+/**
+ * FR-MOT-FINAL-CTA-GATED — deux boutons mènent à la Rédaction : celui du bas de
+ * MoteurView et celui de ce panneau. Le premier était gardé par les 3 verrous
+ * Phase ②, le second partait sans condition. L'écran annonçait même « Prêt pour
+ * la Rédaction » au-dessus de sections disant « Aucun lieutenant verrouillé ».
+ */
+describe('FinalisationPanel — sortie vers la Rédaction gardée', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+  })
+
+  function monter() {
+    return mount(FinalisationPanel, {
+      props: { selectedArticle: SELECTED_ARTICLE as never },
+      global: { stubs: STUBS },
+    })
+  }
+
+  it('refuse le départ tant qu’un verrou manque, et dit lequel', async () => {
+    withChecks(MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED)
+    const wrapper = monter()
+
+    const cta = wrapper.find('[data-testid="finalisation-cta-redaction"]')
+    expect(cta.attributes('disabled')).toBeDefined()
+    expect(cta.attributes('title')).toContain('Lexique à valider')
+
+    await cta.trigger('click')
+    expect(wrapper.emitted('navigate-redaction'), 'un bouton refusé n’emmène nulle part').toBeFalsy()
+  })
+
+  it('annonce la préparation en cours plutôt que « Prêt » sur un article incomplet', () => {
+    withChecks()
+    const wrapper = monter()
+
+    expect(wrapper.find('[data-testid="finalisation-title"]').text()).toContain('Préparation en cours')
+    const restant = wrapper.find('[data-testid="finalisation-pending"]').text()
+    expect(restant).toContain('Capitaine à verrouiller')
+    expect(restant).toContain('Lieutenants à verrouiller')
+    expect(restant).toContain('Lexique à valider')
+  })
+
+  it('ouvre la porte une fois les trois verrous posés', async () => {
+    withChecks(...TOUS_LES_VERROUS)
+    const wrapper = monter()
+
+    const cta = wrapper.find('[data-testid="finalisation-cta-redaction"]')
+    expect(cta.attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="finalisation-title"]').text()).toContain('Prêt pour la Rédaction')
+    expect(wrapper.find('[data-testid="finalisation-pending"]').exists()).toBe(false)
+
+    await cta.trigger('click')
+    expect(wrapper.emitted('navigate-redaction')).toBeTruthy()
+  })
+
+  it('reste fermé quand aucun article n’est sélectionné', () => {
+    const wrapper = mount(FinalisationPanel, {
+      props: { selectedArticle: null },
+      global: { stubs: STUBS },
+    })
+
+    expect(wrapper.find('[data-testid="finalisation-cta-redaction"]').attributes('disabled')).toBeDefined()
   })
 })
