@@ -1,31 +1,40 @@
 /**
  * Browser E2E — Onglet Moteur · Lexique
+ *
+ * Durci le 2026-09-23 : les deux tests d'origine s'appuyaient sur
+ * `expect(count).toBeGreaterThanOrEqual(0)`, vrai par définition.
  */
 import { test, expect } from './helpers/test-fixtures'
+import { openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Moteur Lexique — structure', () => {
-  test('phase-tab-lexique présent', async ({ page, ctx }) => {
+  test('l’onglet Lexique est rendu et visitable', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Lex Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const tab = page.locator('[data-testid="phase-tab-lexique"]')
-    expect(await tab.count()).toBeGreaterThanOrEqual(0)
+    await expect(tabLocator(page, 'lexique'), 'l’onglet Lexique est dans la navigation')
+      .toBeVisible({ timeout: 15000 })
   })
 
-  test('data-testid="btn-extract" n\'est visible qu\'après avoir switché sur lexique', async ({ page, ctx }) => {
+  test('l’extraction n’est proposée qu’une fois sur l’onglet, et dit ce qui bloque', async ({ page, ctx }) => {
     const article = await ctx.createArticle('LexExtract Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const tab = page.locator('[data-testid="phase-tab-lexique"]')
-    if (await tab.count() > 0 && await tab.isEnabled()) {
-      await tab.click()
-      // btn-extract peut apparaître ou non selon l'état (capitaine non locked ⇒ pas visible)
-      const btn = page.locator('[data-testid="btn-extract"]')
-      // Présent ou absent — test tolérant
-      const count = await btn.count()
-      expect(count).toBeGreaterThanOrEqual(0)
-    }
+    // Avant le switch : le bouton d'extraction n'est pas monté ailleurs dans la page.
+    await expect(page.locator('[data-testid="btn-extract"]'), 'rien ne fuit hors de l’onglet')
+      .toHaveCount(0)
+
+    const tab = tabLocator(page, 'lexique')
+    await expect(tab).toBeEnabled({ timeout: 15000 })
+    await tab.click()
+
+    // Après le switch : soit l'extraction est proposée, soit l'écran nomme le
+    // préalable manquant (analyse SERP). Jamais un onglet muet.
+    const extraire = page.locator('[data-testid="btn-extract"]')
+    const précheck = page.locator('[data-testid="precheck-missing"]')
+    await expect(extraire.or(précheck).first(), 'l’onglet dit quoi faire')
+      .toBeVisible({ timeout: 20000 })
   })
 })

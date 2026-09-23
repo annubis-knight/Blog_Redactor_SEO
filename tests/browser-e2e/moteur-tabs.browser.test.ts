@@ -1,35 +1,45 @@
 /**
- * Browser E2E — Navigation inter-onglets Moteur + phase tabs
+ * Browser E2E — Navigation inter-onglets Moteur
+ *
+ * Durci le 2026-09-23 : `expect(count).toBeGreaterThanOrEqual(0)` et
+ * `expect(['true','false',null]).toContain(active)` acceptaient toutes les
+ * valeurs possibles — aucun des deux ne pouvait échouer.
  */
 import { test, expect } from './helpers/test-fixtures'
+import { MOTEUR_TABS, openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Moteur — Navigation tabs', () => {
-  test('les 5 tabs principales sont présentes', async ({ page, ctx }) => {
+  test('les 5 onglets sont présents et portent leur libellé', async ({ page, ctx }) => {
     const article = await ctx.createArticle('AllTabs Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const tabs = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique']
-    for (const tabId of tabs) {
-      const tab = page.locator(`[data-testid="phase-tab-${tabId}"]`)
-      // Tolère absence si article pas sélectionné dans MoteurView
-      const count = await tab.count()
-      expect(count).toBeGreaterThanOrEqual(0)
+    const libellés: Record<string, RegExp> = {
+      discovery: /Découverte|Discovery/i,
+      radar: /Radar/i,
+      capitaine: /Capitaine/i,
+      lieutenants: /Lieutenants/i,
+      lexique: /Lexique/i,
+    }
+    for (const tab of MOTEUR_TABS) {
+      const locator = tabLocator(page, tab)
+      await expect(locator, `l'onglet ${tab} est rendu`).toBeVisible({ timeout: 15000 })
+      await expect(locator, `l'onglet ${tab} est nommé`).toHaveText(libellés[tab])
     }
   })
 
-  test('capitaine est par défaut actif (smart-nav)', async ({ page, ctx }) => {
+  test('un seul onglet est actif à la fois', async ({ page, ctx }) => {
     const article = await ctx.createArticle('DefaultTab Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const capitaine = page.locator('[data-testid="phase-tab-capitaine"]')
-    if (await capitaine.count() > 0) {
-      // Si la nav est rendue, capitaine devrait être actif (selon MoteurView.ts ref('capitaine'))
-      const active = await capitaine.getAttribute('data-active')
-      // Tolère false si smart-nav redirect ailleurs selon article
-      expect(['true', 'false', null]).toContain(active)
-    }
+    const actifs = page.locator('[data-testid^="wf-item-"][aria-selected="true"]')
+    await expect(actifs, 'un onglet actif, et un seul').toHaveCount(1, { timeout: 15000 })
+
+    // Après un switch, l'ancien onglet a rendu la main.
+    await tabLocator(page, 'lexique').click()
+    await expect(tabLocator(page, 'lexique')).toHaveAttribute('aria-selected', 'true', { timeout: 10000 })
+    await expect(actifs, 'toujours un seul onglet actif').toHaveCount(1)
   })
 })
 
@@ -39,8 +49,7 @@ test.describe('Moteur — pas d\'erreur pageerror sur chargement', () => {
     page.on('pageerror', err => errors.push(err.message))
 
     const article = await ctx.createArticle('NoErr Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
 
     expect(errors).toEqual([])
   })

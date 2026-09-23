@@ -26,6 +26,8 @@ import {
   createTestCocoon,
   cleanupTestFixtures,
 } from '../../helpers/db-fixtures.js'
+import { openMoteur, scanAndLockCaptain, selectArticleByTitle } from './moteur-ui.js'
+import { effectiveMode, setMockMode } from './runtime-mode.js'
 
 const API = `http://localhost:${process.env.PORT ?? 3400}/api`
 
@@ -66,21 +68,6 @@ async function api<T>(path: string, init?: RequestInit): Promise<ApiResult<T>> {
   })
   const json = await res.json().catch(() => null)
   return { ok: res.ok, status: res.status, data: json?.data as T, error: json?.error }
-}
-
-/** Bascule le serveur en mode simulé (IA locale + DataForSEO bac à sable). */
-export async function setMockMode(mode: 'mock' | 'real' | null): Promise<void> {
-  const res = await api<{ effective: string }>('/runtime-mode', {
-    method: 'POST',
-    body: JSON.stringify({ mode }),
-  })
-  if (!res.ok) throw new Error(`runtime-mode ${mode} refusé (HTTP ${res.status})`)
-}
-
-/** Mode effectif vu par le serveur — sert de garde-fou « aucun appel payant ». */
-export async function effectiveMode(): Promise<string> {
-  const res = await api<{ effective: string }>('/runtime-mode')
-  return res.data?.effective ?? 'inconnu'
 }
 
 const LEVELS: ParcoursLevel[] = ['pilier', 'intermediaire', 'specifique']
@@ -227,48 +214,10 @@ export function useParcours(): ParcoursCtx {
   return ctx
 }
 
-/**
- * Scanne un mot-clé Capitaine puis le verrouille — préalable des sous-phases
- * Lieutenants et Lexique. Attend la fin de la validation : tant que la carte
- * est en cours de scan, elle n'affiche pas encore son cadenas.
- */
-export async function scanAndLockCaptain(page: Page, keyword: string): Promise<void> {
-  const field = page.locator('[data-testid="keyword-input"] input').first()
-  await expect(field, 'le champ Capitaine doit être présent').toBeVisible({ timeout: 15000 })
-  await field.fill(keyword)
-  await Promise.all([
-    page.waitForResponse(r => /\/api\/keywords\/.+\/scan$/.test(r.url()) && r.request().method() === 'POST', { timeout: 60000 }),
-    field.press('Enter'),
-  ])
-
-  const item = page.locator('[data-testid="radar-list-item-0"]')
-  await expect(item, 'la carte du Capitaine doit apparaître').toBeVisible({ timeout: 30000 })
-  await expect(page.locator('[data-testid="radar-list-item-0-loading"]'), 'la validation doit être terminée')
-    .toHaveCount(0, { timeout: 60000 })
-
-  const lock = page.locator('[data-testid="radar-card-lock"]').first()
-  await expect(lock, 'le cadenas de la carte doit être rendu').toBeVisible({ timeout: 30000 })
-  await lock.click()
-  await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 })
-}
-
 /** Ouvre le Moteur sur le cocon de test et sélectionne l'article du niveau demandé. */
 export async function selectArticle(page: Page, ctx: ParcoursCtx, level: ParcoursLevel): Promise<void> {
-  await page.goto(ctx.moteurUrl())
-  await page.waitForLoadState('networkidle', { timeout: 20000 })
-
-  // Le panneau « Articles suggérés » est replié par défaut : il intercepte les clics.
-  const toggle = page.locator('.recap-toggle-btn', { hasText: 'Articles suggérés' }).first()
-  await expect(toggle, 'le panneau « Articles suggérés » doit exister').toHaveCount(1, { timeout: 10000 })
-  if ((await toggle.getAttribute('aria-expanded')) === 'false') {
-    await toggle.click()
-  }
-
-  const button = page.locator('.tree-article-btn', { hasText: ctx.articles[level].title })
-  await expect(button, `l'article ${level} doit apparaître dans la barre du haut`).toHaveCount(1, { timeout: 10000 })
-  await button.first().click()
-  // L'article est monté : le Capitaine est dans la page. Il peut être masqué si
-  // un autre onglet est actif (l'application rouvre le dernier onglet visité).
-  await expect(page.locator('[data-testid="captain-layout"]'), 'l’article doit être monté dans le Moteur')
-    .toBeAttached({ timeout: 15000 })
+  await openMoteur(page, ctx.cocoonIndex)
+  await selectArticleByTitle(page, ctx.articles[level].title)
 }
+
+export { scanAndLockCaptain }

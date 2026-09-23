@@ -1,30 +1,34 @@
 /**
  * Browser E2E — Onglet Moteur · Radar
+ *
+ * Durci le 2026-09-23 : les deux tests étaient enrobés d'un `if (count > 0)`
+ * toujours faux (repère `phase-tab-radar` inexistant).
  */
 import { test, expect } from './helpers/test-fixtures'
+import { openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Moteur Radar — structure', () => {
-  test('phase-tab-radar présent et non-locked (F1)', async ({ page, ctx }) => {
+  test('Radar est accessible sur un article neuf (F1)', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Radar Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const tab = page.locator('[data-testid="phase-tab-radar"]')
-    if (await tab.count() > 0) {
-      expect(await tab.getAttribute('data-locked')).toBe('false')
-    }
+    await expect(tabLocator(page, 'radar'), 'Radar reste cliquable sans Capitaine verrouillé')
+      .toBeEnabled({ timeout: 15000 })
   })
 
-  test('switch vers Radar via click', async ({ page, ctx }) => {
+  test('le clic sur Radar ouvre l’onglet et son ajout manuel', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Radar Switch')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const radarTab = page.locator('[data-testid="phase-tab-radar"]')
-    if (await radarTab.count() > 0 && await radarTab.isEnabled()) {
-      await radarTab.click()
-      // Après click, data-active devrait être true
-      await expect(radarTab).toHaveAttribute('data-active', 'true', { timeout: 5000 })
-    }
+    const tab = tabLocator(page, 'radar')
+    await expect(tab).toBeEnabled({ timeout: 15000 })
+    await tab.click()
+    await expect(tab, 'l’onglet devient actif').toHaveAttribute('aria-selected', 'true', { timeout: 10000 })
+
+    // Sans scan, l'onglet propose au moins d'ajouter un mot-clé à la main.
+    await expect(page.locator('[data-testid="radar-manual-add"]'), 'l’ajout manuel est proposé')
+      .toBeVisible({ timeout: 20000 })
   })
 })

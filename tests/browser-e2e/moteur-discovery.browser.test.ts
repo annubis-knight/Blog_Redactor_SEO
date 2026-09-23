@@ -1,11 +1,11 @@
 /**
- * Browser E2E — Onglet Moteur · Discovery
+ * Browser E2E — Onglet Moteur · Découverte
  *
- * Ces tests chargent l'onglet Moteur et vérifient la présence des éléments UI
- * clés via testids stables. Les comportements dynamiques (checkbox basket,
- * expansion sections) sont testés uniquement si les testids sont en place.
+ * Durci le 2026-09-23 : le test « non-locked » n'était jamais exécuté (repère
+ * `phase-tab-discovery` inexistant — la nav émet `wf-item-*`).
  */
 import { test, expect } from './helpers/test-fixtures'
+import { openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Moteur Discovery — structure page', () => {
   test('charge MoteurView sans erreur pageerror', async ({ page, ctx }) => {
@@ -13,20 +13,23 @@ test.describe('Moteur Discovery — structure page', () => {
     page.on('pageerror', err => errors.push(err.message))
 
     const article = await ctx.createArticle('Disc Browser')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
 
     expect(errors).toEqual([])
   })
 
-  test('phase-tab-discovery présent et non-locked (F1)', async ({ page, ctx }) => {
+  test('Découverte est accessible sur un article neuf (F1) et rend son panneau', async ({ page, ctx }) => {
     const article = await ctx.createArticle('F1 Disc')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
 
-    const tab = page.locator('[data-testid="phase-tab-discovery"]')
-    if (await tab.count() > 0) {
-      expect(await tab.getAttribute('data-locked')).toBe('false')
-    }
+    const tab = tabLocator(page, 'discovery')
+    await expect(tab, 'Découverte reste cliquable quel que soit l’état du Capitaine')
+      .toBeEnabled({ timeout: 15000 })
+    await tab.click()
+    await expect(tab).toHaveAttribute('aria-selected', 'true', { timeout: 10000 })
+
+    await expect(page.locator('[data-testid="discovery-ai-panel"]'), 'le panneau Découverte se rend')
+      .toBeVisible({ timeout: 20000 })
   })
 })

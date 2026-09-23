@@ -1,13 +1,18 @@
 /**
- * Browser E2E — Navigation Moteur (5 onglets + finalisation)
+ * Browser E2E — Navigation Moteur (5 onglets + gate Finalisation)
+ *
+ * Durci le 2026-09-23 : ces tests enrobaient chaque assertion d'un
+ * `if (count > 0)` parce que le socle ouvrait un cocon inexistant (clé primaire
+ * au lieu de l'index) et qu'aucun article n'était sélectionnable. Le socle
+ * réparé, les assertions sont désormais fermes.
  */
 import { test, expect } from './helpers/test-fixtures'
+import { MOTEUR_TABS, openMoteur, selectArticleByTitle, tabLocator } from './helpers/moteur-ui'
 
 test.describe('Moteur — Charge avec un article test', () => {
   test('navigue vers /cocoon/:id/moteur sans erreur', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Moteur Nav Article')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
+    await openMoteur(page, article.cocoonId)
     const body = await page.textContent('body')
     expect(body && body.length).toBeGreaterThan(0)
   })
@@ -30,55 +35,65 @@ test.describe('Moteur — Charge avec un article test', () => {
 })
 
 test.describe('Moteur — Onglets (gate frontend F1)', () => {
-  test('phase-tab buttons sont rendus (discovery, radar, capitaine, lieutenants, lexique)', async ({ page, ctx }) => {
+  test('les 5 onglets sont rendus une fois un article sélectionné', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Tabs Article')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
-    // Attend que MoteurView mount et affiche la nav
-    const discoveryTab = page.locator('[data-testid="phase-tab-discovery"]')
-    const radarTab = page.locator('[data-testid="phase-tab-radar"]')
-    const capitaineTab = page.locator('[data-testid="phase-tab-capitaine"]')
-    const lieutenantsTab = page.locator('[data-testid="phase-tab-lieutenants"]')
-    const lexiqueTab = page.locator('[data-testid="phase-tab-lexique"]')
-    // Si l'article n'est pas sélectionné dans MoteurView, la nav peut ne pas apparaître
-    // → on tolère 0 ou présent (mais ne force pas .isVisible)
-    const count = await discoveryTab.count()
-    if (count > 0) {
-      await expect(discoveryTab).toBeVisible()
-      await expect(radarTab).toBeVisible()
-      await expect(capitaineTab).toBeVisible()
-      await expect(lieutenantsTab).toBeVisible()
-      await expect(lexiqueTab).toBeVisible()
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
+
+    for (const tab of MOTEUR_TABS) {
+      await expect(tabLocator(page, tab), `l'onglet ${tab} doit être rendu`)
+        .toBeVisible({ timeout: 15000 })
     }
   })
 
-  test('Discovery et Radar ne sont pas lockés (F1 : toujours cliquables)', async ({ page, ctx }) => {
+  test('Discovery et Radar ne sont jamais verrouillés (F1)', async ({ page, ctx }) => {
     const article = await ctx.createArticle('F1 Article')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
-    const discoveryTab = page.locator('[data-testid="phase-tab-discovery"]')
-    if (await discoveryTab.count() > 0) {
-      // F1 : jamais verrouillé quel que soit l'état Capitaine
-      expect(await discoveryTab.getAttribute('data-locked')).toBe('false')
-    }
-    const radarTab = page.locator('[data-testid="phase-tab-radar"]')
-    if (await radarTab.count() > 0) {
-      expect(await radarTab.getAttribute('data-locked')).toBe('false')
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
+
+    // F1 : accessibles quel que soit l'état du Capitaine (article neuf ici).
+    await expect(tabLocator(page, 'discovery'), 'Découverte reste cliquable').toBeEnabled({ timeout: 15000 })
+    await expect(tabLocator(page, 'radar'), 'Radar reste cliquable').toBeEnabled({ timeout: 15000 })
+  })
+
+  test('navigation libre : Lieutenants, Lexique et Finalisation restent ouverts (FR-MOT-FREE-NAV)', async ({ page, ctx }) => {
+    const article = await ctx.createArticle('Gate Article')
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
+
+    // Gating souple : on peut aller voir n'importe quelle étape sur un article
+    // neuf. Ce qui est gardé, ce sont les écritures — pas la visite.
+    for (const tab of ['lieutenants', 'lexique', 'finalisation'] as const) {
+      await expect(tabLocator(page, tab), `l’onglet ${tab} reste visitable`)
+        .toBeEnabled({ timeout: 15000 })
     }
   })
 
-  test('Finalisation gate : phase-tab-finalisation n\'existe pas tant que les 3 locks sont absents', async ({ page, ctx }) => {
+  test('le passage en Rédaction est refusé tant que les 3 verrous manquent, et dit lesquels', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Final Gate Article')
-    await page.goto(`/cocoon/${article.cocoonId}/moteur`)
-    await page.waitForLoadState('networkidle', { timeout: 15000 })
-    // L'onglet Finalisation apparaît uniquement après les 3 locks → article neuf = absent
-    const finalTab = page.locator('[data-testid="phase-tab-finalisation"]')
-    const count = await finalTab.count()
-    // Soit absent (0) soit visible mais data-locked=true
-    if (count > 0) {
-      const locked = await finalTab.getAttribute('data-locked')
-      // Soit locked=true, soit l'onglet n'est pas interactif
-      expect(['true', 'false', null]).toContain(locked)
-    }
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
+
+    await tabLocator(page, 'finalisation').click()
+
+    // Le vrai garde-fou n'est pas l'onglet mais le bouton de sortie : il reste
+    // désactivé et énumère ce qui manque (useFinalisationGating).
+    const cta = page.locator('[data-testid="cta-redaction"]')
+    await expect(cta, 'le bouton de passage en Rédaction est rendu').toBeVisible({ timeout: 15000 })
+    await expect(cta, 'et refusé sur un article neuf').toBeDisabled()
+    await expect(cta, 'en nommant les étapes restantes')
+      .toHaveAttribute('title', /Capitaine à verrouiller.*Lieutenants à verrouiller.*Lexique à valider/)
+  })
+
+  test('cliquer un onglet le rend actif', async ({ page, ctx }) => {
+    const article = await ctx.createArticle('Switch Article')
+    await openMoteur(page, article.cocoonId)
+    await selectArticleByTitle(page, article.titre)
+
+    const radar = tabLocator(page, 'radar')
+    await expect(radar).toBeEnabled({ timeout: 15000 })
+    await radar.click()
+    await expect(radar, 'l’onglet cliqué devient l’onglet actif')
+      .toHaveAttribute('aria-selected', 'true', { timeout: 10000 })
   })
 })
