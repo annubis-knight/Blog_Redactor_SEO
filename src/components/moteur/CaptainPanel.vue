@@ -417,16 +417,19 @@ function handleManualAiRegenerate() {
 }
 
 // --- Lock/Unlock (manual mode) ---
-function lockCaptaine() {
+async function lockCaptaine() {
   const keyword = currentResult.value?.keyword
   log.info('CaptainPanel — Capitaine verrouillé', { keyword, verdict: effectiveVerdict.value })
-  if (props.mode !== 'libre') emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
   if (keyword) {
     emit('validated', keyword)
     const aiMarkdown = aiChunks.value ?? null
     articleKeywordsStore.lockCaptain(keyword, aiMarkdown, props.selectedArticle?.id)
-    if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
+    if (props.selectedArticle?.id) await articleKeywordsStore.saveKeywords(props.selectedArticle.id)
   }
+  // Le check part APRÈS la persistance : ceux qui réagissent au verrouillage
+  // relisent la base (barre du haut, carte des capitaines) et doivent y trouver
+  // le nouvel état, pas l'ancien. FR-MOT-RECAP-LOCK-SYNC.
+  if (props.mode !== 'libre') emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
 }
 
 // État de la modale UnlockLieutenants. Quand l'utilisateur a déjà des
@@ -449,12 +452,13 @@ function requestUnlock(source: UnlockSource) {
   performUnlock(source)
 }
 
-function performUnlock(source: UnlockSource) {
+async function performUnlock(source: UnlockSource) {
   if (source === 'carousel') {
     lockedKeyword.value = null
   }
   articleKeywordsStore.unlockCaptain()
-  if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
+  // Même raison qu'au verrouillage : on ne signale qu'une fois la base à jour.
+  if (props.selectedArticle?.id) await articleKeywordsStore.saveKeywords(props.selectedArticle.id)
   log.info('CaptainPanel — Capitaine déverrouillé', { source })
   if (props.mode !== 'libre') emit('check-removed', MOTEUR_CAPITAINE_LOCKED)
   pendingUnlock.value = null
@@ -937,14 +941,17 @@ async function lockEntry(idx: number) {
   selectedIndex.value = idx
   lockedKeyword.value = newKw
 
-  if (props.mode !== 'libre') emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
   emit('validated', newKw)
 
   const aiMarkdown = carouselAiCache.value.get(newKw) ?? null
   articleKeywordsStore.lockCaptain(newKw, aiMarkdown, props.selectedArticle?.id)
   const rootKeys = Array.from(entry.rootVariants.keys())
   articleKeywordsStore.setRootKeywords(rootKeys)
-  if (props.selectedArticle?.id) articleKeywordsStore.saveKeywords(props.selectedArticle.id)
+  if (props.selectedArticle?.id) await articleKeywordsStore.saveKeywords(props.selectedArticle.id)
+
+  // Le check part APRÈS la persistance, pour que la barre du haut relise un
+  // état à jour et non celui d'avant. FR-MOT-RECAP-LOCK-SYNC.
+  if (props.mode !== 'libre') emit('check-completed', MOTEUR_CAPITAINE_LOCKED)
 }
 
 function unlockEntry() {

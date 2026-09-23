@@ -28,6 +28,7 @@ import { useMoteurTabs } from '@/composables/moteur/useMoteurTabs'
 import { useMoteurCrossTabState } from '@/composables/moteur/useMoteurCrossTabState'
 import { useMoteurArticleSync } from '@/composables/moteur/useMoteurArticleSync'
 import { buildTabCacheEntries } from '@/utils/tab-cache-entries'
+import { buildRecapArticles } from '@/utils/recap-articles'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
 // Phase ① Générer
@@ -117,22 +118,10 @@ const proposedArticles = computed(() =>
 // Mapping ProposedArticle → Article pour <MoteurContextRecap> qui attend Article[].
 // Les ProposedArticle viennent de la strategy (cocoon-level brainstorm) et ne sont
 // pas encore persistés ; on synthétise les champs Article minimaux que le recap
-// utilise (id/slug/title/type/keyword/painPoint).
+// utilise (id/slug/title/type/keyword/painPoint), dont l'état de verrouillage
+// du Capitaine lu dans capitainesMap (FR-MOT-RECAP-LOCK-SYNC).
 const suggestedArticlesForRecap = computed<Article[]>(() =>
-  proposedArticles.value.map(p => ({
-    id: p.dbId,
-    title: p.title,
-    type: p.type,
-    slug: p.suggestedSlug,
-    topic: null,
-    status: 'à rédiger' as const,
-    phase: 'proposed' as const,
-    completedChecks: [],
-    suggestedKeyword: p.suggestedKeyword || null,
-    captainKeywordLocked: null,
-    painPoint: p.painPoint || null,
-    painIntentExpected: p.painIntentExpected,
-  })),
+  buildRecapArticles(proposedArticles.value, capitainesMap.value),
 )
 
 // FR-MOT-RECAP-PUBLISHED : la section récap "Articles publiés" ne doit afficher
