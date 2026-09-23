@@ -96,7 +96,7 @@ export const useEditorStore = defineStore('editor', () => {
     return wordCount.value - target
   }
 
-  async function generateArticle(briefData: BriefData, outline: Outline, targetWordCount?: number) {
+  async function generateArticle(briefData: BriefData, outline: Outline, targetWordCount?: number, articleIdPourSauvegarde?: number) {
     log.info(`[editor] Generating article "${briefData.article.title}"`, {
       articleId: briefData.article.id,
       type: briefData.article.type,
@@ -152,6 +152,10 @@ export const useEditorStore = defineStore('editor', () => {
         sectionProgress.value = { current: info.index, total: info.total, title: info.title }
       },
       onSectionDone: ({ index }) => {
+        // Filet : le texte déjà écrit part en base sans attendre la fin.
+        if (articleIdPourSauvegarde) {
+          void saveContenuPartiel(articleIdPourSauvegarde, streamedText.value)
+        }
         // Mark all sections in the completed group as 'generated'
         const outlineStore = useOutlineStore()
         if (!outlineStore.outline) return
@@ -207,6 +211,32 @@ export const useEditorStore = defineStore('editor', () => {
       error.value = err instanceof Error ? err.message : 'Erreur lors de la génération des metas'
     } finally {
       isGeneratingMeta.value = false
+    }
+  }
+
+  /**
+   * FR-RED-GEN-SAUVEGARDE-AU-FIL — enregistre le texte déjà écrit sans attendre
+   * la fin de la génération.
+   *
+   * Un article pilier fait couramment une vingtaine de sections, soit près de
+   * vingt minutes de rédaction en conditions réelles (24 sections mesurées le
+   * 2026-09-23). Rien n'était enregistré avant la toute dernière : fermer
+   * l'onglet, rafraîchir ou perdre la connexion à l'avant-dernière section
+   * faisait tout perdre — le texte comme l'argent dépensé à le produire.
+   *
+   * On n'écrit que le corps, jamais les méta (qui n'existent pas encore), et
+   * sans toucher à l'état « modifié » de l'éditeur : c'est un filet, pas une
+   * sauvegarde utilisateur.
+   */
+  async function saveContenuPartiel(articleId: number, html: string): Promise<void> {
+    if (!html.trim()) return
+    try {
+      await apiPut(`/articles/${articleId}`, { content: html })
+      lastSavedAt.value = new Date().toISOString()
+      log.debug('[editor] contenu partiel enregistré', { articleId, length: html.length })
+    } catch (err) {
+      // Un filet qui casse ne doit pas interrompre la génération en cours.
+      log.warn('[editor] sauvegarde partielle impossible', { articleId, error: (err as Error).message })
     }
   }
 
@@ -608,7 +638,7 @@ export const useEditorStore = defineStore('editor', () => {
     wordCount, wordCountDelta,
     // actions
     generateArticle, generateMeta, saveArticle, setContent,
-    loadExistingContent, markClean, markDirty, resetEditor,
+    loadExistingContent, markClean, markDirty, resetEditor, saveContenuPartiel,
     reduceArticle, abortReduce, humanizeArticle, abortHumanize, callHumanizeSection,
   }
 })

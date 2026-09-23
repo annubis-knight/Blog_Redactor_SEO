@@ -93,7 +93,9 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
       return
     }
 
-    await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, wordCountTarget.value ?? undefined)
+    // L'identifiant permet d'enregistrer le texte au fil des sections : une
+    // génération de pilier dure une vingtaine de minutes (FR-RED-GEN-SAUVEGARDE-AU-FIL).
+    await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, wordCountTarget.value ?? undefined, id)
 
     if (editorStore.content && !editorStore.error) {
       // Save article content immediately — don't lose it if meta generation fails

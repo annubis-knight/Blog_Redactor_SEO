@@ -204,7 +204,7 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
   })
 
   test(`Rédaction — ${type} : brief, sommaire, article rédigé`, async ({ page }) => {
-    test.setTimeout(REEL ? 1_200_000 : 600_000)
+    test.setTimeout(REEL ? 2_700_000 : 600_000)
     const article = articles[type]!
 
     await page.goto(`/cocoon/${cerveau.cocoonIndex}/article/${article.id}`)
@@ -253,12 +253,13 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
         .toBeVisible({ timeout: 60000 })
       await generer.click()
 
-      // Le contenu arrive en flux : on attend qu'il soit écrit en base.
+      // Le contenu arrive en flux, et il est enregistré au fil des sections :
+      // un pilier réel en compte une vingtaine, soit ~20 min de rédaction.
       await expect.poll(async () => {
         const r = await query<{ content: string | null }>(
           `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
         return r.rows[0]?.content?.length ?? 0
-      }, { timeout: REEL ? 900_000 : 300_000, message: 'le contenu rédigé doit arriver en base' })
+      }, { timeout: REEL ? 2_400_000 : 300_000, message: 'le contenu rédigé doit arriver en base' })
         .toBeGreaterThan(200)
     })
 
