@@ -62,15 +62,32 @@ export function useCerveau(mode: 'mock' | 'real' = 'mock'): CerveauCtx {
 
     const silo = await getOrCreateTestSilo(ctx.runId, 'Silo cerveau')
     ctx.siloName = silo.nom
-    const cocoon = await createTestCocoon(ctx.runId, silo.id, 'Cocon cerveau')
-    ctx.cocoonName = cocoon.nom
+
+    if (mode === 'real') {
+      // Un passage réel produit du contenu qu'on garde pour l'inspecter : le
+      // cocon porte donc un nom lisible, daté, sans étiquette de test.
+      const jour = new Date().toISOString().slice(0, 10)
+      ctx.cocoonName = `Parcours réel ${jour}`
+      const res = await query<{ id: number }>(
+        `INSERT INTO cocoons (nom, silo_id) VALUES ($1, $2) RETURNING id`,
+        [ctx.cocoonName, silo.id],
+      )
+      if (!res.rows[0]) throw new Error('cocon du parcours réel non créé')
+    } else {
+      const cocoon = await createTestCocoon(ctx.runId, silo.id, 'Cocon cerveau')
+      ctx.cocoonName = cocoon.nom
+    }
     ctx.cocoonIndex = await resolveCocoonIndex(ctx.cocoonName)
   })
 
   test.afterAll(async () => {
     if (!ctx.runId) return
-    await query(`DELETE FROM keywords_seo WHERE cocoon_name = $1`, [ctx.cocoonName]).catch(() => {})
-    await cleanupTestFixtures(ctx.runId)
+    // En mode réel on ne supprime rien : le cocon, ses articles et les mesures
+    // payées restent en base pour être relus.
+    if (mode !== 'real') {
+      await query(`DELETE FROM keywords_seo WHERE cocoon_name = $1`, [ctx.cocoonName]).catch(() => {})
+      await cleanupTestFixtures(ctx.runId)
+    }
     await setMockMode(null).catch(() => {})
   })
 

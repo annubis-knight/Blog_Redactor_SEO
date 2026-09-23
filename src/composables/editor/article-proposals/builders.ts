@@ -2,6 +2,7 @@ import type { ProposedArticle } from '@shared/types/index.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { PAIN_INTENT_EXPECTED_VALUES } from '@shared/types/scoring.types.js'
 import type { ArticleLevel } from './types'
+import { parseArticleLevel } from '@shared/utils/article-level.js'
 
 /**
  * Normalise une valeur arbitraire en `PainIntentExpected | null`. Utilisé pour
@@ -55,10 +56,10 @@ export function buildSingleArticle(
   obj: Record<string, unknown>,
   fallbackType: ArticleLevel,
 ): ProposedArticle {
-  const validTypes = ['pilier', 'intermediaire', 'specifique'] as const
-  const type: ArticleLevel = validTypes.includes(obj.type as typeof validTypes[number])
-    ? (obj.type as typeof validTypes[number])
-    : fallbackType
+  // Les prompts demandent le format de la base (« Pilier »), le code manipule
+  // le canonique (« pilier ») : comparer à la liste canonique ne reconnaissait
+  // donc aucun type et rangeait tout dans le niveau par défaut.
+  const type: ArticleLevel = parseArticleLevel(obj.type) ?? fallbackType
   const title = String(obj.title ?? '').trim()
   const keyword = String(obj.suggestedKeyword ?? '')
   const slug = String(obj.suggestedSlug ?? '') || keywordToSlug(keyword)
