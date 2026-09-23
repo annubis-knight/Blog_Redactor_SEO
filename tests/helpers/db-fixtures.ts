@@ -147,15 +147,34 @@ export async function cleanupTestFixtures(runId: string): Promise<void> {
   await query(`DELETE FROM silos WHERE nom LIKE $1`, [pattern])
 
   // 4. Cross-article tables qu'on a pu créer (keyword_metrics, keyword_intent_analyses…)
-  //    Pas de tag possible ici (clé = keyword), on cible uniquement les keywords
-  //    contenant "test-<runId>" pour être safe.
-  await query(`DELETE FROM keyword_metrics WHERE keyword LIKE $1`, [`%test-${runId}-%`])
-  await query(`DELETE FROM keyword_intent_analyses WHERE keyword LIKE $1`, [`%test-${runId}-%`])
-  await query(`DELETE FROM keyword_discoveries WHERE seed LIKE $1`, [`%test-${runId}-%`])
+  //    Pas de tag possible ici (clé = keyword), on cible les formes que le runId
+  //    peut prendre une fois passé dans le produit (cf. testKeywordPatterns).
+  for (const p of testKeywordPatterns(runId)) {
+    await query(`DELETE FROM keyword_metrics WHERE keyword LIKE $1`, [p])
+    await query(`DELETE FROM keyword_intent_analyses WHERE keyword LIKE $1`, [p])
+    await query(`DELETE FROM keyword_discoveries WHERE seed LIKE $1`, [p])
+    await query(`DELETE FROM external_api_cache WHERE cache_key LIKE $1`, [p])
+  }
+}
 
-  // 5. external_api_cache entries dont la clé contient le runId
-  // (Sprint 16 : table ex-api_cache renommée → external_api_cache)
-  await query(`DELETE FROM external_api_cache WHERE cache_key LIKE $1`, [`%test-${runId}-%`])
+/**
+ * Motifs SQL couvrant toutes les formes qu'un identifiant de run peut prendre
+ * dans les tables indexées par mot-clé.
+ *
+ * Le produit ne se contente pas de stocker le mot-clé qu'on lui donne : il en
+ * dérive des variantes racines en retirant des mots. `[test:<runId>] Specifique
+ * site vitrine artisan` devient ainsi `<suffixe> specifique`, qui ne contient
+ * plus ni le préfixe `test-` ni l'horodatage. Le seul fragment qui survit à
+ * toutes ces dérivations est le suffixe aléatoire du runId — six caractères
+ * base36, assez distinctifs pour ne jamais croiser un vrai mot-clé français.
+ *
+ * Sans ce filet, 1303 lignes de mots-clés de test s'étaient accumulées dans
+ * `keyword_metrics` (relevé du 2026-09-23), avec les données factices du bac à
+ * sable dans un cache pourtant permanent et partagé entre articles.
+ */
+export function testKeywordPatterns(runId: string): string[] {
+  const suffix = runId.split('-').pop() ?? runId
+  return [`%test-${runId}-%`, `%${runId}%`, `%${suffix}%`]
 }
 
 /**
