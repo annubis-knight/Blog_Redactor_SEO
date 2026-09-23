@@ -584,7 +584,7 @@ async function analyzeSERPWithStep(): Promise<void> {
     />
 
     <!-- Error -->
-    <div v-if="error" class="error-message">
+    <div v-if="error" class="error-message" data-testid="serp-error">
       <p>{{ error }}</p>
     </div>
 

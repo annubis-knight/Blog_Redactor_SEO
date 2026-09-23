@@ -111,6 +111,19 @@ export async function lockLieutenants(page: Page, articleId: number): Promise<vo
       page.waitForResponse(r => r.url().endsWith('/api/serp/analyze') && r.request().method() === 'POST', { timeout: 180000 }),
       analyser.click(),
     ])
+
+    // Une analyse peut échouer pour une raison qui n'est pas un défaut du
+    // produit : un mot-clé trop étroit ne renvoie aucune page de résultats.
+    // Le test doit le dire tel quel, plutôt que de laisser croire à une panne.
+    const bandeau = page.locator('[data-testid="serp-error"]').first()
+    await expect(cartes.or(bandeau).first(), 'l’analyse doit aboutir ou s’expliquer')
+      .toBeVisible({ timeout: 180000 })
+    if (await bandeau.count() > 0 && await bandeau.isVisible()) {
+      throw new Error(
+        `analyse SERP sans résultat exploitable — ce n'est pas forcément un défaut du produit : ${(await bandeau.innerText()).trim()}`,
+      )
+    }
+
     await expect(cartes, 'les propositions IA doivent arriver').toBeVisible({ timeout: 180000 })
   }
 

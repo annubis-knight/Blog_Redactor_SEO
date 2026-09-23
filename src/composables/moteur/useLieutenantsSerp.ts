@@ -63,6 +63,33 @@ export interface LieutenantsSerpApi {
   computeHnRecurrenceFrom: (comps: SerpCompetitor[]) => HnRecurrenceItem[]
 }
 
+/**
+ * Traduit l'échec technique en phrase utile.
+ *
+ * L'écran affichait le message brut du serveur — « SERP analysis failed »,
+ * en anglais, sans cause ni action possible — dans une application par
+ * ailleurs entièrement en français. Le cas le plus fréquent est un mot-clé
+ * trop étroit pour que Google renvoie une page de résultats exploitable :
+ * ce n'est pas une panne, c'est une information sur le mot-clé.
+ */
+export function expliquerEchecSerp(brut: string, motCle: string | null): string {
+  const sujet = motCle ? `« ${motCle} »` : 'ce mot-clé'
+  if (/empty result|no results?|aucun r[eé]sultat/i.test(brut)) {
+    return `Google ne renvoie aucun résultat exploitable pour ${sujet}. `
+      + `Le mot-clé est probablement trop étroit : élargissez-le au Capitaine, puis relancez l'analyse.`
+}
+  if (/budget|429|quota|rate.?limit/i.test(brut)) {
+    return `L'analyse a été refusée : le budget d'appels externes est atteint pour le moment. `
+      + `Réessayez dans quelques minutes.`
+}
+  if (/timeout|ETIMEDOUT|ECONNRESET|fetch failed/i.test(brut)) {
+    return `L'analyse n'a pas abouti : la source n'a pas répondu à temps pour ${sujet}. Relancez-la.`
+}
+  return brut
+    ? `L'analyse SERP n'a pas abouti pour ${sujet} (${brut}). Relancez-la, ou choisissez un autre mot-clé.`
+    : `L'analyse SERP n'a pas abouti pour ${sujet}. Relancez-la, ou choisissez un autre mot-clé.`
+}
+
 export function useLieutenantsSerp(deps: LieutenantsSerpDeps): LieutenantsSerpApi {
   const { captainKeyword, articleLevel, selectedArticleId, canAnalyze, resolvedRootKeywords, activityLog } = deps
 
@@ -207,8 +234,9 @@ export function useLieutenantsSerp(deps: LieutenantsSerpDeps): LieutenantsSerpAp
       serpResult.value = merged
       log.info(`[useLieutenantsSerp] Multi-SERP merged: ${merged.competitors.length} competitors, ${merged.paaQuestions.length} PAA`)
     } catch (err) {
-      error.value = err instanceof Error ? err.message : 'Erreur inconnue'
-      log.error(`[useLieutenantsSerp] SERP analysis failed`, { error: error.value })
+      const brut = err instanceof Error ? err.message : ''
+      error.value = expliquerEchecSerp(brut, serpCurrentKeyword.value)
+      log.error(`[useLieutenantsSerp] SERP analysis failed`, { error: brut })
     } finally {
       isLoading.value = false
     }
