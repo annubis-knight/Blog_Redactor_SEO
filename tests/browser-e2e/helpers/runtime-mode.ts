@@ -12,7 +12,7 @@ const API = process.env.TEST_BASE_URL ?? `http://localhost:${process.env.PORT ??
  * modification du back : une requête lancée pendant ce battement échoue avec
  * un « fetch failed » qui n'a rien à voir avec ce qu'on teste.
  */
-export async function attendreLApi(timeoutMs = 60_000): Promise<void> {
+async function attendreLApi(timeoutMs = 60_000): Promise<void> {
   const limite = Date.now() + timeoutMs
   let derniere: unknown = null
   while (Date.now() < limite) {

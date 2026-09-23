@@ -29,7 +29,7 @@ export interface CerveauCtx {
 }
 
 /** Résout l'index d'un cocon tel que l'attend `/cocoon/:id/...`. */
-export async function resolveCocoonIndex(cocoonName: string): Promise<number> {
+async function resolveCocoonIndex(cocoonName: string): Promise<number> {
   const res = await fetch(`${API}/cocoons`)
   const json = await res.json().catch(() => null)
   const cocoons = (json?.data ?? []) as Array<{ id: number; name: string }>
