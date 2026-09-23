@@ -29,6 +29,12 @@ export interface LexiqueIaDeps {
   articleLevel: Ref<ArticleLevel | null>
   cocoonSlug: Ref<string>
   selectedArticleId: Ref<number | undefined>
+  /**
+   * Appelé avec les termes que l'analyse vient de pré-cocher, pour que le
+   * parent les verrouille réellement : sans cela, l'écran affichait une
+   * sélection que la base ignorait (FR-LEX-PRECHECK-PERSISTE).
+   */
+  onPreChecked?: (terms: string[]) => void
 }
 
 export interface LexiqueIaApi {
@@ -57,7 +63,7 @@ export interface LexiqueIaApi {
 }
 
 export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
-  const { tfidfResult, selectedTerms, activeSourceKeyword, captainKeyword, articleLevel, cocoonSlug, selectedArticleId } = deps
+  const { tfidfResult, selectedTerms, activeSourceKeyword, captainKeyword, articleLevel, cocoonSlug, selectedArticleId, onPreChecked } = deps
 
   const {
     isStreaming: iaIsStreaming,
@@ -132,6 +138,7 @@ export function useLexiqueIa(deps: LexiqueIaDeps): LexiqueIaApi {
               }
             }
             selectedTerms.value = preChecked
+            onPreChecked?.([...preChecked])
           }
         },
       },

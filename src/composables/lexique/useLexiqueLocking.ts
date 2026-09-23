@@ -25,6 +25,7 @@ export interface UseLexiqueLockingApi {
   lockedTerms: ComputedRef<string[]>
   isLocked: ComputedRef<boolean>
   toggleTerm: (term: string) => void
+  lockMany: (terms: string[]) => void
 }
 
 export function useLexiqueLocking(input: UseLexiqueLockingInput): UseLexiqueLockingApi {
@@ -55,5 +56,28 @@ export function useLexiqueLocking(input: UseLexiqueLockingInput): UseLexiqueLock
     void store.saveDecisions(id)
   }
 
-  return { lockedTerms, isLocked, toggleTerm }
+  /**
+   * FR-LEX-PRECHECK-PERSISTE — verrouille d'un coup les termes que l'écran
+   * vient de pré-cocher, en un seul enregistrement.
+   *
+   * Le pré-cochage cochait les cases sans rien écrire : l'écran annonçait
+   * « 38 termes sélectionnés » alors que la base n'en connaissait aucun, et
+   * l'étape ne se validait jamais. Pour la débloquer il fallait décocher puis
+   * recocher un terme — un geste que personne ne devine.
+   */
+  function lockMany(terms: string[]): void {
+    const id = input.articleId.value
+    if (!id || terms.length === 0) return
+    if (!store.keywords) store.initEmpty(id)
+
+    const deja = new Set(lockedTerms.value)
+    const nouveaux = terms.filter(t => !deja.has(t))
+    if (nouveaux.length === 0) return
+
+    for (const terme of nouveaux) store.addLexiqueTerm(terme)
+    log.debug('[useLexiqueLocking] lockMany', { articleId: id, count: nouveaux.length })
+    void store.saveDecisions(id)
+  }
+
+  return { lockedTerms, isLocked, toggleTerm, lockMany }
 }

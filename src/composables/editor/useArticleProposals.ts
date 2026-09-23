@@ -5,6 +5,7 @@ import type { ProposedArticle, CocoonSuggestRequest } from '@shared/types/index.
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { useNotify } from '@/composables/ui/useNotify'
 
 import type { ArticleLevel } from './article-proposals/types'
 import {
@@ -38,6 +39,7 @@ export function useArticleProposals(params: {
   getSuggestContext: () => CocoonSuggestRequest['context']
 }) {
   const { cocoonSlug, cocoonName, getSuggestContext } = params
+  const notify = useNotify()
   const store = useCocoonStrategyStore()
   const cocoonsStore = useCocoonsStore()
 
@@ -171,9 +173,21 @@ export function useArticleProposals(params: {
           painIntentExpected: article.painIntentExpected,
         }],
       })
-      if (created?.[0]?.id) {
-        article.dbId = created[0].id
+      // FR-CER-CREATION-HONNETE — l'insertion est en `ON CONFLICT (slug) DO
+      // NOTHING` : un slug déjà pris renvoie une liste vide, sans erreur HTTP.
+      // Marquer l'article « créé » dans ce cas affichait une coche verte sur un
+      // article qui n'existait nulle part. Le cas se produit notamment avec un
+      // article fantôme — rattaché à aucun cocon depuis la suppression du sien,
+      // donc invisible à l'écran, mais dont le slug reste réservé.
+      const id = created?.[0]?.id
+      if (!id) {
+        log.warn('createArticleInDb: aucune ligne créée', { title: article.title, slug: article.suggestedSlug })
+        notify.error(
+          `« ${article.title} » n'a pas été créé : l'adresse /${article.suggestedSlug} est déjà prise par un autre article. Modifiez le slug puis réessayez.`,
+        )
+        return
       }
+      article.dbId = id
       if (article.suggestedKeyword.trim()) {
         await apiPost('/keywords', {
           keyword: article.suggestedKeyword,

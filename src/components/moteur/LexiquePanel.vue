@@ -96,7 +96,7 @@ const {
   hydrateFromDb, mergeFromDb, selectExploration, reset: resetExplorations,
 } = useLexiqueExplorations({ articleId: articleIdRef, captainKeyword: captainKeywordRef })
 
-const { isLocked, toggleTerm: persistToggle } = useLexiqueLocking({ articleId: articleIdRef })
+const { isLocked, toggleTerm: persistToggle, lockMany } = useLexiqueLocking({ articleId: articleIdRef })
 
 const { exists: serpExists, isChecking: serpExistsIsChecking, refetch: refetchSerpExists }
   = useSerpExistsCheck(captainKeywordRef)
@@ -111,6 +111,10 @@ const {
   articleLevel: toRef(props, 'articleLevel'),
   cocoonSlug: toRef(props, 'cocoonSlug'),
   selectedArticleId: articleIdRef,
+  // Ce que l'écran coche doit exister en base : sans ce relais, la liste
+  // affichait « N termes sélectionnés » sur un lexique vide et l'étape ne se
+  // validait jamais (FR-LEX-PRECHECK-PERSISTE).
+  onPreChecked: (terms: string[]) => lockMany(terms),
 })
 
 // --- Tri / sélection ---

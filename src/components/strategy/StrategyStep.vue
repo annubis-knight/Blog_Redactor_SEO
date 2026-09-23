@@ -31,7 +31,20 @@ const isEditingSuggestion = ref(false)
 const editedSuggestion = ref('')
 const showValidateMenu = ref(false)
 
-watch(() => props.stepData.input, (v) => { localInput.value = v })
+/**
+ * FR-CER-SAISIE-PRESERVEE — la stratégie du cocon se charge de façon
+ * asynchrone au montage. Quand elle arrivait après que l'utilisateur ait
+ * commencé à écrire, ce watcher réécrivait le champ avec la valeur distante
+ * (vide) : la réponse en cours de saisie disparaissait sous les doigts.
+ *
+ * On ignore donc une valeur distante vide tant que la saisie locale, elle, ne
+ * l'est pas. Aucun risque de fuite d'une étape à l'autre : `BrainPhase` donne
+ * au composant une `:key` par étape, il est recréé à chaque changement.
+ */
+watch(() => props.stepData.input, (v) => {
+  if (!v && localInput.value.trim()) return
+  localInput.value = v
+})
 
 /** True when the MAIN question is loading (not a sub-question) */
 const mainSuggesting = computed(() => props.isSuggesting && !props.suggestingSubId)

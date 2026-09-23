@@ -10,6 +10,7 @@ import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useStrategyStore } from '@/stores/strategy/strategy.store'
+import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { apiGet } from '@/services/api.service'
 import { usePanelToggle } from '@/composables/ui/usePanelToggle'
 import { useSeoScoring } from '@/composables/seo/useSeoScoring'
@@ -47,6 +48,7 @@ const keywordsStore = useKeywordsStore()
 const articleKeywordsStore = useArticleKeywordsStore()
 const cocoonsStore = useCocoonsStore()
 const strategyStore = useStrategyStore()
+const cocoonStrategyStore = useCocoonStrategyStore()
 
 const cocoonId = route.params.cocoonId as string | undefined
 
@@ -73,6 +75,12 @@ const backLabel = computed(() =>
 
 // --- Strategy context lookups ---
 const cocoonName = computed(() => briefStore.briefData?.article.cocoonName ?? '')
+
+// Le nom du cocon n'est connu qu'une fois le brief chargé : on hydrate alors
+// la stratégie du Cerveau, qui décide du verrouillage de l'étape « Article ».
+watch(cocoonName, (nom) => {
+  if (nom) void cocoonStrategyStore.fetchStrategy(nom)
+}, { immediate: true })
 const articleTitle = computed(() => briefStore.briefData?.article.title ?? '')
 const siloName = computed(() => {
   const cocoon = cocoonsStore.cocoons.find(c => c.name === cocoonName.value)
@@ -249,9 +257,15 @@ onMounted(async () => {
     briefKeywordsList: briefStore.briefData?.keywords.map(k => k.keyword).join(', '),
   })
 
-  // FR-RED-GEN-UNLOCK : hydrate la stratégie Cerveau pour piloter le verrouillage
-  // de l'étape « Article » (génération). Pas await — le gating se met à jour
-  // réactivement dès que `strategyStore.strategy` est posé.
+  // FR-RED-GEN-UNLOCK : hydrate la stratégie du Cerveau pour piloter le
+  // verrouillage de l'étape « Article ». Pas await — le gating se met à jour
+  // réactivement dès que la stratégie est posée.
+  //
+  // Le Cerveau écrit `cocoon_strategies` (une stratégie par cocon). Ce verrou
+  // interrogeait `article_strategies` — une stratégie par article, que plus
+  // aucun écran ne remplit depuis la refonte. `completedSteps` valait donc
+  // toujours 0 et l'étape « Article » restait cadenassée pour tout le monde,
+  // avec le message « Complétez le Cerveau » juste après l'avoir complété.
   void strategyStore.fetchStrategy(id)
 
   // Hydrate outline & editor stores with existing saved content
@@ -294,8 +308,17 @@ const REDACTION_STEPS: { id: 'brief-structure' | 'article'; label: string }[] = 
   { id: 'article',         label: 'Article' },
 ]
 
+/**
+ * Le Cerveau est-il complété pour le cocon de cet article ? On accepte les deux
+ * sources le temps que l'ancienne disparaisse : la stratégie du cocon (celle
+ * que le Cerveau écrit aujourd'hui) et la stratégie par article (héritée).
+ */
+const cerveauEstComplet = computed(() =>
+  cocoonStrategyStore.isComplete || strategyStore.isComplete,
+)
+
 const redactionNavSteps = computed<NavItem[]>(() => {
-  const cerveauComplete = strategyStore.isComplete
+  const cerveauComplete = cerveauEstComplet.value
   return REDACTION_STEPS.map((s, idx) => ({
     id: s.id,
     label: s.label,

@@ -328,8 +328,21 @@ function isProcessing(phase: GenerationPhase): boolean {
       </div>
 
       <div v-if="proposedArticlesCount > 0" class="article-actions">
-        <button class="btn btn-primary" data-testid="brain-validate-all" @click="emit('validate-articles')">
-          Tout valider
+        <!--
+          FR-CER-VALIDATION-APRES-GENERATION — la génération se fait en trois
+          temps : le Pilier et les Intermédiaires arrivent d'abord, les
+          Spécialisés seulement à la fin. Le bouton restait cliquable entre
+          les deux : valider à ce moment-là ne créait que la première moitié
+          des articles, sans que rien ne le signale.
+        -->
+        <button
+          class="btn btn-primary"
+          data-testid="brain-validate-all"
+          :disabled="isProcessing(generationPhase)"
+          :title="isProcessing(generationPhase) ? 'Génération en cours — les Spécialisés ne sont pas encore proposés' : 'Créer tous les articles proposés'"
+          @click="emit('validate-articles')"
+        >
+          {{ isProcessing(generationPhase) ? 'Génération en cours...' : 'Tout valider' }}
         </button>
       </div>
     </div>
