@@ -2,7 +2,7 @@
 name: tech-spec-parcours-8-temps
 type: tech-spec
 status: done
-version: 1.1.0
+version: 1.2.0
 last_updated: 2026-09-23
 synced_with:
   - docs/testing-guide.md (niveau browser-e2e)
@@ -176,6 +176,69 @@ aucun en pause, sans un centime dépensé (sources simulées).
    `wf-item-*`), sous un `if (count > 0)` — vert sans rien contrôler.
 4. **Résidus anciens en base** : des `keyword_metrics` étiquetés `test-…` de
    sessions antérieures subsistent (les parcours, eux, nettoient tout).
+
+## Volet 3 — parcours de bout en bout (2026-09-23)
+
+### Le test
+
+`tests/browser-e2e/parcours/bout-en-bout.parcours.test.ts` traverse les trois
+phases dans l'ordre où un utilisateur les vit, sans raccourci de préparation :
+
+| Phase | Ce que le test fait réellement |
+|---|---|
+| Cerveau | cinq étapes de stratégie (saisie, suggestion IA, validation), génération des articles, acceptation, clôture du brainstorm |
+| Moteur | pour chaque niveau : Capitaine scanné et verrouillé, Lieutenants retenus, plan Hn enregistré, Lexique validé, sortie vers la Rédaction ouverte |
+| Rédaction | micro-contexte, sommaire, génération de l'article, méta, relecture et retouche dans l'éditeur, aperçu, export, passage en publié |
+
+Les phases s'enchaînent par de vrais verrous — le plan Hn du Moteur devient le
+sommaire de la Rédaction — ce qu'un socle de préparation aurait masqué.
+
+Deux modes, un seul fichier : simulé par défaut (12 tests, ~4 min, gratuit),
+réel via `PARCOURS_REEL=1` (IA + DataForSEO, données conservées en base sous un
+cocon nommé « Parcours réel <date> »).
+
+### Ce que l'écriture de trois articles a révélé
+
+Aucun de ces défauts n'apparaissait en testant les phases séparément.
+
+| Défaut | Ce que vivait l'utilisateur | Correctif |
+|---|---|---|
+| L'étape « Article » de la Rédaction interrogeait `article_strategies`, table qu'aucun écran ne remplit plus | Le Moteur annonce « ✅ Prêt pour la Rédaction », la Rédaction répond « Complétez le Cerveau » — verrou infranchissable | lit la stratégie du cocon |
+| Le pré-cochage du Lexique n'écrivait rien | 38 cases cochées, lexique vide en base, étape invalidable ; il fallait décocher puis recocher | `lockMany()` persiste en un enregistrement |
+| `ON CONFLICT (slug) DO NOTHING` traité comme un succès | Article marqué « créé » avec une coche verte, absent de la base | refus + message nommant le slug |
+| Le watcher de saisie écrasait le champ | Écrire pendant le chargement effaçait la réponse et regrisait « Valider » | une valeur distante vide n'écrase plus une saisie en cours |
+| Le niveau d'article rendu par l'IA n'était jamais reconnu | **17 articles tous « Spécialisé », cocon sans tête** — invisible en simulé | `parseArticleLevel()` lit les deux écritures |
+
+Plus deux gênes d'enchaînement : « Tout valider » restait cliquable pendant la
+génération (ne créait que la première moitié des articles, les Spécialisés
+n'arrivant qu'en dernier), et le badge de coût flottant (`position: fixed`,
+`z-index: 9998`) recouvre les actions en bas d'écran.
+
+### Côté simulateur
+
+Le gabarit de rédaction d'une section rassemble tout le contexte de l'article —
+mot-clé Capitaine, Lieutenants, termes du Lexique, sommaire. Il déclenchait donc
+le matcher de presque toutes les autres fixtures, dont l'une répondait à sa
+place : l'article obtenu tenait en dix caractères. Une fixture prioritaire le
+résout désormais avant toute collision, sur le seul titre qu'il possède en
+propre — même motif que `auto-meta-priority`.
+
+Quatre fixtures ajoutées pour l'étape 6 du Cerveau (structure, requêtes PAA,
+spécialisés, ajout d'article), calées sur le prompt système.
+
+### Nettoyage
+
+Deux fuites de mes propres tests, corrigées :
+
+1. Les mots-clés dérivés par le produit (variantes racines) échappaient au
+   motif `%test-<runId>-%` — 2854 lignes accumulées dans `keyword_metrics`.
+2. Les articles créés par le Cerveau dans un cocon de test portent un titre
+   d'IA, sans étiquette ; et `articles.cocoon_id` étant en ON DELETE SET NULL,
+   supprimer le cocon les détachait au lieu de les supprimer. Ils restaient
+   invisibles dans l'application tout en gardant leur slug réservé, de quoi
+   faire échouer silencieusement les créations suivantes.
+
+---
 
 ## Volet 2 — durcissement des tests permissifs (2026-09-23)
 

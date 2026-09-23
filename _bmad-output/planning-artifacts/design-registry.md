@@ -715,6 +715,35 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 ---
 
+### DESIGN-LEX-PRECHECK-PERSISTE
+
+**Réf PRD :** [FR-LEX-PRECHECK-PERSISTE](./prd.md#fr-lex-precheck-persiste--ce-que-lécran-coche-est-réellement-retenu)
+
+**Refs code**
+- [src/composables/lexique/useLexiqueLocking.ts](../../src/composables/lexique/useLexiqueLocking.ts) — `lockMany(terms)` : verrouille en un seul `saveDecisions`, en n'ajoutant que les termes absents.
+- [src/composables/lexique/useLexiqueIa.ts](../../src/composables/lexique/useLexiqueIa.ts) — dépendance `onPreChecked`, appelée avec les termes que l'analyse vient de cocher.
+- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — branche `onPreChecked` sur `lockMany`.
+
+**Tables consommées** : `article_keywords.lexique` TEXT[] — seule source du check `moteur:lexique_validated` (`isLocked = lockedTerms.length > 0`).
+
+**Flux DB**
+
+*Écriture* : `lockMany()` → `store.addLexiqueTerm()` × N → un seul `saveDecisions(id)` → `PUT /articles/:id/keywords`. Un toggle manuel garde son écriture unitaire (`FR-LEX-CHECKBOX-LOCK-IMMEDIATE`).
+
+**Décisions d'architecture**
+- **Persister le pré-cochage plutôt que décocher les cases.** Choix inverse de celui retenu pour les Lieutenants (`b3a4f30`, « l'IA propose, l'utilisateur valide ») : un Lieutenant devient un H2 de l'article, c'est une décision de structure qui mérite un geste ; un terme de Lexique présent chez 70 % des concurrents est une checklist de rédaction, où le pré-cochage est un gain réel. Dans les deux cas la règle est la même : **l'écran ne montre jamais comme acquis ce que la base ignore.**
+- **Un seul enregistrement.** 38 termes × un `PUT` chacun serait inutilement bavard.
+- **`null` plutôt qu'un repli choisi à la place de l'appelant** : `lockMany` ignore une liste vide sans rien écrire.
+
+**Critères d'acceptation techniques**
+- Unitaire : `lockMany` verrouille N termes en un `saveDecisions`, n'écrit rien si tout est déjà verrouillé, n'ajoute que les nouveaux, ignore une liste vide, et laisse `toggleTerm` retirer ensuite (`tests/unit/composables/lexique-precheck-persiste.test.ts`).
+- Navigateur : après extraction, `moteur:lexique_validated` apparaît sans geste supplémentaire (`bout-en-bout.parcours.test.ts`).
+
+**Voir aussi**
+- `DESIGN-LIE-CHECKBOX-LOCK-IMMEDIATE` (même règle, arbitrage inverse).
+
+---
+
 ### DESIGN-MOT-RECAP-LOCK-SYNC
 
 **Réf PRD :** [FR-MOT-RECAP-LOCK-SYNC](./prd.md#fr-mot-recap-lock-sync--le-mot-clé-affiché-en-haut-dit-la-vérité)

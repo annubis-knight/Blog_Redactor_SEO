@@ -356,6 +356,9 @@ L'étape Aiguillage place l'article dans la hiérarchie du cocon en lui attribua
 - L'utilisateur peut accepter ou forcer un autre niveau.
 - Un article Pilier n'a pas de parent ; un Intermédiaire est rattaché à un Pilier du cocon ; un Spécifique est rattaché à un Intermédiaire.
 - Le niveau choisi est visible sur la fiche article et propagé au Moteur (seuils contextuels) et à la Rédaction (longueur cible).
+- **Le niveau suggéré par l'IA est conservé tel qu'elle le rend**, quelle que soit son écriture (« Pilier » comme « pilier », avec ou sans accent). Un cocon généré a toujours une tête : si aucun pilier n'apparaît dans la proposition, c'est un défaut, pas un choix éditorial.
+
+**Statut** : durci le 2026-09-23. **Pourquoi** : les prompts demandaient `"type": "Pilier"` et le code ne reconnaissait que `"pilier"`. Aucun niveau n'était donc jamais lu : un passage réel a produit 17 articles tous classés « Spécifique », sans pilier ni intermédiaire, alors que les titres proposés étaient eux parfaitement hiérarchisés.
 
 > **En situation.** Pour l'article « Statut juridique entreprise individuelle », l'IA évalue : sujet large mais pas premier au cocon → suggère **Intermédiaire** rattaché au Pilier « Statut juridique entreprise ». L'utilisateur valide. Quand il attaquera le Moteur sur cet article, les seuils de scoring du Capitaine seront ceux d'un Intermédiaire (KD moyen toléré, volume moyen attendu). En Rédaction, la longueur cible suggérée tombera dans la fourchette Intermédiaire (1200-2500 mots).
 
@@ -376,6 +379,24 @@ Quand la structure du cocon est validée (cf. `FR-CER-STEPS-COCOON`), l'utilisat
 > **En situation.** L'utilisateur a validé une structure de 15 articles pour son cocon « Création d'entreprise ». Il clique sur « Créer ces articles ». L'app les crée en bloc. Au lieu d'avoir passé 30 minutes à les saisir un par un (et risquer des incohérences de slug ou de niveau), il a 15 articles cohérents en 5 secondes, tous reliés au cocon, tous avec leur painPoint propre.
 
 → Conception : [DESIGN-CER-BATCH-CREATE](./design-registry.md#design-cer-batch-create)
+
+---
+
+#### FR-LEX-PRECHECK-PERSISTE — Ce que l'écran coche est réellement retenu
+
+Après l'analyse du Lexique, les termes présents chez au moins 70 % des concurrents arrivent **déjà cochés** : c'est une checklist de rédaction, pas une décision fine, et les pré-cocher fait gagner du temps. Mais une case cochée doit valoir décision enregistrée — sans quoi l'utilisateur croit son Lexique validé alors que rien n'est retenu.
+
+**Critères d'acceptation**
+- Les termes pré-cochés sont enregistrés comme retenus, sans geste supplémentaire.
+- Le compteur affiché (« N termes sélectionnés ») correspond exactement à ce qui est enregistré.
+- L'utilisateur peut retirer n'importe quel terme pré-coché ; ce retrait est également enregistré.
+- L'étape est validée dès qu'au moins un terme est retenu, sans qu'il faille décocher puis recocher.
+
+**Statut** : active. **Depuis** : 2026-09-23.
+
+> **En situation.** L'utilisateur extrait son Lexique : 38 termes obligatoires apparaissent, tous cochés, et l'écran annonce « 38 termes sélectionnés ». Il passe à la suite, satisfait. Avant cette règle, la base n'en connaissait aucun : l'étape restait invalidée, le passage en Rédaction fermé, et rien n'expliquait pourquoi. Le seul moyen de débloquer était de décocher puis recocher un terme au hasard.
+
+→ Conception : [DESIGN-LEX-PRECHECK-PERSISTE](./design-registry.md#design-lex-precheck-persiste)
 
 ---
 
