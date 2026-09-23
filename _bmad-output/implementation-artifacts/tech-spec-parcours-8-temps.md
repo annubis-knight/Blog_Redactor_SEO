@@ -2,7 +2,7 @@
 name: tech-spec-parcours-8-temps
 type: tech-spec
 status: done
-version: 1.2.0
+version: 1.3.0
 last_updated: 2026-09-23
 synced_with:
   - docs/testing-guide.md (niveau browser-e2e)
@@ -209,10 +209,34 @@ Aucun de ces défauts n'apparaissait en testant les phases séparément.
 | Le watcher de saisie écrasait le champ | Écrire pendant le chargement effaçait la réponse et regrisait « Valider » | une valeur distante vide n'écrase plus une saisie en cours |
 | Le niveau d'article rendu par l'IA n'était jamais reconnu | **17 articles tous « Spécialisé », cocon sans tête** — invisible en simulé | `parseArticleLevel()` lit les deux écritures |
 
+| Le pré-cochage du Lexique était branché sur l'analyse IA | Même symptôme par un autre chemin : `fetchTfidf` coche dès l'extraction, et à la restauration l'IA ne tourne même pas | `lockMany()` appelé sur le chemin principal |
+| « SERP analysis failed » affiché tel quel | Message anglais, sans cause ni action, pour un mot-clé simplement trop étroit | trois causes nommées, en français, avec la suite à donner |
+| Aucune sauvegarde pendant la génération | Vingt minutes de rédaction perdues en fermant l'onglet — texte et argent | le corps part en base après chaque section |
+
 Plus deux gênes d'enchaînement : « Tout valider » restait cliquable pendant la
 génération (ne créait que la première moitié des articles, les Spécialisés
 n'arrivant qu'en dernier), et le badge de coût flottant (`position: fixed`,
 `z-index: 9998`) recouvre les actions en bas d'écran.
+
+### Ce que seul le passage réel a révélé
+
+Le mode simulé valide le chemin, pas le contrat. Ses fixtures sont écrites en
+lisant le **code** qui les consomme, jamais le **prompt** qui les décrit : elles
+produisent donc toujours le format attendu et masquent tout écart entre les deux.
+
+| Défaut | Pourquoi le simulé ne pouvait pas le voir |
+|---|---|
+| **Cocon sans tête** — 17 articles tous « Spécialisé » | Mes fixtures écrivaient déjà `'pilier'` ; les prompts, eux, demandent `"Pilier"` |
+| **Lexique invalidable par un second chemin** | Le pré-cochage vient de `fetchTfidf`, pas de l'analyse IA ; en simulé l'IA répond instantanément et masquait l'ordre réel |
+| **« SERP analysis failed »** en anglais, sans cause | Le bac à sable renvoie toujours un résultat ; un mot-clé trop étroit, non |
+| **Vingt minutes de rédaction sans filet** | En simulé une section prend quelques millisecondes ; en réel, 45 secondes × 24 sections |
+
+Mesures relevées en conditions réelles (2026-09-23) :
+
+- **Rédaction d'un pilier** : 24 sections, ~45 s chacune, soit ~20 min.
+- **Analyse IA du Lexique** : 68 s, 22 418 caractères.
+- **Coût DataForSEO** : ~0,12 $ pour un parcours complet (36 appels).
+- **IA** : Haiku 4.5, avec repli Gemini puis OpenRouter (tous deux gratuits).
 
 ### Côté simulateur
 
