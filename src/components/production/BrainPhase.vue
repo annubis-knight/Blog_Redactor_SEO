@@ -503,11 +503,11 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
 
       <!-- Navigation -->
       <div class="wizard-nav">
-        <button v-if="store.currentStep > 0" class="btn-prev" @click="store.prevStep()">
+        <button v-if="store.currentStep > 0" class="btn-prev" data-testid="brain-prev" @click="store.prevStep()">
           Précédent
         </button>
         <div class="wizard-nav-right">
-          <button class="btn-next" @click="handleNext">
+          <button class="btn-next" data-testid="brain-next" @click="handleNext">
             {{ store.currentStep === 5 ? 'Terminer le brainstorm' : 'Suivant' }}
           </button>
         </div>

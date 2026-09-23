@@ -235,6 +235,7 @@ onMounted(async () => {
             <textarea
               v-model="angle"
               class="form-textarea"
+              data-testid="brief-angle"
               rows="2"
               placeholder="Ce qui differencie cet article des concurrents et du reste du cocon..."
               @blur="saveMicroContext"
@@ -247,6 +248,7 @@ onMounted(async () => {
               v-model="tone"
               type="text"
               class="form-input"
+              data-testid="brief-tone"
               placeholder="Ex: pedagogique, expert, conversationnel..."
               @blur="saveMicroContext"
             />
@@ -257,6 +259,7 @@ onMounted(async () => {
             <textarea
               v-model="directives"
               class="form-textarea"
+              data-testid="brief-directives"
               rows="3"
               placeholder="Points d'attention, CTA, maillage interne, exemples a inclure..."
               @blur="saveMicroContext"
@@ -379,6 +382,7 @@ onMounted(async () => {
           <button
             v-if="outlineStore.isValidated"
             class="btn btn-secondary"
+            data-testid="outline-unvalidate"
             @click="outlineStore.unvalidateOutline()"
           >
             Modifier le sommaire
@@ -386,6 +390,7 @@ onMounted(async () => {
           <button
             v-if="!outlineStore.isValidated"
             class="btn btn-validate"
+            data-testid="outline-validate"
             :disabled="outlineStore.isSaving"
             @click="handleOutlineValidated"
           >
@@ -395,14 +400,14 @@ onMounted(async () => {
       </template>
 
       <template v-else>
-        <div v-if="outlineWarning" class="outline-warning">
+        <div v-if="outlineWarning" class="outline-warning" data-testid="outline-warning">
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M8 1L1 14h14L8 1z" stroke="currentColor" stroke-width="1.5" fill="none" />
             <path d="M8 6v4M8 11.5v.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" />
           </svg>
           <p>{{ outlineWarning }}</p>
         </div>
-        <p v-else class="outline-empty-msg">
+        <p v-else class="outline-empty-msg" data-testid="outline-empty">
           Chargement de la structure...
         </p>
       </template>
@@ -410,7 +415,7 @@ onMounted(async () => {
 
     <!-- Navigation -->
     <div v-if="outlineStore.isValidated" class="step-navigation">
-      <button class="btn btn-primary" @click="emit('outline-validated')">
+      <button class="btn btn-primary" data-testid="brief-continue" @click="emit('outline-validated')">
         Continuer vers l'Article
       </button>
     </div>

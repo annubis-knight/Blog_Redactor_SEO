@@ -131,6 +131,9 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
 <template>
   <div
     class="proposal-item"
+    data-testid="proposal-item"
+    :data-accepted="article.accepted ? 'true' : 'false'"
+    :data-created="article.createdInDb ? 'true' : 'false'"
     :class="{ expanded, accepted: article.accepted }"
     @click="expanded = !expanded"
   >

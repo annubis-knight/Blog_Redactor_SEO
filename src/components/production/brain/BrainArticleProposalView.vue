@@ -146,6 +146,7 @@ function isProcessing(phase: GenerationPhase): boolean {
         </div>
         <div class="step-header-actions">
           <button class="btn-generate"
+            data-testid="brain-generate-articles"
             :disabled="isProcessing(generationPhase)"
             @click="emit('generate-proposals')">
             {{ isProcessing(generationPhase) ? 'Génération...' : 'Générer avec Claude' }}
@@ -327,7 +328,7 @@ function isProcessing(phase: GenerationPhase): boolean {
       </div>
 
       <div v-if="proposedArticlesCount > 0" class="article-actions">
-        <button class="btn btn-primary" @click="emit('validate-articles')">
+        <button class="btn btn-primary" data-testid="brain-validate-all" @click="emit('validate-articles')">
           Tout valider
         </button>
       </div>

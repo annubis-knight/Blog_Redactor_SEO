@@ -26,6 +26,7 @@ defineEmits<{
   <div v-if="position === 'header'" class="proposal-actions">
     <button
       class="proposal-action-btn proposal-action-accept"
+      :data-testid="`proposal-accept-${position}`"
       :class="{ 'proposal-action-accept--active': accepted }"
       :title="accepted ? 'Article validé' : 'Valider cet article'"
       @click.stop="$emit('toggle-accept')"
@@ -42,6 +43,7 @@ defineEmits<{
     </button>
     <button
       class="proposal-action-btn proposal-action-delete"
+      :data-testid="`proposal-delete-${position}`"
       title="Supprimer cet article"
       @click.stop="$emit('remove')"
     >
@@ -88,6 +90,7 @@ defineEmits<{
   <div v-if="position === 'bottom'" class="proposal-actions proposal-actions--bottom">
     <button
       class="proposal-action-btn proposal-action-accept"
+      :data-testid="`proposal-accept-${position}`"
       :class="{ 'proposal-action-accept--active': accepted }"
       :title="accepted ? 'Article validé' : 'Valider cet article'"
       @click.stop="$emit('toggle-accept')"
@@ -126,6 +129,7 @@ defineEmits<{
     </button>
     <button
       class="proposal-action-btn proposal-action-delete"
+      :data-testid="`proposal-delete-${position}`"
       title="Supprimer cet article"
       @click.stop="$emit('remove')"
     >

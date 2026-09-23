@@ -86,13 +86,14 @@ onMounted(async () => {
 <template>
   <div class="preview-layout">
     <header class="preview-toolbar">
-      <button class="toolbar-back" @click="goBack">
+      <button class="toolbar-back" data-testid="preview-back" @click="goBack">
         &larr; Retour à l'éditeur
       </button>
       <span class="toolbar-title">{{ articleTitle }}</span>
       <div class="toolbar-actions">
         <button
           class="toolbar-export"
+          data-testid="preview-export"
           :disabled="!previewHtml || isExporting"
           @click="handleExport"
         >

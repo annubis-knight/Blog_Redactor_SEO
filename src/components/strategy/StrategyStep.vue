@@ -114,7 +114,7 @@ const canValidate = computed(() =>
 <template>
   <div class="strategy-step-wrapper">
     <!-- Validated result — ABOVE the card -->
-    <div v-if="stepData.validated" class="validated-result">
+    <div v-if="stepData.validated" class="validated-result" data-testid="step-validated">
       <svg class="validated-icon" width="18" height="18" viewBox="0 0 16 16" fill="none" aria-hidden="true">
         <circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.5" />
         <path d="M5 8l2 2 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -135,7 +135,7 @@ const canValidate = computed(() =>
         </div>
       </template>
       <template v-else>
-        <span class="validated-text">{{ stepData.validated }}</span>
+        <span class="validated-text" data-testid="step-validated-text">{{ stepData.validated }}</span>
         <button class="btn-icon-edit" title="Modifier le texte validé" @click="startEditValidated">
           <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
             <path d="M11.5 1.5l3 3L5 14H2v-3L11.5 1.5z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
@@ -160,6 +160,7 @@ const canValidate = computed(() =>
           <textarea
             v-model="localInput"
             class="input-textarea"
+            data-testid="step-input"
             rows="3"
             placeholder="Décrivez..."
             @blur="updateInput"
@@ -215,6 +216,7 @@ const canValidate = computed(() =>
           <button
             v-if="!stepData.suggestion"
             class="btn-suggest"
+            data-testid="step-suggest"
             :disabled="mainSuggesting"
             @click="$emit('request-suggestion')"
           >
@@ -224,6 +226,7 @@ const canValidate = computed(() =>
             <div class="validate-wrapper">
               <button
                 class="btn-validate"
+                data-testid="step-validate"
                 :disabled="!canValidate"
                 @click="toggleValidateMenu"
               >
@@ -236,6 +239,7 @@ const canValidate = computed(() =>
                 <button
                   v-if="localInput.trim()"
                   class="validate-option"
+                  data-testid="step-validate-own"
                   @click="validateOwnInput"
                 >
                   Mon texte
@@ -243,6 +247,7 @@ const canValidate = computed(() =>
                 <button
                   v-if="stepData.suggestion"
                   class="validate-option"
+                  data-testid="step-validate-suggestion"
                   @click="validateSuggestion"
                 >
                   La suggestion
@@ -250,6 +255,7 @@ const canValidate = computed(() =>
                 <button
                   v-if="localInput.trim() && stepData.suggestion"
                   class="validate-option validate-option--merge"
+                  data-testid="step-validate-merge"
                   @click="validateAll"
                 >
                   Fusionner les deux
@@ -267,6 +273,7 @@ const canValidate = computed(() =>
           <textarea
             v-model="localInput"
             class="input-textarea"
+            data-testid="step-input"
             rows="3"
             placeholder="Décrivez..."
             @blur="updateInput"
@@ -322,6 +329,7 @@ const canValidate = computed(() =>
           <button
             v-if="!stepData.suggestion"
             class="btn-suggest"
+            data-testid="step-suggest"
             :disabled="mainSuggesting"
             @click="$emit('request-suggestion')"
           >
@@ -331,6 +339,7 @@ const canValidate = computed(() =>
             <div class="validate-wrapper">
               <button
                 class="btn-validate"
+                data-testid="step-validate"
                 :disabled="!canValidate"
                 @click="toggleValidateMenu"
               >
@@ -343,6 +352,7 @@ const canValidate = computed(() =>
                 <button
                   v-if="localInput.trim()"
                   class="validate-option"
+                  data-testid="step-validate-own"
                   @click="validateOwnInput"
                 >
                   Mon texte
@@ -350,6 +360,7 @@ const canValidate = computed(() =>
                 <button
                   v-if="stepData.suggestion"
                   class="validate-option"
+                  data-testid="step-validate-suggestion"
                   @click="validateSuggestion"
                 >
                   La suggestion
@@ -357,6 +368,7 @@ const canValidate = computed(() =>
                 <button
                   v-if="localInput.trim() && stepData.suggestion"
                   class="validate-option validate-option--merge"
+                  data-testid="step-validate-merge"
                   @click="validateAll"
                 >
                   Fusionner les deux
@@ -386,6 +398,7 @@ const canValidate = computed(() =>
     <!-- "+" button — always after the last question card -->
     <button
       class="btn-add-sub"
+      data-testid="step-deepen"
       :disabled="!canDeepen"
       :title="isDeepening ? 'Génération...' : 'Approfondir'"
       @click="$emit('request-deepen')"

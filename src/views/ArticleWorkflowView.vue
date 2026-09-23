@@ -372,6 +372,7 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
                 <input
                   v-model="editorStore.webSearchEnabled"
                   type="checkbox"
+                  data-testid="web-search-toggle"
                   :disabled="editorStore.isGenerating"
                 />
                 Recherche web
@@ -441,13 +442,14 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
                 v-if="editorStore.content && !editorStore.isGenerating"
                 :to="`/article/${articleId}/editor`"
                 class="btn-edit-article"
+                data-testid="goto-editor"
               >
                 &Eacute;diter l'article
               </RouterLink>
             </CollapsableSection>
 
             <div class="step-navigation">
-              <button class="btn-review-strategy" @click="goToStep('brief-structure')">
+              <button class="btn-review-strategy" data-testid="back-to-brief" @click="goToStep('brief-structure')">
                 Revoir le Brief
               </button>
             </div>

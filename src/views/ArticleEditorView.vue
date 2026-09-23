@@ -333,6 +333,7 @@ onMounted(async () => {
           <button
             v-if="hasBody"
             class="btn-delete-content"
+            data-testid="editor-delete-content"
             title="Supprimer le contenu (conserve le brief et le sommaire)"
             :disabled="editorStore.isGenerating || editorStore.isSaving"
             @click="handleDeleteContent"
@@ -341,6 +342,7 @@ onMounted(async () => {
           </button>
           <button
             class="btn-save"
+            data-testid="editor-save"
             aria-label="Sauvegarder (Ctrl+S)"
             :disabled="!editorStore.isDirty || editorStore.isSaving"
             @click="articleId && editorStore.saveArticle(articleId)"
@@ -350,6 +352,7 @@ onMounted(async () => {
           <button
             v-if="hasBody && editorStore.metaTitle && editorStore.metaDescription"
             class="btn-preview"
+            data-testid="editor-preview"
             :disabled="editorStore.isSaving"
             @click="handlePreview"
           >

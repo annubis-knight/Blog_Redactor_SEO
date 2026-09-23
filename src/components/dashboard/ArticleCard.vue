@@ -10,7 +10,7 @@ const props = defineProps<{
 </script>
 
 <template>
-  <RouterLink :to="cocoonId != null ? `/cocoon/${cocoonId}/article/${article.id}` : `/article/${article.id}/editor`" class="article-card">
+  <RouterLink :to="cocoonId != null ? `/cocoon/${cocoonId}/article/${article.id}` : `/article/${article.id}/editor`" class="article-card" data-testid="article-card" :data-article-id="article.id">
     <div class="article-header">
       <span class="article-title">{{ article.title }}</span>
       <div class="article-badges">
