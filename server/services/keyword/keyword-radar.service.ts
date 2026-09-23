@@ -34,6 +34,7 @@ import type {
   ResonanceMatch,
 } from '../../../shared/types/intent.types.js'
 import type { KeywordOverview } from '../../../shared/types/index.js'
+import { compareScores } from '../../../shared/score/index.js'
 
 // --- Phase 1: Generate keywords via Haiku ---
 
@@ -210,6 +211,15 @@ export async function scanRadarKeywords(
   keywords: RadarKeyword[],
   depth: number = 1,
   painPoint?: string,
+  /**
+   * Niveau de l'article travaillé. Il décide des seuils de notation : à 150
+   * recherches/mois un mot-clé vaut 0/100 pour un pilier, 50 pour un
+   * intermédiaire et 100 pour un spécifique — 30 points d'écart sur la note
+   * finale pour la même donnée. Sans lui, le serveur notait tout en
+   * « intermediaire » et le panneau IA affichait un autre chiffre que la carte
+   * juste à côté (FR-RAD-MARKET-LEVEL-AWARE).
+   */
+  articleLevel: ArticleLevel = 'intermediaire',
 ): Promise<KeywordRadarScanResult> {
   const effectiveDepth = Math.min(Math.max(depth, 1), 2)
   const keywordStrings = keywords.map(k => k.keyword)
@@ -415,8 +425,7 @@ export async function scanRadarKeywords(
     // les anciens clients front, mais vaut TOUJOURS null. Les anciens snapshots
     // en DB qui contiennent encore une valeur sont ignorés à la lecture par
     // getCaptainExplorations (cf. data.service.ts).
-    const radarLevel: ArticleLevel = 'intermediaire'
-    const marketScore = computeMarketScore(kpis, radarLevel)
+    const marketScore = computeMarketScore(kpis, articleLevel)
     log.debug(`[Radar] Card "${kw.keyword}": combined=${scoreBreakdown.total}, market=${marketScore.total} (relevance computed live in Capitaine tab)`)
 
     cards.push({
@@ -432,8 +441,14 @@ export async function scanRadarKeywords(
     })
   }
 
-  // Sort by combined score descending
-  cards.sort((a, b) => b.combinedScore - a.combinedScore)
+  // Les cartes arrivent déjà rangées selon la note que l'écran affichera.
+  //
+  // Elles suivaient `combinedScore`, un score hybride déprécié depuis le
+  // 2026-05-02 : la première carte de la liste n'était donc pas celle qui
+  // portait la meilleure note à l'écran. Pire, ce score compte 0 là où la
+  // carte affiche « — », si bien qu'un mot-clé simplement mal renseigné
+  // tombait en bas de liste comme s'il était mauvais.
+  cards.sort((a, b) => compareScores(a.marketScore?.total ?? null, b.marketScore?.total ?? null))
 
   const { globalScore, heatLevel, verdict } = radarGlobalHeat(cards)
 

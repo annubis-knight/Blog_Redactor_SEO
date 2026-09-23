@@ -5,6 +5,7 @@ import { useCostLogStore } from '@/stores/ui/cost-log.store'
 import type { RadarExploration } from '@shared/types/intent.types.js'
 import type { ApiUsage } from '@shared/types/index.js'
 import { radarExplorationContract, radarGenerateContract, radarScanResultContract } from '@shared/contracts/radar.contract.js'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type {
   IntentScanResult,
   KeywordRadarGenerateResult,
@@ -393,7 +394,7 @@ export function useKeywordRadar() {
     specificTopic: string,
     keywords: RadarKeyword[],
     depth: number = 1,
-    opts?: { seed?: string; articleId?: number; painPoint?: string },
+    opts?: { seed?: string; articleId?: number; painPoint?: string; articleLevel?: ArticleLevel },
   ) {
     isScanning.value = true
     error.value = null
@@ -415,6 +416,10 @@ export function useKeywordRadar() {
         keywords,
         depth,
         painPoint: opts?.painPoint,
+        // Sans le niveau, le serveur note tout en « intermediaire » : la carte
+        // et le panneau IA affichaient alors deux chiffres différents pour le
+        // même mot-clé (FR-RAD-MARKET-LEVEL-AWARE).
+        articleLevel: opts?.articleLevel,
       }, { contract: radarScanResultContract })
       log.info(`[Radar] Scan complete: score=${scanResult.value.globalScore}, heat=${scanResult.value.heatLevel}`)
 

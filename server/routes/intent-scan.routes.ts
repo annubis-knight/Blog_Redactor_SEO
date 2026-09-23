@@ -4,6 +4,8 @@ import { scanIntent } from '../services/intent/intent-scan.service.js'
 import { generateRadarKeywords, scanRadarKeywords } from '../services/keyword/keyword-radar.service.js'
 import { parseContract } from '../../shared/contracts/core.js'
 import { radarGenerateContract, radarScanResultContract } from '../../shared/contracts/radar.contract.js'
+import { ARTICLE_LEVELS } from '../../shared/utils/article-level.js'
+import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
 
 const router = Router()
 
@@ -67,7 +69,7 @@ router.post('/keywords/radar/generate', async (req, res) => {
 
 /** POST /api/keywords/radar/scan — Scan keywords with PAA, overview, intent */
 router.post('/keywords/radar/scan', async (req, res) => {
-  const { broadKeyword, specificTopic, keywords, depth, painPoint } = req.body ?? {}
+  const { broadKeyword, specificTopic, keywords, depth, painPoint, articleLevel } = req.body ?? {}
   if (!broadKeyword || typeof broadKeyword !== 'string') {
     res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'broadKeyword is required' } })
     return
@@ -88,7 +90,12 @@ router.post('/keywords/radar/scan', async (req, res) => {
   log.debug(`Radar scan params:`, { broadKeyword, specificTopic, keywordCount: keywords.length, depth: effectiveDepth })
   const startScan = Date.now()
   try {
-    const result = await scanRadarKeywords(broadKeyword, specificTopic, keywords, effectiveDepth, painPointClean || undefined)
+    // Le niveau décide des seuils de notation : sans lui, le serveur note tout
+    // en « intermediaire » et diverge de ce qu'affiche la carte.
+    const niveau = ARTICLE_LEVELS.includes(articleLevel as ArticleLevel)
+      ? (articleLevel as ArticleLevel)
+      : undefined
+    const result = await scanRadarKeywords(broadKeyword, specificTopic, keywords, effectiveDepth, painPointClean || undefined, niveau)
     log.info(`Radar scan done: ${result.cards.length} cards, score=${result.globalScore}, heat=${result.heatLevel} in ${Date.now() - startScan}ms`)
     // Frontière serveur : cartes dans la forme promise aux écrans du Radar.
     res.json({ data: parseContract(radarScanResultContract, result, 'server') })

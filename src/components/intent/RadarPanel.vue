@@ -110,10 +110,11 @@ const { sorted: filteredCards, sortState: radarSortState } = useSortableList<Rad
       try {
         return computeKpiScore(card.kpis, props.articleLevel ?? 'intermediaire').total
       } catch {
-        // KPIs incomplets (ne devrait pas arriver) → fallback marketScore backend.
-        // PAS de fallback combinedScore : c'est un score legacy hybride qui
-        // contient des signaux pertinence interdits côté Radar.
-        return card.marketScore?.total ?? null
+        // Aucun repli : retomber sur `marketScore` ferait suivre au tri une
+        // note calculée ailleurs, donc potentiellement différente de celle
+        // affichée sur la carte — exactement l'écart qu'on cherche à éviter.
+        // Une note incalculable descend en bas de liste, comme un « — ».
+        return null
       }
     }
     return null
@@ -349,7 +350,13 @@ async function handleScan() {
     specificTopic.value.trim(),
     [...kws],
     depth.value,
-    cacheSeed.value ? { seed: cacheSeed.value, articleId: props.articleId ?? undefined } : undefined,
+    // Le niveau part avec le scan : il décide des seuils de notation, et sans
+    // lui le serveur note tout en « intermediaire » (FR-RAD-MARKET-LEVEL-AWARE).
+    {
+      seed: cacheSeed.value || undefined,
+      articleId: props.articleId ?? undefined,
+      articleLevel: props.articleLevel ?? undefined,
+    },
   )
   if (scanResult.value) {
     log.info(`[DouleurIntent] Scan result: score=${scanResult.value.globalScore}`)
