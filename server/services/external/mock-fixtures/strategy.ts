@@ -138,8 +138,8 @@ const SPECIALISES = [
     rationale: 'Question de délai posée systématiquement avant l\'engagement.',
     painPoint: 'Le dirigeant a besoin du site pour une échéance précise.',
     painIntentExpected: 'informational',
-    suggestedKeyword: 'delai creation site internet',
-    suggestedSlug: 'delai-creation-site-internet',
+    suggestedKeyword: 'combien de temps creer un site internet',
+    suggestedSlug: 'combien-de-temps-creer-un-site-internet',
   },
 ]
 

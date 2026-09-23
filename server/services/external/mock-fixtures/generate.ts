@@ -109,7 +109,9 @@ registerStreamFixture(
 // generate/article — section par section
 registerStreamFixture(
   'generate-article-section',
-  ({ userPrompt }) => /section\s*\d|<h2>|g[eé]n[eé]rer.*section/i.test(userPrompt),
+  ({ userPrompt }) =>
+    /Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt)
+    || /section\s*\d|<h2>|g[eé]n[eé]rer.*section/i.test(userPrompt),
   ({ userPrompt }) => {
     const titleMatch = userPrompt.match(/H2\s*:\s*([^\n]{5,120})/i)
     const title = titleMatch?.[1]?.trim() ?? 'Section'

@@ -71,7 +71,16 @@ registerStreamFixture(
 // ---------------------------------------------------------------------------
 registerStreamFixture(
   'captain-ai-panel',
-  ({ userPrompt }) => /capitaine|panel.*analyse|6 KPI|verdict/i.test(userPrompt),
+  // Calé sur le prompt système : le prompt utilisateur d'une rédaction de
+  // section contient lui aussi le mot « capitaine » (le mot-clé de l'article y
+  // est injecté), ce qui détournait toutes les générations d'article vers cette
+  // fixture — l'article obtenu tenait alors en dix caractères.
+  ({ userPrompt }) =>
+    /capitaine|panel.*analyse|6 KPI|verdict/i.test(userPrompt)
+    // Le gabarit de rédaction d'une section contient lui aussi le mot
+    // « capitaine » (le mot-clé de l'article y est injecté) et arrivait ici en
+    // premier : l'article généré tenait alors en dix caractères.
+    && !/Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt),
   ({ userPrompt }) => {
     const kwMatch = userPrompt.match(/["«]([^"»]{3,60})["»]/)
     const kw = kwMatch?.[1] ?? 'mot-clé'

@@ -5,6 +5,7 @@
  * Chaque fixture simule la réponse d'un tool call ou d'un stream IA.
  */
 import './auto-meta-priority.js'
+import './auto-section-priority.js'
 import './discovery.js'
 import './radar.js'
 import './intent.js'

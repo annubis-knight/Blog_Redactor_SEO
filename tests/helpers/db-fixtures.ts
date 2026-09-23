@@ -140,7 +140,19 @@ export async function cleanupTestFixtures(runId: string): Promise<void> {
   await query(`DELETE FROM articles WHERE titre LIKE $1`, [pattern])
   await query(`DELETE FROM articles WHERE slug LIKE $1`, [testSlugPattern(runId)])
 
-  // 2. Cocoons (cascade sur articles restants + cocoon_strategies)
+  // 1.bis Articles créés PAR LE PRODUIT dans un cocon de test (Cerveau).
+  //    Leur titre et leur slug viennent de l'IA : ils ne portent aucune
+  //    étiquette et échappent donc aux deux filets précédents. Et comme
+  //    `articles.cocoon_id` est en ON DELETE SET NULL, supprimer le cocon les
+  //    détache au lieu de les supprimer : ils deviennent des articles
+  //    fantômes, invisibles dans l'app mais dont le slug reste pris — au point
+  //    de faire échouer silencieusement les créations suivantes.
+  await query(
+    `DELETE FROM articles WHERE cocoon_id IN (SELECT id FROM cocoons WHERE nom LIKE $1)`,
+    [pattern],
+  )
+
+  // 2. Cocoons (cascade sur cocoon_strategies)
   await query(`DELETE FROM cocoons WHERE nom LIKE $1`, [pattern])
 
   // 3. Silos créés par les tests (rare, seulement si DB vide au boot)

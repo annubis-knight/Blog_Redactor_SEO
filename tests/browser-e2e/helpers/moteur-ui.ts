@@ -85,3 +85,79 @@ type MoteurTab = (typeof MOTEUR_TABS)[number]
 export function tabLocator(page: Page, tab: MoteurTab | 'finalisation') {
   return page.locator(`[data-testid="wf-item-${tab}"]`)
 }
+
+/** Progression workflow de l'article, lue en base via l'API. */
+export async function checksDeLArticle(page: Page, articleId: number): Promise<string[]> {
+  const port = process.env.PORT ?? 3400
+  const res = await page.request.get(`http://localhost:${port}/api/articles/${articleId}/progress`)
+  if (!res.ok()) return []
+  return ((await res.json())?.data?.completedChecks ?? []) as string[]
+}
+
+/**
+ * Sous-phase Lieutenants complète : analyse SERP, une proposition retenue,
+ * plan Hn généré et enregistré. C'est ce plan qui deviendra le sommaire de la
+ * Rédaction — la sous-phase n'est close qu'une fois les deux posés.
+ */
+export async function lockLieutenants(page: Page, articleId: number): Promise<void> {
+  await tabLocator(page, 'lieutenants').click()
+  await dismissLoadPrompt(page)
+
+  const cartes = page.locator('[data-testid="lieutenant-cards-list"]')
+  if (await cartes.count() === 0) {
+    const analyser = page.locator('.btn-analyze', { hasText: 'Analyser SERP' }).first()
+    await expect(analyser, 'le bouton d’analyse SERP doit être actif').toBeEnabled({ timeout: 30000 })
+    await Promise.all([
+      page.waitForResponse(r => r.url().endsWith('/api/serp/analyze') && r.request().method() === 'POST', { timeout: 180000 }),
+      analyser.click(),
+    ])
+    await expect(cartes, 'les propositions IA doivent arriver').toBeVisible({ timeout: 180000 })
+  }
+
+  const cases = page.locator('[data-testid="lt-card-checkbox"]')
+  await expect(cases.first()).toBeVisible({ timeout: 60000 })
+  if (!(await cases.first().isChecked())) await cases.first().check()
+
+  if (await page.locator('[data-testid="hn-structure-empty"]').count() > 0) {
+    const generer = page.locator('[data-testid="hn-generate-btn"]')
+    await expect(generer).toBeEnabled({ timeout: 20000 })
+    await generer.click()
+  }
+  await expect(page.locator('.hn-structure-item').first(), 'un plan Hn doit s’afficher')
+    .toBeVisible({ timeout: 180000 })
+
+  const sauvegarder = page.locator('.btn-save-hn')
+  await expect(sauvegarder).toBeEnabled({ timeout: 20000 })
+  await sauvegarder.click()
+  await expect(page.locator('.hn-saved-badge'), 'le plan doit être marqué sauvegardé')
+    .toBeVisible({ timeout: 60000 })
+
+  await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
+    .toContain('moteur:lieutenants_locked')
+}
+
+/** Sous-phase Lexique complète : extraction puis au moins un terme retenu. */
+export async function validerLexique(page: Page, articleId: number): Promise<void> {
+  await tabLocator(page, 'lexique').click()
+  await dismissLoadPrompt(page)
+
+  if ((await checksDeLArticle(page, articleId)).includes('moteur:lexique_validated')) return
+
+  const resultats = page.locator('[data-testid="lexique-results"]')
+  if (await resultats.count() === 0) {
+    const extraire = page.locator('[data-testid="btn-extract"]')
+    await expect(extraire, 'l’extraction doit être proposée').toBeVisible({ timeout: 30000 })
+    await expect(extraire).toBeEnabled({ timeout: 30000 })
+    await extraire.click()
+    await expect(resultats, 'les termes extraits doivent s’afficher').toBeVisible({ timeout: 180000 })
+  }
+
+  const cases = resultats.locator('.term-checkbox')
+  if (await cases.count() > 0) {
+    const premiere = cases.first()
+    if (!(await premiere.isDisabled()) && !(await premiere.isChecked())) await premiere.check()
+  }
+
+  await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
+    .toContain('moteur:lexique_validated')
+}
