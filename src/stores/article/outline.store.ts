@@ -5,6 +5,7 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { apiPut } from '@/services/api.service'
 import type { Outline, OutlineSection, BriefData, ApiUsage } from '@shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
+import { articleMainKeyword } from '@shared/utils/article-keyword.js'
 
 /** Transform HN structure from Moteur into an editable Outline */
 export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: string): Outline {
@@ -91,11 +92,10 @@ export const useOutlineStore = defineStore('outline', () => {
     outline.value = null
     lastApiUsage.value = null
 
-    const pilierKeyword = briefData.keywords.find(kw => kw.type === 'Pilier')
-
     const body = {
       articleId: briefData.article.id,
-      keyword: pilierKeyword?.keyword ?? briefData.article.title,
+      // Le capitaine de CET article, pas le mot-clé pilier du cocon (épopée qualité SEO, R3).
+      keyword: articleMainKeyword(briefData.article),
       keywords: briefData.keywords.map(kw => kw.keyword),
       paa: briefData.dataForSeo?.paa ?? [],
       articleType: briefData.article.type,

@@ -13,6 +13,8 @@ Tu es un expert SEO et rédacteur web spécialisé dans la création de sommaire
 
 {{keywordContext}}
 
+{{microContext}}
+
 ## Questions PAA (People Also Ask)
 
 {{paaQuestions}}

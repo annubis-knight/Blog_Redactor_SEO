@@ -39,7 +39,7 @@ export const useSeoStore = defineStore('seo', () => {
     contentLengthTarget?: number,
     relatedKeywords?: RelatedKeyword[],
     articleKeywords?: ArticleKeywords | null,
-    articleId?: number,
+    articleSlug?: string,
   ) {
     isCalculating.value = true
     log.debug(`[seo] recalculate`, {
@@ -49,7 +49,7 @@ export const useSeoStore = defineStore('seo', () => {
       metaDesc: metaDescription ? `${metaDescription.length}ch` : 'null',
       articleKeywords: articleKeywords ? `cap=${articleKeywords.capitaine}, lt=${articleKeywords.lieutenants.length}` : 'null',
     })
-    score.value = calculateSeoScore(content, keywords, metaTitle, metaDescription, contentLengthTarget, relatedKeywords, articleKeywords ?? undefined, articleId != null ? String(articleId) : undefined)
+    score.value = calculateSeoScore(content, keywords, metaTitle, metaDescription, contentLengthTarget, relatedKeywords, articleKeywords ?? undefined, articleSlug)
     log.info(`[seo] score: ${score.value?.global}`, {
       wordCount: score.value?.wordCount,
       densities: score.value?.keywordDensities.map(d => `${d.keyword}:${d.occurrences}x`).join(', '),

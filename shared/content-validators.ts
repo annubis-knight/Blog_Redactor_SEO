@@ -47,7 +47,7 @@ const ALLOWED_TAGS = new Set([
 ])
 
 /** Mots qui ne terminent jamais un titre : signe d'une coupure. */
-const DANGLING_WORDS = new Set([
+export const DANGLING_WORDS = new Set([
   'de', 'du', 'des', 'le', 'la', 'les', 'un', 'une', 'à', 'au', 'aux', 'et', 'ou',
   'pour', 'par', 'en', 'dans', 'sur', 'avec', 'sans', 'que', 'qui', 'plus', 'votre',
   'vos', 'son', 'ses', 'leur', 'leurs', 'ce', 'cet', 'cette',

@@ -1,6 +1,7 @@
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import type { ArticleContent } from '../../../shared/types/index.js'
+import { nextArticlePhase } from '../../../shared/utils/article-phase.js'
 
 const DEFAULT_CONTENT: ArticleContent = {
   outline: null,
@@ -66,6 +67,15 @@ export async function saveArticleContent(
         outline = COALESCE(EXCLUDED.outline, article_content.outline),
         content = COALESCE(EXCLUDED.content, article_content.content)
     `, [id, updates.outline ? JSON.stringify(updates.outline) : null, updates.content ?? null])
+  }
+
+  // Du contenu enregistré fait entrer l'article en rédaction ; la phase ne
+  // recule jamais (épopée qualité SEO, P2).
+  if (updates.content && updates.content.trim()) {
+    const current = await pool.query(`SELECT phase FROM articles WHERE id = $1`, [id])
+    const phase = current.rows[0]?.phase as string | undefined
+    const next = nextArticlePhase(phase, 'content-saved')
+    if (next !== phase) await pool.query(`UPDATE articles SET phase = $1 WHERE id = $2`, [next, id])
   }
 
   // Save meta in articles table

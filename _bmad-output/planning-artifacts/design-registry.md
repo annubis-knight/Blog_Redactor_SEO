@@ -3522,7 +3522,8 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Refs code**
 - [server/routes/generate/meta.routes.ts](../../server/routes/generate/meta.routes.ts) — endpoint `POST /api/generate/meta`. Réponse **JSON** (pas SSE) avec `{ metaTitle, metaDescription, usage }`. Boucle retry sur 429 (`RATE_LIMIT_MAX_RETRIES`).
 - [server/prompts/generate-meta.md](../../server/prompts/generate-meta.md) — prompt avec variables `{{articleTitle}}`, `{{keyword}}`, `{{articleContent}}`.
-- [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — action `generateMeta(articleId, keyword, articleTitle, articleContent)` : appelle `POST /generate/meta`, écrit `metaTitle` / `metaDescription` dans le store + tronque proprement au mot près si dépassement (title 60ch, desc 160ch).
+- [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — action `generateMeta(articleId, keyword, articleTitle, articleContent)` : appelle `POST /generate/meta` et écrit `metaTitle` / `metaDescription` dans le store.
+- [shared/utils/meta-fit.ts](../../shared/utils/meta-fit.ts) — `fitMetaText(text, max)`, appelé par la route : dernière phrase complète si elle garde au moins la moitié de la longueur permise, sinon dernier mot sans mot orphelin (`DANGLING_WORDS` de `shared/content-validators.ts`), jamais de « ... ». *(Corrigé le 2026-09-24 : la doc plaçait la troncature dans le store ; elle est côté serveur.)*
 
 **Endpoints**
 - `POST /api/generate/meta` — JSON synchrone.
@@ -3550,6 +3551,32 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Voir aussi**
 - `DESIGN-RED-ARTICLE` — étape précédente qui produit `content`.
 - `DESIGN-RED-EDITOR-TIPTAP` — édition manuelle des méta après génération.
+
+---
+
+### DESIGN-RED-META-CAPTAIN
+
+**Réf PRD :** [FR-RED-META-CAPTAIN](./prd.md#fr-red-meta-captain--la-méta-est-construite-sur-le-capitaine-verrouillé)
+
+**Refs code**
+- [shared/utils/article-keyword.ts](../../shared/utils/article-keyword.ts) — `articleMainKeyword(article)` : `captainKeywordLocked`, sinon le titre. Jamais le mot-clé pilier du pool du cocon.
+- [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — `generateArticle` : `keyword: articleMainKeyword(briefData.article)`.
+- [src/stores/article/outline.store.ts](../../src/stores/article/outline.store.ts) — `generateOutline` : idem.
+- [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — la méta reçoit `currentKeyword` (capitaine d'`article_keywords`), comme la réduction et l'humanisation.
+- [server/routes/generate/meta.routes.ts](../../server/routes/generate/meta.routes.ts) — longueurs ajustées par `fitMetaText`.
+
+**Décisions d'architecture**
+- `articles.captain_keyword_locked` (lu via la brief) et `article_keywords.capitaine` (lu par `currentKeyword`) sont la même donnée : le Moteur écrit le miroir au verrouillage (`saveArticleKeywords`).
+- Le titre ne sert de repli qu'avant le Moteur : la Finalisation exige déjà un capitaine verrouillé avant la rédaction.
+
+**Critères d'acceptation techniques**
+- AC.REDMC.1 : `articleMainKeyword` renvoie le capitaine, sinon le titre (espaces ignorés). *(test : `tests/unit/shared/article-keyword.test.ts`, dans `npm run verify`)*
+- AC.REDMC.2 : un intermédiaire dont le pool contient le mot-clé pilier du cocon est rédigé et résumé sur son propre capitaine. *(tests : `tests/unit/stores/editor.store.test.ts`, `tests/unit/stores/outline.store.test.ts`)*
+- AC.REDMC.3 : la méta est générée avec le capitaine. *(test : `tests/unit/composables/article/useArticleGeneration.test.ts`)*
+- AC.REDMC.4 : toute description ajustée passe `validateArticleMeta` (pas de `meta-*-truncated`). *(test : `tests/unit/shared/meta-fit.test.ts`, dans `npm run verify`)*
+
+**Voir aussi**
+- `DESIGN-RED-META`, `DESIGN-CAP-LOCK-RADIO`.
 
 ---
 

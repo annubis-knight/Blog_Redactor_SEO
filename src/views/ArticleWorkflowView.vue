@@ -149,6 +149,7 @@ const { seoStore: _seoStore } = useSeoScoring(
   () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
   () => articleKeywordsStore.keywords,
+  () => briefStore.briefData?.article.slug,
 )
 useGeoScoring()
 

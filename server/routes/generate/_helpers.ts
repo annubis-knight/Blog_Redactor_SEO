@@ -1,6 +1,7 @@
 import { USAGE_SENTINEL } from '../../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../../services/external/claude.service.js'
-import type { ArticleStrategy, ArticleKeywords, Outline, OutlineSection } from '../../../shared/types/index.js'
+import type { ArticleStrategy, ArticleKeywords, CocoonStrategy, Outline, OutlineSection } from '../../../shared/types/index.js'
+import { buildCocoonStrategyBlock } from '../../utils/prompt-loader.js'
 
 /** Detect if an error is a 429 rate-limit error from the Anthropic API */
 export function isRateLimitError(err: unknown): boolean {
@@ -56,6 +57,25 @@ export async function consumeStream(
 }
 
 /** Build a markdown strategy context block for prompt injection */
+/**
+ * Bloc stratégique d'une rédaction : la stratégie propre à l'article si elle
+ * existe, sinon celle validée pour le cocon au Cerveau. La rédaction ne lisait
+ * que `article_strategies`, vide pour tout article créé par le Cerveau : le
+ * pilier 1013 a été écrit sans cible ni douleur (épopée qualité SEO, R5).
+ */
+export function pickStrategyContext(articleStrategy: ArticleStrategy | null, cocoonStrategy: CocoonStrategy | null): string {
+  return buildStrategyContext(articleStrategy) || (cocoonStrategy ? buildCocoonStrategyBlock(cocoonStrategy) : '')
+}
+
+/**
+ * Modèles réellement utilisés, dans l'ordre d'apparition. Un repli de
+ * fournisseur peut changer de modèle d'une section à l'autre : n'enregistrer que
+ * le dernier cachait qui avait écrit quoi (épopée qualité SEO, R8).
+ */
+export function describeModelsUsed(models: Array<string | null | undefined>): string {
+  return [...new Set(models.filter((m): m is string => !!m))].join(' + ')
+}
+
 export function buildStrategyContext(strategy: ArticleStrategy | null): string {
   if (!strategy || strategy.completedSteps === 0) return ''
 

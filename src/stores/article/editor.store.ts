@@ -11,6 +11,7 @@ import {
 } from '@/utils/text-utils'
 import { useOutlineStore } from '@/stores/article/outline.store'
 import type { BriefData, Outline, ApiUsage } from '@shared/types/index.js'
+import { articleMainKeyword } from '@shared/utils/article-keyword.js'
 
 /** Mutate `total` in place by summing tokens + cost from `partial`. */
 function aggregateUsage(total: ApiUsage, partial: ApiUsage | null): void {
@@ -114,13 +115,14 @@ export const useEditorStore = defineStore('editor', () => {
     lastMetaUsage.value = null
     sectionProgress.value = null
 
-    const pilierKeyword = briefData.keywords.find(kw => kw.type === 'Pilier')
-    log.debug('[editor] pilier keyword', { keyword: pilierKeyword?.keyword ?? briefData.article.title })
+    // Le capitaine de CET article, pas le mot-clé pilier du cocon (épopée qualité SEO, R3).
+    const mainKeyword = articleMainKeyword(briefData.article)
+    log.debug('[editor] mot-clé principal', { keyword: mainKeyword })
 
     const body = {
       articleId: briefData.article.id,
       outline,
-      keyword: pilierKeyword?.keyword ?? briefData.article.title,
+      keyword: mainKeyword,
       keywords: briefData.keywords.map(kw => kw.keyword),
       paa: briefData.dataForSeo?.paa ?? [],
       articleType: briefData.article.type,

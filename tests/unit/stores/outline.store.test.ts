@@ -28,6 +28,7 @@ const mockBriefData: BriefData = {
     topic: 'Test Theme',
     status: 'à rédiger',
     cocoonName: 'Test Cocoon',
+    captainKeywordLocked: 'capitaine verrouillé',
   },
   keywords: [
     { keyword: 'pilier keyword', cocoonName: 'Test Cocoon', type: 'Pilier' },
@@ -70,7 +71,7 @@ describe('outline.store — generateOutline', () => {
       '/api/generate/outline',
       expect.objectContaining({
         articleId: 1,
-        keyword: 'pilier keyword',
+        keyword: 'capitaine verrouillé',
         keywords: ['pilier keyword', 'secondary keyword'],
         articleType: 'Pilier',
         articleTitle: 'Test Article',
@@ -135,9 +136,29 @@ describe('outline.store — generateOutline', () => {
     expect(store.isValidated).toBe(false)
   })
 
-  it('uses article title as fallback when no pilier keyword', async () => {
+  // Épopée qualité SEO, R3 : le mot-clé principal est le capitaine de CET
+  // article. Le mot-clé pilier du pool est celui du cocon : pour un
+  // intermédiaire, c'est celui du pilier.
+  it('n’utilise jamais le mot-clé pilier du cocon pour un autre article', async () => {
+    const intermediaire: BriefData = {
+      ...mockBriefData,
+      article: { ...mockBriefData.article, type: 'Intermédiaire', captainKeywordLocked: 'audit site web' },
+    }
+
+    const store = useOutlineStore()
+    await store.generateOutline(intermediaire)
+
+    expect(mockStartStream).toHaveBeenCalledWith(
+      '/api/generate/outline',
+      expect.objectContaining({ keyword: 'audit site web' }),
+      expect.any(Object),
+    )
+  })
+
+  it('uses article title as fallback when no captain is locked', async () => {
     const briefNoPilier: BriefData = {
       ...mockBriefData,
+      article: { ...mockBriefData.article, captainKeywordLocked: null },
       keywords: [{ keyword: 'secondary', cocoonName: 'Test Cocoon', type: 'Moyenne traine' }],
     }
 

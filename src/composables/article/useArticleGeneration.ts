@@ -105,8 +105,9 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
       })
       await editorStore.saveArticle(id)
 
-      const pilierKeyword = briefStore.briefData.keywords.find(kw => kw.type === 'Pilier')
-      const keyword = pilierKeyword?.keyword ?? briefStore.briefData.article.title
+      // La méta porte le capitaine verrouillé, comme la réduction et l'humanisation :
+      // le mot-clé pilier du pool retombait sur le titre (épopée qualité SEO, R3).
+      const keyword = currentKeyword.value
       log.info('[useArticleGeneration] Generating meta', { articleId: id, keyword })
       await editorStore.generateMeta(id, keyword, briefStore.briefData.article.title, editorStore.content)
 

@@ -34,7 +34,8 @@ import {
   aggregateUsage,
   buildKeywordContext,
   buildMicroContextBlock,
-  buildStrategyContext,
+  pickStrategyContext,
+  describeModelsUsed,
   computeSectionBudget,
   consumeStream,
   formatFullOutline,
@@ -47,6 +48,7 @@ import {
   splitOutlineIntoGroups,
   stripCodeFences,
 } from './_helpers.js'
+import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.service.js'
 
 const router = Router()
 
@@ -73,7 +75,14 @@ router.post('/generate/article', async (req, res) => {
     const systemPrompt = await loadPrompt('system-propulsite')
 
     const articleId = parsed.data.articleId
-    const strategy = await getStrategy(articleId)
+    const [strategy, cocoonStrategy] = await Promise.all([
+      getStrategy(articleId),
+      // Stratégie du cocon en repli (R5) : son absence ne doit pas bloquer la rédaction.
+      getCocoonStrategy(cocoonName).catch((err: Error) => {
+        log.warn('Stratégie du cocon illisible — rédaction sans elle', { cocoonName, error: err.message })
+        return null
+      }),
+    ])
     const { data: articleKw } = await getArticleKeywords(articleId)
     const microCtx = await loadArticleMicroContext(articleId)
     const microContextBlock = buildMicroContextBlock(microCtx)
@@ -104,7 +113,7 @@ router.post('/generate/article', async (req, res) => {
       keyword,                                                 // Mot-clé pilier / Capitaine
       secondaryKeywords: keywords.filter(k => k !== keyword).join(', ') || 'Aucun', // Lieutenants (mots-clés secondaires) séparés par virgule
       cocoonName,                                              // Nom du cocon sémantique auquel l'article appartient
-      strategyContext: buildStrategyContext(strategy),          // Bloc markdown Brain-First : cible, douleur, angle, promesse, CTA
+      strategyContext: pickStrategyContext(strategy, cocoonStrategy), // Stratégie de l'article, sinon celle du cocon (R5)
       keywordContext: buildKeywordContext(articleKw),           // Bloc markdown Capitaine/Lieutenants/Lexique avec zones de placement
       microContext: microContextBlock,                         // Bloc markdown micro-contexte : angle, ton, consignes spécifiques, word count
       fullOutline: formatFullOutline(outline),                 // Sommaire complet formaté (liste "- H1/H2/H3: titre")
@@ -121,6 +130,7 @@ router.post('/generate/article', async (req, res) => {
     let fullContent = ''
     let totalChunks = 0
     const totalUsage: ApiUsage = { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0, cacheCreationTokens: 0, model: '', estimatedCost: 0 }
+    const modelsUsed: Array<string | undefined> = []
 
     for (const [index, group] of groups.entries()) {
       // Check if client disconnected
@@ -218,9 +228,10 @@ router.post('/generate/article', async (req, res) => {
       fullContent += sectionContent
       totalChunks += sectionChunks
       aggregateUsage(totalUsage, sectionUsage)
-      if (sectionUsage?.model) totalUsage.model = sectionUsage.model
+      modelsUsed.push(sectionUsage?.model)
+      totalUsage.model = describeModelsUsed(modelsUsed)
 
-      log.info(`Section ${index + 1}/${groups.length} "${group.title}" done`, { chars: sectionContent.length, chunks: sectionChunks })
+      log.info(`Section ${index + 1}/${groups.length} "${group.title}" done`, { chars: sectionContent.length, chunks: sectionChunks, model: sectionUsage?.model ?? null })
 
       // SSE: section-done
       res.write(`event: section-done\ndata: ${JSON.stringify({ index })}\n\n`)

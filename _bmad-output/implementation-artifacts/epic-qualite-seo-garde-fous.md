@@ -78,7 +78,7 @@ Règles communes à tous les chantiers :
 | # | Chantier | Branche | Taille | Exigences | Statut |
 |---|---|---|---|---|---|
 | C0 | Traçabilité : épopée, modèle de PR, cliquet des IDs, dédoublonnage LEX | `chore/tracabilite-programme` | S | NFR-MAIN-REQUIREMENTS-TRACE | en cours |
-| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en cours (2/4 : `fix/cerveau-mots-cles`, `fix/moteur-intention-hn`) |
+| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en cours (3/4 : `fix/cerveau-mots-cles`, `fix/moteur-intention-hn`, `fix/redaction-meta-contexte`) |
 | C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | à faire |
 | C3 | Lexique métier | `fix/lexique-metier` | M | FR-LEX-METIER-ONLY | à faire |
 | C4 | Architecture des prompts | `refactor/prompts-architecture` | M | FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT | à faire |
@@ -215,7 +215,7 @@ Elle remplace FR-CAP-VERDICT-INFORMATIVE.
 - La meta description n'est jamais coupée au milieu d'une phrase par des points de suspension.
 > **En situation.** Capitaine « stratégie digitale PME » : le meta title commence par « Stratégie digitale PME : … ».
 
-**Statut** : réservée — C1.
+**Statut** : **livrée** par C1 (`fix/redaction-meta-contexte`), versée au PRD le 2026-09-24.
 
 #### FR-RED-DRAFT-SINGLE-PASS — Le premier jet s'écrit d'un seul tenant
 Il remplace FR-RED-ARTICLE.
@@ -391,23 +391,24 @@ Il remplace FR-CER-BATCH-CREATE.
 
 **Rédaction**
 - [ ] C5 · R1 — `sectionBudgetHint` et `sectionPosition` jamais utilisés ; `wordCountBudget` contient le total de l'article (`article.routes.ts:153-158`).
-- [ ] C1 · R2 — `microContext` passé au sommaire mais inutilisé (`outline.routes.ts:62`).
-- [ ] C1 · R3 — Méta construite sur le titre au lieu du capitaine (`useArticleGeneration.ts:108-109`, `editor.store.ts:117-123`).
-- [ ] C1 · R4 — Méta coupée avec « ... » (`meta.routes.ts:86-88`), alors que le valideur classe ce cas en erreur.
-- [ ] C1 · R5 — `strategy_context` vide en rédaction : `cocoon_strategies` n'est jamais lu (`article.routes.ts:76,107`).
+- [x] C1 · R2 — *(PR `fix/redaction-meta-contexte`)* `microContext` passé au sommaire mais inutilisé (`outline.routes.ts:62`).
+- [x] C1 · R3 — *(PR `fix/redaction-meta-contexte`)* Méta construite sur le titre au lieu du capitaine (`useArticleGeneration.ts:108-109`, `editor.store.ts:117-123`).
+- [x] C1 · R4 — *(PR `fix/redaction-meta-contexte`)* Méta coupée avec « ... » (`meta.routes.ts:86-88`), alors que le valideur classe ce cas en erreur.
+- [x] C1 · R5 — *(PR `fix/redaction-meta-contexte`)* `strategy_context` vide en rédaction : `cocoon_strategies` n'est jamais lu (`article.routes.ts:76,107`).
 - [ ] C5 · R6 — Recherche web sans lieu ni date, citations jetées (`claude.service.ts:111-115`, `claude-stream.ts:66`).
 - [ ] C5 · R7 — `generate-article-section.md:44` impose la recherche web, même quand elle est désactivée.
-- [ ] C1 · R8 — Seul le modèle de la dernière section est enregistré (`article.routes.ts:221`).
+- [x] C1 · R8 — *(PR `fix/redaction-meta-contexte`)* Seul le modèle de la dernière section est enregistré (`article.routes.ts:221`).
 - [ ] C5 · R9 — Recherche web perdue lors d'un repli vers un autre fournisseur (`ai-provider.service.ts:264-270`).
 - [ ] C5 · R10 — Format autorisé sans `<a>`, `<table>` ni `<img>` ; TipTap sans extension Table ni Image.
 - [ ] C4 · R11 — Dates et quartiers écrits en dur (`system-propulsite.md:5,22,31,32,41,49`).
-- [ ] C1 · R12 — `selectedText` non échappé (`action.routes.ts:41`).
+- [x] C1 · R12 — *(PR `fix/redaction-meta-contexte`)* `selectedText` non échappé (`action.routes.ts:41`).
+- [ ] C5 · R13 — La brief récupère les questions PAA du mot-clé **pilier du cocon** (`brief.store.ts:77`), pas du capitaine de l'article : un intermédiaire est rédigé avec les questions du pilier.
 
 **Publication et score**
 - [ ] C2 · P1 — Scores SEO et GEO jamais enregistrés (`editor.store.ts:252-256`).
-- [ ] C1 · P2 — `phase` jamais mise à jour, car `saveProgress` n'est jamais appelé (`article-progress.store.ts:36`).
+- [x] C1 · P2 — *(PR `fix/redaction-meta-contexte`)* `phase` jamais mise à jour, car `saveProgress` n'est jamais appelé (`article-progress.store.ts:36`).
 - [ ] C2 · P3 — Publication sans contrôle (`articles.routes.ts:90-113`).
-- [ ] C1 · P4 — `seo.store.ts:52` passe `String(articleId)` à la place du slug.
+- [x] C1 · P4 — *(PR `fix/redaction-meta-contexte`)* `seo.store.ts:52` passe `String(articleId)` à la place du slug.
 - [ ] C2 · P5 — Capitaine absent du meta title : simple avertissement (`seo-validators.ts:124-126`).
 
 **Prompts et docs**
@@ -426,7 +427,7 @@ Il remplace FR-CER-BATCH-CREATE.
 - [ ] C2 · T4 — La simulation `propose-lieutenants` renvoie toujours « plombier ».
 - [ ] C1 · T5 — Le helper `MOTEUR_TABS` liste 5 onglets sur 6 (`moteur-ui.ts:81`).
 - [ ] Dette figée par C0 : 29 IDs cités par des tests mais absents du PRD (`requirements-trace.test.ts`, `LEGACY_ORPHANS`). **27** après `fix/cerveau-mots-cles` (FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT écrites).
-- [ ] C2 · T6 — `tests/e2e-workflows/moteur.workflow.test.ts` « U5 TTL » compare deux durées (`e2 < e1 × 1,5`) : rouge au hasard (vu le 2026-09-24, vert 3 fois sur 3 en relance). Un test de cache doit vérifier qu'aucun appel externe n'est refait, pas un chronomètre.
+- [ ] C2 · T6 — `tests/e2e-workflows/moteur.workflow.test.ts` « U5 TTL » compare deux durées (`e2 < e1 × 1,5`) : rouge au hasard (vu le 2026-09-24, vert 3 fois sur 3 en relance). Un test de cache doit vérifier qu'aucun appel externe n'est refait, pas un chronomètre. Même défaut dans `tests/e2e-workflows/cross-workflow.e2e.test.ts` « Cache cross-article » (`t2 < t1 × 2`), rouge une fois le 2026-09-24, vert 3 fois sur 3 en relance.
 
 ## 9. Journal
 
@@ -436,3 +437,4 @@ Il remplace FR-CER-BATCH-CREATE.
 | 2026-09-24 | C0 | Épopée, modèle de PR, cliquet `requirements-trace`, dédoublonnage des FR LEX |
 | 2026-09-24 | C1 | `fix/cerveau-mots-cles` : K1-K4 corrigés ; FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT versées au PRD (cliquet 29 → 27) ; FR-INFRA-KEYWORDS-SEO durcie |
 | 2026-09-24 | C1 | `fix/moteur-intention-hn` : M1, M6, M8, M9 corrigés ; FR-RED-OUTLINE, FR-CER-WORD-COUNT-RECOMMEND, FR-LIE-HN-STRUCTURE, FR-CAP-RELEVANCE-INTENT-SIGNAL durcies |
+| 2026-09-24 | C1 | `fix/redaction-meta-contexte` : R2-R5, R8, R12, P2, P4 corrigés ; **FR-RED-META-CAPTAIN livrée** (première exigence réservée versée au PRD) ; FR-RED-META, FR-CER-MICRO-CONTEXT, FR-RED-ARTICLE, FR-MOT-RECAP-PUBLISHED, FR-RED-SEO-LIVE, NFR-SEC-PROMPT-INJECTION durcies |

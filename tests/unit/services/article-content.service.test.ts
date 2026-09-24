@@ -67,6 +67,9 @@ describe('article-content.service', () => {
     it('upserts outline and content into article_content', async () => {
       // UPSERT article_content
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // Phase : SELECT puis UPDATE (P2)
+      mockQuery.mockResolvedValueOnce({ rows: [{ phase: 'proposed' }], rowCount: 1 })
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
       // getArticleContent: article_content SELECT
       mockQuery.mockResolvedValueOnce({
         rows: [{ outline: { sections: [] }, content: '<p>New</p>', updated_at: new Date() }],
@@ -105,6 +108,8 @@ describe('article-content.service', () => {
     it('returns updatedAt from getArticleContent after save', async () => {
       // UPSERT
       mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 })
+      // Phase déjà en rédaction : SELECT seul, pas d'UPDATE
+      mockQuery.mockResolvedValueOnce({ rows: [{ phase: 'redaction' }], rowCount: 1 })
       // getArticleContent: article_content
       mockQuery.mockResolvedValueOnce({
         rows: [{ outline: null, content: null, updated_at: new Date('2026-04-19') }],
@@ -116,6 +121,37 @@ describe('article-content.service', () => {
       const result = await saveArticleContent(1, { content: '<p>X</p>' })
 
       expect(result.updatedAt).not.toBeNull()
+    })
+  })
+
+  // Épopée qualité SEO, P2 : la liste « Articles publiés » du Moteur lit la
+  // phase. Aucune route ne la faisait avancer : un article rédigé restait
+  // « proposed ».
+  describe('saveArticleContent — la phase suit le contenu', () => {
+    function mockSave(phase: string) {
+      mockQuery.mockResolvedValueOnce({ rows: [], rowCount: 1 }) // UPSERT
+      mockQuery.mockResolvedValueOnce({ rows: [{ phase }], rowCount: 1 }) // SELECT phase
+      mockQuery.mockResolvedValue({ rows: [{}], rowCount: 1 }) // UPDATE éventuel + relecture
+    }
+
+    it('fait entrer en rédaction un article dont on enregistre le contenu', async () => {
+      mockSave('proposed')
+      await saveArticleContent(1, { content: '<p>Texte</p>' })
+      const update = mockQuery.mock.calls.find(c => /UPDATE articles SET phase/.test(String(c[0])))
+      expect(update, 'la phase est mise à jour').toBeDefined()
+      expect(update![1]).toEqual(['redaction', 1])
+    })
+
+    it('ne fait pas reculer un article déjà publié', async () => {
+      mockSave('published')
+      await saveArticleContent(1, { content: '<p>Retouche</p>' })
+      expect(mockQuery.mock.calls.some(c => /UPDATE articles SET phase/.test(String(c[0])))).toBe(false)
+    })
+
+    it('ne touche pas la phase quand seul le méta change', async () => {
+      mockQuery.mockResolvedValue({ rows: [{}], rowCount: 1 })
+      await saveArticleContent(1, { metaTitle: 'Titre' })
+      expect(mockQuery.mock.calls.some(c => /SELECT phase/.test(String(c[0])))).toBe(false)
     })
   })
 })

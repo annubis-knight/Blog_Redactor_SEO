@@ -38,7 +38,8 @@ router.post('/generate/action', async (req, res) => {
         : '',
     }
 
-    const userPrompt = await loadPrompt(`actions/${actionType}`, variables)
+    // Texte fourni par l'utilisateur : échappé avant d'entrer dans le prompt (G3, épopée qualité SEO R12).
+    const userPrompt = await loadPrompt(`actions/${actionType}`, variables, { escapeKeys: ['selectedText'] })
     log.debug(`[action] 📝 prompts built "${actionType}"`, {
       systemChars: systemPrompt.length,
       userChars: userPrompt.length,

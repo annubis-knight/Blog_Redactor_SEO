@@ -4,6 +4,7 @@ import { measureDb } from '../../utils/db-telemetry.js'
 import { microContextDbSchema } from '../../../shared/schemas/article-micro-context.schema.js'
 import { articleTypeDbToLevel, articleLevelToDbType } from '../../../shared/utils/article-level.js'
 import { parseKeywordType } from '../../../shared/utils/keyword-type.js'
+import { nextArticlePhase } from '../../../shared/utils/article-phase.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type {
   Article,
@@ -291,6 +292,13 @@ export async function getArticleBySlug(slug: string): Promise<{ article: Article
 
 export async function updateArticleStatus(id: number, status: ArticleStatus): Promise<void> {
   log.info('updateArticleStatus', { id, status })
+  if (status === 'publié') {
+    // La phase suit la publication : « Articles publiés » la lit (épopée qualité SEO, P2).
+    const current = await pool.query(`SELECT phase FROM articles WHERE id = $1`, [id])
+    const phase = nextArticlePhase(current.rows[0]?.phase, 'published')
+    await pool.query(`UPDATE articles SET status = $1, phase = $2 WHERE id = $3`, [status, phase, id])
+    return
+  }
   await pool.query(`UPDATE articles SET status = $1 WHERE id = $2`, [status, id])
 }
 

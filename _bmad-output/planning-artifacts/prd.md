@@ -444,6 +444,9 @@ En plus de la stratégie (Cible/Douleur/Angle/…), l'utilisateur peut attacher 
 - Le micro-contexte est optionnel : un article sans micro-contexte se génère normalement avec les valeurs par défaut.
 - Quand le micro-contexte est renseigné, l'IA Rédaction (brief, sommaire, sections) respecte les directives indiquées.
 - Modifier le micro-contexte n'invalide pas les générations déjà faites — c'est l'utilisateur qui décide de regénérer.
+- L'angle, le ton et les consignes arrivent jusqu'au sommaire, pas seulement jusqu'à la rédaction.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le micro-contexte était transmis au sommaire mais son prompt n'avait pas d'emplacement pour le recevoir (épopée qualité SEO, R2).
 
 > **En situation.** Pour l'article « Frais réels ou forfait fiscal », l'utilisateur ajoute un micro-contexte : angle = « comparatif chiffré », ton = « didactique, peu technique », directives = « donner un exemple à 30k€ et un à 60k€ », cible = 1800 mots. Quand il lancera la génération, l'IA produira un article qui colle exactement à cette demande — sans qu'il ait à répéter ces consignes dans un prompt à chaque section.
 
@@ -669,7 +672,9 @@ En haut du Moteur, deux listes repliables segmentent les articles du cocon coura
 - Un article *en cours de travail Moteur* (déjà promu mais pas encore rédigé) n'apparaît dans aucune des deux listes — il vit dans la liste principale de sélection.
 - Le contrat est garanti côté serveur, pas via un filtre côté affichage — impossible pour un autre écran de l'app de l'enfreindre par méprise.
 
-**Statut** : active (strict). **Depuis** : 2026-05-11.
+- La phase d'un article avance avec son travail réel : il entre en rédaction dès que du contenu est enregistré, et passe en « publié » à la publication. Elle ne recule jamais.
+
+**Statut** : active (strict). **Depuis** : 2026-05-11. **Durci :** 2026-09-24 (la phase n'avançait jamais : la liste « Articles publiés » restait vide ; épopée qualité SEO, P2).
 
 > **En situation.** Bug rencontré le 11 mai : l'utilisateur a généré 13 articles via le Cerveau. Sans cette règle, les 13 apparaissaient à la fois dans « Articles suggérés » (parce que la stratégie les compte comme propositions) **et** dans « Articles publiés » (parce qu'ils ont été insérés en base avec un statut par défaut). Confusion totale. Après application de cette règle, les 13 apparaissent uniquement dans « Articles suggérés » — la section « Articles publiés » reste vide tant qu'aucun article n'a été *réellement* promu en rédaction. La liste reflète la réalité du pipeline.
 
@@ -2436,6 +2441,10 @@ Une fois le brief consolidé, l'utilisateur déclenche la **génération du somm
 - Si une section échoue parce que l'IA est saturée, l'outil réessaye automatiquement plusieurs fois avant d'abandonner et de signaler l'erreur — l'utilisateur n'a pas à relancer manuellement.
 - Une option « activer / désactiver la recherche web » permet à l'IA d'aller chercher des sources actualisées si l'utilisateur le souhaite (option session, pas par défaut sur tous les articles).
 - L'article généré est immédiatement sauvegardé après production, pour ne rien perdre en cas de panne du module Méta qui suit.
+- La rédaction reçoit la stratégie validée du cocon (cible, douleur, angle, promesse, appel à l'action) quand l'article n'a pas de stratégie propre.
+- On sait quel modèle d'IA a écrit l'article : tous les modèles utilisés sont enregistrés, dans l'ordre.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le pilier 1013 a été rédigé sans la stratégie du cocon, et seul le modèle de la dernière section était enregistré (épopée qualité SEO, R5, R8).
 
 > **En situation.** L'utilisateur clique sur « Générer l'article » à 10h12 sur son article de 2 200 mots. La barre de progression affiche *« 1/6 — Introduction »*, le texte commence à apparaître à l'écran. À 10h13 elle bascule sur *« 2/6 — Quelle indemnité minimale ? »*. À 10h14, une section met plus de temps — il voit dans la console *« attente avant réessai (saturation IA) »* puis la génération reprend automatiquement. À 10h17, l'article est complet, l'éditeur affiche les 6 sections enchaînées et propres, le contenu est déjà sauvegardé.
 
@@ -2450,14 +2459,34 @@ Après que l'article a été produit, l'IA génère automatiquement le **titre m
 **Critères d'acceptation**
 - La méta est générée automatiquement à la suite de la génération de l'article — pas de second clic à faire.
 - Le titre méta produit ne dépasse pas la longueur cible affichée par Google (~60 caractères, troncature au mot près si nécessaire).
-- La description méta ne dépasse pas la longueur cible affichée par Google (~160 caractères, troncature au mot près).
+- La description méta ne dépasse pas la longueur cible affichée par Google (~160 caractères) : elle s'arrête à la dernière phrase complète, ou au dernier mot en retirant un mot orphelin (« en », « de »), jamais sur des points de suspension.
 - Le mot-clé Capitaine apparaît dans le titre méta et dans la description quand c'est cohérent.
 - Si la méta échoue (saturation IA, erreur réseau), l'article reste sauvegardé et l'utilisateur peut relancer uniquement la méta sans avoir à régénérer tout l'article.
 - Une fois générée, la méta est éditable manuellement (champs texte modifiables dans l'éditeur).
 
+**Statut :** durci le 2026-09-24. **Pourquoi :** la description était coupée à 157 caractères puis suivie de « ... », ce que le contrôle de méta de l'outil classe lui-même en erreur (épopée qualité SEO, R4).
+
 > **En situation.** L'utilisateur voit la barre de progression terminer à 10h17. Immédiatement après, sans qu'il ait à cliquer, l'outil affiche en bas de l'éditeur : *Titre : « Calcul indemnité rupture conventionnelle : guide complet 2026 » (59/60)*, *Description : « Calculez en 2 minutes votre indemnité de rupture conventionnelle. Formule légale, simulateur, cas des longues anciennetés. À jour 2026. » (152/160)*. Il trouve que « guide complet 2026 » est faible, double-clique sur le titre et le remplace par « formule, simulateur et seuils 2026 » — le compteur passe à 64/60 et signale le dépassement.
 
 → Conception : [DESIGN-RED-META](./design-registry.md#design-red-meta)
+
+---
+
+#### FR-RED-META-CAPTAIN — La méta est construite sur le capitaine verrouillé
+
+Le titre et la description qui s'affichent dans Google doivent porter le mot-clé que l'article vise réellement : son capitaine, verrouillé au Moteur. Pas le titre de l'article, et pas le mot-clé pilier du cocon, qui pour un intermédiaire est celui d'un autre article. Il en va de même pour le sommaire et la rédaction : tous travaillent sur le même mot-clé principal.
+
+**Critères d'acceptation**
+- La génération de la méta, du sommaire et de l'article reçoit le capitaine verrouillé de l'article.
+- Un article intermédiaire ou spécialisé n'hérite jamais du mot-clé pilier de son cocon.
+- Le titre de l'article ne sert de repli que si aucun capitaine n'a encore été verrouillé.
+- La meta description n'est jamais coupée au milieu d'une phrase par des points de suspension.
+
+**Statut :** active. **Depuis :** 2026-09-24. **Source :** épopée qualité SEO (checklist R3, R4), réservée par C0 et livrée par C1.
+
+> **En situation.** Le pilier 1013 a pour capitaine « stratégie digitale entreprises Toulouse » et pour titre « Propulser la croissance digitale des entreprises toulousaines ». Sa méta avait été écrite sur le titre : « Croissance Digitale PME Toulouse : Guide Complet 2026 », sans « stratégie digitale », et sa description finissait par « …générer des clients en... ». Désormais la méta part du capitaine, et la description s'arrête à la dernière phrase complète.
+
+→ Conception : [DESIGN-RED-META-CAPTAIN](./design-registry.md#design-red-meta-captain)
 
 ---
 
@@ -2490,6 +2519,9 @@ Pendant que l'utilisateur écrit ou édite son article, un **score SEO** est cal
 - Le panneau détaille la validité de la structure des titres (un seul H1, ordre des niveaux, etc.) avec un message explicite en cas d'anomalie.
 - Le panneau détaille la longueur du titre méta et de la description méta (caractères utilisés / cible).
 - Tant que l'article n'a pas de contenu, le bouton « SEO » de la toolbar est désactivé avec un libellé explicite (par exemple « Générez un article pour activer le scoring SEO »).
+- Le contrôle « capitaine dans l'adresse de la page » lit le vrai slug de l'article.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le score recevait l'identifiant numérique de l'article (jamais fourni par les écrans) : ce contrôle valait toujours faux (épopée qualité SEO, P4).
 
 > **En situation.** L'utilisateur termine la première relecture de son article. Il ouvre le panneau SEO : score global 78/100, niveau *moyen*. En détail : densité du Capitaine *« calcul indemnité rupture conventionnelle »* à 0,4 % (cible 0,8-1,5 %) — l'IA n'a pas assez répété l'expression. Il retourne dans l'introduction, glisse le mot-clé une fois de plus, rééquilibre. Le score remonte à 84/100. Il continue avec les autres signaux.
 
@@ -4103,8 +4135,9 @@ Le contenu utilisateur injecté dans un prompt IA (titre d'article, point de dou
 **Critères d'acceptation**
 - Les variables substituées dans les prompts (`{{strategy_context}}`, `{{painPoint}}`, `{{articleTitle}}`...) passent par un échappement systématique.
 - Un texte utilisateur qui contient des séquences de contrôle est rendu inoffensif sans avertir l'utilisateur (transparent).
+- Le texte sélectionné dans l'éditeur pour une action contextuelle est lui aussi neutralisé ; un contrôle automatique l'impose à toute nouvelle route.
 
-**Statut :** active.
+**Statut :** active. **Durci :** 2026-09-24 (la route des actions contextuelles transmettait la sélection brute ; épopée qualité SEO, R12).
 
 → Conception : [DESIGN-SEC-PROMPT-INJECTION](./design-registry.md#design-sec-prompt-injection)
 

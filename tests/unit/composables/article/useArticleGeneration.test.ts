@@ -135,7 +135,7 @@ describe('useArticleGeneration', () => {
     expect(deps.editorStore.saveArticle).toHaveBeenCalledTimes(2) // après article + après meta
     expect(deps.editorStore.generateMeta).toHaveBeenCalledWith(
       1,
-      'mot pilier', // pilier keyword priorisé
+      'mot capitaine', // le capitaine de l'article, pas le mot-clé pilier du cocon (épopée qualité SEO, R3)
       'Mon article',
       '<p>généré</p>',
     )

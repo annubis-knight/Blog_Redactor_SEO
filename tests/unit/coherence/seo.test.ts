@@ -227,4 +227,25 @@ describe('FR-RED-SEO-LIVE — Cohérence du flux SEO', () => {
       expect(store.score!.wordCount).toBe(100)
     })
   })
+
+  // Épopée qualité SEO, P4 : le score reçoit le slug de l'article. On lui
+  // passait l'identifiant numérique, jamais fourni par les vues : le contrôle
+  // « capitaine dans l'URL » valait toujours faux.
+  describe('FR-RED-SEO-LIVE — le capitaine est cherché dans le slug', () => {
+    const articleKeywords = { articleId: 1, capitaine: 'audit site web', lieutenants: [], lexique: [], rootKeywords: [] }
+
+    it('trouve le capitaine dans le slug fourni', () => {
+      const store = useSeoStore()
+      store.recalculate('<p>audit site web</p>', keywords, 'Titre', 'Description', undefined, undefined, articleKeywords as never, 'audit-site-web-performance')
+      const slugItem = store.score!.checklistItems.find(c => c.location === 'slug')
+      expect(slugItem?.isPresent).toBe(true)
+    })
+
+    it('ne le trouve pas quand le slug ne le contient pas', () => {
+      const store = useSeoStore()
+      store.recalculate('<p>audit site web</p>', keywords, 'Titre', 'Description', undefined, undefined, articleKeywords as never, 'creation-site-toulouse')
+      const slugItem = store.score!.checklistItems.find(c => c.location === 'slug')
+      expect(slugItem?.isPresent).toBe(false)
+    })
+  })
 })

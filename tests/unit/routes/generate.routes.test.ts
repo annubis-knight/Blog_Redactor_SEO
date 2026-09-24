@@ -27,6 +27,11 @@ vi.mock('../../../server/services/strategy/strategy.service', () => ({
   getStrategy: mockGetStrategy,
 }))
 
+vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({
+  // Fonction simple (pas vi.fn) : le beforeEach réinitialise tous les mocks.
+  getCocoonStrategy: async () => null,
+}))
+
 vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleKeywords: mockGetArticleKeywords,
   loadArticleMicroContext: mockLoadArticleMicroContext,
@@ -487,7 +492,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('system-propulsite')
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/reformulate', expect.objectContaining({
       selectedText: 'Some text to reformulate',
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -510,7 +515,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/simplify', expect.objectContaining({
       selectedText: 'Complex text to simplify',
       keywordInstruction: '',
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -532,7 +537,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/convert-list', expect.objectContaining({
       selectedText: 'A paragraph with multiple ideas',
       keywordInstruction: expect.stringContaining('seo'),
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -554,7 +559,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/pme-example', expect.objectContaining({
       selectedText: 'Le storytelling est un levier marketing puissant.',
       keywordInstruction: '',
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -576,7 +581,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/keyword-optimize', expect.objectContaining({
       selectedText: 'Un paragraphe à optimiser.',
       keywordInstruction: expect.stringContaining('référencement naturel'),
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -598,7 +603,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/add-statistic', expect.objectContaining({
       selectedText: 'Le marketing digital est essentiel.',
       keywordInstruction: '',
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -620,7 +625,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/answer-capsule', expect.objectContaining({
       selectedText: 'Un long paragraphe sur le SEO local.',
       keywordInstruction: expect.stringContaining('SEO local'),
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
@@ -642,7 +647,7 @@ describe('POST /generate/action', () => {
     expect(mockLoadPrompt).toHaveBeenCalledWith('actions/question-heading', expect.objectContaining({
       selectedText: 'Les avantages du SEO local',
       keywordInstruction: expect.stringContaining('SEO local'),
-    }))
+    }), { escapeKeys: ['selectedText'] })
     expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
       'Content-Type': 'text/event-stream',
     }))
