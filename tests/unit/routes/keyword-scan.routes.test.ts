@@ -361,3 +361,23 @@ describe('POST /keywords/:keyword/scan — absent n’est pas zéro', () => {
     expect(kpi(data, 'volume').rawValue).toBeNull()
   })
 })
+
+// Épopée qualité SEO, checklist M1 : DataForSEO range les intentions sous des
+// clés en minuscules. La route les cherchait avec le mot-clé tel quel : tout
+// mot-clé contenant une majuscule (« Toulouse ») recevait une intention vide,
+// et la comparaison intention ↔ type d'article ne pouvait jamais se faire.
+describe('intention — mot-clé avec majuscules', () => {
+  it('retrouve l’intention renvoyée en minuscules par DataForSEO', async () => {
+    mockFetchIntentBatch.mockResolvedValue(
+      new Map([['stratégie digitale entreprises toulouse', { intent: 'commercial', intentProbability: 0.72 }]]) as any,
+    )
+    const res = makeRes()
+
+    await getHandler()(makeReq('stratégie digitale entreprises Toulouse', { level: 'pilier' }), res)
+
+    expect(mockUpsertKeywordKpis).toHaveBeenCalledWith(
+      'stratégie digitale entreprises Toulouse',
+      expect.objectContaining({ intentRaw: 0.72, intentLabel: 'commercial' }),
+    )
+  })
+})

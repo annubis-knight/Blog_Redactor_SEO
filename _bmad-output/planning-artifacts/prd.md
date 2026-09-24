@@ -460,6 +460,9 @@ Pour aider l'utilisateur à fixer une longueur d'article réaliste et compétiti
 - La réponse contient une longueur finale recommandée et un détail expliquant les 3 signaux (fourchette par type, moyenne concurrents, suggestion IA).
 - L'utilisateur peut accepter la recommandation ou saisir une autre valeur.
 - La longueur retenue alimente le micro-contexte (cf. `FR-CER-MICRO-CONTEXT`) et drive l'allocation de tokens par section côté Rédaction.
+- La recommandation tient compte du sommaire verrouillé au Moteur (nombre et profondeur des H2/H3).
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le sommaire, stocké au format du Moteur, n'était jamais lu : la longueur était conseillée sans lui (épopée qualité SEO, M9).
 
 > **En situation.** L'utilisateur hésite sur la longueur de « Indemnité rupture conventionnelle 2026 ». Il clique sur « Recommander ». L'app lui retourne : fourchette Intermédiaire 1200-2500, moyenne des top 10 = 2100 mots, suggestion IA = 2200 mots vu la complexité (formules de calcul + jurisprudence). Recommandation finale : **2100 mots**, avec le détail visible. Il accepte ; ces 2100 mots seront ensuite distribués entre les sections lors de la génération.
 
@@ -1832,6 +1835,7 @@ Le Score Pertinence intègre un **signal d'alignement entre l'intent dominant de
 - Match → bonus appliqué à la composante intent du score.
 - Mismatch → malus appliqué.
 - Intent attendu absent → signal neutralisé (50/100), pas de pénalité.
+- L'intention SERP est retrouvée quelle que soit la casse du mot-clé (« Toulouse » comme « toulouse »).
 
 > **En situation.** L'utilisateur a renseigné « intent commercial » côté Cerveau pour son article rupture conventionnelle. Sur sa liste Capitaine, le mot-clé « comprendre la rupture conventionnelle » (intent SERP informational) reçoit un léger malus Pertinence : signal de désalignement. À l'inverse, « simulateur indemnité rupture conventionnelle » (intent commercial) reçoit un bonus.
 
@@ -2019,6 +2023,7 @@ Pour éviter qu'un article généraliste se positionne sur des requêtes locales
 **Critères d'acceptation**
 - L'utilisateur déclenche la recommandation depuis un bouton dédié dans le panel IA.
 - La sortie est une recommandation textuelle (markdown) avec H1, H2 et H3 organisés.
+- Seuls les titres réellement récurrents chez les concurrents (vus sur au moins deux pages) nourrissent la proposition ; un titre vu une seule fois (menu, pied de page) est ignoré.
 - L'utilisateur peut régénérer s'il n'est pas satisfait.
 
 > **En situation.** Le consultant a verrouillé 5 Lieutenants pour son article rupture conventionnelle. Il clique « Recommander une structure Hn » : l'IA propose un plan en 6 H2 (« Comprendre la rupture conventionnelle », « Comment calculer son indemnité », « Les cas particuliers : ancienneté, CDD, senior », « Simulateur pratique », « Erreurs à éviter », « FAQ »). Il garde la structure, ajuste un titre, et peut maintenant rédiger.
@@ -2405,7 +2410,8 @@ Avant de demander à l'IA d'écrire son article, l'utilisateur peut lancer une *
 Une fois le brief consolidé, l'utilisateur déclenche la **génération du sommaire** : l'IA propose une liste structurée de titres (H1 unique pour l'article, suite de H2 et H3 organisés en sections logiques). Chaque section porte une intention pédagogique courte (annotation indicative : *« reformuler la promesse »*, *« répondre à une PAA »*, *« content valeur »*). L'utilisateur voit le sommaire apparaître progressivement à l'écran ; à la fin, il peut le valider tel quel ou le retravailler manuellement (réordonner, éditer un titre, supprimer une section) — toute modification est rétractable via Annuler / Rétablir.
 
 **Critères d'acceptation**
-- Le sommaire propose un H1 (titre de l'article), suivi obligatoirement d'une section Introduction et d'une section Conclusion, et un ensemble de H2 / H3 entre les deux.
+- Le sommaire propose un H1, suivi obligatoirement d'une section Introduction et d'une section Conclusion, et un ensemble de H2 / H3 entre les deux.
+- Le H1 est celui de la structure verrouillée au Moteur (il porte le mot-clé capitaine) ; à défaut, le titre de l'article. Il n'apparaît qu'une fois : jamais recopié en H2.
 - Les titres H4 et au-delà ne sont pas générés (l'outil restreint le sommaire aux niveaux 1-3).
 - Pendant la génération, l'utilisateur voit le sommaire se construire progressivement ; il peut interrompre s'il n'en veut plus.
 - Une fois le sommaire généré, l'utilisateur peut éditer un titre, réordonner les sections par glisser-déposer, supprimer une section ou en ajouter une vide.

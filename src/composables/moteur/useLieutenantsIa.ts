@@ -2,6 +2,7 @@ import { ref, type Ref } from 'vue'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { isResponseForCurrentArticle } from '@/utils/article-scope'
 import { log } from '@/utils/logger'
+import { recurringHeadings } from '@shared/utils/hn-structure.js'
 import { hnOutlineContract, proposeLieutenantsContract, type HnOutlineResult } from '@shared/contracts/lieutenants.contract.js'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import type {
@@ -254,12 +255,8 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     // Captain-only SERP data (high weight)
     const captainResult = serpResultsByKeyword.value.get(captainKeyword.value)
     const captainHn = captainResult
-      ? computeHnRecurrenceFrom(captainResult.competitors)
-          .filter(h => h.percent >= 10)
-          .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
-      : hnRecurrence.value
-          .filter(h => h.percent >= 10)
-          .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
+      ? recurringHeadings(computeHnRecurrenceFrom(captainResult.competitors))
+      : recurringHeadings(hnRecurrence.value)
 
     const captainCompetitors = captainResult
       ? captainResult.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position }))
@@ -282,9 +279,7 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
       rootKeywordsSerpData.push({
         keyword: kw,
         competitors: result.competitors.filter(c => !c.fetchError).map(c => ({ domain: c.domain, title: c.title, position: c.position })),
-        hnRecurrence: computeHnRecurrenceFrom(result.competitors)
-          .filter(h => h.percent >= 10)
-          .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent })),
+        hnRecurrence: recurringHeadings(computeHnRecurrenceFrom(result.competitors)),
         paaQuestions: result.paaQuestions.map(q => ({ question: q.question, answer: q.answer ?? undefined })),
       })
     }
@@ -377,12 +372,8 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
       ? serpResultsByKeyword.value.get(captainKeyword.value)
       : null
     const concurrentHn = captainResult
-      ? computeHnRecurrenceFrom(captainResult.competitors)
-          .filter(h => h.percent >= 10)
-          .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
-      : hnRecurrence.value
-          .filter(h => h.percent >= 10)
-          .map(h => ({ level: h.level, text: h.text, count: h.count, percent: h.percent }))
+      ? recurringHeadings(computeHnRecurrenceFrom(captainResult.competitors))
+      : recurringHeadings(hnRecurrence.value)
 
     log.info('[useLieutenantsIa] HN regenerate', {
       keyword: captainKeyword.value,

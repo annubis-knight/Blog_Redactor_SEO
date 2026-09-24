@@ -78,7 +78,7 @@ Règles communes à tous les chantiers :
 | # | Chantier | Branche | Taille | Exigences | Statut |
 |---|---|---|---|---|---|
 | C0 | Traçabilité : épopée, modèle de PR, cliquet des IDs, dédoublonnage LEX | `chore/tracabilite-programme` | S | NFR-MAIN-REQUIREMENTS-TRACE | en cours |
-| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en cours (1/4 : `fix/cerveau-mots-cles`) |
+| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en cours (2/4 : `fix/cerveau-mots-cles`, `fix/moteur-intention-hn`) |
 | C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | à faire |
 | C3 | Lexique métier | `fix/lexique-metier` | M | FR-LEX-METIER-ONLY | à faire |
 | C4 | Architecture des prompts | `refactor/prompts-architecture` | M | FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT | à faire |
@@ -377,15 +377,15 @@ Il remplace FR-CER-BATCH-CREATE.
 - [ ] C4 · K7 — Exemple recopiable répété trois fois (`cocoon-articles.md:64,83,108`).
 
 **Moteur**
-- [ ] C1 · M1 — Bug de casse `intentMap.get(keyword)` (`keyword-scan.routes.ts:116`).
+- [x] C1 · M1 — *(PR `fix/moteur-intention-hn`)* Bug de casse `intentMap.get(keyword)` (`keyword-scan.routes.ts:116`).
 - [ ] C2 · M2 — `intentTypes: []` et `painIntentExpected` jamais envoyé (`keyword-scan.routes.ts:185,260-266`).
 - [ ] C2 · M3 — `keyword_intent_analyses` n'a plus de producteur : à réactiver ou à supprimer.
 - [ ] C3 · M4 — Mots vides incomplets, `'etre'` sans accent (`tfidf.service.ts:5-13`).
 - [ ] C3 · M5 — Menus et pieds de page aspirés (`scrape-corpus.service.ts:173-188`).
-- [ ] C1 · M6 — Filtre de récurrence ≥ 10 % inopérant (`useLieutenantsIa.ts:258,286`).
+- [x] C1 · M6 — *(PR `fix/moteur-intention-hn`)* Filtre de récurrence ≥ 10 % inopérant (`useLieutenantsIa.ts:258,286`).
 - [ ] C6 · M7 — Structure proposée avant le choix des lieutenants ; une seule case suffit à valider (`LieutenantsPanel.vue:189-191`).
-- [ ] C1 · M8 — `hnToOutline` rabote le H1 (`outline.store.ts:15,23`).
-- [ ] C1 · M9 — `recommend-word-count` attend `{level:'H1', title}`, alors que la base stocke `{level:number, text}` (`articles.routes.ts:266-270`).
+- [x] C1 · M8 — *(PR `fix/moteur-intention-hn`)* `hnToOutline` rabote le H1 (`outline.store.ts:15,23`).
+- [x] C1 · M9 — *(PR `fix/moteur-intention-hn`)* `recommend-word-count` attend `{level:'H1', title}`, alors que la base stocke `{level:number, text}` (`articles.routes.ts:266-270`).
 - [ ] C4 · M10 — Cibles de mots et nombres de H2 contradictoires entre le code et les prompts.
 - [ ] C3 · M11 — Le lexique se valide seul (`useLexiqueLocking.ts:59-80`).
 
@@ -435,3 +435,4 @@ Il remplace FR-CER-BATCH-CREATE.
 | 2026-09-24 | — | Analyse du pilier 1013, puis validation du programme avec Arnaud |
 | 2026-09-24 | C0 | Épopée, modèle de PR, cliquet `requirements-trace`, dédoublonnage des FR LEX |
 | 2026-09-24 | C1 | `fix/cerveau-mots-cles` : K1-K4 corrigés ; FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT versées au PRD (cliquet 29 → 27) ; FR-INFRA-KEYWORDS-SEO durcie |
+| 2026-09-24 | C1 | `fix/moteur-intention-hn` : M1, M6, M8, M9 corrigés ; FR-RED-OUTLINE, FR-CER-WORD-COUNT-RECOMMEND, FR-LIE-HN-STRUCTURE, FR-CAP-RELEVANCE-INTENT-SIGNAL durcies |

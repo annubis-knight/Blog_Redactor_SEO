@@ -35,14 +35,39 @@ describe('hnToOutline', () => {
     expect(result.sections[3]).toMatchObject({ level: 3, title: 'Section B', annotation: null })
   })
 
-  it('clamps level < 2 to 2', () => {
+  // Épopée qualité SEO, checklist M8 : le H1 proposé par le Moteur contient le
+  // capitaine. Il était rétrogradé en H2 (un second « titre » dans le corps) et
+  // remplacé par le titre de l'article, qui ne contient pas forcément le capitaine.
+  it('prend le H1 du Moteur comme H1 de l’article, sans le dupliquer en H2', () => {
     const nodes: ProposeLieutenantsHnNode[] = [
-      { level: 1, text: 'Should be H2' },
+      { level: 1, text: 'Stratégie digitale pour PME à Toulouse' },
+      { level: 2, text: 'Section A' },
+    ]
+
+    const result = hnToOutline(nodes, 'Propulser la croissance digitale')
+
+    expect(result.sections[0]).toMatchObject({ level: 1, title: 'Stratégie digitale pour PME à Toulouse', annotation: 'sommaire-cliquable' })
+    expect(result.sections.filter(s => s.title === 'Stratégie digitale pour PME à Toulouse'), 'un seul H1').toHaveLength(1)
+    expect(result.sections.map(s => s.title)).toEqual([
+      'Stratégie digitale pour PME à Toulouse', 'Introduction', 'Section A', 'Conclusion',
+    ])
+  })
+
+  it('garde le titre de l’article comme H1 quand la structure n’en propose pas', () => {
+    const result = hnToOutline([{ level: 2, text: 'Section A' }], 'Mon Article')
+    expect(result.sections[0]).toMatchObject({ level: 1, title: 'Mon Article' })
+  })
+
+  it('un second H1 devient un H2 (un article n’a qu’un H1)', () => {
+    const nodes: ProposeLieutenantsHnNode[] = [
+      { level: 1, text: 'Premier H1' },
+      { level: 1, text: 'Second H1' },
     ]
 
     const result = hnToOutline(nodes, 'Titre')
 
-    expect(result.sections[2]).toMatchObject({ level: 2, title: 'Should be H2' })
+    expect(result.sections[0]).toMatchObject({ level: 1, title: 'Premier H1' })
+    expect(result.sections[2]).toMatchObject({ level: 2, title: 'Second H1' })
   })
 
   it('clamps level > 3 to 3', () => {

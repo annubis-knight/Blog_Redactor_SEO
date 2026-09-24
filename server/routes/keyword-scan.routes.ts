@@ -113,7 +113,8 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
       rawKd = toKpiValue(overview.difficulty, 'overview.difficulty')
       rawCpc = toKpiValue(overview.cpc, 'overview.cpc')
       rawCompetition = toKpiValue(overview.competition, 'overview.competition')
-      const intentData = intentMap.get(keyword)
+      // DataForSEO range les intentions sous des clés en minuscules (épopée qualité SEO, M1).
+      const intentData = intentMap.get(keyword.toLowerCase())
       // computeIntentScore applies level context, so keep it for verdict. For raw
       // storage we keep the DataForSEO intentProbability when available.
       rawIntentScore = intentData?.intentProbability ?? null

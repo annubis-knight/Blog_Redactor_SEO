@@ -5,6 +5,7 @@ import { saveArticleContent, getArticleContent } from '../services/article/artic
 import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
 import { articleProgressSchema, addCheckSchema } from '../../shared/schemas/article-progress.schema.js'
+import { flattenHnStructure } from '../../shared/utils/hn-structure.js'
 
 const router = Router()
 
@@ -259,16 +260,10 @@ router.post('/articles/:id/recommend-word-count', async (req, res) => {
 
     // 1. Récupère le sommaire HN persisté (depuis article_keywords.hn_structure)
     const { data: articleKeywords } = await getArticleKeywords(id)
-    const hnRaw = articleKeywords?.hnStructure ?? []
-    // Le sommaire est stocké en JSON libre — on essaie d'extraire { level, title }
-    const hnStructure = Array.isArray(hnRaw)
-      ? (hnRaw as unknown[])
-          .filter((h): h is { level: string; title: string } =>
-            typeof h === 'object' && h !== null && 'level' in h && 'title' in h
-          )
-          .filter(h => ['H1', 'H2', 'H3'].includes(h.level))
-          .map(h => ({ level: h.level as 'H1' | 'H2' | 'H3', title: h.title }))
-      : []
+    // Stocké au format du Moteur { level: number, text, children } : l'ancien filtre
+    // attendait { level: 'H2', title } et ne transmettait jamais rien (épopée qualité SEO, M9).
+    const hnStructure = flattenHnStructure(articleKeywords?.hnStructure)
+      .map(h => ({ level: `H${h.level}` as 'H1' | 'H2' | 'H3', title: h.text }))
 
     // 2. Récupère la moyenne SERP des concurrents — depuis content_gap_analysis si dispo
     let competitorsAvgWordCount: number | null = null

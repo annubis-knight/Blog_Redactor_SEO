@@ -11,8 +11,11 @@ export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: s
   const now = Date.now()
   const sections: OutlineSection[] = []
 
-  // H1 — Article title
-  sections.push({ id: `h1-${now}`, level: 1, title: articleTitle, annotation: 'sommaire-cliquable', status: 'suggested' })
+  // H1 — celui du Moteur quand il en propose un : il porte le capitaine. Le
+  // rétrograder en H2 faisait un second « titre » dans le corps, et le titre de
+  // l'article prenait sa place sans le capitaine (épopée qualité SEO, M8).
+  const h1Node = hnNodes.find(n => n.level === 1 && n.text.trim())
+  sections.push({ id: `h1-${now}`, level: 1, title: h1Node ? h1Node.text.trim() : articleTitle, annotation: 'sommaire-cliquable', status: 'suggested' })
 
   // Introduction
   sections.push({ id: `h2-${now}-intro`, level: 2, title: 'Introduction', annotation: 'content-valeur', status: 'suggested' })
@@ -20,9 +23,12 @@ export function hnToOutline(hnNodes: ProposeLieutenantsHnNode[], articleTitle: s
   // Flatten HN nodes with clamping [2, 3]
   let idx = 0
   for (const node of hnNodes) {
-    const clampedLevel = Math.min(3, Math.max(2, node.level)) as 2 | 3
-    sections.push({ id: `h${clampedLevel}-${now}-${idx}`, level: clampedLevel, title: node.text, annotation: null, status: 'suggested' })
-    idx++
+    // Un article n'a qu'un H1 : les suivants deviennent des H2.
+    if (node !== h1Node) {
+      const clampedLevel = Math.min(3, Math.max(2, node.level)) as 2 | 3
+      sections.push({ id: `h${clampedLevel}-${now}-${idx}`, level: clampedLevel, title: node.text, annotation: null, status: 'suggested' })
+      idx++
+    }
     if (node.children) {
       for (const child of node.children) {
         const childLevel = Math.min(3, Math.max(2, child.level)) as 2 | 3
