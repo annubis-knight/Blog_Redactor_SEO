@@ -8,6 +8,7 @@
     "predev": "node scripts/kill-port.mjs 3400 5400 && (npm run db:check || echo \"⚠️  Snapshot DB possiblement périmé — démarrage quand même\")",
     "dev": "concurrently --raw \"npm:dev:client\" \"npm:dev:server\"",
     "db:snapshot": "tsx scripts/db-snapshot.ts",
+    "db:bootstrap": "tsx scripts/db-bootstrap.ts",
     "db:check": "tsx scripts/db-check.ts",
     "db:backup": "tsx scripts/db-backup.ts",
     "db:clean-tests": "tsx scripts/db-clean-tests.ts",
@@ -27,7 +28,7 @@
     "test:unit": "vitest",
     "test:snapshot": "tsx scripts/test-snapshot.ts",
     "test:check": "tsx scripts/test-check.ts",
-    "pretest:browser": "node scripts/kill-port.mjs 3400 5400",
+    "pretest:browser": "node scripts/kill-port.mjs 3410 5410",
     "test:browser": "playwright test",
     "test:browser:ui": "playwright test --ui",
     "build-only": "vite build",
@@ -109,7 +110,7 @@
     "vue-tsc": "^3.2.5"
   },
   "engines": {
-    "node": "^20.19.0 || >=22.12.0"
+    "node": ">=24"
   },
   "lint-staged": {
     "*.{ts,vue,js,mjs}": [

@@ -4393,7 +4393,7 @@ Ces valeurs sont les **défauts en dur** (`server/index.ts`, `vite.config.ts`) e
 - AC1 : `.env.example` contient `PORT=3400` et `VITE_PORT=5400`.
 - AC2 : `server/index.ts` fait `const PORT = process.env.PORT || 3400` (le fallback est `3400`, jamais `3005` ou autre).
 - AC3 : `vite.config.ts` exporte `server.port = Number(process.env.VITE_PORT) || 5400` et `server.proxy['/api'].target` pointe sur `http://localhost:${PORT_BACK}` avec `PORT_BACK = process.env.PORT || 3400`.
-- AC4 : `playwright.config.ts` `baseURL` défaut = `http://localhost:5400` ; `webServer[0].port = 3400` ; `webServer[1].port = 5400`.
+- AC4 : les tests navigateur démarrent **leur propre** serveur sur des ports distincts de l'application : `playwright.config.ts` utilise `E2E_SERVER_PORT` (défaut `3410`) et `E2E_CLIENT_PORT` (défaut `5410`), jamais `3400` / `5400`. *(Amendé le 2026-09-25, épopée qualité SEO T8 : en réutilisant le serveur de développement, les tests basculaient son mode global ; un mode réel posé par l'utilisateur leur a fait appeler la vraie IA.)*
 - AC5 : grep dans le repo (hors `node_modules`, `dist`, `_archive`) sur les littéraux `:3005` ou `:5173` retourne **0 résultat actif** (peuvent subsister dans des doc archivées avec bandeau ARCHIVED).
 
 **Statut :** active. **Depuis :** 2026-05-05.
@@ -4409,12 +4409,12 @@ Ces valeurs sont les **défauts en dur** (`server/index.ts`, `vite.config.ts`) e
 Câblage `package.json` :
 - `predev` → kill-port `3400 5400`,
 - `prebuild` → kill-port `3400 5400` (le build Vite peut lancer un serveur de prévisualisation),
-- `pretest:browser` → kill-port `3400 5400` (Playwright `webServer` ne réutilise pas si un autre process tient le port).
+- `pretest:browser` → kill-port `3410 5410`, les ports propres aux tests : lancer les tests ne coupe jamais le serveur de développement de l'utilisateur *(amendé le 2026-09-25, T8)*.
 
 **Critères d'acceptation testables :**
 - AC1 : `scripts/kill-port.mjs` existe et est exécutable via `node scripts/kill-port.mjs`.
 - AC2 : appelé sans port occupé → exit code `0`, aucune erreur stderr fatale.
-- AC3 : `package.json` contient les hooks `predev`, `prebuild`, `pretest:browser` invoquant `node scripts/kill-port.mjs 3400 5400`.
+- AC3 : `package.json` contient les hooks `predev` et `prebuild` invoquant `node scripts/kill-port.mjs 3400 5400`, et `pretest:browser` invoquant `node scripts/kill-port.mjs 3410 5410` (jamais 3400 / 5400).
 - AC4 : test unit qui parse `package.json` et vérifie la présence des 3 hooks + l'invocation du script.
 - AC5 : test unit qui appelle la fonction `freePort(port)` exportée par le script (mock de `child_process.exec`) → vérifie la commande émise selon `os.platform()`.
 

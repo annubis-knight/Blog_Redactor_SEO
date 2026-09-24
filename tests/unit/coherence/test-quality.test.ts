@@ -67,12 +67,23 @@ interface ScanResult {
   byFile: Record<string, number>
 }
 
+/**
+ * Contenu des fichiers de test, lu une seule fois pour tous les scans : relire
+ * ~400 fichiers à chaque test faisait expirer le délai quand toute la suite
+ * tourne en parallèle (vu sur la simulation du job CI, 2026-09-25).
+ */
+let contentsPromise: Promise<Array<[string, string]>> | null = null
+function testFileContents(): Promise<Array<[string, string]>> {
+  contentsPromise ??= walkTestFiles(TESTS_ROOT).then(files =>
+    Promise.all(files.map(async f => [f, await readFile(f, 'utf8')] as [string, string])),
+  )
+  return contentsPromise
+}
+
 async function scanPattern(regex: RegExp): Promise<ScanResult> {
-  const files = await walkTestFiles(TESTS_ROOT)
   const byFile: Record<string, number> = {}
   let total = 0
-  for (const f of files) {
-    const content = await readFile(f, 'utf8')
+  for (const [f, content] of await testFileContents()) {
     // Reset lastIndex pour les regex /g
     regex.lastIndex = 0
     const matches = content.match(regex)

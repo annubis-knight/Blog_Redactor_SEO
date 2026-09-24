@@ -6151,9 +6151,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - [tests/e2e-workflows/](../../tests/e2e-workflows/) — workflows complets (Cerveau → Moteur → Rédaction).
 
 **Décisions d'architecture**
-- **Auto-kill ports** : `pretest:browser` libère 3400 / 5400 avant lancement pour éviter les conflits avec un `npm run dev` actif.
+- **Ports dédiés** *(2026-09-25, épopée qualité SEO T8)* : Playwright démarre son propre serveur sur `E2E_SERVER_PORT` / `E2E_CLIENT_PORT` (défaut 3410 / 5410, cache Vite `node_modules/.vite-e2e`) ; `pretest:browser` libère 3410 / 5410 et ne coupe plus jamais le `npm run dev` de l'utilisateur (3400 / 5400). `setMockMode('mock')` refuse de basculer un serveur forcé en mode réel. Limite connue : le serveur de test utilise la même base PostgreSQL (données de test préfixées et nettoyées) — checklist T10.
 - **`*.browser.test.ts`** : convention de naming pour distinguer les tests Playwright des unit.
-- **Pas de CI cloud** : tests Playwright lancés manuellement sur Windows local — pas de pipeline GitHub Actions actuellement (outil solo).
+- **CI GitHub Actions** (`.github/workflows/ci.yml`) : jobs unit, intégration et navigateur sur PR et push vers `main`. Réparée le 2026-09-25 : elle était rouge depuis mai (Node 20 refusait le lock npm 11, et la base était créée depuis des migrations archivées). Node vient de `.nvmrc` (24), PostgreSQL 18, base créée par `server/db/bootstrap.sql`.
 
 **Critères d'acceptation techniques**
 - AC.MAINTP.1 : `npm run test:browser` exécute la suite Playwright et libère les ports d'abord.

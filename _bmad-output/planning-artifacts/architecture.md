@@ -1030,3 +1030,6 @@ Toutes les FRs et NFRs sont couvertes par l'architecture livrée (voir mapping c
 8. Ne jamais introduire de fichier JSON de données chaudes — tout passe par PostgreSQL
 9. Ne jamais hardcoder les seuils de scoring — utiliser `shared/kpi-scoring.ts` / `shared/scoring.ts`
 10. Émettre `check-completed` dans les composants Moteur en mode workflow
+
+
+> **Schéma rejouable (2026-09-25).** `server/db/schema.sql` reste l'introspection de référence (lisible, empreinte vérifiée par `npm run db:check`). Il n'est pas rejouable (ordre alphabétique, séquences en commentaire) : la CI crée donc sa base depuis `server/db/bootstrap.sql`, produit par `pg_dump --schema-only`. `npm run db:snapshot` régénère les deux, et le test `db-bootstrap-sync` vérifie qu'ils portent la même empreinte.

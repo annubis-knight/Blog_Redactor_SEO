@@ -1,9 +1,9 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-05-09T16:13:20.162Z
--- Commit git       : cbfede7 (chore/drop-serp-raw-json-column)
--- Sujet commit     : Merge branch 'feat/keyword-metrics-decomposition' into main
+-- Généré le        : 2026-09-24T22:47:12.319Z
+-- Commit git       : 1269dbe (ci/reparer-pipeline)
+-- Sujet commit     : test(parcours): la retouche du parcours ne laisse aucune trace, et les faux verts sont plafonnés
 -- Working tree     : ⚠️  NON (modifs non commitées)
 -- Tables           : 25
 -- Empreinte schéma : sha256:fe699ca76c0a21435de69501734017665a03fa1502f41bf772590fa4a1f48f88

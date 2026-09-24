@@ -1,6 +1,7 @@
 /**
  * Sanity browser test — vérifie que l'app charge et que la home rend.
- * Si ce test casse, vérifier que `npm run dev:client` tourne sur :5400.
+ * Playwright démarre son propre serveur (ports dédiés, 3410 / 5410 par défaut :
+ * playwright.config.ts). Si ce test casse, regarder la sortie du webServer.
  */
 import { test, expect } from './helpers/test-fixtures'
 

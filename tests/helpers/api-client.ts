@@ -56,10 +56,23 @@ export const apiDelete = <T>(path: string) => apiRequest<T>('DELETE', path)
 export async function isServerUp(): Promise<boolean> {
   try {
     const res = await fetch(`${BASE_URL}/health`, { signal: AbortSignal.timeout(2000) })
-    return res.ok
+    if (!res.ok) return false
   } catch {
     return false
   }
+  // Un serveur que quelqu'un a forcé en mode réel ferait facturer les tests et
+  // mélangerait leurs données simulées à sa session : on le traite comme
+  // indisponible, sauf demande explicite TESTS_REELS=1 (épopée qualité SEO, T8).
+  if (process.env.TESTS_REELS !== '1') {
+    const mode = await fetch(`${BASE_URL}/runtime-mode`, { signal: AbortSignal.timeout(2000) })
+      .then(r => r.json())
+      .catch(() => null) as { data?: { override?: string | null } } | null
+    if (mode?.data?.override === 'real') {
+      console.warn(`[tests] ${BASE_URL} est forcé en mode réel : les tests HTTP ne le visent pas.`)
+      return false
+    }
+  }
+  return true
 }
 
 /**

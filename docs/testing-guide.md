@@ -319,12 +319,30 @@ Ou relance n'importe quel test : `beforeAll::cleanupOrphanedFixtures` purge auto
 # Serveur API (port 3400 — NFR-CFG-APP-PORTS) — obligatoire pour tests HTTP
 npm run dev:server
 
-# Serveur Vite (port 5400 — NFR-CFG-APP-PORTS) — obligatoire seulement pour Playwright
+# Serveur Vite (port 5400 — NFR-CFG-APP-PORTS)
 npm run dev:client
 
 # Ou les deux en parallèle
 npm run dev
 ```
+
+> **Tests navigateur (Playwright) : leurs propres ports, depuis le 2026-09-25.**
+> `npm run test:browser` démarre son propre serveur sur **3410 / 5410**
+> (`E2E_SERVER_PORT` / `E2E_CLIENT_PORT`), en mode simulé. Il ne réutilise plus le
+> serveur de développement, et ne bascule plus son mode : un mode réel posé par
+> l'utilisateur faisait appeler la vraie IA aux tests, et un parcours simulé
+> injectait des données simulées dans la session de l'utilisateur (épopée qualité
+> SEO, T8). `pretest:browser` libère 3410 / 5410, plus jamais 3400 / 5400.
+> Si un test vise quand même un serveur forcé en mode réel, `setMockMode('mock')`
+> refuse de le basculer et le dit.
+> **Limite** : ce serveur de test utilise la même base PostgreSQL que le serveur de
+> développement. Les données de test sont préfixées `[test:…]` et nettoyées en fin
+> d'exécution, mais présentes pendant qu'elle tourne (checklist T10).
+>
+> **Vitest (`npm run test:unit`, `test:check`)** vise, lui, le serveur de
+> développement pour les tests HTTP. Depuis le 2026-09-25 il ne touche plus à un
+> serveur forcé en mode réel (ces tests le considèrent indisponible), et il
+> restaure le mode d'origine en fin de suite au lieu de l'effacer.
 
 ### 6.2 Vitest (unit + functional + contract + integration + e2e)
 

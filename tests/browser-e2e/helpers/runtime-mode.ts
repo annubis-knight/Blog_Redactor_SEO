@@ -28,9 +28,24 @@ async function attendreLApi(timeoutMs = 60_000): Promise<void> {
   throw new Error(`l'API ne répond pas après ${timeoutMs} ms (${String(derniere)})`)
 }
 
-/** Bascule le serveur. `null` rend la main à la configuration d'origine. */
+/**
+ * Bascule le serveur. `null` rend la main à la configuration d'origine.
+ *
+ * Refuse de passer en simulé un serveur que quelqu'un a forcé en mode réel
+ * (checklist T8) : c'est le signe que les tests visent un serveur partagé, et
+ * basculer son mode perturberait la personne qui travaille dessus.
+ */
 export async function setMockMode(mode: 'mock' | 'real' | null): Promise<void> {
   await attendreLApi()
+  if (mode === 'mock') {
+    const actuel = await fetch(`${API}/runtime-mode`).then(r => r.json()).catch(() => null)
+    if (actuel?.data?.override === 'real') {
+      throw new Error(
+        `le serveur ${API} est forcé en mode réel par quelqu'un d'autre : les tests ne le basculent pas. `
+        + 'Lancez-les sur leurs ports dédiés (E2E_SERVER_PORT / E2E_CLIENT_PORT, par défaut 3410 / 5410).',
+      )
+    }
+  }
   const res = await fetch(`${API}/runtime-mode`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },

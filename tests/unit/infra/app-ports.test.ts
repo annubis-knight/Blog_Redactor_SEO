@@ -38,13 +38,17 @@ describe('NFR-CFG-APP-PORTS — ports figés (3400 / 5400)', () => {
     expect(content).toMatch(/server:\s*\{[^}]*port:/s)
   })
 
-  it('AC4: playwright.config.ts utilise 5400 (baseURL/front) et 3400 (back)', () => {
+  // Épopée qualité SEO, T8 : les tests navigateur réutilisaient le serveur de
+  // développement et basculaient son mode. Ils ont désormais leurs propres ports.
+  it('AC4: les tests navigateur démarrent leur serveur sur leurs propres ports (3410 / 5410), jamais 3400 / 5400', () => {
     const content = read('playwright.config.ts')
-    expect(content).toContain('http://localhost:5400')
-    expect(content).toMatch(/port:\s*3400/)
-    expect(content).toMatch(/port:\s*5400/)
-    expect(content).not.toContain('localhost:5173')
-    expect(content).not.toContain('localhost:3005')
+    expect(content).toMatch(/E2E_SERVER_PORT\) \|\| 3410/)
+    expect(content).toMatch(/E2E_CLIENT_PORT\) \|\| 5410/)
+    expect(content).toMatch(/port:\s*E2E_SERVER_PORT/)
+    expect(content).toMatch(/port:\s*E2E_CLIENT_PORT/)
+    expect(content).not.toMatch(/port:\s*(3400|5400)|localhost:(3400|5400|5173|3005)/)
+    expect(content, 'le serveur de test reçoit son port').toMatch(/env: \{[^}]*PORT: String\(E2E_SERVER_PORT\)/)
+    expect(content, 'Vite reçoit ses ports').toMatch(/VITE_PORT: String\(E2E_CLIENT_PORT\)/)
   })
 })
 
@@ -59,13 +63,21 @@ describe('NFR-CFG-PORT-PREFLIGHT — hooks kill-port câblés', () => {
     expect(pkg.scripts['pretest:browser']).toBeDefined()
   })
 
-  it('AC3 (suite): chaque hook invoque scripts/kill-port.mjs avec 3400 et 5400', () => {
-    for (const hook of ['predev', 'prebuild', 'pretest:browser'] as const) {
+  it('AC3 (suite): predev et prebuild libèrent 3400 et 5400', () => {
+    for (const hook of ['predev', 'prebuild'] as const) {
       const cmd = pkg.scripts[hook]
       expect(cmd, `${hook} doit invoquer kill-port.mjs`).toContain('scripts/kill-port.mjs')
       expect(cmd, `${hook} doit cibler le port 3400`).toContain('3400')
       expect(cmd, `${hook} doit cibler le port 5400`).toContain('5400')
     }
+  })
+
+  it('AC3 (tests navigateur): pretest:browser libère 3410 / 5410 et ne coupe jamais le serveur de développement', () => {
+    const cmd = pkg.scripts['pretest:browser']
+    expect(cmd).toContain('scripts/kill-port.mjs')
+    expect(cmd).toContain('3410')
+    expect(cmd).toContain('5410')
+    expect(cmd, 'lancer les tests ne doit pas arrêter le serveur de l’utilisateur').not.toMatch(/(3400|5400)/)
   })
 
   it('AC1: scripts/kill-port.mjs existe et est lisible', () => {
