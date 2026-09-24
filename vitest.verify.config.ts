@@ -26,6 +26,7 @@ export default mergeConfig(
         'tests/unit/services/claude-stream-filter.test.ts',
         'tests/unit/services/linking.service.test.ts',
         'tests/unit/services/linking-anchor.test.ts',
+        'tests/unit/services/cocoon-add-article-prompt.test.ts',
         'tests/unit/infra/test-fixtures-cleanup.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),

@@ -6,6 +6,7 @@ import { strategySuggestRequestSchema, batchStrategyStatusRequestSchema, cocoonS
 import { collectStreamWithUsage as collectStream } from '../utils/stream-usage.js'
 import { readFile } from 'fs/promises'
 import { join } from 'path'
+import { buildAddArticlePrompt, type AddArticlePromptInput } from '../services/strategy/cocoon-add-article-prompt.js'
 
 const router = Router()
 
@@ -392,24 +393,9 @@ router.post('/strategy/cocoon/:cocoonSlug/suggest', async (req, res) => {
 
       // Build add-article context: resolve type conditionals and inject existing articles
       if (parsed.step === 'add-article') {
-        const addCtx = JSON.parse(parsed.currentInput) as {
-          articleType: string
-          existingArticlesDetail: string
-          userInput?: string
-        }
-        const isPilier = addCtx.articleType === 'Pilier'
-        const isInter = addCtx.articleType === 'Intermédiaire'
-        const isSpe = addCtx.articleType === 'Spécialisé'
-        const hasUserInput = !!addCtx.userInput?.trim()
-
-        prompt = prompt
-          .replace(/\{\{articleType\}\}/g, addCtx.articleType)
-          .replace('{{existingArticles}}', addCtx.existingArticlesDetail)
-          .replace(/\{\{#isPilier\}\}([\s\S]*?)\{\{\/isPilier\}\}/, isPilier ? '$1' : '')
-          .replace(/\{\{#isIntermediaire\}\}([\s\S]*?)\{\{\/isIntermediaire\}\}/, isInter ? '$1' : '')
-          .replace(/\{\{#isSpecialise\}\}([\s\S]*?)\{\{\/isSpecialise\}\}/, isSpe ? '$1' : '')
-          .replace(/\{\{#userInput\}\}([\s\S]*?)\{\{\/userInput\}\}/,
-            hasUserInput ? '$1'.replace(/\{\{userInput\}\}/g, addCtx.userInput!.trim()) : '')
+        // FR-CER-TYPE-TOLERANT — le front envoie le niveau en minuscules (`'pilier'`) :
+        // le lire strictement retirait les règles du type demandé (K3, K4).
+        prompt = buildAddArticlePrompt(prompt, JSON.parse(parsed.currentInput) as AddArticlePromptInput)
       }
 
       // Build PAA context block for articles-spe step

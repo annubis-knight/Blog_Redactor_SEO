@@ -12,7 +12,7 @@
  *   - ou dans l'épopée en cours, qui réserve les IDs pas encore livrés
  *     (ils entrent au PRD dans la PR qui les livre).
  *
- * `LEGACY_ORPHANS` fige la dette constatée le 2026-09-24 : ces IDs sont cités
+ * `LEGACY_ORPHANS` fige la dette constatée le 2026-09-24 (29 IDs, 27 après C1) : ces IDs sont cités
  * par des tests mais absents du PRD. La liste ne peut que baisser : dès qu'un
  * ID y devient traçable, le second test demande de le retirer d'ici.
  */
@@ -38,10 +38,8 @@ const LEGACY_ORPHANS = new Set([
   'FR-CAP-ROOTS-PERSISTED-AT-ENTRY',
   'FR-CAP-SORT-STABLE-ON-ROOT-VARIANT',
   'FR-CAP-VALIDATE',
-  'FR-CER-CREATION-HONNETE',
   'FR-CER-PROPOSE',
   'FR-CER-SAISIE-PRESERVEE',
-  'FR-CER-TYPE-TOLERANT',
   'FR-DIS-AI-PANEL',
   'FR-DIS-DECOUVRIR',
   'FR-DIS-LONGTAIL-GENERATION',

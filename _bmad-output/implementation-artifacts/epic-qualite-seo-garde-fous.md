@@ -78,7 +78,7 @@ Règles communes à tous les chantiers :
 | # | Chantier | Branche | Taille | Exigences | Statut |
 |---|---|---|---|---|---|
 | C0 | Traçabilité : épopée, modèle de PR, cliquet des IDs, dédoublonnage LEX | `chore/tracabilite-programme` | S | NFR-MAIN-REQUIREMENTS-TRACE | en cours |
-| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | à faire |
+| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en cours (1/4 : `fix/cerveau-mots-cles`) |
 | C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | à faire |
 | C3 | Lexique métier | `fix/lexique-metier` | M | FR-LEX-METIER-ONLY | à faire |
 | C4 | Architecture des prompts | `refactor/prompts-architecture` | M | FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT | à faire |
@@ -368,10 +368,10 @@ Il remplace FR-CER-BATCH-CREATE.
 **C1** = correctif rapide ; sinon, le chantier qui l'absorbe.
 
 **Cerveau**
-- [ ] C1 · K1 — `keywords_seo` est unique pour toute la base (`data.service.ts:568-575`) et l'erreur 409 est avalée (`useArticleProposals.ts:200`) : le mot-clé du pilier est perdu.
-- [ ] C1 · K2 — Types écrits en minuscules (`intermediaire`), alors que les consommateurs attendent `'Pilier'` (`brief.store.ts:47,77`, `editor.store.ts:117`, `outline.store.ts:88`, `keyword-assignment.service.ts:30-32`).
-- [ ] C1 · K3 — Ajout d'article : type envoyé en minuscules (`useArticleProposals.ts:113`) mais comparé à `'Pilier'` (`strategy.routes.ts:400-402`).
-- [ ] C1 · K4 — `strategy.routes.ts:412` : `'$1'.replace(...)` laisse `{{userInput}}` brut.
+- [x] C1 · K1 — *(PR `fix/cerveau-mots-cles`)* `keywords_seo` est unique pour toute la base (`data.service.ts:568-575`) et l'erreur 409 est avalée (`useArticleProposals.ts:200`) : le mot-clé du pilier est perdu.
+- [x] C1 · K2 — *(PR `fix/cerveau-mots-cles`)* Types écrits en minuscules (`intermediaire`), alors que les consommateurs attendent `'Pilier'` (`brief.store.ts:47,77`, `editor.store.ts:117`, `outline.store.ts:88`, `keyword-assignment.service.ts:30-32`).
+- [x] C1 · K3 — *(PR `fix/cerveau-mots-cles`)* Ajout d'article : type envoyé en minuscules (`useArticleProposals.ts:113`) mais comparé à `'Pilier'` (`strategy.routes.ts:400-402`).
+- [x] C1 · K4 — *(PR `fix/cerveau-mots-cles`)* `strategy.routes.ts:412` : `'$1'.replace(...)` laisse `{{userInput}}` brut.
 - [ ] C4 · K5 — Prompts chargés par `.replace`, qui ne remplace que la première occurrence (`strategy.routes.ts`, `silos.routes.ts`).
 - [ ] C7 · K6 — Doublons détectés seulement sur un slug identique (`data.service.ts:496`) ; pas de colonne parent ; `editTitle` ne met pas à jour les enfants.
 - [ ] C4 · K7 — Exemple recopiable répété trois fois (`cocoon-articles.md:64,83,108`).
@@ -425,7 +425,8 @@ Il remplace FR-CER-BATCH-CREATE.
 - [ ] C2 · T3 — Assertions toujours vraies et 15 `return` anticipés.
 - [ ] C2 · T4 — La simulation `propose-lieutenants` renvoie toujours « plombier ».
 - [ ] C1 · T5 — Le helper `MOTEUR_TABS` liste 5 onglets sur 6 (`moteur-ui.ts:81`).
-- [ ] Dette figée par C0 : 29 IDs cités par des tests mais absents du PRD (`requirements-trace.test.ts`, `LEGACY_ORPHANS`).
+- [ ] Dette figée par C0 : 29 IDs cités par des tests mais absents du PRD (`requirements-trace.test.ts`, `LEGACY_ORPHANS`). **27** après `fix/cerveau-mots-cles` (FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT écrites).
+- [ ] C2 · T6 — `tests/e2e-workflows/moteur.workflow.test.ts` « U5 TTL » compare deux durées (`e2 < e1 × 1,5`) : rouge au hasard (vu le 2026-09-24, vert 3 fois sur 3 en relance). Un test de cache doit vérifier qu'aucun appel externe n'est refait, pas un chronomètre.
 
 ## 9. Journal
 
@@ -433,3 +434,4 @@ Il remplace FR-CER-BATCH-CREATE.
 |---|---|---|
 | 2026-09-24 | — | Analyse du pilier 1013, puis validation du programme avec Arnaud |
 | 2026-09-24 | C0 | Épopée, modèle de PR, cliquet `requirements-trace`, dédoublonnage des FR LEX |
+| 2026-09-24 | C1 | `fix/cerveau-mots-cles` : K1-K4 corrigés ; FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT versées au PRD (cliquet 29 → 27) ; FR-INFRA-KEYWORDS-SEO durcie |

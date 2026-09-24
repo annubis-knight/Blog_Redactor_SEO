@@ -400,6 +400,41 @@ Après l'analyse du Lexique, les termes présents chez au moins 70 % des concurr
 
 ---
 
+#### FR-CER-CREATION-HONNETE — Un article annoncé créé existe vraiment, et un refus s'explique
+
+Quand l'utilisateur accepte un article proposé, l'écran ne doit montrer une coche « créé » que si l'article existe réellement en base, et le montrer dès qu'il existe. Si une partie de la création est refusée (adresse déjà prise, mot-clé déjà visé par un autre cocon), l'utilisateur lit pourquoi, dans ses mots, avec la marche à suivre.
+
+**Critères d'acceptation**
+- Un article dont l'adresse (slug) est déjà prise n'est pas annoncé créé ; le message nomme le titre, l'adresse, et invite à changer le slug.
+- Un article créé en base est annoncé créé, même si l'ajout de son mot-clé au pool du cocon est refusé ensuite.
+- Un mot-clé refusé parce qu'un autre cocon le vise déjà déclenche un avertissement qui nomme ce cocon : deux cocons sur le même mot-clé se font concurrence.
+
+**Statut :** active. **Depuis :** 2026-09-23 (slug déjà pris). **Durci :** 2026-09-24 (mot-clé refusé). **Source :** parcours réel, épopée qualité SEO (checklist K1).
+
+> **En situation.** Arnaud accepte le pilier « Propulser la croissance digitale des entreprises toulousaines ». L'article est créé, mais son mot-clé est déjà utilisé par le cocon « Croissance digitale Toulouse ». L'article passe en « créé », et un avertissement lui dit que son mot-clé n'a pas rejoint le pool : « Le mot-clé « stratégie digitale entreprises toulouse » est déjà utilisé dans le cocon « Croissance digitale Toulouse » : deux cocons qui visent le même mot-clé se font concurrence. Choisissez-en un autre au Moteur. » Avant, rien ne s'affichait, et un second clic tombait sur « adresse déjà prise ».
+
+→ Conception : [DESIGN-CER-CREATION-HONNETE](./design-registry.md#design-cer-creation-honnete)
+
+---
+
+#### FR-CER-TYPE-TOLERANT — Le niveau d'un article est compris quel que soit son format
+
+Le niveau d'un article (Pilier, Intermédiaire, Spécialisé) circule entre l'IA, l'écran, la base et les consignes d'IA sous plusieurs formats : « Pilier » ou « pilier », avec ou sans accent. L'outil le comprend dans tous ces formats, et chaque étape reçoit les règles du bon niveau. Il ne retombe jamais en silence sur un niveau par défaut.
+
+**Critères d'acceptation**
+- Une proposition de l'IA écrite « Pilier », « pilier » ou « PILIER » donne un article de niveau Pilier.
+- Ajouter un article à un cocon transmet à l'IA les règles du niveau demandé (localisation obligatoire pour un pilier, etc.), quel que soit le format du niveau envoyé par l'écran.
+- La consigne libre de l'utilisateur est transmise telle quelle, même si elle contient des caractères spéciaux (`$1`, `$&`).
+- Un niveau inconnu est refusé explicitement plutôt que remplacé.
+
+**Statut :** active. **Depuis :** 2026-09-23 (lecture des propositions). **Durci :** 2026-09-24 (ajout d'un article). **Source :** parcours réel, épopée qualité SEO (checklist K3, K4).
+
+> **En situation.** Arnaud clique « + Ajouter un pilier » et précise « Parler des artisans du bâtiment ». L'IA reçoit les règles propres au pilier et sa consigne mot pour mot. Avant, l'écran envoyait « pilier » en minuscules : toutes les règles de niveau étaient retirées, et le repère `{{userInput}}` partait brut à l'IA.
+
+→ Conception : [DESIGN-CER-TYPE-TOLERANT](./design-registry.md#design-cer-type-tolerant)
+
+---
+
 #### FR-CER-MICRO-CONTEXT — Micro-contexte éditorial par article
 
 En plus de la stratégie (Cible/Douleur/Angle/…), l'utilisateur peut attacher à un article un **micro-contexte éditorial** qui affinera la production : l'**angle** précis de cet article-ci, le **ton** souhaité, des **directives** ponctuelles, et un **nombre de mots cible**. Ce micro-contexte sera automatiquement injecté dans les prompts IA Rédaction — pas besoin de retaper ces consignes à chaque génération.
@@ -3214,6 +3249,10 @@ Chaque cocon dispose d'un **pool de mots-clés SEO** (suggérés par l'utilisate
 **Critères d'acceptation**
 - L'utilisateur peut ajouter, remplacer, statut-er (suggéré / validé / écarté) ou supprimer un mot-clé du pool depuis le Cerveau.
 - La liste s'affiche identique d'un onglet à l'autre, d'une session à l'autre.
+- Chaque mot-clé du pool porte un type que tous les écrans comprennent (Pilier, Intermédiaire, Spécialisé, Moyenne traîne, Longue traîne) ; un type inconnu est refusé à l'écriture.
+- Un même mot-clé ne peut viser qu'un seul cocon ; le refus nomme le cocon qui l'utilise déjà.
+
+**Statut :** durci le 2026-09-24. **Pourquoi :** le Cerveau écrivait le niveau d'article en minuscules, et le mot-clé pilier n'était jamais retrouvé ; un doublon entre cocons était refusé sans dire où (épopée qualité SEO, K1-K2).
 
 → Conception : [DESIGN-INFRA-KEYWORDS-SEO](./design-registry.md#design-infra-keywords-seo)
 

@@ -15,6 +15,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const apiPost = vi.fn()
 const notifyError = vi.fn()
+const notifyWarning = vi.fn()
 
 vi.mock('../../../src/services/api.service', () => ({
   apiPost: (...args: unknown[]) => apiPost(...args),
@@ -24,7 +25,7 @@ vi.mock('../../../src/services/api.service', () => ({
 }))
 
 vi.mock('../../../src/composables/ui/useNotify', () => ({
-  useNotify: () => ({ error: notifyError, info: vi.fn(), success: vi.fn(), warning: vi.fn() }),
+  useNotify: () => ({ error: notifyError, info: vi.fn(), success: vi.fn(), warning: notifyWarning }),
 }))
 
 vi.mock('../../../src/stores/strategy/cocoons.store', () => ({
@@ -76,6 +77,7 @@ describe('createArticleInDb — ne pas annoncer une création qui n’a pas eu l
     setActivePinia(createPinia())
     apiPost.mockReset()
     notifyError.mockReset()
+    notifyWarning.mockReset()
   })
 
   it('marque l’article créé quand la base renvoie une ligne', async () => {
@@ -124,5 +126,46 @@ describe('createArticleInDb — ne pas annoncer une création qui n’a pas eu l
 
     const appels = apiPost.mock.calls.map(c => String(c[0]))
     expect(appels.filter(u => u === '/keywords'), 'pas de mot-clé orphelin').toHaveLength(0)
+  })
+})
+
+describe('createArticleInDb — le mot-clé de l’article rejoint le pool du cocon', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    apiPost.mockReset()
+    notifyError.mockReset()
+    notifyWarning.mockReset()
+  })
+
+  it('envoie le type attendu par le pool (« Pilier »), pas le niveau en minuscules', async () => {
+    apiPost.mockImplementation(async (url: string) => (url === '/articles/batch-create' ? [{ id: 7, slug: 's' }] : { success: true }))
+    const api = monter([proposition({ suggestedKeyword: 'creation site internet toulouse' })])
+
+    await api.toggleAccept(0)
+
+    const appel = apiPost.mock.calls.find(c => c[0] === '/keywords')
+    expect(appel, 'le mot-clé est enregistré').toBeDefined()
+    expect(appel![1]).toMatchObject({ type: 'Pilier' })
+  })
+
+  it('garde l’article créé quand son mot-clé est refusé, et dit pourquoi', async () => {
+    // K1 : l'article existait en base, mais l'échec du mot-clé (409 : déjà
+    // utilisé par un autre cocon) le laissait « non créé », sans message. Un
+    // second clic tombait alors sur « adresse déjà prise ».
+    apiPost.mockImplementation(async (url: string) => {
+      if (url === '/articles/batch-create') return [{ id: 1013, slug: 'strategie-digitale-entreprises-toulouse' }]
+      throw new Error('Le mot-clé « stratégie digitale entreprises toulouse » est déjà utilisé dans le cocon « Croissance digitale Toulouse ».')
+    })
+    const api = monter([proposition({ suggestedKeyword: 'stratégie digitale entreprises toulouse' })])
+
+    await api.toggleAccept(0)
+
+    const resultat = useCocoonStrategyStore().strategy!.proposedArticles[0]
+    expect(resultat.createdInDb, 'l’article existe en base : il est annoncé créé').toBe(true)
+    expect(resultat.dbId).toBe(1013)
+    expect(notifyWarning).toHaveBeenCalledTimes(1)
+    const message = String(notifyWarning.mock.calls[0][0])
+    expect(message, 'le titre concerné est nommé').toContain('Création de site internet à Toulouse')
+    expect(message, 'le cocon concurrent est nommé').toContain('Croissance digitale Toulouse')
   })
 })

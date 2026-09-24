@@ -17,6 +17,7 @@ import {
 import { serpExistsContract } from '../../shared/contracts/serp.contract.js'
 import { runPaaJudgmentsForArticle } from '../services/keyword/captain-paa-judge.service.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
+import { parseKeywordType } from '../../shared/utils/keyword-type.js'
 import { auditCocoonKeywords, getAuditCacheStatus, detectRedundancy } from '../services/external/dataforseo.service.js'
 import { discoverKeywords, discoverFromDomain } from '../services/keyword/keyword-discovery.service.js'
 import { previewMigration, applyMigration } from '../services/keyword/keyword-assignment.service.js'
@@ -137,15 +138,23 @@ router.get('/keywords/audit/:cocoon/status', async (req, res) => {
 /** POST /api/keywords — Add a keyword */
 router.post('/keywords', async (req, res) => {
   try {
-    const { keyword, cocoonName, type } = req.body as Keyword
-    if (!keyword || !cocoonName || !type) {
+    const { keyword, cocoonName, type: rawType } = req.body as { keyword?: string; cocoonName?: string; type?: unknown }
+    if (!keyword || !cocoonName || !rawType) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'keyword, cocoonName, and type are required' } })
+      return
+    }
+    // Strict en écriture : seul un KeywordType entre dans le pool (épopée qualité SEO, K2).
+    const type = parseKeywordType(rawType)
+    if (!type) {
+      res.status(400).json({ error: { code: 'INVALID_TYPE', message: `Type de mot-clé inconnu : « ${String(rawType)} ». Attendus : Pilier, Intermédiaire, Spécialisé, Moyenne traine, Longue traine.` } })
       return
     }
 
     const result = await addKeyword({ keyword, cocoonName, type, status: 'suggested' })
     if (!result.success && result.duplicate) {
-      res.status(409).json({ error: { code: 'DUPLICATE', message: `Le mot-clé "${keyword}" existe déjà` } })
+      // Ce message est affiché tel quel à l'utilisateur : il doit dire où est le doublon (K1).
+      const where = result.existingCocoon ? ` dans le cocon « ${result.existingCocoon} »` : ''
+      res.status(409).json({ error: { code: 'DUPLICATE', message: `Le mot-clé « ${keyword} » est déjà utilisé${where} : deux cocons qui visent le même mot-clé se font concurrence. Choisissez-en un autre au Moteur.` } })
       return
     }
     res.json({ data: { success: true } })
@@ -164,7 +173,12 @@ router.put('/keywords', async (req, res) => {
       return
     }
 
-    const success = await replaceKeyword(oldKeyword, newKeyword)
+    const type = parseKeywordType(newKeyword.type)
+    if (!type) {
+      res.status(400).json({ error: { code: 'INVALID_TYPE', message: `Type de mot-clé inconnu : « ${String(newKeyword.type)} ».` } })
+      return
+    }
+    const success = await replaceKeyword(oldKeyword, { ...newKeyword, type })
     if (!success) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: `Keyword not found: ${oldKeyword}` } })
       return

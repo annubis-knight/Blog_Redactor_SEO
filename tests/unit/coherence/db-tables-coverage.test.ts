@@ -150,7 +150,7 @@ describe('FR-INFRA-KEYWORDS-SEO — keywords_seo', () => {
   it('addKeyword() vérifie doublon puis INSERT INTO keywords_seo', async () => {
     const { addKeyword } = await import('../../../server/services/infra/data.service.js')
     await addKeyword({ keyword: 'kw', cocoonName: 'c', type: 'pilier', status: 'suggested' })
-    const dupCheck = capturedQueries.find(q => /SELECT id FROM keywords_seo WHERE LOWER\(mot_clef\)/i.test(q.sql))
+    const dupCheck = capturedQueries.find(q => /SELECT id, cocoon_name FROM keywords_seo WHERE LOWER\(mot_clef\)/i.test(q.sql))
     const insert = capturedQueries.find(q => /INSERT INTO keywords_seo/i.test(q.sql))
     expect(dupCheck, 'check doublon attendu').toBeDefined()
     expect(insert, 'INSERT INTO keywords_seo attendu').toBeDefined()

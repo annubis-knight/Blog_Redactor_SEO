@@ -243,7 +243,7 @@ Response : { created: Article[], failed: { index, error }[] }
 
 *Lecture* : aucune côté lot — la production des propositions reste en JSONB sur `cocoon_strategies.data.proposedArticles`. Au moment de l'acceptation par l'utilisateur, le composable `useArticleProposals` lit ce tableau et déclenche les écritures DB.
 
-*Écriture* : `POST /api/articles/batch-create` insère N lignes dans `articles` (titre, type, slug, suggestedKeyword, painPoint, painIntentExpected) en une seule transaction. Effet secondaire : pour chaque article avec un mot-clé suggéré, un appel `POST /api/keywords` enregistre la racine du mot-clé dans `keyword_metrics` afin d'alimenter le cache cross-article. Le `dbId` renvoyé est backfillé sur le `ProposedArticle` correspondant pour le réconcilier au reload.
+*Écriture* : `POST /api/articles/batch-create` insère N lignes dans `articles` (titre, type, slug, suggestedKeyword, painPoint, painIntentExpected) en une seule transaction. Effet secondaire : pour chaque article avec un mot-clé suggéré, un appel `POST /api/keywords` ajoute ce mot-clé au pool du cocon (`keywords_seo`, type `KeywordType`, cf. `DESIGN-INFRA-KEYWORDS-SEO`). *(Corrigé le 2026-09-24 : la doc indiquait `keyword_metrics`.)* Le `dbId` renvoyé est backfillé sur le `ProposedArticle` correspondant pour le réconcilier au reload.
 
 **Stores Pinia**
 - `useCocoonStrategyStore` — porte le tableau `proposedArticles` (état de travail tant que rien n'est validé) ; la sauvegarde via `saveStrategy` persiste l'intention dans `cocoon_strategies.data` avant tout écriture dans `articles`.
@@ -254,6 +254,53 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Voir aussi**
 - `DESIGN-DASH-NAV` — les articles créés apparaissent immédiatement au dashboard.
+
+---
+
+### DESIGN-CER-CREATION-HONNETE
+
+**Réf PRD :** [FR-CER-CREATION-HONNETE](./prd.md#fr-cer-creation-honnete--un-article-annoncé-créé-existe-vraiment-et-un-refus-sexplique)
+
+**Refs code**
+- [src/composables/editor/useArticleProposals.ts](../../src/composables/editor/useArticleProposals.ts) — `createArticleInDb` : `createdInDb` posé dès que `batch-create` renvoie un id ; l'ajout du mot-clé au pool est dans son propre `try/catch`, et son refus déclenche `notify.warning` avec le message du serveur.
+- [server/routes/keywords.routes.ts](../../server/routes/keywords.routes.ts) — `POST /keywords` : le 409 `DUPLICATE` nomme le cocon qui utilise déjà le mot-clé (message affiché tel quel par l'écran).
+- [server/services/infra/data.service.ts](../../server/services/infra/data.service.ts) — `addKeyword` renvoie `existingCocoon`.
+
+**Décisions d'architecture**
+- Le doublon reste interdit pour tout le site (un mot-clé visé par deux cocons se cannibalise) ; seul le refus devient explicite. L'alarme de cannibalisation au verrouillage viendra avec FR-LIE-LOCK-GATE (épopée qualité SEO, C2).
+- `apiPost` relaie le `message` du serveur : c'est donc le serveur qui formule l'explication.
+
+**Critères d'acceptation techniques**
+- AC.CERHON.1 : slug déjà pris (`batch-create` renvoie `[]`) → `createdInDb` reste faux, `notify.error` nomme titre et slug. *(test : `tests/unit/composables/article-proposals-creation.test.ts`)*
+- AC.CERHON.2 : `batch-create` OK puis `/keywords` refusé → `createdInDb` vrai, `dbId` posé, `notify.warning` nomme le titre et le cocon concurrent. *(test : idem)*
+- AC.CERHON.3 : `POST /keywords` en doublon → 409 dont le message contient le mot-clé et le cocon existant. *(test : `tests/unit/routes/keywords-pool.routes.test.ts`)*
+
+**Voir aussi**
+- `DESIGN-CER-BATCH-CREATE`, `DESIGN-INFRA-KEYWORDS-SEO`.
+
+---
+
+### DESIGN-CER-TYPE-TOLERANT
+
+**Réf PRD :** [FR-CER-TYPE-TOLERANT](./prd.md#fr-cer-type-tolerant--le-niveau-dun-article-est-compris-quel-que-soit-son-format)
+
+**Refs code**
+- [shared/utils/article-level.ts](../../shared/utils/article-level.ts) — `parseArticleLevel` (casse et accents libres, `null` si inconnu).
+- [server/services/strategy/cocoon-add-article-prompt.ts](../../server/services/strategy/cocoon-add-article-prompt.ts) — `buildAddArticlePrompt` : lit le niveau avec `parseArticleLevel`, garde le bon bloc `{{#isPilier}}`/`{{#isIntermediaire}}`/`{{#isSpecialise}}`, injecte la consigne utilisateur par fonction de remplacement (jamais de chaîne `'$1'`).
+- [server/routes/strategy.routes.ts](../../server/routes/strategy.routes.ts) — étape `add-article` de `POST /strategy/cocoon/:slug/suggest`.
+
+**Décisions d'architecture**
+- Remplacements par fonction : dans une chaîne de remplacement, `$1` et `$&` sont interprétés, y compris quand ils viennent de la consigne de l'utilisateur.
+- La consigne est injectée en dernier : son texte n'est plus retraité.
+- Niveau inconnu → exception (la route répond en erreur) plutôt qu'un prompt sans aucune règle de niveau.
+
+**Critères d'acceptation techniques**
+- AC.CERTYPE.1 : `articleType: 'pilier'` garde le bloc Pilier et retire les deux autres ; le type affiché est « Pilier ». *(test : `tests/unit/services/cocoon-add-article-prompt.test.ts`, dans `npm run verify`)*
+- AC.CERTYPE.2 : aucun repère `{{articleType}}`, `{{existingArticles}}`, `{{userInput}}`, `{{#is…}}` ne reste dans le vrai modèle `cocoon-add-article.md`, pour les trois niveaux. *(test : idem)*
+- AC.CERTYPE.3 : une consigne contenant `$1` ou `$&` est recopiée à l'identique. *(test : idem)*
+
+**Voir aussi**
+- `DESIGN-CER-BATCH-CREATE`.
 
 ---
 
@@ -4988,6 +5035,12 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Décisions d'architecture**
 - **Cocoon-scoped, pas article-scoped** : c'est le **pool du cocon**, distinct de `article_keywords` (Capitaine/Lieutenants/Lexique **sélectionnés pour un article**).
 - **Statuts ouverts (`TEXT`, pas `ENUM`)** : `suggested`, `validated`, `discarded` — gérés au niveau applicatif.
+- **Type : tolérant en lecture, strict en écriture** (2026-09-24) : `rowToKeyword` lit `type_mot_clef` avec `parseKeywordType` ([shared/utils/keyword-type.ts](../../shared/utils/keyword-type.ts)), qui comprend aussi les niveaux d'article en minuscules écrits par l'ancien Cerveau ; `POST` et `PUT /keywords` refusent (400 `INVALID_TYPE`) tout type qui n'est pas un `KeywordType`.
+- **Doublon interdit pour tout le site** : `addKeyword` renvoie `existingCocoon`, et le 409 le nomme.
+
+**Critères d'acceptation techniques**
+- AC.INFKW.1 : `parseKeywordType('pilier') === 'Pilier'`, casse et accents libres, `null` si inconnu. *(test : `tests/unit/shared/keyword-type.test.ts`, dans `npm run verify`)*
+- AC.INFKW.2 : `POST /keywords` avec `type: 'pilier'` écrit `'Pilier'` ; avec `type: 'chapitre'` répond 400 sans écrire. *(test : `tests/unit/routes/keywords-pool.routes.test.ts`)*
 
 **Voir aussi**
 - `DESIGN-CER-AIGUILLAGE`, `DESIGN-CER-BATCH-CREATE` — producteurs métier.

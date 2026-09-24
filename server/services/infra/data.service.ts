@@ -3,6 +3,7 @@ import { log } from '../../utils/logger.js'
 import { measureDb } from '../../utils/db-telemetry.js'
 import { microContextDbSchema } from '../../../shared/schemas/article-micro-context.schema.js'
 import { articleTypeDbToLevel, articleLevelToDbType } from '../../../shared/utils/article-level.js'
+import { parseKeywordType } from '../../../shared/utils/keyword-type.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type {
   Article,
@@ -540,12 +541,24 @@ export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[]
     [cocoonName]
   )
   if (res.rows.length === 0) return null
-  return res.rows.map(r => ({
+  return res.rows.map(rowToKeyword)
+}
+
+/**
+ * Lecture tolérante du type : le Cerveau a longtemps écrit le niveau d'article
+ * en minuscules (`'pilier'`) au lieu du `KeywordType` (`'Pilier'`), et les
+ * lecteurs ne trouvaient alors jamais le mot-clé pilier (épopée qualité SEO, K2).
+ * Une valeur inconnue est gardée telle quelle et signalée, pas remplacée.
+ */
+function rowToKeyword(r: { mot_clef: string; cocoon_name: string; type_mot_clef: string | null; statut: string | null }): Keyword {
+  const type = parseKeywordType(r.type_mot_clef)
+  if (!type) log.warn('keywords_seo — type de mot-clé inconnu', { keyword: r.mot_clef, type: r.type_mot_clef })
+  return {
     keyword: r.mot_clef,
     cocoonName: r.cocoon_name,
-    type: r.type_mot_clef,
-    status: r.statut ?? 'suggested',
-  }))
+    type: type ?? (r.type_mot_clef as Keyword['type']),
+    status: (r.statut ?? 'suggested') as Keyword['status'],
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -555,23 +568,22 @@ export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[]
 export async function loadKeywordsDb(): Promise<Keyword[]> {
   log.info('loadKeywordsDb() — fetching from PG')
   const res = await pool.query(`SELECT mot_clef, cocoon_name, type_mot_clef, statut FROM keywords_seo ORDER BY id`)
-  return res.rows.map(r => ({
-    keyword: r.mot_clef,
-    cocoonName: r.cocoon_name,
-    type: r.type_mot_clef,
-    status: r.statut ?? 'suggested',
-  }))
+  return res.rows.map(rowToKeyword)
 }
 
-export async function addKeyword(keyword: Keyword): Promise<{ success: boolean; duplicate?: boolean }> {
-  // Check duplicate
+export async function addKeyword(
+  keyword: Keyword,
+): Promise<{ success: boolean; duplicate?: boolean; existingCocoon?: string | null }> {
+  // Un même mot-clé visé par deux cocons se fait concurrence : le doublon est
+  // refusé pour tout le site, et on renvoie le cocon qui l'utilise déjà.
   const existing = await pool.query(
-    `SELECT id FROM keywords_seo WHERE LOWER(mot_clef) = LOWER($1)`,
+    `SELECT id, cocoon_name FROM keywords_seo WHERE LOWER(mot_clef) = LOWER($1) LIMIT 1`,
     [keyword.keyword]
   )
   if (existing.rows.length > 0) {
-    log.warn('addKeyword — doublon détecté', { keyword: keyword.keyword })
-    return { success: false, duplicate: true }
+    const existingCocoon = (existing.rows[0].cocoon_name as string | null) ?? null
+    log.warn('addKeyword — doublon détecté', { keyword: keyword.keyword, existingCocoon })
+    return { success: false, duplicate: true, existingCocoon }
   }
 
   await pool.query(

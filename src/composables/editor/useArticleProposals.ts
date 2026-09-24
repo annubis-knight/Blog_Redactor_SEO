@@ -1,3 +1,15 @@
+/**
+ * AUTHORITY: PostgreSQL `cocoon_strategies.data.proposedArticles` (JSONB, état de
+ *            travail des propositions), puis `articles` et `keywords_seo` une fois
+ *            une proposition acceptée.
+ * READS FROM: useCocoonStrategyStore.strategy (hydraté par le Cerveau).
+ * WRITES TO: saveStrategy (proposedArticles), POST /articles/batch-create,
+ *            POST /keywords (pool du cocon, type KeywordType), PATCH/DELETE /articles/:id.
+ * CONSUMERS: BrainArticleProposalView (grille des propositions), useCocoonsStore
+ *            (dashboard, liste du Moteur).
+ * RELATED FR: FR-CER-BATCH-CREATE, FR-CER-CREATION-HONNETE, FR-CER-TYPE-TOLERANT,
+ *             FR-INFRA-KEYWORDS-SEO.
+ */
 import { ref, watch, type Ref } from 'vue'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
@@ -6,6 +18,7 @@ import type { PainIntentExpected } from '@shared/types/scoring.types.js'
 import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import { useNotify } from '@/composables/ui/useNotify'
+import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
 
 import type { ArticleLevel } from './article-proposals/types'
 import {
@@ -188,15 +201,24 @@ export function useArticleProposals(params: {
         return
       }
       article.dbId = id
-      if (article.suggestedKeyword.trim()) {
-        await apiPost('/keywords', {
-          keyword: article.suggestedKeyword,
-          cocoonName: cocoonName.value,
-          type: article.type,
-        })
-      }
+      // L'article existe en base : il est créé, même si son mot-clé est refusé
+      // ensuite. Sinon un second clic tombait sur « adresse déjà prise » (K1).
       article.createdInDb = true
       log.info('Article created in DB', { title: article.title, articleId: article.dbId })
+      if (article.suggestedKeyword.trim()) {
+        try {
+          await apiPost('/keywords', {
+            keyword: article.suggestedKeyword,
+            cocoonName: cocoonName.value,
+            // Le pool attend un KeywordType (« Pilier »), pas le niveau canonique (K2).
+            type: articleLevelToDisplayLabel(article.type),
+          })
+        } catch (err) {
+          log.warn('createArticleInDb: mot-clé refusé par le pool', { title: article.title, error: (err as Error).message })
+          // Le serveur formule la cause (doublon : quel cocon, et pourquoi c'est un risque).
+          notify.warning(`« ${article.title} » est créé, mais son mot-clé n'a pas rejoint le pool du cocon : ${(err as Error).message}`)
+        }
+      }
     } catch (err) {
       log.error('createArticleInDb failed', { title: article.title, error: (err as Error).message })
     }
