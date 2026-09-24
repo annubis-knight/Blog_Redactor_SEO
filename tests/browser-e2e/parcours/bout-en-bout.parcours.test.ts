@@ -316,27 +316,27 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
       await expect.poll(async () => (await contenuEnBase()).includes(MARQUEUR.trim()),
         { timeout: 60000, message: 'la retouche doit atteindre la base' }).toBe(true)
 
-      // Comme un utilisateur : revenir dans le texte, sélectionner la retouche,
-      // l'effacer. Compter des retours arrière depuis la fin ne suffit pas : la
-      // sauvegarde peut réorganiser la fin du texte (vu sur l'article spécialisé).
-      await editeur.click()
-      await editeur.evaluate((el, marqueur) => {
+      // Comme un utilisateur : double-cliquer sur le mot ajouté, puis l'effacer
+      // avec l'espace qui le précède. Compter des retours arrière depuis la fin
+      // ne suffisait pas (la sauvegarde peut réorganiser la fin du texte), et une
+      // sélection posée par script n'est vue par l'éditeur qu'au tick suivant.
+      const boite = await editeur.evaluate((el, marqueur) => {
         const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
         for (let n = walker.nextNode(); n; n = walker.nextNode()) {
-          const texte = n.textContent ?? ''
-          const fin = texte.indexOf(marqueur)
-          if (fin < 0) continue
-          const debut = fin > 0 && /\s/.test(texte[fin - 1] ?? '') ? fin - 1 : fin
+          const debut = (n.textContent ?? '').indexOf(marqueur)
+          if (debut < 0) continue
+          n.parentElement?.scrollIntoView({ block: 'center' })
           const plage = document.createRange()
           plage.setStart(n, debut)
-          plage.setEnd(n, fin + marqueur.length)
-          const selection = window.getSelection()!
-          selection.removeAllRanges()
-          selection.addRange(plage)
-          return
+          plage.setEnd(n, debut + marqueur.length)
+          const r = plage.getBoundingClientRect()
+          return { x: r.left + r.width / 2, y: r.top + r.height / 2 }
         }
-        throw new Error('retouche introuvable dans l’éditeur')
+        return null
       }, MARQUEUR.trim())
+      expect(boite, 'la retouche doit être visible dans l’éditeur').not.toBeNull()
+      await page.mouse.dblclick(boite!.x, boite!.y)
+      await page.keyboard.press('Backspace')
       await page.keyboard.press('Backspace')
       await expect.poll(async () => (await editeur.innerText()).includes(MARQUEUR.trim()),
         { timeout: 15000, message: 'la retouche doit avoir disparu du texte à l’écran' }).toBe(false)
