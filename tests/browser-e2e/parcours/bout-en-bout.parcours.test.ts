@@ -294,22 +294,57 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
         .toBeGreaterThan(200)
     })
 
-    await test.step('une retouche se sauvegarde', async () => {
+    // La retouche est ensuite annulée : en mode réel, l'article reste en base
+    // pour être relu, et un « Relu. » ajouté par le test s'était retrouvé dans
+    // l'introduction du pilier 1013 (épopée qualité SEO, T1).
+    await test.step('une retouche se sauvegarde, puis s’annule sans laisser de trace', async () => {
+      const MARQUEUR = ' RETOUCHEPARCOURS'
+      const contenuEnBase = async () => {
+        const r = await query<{ content: string | null }>(
+          `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
+        return r.rows[0]?.content ?? ''
+      }
       const editeur = page.locator('.ProseMirror').first()
+      const sauver = page.locator('[data-testid="editor-save"]')
+
       await editeur.click()
       await page.keyboard.press('Control+End')
-      await page.keyboard.type(' Relu.')
-
-      const sauver = page.locator('[data-testid="editor-save"]')
+      await page.keyboard.type(MARQUEUR)
       await expect(sauver, 'la sauvegarde s’active dès qu’on touche au texte').toBeEnabled({ timeout: 30000 })
       await sauver.click()
       await expect(sauver, 'et se désactive une fois enregistré').toBeDisabled({ timeout: 60000 })
+      await expect.poll(async () => (await contenuEnBase()).includes(MARQUEUR.trim()),
+        { timeout: 60000, message: 'la retouche doit atteindre la base' }).toBe(true)
 
-      await expect.poll(async () => {
-        const r = await query<{ content: string | null }>(
-          `SELECT content FROM article_content WHERE article_id = $1`, [article.id])
-        return r.rows[0]?.content?.includes('Relu.') ?? false
-      }, { timeout: 60000, message: 'la retouche doit atteindre la base' }).toBe(true)
+      // Comme un utilisateur : revenir dans le texte, sélectionner la retouche,
+      // l'effacer. Compter des retours arrière depuis la fin ne suffit pas : la
+      // sauvegarde peut réorganiser la fin du texte (vu sur l'article spécialisé).
+      await editeur.click()
+      await editeur.evaluate((el, marqueur) => {
+        const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT)
+        for (let n = walker.nextNode(); n; n = walker.nextNode()) {
+          const texte = n.textContent ?? ''
+          const fin = texte.indexOf(marqueur)
+          if (fin < 0) continue
+          const debut = fin > 0 && /\s/.test(texte[fin - 1] ?? '') ? fin - 1 : fin
+          const plage = document.createRange()
+          plage.setStart(n, debut)
+          plage.setEnd(n, fin + marqueur.length)
+          const selection = window.getSelection()!
+          selection.removeAllRanges()
+          selection.addRange(plage)
+          return
+        }
+        throw new Error('retouche introuvable dans l’éditeur')
+      }, MARQUEUR.trim())
+      await page.keyboard.press('Backspace')
+      await expect.poll(async () => (await editeur.innerText()).includes(MARQUEUR.trim()),
+        { timeout: 15000, message: 'la retouche doit avoir disparu du texte à l’écran' }).toBe(false)
+      await expect(sauver, 'retirer la retouche réactive la sauvegarde').toBeEnabled({ timeout: 30000 })
+      await sauver.click()
+      await expect(sauver).toBeDisabled({ timeout: 60000 })
+      await expect.poll(async () => (await contenuEnBase()).includes(MARQUEUR.trim()),
+        { timeout: 60000, message: 'l’article ne doit garder aucune trace du test' }).toBe(false)
     })
 
     await test.step('l’aperçu s’ouvre et l’article peut être exporté', async () => {

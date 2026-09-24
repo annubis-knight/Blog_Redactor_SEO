@@ -77,8 +77,8 @@ Règles communes à tous les chantiers :
 
 | # | Chantier | Branche | Taille | Exigences | Statut |
 |---|---|---|---|---|---|
-| C0 | Traçabilité : épopée, modèle de PR, cliquet des IDs, dédoublonnage LEX | `chore/tracabilite-programme` | S | NFR-MAIN-REQUIREMENTS-TRACE | en cours |
-| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/…`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en cours (3/4 : `fix/cerveau-mots-cles`, `fix/moteur-intention-hn`, `fix/redaction-meta-contexte`) |
+| C0 | Traçabilité : épopée, modèle de PR, cliquet des IDs, dédoublonnage LEX | `chore/tracabilite-programme` | S | NFR-MAIN-REQUIREMENTS-TRACE | en revue |
+| C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/cerveau-mots-cles`, `fix/moteur-intention-hn`, `fix/redaction-meta-contexte`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en revue (4/4 PR) |
 | C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | à faire |
 | C3 | Lexique métier | `fix/lexique-metier` | M | FR-LEX-METIER-ONLY | à faire |
 | C4 | Architecture des prompts | `refactor/prompts-architecture` | M | FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT | à faire |
@@ -421,11 +421,13 @@ Il remplace FR-CER-BATCH-CREATE.
 - [ ] E1 — `.env` : `GEMINI_MODEL=GEMINI_MODEL=gemini-3.6-flash`.
 
 **Tests**
-- [ ] C1 · T1 — Le parcours tape « Relu. » dans l'introduction réelle (`bout-en-bout.parcours.test.ts:298-301`).
+- [ ] C1 · T1 — *(PR `test/hygiene-parcours` — correctif écrit : la retouche est sélectionnée puis effacée. Une version antérieure a été validée en local sur le pilier et l'intermédiaire ; **validation finale attendue de la CI Playwright de la PR**)* Le parcours tape « Relu. » dans l'introduction réelle (`bout-en-bout.parcours.test.ts:298-301`).
 - [ ] C2 · T2 — 46 `it.skip` (`captain-validation.test.ts`), plus des `describe.skip` sur le verrouillage des lieutenants et du lexique.
-- [ ] C2 · T3 — Assertions toujours vraies et 15 `return` anticipés.
+- [ ] C2 · T3 — Assertions toujours vraies et 15 `return` anticipés. *Plafonnées par le cliquet depuis `test/hygiene-parcours` : 31 `toBeGreaterThanOrEqual(0)`, 10 `typeof … 'boolean'`.*
+- [ ] C2 · T7 — **362 tests** de contrat et de parcours API commencent par `if (requireServer().skip) return` : sans serveur, ils sortent **verts** sans rien vérifier au lieu d'apparaître ignorés. À convertir en `it.skipIf(!serverOk)`. Plafonné à 362 par le cliquet (`test-quality.test.ts`).
+- [ ] C2 · T8 — Les tests navigateur **réutilisent le serveur de développement** (`reuseExistingServer`) et changent son **mode global** (simulé ou réel). Vu le 2026-09-24 : un mode réel posé pendant un parcours simulé l'a fait appeler la vraie IA (~0,02 $). L'inverse est aussi possible : un utilisateur qui travaille en parallèle voit apparaître des données simulées. À corriger : ports dédiés aux tests, ou refus de démarrer si le mode du serveur est forcé.
 - [ ] C2 · T4 — La simulation `propose-lieutenants` renvoie toujours « plombier ».
-- [ ] C1 · T5 — Le helper `MOTEUR_TABS` liste 5 onglets sur 6 (`moteur-ui.ts:81`).
+- [x] C1 · T5 — *(PR `test/hygiene-parcours`, test d'architecture `moteur-tabs-helper`)* Le helper `MOTEUR_TABS` liste 5 onglets sur 6 (`moteur-ui.ts:81`).
 - [ ] Dette figée par C0 : 29 IDs cités par des tests mais absents du PRD (`requirements-trace.test.ts`, `LEGACY_ORPHANS`). **27** après `fix/cerveau-mots-cles` (FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT écrites).
 - [ ] C2 · T6 — `tests/e2e-workflows/moteur.workflow.test.ts` « U5 TTL » compare deux durées (`e2 < e1 × 1,5`) : rouge au hasard (vu le 2026-09-24, vert 3 fois sur 3 en relance). Un test de cache doit vérifier qu'aucun appel externe n'est refait, pas un chronomètre. Même défaut dans `tests/e2e-workflows/cross-workflow.e2e.test.ts` « Cache cross-article » (`t2 < t1 × 2`), rouge une fois le 2026-09-24, vert 3 fois sur 3 en relance.
 
@@ -438,3 +440,5 @@ Il remplace FR-CER-BATCH-CREATE.
 | 2026-09-24 | C1 | `fix/cerveau-mots-cles` : K1-K4 corrigés ; FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT versées au PRD (cliquet 29 → 27) ; FR-INFRA-KEYWORDS-SEO durcie |
 | 2026-09-24 | C1 | `fix/moteur-intention-hn` : M1, M6, M8, M9 corrigés ; FR-RED-OUTLINE, FR-CER-WORD-COUNT-RECOMMEND, FR-LIE-HN-STRUCTURE, FR-CAP-RELEVANCE-INTENT-SIGNAL durcies |
 | 2026-09-24 | C1 | `fix/redaction-meta-contexte` : R2-R5, R8, R12, P2, P4 corrigés ; **FR-RED-META-CAPTAIN livrée** (première exigence réservée versée au PRD) ; FR-RED-META, FR-CER-MICRO-CONTEXT, FR-RED-ARTICLE, FR-MOT-RECAP-PUBLISHED, FR-RED-SEO-LIVE, NFR-SEC-PROMPT-INJECTION durcies |
+| 2026-09-24 | C1 | `test/hygiene-parcours` : T1 (la retouche du parcours est annulée et vérifiée absente en base ; validation finale en CI), T5 (test d'architecture onglets), cliquet étendu à trois faux verts ; T7 et T8 découverts |
+| 2026-09-24 | — | Pendant une exécution passée en mode réel, l'IA du Cerveau a **de nouveau** recopié l'exemple de `cocoon-articles.md` (« Stratégie digitale pour entreprises toulousaines », slug `strategie-digitale-entreprises-toulouse`, déjà pris par le 1013) : le pilier n'a pas pu être créé. Nouvelle preuve pour K7 (C4) |

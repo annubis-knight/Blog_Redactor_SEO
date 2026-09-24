@@ -133,6 +133,15 @@ const SOFT_LIMITS = {
   //   scenarii dépendaient de la disponibilité de fixtures PascalCase + de la
   //   fonction `articleTypeToLevel` (supprimée).
   itSkip: 91,                      // it.skip / test.skip / describe.skip
+  // 2026-09-24 — épopée qualité SEO (C1, cliquet des faux verts) : trois formes
+  // d'assertion qui passent quoi qu'il arrive, figées à leur niveau du jour.
+  //   - `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur : toujours vrai ;
+  //   - `expect(typeof x).toBe('boolean')` : vérifie le type, jamais la valeur ;
+  //   - `if (requireServer().skip) return` : sans serveur, le test sort VERT au
+  //     lieu d'apparaître « ignoré ». À convertir en `it.skipIf` (checklist T7).
+  alwaysTrueGte0: 31,
+  typeofBoolean: 10,
+  silentServerSkip: 362,
 } as const
 
 // ============================================================================
@@ -183,6 +192,37 @@ describe('Test quality — anti-régression qualité de la suite', () => {
         `Si tu en as ajouté, soit dé-skip et fix, soit baisse / monte la baseline en justifiant. ` +
         `Localisations:\n${formatViolations(byFile)}`,
     ).toBeLessThanOrEqual(SOFT_LIMITS.itSkip)
+  })
+
+  it(`toBeGreaterThanOrEqual(0) ne doit pas augmenter (baseline: ${SOFT_LIMITS.alwaysTrueGte0})`, async () => {
+    const { total, byFile } = await scanPattern(/toBeGreaterThanOrEqual\(0\)/g)
+    expect(
+      total,
+      `${total} assertion(s) « >= 0 » (baseline=${SOFT_LIMITS.alwaysTrueGte0}). Un compte ou une longueur ` +
+        `est toujours >= 0 : l'assertion ne teste rien. Vérifie la valeur attendue. Localisations:
+${formatViolations(byFile)}`,
+    ).toBeLessThanOrEqual(SOFT_LIMITS.alwaysTrueGte0)
+  })
+
+  it(`expect(typeof …).toBe('boolean') ne doit pas augmenter (baseline: ${SOFT_LIMITS.typeofBoolean})`, async () => {
+    const { total, byFile } = await scanPattern(/expect\(typeof [^)]+\)\.toBe\('boolean'\)/g)
+    expect(
+      total,
+      `${total} assertion(s) sur le seul type booléen (baseline=${SOFT_LIMITS.typeofBoolean}). ` +
+        `Vérifie la valeur attendue (true / false), pas son type. Localisations:
+${formatViolations(byFile)}`,
+    ).toBeLessThanOrEqual(SOFT_LIMITS.typeofBoolean)
+  })
+
+  it(`les tests qui sortent verts sans serveur ne doivent pas augmenter (baseline: ${SOFT_LIMITS.silentServerSkip})`, async () => {
+    const { total, byFile } = await scanPattern(/requireServer\(\)\.skip\) return/g)
+    expect(
+      total,
+      `${total} « if (requireServer().skip) return » (baseline=${SOFT_LIMITS.silentServerSkip}). Sans serveur, ` +
+        `ces tests passent au vert sans rien vérifier. Utilise it.skipIf(!serverOk) pour qu'ils apparaissent ignorés. ` +
+        `Localisations:
+${formatViolations(byFile)}`,
+    ).toBeLessThanOrEqual(SOFT_LIMITS.silentServerSkip)
   })
 
   // Sentinelle : si la liste de fichiers de tests s'effondre brutalement,
