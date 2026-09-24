@@ -10,7 +10,7 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-kpi-types-nullable.md'
 workflowType: 'prd'
 completedAt: '2026-03-31'
-lastUpdated: '2026-09-22T00:00:00Z'
+lastUpdated: '2026-09-24T00:00:00Z'
 updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor). Ajout 2026-05-05 (chantier KPI nullable) : 4 nouvelles FRs §8.14 (FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE) qui formalisent la migration des types KPI marché (KeywordOverview, LocationMetrics, RadarKeywordKpis, ValidatePainResult.dataforseo, KeywordAuditResult) vers number | null de bout en bout. Chaque FR porte des AC testables Vitest (pas seulement narratives). Extension FR-INFRA-NO-SCORE-FALLBACK (ajout Difficulty/Cpc/Competition au scope ESLint), FR-INFRA-SCORE-MODULE (ajout helpers formatVolume/Cpc/Kd/Percent), FR-MOT-RAW-KPIS (placeholder "—" quand KPI absent). Source : tech-spec-kpi-types-nullable. Ajout 2026-05-05 (chantier fetch-to-wrapper-migration) : FR-INFRA-API-WRAPPER affiné (périmètre clarifié, dette résorbée, critère mesurable via audit), FR-INFRA-API-STREAM nouveau (wrapper SSE unifié pour POST → ReadableStream avec mêmes garanties cost-log + KNOWN_ERROR_CODES que apiPost), NFR-INT-API-WRAPPER affiné (critère d''acceptation = 0 violation audit), NFR-OBS-EXTERNAL-API-OPT-OUT nouveau (commentaire `// External API call — bypass wrapper by design` obligatoire sur les 14 fetch externes côté server/services/external/*). Section §12.5 dette technique : ligne `fetch() directs résiduels` marquée résorbée. Source : tech-spec-fetch-to-wrapper-migration. Ajout 2026-05-05 (chantier audit couverture DB) : 9 nouvelles FR-INFRA §8.14 formalisant les tables PostgreSQL jusqu''ici fantômes ou sous-couvertes au PRD (FR-INFRA-PAA-EXPLORATIONS, FR-INFRA-INTENT-EXPLORATIONS-LEGACY, FR-INFRA-KEYWORDS-SEO, FR-INFRA-LOCAL-ENTITIES, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-ARTICLE-STRATEGIES, FR-INFRA-COCOON-STRATEGIES, FR-INFRA-MICRO-CONTEXTS). Chaque FR documente le schéma + producteurs + consommateurs avec lignes de code source. Vérification DB live (psql) confirme 20 tables actives (vs 22 dans les CREATE TABLE — 2 renommées via migration 010, 1 jamais matérialisée : `intent_explorations`). Ajout d''une §8.14.bis Matrice de couverture tables ↔ FR (vue inverse FR↔table) qui répond aux questions opérationnelles : impact d''un changement schéma, impact d''un changement FR, détection de tables sans FR. Règle de maintenance : toute migration créant/modifiant une table doit ajouter/maj une ligne dans la matrice. Migration 2026-05-12 (chantier docs/prd-split-spec-design) : §8.10 Rédaction (13 FRs FR-RED-*) réécrites en langage utilisateur avec critères d''acceptation observables et bloc "En situation" narratif. Détails techniques (refs code, endpoints, flux DB, stores Pinia, watchers, décisions d''architecture) déplacés vers le design-registry §8.10 (13 entrées DESIGN-RED-*). Stores vérifiés : useEditorStore, useOutlineStore, useSeoStore, useGeoStore, useBriefStore, useLinkingStore, useArticleProgressStore. DRIFT-015 consigné (`internal_links.position` est une string offset caractère, pas une position ProseMirror stable — non bloquant tant que la matrice cocon n''a pas besoin de jumper précisément vers le mark). Migration 2026-05-12 (chantier docs/prd-split-spec-design suite) : §9.1 Performance (7 NFRs NFR-PERF-*), §9.2 Coût (6 NFRs NFR-COST-*), §9.3 Intégration (10 NFRs NFR-INT-* + NFR-OBS-EXTERNAL-API-OPT-OUT), §9.4 Maintenabilité (10 NFRs NFR-MAIN-*) réécrites au format utilisateur avec critères observables et exemples "En situation" succincts. Conception déportée vers design-registry §9.1-§9.4 (entrées DESIGN-PERF-*, DESIGN-COST-*, DESIGN-INT-*, DESIGN-MAIN-*, DESIGN-OBS-EXTERNAL-API-OPT-OUT). Drifts consignés : DRIFT-021 (NFR-MAIN-FILE-SIZE listait CaptainValidation.vue 1507L et KeywordDiscoveryTab.vue 1419L qui n''existent plus — refactorisés depuis ; BrainPhase.vue ramené de 1066L à 575L ; nouveaux offenders identifiés : CaptainPanel.vue 1509L, data.service.ts 1052L), DRIFT-022 (NFR-COST-DATAFORSEO-BUDGET citait env vars `DATAFORSEO_COST_BUDGET` / `DATAFORSEO_COST_WINDOW_MINUTES` ; les vraies sont `DATAFORSEO_COST_BUDGET_USD` / `DATAFORSEO_COST_WINDOW_MIN`), DRIFT-023 (NFR-MAIN-ORG-COMPOSABLES citait 5 domaines mais le code en a 8 : article, editor, intent, keyword, lexique, moteur, seo, ui).'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -2275,85 +2275,6 @@ Deux gestes distincts cohabitent dans le Lexique : **explorer** des Lexiques de 
 
 → Conception : [DESIGN-LEX-LECTURE-VS-VERROUILLAGE](./design-registry.md#design-lex-lecture-vs-verrouillage)
 
-#### FR-LEX-PRECHECK-SERP
-**UX pré-check SERP au mount du Lexique** *(actif 2026-05-09 — Stories E1-S1+S2+S3 chantier 3)*. Au mount du `LexiquePanel`, un endpoint léger `GET /api/keywords/:keyword/serp/exists` répond `{ exists: boolean, scrapedAt: timestamp | null }` sans charger le JSONB entier ni les scrapes.
-
-**Comportement UI** :
-- `exists: true` → bouton « Extraire le Lexique » actif immédiatement.
-- `exists: false` → message explicite *« Le scrape SERP n'est pas encore disponible pour ce mot-clé »* + CTA *« Lancer l'analyse SERP (consomme ~$0.003 DataForSEO) »* avec confirmation modale.
-- Plus de **404 dans la console** : c'est un état attendu, pas une erreur technique.
-
-**Contrats techniques** *(implémentés)* :
-- Service `hasSerpScrape(keyword, lang, country)` dans `server/services/keyword/keyword-serp.service.ts`. SQL `MAX(scraped_at) FROM keyword_serp_scrapes` (sub-ms).
-- Composable `useSerpExistsCheck(keyword: Ref<string|null>)` dans `src/composables/lexique/useSerpExistsCheck.ts`. Watch immediate + refetch().
-- Modale `<ConfirmModal>` réutilisable dans `src/components/shared/ConfirmModal.vue`.
-- POST `/serp/tfidf` accepte un body `triggerScrapeIfMissing: boolean` (default false → compat 404 verbatim AC.C1.1/C2.2). Honoré par `analyzeLexique` (chantier 2 livré).
-
-**Critères d'acceptation testables** :
-- AC.LEX-PRECHECK.1 : Endpoint `GET /api/keywords/:keyword/serp/exists` répond `{ exists: false, scrapedAt: null }` pour un keyword jamais scrapé. 200 OK, pas 404. Validation 400 si keyword vide ou >200 chars. *(test : `tests/integration/keywords-serp-exists.test.ts`)*
-- AC.LEX-PRECHECK.2 : Endpoint répond `{ exists: true, scrapedAt: '2026-05-...' }` pour un keyword déjà scrapé. *(test : idem)*
-- AC.LEX-PRECHECK.3 : Au mount du LexiquePanel, ce GET est appelé une fois ; selon la réponse, le bouton « Extraire » est visible ou remplacé par le CTA « Lancer l'analyse SERP ». *(test : `tests/unit/components/moteur/LexiquePanel.precheck.test.ts`)*
-- AC.LEX-PRECHECK.4 : Le clic sur « Lancer l'analyse SERP » ouvre `<ConfirmModal>`. Confirmation → POST `/serp/tfidf` appelé avec `triggerScrapeIfMissing: true` (1 seul appel) → refetch `useSerpExistsCheck` pour repasser à l'état nominal. *(test : idem)*
-- AC.LEX-PRECHECK.5 : Aucun appel direct à `POST /api/serp/tfidf` qui aboutirait à un 404 (la logique pré-check empêche ce cas — watcher auto-restore gated par `serpExists !== false`). *(test : idem, mock count = 0)*
-
-**Statut :** **active** *(implémenté 2026-05-09 — Story E1 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
-**Voir aussi :** FR-LEX-SCRAPE-DEDIE, FR-LEX-MULTI-KEYWORD-TABS.
-
-#### FR-LEX-MULTI-KEYWORD-TABS
-**Système d'onglets par `source_keyword` dans le container Lexique** *(actif 2026-05-09 — Stories E2-S1+S2+S3 chantier 3)*. Le container Lexique affiche un système d'onglets, **un onglet par `source_keyword` exploré pour l'article courant** (lus depuis `lexique_explorations`).
-
-**Comportement** :
-- Le label de chaque onglet = `source_keyword` brut (ex. `creation site web entreprises`, `creation site Toulouse`). **Pas de transformation côté UI** (cohérence affichage/calcul §2.0 CLAUDE.md : `tab.id === tab.label === entry.sourceKeyword`).
-- L'onglet actif affiche le `tfidfResult` correspondant + ses recommandations IA, sans refetch DB.
-- Un onglet « + Tester un mot-clé » (ou « Tester un mot-clé » s'il n'y a aucune exploration) ouvre le champ libre existant (`extractCustomKeyword`).
-- Le composant utilise `<TabBar>` partagé (`src/components/shared/TabBar.vue`, ARIA-compliant role="tablist"/role="tab"/aria-selected).
-
-**Contrats techniques** *(implémentés)* :
-- Composant pur `<TabBar>` réutilisable : props `{ tabs: TabItem[], activeId: string, ariaLabel? }`, emit `update:activeId`, support `disabled`.
-- Composant `LexiqueCustomKeywordInput.vue` (renommage de `LexiqueMultiKeywordPanel.vue`) — saisie libre uniquement (la liste d'explorations est portée par `<TabBar>` côté parent).
-- LexiquePanel : computed `lexiqueTabs`, `displayedTabId` (matching strict, pas de lowercase), handler `onSelectTab`. `extractCustomKeyword` appelle `mergeFromDb` après succès → nouvel onglet apparaît automatiquement.
-
-**Critères d'acceptation testables** :
-- AC.LEX-TABS.1 : Article avec 3 `lexique_explorations` → 3 onglets + 1 onglet « + Tester un mot-clé » (4 boutons `role="tab"`). *(test : `tests/unit/components/moteur/LexiquePanel.tabs.test.ts`)*
-- AC.LEX-TABS.2 : Cliquer sur un onglet change le `tfidfResult` affiché sans refetch DB (`apiGet('/articles/:id/explorations')` count stable). *(test : idem + `lexique-extraction.gaps`)*
-- AC.LEX-TABS.3 : Extraction d'un keyword vierge → nouvel onglet via `mergeFromDb` post-fetch + sélection automatique (matching strict `activeSourceKeyword === entry.sourceKeyword`). *(test : `lexique-extraction.gaps`)*
-- AC.LEX-TABS.4 : Article sans aucune exploration → 1 seul onglet « Tester un mot-clé ». *(test : `LexiquePanel.tabs.test.ts` + `lexique-extraction.gaps`)*
-- AC.LEX-TABS.5 : Test architectural — `LexiquePanel.vue` importe `TabBar` depuis `@/components/shared/`, `<TabBar>` reste pur (aucun import métier Lexique). *(test : `tests/unit/architecture/lexique-tabbar.test.ts`)*
-
-**Statut :** **active** *(implémenté 2026-05-09 — Story E2 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
-**Voir aussi :** FR-LEX-MULTI-KEYWORD (existant, étendu), FR-LEX-LECTURE-VS-VERROUILLAGE.
-
-#### FR-LEX-LECTURE-VS-VERROUILLAGE
-**Séparation stricte des responsabilités lecture vs verrouillage** *(actif 2026-05-09 — Stories E3-S1+S2+S3 chantier 3)*. Deux familles de fonctions strictement séparées via deux composables Vue dédiés :
-
-**Famille LECTURE** — `src/composables/lexique/useLexiqueExplorations.ts` :
-- `pastExplorations`, `activeSourceKeyword`, `tfidfResult`, `iaRecommendations` (refs propres au composable).
-- `hydrateFromDb()` / `mergeFromDb()` — GET `/articles/:id/explorations` (lecture seule).
-- `selectExploration(sourceKeyword)` — switch onglet pur (lit le cache, 0 fetch).
-- `addExploration(entry)` — push local post-extractCustomKeyword.
-- `reset()` — purge cache sur switch d'article.
-- **Aucune mutation** de `article_keywords.lexique`. Aucun import de `article-keywords.store`. Le seul import depuis `api.service` est `apiGet`.
-
-**Famille VERROUILLAGE** — `src/composables/lexique/useLexiqueLocking.ts` :
-- `lockedTerms` (proxy lecture `store.keywords.lexique`), `isLocked` (computed length>0).
-- `toggleTerm(term)` — délègue à `articleKeywordsStore.add/removeLexiqueTerm` puis `saveDecisions(id)` → 1 PUT `/articles/:id/keywords` par toggle.
-- **Aucune lecture** de `lexique_explorations`. Aucun appel `apiGet('/explorations')`.
-
-**Watcher gating workflow isolé** — `LexiquePanel.vue` conserve le watcher `isLocked` qui émet `check-completed`/`check-removed` `MOTEUR_LEXIQUE_VALIDATED`. C'est de la propagation de check workflow (orchestration MoteurView ↔ LexiquePanel), distincte des deux familles LECTURE/VERROUILLAGE (AC.LEX-SEP.4).
-
-**Critères d'acceptation testables** :
-- AC.LEX-SEP.1 : Test unitaire — appels aux fonctions LECTURE déclenchent **0 PUT** vers `/articles/:id/keywords`. *(test : `tests/unit/composables/lexique/useLexiqueExplorations.test.ts`, 5 verts)*
-- AC.LEX-SEP.2 : Test unitaire — appels aux fonctions VERROUILLAGE déclenchent **0 GET** vers `/articles/:id/explorations`. *(test : `tests/unit/composables/lexique/useLexiqueLocking.test.ts`, 4 verts)*
-- AC.LEX-SEP.3 : Test architectural (grep code, commentaires ignorés) — useLexiqueExplorations.ts n'importe que `apiGet` et n'appelle aucune fonction VERROUILLAGE ; useLexiqueLocking.ts n'utilise jamais `hydrateFromDb`/`mergeFromDb`/`pastExplorations`/`/explorations`. *(test : `tests/unit/architecture/lexique-separation.test.ts`, 4 verts)*
-- AC.LEX-SEP.4 : Test architectural — le watcher `isLocked` + emit `MOTEUR_LEXIQUE_VALIDATED` est présent dans LexiquePanel.vue mais absent des deux composables. *(test : `tests/unit/architecture/lexique-watcher-isolated.test.ts`, 3 verts)*
-
-**Métriques refacto** :
-- LexiquePanel.vue `<script>` : 497 → 299 lignes (-40 %).
-- 9 stories livrées sur 1 branche unique `feat/chantier-3-ux-lexique`.
-
-**Statut :** **active** *(implémenté 2026-05-09 — Story E3 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique.
-**Voir aussi :** FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-MULTI-KEYWORD-TABS.
-
 ---
 
 #### FR-LEX-CHECKBOX-LOCK-IMMEDIATE — Cocher un terme du Lexique l'ajoute immédiatement à la sélection *(déplacée depuis §8.6 le 2026-05-12)*
@@ -4079,6 +4000,23 @@ L'arbre des imports de l'app est **acyclique** : un module A qui importe B ne pe
 
 ---
 
+#### NFR-MAIN-REQUIREMENTS-TRACE — Toute exigence citée par un test existe par écrit
+
+Un test qui cite une exigence (`FR-…`, `NFR-…`, `DESIGN-…`) promet de protéger un besoin précis. Si l'identifiant est mal orthographié, renommé, ou jamais écrit dans le PRD, le test continue de passer mais plus personne ne sait ce qu'il protège. La vérification rapide du projet contrôle donc que chaque identifiant cité par un test existe réellement : dans ce PRD, dans le registre de conception, ou dans l'épopée en cours qui réserve les exigences pas encore livrées.
+
+**Critères d'acceptation**
+- Un identifiant cité par un test et introuvable fait échouer `npm run verify`, en nommant l'identifiant et le fichier.
+- La dette constatée à la mise en place (identifiants déjà orphelins) est figée et ne peut que baisser : dès qu'un identifiant devient traçable, il doit sortir de la liste.
+- Une exigence réservée dans l'épopée entre au PRD dans la PR qui la livre.
+
+**Statut :** active. **Depuis :** 2026-09-24. **Source :** épopée qualité SEO, chantier C0.
+
+> **En situation.** Un développeur cite par erreur `FR-LEX-TF-IDF` (au lieu de `FR-LEX-TFIDF`) dans un test sans toucher au PRD. `npm run verify` échoue et affiche : « FR-LEX-TF-IDF ← tests/unit/services/tfidf.test.ts ». Il corrige l'orthographe au lieu de laisser un lien mort.
+
+→ Conception : [DESIGN-MAIN-REQUIREMENTS-TRACE](./design-registry.md#design-main-requirements-trace)
+
+---
+
 ### 9.5 — Sécurité et robustesse (NFR-SEC)
 
 > **Pourquoi cette section ?**
@@ -4568,6 +4506,7 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | NFR-OBS-EXTERNAL-API-OPT-OUT | nouveau (opt-out documenté pour fetch externes) | tech-spec-fetch-to-wrapper-migration | 2026-05-05 |
 | NFR-CFG-APP-PORTS | nouveau (ports figés 3400 back / 5400 front) | chantier-ports-3400-5400 | 2026-05-05 |
 | NFR-CFG-PORT-PREFLIGHT | nouveau (kill-port preflight idempotent) | chantier-ports-3400-5400 | 2026-05-05 |
+| NFR-MAIN-REQUIREMENTS-TRACE | nouveau (cliquet des IDs cités par les tests) | epic-qualite-seo-garde-fous (C0) | 2026-09-24 |
 
 ### 12.5 — Dette technique identifiée
 

@@ -3067,7 +3067,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 ### DESIGN-LEX-PRECHECK-SERP
 
-**Réf PRD :** [FR-LEX-PRECHECK-SERP](./prd.md#fr-lex-precheck-serp)
+**Réf PRD :** [FR-LEX-PRECHECK-SERP](./prd.md#fr-lex-precheck-serp--vérification-préalable-et-cta-explicite-si-rien-na-été-scrappé)
 
 **Refs code**
 - [server/services/keyword/keyword-serp.service.ts](../../server/services/keyword/keyword-serp.service.ts) — fonction `hasSerpScrape(keyword, lang, country)`.
@@ -3091,13 +3091,22 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - Endpoint léger (pas de payload JSONB lourd) — pour pouvoir l'appeler au mount sans surcoût.
 - Évite les 404 dans la console — l'absence devient un état attendu.
 
+**Critères d'acceptation techniques**
+- AC.LEX-PRECHECK.1 : Endpoint `GET /api/keywords/:keyword/serp/exists` répond `{ exists: false, scrapedAt: null }` pour un keyword jamais scrapé. 200 OK, pas 404. Validation 400 si keyword vide ou >200 chars. *(test : `tests/integration/keywords-serp-exists.test.ts`)*
+- AC.LEX-PRECHECK.2 : Endpoint répond `{ exists: true, scrapedAt: '2026-05-...' }` pour un keyword déjà scrapé. *(test : idem)*
+- AC.LEX-PRECHECK.3 : Au mount du LexiquePanel, ce GET est appelé une fois ; selon la réponse, le bouton « Extraire » est visible ou remplacé par le CTA « Lancer l'analyse SERP ». *(test : `tests/unit/components/moteur/LexiquePanel.precheck.test.ts`)*
+- AC.LEX-PRECHECK.4 : Le clic sur « Lancer l'analyse SERP » ouvre `<ConfirmModal>`. Confirmation → POST `/serp/tfidf` appelé avec `triggerScrapeIfMissing: true` (1 seul appel) → refetch `useSerpExistsCheck` pour repasser à l'état nominal. *(test : idem)*
+- AC.LEX-PRECHECK.5 : Aucun appel direct à `POST /api/serp/tfidf` qui aboutirait à un 404 (la logique pré-check empêche ce cas — watcher auto-restore gated par `serpExists !== false`). *(test : idem, mock count = 0)*
+
+**Historique** : **active** *(implémenté 2026-05-09 — Story E1 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique. Critères déplacés depuis le doublon technique du PRD le 2026-09-24.
+
 **Voir aussi** : `DESIGN-LEX-SCRAPE-DEDIE`.
 
 ---
 
 ### DESIGN-LEX-MULTI-KEYWORD-TABS
 
-**Réf PRD :** [FR-LEX-MULTI-KEYWORD-TABS](./prd.md#fr-lex-multi-keyword-tabs)
+**Réf PRD :** [FR-LEX-MULTI-KEYWORD-TABS](./prd.md#fr-lex-multi-keyword-tabs--système-donglets-pour-explorer-plusieurs-mots-clés)
 
 **Refs code**
 - [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — orchestration des onglets via `<TabBar>`.
@@ -3120,13 +3129,22 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - Label = `source_keyword` brut (pas de transformation) — cohérence affichage/calcul CLAUDE.md §2.0.
 - `<TabBar>` est un composant pur sans logique métier (réutilisable).
 
+**Critères d'acceptation techniques**
+- AC.LEX-TABS.1 : Article avec 3 `lexique_explorations` → 3 onglets + 1 onglet « + Tester un mot-clé » (4 boutons `role="tab"`). *(test : `tests/unit/components/moteur/LexiquePanel.tabs.test.ts`)*
+- AC.LEX-TABS.2 : Cliquer sur un onglet change le `tfidfResult` affiché sans refetch DB (`apiGet('/articles/:id/explorations')` count stable). *(test : idem + `lexique-extraction.gaps`)*
+- AC.LEX-TABS.3 : Extraction d'un keyword vierge → nouvel onglet via `mergeFromDb` post-fetch + sélection automatique (matching strict `activeSourceKeyword === entry.sourceKeyword`). *(test : `lexique-extraction.gaps`)*
+- AC.LEX-TABS.4 : Article sans aucune exploration → 1 seul onglet « Tester un mot-clé ». *(test : `LexiquePanel.tabs.test.ts` + `lexique-extraction.gaps`)*
+- AC.LEX-TABS.5 : Test architectural — `LexiquePanel.vue` importe `TabBar` depuis `@/components/shared/`, `<TabBar>` reste pur (aucun import métier Lexique). *(test : `tests/unit/architecture/lexique-tabbar.test.ts`)*
+
+**Historique** : **active** *(implémenté 2026-05-09 — Story E2 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique. Critères déplacés depuis le doublon technique du PRD le 2026-09-24.
+
 **Voir aussi** : `DESIGN-LEX-MULTI-KEYWORD`, `DESIGN-LEX-LECTURE-VS-VERROUILLAGE`.
 
 ---
 
 ### DESIGN-LEX-LECTURE-VS-VERROUILLAGE
 
-**Réf PRD :** [FR-LEX-LECTURE-VS-VERROUILLAGE](./prd.md#fr-lex-lecture-vs-verrouillage)
+**Réf PRD :** [FR-LEX-LECTURE-VS-VERROUILLAGE](./prd.md#fr-lex-lecture-vs-verrouillage--séparation-stricte-entre-exploration-et-validation)
 
 **Refs code**
 - [src/composables/lexique/useLexiqueExplorations.ts](../../src/composables/lexique/useLexiqueExplorations.ts) — famille LECTURE (hydrate, merge, select).
@@ -3153,6 +3171,14 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Décisions d'architecture**
 - Tests architecturaux permanents (4 verts) : grep code vérifie l'absence d'import croisé entre familles.
 - Métrique refacto : `LexiquePanel.vue <script>` 497 → 299 lignes (-40 %).
+
+**Critères d'acceptation techniques**
+- AC.LEX-SEP.1 : Test unitaire — appels aux fonctions LECTURE déclenchent **0 PUT** vers `/articles/:id/keywords`. *(test : `tests/unit/composables/lexique/useLexiqueExplorations.test.ts`, 5 verts)*
+- AC.LEX-SEP.2 : Test unitaire — appels aux fonctions VERROUILLAGE déclenchent **0 GET** vers `/articles/:id/explorations`. *(test : `tests/unit/composables/lexique/useLexiqueLocking.test.ts`, 4 verts)*
+- AC.LEX-SEP.3 : Test architectural (grep code, commentaires ignorés) — useLexiqueExplorations.ts n'importe que `apiGet` et n'appelle aucune fonction VERROUILLAGE ; useLexiqueLocking.ts n'utilise jamais `hydrateFromDb`/`mergeFromDb`/`pastExplorations`/`/explorations`. *(test : `tests/unit/architecture/lexique-separation.test.ts`, 4 verts)*
+- AC.LEX-SEP.4 : Test architectural — le watcher `isLocked` + emit `MOTEUR_LEXIQUE_VALIDATED` est présent dans LexiquePanel.vue mais absent des deux composables. *(test : `tests/unit/architecture/lexique-watcher-isolated.test.ts`, 3 verts)*
+
+**Historique** : **active** *(implémenté 2026-05-09 — Story E3 chantier 3)*. **Depuis :** 2026-05-09. **Source :** plan-chantier-3-ux-lexique. Critères déplacés depuis le doublon technique du PRD le 2026-09-24.
 
 **Voir aussi** : `DESIGN-LEX-CHECK`, `DESIGN-LEX-MULTI-KEYWORD-TABS`.
 
@@ -6173,6 +6199,29 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Voir aussi**
 - `DESIGN-MAIN-CHECK-HEALTH` — intégration.
+
+---
+
+#### DESIGN-MAIN-REQUIREMENTS-TRACE
+
+**Réf PRD :** [NFR-MAIN-REQUIREMENTS-TRACE](./prd.md#nfr-main-requirements-trace--toute-exigence-citée-par-un-test-existe-par-écrit)
+
+**Refs code**
+- [tests/unit/architecture/requirements-trace.test.ts](../../tests/unit/architecture/requirements-trace.test.ts) — scanne `tests/` (`.ts`, `.js`, `.vue`), extrait les IDs `(N)FR-…` / `DESIGN-…` et vérifie leur présence (mot entier) dans `prd.md` (FR/NFR), `design-registry.md` (DESIGN) ou l'épopée `epic-qualite-seo-garde-fous.md`.
+- [.github/pull_request_template.md](../../.github/pull_request_template.md) — chaque PR cite les exigences livrées ou touchées.
+
+**Décisions d'architecture**
+- **Dans `npm run verify`** : le test vit dans `tests/unit/architecture/`, inclus par `vitest.verify.config.ts` (environnement `node`, sans I/O réseau ni base).
+- **Cliquet `LEGACY_ORPHANS`** : 29 IDs orphelins constatés le 2026-09-24, figés. Un second test échoue si l'un d'eux devient traçable ou n'est plus cité : la liste ne peut que baisser.
+- **L'épopée réserve les IDs** : une exigence planifiée peut être citée par un test (TDD Red) avant d'entrer au PRD, sans écart doc ↔ code dans le PRD.
+
+**Critères d'acceptation techniques**
+- AC.MAINRT.1 : un ID inconnu cité par un test fait échouer le test « aucun nouvel ID orphelin », avec l'ID et le fichier dans le message.
+- AC.MAINRT.2 : un ID de `LEGACY_ORPHANS` devenu traçable fait échouer le test du cliquet.
+- AC.MAINRT.3 : sentinelle — le scanner trouve plus de 100 IDs.
+
+**Voir aussi**
+- `DESIGN-MAIN-CHECK-HEALTH` — santé globale.
 
 ---
 

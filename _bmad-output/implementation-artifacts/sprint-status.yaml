@@ -895,6 +895,23 @@ development_status:
   # serveur requis), cliquet display-contracts-coverage à 0/0, code mort = main.
   contrats-affichage: done
 
+  # ----- Programme qualité SEO (analyse du pilier 1013, 2026-09-24) -----
+  # Épopée : epic-qualite-seo-garde-fous.md (v1.0.0). Décisions validées avec
+  # Arnaud : alarme graduée + responsabilité, cocon né du pilier, premier jet
+  # en un appel puis passes d'enrichissement, maillage manuel, onglet Structure.
+  # Exigences réservées dans l'épopée, versées au PRD dans la PR qui les livre.
+  # Une branche + une PR GitHub par chantier. Fil conducteur : la fixture du
+  # pilier 1013 doit être rejetée dès C2 ; un pilier réel passe sans dérogation en C8.
+  qualite-seo-c0-tracabilite: review
+  qualite-seo-c1-correctifs-rapides: backlog
+  qualite-seo-c2-verificateurs-alarme: backlog
+  qualite-seo-c3-lexique-metier: backlog
+  qualite-seo-c4-prompts-architecture: backlog
+  qualite-seo-c5-redaction-deux-temps: backlog
+  qualite-seo-c6-onglet-structure-hn: backlog
+  qualite-seo-c7-cocon-progressif: backlog
+  qualite-seo-c8-recette-reelle: backlog
+
 # ===== Backlog (non livré) =====
 #
 # - Story 3.3 bis : Indicateur d'alignement stratégique dans l'Explorateur
