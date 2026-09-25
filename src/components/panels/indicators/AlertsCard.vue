@@ -180,8 +180,8 @@ const alertCount = computed(() => alerts.value.length)
 }
 
 .alert-warning {
-  background: var(--color-warning-bg, #fffbeb);
-  color: var(--color-warning-text, #92400e);
+  background: var(--color-warning-bg);
+  color: var(--color-warning-text);
 }
 
 .alert-warning .alert-dot {

@@ -20,6 +20,11 @@
   --color-secondary: #64748b;          /* slate-500 — 4.6:1 */
   --color-success: #15803d;            /* green-700 — 5.0:1 */
   --color-warning: #b45309;            /* amber-800 — 5.0:1 */
+  --color-warning-hover: #92400e;      /* amber-900 — survol d'un bouton d'alerte */
+  --color-warning-text: #92400e;       /* amber-900 — 6.9:1 sur --color-warning-bg */
+  --color-warning-bg: #fffbeb;         /* amber-50  — fond d'un bandeau d'alerte */
+  --color-warning-soft: #fef3c7;       /* amber-100 — fond d'une ligne signalée */
+  --color-warning-border: #fde68a;     /* amber-200 */
   --color-error: #b91c1c;              /* red-800   — 5.5:1 */
 
   /* ── Surfaces ──────────────────────────────────────────── */

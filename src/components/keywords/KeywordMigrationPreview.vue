@@ -88,7 +88,7 @@ const editableAssignments = ref([...props.assignments])
 
 .warnings {
   padding: 0.75rem 1rem;
-  background: var(--color-warning-soft, #fff3cd);
+  background: var(--color-warning-soft);
   border: 1px solid var(--color-warning, #ffc107);
   border-radius: 6px;
 }
@@ -96,7 +96,7 @@ const editableAssignments = ref([...props.assignments])
 .warning-item {
   font-size: 0.8125rem;
   margin: 0 0 0.25rem;
-  color: var(--color-warning-text, #856404);
+  color: var(--color-warning-text);
 }
 
 .warning-item:last-child {

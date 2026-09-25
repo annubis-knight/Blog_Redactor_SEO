@@ -737,7 +737,7 @@ defineExpose({ hydrateFromDb, mergeFromDb })
 }
 
 .btn-precheck:hover:not(:disabled) {
-  background: var(--color-warning-hover, #d97706);
+  background: var(--color-warning-hover);
 }
 
 .btn-extract {

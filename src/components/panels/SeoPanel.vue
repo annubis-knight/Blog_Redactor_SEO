@@ -149,9 +149,9 @@ const serpData = computed(() => briefStore.briefData?.dataForSeo ?? null)
   margin-bottom: 1rem;
   font-size: 0.75rem;
   font-weight: 500;
-  color: var(--color-warning-text, #92400e);
-  background: var(--color-warning-bg, #fffbeb);
-  border: 1px solid var(--color-warning-border, #fde68a);
+  color: var(--color-warning-text);
+  background: var(--color-warning-bg);
+  border: 1px solid var(--color-warning-border);
   border-radius: 6px;
 }
 
