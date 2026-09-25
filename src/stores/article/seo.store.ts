@@ -1,3 +1,11 @@
+/**
+ * AUTHORITY: calcul client (`calculateSeoScore`) sur le texte de l'éditeur ;
+ *            persisté en PostgreSQL `articles.seo_score` via editor.store.recordScore.
+ * READS FROM: editor.store (contenu, méta), mots-clés de l'article (useSeoScoring).
+ * WRITES TO: editor.store.recordScore('seo', …) → PUT /articles/:id { seoScore }.
+ * CONSUMERS: SeoPanel, ArticleEditorView, ArticleWorkflowView, verify:content (score enregistré).
+ * RELATED FR: FR-RED-SEO-LIVE, FR-RED-SEO-SCORE-PERSIST
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
@@ -7,6 +15,7 @@ import type { RelatedKeyword } from '@shared/types/dataforseo.types.js'
 import { calculateSeoScore } from '@/utils/seo-calculator'
 import { SEO_SCORE_LEVELS } from '@shared/constants/seo.constants.js'
 import { useEditorStore } from '@/stores/article/editor.store'
+import { seoScoreKey } from '@/utils/score-key'
 
 export const useSeoStore = defineStore('seo', () => {
   const score = ref<SeoScore | null>(null)
@@ -50,6 +59,8 @@ export const useSeoStore = defineStore('seo', () => {
       articleKeywords: articleKeywords ? `cap=${articleKeywords.capitaine}, lt=${articleKeywords.lieutenants.length}` : 'null',
     })
     score.value = calculateSeoScore(content, keywords, metaTitle, metaDescription, contentLengthTarget, relatedKeywords, articleKeywords ?? undefined, articleSlug)
+    // FR-RED-SEO-SCORE-PERSIST — le score affiché part en base avec le texte qu'il note.
+    useEditorStore().recordScore('seo', score.value.global, seoScoreKey(content, metaTitle, metaDescription))
     log.info(`[seo] score: ${score.value?.global}`, {
       wordCount: score.value?.wordCount,
       densities: score.value?.keywordDensities.map(d => `${d.keyword}:${d.occurrences}x`).join(', '),

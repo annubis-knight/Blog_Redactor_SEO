@@ -8,6 +8,8 @@ vi.mock('../../../src/stores/article/editor.store', () => ({
   useEditorStore: vi.fn(() => ({
     content: null,
     wordCount: 0,
+    // FR-RED-SEO-SCORE-PERSIST : le score calculé est confié à l'éditeur.
+    recordScore: vi.fn(),
   })),
 }))
 
@@ -37,7 +39,9 @@ describe('FR-RED-SEO-LIVE — Cohérence du flux SEO', () => {
       )
 
       expect(store.score).not.toBeNull()
-      expect(store.score!.global).toBeGreaterThanOrEqual(0)
+      // Densités neutres (50, 50), H1 valide (100), title 10 car. (20 × 0,7 = 14),
+      // description 16 car. (10,7 × 0,7 → 7), 5 mots (0) → 42,8 → 43.
+      expect(store.score!.global).toBe(43)
       expect(recalcualteSpy).toHaveBeenCalledOnce()
 
       // Second call should overwrite, not queue
@@ -195,7 +199,10 @@ describe('FR-RED-SEO-LIVE — Cohérence du flux SEO', () => {
       )
       // Score should be calculated from heading, meta, content length factors
       // Not from keyword densities (which are empty)
-      expect(store.score!.global).toBeGreaterThanOrEqual(0)
+      // Densités neutres (50, 50), titres valides (100), title et description
+      // dans la cible mais sans mot-clé (70, 70), 303 mots sur 1500 (20) :
+      // 12,5 + 7,5 + 20 + 10,5 + 7 + 3 = 60,5 → 61.
+      expect(store.score!.global).toBe(61)
       expect(store.score!.global).toBeLessThanOrEqual(100)
       expect(store.score!.hasArticleKeywords).toBe(false)
     })

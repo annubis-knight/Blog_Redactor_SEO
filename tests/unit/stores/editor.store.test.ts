@@ -205,10 +205,13 @@ describe('editor.store — saveArticle', () => {
 
     await store.saveArticle(1)
 
+    // Aucun score calculé sur ce texte : la base porte « inconnu » (FR-RED-SEO-SCORE-PERSIST).
     expect(mockApiPut).toHaveBeenCalledWith('/articles/1', {
       content: '<h2>Article</h2>',
       metaTitle: 'Mock Title',
       metaDescription: 'Mock description.',
+      seoScore: null,
+      geoScore: null,
     })
   })
 

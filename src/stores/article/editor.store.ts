@@ -1,3 +1,13 @@
+/**
+ * AUTHORITY: PostgreSQL `article_content.content` + `articles.meta_title`,
+ *            `meta_description`, `seo_score`, `geo_score`.
+ * READS FROM: GET /articles/:id/content (hydratation par les vues d'édition).
+ * WRITES TO: PUT /articles/:id (saveArticle : contenu, méta et scores du texte
+ *            enregistré ; recordScore : score calculé après coup, seul).
+ * CONSUMERS: ArticleEditorView, ArticleWorkflowView, useArticleGeneration,
+ *            useAutoSave, seo.store et geo.store (recordScore), SaveStatusIndicator.
+ * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
@@ -12,6 +22,9 @@ import {
 import { useOutlineStore } from '@/stores/article/outline.store'
 import type { BriefData, Outline, ApiUsage } from '@shared/types/index.js'
 import { articleMainKeyword } from '@shared/utils/article-keyword.js'
+import { seoScoreKey } from '@/utils/score-key'
+
+export type ScoreKind = 'seo' | 'geo'
 
 /** Mutate `total` in place by summing tokens + cost from `partial`. */
 function aggregateUsage(total: ApiUsage, partial: ApiUsage | null): void {
@@ -242,6 +255,41 @@ export const useEditorStore = defineStore('editor', () => {
     }
   }
 
+  // --- Scores enregistrés avec leur texte (FR-RED-SEO-SCORE-PERSIST) ---
+  // Pas d'état réactif : ces empreintes ne s'affichent pas, elles décident
+  // seulement de ce qui part en base.
+  const scoreSnapshots: Record<ScoreKind, { value: number; key: string } | null> = { seo: null, geo: null }
+  let lastSaved: { articleId: number; keys: Record<ScoreKind, string>; persisted: Record<ScoreKind, number | null> } | null = null
+
+  function currentScoreKeys(): Record<ScoreKind, string> {
+    const html = content.value ?? ''
+    return { seo: seoScoreKey(html, metaTitle.value, metaDescription.value), geo: html }
+  }
+
+  function freshScore(kind: ScoreKind, keys: Record<ScoreKind, string>): number | null {
+    const snapshot = scoreSnapshots[kind]
+    return snapshot && snapshot.key === keys[kind] ? snapshot.value : null
+  }
+
+  /**
+   * Note le score que l'éditeur vient de calculer, avec l'empreinte du texte
+   * noté. Si ce texte est exactement celui enregistré en base, le score y part
+   * aussitôt, seul : une sauvegarde faite avant la fin du calcul n'a pas à
+   * attendre la suivante.
+   */
+  function recordScore(kind: ScoreKind, value: number, key: string): void {
+    scoreSnapshots[kind] = { value, key }
+    const saved = lastSaved
+    if (!saved || saved.keys[kind] !== key || saved.persisted[kind] === value) return
+    const previous = saved.persisted[kind]
+    saved.persisted[kind] = value
+    const field = kind === 'seo' ? 'seoScore' : 'geoScore'
+    apiPut(`/articles/${saved.articleId}`, { [field]: value }).catch((err: unknown) => {
+      saved.persisted[kind] = previous
+      log.warn(`[editor] score ${kind} non enregistré — ${(err as Error).message}`, { articleId: saved.articleId })
+    })
+  }
+
   async function saveArticle(articleId: number) {
     log.info(`Saving article ${articleId}`)
     isSaving.value = true
@@ -250,12 +298,27 @@ export const useEditorStore = defineStore('editor', () => {
     const wasDirty = isDirty.value
     markClean()
 
+    // FR-RED-SEO-SCORE-PERSIST — un score n'accompagne que le texte sur lequel
+    // il a été calculé ; sinon la base porte « inconnu » (null), jamais un
+    // chiffre d'une autre version.
+    const keys = currentScoreKeys()
+    const seoScore = freshScore('seo', keys)
+    const geoScore = freshScore('geo', keys)
+
     try {
       await apiPut(`/articles/${articleId}`, {
         content: content.value,
         metaTitle: metaTitle.value,
         metaDescription: metaDescription.value,
+        seoScore,
+        geoScore,
       })
+      lastSaved = { articleId, keys, persisted: { seo: seoScore, geo: geoScore } }
+      // Un score calculé pendant l'envoi, sur ce même texte, part maintenant.
+      for (const kind of ['seo', 'geo'] as const) {
+        const fresh = freshScore(kind, keys)
+        if (fresh !== null && fresh !== lastSaved.persisted[kind]) recordScore(kind, fresh, keys[kind])
+      }
       lastSavedAt.value = new Date().toISOString()
       log.info(`Article ${articleId} saved`)
     } catch (err) {
@@ -588,7 +651,15 @@ export const useEditorStore = defineStore('editor', () => {
   }
 
   /** Hydrate store with previously saved article data */
-  function loadExistingContent(data: { content: string; metaTitle?: string | null; metaDescription?: string | null }) {
+  function loadExistingContent(data: {
+    content: string
+    metaTitle?: string | null
+    metaDescription?: string | null
+    /** Article chargé : un score calculé sur ce texte intact rejoint la base. */
+    articleId?: number
+    seoScore?: number | null
+    geoScore?: number | null
+  }) {
     log.info('[editor] Loading existing content', {
       contentLength: data.content.length,
       metaTitle: data.metaTitle ? `${data.metaTitle.length}ch` : 'null',
@@ -598,6 +669,9 @@ export const useEditorStore = defineStore('editor', () => {
     metaTitle.value = data.metaTitle ?? null
     metaDescription.value = data.metaDescription ?? null
     isDirty.value = false
+    lastSaved = data.articleId
+      ? { articleId: data.articleId, keys: currentScoreKeys(), persisted: { seo: data.seoScore ?? null, geo: data.geoScore ?? null } }
+      : null
   }
 
   function resetEditor() {
@@ -619,6 +693,9 @@ export const useEditorStore = defineStore('editor', () => {
     lastHumanizeUsage.value = null
     lastHumanizeError.value = null
     humanizeFallbackCount.value = 0
+    scoreSnapshots.seo = null
+    scoreSnapshots.geo = null
+    lastSaved = null
     if (humanizeAbortController) {
       humanizeAbortController.abort()
       humanizeAbortController = null
@@ -639,7 +716,7 @@ export const useEditorStore = defineStore('editor', () => {
     // computed
     wordCount, wordCountDelta,
     // actions
-    generateArticle, generateMeta, saveArticle, setContent,
+    generateArticle, generateMeta, saveArticle, setContent, recordScore,
     loadExistingContent, markClean, markDirty, resetEditor, saveContenuPartiel,
     reduceArticle, abortReduce, humanizeArticle, abortHumanize, callHumanizeSection,
   }

@@ -1,8 +1,17 @@
+/**
+ * AUTHORITY: calcul client (`calculateGeoScore`) sur le texte de l'éditeur ;
+ *            persisté en PostgreSQL `articles.geo_score` via editor.store.recordScore.
+ * READS FROM: contenu passé par useGeoScoring.
+ * WRITES TO: editor.store.recordScore('geo', …) → PUT /articles/:id { geoScore }.
+ * CONSUMERS: GeoPanel, ArticleEditorView, ArticleWorkflowView, verify:content (score enregistré).
+ * RELATED FR: FR-RED-SEO-SCORE-PERSIST
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'
 import type { GeoScore } from '@shared/types/geo.types.js'
 import { calculateGeoScore } from '@/utils/geo-calculator'
+import { useEditorStore } from '@/stores/article/editor.store'
 import { GEO_SCORE_LEVELS } from '@shared/constants/geo.constants.js'
 
 export const useGeoStore = defineStore('geo', () => {
@@ -27,6 +36,8 @@ export const useGeoStore = defineStore('geo', () => {
     isCalculating.value = true
     log.debug(`[geo] recalculate (content length: ${content.length})`)
     score.value = calculateGeoScore(content)
+    // FR-RED-SEO-SCORE-PERSIST — le score affiché part en base avec le texte qu'il note.
+    useEditorStore().recordScore('geo', score.value.global, content)
     log.debug(`[geo] score: ${score.value?.global}`)
     isCalculating.value = false
   }

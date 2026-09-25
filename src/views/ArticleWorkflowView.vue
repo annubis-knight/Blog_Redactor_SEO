@@ -282,6 +282,9 @@ onMounted(async () => {
         content: saved.content,
         metaTitle: saved.metaTitle,
         metaDescription: saved.metaDescription,
+        articleId: id,
+        seoScore: saved.seoScore,
+        geoScore: saved.geoScore,
       })
     }
     log.info('[workflow] Saved content hydrated', {
