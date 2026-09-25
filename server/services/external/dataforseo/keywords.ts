@@ -7,7 +7,23 @@ import {
   SEARCH_INTENT_BATCH_MAX,
   fetchDataForSeo,
   fetchDataForSeoBatch,
+  isSandbox,
 } from './_client.js'
+
+/**
+ * Les réponses d'un appel groupé, chacune avec le mot-clé (en minuscules) auquel
+ * la rattacher. Le bac à sable répond par des mots-clés factices (« phone »,
+ * « watch »), jamais ceux demandés : comme les appels unitaires, qui lisent
+ * `items[0]` quel que soit le mot-clé, on rattache ses réponses dans l'ordre aux
+ * mots-clés demandés — sinon, en mode simulé, rien ne serait jamais mesuré.
+ */
+function pairWithRequested<T extends { keyword?: string | null }>(chunk: string[], items: T[]): Array<[string, T]> {
+  if (!isSandbox()) {
+    return items.filter(item => item?.keyword).map(item => [item.keyword!.toLowerCase(), item])
+  }
+  if (items.length === 0) return []
+  return chunk.map((keyword, i) => [keyword.toLowerCase(), items[i % items.length]!])
+}
 
 interface RelatedRawResult {
   items: Array<{
@@ -205,9 +221,7 @@ export async function fetchKeywordOverviewBatch(
       const items = rawResults.flatMap(r => r.items ?? [])
       log.debug(`fetchKeywordOverviewBatch chunk done`, { chunkSize: chunk.length, itemsReturned: items.length, ms: Date.now() - start })
 
-      for (const item of items) {
-        if (!item?.keyword) continue
-        const kwLower = item.keyword.toLowerCase()
+      for (const [kwLower, item] of pairWithRequested(chunk, items)) {
         // Adapter DataForSEO batch -> KeywordOverview (FR-INFRA-KPI-NULLABLE).
         result.set(kwLower, {
           searchVolume: item.keyword_info?.search_volume ?? null,
@@ -266,9 +280,8 @@ export async function fetchSearchIntentBatch(
       const items = rawResults.flatMap(r => r.items ?? [])
       log.debug(`fetchSearchIntentBatch chunk done`, { chunkSize: chunk.length, itemsReturned: items.length, ms: Date.now() - start })
 
-      for (const item of items) {
-        if (!item?.keyword || !item.keyword_intent) continue
-        const kwLower = item.keyword.toLowerCase()
+      for (const [kwLower, item] of pairWithRequested(chunk, items)) {
+        if (!item.keyword_intent) continue
         result.set(kwLower, {
           intent: item.keyword_intent.label,
           intentProbability: item.keyword_intent.probability,
