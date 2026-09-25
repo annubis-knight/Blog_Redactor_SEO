@@ -115,4 +115,16 @@ describe('C2 — reconstructSerpAnalysisResult', () => {
     const r = await reconstructSerpAnalysisResult(FIXTURE_KEYWORD)
     expect(r).toBeNull()
   })
+
+  // C7 : la mesure d'un candidat du Cerveau relevait les premiers résultats sans
+  // lire aucune page. Pris pour une analyse, ce relevé privait pendant 7 jours
+  // Lieutenants, Structure et Lexique des pages concurrentes du mot-clé choisi.
+  it('des résultats sans aucune page lue ne font pas une analyse : null', async () => {
+    await upsertSerpResults(FIXTURE_KEYWORD, [
+      { position: 1, url: 'https://c2.example/1', title: 'Title 1', domain: 'c2.example' },
+      { position: 2, url: 'https://c2.example/2', title: 'Title 2', domain: 'c2.example' },
+    ])
+    const r = await reconstructSerpAnalysisResult(FIXTURE_KEYWORD)
+    expect(r).toBeNull()
+  })
 })

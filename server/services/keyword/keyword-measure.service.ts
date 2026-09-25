@@ -1,9 +1,11 @@
 /**
  * AUTHORITY: PostgreSQL `keyword_metrics` (volume, difficulté, CPC, intention)
  *            et `keyword_serp_results` (premiers résultats de la SERP).
- * READS FROM: keyword_metrics, keyword_serp_results (base d'abord, 7 jours) ;
- *             DataForSEO pour ce qui manque (un appel groupé pour les KPI).
- * WRITES TO: keyword_metrics (upsertKeywordKpis), keyword_serp_results (upsertSerpResults).
+ * READS FROM: keyword_metrics, keyword_serp_results (analyse du Moteur, 7 jours),
+ *             external_api_cache `serp-top` (relevé, 7 jours) ; DataForSEO pour ce
+ *             qui manque (un appel groupé pour les KPI).
+ * WRITES TO: keyword_metrics (upsertKeywordKpis), external_api_cache `serp-top`
+ *            (jamais keyword_serp_results : réservée aux analyses du Moteur).
  * CONSUMERS: child-candidates.service (candidats d'un nouvel article, Cerveau).
  * RELATED FR: FR-CER-KEYWORD-REAL-DATA
  *
@@ -12,8 +14,9 @@
  * Une mesure qui échoue reste absente — jamais un zéro inventé.
  */
 import { getKeywordMetrics, isKeywordMetricsFresh, upsertKeywordKpis } from './keyword-metrics.service.js'
-import { getSerpResultsFresh, upsertSerpResults } from './keyword-serp.service.js'
+import { getSerpResultsFresh } from './keyword-serp.service.js'
 import { fetchKeywordOverviewBatch, fetchSearchIntentBatch, fetchSerp } from '../external/dataforseo.service.js'
+import { getOrFetch, slugify } from '../../db/cache-helpers.js'
 import { PAIN_INTENT_EXPECTED_VALUES, type PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import { log } from '../../utils/logger.js'
 import type { KeywordMeasure } from '../../../shared/types/cocoon-tree.types.js'
@@ -21,6 +24,8 @@ import type { KeywordMeasure } from '../../../shared/types/cocoon-tree.types.js'
 export type { KeywordMeasure }
 
 const SERP_TOP = 3
+const SERP_TOP_CACHE = 'serp-top'
+const SERP_TOP_TTL_MS = 7 * 24 * 60 * 60 * 1000
 
 function intentLabel(value: unknown): PainIntentExpected | null {
   return typeof value === 'string' && (PAIN_INTENT_EXPECTED_VALUES as readonly string[]).includes(value) ? (value as PainIntentExpected) : null
@@ -54,13 +59,19 @@ async function fetchMissingKpis(missing: string[]): Promise<void> {
 
 type SerpRow = { position: number; url: string; title?: string | null; domain?: string | null }
 
+/**
+ * Les premiers résultats Google du mot-clé : ceux d'une analyse du Moteur s'il
+ * y en a une (gratuit), sinon un relevé mis en cache 7 jours dans
+ * `external_api_cache`. Jamais dans `keyword_serp_results` : cette table est
+ * celle des analyses du Moteur (pages concurrentes lues), et un simple relevé
+ * y passait pour une analyse — Lieutenants, Structure et Lexique restaient
+ * alors sans pages concurrentes sur le mot-clé choisi.
+ */
 async function serpTop(keyword: string): Promise<KeywordMeasure['serp']> {
   let results: SerpRow[] | null = await getSerpResultsFresh(keyword)
   if (!results) {
     try {
-      const fetched = await fetchSerp(keyword)
-      await upsertSerpResults(keyword, fetched.map(r => ({ position: r.position, url: r.url, title: r.title, domain: r.domain })))
-      results = fetched
+      results = await getOrFetch<SerpRow[]>(SERP_TOP_CACHE, slugify(keyword), SERP_TOP_TTL_MS, () => fetchSerp(keyword))
     } catch (err) {
       log.warn('[keyword-measure] SERP indisponible', { keyword, error: (err as Error).message })
       return []

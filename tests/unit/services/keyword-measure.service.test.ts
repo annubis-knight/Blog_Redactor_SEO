@@ -15,6 +15,12 @@ const m = vi.hoisted(() => ({
   getSerpResultsFresh: vi.fn(),
   upsertSerpResults: vi.fn(),
   fetchSerp: vi.fn(),
+  getOrFetch: vi.fn(),
+}))
+
+vi.mock('../../../server/db/cache-helpers', () => ({
+  getOrFetch: m.getOrFetch,
+  slugify: (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-'),
 }))
 
 vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
@@ -41,6 +47,7 @@ const row = (keyword: string, searchVolume: number | null) => ({
 beforeEach(() => {
   vi.resetAllMocks()
   m.isKeywordMetricsFresh.mockReturnValue(true)
+  m.getOrFetch.mockImplementation((_type: string, _key: string, _ttl: number, fetcher: () => Promise<unknown>) => fetcher())
   m.getSerpResultsFresh.mockResolvedValue([
     { position: 1, title: 'Guide complet', domain: 'guide.fr', url: 'https://guide.fr/a', fetchedAt: '2026-09-25' },
     { position: 2, title: 'Agence X', domain: 'agence.fr', url: 'https://agence.fr', fetchedAt: '2026-09-25' },
@@ -96,12 +103,16 @@ describe('measureKeywords', () => {
     expect(result.get('laine soufflee')).toEqual({ metrics: null, serp: [] })
   })
 
-  it('SERP absente de la base : récupérée, enregistrée, puis lue', async () => {
+  // Un relevé des premiers résultats n'est pas une analyse du Moteur : écrit dans
+  // keyword_serp_results, il passait pour une analyse, et Lieutenants, Structure
+  // et Lexique restaient 7 jours sans pages concurrentes sur le mot-clé choisi.
+  it('SERP sans analyse du Moteur : relevé via le cache TTL, jamais écrit dans keyword_serp_results', async () => {
     m.getKeywordMetrics.mockImplementation(async (k: string) => row(k, 50))
     m.getSerpResultsFresh.mockResolvedValue(null)
     m.fetchSerp.mockResolvedValue([{ position: 1, title: 'Un guide', url: 'https://g.fr', domain: 'g.fr', description: '' }])
     const result = await measureKeywords(['laine de roche'])
-    expect(m.upsertSerpResults).toHaveBeenCalledWith('laine de roche', [{ position: 1, url: 'https://g.fr', title: 'Un guide', domain: 'g.fr' }])
+    expect(m.getOrFetch).toHaveBeenCalledWith('serp-top', 'laine-de-roche', 7 * 24 * 60 * 60 * 1000, expect.any(Function))
+    expect(m.upsertSerpResults).not.toHaveBeenCalled()
     expect(result.get('laine de roche')!.serp).toEqual([{ position: 1, title: 'Un guide', domain: 'g.fr', url: 'https://g.fr' }])
   })
 })
