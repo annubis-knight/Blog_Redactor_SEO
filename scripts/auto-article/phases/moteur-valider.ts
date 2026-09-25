@@ -12,7 +12,7 @@
 import type { PhaseDeps } from '../deps.js'
 import type { AutoRunContext } from '../types.js'
 import { toCanonicalType } from '../canonical.js'
-import { emitCheck } from '../checks.js'
+import { saveThenEmit, type MoteurDecisions } from '../checks.js'
 import { pickCapitaine, type CapitaineInput } from '../heuristics/pick-capitaine.js'
 import { pickLieutenants } from '../heuristics/pick-lieutenants.js'
 import { pickLexique, type TfidfResultLite } from '../heuristics/pick-lexique.js'
@@ -115,7 +115,15 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
 
     ctx.capitaine = choice.keyword
     if (choice.imposed) logger.success(`Capitaine imposé : « ${choice.keyword} » (heuristique court-circuitée)`)
-    await emitCheck(client, ctx.articleId, MOTEUR_CAPITAINE_LOCKED)
+    // Chaque étape est demandée APRÈS l'enregistrement de ce qu'elle garde :
+    // la porte juge la base (FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE).
+    const decisions = (): MoteurDecisions => ({
+      capitaine: ctx.capitaine ?? '',
+      lieutenants: ctx.lieutenants ?? [],
+      lexique: ctx.lexique ?? [],
+      hnStructure: ctx.hnStructure ?? [],
+    })
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_CAPITAINE_LOCKED)
     report.addStep(
       `Moteur · Capitaine (${choice.keyword}${choice.imposed ? ' — imposé' : choice.forced ? ' — forcé' : ''})`,
     )
@@ -170,7 +178,7 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     ctx.lieutenants = pickLieutenants(ctx.radarCandidates, ctx.capitaine, level, {
       competitorHeadings: headings,
     })
-    await emitCheck(client, ctx.articleId, MOTEUR_LIEUTENANTS_LOCKED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LIEUTENANTS_LOCKED)
     report.addStep(
       `Moteur · Lieutenants (${ctx.lieutenants.length}${headings.length > 0 ? ', ancrés SERP' : ''})`,
     )
@@ -185,19 +193,13 @@ export function makeMoteurValider(deps: PhaseDeps): (ctx: AutoRunContext) => Pro
     })
     // Exclut les mots déjà portés par le Capitaine/Lieutenants → lexique complémentaire.
     ctx.lexique = pickLexique(tf, { exclude: [choice.keyword, ...ctx.lieutenants] })
-    await emitCheck(client, ctx.articleId, MOTEUR_LEXIQUE_VALIDATED)
+    await saveThenEmit(client, ctx.articleId, decisions(), MOTEUR_LEXIQUE_VALIDATED)
     report.addStep(`Moteur · Lexique (${ctx.lexique.length} termes)`)
     logger.success(`Lexique : ${ctx.lexique.length} termes.`)
 
-    // 4. Persistance des décisions (lu par la Rédaction via getArticleKeywords).
-    //    `hnStructure` alimente aussi le brief IA et la recommandation de
-    //    longueur côté app — elle n'est plus vide (défaut n°16).
-    await client.apiPut(`/articles/${ctx.articleId}/keywords`, {
-      capitaine: ctx.capitaine,
-      lieutenants: ctx.lieutenants,
-      lexique: ctx.lexique,
-      hnStructure: ctx.hnStructure,
-    })
+    // 4. Les décisions sont déjà en base, enregistrées étape par étape (lu par la
+    //    Rédaction via getArticleKeywords). `hnStructure` alimente aussi le brief
+    //    IA et la recommandation de longueur côté app (défaut n°16).
     logger.success('Décisions Moteur persistées (article_keywords).')
   }
 }

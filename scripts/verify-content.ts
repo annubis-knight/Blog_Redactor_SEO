@@ -7,7 +7,8 @@
  *
  * Trois étages :
  *   1. chaque article rédigé — propreté (content-validators), metas, liens,
- *      qualité SEO (seo-validators) ;
+ *      qualité SEO (seo-validators), porte de publication rejouée par le code
+ *      du serveur, dérogations posées et scores enregistrés ;
  *   2. les articles entre eux — cannibalisation, ordre de construction du cocon ;
  *   3. le dépôt — articles de test résiduels, sauvegarde, référence des tests,
  *      fichiers `.bak`, clés d'environnement.
@@ -30,6 +31,10 @@ import {
   type ContentIssue,
 } from '../shared/content-validators.js'
 import { keywordCoverage, validateArticleSeo, type SeoLevel } from '../shared/seo-validators.js'
+import { logsConfig } from '../logs.config.js'
+import { pool } from '../server/db/client.js'
+import { evaluateArticleGate, listArticleWaivers } from '../server/services/gates/gate.service.js'
+import { describeScores, describeWaivers, publishGateIssues } from './verify-content-gates.js'
 
 const { Client } = pg
 
@@ -55,6 +60,8 @@ interface ArticleRow {
   content: string
   capitaine: string | null
   lieutenants: string[] | null
+  seo_score: string | null
+  geo_score: string | null
 }
 
 const daysSince = (ms: number): number => Math.floor((Date.now() - ms) / 86_400_000)
@@ -281,6 +288,8 @@ function render(title: string, issues: ContentIssue[]): void {
 }
 
 async function main(): Promise<void> {
+  // L'évaluation des portes journalise chaque verdict en INFO : bruit, ici.
+  logsConfig.level = 'WARN'
   const started = Date.now()
   const only = process.argv.filter((a) => a.startsWith('--id=')).map((a) => Number(a.slice(5)))
 
@@ -298,7 +307,7 @@ async function main(): Promise<void> {
     const { rows } = await client.query<ArticleRow>(
       `SELECT a.id, a.titre, a.slug, a.type, a.cocoon_id, c.nom AS cocoon,
               a.meta_title, a.meta_description, ac.content,
-              ak.capitaine, ak.lieutenants
+              ak.capitaine, ak.lieutenants, a.seo_score, a.geo_score
        FROM articles a
        JOIN article_content ac ON ac.article_id = a.id
        LEFT JOIN cocoons c ON c.id = a.cocoon_id
@@ -326,9 +335,13 @@ async function main(): Promise<void> {
           lieutenants: a.lieutenants ?? [],
           localCity: a.cocoon?.includes('Toulouse') ? 'Toulouse' : null,
         }),
+        ...publishGateIssues(await evaluateArticleGate(a.id, 'publish')),
       ]
       all.push(...issues)
       render(`#${a.id} ${a.titre.slice(0, 72)}`, issues)
+      for (const line of [describeScores(a.seo_score, a.geo_score), ...describeWaivers(await listArticleWaivers(a.id))]) {
+        console.log(`      ${line}`)
+      }
     }
 
     const transverse = [...checkCannibalization(rows), ...checkCocoonOrder(rows)]
@@ -345,6 +358,7 @@ async function main(): Promise<void> {
     render('Hygiène du dépôt (tests, sauvegarde, environnement)', repo)
   } finally {
     await client.end()
+    await pool.end()
   }
 
   const errors = all.filter((i) => i.severity === 'error').length
