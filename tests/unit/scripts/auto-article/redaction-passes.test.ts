@@ -23,7 +23,8 @@ const ARTICLE = [
   '<h2>Conclusion</h2><p>Fin.</p>',
 ].join('\n')
 
-const OFF_BUDGET = { rule: 'draft-section-off-budget', level: 'risque', message: 'Le chapitre « Les listings locaux » fait 487 mots pour environ 268 prévus.', excerpt: 'Les listings locaux' }
+// Forme réelle de la porte (recette C8) : la règle porte le chapitre en suffixe.
+const OFF_BUDGET = { rule: 'draft-section-off-budget:les-listings-locaux', level: 'risque', message: 'Le chapitre « Les listings locaux » fait 487 mots pour environ 268 prévus.', excerpt: 'Les listings locaux' }
 
 function deps(opts: { gateIssues?: unknown[]; proposals: Record<string, { html: string; blocked?: boolean; issues?: unknown[] }> }) {
   const bodies: Array<{ path: string; body: Record<string, unknown> }> = []

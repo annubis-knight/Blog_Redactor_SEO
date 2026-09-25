@@ -41,7 +41,8 @@ export interface OffBudgetChapter {
 export function offBudgetChapters(issues: IssueLite[], html: string): OffBudgetChapter[] {
   const chapters = listChapters(html)
   return issues.flatMap((issue) => {
-    if (issue.rule !== 'draft-section-off-budget' || !issue.excerpt) return []
+    // La règle porte le chapitre en suffixe : `draft-section-off-budget:<chapitre>`.
+    if (!issue.rule.startsWith('draft-section-off-budget') || !issue.excerpt) return []
     const counts = /fait (\d+) mots pour environ (\d+)/.exec(issue.message)
     const chapter = chapters.find(c => c.index >= 0 && sectionKey(c.title) === sectionKey(issue.excerpt!))
     if (!counts || !chapter) return []
