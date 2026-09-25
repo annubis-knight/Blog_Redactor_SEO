@@ -5,13 +5,14 @@ import type { useArticleProgressStore } from '@/stores/article/article-progress.
 import type { SelectedArticle } from '@shared/types/index.js'
 import {
   MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
 } from '@shared/constants/workflow-checks.constants.js'
 
 /**
  * Vague 3 — Composable extrait de MoteurView.
  *
- * Gestion des onglets Moteur : 6 onglets répartis en 3 phases (Générer,
+ * Gestion des onglets Moteur : 7 onglets répartis en 3 phases (Générer,
  * Valider, Finaliser). Implémente FR-MOT-PHASES (3 phases) et
  * FR-MOT-FREE-NAV (navigation libre, gating souple).
  *
@@ -25,7 +26,8 @@ import {
  *
  * Dépendances explicites en paramètres → testable en isolation.
  */
-export const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation'] as const
+// Structure entre Lieutenants et Lexique : elle naît des lieutenants retenus (FR-HN-TAB).
+export const TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'structure', 'lexique', 'finalisation'] as const
 export type Tab = typeof TAB_IDS[number]
 
 export interface Phase {
@@ -40,6 +42,7 @@ export const TAB_LABELS: Record<Tab, string> = {
   radar: 'Radar',
   capitaine: 'Capitaine',
   lieutenants: 'Lieutenants',
+  structure: 'Structure',
   lexique: 'Lexique',
   finalisation: 'Finalisation',
 }
@@ -66,7 +69,7 @@ export interface MoteurTabsApi {
   setActiveTab: (tabId: string) => void
   /**
    * Premier onglet utile par checks : aucun→'capitaine', capitaine_locked→'lieutenants',
-   * lieutenants_locked→'lexique'. Pas d'auto-nav vers Finalisation.
+   * lieutenants_locked→'structure', hn_locked→'lexique'. Pas d'auto-nav vers Finalisation.
    */
   computeSmartTab: (articleId: number) => Tab
   /** Groupes nav publiés vers `workflowNavStore` (slot droit AppNavbar). */
@@ -105,6 +108,7 @@ export function useMoteurTabs(deps: MoteurTabsDeps): MoteurTabsApi {
       tabs: [
         { id: 'capitaine', label: 'Capitaine' },
         { id: 'lieutenants', label: 'Lieutenants' },
+        { id: 'structure', label: 'Structure' },
         { id: 'lexique', label: 'Lexique' },
       ],
     },
@@ -133,7 +137,8 @@ export function useMoteurTabs(deps: MoteurTabsDeps): MoteurTabsApi {
     const checks = progress?.completedChecks ?? []
     if (checks.length === 0) return 'capitaine'
     // Pas d'auto-nav vers Finalisation.
-    if (checks.includes(MOTEUR_LIEUTENANTS_LOCKED)) return 'lexique'
+    if (checks.includes(MOTEUR_HN_LOCKED)) return 'lexique'
+    if (checks.includes(MOTEUR_LIEUTENANTS_LOCKED)) return 'structure'
     if (checks.includes(MOTEUR_CAPITAINE_LOCKED)) return 'lieutenants'
     return 'capitaine'
   }

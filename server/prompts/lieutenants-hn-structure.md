@@ -10,7 +10,7 @@ Tu dois recommander une structure H1/H2/H3 optimale pour un article de blog, en 
 
 {{type_rules}}
 - **Douleur de l'article** : {{painPoint}}
-  - Si la douleur est definie, structure les Hn pour qu'au moins 2 sections sur 5 repondent explicitement a cette douleur. Le H2 d'introduction et le H2 de conclusion peuvent etre l'occasion de la nommer directement.
+  - Si la douleur est definie, structure les Hn pour qu'au moins 2 sections sur 5 repondent explicitement a cette douleur.
   - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des Lieutenants et de la structure des concurrents.
 
 ## Lieutenants selectionnes par l'utilisateur
@@ -33,10 +33,18 @@ Si la liste est vide ("Aucun heading verrouille"), tu as carte blanche sur l'ens
 
 {{strategy_context}}
 
+{{#cocoon_articles}}
+## Les autres articles du cocon
+
+{{cocoon_articles}}
+
+Un chapitre ne developpe pas un sujet deja traite par l'un de ces articles : il le resume et y renvoie. Pour un article pilier, chaque H2 peut preparer un article enfant — un H2 par sujet, sans le creuser en H3 si un article le traite deja.
+{{/cocoon_articles}}
+
 ## Regles de structure Hn
 
-1. **H1** = Reformule legerement le Capitaine pour le rendre plus lisible et humain (le lecteur doit immediatement voir le lien avec le Title et le slug). Le H1 ne doit PAS etre un copier-coller brut du mot-cle.
-2. **H2** = Lieutenants principaux. 5-8 mots par heading. Chaque H2 doit etre "searchable" comme requete Google.
+1. **H1** = le titre de l'article : il contient le Capitaine **en entier** (tous ses mots, dans un ordre naturel), formule pour un lecteur humain plutot que comme un copier-coller brut du mot-cle.
+2. **H2** = Lieutenants principaux. 5-8 mots par heading. Chaque H2 doit etre "searchable" comme requete Google. **N'ecris ni introduction ni conclusion** : le sommaire les ajoute de lui-meme ; les H2 comptes par les regles du type sont les H2 de fond.
 3. **H3** = Sous-sections des H2 quand le contenu depasse 300 mots sous un H2. Variantes semantiques.
 4. **Jamais sauter de niveau** : H2 → H3 → H4 (hierarchie logique)
 5. **PAA comme H2/H3** : transformer les questions PAA directement en headings quand pertinent

@@ -171,4 +171,17 @@ describe('hnToOutline', () => {
     expect(result.sections[0].title).toBe('Mon Guide')
     expect(result.sections[result.sections.length - 1].title).toBe('Conclusion')
   })
+
+  // FR-HN-TAB — la structure qui porte déjà son introduction ou sa conclusion
+  // ne reçoit pas un second exemplaire : l'article aurait eu deux conclusions.
+  it('n’ajoute ni introduction ni conclusion quand la structure en a déjà', () => {
+    const nodes: ProposeLieutenantsHnNode[] = [
+      { level: 1, text: 'Guide' },
+      { level: 2, text: 'Introduction : pourquoi un site' },
+      { level: 2, text: 'Le budget' },
+      { level: 2, text: 'En conclusion, passez à l’action' },
+    ]
+    const titles = hnToOutline(nodes, 'Guide').sections.map(s => s.title)
+    expect(titles).toEqual(['Guide', 'Introduction : pourquoi un site', 'Le budget', 'En conclusion, passez à l’action'])
+  })
 })

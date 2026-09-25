@@ -40,6 +40,7 @@ import RadarPanel from '@/components/intent/RadarPanel.vue'
 // Phase ② Valider
 import CaptainPanel from '@/components/moteur/CaptainPanel.vue'
 import LieutenantsPanel from '@/components/moteur/LieutenantsPanel.vue'
+import StructureHnPanel from '@/components/moteur/StructureHnPanel.vue'
 import LexiquePanel from '@/components/moteur/LexiquePanel.vue'
 import FinalisationPanel from '@/components/moteur/FinalisationPanel.vue'
 
@@ -171,6 +172,7 @@ const TAB_LABELS: Record<string, string> = {
   radar: 'Radar',
   capitaine: 'Capitaine',
   lieutenants: 'Lieutenants',
+  structure: 'Structure',
   lexique: 'Lexique',
   finalisation: 'Finalisation',
 }
@@ -601,6 +603,20 @@ onMounted(() => {
           />
         </div>
 
+        <!-- Phase ② Valider — Structure (FR-HN-TAB) : naît des lieutenants retenus,
+             validée par la porte serveur hn-lock. -->
+        <div v-if="visitedTabs.structure" v-show="activeTab === 'structure'" class="tab-content">
+          <StructureHnPanel
+            :selected-article="selectedArticle"
+            :mode="'workflow'"
+            :captain-keyword="captainKeyword"
+            :article-level="articleLevelForLieutenants"
+            :cocoon-slug="cocoonSlug"
+            @check-completed="emitCheckCompleted"
+            @check-removed="handleCheckRemoved"
+          />
+        </div>
+
         <!-- Phase ② Valider — Lexique (gating souple : nécessite Capitaine verrouillé) -->
         <div v-if="visitedTabs.lexique" v-show="activeTab === 'lexique'" class="tab-content">
           <div v-if="!isCaptaineLocked" class="soft-gate-message">
@@ -620,10 +636,10 @@ onMounted(() => {
           />
         </div>
 
-        <!-- Phase ③ Finaliser — récap lecture seule (Capitaine + Lieutenants + Lexique)
+        <!-- Phase ③ Finaliser — récap lecture seule (Capitaine + Lieutenants + Structure + Lexique)
              Bloc 2 — onglet dédié remplaçant l'ancienne modale. Toujours
              accessible via la nav, mais le bouton "Continuer vers la Rédaction"
-             est désactivé tant que les 3 verrous Phase ② ne sont pas posés. -->
+             est désactivé tant que les 4 verrous Phase ② ne sont pas posés. -->
         <div v-if="visitedTabs.finalisation" v-show="activeTab === 'finalisation'" class="tab-content">
           <FinalisationPanel
             :selected-article="selectedArticle"
@@ -634,7 +650,7 @@ onMounted(() => {
 
       <!-- Bottom navigation -->
       <!-- Bloc 2 — bouton "Continuer vers la Rédaction" sur le dernier onglet
-           (finalisation). Désactivé tant que les 3 checks Phase ② manquent ;
+           (finalisation). Désactivé tant que les 4 checks Phase ② manquent ;
            le tooltip natif HTML liste ce qui manque encore. -->
       <div class="bottom-nav">
         <RouterLink :to="`/cocoon/${cocoonId}`" class="btn-back">&larr; Retour au cocon</RouterLink>

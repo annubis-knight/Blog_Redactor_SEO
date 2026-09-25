@@ -4,28 +4,37 @@ import { setActivePinia, createPinia } from 'pinia'
 import ProgressDots from '@/components/moteur/ProgressDots.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import {
+  MOTEUR_CHECKS,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants.js'
 
-const ALL_CHECKS = [
-  'moteur:discovery_done', 'moteur:radar_done',
-  'moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated',
-]
+/**
+ * FR-MOT-CHECKS + FR-HN-TAB : 6 points (Explorer 2 + Valider 4), le 4ᵉ point
+ * de la phase Valider = Structure (`moteur:hn_locked`), entre Lieutenants et
+ * Lexique.
+ */
+const ALL_CHECKS = [...MOTEUR_CHECKS]
 
 // --- ProgressDots unit tests ---
 
 describe('ProgressDots — Rendering', () => {
-  it('renders 5 empty dots when no checks are completed', () => {
+  it('renders 6 empty dots when no checks are completed', () => {
     const wrapper = mount(ProgressDots, {
       props: { completedChecks: [] },
     })
 
     const dots = wrapper.findAll('.progress-dot')
-    expect(dots).toHaveLength(5)
+    expect(dots).toHaveLength(6)
 
     const filled = wrapper.findAll('.progress-dot--filled')
     expect(filled).toHaveLength(0)
   })
 
-  it('renders 3 filled + 2 empty dots when 3 checks completed', () => {
+  it('renders 3 filled + 3 empty dots when 3 checks completed', () => {
     const wrapper = mount(ProgressDots, {
       props: {
         completedChecks: [
@@ -36,24 +45,24 @@ describe('ProgressDots — Rendering', () => {
     })
 
     const dots = wrapper.findAll('.progress-dot')
-    expect(dots).toHaveLength(5)
+    expect(dots).toHaveLength(6)
 
     const filled = wrapper.findAll('.progress-dot--filled')
     expect(filled).toHaveLength(3)
   })
 
-  it('renders 5 filled dots when all checks completed', () => {
+  it('renders 6 filled dots when all checks completed', () => {
     const wrapper = mount(ProgressDots, {
       props: { completedChecks: [...ALL_CHECKS] },
     })
 
     const filled = wrapper.findAll('.progress-dot--filled')
-    expect(filled).toHaveLength(5)
+    expect(filled).toHaveLength(6)
   })
 })
 
 describe('ProgressDots — Phase grouping', () => {
-  it('renders 2 phase groups with 2+3 dots', () => {
+  it('renders 2 phase groups with 2+4 dots', () => {
     const wrapper = mount(ProgressDots, {
       props: { completedChecks: [] },
     })
@@ -63,15 +72,15 @@ describe('ProgressDots — Phase grouping', () => {
 
     // Phase ① Générer: 2 dots
     expect(groups[0].findAll('.progress-dot')).toHaveLength(2)
-    // Phase ② Valider: 3 dots
-    expect(groups[1].findAll('.progress-dot')).toHaveLength(3)
+    // Phase ② Valider: 4 dots (Capitaine, Lieutenants, Structure, Lexique)
+    expect(groups[1].findAll('.progress-dot')).toHaveLength(4)
   })
 
   it('fills dots in correct phase positions', () => {
     // Only Phase ② checks completed
     const wrapper = mount(ProgressDots, {
       props: {
-        completedChecks: ['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated'],
+        completedChecks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED],
       },
     })
 
@@ -79,8 +88,19 @@ describe('ProgressDots — Phase grouping', () => {
 
     // Phase ① — 0 filled
     expect(groups[0].findAll('.progress-dot--filled')).toHaveLength(0)
-    // Phase ② — 3 filled
-    expect(groups[1].findAll('.progress-dot--filled')).toHaveLength(3)
+    // Phase ② — 4 filled
+    expect(groups[1].findAll('.progress-dot--filled')).toHaveLength(4)
+  })
+
+  it('FR-HN-TAB — le point Structure (3ᵉ de la phase Valider) suit le check hn_locked', () => {
+    const wrapper = mount(ProgressDots, {
+      props: { completedChecks: [MOTEUR_HN_LOCKED] },
+    })
+
+    const validerDots = wrapper.findAll('.progress-dots-group')[1]!.findAll('.progress-dot')
+    expect(validerDots[2]!.attributes('title')).toBe('Structure')
+    expect(validerDots[2]!.classes()).toContain('progress-dot--filled')
+    expect(wrapper.findAll('.progress-dot--filled')).toHaveLength(1)
   })
 })
 
@@ -91,7 +111,7 @@ describe('ProgressDots — Accessibility', () => {
     })
 
     const root = wrapper.find('.progress-dots')
-    expect(root.attributes('aria-label')).toBe('Progression : 2 sur 5')
+    expect(root.attributes('aria-label')).toBe('Progression : 2 sur 6')
   })
 
   it('aria-label counts only valid checks, ignoring unknown ones', () => {
@@ -101,7 +121,7 @@ describe('ProgressDots — Accessibility', () => {
 
     const root = wrapper.find('.progress-dots')
     // Only discovery_done is a valid check — intent_done and unknown_check are ignored
-    expect(root.attributes('aria-label')).toBe('Progression : 1 sur 5')
+    expect(root.attributes('aria-label')).toBe('Progression : 1 sur 6')
   })
 
   it('each dot has a tooltip title', () => {
@@ -114,7 +134,7 @@ describe('ProgressDots — Accessibility', () => {
 
     expect(titles).toEqual([
       'Discovery', 'Radar',
-      'Capitaine', 'Lieutenants', 'Lexique',
+      'Capitaine', 'Lieutenants', 'Structure', 'Lexique',
     ])
   })
 })

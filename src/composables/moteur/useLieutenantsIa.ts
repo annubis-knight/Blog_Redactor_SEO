@@ -3,12 +3,11 @@ import { useStreaming } from '@/composables/editor/useStreaming'
 import { isResponseForCurrentArticle } from '@/utils/article-scope'
 import { log } from '@/utils/logger'
 import { recurringHeadings } from '@shared/utils/hn-structure.js'
-import { hnOutlineContract, proposeLieutenantsContract, type HnOutlineResult } from '@shared/contracts/lieutenants.contract.js'
+import { proposeLieutenantsContract } from '@shared/contracts/lieutenants.contract.js'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import type {
   FilteredProposeLieutenantsResult,
   ProposedLieutenant,
-  ProposeLieutenantsHnNode,
   HnRecurrenceItem,
 } from '@shared/types/serp-analysis.types.js'
 import type { SelectedArticle, SerpAnalysisResult, SerpCompetitor } from '@shared/types/index.js'
@@ -16,23 +15,18 @@ import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
 
 /**
- * AUTHORITY: PostgreSQL `article_keywords.hn_structure` JSONB (ProposeLieutenantsHnNode[])
+ * AUTHORITY: PostgreSQL `lieutenant_explorations` (propositions) + `article_keywords`
+ *            (lieutenants retenus, via useArticleKeywordsStore).
  * READS FROM: GET /articles/:id/keywords (hydratation via useArticleKeywordsStore)
- * WRITES TO: POST /keywords/:keyword/propose-lieutenants (full regen, lieutenants + HN)
- *           POST /keywords/:keyword/ai-hn-structure (HN-only regen avec lockedHeadings)
- * CONSUMERS: LieutenantH2Structure (affichage + lock par titre + bouton Régénérer),
- *            useLieutenantsHn (saveHnStructure → PUT /articles/:id outline + keywords)
- * RELATED FR: FR-LIE-AI-FRONTIER, FR-MOT-HN-EMPTY-VISIBLE, FR-MOT-HN-REGEN-LOCKED,
- *             NFR-INT-DISPLAY-CONTRACTS (contrats `propose-lieutenants`, `ai-hn-structure`)
+ * WRITES TO: POST /keywords/:keyword/propose-lieutenants (candidats et tri)
+ * CONSUMERS: LieutenantsPanel (cartes proposées / éliminées, cases à cocher)
+ * RELATED FR: FR-LIE-AI-FRONTIER, FR-LIE-CHECKBOX-LOCK-IMMEDIATE,
+ *             NFR-INT-DISPLAY-CONTRACTS (contrat `propose-lieutenants`)
  *
  * Vague 3 — Composable extrait de LieutenantsPanel. Encapsule la Phase 2 IA :
- * streaming propose-lieutenants, cards selected/eliminated, structure Hn,
- * contentGap, restoration depuis DB, et régénération HN seule avec headings
- * verrouillés.
- *
- * NOTE : `hnStructure` est exposé en Ref mutable car le composable
- * `useLieutenantsHn` le lit pour le `saveHnStructure`. Le composable IA le set
- * dans `proposeLieutenants.onDone` ET `regenerateHnStructure.onDone`.
+ * streaming propose-lieutenants, cards selected/eliminated, contentGap,
+ * restoration depuis DB. La structure H1/H2/H3 n'est plus produite ici : elle
+ * naît à l'onglet Structure, des lieutenants retenus (FR-HN-TAB, M7).
  */
 export type AnalysisStep = 'idle' | 'serp' | 'ia-proposal' | 'filtering' | 'done'
 
@@ -65,22 +59,12 @@ export interface LieutenantsIaApi {
   lieutenantCards: Ref<ProposedLieutenant[]>
   eliminatedCards: Ref<ProposedLieutenant[]>
   totalGenerated: Ref<number>
-  hnStructure: Ref<ProposeLieutenantsHnNode[]>
   contentGapInsights: Ref<string>
   selectedCards: Ref<Map<string, ProposedLieutenant>>
   currentStep: Ref<AnalysisStep>
-  /** True pendant la régénération HN seule (différent de iaIsStreaming pour l'UI). */
-  hnRegenStreaming: Ref<boolean>
-  hnRegenError: Ref<string | null>
 
   toggleLieutenant: (card: ProposedLieutenant) => void
   proposeLieutenants: () => void
-  /**
-   * Régénère UNIQUEMENT la structure Hn via /ai-hn-structure, sans toucher
-   * aux lieutenantCards/selectedCards. Utilise les lieutenants actuellement
-   * cochés et les headings verrouillés par l'utilisateur.
-   */
-  regenerateHnStructure: (lockedHeadings: ProposeLieutenantsHnNode[]) => void
   handleAssistAdd: (keyword: string) => void
   restoreLockedLieutenants: () => void
   /** Reset complet de l'état IA — utilisé par parent dans refreshSERP / reset cycle. */
@@ -108,17 +92,9 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     abort: iaAbort,
   } = useStreaming<FilteredProposeLieutenantsResult>()
 
-  // Stream HN-only (régénération de structure sans toucher aux cards).
-  const {
-    isStreaming: hnRegenStreaming,
-    error: hnRegenError,
-    startStream: hnRegenStartStream,
-  } = useStreaming<HnOutlineResult>()
-
   const lieutenantCards = ref<ProposedLieutenant[]>([])
   const eliminatedCards = ref<ProposedLieutenant[]>([])
   const totalGenerated = ref(0)
-  const hnStructure = ref<ProposeLieutenantsHnNode[]>([])
   const contentGapInsights = ref('')
   const selectedCards = ref<Map<string, ProposedLieutenant>>(new Map())
   const currentStep = ref<AnalysisStep>('idle')
@@ -301,7 +277,6 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
         onDone: (data) => {
           log.info(`[useLieutenantsIa] IA generated ${data.totalGenerated} lieutenants, selected ${data.selectedLieutenants.length}, eliminated ${data.eliminatedLieutenants.length}`)
           totalGenerated.value = data.totalGenerated
-          hnStructure.value = data.hnStructure
           contentGapInsights.value = data.contentGapInsights
 
           // Step 3: Assign cards directly from AI data (no batch KPI)
@@ -352,65 +327,12 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     )
   }
 
-  /**
-   * Régénère uniquement la structure Hn à partir des lieutenants actuellement
-   * cochés (selectedCards) + un éventuel set de headings verrouillés que l'IA
-   * doit conserver tels quels. Aucune mutation de lieutenantCards/selectedCards.
-   *
-   * Précondition : au moins un lieutenant coché (sinon early return silencieux).
-   */
-  function regenerateHnStructure(lockedHeadings: ProposeLieutenantsHnNode[]): void {
-    if (!captainKeyword.value || !selectedArticle.value) return
-    const lieutenants = Array.from(selectedCards.value.keys())
-    if (lieutenants.length === 0) {
-      log.warn('[useLieutenantsIa] regenerateHnStructure called with no selected lieutenants — abort')
-      return
-    }
-
-    // Hn recurrence concurrent : préfère le SERP du Capitaine, fallback agrégé.
-    const captainResult = serpResult.value
-      ? serpResultsByKeyword.value.get(captainKeyword.value)
-      : null
-    const concurrentHn = captainResult
-      ? recurringHeadings(computeHnRecurrenceFrom(captainResult.competitors))
-      : recurringHeadings(hnRecurrence.value)
-
-    log.info('[useLieutenantsIa] HN regenerate', {
-      keyword: captainKeyword.value,
-      lieutenants: lieutenants.length,
-      lockedHeadings: lockedHeadings.length,
-      concurrentHn: concurrentHn.length,
-    })
-
-    hnRegenStartStream(
-      `/api/keywords/${encodeURIComponent(captainKeyword.value)}/ai-hn-structure`,
-      {
-        lieutenants,
-        level: articleLevel.value ?? 'intermediaire',
-        hnStructure: concurrentHn,
-        lockedHeadings,
-        articleId: selectedArticle.value?.id ?? 0,
-        ...(cocoonSlug.value ? { cocoonSlug: cocoonSlug.value } : {}),
-      },
-      {
-        // Le contrat garantit la liste de titres ; sans elle, `hnRegenError`
-        // s'affiche et le plan en place est conservé.
-        onDone: (data) => {
-          hnStructure.value = data.hnStructure
-          log.info(`[useLieutenantsIa] HN regenerate done: ${data.hnStructure.length} top-level nodes`)
-        },
-      },
-      { contract: hnOutlineContract },
-    )
-  }
-
   function resetIaState(): void {
     iaAbort()
     lieutenantCards.value = []
     eliminatedCards.value = []
     totalGenerated.value = 0
     selectedCards.value = new Map()
-    hnStructure.value = []
     contentGapInsights.value = ''
     currentStep.value = 'idle'
   }
@@ -423,15 +345,11 @@ export function useLieutenantsIa(deps: LieutenantsIaDeps): LieutenantsIaApi {
     lieutenantCards,
     eliminatedCards,
     totalGenerated,
-    hnStructure,
     contentGapInsights,
     selectedCards,
     currentStep,
-    hnRegenStreaming,
-    hnRegenError,
     toggleLieutenant,
     proposeLieutenants,
-    regenerateHnStructure,
     handleAssistAdd,
     restoreLockedLieutenants,
     resetIaState,

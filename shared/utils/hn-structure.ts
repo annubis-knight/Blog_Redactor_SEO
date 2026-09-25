@@ -40,6 +40,33 @@ export function flattenHnStructure(raw: unknown): HnHeading[] {
   return out
 }
 
+/**
+ * Récurrence des titres chez les concurrents : combien de pages (sans erreur de
+ * lecture) portent chaque titre, du plus fréquent au moins fréquent.
+ */
+export function computeHnRecurrence(
+  competitors: ReadonlyArray<{ fetchError?: unknown; headings: ReadonlyArray<{ level: number; text: string }> }>,
+): HnRecurrenceItem[] {
+  const valid = competitors.filter(c => !c.fetchError)
+  const total = valid.length
+  if (total === 0) return []
+  const freq = new Map<string, { level: number; text: string; count: number }>()
+  for (const comp of valid) {
+    const seen = new Set<string>()
+    for (const h of comp.headings) {
+      const key = `${h.level}:${h.text.toLowerCase().trim()}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      const existing = freq.get(key)
+      if (existing) existing.count++
+      else freq.set(key, { level: h.level, text: h.text, count: 1 })
+    }
+  }
+  return [...freq.values()]
+    .map(item => ({ ...item, total, percent: Math.round(item.count / total * 100) }))
+    .sort((a, b) => b.percent - a.percent || a.level - b.level)
+}
+
 /** Titres des concurrents réellement récurrents, dans la forme envoyée aux prompts. */
 export function recurringHeadings(items: HnRecurrenceItem[]): Array<Omit<HnRecurrenceItem, 'total'>> {
   return items

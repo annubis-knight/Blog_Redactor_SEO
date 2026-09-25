@@ -1,7 +1,7 @@
 /**
  * Centralized catalog of workflow-scoped progression checks.
  *
- * Only the Moteur workflow emits checks (5 constants). The Cerveau (3) and
+ * Only the Moteur workflow emits checks (6 constants). The Cerveau (3) and
  * Rédaction (5) families were removed on 2026-05-13 (cf. DRIFT-002) after the
  * product decision that progress in those two workflows is better surfaced
  * directly via business state (`article_strategies.completed_steps` INTEGER
@@ -16,11 +16,13 @@
  *   by consumers like `ProgressDots.vue`) but never emitted anymore.
  */
 
-// --- Moteur workflow (5 checks) ---
+// --- Moteur workflow (6 checks) ---
 export const MOTEUR_DISCOVERY_DONE = 'moteur:discovery_done'
 export const MOTEUR_RADAR_DONE = 'moteur:radar_done'
 export const MOTEUR_CAPITAINE_LOCKED = 'moteur:capitaine_locked'
 export const MOTEUR_LIEUTENANTS_LOCKED = 'moteur:lieutenants_locked'
+/** Structure H1/H2/H3 validée (onglet Structure, FR-HN-TAB, porte `hn-lock`). */
+export const MOTEUR_HN_LOCKED = 'moteur:hn_locked'
 export const MOTEUR_LEXIQUE_VALIDATED = 'moteur:lexique_validated'
 
 export const MOTEUR_CHECKS = [
@@ -28,6 +30,7 @@ export const MOTEUR_CHECKS = [
   MOTEUR_RADAR_DONE,
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 ] as const
 

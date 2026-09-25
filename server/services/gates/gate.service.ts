@@ -9,7 +9,7 @@
  *            server/routes/articles.routes.ts (POST /progress/check, PUT /status),
  *            scripts/verify-content.ts (liste des dérogations).
  * RELATED FR: FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE,
- *             FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock),
+ *             FR-LIE-LOCK-GATE, FR-HN-LOCK-GATE (article_keywords.hn_structure, zone du client), FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock),
  *             FR-RED-DRAFT-SINGLE-PASS (draft : article_micro_contexts.target_word_count)
  *
  * Le serveur est le seul évaluateur : il charge les données, appelle le
@@ -42,9 +42,13 @@ import { verifyLieutenants, normalizeKeyword, type CocoonKeywordClaim } from '..
 import { verifyPublish } from '../../../shared/verifiers/publish.js'
 import { verifyLexique } from '../../../shared/verifiers/lexique.js'
 import { verifyDraft } from '../../../shared/verifiers/draft.js'
+import { verifyStructure, structureHeadings, type CocoonArticleRef, type StructureGateInput } from '../../../shared/verifiers/structure.js'
+import { keywordCoverage } from '../../../shared/seo-validators.js'
+import { loadZoneContext } from '../strategy/prompt-context.service.js'
+import { getCocoonSiblings } from '../queries/cocoon-siblings.service.js'
 import { targetWordsFor } from '../../../shared/constants/article-type-rules.js'
 import { normalizeTerm } from '../../../shared/utils/generic-terms.js'
-import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_LEXIQUE_VALIDATED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants.js'
+import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 
 export type { GateEvaluation }
@@ -53,6 +57,7 @@ export type { GateEvaluation }
 export const CHECK_GATES: Record<string, GateId> = {
   [MOTEUR_CAPITAINE_LOCKED]: 'captain-lock',
   [MOTEUR_LIEUTENANTS_LOCKED]: 'lieutenants-lock',
+  [MOTEUR_HN_LOCKED]: 'hn-lock',
   [MOTEUR_LEXIQUE_VALIDATED]: 'lexique-lock',
 }
 
@@ -189,6 +194,44 @@ async function lieutenantsGate(articleId: number): Promise<{ issues: GateIssue[]
   return { issues: verifyLieutenants(input), hashInput }
 }
 
+/**
+ * Structure H1/H2/H3 (FR-HN-LOCK-GATE) : H1 et capitaine, H2 de fond selon le
+ * type, ville citée avec mesure, lieutenants retenus couverts, et pour un
+ * pilier, les sujets déjà traités par un article du cocon.
+ */
+async function hnGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
+  const found = await getArticleById(articleId)
+  if (!found) throw new Error(`Article ${articleId} introuvable`)
+  const { data: kw } = await getArticleKeywords(articleId)
+  const cocoonArticles: CocoonArticleRef[] = (await getCocoonSiblings(articleId)).map(s => ({ title: s.title, captain: s.captain }))
+  const { zone } = await loadZoneContext()
+  const input: StructureGateInput = {
+    level: found.article.type,
+    captain: kw?.capitaine ?? found.article.captainKeywordLocked ?? null,
+    structure: kw?.hnStructure ?? [],
+    lockedLieutenants: [...(kw?.lieutenants ?? [])],
+    cocoonArticles,
+    zone,
+  }
+  const headings = structureHeadings(input.structure)
+  // Seuls les articles du cocon que la structure recoupe entrent dans
+  // l'empreinte : un voisin sans rapport, créé plus tard, ne fait pas tomber
+  // une dérogation.
+  const overlapping = cocoonArticles
+    .filter(a => a.captain && headings.some(h => h.level === 2 && keywordCoverage(a.captain!, h.text) >= 1))
+    .map(a => normalizeKeyword(a.captain!))
+    .sort()
+  const hashInput = {
+    level: input.level,
+    captain: input.captain ? normalizeKeyword(input.captain) : null,
+    headings: headings.map(h => `${h.level}:${h.text}`),
+    lieutenants: input.lockedLieutenants.map(normalizeKeyword).sort(),
+    overlapping,
+    city: zone.split(',')[0]?.trim().toLowerCase() ?? '',
+  }
+  return { issues: verifyStructure(input), hashInput }
+}
+
 /** Lexique retenu (FR-LEX-METIER-ONLY) : ⛔ vide, 🔴 terme générique. */
 async function lexiqueGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
   const found = await getArticleById(articleId)
@@ -234,13 +277,14 @@ async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; ha
   const { data: kw } = await getArticleKeywords(articleId)
   const html = content.content ?? ''
   const h1 = html.match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i)?.[1]?.replace(/<[^>]*>/g, '').trim()
-  // Publier rejoue les portes en amont (capitaine, lieutenants) sur les données
+  // Publier rejoue les portes en amont (capitaine, lieutenants, structure, lexique) sur les données
   // d'aujourd'hui. Une dérogation encore debout est réaffichée pour être
   // reconfirmée ; une dérogation tombée (données changées) ne l'est pas, et
   // l'alerte qu'elle couvrait revient à la place, à son niveau d'origine.
   const upstream = [
     await evaluateArticleGate(articleId, 'captain-lock'),
     await evaluateArticleGate(articleId, 'lieutenants-lock'),
+    await evaluateArticleGate(articleId, 'hn-lock'),
     await evaluateArticleGate(articleId, 'lexique-lock'),
   ]
   const existingWaivers = standingWaivers(upstream.flatMap(e => e.waived.map(w => w.waiver)), {})
@@ -278,12 +322,10 @@ export async function evaluateArticleGate(
   switch (gateId) {
     case 'captain-lock': built = await captainGate(articleId, opts.keyword); break
     case 'lieutenants-lock': built = await lieutenantsGate(articleId); break
+    case 'hn-lock': built = await hnGate(articleId); break
     case 'lexique-lock': built = await lexiqueGate(articleId); break
     case 'draft': built = await draftGate(articleId); break
     case 'publish': built = await publishGate(articleId); break
-    default:
-      // Porte livrée par un chantier suivant (structure, C6).
-      built = { issues: [], hashInput: {} }
   }
   const inputHash = hashGateInput(built.hashInput)
   const waivers = (await listArticleWaivers(articleId)).filter(w => w.gateId === gateId)

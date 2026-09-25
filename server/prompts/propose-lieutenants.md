@@ -103,18 +103,10 @@ Evalue chaque candidat selon ces criteres ponderes :
 - **Content Gap** (0.15) : bonus si le terme comble une faille reelle dans le contenu concurrent
 - **Alignement d'intention** (0.10) : coherence avec l'intention de recherche du capitaine (attention : les mots-cles racine plus courts ont souvent une intention plus large/differente)
 
-### 3. Structure Hn recommandee
-Propose une structure Hn complete utilisant les lieutenants les mieux scores (top 3-5 selon le niveau d'article) :
-- **H1** : Reformule legerement le Capitaine pour le rendre plus lisible et humain, tout en gardant les termes cles reconnaissables (le lecteur doit immediatement voir le lien avec le Title et le slug). Le H1 ne doit PAS etre un copier-coller brut du mot-cle, mais il doit rester thematiquement aligne avec le titre de l'article.
-- **H2** = lieutenants principaux. Formule chaque H2 comme une requete searchable (5-8 mots) que quelqu'un pourrait taper sur Google.
-- **H3** = sous-sections si le contenu sous un H2 depasse 300 mots
-- Jamais sauter de niveau (H2 → H3 → H4)
-- PAA transformees directement en headings H2 ou H3
-- Le mot-cle Capitaine doit apparaitre naturellement dans l'intro (100 premiers mots) et dans 1-2 H2, mais utilise des variations semantiques — pas de repetition exacte forcee.
-- **SEO Local dans les Hn** : Si le Capitaine contient un nom de ville, NE LE REPETE PAS dans chaque H2 : le nombre maximal de H2 citant la ville est donne par les regles du type. Des titres comme "Agence web [ville]", "Prix site [ville]", "Developpeur [ville]" sont un signal negatif de bourrage — varie les formulations.
-
-### 4. Content Gap
+### 3. Content Gap
 Identifie ce que les concurrents reels (listes ci-dessus) n'ont PAS couvert — les angles manquants representent une opportunite. Sois specifique en citant quels concurrents couvrent quoi.
+
+La structure H1/H2/H3 de l'article n'est PAS de ton ressort ici : elle sera construite a l'etape suivante, a partir des seuls lieutenants retenus par l'utilisateur.
 
 ## Contraintes
 
@@ -140,19 +132,6 @@ Reponds UNIQUEMENT avec un objet JSON valide, sans texte avant ni apres. Le JSON
       "sources": ["paa", "serp"],
       "suggestedHnLevel": 2,
       "score": 82
-    }
-  ],
-  "hnStructure": [
-    {
-      "level": 1,
-      "text": "H1 reformule du Capitaine (lisible, aligne avec le Title)"
-    },
-    {
-      "level": 2,
-      "text": "Titre H2 (lieutenant searchable)",
-      "children": [
-        { "level": 3, "text": "Sous-titre H3" }
-      ]
     }
   ],
   "contentGapInsights": "Resume des failles identifiees chez les concurrents reels"

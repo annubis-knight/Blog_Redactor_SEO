@@ -99,7 +99,6 @@ export const proposeLieutenantsAiContract = defineContract<ProposeLieutenantsRes
   'propose-lieutenants-ai',
   z.looseObject({
     lieutenants: requiredList(proposedLieutenantSchema, 'lieutenants').transform(withoutDuplicates),
-    hnStructure: tolerantArray(proposeHnNodeSchema, 'hnStructure'),
     contentGapInsights: text('contentGapInsights', ''),
   }),
 )
@@ -110,7 +109,6 @@ export const proposeLieutenantsContract = defineContract<FilteredProposeLieutena
   z.looseObject({
     selectedLieutenants: tolerantArray(proposedLieutenantSchema, 'selectedLieutenants'),
     eliminatedLieutenants: tolerantArray(proposedLieutenantSchema, 'eliminatedLieutenants'),
-    hnStructure: tolerantArray(proposeHnNodeSchema, 'hnStructure'),
     contentGapInsights: text('contentGapInsights', ''),
     totalGenerated: count('totalGenerated'),
   }),

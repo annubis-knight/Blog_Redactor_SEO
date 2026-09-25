@@ -1,15 +1,15 @@
 <script setup lang="ts">
 /**
  * Sous-composant de LieutenantsPanel (FR-LIE-AI-FRONTIER, PRD §8.7).
- * Containers PRINCIPAUX (Proposals + H2Structure) sont DESCENDANTS DIRECTS,
- * PAS dans LieutenantsAiPanel.
+ * Le container PRINCIPAL (Proposals) est DESCENDANT DIRECT, PAS dans
+ * LieutenantsAiPanel. La structure H1/H2/H3 a quitté cet onglet pour le sien
+ * (StructureHnPanel, FR-HN-TAB).
  * Tests: lieutenants-selection-architecture.test.ts, lieutenants-results-layout-architecture.test.ts
  */
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import LieutenantsAiPanel from '@/components/moteur/LieutenantsAiPanel.vue'
 import LieutenantProposals from '@/components/moteur/LieutenantProposals.vue'
-import LieutenantH2Structure from '@/components/moteur/LieutenantH2Structure.vue'
-import type { ProposedLieutenant, ProposeLieutenantsHnNode, HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
+import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
 import type { SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
@@ -29,30 +29,13 @@ defineProps<{
   contentGapInsights: string
   articleLevel: ArticleLevel | null
 
-  // LieutenantH2Structure props
-  hnStructure: ProposeLieutenantsHnNode[]
-  activeHnRecurrence: HnRecurrenceItem[]
-  hnRecurrence: HnRecurrenceItem[]
-  serpResultsByKeyword: Map<string, SerpAnalysisResult>
-  activeHnTab: string
-  hnSaved: boolean
-  isSavingHn: boolean
-  /** HN regen-only stream (différent de iaIsStreaming des lieutenants). */
-  hnRegenStreaming: boolean
-  hnRegenError: string | null
-
   // Word groups (Discovery clusters)
   wordGroups: WordGroup[]
-
-  selectedCardsSize: number
 }>()
 
 defineEmits<{
   (e: 'toggle', card: ProposedLieutenant): void
   (e: 'propose-retry'): void
-  (e: 'save-hn'): void
-  (e: 'regenerate-hn', lockedHeadings: ProposeLieutenantsHnNode[]): void
-  (e: 'update:active-hn-tab', tab: string): void
 
   // La checkbox de chaque LieutenantCard fait le lock immédiat via toggleLieutenant.
 }>()
@@ -73,23 +56,6 @@ defineEmits<{
       :article-level="articleLevel"
       @toggle="(card: ProposedLieutenant) => $emit('toggle', card)"
       @retry="$emit('propose-retry')"
-    />
-
-    <!-- Container principal #2 : Structure Hn (IA + concurrents intégrés) -->
-    <LieutenantH2Structure
-      :hn-structure="hnStructure"
-      :active-hn-recurrence="activeHnRecurrence"
-      :hn-recurrence="hnRecurrence"
-      :serp-results-by-keyword="serpResultsByKeyword"
-      :active-hn-tab="activeHnTab"
-      :hn-saved="hnSaved"
-      :is-saving-hn="isSavingHn"
-      :selected-cards-size="selectedCardsSize"
-      :hn-regen-streaming="hnRegenStreaming"
-      :hn-regen-error="hnRegenError"
-      @save-hn="$emit('save-hn')"
-      @regenerate-hn="(headings: ProposeLieutenantsHnNode[]) => $emit('regenerate-hn', headings)"
-      @update:active-hn-tab="(tab: string) => $emit('update:active-hn-tab', tab)"
     />
 
     <CollapsableSection v-if="serpResult" title="Sources IA : questions Google (PAA)" :default-open="false">

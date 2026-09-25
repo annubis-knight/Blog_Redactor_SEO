@@ -1,12 +1,19 @@
 /**
  * FR-LIE-LOCK-GATE — l'étape Lieutenants n'est accordée que si la porte passe.
+ * FR-HN-TAB (M7) — l'étape `lieutenants_locked` ne demande plus qu'un
+ * lieutenant verrouillé : plus de structure Hn (elle a son onglet et son
+ * étape `moteur:hn_locked`).
  *
  * Comportements vérifiés (tests négatifs d'abord, NFR-TEST-BEHAVIORAL) :
  *   - porte refusée → AUCUN check émis, un bandeau « Étape non validée » ;
- *   - les décisions sont enregistrées AVANT de demander le verdict (la porte
- *     lit la base, pas l'écran) ;
+ *   - l'étape s'active dès un lieutenant verrouillé, sans structure (M7) ;
+ *   - à la transition « aucun → un lieutenant verrouillé », les décisions sont
+ *     enregistrées AVANT de demander le verdict (la porte lit la base, pas
+ *     l'écran) ;
  *   - le bouton du bandeau ouvre l'alarme ; une dérogation accordée émet l'étape ;
- *   - porte qui passe → l'étape est émise une seule fois.
+ *   - porte qui passe → l'étape est émise une seule fois ;
+ *   - un ajout / retrait alors que la règle est déjà remplie relance la porte,
+ *     que la règle ait été remplie au montage (réconciliation) ou après.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
@@ -104,6 +111,12 @@ const TOO_FEW: GateEvaluation = {
 }
 const PASSED: GateEvaluation = { ...TOO_FEW, passed: true, issues: [], blocking: [] }
 
+const TROIS_LIEUTENANTS = [
+  ...UN_LIEUTENANT,
+  { keyword: 'site web pme', status: 'locked', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 60 },
+  { keyword: 'refonte site internet', status: 'locked', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 58 },
+] as never as RichLieutenant[]
+
 function mountPanel() {
   return mount(LieutenantsPanel, {
     props: {
@@ -137,7 +150,8 @@ beforeEach(() => {
     articleId: PILIER.id, capitaine: PILIER.keyword,
     lieutenants: UN_LIEUTENANT.map(l => l.keyword), lexique: [], rootKeywords: [],
     richLieutenants: [...UN_LIEUTENANT],
-    hnStructure: [{ level: 2, text: 'Pourquoi un site vitrine' }],
+    // M7 : aucune structure Hn n'est requise pour l'étape Lieutenants.
+    hnStructure: [],
   }
 })
 
@@ -154,9 +168,38 @@ describe('LieutenantsPanel — porte « valider les lieutenants »', () => {
     expect(banner.text()).toContain('au moins 3 lieutenants')
   })
 
-  it('les décisions sont enregistrées avant de demander le verdict', async () => {
+  it('M7 — l’étape s’active dès un lieutenant verrouillé, sans structure Hn', async () => {
+    mockEvaluate.mockResolvedValue(PASSED)
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    expect(mockStoreKeywords.value!.hnStructure).toEqual([])
+    expect(mockEvaluate).toHaveBeenCalledWith(PILIER.id, 'lieutenants-lock')
+    expect(checkEmissions(wrapper, 'check-completed')).toBe(1)
+  })
+
+  it('M7 — sans aucun lieutenant verrouillé, pas d’étape (même avec une structure en base)', async () => {
+    mockStoreKeywords.value = {
+      ...mockStoreKeywords.value!,
+      richLieutenants: [],
+      hnStructure: [{ level: 2, text: 'Pourquoi un site vitrine' }],
+    }
+    mockEvaluate.mockResolvedValue(PASSED)
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    expect(mockEvaluate).not.toHaveBeenCalled()
+    expect(checkEmissions(wrapper, 'check-completed')).toBe(0)
+  })
+
+  it('les décisions sont enregistrées avant de demander le verdict (transition vers un premier lieutenant)', async () => {
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [] }
     mockEvaluate.mockResolvedValue(TOO_FEW)
     mountPanel()
+    await flushPromises()
+    expect(calls).toEqual([])
+
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...UN_LIEUTENANT] }
     await flushPromises()
     expect(calls.indexOf('saveDecisions')).toBeGreaterThan(-1)
     expect(calls.indexOf('saveDecisions')).toBeLessThan(calls.indexOf('evaluate'))
@@ -194,24 +237,66 @@ describe('LieutenantsPanel — porte « valider les lieutenants »', () => {
     expect(wrapper.find('[data-testid="lieutenants-gate-banner"]').exists()).toBe(false)
   })
 
-  it('un lieutenant ajouté ensuite relance la porte, qui accorde alors l’étape', async () => {
+  it('un lieutenant ajouté ensuite relance la porte, qui accorde alors l’étape (règle remplie dès le montage)', async () => {
     mockEvaluate.mockResolvedValueOnce(TOO_FEW).mockResolvedValue(PASSED)
     const wrapper = mountPanel()
     await flushPromises()
     expect(checkEmissions(wrapper, 'check-completed')).toBe(0)
 
     const kw = mockStoreKeywords.value!
-    mockStoreKeywords.value = {
-      ...kw,
-      richLieutenants: [
-        ...UN_LIEUTENANT,
-        { keyword: 'site web pme', status: 'locked', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 60 },
-        { keyword: 'refonte site internet', status: 'locked', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 58 },
-      ],
-    }
+    mockStoreKeywords.value = { ...kw, richLieutenants: [...TROIS_LIEUTENANTS] }
     await flushPromises()
     expect(mockEvaluate).toHaveBeenCalledTimes(2)
     expect(checkEmissions(wrapper, 'check-completed')).toBe(1)
+  })
+
+  it('un lieutenant ajouté ensuite relance la porte, qui accorde alors l’étape (règle remplie après le montage)', async () => {
+    // Porte réaliste : elle lit les décisions (ici le store simulé), 3 lieutenants au moins pour un pilier.
+    mockEvaluate.mockImplementation(async () =>
+      ((mockStoreKeywords.value?.richLieutenants as RichLieutenant[] | undefined) ?? [])
+        .filter(l => l.status === 'locked').length >= 3 ? PASSED : TOO_FEW)
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [] }
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...UN_LIEUTENANT] }
+    await flushPromises()
+    expect(checkEmissions(wrapper, 'check-completed')).toBe(0)
+    expect(wrapper.find('[data-testid="lieutenants-gate-banner"]').exists()).toBe(true)
+    const evaluationsAfterTransition = mockEvaluate.mock.calls.length
+
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...TROIS_LIEUTENANTS] }
+    await flushPromises()
+    expect(mockEvaluate).toHaveBeenCalledTimes(evaluationsAfterTransition + 1)
+    expect(checkEmissions(wrapper, 'check-completed')).toBe(1)
+    expect(wrapper.find('[data-testid="lieutenants-gate-banner"]').exists()).toBe(false)
+  })
+
+  // Trouvé en parcours navigateur (intermédiaire, 2 cases) : la case cochée
+  // PENDANT la première vérification était ignorée, l'étape restait retenue.
+  it('une case cochée pendant la vérification est reprise ensuite : l’étape est accordée', async () => {
+    let release: () => void = () => {}
+    const pending = new Promise<void>((resolve) => { release = resolve })
+    mockEvaluate.mockImplementation(async () => {
+      const count = ((mockStoreKeywords.value?.richLieutenants as RichLieutenant[] | undefined) ?? []).filter(l => l.status === 'locked').length
+      if (count < 3) await pending
+      return count >= 3 ? PASSED : TOO_FEW
+    })
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [] }
+    const wrapper = mountPanel()
+    await flushPromises()
+
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...UN_LIEUTENANT] }
+    await flushPromises()
+    // La première vérification est en cours (1 lieutenant) : les deux autres cases arrivent.
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...TROIS_LIEUTENANTS] }
+    await flushPromises()
+    release()
+    await flushPromises()
+
+    expect(mockEvaluate).toHaveBeenCalledTimes(2)
+    expect(checkEmissions(wrapper, 'check-completed')).toBe(1)
+    expect(wrapper.find('[data-testid="lieutenants-gate-banner"]').exists()).toBe(false)
   })
 
   it('cocher le lieutenant qui active l’étape ne lance qu’une vérification, et une seule étape', async () => {
@@ -221,20 +306,13 @@ describe('LieutenantsPanel — porte « valider les lieutenants »', () => {
     await flushPromises()
     expect(mockEvaluate).not.toHaveBeenCalled()
 
-    mockStoreKeywords.value = {
-      ...mockStoreKeywords.value!,
-      richLieutenants: [
-        ...UN_LIEUTENANT,
-        { keyword: 'site web pme', status: 'locked', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 60 },
-        { keyword: 'refonte site internet', status: 'locked', reasoning: 'r', sources: [], suggestedHnLevel: 2, score: 58 },
-      ],
-    }
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...TROIS_LIEUTENANTS] }
     await flushPromises()
     expect(mockEvaluate).toHaveBeenCalledTimes(1)
     expect(checkEmissions(wrapper, 'check-completed')).toBe(1)
   })
 
-  it('l’étape déjà accordée est retirée si la porte refuse après un changement', async () => {
+  it('l’étape déjà accordée est retirée si la porte refuse après un changement (règle remplie dès le montage)', async () => {
     completedChecks.value = []
     mockEvaluate.mockResolvedValueOnce(PASSED).mockResolvedValue(TOO_FEW)
     const wrapper = mountPanel()

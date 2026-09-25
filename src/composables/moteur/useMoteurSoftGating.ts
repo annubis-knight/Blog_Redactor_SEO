@@ -9,6 +9,7 @@ import {
 import {
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '@shared/constants/workflow-checks.constants.js'
 
@@ -35,9 +36,11 @@ export interface MoteurSoftGatingApi {
   isCaptaineLocked: ComputedRef<boolean>
   /** True si le check `lieutenants_locked` est posé pour l'article courant. */
   isLieutenantsLocked: ComputedRef<boolean>
+  /** True si le check `hn_locked` (structure validée) est posé pour l'article courant. */
+  isStructureLocked: ComputedRef<boolean>
   /** True si le check `lexique_validated` est posé pour l'article courant. */
   isLexiqueValidated: ComputedRef<boolean>
-  /** True si les 3 checks Phase ② sont posés (capitaine + lieutenants + lexique). */
+  /** True si les 4 checks Phase ② sont posés (capitaine + lieutenants + structure + lexique). */
   finalisationUnlocked: ComputedRef<boolean>
   /** Tooltip du bouton Finalisation : énumère les checks manquants. */
   finalisationButtonTitle: ComputedRef<string>
@@ -60,11 +63,13 @@ export function useMoteurSoftGating(deps: MoteurSoftGatingDeps): MoteurSoftGatin
 
   const isCaptaineLocked = computed(() => hasCheck(MOTEUR_CAPITAINE_LOCKED))
   const isLieutenantsLocked = computed(() => hasCheck(MOTEUR_LIEUTENANTS_LOCKED))
+  const isStructureLocked = computed(() => hasCheck(MOTEUR_HN_LOCKED))
   const isLexiqueValidated = computed(() => hasCheck(MOTEUR_LEXIQUE_VALIDATED))
 
   const finalisationChecksInput = computed(() => ({
     capitaineLocked: isCaptaineLocked.value,
     lieutenantsLocked: isLieutenantsLocked.value,
+    structureLocked: isStructureLocked.value,
     lexiqueValidated: isLexiqueValidated.value,
   }))
 
@@ -84,6 +89,7 @@ export function useMoteurSoftGating(deps: MoteurSoftGatingDeps): MoteurSoftGatin
   return {
     isCaptaineLocked,
     isLieutenantsLocked,
+    isStructureLocked,
     isLexiqueValidated,
     finalisationUnlocked,
     finalisationButtonTitle,

@@ -7,6 +7,8 @@
  * soit une chaîne complète, soit des chunks pré-découpés.
  */
 import { registerStreamFixture } from '../mock-registry.js'
+import { ARTICLE_TYPE_RULES } from '../../../../shared/constants/article-type-rules.js'
+import type { ArticleLevel } from '../../../../shared/types/keyword-validate.types.js'
 
 // ---------------------------------------------------------------------------
 // theme-parse — parse libre d'une description d'entreprise vers ThemeConfig
@@ -99,20 +101,27 @@ registerStreamFixture(
 
     const kwMatch = userPrompt.match(/article "([^"]+)"/i)
     const captain = kwMatch?.[1] ?? 'sujet principal'
+    const levelMatch = /de niveau (pilier|intermediaire|specifique)/i.exec(userPrompt)?.[1]?.toLowerCase() as ArticleLevel | undefined
+    const rules = ARTICLE_TYPE_RULES[levelMatch ?? 'intermediaire']
 
+    // Une structure qui passe la porte « valider la structure » : H1 qui porte
+    // le capitaine en entier, un H2 par lieutenant retenu, complétée par des H2
+    // thématiques jusqu'au minimum du type, ni introduction ni conclusion (le
+    // sommaire les ajoute), pas de FAQ (passe d'enrichissement).
+    const capitalize = (text: string) => `${text.charAt(0).toUpperCase()}${text.slice(1)}`
+    const fillers = ['Les erreurs à éviter', 'Les étapes pour bien démarrer', 'Le budget à prévoir',
+      'Les questions à se poser avant de choisir', 'Mesurer les résultats', 'Aller plus loin']
+    const h2Titles = [...lieutenants.map(capitalize), ...fillers].slice(0, Math.max(rules.h2Min, Math.min(lieutenants.length, rules.h2Max)))
     const json = {
       hnStructure: [
-        { level: 1, text: `${captain} : guide complet (mock)` },
-        ...lieutenants.slice(0, 6).map((lt, i) => ({
+        { level: 1, text: `${capitalize(captain)} : le guide pratique` },
+        ...h2Titles.map((title, i) => ({
           level: 2,
-          text: `${lt.charAt(0).toUpperCase()}${lt.slice(1)}`,
-          children: i === 0
-            ? [{ level: 3, text: `${lt} — détails et bonnes pratiques` }]
-            : undefined,
+          text: title,
+          children: i === 0 ? [{ level: 3, text: `${title} : ce qu’il faut savoir` }] : undefined,
         })),
-        { level: 2, text: 'Foire aux questions (FAQ)' },
       ],
-      justification: 'Structure générée par le provider mock — chaque lieutenant fourni a été placé en H2, le premier dispose d\'un sous-H3 d\'illustration. À remplacer par un appel réel pour de la production.',
+      justification: 'Structure simulée : chaque lieutenant retenu en H2, complétée jusqu’au minimum du type.',
     }
     return JSON.stringify(json, null, 2)
   },

@@ -1,6 +1,20 @@
 import { describe, it, expect } from 'vitest'
-import { MOTEUR_DISCOVERY_DONE, MOTEUR_CAPITAINE_LOCKED, MOTEUR_LEXIQUE_VALIDATED } from '@shared/constants/workflow-checks.constants'
+import { ref, defineComponent, h } from 'vue'
+import { mount } from '@vue/test-utils'
+import { setActivePinia, createPinia } from 'pinia'
+import {
+  MOTEUR_CHECKS,
+  MOTEUR_DISCOVERY_DONE,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
+} from '@shared/constants/workflow-checks.constants'
 import type { Article, ArticlePhase, ArticleStatus } from '@shared/types/index'
+import { useMoteurTabs, type MoteurTabsApi } from '@/composables/moteur/useMoteurTabs'
+import { isFinalisationUnlocked } from '@/composables/moteur/useFinalisationGating'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
 
 /**
  * Coherence tests for the `articles` data flow.
@@ -54,20 +68,31 @@ describe('FR-MOT-ARTICLE-SELECTION — article selection impacts workflow gating
     expect(tabsLocked).toBe(false)
   })
 
-  it('should compute smart tab based on article progress (completedChecks)', () => {
-    // Simulates MoteurView.computeSmartTab(articleId) logic (lines 343-354)
+  it('should compute smart tab based on article progress (completedChecks) — FR-HN-TAB', () => {
+    // Le vrai `computeSmartTab` de useMoteurTabs, lu sur les checks persistés
+    // de l'article (article-progress store), pas une copie locale.
+    setActivePinia(createPinia())
+    const progressStore = useArticleProgressStore()
+    const workflowNavStore = useWorkflowNavStore()
+    let api: MoteurTabsApi | null = null
+    const wrapper = mount(defineComponent({
+      setup() {
+        api = useMoteurTabs({ selectedArticle: ref(null), isDiscoveryAllowed: ref(true), articleProgressStore: progressStore, workflowNavStore })
+        return () => h('div')
+      },
+    }))
     function computeSmartTab(checks: string[]): string {
-      if (checks.length === 0) return 'capitaine'
-      if (checks.includes(MOTEUR_LEXIQUE_VALIDATED)) return 'finalisation'
-      if (checks.includes('moteur:lieutenants_locked')) return 'lexique'
-      if (checks.includes(MOTEUR_CAPITAINE_LOCKED)) return 'lieutenants'
-      return 'capitaine'
+      progressStore.progressMap['1'] = { articleId: 1, phase: 'moteur', completedChecks: checks, lastCheckAt: null } as never
+      return api!.computeSmartTab(1)
     }
 
     expect(computeSmartTab([])).toBe('capitaine')
     expect(computeSmartTab([MOTEUR_CAPITAINE_LOCKED])).toBe('lieutenants')
-    expect(computeSmartTab([MOTEUR_CAPITAINE_LOCKED, 'moteur:lieutenants_locked'])).toBe('lexique')
-    expect(computeSmartTab([MOTEUR_CAPITAINE_LOCKED, 'moteur:lieutenants_locked', MOTEUR_LEXIQUE_VALIDATED])).toBe('finalisation')
+    expect(computeSmartTab([MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED])).toBe('structure')
+    expect(computeSmartTab([MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED])).toBe('lexique')
+    // Sprint 4 : jamais d'auto-navigation vers Finalisation.
+    expect(computeSmartTab([MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED])).toBe('lexique')
+    wrapper.unmount()
   })
 
   it('should detect Discovery tab lock when Captain keyword is already validated', () => {
@@ -99,18 +124,19 @@ describe('FR-DASH-PROGRESS — ProgressDots display article.completedChecks accu
       completedChecks: [MOTEUR_DISCOVERY_DONE, MOTEUR_CAPITAINE_LOCKED],
     })
 
-    const expectedDots = {
+    // Les 6 points de ProgressDots = MOTEUR_CHECKS (FR-HN-TAB : Structure comprise).
+    const actualStates = Object.fromEntries(
+      MOTEUR_CHECKS.map(check => [check, article.completedChecks.includes(check) ? 'filled' : 'empty']),
+    )
+    expect(Object.keys(actualStates)).toHaveLength(6)
+    expect(actualStates).toEqual({
       [MOTEUR_DISCOVERY_DONE]: 'filled',
-      [MOTEUR_CAPITAINE_LOCKED]: 'filled',
       'moteur:radar_done': 'empty',
-      'moteur:lieutenants_locked': 'empty',
-    }
-
-    for (const [check, expectedState] of Object.entries(expectedDots)) {
-      const isFilled = article.completedChecks.includes(check)
-      const actualState = isFilled ? 'filled' : 'empty'
-      expect(actualState).toBe(expectedState)
-    }
+      [MOTEUR_CAPITAINE_LOCKED]: 'filled',
+      [MOTEUR_LIEUTENANTS_LOCKED]: 'empty',
+      [MOTEUR_HN_LOCKED]: 'empty',
+      [MOTEUR_LEXIQUE_VALIDATED]: 'empty',
+    })
   })
 
   it('should handle empty completedChecks', () => {
@@ -281,11 +307,22 @@ describe('FR-DASH-PROGRESS & completed-checks — coherence check', () => {
     const displayCount = article.completedChecks.filter(c => c.includes('moteur')).length
     expect(displayCount).toBe(0)
 
-    // Gating: isFinalisationUnlocked should return false
-    const hasAllFinalChecks = article.completedChecks.includes(MOTEUR_CAPITAINE_LOCKED)
-      && article.completedChecks.includes('moteur:lieutenants_locked')
-      && article.completedChecks.includes(MOTEUR_LEXIQUE_VALIDATED)
-    expect(hasAllFinalChecks).toBe(false)
+    // Gating: isFinalisationUnlocked (4 verrous, FR-HN-TAB) should return false
+    const gatingInput = (checks: string[]) => ({
+      capitaineLocked: checks.includes(MOTEUR_CAPITAINE_LOCKED),
+      lieutenantsLocked: checks.includes(MOTEUR_LIEUTENANTS_LOCKED),
+      structureLocked: checks.includes(MOTEUR_HN_LOCKED),
+      lexiqueValidated: checks.includes(MOTEUR_LEXIQUE_VALIDATED),
+    })
+    expect(isFinalisationUnlocked(gatingInput(article.completedChecks))).toBe(false)
+    // Et la même lecture des checks ouvre la porte quand les 4 verrous sont posés.
+    expect(isFinalisationUnlocked(gatingInput([
+      MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED,
+    ]))).toBe(true)
+    // L'ancien trio (sans Structure) ne suffit plus.
+    expect(isFinalisationUnlocked(gatingInput([
+      MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED,
+    ]))).toBe(false)
   })
 })
 

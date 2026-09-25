@@ -639,6 +639,9 @@ describe('POST /api/keywords/:keyword/propose-lieutenants', () => {
     expect(data.outline.selectedLieutenants).toHaveLength(5) // MAX_SELECTED pilier = 5
     expect(data.outline.eliminatedLieutenants).toHaveLength(3)
     expect(data.outline.totalGenerated).toBe(8)
+    // FR-HN-TAB (M7) : un plan renvoyé malgré tout par l'IA n'atteint pas l'écran ;
+    // la structure naît à l'onglet Structure, des lieutenants retenus.
+    expect(data.outline).not.toHaveProperty('hnStructure')
   })
 
   it('filters empty PAA questions before formatting', async () => {

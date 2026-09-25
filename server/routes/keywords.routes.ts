@@ -310,7 +310,8 @@ router.put('/articles/:id/keywords', async (req, res) => {
       lieutenants: lieutenants ?? [],
       lexique: lexique ?? [],
       rootKeywords: rootKeywords ?? [],
-      hnStructure: hnStructure ?? [],
+      // Absente = inchangée : un enregistrement Lieutenants ou Lexique n’efface plus la structure (C6).
+      hnStructure,
     })
     res.json({ data: saved })
   } catch (err) {

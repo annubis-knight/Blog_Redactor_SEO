@@ -123,9 +123,38 @@ describe('PUT /articles/:id/keywords', () => {
       lieutenants: ['lt1'],
       lexique: ['lsi1'],
       rootKeywords: [],
-      hnStructure: [],
+      // FR-HN-TAB : `hnStructure` absent du corps = inchangé en base (transmis
+      // `undefined`, plus de `?? []` qui effaçait la structure validée).
+      hnStructure: undefined,
     })
     expect(res.json).toHaveBeenCalledWith({ data: saved })
+  })
+
+  it('FR-HN-TAB — hnStructure absent du corps : transmis undefined (structure en base inchangée), jamais []', async () => {
+    mockSaveArticleKeywords.mockResolvedValueOnce({ articleId: 1 })
+    const req = {
+      params: { id: '1' },
+      body: { capitaine: 'main keyword', lieutenants: ['lt1'], lexique: [] },
+    } as unknown as Request
+    await handler(req, createMockRes())
+
+    const payload = mockSaveArticleKeywords.mock.calls.at(-1)![1] as Record<string, unknown>
+    expect(payload.hnStructure).toBeUndefined()
+  })
+
+  it('FR-HN-TAB — hnStructure présent dans le corps (validation de la structure) : transmis tel quel', async () => {
+    mockSaveArticleKeywords.mockResolvedValueOnce({ articleId: 1 })
+    const hnStructure = [
+      { level: 1, text: 'Agence SEO à Toulouse' },
+      { level: 2, text: 'Choisir son agence', children: [{ level: 3, text: 'Les critères' }] },
+    ]
+    const req = {
+      params: { id: '1' },
+      body: { capitaine: 'main keyword', lieutenants: ['lt1'], lexique: [], hnStructure },
+    } as unknown as Request
+    await handler(req, createMockRes())
+
+    expect(mockSaveArticleKeywords).toHaveBeenCalledWith(1, expect.objectContaining({ hnStructure }))
   })
 
   it('returns 400 when capitaine is missing', async () => {

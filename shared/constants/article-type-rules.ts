@@ -22,7 +22,7 @@ export interface ArticleTypeRules {
   wordsMax: number
   /** En dessous, le contenu est trop mince (alerte SEO « contenu mince »). */
   wordsFloor: number
-  /** Nombre de H2 du sommaire. */
+  /** Nombre de H2 de fond du sommaire, hors introduction et conclusion (ajoutées par `hnToOutline`). */
   h2Min: number
   h2Max: number
   /** En dessous, l'alerte SEO « trop peu de chapitres » se déclenche. */
@@ -89,7 +89,7 @@ export function describeTypeRules(level: ArticleLevel): string {
   return [
     `Règles du type ${r.label} (à respecter strictement) :`,
     `- Longueur : entre ${n(r.wordsMin)} et ${n(r.wordsMax)} mots, cible ${n(r.targetWords)} mots.`,
-    `- Sommaire : ${r.h2Min} à ${r.h2Max} H2 ; ${r.h3PerH2Min} à ${r.h3PerH2Max} H3 par H2, seulement quand une sous-section a du sens.`,
+    `- Sommaire : ${r.h2Min} à ${r.h2Max} H2 de fond (l’introduction et la conclusion s’ajoutent à part) ; ${r.h3PerH2Min} à ${r.h3PerH2Max} H3 par H2, seulement quand une sous-section a du sens.`,
     `- Lieutenants : ${r.lieutenantCandidatesMin} à ${r.lieutenantCandidatesMax} candidats proposés, ${r.minLieutenants} au minimum et ${r.maxLieutenants} au maximum retenus.`,
     `- FAQ : ${r.faqMin} à ${r.faqMax} questions, ajoutées par la passe d’enrichissement.`,
     r.localH2Max === 0

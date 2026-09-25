@@ -1,16 +1,18 @@
 /**
  * Vague 3 — Tests architecturaux LieutenantsResultsLayout (sous-composant J.D).
  *
- * Référence FR PRD : FR-LIE-AI-FRONTIER (PRD §8.7).
+ * Référence FR PRD : FR-LIE-AI-FRONTIER (PRD §8.7), FR-HN-TAB (M7 : la
+ * structure H1/H2/H3 a quitté l'onglet Lieutenants pour l'onglet Structure).
  *
  * Ces tests doublent le verrou Sprint C-1 (`lieutenants-selection-architecture.test.ts`)
  * mais à un niveau plus fin : ils s'exécutent sur le sous-composant ISOLÉ,
  * sans monter LieutenantsPanel.
  *
- * Invariant : LieutenantProposals et LieutenantH2Structure sont descendants
- * directs de `.serp-results` (root du sous-composant), JAMAIS du
- * LieutenantsAiPanel. La frontière sémantique données utilisateur ↔ panel IA
- * est garantie par construction du sous-composant.
+ * Invariant : LieutenantProposals est descendant direct de `.serp-results`
+ * (root du sous-composant), JAMAIS du LieutenantsAiPanel. La frontière
+ * sémantique données utilisateur ↔ panel IA est garantie par construction du
+ * sous-composant. LieutenantH2Structure n'est plus rendu ici (FR-HN-TAB, M7) :
+ * il vit dans StructureHnPanel.
  */
 import { describe, it, expect } from 'vitest'
 import { mount } from '@vue/test-utils'
@@ -38,11 +40,10 @@ const stubs = {
     props: ['iaIsStreaming', 'iaChunks', 'iaError', 'lieutenantCards', 'eliminatedCards', 'totalGenerated', 'selectedCards', 'isLocked', 'contentGapInsights', 'articleLevel'],
     emits: ['toggle', 'retry'],
   },
+  // Stubbé pour détecter une réintroduction : il ne doit plus être rendu ici.
   LieutenantH2Structure: {
     name: 'LieutenantH2Structure',
     template: '<div data-testid="lieutenant-h2-structure"></div>',
-    props: ['hnStructure', 'activeHnRecurrence', 'hnRecurrence', 'serpResultsByKeyword', 'activeHnTab', 'isLocked', 'hnSaved', 'isSavingHn'],
-    emits: ['save-hn', 'update:active-hn-tab'],
   },
   LieutenantsAiPanel: {
     name: 'LieutenantsAiPanel',
@@ -65,15 +66,7 @@ const baseProps = {
   selectedCards: new Map(),
   contentGapInsights: '',
   articleLevel: 'intermediaire' as const,
-  hnStructure: [],
-  activeHnRecurrence: [],
-  hnRecurrence: [],
-  serpResultsByKeyword: new Map(),
-  activeHnTab: '__all__',
-  hnSaved: false,
-  isSavingHn: false,
   wordGroups: [],
-  selectedCardsSize: 0,
 }
 
 function isDescendantOf(wrapper: ReturnType<typeof mount>, ancestorSelector: string, descendantSelector: string): boolean {
@@ -95,16 +88,18 @@ describe('LieutenantsResultsLayout — architecture FR-LIE-AI-FRONTIER (Vague 3 
       .toBe(false)
   })
 
-  it('AC.J.18 — LieutenantH2Structure est descendant direct de .serp-results, PAS de LieutenantsAiPanel', () => {
+  it('AC.J.18 (FR-HN-TAB, M7) — LieutenantH2Structure n\'est plus rendu dans le layout Lieutenants', () => {
     const wrapper = mount(LieutenantsResultsLayout, {
       props: baseProps,
       global: { stubs },
     })
 
-    expect(isDescendantOf(wrapper, '.serp-results', '[data-testid="lieutenant-h2-structure"]'))
-      .toBe(true)
-    expect(isDescendantOf(wrapper, '[data-testid="ai-panel-suggestion"]', '[data-testid="lieutenant-h2-structure"]'))
-      .toBe(false)
+    // Le layout est bien visible (propositions rendues)…
+    expect(wrapper.find('.serp-results').exists()).toBe(true)
+    expect(wrapper.find('[data-testid="lieutenants-container"]').exists()).toBe(true)
+    // … mais la structure Hn n'y figure plus : elle a son onglet (StructureHnPanel).
+    expect(wrapper.findComponent({ name: 'LieutenantH2Structure' }).exists()).toBe(false)
+    expect(wrapper.find('[data-testid="lieutenant-h2-structure"]').exists()).toBe(false)
   })
 
   it('AC.J.19 — LieutenantsAiPanel est rendu en bas du layout (présent mais isolé)', () => {

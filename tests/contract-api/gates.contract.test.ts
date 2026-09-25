@@ -120,6 +120,47 @@ describe('Porte « valider les lieutenants » — minimum par type', () => {
   })
 })
 
+describe('Porte « valider la structure » (FR-HN-LOCK-GATE)', () => {
+  it('⛔ une structure sans H1 : l’étape est refusée en 422, et aucune raison ne la débloque', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle('Spécialisé')
+    const capitaine = `structure-${ctx.runId}`
+    expect((await apiPut(`/articles/${article.id}/keywords`, {
+      capitaine, lieutenants: [], lexique: [],
+      hnStructure: [{ level: 2, text: 'Le prix' }, { level: 2, text: 'Le délai' }, { level: 2, text: 'Les pièges' }],
+    })).status).toBe(200)
+
+    const check = await apiPost<unknown>(`/articles/${article.id}/progress/check`, { check: 'moteur:hn_locked' })
+    expect(check.status).toBe(422)
+    const details = (check.raw as { error: { details: Evaluation } }).error.details
+    expect(details.blocking.find(i => i.rule === 'hn-h1-missing')?.level).toBe('technique')
+
+    const waiver = await apiPost<{ refused: Array<{ rule: string }> }>(
+      `/articles/${article.id}/gates/hn-lock/waivers`,
+      { waivers: [{ rule: 'hn-h1-missing', category: 'autre', reason: 'Je veux passer quand même, en connaissance de cause' }] },
+    )
+    expect(waiver.data!.refused.map(r => r.rule)).toContain('hn-h1-missing')
+  })
+
+  it('une structure conforme passe ; l’enregistrer sans structure ne l’efface plus', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle('Spécialisé')
+    const capitaine = `site vitrine ${ctx.runId}`
+    const hnStructure = [
+      { level: 1, text: `${capitaine} : le guide` },
+      { level: 2, text: 'Le prix d’un site' }, { level: 2, text: 'Le délai' }, { level: 2, text: 'Les pièges' },
+    ]
+    expect((await apiPut(`/articles/${article.id}/keywords`, { capitaine, lieutenants: [], lexique: [], hnStructure })).status).toBe(200)
+    const evaluation = await apiGet<Evaluation>(`/articles/${article.id}/gates/hn-lock`)
+    expect(evaluation.data!.passed).toBe(true)
+
+    // Un enregistrement Lieutenants ou Lexique (sans `hnStructure`) garde la structure.
+    expect((await apiPut(`/articles/${article.id}/keywords`, { capitaine, lieutenants: ['prix site'], lexique: [] })).status).toBe(200)
+    const relu = await apiGet<{ hnStructure: unknown[] }>(`/articles/${article.id}/keywords`)
+    expect(relu.data!.hnStructure).toHaveLength(4)
+  })
+})
+
 describe('Porte « valider le lexique » (FR-LEX-METIER-ONLY)', () => {
   it('🔴 un mot vide dans le lexique retient l’étape ; un lexique de métier passe', async ({ skip }) => {
     if (!ctx.serverOk) skip()

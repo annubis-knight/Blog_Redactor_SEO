@@ -9,6 +9,9 @@
  * ont ete retirees par decision produit.
  *
  * Voir docs/data-flows/completed-checks.md pour la cartographie complete.
+ *
+ * FR-HN-TAB (chantier C6) : 6e check Moteur `moteur:hn_locked` (structure
+ * H1/H2/H3 validee a l'onglet Structure), entre Lieutenants et Lexique.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -20,6 +23,7 @@ import {
   MOTEUR_RADAR_DONE,
   MOTEUR_CAPITAINE_LOCKED,
   MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
 } from '../../../shared/constants/workflow-checks.constants.js'
 import { addCheckSchema } from '../../../shared/schemas/article-progress.schema.js'
@@ -39,6 +43,17 @@ describe('FR-MOT-CHECKS — namespace Moteur', () => {
     const all = ALL_WORKFLOW_CHECKS
     const unique = new Set(all)
     expect(unique.size).toBe(all.length)
+  })
+
+  it('FR-HN-TAB — MOTEUR_CHECKS = 6 checks, dans l’ordre des onglets (structure entre lieutenants et lexique)', () => {
+    expect([...MOTEUR_CHECKS]).toEqual([
+      MOTEUR_DISCOVERY_DONE,
+      MOTEUR_RADAR_DONE,
+      MOTEUR_CAPITAINE_LOCKED,
+      MOTEUR_LIEUTENANTS_LOCKED,
+      MOTEUR_HN_LOCKED,
+      MOTEUR_LEXIQUE_VALIDATED,
+    ])
   })
 
   it('ALL_WORKFLOW_CHECKS = MOTEUR_CHECKS depuis 2026-05-13 (cf. DRIFT-002)', () => {
@@ -66,6 +81,10 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
 
   it('MOTEUR_LIEUTENANTS_LOCKED = "moteur:lieutenants_locked"', () => {
     expect(MOTEUR_LIEUTENANTS_LOCKED).toBe('moteur:lieutenants_locked')
+  })
+
+  it('MOTEUR_HN_LOCKED = "moteur:hn_locked" (FR-HN-TAB)', () => {
+    expect(MOTEUR_HN_LOCKED).toBe('moteur:hn_locked')
   })
 
   it('MOTEUR_LEXIQUE_VALIDATED = "moteur:lexique_validated"', () => {
@@ -130,6 +149,16 @@ describe('FR-MOT-CHECKS-CONSTANTS — schema Zod accepte uniquement moteur:*', (
     expect(result.success).toBe(false)
   })
 
+  it('refuse "hn_locked" (sans prefixe, FR-HN-TAB)', () => {
+    const result = addCheckSchema.safeParse({ check: 'hn_locked' })
+    expect(result.success).toBe(false)
+  })
+
+  it('accepte "moteur:hn_locked" (FR-HN-TAB)', () => {
+    const result = addCheckSchema.safeParse({ check: MOTEUR_HN_LOCKED })
+    expect(result.success).toBe(true)
+  })
+
   it('accepte "moteur:capitaine_locked"', () => {
     const result = addCheckSchema.safeParse({ check: MOTEUR_CAPITAINE_LOCKED })
     expect(result.success).toBe(true)
@@ -150,6 +179,7 @@ describe('FR-MOT-CHECKS-CONSTANTS — aucune string en dur dans src/', () => {
   const FORBIDDEN_LITERALS = [
     "'capitaine_locked'", "\"capitaine_locked\"",
     "'lieutenants_locked'", "\"lieutenants_locked\"",
+    "'hn_locked'", "\"hn_locked\"",
     "'discovery_done'", "\"discovery_done\"",
     "'radar_done'", "\"radar_done\"",
     "'lexique_validated'", "\"lexique_validated\"",

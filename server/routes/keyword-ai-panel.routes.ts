@@ -9,6 +9,7 @@ import { aiAdviceContract } from '../../shared/contracts/ai-advice.contract.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
+import { getCocoonSiblings, describeCocoonSiblings } from '../services/queries/cocoon-siblings.service.js'
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult, ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
@@ -138,6 +139,8 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
     : 'Aucun heading verrouille'
 
   const painPoint = await getArticlePainPoint(articleId)
+  // Les autres articles du cocon : un pilier ne creuse pas le sujet d'un enfant (FR-HN-TAB).
+  const siblings = articleId ? await getCocoonSiblings(articleId).catch(() => []) : []
   const systemPrompt = await loadPrompt('lieutenants-hn-structure', {
     keyword,
     level,
@@ -146,6 +149,7 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
     hn_structure: hnSummary,
     locked_headings: lockedSummary,
     type_rules: typeRulesFor(level),
+    cocoon_articles: describeCocoonSiblings(siblings),
   }, cocoonSlug ? { cocoonSlug } : undefined)
   log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, lockedCount: lockedHeadings?.length ?? 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
@@ -182,7 +186,6 @@ function filterLieutenants(parsed: ProposeLieutenantsResult, level: ArticleLevel
   return {
     selectedLieutenants: sorted.slice(0, maxKeep),
     eliminatedLieutenants: sorted.slice(maxKeep),
-    hnStructure: parsed.hnStructure,
     contentGapInsights: parsed.contentGapInsights,
     totalGenerated: parsed.lieutenants.length,
   }

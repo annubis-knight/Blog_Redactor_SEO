@@ -4,7 +4,8 @@
  *            richCaptain JSONB, richLieutenants JSONB, richRootKeywords JSONB).
  *            Source de verite des mots-cles verrouilles utilisateur par article.
  * READS FROM: GET /articles/:id/keywords (fetchKeywords, fetchKeywordsMerge).
- * WRITES TO: PUT /articles/:id/keywords (saveDecisions / saveKeywords).
+ * WRITES TO: PUT /articles/:id/keywords (saveDecisions / saveKeywords : sans la structure ;
+ *            saveStructure : la structure H1/H2/H3, onglet Structure).
  *            POST /articles/:id/captain-explorations (saveCaptainExplorationEntry).
  *            POST /articles/:id/lieutenant-explorations (saveLieutenantExplorationEntries).
  * CONSUMERS: CaptainPanel, LieutenantsPanel, LexiquePanel, FinalisationPanel,
@@ -21,7 +22,7 @@ import { defineStore } from 'pinia'
 import { apiGet, apiPut, apiPost, apiPatch } from '@/services/api.service'
 import { log } from '@/utils/logger'
 import type { ArticleKeywords, CaptainScanEntry, RichRootKeyword, RichLieutenant } from '@shared/types/index.js'
-import type { ProposedLieutenant } from '@shared/types/serp-analysis.types.js'
+import type { ProposedLieutenant, ProposeLieutenantsHnNode } from '@shared/types/serp-analysis.types.js'
 import type { PaaJudgmentBlock } from '@shared/types/captain-paa-judgment.types.js'
 import type { RelevanceScoreResult, RelevanceUnavailableReason } from '@shared/types/scoring.types.js'
 import { articleKeywordsContract } from '@shared/contracts/article-keywords.contract.js'
@@ -140,6 +141,11 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
           }
         }
       }
+      // Structure : adopte celle de la base si la mémoire n'en a pas (elle n'était
+      // jamais fusionnée : l'onglet Structure l'aurait crue vide).
+      if (!local.hnStructure?.length && remote.hnStructure?.length) {
+        local.hnStructure = remote.hnStructure
+      }
       log.debug(`[article-keywords] merged for article ${id}`)
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur inconnue'
@@ -213,18 +219,50 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     error.value = null
     try {
       // Response contains only flat fields, not rich objects — preserve in-memory state
+      // La structure n'est pas envoyée : elle appartient à l'onglet Structure
+      // (`saveStructure`). L'envoyer d'ici l'effaçait dès que le store était
+      // vide en mémoire (C6).
       await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
         capitaine: kw.capitaine,
         lieutenants: kw.lieutenants,
         lexique: kw.lexique,
         rootKeywords: kw.rootKeywords ?? [],
-        hnStructure: kw.hnStructure ?? [],
       })
       log.debug(`[article-keywords] decisions saved for article ${id}`)
       return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
       log.error(`[article-keywords] saveDecisions failed`, { articleId: id, error: error.value })
+      return false
+    } finally {
+      isSaving.value = false
+    }
+  }
+
+  /**
+   * Enregistre la structure H1/H2/H3 de l'article (onglet Structure, FR-HN-TAB).
+   * Renvoie `false` en cas d'échec : l'étape Structure ne doit pas être demandée
+   * sur des données que le serveur n'a pas.
+   */
+  async function saveStructure(id: number, structure: ProposeLieutenantsHnNode[]): Promise<boolean> {
+    if (!keywords.value) ensureKeywords(id)
+    const kw = keywords.value!
+    kw.hnStructure = structure
+    isSaving.value = true
+    error.value = null
+    try {
+      await apiPut<ArticleKeywords>(`/articles/${id}/keywords`, {
+        capitaine: kw.capitaine,
+        lieutenants: kw.lieutenants,
+        lexique: kw.lexique,
+        rootKeywords: kw.rootKeywords ?? [],
+        hnStructure: structure,
+      })
+      log.debug(`[article-keywords] structure saved for article ${id}`, { nodes: structure.length })
+      return true
+    } catch (err) {
+      error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
+      log.error(`[article-keywords] saveStructure failed`, { articleId: id, error: error.value })
       return false
     } finally {
       isSaving.value = false
@@ -687,7 +725,7 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
     keywords, isLoading, isSaving, isSuggestingLexique, error, hasKeywords,
     captainExploredKeywords, lockedLieutenants, eliminatedLieutenants,
     paaJudgmentsByArticle, paaJudgmentsLoadingByArticle,
-    fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, suggestLexique,
+    fetchKeywords, fetchKeywordsMerge, saveKeywords, saveDecisions, saveStructure, suggestLexique,
     mergeCaptainExploredKeywords, mergeRichLieutenants,
     saveCaptainExplorationEntry, saveCaptainExplorationAiPanel, saveLieutenantExplorationEntries,
     setCapitaine, addCaptainPanel, lockCaptain, unlockCaptain, updateCaptainValidationAiPanel,

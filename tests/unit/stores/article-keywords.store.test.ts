@@ -253,13 +253,14 @@ describe('article-keywords.store — saveKeywords', () => {
 
     await store.saveKeywords('design-emotionnel')
 
+    // FR-HN-TAB : plus de `hnStructure` dans le corps (absent = inchangé en base).
     expect(mockApiPut).toHaveBeenCalledWith('/articles/design-emotionnel/keywords', {
       capitaine: 'updated capitaine',
       lieutenants: [],
       lexique: [],
       rootKeywords: [],
-      hnStructure: [],
     })
+    expect(mockApiPut.mock.calls[0]![1]).not.toHaveProperty('hnStructure')
     // Le store local conserve sa valeur (mute par setCapitaine avant le save).
     expect(store.keywords?.capitaine).toBe('updated capitaine')
     expect(store.isSaving).toBe(false)
@@ -316,6 +317,101 @@ describe('article-keywords.store — saveKeywords', () => {
     await promise
 
     expect(store.isSaving).toBe(false)
+  })
+})
+
+/**
+ * FR-HN-TAB (onglet Structure) — la structure H1/H2/H3 a sa propre écriture.
+ * `saveDecisions` (Lieutenants, Lexique…) ne l'envoie plus : l'envoyer d'ici
+ * l'effaçait dès que la mémoire du store était vide. `saveStructure` est la
+ * seule écriture de la structure.
+ */
+describe('article-keywords.store — structure Hn (FR-HN-TAB)', () => {
+  const STRUCTURE = [
+    { level: 1, text: 'Design émotionnel : le guide' },
+    { level: 2, text: 'Pourquoi l’émotion compte', children: [{ level: 3, text: 'Les micro-interactions' }] },
+  ]
+
+  it('saveDecisions n’envoie pas la structure, même quand la mémoire en contient une', async () => {
+    mockApiPut.mockResolvedValue(undefined as never)
+    const store = useArticleKeywordsStore()
+    store.initEmpty(1)
+    store.setCapitaine('design émotionnel')
+    store.keywords!.hnStructure = STRUCTURE
+
+    const ok = await store.saveDecisions(1)
+
+    expect(ok).toBe(true)
+    expect(mockApiPut).toHaveBeenCalledTimes(1)
+    expect(mockApiPut.mock.calls[0]![1]).not.toHaveProperty('hnStructure')
+    // La structure en mémoire n'est pas touchée.
+    expect(store.keywords!.hnStructure).toEqual(STRUCTURE)
+  })
+
+  it('saveStructure envoie la structure avec les décisions et la garde en mémoire', async () => {
+    mockApiPut.mockResolvedValue(undefined as never)
+    const store = useArticleKeywordsStore()
+    store.initEmpty(1)
+    store.setCapitaine('design émotionnel')
+
+    const ok = await store.saveStructure(1, STRUCTURE)
+
+    expect(ok).toBe(true)
+    expect(mockApiPut).toHaveBeenCalledWith('/articles/1/keywords', {
+      capitaine: 'design émotionnel',
+      lieutenants: [],
+      lexique: [],
+      rootKeywords: [],
+      hnStructure: STRUCTURE,
+    })
+    expect(store.keywords!.hnStructure).toEqual(STRUCTURE)
+    expect(store.isSaving).toBe(false)
+    expect(store.error).toBeNull()
+  })
+
+  it('saveStructure renvoie false et pose l’erreur si le serveur refuse (l’étape ne doit pas être demandée)', async () => {
+    mockApiPut.mockRejectedValue(new Error('Save failed'))
+    const store = useArticleKeywordsStore()
+    store.initEmpty(1)
+
+    const ok = await store.saveStructure(1, STRUCTURE)
+
+    expect(ok).toBe(false)
+    expect(store.error).toBe('Save failed')
+    expect(store.isSaving).toBe(false)
+  })
+
+  it('saveStructure initialise le store s’il est vide', async () => {
+    mockApiPut.mockResolvedValue(undefined as never)
+    const store = useArticleKeywordsStore()
+
+    const ok = await store.saveStructure(1, STRUCTURE)
+
+    expect(ok).toBe(true)
+    expect(store.keywords).not.toBeNull()
+    expect(mockApiPut.mock.calls[0]![1]).toMatchObject({ hnStructure: STRUCTURE })
+  })
+
+  it('fetchKeywordsMerge adopte la structure de la base quand la mémoire n’en a pas', async () => {
+    const store = useArticleKeywordsStore()
+    store.initEmpty(1)
+    mockApiGet.mockResolvedValue({ ...mockKeywords, hnStructure: STRUCTURE } as never)
+
+    await store.fetchKeywordsMerge(1)
+
+    expect(store.keywords!.hnStructure).toEqual(STRUCTURE)
+  })
+
+  it('fetchKeywordsMerge garde la structure en mémoire quand elle existe déjà', async () => {
+    const store = useArticleKeywordsStore()
+    store.initEmpty(1)
+    const local = [{ level: 2, text: 'Structure en cours d’édition' }]
+    store.keywords!.hnStructure = local
+    mockApiGet.mockResolvedValue({ ...mockKeywords, hnStructure: STRUCTURE } as never)
+
+    await store.fetchKeywordsMerge(1)
+
+    expect(store.keywords!.hnStructure).toEqual(local)
   })
 })
 

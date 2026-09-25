@@ -1,14 +1,11 @@
 <script setup lang="ts">
 import { computed, ref, watch, toRef } from 'vue'
-import { apiGet, apiPost, apiPut } from '@/services/api.service'
-import { hnToOutline } from '@/stores/article/outline.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineScan'
 import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
 import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
-import { useLieutenantsHn } from '@/composables/moteur/useLieutenantsHn'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
@@ -74,9 +71,6 @@ const assistKeywords = computed<string[]>(() => {
 
 // Direct exploration saves — each event persists to its dedicated table
 
-// (activeHnTab + activeHnRecurrence moved to useLieutenantsHn — déclaré
-// après useLieutenantsIa pour avoir hnStructure dispo.)
-
 // --- SERP State (Vague 3 — extracted to useLieutenantsSerp) ---
 // canAnalyze + resolvedRootKeywords sont définis plus bas (dépendent de
 // hasEverAnalyzed et du captainKeyword props) → on les passe en Ref via toRef
@@ -113,8 +107,6 @@ const {
   activityLog,
 })
 
-// (activeHnRecurrence moved to useLieutenantsHn below)
-
 // F5 — La barrière `isCaptaineLocked` ne s'applique qu'au premier passage. Dès que
 // l'IA a généré des propositions pour cet article, l'onglet reste accessible même
 // si l'utilisateur déverrouille ensuite le Capitaine.
@@ -141,9 +133,10 @@ const cocoonSlugRef = toRef(props, 'cocoonSlug')
 // Verrouillage individuel par checkbox (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
 // `hasAnyLockedLieutenant` : utilitaire pour watchers restauration/skip regen.
 // - `lieutenantsCheckActive` : règle métier pour le check workflow
-//   `MOTEUR_LIEUTENANTS_LOCKED`. Actif ssi (≥1 lieutenant locked) ET
-//   (hn_structure non-vide). Reflète qu'on ne peut considérer l'étape
-//   Lieutenants comme "faite" tant que la structure Hn n'a pas été générée.
+//   `MOTEUR_LIEUTENANTS_LOCKED`. Actif ssi ≥1 lieutenant verrouillé. La
+//   structure H1/H2/H3 n'en fait plus partie : elle a son onglet et son étape
+//   (`moteur:hn_locked`, FR-HN-TAB). Avant C6, l'étape exigeait une structure
+//   produite avant même le choix des lieutenants (M7).
 const hasAnyLockedLieutenant = computed(() => {
   const kw = articleKeywordsStore.keywords
   if (!kw || kw.articleId !== props.selectedArticle?.id) return false
@@ -160,15 +153,11 @@ const {
   lieutenantCards,
   eliminatedCards,
   totalGenerated,
-  hnStructure,
   contentGapInsights,
   selectedCards,
   currentStep,
-  hnRegenStreaming,
-  hnRegenError,
   toggleLieutenant,
   proposeLieutenants,
-  regenerateHnStructure,
   handleAssistAdd,
   restoreLockedLieutenants,
 } = useLieutenantsIa({
@@ -186,28 +175,7 @@ const {
   onLieutenantsUpdated: (selected: string[]) => emit('lieutenants-updated', selected),
 })
 
-// `lieutenantsCheckActive` doit être déclaré APRÈS `hnStructure` (référence
-// du composable IA) pour pouvoir le lire.
-const lieutenantsCheckActive = computed(() => {
-  return hasAnyLockedLieutenant.value && hnStructure.value.length > 0
-})
-
-// --- HN Structure (Vague 3 — extracted to useLieutenantsHn) ---
-// Placé après IA car dépend de hnStructure (mutable, set par proposeLieutenants).
-const {
-  activeHnTab,
-  activeHnRecurrence,
-  isSavingHn,
-  hnSaved,
-  saveHnStructure,
-} = useLieutenantsHn({
-  selectedArticle: selectedArticleRef,
-  serpResultsByKeyword,
-  hnRecurrence,
-  hnStructure,
-  articleKeywordsStore,
-  computeHnRecurrenceFrom,
-})
+const lieutenantsCheckActive = computed(() => hasAnyLockedLieutenant.value)
 
 // --- Debug log: state on mount ---
 watch(
@@ -217,7 +185,6 @@ watch(
       articleId: props.selectedArticle?.id,
       richLieutenantsCount: kw?.richLieutenants?.length ?? 0,
       flatLieutenantsCount: kw?.lieutenants?.length ?? 0,
-      hnStructureCount: (kw?.hnStructure as unknown[] | undefined)?.length ?? 0,
       isCaptainLocked: props.isCaptaineLocked,
       captainKeyword: props.captainKeyword,
     })
@@ -228,52 +195,10 @@ watch(
 // du template. La checkbox de chaque LieutenantCard appelle directement
 // `articleKeywordsStore.lockLieutenant` via toggleLieutenant du composable
 // useLieutenantsIa. Voir FR-LIE-CHECKBOX-LOCK-IMMEDIATE.
-// La fonction historique `lockLieutenants` (batch) a été retirée. Les side-effects
-// (saveDecisions, save outline H2, recommendWordCount) sont déclenchés par le
-// watcher dérivé sur isLocked (transition false → true).
-
-/**
- * Appelle l'endpoint de recommandation targetWordCount et, si l'utilisateur n'a
- * pas encore défini sa valeur manuellement, écrit la reco dans article_micro_contexts.
- * Un toast info est poussé dans l'activity log avec la valeur conseillée.
- */
-async function recommendAndPropagateWordCount(articleId: number): Promise<void> {
-  try {
-    const reco = await apiPost<{ recommended: number; breakdown: { competitorsAvg: number | null; aiSuggestion: number | null; reasoning: string } }>(
-      `/articles/${articleId}/recommend-word-count`,
-      {},
-    )
-    if (!reco?.recommended) return
-
-    // Lit le micro-context actuel pour ne pas écraser une valeur manuelle
-    const existing = await apiGet<{ targetWordCount?: number; angle?: string; tone?: string; directives?: string } | null>(
-      `/articles/${articleId}/micro-context`,
-    ).catch(() => null)
-
-    const alreadyHasCustomValue = existing?.targetWordCount != null
-    if (!alreadyHasCustomValue) {
-      // On écrit la reco dans le brief. Le PUT exige un `angle` → on met un placeholder
-      // qui sera remplaçable par l'utilisateur.
-      await apiPut(`/articles/${articleId}/micro-context`, {
-        angle: existing?.angle ?? 'Angle à préciser (suggéré lors du lock Lieutenants)',
-        tone: existing?.tone ?? '',
-        directives: existing?.directives ?? '',
-        targetWordCount: reco.recommended,
-      })
-    }
-
-    const detail = reco.breakdown.reasoning
-    activityLog.addMessage(
-      'info',
-      `💡 Longueur conseillée : ${reco.recommended.toLocaleString('fr-FR')} mots`,
-      alreadyHasCustomValue
-        ? `${detail} · Valeur manuelle conservée (${existing?.targetWordCount} mots).`
-        : `${detail} · Modifiable dans la Rédaction.`,
-    )
-  } catch (err) {
-    log.warn(`[LieutenantsPanel] recommend-word-count failed: ${(err as Error).message}`)
-  }
-}
+// La fonction historique `lockLieutenants` (batch) a été retirée. L'enregistrement
+// des décisions est déclenché par le watcher dérivé sur isLocked (transition
+// false → true). Sommaire et longueur conseillée partent désormais à la
+// validation de la structure (onglet Structure, FR-HN-TAB).
 
 // du template. Le déverrouillage individuel passe par toggleLieutenant
 // (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
@@ -289,7 +214,11 @@ const lieutenantsGateBlocked = ref<GateEvaluation | null>(null)
 let gateSyncRunning: Promise<void> | null = null
 /** Étape demandée par ce panneau, pas encore reflétée par le store de progression. */
 let checkRequested = false
-/** La première vérification (transition vers « active ») est terminée. */
+/**
+ * Aucune vérification de la porte n'est en cours pour cet article : un
+ * changement de lieutenant peut en lancer une. Pendant une vérification, c'est
+ * elle qui reprend les changements survenus entre-temps.
+ */
 let transitionSettled = false
 
 function hasLieutenantsCheck(id: number): boolean {
@@ -371,10 +300,46 @@ const gateBannerText = computed(() => {
   return `${first.message}${more}`
 })
 
+// Les lieutenants verrouillés, en une clé : un ajout ou un retrait la change.
+const lockedLieutenantsSignature = computed(() =>
+  (articleKeywordsStore.lockedLieutenants ?? []).map(lt => lt.keyword.toLowerCase()).sort().join('|'),
+)
+
+/**
+ * Vérifie la porte pour les lieutenants verrouillés À CET INSTANT, puis
+ * recommence tant qu'ils ont changé pendant la vérification. Une case cochée
+ * pendant la vérification précédente était perdue : un intermédiaire restait
+ * retenu à « trop peu de lieutenants » avec deux cases cochées (l'étape
+ * s'active dès la première, M7). Une seule vérification à la fois : l'étape
+ * n'est jamais demandée deux fois.
+ */
+async function verifyLockedLieutenants(saveFirst: boolean): Promise<void> {
+  transitionSettled = false
+  try {
+    let signature = lockedLieutenantsSignature.value
+    let save = saveFirst
+    for (;;) {
+      const id = props.selectedArticle?.id
+      if (!id || !lieutenantsCheckActive.value) return
+      // Les décisions partent AVANT l'étape : la porte lit la base, pas l'écran.
+      if (save && articleKeywordsStore.keywords && (await articleKeywordsStore.saveDecisions(id)) === false) {
+        log.warn('[LieutenantsPanel] lieutenants non enregistrés : étape non demandée', { articleId: id })
+        return
+      }
+      await requestLieutenantsGate()
+      if (lockedLieutenantsSignature.value === signature) return
+      signature = lockedLieutenantsSignature.value
+      save = true
+    }
+  } finally {
+    transitionSettled = true
+  }
+}
+
 /**
  * Gating workflow : émet/retire check `MOTEUR_LIEUTENANTS_LOCKED`.
- * Actif ssi (≥1 verrouillé) ET (hn_structure non-vide).
- * Sauvegarde hnStructure + outline + wordCount sur transition false→true.
+ * Actif ssi ≥1 lieutenant verrouillé.
+ * Enregistre les décisions sur transition false→true, puis la porte décide.
  * Au mount, réconcilie état réel vs check en DB.
  */
 let previousCheckActive = false
@@ -398,23 +363,25 @@ watch(
       }
       const checkPresent = checks.includes(MOTEUR_LIEUTENANTS_LOCKED)
       const lockedCount = articleKeywordsStore.lockedLieutenants?.length ?? 0
-      const hnStructureSize = articleKeywordsStore.keywords?.hnStructure?.length ?? 0
       let decision: 'add' | 'remove' | 'noop'
       if (active && !checkPresent) {
         // Cas rare : la regle est remplie mais le check manque → la porte décide.
         decision = 'add'
-        void requestLieutenantsGate()
+        void verifyLockedLieutenants(false)
       } else if (!active && checkPresent) {
-        // Check legacy en DB mais nouvelle règle (locked + hn_structure) non remplie → retirer.
+        // Check en base mais plus aucun lieutenant verrouillé → retirer.
         decision = 'remove'
         withdrawCheck()
       } else {
         decision = 'noop'
+        // Règle déjà remplie au montage : un ajout ou un retrait ultérieur
+        // relancera la porte (sans quoi l'étape restait accordée avec trop peu
+        // de lieutenants).
+        if (active) transitionSettled = true
       }
       log.info('[reconcile:lieutenants]', {
         articleId: id,
         lockedCount,
-        hnStructureSize,
         active,
         checkPresent,
         decision,
@@ -426,26 +393,7 @@ watch(
     if (active && !previousCheckActive) {
       previousCheckActive = active
       emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
-      // Side-effects : persister hnStructure + outline + reco wordCount. Ils
-      // passent AVANT l'étape : la porte lit la base, pas l'écran.
-      const id = props.selectedArticle?.id
-      const title = props.selectedArticle?.title
-      if (id && title && articleKeywordsStore.keywords) {
-        articleKeywordsStore.keywords.hnStructure = hnStructure.value
-        if ((await articleKeywordsStore.saveDecisions(id)) === false) {
-          log.warn('[LieutenantsPanel] lieutenants non enregistrés : étape non demandée', { articleId: id })
-          return
-        }
-        if (hnStructure.value.length > 0) {
-          const outline = hnToOutline(hnStructure.value, title)
-          await apiPut(`/articles/${id}`, { outline }).catch((err) => {
-            log.warn(`[LieutenantsPanel] outline save failed: ${(err as Error).message}`)
-          })
-        }
-        void recommendAndPropagateWordCount(id)
-      }
-      await requestLieutenantsGate()
-      transitionSettled = true
+      await verifyLockedLieutenants(true)
       return
     } else if (!active && previousCheckActive) {
       lieutenantsGateBlocked.value = null
@@ -461,19 +409,12 @@ watch(
 
 // Un lieutenant ajouté ou retiré alors que l'étape est déjà active : la porte
 // est revérifiée sur les décisions enregistrées (FR-LIE-LOCK-GATE). La
-// transition false → true, elle, est traitée par le watcher ci-dessus.
-const lockedLieutenantsSignature = computed(() =>
-  (articleKeywordsStore.lockedLieutenants ?? []).map(lt => lt.keyword.toLowerCase()).sort().join('|'),
-)
+// transition false → true est traitée par le watcher ci-dessus ; pendant une
+// vérification, c'est elle qui reprend le changement.
 watch(lockedLieutenantsSignature, async (signature, previous) => {
-  // Tant que la transition n'a pas fini sa vérification, c'est elle qui décide :
-  // sans cette garde, cocher le lieutenant qui active l'étape lançait deux
-  // vérifications en parallèle, et l'étape pouvait être demandée deux fois.
   if (signature === previous || !transitionSettled || !lieutenantsCheckActive.value) return
-  const id = props.selectedArticle?.id
-  if (!id || props.mode === 'libre') return
-  if ((await articleKeywordsStore.saveDecisions(id)) === false) return
-  await requestLieutenantsGate()
+  if (!props.selectedArticle?.id || props.mode === 'libre') return
+  await verifyLockedLieutenants(true)
 })
 
 // (currentStep + AnalysisStep moved to useLieutenantsIa above)
@@ -482,7 +423,6 @@ watch(lockedLieutenantsSignature, async (signature, previous) => {
 watch(serpResultsByKeyword, (map) => {
   if (map.size > 0 && !map.has(activeSerpTab.value)) {
     activeSerpTab.value = map.keys().next().value!
-    activeHnTab.value = '__all__'
   }
 })
 
@@ -497,22 +437,17 @@ watch(
     serpDoneCount.value = 0
     serpTotalCount.value = 0
     activeSerpTab.value = ''
-    activeHnTab.value = '__all__'
     currentStep.value = 'idle'
     selectedCards.value = new Map()
     lieutenantCards.value = []
     eliminatedCards.value = []
     totalGenerated.value = 0
-    hnStructure.value = []
     contentGapInsights.value = ''
 
     // Le store sera resynchronisé par fetchKeywords() au changement d'article.
     iaAbort()
 
-    // Restore inconditionnel : si DB contient hn_structure ou lieutenants, les restaurer.
-    if (articleKeywordsStore.keywords?.hnStructure && articleKeywordsStore.keywords.hnStructure.length > 0) {
-      hnStructure.value = articleKeywordsStore.keywords.hnStructure
-    }
+    // Restore inconditionnel : si la base contient des lieutenants, les restaurer.
     // Restauration via richLieutenants (chemin nominal) OU lieutenants flat
     // (fallback backward compat).
     const hasRich = (articleKeywordsStore.keywords?.richLieutenants?.length ?? 0) > 0
@@ -521,19 +456,6 @@ watch(
       restoreLockedLieutenants()
     }
   },
-)
-
-// --- Restore hnStructure when keywords arrive (async fetch) ---
-// `immediate: true` pour couvrir le cas mount-with-data.
-watch(
-  () => articleKeywordsStore.keywords?.hnStructure,
-  (hn) => {
-    if (hn && hn.length > 0 && hnStructure.value.length === 0) {
-      hnStructure.value = hn
-      log.info('[LieutenantsPanel] HN structure restored from store', { nodes: hn.length })
-    }
-  },
-  { immediate: true },
 )
 
 // --- Restore lieutenant cards when keywords arrive (async fetch) ---
@@ -638,7 +560,6 @@ function refreshSERP() {
   lieutenantCards.value = []
   eliminatedCards.value = []
   totalGenerated.value = 0
-  hnStructure.value = []
   contentGapInsights.value = ''
   emit('lieutenants-updated', [])
   void analyzeSERPWithStep()
@@ -731,22 +652,9 @@ async function analyzeSERPWithStep(): Promise<void> {
       :selected-cards="selectedCards"
       :content-gap-insights="contentGapInsights"
       :article-level="articleLevel"
-      :hn-structure="hnStructure"
-      :active-hn-recurrence="activeHnRecurrence"
-      :hn-recurrence="hnRecurrence"
-      :serp-results-by-keyword="serpResultsByKeyword"
-      :active-hn-tab="activeHnTab"
-      :hn-saved="hnSaved"
-      :is-saving-hn="isSavingHn"
-      :hn-regen-streaming="hnRegenStreaming"
-      :hn-regen-error="hnRegenError"
       :word-groups="wordGroups"
-      :selected-cards-size="selectedCards.size"
       @toggle="toggleLieutenant"
       @propose-retry="proposeLieutenants"
-      @save-hn="saveHnStructure"
-      @regenerate-hn="regenerateHnStructure"
-      @update:active-hn-tab="(tab: string) => activeHnTab = tab"
     />
   </div>
 </template>
