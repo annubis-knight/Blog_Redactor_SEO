@@ -2,7 +2,8 @@
  * AUTHORITY: aucune persistance propre — assemble le brief d'un article ;
  *            longueur visée : PostgreSQL `article_micro_contexts.target_word_count`,
  *            sinon recommandation calculée à l'ouverture (non enregistrée).
- * READS FROM: GET /articles/:id, GET /keywords/:cocoon, POST /dataforseo/brief,
+ * READS FROM: GET /articles/:id, GET /keywords/:cocoon, POST /dataforseo/brief (sur le
+ *             mot-clé de l'article : capitaine verrouillé, sinon suggéré — R13),
  *             POST /articles/:id/recommend-word-count, GET /articles/:id/micro-context
  * WRITES TO: rien (la longueur choisie est enregistrée par BriefStructureStep,
  *            la longueur retenue par la route du premier jet)
@@ -43,6 +44,11 @@ async function fetchContentLengthRecommendation(articleId: number, articleType: 
   return calculateContentLength(articleType)
 }
 
+/** Le mot-clé de l'article : capitaine verrouillé, sinon mot-clé suggéré. */
+function keywordOfArticle(article: Pick<Article, 'captainKeywordLocked' | 'suggestedKeyword'> | null): string | null {
+  return article?.captainKeywordLocked?.trim() || article?.suggestedKeyword?.trim() || null
+}
+
 export const useBriefStore = defineStore('brief', () => {
   const briefData = ref<BriefData | null>(null)
   const isLoading = ref(false)
@@ -52,9 +58,12 @@ export const useBriefStore = defineStore('brief', () => {
   const currentId = ref<number | null>(null)
   let fetchController: AbortController | null = null
 
-  const pilierKeyword = computed(() =>
-    briefData.value?.keywords.find(kw => kw.type === 'Pilier') ?? null,
-  )
+  /**
+   * Le mot-clé des données SERP (questions PAA comprises) : celui de l'article —
+   * son capitaine verrouillé, sinon son mot-clé suggéré. Jamais le pilier du
+   * cocon en repli : un intermédiaire était rédigé avec les questions du pilier (R13).
+   */
+  const serpKeyword = computed<string | null>(() => keywordOfArticle(briefData.value?.article ?? null))
 
   /** Longueur choisie pour l'article (micro-contexte), ou retenue par le premier jet. */
   const retainedWordCount = ref<number | null>(null)
@@ -95,12 +104,12 @@ export const useBriefStore = defineStore('brief', () => {
       }
       if (id !== currentId.value) return
 
-      // 3. Fetch DataForSEO data (if pilier keyword exists, non-blocking)
-      const pilier = keywords.find(kw => kw.type === 'Pilier')
+      // 3. Données SERP du mot-clé de l'article (non bloquant ; aucune sans mot-clé)
+      const articleKeyword = keywordOfArticle(article)
       let dataForSeo: DataForSeoCacheEntry | null = null
-      if (pilier) {
+      if (articleKeyword) {
         try {
-          const result = await apiPost<DataForSeoCacheEntry & { fromCache?: boolean }>('/dataforseo/brief', { keyword: pilier.keyword }, { signal })
+          const result = await apiPost<DataForSeoCacheEntry & { fromCache?: boolean }>('/dataforseo/brief', { keyword: articleKeyword }, { signal })
           dataForSeoFromCache.value = result.fromCache ?? null
           dataForSeo = result
         } catch (err) {
@@ -146,12 +155,12 @@ export const useBriefStore = defineStore('brief', () => {
   }
 
   async function refreshDataForSeo() {
-    if (!briefData.value || !pilierKeyword.value) return
+    if (!briefData.value || !serpKeyword.value) return
 
     isRefreshing.value = true
     try {
       const result = await apiPost<DataForSeoCacheEntry & { fromCache?: boolean }>('/dataforseo/brief', {
-        keyword: pilierKeyword.value.keyword,
+        keyword: serpKeyword.value,
         forceRefresh: true,
       })
       dataForSeoFromCache.value = result.fromCache ?? false
@@ -164,7 +173,7 @@ export const useBriefStore = defineStore('brief', () => {
   }
 
   return {
-    briefData, isLoading, error, isRefreshing, pilierKeyword, dataForSeoFromCache, targetWordCount,
+    briefData, isLoading, error, isRefreshing, serpKeyword, dataForSeoFromCache, targetWordCount,
     fetchBrief, refreshDataForSeo, setRetainedWordCount,
   }
 })

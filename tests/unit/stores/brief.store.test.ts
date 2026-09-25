@@ -13,7 +13,7 @@ const mockApiGet = vi.mocked(apiGet)
 const mockApiPost = vi.mocked(apiPost)
 
 const mockArticleResponse = {
-  article: { title: 'Test Article', type: 'pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const },
+  article: { title: 'Test Article', type: 'pilier' as const, slug: 'test-article', topic: 'Test', status: 'à rédiger' as const, captainKeywordLocked: 'mot clé capitaine' },
   cocoonName: 'Test Cocoon',
 }
 
@@ -69,7 +69,9 @@ describe('brief.store — fetchBrief', () => {
     expect(mockApiGet).toHaveBeenCalledWith('/keywords/Test%20Cocoon', expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
-  it('calls apiPost for DataForSEO with pilier keyword', async () => {
+  // R13 : les données SERP (questions PAA comprises) portaient sur le mot-clé
+  // pilier du cocon : un intermédiaire était rédigé avec les questions du pilier.
+  it('DataForSEO porte sur le capitaine de l’article, pas sur le pilier du cocon (R13)', async () => {
     mockApiGet.mockResolvedValueOnce(mockArticleResponse)
     mockApiGet.mockResolvedValueOnce(mockKeywords)
     mockApiPost.mockResolvedValueOnce(mockDataForSeo)
@@ -77,15 +79,23 @@ describe('brief.store — fetchBrief', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé pilier' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé capitaine' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
   })
 
-  it('skips DataForSEO call when no pilier keyword exists', async () => {
-    const keywordsNoPilier = [
-      { keyword: 'secondaire', cocoonName: 'Test Cocoon', type: 'Moyenne traine' as const },
-    ]
-    mockApiGet.mockResolvedValueOnce(mockArticleResponse)
-    mockApiGet.mockResolvedValueOnce(keywordsNoPilier)
+  it('capitaine pas encore verrouillé : le mot-clé suggéré de l’article', async () => {
+    mockApiGet.mockResolvedValueOnce({ ...mockArticleResponse, article: { ...mockArticleResponse.article, captainKeywordLocked: null, suggestedKeyword: 'mot clé suggéré' } })
+    mockApiGet.mockResolvedValueOnce(mockKeywords)
+    mockApiPost.mockResolvedValueOnce(mockDataForSeo)
+
+    const store = useBriefStore()
+    await store.fetchBrief('test-article')
+
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé suggéré' }, expect.objectContaining({ signal: expect.any(AbortSignal) }))
+  })
+
+  it('sans mot-clé d’article : aucun appel, jamais le pilier en repli', async () => {
+    mockApiGet.mockResolvedValueOnce({ ...mockArticleResponse, article: { ...mockArticleResponse.article, captainKeywordLocked: null } })
+    mockApiGet.mockResolvedValueOnce(mockKeywords)
 
     const store = useBriefStore()
     await store.fetchBrief('test-article')
@@ -160,8 +170,8 @@ describe('brief.store — longueur visée', () => {
   })
 })
 
-describe('brief.store — pilierKeyword', () => {
-  it('returns the pilier keyword from briefData', async () => {
+describe('brief.store — serpKeyword', () => {
+  it('le mot-clé de l’article, celui des données SERP', async () => {
     mockApiGet.mockResolvedValueOnce(mockArticleResponse)
     mockApiGet.mockResolvedValueOnce(mockKeywords)
     mockApiPost.mockResolvedValueOnce(mockDataForSeo)
@@ -169,12 +179,12 @@ describe('brief.store — pilierKeyword', () => {
     const store = useBriefStore()
     await store.fetchBrief('test-article')
 
-    expect(store.pilierKeyword).toEqual({ keyword: 'mot clé pilier', cocoonName: 'Test Cocoon', type: 'Pilier' })
+    expect(store.serpKeyword).toBe('mot clé capitaine')
   })
 
   it('returns null when no briefData loaded', () => {
     const store = useBriefStore()
-    expect(store.pilierKeyword).toBeNull()
+    expect(store.serpKeyword).toBeNull()
   })
 })
 
@@ -192,7 +202,7 @@ describe('brief.store — refreshDataForSeo', () => {
 
     await store.refreshDataForSeo()
 
-    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé pilier', forceRefresh: true })
+    expect(mockApiPost).toHaveBeenCalledWith('/dataforseo/brief', { keyword: 'mot clé capitaine', forceRefresh: true })
     expect(store.briefData!.dataForSeo!.cachedAt).toBe('2026-03-06T13:00:00.000Z')
     expect(store.isRefreshing).toBe(false)
   })
