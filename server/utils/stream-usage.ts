@@ -12,21 +12,24 @@
  * la requête. Ce helper extrait l'usage pour qu'il puisse être joint à
  * `res.json({ data: { ..., usage } })`.
  */
+import type Anthropic from '@anthropic-ai/sdk'
 import { streamChatCompletion, USAGE_SENTINEL } from '../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../services/external/claude.service.js'
 
 /**
  * Consomme le stream complet et retourne { text, usage }.
  * Le texte exclut le sentinel final ; l'usage est parsé depuis le sentinel.
+ * `tools` (recherche web) : seul Claude les exécute, sans repli silencieux.
  */
 export async function collectStreamWithUsage(
   systemPrompt: string,
   userPrompt: string,
   maxTokens = 1024,
+  tools?: Anthropic.Messages.ToolUnion[],
 ): Promise<{ text: string; usage: ApiUsage | null }> {
   let text = ''
   let usage: ApiUsage | null = null
-  for await (const chunk of streamChatCompletion(systemPrompt, userPrompt, maxTokens)) {
+  for await (const chunk of streamChatCompletion(systemPrompt, userPrompt, maxTokens, tools)) {
     if (chunk.startsWith(USAGE_SENTINEL)) {
       try {
         usage = JSON.parse(chunk.slice(USAGE_SENTINEL.length)) as ApiUsage

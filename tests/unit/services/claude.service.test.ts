@@ -11,7 +11,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
   },
 }))
 
-import { streamChatCompletion } from '../../../server/services/external/claude.service'
+import { streamChatCompletion, webSearchTool, webSourcesOf } from '../../../server/services/external/claude.service'
 
 function createMockStream(events: unknown[], stopReason = 'end_turn') {
   return {
@@ -119,5 +119,47 @@ describe('claude.service — streamChatCompletion', () => {
 
     expect(chunks[0]).toBe('ok')
     expect(chunks[1]).toMatch(/^__USAGE__/)
+  })
+})
+
+// FR-RED-ENRICH-SOURCES (R6) — la recherche web partait sans lieu ni date, et
+// ses URL étaient jetées : le pilier 1013 citait la Vendée et des liens que
+// personne ne pouvait rapprocher d'un résultat réel.
+describe('claude.service — recherche web', () => {
+  it('se localise en France, à l’heure de Paris, dans la ville de la zone', () => {
+    expect(webSearchTool('Toulouse, Occitanie')).toMatchObject({
+      type: 'web_search_20250305',
+      max_uses: 3,
+      user_location: { type: 'approximate', country: 'FR', timezone: 'Europe/Paris', city: 'Toulouse' },
+    })
+    expect((webSearchTool(null) as unknown as { user_location: Record<string, string> }).user_location).not.toHaveProperty('city')
+  })
+
+  it('garde les URL réellement trouvées, sans doublon', () => {
+    const content = [
+      { type: 'text', text: 'x' },
+      { type: 'web_search_tool_result', content: [
+        { type: 'web_search_result', url: 'https://www.insee.fr/a', title: 'Insee', page_age: '2026-03-01' },
+        { type: 'web_search_result', url: 'https://www.insee.fr/a', title: 'Insee (bis)' },
+      ] },
+      { type: 'web_search_tool_result', content: { type: 'web_search_tool_result_error', error_code: 'max_uses_exceeded' } },
+      { type: 'web_search_tool_result', content: [{ type: 'web_search_result', url: 'https://bpifrance.fr/b', title: 'Bpi' }] },
+    ]
+    expect(webSourcesOf(content)).toEqual([
+      { url: 'https://www.insee.fr/a', title: 'Insee', pageAge: '2026-03-01' },
+      { url: 'https://bpifrance.fr/b', title: 'Bpi', pageAge: null },
+    ])
+  })
+
+  it('renvoie les URL trouvées dans le bilan du flux', async () => {
+    const stream = createMockStream([])
+    stream.finalMessage.mockResolvedValue({
+      usage: { input_tokens: 1, output_tokens: 1 },
+      stop_reason: 'end_turn',
+      content: [{ type: 'web_search_tool_result', content: [{ type: 'web_search_result', url: 'https://www.insee.fr/a', title: 'Insee' }] }],
+    })
+    mockStreamFn.mockReturnValueOnce(stream)
+    expect((await usageOf(streamChatCompletion('s', 'u', 4096, [webSearchTool('Toulouse')]))).webSources)
+      .toEqual([{ url: 'https://www.insee.fr/a', title: 'Insee', pageAge: null }])
   })
 })

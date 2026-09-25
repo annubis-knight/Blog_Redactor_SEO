@@ -18,10 +18,23 @@ type FixtureBuilder = (ctx: {
   schema: Record<string, unknown>
 }) => unknown
 
+/** Un résultat de recherche web simulé (même forme que `ApiUsage.webSources`). */
+export interface MockWebSource {
+  url: string
+  title: string
+  pageAge: string | null
+}
+
+/**
+ * Réponse d'une fixture de flux : le texte (entier ou en paquets), et, pour une
+ * passe qui cherche sur le web, les résultats que la recherche aurait trouvés.
+ */
+export type StreamFixtureOutput = string | string[] | { text: string; webSources: MockWebSource[] }
+
 type StreamFixtureBuilder = (ctx: {
   systemPrompt: string
   userPrompt: string
-}) => string | string[]
+}) => StreamFixtureOutput
 
 interface StreamFixture {
   name: string

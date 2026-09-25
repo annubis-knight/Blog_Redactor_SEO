@@ -25,6 +25,8 @@ export interface ApiUsage {
    * plafond, le texte est incomplet (FR-RED-DRAFT-SINGLE-PASS).
    */
   stopReason?: StopReason
+  /** Résultats réels de la recherche web (FR-RED-ENRICH-SOURCES). */
+  webSources?: Array<{ url: string; title: string; pageAge: string | null }>
 }
 
 export type StopReason = 'end' | 'max_tokens' | 'other'
@@ -113,23 +115,50 @@ export const USAGE_SENTINEL = '__USAGE__'
  * Pass in the `tools` array of streamChatCompletion to let Claude search the web
  * and ground its response with real sources.
  *
+ * Localisée en France, à l'heure de Paris, et dans la ville de la zone du client
+ * quand elle est connue (FR-RED-ENRICH-SOURCES) : la recherche partait sans lieu
+ * et le pilier 1013 citait la Vendée.
+ *
  * Adjust `max_uses` to control how many searches Claude can do per call (impacts cost heavily).
  */
-export const WEB_SEARCH_TOOL = {
-  type: 'web_search_20250305',
-  name: 'web_search',
-  max_uses: 3, // ← nombre max de recherches web par appel API (chaque recherche ajoute ~10-15k input tokens)
-} as unknown as Anthropic.Messages.ToolUnion
+export function webSearchTool(zone?: string | null, maxUses = 3): Anthropic.Messages.ToolUnion {
+  const city = zone?.split(',')[0]?.trim()
+  return {
+    type: 'web_search_20250305',
+    name: 'web_search',
+    max_uses: maxUses, // ← chaque recherche ajoute ~10-15k jetons d'entrée
+    user_location: { type: 'approximate', country: 'FR', timezone: 'Europe/Paris', ...(city ? { city } : {}) },
+  } as unknown as Anthropic.Messages.ToolUnion
+}
+
+export const WEB_SEARCH_TOOL = webSearchTool()
+
+/** Un résultat réel de la recherche web. */
+export interface WebSourceUsage {
+  url: string
+  title: string
+  pageAge: string | null
+}
 
 /**
- * Stream a chat completion from Claude API.
- * Yields text chunks as they arrive.
- * Final yield is a sentinel string __USAGE__{...} with token metrics.
- *
- * @param tools — optional server-side tools (e.g., web_search). Only text deltas
- *   are yielded; server tool blocks (web_search_tool_result) stay server-side
- *   but Claude's synthesized text response is streamed normally.
+ * Résultats réels de la recherche web, lus dans le message final : on garde les
+ * URL trouvées pour vérifier celles que le texte cite (elles étaient jetées).
  */
+export function webSourcesOf(content: ReadonlyArray<{ type: string }>): WebSourceUsage[] {
+  const seen = new Map<string, WebSourceUsage>()
+  for (const block of content) {
+    if (block.type !== 'web_search_tool_result') continue
+    const results = (block as { content?: unknown }).content
+    if (!Array.isArray(results)) continue
+    for (const r of results as Array<{ type?: string; url?: string; title?: string; page_age?: string | null }>) {
+      if (r.type === 'web_search_result' && r.url && !seen.has(r.url)) {
+        seen.set(r.url, { url: r.url, title: r.title ?? '', pageAge: r.page_age ?? null })
+      }
+    }
+  }
+  return [...seen.values()]
+}
+
 /** Raison d'arrêt de Claude, ramenée aux trois cas utiles. */
 function toStopReason(reason: string | null | undefined): StopReason {
   if (reason === 'max_tokens') return 'max_tokens'
@@ -137,6 +166,15 @@ function toStopReason(reason: string | null | undefined): StopReason {
   return 'other'
 }
 
+/**
+ * Stream a chat completion from Claude API.
+ * Yields text chunks as they arrive.
+ * Final yield is a sentinel string __USAGE__{...} with token metrics.
+ *
+ * @param tools — optional server-side tools (e.g., web_search). Only text deltas
+ *   are yielded; the web search results stay server-side, but their URLs come
+ *   back in the usage sentinel (`webSources`) so the caller can check citations.
+ */
 export async function* streamChatCompletion(
   systemPrompt: string,
   userPrompt: string,
@@ -203,12 +241,15 @@ export async function* streamChatCompletion(
     estimatedCost: calculateCost(model, finalMessage.usage.input_tokens, finalMessage.usage.output_tokens, cacheReadTokens, cacheCreationTokens),
     stopReason: toStopReason(finalMessage.stop_reason),
   }
+  const webSources = webSourcesOf(finalMessage.content ?? [])
+  if (webSources.length) usage.webSources = webSources
   log.info(`Claude API stream done`, {
     ms: Date.now() - start, chunkCount,
     inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
     cacheRead: cacheReadTokens, cacheCreation: cacheCreationTokens,
     cost: `$${usage.estimatedCost.toFixed(4)}`,
     stopReason: usage.stopReason,
+    webSources: webSources.length,
   })
   yield `${USAGE_SENTINEL}${JSON.stringify(usage)}`
 }

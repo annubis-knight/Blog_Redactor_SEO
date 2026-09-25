@@ -71,6 +71,9 @@ export function getProvider(): AIProvider {
  */
 const CANONICAL_ORDER: readonly AIProvider[] = ['claude', 'gemini', 'openrouter']
 
+/** Fournisseurs capables d'exécuter les outils serveur (recherche web) ; la simulation les imite. */
+const TOOL_CAPABLE_PROVIDERS: readonly AIProvider[] = ['claude', 'mock']
+
 export function getProviderChain(): AIProvider[] {
   const primary = getProvider()
   // Mock provider : pas de fallback (c'est un provider explicite pour tests)
@@ -212,8 +215,14 @@ async function withRetry<T>(
 async function withFallbackChain<T>(
   runOnProvider: (provider: AIProvider) => Promise<T>,
   ctx: string,
+  allowed?: readonly AIProvider[],
 ): Promise<T> {
-  const chain = getProviderChain()
+  const chain = allowed ? getProviderChain().filter(p => allowed.includes(p)) : getProviderChain()
+  if (chain.length === 0) {
+    // Un outil (recherche web) a été demandé et aucun fournisseur de la chaîne ne
+    // sait l'exécuter : on le dit, au lieu de produire un texte sans source.
+    throw new AIProviderUnavailableError(getProvider(), 'La recherche web exige Claude : aucun autre fournisseur ne sait chercher et citer ses sources.')
+  }
   let lastErr: unknown
   for (let i = 0; i < chain.length; i++) {
     const provider = chain[i]
@@ -274,6 +283,9 @@ export async function* streamChatCompletion(
       return { provider: p, iterator: it, firstChunk: first }
     },
     'streamChatCompletion',
+    // Avec un outil (recherche web), seul Claude sait l'exécuter : pas de repli
+    // silencieux vers un fournisseur qui l'ignorerait (FR-RED-ENRICH-SOURCES, R9).
+    tools && tools.length > 0 ? TOOL_CAPABLE_PROVIDERS : undefined,
   ).then(async (res) => {
     // Reconstruit un iterator qui re-yield le premier chunk déjà consommé.
     const { provider, iterator, firstChunk } = res as { provider: AIProvider; iterator: AsyncGenerator<string>; firstChunk: IteratorResult<string> }

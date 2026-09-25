@@ -38,6 +38,8 @@ export interface ApiUsage {
    * plafond, le texte est incomplet (FR-RED-DRAFT-SINGLE-PASS).
    */
   stopReason?: StopReason
+  /** Résultats réels de la recherche web (FR-RED-ENRICH-SOURCES). */
+  webSources?: Array<{ url: string; title: string; pageAge: string | null }>
 }
 
 export type StopReason = 'end' | 'max_tokens' | 'other'

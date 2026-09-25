@@ -15,7 +15,7 @@
  */
 import { log } from '../../utils/logger.js'
 import type { ApiUsage } from './claude.service.js'
-import { streamFixtures, toolFixtures } from './mock-registry.js'
+import { streamFixtures, toolFixtures, type MockWebSource } from './mock-registry.js'
 
 const MODEL = 'mock-provider-v1'
 const USAGE_SENTINEL_LOCAL = '__USAGE__'
@@ -177,13 +177,17 @@ export async function* streamChatCompletionMock(
   const matched = streamFixtures.find(f => f.matcher({ systemPrompt, userPrompt }))
   let text: string
   let chunks: string[] | null = null
+  let webSources: MockWebSource[] = []
   if (matched) {
     const output = matched.builder({ systemPrompt, userPrompt })
     if (Array.isArray(output)) {
       chunks = output
       text = output.join('')
-    } else {
+    } else if (typeof output === 'string') {
       text = output
+    } else {
+      text = output.text
+      webSources = output.webSources
     }
     log.debug(`[mock] streamChatCompletion via fixture "${matched.name}"`)
   } else {
@@ -212,7 +216,11 @@ export async function* streamChatCompletionMock(
   }
 
   // Sentinel final (même format que Claude/Gemini/OpenRouter)
-  const usage = { ...makeUsage(Math.floor(text.length / 4), Math.floor(text.length / 4)), stopReason: 'end' as const }
+  const usage: ApiUsage = {
+    ...makeUsage(Math.floor(text.length / 4), Math.floor(text.length / 4)),
+    stopReason: 'end',
+    ...(webSources.length ? { webSources } : {}),
+  }
   yield `${USAGE_SENTINEL_LOCAL}${JSON.stringify(usage)}`
 }
 
