@@ -13,10 +13,12 @@ describe('auto:pick-lieutenants', () => {
     expect(out).toContain('avis')
   })
 
-  it('plafonne selon le niveau (specifique=3, intermediaire=5, pilier=8)', () => {
-    expect(pickLieutenants(many, 'zzz', 'specifique')).toHaveLength(3)
+  // Même maximum qu'à l'écran (FR-INFRA-TYPE-RULES-SSOT) : le mode automatique
+  // en gardait 8 pour un pilier et 3 pour un spécialisé (écran : 5 et 4).
+  it('plafonne selon le niveau (specifique=4, intermediaire=5, pilier=5)', () => {
+    expect(pickLieutenants(many, 'zzz', 'specifique')).toHaveLength(4)
     expect(pickLieutenants(many, 'zzz', 'intermediaire')).toHaveLength(5)
-    expect(pickLieutenants(many, 'zzz', 'pilier')).toHaveLength(8)
+    expect(pickLieutenants(many, 'zzz', 'pilier')).toHaveLength(5)
   })
 
   it('trie par marketScore décroissant sans données SERP', () => {

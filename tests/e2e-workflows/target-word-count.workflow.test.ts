@@ -13,23 +13,23 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Target word count — Heuristique seule (pas de SERP)', () => {
-  it('Pilier sans SERP → midpoint 2650 (entre 1800 et 3500)', async ({ skip }) => {
+  it('Pilier sans SERP → longueur visée 2500 (bornes 1800-3500, FR-INFRA-TYPE-RULES-SSOT)', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC P Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC P Article', 'Pilier')
 
-    const res = await apiPost<{ recommended: number; breakdown: { typeBase: { min: number; max: number; midpoint: number }; competitorsAvg: number | null; aiSuggestion: number | null } }>(
+    const res = await apiPost<{ recommended: number; breakdown: { typeBase: { min: number; max: number; target: number }; competitorsAvg: number | null; aiSuggestion: number | null } }>(
       `/articles/${article.id}/recommend-word-count`,
     )
     expect(res.status).toBe(200)
-    expect(res.data?.recommended).toBe(2650)
-    expect(res.data?.breakdown?.typeBase).toEqual({ min: 1800, max: 3500, midpoint: 2650 })
+    expect(res.data?.recommended).toBe(2500)
+    expect(res.data?.breakdown?.typeBase).toEqual({ min: 1800, max: 3500, target: 2500 })
     expect(res.data?.breakdown?.competitorsAvg).toBeNull()
     expect(res.data?.breakdown?.aiSuggestion).toBeNull()
   })
 
-  it('Intermédiaire sans SERP → midpoint 1850', async ({ skip }) => {
+  it('Intermédiaire sans SERP → longueur visée 1800', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC I Cocon')
@@ -38,11 +38,11 @@ describe('Target word count — Heuristique seule (pas de SERP)', () => {
     const res = await apiPost<{ recommended: number; breakdown: { typeBase: { min: number; max: number } } }>(
       `/articles/${article.id}/recommend-word-count`,
     )
-    expect(res.data?.recommended).toBe(1850)
+    expect(res.data?.recommended).toBe(1800)
     expect(res.data?.breakdown?.typeBase).toEqual(expect.objectContaining({ min: 1200, max: 2500 }))
   })
 
-  it('Spécialisé sans SERP → midpoint 1150', async ({ skip }) => {
+  it('Spécialisé sans SERP → longueur visée 1200', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC S Cocon')
@@ -51,7 +51,7 @@ describe('Target word count — Heuristique seule (pas de SERP)', () => {
     const res = await apiPost<{ recommended: number; breakdown: { typeBase: { min: number; max: number } } }>(
       `/articles/${article.id}/recommend-word-count`,
     )
-    expect(res.data?.recommended).toBe(1150)
+    expect(res.data?.recommended).toBe(1200)
     expect(res.data?.breakdown?.typeBase).toEqual(expect.objectContaining({ min: 800, max: 1500 }))
   })
 })
@@ -82,7 +82,7 @@ describe('Target word count — Intégration au workflow brief (contentLengthRec
       `/articles/${article.id}/recommend-word-count`,
     )
     expect(res.status).toBe(200)
-    // Intermédiaire midpoint = 1850, range 1200-2500
+    // Intermédiaire : longueur visée 1800, bornes 1200-2500
     expect(res.data?.recommended).toBeGreaterThanOrEqual(1200)
     expect(res.data?.recommended).toBeLessThanOrEqual(2500)
   })
@@ -95,7 +95,7 @@ describe('Target word count — Workflow utilisateur (recommande puis sauvegarde
     const cocoon = await ctx.createCocoon(silo.id, 'TWC Flow Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC Flow Article', 'Pilier')
 
-    // 1. User clique "Suggérer" → endpoint conseille 2650 (Pilier sans SERP)
+    // 1. User clique "Suggérer" → endpoint conseille 2500 (Pilier sans SERP)
     const recRes = await apiPost<{ recommended: number }>(`/articles/${article.id}/recommend-word-count`)
     const recommended = recRes.data?.recommended ?? 0
     expect(recommended).toBeGreaterThan(0)
@@ -117,7 +117,7 @@ describe('Target word count — Workflow utilisateur (recommande puis sauvegarde
     const cocoon = await ctx.createCocoon(silo.id, 'TWC Override Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC Override Article', 'Pilier')
 
-    // Conseil IA = 2650, mais user veut 1900
+    // Conseil = 2500, mais user veut 1900
     await apiPut(`/articles/${article.id}/micro-context`, {
       angle: `[test:${ctx.runId}] short`,
       targetWordCount: 1900,

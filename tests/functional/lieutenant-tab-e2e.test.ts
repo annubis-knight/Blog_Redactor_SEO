@@ -59,6 +59,7 @@ vi.mock('../../server/db/cache-helpers', () => ({
 
 import { getCached, slugify } from '../../server/db/cache-helpers'
 import { loadPrompt } from '../../server/utils/prompt-loader'
+import { describeTypeRules } from '../../shared/constants/article-type-rules'
 import type { SerpAnalysisResult, SerpCompetitor } from '../../shared/types/serp-analysis.types'
 import type { PaaQuestion } from '../../shared/types/dataforseo.types'
 
@@ -319,6 +320,7 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
         // le chargeur refuse désormais un prompt dont une variable manque).
         painPoint: PAIN_POINT,
         root_keywords_serp_data: '',
+        type_rules: describeTypeRules(ARTICLE_LEVEL),
         paa_questions: paaFormatted,
         hn_recurrence: hnFormatted,
         serp_competitors: competitorsFormatted,

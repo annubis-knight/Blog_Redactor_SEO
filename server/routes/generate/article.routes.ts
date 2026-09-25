@@ -25,9 +25,8 @@ function repairStructure(html: string): string {
   }
   return repaired.html.replace(/<p>\s*<\/p>/g, '')
 }
+import { targetWordsFor } from '../../../shared/constants/article-type-rules.js'
 import {
-  DEFAULT_TARGET_WORDS_BY_TYPE,
-  DEFAULT_TARGET_WORDS_FALLBACK,
   INTER_SECTION_DELAY_MS,
   RATE_LIMIT_DEFAULT_WAIT,
   RATE_LIMIT_MAX_RETRIES,
@@ -87,13 +86,12 @@ router.post('/generate/article', async (req, res) => {
     const microCtx = await loadArticleMicroContext(articleId)
     const microContextBlock = buildMicroContextBlock(microCtx)
 
-    // Resolve target word count (client > microCtx > type default > hard fallback).
+    // Resolve target word count (client > microCtx > règle du type, FR-INFRA-TYPE-RULES-SSOT).
     // Note: use `parsed.data.targetWordCount`, not `parsed.targetWordCount` (F7).
     const targetWordCount
       = parsed.data.targetWordCount
       ?? microCtx?.targetWordCount
-      ?? DEFAULT_TARGET_WORDS_BY_TYPE[parsed.data.articleType]
-      ?? DEFAULT_TARGET_WORDS_FALLBACK
+      ?? targetWordsFor(parsed.data.articleType)
 
     // Parse outline and split into section groups
     const outline: Outline = typeof outlineRaw === 'string' ? JSON.parse(outlineRaw) : outlineRaw as unknown as Outline

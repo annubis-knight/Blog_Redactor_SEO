@@ -4,19 +4,16 @@ import { log } from '@/utils/logger'
 import { apiGet, apiPost } from '@/services/api.service'
 import type { Article, Keyword, DataForSeoCacheEntry, BriefData } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
+import { targetWordsFor } from '@shared/constants/article-type-rules.js'
 
 /**
  * Recommandation synchrone fallback basée sur le type d'article. Utilisée tant
  * que la recommandation IA côté serveur n'a pas répondu (ou en offline).
- * Valeurs = midpoints des bornes TYPE_BASE de target-word-count.service.ts.
+ * Valeur = longueur visée du type (source unique, FR-INFRA-TYPE-RULES-SSOT) :
+ * celle que la rédaction applique par défaut.
  */
 export function calculateContentLength(articleType: ArticleLevel): number {
-  const baseByType: Record<string, number> = {
-    'pilier': 2650,
-    'intermediaire': 1850,
-    'specifique': 1150,
-  }
-  return baseByType[articleType] ?? 1500
+  return targetWordsFor(articleType)
 }
 
 /**

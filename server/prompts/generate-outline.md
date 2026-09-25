@@ -31,8 +31,8 @@ Génère un sommaire structuré en H1, H2 et H3 pour cet article. Le sommaire do
 
 3. **Respecter la structure suivante** :
    - H1 : Titre principal (1 seul)
-   - H2 : Sections principales (selon le type d'article, voir consigne 6)
-   - H3 : Sous-sections détaillées (2-3 par H2, uniquement quand c'est pertinent — ne pas forcer des H3 sur chaque H2)
+   - H2 : Sections principales (selon le type d'article, voir consigne 7)
+   - H3 : Sous-sections détaillées (nombre par H2 : voir les règles du type, consigne 7 ; uniquement quand c'est pertinent — ne pas forcer des H3 sur chaque H2)
 
 4. **Inclure les blocs Propulsite** :
    - Le H1 doit avoir l'annotation `sommaire-cliquable` (sommaire interactif en haut d'article)
@@ -50,10 +50,10 @@ Génère un sommaire structuré en H1, H2 et H3 pour cet article. Le sommaire do
    le recopier, et ignore ceux qui ne servent pas l'angle de l'article.
 
 7. **Adapter au type d'article** (STRICT — ne pas dépasser ces limites) :
-   - Pilier : sommaire complet (6-8 H2, couvrir les aspects essentiels sans diluer)
-   - Intermédiaire : sommaire modéré (4-6 H2)
-   - Spécialisé : sommaire ciblé (3-5 H2, très précis)
-   - IMPORTANT : Privilégie la qualité à la quantité. Un sommaire trop long dilue le propos et nuit au SEO.
+
+{{type_rules}}
+
+   IMPORTANT : Privilégie la qualité à la quantité. Un sommaire trop long dilue le propos et nuit au SEO.
 
 ## Format de sortie
 

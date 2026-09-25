@@ -13,6 +13,12 @@ import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult, ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
 import { compareScores } from '../../shared/score/index.js'
+import { ARTICLE_TYPE_RULES, describeTypeRules } from '../../shared/constants/article-type-rules.js'
+
+/** Règles du type pour `{{type_rules}}` ; vides si le niveau reçu est inconnu. */
+function typeRulesFor(level: unknown): string {
+  return typeof level === 'string' && level in ARTICLE_TYPE_RULES ? describeTypeRules(level as ArticleLevel) : ''
+}
 
 /**
  * Routes Panels IA refactorisées via runAiPanelStream.
@@ -139,6 +145,7 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
     lieutenants: lieutenants.map(kw => `- ${kw}`).join('\n'),
     hn_structure: hnSummary,
     locked_headings: lockedSummary,
+    type_rules: typeRulesFor(level),
   }, cocoonSlug ? { cocoonSlug } : undefined)
   log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, lockedCount: lockedHeadings?.length ?? 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 
@@ -164,16 +171,11 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
   })
 })
 
-/** Max selected lieutenants per article level (post-AI filtering) */
-const MAX_SELECTED: Record<ArticleLevel, number> = {
-  pilier: 5,
-  intermediaire: 5,
-  specifique: 4,
-}
 
 /** Filter AI-generated lieutenants: sort by score desc, split into selected + eliminated */
 function filterLieutenants(parsed: ProposeLieutenantsResult, level: ArticleLevel): FilteredProposeLieutenantsResult {
-  const maxKeep = MAX_SELECTED[level] ?? 5
+  // Lieutenants gardés après le tri : la source unique (FR-INFRA-TYPE-RULES-SSOT).
+  const maxKeep = ARTICLE_TYPE_RULES[level]?.maxLieutenants ?? ARTICLE_TYPE_RULES.pilier.maxLieutenants
   // null en bas — cohérent avec affichage (CLAUDE.md §2.0)
   const sorted = [...parsed.lieutenants].sort((a, b) => compareScores(a.score, b.score))
 
@@ -268,6 +270,7 @@ router.post('/keywords/:keyword/propose-lieutenants', async (req, res) => {
     word_groups: Array.isArray(wordGroups) && wordGroups.length > 0 ? wordGroups.join(', ') : 'Aucun groupe disponible',
     root_keywords: Array.isArray(rootKeywords) && rootKeywords.length > 0 ? rootKeywords.join(', ') : 'Aucune racine disponible',
     existing_lieutenants: existingLieutenants.length > 0 ? existingLieutenants.join(', ') : 'Aucun (premier article du cocon)',
+    type_rules: typeRulesFor(level),
   }, cocoonSlug ? { cocoonSlug } : undefined)
   log.debug('propose-lieutenants prompt built', { keyword, promptChars: systemPrompt.length, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 

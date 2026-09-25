@@ -6,9 +6,11 @@ Tu dois analyser les donnees SERP, PAA, racines et groupes de mots pour proposer
 
 - **Mot-cle Capitaine** : {{keyword}}
 - **Niveau d'article** : {{level}}
-  - pilier (N2) = contenu long de reference 2000-3000 mots → 8 a 12 candidats lieutenants thematiques larges couvrant les grandes intentions satellites (concepts de services, solutions globales)
-  - intermediaire (N3) = contenu de support 1000-1500 mots → 6 a 10 candidats sous-themes cibles du pilier (methodes, comparaisons, benefices)
-  - specifique (N4) = contenu de niche 500-800 mots → 4 a 8 candidats precisions techniques, questions concretes de terrain
+  - pilier (N2) = contenu long de reference → lieutenants thematiques larges couvrant les grandes intentions satellites (concepts de services, solutions globales)
+  - intermediaire (N3) = contenu de support → sous-themes cibles du pilier (methodes, comparaisons, benefices)
+  - specifique (N4) = contenu de niche → precisions techniques, questions concretes de terrain
+
+{{type_rules}}
 - **Douleur de l'article** : {{painPoint}}
   - Si la douleur est definie, ecarte les lieutenants qui n'eclaireraient pas cette douleur. Privilegie les lieutenants qui aident un visiteur vivant cette douleur a trouver une reponse concrete.
   - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des donnees SERP/PAA.
@@ -109,7 +111,7 @@ Propose une structure Hn complete utilisant les lieutenants les mieux scores (to
 - Jamais sauter de niveau (H2 → H3 → H4)
 - PAA transformees directement en headings H2 ou H3
 - Le mot-cle Capitaine doit apparaitre naturellement dans l'intro (100 premiers mots) et dans 1-2 H2, mais utilise des variations semantiques — pas de repetition exacte forcee.
-- **SEO Local dans les Hn** : Si le Capitaine contient un nom de ville, NE LE REPETE PAS dans chaque H2. Maximum 1-2 H2 avec le nom de ville pour un Pilier, 0 pour un Intermediaire/Specifique. Des titres comme "Agence web Toulouse", "Prix site Toulouse", "Developpeur Toulouse" sont un signal negatif de bourrage — varie les formulations.
+- **SEO Local dans les Hn** : Si le Capitaine contient un nom de ville, NE LE REPETE PAS dans chaque H2 : le nombre maximal de H2 citant la ville est donne par les regles du type. Des titres comme "Agence web [ville]", "Prix site [ville]", "Developpeur [ville]" sont un signal negatif de bourrage — varie les formulations.
 
 ### 4. Content Gap
 Identifie ce que les concurrents reels (listes ci-dessus) n'ont PAS couvert — les angles manquants representent une opportunite. Sois specifique en citant quels concurrents couvrent quoi.
@@ -117,7 +119,7 @@ Identifie ce que les concurrents reels (listes ci-dessus) n'ont PAS couvert — 
 ## Contraintes
 
 - Reponds en francais
-- Genere un pool LARGE de candidats (pilier: 8-12, intermediaire: 6-10, specifique: 4-8). Le filtrage pour ne garder que les meilleurs sera fait automatiquement apres. Explore toutes les pistes pertinentes dans les donnees.
+- Genere un pool LARGE de candidats (leur nombre est donne par les regles du type). Le filtrage pour ne garder que les meilleurs sera fait automatiquement apres. Explore toutes les pistes pertinentes dans les donnees.
 - NE PROPOSE PAS de lieutenants deja dans la liste anti-cannibalisation
 - Les PAA sont la source #1 — priorise-les
 - Filtre les headings de navigation ("Nous contacter", "A propos"), noms d'agences, temoignages clients

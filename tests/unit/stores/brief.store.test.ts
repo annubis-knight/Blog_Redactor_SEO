@@ -52,7 +52,7 @@ describe('brief.store — fetchBrief', () => {
     expect(store.briefData!.article.cocoonName).toBe('Test Cocoon')
     expect(store.briefData!.keywords).toHaveLength(3)
     expect(store.briefData!.dataForSeo).toEqual(mockDataForSeo)
-    expect(store.briefData!.contentLengthRecommendation).toBe(2650) // Pilier midpoint (1800-3500)
+    expect(store.briefData!.contentLengthRecommendation).toBe(2500) // longueur visée du Pilier (source unique)
     expect(store.isLoading).toBe(false)
     expect(store.error).toBeNull()
   })
@@ -188,22 +188,21 @@ describe('brief.store — refreshDataForSeo', () => {
 })
 
 describe('calculateContentLength (fallback heuristique)', () => {
-  // Ces valeurs sont les midpoints des bornes TYPE_BASE définies dans
-  // target-word-count.service.ts. Elles servent de fallback synchrone tant
-  // que la recommandation IA serveur n'a pas répondu.
-  it('returns 2650 for Pilier (midpoint 1800-3500)', () => {
-    expect(calculateContentLength('pilier')).toBe(2650)
+  // FR-INFRA-TYPE-RULES-SSOT — la longueur visée du type, la même que la
+  // rédaction (l'écran affichait 2 650 quand la rédaction visait 2 500).
+  it('returns 2500 for Pilier', () => {
+    expect(calculateContentLength('pilier')).toBe(2500)
   })
 
-  it('returns 1850 for Intermédiaire (midpoint 1200-2500)', () => {
-    expect(calculateContentLength('intermediaire')).toBe(1850)
+  it('returns 1800 for Intermédiaire', () => {
+    expect(calculateContentLength('intermediaire')).toBe(1800)
   })
 
-  it('returns 1150 for Spécialisé (midpoint 800-1500)', () => {
-    expect(calculateContentLength('specifique')).toBe(1150)
+  it('returns 1200 for Spécialisé', () => {
+    expect(calculateContentLength('specifique')).toBe(1200)
   })
 
-  it('returns 1500 for unknown type', () => {
-    expect(calculateContentLength('unknown' as ArticleLevel)).toBe(1500)
+  it('returns the single default (2000) for unknown type', () => {
+    expect(calculateContentLength('unknown' as ArticleLevel)).toBe(2000)
   })
 })

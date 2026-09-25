@@ -77,8 +77,12 @@ Tests Red : un test par modèle de `strategy.routes.ts` (aucun ne l'était) qui 
 | `server/routes/generate/_helpers.ts` `DEFAULT_TARGET_WORDS_BY_TYPE` | `wordsTarget` |
 | `server/services/article/target-word-count.service.ts` `TYPE_BASE` | `wordsMin` / `wordsMax` |
 | `src/stores/strategy/brief.store.ts` `calculateContentLength` (milieu 2 650 / 1 850 / 1 150) | `wordsTarget` (même valeur affichée et envoyée à la génération) |
-| `shared/seo-validators.ts` `MIN_WORDS`, `MIN_H2` | `wordsMin`, `h2Min` |
+| `shared/seo-validators.ts` `MIN_WORDS`, `MIN_H2` | `wordsFloor`, `h2Floor` (*décision : un plancher d'alerte « contenu mince » n'est pas la borne basse d'une cible ; les fusionner aurait durci l'alerte sans décision. Deux notions, une source.*) |
 | `keyword-ai-panel.routes.ts` `MAX_SELECTED` | `maxLieutenants` |
+| `scripts/auto-article/heuristics/pick-lieutenants.ts` `LIEUTENANT_MAX` (8 / 5 / 3) | `maxLieutenants` (5 / 5 / 4, comme l'écran) |
+| `SeoPanel.vue` (`?? 1500`) | `DEFAULT_TARGET_WORDS_FALLBACK` |
+| Ville dans les H2 (« 1-2 H2 pour un pilier, 0 sinon », dans deux prompts) | `localH2Max` |
+| `recommend-word-count` : `breakdown.typeBase.midpoint` | `breakdown.typeBase.target` (la valeur n'est plus un milieu) |
 | `generate-outline.md`, `propose-lieutenants.md`, `lieutenants-hn-structure.md` (fourchettes en dur) | `{{type_rules}}` |
 | `generate-article-section.md` | `{{sectionBudgetHint}}` (budget de la section, enfin transmis — R1 en partie) |
 

@@ -6,9 +6,9 @@ Tu dois recommander une structure H1/H2/H3 optimale pour un article de blog, en 
 
 - **Mot-cle Capitaine** : {{keyword}}
 - **Niveau d'article** : {{level}}
-  - pilier (N2) = contenu long de reference 2000-3000 mots → 6-12 H2
-  - intermediaire (N3) = contenu de support 1000-1500 mots → 4-8 H2
-  - specifique (N4) = contenu de niche 500-800 mots → 3-6 H2
+  - pilier (N2) = contenu long de reference ; intermediaire (N3) = contenu de support ; specifique (N4) = contenu de niche
+
+{{type_rules}}
 - **Douleur de l'article** : {{painPoint}}
   - Si la douleur est definie, structure les Hn pour qu'au moins 2 sections sur 5 repondent explicitement a cette douleur. Le H2 d'introduction et le H2 de conclusion peuvent etre l'occasion de la nommer directement.
   - Si la douleur est marquee « (non defini) », fonctionne comme avant a partir des Lieutenants et de la structure des concurrents.
@@ -51,7 +51,7 @@ Quand de nouveaux lieutenants ont ete selectionnes mais ne correspondent a aucun
 
 ### SEO Local dans les headings (CRITIQUE)
 Si le mot-cle Capitaine contient un nom de ville/region, NE REPETE PAS ce nom dans chaque H2/H3. C'est du bourrage qui rend les titres lourds et cree de la cannibalisation.
-- **Pilier** : Le nom de ville peut apparaitre dans 1-2 H2 maximum (pas tous). Les autres H2 doivent etre thematiques sans localisation.
+- **Pilier** : Le nom de ville peut apparaitre dans quelques H2, jamais tous (le maximum est donne par les regles du type ci-dessus). Les autres H2 doivent etre thematiques sans localisation.
 - **Intermediaire** : Evite le nom de ville dans les H2. Utilise des variantes subtiles ("localement", "en region", "de proximite") si un ancrage est vraiment necessaire.
 - **Specifique** : ZERO nom de ville dans les H2/H3. L'ancrage local se fait dans le corps du texte (quartiers, zones economiques, references terrain).
 - Prefere des signaux locaux riches (quartiers, ecosystemes, zones economiques) plutot que de repeter la ville comme un adjectif.

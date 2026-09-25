@@ -13,6 +13,7 @@
  */
 
 import type { ContentIssue } from './content-validators.js'
+import { ARTICLE_TYPE_RULES } from './constants/article-type-rules.js'
 
 export type SeoLevel = 'pilier' | 'intermediaire' | 'specifique'
 
@@ -42,11 +43,9 @@ export function offOfferTerm(keyword: string): string | null {
   return EXCLUDED_OFFER_TERMS.find((term) => normalized.includes(tokens(term).join(' '))) ?? null
 }
 
-/** Longueur minimale selon le rôle dans le cocon (mots). */
-const MIN_WORDS: Record<SeoLevel, number> = { pilier: 1500, intermediaire: 900, specifique: 500 }
-
-/** Nombre minimal de chapitres H2 selon le rôle. */
-const MIN_H2: Record<SeoLevel, number> = { pilier: 5, intermediaire: 3, specifique: 2 }
+/** Planchers de longueur et de chapitres : la source unique (FR-INFRA-TYPE-RULES-SSOT). */
+const MIN_WORDS = (level: SeoLevel): number => ARTICLE_TYPE_RULES[level].wordsFloor
+const MIN_H2 = (level: SeoLevel): number => ARTICLE_TYPE_RULES[level].h2Floor
 
 /** Au-delà de ce nombre de mentions pour 1 000 mots, la ville sonne forcé. */
 const CITY_PER_1000_MAX = 6
@@ -141,13 +140,13 @@ function checkCapitaine(input: SeoInput): ContentIssue[] {
 function checkStructure(input: SeoInput): ContentIssue[] {
   const issues: ContentIssue[] = []
   const words = plain(input.content).split(' ').filter(Boolean).length
-  if (words < MIN_WORDS[input.level]) {
-    issues.push(issue('seo-thin-content', 'error', `${words} mots : trop mince pour un article de niveau ${input.level} (minimum ${MIN_WORDS[input.level]}).`))
+  if (words < MIN_WORDS(input.level)) {
+    issues.push(issue('seo-thin-content', 'error', `${words} mots : trop mince pour un article de niveau ${input.level} (minimum ${MIN_WORDS(input.level)}).`))
   }
 
   const h2 = [...input.content.matchAll(/<h2\b[^>]*>([\s\S]*?)<\/h2>/gi)].map((m) => plain(m[1] ?? '').toLowerCase())
-  if (h2.length < MIN_H2[input.level]) {
-    issues.push(issue('seo-too-few-sections', 'warning', `${h2.length} chapitre(s) H2 : peu pour un article de niveau ${input.level} (${MIN_H2[input.level]} attendus).`))
+  if (h2.length < MIN_H2(input.level)) {
+    issues.push(issue('seo-too-few-sections', 'warning', `${h2.length} chapitre(s) H2 : peu pour un article de niveau ${input.level} (${MIN_H2(input.level)} attendus).`))
   }
   const duplicates = h2.filter((title, i) => title && h2.indexOf(title) !== i)
   if (duplicates.length > 0) {
