@@ -3177,7 +3177,9 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 
 **Endpoints**
 - `POST /api/keywords/:keyword/ai-hn-structure` — SSE, `done { outline: { hnStructure, justification }, metadata, usage }`.
-- `POST /api/serp/analyze` — relu à l'ouverture de l'onglet (cache `keyword_serp_results` 7 jours ; au-delà, nouvelle analyse payante).
+- `POST /api/serp/analyze` — à l'ouverture de l'onglet avec `cacheOnly: true` : l'analyse en base, même périmée, ou `{ data: null }`, jamais d'appel externe (contrat `serpAnalysisStoredContract`) ; sans `cacheOnly` seulement sur « Générer la structure » quand la base n'a rien (M18).
+- `GET /api/articles/:id/content` — sommaire actuel, lu à la validation pour ne pas écraser un sommaire retouché (M20).
+- `POST /api/articles/:id/progress/uncheck` — retire l'étape demandée **et** celles qui en dépendent (`checksRemovedWith` : Capitaine ou Lieutenants → Structure, M19).
 - `PUT /api/articles/:id/keywords` (`saveStructure`), `PUT /api/articles/:id` (`{ outline }`), `POST /api/articles/:id/recommend-word-count`, `GET` / `PUT /api/articles/:id/micro-context`.
 - `POST /api/articles/:id/progress/check` (`moteur:hn_locked`, porte `hn-lock`) / `…/uncheck`.
 
@@ -3198,7 +3200,7 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 **Watchers & réactivité**
 - `dirty` (computed) : copie ≠ base → message « La structure a changé depuis sa validation » quand l'étape est posée.
 - Changement d'article : copie rechargée, SERP relue. Structure arrivée après le montage : copie rechargée si elle est vide.
-- **Aucune** réaction à un changement de capitaine ou de lieutenants retenus : l'étape reste posée (limite, cf. ci-dessous).
+- Étape Capitaine ou Lieutenants retirée → le serveur retire aussi `moteur:hn_locked` (`CHECK_DEPENDENTS` dans `shared/constants/workflow-checks.constants.ts`, `removeArticleChecks` dans `data.service.ts`). Lieutenant retenu ajouté ou retiré alors que la structure est validée → `LieutenantsPanel.invalidateValidatedStructure` émet `check-removed` `MOTEUR_HN_LOCKED` (une fois par vérification, jamais en mode libre) (M19).
 
 **Décisions d'architecture**
 - **Enregistrer ≠ valider** : on peut garder une structure en chantier sans demander l'étape. Valider enregistre d'abord : la porte lit la base, pas l'écran.
@@ -3207,14 +3209,13 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 - **Récurrence des concurrents relue, pas recalculée côté serveur** : la tech-spec prévoyait un calcul serveur « si absente » ; livré : l'onglet relit la SERP du capitaine (même route que l'onglet Lieutenants) et calcule la récurrence dans le navigateur (`shared/`). La route de structure reçoit les **lieutenants retenus du client** (`lockedLieutenants`), pas de la base.
 - **Sommaire partagé** (`shared/structure-outline.ts`) : l'écran et le mode automatique produisent le même sommaire à partir de la même structure.
 - **Mode automatique** : il enregistrait comme structure la récurrence des concurrents (sans H1 ni capitaine), que la porte aurait refusée ; il demande désormais une vraie structure à la route de l'écran, et la porte en décide.
+- **Structure validée à l'entrée** (commit `8142e65`) : `PUT /articles/:id/keywords` refuse (400) une `hnStructure` qui n'a pas la forme `{ level: 1 à 6, text, children? }` (`hnStructureSchema`, `shared/schemas/keyword.schema.ts`). Un titre vide passe : c'est la porte qui le refuse, pas l'enregistrement d'une saisie en cours.
+- **Défauts de clôture corrigés (2026-09-25)** : `loadCompetitors({ fetchIfMissing })` lit la base seulement par défaut (M18) ; `prepareValidation` attend la longueur conseillée, s'arrête si le sommaire est refusé (message dans `generateError`), et ne remplace un sommaire retouché — ni celui de la structure précédente, ni celui de la nouvelle, comparés sur leurs titres (`outlineKey`) — qu'après `confirmReplaceOutline` (dépendance injectable, `window.confirm` par défaut) ; refusé, le sommaire est gardé et la pile d'activité le dit (M20) ; `saveStructure` n'écrit la mémoire qu'après la réponse du serveur (M21).
 
-**Limites connues** *(relevées en documentant C6)*
-- `loadCompetitors` part au montage et à chaque changement d'article (`StructureHnPanel.vue:104-108,115-118`) : `POST /serp/analyze` refait une analyse payante (DataForSEO + lecture des pages) si la SERP du capitaine a plus de 7 jours. Contraire à `FR-MOT-NO-AUTO-ACTION`. `computeSmartTab` ouvre directement cet onglet quand les lieutenants sont validés : sélectionner l'article suffit à déclencher l'appel.
-- Aucune revérification de `moteur:hn_locked` quand le capitaine ou les lieutenants changent après la validation (pas de watcher, contrairement aux onglets Lieutenants et Lexique) : seule la publication rejoue la porte. Les dérogations, elles, tombent (l'empreinte contient capitaine et lieutenants).
-- `prepareValidation` n'attend pas la recommandation (`void`, `useStructureHn.ts:203`) alors que son commentaire (199) dit que « le sommaire et la longueur partent AVANT l'étape » ; un échec du `PUT { outline }` est journalisé et l'étape est quand même demandée (200-202). Valider remplace aussi un sommaire retouché dans la Rédaction.
-- `saveStructure` écrit la structure dans le store **avant** la réponse du serveur, sans retour arrière en cas d'échec (`article-keywords.store.ts:250`) : après un refus, la copie de travail paraît enregistrée (`dirty` faux) alors que la base ne l'a pas.
-- Les textes de `LieutenantH2Structure.vue` parlent encore de l'onglet Lieutenants : « Coche au moins un lieutenant ci-dessus, puis lance la generation IA » (structure vide, ligne 205 ; titres des boutons, 122 et 210 ; consigne « integrera les nouveaux lieutenants coches », 117), alors que l'onglet Structure n'a pas de case à cocher.
+**Limites connues**
+- Remplacer directement le capitaine verrouillé, sans retirer son étape, ne retire pas `moteur:hn_locked` : la publication rejoue la porte et voit le H1 sans le nouveau capitaine.
 - Pas d'édition d'un titre à la main dans l'onglet (verrouiller et régénérer seulement).
+- *Soldées aux défauts de clôture de C6 (2026-09-25)* : analyse payante à l'ouverture (M18), étape non revérifiée après un changement de lieutenants (M19), longueur non attendue et sommaire refusé ou retouché (M20), `saveStructure` optimiste (M21), textes hérités de `LieutenantH2Structure.vue` (U3).
 
 **Critères d'acceptation techniques**
 - AC.HNTAB.1 : la structure naît des seuls lieutenants retenus, avec la récurrence des concurrents ; sans lieutenant retenu, aucune demande ; valider enregistre la structure puis le sommaire ; un enregistrement refusé arrête la validation ; la longueur conseillée n'écrase pas une longueur choisie. *(test : `tests/unit/composables/moteur/useStructureHn.test.ts`)*
@@ -3247,7 +3248,8 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 
 | Règle (`GateIssue.rule`) | Niveau | Condition (lignes de `shared/verifiers/structure.ts`) |
 |---|---|---|
-| `hn-empty` | ⛔ | Aucun H2 non vide ; **seule alerte renvoyée** (89-96) |
+| `hn-missing` | 🔴 | Aucun titre du tout (article rédigé sans l'onglet Structure) ; **seule alerte renvoyée** |
+| `hn-empty` | ⛔ | Des titres, mais aucun H2 non vide ; **seule alerte renvoyée** |
 | `hn-h1-missing` | ⛔ | Pas de H1, ou H1 vide (98-100) |
 | `hn-captain-not-in-h1` | 🔴 | Capitaine connu et `keywordCoverage(capitaine, H1) < 1` (101-109) ; extrait = le H1 |
 | `hn-empty-title` | ⛔ | Un titre vide, quel que soit son niveau (111-113) |
@@ -3276,7 +3278,7 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 
 **Limites connues**
 - Recoupement détecté seulement si le H2 contient **tout** le capitaine de l'autre article (`keywordCoverage ≥ 1`), et seulement pour un pilier.
-- Une structure vide ou absente donne ⛔ `hn-empty` — à l'étape comme **à la publication**, où la porte est rejouée : un article sans structure enregistrée (rédigé sans passer par l'onglet Structure, ou d'avant C6 sans structure) ne peut pas être publié, sans dérogation possible. Le lexique vide, lui, a été passé en 🔴 par C3 pour pouvoir s'assumer. À trancher.
+- *Tranché (P6, 2026-09-25)* : une structure **absente** (aucun titre) donne 🔴 `hn-missing`, assumable — à l'étape comme à la publication, où la porte est rejouée ; sinon un article rédigé sans l'onglet Structure ne pouvait plus être publié. Une structure qui a des titres mais aucun H2 reste ⛔ `hn-empty`. L'écran ne permet pas de valider une structure vide (`canValidate`).
 - Introduction / conclusion reconnues à leurs premiers mots seulement (48-49).
 
 **Critères d'acceptation techniques**
