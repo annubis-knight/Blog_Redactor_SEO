@@ -9,10 +9,12 @@
  *   2. bruit de domaine (« mots », « clés » isolés — fragments de « mots-clés »),
  *   3. tokens trop courts,
  *   4. mots déjà portés par le Capitaine/Lieutenants (`exclude`),
+ *   5. mots vides et décor de page de la source unique (`shared/utils/generic-terms.ts`),
  * pour que le Lexique apporte du vocabulaire **complémentaire**.
  */
 
 import { FR_STOPWORDS, MIN_TOKEN_LENGTH, norm, singularize, tokenize } from '../text.js'
+import { isGenericTerm } from '../../../shared/utils/generic-terms.js'
 
 const MAX_TERMS = 30
 
@@ -50,6 +52,9 @@ export function pickLexique(tf: TfidfResultLite, opts: PickLexiqueOptions = {}):
   const keep = (term: string): boolean => {
     const n = norm(term)
     if (n.length < MIN_TOKEN_LENGTH) return false
+    // Même règle que la porte du lexique : le mode automatique ne retient
+    // jamais un terme qu'elle refuserait (FR-LEX-METIER-ONLY).
+    if (isGenericTerm(term)) return false
     const s = singularize(n)
     if (FR_STOPWORDS.has(n) || FR_STOPWORDS.has(s)) return false
     if (DOMAIN_NOISE.has(n) || DOMAIN_NOISE.has(s)) return false

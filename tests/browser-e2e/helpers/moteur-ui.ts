@@ -191,6 +191,18 @@ export async function validerLexique(page: Page, articleId: number): Promise<voi
     if (!(await premiere.isDisabled()) && !(await premiere.isChecked())) await premiere.check()
   }
 
+  // La porte du lexique (FR-LEX-METIER-ONLY) peut retenir l'étape : le
+  // bandeau le dit, et l'utilisateur assume depuis l'alarme.
+  const bandeau = page.locator('[data-testid="lexique-gate-banner"]')
+  await expect.poll(async () => {
+    if (await bandeau.isVisible()) return 'bandeau'
+    return (await checksDeLArticle(page, articleId)).includes('moteur:lexique_validated') ? 'validée' : 'en attente'
+  }, { timeout: 60000 }).not.toBe('en attente')
+  if (await bandeau.isVisible()) {
+    await page.locator('[data-testid="lexique-gate-review"]').click()
+    await answerGateAlarm(page)
+  }
+
   await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
     .toContain('moteur:lexique_validated')
 }

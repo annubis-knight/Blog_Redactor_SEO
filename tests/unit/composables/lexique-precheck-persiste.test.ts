@@ -1,15 +1,12 @@
 /**
- * FR-LEX-PRECHECK-PERSISTE — ce que l'écran coche doit exister en base.
+ * FR-LEX-PRECHECK-PERSISTE (amendée par FR-LEX-METIER-ONLY) — ce que l'écran
+ * coche est réellement retenu, et rien n'est coché d'office.
  *
- * Après l'analyse, le Lexique pré-coche tous les termes « obligatoires »
- * (présents chez au moins 70 % des concurrents). Ce pré-cochage ne remplissait
- * qu'un `Set` d'affichage : la colonne `article_keywords.lexique`, seule source
- * du verrou `moteur:lexique_validated`, restait vide.
- *
- * Résultat observé le 2026-09-23 : l'écran annonçait « 38 termes sélectionnés »,
- * les 38 cases étaient cochées, et l'étape ne se validait pas. Pour la
- * débloquer il fallait décocher puis recocher un terme — un geste que rien
- * n'indique. Le parcours de bout en bout restait donc coincé avant la Rédaction.
+ * Historique : le 2026-09-23, le Lexique pré-cochait les termes « obligatoires »
+ * sans rien enregistrer ; on les a alors verrouillés d'un coup (`lockMany`).
+ * L'épopée qualité SEO (M11) a montré que ce pré-cochage validait l'étape sans
+ * geste, mots vides compris (« être », « votre »). Désormais l'utilisateur
+ * choisit, et chaque case cochée ou décochée est enregistrée aussitôt.
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { ref } from 'vue'
@@ -17,7 +14,7 @@ import { setActivePinia, createPinia } from 'pinia'
 import { useLexiqueLocking } from '../../../src/composables/lexique/useLexiqueLocking'
 import { useArticleKeywordsStore } from '../../../src/stores/article/article-keywords.store'
 
-describe('useLexiqueLocking — verrouillage groupé du pré-cochage', () => {
+describe('useLexiqueLocking — chaque geste de l’utilisateur est enregistré', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
   })
@@ -25,54 +22,39 @@ describe('useLexiqueLocking — verrouillage groupé du pré-cochage', () => {
   function preparer(articleId = 7) {
     const store = useArticleKeywordsStore()
     store.initEmpty(articleId)
-    store.saveDecisions = vi.fn().mockResolvedValue(undefined)
+    store.saveDecisions = vi.fn().mockResolvedValue(true)
     return { store, api: useLexiqueLocking({ articleId: ref(articleId) }) }
   }
 
-  it('verrouille tous les termes pré-cochés, en un seul enregistrement', () => {
+  it('rien n’est retenu tant que l’utilisateur n’a rien coché', () => {
     const { store, api } = preparer()
-
-    api.lockMany(['garantie', 'devis gratuit', 'artisan certifié'])
-
-    expect(api.lockedTerms.value).toEqual(['garantie', 'devis gratuit', 'artisan certifié'])
-    expect(api.isLocked.value, 'l’étape peut désormais se valider').toBe(true)
-    expect(store.saveDecisions, 'un seul aller-retour, pas un par terme').toHaveBeenCalledTimes(1)
-  })
-
-  it('n’enregistre rien si tous les termes sont déjà verrouillés', () => {
-    const { store, api } = preparer()
-    api.lockMany(['garantie'])
-    ;(store.saveDecisions as ReturnType<typeof vi.fn>).mockClear()
-
-    api.lockMany(['garantie'])
-
-    expect(store.saveDecisions, 'aucune écriture inutile').not.toHaveBeenCalled()
-  })
-
-  it('n’ajoute que les termes vraiment nouveaux', () => {
-    const { api } = preparer()
-    api.lockMany(['garantie'])
-
-    api.lockMany(['garantie', 'devis gratuit'])
-
-    expect(api.lockedTerms.value).toEqual(['garantie', 'devis gratuit'])
-  })
-
-  it('ignore une liste vide sans rien écrire', () => {
-    const { store, api } = preparer()
-
-    api.lockMany([])
-
+    expect(api.lockedTerms.value).toEqual([])
+    expect(api.isLocked.value, 'l’étape ne se valide pas toute seule').toBe(false)
     expect(store.saveDecisions).not.toHaveBeenCalled()
-    expect(api.isLocked.value).toBe(false)
   })
 
-  it('laisse le retrait d’un terme fonctionner ensuite', () => {
-    const { api } = preparer()
-    api.lockMany(['garantie', 'devis gratuit'])
+  it('cocher un terme l’enregistre ; l’étape peut alors se valider', () => {
+    const { store, api } = preparer()
+    api.toggleTerm('pare-vapeur')
+    expect(api.lockedTerms.value).toEqual(['pare-vapeur'])
+    expect(api.isLocked.value).toBe(true)
+    expect(store.saveDecisions).toHaveBeenCalledTimes(1)
+  })
 
-    api.toggleTerm('garantie')
+  it('décocher un terme l’enregistre aussi', () => {
+    const { store, api } = preparer()
+    api.toggleTerm('pare-vapeur')
+    api.toggleTerm('laine soufflée')
+    api.toggleTerm('pare-vapeur')
+    expect(api.lockedTerms.value).toEqual(['laine soufflée'])
+    expect(store.saveDecisions).toHaveBeenCalledTimes(3)
+  })
 
-    expect(api.lockedTerms.value, 'l’utilisateur garde la main').toEqual(['devis gratuit'])
+  it('sans article, aucun geste n’est enregistré', () => {
+    const store = useArticleKeywordsStore()
+    store.saveDecisions = vi.fn().mockResolvedValue(true)
+    const api = useLexiqueLocking({ articleId: ref(undefined) })
+    api.toggleTerm('pare-vapeur')
+    expect(store.saveDecisions).not.toHaveBeenCalled()
   })
 })

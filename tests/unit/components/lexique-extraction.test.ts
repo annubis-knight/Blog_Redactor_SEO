@@ -279,7 +279,10 @@ describe('LexiquePanel', () => {
     })
   })
 
-  describe('Checkbox pre-selection (before IA)', () => {
+  // FR-LEX-METIER-ONLY (épopée qualité SEO, M11) : aucun terme n'est validé
+  // d'office. Les « obligatoires » arrivaient cochés et enregistrés : l'étape
+  // se validait sans geste, mots vides compris.
+  describe('Aucun terme coché d’office (M11)', () => {
     async function mountWithResults() {
       const wrapper = mountComponent()
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
@@ -288,12 +291,13 @@ describe('LexiquePanel', () => {
       return wrapper
     }
 
-    it('pre-checks obligatoire terms immediately after TF-IDF', async () => {
+    it('après le TF-IDF, même les obligatoires arrivent décochés, et rien n’est enregistré', async () => {
       const wrapper = await mountWithResults()
       const checkboxes = wrapper.findAll('.term-checkbox')
-      // First 2 are obligatoire — should be checked
-      expect((checkboxes[0].element as HTMLInputElement).checked).toBe(true)
-      expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
+      expect((checkboxes[0].element as HTMLInputElement).checked).toBe(false)
+      expect((checkboxes[1].element as HTMLInputElement).checked).toBe(false)
+      expect(mockSaveDecisions).not.toHaveBeenCalled()
+      expect(wrapper.emitted('check-completed')).toBeUndefined()
     })
 
     it('does NOT pre-check differenciateur terms before IA', async () => {
@@ -320,9 +324,12 @@ describe('LexiquePanel', () => {
       return wrapper
     }
 
-    it('unchecks an obligatoire term on click', async () => {
+    it('coche puis décoche un terme obligatoire', async () => {
       const wrapper = await mountWithResults()
       const checkbox = wrapper.findAll('.term-checkbox')[0]
+      await checkbox.trigger('change')
+      await nextTick()
+      expect((checkbox.element as HTMLInputElement).checked).toBe(true)
       await checkbox.trigger('change')
       await nextTick()
       expect((checkbox.element as HTMLInputElement).checked).toBe(false)
@@ -345,9 +352,9 @@ describe('LexiquePanel', () => {
       await nextTick()
 
       const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
-      // 2 obligatoire pre-checked
-      expect(counter.text()).toContain('2 termes sélectionnés')
-      expect(counter.text()).toContain('2O')
+      // Rien de coché d'office (M11).
+      expect(counter.text()).toContain('0 terme sélectionné')
+      expect(counter.text()).toContain('0O')
       expect(counter.text()).toContain('0D')
       expect(counter.text()).toContain('0Op')
     })
@@ -364,11 +371,11 @@ describe('LexiquePanel', () => {
       await nextTick()
 
       const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
-      expect(counter.text()).toContain('3 termes sélectionnés')
+      expect(counter.text()).toContain('1 terme sélectionné')
       expect(counter.text()).toContain('1D')
     })
 
-    it('updates count after IA upfront completes (obligatoire + recommended differenciateur)', async () => {
+    it('la fin de l’analyse IA ne coche rien : le compteur reste à zéro', async () => {
       const wrapper = mountComponent()
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
       await nextTick()
@@ -379,11 +386,42 @@ describe('LexiquePanel', () => {
       await nextTick()
 
       const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
-      // 2 obligatoire + 1 differenciateur (stratégie recommended) = 3
-      expect(counter.text()).toContain('3 termes sélectionnés')
-      expect(counter.text()).toContain('2O')
-      expect(counter.text()).toContain('1D')
-      expect(counter.text()).toContain('0Op')
+      expect(counter.text()).toContain('0 terme sélectionné')
+      expect(mockSaveDecisions).not.toHaveBeenCalled()
+    })
+  })
+
+  // FR-LEX-PRECHECK-PERSISTE : ce que l'écran coche EST ce qui est enregistré.
+  // Au rechargement, les termes enregistrés s'affichaient décochés (compteur à 0),
+  // et cliquer l'un d'eux pour le « cocher » le RETIRAIT de la base.
+  describe('L’écran suit toujours les termes enregistrés', () => {
+    it('des termes arrivés de la base après l’affichage apparaissent cochés, et le compteur suit', async () => {
+      const wrapper = mountComponent()
+      await wrapper.find('[data-testid="btn-extract"]').trigger('click')
+      await nextTick()
+      await nextTick()
+
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['stratégie'] }
+      await nextTick()
+
+      const checkbox = wrapper.findAll('.term-checkbox')[2]! // stratégie
+      expect((checkbox.element as HTMLInputElement).checked).toBe(true)
+      expect(wrapper.find('[data-testid="lexique-sort-bar"]').text()).toContain('1 terme sélectionné')
+    })
+
+    it('cliquer un terme enregistré le décoche et le retire — jamais l’inverse', async () => {
+      const wrapper = mountComponent()
+      await wrapper.find('[data-testid="btn-extract"]').trigger('click')
+      await nextTick()
+      await nextTick()
+      mockKeywordsRef.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['stratégie'] }
+      await nextTick()
+
+      const checkbox = wrapper.findAll('.term-checkbox')[2]!
+      await checkbox.trigger('change')
+      await nextTick()
+      expect(mockKeywordsRef.value!.lexique).toEqual([])
+      expect((checkbox.element as HTMLInputElement).checked).toBe(false)
     })
   })
 
@@ -514,21 +552,14 @@ describe('LexiquePanel', () => {
       expect(wrapper.find('.ia-missing-terms').text()).toContain('backlinks')
     })
 
-    it('builds iaRecommendations map from onDone callback', async () => {
+    it('les recommandations IA s’affichent en badges, sans cocher aucune case', async () => {
       const wrapper = await mountWithResults()
       simulateIaUpfrontDone()
       await nextTick()
 
-      // After IA upfront, differenciateur "stratégie" (aiRecommended=true) should be pre-checked
       const checkboxes = wrapper.findAll('.term-checkbox')
-      // obligatoire[0]: référencement — checked
-      expect((checkboxes[0].element as HTMLInputElement).checked).toBe(true)
-      // obligatoire[1]: optimisation — checked
-      expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
-      // differenciateur[0]: stratégie — checked (aiRecommended=true)
-      expect((checkboxes[2].element as HTMLInputElement).checked).toBe(true)
-      // optionnel[0]: niche — NOT checked (aiRecommended=false)
-      expect((checkboxes[3].element as HTMLInputElement).checked).toBe(false)
+      for (const box of checkboxes) expect((box.element as HTMLInputElement).checked).toBe(false)
+      expect(wrapper.findAll('.term-row')[2]!.find('.badge-ia').classes()).toContain('badge-ia-recommended')
     })
   })
 
@@ -601,7 +632,8 @@ describe('LexiquePanel', () => {
     })
   })
 
-  describe('Pre-check with IA', () => {
+  // M11 : l'IA recommande, l'utilisateur choisit — plus aucune case cochée par l'IA.
+  describe('Analyse IA : recommande sans cocher', () => {
     async function mountWithIaComplete(iaResult: LexiqueAnalysisResult = MOCK_IA_RESULT) {
       const wrapper = mountComponent()
       await wrapper.find('[data-testid="btn-extract"]').trigger('click')
@@ -612,18 +644,17 @@ describe('LexiquePanel', () => {
       return wrapper
     }
 
-    it('pre-checks obligatoire terms after IA', async () => {
+    it('les obligatoires restent décochés après l’IA', async () => {
       const wrapper = await mountWithIaComplete()
       const checkboxes = wrapper.findAll('.term-checkbox')
-      expect((checkboxes[0].element as HTMLInputElement).checked).toBe(true)
-      expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
+      expect((checkboxes[0].element as HTMLInputElement).checked).toBe(false)
+      expect((checkboxes[1].element as HTMLInputElement).checked).toBe(false)
     })
 
-    it('pre-checks differenciateur terms where aiRecommended is true', async () => {
+    it('un différenciateur recommandé par l’IA reste décoché : l’utilisateur choisit', async () => {
       const wrapper = await mountWithIaComplete()
       const checkboxes = wrapper.findAll('.term-checkbox')
-      // stratégie is aiRecommended=true => checked
-      expect((checkboxes[2].element as HTMLInputElement).checked).toBe(true)
+      expect((checkboxes[2].element as HTMLInputElement).checked).toBe(false)
     })
 
     it('does NOT pre-check differenciateur terms where aiRecommended is false', async () => {
@@ -660,13 +691,14 @@ describe('LexiquePanel', () => {
       expect((checkboxes[3].element as HTMLInputElement).checked).toBe(false)
     })
 
-    it('selection counter reflects IA pre-check (obligatoire + recommended differenciateur)', async () => {
+    it('le compteur ne compte que ce que l’utilisateur a coché', async () => {
       const wrapper = await mountWithIaComplete()
       const counter = wrapper.find('[data-testid="lexique-sort-bar"]')
-      expect(counter.text()).toContain('3 termes sélectionnés')
-      expect(counter.text()).toContain('2O')
+      expect(counter.text()).toContain('0 terme sélectionné')
+      await wrapper.findAll('.term-checkbox')[2]!.trigger('change')
+      await nextTick()
+      expect(counter.text()).toContain('1 terme sélectionné')
       expect(counter.text()).toContain('1D')
-      expect(counter.text()).toContain('0Op')
     })
   })
 
@@ -699,16 +731,10 @@ describe('LexiquePanel', () => {
       expect(wrapper.findAll('.badge-ia')).toHaveLength(0)
     })
 
-    it('pre-checks only obligatoire terms on error (fallback behavior)', async () => {
+    it('IA en échec : rien n’est coché, l’utilisateur choisit dans la liste', async () => {
       const wrapper = await mountWithIaError()
       const checkboxes = wrapper.findAll('.term-checkbox')
-      // Only obligatoire should be pre-checked (initial pre-check from TF-IDF, not refined by IA)
-      expect((checkboxes[0].element as HTMLInputElement).checked).toBe(true)
-      expect((checkboxes[1].element as HTMLInputElement).checked).toBe(true)
-      // differenciateur NOT checked (no IA recommendations)
-      expect((checkboxes[2].element as HTMLInputElement).checked).toBe(false)
-      // optionnel NOT checked
-      expect((checkboxes[3].element as HTMLInputElement).checked).toBe(false)
+      for (const box of checkboxes) expect((box.element as HTMLInputElement).checked).toBe(false)
     })
 
     it('does not show IA summary on error', async () => {

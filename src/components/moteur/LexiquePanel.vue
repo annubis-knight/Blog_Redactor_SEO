@@ -23,6 +23,7 @@ import { tfidfResultContract } from '@shared/contracts/serp.contract.js'
 import { log } from '@/utils/logger'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { useLexiqueIa } from '@/composables/lexique/useLexiqueIa'
 import { useSerpExistsCheck } from '@/composables/lexique/useSerpExistsCheck'
 import { useLexiqueExplorations } from '@/composables/lexique/useLexiqueExplorations'
@@ -40,6 +41,7 @@ import SortToggleBar from '@/components/moteur/SortToggleBar.vue'
 import type { SelectedArticle } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { TfidfResult } from '@shared/types/serp-analysis.types.js'
+import type { GateEvaluation } from '@shared/verifiers/gate.js'
 import { MOTEUR_LEXIQUE_VALIDATED } from '@shared/constants/workflow-checks.constants.js'
 
 const props = withDefaults(defineProps<{
@@ -79,8 +81,8 @@ const assistKeywords = computed<string[]>(() => {
 })
 
 // --- État UI local ---
-// `selectedTerms` = candidats UI (pre-check obligatoire post-fetchTfidf + basket).
-// Distinct de `lockedTerms` (store.lexique persisté) ; toggle synchronise les deux.
+// `selectedTerms` = ce que l'écran coche. Il suit TOUJOURS `lockedTerms` (le
+// lexique enregistré) : voir le watcher plus bas (FR-LEX-PRECHECK-PERSISTE).
 const isLoading = ref(false)
 const error = ref<string | null>(null)
 const selectedTerms = ref<Set<string>>(new Set())
@@ -96,7 +98,17 @@ const {
   hydrateFromDb, mergeFromDb, selectExploration, reset: resetExplorations,
 } = useLexiqueExplorations({ articleId: articleIdRef, captainKeyword: captainKeywordRef })
 
-const { isLocked, toggleTerm: persistToggle, lockMany } = useLexiqueLocking({ articleId: articleIdRef })
+const { isLocked, lockedTerms, toggleTerm: persistToggle } = useLexiqueLocking({ articleId: articleIdRef })
+
+// Ce que l'écran coche = ce qui est enregistré, quel que soit le chemin de
+// chargement (extraction, restauration depuis la base, fusion). Au rechargement,
+// les termes enregistrés s'affichaient décochés, et cliquer l'un d'eux pour le
+// « cocher » le retirait de la base (FR-LEX-PRECHECK-PERSISTE).
+watch(
+  () => JSON.stringify(lockedTerms.value),
+  () => { selectedTerms.value = new Set(lockedTerms.value) },
+  { immediate: true },
+)
 
 const { exists: serpExists, isChecking: serpExistsIsChecking, refetch: refetchSerpExists }
   = useSerpExistsCheck(captainKeywordRef)
@@ -106,15 +118,11 @@ const {
   iaRecommendedCount, iaNotRecommendedCount,
   iaAbort, getRecommendation, isIaRecommended, generateLexiqueUpfront,
 } = useLexiqueIa({
-  tfidfResult, selectedTerms, activeSourceKeyword,
+  tfidfResult, activeSourceKeyword,
   captainKeyword: captainKeywordRef,
   articleLevel: toRef(props, 'articleLevel'),
   cocoonSlug: toRef(props, 'cocoonSlug'),
   selectedArticleId: articleIdRef,
-  // Ce que l'écran coche doit exister en base : sans ce relais, la liste
-  // affichait « N termes sélectionnés » sur un lexique vide et l'étape ne se
-  // validait jamais (FR-LEX-PRECHECK-PERSISTE).
-  onPreChecked: (terms: string[]) => lockMany(terms),
 })
 
 // --- Tri / sélection ---
@@ -200,8 +208,12 @@ function handleAssistAdd(term: string) {
   // La sélection reste ajustable à tout moment (FR-LEX-CHECKBOX-LOCK-IMMEDIATE) :
   // refuser un ajout parce que des termes sont déjà retenus fermerait la porte
   // au geste que l'exigence décrit — ajouter, retirer, au fil de la lecture.
+  if (selectedTerms.value.has(term)) return
   const next = new Set(selectedTerms.value); next.add(term)
   selectedTerms.value = next
+  // Ce que l'écran coche est enregistré (FR-LEX-PRECHECK-PERSISTE) : un ajout
+  // qui ne restait qu'à l'écran annonçait un terme que la base ignorait.
+  if (!lockedTerms.value.includes(term)) persistToggle(term)
 }
 
 // Toggle = sync Set local UI + délègue persistance au composable VERROUILLAGE
@@ -251,15 +263,11 @@ async function fetchTfidf(keywordOverride?: string, triggerScrape: boolean = fal
       triggerScrapeIfMissing: triggerScrape,
     }, { contract: tfidfResultContract })
     tfidfResult.value = result
-    // FR-LEX-PRECHECK-PERSISTE — les termes obligatoires arrivent cochés :
-    // c'est le chemin principal, l'analyse IA ne fait ensuite qu'y ajouter des
-    // différenciateurs. Ce que l'écran coche doit exister en base, sans quoi
-    // la liste annonce « N termes sélectionnés » sur un lexique vide et
-    // l'étape ne se valide jamais.
-    const preChecked = new Set<string>()
-    for (const term of result.obligatoire) preChecked.add(term.term)
-    selectedTerms.value = preChecked
-    lockMany([...preChecked])
+    // FR-LEX-METIER-ONLY (épopée qualité SEO, M11) : aucun terme n'est validé
+    // d'office — l'utilisateur choisit. L'écran montre ce qui est déjà
+    // enregistré, rien de plus : un pré-cochage validait l'étape sans geste,
+    // mots vides compris.
+    selectedTerms.value = new Set(lockedTerms.value)
   } catch (err) {
     error.value = err instanceof Error ? err.message : 'Erreur inconnue'
     log.error(`[LexiquePanel] TF-IDF fetch failed`, { error: error.value })
@@ -276,10 +284,91 @@ watch(tfidfResult, (res) => {
   generateLexiqueUpfront()
 })
 
+// --- Porte « valider le lexique » (FR-LEX-METIER-ONLY) ---
+// L'étape n'est accordée que si la porte passe, et elle est revérifiée à
+// chaque changement du lexique : un mot vide ajouté après coup retire
+// l'étape. Vérification SILENCIEUSE (pas d'alarme à chaque case) ; tant que
+// la porte retient l'étape, un bandeau le dit et ouvre l'alarme à la demande.
+// Sans vérification possible (réseau, contexte sans Pinia), l'étape est
+// demandée quand même : le serveur reste l'arbitre (422 → alarme).
+const lexiqueGateBlocked = ref<GateEvaluation | null>(null)
+let lexiqueCheckRequested = false
+let lexiqueGateRunning: Promise<void> | null = null
+
+function hasLexiqueCheck(id: number): boolean {
+  try {
+    return lexiqueCheckRequested || (useArticleProgressStore().getProgress(id)?.completedChecks.includes(MOTEUR_LEXIQUE_VALIDATED) ?? false)
+  } catch {
+    return lexiqueCheckRequested
+  }
+}
+
+function requestLexiqueCheck(): void {
+  lexiqueCheckRequested = true
+  emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
+}
+
+function withdrawLexiqueCheck(): void {
+  lexiqueCheckRequested = false
+  emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+}
+
+async function syncLexiqueGate(): Promise<void> {
+  const id = props.selectedArticle?.id
+  if (!id || !isLocked.value) return
+  let evaluation: GateEvaluation | null = null
+  try {
+    await articleKeywordsStore.saveDecisions(id)
+    evaluation = await useGateAlarmStore().evaluate(id, 'lexique-lock')
+  } catch (err) {
+    log.warn('[LexiquePanel] vérification de la porte impossible — le serveur tranchera', { articleId: id, error: (err as Error).message })
+  }
+  if (props.selectedArticle?.id !== id || !isLocked.value) return
+  const present = hasLexiqueCheck(id)
+  if (!evaluation || evaluation.passed) {
+    lexiqueGateBlocked.value = null
+    if (!present) requestLexiqueCheck()
+    return
+  }
+  lexiqueGateBlocked.value = evaluation
+  if (present) withdrawLexiqueCheck()
+}
+
+/** Une vérification à la fois : deux cases cochées vite ne doublent pas l'étape. */
+function requestLexiqueGate(): Promise<void> {
+  lexiqueGateRunning = (lexiqueGateRunning ?? Promise.resolve()).then(syncLexiqueGate)
+  return lexiqueGateRunning
+}
+
+/** Bouton du bandeau : ouvre l'alarme sur un verdict frais. */
+async function reviewLexiqueGate(): Promise<void> {
+  const id = props.selectedArticle?.id
+  if (!id) return
+  let passed = false
+  try {
+    passed = await useGateAlarmStore().ensure(id, 'lexique-lock')
+  } catch (err) {
+    log.warn('[LexiquePanel] alarme indisponible', { articleId: id, error: (err as Error).message })
+    return
+  }
+  if (passed) {
+    lexiqueGateBlocked.value = null
+    if (!hasLexiqueCheck(id)) requestLexiqueCheck()
+  }
+}
+
+const lexiqueGateBannerText = computed(() => {
+  const blocking = lexiqueGateBlocked.value?.blocking ?? []
+  const first = blocking[0]
+  if (!first) return ''
+  const more = blocking.length > 1 ? ` (+${blocking.length - 1} autre${blocking.length > 2 ? 's' : ''})` : ''
+  return `${first.message}${more}`
+})
+
 // Watcher gating workflow + reconciliation au mount (FR-MOT-CHECK-RECONCILIATION).
 // AC.LEX-SEP.4 : reste DANS le composant (propagation de check workflow,
 // distinct des familles LECTURE/VERROUILLAGE — c'est l'orchestration métier
-// MoteurView ↔ LexiquePanel).
+// MoteurView ↔ LexiquePanel). L'étape passe désormais par la porte.
 let previousLockedState = false
 let isFirstRun = true
 watch(isLocked, (locked) => {
@@ -292,15 +381,33 @@ watch(isLocked, (locked) => {
       checks = id ? (useArticleProgressStore().getProgress(id)?.completedChecks ?? []) : []
     } catch { checks = [] }
     const checkPresent = checks.includes(MOTEUR_LEXIQUE_VALIDATED)
-    if (locked && !checkPresent) emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
-    else if (!locked && checkPresent) emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+    if (locked && !checkPresent) void requestLexiqueGate()
+    else if (!locked && checkPresent) withdrawLexiqueCheck()
     log.info('[reconcile:lexique]', { articleId: id, isLocked: locked, checkPresent, check: MOTEUR_LEXIQUE_VALIDATED })
     return
   }
-  if (locked && !previousLockedState) emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)
-  else if (!locked && previousLockedState) emit('check-removed', MOTEUR_LEXIQUE_VALIDATED)
+  if (locked && !previousLockedState) void requestLexiqueGate()
+  else if (!locked && previousLockedState) {
+    lexiqueGateBlocked.value = null
+    withdrawLexiqueCheck()
+  }
   previousLockedState = locked
 }, { immediate: true })
+
+// Un terme ajouté ou retiré alors que le lexique est déjà retenu : la porte
+// est revérifiée (FR-LEX-METIER-ONLY). La transition vide → non vide, elle,
+// est traitée par le watcher ci-dessus.
+watch(() => JSON.stringify(lockedTerms.value), (signature, previous) => {
+  if (signature === previous || !isLocked.value || !previousLockedState) return
+  void requestLexiqueGate()
+})
+
+// Autre article : ce que ce panneau savait de l'étape ne vaut plus.
+watch(() => props.selectedArticle?.id ?? null, (id, previous) => {
+  if (id === previous) return
+  lexiqueCheckRequested = false
+  lexiqueGateBlocked.value = null
+})
 
 // Auto-restore TF-IDF (capitaine locked) : hydrate cache → attendre pré-check
 // → si exists=false ne PAS POSTer /serp/tfidf (anti-404, FR-LEX-PRECHECK-SERP)
@@ -419,6 +526,16 @@ defineExpose({ hydrateFromDb, mergeFromDb })
     </div>
 
     <!-- Results -->
+    <!-- FR-LEX-METIER-ONLY — la porte retient l'étape : on le dit, l'alarme s'ouvre à la demande. -->
+    <div v-if="lexiqueGateBlocked" class="gate-banner" role="status" data-testid="lexique-gate-banner">
+      <p class="gate-banner-text">
+        <strong>Étape non validée.</strong> {{ lexiqueGateBannerText }}
+      </p>
+      <button type="button" class="gate-banner-btn" data-testid="lexique-gate-review" @click="reviewLexiqueGate">
+        Voir pourquoi / décider
+      </button>
+    </div>
+
     <div v-if="tfidfResult" class="lexique-results" data-testid="lexique-results">
 
       <!-- IA Analysis Summary (moved BEFORE term sections) -->
@@ -507,6 +624,34 @@ defineExpose({ hydrateFromDb, mergeFromDb })
 </template>
 
 <style scoped>
+/* --- Porte Lexique --- */
+.gate-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-block-warning-border, #f59e0b);
+  border-radius: 6px;
+  background: var(--color-block-warning-bg, #fffbeb);
+  font-size: 0.8125rem;
+}
+
+.gate-banner-text {
+  margin: 0;
+}
+
+.gate-banner-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
 .lexique-extraction {
   display: flex;
   flex-direction: column;

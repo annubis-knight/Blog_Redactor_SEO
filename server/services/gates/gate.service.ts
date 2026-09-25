@@ -9,7 +9,7 @@
  *            server/routes/articles.routes.ts (POST /progress/check, PUT /status),
  *            scripts/verify-content.ts (liste des dérogations).
  * RELATED FR: FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE,
- *             FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE
+ *             FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock)
  *
  * Le serveur est le seul évaluateur : il charge les données, appelle le
  * vérificateur partagé (`shared/verifiers/`) et applique les dérogations
@@ -39,7 +39,9 @@ import {
 import { verifyCaptain, type CaptainGateInput } from '../../../shared/verifiers/captain.js'
 import { verifyLieutenants, normalizeKeyword, type CocoonKeywordClaim } from '../../../shared/verifiers/lieutenants.js'
 import { verifyPublish } from '../../../shared/verifiers/publish.js'
-import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants.js'
+import { verifyLexique } from '../../../shared/verifiers/lexique.js'
+import { normalizeTerm } from '../../../shared/utils/generic-terms.js'
+import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_LEXIQUE_VALIDATED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 
 export type { GateEvaluation }
@@ -48,6 +50,7 @@ export type { GateEvaluation }
 export const CHECK_GATES: Record<string, GateId> = {
   [MOTEUR_CAPITAINE_LOCKED]: 'captain-lock',
   [MOTEUR_LIEUTENANTS_LOCKED]: 'lieutenants-lock',
+  [MOTEUR_LEXIQUE_VALIDATED]: 'lexique-lock',
 }
 
 interface ArticleRow {
@@ -183,6 +186,18 @@ async function lieutenantsGate(articleId: number): Promise<{ issues: GateIssue[]
   return { issues: verifyLieutenants(input), hashInput }
 }
 
+/** Lexique retenu (FR-LEX-METIER-ONLY) : ⛔ vide, 🔴 terme générique. */
+async function lexiqueGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
+  const found = await getArticleById(articleId)
+  if (!found) throw new Error(`Article ${articleId} introuvable`)
+  const { data: kw } = await getArticleKeywords(articleId)
+  const terms = [...(kw?.lexique ?? [])]
+  return {
+    issues: verifyLexique({ terms }),
+    hashInput: { terms: terms.map(normalizeTerm).sort() },
+  }
+}
+
 async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
   const found = await getArticleById(articleId)
   if (!found) throw new Error(`Article ${articleId} introuvable`)
@@ -198,6 +213,7 @@ async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; ha
   const upstream = [
     await evaluateArticleGate(articleId, 'captain-lock'),
     await evaluateArticleGate(articleId, 'lieutenants-lock'),
+    await evaluateArticleGate(articleId, 'lexique-lock'),
   ]
   const existingWaivers = standingWaivers(upstream.flatMap(e => e.waived.map(w => w.waiver)), {})
   const upstreamBlocking: GateIssue[] = upstream.flatMap(e => e.blocking.map(i => ({ ...i, rule: `${e.gateId}:${i.rule}` })))
@@ -234,9 +250,10 @@ export async function evaluateArticleGate(
   switch (gateId) {
     case 'captain-lock': built = await captainGate(articleId, opts.keyword); break
     case 'lieutenants-lock': built = await lieutenantsGate(articleId); break
+    case 'lexique-lock': built = await lexiqueGate(articleId); break
     case 'publish': built = await publishGate(articleId); break
     default:
-      // Portes livrées par les chantiers suivants (lexique C3, structure C6, premier jet C5).
+      // Portes livrées par les chantiers suivants (structure C6, premier jet C5).
       built = { issues: [], hashInput: {} }
   }
   const inputHash = hashGateInput(built.hashInput)

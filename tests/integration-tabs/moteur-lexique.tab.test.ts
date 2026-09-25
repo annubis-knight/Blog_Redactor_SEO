@@ -111,12 +111,18 @@ describe('Tab moteur/lexique — Validation', () => {
 
   it('MOTEUR_LEXIQUE_VALIDATED check via /progress/check', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const { apiPost, apiGet } = await import('../helpers/api-client.js')
+    const { apiPost, apiGet, apiPut } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LexC Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LexC Article')
 
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    // L'étape passe la porte du lexique (FR-LEX-METIER-ONLY) : il lui faut des
+    // termes du métier, enregistrés AVANT de la demander.
+    await apiPut(`/articles/${article.id}/keywords`, {
+      capitaine: `test-${ctx.runId}-lexc`, lieutenants: [], lexique: ['pare-vapeur', 'laine soufflée'],
+    })
+    const accordee = await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    expect(accordee.status).toBe(200)
     const res = await apiGet<{ completed_checks?: string[]; completedChecks?: string[] }>(`/articles/${article.id}/progress`)
     const checks = res.data as { completedChecks?: string[]; completed_checks?: string[] }
     const list = checks.completedChecks ?? checks.completed_checks ?? []

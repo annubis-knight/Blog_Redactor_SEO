@@ -170,3 +170,22 @@ describe('computeTfidfFromTexts', () => {
     expect(uniqueTerm!.documentFrequency).toBe(0.33)
   })
 })
+
+describe('FR-LEX-METIER-ONLY — le lexique ne garde que des mots du métier (M4)', () => {
+  it('les mots vides accentués et le décor de page ne passent plus', () => {
+    expect(tokenize('Être même très vos nos chaque comment voir cela cookies mentions légales newsletter')).toEqual([])
+  })
+
+  it('le mot garde son accent en sortie', () => {
+    expect(tokenize('Laine soufflée et pare-vapeur')).toEqual(['laine', 'soufflée', 'pare-vapeur'])
+  })
+
+  it('« être », présent chez tous les concurrents, ne devient pas un terme obligatoire', () => {
+    const textes = Array.from({ length: 6 }, (_, i) =>
+      `Il faut être attentif : la laine soufflée isole les combles. Page ${i}. Nos cookies et vos mentions légales.`)
+    const result = computeTfidfFromTexts(textes, 'isolation combles perdus')
+    const tous = [...result.obligatoire, ...result.differenciateur, ...result.optionnel].map(t => t.term)
+    expect(tous).toContain('soufflée')
+    for (const vide of ['être', 'nos', 'vos', 'cookies', 'mentions', 'légales']) expect(tous).not.toContain(vide)
+  })
+})

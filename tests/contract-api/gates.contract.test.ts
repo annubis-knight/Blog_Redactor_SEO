@@ -120,6 +120,29 @@ describe('Porte « valider les lieutenants » — minimum par type', () => {
   })
 })
 
+describe('Porte « valider le lexique » (FR-LEX-METIER-ONLY)', () => {
+  it('🔴 un mot vide dans le lexique retient l’étape ; un lexique de métier passe', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle()
+    await apiPut(`/articles/${article.id}/keywords`, { capitaine: `lexique-${ctx.runId}`, lieutenants: [], lexique: ['être', 'pare-vapeur'] })
+    const refus = await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    expect(refus.status).toBe(422)
+    const details = (refus.raw as { error: { details: Evaluation } }).error.details
+    expect(details.blocking.map(i => i.rule)).toEqual(['lexique-generic-term:etre'])
+
+    await apiPut(`/articles/${article.id}/keywords`, { capitaine: `lexique-${ctx.runId}`, lieutenants: [], lexique: ['pare-vapeur', 'laine soufflée'] })
+    const ok = await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    expect(ok.status).toBe(200)
+  })
+
+  it('🔴 un lexique vide retient l’étape, mais s’assume avec une raison', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle()
+    const evaluation = await apiGet<Evaluation>(`/articles/${article.id}/gates/lexique-lock`)
+    expect(evaluation.data!.blocking.find(i => i.rule === 'lexique-empty')?.level).toBe('risque')
+  })
+})
+
 describe('Porte « publier »', () => {
   it('⛔ un article sans contenu ne se publie pas, même avec une raison', async ({ skip }) => {
     if (!ctx.serverOk) skip()
