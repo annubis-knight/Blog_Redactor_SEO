@@ -20,7 +20,7 @@ import { templateKeys, PROMPT_GLOBALS } from '../../../server/utils/prompt-loade
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Clés qui portent du contenu fourni par l'utilisateur. */
-const USER_CONTENT_KEYS = ['selectedText', 'sectionHtml', 'articleHtml', 'articleContent']
+const USER_CONTENT_KEYS = ['selectedText', 'sectionHtml', 'articleHtml', 'articleContent', 'articleText', 'chapterHtml', 'instruction']
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -52,6 +52,27 @@ function loadPromptCalls(source: string): string[] {
   }
 }
 
+/**
+ * Ce qui entre dans l'objet `variables` d'un fichier : son littéral et chaque
+ * `variables.clé = …` — pas le reste du fichier (un type qui déclare
+ * `articleHtml` ne transmet rien au prompt).
+ */
+function variablesScope(source: string): string {
+  const parts = [...source.matchAll(/\bvariables\.(\w+)\s*=/g)].map(m => `${m[1]}:`)
+  const start = source.search(/\bconst variables\b[^=]*=\s*\{/)
+  if (start !== -1) {
+    const open = source.indexOf('{', source.indexOf('=', start))
+    let depth = 0
+    let end = open
+    for (; end < source.length; end++) {
+      if (source[end] === '{') depth++
+      else if (source[end] === '}' && --depth === 0) break
+    }
+    parts.push(source.slice(open, end + 1))
+  }
+  return parts.join('\n')
+}
+
 describe('Variables de prompt', () => {
   it('le contenu fourni par l’utilisateur est toujours échappé', () => {
     const violations: string[] = []
@@ -61,7 +82,7 @@ describe('Variables de prompt', () => {
       for (const call of loadPromptCalls(source)) {
         // Les variables peuvent être construites avant l'appel : on regarde
         // aussi l'objet `variables` du fichier quand l'appel le référence.
-        const scope = /loadPrompt\([^,]+,\s*variables\b/.test(call) ? source : call
+        const scope = /loadPrompt\([^,]+,\s*variables\b/.test(call) ? variablesScope(source) : call
         for (const key of USER_CONTENT_KEYS) {
           const passed = new RegExp(`\\b${key}\\b\\s*[,:}\\n]`).test(scope)
           const escaped = new RegExp(`escapeKeys:\\s*\\[[^\\]]*'${key}'`).test(call)

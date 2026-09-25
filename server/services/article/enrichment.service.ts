@@ -1,0 +1,119 @@
+/**
+ * AUTHORITY: aucune persistance — propose une nouvelle version d'UN chapitre ;
+ *            l'éditeur l'accepte ou la refuse, puis enregistre `articles.content`.
+ * READS FROM: chapitre + article envoyés par l'éditeur ; `theme_config` (zone,
+ *             pour localiser la recherche web) ; prompts `enrich-*.md`, `section-rewrite.md`
+ * WRITES TO: rien
+ * CONSUMERS: POST /generate/enrich/:pass, POST /generate/section-rewrite
+ *            → enrichment.store (EnrichmentPanel)
+ * RELATED FR: FR-RED-ENRICH-PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE
+ *
+ * Deuxième temps de la rédaction : le premier jet est écrit d'un seul tenant,
+ * sans recherche web ; chaque passe l'enrichit ensuite chapitre par chapitre.
+ * Seule la passe « sources » cherche sur le web — localisée dans la zone du
+ * client, à la date du jour — et ses URL réelles décident des liens gardés.
+ */
+import { webSearchTool } from '../external/claude.service.js'
+import { loadPrompt } from '../../utils/prompt-loader.js'
+import { collectStreamWithUsage } from '../../utils/stream-usage.js'
+import { loadZoneContext } from '../strategy/prompt-context.service.js'
+import { articlePlainText } from '../../../shared/chapters.js'
+import { verifyEnrichment, keepKnownLinks, knownSources, type EnrichmentPass } from '../../../shared/verifiers/enrichment.js'
+import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder.js'
+import type { EnrichmentProposal } from '../../../shared/types/enrichment.types.js'
+
+export type ProposalKind = EnrichmentPass | 'reecriture'
+
+export interface ProposalInput {
+  pass: ProposalKind
+  chapterIndex: number
+  chapterHtml: string
+  articleHtml: string
+  keyword: string
+  keywords: string[]
+  /** Consigne de l'auteur (réécriture seulement). */
+  instruction?: string
+}
+
+const PROMPT_OF: Record<ProposalKind, string> = {
+  sources: 'enrich-sources',
+  exemples: 'enrich-exemples',
+  tableaux: 'enrich-tableaux',
+  images: 'enrich-images',
+  faq: 'enrich-faq',
+  reecriture: 'section-rewrite',
+}
+
+/** Plafond de jetons : le chapitre réécrit, plus la marge de ce qu'on y ajoute. */
+export function proposalMaxTokens(pass: ProposalKind, chapterHtml: string): number {
+  if (pass === 'faq') return 3000
+  const chapterTokens = Math.ceil(chapterHtml.length / 3)
+  return Math.min(8192, Math.max(1500, Math.ceil(chapterTokens * 1.5) + 800))
+}
+
+async function buildUserPrompt(input: ProposalInput): Promise<string> {
+  const variables: Record<string, string> = {
+    keyword: input.keyword,
+    keywords: input.keywords.join(', ') || '—',
+    articleText: articlePlainText(input.articleHtml),
+  }
+  if (input.pass !== 'faq') variables.chapterHtml = input.chapterHtml
+  if (input.pass === 'images') variables.imageSrc = IMAGE_TO_PROVIDE_SRC
+  if (input.pass === 'reecriture') variables.instruction = input.instruction ?? ''
+  // Article, chapitre et consigne viennent de l'utilisateur : toujours échappés.
+  return loadPrompt(PROMPT_OF[input.pass], variables, {
+    escapeKeys: ['articleText', 'chapterHtml', 'instruction'].filter(key => key in variables),
+  })
+}
+
+/** Sortie brute → HTML : ni bloc de code, ni phrase d'annonce avant la première balise. */
+export function cleanProposal(raw: string): string {
+  const text = raw.replace(/^```\w*\n?/gm, '').replace(/\n?```$/gm, '').trim()
+  const firstTag = text.indexOf('<')
+  return firstTag > 0 ? text.slice(firstTag) : text
+}
+
+/**
+ * Une image ajoutée pointe toujours vers l'emplacement « à fournir » : un
+ * `src` inventé afficherait une image cassée, ou celle d'un autre site.
+ */
+export function pinNewImages(before: string, after: string): string {
+  const existing = new Set([...before.matchAll(/<img\b[^>]*>/gi)].map(m => m[0]))
+  return after.replace(/<img\b[^>]*>/gi, (img) => {
+    if (existing.has(img)) return img
+    const withoutSrc = img.replace(/\s*\bsrc\s*=\s*(["'])[^"']*\1/i, '')
+    return withoutSrc.replace(/^<img\b/i, `<img src="${IMAGE_TO_PROVIDE_SRC}"`)
+  })
+}
+
+export async function proposeChapter(input: ProposalInput): Promise<EnrichmentProposal> {
+  const systemPrompt = await loadPrompt('system-propulsite')
+  const userPrompt = await buildUserPrompt(input)
+  // Seule la passe sources cherche sur le web ; elle exige Claude (pas de repli
+  // silencieux vers un fournisseur qui ignorerait l'outil).
+  const tools = input.pass === 'sources' ? [webSearchTool((await loadZoneContext()).zone)] : undefined
+
+  const { text, usage } = await collectStreamWithUsage(systemPrompt, userPrompt, proposalMaxTokens(input.pass, input.chapterHtml), tools)
+
+  let after = cleanProposal(text)
+  if (input.pass === 'images') after = pinNewImages(input.chapterHtml, after)
+  const webSources = usage?.webSources ?? []
+  const issues = verifyEnrichment({
+    pass: input.pass,
+    before: input.chapterHtml,
+    after,
+    webSources,
+    truncated: usage?.stopReason === 'max_tokens',
+  })
+
+  return {
+    pass: input.pass,
+    chapterIndex: input.chapterIndex,
+    before: input.chapterHtml,
+    html: keepKnownLinks(after, knownSources(input.chapterHtml, webSources)).html,
+    issues,
+    webSources,
+    blocked: issues.some(i => i.level === 'technique'),
+    usage,
+  }
+}

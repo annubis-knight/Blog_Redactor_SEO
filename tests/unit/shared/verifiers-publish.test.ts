@@ -11,6 +11,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { verifyPublish, countToSourceMarkers, type PublishGateInput } from '../../../shared/verifiers/publish.js'
 import { evaluateGate, hashGateInput } from '../../../shared/verifiers/gate.js'
+import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder.js'
 
 const HTML_1013 = readFileSync(join(__dirname, '..', '..', 'fixtures', 'articles', '1013-pilier.html'), 'utf8')
 
@@ -84,11 +85,20 @@ describe('verifyPublish — règles propres à la publication', () => {
     existingWaivers: [],
   }
 
-  it('🔴 des passages « à sourcer » restants', () => {
-    const html = sain.content + '<p><mark data-a-sourcer>[à sourcer : part des combles non isolés]</mark></p>'
-    expect(countToSourceMarkers(html)).toBeGreaterThan(0)
+  it('🔴 des passages « à sourcer » restants, chacun compté une fois', () => {
+    const html = sain.content + '<p><mark data-a-sourcer>[à sourcer : part des combles non isolés]</mark> et [à sourcer : prix moyen]</p>'
+    expect(countToSourceMarkers(html)).toBe(2)
     const issue = verifyPublish({ ...sain, content: html }).find(i => i.rule === 'draft-to-source-remaining')
     expect(issue?.level).toBe('risque')
+    expect(issue?.message).toMatch(/^2 passages/)
+  })
+
+  // FR-RED-ENRICH-PASSES — la passe images réserve une place ; publier la place
+  // vide montrerait « Image à fournir » au lecteur.
+  it('⛔ une image encore à fournir', () => {
+    const html = sain.content + `<img src="${IMAGE_TO_PROVIDE_SRC}" alt="Combles isolés avec de la laine soufflée">`
+    const issue = verifyPublish({ ...sain, content: html }).find(i => i.rule === 'image-to-provide')
+    expect(issue?.level).toBe('technique')
   })
 
   it('🟠 chaque dérogation déjà posée est réaffichée pour être reconfirmée', () => {

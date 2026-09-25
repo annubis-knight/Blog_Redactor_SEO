@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="450" viewBox="0 0 800 450" role="img" aria-label="Image à fournir">
+  <rect width="800" height="450" fill="#f3f4f6"/>
+  <rect x="12" y="12" width="776" height="426" fill="none" stroke="#9ca3af" stroke-width="3" stroke-dasharray="14 10"/>
+  <path d="M330 270l50-60 40 45 30-30 50 45z" fill="#9ca3af"/>
+  <circle cx="365" cy="185" r="18" fill="#9ca3af"/>
+  <text x="400" y="330" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" fill="#4b5563">Image à fournir</text>
+</svg>

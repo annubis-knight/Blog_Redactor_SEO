@@ -10,6 +10,7 @@ import microContextSuggestRouter from './micro-context-suggest.routes.js'
 import briefExplainRouter from './brief-explain.routes.js'
 import autoIntakeRouter from './auto-intake.routes.js'
 import placementSuggestRouter from './placement-suggest.routes.js'
+import enrichRouter from './enrich.routes.js'
 
 const router = Router()
 
@@ -38,5 +39,6 @@ mergeRouter(router, microContextSuggestRouter)
 mergeRouter(router, briefExplainRouter)
 mergeRouter(router, autoIntakeRouter)
 mergeRouter(router, placementSuggestRouter)
+mergeRouter(router, enrichRouter)
 
 export default router

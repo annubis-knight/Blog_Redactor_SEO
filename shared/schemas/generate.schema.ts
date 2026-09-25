@@ -85,3 +85,27 @@ export const generateHumanizeSectionRequestSchema = z.object({
 })
 
 export type GenerateHumanizeSectionRequest = z.infer<typeof generateHumanizeSectionRequestSchema>
+
+/**
+ * Une passe d'enrichissement sur UN chapitre (FR-RED-ENRICH-PASSES). Le chapitre
+ * -1 est le chapeau ; pour la FAQ, `chapterIndex` est le chapitre avant lequel
+ * elle s'insère et `chapterHtml` est vide. L'article entier donne le contexte.
+ */
+export const generateEnrichRequestSchema = z.object({
+  articleId: z.number().int().positive(),
+  chapterIndex: z.number().int().min(-1),
+  chapterHtml: z.string(),
+  articleHtml: z.string().min(1),
+  keyword: z.string().min(1),
+  keywords: z.array(z.string()).default([]),
+})
+
+export type GenerateEnrichRequest = z.infer<typeof generateEnrichRequestSchema>
+
+/** Réécrire un chapitre selon une consigne, en voyant l'article entier (FR-RED-SECTION-REWRITE). */
+export const generateSectionRewriteRequestSchema = generateEnrichRequestSchema.extend({
+  chapterHtml: z.string().min(1),
+  instruction: z.string().trim().min(5).max(600),
+})
+
+export type GenerateSectionRewriteRequest = z.infer<typeof generateSectionRewriteRequestSchema>

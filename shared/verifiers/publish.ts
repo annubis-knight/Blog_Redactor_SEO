@@ -7,7 +7,8 @@
  * une règle de conversion simple :
  *
  *   ⛔ technique — défauts de structure et de méta (contenu vide, bloc tronqué,
- *                  monologue d'IA, méta absente, trop longue ou coupée) ;
+ *                  monologue d'IA, méta absente, trop longue ou coupée), image
+ *                  encore « à fournir » ;
  *   🔴 risque    — écarts SEO (capitaine absent d'un emplacement clé, texte trop
  *                  court…), chiffres invérifiables, marqueurs « à sourcer » restants ;
  *   🟠 attention — avertissements, et chaque dérogation déjà posée sur l'article,
@@ -18,6 +19,7 @@ import { validateArticleSeo, type SeoInput } from '../seo-validators.js'
 import type { GateIssue, GateLevel, GateWaiver } from './gate.js'
 import { ARTICLE_TYPE_RULES } from '../constants/article-type-rules.js'
 import { detectNonFrenchSentences, detectRepeatedParagraphs, detectUnsourcedFigures } from '../text-quality.js'
+import { IMAGE_TO_PROVIDE_SRC } from '../constants/image-placeholder.js'
 
 /** Règles tolérées à la publication : l'export les corrige lui-même. */
 const TOLERATED_AT_PUBLISH = new Set(['hn-h1-in-body'])
@@ -81,9 +83,23 @@ function countWords(html: string): number {
   return html.replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean).length
 }
 
-/** Marqueurs « à sourcer » posés par le premier jet (FR-RED-DRAFT-TO-SOURCE). */
+/**
+ * Marqueurs « à sourcer » posés par le premier jet (FR-RED-DRAFT-TO-SOURCE) :
+ * chaque `<mark data-a-sourcer>` compte une fois (il contient lui-même le texte
+ * « [à sourcer… »), plus chaque texte « [à sourcer… » resté sans sa balise.
+ */
 export function countToSourceMarkers(html: string): number {
-  return (html.match(/data-a-sourcer|\[à sourcer/gi) ?? []).length
+  let marks = 0
+  const rest = html.replace(/<mark\b[^>]*data-a-sourcer[^>]*>[\s\S]*?<\/mark>/gi, () => {
+    marks++
+    return ' '
+  })
+  return marks + (rest.match(/\[à sourcer/gi) ?? []).length
+}
+
+/** Images dont la place a été réservée par la passe images, pas encore fournies. */
+function countImagesToProvide(html: string): number {
+  return (html.match(/<img\b[^>]*>/gi) ?? []).filter(img => img.includes(IMAGE_TO_PROVIDE_SRC)).length
 }
 
 export function verifyPublish(input: PublishGateInput): GateIssue[] {
@@ -129,6 +145,16 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
       level: 'risque',
       message: `${markers} passage${markers > 1 ? 's' : ''} « à sourcer » ${markers > 1 ? 'restent' : 'reste'} dans l’article.`,
       risk: 'Un chiffre ou une affirmation sans source fragilise la confiance du lecteur, et celle de Google.',
+    })
+  }
+
+  const toProvide = countImagesToProvide(input.content)
+  if (toProvide > 0) {
+    issues.push({
+      rule: 'image-to-provide',
+      level: 'technique',
+      message: `${toProvide} image${toProvide > 1 ? 's' : ''} encore à fournir (place réservée par la passe images).`,
+      risk: 'Le lecteur verrait « Image à fournir » : remplacez l’image ou retirez-la.',
     })
   }
 
