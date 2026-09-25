@@ -114,6 +114,41 @@ export async function fitChapterBudgets(deps: PhaseDeps, ctx: PassContext, html:
   return current
 }
 
+/** Consigne : une affirmation qu'aucune source n'a confirmée se dit sans chiffre. */
+export const UNSOURCEABLE_INSTRUCTION =
+  'Chaque passage « à sourcer » (balise mark data-a-sourcer) porte une affirmation qu’aucune source n’a pu confirmer. Réécris chacun en une phrase naturelle sans chiffre, pourcentage ni statistique, qui garde l’idée de façon qualitative, et retire la balise. Ne change rien d’autre : mêmes titres, mêmes paragraphes, même ton.'
+
+const hasMarker = (html: string): boolean => /data-a-sourcer|\[à sourcer/i.test(html)
+
+/**
+ * Ce que la passe « sources » n'a pas su sourcer ne se publie pas avec son
+ * chiffre : l'affirmation est reformulée sans chiffre (recette C8, où quatre
+ * statistiques inventées par le premier jet restaient « à sourcer »). Une
+ * proposition n'est retenue que sans alerte ⛔ ni 🔴 et sans marqueur restant.
+ */
+export async function rephraseUnsourceable(deps: PhaseDeps, ctx: PassContext, html: string): Promise<string> {
+  const { logger, report } = deps
+  let current = html
+  for (const chapter of chaptersToSource(html)) {
+    const latest = listChapters(current).find(c => c.index === chapter.index)
+    if (!latest || !hasMarker(latest.html)) continue
+    logger.step(`Chapitre « ${chapter.title} » — passage(s) sans source : reformulation sans chiffre…`)
+    try {
+      const proposal = await propose(deps, '/generate/section-rewrite', ctx, current, latest, { instruction: UNSOURCEABLE_INSTRUCTION })
+      report.addUsage(proposal.usage as never)
+      if (isAcceptable(proposal) && !hasMarker(proposal.html)) {
+        current = replaceChapter(current, chapter.index, proposal.html)
+        report.addStep(`Rédaction · « ${chapter.title} » : affirmations sans source reformulées sans chiffre`)
+      } else {
+        logger.warn(`Reformulation de « ${chapter.title} » écartée : ${proposal.issues.map(i => i.message).join(' ; ') || 'un passage à sourcer reste'}`)
+      }
+    } catch (err) {
+      logger.warn(`Reformulation de « ${chapter.title} » impossible : ${(err as Error).message}`)
+    }
+  }
+  return current
+}
+
 /** Passe « sources » sur chaque chapitre qui porte un passage à sourcer (recherche web réelle). */
 export async function sourcePassages(deps: PhaseDeps, ctx: PassContext, html: string): Promise<string> {
   const { logger, report } = deps

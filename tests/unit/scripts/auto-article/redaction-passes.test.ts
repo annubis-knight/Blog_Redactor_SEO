@@ -13,6 +13,8 @@ import {
   isAcceptable,
   fitChapterBudgets,
   sourcePassages,
+  rephraseUnsourceable,
+  UNSOURCEABLE_INSTRUCTION,
 } from '../../../../scripts/auto-article/phases/redaction-passes'
 import type { PhaseDeps } from '../../../../scripts/auto-article/deps'
 
@@ -91,5 +93,26 @@ describe('redaction-passes — passe « sources »', () => {
     expect(bodies.map(b => b.body.chapterIndex)).toEqual([1])
     expect(html).toContain('Selon <a href="https://www.insee.fr/a">')
     expect(html).not.toContain('data-a-sourcer')
+  })
+})
+
+// Recette C8 : quatre statistiques inventées restaient « à sourcer » après la
+// passe sources ; la publication les refusait. Ce qui n'a pas de source se dit
+// sans chiffre.
+describe('redaction-passes — reformuler sans chiffre ce qui n’a pas de source', () => {
+  it('réécrit le chapitre qui garde un marqueur, avec la consigne dédiée', async () => {
+    const plainText = '<h2>Les avis clients</h2><p>Une bonne part des clients lit les avis avant d’appeler.</p>'
+    const { deps: d, bodies } = deps({ proposals: { '/generate/section-rewrite': { html: plainText } } })
+    const html = await rephraseUnsourceable(d, CTX, ARTICLE)
+    expect(bodies).toHaveLength(1)
+    expect(bodies[0]!.body).toMatchObject({ chapterIndex: 1, instruction: UNSOURCEABLE_INSTRUCTION })
+    expect(html).toContain('Une bonne part des clients')
+    expect(html).not.toContain('data-a-sourcer')
+  })
+
+  it('une proposition qui garde un marqueur est écartée', async () => {
+    const still = '<h2>Les avis clients</h2><p><mark data-a-sourcer>[à sourcer : x]</mark></p>'
+    const { deps: d } = deps({ proposals: { '/generate/section-rewrite': { html: still } } })
+    expect(await rephraseUnsourceable(d, CTX, ARTICLE)).toBe(ARTICLE)
   })
 })

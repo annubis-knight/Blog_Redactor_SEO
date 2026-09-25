@@ -21,8 +21,8 @@ import { collectSse } from '../collect-sse.js'
 import { structureToOutline } from '../../../shared/structure-outline.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
-import { runInternalLinking } from './linking.js'
-import { fitChapterBudgets, sourcePassages } from './redaction-passes.js'
+import { runInternalLinking, unlinkUnpublished } from './linking.js'
+import { fitChapterBudgets, sourcePassages, rephraseUnsourceable, chaptersToSource } from './redaction-passes.js'
 import { markUnsourcedFigures } from '../../../shared/text-quality.js'
 import { emitCheck } from '../checks.js'
 import { REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
@@ -66,6 +66,25 @@ function guardContent(deps: PhaseDeps, ctx: AutoRunContext): boolean {
   return false
 }
 
+/**
+ * Après l'acceptation du premier jet : la passe « sources » cherche une source à
+ * chaque passage à sourcer ; ce qui n'en a pas est reformulé sans chiffre
+ * (recette C8). Le texte n'est enregistré que s'il a changé.
+ */
+async function finishPassages(
+  deps: PhaseDeps,
+  ctx: AutoRunContext,
+  passes: { articleId: number; keyword: string; keywords: string[] },
+): Promise<void> {
+  if (chaptersToSource(ctx.articleContent ?? '').length === 0) return
+  const sourced = await sourcePassages(deps, passes, ctx.articleContent ?? '')
+  const finished = await rephraseUnsourceable(deps, passes, sourced)
+  if (finished !== ctx.articleContent) {
+    ctx.articleContent = finished
+    await deps.client.apiPut(`/articles/${passes.articleId}`, { content: finished })
+  }
+}
+
 /** Export HTML PropulSite → écriture disque. Réutilisé par le run normal et la reprise. */
 async function exportArticle(deps: PhaseDeps, ctx: AutoRunContext): Promise<void> {
   const { client, logger, report } = deps
@@ -97,7 +116,16 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     logger.phase('Phase 3 — Rédaction')
     if (ctx.articleId == null) throw new Error('Rédaction : articleId manquant')
     if (ctx.resume.skipRedaction) {
-      logger.dim('reprise : premier jet déjà accepté — export seul')
+      // Premier jet déjà accepté : restent les finitions qu'un run interrompu
+      // n'aurait pas faites (passages à sourcer, liens vers un non-publié).
+      logger.dim('reprise : premier jet déjà accepté — finitions puis export')
+      if (ctx.capitaine) {
+        const stored = await client.apiGet<{ content?: string | null }>(`/articles/${ctx.articleId}/content`)
+        ctx.articleContent = stored.content ?? ''
+        await finishPassages(deps, ctx, { articleId: ctx.articleId, keyword: ctx.capitaine, keywords: [...new Set([ctx.capitaine, ...ctx.lieutenants])] })
+      }
+      await unlinkUnpublished(deps, ctx.articleId)
+      ctx.articleContent = ''
       await exportArticle(deps, ctx)
       return
     }
@@ -200,15 +228,12 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     // le run — le script ne déroge jamais à la place d'un humain.
     await emitCheck(client, ctx.articleId, REDACTION_DRAFT_ACCEPTED)
     report.addStep('Rédaction · premier jet accepté par sa porte')
-    // 4 ter. Passe « sources » : chaque passage « à sourcer » est sourcé par la
-    //        recherche web, ou reste marqué — la publication le signalera.
-    const sourced = await sourcePassages(deps, passes, ctx.articleContent)
-    if (sourced !== ctx.articleContent) {
-      ctx.articleContent = sourced
-      await client.apiPut(`/articles/${ctx.articleId}`, { content: ctx.articleContent })
-    }
-    // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens.
+    // 4 ter. Passe « sources », puis ce qui n'a pas de source se dit sans chiffre.
+    await finishPassages(deps, ctx, passes)
+    // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens ;
+    //    jamais vers un article pas encore publié.
     await runInternalLinking(deps, ctx.articleId)
+    await unlinkUnpublished(deps, ctx.articleId)
 
     // 6. Statut brouillon
     await client.apiPut(`/articles/${ctx.articleId}/status`, { status: 'brouillon' })
