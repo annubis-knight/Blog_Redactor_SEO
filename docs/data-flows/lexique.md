@@ -1,175 +1,213 @@
 ---
 name: lexique
-description: Termes sémantiques lexique d'un article — array de strings stocké en JSONB dans `article_keywords.lexique` (sélection utilisateur après TF-IDF + IA). Source autorité = endpoint `/api/serp/tfidf` (cross-article, sans re-SERP) + `lexique_explorations` table (multi-keyword, par article).
-type: "{ obligatoire: TfidfTerm[], differenciateur: TfidfTerm[], optionnel: TfidfTerm[], keyword: string, totalCompetitors: number } + sélection utilisateur string[] -> article_keywords.lexique"
-last_updated: 2026-05-09
-related_fr: [FR-LEX-TFIDF, FR-LEX-SORT, FR-LEX-SELECT, FR-LEX-AI-PANEL, FR-LEX-MULTI-KEYWORD, FR-LEX-CHECK, FR-MOT-PAINPOINT-INJECTION, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION]
+description: Termes du lexique d'un article — liste de mots choisis par l'utilisateur parmi le TF-IDF des pages concurrentes, enregistrée dans `article_keywords.lexique` (TEXT[]), gardée par la porte `lexique-lock` et injectée dans la rédaction.
+type: "TfidfResult { keyword, totalCompetitors, obligatoire[], differenciateur[], optionnel[] } (proposition) → string[] choisi par l'utilisateur → article_keywords.lexique TEXT[]"
+last_updated: 2026-09-25
+related_fr: [FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE, FR-LEX-TFIDF, FR-LEX-SELECT, FR-LEX-CHECK, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-AI-PANEL, FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS, FR-LEX-PRECHECK-SERP, FR-LEX-SCRAPE-DEDIE, FR-LEX-LECTURE-VS-VERROUILLAGE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-RED-PUBLISH-GATE, NFR-MOT-LEXIQUE-DECOUPLAGE]
 ---
-
-> **Sprint keyword-metrics-decomposition (2026-05-09)** — l'autorité TF-IDF de Lexique n'est plus `keyword_metrics.serp_raw_json` mais **`keyword_serp_scrapes.text_content`** (table fille dédiée). La route `/serp/tfidf` lit directement les scrapes via `getSerpScrapes(keyword)` puis délègue à `computeTfidfFromTexts(texts[], keyword)` (pure). Voir `keyword-serp.service.ts`. Les sections ci-dessous mentionnant `serp_raw_json` reflètent l'état avant refonte.
->
-> **Sprint decouplage-lieutenants-lexique (2026-05-09)** — la route `POST /api/serp/tfidf` délègue désormais à **`lexique-analysis.service.analyzeLexique(keyword, opts)`** ([server/services/keyword/lexique-analysis.service.ts](../../server/services/keyword/lexique-analysis.service.ts)). Ce service consomme `scrape-corpus.getTextContent` (jamais `headings` — cf. AC.LEX-SCRAPE.2), appelle `extractTfidf`, persiste optionnellement via `saveLexiqueTfidf` si `articleId` fourni. Le 404 verbatim *« Lancez d'abord l'analyse SERP dans l'onglet Lieutenants »* est préservé via la classe `LexiqueScrapeMissingError`. Le Lexique peut désormais déclencher son propre scrape (`triggerScrapeIfMissing: true`) — l'UX du 404 sera adressée en chantier 3 (FR-LEX-PRECHECK-SERP).
 
 # Data Flow — lexique
 
-> **Description métier :** Exploitation du champ lexical SERP pour enrichir la couverture sémantique de l'article. Trois niveaux de termes (Obligatoire 70%+ concurrents / Différenciateur 30-70% / Optionnel <30%) issus d'une extraction TF-IDF multi-documents. L'utilisateur sélectionne un sous-ensemble final (validé), persisté en `article_keywords.lexique` JSONB array.
-> **Type/format :** Source TF-IDF = `TfidfResult` (3 niveaux triés par densité). Sélection utilisateur = `string[]` (termes choisis, sauvegardés atomiquement avec Capitaine + Lieutenants + racines dans `article_keywords`).
+> **Description métier :** le lexique dit à la rédaction quels mots du métier l'article doit employer. L'outil mesure les mots des pages concurrentes (TF-IDF, trois niveaux : Obligatoire ≥ 70 % des concurrents, Différenciateur 30-70 %, Optionnel < 30 %), l'IA en recommande certains, **l'utilisateur choisit**. Seul ce qu'il a coché est enregistré et transmis à la rédaction. Depuis le 2026-09-25 (épopée qualité SEO, C3), rien n'est coché d'office, les mots vides et le décor des pages sont écartés, et une porte refuse un lexique vide ou générique.
+> **Type/format :** proposition = `TfidfResult` (termes d'un seul mot, 50 au plus par niveau, triés par densité) ; décision = `string[]` dans `article_keywords.lexique` (TEXT[], même ligne que capitaine, lieutenants, racines et structure Hn).
+
+> Réécrit le 2026-09-25. La version précédente (2026-05-09) décrivait une lecture dans `keyword_metrics.serp_raw_json` et un pré-cochage des obligatoires : les deux ont disparu. Les numéros de ligne ne sont plus cités (ils dérivent) : chercher les fonctions nommées.
+
+## La chaîne, de la page concurrente à la rédaction
+
+```
+① Scrape des 10 pages     scrape-corpus.fetchAndPersist → extractTextContent (texte principal seulement)
+                          → keyword_serp_scrapes.text_content
+② TF-IDF                  lexique-analysis.analyzeLexique → tfidf.extractTfidf → tokenize (sans mots génériques)
+                          → TfidfResult (+ lexique_explorations.tfidf_terms si articleId)
+③ IA                      POST /keywords/:kw/ai-lexique-upfront → recommandations (badges), aucune case cochée
+                          → lexique_explorations.ai_recommendations / ai_missing_terms / ai_summary
+④ Choix de l'utilisateur  case cochée / décochée, ajout depuis le panneau d'aide → toggleTerm → saveDecisions
+                          → PUT /articles/:id/keywords → article_keywords.lexique
+⑤ Porte lexique-lock      à chaque changement d'un lexique non vide : saveDecisions → GET /gates/lexique-lock
+                          (verifyLexique, silencieux) → passe : check-completed → POST /progress/check
+                          → refuse : bandeau « Étape non validée » (+ check-removed) → alarme à la demande
+⑥ Rédaction               buildKeywordContext (sommaire, article), brief IA, score SEO, Finalisation,
+                          porte de publication (rejoue lexique-lock)
+```
 
 ## Producteurs
 
-Qui crée ou met à jour cette donnée :
+### ① Texte des pages concurrentes
 
-- **Endpoint** `POST /api/serp/tfidf` ([server/routes/serp-analysis.routes.ts:52-89](../../server/routes/serp-analysis.routes.ts)) — reçoit `{ keyword, articleId? }`, lit `keyword_metrics.serp_raw_json` (OBLIGATOIRE : invariant **NFR-INT-SERP-ONCE** — aucune re-requête SERP). Appelle `extractTfidf(competitors, keyword)`, retourne `TfidfResult` avec 3 niveaux. Persiste optionnellement en `lexique_explorations` via `saveLexiqueTfidf()` si `articleId` fourni (multi-keyword tracking).
-- **Service TF-IDF** `extractTfidf()` ([server/services/keyword/tfidf.service.ts:22-81](../../server/services/keyword/tfidf.service.ts)) — tokenization du texte brut des concurrents (filtre stopwords français, ≥3 chars), calcul fréquence document (DF), classification seuil : `DF ≥ 0.7` → obligatoire, `0.3 ≤ DF < 0.7` → différenciateur, `DF < 0.3` → optionnel. Densité = `(total occurrences / total competitors)` arrondie à 0.1. Tri par densité DESC, limité à 50 termes par niveau (ligne 70).
-- **Composant Vue** `LexiquePanel.vue` ([src/components/moteur/LexiquePanel.vue:149-324](../../src/components/moteur/LexiquePanel.vue)) — déclenche `/api/serp/tfidf` au clic « Extraire Lexique ». Pré-coche tous les `obligatoire` (ligne 311-315), merge IA recommendations (ligne 240-253). Sauvegarde sélection utilisateur via `articleKeywordsStore.saveDecisions(id)` qui écrit `article_keywords.lexique` array (ligne 282).
-- **IA Upfront Lexique** streaming endpoint `/api/keywords/:keyword/ai-lexique-upfront` (appelé post-TF-IDF, ligne 218-256) — injecte le contexte stratégique (painPoint, niveau d'article) et recommande : `{ term: string, aiRecommended: boolean, rationale: string }[]`. Pré-coche les recommandés (ligne 248-250). Persiste via `saveLexiqueAi()` dans `lexique_explorations(ai_recommendations JSONB)`.
-- **Multi-keyword Exploration** (Sprint 11 D4) — champ saisie libre `customKeywordInput` (ligne 101, 156-163) permet TF-IDF sur tout mot-clé, pas seulement le Capitaine. Chaque exploration persistée indépendamment en `lexique_explorations(article_id, source_keyword)` avec PK composite (migration 008, ligne 17).
-- **DB Hydration** `hydrateFromDb()` (ligne 332-354) — restaure les explorations Lexique d'une session antérieure via `GET /articles/:id/explorations` si frais (`shouldRegenerate()`). Évite les re-calculs TF-IDF + IA intra-session.
+- [server/services/external/scrape-corpus.service.ts](../../server/services/external/scrape-corpus.service.ts) — `fetchAndPersist(keyword, level)` : cache mémoire 1 h, puis base si la SERP a moins de 7 jours (`getSerpResultsFresh`), sinon appel DataForSEO + téléchargement des 10 pages. Pour chaque page, `extractTextContent(html)` retire scripts, styles, commentaires, puis ne garde que le **contenu principal** (`mainContent`) : `<main>`, sinon les `<article>`, sinon la page ; sans `nav`, `header`, `footer`, `aside`, `form` (dans un `<article>`, l'en-tête — le titre — est gardé, le pied retiré), ni les éléments dont l'`id` ou la `class` contient cookie, consent, rgpd, gdpr, didomi, axeptio, tarteaucitron, onetrust, newsletter. Écrit `keyword_serp_scrapes.text_content` (transaction `withSerpTransaction`).
+- Qui déclenche un scrape : l'analyse Lieutenants, `POST /serp/analyze`, et le Lexique quand l'utilisateur confirme « Lancer l'analyse SERP » ou teste un autre mot-clé (`triggerScrapeIfMissing: true`).
+
+### ② Proposition TF-IDF
+
+- `POST /api/serp/tfidf` ([server/routes/serp-analysis.routes.ts](../../server/routes/serp-analysis.routes.ts)) → `analyzeLexique(keyword, { articleId, triggerScrapeIfMissing })` ([server/services/keyword/lexique-analysis.service.ts](../../server/services/keyword/lexique-analysis.service.ts)) : scrape éventuel, lecture `getTextContent` (`keyword_serp_scrapes.text_content`, **sans filtre d'âge**), 404 `LexiqueScrapeMissingError` si aucun texte, puis `extractTfidf` ; enregistre la proposition dans `lexique_explorations.tfidf_terms` (`saveLexiqueTfidf`) si `articleId` est fourni.
+- [server/services/keyword/tfidf.service.ts](../../server/services/keyword/tfidf.service.ts) — `tokenize` : minuscules, lettres (accents compris) et tiret, puis écarte tout mot pour lequel `isGenericWord` est vrai ; le mot garde son accent. `computeTfidfFromTexts` : fréquence documentaire → niveau, densité arrondie à 0,1, tri par densité, 50 par niveau. **Mots isolés seulement** (pas de n-grammes).
+- [shared/utils/generic-terms.ts](../../shared/utils/generic-terms.ts) — **source unique** de ce qui n'est pas du métier : `normalizeTerm` (minuscules, sans accents), `isGenericWord` (moins de 3 lettres, nombre, mot grammatical ou décor de page), `isGenericTerm` (tous les mots du terme sont génériques). Volontairement absents : « site », « blog », « article », « recherche ».
+
+### ③ Recommandations de l'IA
+
+- [src/composables/lexique/useLexiqueIa.ts](../../src/composables/lexique/useLexiqueIa.ts) — `generateLexiqueUpfront`, lancé par `LexiquePanel` dès qu'un TF-IDF arrive sans recommandations : `POST /api/keywords/:keyword/ai-lexique-upfront` (SSE, [server/routes/keyword-ai-panel.routes.ts](../../server/routes/keyword-ai-panel.routes.ts), prompt `lexique-analysis-upfront.md`). `onDone` remplit `iaRecommendations` (Map par terme en minuscules) et **ne coche rien** ; le serveur enregistre le résultat (`saveLexiqueAi` → `lexique_explorations.ai_recommendations`, `ai_missing_terms`, `ai_summary`).
+
+### ④ Le choix de l'utilisateur (seul producteur de `article_keywords.lexique` dans le Moteur)
+
+- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — watcher `immediate` sur `lockedTerms` : `selectedTerms = new Set(lockedTerms)` — l'écran suit **toujours** le lexique enregistré, quel que soit le chemin (extraction, restauration `hydrateFromDb`, fusion) ; `handleToggleTerm` → `persistToggle` ; `handleAssistAdd` (terme ajouté depuis `KeywordAssistPanel`) → `persistToggle` s'il n'est pas déjà enregistré.
+- [src/composables/lexique/useLexiqueLocking.ts](../../src/composables/lexique/useLexiqueLocking.ts) — `toggleTerm(term)` → `store.addLexiqueTerm` / `removeLexiqueTerm` → `store.saveDecisions(id)` : un enregistrement par geste. Expose aussi `lockedTerms` et `isLocked`.
+- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — `saveDecisions` → `PUT /api/articles/:id/keywords` ([server/routes/keywords.routes.ts](../../server/routes/keywords.routes.ts)) → `saveArticleKeywords` ([server/services/infra/data.service.ts](../../server/services/infra/data.service.ts), upsert de la ligne `article_keywords`).
+
+### Autres producteurs
+
+- **Mode automatique** — [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) : TF-IDF → `pickLexique` ([scripts/auto-article/heuristics/pick-lexique.ts](../../scripts/auto-article/heuristics/pick-lexique.ts), qui écarte aussi tout terme `isGenericTerm`) → `saveThenEmit` enregistre le lexique **avant** de demander l'étape.
+- **Rédaction, section « Mots-clés »** — [src/components/keywords/ArticleKeywordsPanel.vue](../../src/components/keywords/ArticleKeywordsPanel.vue) (monté par `BriefStructureStep.vue`) : ajout manuel (`addLexiqueTerm`), « suggérer » (`suggestLexique` → `POST /keywords/lexique-suggest`, qui **remplace** le lexique du store par la proposition de l'IA) et « Enregistrer » (`saveDecisions`). Ce chemin n'applique ni le filtre des mots génériques ni la porte ; seule la porte de publication les rattrape.
 
 ## Persistance
 
-**Autorité double** : 
+| Donnée | Où | Portée | Rôle |
+|---|---|---|---|
+| Texte des pages | `keyword_serp_scrapes.text_content` | par mot-clé, partagé entre articles | matière du TF-IDF |
+| Proposition et avis de l'IA | `lexique_explorations` (`tfidf_terms`, `ai_recommendations`, `ai_missing_terms`, `ai_summary`, `explored_at`), unique `(article_id, source_keyword)` | par article et par mot-clé exploré | onglets d'exploration, relecture sans recalcul |
+| **Décision** | `article_keywords.lexique` TEXT[] | par article | **autorité** : ce que l'utilisateur a retenu |
+| Étape | `articles.completed_checks` (`moteur:lexique_validated`) | par article | accordée par la porte |
+| Dérogations | `gate_waivers` (`gate_id = 'lexique-lock'`, une ligne par terme générique assumé, ou pour le lexique vide) | par article | tombent si le lexique change (empreinte = termes normalisés triés) |
 
-1. **TF-IDF brut cross-article** — `keyword_metrics.serp_raw_json JSONB` (partagée par tous les articles, 7j TTL). Champ source unique pour `/api/serp/tfidf` (NFR-INT-SERP-ONCE : aucun appel SERP supplémentaire).
+- Mémoire : `useArticleKeywordsStore.keywords.lexique` (hydraté par `GET /articles/:id/keywords` ; `fetchKeywordsMerge` fait l'union par valeur avec ce qui est déjà en mémoire) ; `selectedTerms` (`Set` local à `LexiquePanel`, recopié depuis `lockedTerms` à chaque changement de celui-ci) ; `lexiqueGateBlocked` (dernier verdict refusé de la porte, affiché dans le bandeau) ; cache mémoire 1 h du scrape.
 
-2. **Explorations multi-keyword article-scoped** — table `lexique_explorations(article_id, source_keyword, tfidf_terms JSONB, ai_recommendations JSONB, ai_missing_terms JSONB, ai_summary TEXT, explored_at TIMESTAMPTZ)` ([server/db/migrations/008_lexique_explorations.sql:8-18](../../server/db/migrations/008_lexique_explorations.sql)) — upsert via `ON CONFLICT (article_id, source_keyword) DO UPDATE`. Permet le replay d'une exploration passée (ligne 485 LexiquePanel.vue).
-
-3. **Sélection utilisateur finale** — `article_keywords.lexique TEXT[] JSONB` (même colonne que Capitaine + Lieutenants + racines). Autorité de validation = cette table (ce qu'on sauvegarde avec `saveDecisions()` est la vérité). 
-
-- **Store Pinia** `articleKeywordsStore.keywords.lexique` (slot mémoire) — hydrate au fetch initial via `GET /articles/:id/keywords`. Modifiable côté front (checkboxes), sauvegardé atomiquement en `saveDecisions()` (ligne 282).
-
-Hiérarchie d'autorité :
+Hiérarchie :
 ```
-keyword_metrics.serp_raw_json (SERP brut, cross-article)
-    ↓
-lexique_explorations (TF-IDF calculé, IA recommendations, article-scoped)
-    ↓
-article_keywords.lexique (sélection utilisateur validée)
+keyword_serp_scrapes.text_content      (texte principal des pages, par mot-clé)
+        ↓ TF-IDF sans mots génériques
+lexique_explorations                   (proposition + avis IA, par article × mot-clé)
+        ↓ geste de l'utilisateur
+article_keywords.lexique               (décision — autorité)
+        ↓ porte lexique-lock
+articles.completed_checks              (étape « Lexique validé »)
 ```
 
 ## Consommateurs
 
 ### Affichage (UI)
 
-- **Composant LexiquePanel.vue** — affiche 3 sections : obligatoire (tous cochés par défaut), différenciateur (filtrés par IA), optionnel (non cochés par défaut). Chaque terme affiche : `density`, `documentFrequency`, `competitorCount`, badge `aiRecommended` (ligne 495+).
-- **Barre de tri SortToggleBar.vue** ([src/components/moteur/SortToggleBar.vue:1-160](../../src/components/moteur/SortToggleBar.vue)) — options `{ key: 'az', label: 'A-Z' }`, `{ key: 'density', label: 'Densité' }`, `{ key: 'alignment', label: 'Pertinence douleur' }` (ligne 62-71 LexiqueExtraction). Sortes par terme lexico, densité TF-IDF ou Jaccard douleur.
-- **Recap Finalisation** — affiche nombre de termes lexique sélectionnés (dans le recap de validation).
-- **Panel IA LexiqueAiPanel.vue** — recommandations en texte libre (summary), compteurs `aiRecommendedCount` vs `notRecommendedCount` (ligne 189-198 LexiqueExtraction).
+- **LexiquePanel.vue** + `LexiqueTermsList.vue` — trois listes avec cases à cocher (cochées = `selectedTerms`), badges « IA recommandé » / « IA optionnel » (`isIaRecommended`), compteur « N terme(s) sélectionné(s) » et répartition par niveau (`selectedByLevel`), onglets d'exploration (`TabBar`), tri A-Z / densité / pertinence douleur (`SortToggleBar`, `jaccardWithPainPoint`).
+- **Bandeau de la porte** — `data-testid="lexique-gate-banner"` : « Étape non validée. » + première raison (« (+n autres) »), bouton « Voir pourquoi / décider » (`lexique-gate-review`).
+- **Alarme graduée** — `GateAlarm.vue`, titre « Avant de valider le lexique » (`GATE_LABELS['lexique-lock']`), ouverte par le bouton du bandeau (`useGateAlarmStore().ensure`) ou, si le serveur refuse malgré tout, par `useMoteurArticleSync.emitCheckCompleted` → `gateAlarm.runThroughGate` sur un 422.
+- **FinalisationPanel.vue** — « Lexique (N termes) » et la liste des termes retenus, lus dans le store.
+- **Compteur du panneau de cache** — `MoteurView` passe `validatedLexiqueCount` (longueur du lexique du store).
 
 ### Calcul / tri / filtre / agrégat
 
-- **Tri par alignement douleur** — `getLexiqueValue(term, 'alignment')` appelle `jaccardWithPainPoint(term, painPoint)` ([src/utils/pain-point-jaccard.ts:24-32](../../src/utils/pain-point-jaccard.ts)) — score Jaccard ∈ [0, 1] entre l'ensemble des mots ≥4 chars du terme et du painPoint. Tri DESC par défaut (ligne 88 LexiqueExtraction).
-- **Pré-cochage automatique** — obligatoire DF ≥ 70% → pre-checked (ligne 311-315). Différenciateur avec `aiRecommended: true` → pre-checked (ligne 248-250). Algorithme : greedy, ALL(obligatoire) + FILTER(différenciateur where aiRecommended).
-- **Injection prompt IA** — `buildKeywordContext()` (non montré ici, cf. docs/ai-usage-map.md) construit `{{secondaryKeywords}}` (Lieutenants array) + `{{lexique}}` (array de strings sélectionnés). Utilisé par tous les prompts de génération article (rédaction, meta, structure).
-- **Calcul score pertinence Capitaine** — le lexique PEUT influencer indirectement via l'IA qui le recommande, mais ne crée pas de score direct (c'est un enrichissement sémantique, pas un KPI).
+- **Vérification côté écran** — `LexiquePanel.vue` : `watch(isLocked)` (vide → non vide) et watcher `lockedTerms` (tout changement d'un lexique non vide) → `requestLexiqueGate` (sérialisé) → `syncLexiqueGate` : `saveDecisions` **puis** `useGateAlarmStore().evaluate(id, 'lexique-lock')`, sans alarme. Porte passée → `check-completed` si l'étape manque ; refusée → bandeau et `check-removed` si l'étape est là. Vérification impossible (réseau, contexte sans Pinia) → l'étape est demandée quand même, le serveur tranche. Changement d'article → état remis à zéro.
+- **Porte `lexique-lock`** — [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique({ terms })` : 🔴 `lexique-empty` (« Aucun terme retenu : le lexique est vide. », assumable) ; 🔴 `lexique-generic-term:<terme normalisé>` (une alerte par terme, dédoublonnée). [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) `lexiqueGate` lit `article_keywords.lexique` ; `CHECK_GATES[MOTEUR_LEXIQUE_VALIDATED] = 'lexique-lock'` garde `POST /articles/:id/progress/check` et `PUT /articles/:id/progress` ([server/routes/articles.routes.ts](../../server/routes/articles.routes.ts)).
+- **Porte de publication** — `publishGate` rejoue `lexique-lock` avec les portes capitaine et lieutenants : un terme générique revient en `lexique-lock:lexique-generic-term:…` 🔴, un lexique vide en `lexique-lock:lexique-empty` 🔴 (l'article ne se publie qu'avec une raison écrite). `npm run verify` (`verify:content`) rejoue la même porte pour chaque article rédigé.
+- **Rédaction** — `buildKeywordContext` ([server/routes/generate/_helpers.ts](../../server/routes/generate/_helpers.ts)) écrit « Lexique sémantique (corps de texte) : … » dans le contexte des routes sommaire (`outline.routes.ts`) et article (`article.routes.ts`), qui relisent `article_keywords` en base (`getArticleKeywords`). Le brief IA (`brief-explain.routes.ts`) reçoit le lexique du store, envoyé par `ArticleWorkflowView`.
+- **Score SEO** — [src/utils/seo-calculator.ts](../../src/utils/seo-calculator.ts) : `calculateLexiqueCoverage` (termes détectés / total) et score de présence du lexique, à partir des mots-clés de l'article passés par `useSeoScoring`. Un mot vide, présent dans tout texte, gonflerait cette couverture : c'est l'une des raisons de la porte.
 
-> **Règle de cohérence affichage / calcul** — Le même terme utilisé pour l'affichage (checkbox dans LexiqueExtraction), le tri (SortToggleBar) et l'injection prompt (buildKeywordContext) doit être la même string normalisée (lowercase trim). Pas de fallback différent : si un terme est `null` au TF-IDF (malformé), il n'est jamais coché ni injecté.
+> **Règle de cohérence affichage / calcul** — Ce que l'écran montre coché doit être ce qui est enregistré (`selectedTerms` recopié de `lockedTerms` à chaque changement, chaque geste écrit en base), et c'est cette même liste que lisent la porte, la rédaction, la Finalisation et le score SEO. Les termes sont comparés tels qu'enregistrés, sauf par la porte, qui compare et identifie ses alertes sur `normalizeTerm` (sans accents, minuscules). Depuis le 2026-09-25, la recopie est faite par un watcher sur `lockedTerms`, donc aussi quand le TF-IDF est restauré depuis la base.
 
 ## Cas d'usage à risque
 
 | Cas | Lecture | Écriture | Risque de divergence |
 |---|---|---|---|
-| Premier load (SERP frais) | Capitaine lock → `/api/serp/tfidf` hit → `LexiqueExtraction` monté, TF-IDF affiché | `saveDecisions()` → `article_keywords.lexique` | Modéré : si TF-IDF n'a pas eu assez de compétiteurs (`total < 3`), la liste est vide. Affichage "Aucun terme" est correct. |
-| Reload (SERP stale, > 7j) | Utilisateur ouvre Moteur, hydrate explorations DB → restaure ancien TF-IDF | Utilisateur revalidate → appel `/api/serp/analyze` refresh + `/api/serp/tfidf` recalc + re-IA → `saveDecisions()` | **Risque MODÉRÉ** : ancien TF-IDF vs nouveau peuvent différer (changements SERP). Popup "Données stale, recalculer ?" lors du restore aurait aidé (TODO). |
-| Switch onglet Phase ②→③ (Lexique → Finalisation) | hydrate depuis `article_keywords.lexique` (mémoire/Pinia) | aucune | Faible : état mémorisé. |
-| Tri par alignement douleur | affiche `alignment` score en direct via `jaccardWithPainPoint()` | aucun (c'est du calcul pur, pas de persistance) | **Risque ÉLIMINÉ Sprint 10.5** : depuis FR-PAIN-IMMUTABLE-AFTER-CEREVEAU, le `painPoint` est figé après la sortie du Cerveau. Le scénario "painPoint change pendant que l'utilisateur est au Lexique" ne peut plus se produire dans le workflow standard. Le tri Jaccard est stable pour la durée de la session. |
-| Multi-keyword exploration (Sprint 11 D4) | `/api/serp/tfidf` pour mot-clé N via `customKeywordInput` → `/api/serp/analyze` si SERP miss → calcul TF-IDF local | chaque extraction persistée séparément en `lexique_explorations(article_id, keyword)` | Modéré : chaque mot-clé a son propre TF-IDF. Pas de collision si les keywords sont distincts. |
-| Restore past exploration (clic bouton du chip ligne 485) | `lexique_explorations` table hit, restaure `tfidfTerms` + `iaRecommendations` | aucune (c'est une restauration, pas une mutation) | **Risque FAIBLE** : timestamp `exploredAt` affiché au hover (ligne 484), donc l'utilisateur voit l'âge. |
-| IA Upfront abort (utilisateur cancel avant fin du stream) | `iaAbort()` appelé (ligne 215, 267, 387) | aucune (cancel in-flight, ne sauvegarde pas) | Faible : les recommendations inachevées ne sont pas committées. |
-| Validation atomique (saveDecisions) | `articleKeywordsStore.saveDecisions()` fusion {capitaine, lieutenants, lexique, rootKeywords} | `PUT /articles/:id/keywords` écrit 4 colonnes en une requête | **Risque FAIBLE SI atomicité API** : l'endpoint doit écrire Capitaine + Lieutenants + Lexique + racines dans la même transaction DB, sinon divergence UI → DB. À vérifier : `server/routes/keyword-scan.routes.ts` ou `server/routes/article-keywords.routes.ts`. |
-| Merge cache + DB (TabLoadPrompt 2026-05-01) | `fetchKeywordsMerge()` récupère lexique distant et fusionne par valeur (union, ligne 97-105) | aucune (fetch seul) | Faible : union par string = pas de collision, pire cas = doublons (dedup fait au affichage). |
-| Check workflow émis (MOTEUR_LEXIQUE_VALIDATED) | `articleKeywordsStore.keywords.completedChecks` (mémoire, emit line 285) | `emit('check-completed', MOTEUR_LEXIQUE_VALIDATED)` via composant parent (MoteurView) qui appelle le backend | Modéré : emit est fire-and-forget, pas garanti d'arrive au backend. À confirmer : le parent gère le POST check ou LexiqueExtraction l'appelle directement ? Aujourd'hui c'est le parent (MoteurView) qui le fait, donc `LexiqueExtraction` doit émettre l'événement (✅ ligne 285 fait ça). |
-| Invariant NFR-INT-SERP-ONCE violation | `/api/serp/tfidf` lecture `keyword_metrics.serp_raw_json` | aucun (read-only) | **Risque CRITIQUE** : si utilisateur clique TF-IDF avant `/api/serp/analyze`, `serp_raw_json` est `null` → endpoint retourne 404 "Lancez d'abord l'analyse SERP" (ligne 69). Route `/serp/analyze` fait le check (ligne 34-37). Composant UI doit désactiver le bouton Extraire Lexique tant que SERP n'est pas lancé (à vérifier dans LexiquePanel.vue). |
+| Première extraction | `POST /serp/tfidf` | `lexique_explorations.tfidf_terms` ; **rien** dans `article_keywords` | Faible : aucune case cochée, compteur à 0, aucune étape demandée. |
+| Fin de l'analyse IA | flux SSE | `lexique_explorations.ai_*` | Faible : badges seulement, aucune case cochée. |
+| L'utilisateur coche un premier terme | — | `PUT /articles/:id/keywords`, vérification, puis `POST /progress/check` | Faible : la porte juge ce qui vient d'être enregistré ; refus → bandeau, étape non accordée. |
+| Terme générique coché, puis décoché ou remplacé | — | lexique enregistré | Faible : chaque changement relance la vérification ; l'étape suit le verdict. |
+| Terme générique ajouté après l'étape accordée | — | lexique enregistré, `POST /progress/uncheck` | Faible : l'étape est retirée et le bandeau s'affiche. |
+| Deux cases cochées très vite | — | deux `PUT` | Faible : vérifications sérialisées, une seule demande d'étape. |
+| Lexique édité depuis la Rédaction (section « Mots-clés ») | store | `PUT /articles/:id/keywords` | **Modéré** : ni filtre des mots génériques ni porte à ce moment ; la publication les rattrape. |
+| Rechargement de la page | `GET /articles/:id/keywords`, `GET /articles/:id/explorations` | aucune | Faible depuis le 2026-09-25 : le watcher sur `lockedTerms` recoche les termes enregistrés même quand le TF-IDF est restauré depuis la base, et le compteur est juste. Avant, ils s'affichaient décochés et cliquer l'un d'eux le retirait de la base (défaut antérieur à C3). Réconciliation de l'étape au montage : lexique non vide sans étape → vérification. |
+| Explorations enregistrées avant C3 | `lexique_explorations.tfidf_terms` | aucune | **Modéré** : une proposition restaurée depuis la base n'est pas refiltrée ; elle peut encore montrer « être » ou « vos ». La porte les refuse s'ils sont cochés. |
+| Scrape déjà en base, antérieur au 2026-09-25 | `keyword_serp_scrapes.text_content` | aucune | **Modéré** : le texte garde menus et bandeaux jusqu'au prochain scrape (SERP de plus de 7 jours via `fetchAndPersist`) ; le TF-IDF écarte de toute façon les mots de décor de la liste. |
+| Article rédigé sans lexique | `article_keywords.lexique` vide | aucune | **À connaître** : la publication s'arrête sur 🔴 `lexique-lock:lexique-empty` (assumable par écrit) et `verify:content` avertit (`publish-gate-refused`) tant qu'aucune dérogation ne le couvre. |
+| Mode automatique | TF-IDF | `saveThenEmit` | Faible : `pickLexique` n'emporte aucun terme générique ; s'il ne reste rien, la porte refuse (🔴 lexique vide) et le run s'arrête — `auto:article` ne déroge jamais. |
 
 ## Diagramme
 
 ```mermaid
 flowchart TD
-    subgraph Producteurs["Producteurs (SERP-driven)"]
-        DF["DataForSEO SERP<br/>(articles, snippets)"]
-        SERP["POST /api/serp/analyze<br/>(serp-analysis.routes.ts:19-50)<br/>→ upsertKeywordSerp"]
-        KMDB[("keyword_metrics.serp_raw_json<br/>(cross-article, 7j TTL)")]
+    subgraph Scrape["① Pages concurrentes"]
+        DFS["DataForSEO SERP + téléchargement des 10 pages"]
+        ETC["extractTextContent<br/>contenu principal, sans menus ni bandeaux"]
+        SCR[("keyword_serp_scrapes.text_content")]
     end
-    
-    subgraph TfidfCalc["Calcul TF-IDF (local, zero-API)"]
-        EXT["extractTfidf()<br/>(tfidf.service.ts:22-81)<br/>tokenize + DF + classify"]
-        RES["TfidfResult<br/>(3 niveaux par density)"]
+
+    subgraph Tfidf["② Proposition"]
+        TOK["tokenize → isGenericWord<br/>(shared/utils/generic-terms.ts)"]
+        RES["TfidfResult<br/>Obligatoire / Différenciateur / Optionnel"]
+        LEX_EXP[("lexique_explorations")]
     end
-    
-    subgraph UI["Composant Vue + Sélection"]
-        LV["LexiquePanel.vue<br/>(ligne 149-324)<br/>fetch + affichage"]
-        STB["SortToggleBar.vue<br/>(tri A-Z/density/alignment)"]
-        CB["Checkboxes utilisateur<br/>(obligatoire pré-checked)"]
-        SEL["selectedTerms: Set&lt;string&gt;"]
+
+    subgraph IA["③ IA"]
+        IAEP["POST /keywords/:kw/ai-lexique-upfront"]
+        BADGE["badges IA recommandé / optionnel<br/>(aucune case cochée)"]
     end
-    
-    subgraph IA["IA Upfront Recommendations"]
-        IAEP["/api/keywords/:kw/ai-lexique-upfront<br/>(streaming)"]
-        IAREC["{ term, aiRecommended, rationale }[]"]
+
+    subgraph Choix["④ Choix de l'utilisateur"]
+        CB["case cochée / décochée<br/>ajout depuis le panneau d'aide"]
+        SAVE["toggleTerm → saveDecisions<br/>PUT /articles/:id/keywords"]
+        AK[("article_keywords.lexique TEXT[]")]
     end
-    
-    subgraph Persistence["Persistance multi-niveaux"]
-        LEX_EXP["lexique_explorations<br/>(article_id, source_keyword)<br/>tfidf_terms JSONB<br/>ai_recommendations JSONB"]
-        AK["article_keywords.lexique<br/>TEXT[] JSONB<br/>(sélection finale)"]
+
+    subgraph Porte["⑤ Porte lexique-lock"]
+        VER["GET /gates/lexique-lock → verifyLexique<br/>(silencieux, à chaque changement)<br/>🔴 vide · 🔴 terme générique"]
+        CHK["POST /progress/check<br/>(le serveur réévalue : 422 si refus)"]
+        ALARM["bandeau « Étape non validée »<br/>→ alarme à la demande<br/>dérogation (gate_waivers) ou correction"]
+        STEP[("articles.completed_checks<br/>moteur:lexique_validated")]
     end
-    
-    subgraph Consumers["Consommateurs"]
-        AKS["articleKeywordsStore<br/>(hydrate + saveDecisions)"]
-        GEN["buildKeywordContext()<br/>→ {{lexique}} pour<br/>generate-article-section"]
-        FIN["FinalisationRecap<br/>affichage sélection"]
+
+    subgraph Redac["⑥ Rédaction"]
+        CTX["buildKeywordContext<br/>sommaire, article"]
+        SEO["seo-calculator<br/>couverture du lexique"]
+        FIN["FinalisationPanel"]
+        PUB["porte de publication<br/>(rejoue lexique-lock)"]
     end
-    
-    DF --> SERP
-    SERP --> KMDB
-    KMDB -->|read NO re-SERP| EXT
-    EXT --> RES
-    RES --> LV
-    LV --> STB
-    STB --> CB
-    CB --> SEL
-    RES --> IAEP
-    IAEP --> IAREC
-    IAREC --> CB
-    IAREC --> LEX_EXP
+
+    DFS --> ETC --> SCR --> TOK --> RES
     RES --> LEX_EXP
-    LEX_EXP --> LV
-    SEL --> AKS
-    AKS -->|saveDecisions()| AK
-    AK --> GEN
+    RES --> IAEP --> BADGE
+    IAEP --> LEX_EXP
+    RES --> CB
+    BADGE --> CB
+    CB --> SAVE --> AK
+    AK --> VER
+    VER -->|passe| CHK --> STEP
+    VER -->|refuse| ALARM
+    ALARM -->|dérogation| CHK
+    AK --> CTX
+    AK --> SEO
     AK --> FIN
-    
+    AK --> PUB
+
     classDef calcul fill:#fee,stroke:#c66,color:#000
     classDef persist fill:#efe,stroke:#6c6,color:#000
     classDef external fill:#eef,stroke:#66c,color:#000
-    class EXT,STB,IAREC,GEN calcul
-    class LEX_EXP,AK,KMDB persist
-    class DF external
+    class TOK,VER,SEO,PUB calcul
+    class SCR,LEX_EXP,AK,STEP persist
+    class DFS,IAEP external
 ```
 
 ## Régressions historiques
 
-- **Sprint 11 (2026-04-XX)** — Introduction `lexique_explorations` table pour multi-keyword exploration (D4 requirement). Avant : TF-IDF était calculé ad-hoc, jamais persisté. Après : chaque extraction est sauvegardée avec timestamp, allow replay via past-explorations chips (ligne 476-487). Premier risque : table vide pour les anciennes explorations → migration retroactive skippée, utilisateurs voient liste vide au reload. Accepté comme « data migration à faire au prochain batch ».
-- **Sprint S2 (2026-05-02)** — Ajout tri par alignement douleur (`sortByPainAlignmentJaccard`) via Jaccard. Avant : tri par A-Z / Densité seulement. Après : option « Pertinence douleur » + calcul scoring painPoint × term. Risque : si painPoint vide, le tri revient à état default (ligne 67-70 LexiqueExtraction). ~~TODO : invalider Lexique quand painPoint change.~~ **Résolu Sprint 10.5 (2026-05-06)** : le painPoint est figé après Cerveau (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU), invalidation inutile.
-- **2026-04-28 (Score Pertinence)** — Séparation Score Marché / Score Pertinence. Lexique n'a pas d'impact direct sur les scores, mais l'IA qui le recommande a intégré le painPoint dans son contexte. Vérifier : le prompt `lexique-ai-panel.md` (ligne 1-38 dans le fichier source) injecte bien `{{painPoint}}` et `{{strategy_context}}`.
-- **Sprint 15.5-bis (2026-05-03)** — SERP scraping déplacé dans `keyword_metrics.serp_raw_json` au lieu de `serp_explorations` article-scoped. Invariant **NFR-INT-SERP-ONCE** : TF-IDF utilise JSON hérité, zéro re-requête (ligne 68 serp-analysis.routes.ts check `if (!serpData?.competitors)`).
+- **2026-05-09 — découplage Lieutenants / Lexique et table `keyword_serp_scrapes`** — le TF-IDF ne lit plus `keyword_metrics.serp_raw_json` mais `keyword_serp_scrapes.text_content`, via `analyzeLexique` ; le Lexique peut déclencher son propre scrape (`triggerScrapeIfMissing`), avec pré-vérification et confirmation (FR-LEX-PRECHECK-SERP).
+- **2026-09-23 — cases cochées non enregistrées** — les obligatoires arrivaient cochés sans être enregistrés : « 38 termes sélectionnés » à l'écran, étape jamais validée. Correctif du jour : `lockMany` enregistrait le pré-cochage (FR-LEX-PRECHECK-PERSISTE).
+- **2026-09-24 — lexique du pilier 1013** — « vos », « nos », « être » retenus : liste de mots vides écrite sans accents (« etre ») comparée à des mots accentués, pages analysées avec leurs menus et bandeaux cookies, et pré-cochage qui validait l'étape sans choix.
+- **2026-09-25 — C3 (FR-LEX-METIER-ONLY)** — source unique des mots génériques, texte principal des pages, fin de tout pré-cochage (`lockMany` et `onPreChecked` supprimés), porte `lexique-lock` sur l'étape et à la publication. Le même jour : lexique vide ramené de ⛔ à 🔴 (assumable), porte revérifiée à chaque changement du lexique avec bandeau (un terme générique ajouté retire l'étape), et fin d'un défaut plus ancien — au rechargement, les termes enregistrés s'affichaient décochés et cliquer l'un d'eux le retirait de la base (watcher sur `lockedTerms`).
 
-## Tests de cohérence à écrire
+## Tests
 
-À placer dans `tests/unit/coherence/lexique.test.ts` :
+Déjà écrits :
+- `tests/unit/shared/generic-terms.test.ts` — mots vides avec ou sans accent, décor de page, termes de plusieurs mots, nombres.
+- `tests/unit/services/tfidf.test.ts` — bloc FR-LEX-METIER-ONLY : « être », présent chez tous les concurrents, ne devient pas obligatoire ; l'accent est gardé.
+- `tests/unit/services/scrape-corpus.service.test.ts` — contenu principal, menus, bandeaux, titre d'`<article>`.
+- `tests/unit/shared/verifiers-lexique.test.ts` — 🔴 vide (assumable), 🔴 une alerte par terme générique.
+- `tests/contract-api/gates.contract.test.ts` — `['être', 'pare-vapeur']` → 422 `lexique-generic-term:etre` ; lexique de métier → 200 ; vide → 🔴 (serveur requis).
+- `tests/unit/components/lexique-gate.test.ts` — mot vide retenu → pas d'étape, bandeau ; enregistrement avant vérification ; lexique de métier → une seule étape ; mot vide ajouté après coup → étape retirée ; bandeau → alarme → étape.
+- `tests/unit/components/lexique-extraction.test.ts`, `tests/unit/composables/lexique-precheck-persiste.test.ts` — rien de coché d'office, chaque geste enregistré ; bloc « L'écran suit toujours les termes enregistrés » (termes arrivés de la base cochés, compteur juste, un clic décoche et retire).
+- `tests/browser-e2e/parcours/lexique.parcours.test.ts` — étape ⑧ : aucune case cochée ni étape validée avant le geste, puis bandeau et alarme si la porte retient l'étape ; le helper `validerLexique` (`tests/browser-e2e/helpers/moteur-ui.ts`) fait de même pour le parcours bout-en-bout.
+- `tests/unit/scripts/auto-article/pick-lexique.test.ts` — le mode automatique n'emporte aucun terme générique.
+- `tests/unit/coherence/lexique.test.ts` — seuils de niveau, tri par pertinence douleur.
 
-1. **`describe('FR-LEX-TFIDF — classification DF seuil')`** — vérifier que les seuils DF ≥ 0.7 / 0.3-0.7 / < 0.3 placent les termes dans les bons niveaux. Cas : 10 concurrents, terme dans 7 → obligatoire (70%), 5 → différenciateur (50%), 2 → optionnel (20%). Inclure test pour densité arrondie à 0.1 (ligne 57 tfidf.service.ts).
-
-2. **`describe('FR-LEX-SELECT — pré-cochage automatique')`** — vérifier que `LexiqueExtraction` pré-coche 100% des obligatoire + différenciateur où `aiRecommended = true` (ligne 311-315 composant). Tester la mutation `selectedTerms: Set` après fetch TF-IDF + IA.
-
-3. **`describe('FR-LEX-SORT — cohérence tri (A-Z vs Densité vs Alignment)')`** — appeler `sortTermsByAlignment()` avec 3 critères différents, vérifier que l'ordre change. Cas : termes `['seo', 'référencement', 'naturel']`, densité `[2.5, 1.0, 0.5]`, alignment painPoint `[0.8, 0.2, 0.6]`. Au tri Densité DESC : `seo > référencement > naturel`. Au tri Alignment DESC : `seo > naturel > référencement`.
-
-4. ~~**`describe('FR-MOT-PAINPOINT-INJECTION — invalidation Lexique si painPoint changé')`**~~ **OBSOLÈTE Sprint 10.5 (2026-05-06)** : le test placeholder n'a plus de raison d'être — le `painPoint` est figé après Cerveau (FR-PAIN-IMMUTABLE-AFTER-CEREVEAU), donc le scénario ne peut plus se produire. À la place, `tests/unit/components/captain-validation-painpoint-frozen.test.ts` verrouille l'invariant côté Capitaine.
-
-5. **`describe('NFR-INT-SERP-ONCE — TF-IDF refuse sans SERP data')`** — appel `/api/serp/tfidf` avant `/api/serp/analyze` → 404 "Lancez d'abord l'analyse SERP" (ligne 69). Mock `getKeywordMetrics()` pour retourner `serpRawJson: null`, puis appel route, vérifier le code d'erreur. Implémenter aussi un test UI : bouton « Extraire Lexique » doit rester disabled tant que `isSerpAnalyzed = false` (à vérifier dans canExtract computed, ligne 119).
-
-6. **`it.todo('FR-LEX-MULTI-KEYWORD — chaque source_keyword persiste indépendamment')`** — effectuer deux TF-IDF sur deux mots-clés différents, vérifier que les deux enregistrements coexistent dans `lexique_explorations` sans collision PK. Puis restaurer par mot-clé et vérifier que chaque TF-IDF est distinct.
-
-7. **`it.todo('FR-LEX-CHECK — check MOTEUR_LEXIQUE_VALIDATED émis atomiquement avec saveDecisions()')`** — `validateLexique()` (ligne 273-287) appelle `saveDecisions()` et émet le check. Vérifier que les deux opérations sont synchrones (ou que la Promise est attendue avant émission).
+À écrire :
+1. Rédaction : `ArticleKeywordsPanel` « suggérer » puis « Enregistrer » ne doit pas faire entrer de terme générique sans alerte (checklist C4 · M15).
+2. Explorations enregistrées avant C3 : une proposition restaurée ne devrait plus afficher de mot vide (checklist C3 · M16).
 
 ---
 

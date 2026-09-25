@@ -909,7 +909,12 @@ development_status:
   # (table gate_waivers), scores SEO/GEO enregistrés. 6 FR versées au PRD et au
   # registre ; NFR-TEST-BEHAVIORAL finalisée après les tests navigateur.
   qualite-seo-c2-verificateurs-alarme: in-progress
-  qualite-seo-c3-lexique-metier: backlog
+  # C3 (branche fix/lexique-metier, 2026-09-25) : code livré, PR à ouvrir.
+  # Source unique des mots génériques (shared/utils/generic-terms.ts), texte
+  # principal des pages concurrentes, plus aucun terme coché d'office, porte
+  # lexique-lock (🔴 vide, 🔴 terme générique) rejouée à la publication.
+  # FR-LEX-METIER-ONLY versée au PRD et au registre ; FR-LEX-PRECHECK-PERSISTE amendée.
+  qualite-seo-c3-lexique-metier: in-progress
   qualite-seo-c4-prompts-architecture: backlog
   qualite-seo-c5-redaction-deux-temps: backlog
   qualite-seo-c6-onglet-structure-hn: backlog

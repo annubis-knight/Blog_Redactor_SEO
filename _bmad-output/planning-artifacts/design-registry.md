@@ -767,27 +767,36 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Réf PRD :** [FR-LEX-PRECHECK-PERSISTE](./prd.md#fr-lex-precheck-persiste--ce-que-lécran-coche-est-réellement-retenu)
 
 **Refs code**
-- [src/composables/lexique/useLexiqueLocking.ts](../../src/composables/lexique/useLexiqueLocking.ts) — `lockMany(terms)` : verrouille en un seul `saveDecisions`, en n'ajoutant que les termes absents.
-- [src/composables/lexique/useLexiqueIa.ts](../../src/composables/lexique/useLexiqueIa.ts) — dépendance `onPreChecked`, appelée avec les termes que l'analyse vient de cocher.
-- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — branche `onPreChecked` sur `lockMany`.
+- [src/composables/lexique/useLexiqueLocking.ts](../../src/composables/lexique/useLexiqueLocking.ts) — API réduite à `lockedTerms`, `isLocked`, `toggleTerm(term)` (un `saveDecisions` par geste). **`lockMany` supprimé** (C3).
+- [src/composables/lexique/useLexiqueIa.ts](../../src/composables/lexique/useLexiqueIa.ts) — ne reçoit plus `selectedTerms` ni **`onPreChecked`** (supprimés, C3) : `onDone` ne fait que remplir `iaRecommendations` ; les badges « IA recommandé » / « IA optionnel » viennent de `isIaRecommended` ([src/components/moteur/lexique/LexiqueTermsList.vue](../../src/components/moteur/lexique/LexiqueTermsList.vue)).
+- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — watcher `immediate` sur `JSON.stringify(lockedTerms)` → `selectedTerms = new Set(lockedTerms)` : **l'écran suit toujours le lexique enregistré**, quel que soit le chemin (extraction `fetchTfidf`, restauration `hydrateFromDb`, fusion) ; `fetchTfidf` fait la même recopie. `handleToggleTerm` → `persistToggle` ; `handleAssistAdd` (terme ajouté depuis `KeywordAssistPanel`) → `persistToggle` s'il n'est pas déjà enregistré (avant : ajouté à l'écran seulement).
 
-**Tables consommées** : `article_keywords.lexique` TEXT[] — seule source du check `moteur:lexique_validated` (`isLocked = lockedTerms.length > 0`).
+**Tables consommées** : `article_keywords.lexique` TEXT[] — seule source de `isLocked = lockedTerms.length > 0`, qui déclenche la demande du check `moteur:lexique_validated` (accordé par la porte `lexique-lock`, cf. `DESIGN-LEX-METIER-ONLY`).
 
 **Flux DB**
 
-*Écriture* : `lockMany()` → `store.addLexiqueTerm()` × N → un seul `saveDecisions(id)` → `PUT /articles/:id/keywords`. Un toggle manuel garde son écriture unitaire (`FR-LEX-CHECKBOX-LOCK-IMMEDIATE`).
+*Écriture* : case cochée ou décochée, ajout depuis le panneau d'aide → `toggleTerm` → `store.addLexiqueTerm` / `removeLexiqueTerm` → `saveDecisions(id)` → `PUT /articles/:id/keywords`. Aucune écriture à l'extraction TF-IDF ni à la fin de l'analyse IA.
 
 **Décisions d'architecture**
-- **Persister le pré-cochage plutôt que décocher les cases.** Choix inverse de celui retenu pour les Lieutenants (`b3a4f30`, « l'IA propose, l'utilisateur valide ») : un Lieutenant devient un H2 de l'article, c'est une décision de structure qui mérite un geste ; un terme de Lexique présent chez 70 % des concurrents est une checklist de rédaction, où le pré-cochage est un gain réel. Dans les deux cas la règle est la même : **l'écran ne montre jamais comme acquis ce que la base ignore.**
-- **Un seul enregistrement.** 38 termes × un `PUT` chacun serait inutilement bavard.
-- **`null` plutôt qu'un repli choisi à la place de l'appelant** : `lockMany` ignore une liste vide sans rien écrire.
+- **Rien de coché d'office** *(C3, 2026-09-25, checklist M11)* : le choix du 2026-09-23 (« persister le pré-cochage » des obligatoires, puis des différenciateurs recommandés par l'IA, via `lockMany`) validait l'étape sans geste, mots vides compris (« être », « votre » dans le lexique du pilier 1013). Même arbitrage que les Lieutenants (`b3a4f30`, « l'IA propose, l'utilisateur valide »). La règle d'origine demeure : **l'écran ne montre jamais comme acquis ce que la base ignore**.
+- **Un enregistrement par geste** : sans pré-cochage de masse, l'écriture groupée n'a plus de raison d'être.
+
+**Défaut corrigé** *(constaté et corrigé le 2026-09-25, antérieur à C3)*
+- `selectedTerms` n'était recopié de `lockedTerms` que dans `fetchTfidf`. Au rechargement, l'auto-restauration reprend le TF-IDF dans `lexique_explorations` (`useLexiqueExplorations.hydrateFromDb`) sans passer par `fetchTfidf` : les termes enregistrés s'affichaient décochés, le compteur disait 0, et cliquer l'un d'eux le cochait à l'écran mais le retirait de la base (`toggleTerm` inverse l'état enregistré, `handleToggleTerm` celui de l'écran). Corrigé par le watcher sur `lockedTerms` : l'écran et la base ne peuvent plus diverger.
 
 **Critères d'acceptation techniques**
-- Unitaire : `lockMany` verrouille N termes en un `saveDecisions`, n'écrit rien si tout est déjà verrouillé, n'ajoute que les nouveaux, ignore une liste vide, et laisse `toggleTerm` retirer ensuite (`tests/unit/composables/lexique-precheck-persiste.test.ts`).
-- Navigateur : après extraction, `moteur:lexique_validated` apparaît sans geste supplémentaire (`bout-en-bout.parcours.test.ts`).
+- Unitaire : rien n'est retenu sans geste ; cocher enregistre et rend `isLocked` vrai ; décocher enregistre aussi (un `saveDecisions` par geste) ; sans article, rien n'est écrit (`tests/unit/composables/lexique-precheck-persiste.test.ts`).
+- Composant : après le TF-IDF comme après l'analyse IA (réussie ou en échec), aucune case cochée, compteur « 0 terme sélectionné », aucun `saveDecisions`, aucun `check-completed` ; le compteur ne compte que les cases cochées par l'utilisateur ; les recommandations IA s'affichent en badges (`tests/unit/components/lexique-extraction.test.ts`).
+- Composant : bloc « L'écran suit toujours les termes enregistrés » — des termes arrivés de la base après l'affichage apparaissent cochés et le compteur suit ; cliquer un terme enregistré le décoche et le retire, jamais l'inverse (`tests/unit/components/lexique-extraction.test.ts`).
+- Navigateur : étape ⑧ — aucune case cochée ni étape validée avant le geste, puis un terme coché → étape validée, en passant par le bandeau puis l'alarme si la porte retient l'étape (`tests/browser-e2e/parcours/lexique.parcours.test.ts`).
+
+**Historique**
+- 2026-09-23 — créée : `lockMany` enregistre le pré-cochage.
+- 2026-09-25 — amendée (épopée qualité SEO, C3) : `lockMany` et `onPreChecked` supprimés, plus aucun pré-cochage.
+- 2026-09-25 — l'écran suit toujours `lockedTerms` (watcher) : fin des termes enregistrés affichés décochés au rechargement.
 
 **Voir aussi**
-- `DESIGN-LIE-CHECKBOX-LOCK-IMMEDIATE` (même règle, arbitrage inverse).
+- `DESIGN-LEX-METIER-ONLY`, `DESIGN-LEX-SELECT`, `DESIGN-LIE-CHECKBOX-LOCK-IMMEDIATE` (même règle, même arbitrage désormais).
 
 ---
 
@@ -3093,11 +3102,82 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 *Écriture* : aucune côté backend (sauf via le wrapper `DESIGN-LEX-MULTI-KEYWORD` qui persiste les explorations).
 
 **Décisions d'architecture**
-- Tokenisation min 3 chars + strip stopwords français.
+- Tokenisation : `tokenize` garde les lettres (accents compris) et le tiret, puis écarte tout mot pour lequel `isGenericWord` est vrai (moins de 3 lettres, nombre, mot grammatical ou décor de page — source unique [shared/utils/generic-terms.ts](../../shared/utils/generic-terms.ts), cf. `DESIGN-LEX-METIER-ONLY`). L'ancienne liste locale `FRENCH_STOPWORDS` (74 mots écrits sans accents) a été retirée en C3.
 - Seuils DF figés : ≥ 70 % = Obligatoire, 30-70 % = Différenciateur, < 30 % = Optionnel.
 - Plafond 50 termes par niveau.
+- Unigrammes uniquement : pas de n-grammes (« laine soufflée » sort en « laine » et « soufflée »).
 
-**Voir aussi** : `DESIGN-LEX-SCRAPE-DEDIE`, `DESIGN-INFRA-SCRAPE-CORPUS-NEUTRE`.
+**Voir aussi** : `DESIGN-LEX-SCRAPE-DEDIE`, `DESIGN-INFRA-SCRAPE-CORPUS-NEUTRE`, `DESIGN-LEX-METIER-ONLY`.
+
+---
+
+### DESIGN-LEX-METIER-ONLY
+
+**Réf PRD :** [FR-LEX-METIER-ONLY](./prd.md#fr-lex-metier-only--le-lexique-ne-contient-que-des-mots-du-métier)
+
+**Refs code**
+- [shared/utils/generic-terms.ts](../../shared/utils/generic-terms.ts) — **source unique** de ce qui n'est pas du métier. `normalizeTerm` (minuscules, accents retirés par NFD, `trim`) ; `isGenericWord(word)` : mot normalisé de moins de 3 lettres, nombre, ou membre de l'une des deux familles comparées sans accents — mots grammaticaux (`GRAMMATICAL` : articles, déterminants, pronoms, possessifs, relatifs, conjonctions, prépositions, adverbes, verbes génériques et formes courantes : « être », « voir », « permet », « faut »…) et décor de page (`PAGE_DECOR` : cookie(s), consentement, accepter, refuser, accueil, menu, mentions, légales, confidentialité, rgpd, cgv, cgu, copyright, newsletter, inscription, connexion, panier, partager, réseaux sociaux, cliquez, lire, etc.) ; `isGenericTerm(term)` : vrai si **tous** les mots du terme sont génériques (« vos cookies » oui, « vos combles » non ; un terme vide est générique). Volontairement absents : « site », « blog », « article », « recherche ».
+- [server/services/keyword/tfidf.service.ts](../../server/services/keyword/tfidf.service.ts) — `tokenize` filtre avec `isGenericWord` ; le mot garde son accent en sortie (checklist M4).
+- [server/services/external/scrape-corpus.service.ts](../../server/services/external/scrape-corpus.service.ts) — `extractTextContent` → `mainContent(html)` : `<main>`, sinon la concaténation des `<article>`, sinon la page ; `stripBlocks` retire `nav`, `header`, `footer`, `aside`, `form` (dans un `<article>` : `nav`, `aside`, `form`, `footer` — l'en-tête, qui porte le titre, est gardé) ; `stripDecorElements` retire les `div|section|aside|dialog|p|span|form` dont l'`id` ou la `class` contient `DECOR_MARKERS` (cookie, consent, rgpd, gdpr, didomi, axeptio, tarteaucitron, onetrust, newsletter) (checklist M5).
+- [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) — vérificateur pur `verifyLexique({ terms }): GateIssue[]`.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `lexiqueGate(articleId)` (privée) via `evaluateArticleGate(id, 'lexique-lock')` ; `CHECK_GATES[MOTEUR_LEXIQUE_VALIDATED] = 'lexique-lock'` ; `publishGate` rejoue `lexique-lock` avec les portes capitaine et lieutenants.
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `POST /articles/:id/progress/check` et `PUT /articles/:id/progress` : `moteur:lexique_validated` → 422 `GATE_BLOCKED` si la porte refuse.
+- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue), [src/composables/lexique/useLexiqueIa.ts](../../src/composables/lexique/useLexiqueIa.ts), [src/composables/lexique/useLexiqueLocking.ts](../../src/composables/lexique/useLexiqueLocking.ts) — plus aucune validation d'office (checklist M11, cf. `DESIGN-LEX-PRECHECK-PERSISTE`).
+- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — porte côté écran, sur le modèle des Lieutenants : `lexiqueGateBlocked` (ref `GateEvaluation | null`) ; `syncLexiqueGate` (`articleKeywordsStore.saveDecisions(id)` **puis** `useGateAlarmStore().evaluate(id, 'lexique-lock')`, verdict **silencieux**) ; `requestLexiqueGate` (sérialise les vérifications : deux cases cochées vite ne doublent pas l'étape) ; `reviewLexiqueGate` (bouton du bandeau → `ensure` → alarme) ; `requestLexiqueCheck` / `withdrawLexiqueCheck` (`check-completed` / `check-removed`, drapeau local `lexiqueCheckRequested`) ; `lexiqueGateBannerText` (première raison + « (+n autres) ») ; bandeau `data-testid="lexique-gate-banner"`, bouton `lexique-gate-review` « Voir pourquoi / décider ».
+- [src/composables/moteur/useMoteurArticleSync.ts](../../src/composables/moteur/useMoteurArticleSync.ts) — `emitCheckCompleted` passe par `gateAlarm.runThroughGate` : si le serveur refuse malgré tout (422), l'alarme « Avant de valider le lexique » (`GATE_LABELS['lexique-lock']`) s'ouvre.
+- [scripts/auto-article/heuristics/pick-lexique.ts](../../scripts/auto-article/heuristics/pick-lexique.ts) — `keep` écarte aussi tout terme `isGenericTerm` : le mode automatique ne retient jamais un terme que la porte refuserait. [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) enregistre le lexique avant de demander l'étape (`saveThenEmit`, livré en C2).
+
+**Règles**
+
+| Règle (`GateIssue.rule`) | Niveau | Condition |
+|---|---|---|
+| `lexique-empty` | 🔴 | Aucun terme non vide (après `trim`). Message « Aucun terme retenu : le lexique est vide. », risque « La rédaction n'aura aucun vocabulaire métier à couvrir : le texte risque de rester générique. ». |
+| `lexique-generic-term:<terme normalisé>` | 🔴 | `isGenericTerm(terme)` ; une alerte par terme, dédoublonnée sur `normalizeTerm`. Message « « terme » n'est pas un mot du métier. ». |
+
+**Flux DB**
+
+*Lecture* (`lexiqueGate`) : `getArticleById` (existence) → `getArticleKeywords` → `article_keywords.lexique` TEXT[].
+
+*Écriture* : aucune par la porte. Les termes sont enregistrés par le panneau (`toggleTerm` → `PUT /articles/:id/keywords`, puis de nouveau `saveDecisions` dans `syncLexiqueGate`) **avant** la vérification ; l'étape passe par `POST /articles/:id/progress/check` / `/uncheck` via `emit('check-completed' | 'check-removed')`.
+
+**Watchers & réactivité**
+- `watch(isLocked)` (reste dans le composant, AC.LEX-SEP.4) : transition `false → true` → `requestLexiqueGate()` ; `true → false` → bandeau effacé, `check-removed`. Au montage, réconciliation : lexique non vide sans étape → `requestLexiqueGate()` (la porte décide) ; étape sans lexique → `check-removed`.
+- Watcher `JSON.stringify(lockedTerms)` : un terme ajouté ou retiré alors que le lexique est déjà non vide → `requestLexiqueGate()` (la transition vide → non vide reste traitée par le watcher précédent).
+- `syncLexiqueGate` : porte passée (ou vérification impossible : réseau, contexte sans Pinia) → bandeau effacé et `check-completed` si l'étape est absente — le serveur reste l'arbitre (422 → alarme) ; porte refusée → bandeau et `check-removed` si l'étape est présente. Ignore un verdict arrivé après un changement d'article ou un lexique redevenu vide.
+- Watcher `selectedArticle.id` : changement d'article → `lexiqueCheckRequested` et bandeau remis à zéro.
+
+**Décisions d'architecture**
+- **Une seule liste, trois consommateurs** : TF-IDF (`isGenericWord`), porte (`isGenericTerm`), mode automatique (`isGenericTerm`). L'ancienne liste locale du TF-IDF était écrite sans accents et comparée à des mots accentués : « être », « vos », « nos » passaient.
+- **Comparaison sans accents, sortie accentuée** : la normalisation ne sert qu'à comparer ; le terme proposé garde son orthographe.
+- **Mots ambigus exclus de la liste** : un faux positif (écarter « blog » pour un site sur les blogs) coûte plus qu'un faux négatif, que l'utilisateur peut simplement ne pas cocher.
+- **Terme générique = 🔴, pas ⛔** : un mot de la liste peut être du métier dans un contexte précis ; l'utilisateur peut assumer par écrit.
+- **Lexique vide = 🔴, pas ⛔** *(corrigé le 2026-09-25 ; ⛔ dans la première version de C3)* : ce n'est pas un défaut technique, un article très court peut s'en passer ; l'utilisateur l'assume par écrit, à l'étape comme à la publication.
+- **Vérification silencieuse, revérifiée à chaque changement** : une alarme modale à chaque case cochée rendrait l'onglet inutilisable ; le bandeau informe, l'alarme s'ouvre à la demande. Même modèle que `DESIGN-LIE-LOCK-GATE`.
+- **Empreinte** : `{ terms: termes normalisés triés }`. Ajouter, retirer ou réécrire un terme fait tomber les dérogations de la porte.
+- **Écarts avec l'épopée (le code fait foi)** : un lexique vide est 🔴 (non prévu par l'épopée) ; il retient donc aussi la publication, rejouée par `publishGate` (`lexique-lock:lexique-empty` 🔴), sauf dérogation écrite.
+
+**Limites connues**
+- **Pas de n-grammes** : le TF-IDF ne propose que des mots isolés.
+- **Textes déjà enregistrés** : `getTextContent` lit `keyword_serp_scrapes.text_content` quel que soit son âge ; un nouveau scrape (avec `extractTextContent` nettoyé) n'a lieu que par `fetchAndPersist`, quand la SERP a plus de 7 jours ou n'existe pas. D'ici là, les anciens textes gardent leur décor ; le filtre du TF-IDF écarte de toute façon les mots de décor de la liste.
+- **Explorations enregistrées avant C3** : une proposition restaurée depuis `lexique_explorations.tfidf_terms` (`hydrateFromDb`, `selectExploration`) n'est pas refiltrée et peut encore montrer des mots vides ; la porte les refuse s'ils sont cochés (checklist C3 · M16).
+- **Lexique édité depuis la Rédaction** : [src/components/keywords/ArticleKeywordsPanel.vue](../../src/components/keywords/ArticleKeywordsPanel.vue) (section « Mots-clés » de `BriefStructureStep.vue`) permet l'ajout manuel, la suggestion IA (`suggestLexique` → `POST /keywords/lexique-suggest`, qui remplace le lexique du store) et l'enregistrement (`saveDecisions`) sans filtre `isGenericTerm` ni porte : seule la publication rattrape un terme générique entré par ce chemin (checklist C4 · M15).
+- **Listes de mots vides encore dispersées** : `keyword-roots`, `keyword-matcher`, `word-groups`, `long-tail`, `intent-scan`, `linking`, `seo-validators` — entre autres (`scripts/auto-article/text.ts`, `src/constants/french-nlp.ts`, `pain-point-jaccard`…) — gardent leurs propres listes, non alignées sur `generic-terms.ts` (checklist C4 · M17).
+
+**Critères d'acceptation techniques**
+- AC.LEXMETIER.1 : `isGenericTerm` — mots vides avec ou sans accent ni majuscule (« Être », « etre », « vos », « permet »…), décor de page (« Cookie », « légales »…), vocabulaire métier non générique (« laine soufflée », « site internet », « combles »…), terme de plusieurs mots générique seulement si tous ses mots le sont, nombres, mots de moins de 3 lettres et terme vide génériques ; `normalizeTerm` ignore casse et accents. *(test : `tests/unit/shared/generic-terms.test.ts`, dans `npm run verify`)*
+- AC.LEXMETIER.2 : `tokenize` ne laisse passer ni « être » ni « vos » / « nos » ni le décor de page, et garde l'accent ; « être », présent chez tous les concurrents, ne devient pas obligatoire. *(test : `tests/unit/services/tfidf.test.ts`, bloc FR-LEX-METIER-ONLY)*
+- AC.LEXMETIER.3 : `extractTextContent` garde le contenu principal, sans menu, en-tête, pied de page, encart, formulaire ni bandeau ; titre d'`<article>` gardé ; bandeaux reconnus à leur classe. *(test : `tests/unit/services/scrape-corpus.service.test.ts`)*
+- AC.LEXMETIER.4 : 🔴 `lexique-empty` (assumable, pas technique) ; 🔴 une alerte par terme générique, identifiée par le terme normalisé (`lexique-generic-term:etre` pour « Être ») ; un lexique de métier passe sans alerte. *(test : `tests/unit/shared/verifiers-lexique.test.ts`, dans `npm run verify`)*
+- AC.LEXMETIER.5 : lexique `['être', 'pare-vapeur']` → 422 `GATE_BLOCKED`, `blocking` = `['lexique-generic-term:etre']` ; lexique de métier → 200 ; lexique vide → 🔴 `lexique-empty`. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.LEXMETIER.6 : aucune case cochée après le TF-IDF ni après l'IA, compteur à 0, rien d'enregistré, aucune étape émise ; au navigateur, un terme coché valide l'étape, en passant par le bandeau puis l'alarme si la porte la retient. *(tests : `tests/unit/components/lexique-extraction.test.ts`, `tests/browser-e2e/parcours/lexique.parcours.test.ts` étape ⑧, helper `validerLexique` de `tests/browser-e2e/helpers/moteur-ui.ts`)*
+- AC.LEXMETIER.8 : mot vide retenu → aucune étape, bandeau avec la raison ; lexique enregistré avant la vérification ; lexique de métier → étape demandée une seule fois, sans bandeau ; mot vide ajouté après coup → étape retirée (`check-removed`) et bandeau ; bandeau → alarme (`ensure`) → dérogation → étape. *(test : `tests/unit/components/lexique-gate.test.ts`)*
+- AC.LEXMETIER.7 : `pickLexique` n'emporte ni mot vide accentué ni décor de page. *(test : `tests/unit/scripts/auto-article/pick-lexique.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C3, checklist M4, M5, M11).
+- 2026-09-25 — `lexique-empty` passe de ⛔ à 🔴 ; porte revérifiée à chaque changement du lexique (bandeau, alarme à la demande, étape retirée par un terme générique).
+
+**Voir aussi** : `DESIGN-LEX-TFIDF`, `DESIGN-LEX-PRECHECK-PERSISTE`, `DESIGN-LEX-CHECK`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-SCRAPE-CORPUS-NEUTRE`.
 
 ---
 
@@ -3138,10 +3218,10 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Stores Pinia** : `useArticleKeywordsStore`.
 
 **Décisions d'architecture**
-- Pré-cochage des Obligatoires au premier rendu (heuristique).
+- ~~Pré-cochage des Obligatoires au premier rendu (heuristique).~~ Retiré le 2026-09-25 (épopée qualité SEO, C3, M11) : après le TF-IDF, `selectedTerms` = termes déjà enregistrés (`lockedTerms`), rien de plus (cf. `DESIGN-LEX-PRECHECK-PERSISTE`, `DESIGN-LEX-METIER-ONLY`).
 - Persistance immédiate par toggle (pas de bouton Enregistrer).
 
-**Voir aussi** : `DESIGN-LEX-CHECK`, `DESIGN-LEX-LECTURE-VS-VERROUILLAGE`.
+**Voir aussi** : `DESIGN-LEX-CHECK`, `DESIGN-LEX-LECTURE-VS-VERROUILLAGE`, `DESIGN-LEX-PRECHECK-PERSISTE`.
 
 ---
 
@@ -3195,21 +3275,25 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Réf PRD :** [FR-LEX-CHECK](./prd.md#fr-lex-check)
 
 **Refs code**
-- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — watcher `isLocked` qui émet `MOTEUR_LEXIQUE_VALIDATED`.
+- [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — watcher `isLocked` et watcher `lockedTerms` qui déclenchent la vérification silencieuse de la porte (`requestLexiqueGate`), puis émettent `MOTEUR_LEXIQUE_VALIDATED` (`check-completed` / `check-removed`) selon son verdict.
 - [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — constante.
 
-**Flux DB** : POST `/progress/check` ou `/uncheck` selon transition de `isLocked = lexique.length > 0`.
+**Flux DB** : `saveDecisions` → `GET /articles/:id/gates/lexique-lock` (`useGateAlarmStore().evaluate`) → selon le verdict, POST `/progress/check` ou `/uncheck`. `POST /progress/check` réévalue la porte `lexique-lock` (`CHECK_GATES`) et répond 422 `GATE_BLOCKED` si elle refuse ; `MoteurView` → `useMoteurArticleSync.emitCheckCompleted` → `gateAlarm.runThroughGate` ouvre alors l'alarme et rejoue la demande après dérogation.
 
-**Stores Pinia** : `useArticleProgressStore`.
+**Stores Pinia** : `useArticleProgressStore`, `useGateAlarmStore` (`evaluate`, `ensure` dans le panneau ; `runThroughGate` via `useMoteurArticleSync`).
 
 **Watchers & réactivité**
-- Watcher sur `isLocked` (computed sur `lexique.length`).
-- Réconciliation défensive au mount via `DESIGN-MOT-CHECK-RECONCILIATION`.
+- Watcher sur `isLocked` (computed sur `lexique.length`) : vide → non vide = vérification ; non vide → vide = étape retirée.
+- Watcher sur `lockedTerms` : tout changement d'un lexique non vide = nouvelle vérification ; un terme générique ajouté retire l'étape (cf. `DESIGN-LEX-METIER-ONLY`).
+- Réconciliation défensive au mount via `DESIGN-MOT-CHECK-RECONCILIATION` (lexique non vide sans étape → vérification).
 
 **Décisions d'architecture**
-- Pas de seuil minimal — un seul terme coché suffit à valider l'étape.
+- Pas de seuil minimal — un seul terme coché suffit à demander l'étape ; la porte `lexique-lock` l'accorde (cf. `DESIGN-LEX-METIER-ONLY`).
 
-**Voir aussi** : `DESIGN-MOT-CHECKS`, `DESIGN-MOT-CHECK-RECONCILIATION`.
+**Historique**
+- 2026-09-25 — l'étape passe par la porte du lexique (épopée qualité SEO, C3), revérifiée à chaque changement du lexique.
+
+**Voir aussi** : `DESIGN-MOT-CHECKS`, `DESIGN-MOT-CHECK-RECONCILIATION`, `DESIGN-LEX-METIER-ONLY`.
 
 ---
 
@@ -3218,7 +3302,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Réf PRD :** [FR-LEX-SCRAPE-DEDIE](./prd.md#fr-lex-scrape-dedie)
 
 **Refs code**
-- [server/services/external/lexique-analysis.service.ts](../../server/services/external/lexique-analysis.service.ts) — service dédié, signature pure `(keyword, opts?) => Promise<...>`.
+- [server/services/keyword/lexique-analysis.service.ts](../../server/services/keyword/lexique-analysis.service.ts) — service dédié, signature pure `analyzeLexique(keyword, opts?)` *(chemin corrigé le 2026-09-25 : le fichier vit dans `services/keyword/`, pas `services/external/`)*.
 - [server/services/external/scrape-corpus.service.ts](../../server/services/external/scrape-corpus.service.ts) — service neutre partagé avec Lieutenants.
 
 **Tables consommées** : `keyword_serp_results`, `keyword_serp_scrapes`, `lexique_explorations`.
@@ -3372,7 +3456,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Décisions d'architecture**
 - Pas de bouton « Verrouiller le Lexique » global — chaque case fonctionne unitairement.
-- Le check workflow `MOTEUR_LEXIQUE_VALIDATED` est dérivé automatiquement (watcher sur length).
+- Le check workflow `MOTEUR_LEXIQUE_VALIDATED` est demandé automatiquement (watcher sur length) et accordé par la porte `lexique-lock` depuis le 2026-09-25 (cf. `DESIGN-LEX-CHECK`, `DESIGN-LEX-METIER-ONLY`).
 
 **Voir aussi** : `DESIGN-LEX-CHECK`, `DESIGN-LEX-LECTURE-VS-VERROUILLAGE`, `DESIGN-LIE-CHECKBOX-LOCK-IMMEDIATE`.
 
@@ -4142,12 +4226,12 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 | `article-too-long` : mots visibles > `wordsMax` du type | 🔴 |
 | `draft-to-source-remaining` : marqueurs « à sourcer » | 🔴 |
 | `waiver-reconfirm:<porte>:<règle>` : une par dérogation **encore debout** d'une porte amont (`standingWaivers`) | 🟠 |
-| `captain-lock:<règle>`, `lieutenants-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication | niveau d'origine |
+| `captain-lock:<règle>`, `lieutenants-lock:<règle>`, `lexique-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication (`lexique-lock:lexique-empty` 🔴, `lexique-lock:lexique-generic-term:<terme>` 🔴 depuis C3) | niveau d'origine |
 | Une même règle visant plusieurs endroits (deux chiffres invérifiables…) | un identifiant par occurrence, suffixé par l'extrait (`distinctRules`) |
 
 **Flux DB**
 
-*Lecture* (`publishGate`) : `evaluateArticleGate(id, 'captain-lock')` et `evaluateArticleGate(id, 'lieutenants-lock')` (portes amont rejouées sur les données du jour) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants). H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
+*Lecture* (`publishGate`) : `evaluateArticleGate(id, 'captain-lock')`, `evaluateArticleGate(id, 'lieutenants-lock')` et, depuis C3, `evaluateArticleGate(id, 'lexique-lock')` (portes amont rejouées sur les données du jour) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants). H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
 
 *Écriture* : `articles.status = 'publié'` seulement si la porte passe (`updateArticleStatus`). Dérogations de publication (reconfirmations 🟠, risques 🔴) via `saveGateWaivers`.
 
@@ -4156,13 +4240,13 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Décisions d'architecture**
 - **Publier avant de télécharger** : l'ancien `handleExport` téléchargeait puis marquait publié (erreur avalée). Désormais le fichier n'est produit que si le statut a été accepté.
 - **Rejouer, pas réécrire** : la porte ne duplique aucune règle ; elle convertit les verdicts des valideurs existants en niveaux.
-- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine et lieutenants : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication.
+- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine, lieutenants et — depuis C3 (2026-09-25) — lexique : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication. Conséquence de la porte du lexique : un article sans lexique ne se publie qu'avec une raison écrite (`lexique-lock:lexique-empty` 🔴), et `verify:content` signale (`publish-gate-refused`) tout article rédigé sans lexique qu'aucune dérogation ne couvre.
 - **Empreinte** : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, upstream, waivers }` où `upstream` = `gateId:inputHash` des portes amont et `waivers` = `gateId:rule:inputHash` des dérogations debout (triées). Un changement en amont rouvre la décision ; les dérogations de la publication elle-même sont exclues (sinon en enregistrer une changerait l'empreinte et l'annulerait aussitôt).
 - **Écarts avec l'épopée (le code fait foi)** : le capitaine absent du H1 est 🔴 (erreur SEO), pas ⛔ ; un H1 absent du corps n'est pas une alerte (le titre de l'article sert de H1) ; plusieurs H1 dans le corps sont ⛔ (`hn-multiple-h1`).
 
 **Limites connues**
 - Le score SEO enregistré (`DESIGN-RED-SEO-SCORE-PERSIST`) n'est pas encore lu par la porte.
-- Les portes lexique et structure (C3, C6) ne sont pas encore rejouées à la publication.
+- La porte structure (C6) n'est pas encore rejouée à la publication (la porte lexique l'est depuis C3).
 
 **Tests** : `tests/unit/shared/verifiers-publish.test.ts` (1013 rejeté, `article-too-long`, identifiants distincts par occurrence), `tests/contract-api/gates.contract.test.ts` (dérogation tombée non réaffichée et alerte revenue ; cannibalisation apparue après coup remontée à la publication), `tests/browser-e2e/gates.browser.test.ts` (⛔ sans champ, ni statut ni fichier).
 
@@ -4174,8 +4258,9 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2, checklist P3 et P5).
+- 2026-09-25 — la porte `lexique-lock` est rejouée à la publication (C3, `DESIGN-LEX-METIER-ONLY`).
 
-**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`.
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`, `DESIGN-LEX-METIER-ONLY`.
 
 ---
 
@@ -5120,11 +5205,12 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - [server/services/external/scrape-corpus.service.ts](../../server/services/external/scrape-corpus.service.ts) — service neutre. Header `AUTHORITY:` lignes 1-17 : `keyword_serp_results` + `keyword_serp_scrapes` + `keyword_paa_questions` (writes only — single producer cross-domaine) + cache mémoire 1h module-scoped Map.
 - Constantes : `MEMORY_CACHE_TTL_MS = 60 * 60 * 1000` (1h), `MEMORY_CACHE_MAX_ENTRIES = 100` (LRU), `FETCH_TIMEOUT_MS = 10_000`, `USER_AGENT = 'Mozilla/5.0 (compatible; BlogRedactorSEO/1.0; …)'`.
 - API publique : `fetchAndPersist(keyword, articleLevel)`, `getHeadings(keyword)` (Lieutenants), `getTextContent(keyword)` (Lexique), `getPaaQuestions(keyword)`.
+- `extractTextContent(html)` *(C3, 2026-09-25, checklist M5)* : ne garde que le contenu principal (`<main>`, sinon les `<article>`, sinon la page), sans `nav` / `header` / `footer` / `aside` / `form` ni bandeaux reconnus à leur `id` / `class` (cookie, consent, rgpd, gdpr, didomi, axeptio, tarteaucitron, onetrust, newsletter). Détail : `DESIGN-LEX-METIER-ONLY`.
 - Test helper exporté : `__resetMemoryCacheForTests()`.
 
 **Flux DB**
 *Écriture* : `fetchAndPersist` → `withSerpTransaction` → `upsertSerpResults` + `upsertSerpScrapes` + `upsertPaaQuestions` (toutes lignes commit en une seule transaction).
-*Lecture* : `getHeadings` / `getTextContent` → `keyword_serp_results` JOIN `keyword_serp_scrapes` filtré sur freshness 7j → optimisé (SELECT scopé).
+*Lecture* : `fetchAndPersist` réutilise le cache mémoire 1 h, puis la base si `getSerpResultsFresh` (7 j) ; sinon il re-scrape. `getHeadings` (`keyword_serp_scrapes` LEFT JOIN `keyword_serp_results`) et `getTextContent` (`keyword_serp_scrapes`) lisent les lignes du mot-clé **sans filtre d'âge** *(précisé le 2026-09-25 : ce bloc annonçait un filtre de fraîcheur 7 j sur ces deux lectures, absent du code)*.
 *Tables consommées* : `keyword_serp_results`, `keyword_serp_scrapes`, `keyword_paa_questions` (cf. [server/db/schema.sql](../../server/db/schema.sql) lignes 215-240).
 
 **Décisions d'architecture**
@@ -5502,9 +5588,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Refs code**
 - [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — noyau pur (aucune I/O) : types `GateLevel` (`attention` | `risque` | `technique`), `GateIssue` (`rule`, `level`, `message`, `risk?`, `excerpt?`, `alternatives?`), `GateResult`, `GateEvaluation` (`gateId`, `issues`, `inputHash`, `passed`, `blocking`, `waived`) ; `GATE_IDS` (`captain-lock`, `lieutenants-lock`, `lexique-lock`, `hn-lock`, `draft`, `publish`), `GATE_LABELS` (« verrouiller le capitaine », « valider les lieutenants », « publier »…), `evaluateGate(gateId, issues, waivers, inputHash)`, `hashGateInput(input)`, `worstLevel(issues)`.
-- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
+- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique` (`DESIGN-LEX-METIER-ONLY`, C3), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
 - [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES` : pilier 2 500 mots [1 800–3 500], 6–8 H2, 3 lieutenants ; intermédiaire 1 800 [1 200–2 500], 4–6, 2 ; spécialisé 1 200 [800–1 500], 3–5, 1. Lu par `verifyLieutenants` (`minLieutenants`) et `verifyPublish` (`wordsMax`). Premier pas de `FR-INFRA-TYPE-RULES-SSOT` (réservée C4) : prompts et calculs de longueur n'y sont pas encore branchés.
-- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `lexiqueGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` (exporté, lu par `articles.routes.ts`) : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`, `MOTEUR_LEXIQUE_VALIDATED` → `lexique-lock` (C3).
 - [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — évaluation et dérogations (Zod : `z.enum(GATE_IDS)`), monté sous `/api` dans [server/index.ts](../../server/index.ts).
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `respondGateBlocked(res, evaluation, message)` ; points de passage gardés : `POST /articles/:id/progress/check` (check présent dans `CHECK_GATES`) et `PUT /articles/:id/status` vers `publié`.
 - [src/services/api.service.ts](../../src/services/api.service.ts) — `ApiRequestError` (`status`, `code`, `details`) levée par `handleApiError` : le refus arrive à l'écran avec l'évaluation.
@@ -5530,7 +5616,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - **Refus = 422 avec l'évaluation en `details`** : l'écran n'a pas à redemander le verdict pour ouvrir l'alarme ; les outils en ligne de commande l'affichent tel quel.
 - **La porte garde l'étape et le statut, pas l'écriture des décisions** : l'enregistrement de `article_keywords` (autosave, cases cochées) reste libre ; c'est l'étape (`articles.completed_checks`) — qui ouvre la Finalisation et la Rédaction — et le statut `publié` qui sont gardés.
 - **Rattachement aux exigences** par module (`verifyCaptain` ↔ `FR-CAP-LOCK-GATE`…) et par les en-têtes de fichiers : `GateIssue` ne porte pas l'ID d'exigence, mais un `rule` stable.
-- **Portes réservées** (`lexique-lock` C3, `hn-lock` C6, `draft` C5) : acceptées par la route, évaluées sans alerte tant que leur chantier n'est pas livré.
+- **Portes réservées** (`hn-lock` C6, `draft` C5) : acceptées par la route, évaluées sans alerte tant que leur chantier n'est pas livré. `lexique-lock` est livrée par C3 (2026-09-25).
 - **Audit tolérant** : un article déjà rédigé que la porte refuserait donne un avertissement (`publish-gate-refused`), pas une erreur — ses défauts sont déjà comptés par les validateurs.
 - **Aucune dérogation automatique** : le script `auto:article` s'arrête sur un refus ; seul un humain déroge.
 
@@ -5543,8 +5629,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2).
+- 2026-09-25 — porte `lexique-lock` livrée (C3) : `verifyLexique`, `lexiqueGate`, `CHECK_GATES[MOTEUR_LEXIQUE_VALIDATED]`, rejouée par `publishGate`.
 
-**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
+**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
 
 ---
 
@@ -5577,11 +5664,12 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Empreinte par porte** (`hashInput`)
 - `captain-lock` : `{ keyword normalisé, level, volume, autocompleteCount, verdict, serpIntent, expectedIntent }` — alternatives exclues.
 - `lieutenants-lock` : `{ level, captain normalisé, lieutenants normalisés triés, revendications du cocon triées }`.
+- `lexique-lock` (C3) : `{ terms: termes normalisés (sans accents, minuscules) triés }`.
 - `publish` : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, waivers des autres portes }` — dérogations de publication exclues.
 
 **Décisions d'architecture**
 - **Une dérogation = un point × des données** : clé `(article, porte, règle, empreinte)`. Dès que les données changent, l'empreinte change et l'ancienne ligne ne couvre plus rien (elle reste en base comme historique).
-- **Un élément par règle** : pour les règles multi-éléments, l'élément fait partie de `rule` (`lieutenant-cannibalization:<mot>`) ; une raison ne couvre jamais tous les conflits d'un coup.
+- **Un élément par règle** : pour les règles multi-éléments, l'élément fait partie de `rule` (`lieutenant-cannibalization:<mot>`, `lexique-generic-term:<terme>`) ; une raison ne couvre jamais tous les conflits d'un coup.
 - **🟠 = accusé de lecture** : ligne avec `category` et `reason` à `NULL`.
 - **Le serveur revérifie** : le client ne peut ni forger une dérogation ⛔, ni contourner les 20 caractères.
 - **Pas de colonne « auteur »** : outil local mono-utilisateur, sans authentification (cf. `architecture.md`). Écart assumé avec l'épopée, qui citait « qui ».
@@ -5599,8 +5687,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2) ; table `gate_waivers` (migration `2026-09-25-gate-waivers.sql`).
+- 2026-09-25 — dérogations de la porte `lexique-lock` (C3) : une par terme générique, une pour le lexique vide.
 
-**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`.
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-PUBLISH-GATE`.
 
 ---
 

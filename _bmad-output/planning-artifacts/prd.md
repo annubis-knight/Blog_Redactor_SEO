@@ -384,17 +384,18 @@ Quand la structure du cocon est validée (cf. `FR-CER-STEPS-COCOON`), l'utilisat
 
 #### FR-LEX-PRECHECK-PERSISTE — Ce que l'écran coche est réellement retenu
 
-Après l'analyse du Lexique, les termes présents chez au moins 70 % des concurrents arrivent **déjà cochés** : c'est une checklist de rédaction, pas une décision fine, et les pré-cocher fait gagner du temps. Mais une case cochée doit valoir décision enregistrée — sans quoi l'utilisateur croit son Lexique validé alors que rien n'est retenu.
+Dans le Lexique, une case cochée doit valoir décision enregistrée — sans quoi l'utilisateur croit son Lexique validé alors que rien n'est retenu. Et une décision suppose que quelqu'un ait choisi : plus aucun terme n'arrive coché d'office, c'est l'utilisateur qui retient ses termes (cf. `FR-LEX-METIER-ONLY`), et chacun de ses gestes est enregistré aussitôt.
 
 **Critères d'acceptation**
-- Les termes pré-cochés sont enregistrés comme retenus, sans geste supplémentaire.
+- Aucun terme n'arrive coché, ni après l'extraction ni après l'analyse de l'IA : l'écran ne montre cochés que les termes déjà enregistrés.
+- Ce que l'utilisateur coche ou décoche est enregistré aussitôt, y compris un terme ajouté depuis le panneau d'aide.
 - Le compteur affiché (« N termes sélectionnés ») correspond exactement à ce qui est enregistré.
-- L'utilisateur peut retirer n'importe quel terme pré-coché ; ce retrait est également enregistré.
-- L'étape est validée dès qu'au moins un terme est retenu, sans qu'il faille décocher puis recocher.
+- L'écran suit toujours le lexique enregistré, quel que soit le chemin par lequel la liste revient (extraction, rechargement de la page, onglet d'une exploration passée) : un terme enregistré s'affiche coché, et cliquer un terme coché le décoche et le retire — jamais l'inverse.
+- L'étape « Lexique validé » est accordée quand l'utilisateur a retenu au moins un terme **et** que la porte du lexique passe (cf. `FR-LEX-METIER-ONLY`), sans qu'il faille décocher puis recocher.
 
-**Statut** : active. **Depuis** : 2026-09-23.
+**Statut** : active. **Depuis** : 2026-09-23. **Amendée le 2026-09-25** (épopée qualité SEO, C3, checklist M11) : le critère « Les termes pré-cochés sont enregistrés comme retenus, sans geste supplémentaire » est remplacé. Le pré-cochage des termes présents chez au moins 70 % des concurrents, enregistré d'office depuis le 2026-09-23, validait l'étape sans que personne ait choisi — mots vides compris (« être », « votre »). Désormais rien n'est coché d'office, chaque geste est enregistré, et l'étape passe par la porte du lexique. Le même jour, un défaut plus ancien est corrigé : au rechargement, les termes enregistrés s'affichaient décochés, et cliquer l'un d'eux le retirait de la base.
 
-> **En situation.** L'utilisateur extrait son Lexique : 38 termes obligatoires apparaissent, tous cochés, et l'écran annonce « 38 termes sélectionnés ». Il passe à la suite, satisfait. Avant cette règle, la base n'en connaissait aucun : l'étape restait invalidée, le passage en Rédaction fermé, et rien n'expliquait pourquoi. Le seul moyen de débloquer était de décocher puis recocher un terme au hasard.
+> **En situation.** L'utilisateur extrait son Lexique : 38 termes obligatoires s'affichent, aucun n'est coché, et l'écran annonce « 0 terme sélectionné ». Il coche « pare-vapeur », « laine » et « soufflée » : le compteur passe à 3, les trois termes sont enregistrés, et l'étape « Lexique validé » est accordée. Il décoche « soufflée » : le compteur revient à 2, la base aussi. Le lendemain, il rouvre l'article : « pare-vapeur » et « laine » sont cochés, le compteur affiche 2. Avant le 2026-09-23, les cases cochées d'office n'étaient pas enregistrées et l'étape restait bloquée sans explication ; du 23 au 25 septembre, elles l'étaient, et l'étape se validait toute seule.
 
 → Conception : [DESIGN-LEX-PRECHECK-PERSISTE](./design-registry.md#design-lex-precheck-persiste)
 
@@ -2224,7 +2225,7 @@ Cocher la case d'un Lieutenant **verrouille immédiatement ce Lieutenant en base
 
 #### FR-LEX-TFIDF — Extraction statistique des termes utilisés par les concurrents
 
-L'app analyse le contenu textuel des pages top 10 Google du Capitaine et **mesure la fréquence d'apparition de chaque terme** : un terme présent chez ≥ 70 % des concurrents est marqué **Obligatoire**, entre 30 et 70 % **Différenciateur**, sous 30 % **Optionnel**. Les mots-outils du français (les, des, pour, sur, par…) sont ignorés. L'utilisateur voit une liste triée par densité, plafonnée à 50 termes par niveau pour rester lisible. Le calcul réutilise les contenus déjà scrapés pour Lieutenants — aucun nouvel appel API.
+L'app analyse le contenu textuel des pages top 10 Google du Capitaine et **mesure la fréquence d'apparition de chaque terme** : un terme présent chez ≥ 70 % des concurrents est marqué **Obligatoire**, entre 30 et 70 % **Différenciateur**, sous 30 % **Optionnel**. Les mots-outils du français (les, des, pour, sur, par…) et le décor des pages (menus, bandeaux cookies…) sont ignorés (cf. `FR-LEX-METIER-ONLY`). L'utilisateur voit une liste triée par densité, plafonnée à 50 termes par niveau pour rester lisible. Le calcul réutilise les contenus déjà scrapés pour Lieutenants — aucun nouvel appel API.
 
 **Critères d'acceptation**
 - L'app produit trois listes (Obligatoires, Différenciateurs, Optionnels) avec des termes triés par densité descendante.
@@ -2235,6 +2236,33 @@ L'app analyse le contenu textuel des pages top 10 Google du Capitaine et **mesur
 > **En situation.** Sur l'article rupture conventionnelle, l'utilisateur clique « Extraire le Lexique ». 2 secondes plus tard : section **Obligatoires** (24 termes — « indemnité », « salaire », « calcul », « brut », « net »…), section **Différenciateurs** (18 termes — « plafond », « ancienneté », « senior », « cdd »…), section **Optionnels** (35 termes). Il voit en un coup d'œil le vocabulaire que les top 10 Google considèrent incontournable.
 
 → Conception : [DESIGN-LEX-TFIDF](./design-registry.md#design-lex-tfidf)
+
+---
+
+#### FR-LEX-METIER-ONLY — Le lexique ne contient que des mots du métier
+
+Le lexique dit à la rédaction quels mots du métier l'article doit employer. Celui du pilier 1013 (2026-09-24) contenait « vos », « nos », « être » : des mots que toute page emploie, qui n'apprennent rien à la rédaction et gonflent la couverture du lexique dans le score SEO. Ils passaient par trois fuites : une liste de mots vides incomplète, qui ne reconnaissait pas « être » écrit avec son accent ; des pages concurrentes analysées avec leurs menus, leurs pieds de page et leurs bandeaux cookies ; et un pré-cochage qui validait l'étape sans que personne ait choisi. Désormais le lexique proposé ne garde que le vocabulaire du métier, aucun terme n'est retenu d'office, et la validation passe par une **porte** (cf. `FR-INFRA-GATE-WAIVER`).
+
+**Critères d'acceptation**
+- Aucun mot vide parmi les termes proposés — articles, pronoms, possessifs, prépositions, adverbes, verbes génériques comme « être », « voir » ou « permet » —, qu'il soit écrit avec ou sans accent. Ni nombre, ni mot de moins de trois lettres.
+- Les mots du décor des pages (cookies, consentement, mentions légales, confidentialité, newsletter, connexion, panier, réseaux sociaux, « cliquez »…) ne sont pas proposés.
+- Un terme de plusieurs mots n'est générique que si tous ses mots le sont : « vos cookies » l'est, « vos combles » non.
+- Les mots ambigus, qui sont du métier pour certains sites (« site », « blog », « article », « recherche »), restent proposés.
+- Seul le contenu principal des pages concurrentes compte : leurs menus, en-têtes, pieds de page, encarts, formulaires et bandeaux de cookies ou d'inscription sont écartés. Dans un article, le titre est gardé.
+- Aucun terme n'est coché d'office, ni après l'extraction ni après l'analyse de l'IA : l'IA signale les termes qu'elle recommande, l'utilisateur choisit (cf. `FR-LEX-PRECHECK-PERSISTE`).
+- 🔴 Un lexique vide retient l'étape « Lexique validé » : la rédaction n'aurait aucun vocabulaire métier à couvrir. L'utilisateur peut l'assumer en écrivant pourquoi (un article très court, par exemple).
+- 🔴 Un terme générique retenu (mot vide ou décor de page) retient l'étape. Une alerte par terme : chacun se déroge séparément.
+- La porte est revérifiée à chaque changement du lexique, une fois le changement enregistré, sans interrompre l'utilisateur : tant qu'elle retient l'étape, un bandeau « Étape non validée » donne la première raison, et un bouton « Voir pourquoi / décider » ouvre l'alarme graduée. Un terme générique coché après coup retire l'étape ; le décocher la rend.
+- Si la vérification est impossible (serveur injoignable), l'étape est demandée quand même : le serveur tranche, et l'alarme s'ouvre s'il refuse.
+- La porte juge le lexique enregistré, qu'elle soit sollicitée par l'écran, par l'outil automatique ou par un appel direct au serveur.
+- La porte est rejouée à la publication (cf. `FR-RED-PUBLISH-GATE`) : un terme générique encore présent, ou un lexique vide, y revient en 🔴 tant qu'aucune dérogation ne le couvre.
+- Le mode automatique ne retient jamais un terme que la porte refuserait.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C3 (checklist M4, M5, M11).
+
+> **En situation.** Sur « isolation combles perdus », l'utilisateur extrait son lexique. La liste propose « laine », « soufflée », « pare-vapeur », « combles »… — des mots isolés : « laine soufflée » n'y figure pas d'un seul tenant — et jamais « vos », « nos », « être » ni « cookies », même si toutes les pages concurrentes les emploient. Aucune case n'est cochée ; un badge signale les termes que l'IA recommande. Il coche « pare-vapeur », « laine » et « soufflée » : l'étape « Lexique validé » est accordée. Dans l'onglet d'une ancienne exploration, restée telle qu'avant la règle, il coche encore « être » : l'étape est retirée, et un bandeau s'affiche — « Étape non validée. « être » n'est pas un mot du métier. » Il décoche ce terme : le bandeau disparaît et l'étape revient. Sur un article rédigé sans lexique, la publication s'arrête sur 🔴 « Aucun terme retenu : le lexique est vide. » ; il revient choisir ses termes, ou assume en écrivant pourquoi.
+
+→ Conception : [DESIGN-LEX-METIER-ONLY](./design-registry.md#design-lex-metier-only)
 
 ---
 
@@ -2256,15 +2284,17 @@ L'utilisateur peut trier chaque liste de trois manières : **A-Z** (recherche d'
 
 #### FR-LEX-SELECT — Cases à cocher individuelles, persistance immédiate
 
-L'utilisateur sélectionne les termes qu'il veut **absolument retrouver dans son article** en cochant une case par terme. Les termes du niveau **Obligatoire** sont pré-cochés au premier affichage (heuristique : si la majorité des concurrents l'utilise, l'utilisateur le veut probablement aussi). Chaque cochage/décochage est sauvegardé immédiatement — pas de bouton « Enregistrer ».
+L'utilisateur sélectionne les termes qu'il veut **absolument retrouver dans son article** en cochant une case par terme. Aucun terme n'est coché d'office, pas même les **Obligatoires** : qu'un mot soit employé par la majorité des concurrents ne dit pas que l'article en a besoin (cf. `FR-LEX-METIER-ONLY`). Chaque cochage/décochage est sauvegardé immédiatement — pas de bouton « Enregistrer ».
 
 **Critères d'acceptation**
 - Chaque terme affiche une case à cocher individuelle.
-- Les termes du niveau Obligatoire sont pré-cochés à la première affichage.
+- Au premier affichage, aucune case n'est cochée, quel que soit le niveau du terme.
 - Le clic sur une case enregistre le changement aussitôt en base.
 - Recharger la page retrouve les choix exactement.
 
-> **En situation.** Le consultant ouvre l'onglet Lexique : les 24 Obligatoires sont déjà cochés. Il décoche 3 termes qu'il juge déplacés (« licenciement » par exemple, car son article ne parle pas du licenciement), puis coche 7 Différenciateurs et 4 Optionnels qu'il veut introduire. Il ferme l'onglet, va boire un café, revient — ses 32 cases cochées sont intactes.
+**Statut :** amendée le 2026-09-25 (fin du pré-cochage des Obligatoires, épopée qualité SEO C3).
+
+> **En situation.** Le consultant ouvre l'onglet Lexique : aucune case n'est cochée. Il coche 21 des 24 Obligatoires — il laisse de côté « licenciement », son article n'en parle pas —, puis 7 Différenciateurs et 4 Optionnels qu'il veut introduire. Il ferme l'onglet, va boire un café, revient — ses 32 cases cochées sont intactes.
 
 → Conception : [DESIGN-LEX-SELECT](./design-registry.md#design-lex-select)
 
@@ -2304,12 +2334,16 @@ En complément du Lexique du Capitaine, l'utilisateur peut **tester librement un
 
 #### FR-LEX-CHECK — Étape Moteur « Lexique validé » posée quand au moins un terme est coché
 
-L'étape Moteur « Lexique validé » est posée automatiquement dès que l'utilisateur a au moins un terme coché dans le Lexique. Décocher le dernier terme retire l'étape. La règle est simple : pas de seuil minimal de termes, juste la preuve d'une intention de validation. Au mount de l'onglet, une réconciliation défensive corrige les éventuelles incohérences (étape posée en base mais aucun terme coché, ou inversement).
+L'étape Moteur « Lexique validé » est posée automatiquement dès que l'utilisateur a au moins un terme coché dans le Lexique, à condition que la porte du lexique passe (cf. `FR-LEX-METIER-ONLY`). Décocher le dernier terme retire l'étape. La règle est simple : pas de seuil minimal de termes, juste la preuve d'une intention de validation. Au mount de l'onglet, une réconciliation défensive corrige les éventuelles incohérences (étape posée en base mais aucun terme coché, ou inversement).
 
 **Critères d'acceptation**
 - L'étape `moteur:lexique_validated` est posée dès qu'un terme est coché.
 - Décocher tous les termes retire l'étape automatiquement.
 - À l'ouverture, si la base contient l'étape mais aucun terme coché, l'app la retire ; et inversement.
+- L'étape n'est posée que si la porte du lexique passe, d'emblée ou après dérogation (cf. `FR-LEX-METIER-ONLY`) ; sinon la progression ne bouge pas, un bandeau « Étape non validée » le dit et l'alarme graduée s'ouvre à la demande.
+- La porte est revérifiée à chaque changement du lexique : un terme générique ajouté retire l'étape, qui revient quand la porte passe de nouveau.
+
+**Statut :** amendée le 2026-09-25 (porte du lexique, épopée qualité SEO C3).
 
 > **En situation.** Le consultant coche son 1ᵉʳ terme du Lexique : le 5ᵉ dot du dashboard passe de `○` à `●`. Plus tard il décoche tous ses termes pour repartir de zéro : le dot revient à `○`. Il recoche : `●`. La cohérence est garantie sans qu'il ait à se soucier de quoi que ce soit.
 
@@ -2383,13 +2417,15 @@ Deux gestes distincts cohabitent dans le Lexique : **explorer** des Lexiques de 
 
 #### FR-LEX-CHECKBOX-LOCK-IMMEDIATE — Cocher un terme du Lexique l'ajoute immédiatement à la sélection *(déplacée depuis §8.6 le 2026-05-12)*
 
-Cocher la case d'un terme TF-IDF **l'ajoute immédiatement** à la sélection du Lexique de l'article — pas de bouton « Verrouiller le Lexique » à cliquer après. Décocher la case retire le terme aussitôt. L'étape Moteur « Lexique validé » suit automatiquement : elle est posée dès que la sélection contient au moins un terme, retirée dès qu'elle redevient vide.
+Cocher la case d'un terme TF-IDF **l'ajoute immédiatement** à la sélection du Lexique de l'article — pas de bouton « Verrouiller le Lexique » à cliquer après. Décocher la case retire le terme aussitôt. L'étape Moteur « Lexique validé » suit automatiquement : elle est posée dès que la sélection contient au moins un terme et que la porte du lexique passe (cf. `FR-LEX-METIER-ONLY`), retirée dès qu'elle redevient vide ou que la porte la refuse.
 
 **Critères d'acceptation**
 - Cocher une case ajoute le terme à `keywords.lexique` immédiatement.
 - Décocher la case retire le terme immédiatement.
-- L'étape `moteur:lexique_validated` apparaît dès le premier terme coché et disparaît si l'utilisateur décoche tous les termes.
+- L'étape `moteur:lexique_validated` apparaît quand la porte du lexique passe ; elle disparaît si l'utilisateur décoche tous les termes ou si un terme générique arrive dans la sélection.
 - Aucun bouton « Verrouiller le Lexique » global n'existe dans le panneau.
+
+**Statut :** amendée le 2026-09-25 (porte du lexique, épopée qualité SEO C3).
 
 > **En situation.** L'utilisateur parcourt la liste TF-IDF de son Lexique. Il coche les 12 termes Obligatoires que les concurrents partagent tous, le 4ᵉ dot du dashboard passe à `●`. Puis il coche un Différenciateur, décoche un Obligatoire qu'il juge déplacé — la sélection s'ajuste à chaque clic, sans validation explicite.
 
@@ -2726,13 +2762,14 @@ Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publ
 - 🔴 Texte au-delà du plafond de son type : 3 500 mots pour un pilier, 2 500 pour un intermédiaire, 1 500 pour un spécialisé.
 - 🔴 Des marqueurs « à sourcer » restent dans le texte.
 - 🟠 Les autres avertissements (capitaine absent de l'introduction, lieutenants peu couverts…).
-- 🟠 Chaque dérogation posée en amont (capitaine, lieutenants) est réaffichée et doit être reconfirmée.
+- 🟠 Chaque dérogation posée en amont (capitaine, lieutenants, lexique) est réaffichée et doit être reconfirmée.
+- Les portes amont — capitaine, lieutenants, lexique — sont rejouées sur les données du jour : une alerte qu'aucune dérogation ne couvre plus revient à son niveau d'origine. Un terme générique resté dans le lexique, ou un lexique vide, donne donc 🔴 (cf. `FR-LEX-METIER-ONLY`).
 - Un H1 laissé dans le corps est toléré : l'export le retire.
 - Si la porte refuse, l'article n'est ni marqué « publié » ni téléchargé, et un message « Publication annulée » l'explique. Après dérogation, la publication reprend d'elle-même.
 - Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que cette porte refuserait.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication.
 
 > **En situation.** L'utilisateur clique « Exporter » sur le pilier 1013. L'alarme « Avant de publier » s'ouvre : la meta description est coupée en plein vol (⛔), « stratégie » manque au H1 et au meta title (🔴 deux fois), et le texte fait 15 601 mots pour un pilier plafonné à 3 500 (🔴). Le bouton affiche « Correction nécessaire » et reste grisé : un défaut ⛔ ne se déroge pas. Il revient corriger ; sous la barre d'aperçu, un message indique « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'a été marqué publié, aucun fichier n'a été téléchargé.
 
@@ -3498,12 +3535,12 @@ Au lieu d'avoir une table de cache dédiée par fournisseur ou par type d'appel,
 
 #### FR-INFRA-VERIFIER-SHARED — Un même contrôle à l'écran, au serveur et dans l'audit
 
-Une règle de qualité est écrite **une seule fois** et placée à une transition du parcours — une **porte** : verrouiller le capitaine, valider les lieutenants, publier. Le serveur est le seul à l'évaluer. L'écran affiche son verdict au moment du geste et explique chaque point ; le serveur refuse l'étape ou la publication qui ne passe pas, même quand la demande ne vient pas de l'écran ; l'audit du projet rejoue la même évaluation après coup. Les trois ne peuvent donc pas se contredire.
+Une règle de qualité est écrite **une seule fois** et placée à une transition du parcours — une **porte** : verrouiller le capitaine, valider les lieutenants, valider le lexique, publier. Le serveur est le seul à l'évaluer. L'écran affiche son verdict au moment du geste et explique chaque point ; le serveur refuse l'étape ou la publication qui ne passe pas, même quand la demande ne vient pas de l'écran ; l'audit du projet rejoue la même évaluation après coup. Les trois ne peuvent donc pas se contredire.
 
 **Critères d'acceptation**
 - Une règle donne le même verdict à l'écran, au serveur et dans l'audit : les trois passent par la même évaluation.
 - Un refus renvoie la liste complète des points, dans les mots affichés à l'écran : ce qui est constaté, le risque en clair, l'extrait concerné et, quand l'outil en a, des pistes à la place.
-- Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-RED-PUBLISH-GATE`).
+- Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-LEX-METIER-ONLY`, `FR-RED-PUBLISH-GATE`).
 - Une étape refusée n'est pas enregistrée : la progression de l'article ne bouge pas. Une publication refusée ne change pas le statut de l'article.
 - Les outils automatiques (génération d'article en ligne de commande) subissent la même règle : un refus arrête le run en listant chaque point avec son niveau, et l'outil ne passe jamais outre à la place d'un humain.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
@@ -3527,8 +3564,8 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 - Le libellé du bouton dit ce qu'on fait : « J'ai lu, je continue » quand il n'y a que des 🟠, « Je prends la responsabilité et je continue » dès qu'il y a un 🔴. « Revenir corriger » n'enregistre rien.
 - Le serveur revérifie chaque dérogation et refuse, avec son motif affiché sous le point, celle qui n'est pas recevable (raison trop courte, alerte qui n'existe plus parce que les données ont changé).
 - Chaque dérogation est enregistrée : quand, à quelle porte, pour quel point, avec quelle catégorie et quelle raison. L'outil est mono-utilisateur : l'auteur n'est pas enregistré.
-- Une dérogation ne couvre qu'un point, et seulement pour les données vérifiées à ce moment : dès qu'elles changent (autre capitaine, lieutenants modifiés, texte ou méta retouchés), elle tombe et l'alarme revient.
-- Quand un même point peut viser plusieurs éléments (plusieurs lieutenants en conflit), chaque élément se déroge séparément.
+- Une dérogation ne couvre qu'un point, et seulement pour les données vérifiées à ce moment : dès qu'elles changent (autre capitaine, lieutenants modifiés, lexique modifié, texte ou méta retouchés), elle tombe et l'alarme revient.
+- Quand un même point peut viser plusieurs éléments (plusieurs lieutenants en conflit, plusieurs termes génériques dans le lexique), chaque élément se déroge séparément.
 - Les dérogations qui couvrent déjà des points de la porte sont rappelées dans l'alarme sous un badge 🛡.
 - À la publication, chaque dérogation posée en amont est réaffichée et doit être reconfirmée ; l'audit du projet (`npm run verify`) les liste article par article, avec leur catégorie et leur raison.
 
@@ -3553,7 +3590,7 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 | --------------------------- | ------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------- |
 | `articles`                  | (schéma initial — pas de FR-INFRA)    | FR-CER-BATCH-CREATE, FR-CER-STEPS-ARTICLE              | FR-DASH-NAV, FR-MOT-PHASES, FR-FIN-*, FR-RED-*                         | Cœur du domaine. 35 mentions PRD.                                     |
 | `article_content`           | (schéma initial)                      | FR-RED-EDITOR-PERSIST                                  | FR-RED-EDITOR-LOAD, FR-RED-EXPORT-*                                    | TipTap doc + meta-tags.                                               |
-| `article_keywords`          | (schéma initial)                      | FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST         | FR-MOT-PHASES, FR-RED-PROMPT-CONTEXT, FR-FIN-RECAP                     | JSONB `lexique`, `hn_structure`, `validation_history`.                |
+| `article_keywords`          | (schéma initial)                      | FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST         | FR-MOT-PHASES, FR-RED-PROMPT-CONTEXT, FR-FIN-RECAP, FR-LEX-METIER-ONLY (porte du lexique) | TEXT[] `lexique`, JSONB `hn_structure`, `validation_history`.         |
 | `article_micro_contexts`    | **FR-INFRA-MICRO-CONTEXTS**           | FR-CER-MICRO-CONTEXT, FR-CER-WORD-COUNT-RECOMMEND      | NFR-INT-PROMPT-AGNOSTIC (via `buildMicroContextBlock`)                 | 1:1 avec articles.                                                    |
 | `article_strategies`        | **FR-INFRA-ARTICLE-STRATEGIES**       | FR-CER-STEPS-ARTICLE                                   | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA Rédaction                        | Wizard Cerveau article-scoped.                                        |
 | `articles.completed_checks` | **FR-INFRA-WORKFLOW-CHECKS-CONSTANTS**| FR-MOT-PHASES (toutes émissions `MOTEUR_*`)            | FR-MOT-SOFT-GATING, FR-FIN-RECAP, `useFinalisationGating`              | TEXT[] sur `articles`. SSOT (`NFR-INT-COMPLETED-CHECKS-SSOT`).        |
@@ -3578,7 +3615,7 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 | `radar_explorations`        | (FR-RAD-PERSIST décrit)               | FR-RAD-PERSIST, FR-RAD-LONGTAIL-PERSIST                | FR-RAD-CARDS, FR-CAP-PERSIST (via source), FR-EXP-COUNTS               | Article-scoped, JSONB `scan_result`.                                  |
 | `silos`                     | (schéma initial)                      | FR-DASH-NAV (CRUD admin)                               | FR-DASH-NAV                                                            | Conteneur de cocoons.                                                 |
 | `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`)                 | Singleton (`id=1`).                                                   |
-| `gate_waivers`              | **FR-INFRA-GATE-WAIVER**              | FR-INFRA-GATE-WAIVER (alarme graduée : dérogation 🟠 / 🔴) | FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE (réaffichage) | Épopée qualité SEO (C2). `ON DELETE CASCADE` sur articles.            |
+| `gate_waivers`              | **FR-INFRA-GATE-WAIVER**              | FR-INFRA-GATE-WAIVER (alarme graduée : dérogation 🟠 / 🔴) | FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-LEX-METIER-ONLY, FR-RED-PUBLISH-GATE (réaffichage) | Épopée qualité SEO (C2, porte du lexique en C3). `ON DELETE CASCADE` sur articles. |
 
 > **Lecture de la matrice :**
 > - Une cellule **Producteurs / Consommateurs FR** vide signifie que la table est lue/écrite uniquement via une FR-INFRA (pas de FR métier identifiée). C'est attendu pour les tables d'infra (cache, telemetry).
@@ -4768,6 +4805,10 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | FR-RED-SEO-SCORE-PERSIST | nouveau (amendé à la livraison : score affiché enregistré avec son texte, pas recalculé par le serveur) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
 | FR-CAP-CHECK, FR-LIE-CHECK, FR-CAP-AUTO-NOGO | amendées (l'étape passe par la porte ; un NO-GO se verrouille par dérogation) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
 | NFR-TEST-BEHAVIORAL | nouveau (livré en partie : tests négatifs des portes, plus aucun test vert faute de serveur) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-LEX-METIER-ONLY | nouveau (lexique sans mots vides ni décor de page, aucun terme validé d'office, porte du lexique 🔴 vide ou terme générique, revérifiée à chaque changement) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-LEX-PRECHECK-PERSISTE | amendée (plus aucun terme coché d'office ; chaque geste est enregistré ; l'écran suit toujours le lexique enregistré, rechargement compris ; l'étape passe par la porte du lexique) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-LEX-SELECT, FR-LEX-CHECK, FR-LEX-CHECKBOX-LOCK-IMMEDIATE | amendées (fin du pré-cochage des Obligatoires ; l'étape passe par la porte du lexique) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (la porte du lexique rejoint les portes, rejouée à la publication) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 
