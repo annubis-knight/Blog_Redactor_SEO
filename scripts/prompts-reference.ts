@@ -32,6 +32,7 @@ const ROLES: Record<string, { domain: Domain; role: string }> = {
   'cocoon-paa-queries': { domain: 'Cerveau — stratégie et cocon', role: 'Requêtes Google pour récupérer les PAA de chaque Intermédiaire' },
   'cocoon-articles-spe': { domain: 'Cerveau — stratégie et cocon', role: 'Articles Spécialisés, nourris des PAA récupérées' },
   'cocoon-add-article': { domain: 'Cerveau — stratégie et cocon', role: 'Un seul article complémentaire, du type demandé' },
+  'cocoon-child-keywords': { domain: 'Cerveau — stratégie et cocon', role: '3 à 5 mots-clés candidats pour un nouvel article (pilier, ou enfant d’une section de son parent), mesurés ensuite' },
   'theme-parse': { domain: 'Cerveau — stratégie et cocon', role: 'Transforme une description libre de l’entreprise en configuration structurée' },
   'intent-keywords': { domain: 'Moteur — mots-clés', role: 'Mots-clés courts pour chercher les PAA (Radar)' },
   'radar-long-tail-suggest': { domain: 'Moteur — mots-clés', role: 'Longues traînes scorées à partir des racines du Radar' },

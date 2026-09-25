@@ -18,9 +18,15 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoons: vi.fn(), getArticlesByCocoon: vi.fn(), getArticleKeywordsByCocoon: vi.fn(),
 }))
 vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({ getCocoonStrategy: vi.fn() }))
+const { mockPropose } = vi.hoisted(() => ({ mockPropose: vi.fn() }))
+vi.mock('../../../server/services/strategy/child-candidates.service', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../../server/services/strategy/child-candidates.service')>()
+  return { ...actual, proposeChildCandidates: mockPropose }
+})
 
 const { default: router } = await import('../../../server/routes/cocoons.routes')
 const { CocoonArticleError } = await import('../../../server/services/article/cocoon-article.service')
+const { ChildCandidatesError } = await import('../../../server/services/strategy/child-candidates.service')
 
 function res() {
   const r = { status: vi.fn().mockReturnThis(), json: vi.fn().mockReturnThis() }
@@ -96,3 +102,34 @@ describe('GET /cocoons/:cocoonId/tree', () => {
     expect(r2.status).toHaveBeenCalledWith(400)
   })
 })
+
+describe('POST /cocoons/:cocoonId/child-candidates', () => {
+  const propose = (router as any).stack.find((l: any) => l.route?.path === '/cocoons/:cocoonId/child-candidates' && l.route?.methods.post)?.route?.stack[0]?.handle
+  const callPropose = async (params: Record<string, string>, body: unknown) => {
+    const r = res()
+    await propose({ params, body, socket: { setTimeout: vi.fn() } } as unknown as Request, r)
+    return r
+  }
+
+  it('propose les candidats mesurés pour une section du parent', async () => {
+    mockPropose.mockResolvedValue({ level: 'intermediaire', parentId: 10, parentSection: 'Changer les fenêtres', candidates: [{ keyword: 'double vitrage' }], usage: null })
+    const r = await callPropose({ cocoonId: '3' }, { parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(mockPropose).toHaveBeenCalledWith(3, { parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(r.json).toHaveBeenCalledWith({ data: expect.objectContaining({ level: 'intermediaire' }) })
+  })
+
+  it('sans parent : les candidats du pilier', async () => {
+    mockPropose.mockResolvedValue({ level: 'pilier', parentId: null, parentSection: null, candidates: [], usage: null })
+    await callPropose({ cocoonId: '3' }, {})
+    expect(mockPropose).toHaveBeenCalledWith(3, { parentId: null, parentSection: null })
+  })
+
+  it('400 sur une entrée invalide ; refus du service avec son code', async () => {
+    expect((await callPropose({ cocoonId: '3' }, { parentId: 'dix' })).status).toHaveBeenCalledWith(400)
+    mockPropose.mockRejectedValue(new ChildCandidatesError(409, 'PARENT_NOT_WRITTEN', 'pas rédigé'))
+    const r = await callPropose({ cocoonId: '3' }, { parentId: 10, parentSection: 'x' })
+    expect(r.status).toHaveBeenCalledWith(409)
+    expect(r.json).toHaveBeenCalledWith({ error: { code: 'PARENT_NOT_WRITTEN', message: 'pas rédigé', details: undefined } })
+  })
+})
+

@@ -1,5 +1,5 @@
 /**
- * Slugification identique à celle du backend (`slugFromTitle`,
+ * Slugification identique à celle du backend (`slugFromTitle`, interne à
  * `cocoon-article.service.ts`) : minuscules → NFD → retrait diacritiques →
  * non-alphanum en tirets → trim. Permet de retrouver un article par slug quand
  * la création est refusée pour adresse déjà prise (409 `SLUG_TAKEN`).

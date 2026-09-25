@@ -23,6 +23,11 @@ vi.mock('../../../server/utils/logger', () => ({
 }))
 
 const mockGetCocoonExistingLieutenants = vi.fn().mockResolvedValue([])
+// C7 : l'état du cocon (FR-INFRA-COCOON-CONTEXT), sans base de données.
+vi.mock('../../../server/services/strategy/cocoon-context.service', () => ({
+  cocoonContextForArticle: async () => 'ETAT-DU-COCON',
+}))
+
 vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoonExistingLieutenants: (...args: unknown[]) => mockGetCocoonExistingLieutenants(...args),
 }))
@@ -258,6 +263,16 @@ describe('POST /api/keywords/:keyword/ai-hn-structure', () => {
       lieutenants: '- causes\n- solutions',
       locked_headings: 'Aucun heading verrouille',
     }), undefined)
+  })
+
+  // C7 (FR-INFRA-COCOON-CONTEXT) : la structure connaît l'état du cocon — les
+  // sujets qui ont leur propre article, la section du parent qui annonce celui-ci.
+  it('l’état du cocon de l’article arrive dans le prompt ; sans article, rien', async () => {
+    const handler = getHnHandler()
+    await handler(makeReq('seo local', { level: 'pilier', lieutenants: ['causes'], hnStructure: [], articleId: 7 }), makeRes())
+    expect(mockLoadPrompt).toHaveBeenLastCalledWith('lieutenants-hn-structure', expect.objectContaining({ cocoon_context: 'ETAT-DU-COCON' }), undefined)
+    await handler(makeReq('seo local', { level: 'pilier', lieutenants: ['causes'], hnStructure: [] }), makeRes())
+    expect(mockLoadPrompt).toHaveBeenLastCalledWith('lieutenants-hn-structure', expect.objectContaining({ cocoon_context: '' }), undefined)
   })
 
   it('passes lockedHeadings to prompt when provided', async () => {

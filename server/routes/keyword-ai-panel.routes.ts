@@ -9,7 +9,7 @@ import { aiAdviceContract } from '../../shared/contracts/ai-advice.contract.js'
 import { loadPrompt } from '../utils/prompt-loader.js'
 import { getCocoonExistingLieutenants, saveLieutenantExplorations } from '../services/infra/data.service.js'
 import { getArticlePainPoint, PAIN_POINT_FALLBACK } from '../services/queries/article-pain-point.service.js'
-import { getCocoonSiblings, describeCocoonSiblings } from '../services/queries/cocoon-siblings.service.js'
+import { cocoonContextForArticle } from '../services/strategy/cocoon-context.service.js'
 import type { RichLieutenant } from '../../shared/types/keyword.types.js'
 import type { ProposeLieutenantsResult, FilteredProposeLieutenantsResult, LexiqueAnalysisResult, ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
 import type { ArticleLevel } from '../../shared/types/keyword-validate.types.js'
@@ -139,8 +139,9 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
     : 'Aucun heading verrouille'
 
   const painPoint = await getArticlePainPoint(articleId)
-  // Les autres articles du cocon : un pilier ne creuse pas le sujet d'un enfant (FR-HN-TAB).
-  const siblings = articleId ? await getCocoonSiblings(articleId).catch(() => []) : []
+  // L'état du cocon : un pilier ne creuse pas le sujet d'un enfant, un enfant
+  // sait ce que la section de son parent dit déjà (FR-HN-TAB, FR-INFRA-COCOON-CONTEXT).
+  const cocoonContext = articleId ? await cocoonContextForArticle(articleId).catch(() => '') : ''
   const systemPrompt = await loadPrompt('lieutenants-hn-structure', {
     keyword,
     level,
@@ -149,7 +150,7 @@ router.post('/keywords/:keyword/ai-hn-structure', async (req, res) => {
     hn_structure: hnSummary,
     locked_headings: lockedSummary,
     type_rules: typeRulesFor(level),
-    cocoon_articles: describeCocoonSiblings(siblings),
+    cocoon_context: cocoonContext,
   }, cocoonSlug ? { cocoonSlug } : undefined)
   log.debug('hn-structure prompt built', { keyword, promptChars: systemPrompt.length, hnEntries: Array.isArray(hnStructure) ? hnStructure.length : 0, lockedCount: lockedHeadings?.length ?? 0, hasPainPoint: painPoint !== PAIN_POINT_FALLBACK })
 

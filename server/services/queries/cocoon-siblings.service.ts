@@ -2,8 +2,9 @@
  * AUTHORITY: PostgreSQL `articles` (titre, type, cocoon_id) + `article_keywords.capitaine`
  * READS FROM: les autres articles du cocon d'un article
  * WRITES TO: rien
- * CONSUMERS: porte `hn-lock` (gate.service, recoupements d'un pilier),
- *            POST /keywords/:keyword/ai-hn-structure (`{{cocoon_articles}}`)
+ * CONSUMERS: porte `hn-lock` (gate.service, recoupements d'un pilier). Le
+ *            prompt de structure reçoit, lui, l'état complet du cocon
+ *            (`{{cocoon_context}}`, cocoon-context.service — C7).
  * RELATED FR: FR-HN-TAB, FR-HN-LOCK-GATE
  *
  * Un pilier qui ignore ses enfants traite tout en profondeur (le 1013) : la
@@ -34,11 +35,4 @@ export async function getCocoonSiblings(articleId: number): Promise<CocoonSiblin
     level: articleTypeDbToLevel(r.type as string),
     captain: (r.capitaine as string | null)?.trim() || null,
   }))
-}
-
-/** Les autres articles du cocon, rédigés pour un prompt (`{{cocoon_articles}}`). */
-export function describeCocoonSiblings(siblings: CocoonSibling[]): string {
-  return siblings
-    .map(s => `- ${s.title} (${s.level}${s.captain ? `, mot-clé « ${s.captain} »` : ''})`)
-    .join('\n')
 }

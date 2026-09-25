@@ -27,7 +27,7 @@ import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 import type { CocoonTreeNode, CocoonTreeSection } from '../../../shared/types/cocoon-tree.types.js'
 
-export interface CreateCocoonArticleInput {
+interface CreateCocoonArticleInput {
   title: string
   type: ArticleLevel
   parentId?: number | null
@@ -88,7 +88,7 @@ export async function getCocoonTree(cocoonId: number): Promise<CocoonTreeNode[] 
   }))
 }
 
-export function slugFromTitle(title: string): string {
+function slugFromTitle(title: string): string {
   return title
     .toLowerCase()
     .normalize('NFD')

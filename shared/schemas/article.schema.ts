@@ -81,7 +81,12 @@ export const createCocoonArticleSchema = z.object({
   painIntentExpected: painIntentExpectedSchema.nullable().optional(),
 })
 
-export type CreateCocoonArticleRequest = z.infer<typeof createCocoonArticleSchema>
+
+/** Candidats mots-clés d'un nouvel article : sans parent = le pilier d'un cocon vide. */
+export const childCandidatesSchema = z.object({
+  parentId: z.number().int().positive().nullable().optional(),
+  parentSection: z.string().trim().min(1).max(300).nullable().optional(),
+})
 
 export const patchArticleSchema = z.object({
   title: z.string().min(1).optional(),

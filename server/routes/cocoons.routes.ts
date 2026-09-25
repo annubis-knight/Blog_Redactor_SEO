@@ -3,7 +3,8 @@ import { log } from '../utils/logger.js'
 import { getCocoons, getArticlesByCocoon, getArticleKeywordsByCocoon } from '../services/infra/data.service.js'
 import { getCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
 import { createCocoonArticle, CocoonArticleError, getCocoonTree } from '../services/article/cocoon-article.service.js'
-import { createCocoonArticleSchema } from '../../shared/schemas/article.schema.js'
+import { createCocoonArticleSchema, childCandidatesSchema } from '../../shared/schemas/article.schema.js'
+import { proposeChildCandidates, ChildCandidatesError } from '../services/strategy/child-candidates.service.js'
 
 const router = Router()
 
@@ -92,6 +93,37 @@ router.post('/cocoons/:cocoonId/articles', async (req, res) => {
     }
     log.error(`POST /api/cocoons/${cocoonId}/articles — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create article' } })
+  }
+})
+
+/**
+ * POST /api/cocoons/:cocoonId/child-candidates — 3 à 5 mots-clés mesurés pour un
+ * nouvel article (FR-CER-KEYWORD-REAL-DATA) : le pilier d'un cocon vide
+ * (`parentId: null`), ou l'enfant d'une section libre d'un parent rédigé.
+ * Action payante (IA + DataForSEO, base d'abord) : l'écran la déclenche sur un clic.
+ */
+router.post('/cocoons/:cocoonId/child-candidates', async (req, res) => {
+  const cocoonId = parseInt(req.params.cocoonId, 10)
+  if (isNaN(cocoonId)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Cocoon ID must be a number' } })
+    return
+  }
+  const parsed = childCandidatesSchema.safeParse(req.body ?? {})
+  if (!parsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.message } })
+    return
+  }
+  req.socket?.setTimeout(0)
+  try {
+    const result = await proposeChildCandidates(cocoonId, { parentId: parsed.data.parentId ?? null, parentSection: parsed.data.parentSection ?? null })
+    res.json({ data: result })
+  } catch (err) {
+    if (err instanceof ChildCandidatesError) {
+      res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } })
+      return
+    }
+    log.error(`POST /api/cocoons/${cocoonId}/child-candidates — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to propose candidates' } })
   }
 })
 

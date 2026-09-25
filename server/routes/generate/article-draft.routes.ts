@@ -21,6 +21,7 @@ import type { ApiUsage } from '../../services/external/claude.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { getStrategy } from '../../services/strategy/strategy.service.js'
 import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.service.js'
+import { cocoonContextForArticle } from '../../services/strategy/cocoon-context.service.js'
 import { getArticleKeywords, loadArticleMicroContext, retainTargetWordCount } from '../../services/infra/data.service.js'
 import type { Outline } from '../../../shared/types/index.js'
 import { mergeConsecutiveElements } from '../../../shared/html-utils.js'
@@ -138,6 +139,12 @@ router.post('/generate/article-draft', async (req, res) => {
       keywordContext: buildKeywordContext(articleKw),
       microContext: buildMicroContextBlock(microCtx),
       type_rules: articleType in ARTICLE_TYPE_RULES ? describeTypeRules(articleType as ArticleLevel) : '',
+      // L'état du cocon : ce que la section du parent dit déjà, les enfants à
+      // résumer au lieu de les creuser (FR-INFRA-COCOON-CONTEXT).
+      cocoon_context: await cocoonContextForArticle(articleId).catch((err: Error) => {
+        log.warn('[article-draft] contexte du cocon illisible — premier jet sans lui', { articleId, error: err.message })
+        return ''
+      }),
       wordCountBudget: String(targetWords),
       outlinePlan: formatDraftPlan(groups, targetWords),
     }

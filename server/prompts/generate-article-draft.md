@@ -14,6 +14,12 @@
 
 {{type_rules}}
 
+{{#cocoon_context}}
+{{cocoon_context}}
+
+Un sujet qui a son propre article dans le cocon se résume ici en quelques phrases et y renvoie : il ne se traite pas en profondeur. Si cet article naît d'une section de son parent, il développe ce qu'elle annonce sans la répéter.
+{{/cocoon_context}}
+
 ## Plan de l'article et budget de chaque chapitre
 
 L'article complet vise **{{wordCountBudget}} mots**. Chaque chapitre (H2) a son budget : c'est sa part de la cible, ni un minimum ni une invitation à déborder.

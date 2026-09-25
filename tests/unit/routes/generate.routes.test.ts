@@ -32,6 +32,11 @@ vi.mock('../../../server/services/strategy/strategy.service', () => ({
   getStrategy: mockGetStrategy,
 }))
 
+// C7 : l'état du cocon (FR-INFRA-COCOON-CONTEXT), sans base de données.
+vi.mock('../../../server/services/strategy/cocoon-context.service', () => ({
+  cocoonContextForArticle: async () => '## Cocon « Test Cocoon »\n- Pilier « Test Article Title » — à rédiger',
+}))
+
 vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({
   // Fonction simple (pas vi.fn) : le beforeEach réinitialise tous les mocks.
   getCocoonStrategy: async () => null,
@@ -1076,6 +1081,8 @@ describe('POST /generate/article-draft', () => {
       wordCountBudget: '2500',
       outlinePlan: expect.stringContaining('- H2: Deuxième chapitre [annotation: content-valeur] (≈'),
       type_rules: expect.stringContaining('Règles du type Pilier'),
+      // C7 : le premier jet connaît l'état du cocon (FR-INFRA-COCOON-CONTEXT).
+      cocoon_context: expect.stringContaining('Cocon « Test Cocoon »'),
       continuation: '',
       previousText: '',
     }))

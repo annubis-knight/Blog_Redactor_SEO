@@ -33,13 +33,11 @@ Si la liste est vide ("Aucun heading verrouille"), tu as carte blanche sur l'ens
 
 {{strategy_context}}
 
-{{#cocoon_articles}}
-## Les autres articles du cocon
+{{#cocoon_context}}
+{{cocoon_context}}
 
-{{cocoon_articles}}
-
-Un chapitre ne developpe pas un sujet deja traite par l'un de ces articles : il le resume et y renvoie. Pour un article pilier, chaque H2 peut preparer un article enfant — un H2 par sujet, sans le creuser en H3 si un article le traite deja.
-{{/cocoon_articles}}
+Un chapitre ne developpe pas un sujet deja traite par un autre article du cocon : il le resume et y renvoie. Pour un article pilier, chaque H2 peut preparer un article enfant — un H2 par sujet, sans le creuser en H3 si un article le traite deja.
+{{/cocoon_context}}
 
 ## Regles de structure Hn
 
