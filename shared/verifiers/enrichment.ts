@@ -4,13 +4,16 @@
  *
  * Une passe propose, chapitre par chapitre, une version enrichie ; l'utilisateur
  * accepte ou refuse. Avant de montrer la proposition, on la juge :
- *   ⛔ proposition vide ou coupée, titres modifiés (une passe enrichit, elle ne
- *      restructure pas), tableau sans en-tête, image sans texte alternatif, FAQ
- *      sans titre ni questions — une telle proposition ne s'accepte pas ;
+ *   ⛔ proposition vide ou coupée ; titres H1 à H3 modifiés (H1 et H2 pour une
+ *      réécriture, qui peut refaire ses H3) — une passe enrichit, elle ne
+ *      restructure pas ; bloc posé à la main (tableau, image, lien, marqueur)
+ *      perdu ; tableau sans en-tête ; image sans texte alternatif ; FAQ sans
+ *      titre H2 ni questions H3 — une telle proposition ne s'accepte pas ;
  *   🔴 lien absent des résultats de la recherche web (retiré, texte gardé), chiffre
- *      sans source ou phrase non française ajoutés, question de FAQ mal formée ;
+ *      sans source ou phrase non française ajoutés, question de FAQ sans « ? » ;
  *   🟠 marqueur « à sourcer » encore présent après la passe Sources, proposition
- *      identique au texte d'origine.
+ *      identique au texte d'origine, nombre de questions de FAQ hors de la
+ *      fourchette du type.
  */
 import { detectNonFrenchSentences, detectUnsourcedFigures } from '../text-quality.js'
 import { distinctRules } from './publish.js'

@@ -20,7 +20,7 @@ import { loadZoneContext } from '../strategy/prompt-context.service.js'
 import { articlePlainText } from '../../../shared/chapters.js'
 import { verifyEnrichment, keepKnownLinks, knownSources, type EnrichmentPass } from '../../../shared/verifiers/enrichment.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder.js'
-import { describeTypeRules } from '../../../shared/constants/article-type-rules.js'
+import { describeTypeRules, describeUnknownTypeFaq } from '../../../shared/constants/article-type-rules.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type { EnrichmentProposal } from '../../../shared/types/enrichment.types.js'
 
@@ -71,7 +71,7 @@ async function buildUserPrompt(input: ProposalInput): Promise<string> {
     articleText: articlePlainText(input.articleHtml, ARTICLE_CONTEXT_MAX_CHARS),
     strategyContext: input.strategyContext ?? '',
   }
-  if (input.pass === 'faq') variables.type_rules = input.articleType ? describeTypeRules(input.articleType) : ''
+  if (input.pass === 'faq') variables.type_rules = input.articleType ? describeTypeRules(input.articleType) : describeUnknownTypeFaq()
   if (input.pass !== 'faq') variables.chapterHtml = input.chapterHtml
   if (input.pass === 'images') variables.imageSrc = IMAGE_TO_PROVIDE_SRC
   if (input.pass === 'reecriture') variables.instruction = input.instruction ?? ''

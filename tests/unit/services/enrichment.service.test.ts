@@ -89,6 +89,14 @@ describe('proposeChapter — passes simulées', () => {
     expect(p.issues).toEqual([])
   })
 
+  // Suite C5b : type inconnu = aucune consigne de nombre de questions dans le prompt.
+  it('FAQ d’un article de type inconnu : la consigne donne la fourchette la plus large, et le dit', async () => {
+    await proposeChapter(input('faq', { chapterHtml: '', chapterIndex: 1, articleType: null }))
+    const prompt = streamSpy.mock.calls[0]![1] as string
+    expect(prompt).toContain('FAQ : 3 à 6 questions')
+    expect(prompt).toMatch(/type d’article inconnu/i)
+  })
+
   it('FAQ hors de la fourchette du type : 🟠', async () => {
     streamSpy.mockImplementationOnce(async function* () {
       yield '<h2>Questions fréquentes</h2><h3>Pourquoi ?</h3><p>Parce que.</p>'

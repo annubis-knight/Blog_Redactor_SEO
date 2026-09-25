@@ -84,6 +84,8 @@ export const useEditorStore = defineStore('editor', () => {
   const isSaving = ref(false)
   const lastSavedAt = ref<string | null>(null)
   const lastArticleUsage = ref<ApiUsage | null>(null)
+  /** Longueur réellement visée par le dernier premier jet (renvoyée par le serveur). */
+  const lastDraftTargetWordCount = ref<number | null>(null)
   const lastMetaUsage = ref<ApiUsage | null>(null)
   const sectionProgress = ref<{ current: number; total: number; title: string } | null>(null)
 
@@ -143,12 +145,14 @@ export const useEditorStore = defineStore('editor', () => {
       ...(targetWordCount ? { targetWordCount } : {}),
     }
 
-    const streaming = useStreaming<{ content: string }>()
+    const streaming = useStreaming<{ content: string; targetWordCount?: number }>()
+    lastDraftTargetWordCount.value = null
 
     await streaming.startStream('/api/generate/article-draft', body, {
       onChunk: (accumulated) => { streamedText.value = accumulated },
       onDone: (data) => {
         content.value = data.content
+        lastDraftTargetWordCount.value = data.targetWordCount ?? null
         log.info('[editor] Article generation done', { contentLength: data.content.length, contentSnippet: data.content.substring(0, 100) })
       },
       onError: (message) => {
@@ -706,7 +710,7 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     content, streamedText, isGenerating, isGeneratingMeta, error,
     metaTitle, metaDescription, isDirty, isSaving, lastSavedAt,
-    lastArticleUsage, lastMetaUsage, sectionProgress,
+    lastArticleUsage, lastMetaUsage, sectionProgress, lastDraftTargetWordCount,
     // reduce / humanize
     isReducing, isHumanizing, humanizeProgress, reduceProgress,
     lastReduceUsage, lastHumanizeUsage, lastHumanizeError, humanizeFallbackCount,

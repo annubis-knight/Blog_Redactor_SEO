@@ -156,6 +156,14 @@ describe('useArticleGeneration — FR-RED-ARTICLE/META/REDUCE/HUMANIZE', () => {
       expect((briefStore as unknown as { setRetainedWordCount: ReturnType<typeof vi.fn> }).setRetainedWordCount).toHaveBeenCalledWith(2400)
     })
 
+    // Suite C5b : si une autre fenêtre avait choisi une longueur entre-temps,
+    // le serveur l'a visée ; l'écran doit garder celle-là, pas la sienne.
+    it('le serveur a visé une autre longueur : l’écran garde celle du serveur', async () => {
+      const { api, briefStore } = setup({ target: 2400, editorOverrides: { lastDraftTargetWordCount: 3000 } })
+      await api.handleGenerateArticle()
+      expect((briefStore as unknown as { setRetainedWordCount: ReturnType<typeof vi.fn> }).setRetainedWordCount).toHaveBeenCalledWith(3000)
+    })
+
     it('utilise pilierKeyword.keyword pour meta (pas article.title)', async () => {
       const { api, editorStore } = setup()
       await api.handleGenerateArticle()

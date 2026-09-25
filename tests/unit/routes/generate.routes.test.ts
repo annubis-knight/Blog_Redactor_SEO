@@ -17,7 +17,6 @@ const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticl
 vi.mock('../../../server/services/external/ai-provider.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
-  WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
   webSearchTool: (zone?: string | null) => ({ type: 'web_search_20250305', name: 'web_search', max_uses: 3, user_location: { type: 'approximate', country: 'FR', city: zone?.split(',')[0]?.trim() } }),
 }))
 
@@ -339,15 +338,41 @@ describe('POST /generate/action', () => {
       yield `__USAGE__${JSON.stringify({ ...fakeUsage, webSources })}`
     })())
     const res = createMockRes()
+    const socket = { setTimeout: vi.fn() }
 
-    await handler({ body: { ...validActionBody, actionType: 'sources-chiffrees' } } as unknown as Request, res)
+    await handler({ body: { ...validActionBody, actionType: 'sources-chiffrees' }, socket } as unknown as Request, res)
 
     const tools = mockStreamChatCompletion.mock.calls[0]![3] as Array<{ user_location?: { city?: string } }>
     expect(tools[0]!.user_location?.city).toBe('Toulouse')
     const written = res.write.mock.calls.map(([raw]: [string]) => raw).join('')
-    expect(written).toContain('https://www.insee.fr/a')
-    expect(written, 'le lien inventé ne part pas, même au fil du flux').not.toContain('invente.example')
-    expect(written).toContain('une étude')
+    // Le texte envoyé (morceaux du flux et résultat final), pas l'avis sur les liens retirés.
+    const texts = [...written.matchAll(/event: (?:chunk|done)\ndata: (.+)\n\n/g)].map(m => (JSON.parse(m[1]!) as { content: string }).content)
+    expect(texts.join('')).toContain('https://www.insee.fr/a')
+    expect(texts.join(''), 'le lien inventé ne part pas, même au fil du flux').not.toContain('invente.example')
+    expect(texts.join('')).toContain('une étude')
+    // Suite C5b : le lien retiré n'était que journalisé ; l'écran doit pouvoir le dire.
+    const done = written.split('event: done\ndata: ')[1]!.split('\n\n')[0]!
+    expect(JSON.parse(done).removedLinks).toEqual(['https://invente.example/x'])
+    // Une recherche web peut dépasser le délai par défaut du socket.
+    expect(socket.setTimeout).toHaveBeenCalledWith(0)
+  })
+
+  // Suite C5b : une action coupée (plafond de jetons atteint) partait comme
+  // complète, et l'utilisateur pouvait remplacer sa sélection par un texte tronqué.
+  it('réponse coupée avant la fin : événement error, jamais done', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce((async function* () {
+      yield '<p>Un texte qui s’arrête au milieu d’une'
+      yield `__USAGE__${JSON.stringify({ ...fakeUsage, stopReason: 'max_tokens' })}`
+    })())
+    const res = createMockRes()
+
+    await handler({ body: validActionBody } as unknown as Request, res)
+
+    const written = res.write.mock.calls.map(([raw]: [string]) => raw).join('')
+    expect(written).toContain('event: error')
+    expect(written).toContain('ACTION_TRUNCATED')
+    expect(written).not.toContain('event: done')
+    expect(res.end).toHaveBeenCalled()
   })
 
   it('streams SSE response correctly', async () => {
@@ -1061,9 +1086,15 @@ describe('POST /generate/article-draft', () => {
   it('la cible choisie par l’utilisateur (micro-contexte) l’emporte sur la recommandation envoyée', async () => {
     mockLoadArticleMicroContext.mockResolvedValueOnce({ targetWordCount: 3000 })
     mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>a</p>'], 'end'))
-    await handler(req({ ...validDraftBody, targetWordCount: 2400 }), createMockRes())
+    const res = createMockRes()
+    await handler(req({ ...validDraftBody, targetWordCount: 2400 }), res)
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-draft', expect.objectContaining({ wordCountBudget: '3000' }))
     expect(mockRetainTargetWordCount).not.toHaveBeenCalled()
+    // Suite C5b : l'écran gardait la longueur qu'IL avait demandée (2400) ; le
+    // serveur dit celle qu'il a réellement visée, et l'écran la reprend.
+    const written = res.write.mock.calls.map(([raw]: [string]) => raw).join('')
+    const done = written.split('event: done\ndata: ')[1]!.split('\n\n')[0]!
+    expect(JSON.parse(done).targetWordCount).toBe(3000)
   })
 
   it('sans cible choisie, la cible retenue est enregistrée : la porte jugera contre elle', async () => {

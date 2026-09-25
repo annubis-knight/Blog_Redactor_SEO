@@ -131,6 +131,7 @@ const {
   isStreaming,
   streamedResult,
   actionError,
+  actionNotice,
   showArticlePicker,
   executeAction,
   acceptResult,
@@ -481,6 +482,7 @@ onMounted(async () => {
           :streamed-result="streamedResult"
           :articles="articlesStore.articles.filter(a => a.id !== articleId)"
           :action-error="actionError"
+          :action-notice="actionNotice"
           @close-menu="showActionMenu = false"
           @select-action="handleSelectAction"
           @accept-result="handleAcceptResult"

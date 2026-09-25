@@ -8,7 +8,6 @@ const mockStreamGenerator = vi.fn()
 vi.mock('../../../server/services/external/ai-provider.service', () => ({
   streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
   USAGE_SENTINEL: '__USAGE__',
-  WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
 }))
 vi.mock('../../../server/services/external/claude.service', () => ({
   streamChatCompletion: (...args: unknown[]) => mockStreamGenerator(...args),
