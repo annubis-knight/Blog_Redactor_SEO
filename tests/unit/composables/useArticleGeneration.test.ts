@@ -3,7 +3,7 @@
  * + FR-RED-WORD-COUNT-TARGET — composable extrait V4 (Option B Vague).
  *
  * Invariants couverts (cf. PRD §8.10) :
- *   - wordCountTarget = briefStore.briefData.contentLengthRecommendation
+ *   - wordCountTarget = briefStore.targetWordCount (longueur choisie pour l’article, sinon la recommandation — R16)
  *   - canReduce = delta > 15% du target (article trop long)
  *   - currentKeyword = capitaine || briefData.article.title (fallback)
  *   - allKeywords = liste plate des keywords du brief
@@ -41,8 +41,9 @@ function makeEditorStore(overrides: Record<string, unknown> = {}) {
   } as never
 }
 
-function makeBriefStore(target: number | null = 1500) {
+function makeBriefStore(target: number | null = 1500, retained: number | null = null) {
   return {
+    targetWordCount: retained ?? target,
     briefData: {
       contentLengthRecommendation: target,
       article: { title: 'Le SEO local pour les artisans' },
@@ -82,9 +83,17 @@ describe('useArticleGeneration — FR-RED-ARTICLE/META/REDUCE/HUMANIZE', () => {
   })
 
   describe('computeds', () => {
-    it('wordCountTarget = briefData.contentLengthRecommendation', () => {
+    it('wordCountTarget = la longueur visée du brief (recommandation par défaut)', () => {
       const { api } = setup({ target: 2000 })
       expect(api.wordCountTarget.value).toBe(2000)
+    })
+
+    it('wordCountTarget suit la longueur choisie pour l’article, pas la recommandation (R16)', () => {
+      const api = useArticleGeneration({
+        articleId: ref(7), editorStore: makeEditorStore(), briefStore: makeBriefStore(2000, 3100),
+        outlineStore: makeOutlineStore(), articleKeywordsStore: makeArticleKeywordsStore(),
+      })
+      expect(api.wordCountTarget.value).toBe(3100)
     })
 
     it('wordCountTarget = null si brief absent', () => {

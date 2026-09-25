@@ -67,7 +67,7 @@ const backLink = computed(() =>
   cocoonId.value ? `/cocoon/${cocoonId.value}/article/${articleId.value}` : '/',
 )
 
-const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showBlocksPanel, hasActivePanel } = usePanelToggle('blocks')
+const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showBlocksPanel, showEnrichPanel, hasActivePanel } = usePanelToggle('blocks')
 async function handlePreview() {
   if (!articleId.value) return
   if (editorStore.isDirty) {
@@ -80,7 +80,7 @@ async function handlePreview() {
 const hasBody = computed(() => !!editorStore.content)
 
 function guardedToggle(panel: Parameters<typeof toggle>[0]) {
-  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'blocks')) return
+  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'blocks' || panel === 'enrich')) return
   toggle(panel)
 }
 
@@ -111,7 +111,7 @@ const {
 } = useInternalLinking(computed(() => articleId.value ?? 0))
 useSeoScoring(
   () => keywordsStore.keywords,
-  () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
+  () => briefStore.targetWordCount ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
   () => articleKeywordsStore.keywords,
   () => briefStore.briefData?.article.slug,
@@ -323,10 +323,12 @@ onMounted(async () => {
             :show-link-suggestions="showLinkSuggestions"
             :show-blocks-button="true"
             :show-blocks-panel="showBlocksPanel"
+            :show-enrich-panel="showEnrichPanel"
             @toggle-seo="guardedToggle('seo')"
             @toggle-geo="guardedToggle('geo')"
             @toggle-linking="handleToggleLinkSuggestions"
             @toggle-blocks="guardedToggle('blocks')"
+            @toggle-enrich="guardedToggle('enrich')"
           />
         </div>
 
@@ -499,6 +501,8 @@ onMounted(async () => {
           :show-geo-panel="showGeoPanel"
           :show-link-suggestions="showLinkSuggestions"
           :show-blocks-panel="showBlocksPanel"
+          :show-enrich-panel="showEnrichPanel"
+          :article-id="articleId"
           :link-suggestions="linkSuggestions"
           :is-suggesting="isSuggesting"
           @accept-suggestion="handleAcceptSuggestion"

@@ -109,7 +109,7 @@ function _isStepCompleted(stepId: string): boolean {
 // --- Body gating for scoring panels ---
 const hasBody = computed(() => !!editorStore.content)
 
-const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, hasActivePanel } = usePanelToggle('seo')
+const { activePanel, toggle, showSeoPanel, showGeoPanel, showLinkSuggestions, showIaBriefPanel, showEnrichPanel, hasActivePanel } = usePanelToggle('seo')
 
 useKeyboardShortcuts([
   {
@@ -131,7 +131,7 @@ useKeyboardShortcuts([
 ])
 
 function guardedToggle(panel: Parameters<typeof toggle>[0]) {
-  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking')) return
+  if (!hasBody.value && (panel === 'seo' || panel === 'geo' || panel === 'linking' || panel === 'enrich')) return
   toggle(panel)
 }
 
@@ -146,7 +146,7 @@ const {
 // Scoring composables — watch editorStore.content reactively
 const { seoStore: _seoStore } = useSeoScoring(
   () => keywordsStore.keywords.length > 0 ? keywordsStore.keywords : (briefStore.briefData?.keywords ?? []),
-  () => briefStore.briefData?.contentLengthRecommendation ?? undefined,
+  () => briefStore.targetWordCount ?? undefined,
   () => briefStore.briefData?.dataForSeo?.relatedKeywords ?? [],
   () => articleKeywordsStore.keywords,
   () => briefStore.briefData?.article.slug,
@@ -363,10 +363,12 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           :show-link-suggestions="showLinkSuggestions"
           :show-ia-brief-button="true"
           :show-ia-brief-panel="showIaBriefPanel"
+          :show-enrich-panel="showEnrichPanel"
           @toggle-seo="guardedToggle('seo')"
           @toggle-geo="guardedToggle('geo')"
           @toggle-linking="handleToggleLinkSuggestions"
           @toggle-ia-brief="handleToggleIaBrief"
+          @toggle-enrich="guardedToggle('enrich')"
         />
       </div>
 
@@ -483,6 +485,8 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           :show-seo-panel="showSeoPanel"
           :show-geo-panel="showGeoPanel"
           :show-link-suggestions="showLinkSuggestions"
+          :show-enrich-panel="showEnrichPanel"
+          :article-id="articleId"
           :link-suggestions="linkSuggestions"
           :is-suggesting="isSuggesting"
           @dismiss-suggestion="dismissSuggestion($event)"

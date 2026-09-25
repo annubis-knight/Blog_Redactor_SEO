@@ -30,7 +30,7 @@ const cocoonRef = computed(() => props.cocoonName || briefStore.briefData?.artic
 const { warnings: cannibalizationWarnings } = useCannibalization(articleIdRef, cocoonRef)
 
 // Content length target
-const contentLengthTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? DEFAULT_TARGET_WORDS_FALLBACK)
+const contentLengthTarget = computed(() => briefStore.targetWordCount ?? DEFAULT_TARGET_WORDS_FALLBACK)
 
 // Tab management
 type TabId = 'mots-clefs' | 'indicateurs' | 'serp-data'

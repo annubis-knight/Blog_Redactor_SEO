@@ -18,7 +18,7 @@ import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
  * Référence FR PRD : FR-RED-* (génération article + meta + reduce + humanize).
  *
  * Encapsule la logique partagée entre les deux vues Rédaction :
- *  - `wordCountTarget` (depuis `briefStore.briefData.contentLengthRecommendation`)
+ *  - `wordCountTarget` (`briefStore.targetWordCount` : la longueur choisie pour l’article, sinon la recommandation — R16)
  *  - `canReduce` (delta > 15 % du target)
  *  - `wordCountDeltaDisplay`
  *  - `currentKeyword` / `allKeywords` (lecture stores)
@@ -39,7 +39,7 @@ export interface ArticleGenerationDeps {
 }
 
 export interface ArticleGenerationApi {
-  /** Cible mots depuis briefStore.briefData.contentLengthRecommendation. */
+  /** Longueur visée : choisie pour l’article, sinon recommandée (briefStore.targetWordCount). */
   wordCountTarget: ComputedRef<number | null>
   /** True si delta > 15 % du target (article trop long). */
   canReduce: ComputedRef<boolean>
@@ -66,7 +66,7 @@ export interface ArticleGenerationApi {
 export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenerationApi {
   const { articleId, editorStore, briefStore, outlineStore, articleKeywordsStore } = deps
 
-  const wordCountTarget = computed(() => briefStore.briefData?.contentLengthRecommendation ?? null)
+  const wordCountTarget = computed(() => briefStore.targetWordCount)
 
   const canReduce = computed(() => {
     if (!wordCountTarget.value || !editorStore.content) return false

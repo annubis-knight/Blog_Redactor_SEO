@@ -144,6 +144,7 @@ function cancelSuggestion() {
 
 // --- Target word count ---
 function handleTargetWordCountUpdate(value: number) {
+  briefStore.setRetainedWordCount(value)
   targetWordCount.value = value
   saveMicroContext()
 }

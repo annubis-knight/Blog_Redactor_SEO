@@ -127,6 +127,39 @@ describe('brief.store — fetchBrief', () => {
   })
 })
 
+// R16 — l'écran affichait la recommandation du brief même quand l'utilisateur
+// avait choisi une autre longueur : la barre de mots, l'écart et la réduction
+// ne visaient pas la cible que la rédaction et sa porte suivent.
+describe('brief.store — longueur visée', () => {
+  async function loaded(micro: unknown) {
+    mockApiGet.mockResolvedValueOnce(mockArticleResponse)
+    mockApiGet.mockResolvedValueOnce(mockKeywords)
+    mockApiGet.mockResolvedValueOnce(micro)
+    mockApiPost.mockResolvedValueOnce(mockDataForSeo)
+    const store = useBriefStore()
+    await store.fetchBrief(7)
+    await new Promise(resolve => setTimeout(resolve, 0))
+    return store
+  }
+
+  it('la cible choisie pour l’article l’emporte sur la recommandation', async () => {
+    const store = await loaded({ targetWordCount: 3100 })
+    expect(mockApiGet).toHaveBeenCalledWith('/articles/7/micro-context')
+    expect(store.targetWordCount).toBe(3100)
+  })
+
+  it('sans cible choisie, la recommandation fait foi', async () => {
+    const store = await loaded(null)
+    expect(store.targetWordCount).toBe(store.briefData!.contentLengthRecommendation)
+  })
+
+  it('un nouveau choix est suivi aussitôt', async () => {
+    const store = await loaded(null)
+    store.setRetainedWordCount(1900)
+    expect(store.targetWordCount).toBe(1900)
+  })
+})
+
 describe('brief.store — pilierKeyword', () => {
   it('returns the pilier keyword from briefData', async () => {
     mockApiGet.mockResolvedValueOnce(mockArticleResponse)

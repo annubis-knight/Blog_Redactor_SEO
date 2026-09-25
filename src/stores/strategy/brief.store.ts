@@ -44,6 +44,19 @@ export const useBriefStore = defineStore('brief', () => {
     briefData.value?.keywords.find(kw => kw.type === 'Pilier') ?? null,
   )
 
+  /** Longueur choisie pour l'article (micro-contexte), ou retenue par le premier jet. */
+  const retainedWordCount = ref<number | null>(null)
+
+  /**
+   * Longueur visée, la même partout (R16) : barre de mots, écart, réduction,
+   * score SEO et rédaction. Le choix de l'article passe avant la recommandation.
+   */
+  const targetWordCount = computed(() => retainedWordCount.value ?? briefData.value?.contentLengthRecommendation ?? null)
+
+  function setRetainedWordCount(words: number | null) {
+    retainedWordCount.value = words
+  }
+
   async function fetchBrief(id: number) {
     fetchController?.abort()
     fetchController = new AbortController()
@@ -92,6 +105,15 @@ export const useBriefStore = defineStore('brief', () => {
       const heuristicRecommendation = calculateContentLength(article.type)
       briefData.value = { article: articleWithCocoon, keywords, dataForSeo, contentLengthRecommendation: heuristicRecommendation }
 
+      // Longueur choisie pour l'article : lue sans bloquer l'écran.
+      retainedWordCount.value = null
+      void Promise.resolve()
+        .then(() => apiGet<{ targetWordCount?: number | null } | null>(`/articles/${id}/micro-context`))
+        .then((micro) => {
+          if (id === currentId.value) retainedWordCount.value = micro?.targetWordCount ?? null
+        })
+        .catch((err: Error) => log.warn(`[brief.store] micro-contexte illisible — ${err.message}`))
+
       // Appel IA non-bloquant — met à jour briefData quand la réponse arrive
       void fetchContentLengthRecommendation(id, article.type).then(aiReco => {
         if (id !== currentId.value) return
@@ -129,5 +151,8 @@ export const useBriefStore = defineStore('brief', () => {
     }
   }
 
-  return { briefData, isLoading, error, isRefreshing, pilierKeyword, dataForSeoFromCache, fetchBrief, refreshDataForSeo }
+  return {
+    briefData, isLoading, error, isRefreshing, pilierKeyword, dataForSeoFromCache, targetWordCount,
+    fetchBrief, refreshDataForSeo, setRetainedWordCount,
+  }
 })
