@@ -10,6 +10,7 @@
     "db:snapshot": "tsx scripts/db-snapshot.ts",
     "db:bootstrap": "tsx scripts/db-bootstrap.ts",
     "db:check": "tsx scripts/db-check.ts",
+    "db:apply": "tsx scripts/db-apply-change.ts",
     "db:backup": "tsx scripts/db-backup.ts",
     "db:clean-tests": "tsx scripts/db-clean-tests.ts",
     "db:reconcile-hn": "tsx scripts/reconcile-hn-checks.ts",

@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-09-24T22:52:03.571Z
--- Commit git       : 462c884 (feat/verificateurs-alarme)
--- Sujet commit     : ci: vérifier chaque branche dès qu'elle est poussée
+-- Généré le        : 2026-09-25T08:00:37.886Z
+-- Commit git       : fbb7c43 (feat/cocon-progressif)
+-- Sujet commit     : Merge branch 'feat/redaction-enrichissement' into feat/onglet-structure-hn
 -- Working tree     : ⚠️  NON (modifs non commitées)
 -- Tables           : 26
--- Empreinte schéma : sha256:7d3aa1ce6d1b615714e1d27875e9a48dd763d93f73552282792b175c22cecbfe
+-- Empreinte schéma : sha256:4b668dbfef95b1080f848179edfc67c396a21ed1882712ff7339fdaeab6a5ccf
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -79,9 +79,13 @@ CREATE TABLE "articles" (
   "captain_keyword_locked" TEXT,
   "pain_point" TEXT,
   "pain_intent_expected" TEXT,
+  "parent_id" INTEGER,
+  "parent_section" TEXT,
   CONSTRAINT "articles_pain_intent_expected_check" CHECK (((pain_intent_expected IS NULL) OR (pain_intent_expected = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text])))),
+  CONSTRAINT "articles_parent_not_self" CHECK (((parent_id IS NULL) OR (parent_id <> id))),
   CONSTRAINT "articles_type_check" CHECK ((type = ANY (ARRAY['Pilier'::text, 'Intermédiaire'::text, 'Spécialisé'::text]))),
   CONSTRAINT "articles_cocoon_id_fkey" FOREIGN KEY (cocoon_id) REFERENCES cocoons(id) ON DELETE SET NULL,
+  CONSTRAINT "articles_parent_id_fkey" FOREIGN KEY (parent_id) REFERENCES articles(id) ON DELETE RESTRICT,
   CONSTRAINT "articles_pkey" PRIMARY KEY (id),
   CONSTRAINT "articles_slug_key" UNIQUE (slug)
 );
@@ -352,6 +356,8 @@ CREATE TABLE "theme_config" (
 -- Indexes
 
 CREATE INDEX idx_articles_cocoon_id ON public.articles USING btree (cocoon_id);
+
+CREATE INDEX idx_articles_parent_id ON public.articles USING btree (parent_id);
 
 CREATE INDEX idx_articles_slug ON public.articles USING btree (slug);
 

@@ -137,6 +137,14 @@ export async function cleanupTestFixtures(runId: string): Promise<void> {
   //    jamais modifié — c'est la clé de nettoyage fiable.
   //    Sans ce second DELETE, 28 articles « Renamed <timestamp> » s'étaient
   //    accumulés dans la base de dev (audit 2026-09-19).
+  // C7 : un parent ne se supprime pas tant qu'il a des enfants (ON DELETE
+  // RESTRICT). Les enfants des articles de test sont détachés d'abord.
+  await query(
+    `UPDATE articles SET parent_id = NULL WHERE parent_id IN (
+       SELECT id FROM articles
+       WHERE titre LIKE $1 OR slug LIKE $2 OR cocoon_id IN (SELECT id FROM cocoons WHERE nom LIKE $1))`,
+    [pattern, testSlugPattern(runId)],
+  )
   await query(`DELETE FROM articles WHERE titre LIKE $1`, [pattern])
   await query(`DELETE FROM articles WHERE slug LIKE $1`, [testSlugPattern(runId)])
 
@@ -207,6 +215,7 @@ export async function cleanupOrphanedFixtures(maxAgeMs = 60 * 60 * 1000): Promis
   for (const row of articlesRes.rows) {
     const ts = parseTimestampFromTag(row.titre)
     if (ts !== null && ts < cutoff) {
+      await query(`UPDATE articles SET parent_id = NULL WHERE parent_id = $1`, [row.id])
       await query(`DELETE FROM articles WHERE id = $1`, [row.id])
       deleted++
     }
@@ -220,6 +229,7 @@ export async function cleanupOrphanedFixtures(maxAgeMs = 60 * 60 * 1000): Promis
   for (const row of renamedRes.rows) {
     const ts = parseTimestampFromSlug(row.slug)
     if (ts !== null && ts < cutoff) {
+      await query(`UPDATE articles SET parent_id = NULL WHERE parent_id = $1`, [row.id])
       await query(`DELETE FROM articles WHERE id = $1`, [row.id])
       deleted++
     }

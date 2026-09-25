@@ -91,6 +91,8 @@ function rowToArticle(row: Record<string, unknown>): Article {
     captainKeywordLocked: (row.captain_keyword_locked as string | null) ?? null,
     painPoint: (row.pain_point as string | null) ?? null,
     painIntentExpected: (row.pain_intent_expected as Article['painIntentExpected'] | null) ?? null,
+    parentId: (row.parent_id as number | null) ?? null,
+    parentSection: (row.parent_section as string | null) ?? null,
     createdAt: row.created_at ? (row.created_at as Date).toISOString() : undefined,
     updatedAt: row.updated_at ? (row.updated_at as Date).toISOString() : undefined,
   }
@@ -120,6 +122,7 @@ export async function loadArticlesDb(): Promise<Cocoon[]> {
       a.completed_checks, a.check_timestamps,
       a.seo_score, a.geo_score, a.meta_title, a.meta_description,
       a.suggested_keyword, a.captain_keyword_locked, a.pain_point, a.pain_intent_expected,
+      a.parent_id, a.parent_section,
       a.created_at, a.updated_at
     FROM silos s
     JOIN cocoons c ON c.silo_id = s.id

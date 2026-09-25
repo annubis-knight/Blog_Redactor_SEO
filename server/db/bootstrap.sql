@@ -4,7 +4,7 @@
 -- ⚠️  Fichier généré par `npm run db:bootstrap` (ou db:snapshot).
 -- NE PAS éditer à la main. Sert à créer une base vide (CI).
 -- Usage : psql -v ON_ERROR_STOP=1 -d <base> -f server/db/bootstrap.sql
--- Empreinte schéma (schema.sql) : sha256:7d3aa1ce6d1b615714e1d27875e9a48dd763d93f73552282792b175c22cecbfe
+-- Empreinte schéma (schema.sql) : sha256:4b668dbfef95b1080f848179edfc67c396a21ed1882712ff7339fdaeab6a5ccf
 -- ============================================================
 --
 -- PostgreSQL database dump
@@ -144,7 +144,10 @@ CREATE TABLE public.articles (
     captain_keyword_locked text,
     pain_point text,
     pain_intent_expected text,
+    parent_id integer,
+    parent_section text,
     CONSTRAINT articles_pain_intent_expected_check CHECK (((pain_intent_expected IS NULL) OR (pain_intent_expected = ANY (ARRAY['commercial'::text, 'transactional'::text, 'informational'::text, 'navigational'::text])))),
+    CONSTRAINT articles_parent_not_self CHECK (((parent_id IS NULL) OR (parent_id <> id))),
     CONSTRAINT articles_type_check CHECK ((type = ANY (ARRAY['Pilier'::text, 'Intermédiaire'::text, 'Spécialisé'::text])))
 );
 
@@ -986,6 +989,12 @@ ALTER TABLE ONLY public.theme_config
 CREATE INDEX idx_articles_cocoon_id ON public.articles USING btree (cocoon_id);
 
 --
+-- Name: idx_articles_parent_id; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_articles_parent_id ON public.articles USING btree (parent_id);
+
+--
 -- Name: idx_articles_slug; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1169,6 +1178,13 @@ ALTER TABLE ONLY public.article_strategies
 
 ALTER TABLE ONLY public.articles
     ADD CONSTRAINT articles_cocoon_id_fkey FOREIGN KEY (cocoon_id) REFERENCES public.cocoons(id) ON DELETE SET NULL;
+
+--
+-- Name: articles articles_parent_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.articles
+    ADD CONSTRAINT articles_parent_id_fkey FOREIGN KEY (parent_id) REFERENCES public.articles(id) ON DELETE RESTRICT;
 
 --
 -- Name: cocoon_strategies cocoon_strategies_cocoon_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
