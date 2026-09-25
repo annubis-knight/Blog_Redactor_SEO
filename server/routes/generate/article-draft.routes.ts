@@ -26,6 +26,7 @@ import { getArticleKeywords, loadArticleMicroContext, retainTargetWordCount } fr
 import type { Outline } from '../../../shared/types/index.js'
 import { stripAiPreamble } from '../../../shared/ai-text.js'
 import { stripOrphanBlockText, trimTruncatedBlocks } from '../../../shared/content-repair.js'
+import { markUnsourcedFigures } from '../../../shared/text-quality.js'
 import { targetWordsFor, describeTypeRules, ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules.js'
 import { sectionBudgets } from '../../../shared/section-budget.js'
 import { createH2Tracker, type ChapterEvent } from '../../../shared/html-stream.js'
@@ -190,8 +191,9 @@ router.post('/generate/article-draft', async (req, res) => {
     writeChapterEvents(res, tracker.finish())
 
     // Les paragraphes restent des paragraphes (R14 : ils étaient fusionnés en un
-    // seul <p> joint par des <br>).
-    const finalContent = repairStructure(repairHtmlTail(content))
+    // seul <p> joint par des <br>). Un chiffre sans source que l'IA aurait écrit
+    // malgré la consigne devient un passage « à sourcer » (FR-RED-DRAFT-TO-SOURCE).
+    const finalContent = markUnsourcedFigures(repairStructure(repairHtmlTail(content)))
     totalUsage.model = describeModelsUsed(models)
     totalUsage.stopReason = stopReason
     log.info(`Premier jet rédigé pour « ${articleTitle} »`, {

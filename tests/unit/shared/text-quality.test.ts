@@ -9,6 +9,7 @@ import {
   detectNonFrenchSentences,
   detectRepeatedParagraphs,
   detectUnsourcedFigures,
+  markUnsourcedFigures,
 } from '../../../shared/text-quality'
 
 describe('countWordsHtml', () => {
@@ -83,5 +84,28 @@ describe('detectUnsourcedFigures', () => {
 
   it('ne prend pas un nombre ordinaire pour une statistique', () => {
     expect(detectUnsourcedFigures('<p>Voici 3 étapes pour lancer votre site en 2026.</p>')).toEqual([])
+  })
+})
+
+// FR-RED-DRAFT-TO-SOURCE — recette réelle C8 du 2026-09-25 : malgré la consigne,
+// le premier jet affirmait « 95 % des clients… », « +20 % de visibilité… ». Le
+// serveur pose désormais un marqueur « à sourcer » sur toute phrase chiffrée
+// sans source : aucun chiffre inventé n'est présenté comme un fait.
+describe('markUnsourcedFigures', () => {
+  it('pose un marqueur sur la phrase chiffrée sans source, et seulement elle', () => {
+    const html = '<p>Votre fiche compte. Cet audit peut ajouter 20 % à votre visibilité locale. Commencez aujourd’hui.</p>'
+    const marked = markUnsourcedFigures(html)
+    expect(marked).toBe('<p>Votre fiche compte. <mark data-a-sourcer>[à sourcer : Cet audit peut ajouter 20 % à votre visibilité locale.]</mark> Commencez aujourd’hui.</p>')
+    expect(detectUnsourcedFigures(marked)).toEqual([])
+  })
+
+  it('garde les balises en ligne de la phrase, dans les listes aussi', () => {
+    const marked = markUnsourcedFigures('<ul><li>Un site coûte <strong>3 000 €</strong> en moyenne.</li></ul>')
+    expect(marked).toBe('<ul><li><mark data-a-sourcer>[à sourcer : Un site coûte <strong>3 000 €</strong> en moyenne.]</mark></li></ul>')
+  })
+
+  it('ne touche ni un chiffre attribué, ni un marqueur existant, ni un nombre ordinaire, ni les titres', () => {
+    const html = '<h2>Les 3 erreurs à éviter</h2><p>Selon l’Insee, 42 % des TPE ont un site. <mark data-a-sourcer>[à sourcer : 70 % des clients]</mark> comparent. Voici 3 étapes.</p>'
+    expect(markUnsourcedFigures(html)).toBe(html)
   })
 })

@@ -1132,6 +1132,15 @@ describe('POST /generate/article-draft', () => {
     expect(done?.data.content).not.toContain('<br>')
   })
 
+  // Recette C8 : malgré la consigne, le premier jet affirmait des chiffres inventés.
+  it('un chiffre sans source devient un passage « à sourcer »', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>Votre fiche compte. Cet audit ajoute 20 % de visibilité.</p>'], 'end'))
+    const res = createMockRes()
+    await handler(req(validDraftBody), res)
+    const done = sseEvents(res).find(e => e.event === 'done')
+    expect(done?.data.content).toContain('<p>Votre fiche compte. <mark data-a-sourcer>[à sourcer : Cet audit ajoute 20 % de visibilité.]</mark></p>')
+  })
+
   it('sans cible choisie, la cible retenue est enregistrée : la porte jugera contre elle', async () => {
     mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>a</p>'], 'end'))
     await handler(req({ ...validDraftBody, targetWordCount: 2400 }), createMockRes())

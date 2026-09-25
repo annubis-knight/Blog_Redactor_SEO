@@ -86,6 +86,35 @@ const ATTRIBUTION = /\b(?:selon|d['’]après|source\s*:)/i
  * sans l'attribuer à une source. Un chiffre posé dans un marqueur « à sourcer »
  * (`<mark data-a-sourcer>`) est en attente de source : il ne compte pas ici.
  */
+const SOURCER_MARK = /<mark\b[^>]*data-a-sourcer[^>]*>[\s\S]*?<\/mark>/gi
+
+/**
+ * FR-RED-DRAFT-TO-SOURCE — pose un marqueur « à sourcer » sur chaque phrase
+ * chiffrée sans source d'un paragraphe ou d'un élément de liste : aucun chiffre
+ * inventé n'est présenté comme un fait (recette C8 du 2026-09-25, où le premier
+ * jet affirmait « 95 % des clients… » malgré la consigne). Titres, chiffres
+ * attribués et marqueurs existants ne changent pas ; la passe « sources »
+ * trouvera une source, ou retirera le chiffre.
+ */
+export function markUnsourcedFigures(html: string): string {
+  return html.replace(/<(p|li)\b([^>]*)>([\s\S]*?)<\/\1>/gi, (block, tag: string, attrs: string, inner: string) => {
+    // Les marqueurs existants sont mis de côté : une phrase ne les coupe jamais.
+    const kept: string[] = []
+    const guarded = inner.replace(SOURCER_MARK, (mark) => `@@SOURCER${kept.push(mark) - 1}@@`)
+    let changed = false
+    const segments = guarded.split(/(?<=[.!?…])(\s+)/).map((segment) => {
+      if (!segment.trim() || segment.includes('@@SOURCER') || /\[à sourcer/i.test(segment)) return segment
+      const text = plain(segment)
+      if (!FIGURE.test(text) || ATTRIBUTION.test(text)) return segment
+      changed = true
+      return `<mark data-a-sourcer>[à sourcer : ${segment.trim()}]</mark>`
+    })
+    if (!changed) return block
+    const restored = segments.join('').replace(/@@SOURCER(\d+)@@/g, (_m, i: string) => kept[Number(i)] ?? '')
+    return `<${tag}${attrs}>${restored}</${tag}>`
+  })
+}
+
 export function detectUnsourcedFigures(html: string): string[] {
   // Le texte « [à sourcer : …] » compte aussi comme marqueur : l'éditeur peut
   // perdre la balise `<mark>` et ne garder que ce texte.
