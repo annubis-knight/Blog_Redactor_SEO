@@ -499,8 +499,8 @@ onMounted(() => {
         </button>
       </div>
 
-      <!--
-           "Continuer vers {TabSuivant}" remplace ce banner d'attention. -->
+      <!-- Le bouton du bas « Continuer vers {onglet suivant} » invite à passer
+           à l'étape d'après (FR-MOT-PHASE-TRANSITION). -->
 
       <!-- BasketStrip supprimé 2026-05-11 (chantier radar-dbfirst-refactor, FR-MOT-BASKET-DEPRECATED).
            Les keywords accumulés vivent désormais en DB via radar_explorations. -->

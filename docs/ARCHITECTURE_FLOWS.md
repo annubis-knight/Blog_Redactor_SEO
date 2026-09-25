@@ -1077,7 +1077,6 @@ graph TB
         MOT_V --> BASKET_S["BasketStrip"]
         MOT_V --> TAB_CACHE["TabCachePanel"]
         MOT_V --> TAB_LOAD["TabLoadPrompt<br>(2026-05-01)<br>Charger DB / Cache<br>par onglet courant"]
-        MOT_V --> PTB["PhaseTransitionBanner"]
         MOT_V --> DOTS["ProgressDots"]
 
         subgraph P1["Phase ① Explorer"]

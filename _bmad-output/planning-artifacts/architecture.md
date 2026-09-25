@@ -720,7 +720,7 @@ Blog_Redactor_SEO_rebirth/
 │   ├── composables/              # 30+ composables en 5 domaines
 │   │   ├── keyword/, intent/, editor/, seo/, ui/
 │   ├── components/               # 100+ composants en 17 dossiers
-│   │   ├── moteur/               # CaptainValidation, LieutenantsSelection, LexiqueExtraction, CaptainAiPanel, CaptainCarousel, CaptainInput, CaptainVerdictPanel, LieutenantCard, LieutenantProposals, LieutenantSerpAnalysis, LieutenantH2Structure, MoteurContextRecap, MoteurStrategyContext, KeywordDiscoveryTab, DouleurIntentScanner, FinalisationRecap, SelectedArticlePanel, BasketStrip, TabCachePanel, PhaseTransitionBanner, ProgressDots, UnlockLieutenantsModal, VerdictBar, CaptainInteractiveWords, CaptainLockPanel
+│   │   ├── moteur/               # CaptainValidation, LieutenantsSelection, LexiqueExtraction, CaptainAiPanel, CaptainCarousel, CaptainInput, CaptainVerdictPanel, LieutenantCard, LieutenantProposals, LieutenantSerpAnalysis, LieutenantH2Structure, MoteurContextRecap, MoteurStrategyContext, KeywordDiscoveryTab, DouleurIntentScanner, FinalisationRecap, SelectedArticlePanel, BasketStrip, TabCachePanel, ProgressDots, UnlockLieutenantsModal, VerdictBar, CaptainInteractiveWords, CaptainLockPanel
 │   │   ├── intent/               # VerdictBadge, ConfidenceBar, SourceDots, LatentAlert, ValidationSummary, SourceBlock, DiscussionList, AutocompleteChips, ValidationRow, RadarCardCheckable, PainVerdict, PainTranslator, NlpOptinBanner, RowDetail
 │   │   ├── keywords/             # KeywordAlertBadge, KeywordLevelBadge, KeywordMigrationPreview
 │   │   ├── brief/                # KeywordList, DataForSeoPanel, ContentRecommendation
@@ -817,7 +817,7 @@ MoteurView.vue (orchestrateur, 6 onglets)
 ├── Phase ③ Finalisation
 │   └── FinalisationRecap         # Read-only, récap des 3 verrouillages (FR32-FR34)
 │
-└── PhaseTransitionBanner         # Bandeau suggestion (FR42-FR43)
+└── (PhaseTransitionBanner)       # Supprimé le 2026-09-25 : remplacé par le bouton « Continuer vers… » de MoteurView
 ```
 
 **Boundary Explorateur (hors Moteur) :**
@@ -978,7 +978,7 @@ Appel service keyword-validate pour "crm pme"
 | FR32-FR34 : Finalisation | `src/components/moteur/FinalisationRecap.vue` |
 | FR35-FR37 : Règles transversales | Pattern dans `MoteurView.vue` |
 | FR38-FR39 : Dashboard & Explorateur | `src/views/ExplorateurView.vue`, `src/views/DashboardView.vue`, `src/components/local/*` |
-| FR40-FR43 : Dots + checks + bandeaux | `src/stores/article/article-progress.store.ts` (5 checks), `src/components/moteur/ProgressDots.vue`, `PhaseTransitionBanner.vue`, `shared/constants/workflow-checks.constants.ts` |
+| FR40-FR43 : Dots + checks + bandeaux | `src/stores/article/article-progress.store.ts` (5 checks), `src/components/moteur/ProgressDots.vue`, bouton « Continuer vers… » de `MoteurView.vue`, `shared/constants/workflow-checks.constants.ts` |
 | FR44-FR45 : Pont Cerveau→Moteur | `src/components/moteur/MoteurStrategyContext.vue`, `server/utils/prompt-loader.ts` |
 | FR46-FR48 : Labo | `src/views/LaboView.vue` (composants en mode `libre`) |
 | FR49-FR52 : Cache & persistance | `server/services/infra/*-cache.service.ts`, `server/services/keyword/keyword-metrics.service.ts`, `server/db/client.ts`, purge horaire dans `server/index.ts` |

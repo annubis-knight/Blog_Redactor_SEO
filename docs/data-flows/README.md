@@ -50,7 +50,7 @@ Chaque store, service ou composable qui touche une donnée partagée DOIT porter
  * AUTHORITY: PostgreSQL `articles.completed_checks` TEXT[]
  * READS FROM: GET /articles/:id (hydrate au mount)
  * WRITES TO: POST /progress/check (action addCheck)
- * CONSUMERS: ArticleListItem dots, PhaseTransitionBanner, FinalisationRecap
+ * CONSUMERS: ArticleListItem dots, FinalisationRecap
  * RELATED FR: FR-MOT-CHECKS, NFR-INT-COMPLETED-CHECKS-SSOT
  */
 ```

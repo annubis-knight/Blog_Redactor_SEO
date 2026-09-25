@@ -890,7 +890,7 @@ Seules les valeurs **validated** sont incluses. Les valeurs non-validées ou vid
 - Aucun watcher actif — la landing est une page de transit. Le clic sur une porte navigue, ne modifie rien.
 
 **Décision d'architecture — libre arbitre**
-Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un choix produit délibéré : le workflow Cerveau → Moteur → Rédaction est suggéré (par les dots du dashboard, par les bannières `PhaseTransitionBanner` côté Moteur), pas imposé. L'utilisateur expert peut entrer directement en Rédaction et revenir au Cerveau plus tard. Cf. `DESIGN-MOT-FREE-NAV`, `DESIGN-UX-STABLE-SKELETON`.
+Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un choix produit délibéré : le workflow Cerveau → Moteur → Rédaction est suggéré (par les dots du dashboard, par le bouton « Continuer vers {onglet suivant} » côté Moteur, cf. `DESIGN-MOT-PHASE-TRANSITION`), pas imposé. L'utilisateur expert peut entrer directement en Rédaction et revenir au Cerveau plus tard. Cf. `DESIGN-MOT-FREE-NAV`, `DESIGN-UX-STABLE-SKELETON`.
 
 **Voir aussi**
 - `DESIGN-MOT-FREE-NAV` (même principe côté Moteur).
@@ -1245,16 +1245,16 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 ### DESIGN-MOT-PHASE-TRANSITION
 
-**Réf PRD :** [FR-MOT-PHASE-TRANSITION](./prd.md#fr-mot-phase-transition--bandeau-dinvitation-au-passage-de-phase)
+**Réf PRD :** [FR-MOT-PHASE-TRANSITION](./prd.md#fr-mot-phase-transition--invitation-à-passer-à-longlet-suivant)
 
 **Refs code**
-- [src/components/moteur/PhaseTransitionBanner.vue](../../src/components/moteur/PhaseTransitionBanner.vue) — composant du bandeau.
-- [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — orchestre l'apparition du bandeau en fonction de `nextTab` (computé par `useMoteurTabs`) et de l'état des checks.
-- [tests/unit/components/phase-transition-banner.test.ts](../../tests/unit/components/phase-transition-banner.test.ts) — tests du composant.
+- [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — `.bottom-nav` : bouton `cta-next-tab` (« Continuer vers {TAB_LABELS[nextTab]} », clic → `setActiveTab(nextTab)`) ; sur le dernier onglet, `cta-redaction` (désactivé par `useFinalisationGating`, cf. `DESIGN-FIN-LINK-REDACTION`).
+- [src/composables/moteur/useMoteurTabs.ts](../../src/composables/moteur/useMoteurTabs.ts) — `nextTab` : l'onglet qui suit dans `TAB_IDS`, `null` sur le dernier.
+- [tests/unit/composables/moteur/useMoteurTabs.test.ts](../../tests/unit/composables/moteur/useMoteurTabs.test.ts) — `nextTab` suit l'ordre des onglets (Lieutenants → Structure → Lexique…).
 
 **Décisions d'architecture**
-- **Suggestion, pas redirection** : le bandeau propose, ne navigue pas tout seul. Click utilisateur → `setActiveTab(nextTab)`. Cohérent avec `DESIGN-MOT-NO-AUTO-ACTION`.
-- **Reste affiché** : tant que la phase n'est pas franchie ou que le bandeau n'est pas fermé manuellement, il reste — pas de hide-on-scroll surprise.
+- **Suggestion, pas redirection** : le bouton propose, il ne navigue pas tout seul. Clic utilisateur → `setActiveTab(nextTab)`. Cohérent avec `DESIGN-MOT-NO-AUTO-ACTION`.
+- **Toujours au même endroit** : le bouton vit en bas de l'onglet, visible quel que soit l'état des étapes. Le bandeau `PhaseTransitionBanner.vue`, qui apparaissait en haut quand une phase était complète, n'était plus monté depuis le Sprint 16. Il a été supprimé le 2026-09-25 (épopée qualité SEO, D6), avec son test.
 
 **Voir aussi**
 - `DESIGN-MOT-NO-AUTO-ACTION` (même philosophie : pas d'auto-nav).
@@ -5274,7 +5274,7 @@ Commit `1882030` (C7). Lignes relevées au commit `fb92b46`.
 - `useArticleProgressStore` — SSOT côté front pour `phase` + `completed_checks` + `check_timestamps`. Cache LRU 50 items.
 
 **Watchers & réactivité**
-- Pas de watcher direct dans le store. Les composants consommateurs (dashboard, ArticleListItem, PhaseTransitionBanner, etc.) lisent réactivement `progressMap[id]?.phase` et `progressMap[id]?.completed_checks`.
+- Pas de watcher direct dans le store. Les composants consommateurs (dashboard, ArticleListItem, ProgressDots, etc.) lisent réactivement `progressMap[id]?.phase` et `progressMap[id]?.completed_checks`.
 - `articles.phase` est lu en miroir : pas de transition implicite déclenchée par un calcul front. Les transitions de phase viennent uniquement de l'ajout/retrait de checks via les actions explicites.
 
 **Décisions d'architecture**
@@ -7176,11 +7176,10 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 | `TabLoadPrompt` | [src/components/moteur/TabLoadPrompt.vue](../../src/components/moteur/TabLoadPrompt.vue) | `MoteurView.vue` (jumeau de `TabCachePanel`, même sticky) |
 | `KeywordAssistPanel` | [src/components/moteur/KeywordAssistPanel.vue](../../src/components/moteur/KeywordAssistPanel.vue) | `LieutenantsPanel.vue`, `LexiquePanel.vue` (vérifié par grep) |
 | `MoteurContextRecap` | [src/components/moteur/MoteurContextRecap.vue](../../src/components/moteur/MoteurContextRecap.vue) | `MoteurView.vue` (header, monté une fois pour tous les onglets) |
-| `PhaseTransitionBanner` | [src/components/moteur/PhaseTransitionBanner.vue](../../src/components/moteur/PhaseTransitionBanner.vue) | `MoteurView.vue` (banner Phase ② → ③) |
 | `ProgressDots` | [src/components/moteur/ProgressDots.vue](../../src/components/moteur/ProgressDots.vue) | `MoteurContextRecap.vue` (un par article des listes du haut, lignes 207 et 246), reflet des 6 checks `MOTEUR_*` (5 avant C6) |
 
 **Stores Pinia mobilisés**
-- `useArticleProgressStore` — source des 6 checks consommés par `ProgressDots` et `PhaseTransitionBanner`.
+- `useArticleProgressStore` — source des 6 checks consommés par `ProgressDots` et `useFinalisationGating` (le bandeau `PhaseTransitionBanner`, orphelin, a été supprimé le 2026-09-25).
 - `useArticleKeywordsStore` — source du Capitaine verrouillé affiché par `MoteurContextRecap`.
 - `useStrategyStore` (via `useCocoonStrategyStore`) — source du contexte stratégie (cocon, articles suggérés / publiés) consommé par `MoteurContextRecap`.
 - `useRadarExplorationStore` + `useArticleKeywordsStore` (composables utilitaires) — sources des counts cache exposés par `TabCachePanel`.

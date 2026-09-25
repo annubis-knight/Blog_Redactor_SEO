@@ -128,7 +128,6 @@ flowchart TB
       P4["BasketStrip + BasketFloatingPanel<br/><i>moteur-basket.store</i>"]:::panel
       P5["TabCachePanel<br/><i>état cache par onglet</i>"]:::panel
       P6["ProgressDots<br/><i>6 dots moteur:* (2 + 4), dans MoteurContextRecap</i>"]:::panel
-      P7["PhaseTransitionBanner"]:::panel
     end
 
     subgraph STORES["Stores Pinia (par domaine)"]

@@ -1077,7 +1077,7 @@ stateDiagram-v2
     SmartTab --> Structure : moteur:lieutenants_locked
     SmartTab --> Lexique : moteur:hn_locked
 
-    PhaseDone1 --> Capitaine : PhaseTransitionBanner
+    PhaseDone1 --> Capitaine : bouton « Voir le Capitaine »
     PhaseDone2 --> [*] : Nav → Rédaction
 
     note right of Discovery
@@ -1390,7 +1390,6 @@ flowchart LR
 | [TabCachePanel.vue](../src/components/moteur/TabCachePanel.vue) | 12 | [tab-cache-panel.test.ts](../tests/unit/components/tab-cache-panel.test.ts) | comptes DB par onglet ; counts vrais (pas de flags binaires) ; chips navigation |
 | [MoteurContextRecap.vue](../src/components/moteur/MoteurContextRecap.vue) | 5 | [moteur-context-recap-cannibal.test.ts](../tests/unit/components/moteur-context-recap-cannibal.test.ts) + [progress-dots.test.ts](../tests/unit/components/progress-dots.test.ts) | recap contexte ; détection cannibal ; ProgressDots |
 | [MoteurStrategyContext.vue](../src/components/moteur/MoteurStrategyContext.vue) | 13 | [moteur-strategy-context.test.ts](../tests/unit/components/moteur-strategy-context.test.ts) | bridge Cerveau→Moteur ; cible/douleur/angle/promesse/CTA |
-| [PhaseTransitionBanner.vue](../src/components/moteur/PhaseTransitionBanner.vue) | 18 | [phase-transition-banner.test.ts](../tests/unit/components/phase-transition-banner.test.ts) | banner inter-phases ; CTAs ; state transitions |
 | [KeywordAssistPanel.vue](../src/components/moteur/KeywordAssistPanel.vue) | 9 | [keyword-assist-panel.test.ts](../tests/unit/components/keyword-assist-panel.test.ts) | suggestions basket partagées 3 onglets ; libellés selon context ; excludeKeywords case-insensitive ; hide() persistant |
 | [ProgressDots.vue](../src/components/moteur/ProgressDots.vue) | 12 | [progress-dots.test.ts](../tests/unit/components/progress-dots.test.ts) | dots progression workflow Moteur |
 | Smart navigation Moteur | 7 | [moteur-smart-navigation.test.ts](../tests/unit/components/moteur-smart-navigation.test.ts) | logique smart-tab onglet d'arrivée |
@@ -1492,7 +1491,7 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | **Moteur — Lieutenants** | LieutenantsSelection + LieutenantCard/SerpAnalysis/Proposals/H2Structure + SerpDataTab | 174 |
 | **Moteur — Lexique** | LexiqueExtraction + KeywordAssistPanel | 100 |
 | **Moteur — Finalisation** | FinalisationRecap | 11 |
-| **Moteur — transverses** | SelectedArticlePanel, BasketStrip, TabCachePanel, ContextRecap, StrategyContext, PhaseTransitionBanner, ProgressDots | 88 |
+| **Moteur — transverses** | SelectedArticlePanel, BasketStrip, TabCachePanel, ContextRecap, StrategyContext, ProgressDots | 70 |
 | **Rédaction** | BriefStructureStep + SeoPanel + GeoPanel + IndicatorsTab + ExtractibilityTab + ArticleEditor | 77 |
 | **Linking** | LinkingMatrix + OrphanDetector + AnchorDiversityPanel | 26 |
 | **Intent / Pain** | PainValidation + multi-source (10 micro) + NlpOptinBanner | 71 |

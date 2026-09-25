@@ -213,7 +213,7 @@ Article publié il y a 30 jours. L'utilisateur veut voir si le mot-clé ranke.
 ### 5.1 Sophistication invisible
 
 - Tracking progression silencieux via `articles.completed_checks` TEXT[] — source unique de vérité.
-- Suggestions sans bloquer (bandeaux `PhaseTransitionBanner`).
+- Suggestions sans bloquer (bouton « Continuer vers {onglet suivant} », FR-MOT-PHASE-TRANSITION).
 - Enrichissement automatique des prompts IA avec `{{strategy_context}}` et `{{painPoint}}` sans que l'utilisateur le voie.
 - Navigation libre 100 % — aucun gating dur.
 
@@ -889,16 +889,18 @@ L'objectif utilisateur : **garantir que les dots de progression et les verrous M
 
 ---
 
-#### FR-MOT-PHASE-TRANSITION — Bandeau d'invitation au passage de phase
+#### FR-MOT-PHASE-TRANSITION — Invitation à passer à l'onglet suivant
 
-Quand une phase du Moteur est terminée (toutes les étapes nécessaires posées), un **bandeau d'invitation** apparaît en haut de l'onglet courant pour proposer à l'utilisateur de passer à la phase suivante. Le bandeau est une suggestion — l'utilisateur peut l'ignorer et continuer à travailler dans la phase actuelle, ou cliquer pour basculer.
+En bas de chaque onglet du Moteur, un bouton **« Continuer vers {onglet suivant} »** propose l'étape d'après. Sur le dernier onglet, il devient « Continuer vers la Rédaction ». C'est une invitation : l'utilisateur la suit quand il est prêt, ou navigue à la main.
+
+> *Amendée le 2026-09-25 (épopée qualité SEO, D6).* La version précédente décrivait un bandeau en haut de l'onglet, qui apparaissait quand une phase était complète. Ce bandeau n'était plus affiché depuis le Sprint 16, où le bouton du bas l'a remplacé. Son composant, resté orphelin, a été supprimé.
 
 **Critères d'acceptation**
-- Le bandeau apparaît dès qu'une phase devient « complète » par rapport à ses étapes obligatoires.
-- Le bandeau peut être ignoré : l'utilisateur reste sur l'onglet courant tant qu'il n'a pas cliqué dessus.
+- Le bouton nomme l'onglet suivant, dans l'ordre des onglets du Moteur.
 - Il n'y a **jamais** de redirection automatique — c'est toujours l'utilisateur qui décide.
+- Sur le dernier onglet, le passage à la Rédaction suit ses propres conditions (FR-FIN-LINK-REDACTION : bouton désactivé tant que des verrous manquent, avec la liste de ce qui manque).
 
-> **En situation.** L'utilisateur finit de verrouiller ses 4 Lieutenants dans l'onglet Lieutenants. Un bandeau pastel apparaît en haut : « Lieutenants verrouillés. Passer au Lexique ? ». Il a fini sa pause café, il clique. Une autre fois il fait la même action mais veut d'abord re-vérifier sa liste avant de continuer — il ignore le bandeau, reste sur l'onglet, le bandeau ne disparaît pas et ne le harcèle pas non plus. Quand il est prêt il clique, ou il navigue à la main vers Lexique.
+> **En situation.** L'utilisateur finit de verrouiller ses Lieutenants. En bas de l'onglet, le bouton dit « Continuer vers Structure → ». Il veut d'abord relire sa liste : rien ne bouge tant qu'il n'a pas cliqué. Quand il est prêt, il clique, ou il choisit un autre onglet dans la barre de navigation.
 
 → Conception : [DESIGN-MOT-PHASE-TRANSITION](./design-registry.md#design-mot-phase-transition)
 
