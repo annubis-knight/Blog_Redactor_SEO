@@ -47,7 +47,8 @@ export interface MoteurDecisions {
   capitaine: string
   lieutenants: string[]
   lexique: string[]
-  hnStructure: Array<{ level: number; text: string }>
+  /** Structure H1/H2/H3 de l'article (pas la récurrence des concurrents). */
+  hnStructure: Array<{ level: number; text: string; children?: Array<{ level: number; text: string }> }>
 }
 
 /**

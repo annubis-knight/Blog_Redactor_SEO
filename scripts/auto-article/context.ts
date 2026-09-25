@@ -21,6 +21,7 @@ export function createContext(config: AutoRunConfig, input: InitialInput): AutoR
     serpPaa: [],
     hnStructure: [],
     hnStructureBrief: '',
+    articleStructure: [],
     capitaine: null,
     cannibalization: [],
     lieutenants: [],

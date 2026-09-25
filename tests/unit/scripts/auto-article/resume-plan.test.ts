@@ -1,7 +1,12 @@
 import { describe, it, expect } from 'vitest'
 import { applyForcedCapitaine, planResume } from '../../../../scripts/auto-article/resume-plan.js'
 import { fromCanonicalType, toCanonicalType } from '../../../../scripts/auto-article/canonical.js'
-import { MOTEUR_LEXIQUE_VALIDATED, MOTEUR_CAPITAINE_LOCKED } from '../../../../shared/constants/workflow-checks.constants.js'
+import {
+  MOTEUR_LEXIQUE_VALIDATED,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
+} from '../../../../shared/constants/workflow-checks.constants.js'
 
 describe('auto:canonical — fromCanonicalType', () => {
   it('inverse de toCanonicalType (round-trip)', () => {
@@ -25,8 +30,24 @@ describe('auto:resume-plan — planResume', () => {
     expect(planResume({ checks: [], capitaine: null, hasContent: false, hasStrategy: true }).skipCerveau).toBe(true)
   })
 
-  it('Moteur complet (lexique validé + capitaine) → skip Moteur', () => {
-    expect(planResume({ checks: [MOTEUR_LEXIQUE_VALIDATED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(true)
+  // FR-HN-TAB : le Moteur n'est fini que si la structure Hn ET le lexique sont validés.
+  it('Moteur complet (structure + lexique validés + capitaine) → skip Moteur', () => {
+    expect(planResume({ checks: [MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(true)
+  })
+
+  it('FR-HN-TAB — article d’avant C6 (lexique validé, structure non validée) → repasse par le Moteur', () => {
+    expect(planResume({
+      checks: [MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED],
+      capitaine: 'kw', hasContent: false, hasStrategy: true,
+    }).skipMoteur).toBe(false)
+  })
+
+  it('FR-HN-TAB — structure validée sans lexique → ne skip pas', () => {
+    expect(planResume({ checks: [MOTEUR_HN_LOCKED], capitaine: 'kw', hasContent: false, hasStrategy: true }).skipMoteur).toBe(false)
+  })
+
+  it('structure + lexique validés mais sans capitaine → ne skip pas', () => {
+    expect(planResume({ checks: [MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED], capitaine: null, hasContent: false, hasStrategy: true }).skipMoteur).toBe(false)
   })
 
   it('Moteur partiel (capitaine sans lexique) → ne skip pas', () => {

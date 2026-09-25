@@ -88,9 +88,15 @@ export interface AutoRunContext {
    * facturé, le jeter serait du gaspillage (audit défauts n°14, 16, 18).
    */
   serpPaa: { question: string; answer: string | null }[]
+  /** Récurrence des titres chez les concurrents (ancrage d'un sommaire généré). */
   hnStructure: { level: number; text: string }[]
-  /** Structure Hn formatée pour injection dans le prompt du sommaire. */
+  /** Structure Hn des concurrents formatée pour injection dans le prompt du sommaire. */
   hnStructureBrief: string
+  /**
+   * Structure H1/H2/H3 de l'article, produite après les lieutenants et validée
+   * par la porte `hn-lock` (FR-HN-TAB). Elle devient le sommaire.
+   */
+  articleStructure: Array<{ level: number; text: string; children?: Array<{ level: number; text: string }> }>
   capitaine: string | null
   /** Collisions de mots-clés détectées avec les articles existants du thème. */
   cannibalization: CannibalizationHit[]

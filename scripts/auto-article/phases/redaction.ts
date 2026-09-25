@@ -1,7 +1,8 @@
 /**
  * Phase 3 — Rédaction : outline → article → meta → save → export.
  *
- *   1. POST /generate/outline (SSE)      → outline, persisté via PUT /articles/:id
+ *   1. Sommaire : la structure validée au Moteur (FR-HN-TAB), sinon
+ *      POST /generate/outline (SSE) ; persisté via PUT /articles/:id
  *   2. POST /generate/article-draft (SSE) → premier jet en un appel (FR-RED-DRAFT-SINGLE-PASS)
  *   3. POST /generate/meta               → metaTitle + metaDescription
  *   4. PUT  /articles/:id                → save content + meta
@@ -13,7 +14,9 @@ import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { PhaseFn } from '../orchestrator.js'
 import type { PhaseDeps } from '../deps.js'
-import type { ApiUsageLike, AutoRunContext, SseEvent } from '../types.js'
+import type { ApiUsageLike, AutoRunContext } from '../types.js'
+import { collectSse } from '../collect-sse.js'
+import { structureToOutline } from '../../../shared/structure-outline.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
 import { runInternalLinking } from './linking.js'
@@ -23,26 +26,6 @@ import {
 } from '../heuristics/check-content-quality.js'
 
 const OUTPUT_DIR = '_auto-output'
-
-async function collectSse(
-  deps: PhaseDeps,
-  path: string,
-  body: unknown,
-  onEvent?: (ev: SseEvent) => void,
-): Promise<Record<string, unknown>> {
-  let donePayload: Record<string, unknown> | null = null
-  let errorMsg: string | null = null
-
-  await deps.client.consumeSse(path, body, (ev) => {
-    if (ev.event === 'done') donePayload = ev.data as Record<string, unknown>
-    else if (ev.event === 'error') errorMsg = (ev.data as { message?: string })?.message ?? 'Erreur SSE'
-    else onEvent?.(ev)
-  })
-
-  if (errorMsg) throw new Error(errorMsg)
-  if (!donePayload) throw new Error(`SSE ${path} : aucun événement "done" reçu`)
-  return donePayload
-}
 
 /**
  * Garde-fou qualité avant export (audit 2026-09-19).
@@ -129,16 +112,23 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       topic: null as string | null,
     }
 
-    // 1. Outline — ancré sur la structure des concurrents quand elle existe
-    logger.step(
-      `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
-    )
-    const outlineDone = await collectSse(deps, '/generate/outline', {
-      ...base,
-      competitorStructure: ctx.hnStructureBrief,
-    })
-    const outline = outlineDone.outline
-    report.addUsage(outlineDone.usage as ApiUsageLike | null)
+    // 1. Sommaire — la structure validée au Moteur, comme à l'écran (FR-HN-TAB) ;
+    //    à défaut, un sommaire généré, ancré sur la structure des concurrents.
+    let outline: unknown
+    if (ctx.articleStructure.length > 0) {
+      logger.step('Sommaire — tiré de la structure validée au Moteur')
+      outline = structureToOutline(ctx.articleStructure, ctx.articleTitle)
+    } else {
+      logger.step(
+        `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
+      )
+      const outlineDone = await collectSse(deps, '/generate/outline', {
+        ...base,
+        competitorStructure: ctx.hnStructureBrief,
+      })
+      outline = outlineDone.outline
+      report.addUsage(outlineDone.usage as ApiUsageLike | null)
+    }
     await client.apiPut(`/articles/${ctx.articleId}`, { outline })
     const sectionCount = Array.isArray((outline as { sections?: unknown[] })?.sections)
       ? (outline as { sections: unknown[] }).sections.length
