@@ -66,7 +66,7 @@ Source : [shared/scoring-kpi.ts](../shared/scoring-kpi.ts) → `computeMarketSco
 - 40-69 → **ORANGE**
 - < 40 → **NOGO**
 
-> ⚠️ **Le verdict est purement informatif.** Il ne bloque PAS la progression du moteur. Le bouton « Valider ce Capitaine » est toujours actif (cf. tech-spec, TD-9).
+> ⚠️ **Le verdict passe par la porte capitaine** (FR-CAP-LOCK-GATE, épopée qualité SEO C2, qui remplace FR-CAP-VERDICT-INFORMATIVE). Le bouton « Valider ce Capitaine » reste cliquable. Mais un verdict NO-GO ouvre une alarme 🔴 : pour verrouiller quand même, il faut choisir une catégorie et écrire une raison d'au moins 20 caractères, enregistrée comme dérogation.
 
 ### Où il est utilisé
 
@@ -272,7 +272,7 @@ Parce qu'on veut savoir si le keyword **mérite** d'être traité éditorialemen
 Décomposition linéaire (troncature progressive depuis la fin du keyword), max 5 racines. Pas de combinatoire. Voir [src/composables/keyword/useCapitaineValidation.ts](../src/composables/keyword/useCapitaineValidation.ts) → `extractRoots()`.
 
 **Q. Le verdict bloque-t-il quelque chose ?**
-**Non.** Depuis 2026-04-28, le verdict est purement informatif. Le bouton « Valider ce Capitaine » est toujours cliquable. L'utilisateur peut verrouiller même un verdict NOGO s'il a une raison stratégique.
+**Oui, depuis l'épopée qualité SEO (C2, FR-CAP-LOCK-GATE).** Du 2026-04-28 à C2, il était purement informatif. Désormais, un verdict NO-GO déclenche une alarme 🔴 au verrouillage. L'utilisateur peut encore verrouiller un NO-GO s'il a une raison stratégique : il choisit une catégorie et écrit cette raison (20 caractères au moins), qui est enregistrée et réaffichée à la publication.
 
 ---
 

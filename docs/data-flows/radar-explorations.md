@@ -25,7 +25,7 @@ Qui crée ou met à jour cette donnée :
   - Fetch parallèle : Autocomplete (specificTopic), Keyword Overview batch, Intent batch, PAA depth 1-2 avec cache `paa-cache.service.ts`.
   - Calcul scoring bimodal : `computeMarketScore()` (`shared/scoring-kpi.ts`) + `computeRelevanceScore()` (`shared/scoring.ts`) **dans une même card**, éventuellement `null` si pas de painPoint.
   - Encodage sémantique des PAA items et alignement painPoint via `computeSemanticScores()` (embedding).
-  - Tri par `combinedScore desc` (legacy, conservé pour compatibilité JSONB persisté).
+  - Tri par la note marché que la carte affiche (`marketScore.total` décroissant, notes absentes en dernier, `compareScores`), depuis `32a9b76` (2026-09-24). Avant, le tri suivait `combinedScore`, qui compte 0 là où la carte affiche « — ». `combinedScore` reste calculé pour la compatibilité des scans enregistrés en JSONB, et le thermomètre (`globalScore`, `radarGlobalHeat`) en fait encore sa moyenne.
   - Édition du `KeywordRadarScanResult` complet avec `cards[]`, `globalScore`, `heatLevel`.
 - **Persistance** `saveRadarExploration()` ([server/services/infra/radar-exploration.service.ts:105-137](../../server/services/infra/radar-exploration.service.ts)) — UPSERT PostgreSQL, écrase la row existante ou crée si n'existe pas, stocke le scan en JSONB.
 

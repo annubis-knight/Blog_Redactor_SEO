@@ -54,7 +54,7 @@ Qui crée ou met à jour cette donnée :
 
 - **CaptainPanel.vue** — carousel validations Capitaine : affiche historique `richCaptain.exploredKeywords[]` avec KPIs, scores Marché/Pertinence, radio lock (FR-CAP-LOCK-RADIO).
 - **CaptainSidePanel.vue** — section sticky Capitaine : affiche `richCaptain.keyword` locké, KPIs readonly (search_volume / keyword_difficulty / CPC / Intent / PAA count / AC count), badges verdict (GO/ORANGE/NO-GO/GRAY) — scores extraits de `richCaptain.exploredKeywords[0]` ou card Radar associée.
-- **CaptainVerdictPanel.vue** — feu tricolore du verdict (informatif depuis 2026-04-28, FR-CAP-VERDICT-INFORMATIVE).
+- **CaptainVerdictPanel.vue** — feu tricolore du verdict. Un NO-GO déclenche l'alerte 🔴 `captain-verdict-nogo` au verrouillage (FR-CAP-LOCK-GATE, qui remplace FR-CAP-VERDICT-INFORMATIVE).
 - **LieutenantsPanel.vue** — liste checkboxes `richLieutenants[]`, filtrée par niveau (Pilier 5-8 / Intermédiaire 3-5 / Spécifique 1-3), compteur recommandé, badges `sources[]`, score AI.
 - **LexiquePanel.vue** — checkboxes termes `lexique[]`, 3 niveaux (Obligatoire pré-coché / Différenciateur / Optionnel), tri configurable (A-Z / densité / Jaccard douleur).
 - **FinalisationPanel.vue** — récapitulatif 3-phase : affiche Capitaine verrouillé, Lieutenants sélectionnés count, Lexique terms count.

@@ -55,7 +55,7 @@ Qui crée ou met à jour cette donnée :
 - **Agrégats** (moyenne, max, min) — `averageScores()`, `maxScore()`, `minScore()` de [shared/score/aggregate.ts](../../shared/score/aggregate.ts) — excluent les `null`.
 - **Verdicts dérivés** — `computeVerdict()` (legacy, deprecated post 2026-04-28) et nouveaux verdicts attachés à chaque score.
 - **Injection prompt IA** — `capitaine-ai-panel.md` reçoit `{{marketScore}}` et `{{relevanceScore}}` formatés via `loadPrompt()`.
-- **Calcul `richCaptain` finale** — utilisé pour décider du verrouillage Capitaine (mais le verdict est INFORMATIF — le bouton lock est toujours actif depuis 2026-04-28, cf. FR-CAP-VERDICT-INFORMATIVE).
+- **Calcul `richCaptain` finale** — utilisé pour décider du verrouillage Capitaine (le bouton de verrouillage reste cliquable, mais la porte capitaine (FR-CAP-LOCK-GATE, qui remplace FR-CAP-VERDICT-INFORMATIVE) fait d'un verdict NO-GO une alerte 🔴 : catégorie et raison d'au moins 20 caractères pour passer).
 
 > **Règle de cohérence affichage / calcul** — Le score affiché dans `CaptainSidePanel.vue` et le score utilisé pour `compareScores()` au tri DOIVENT venir du même champ (`marketScore.value` ou `relevanceScore.value`). Ne jamais utiliser un fallback numérique (`?? 0`) au moment du tri si l'affichage montre `—`.
 

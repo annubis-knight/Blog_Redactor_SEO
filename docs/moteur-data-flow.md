@@ -757,11 +757,11 @@ Deux scores **complémentaires et orthogonaux** sont désormais exposés sur cha
 **Règle d'affichage** : on n'affiche jamais les deux scores en même temps sur la même carte.
 La `RadarKeywordCard` bascule via `displayMode: 'kpi' | 'relevance'`. En mode Capitaine, les KPIs marché bruts (Volume / KD / CPC / Intent / PAA count / AC count) restent visibles dans le **side-panel en lecture seule**.
 
-**Verdict** : `'GO' | 'ORANGE' | 'NOGO'` calculé à partir de chaque score (≥70 / 40-69 / <40). **Purement informatif** — il ne bloque **plus** la progression du moteur (le `can-lock` gating a été retiré).
+**Verdict** : `'GO' | 'ORANGE' | 'NOGO'` calculé à partir de chaque score (≥70 / 40-69 / <40). Il s'affiche sur les cartes. Depuis l'épopée qualité SEO (C2, FR-CAP-LOCK-GATE, qui remplace FR-CAP-VERDICT-INFORMATIVE), un verdict NO-GO déclenche une alerte 🔴 `captain-verdict-nogo` (`shared/verifiers/captain.ts`) au verrouillage du Capitaine : pour verrouiller quand même, il faut choisir une catégorie et donner une raison.
 
 **Documentation détaillée** : [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md).
 
-**Rétro-compatibilité** : `combinedScore` (mélange marché + douleur, legacy) reste calculé et exposé pour ne pas casser les consommateurs existants (carousel de tri, sidebar racines). À supprimer dans une story future.
+**Rétro-compatibilité** : `combinedScore` (score hybride hérité) reste calculé pour les scans déjà enregistrés en JSONB, et le thermomètre du Radar (`radarGlobalHeat`) en fait encore sa moyenne. Il ne sert plus à trier : depuis `32a9b76` (2026-09-24), les cartes sont rangées selon la note affichée (`marketScore.total`). À supprimer dans une story future, une fois le thermomètre aligné sur cette note.
 
 **Évolutions Sprints S1-S5 (avril 2026)** :
 - **S1** — `{{painPoint}}` injecté dans 6 prompts du Moteur (capitaine-ai-panel, propose-lieutenants, lieutenants-hn-structure, trio Lexique).
