@@ -57,11 +57,22 @@ const mockKeywords = ref<{ articleId: number; capitaine: string; lieutenants: st
 const mockSaveDecisions = vi.fn().mockResolvedValue(undefined)
 const mockInitEmpty = vi.fn()
 
+// Comme le vrai store : ajouter ou retirer un terme modifie le lexique en mémoire
+// (le panneau enregistre désormais ce qu'il coche, FR-LEX-PRECHECK-PERSISTE).
+// Sans ces deux fonctions, le clic levait une erreur en arrière-plan : le test
+// passait, mais Vitest sortait en échec (CI du 2026-09-25).
+function mockLexique(update: (lexique: string[]) => string[]) {
+  if (!mockKeywords.value) return
+  mockKeywords.value = { ...mockKeywords.value, lexique: update(mockKeywords.value.lexique) }
+}
+
 vi.mock('../../../src/stores/article/article-keywords.store', () => ({
   useArticleKeywordsStore: () => ({
     get keywords() { return mockKeywords.value },
     saveDecisions: mockSaveDecisions,
     initEmpty: mockInitEmpty,
+    addLexiqueTerm: (term: string) => mockLexique(l => (l.includes(term) ? l : [...l, term])),
+    removeLexiqueTerm: (term: string) => mockLexique(l => l.filter(t => t !== term)),
   }),
 }))
 
@@ -170,15 +181,20 @@ describe('LexiquePanel — handleAssistAdd (basket)', () => {
     expect(after.length).toBe(before.length + 1)
   })
 
-  it('handleAssistAdd no-op quand isLocked=true', async () => {
-    const wrapper = mountLexique({ initialLocked: true })
-    await nextTick()
-    await wrapper.find('.assist-add').trigger('click')
-    await nextTick()
+  // FR-LEX-CHECKBOX-LOCK-IMMEDIATE — la sélection reste ajustable à tout moment :
+  // un lexique déjà retenu accepte un terme de plus, et ce terme est enregistré
+  // (il était refusé, puis, en C3, ajouté à l'écran seulement).
+  it('un terme ajouté alors que le lexique est déjà retenu est enregistré', async () => {
+    mockKeywords.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['garantie'] }
+    const wrapper = mountLexique()
+    await flushPromises()
+    mockSaveDecisions.mockClear()
 
-    const assist = wrapper.findComponent({ name: 'KeywordAssistPanel' })
-    const exclude = assist.props('excludeKeywords') as string[]
-    expect(exclude).not.toContain('kw-from-basket')
+    await wrapper.find('.assist-add').trigger('click')
+    await flushPromises()
+
+    expect(mockKeywords.value?.lexique).toEqual(['garantie', 'kw-from-basket'])
+    expect(mockSaveDecisions).toHaveBeenCalledWith(1)
   })
 })
 
