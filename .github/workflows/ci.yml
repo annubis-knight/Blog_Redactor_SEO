@@ -35,11 +35,8 @@ jobs:
       - name: Type-check
         run: npm run verify:types
 
-      # data.service.test.ts lit les DONNÉES de la base de développement (« le premier
-      # cocon est Croissance digitale Toulouse ») : ni portable ici (pas de base), ni en
-      # intégration (base vide). À réécrire avec des fixtures (épopée qualité SEO, T9).
       - name: Tests unitaires (unit + functional uniquement, pas de DB)
-        run: npx vitest run tests/unit tests/functional --reporter=dot --exclude tests/unit/services/data.service.test.ts
+        run: npx vitest run tests/unit tests/functional --reporter=dot
         env:
           AI_PROVIDER: mock
 
@@ -145,7 +142,7 @@ jobs:
           exit 1
 
       - name: Tests contract + integration + e2e
-        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows --reporter=dot
+        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows tests/integration/data.service.test.ts --reporter=dot
         env:
           AI_PROVIDER: mock
           TEST_BASE_URL: http://localhost:3400/api
