@@ -7,6 +7,7 @@ import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, expectSuccessOrKnownError } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
 import { grantCheck } from '../helpers/gates.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -21,6 +22,7 @@ describe('Tab moteur/lieutenants — SERP analysis', () => {
 
   it('POST /serp/analyze OK → { keyword, competitors[] }', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-l-serp`,

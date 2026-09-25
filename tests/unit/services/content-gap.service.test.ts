@@ -48,6 +48,11 @@ beforeEach(() => {
   vi.resetAllMocks()
   vi.stubEnv('TAVILY_API_KEY', 'test_key')
   vi.stubEnv('ANTHROPIC_API_KEY', 'test_anthropic_key')
+  // Ce test simule le SDK Claude : il fixe donc le fournisseur. Sans cela il
+  // dépendait du .env (claude sur un poste, mock en CI) et ne testait pas la
+  // même chose selon la machine.
+  vi.stubEnv('AI_PROVIDER', 'claude')
+  vi.stubEnv('AI_PROVIDER_NO_FALLBACK', '1')
 
   mockFetch = vi.fn()
   vi.stubGlobal('fetch', mockFetch)

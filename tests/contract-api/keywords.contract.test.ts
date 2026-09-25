@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost } from '../helpers/api-client.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -151,6 +152,7 @@ describe('Contract /keywords/:kw/scan', () => {
 
   it('POST OK → { keyword, kpis[6], verdict, paaQuestions }', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const res = await apiPost<{ keyword: string; kpis: unknown[]; verdict: { level: string } }>(
       `/keywords/${encodeURIComponent('test-' + ctx.runId + '-c')}/scan`,
       { level: 'pilier', articleTitle: 'test' },

@@ -84,6 +84,9 @@ jobs:
         run: npm ci
 
       - name: Prepare .env for CI
+        env:
+          DFS_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DFS_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
         run: |
           cat > .env <<'EOF'
           # 3400 : une douzaine de tests visent http://localhost:3400 en dur (NFR-CFG-APP-PORTS).
@@ -100,6 +103,16 @@ jobs:
           DATAFORSEO_PASSWORD=test
           ANTHROPIC_API_KEY=dummy
           EOF
+          # DataForSEO : même le bac à sable (gratuit) exige de vrais identifiants,
+          # à poser en secrets du dépôt (DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD).
+          # Sans eux, les tests qui mesurent un mot-clé se déclarent ignorés
+          # (tests/helpers/external-sources.ts), et le passage le signale.
+          if [ -n "$DFS_LOGIN" ]; then
+            sed -i '/^DATAFORSEO_\(LOGIN\|PASSWORD\)=/d' .env
+            printf 'DATAFORSEO_LOGIN=%s\nDATAFORSEO_PASSWORD=%s\n' "$DFS_LOGIN" "$DFS_PASSWORD" >> .env
+          else
+            echo "::warning::DataForSEO non configuré (secrets DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD absents) : les tests qui mesurent un mot-clé sont ignorés."
+          fi
 
       # Les migrations sont archivées depuis mai : la boucle sur migrations/*.sql
       # ne créait plus aucune table. Le schéma rejouable est bootstrap.sql
@@ -196,6 +209,9 @@ jobs:
         run: npx playwright install chromium --with-deps
 
       - name: Prepare .env for CI
+        env:
+          DFS_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+          DFS_PASSWORD: ${{ secrets.DATAFORSEO_PASSWORD }}
         run: |
           cat > .env <<'EOF'
           # Les tests navigateur démarrent leur propre serveur sur leurs ports dédiés
@@ -213,6 +229,16 @@ jobs:
           DATAFORSEO_PASSWORD=test
           ANTHROPIC_API_KEY=dummy
           EOF
+          # DataForSEO : même le bac à sable (gratuit) exige de vrais identifiants,
+          # à poser en secrets du dépôt (DATAFORSEO_LOGIN, DATAFORSEO_PASSWORD).
+          # Sans eux, les tests qui mesurent un mot-clé se déclarent ignorés
+          # (tests/helpers/external-sources.ts), et le passage le signale.
+          if [ -n "$DFS_LOGIN" ]; then
+            sed -i '/^DATAFORSEO_\(LOGIN\|PASSWORD\)=/d' .env
+            printf 'DATAFORSEO_LOGIN=%s\nDATAFORSEO_PASSWORD=%s\n' "$DFS_LOGIN" "$DFS_PASSWORD" >> .env
+          else
+            echo "::warning::DataForSEO non configuré (secrets DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD absents) : les tests qui mesurent un mot-clé sont ignorés."
+          fi
 
       # Les migrations sont archivées depuis mai : la boucle sur migrations/*.sql
       # ne créait plus aucune table. Le schéma rejouable est bootstrap.sql
@@ -227,7 +253,22 @@ jobs:
           ON CONFLICT DO NOTHING;
           EOF
 
+      - name: DataForSEO configuré ?
+        id: dfs
+        env:
+          DFS_LOGIN: ${{ secrets.DATAFORSEO_LOGIN }}
+        run: echo "ok=$([ -n "$DFS_LOGIN" ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+      # Les parcours navigateur verrouillent des capitaines, donc mesurent des
+      # mots-clés : sans DataForSEO, ils échoueraient pour une raison étrangère
+      # au produit. Ils sont alors ignorés, et le passage l'affiche.
+      - name: Tests navigateur ignorés (DataForSEO non configuré)
+        if: steps.dfs.outputs.ok != 'true'
+        run: |
+          echo "::warning::Tests navigateur ignorés : DataForSEO non configuré (secrets DATAFORSEO_LOGIN / DATAFORSEO_PASSWORD)."
+
       - name: Run Playwright tests (auto-starts dev servers)
+        if: steps.dfs.outputs.ok == 'true'
         run: npx playwright test --reporter=github
         env:
           AI_PROVIDER: mock

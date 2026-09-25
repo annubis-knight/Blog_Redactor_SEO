@@ -13,6 +13,7 @@ import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, apiPut } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
 import { grantCheck } from '../helpers/gates.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 
@@ -24,6 +25,8 @@ function requireServer() {
 describe('Cross-Workflow — Happy path complet', () => {
   it('Cerveau (silo + cocon + article) → Moteur (validate + persist) → Rédaction (micro-context + content) → Progress', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    // Le parcours mesure son capitaine : sans DataForSEO, il n'a rien à vérifier.
+    if (!dataForSeoConfigured()) skip()
 
     // === CERVEAU ===
     // 1. Récupère un silo (existant ou de test)
@@ -148,6 +151,7 @@ describe('Cross-Workflow — Happy path complet', () => {
 describe('Cross-Workflow — Cache cross-article', () => {
   it('Même keyword testé sur 2 articles différents : 2ème call utilise keyword_metrics partagé', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
 
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Cache Cross Cocon')
@@ -192,6 +196,7 @@ describe('Cross-Workflow — Cache cross-article', () => {
 describe('Cross-Workflow — Resilience', () => {
   it('Refresh navigateur (simulé) : GET /explorations après POST restaure l\'état', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Resilience Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Resilience Article')
@@ -208,6 +213,7 @@ describe('Cross-Workflow — Resilience', () => {
 
   it('Switch d\'article en vol : les validations sur article A ne polluent pas article B', { timeout: 90000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Switch Cocon')
     const articleA = await ctx.createArticle(cocoon.id, 'Switch A')

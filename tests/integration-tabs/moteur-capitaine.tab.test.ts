@@ -7,6 +7,7 @@ import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
 import { grantCheck } from '../helpers/gates.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -26,6 +27,7 @@ describe('Tab moteur/capitaine — Validate', () => {
 
   it('POST /keywords/:kw/validate retourne 6 KPIs + verdict', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const res = await apiPost<{ kpis: unknown[]; verdict: { level: string; totalKpis: number } }>(
       `/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/scan`,
       { level: 'pilier', articleTitle: 'test' },
@@ -37,6 +39,7 @@ describe('Tab moteur/capitaine — Validate', () => {
 
   it('POST /keywords/:kw/validate?articleId persiste captain_explorations', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CapPers Cocon')
     const article = await ctx.createArticle(cocoon.id, 'CapPers Article')
@@ -56,6 +59,7 @@ describe('Tab moteur/capitaine — Validate', () => {
 describe('Tab moteur/capitaine — Carousel hydratation', () => {
   it('GET /articles/:id/explorations renvoie captain[] avec history', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CapHistory Cocon')
     const article = await ctx.createArticle(cocoon.id, 'CapHistory Article')

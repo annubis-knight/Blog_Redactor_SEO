@@ -12,6 +12,7 @@ import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, apiDelete, apiPut, expectSuccessOrKnownError } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
 import { grantCheck } from '../helpers/gates.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 
@@ -247,6 +248,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
 
   it('POST /keywords/:kw/validate retourne { kpis[], verdict }', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const kw = `test-${ctx.runId}-plombier-validate`
     const res = await apiPost<{
       keyword: string
@@ -277,6 +279,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
 
   it('POST /keywords/:kw/validate?articleId → persiste captain_explorations', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Captain Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Captain Article')
@@ -299,6 +302,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
 
   it('GET /articles/:id/explorations renvoie captain[] avec validation history', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'History Cocon')
     const article = await ctx.createArticle(cocoon.id, 'History Article')
@@ -321,6 +325,7 @@ describe('Moteur Workflow — Onglet Capitaine', () => {
   // la seconde validation vient de la base, sans nouvel appel externe.
   it('U5 TTL : re-valider le même keyword relit la base, sans nouvel appel externe', { timeout: 120000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const kw = `test-${ctx.runId}-ttl`
     const r1 = await apiPost<{ fromCache: boolean }>(`/keywords/${encodeURIComponent(kw)}/scan`, { level: 'pilier', articleTitle: 'Test' })
     expect(r1.status).toBe(200)
@@ -423,6 +428,7 @@ describe('Moteur Workflow — Onglet Lieutenants', () => {
 
   it('POST /serp/analyze renvoie { keyword, competitors[] }', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-serp`,
     })
@@ -609,6 +615,7 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
 
   it('GET /articles/:id/explorations/counts incrémente captain après validate', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Counts2 Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Counts2 Article')
@@ -646,6 +653,7 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
 
   it('Workflow complet Discovery → Radar → Capitaine → Lieutenants → Lexique', { timeout: 120000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'WF Cocon')
     const article = await ctx.createArticle(cocoon.id, 'WF Article')
@@ -702,6 +710,7 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
 
   it('Switch d\'article en vol : validations parallèles sur 2 articles restent isolées', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'SwitchE2E Cocon')
     const a1 = await ctx.createArticle(cocoon.id, 'SwitchE2E A1')

@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, expectSuccessOrKnownError } from '../helpers/api-client.js'
+import { dataForSeoConfigured } from '../helpers/external-sources.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -59,6 +60,7 @@ describe('Contract /serp/analyze', () => {
 
   it('POST OK → { keyword, competitors[] }', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
+    if (!dataForSeoConfigured()) skip()
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>(
       '/serp/analyze', { keyword: `test-${ctx.runId}-serp` },
     )
