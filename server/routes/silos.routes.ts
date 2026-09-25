@@ -1,11 +1,10 @@
 import { Router } from 'express'
-import { readFile } from 'fs/promises'
-import { join } from 'path'
 import { log } from '../utils/logger.js'
 import { getTheme, getSilos, getSiloByName, addCocoonToSilo, addSilo } from '../services/infra/data.service.js'
 import { getThemeConfig, saveThemeConfig } from '../services/strategy/theme-config.service.js'
 import { themeConfigSchema } from '../../shared/schemas/theme-config.schema.js'
 import { collectStreamWithUsage } from '../utils/stream-usage.js'
+import { loadPrompt } from '../utils/prompt-loader.js'
 
 const router = Router()
 
@@ -123,10 +122,7 @@ router.post('/theme/config/parse', async (req, res) => {
       return
     }
 
-    const promptTemplate = await readFile(
-      join(process.cwd(), 'server', 'prompts', 'theme-parse.md'),
-      'utf-8',
-    )
+    const promptTemplate = await loadPrompt('theme-parse')
 
     const { text: result, usage } = await collectStreamWithUsage(promptTemplate, text, 2048)
 

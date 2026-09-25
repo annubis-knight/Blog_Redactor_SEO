@@ -69,6 +69,7 @@ import type { PaaQuestion } from '../../shared/types/dataforseo.types'
 // ---------------------------------------------------------------------------
 const CAPTAIN_KEYWORD = 'creation site web entreprises Toulouse'
 const ARTICLE_LEVEL = 'pilier' as const
+const PAIN_POINT = 'Mes clients ne me trouvent pas sur Google'
 
 // Root keywords from Captain's extractRoots
 const ROOT_KEYWORDS = extractRoots(CAPTAIN_KEYWORD)
@@ -280,6 +281,10 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
       const prompt = await loadPrompt('propose-lieutenants', {
         keyword: CAPTAIN_KEYWORD,
         level: ARTICLE_LEVEL,
+        // Comme la route : la douleur de l'article et les SERP des racines (FR-INFRA-PROMPT-LAYERS,
+        // le chargeur refuse désormais un prompt dont une variable manque).
+        painPoint: PAIN_POINT,
+        root_keywords_serp_data: '',
         paa_questions: paaFormatted,
         hn_recurrence: hnFormatted,
         serp_competitors: competitorsFormatted,
@@ -290,6 +295,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
       expect(prompt.length).toBeGreaterThan(500)
       expect(prompt).toContain(CAPTAIN_KEYWORD)
+      expect(prompt, 'la douleur de l’article arrive à l’IA').toContain(PAIN_POINT)
       expect(prompt).toContain(ARTICLE_LEVEL)
       // All roots from Captain's send-to-lieutenants are in the prompt
       for (const root of ROOT_KEYWORDS) {
@@ -337,6 +343,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
       const prompt = await loadPrompt('lexique-analysis-upfront', {
         keyword: CAPTAIN_KEYWORD,
         level: ARTICLE_LEVEL,
+        painPoint: PAIN_POINT,
         obligatoire_terms: obligatoire.join(', '),
         differenciateur_terms: differenciateur.join(', '),
         optionnel_terms: optionnel.join(', '),
@@ -344,6 +351,7 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
       expect(prompt.length).toBeGreaterThan(200)
       expect(prompt).toContain(CAPTAIN_KEYWORD)
+      expect(prompt, 'la douleur de l’article arrive à l’IA').toContain(PAIN_POINT)
       expect(prompt).toContain(ARTICLE_LEVEL)
     })
 

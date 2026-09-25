@@ -163,7 +163,7 @@ export function expectSuccessOrKnownError<T>(res: ApiResponse<T>): boolean {
 
 /**
  * Consomme un stream SSE/texte et retourne le texte concaténé. Utilisé pour
- * les endpoints qui streament (translate-pain, generate/article, etc.).
+ * les endpoints qui streament (generate/article, strategy/*, etc.).
  */
 export async function consumeStream(path: string, body?: unknown): Promise<string> {
   const url = path.startsWith('http') ? path : `${BASE_URL}${path}`

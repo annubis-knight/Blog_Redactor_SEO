@@ -2,7 +2,7 @@
  * Helpers pour consommer un stream `streamChatCompletion` côté serveur en
  * préservant le `usage` (coût API) pour le remonter au frontend.
  *
- * Contexte : certaines routes (strategy/*, theme/parse, translate-pain,
+ * Contexte : certaines routes (strategy/*, theme/parse,
  * lexique-suggest) consomment le stream côté serveur puis renvoient un JSON
  * simple au client — contrairement aux routes SSE qui passent directement
  * les chunks au navigateur.

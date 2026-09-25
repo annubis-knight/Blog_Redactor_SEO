@@ -251,7 +251,12 @@ describe('POST /generate/article (section-by-section)', () => {
       articleTitle: 'Test Article Title',
       keyword: 'test keyword',
       sectionOutline: expect.stringContaining('First Section'),
-      sectionPosition: 'intro',
+      // Le budget de la section atteint enfin le prompt (R1) ; la position passe
+      // par ses consignes (positionDirectives), plus par une clé que rien ne lisait.
+      sectionBudgetHint: expect.stringMatching(/^~\d+ mots/),
+    }))
+    expect(mockLoadPrompt).not.toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
+      sectionPosition: expect.anything(),
     }))
     // maxTokens is now dynamic (computeSectionBudget), not hardcoded 4096 (F12)
     // 4th arg is [WEB_SEARCH_TOOL] tools array
@@ -415,7 +420,7 @@ describe('POST /generate/meta', () => {
       articleTitle: 'Test Article Title',
       keyword: 'test keyword',
       articleContent: '<h2>Hello</h2><p>World</p>',
-    }))
+    }), { escapeKeys: ['articleContent'] })
     expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', 1024)
     expect(res.json).toHaveBeenCalledWith({
       data: { metaTitle: 'Test Meta Title', metaDescription: 'Test meta description for the article.', usage: fakeUsage },

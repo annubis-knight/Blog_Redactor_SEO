@@ -17,7 +17,7 @@
 
 ## Nombre de mots cible
 
-L'article complet doit faire environ **{{wordCountBudget}} mots**. Tu rédiges la partie « {{sectionRole}} ». Calibre ta rédaction pour que l'ensemble de l'article atteigne cette cible une fois toutes les sections assemblées.
+L'article complet doit faire environ **{{wordCountBudget}} mots**. Tu rédiges la partie « {{sectionRole}} » : **{{sectionBudgetHint}}**. Ce budget est ta part de la cible, pas un minimum : l'article dépasse sa cible si chaque section déborde du sien.
 
 ## Sommaire complet de l'article
 

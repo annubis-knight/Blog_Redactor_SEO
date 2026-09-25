@@ -8,9 +8,9 @@ const router = Router()
 
 /** POST /api/generate/micro-context-suggest — Stream micro-context suggestion via Claude */
 router.post('/generate/micro-context-suggest', async (req, res) => {
-  const { articleId, articleTitle, articleType, keyword, cocoonName, siloName, cocoonStrategy, themeConfig } = req.body as {
+  const { articleId, articleTitle, articleType, keyword, cocoonName, siloName, themeConfig } = req.body as {
     articleId: number; articleTitle: string; articleType: string; keyword: string
-    cocoonName: string; siloName?: string; cocoonStrategy?: Record<string, unknown>; themeConfig?: Record<string, unknown>
+    cocoonName: string; siloName?: string; themeConfig?: Record<string, unknown>
   }
 
   if (!articleId || !articleTitle || !keyword) {
@@ -31,8 +31,9 @@ router.post('/generate/micro-context-suggest', async (req, res) => {
       keyword,
       cocoonName: cocoonName || '',
       siloName: siloName || '',
-      cocoonStrategy: cocoonStrategy ? JSON.stringify(cocoonStrategy, null, 2) : 'Non disponible',
       themeConfig: themeConfig ? JSON.stringify(themeConfig, null, 2) : 'Non disponible',
+    // La stratégie du cocon est lue en base par le chargeur ({{strategy_context}}) :
+    // elle n'arrive qu'une fois (elle était aussi envoyée en JSON par le client).
     }, cocoonSlug ? { cocoonSlug } : undefined)
 
     const userPrompt = `Suggère un micro-contexte (angle, ton, consignes) pour l'article "${articleTitle}" (mot-clé: ${keyword}).`

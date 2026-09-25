@@ -34,11 +34,12 @@ router.post('/generate/meta', async (req, res) => {
     const startTotal = Date.now()
     const systemPrompt = await loadPrompt('system-propulsite')
 
+    // Le texte de l'article est du contenu utilisateur : échappé (NFR-SEC-PROMPT-INJECTION).
     const userPrompt = await loadPrompt('generate-meta', {
       articleTitle,
       keyword,
       articleContent,
-    })
+    }, { escapeKeys: ['articleContent'] })
     log.debug('meta prompts built', { systemChars: systemPrompt.length, userChars: userPrompt.length })
 
     // Retry loop with backoff on 429 rate-limit

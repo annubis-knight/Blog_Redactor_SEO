@@ -3,11 +3,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockGetStrategy, mockSaveStrategy, mockStreamChatCompletion, mockReadFile } = vi.hoisted(() => ({
+const { mockGetStrategy, mockSaveStrategy, mockStreamChatCompletion } = vi.hoisted(() => ({
   mockGetStrategy: vi.fn(),
   mockSaveStrategy: vi.fn(),
   mockStreamChatCompletion: vi.fn(),
-  mockReadFile: vi.fn(),
 }))
 
 vi.mock('../../../server/services/strategy/strategy.service', () => ({
@@ -20,9 +19,8 @@ vi.mock('../../../server/services/external/ai-provider.service', () => ({
   USAGE_SENTINEL: '__USAGE__',
 }))
 
-vi.mock('fs/promises', () => ({
-  readFile: mockReadFile,
-}))
+// Les VRAIS modèles `server/prompts/*.md` : le chargeur est strict (FR-INFRA-PROMPT-LAYERS),
+// un faux modèle auquel manque une variable de la route serait refusé à raison.
 
 const { default: router } = await import('../../../server/routes/strategy.routes')
 
@@ -153,7 +151,6 @@ describe('POST /strategy/:id/suggest', () => {
   }
 
   it('returns suggestion from Claude', async () => {
-    mockReadFile.mockResolvedValueOnce('Template {{articleTitle}} {{cocoonName}} {{siloName}} {{step}} {{stepDescription}} {{currentInput}} {{#existingArticles}}{{existingArticles}}{{/existingArticles}}')
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['Ciblez les artisans ', 'du BTP en Occitanie.']))
 
     const req = { params: { id: '1' }, body: validBody } as unknown as Request
@@ -170,7 +167,6 @@ describe('POST /strategy/:id/suggest', () => {
   })
 
   it('replaces template variables correctly', async () => {
-    mockReadFile.mockResolvedValueOnce('Article: {{articleTitle}}, Cocon: {{cocoonName}}, Silo: {{siloName}}, Step: {{step}}, Desc: {{stepDescription}}, Input: {{currentInput}}')
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['suggestion']))
 
     const req = { params: { id: '1' }, body: validBody } as unknown as Request
@@ -186,7 +182,6 @@ describe('POST /strategy/:id/suggest', () => {
   })
 
   it('handles existingArticles in template', async () => {
-    mockReadFile.mockResolvedValueOnce('Before {{#existingArticles}}- **Articles existants dans ce cocon** : {{existingArticles}}{{/existingArticles}} After')
     mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['suggestion']))
 
     const bodyWithArticles = {
@@ -221,7 +216,6 @@ describe('POST /strategy/:id/suggest', () => {
   })
 
   it('returns 500 when Claude API fails', async () => {
-    mockReadFile.mockResolvedValueOnce('{{articleTitle}} {{cocoonName}} {{siloName}} {{step}} {{stepDescription}} {{currentInput}} {{#existingArticles}}{{existingArticles}}{{/existingArticles}}')
     mockStreamChatCompletion.mockImplementationOnce(async function* () {
        
       if (false) yield ''

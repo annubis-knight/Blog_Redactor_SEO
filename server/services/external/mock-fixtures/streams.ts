@@ -1,35 +1,12 @@
 /**
  * Mock stream fixtures.
  *
- * Simule les réponses des streams (POST /keywords/translate-pain, theme-parse,
+ * Simule les réponses des streams (theme-parse,
  * captain AI panel, propose-lieutenants, ai-lexique-upfront, etc.). Chaque
  * fixture a un matcher qui identifie le contexte et un builder qui retourne
  * soit une chaîne complète, soit des chunks pré-découpés.
  */
 import { registerStreamFixture } from '../mock-registry.js'
-
-// ---------------------------------------------------------------------------
-// translate-pain — retourne un JSON { keywords: [{keyword, reasoning}] }
-// ---------------------------------------------------------------------------
-registerStreamFixture(
-  'translate-pain',
-  ({ userPrompt }) => /traduis cette douleur/i.test(userPrompt) || /douleur client en mots-clés/i.test(userPrompt),
-  ({ userPrompt }) => {
-    const painMatch = userPrompt.match(/"([^"]+)"/)
-    const pain = (painMatch?.[1] ?? 'problème client').slice(0, 80)
-
-    const json = {
-      keywords: [
-        { keyword: `résoudre ${pain}`, reasoning: 'Verbe d\'action direct, intention résolution' },
-        { keyword: `solution ${pain}`, reasoning: 'Terme générique à fort volume' },
-        { keyword: `${pain} que faire`, reasoning: 'Question naturelle, longue-traîne' },
-        { keyword: `éviter ${pain}`, reasoning: 'Prévention, angle éditorial' },
-        { keyword: `${pain} urgent`, reasoning: 'Variante transactionnelle' },
-      ],
-    }
-    return JSON.stringify(json, null, 2)
-  },
-)
 
 // ---------------------------------------------------------------------------
 // theme-parse — parse libre d'une description d'entreprise vers ThemeConfig

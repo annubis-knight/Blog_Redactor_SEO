@@ -35,7 +35,6 @@ const URL_LABELS: [RegExp, string][] = [
   [/\/theme\/config\/parse/, 'Parsing thème'],
 
   // Keywords (JSON wrappé)
-  [/\/keywords\/translate-pain/, 'Traduction douleur → mots-clés'],
   [/\/keywords\/lexique-suggest/, 'Suggestion lexique'],
   [/\/keywords\/relevance-score/, 'Score pertinence'],
   [/\/keywords\/analyze-discovery/, 'Analyse discovery'],

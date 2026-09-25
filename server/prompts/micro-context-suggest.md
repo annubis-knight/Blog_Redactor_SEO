@@ -10,8 +10,9 @@ Tu dois suggérer un micro-contexte pour un article de blog : un angle différen
 - **Cocon SEO** : {{cocoonName}}
 - **Silo** : {{siloName}}
 
-### Stratégie cocon
-{{cocoonStrategy}}
+{{#strategy_context}}
+{{strategy_context}}
+{{/strategy_context}}
 
 ### Configuration thème
 {{themeConfig}}

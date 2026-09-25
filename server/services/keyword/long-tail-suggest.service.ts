@@ -20,6 +20,7 @@ import { loadPrompt } from '../../utils/prompt-loader.js'
 import { log } from '../../utils/logger.js'
 import { getCached, setCached } from '../../db/cache-helpers.js'
 import { persistLongTailSuggestions } from '../infra/radar-exploration.service.js'
+import { getArticleById } from '../infra/data.service.js'
 import {
   longTailSuggestionsResponseSchema,
   longTailSuggestRequestSchema,
@@ -98,12 +99,21 @@ export async function generateLongTailSuggestions(
     ? candidates.map(c => `- ${c.keyword}  (${c.derivedFromRoots.join(' + ')})`).join('\n')
     : 'Aucune combinaison candidate calculee.'
 
+  // La stratégie du cocon de l'article est lue en base par le chargeur
+  // ({{strategy_context}}) : le client envoie toujours `strategyContext: ''`,
+  // et le prompt recevait donc toujours une stratégie vide.
+  let cocoonName: string | undefined
+  try {
+    cocoonName = (await getArticleById(articleId))?.cocoonName
+  } catch (err) {
+    log.warn(`[long-tail-suggest] article ${articleId} illisible — suggestions sans stratégie du cocon`, { error: (err as Error).message })
+  }
   const systemPrompt = await loadPrompt('radar-long-tail-suggest', {
     article_title: input.articleTitle || '(non defini)',
     article_pain_point: input.articlePainPoint || '(non defini)',
     radar_keywords_with_kpis: radarKeywordsBlock,
     candidate_combinations: candidatesBlock,
-  }, input.strategyContext ? { /* strategy context already in vars */ } : undefined)
+  }, cocoonName ? { cocoonSlug: cocoonName } : undefined)
 
   const userPrompt = `Genere les suggestions longue-traine pour l'article "${input.articleTitle}".`
 

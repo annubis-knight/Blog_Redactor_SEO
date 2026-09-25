@@ -13,7 +13,13 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { buildAddArticlePrompt } from '../../../server/services/strategy/cocoon-add-article-prompt.js'
+import { addArticlePromptVariables, type AddArticlePromptInput } from '../../../server/services/strategy/cocoon-add-article-prompt.js'
+import { renderPromptTemplate } from '../../../server/utils/prompt-loader.js'
+
+/** Rendu tel que loadPrompt le fait (une passe, sections, pas de motifs $). */
+function buildAddArticlePrompt(template: string, input: AddArticlePromptInput): string {
+  return renderPromptTemplate(template, addArticlePromptVariables(input)).text
+}
 
 const TEMPLATE = [
   'Type : {{articleType}}',
@@ -28,7 +34,7 @@ const TEMPLATE = [
 
 const base = { existingArticlesDetail: '[]' }
 
-describe('buildAddArticlePrompt — les règles du niveau demandé arrivent jusqu’à l’IA', () => {
+describe('addArticlePromptVariables — les règles du niveau demandé arrivent jusqu’à l’IA', () => {
   it('garde les règles du Pilier quand le front envoie le niveau en minuscules', () => {
     const prompt = buildAddArticlePrompt(TEMPLATE, { ...base, articleType: 'pilier' })
     expect(prompt).toContain('REGLES PILIER')

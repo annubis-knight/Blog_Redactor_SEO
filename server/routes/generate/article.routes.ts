@@ -160,8 +160,7 @@ router.post('/generate/article', async (req, res) => {
       const sectionPrompt = await loadPrompt('generate-article-section', {
         ...commonVars,
         sectionOutline: formatSectionOutline(group),             // Section courante formatée (liste "- H2/H3: titre [annotation]")
-        sectionPosition: group.position,                         // Position dans l'article : "intro" | "middle" | "conclusion"
-        previousContext,                                         // Texte brut des ~500 derniers caractères déjà rédigés (ou vide si 1ère section)
+        previousContext,                                        // Texte brut des ~500 derniers caractères déjà rédigés (ou vide si 1ère section)
         positionDirectives: getPositionDirectives(group.position, keyword, articleTitle), // Consignes spécifiques selon la position (intro: H1 + accroche, conclusion: CTA + récap)
         wordCountBudget: String(targetWordCount),                // Nombre de mots cible pour l'article complet
         sectionRole: role,                                       // Rôle de la section (ex: "introduction", "section principale 2/4", "conclusion")

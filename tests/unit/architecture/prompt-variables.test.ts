@@ -15,11 +15,12 @@
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync } from 'node:fs'
 import { join, relative } from 'node:path'
+import { templateKeys, PROMPT_GLOBALS } from '../../../server/utils/prompt-loader'
 
 const ROOT = join(__dirname, '..', '..', '..')
 
 /** Clés qui portent du contenu fourni par l'utilisateur. */
-const USER_CONTENT_KEYS = ['selectedText', 'sectionHtml', 'articleHtml']
+const USER_CONTENT_KEYS = ['selectedText', 'sectionHtml', 'articleHtml', 'articleContent']
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -81,4 +82,114 @@ describe('Variables de prompt', () => {
     const missing = keys.filter(k => !template.includes(`{{${k}}}`))
     expect(missing, `variables transmises mais absentes de generate-outline.md : ${missing.join(', ')}`).toEqual([])
   })
+
+  // FR-INFRA-PROMPT-LAYERS — le chargeur est strict à l'exécution ; ce test le
+  // prouve pour TOUS les appels, y compris ceux dont les tests de route
+  // simulent loadPrompt (et n'exercent donc jamais le mode strict).
+  it('chaque appel loadPrompt fournit exactement les repères de son prompt', () => {
+    const problems: string[] = []
+    let checked = 0
+    for (const file of walk(join(ROOT, 'server'))) {
+      if (file.endsWith('prompt-loader.ts')) continue
+      const source = readFileSync(file, 'utf8')
+      for (const call of loadPromptCalls(source)) {
+        const name = /^loadPrompt\(\s*['"]([^'"]+)['"]/.exec(call)?.[1]
+        if (!name) continue // nom calculé (actions/${type}) : couvert par le test suivant
+        const provided = providedKeys(call, source)
+        if (provided === null) {
+          problems.push(`${relative(ROOT, file)} — ${name} : variables illisibles (objet non littéral)`)
+          continue
+        }
+        const cited = templateKeys(readFileSync(join(ROOT, 'server/prompts', `${name}.md`), 'utf8')).variables
+        const missing = cited.filter(k => !provided.includes(k) && !(PROMPT_GLOBALS as readonly string[]).includes(k))
+        const unused = provided.filter(k => !cited.includes(k))
+        if (missing.length || unused.length) {
+          problems.push(`${relative(ROOT, file)} — ${name} : manquantes [${missing.join(', ')}], inutilisées [${unused.join(', ')}]`)
+        }
+        checked++
+      }
+    }
+    expect(checked, 'le test doit lire des appels').toBeGreaterThan(20)
+    expect(problems, problems.join('\n')).toEqual([])
+  })
+
+  it('les actions contextuelles attendent toutes selectedText et keywordInstruction, rien d’autre', () => {
+    const dir = join(ROOT, 'server/prompts/actions')
+    for (const file of readdirSync(dir).filter(f => f.endsWith('.md'))) {
+      const { variables } = templateKeys(readFileSync(join(dir, file), 'utf8'))
+      expect(variables.sort(), file).toEqual(['keywordInstruction', 'selectedText'])
+    }
+  })
 })
+
+/** Clés du 2e argument d'un appel loadPrompt ; `...nom` résolu dans le même fichier. */
+function providedKeys(call: string, source: string): string[] | null {
+  const open = call.indexOf(',')
+  if (open === -1) return []
+  const rest = call.slice(open + 1).trimStart()
+  if (rest.startsWith(')')) return []
+  if (!rest.startsWith('{')) return null
+  return objectKeys(rest, source)
+}
+
+function objectKeys(literal: string, source: string): string[] | null {
+  const keys: string[] = []
+  for (const entry of topLevelEntries(literal)) {
+    const spread = /^\.\.\.(\w+)$/.exec(entry)
+    if (spread) {
+      const decl = new RegExp(`const ${spread[1]}\\s*=\\s*\\{`).exec(source)
+      if (!decl) return null
+      const inner = objectKeys(source.slice(decl.index + decl[0].length - 1), source)
+      if (!inner) return null
+      keys.push(...inner)
+      continue
+    }
+    const key = /^['"]?([A-Za-z_]\w*)['"]?\s*(?::|$)/.exec(entry)?.[1]
+    if (key) keys.push(key)
+  }
+  return keys
+}
+
+/** Entrées de premier niveau d'un littéral objet (chaînes, gabarits et commentaires sautés). */
+function topLevelEntries(text: string): string[] {
+  const entries: string[] = []
+  let depth = 0
+  let start = 1
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!
+    if (c === '/' && text[i + 1] === '/') { i = text.indexOf('\n', i); if (i === -1) break; continue }
+    if (c === '/' && text[i + 1] === '*') { i = text.indexOf('*/', i) + 1; continue }
+    if (c === '"' || c === "'" || c === '`') { i = skipString(text, i); continue }
+    if ('{[('.includes(c)) { depth++; continue }
+    if ('}])'.includes(c)) {
+      depth--
+      if (depth === 0) { entries.push(stripComments(text.slice(start, i))); break }
+      continue
+    }
+    if (c === ',' && depth === 1) { entries.push(stripComments(text.slice(start, i))); start = i + 1 }
+  }
+  return entries.map(e => e.trim()).filter(Boolean)
+}
+
+function skipString(text: string, i: number): number {
+  const quote = text[i]
+  for (let j = i + 1; j < text.length; j++) {
+    if (text[j] === '\\') { j++; continue }
+    if (quote === '`' && text[j] === '$' && text[j + 1] === '{') {
+      let depth = 1
+      j += 2
+      for (; j < text.length && depth > 0; j++) {
+        if (text[j] === '{') depth++
+        else if (text[j] === '}') depth--
+      }
+      j--
+      continue
+    }
+    if (text[j] === quote) return j
+  }
+  return text.length
+}
+
+function stripComments(entry: string): string {
+  return entry.replace(/\/\/[^\n]*/g, '').replace(/\/\*[\s\S]*?\*\//g, '')
+}
