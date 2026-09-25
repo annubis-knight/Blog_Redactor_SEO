@@ -195,15 +195,22 @@ Quand `AI_PROVIDER=mock` :
 
 Dans [`server/services/external/mock-fixtures/`](../server/services/external/mock-fixtures/) :
 
-| Fichier | Couvre |
-|---------|--------|
-| `discovery.ts` | `classify_relevance`, `curate_keywords` |
-| `radar.ts` | `generate_radar_keywords` (15 kw cohérents) |
-| `intent.ts` | `classify_intent` (heuristique modules SERP) |
-| `content-gap.ts` | `analyze_content_gap` (competitors + themes) |
-| `strategy.ts` | Q&A cocon (cible, douleur, angle, promesse, cta) |
-| `generate.ts` | `generate_article_structure`, meta, humanize-section, reduce-section, `recommend_word_count` |
-| `streams.ts` | translate-pain, theme-parse, captain-ai-panel, propose-lieutenants, ai-lexique-upfront |
+*Mis à jour le 2026-09-25 (chantier C4). Outils = `classifyWithTool` ; flux = `streamChatCompletion`.*
+
+| Fichier | Outils (JSON) | Flux (texte) |
+|---------|---------------|--------------|
+| `discovery.ts` | `classify_relevance`, `curate_keywords` | — |
+| `radar.ts` | `generate_radar_keywords` (15 mots-clés ; le prompt `intent-keywords.md` en demande 20) | — |
+| `intent.ts` | `classify_intent` (heuristique modules SERP) | — |
+| `content-gap.ts` | `analyze_content_gap` (concurrents + thèmes) | — |
+| `captain-paa-judge.ts` | `submit_paa_judgments` | — |
+| `long-tail-suggest.ts` | `suggest_long_tail` | — |
+| `generate.ts` | `generate_article_structure`, `generate_paa_queries`, `generate_specialised_articles`, `recommend_word_count` | micro-context-suggest, generate-outline, generate-article-section, generate-article-meta, humanize-section, reduce-section, lexique-suggest |
+| `strategy.ts` | — | stratégie du cocon (suggestion, approfondir, enrichir, sujets), structure, requêtes PAA, spécialisés, ajout d'un article |
+| `streams.ts` | — | theme-parse, captain-ai-panel, lieutenants-hn-structure, propose-lieutenants, ai-lexique-upfront, intent-keywords-fallback, lexique-suggest-array |
+| `auto-intake.ts`, `auto-placement.ts`, `auto-section-priority.ts`, `auto-meta-priority.ts` | — | mode automatique : brief, placement, section et méta prioritaires |
+
+Les flux se reconnaissent à des **phrases du prompt** (« Section à rédiger », « Propose les meilleurs lieutenants »…) : retoucher ces phrases dans un `.md` impose de mettre la fixture à jour. Les prompts eux-mêmes sont décrits dans [`prompts-architecture.md`](./prompts-architecture.md) et inventoriés dans [`prompts-reference.md`](./prompts-reference.md).
 
 ### 4.4 Ajouter une fixture mock
 

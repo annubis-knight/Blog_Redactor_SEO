@@ -13,6 +13,7 @@
     "db:backup": "tsx scripts/db-backup.ts",
     "db:clean-tests": "tsx scripts/db-clean-tests.ts",
     "content:clean": "tsx scripts/clean-article-content.ts",
+    "docs:prompts": "tsx scripts/prompts-reference.ts",
     "verify": "run-p --print-label verify:lint verify:types verify:unit verify:content db:check",
     "verify:lint": "oxlint .",
     "verify:types": "run-p --print-label type-check auto:typecheck",

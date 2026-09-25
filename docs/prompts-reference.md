@@ -1,108 +1,81 @@
-# Référence des Prompts — Blog Redactor SEO
+# Référence des prompts — Blog Redactor SEO
 
-Ce document liste tous les fichiers de prompts utilisés par l'application, organisés par domaine fonctionnel.
+> **Fichier généré** par `npm run docs:prompts` (`scripts/prompts-reference.ts`) : ne pas l’éditer à la main.
+> Un test (`tests/unit/architecture/prompts-reference.test.ts`) vérifie qu’il est à jour.
+> Architecture (couches, chargeur strict, variables globales) : [`prompts-architecture.md`](./prompts-architecture.md).
 
----
+42 prompts. Variables globales, fournies par le chargeur quand un prompt les cite : `strategy_context`, `today`, `year`, `zone`, `zone_landmarks`.
 
-## Prompt système (global)
+Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur refuse une variable manquante ou en trop) ; **Sections** = blocs `{{#clé}}…{{/clé}}` gardés si la valeur n’est pas vide.
 
-| Prompt | Rôle | Utilisé par |
-|---|---|---|
-| `system-propulsite.md` | Définit le "personnage" de Claude : ton de voix, règles d'écriture, standards SEO/GEO. Utilisé comme prompt système dans **toutes** les générations | Toutes les routes `/generate/*` |
+## Système
 
----
+| Prompt | Rôle | Variables | Sections | Globales | Chargé par |
+|---|---|---|---|---|---|
+| `system-propulsite.md` | Identité et règles d’écriture (ton, SEO, GEO, liste noire) ; prompt système des générations de texte | — | `zone`, `zone_landmarks` | `today`, `year`, `zone`, `zone_landmarks` | `server/routes/generate/action.routes.ts`, `server/routes/generate/article.routes.ts`, `server/routes/generate/humanize-section.routes.ts`, `server/routes/generate/meta.routes.ts`, `server/routes/generate/reduce-section.routes.ts` |
 
-## Mots-clés & Stratégie (23 prompts)
+## Cerveau — stratégie et cocon
 
-Phase de **préparation** : recherche des bons mots-clés, construction de la stratégie, organisation du cocon sémantique.
+| Prompt | Rôle | Variables | Sections | Globales | Chargé par |
+|---|---|---|---|---|---|
+| `cocoon-add-article.md` | Un seul article complémentaire, du type demandé | `articleType`, `cocoonName`, `existingArticles`, `isIntermediaire`, `isPilier`, `isSpecialise`, `previousAnswers`, `siloName`, `themeContext`, `userInput` | `isIntermediaire`, `isPilier`, `isSpecialise`, `previousAnswers`, `themeContext`, `userInput` | `year` | `server/services/strategy/strategy-prompts.service.ts` |
+| `cocoon-articles.md` | Structure du cocon : le Pilier et les Intermédiaires | `cocoonName`, `existingArticles`, `previousAnswers`, `siloName`, `themeContext`, `topicSuggestions` | `existingArticles`, `previousAnswers`, `themeContext`, `topicSuggestions` | `year` | `server/services/strategy/strategy-prompts.service.ts` |
+| `cocoon-articles-spe.md` | Articles Spécialisés, nourris des PAA récupérées | `articles`, `cocoonName`, `paaContext`, `previousAnswers`, `siloName`, `themeContext` | `paaContext`, `previousAnswers`, `themeContext` | `year` | `server/services/strategy/strategy-prompts.service.ts` |
+| `cocoon-articles-topics.md` | Sujets et sous-thèmes à couvrir dans le cocon | `cocoonName`, `existingArticles`, `previousAnswers`, `siloName`, `themeContext` | `existingArticles`, `previousAnswers`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `cocoon-brainstorm.md` | Suggestion pour une étape de la stratégie du cocon | `cocoonName`, `currentInput`, `existingArticles`, `previousAnswers`, `siloName`, `step`, `stepDescription`, `themeContext` | `existingArticles`, `previousAnswers`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `cocoon-paa-queries.md` | Requêtes Google pour récupérer les PAA de chaque Intermédiaire | `articles`, `cocoonName`, `previousAnswers`, `siloName`, `themeContext` | `previousAnswers`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `strategy-consolidate.md` | Consolide la réponse principale et les sous-réponses | `contextBlock`, `mainAnswer`, `step`, `subAnswers` | — | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `strategy-deepen.md` | Propose une sous-question pour approfondir une étape | `contextBlock`, `existingSubQuestions`, `mainAnswer`, `mainQuestion`, `previousAnswers`, `step` | — | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `strategy-enrich.md` | Enrichit le texte validé avec une sous-réponse | `contextBlock`, `existingValidated`, `step`, `subAnswer`, `subQuestion` | — | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `strategy-merge.md` | Fusionne le texte de l’utilisateur et la suggestion IA (article ou cocon) | `aiSuggestion`, `articleTitle`, `cocoonName`, `existingValidatedBlock`, `hasExistingValidated`, `noExistingValidated`, `previousAnswersBlock`, `siloName`, `step`, `stepDescription`, `themeContextBlock`, `userInput` | `hasExistingValidated`, `noExistingValidated` | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `strategy-suggest.md` | Suggestion pour une étape de la stratégie d’article (cible, douleur, angle…) | `articleTitle`, `cocoonName`, `currentInput`, `existingArticles`, `previousAnswers`, `siloName`, `step`, `stepDescription`, `themeContext` | `existingArticles`, `previousAnswers`, `stepDescription`, `themeContext` | — | `server/services/strategy/strategy-prompts.service.ts` |
+| `theme-parse.md` | Transforme une description libre de l’entreprise en configuration structurée | — | — | — | `server/routes/silos.routes.ts` |
 
-### Découverte & Analyse de mots-clés
+## Moteur — mots-clés
 
-| Prompt | Rôle | Route / Déclencheur |
-|---|---|---|
-| `pain-translate.md` | Transforme un problème client en mots-clés Google (short/medium/long-tail) | `/keywords/translate-pain` |
-| `intent-keywords.md` | Génère 20 mots-clés courts à partir du titre pour chercher les "People Also Ask" | Service `keyword-radar` |
-| `radar-long-tail-suggest.md` | Génère ≤ 10 longues-traînes scorées 1-10 à partir des mots-clés Radar racines (combinator local + IA). Variables : `{{article_title}}`, `{{article_pain_point}}`, `{{strategy_context}}`, `{{radar_keywords_with_kpis}}`, `{{candidate_combinations}}`. | `POST /articles/:id/radar-exploration/long-tail` |
-| `capitaine-ai-panel.md` | Expert SEO : analyse les candidats au mot-clé principal avec recommandations | `/keywords/:keyword/ai-panel` |
-| `propose-lieutenants.md` | Propose des mots-clés secondaires (lieutenants) basés sur SERP et PAA | `/keywords/:keyword/propose-lieutenants` |
-| `lexique-suggest.md` | Génère le champ sémantique du mot-clé (termes LSI attendus par Google) | `/keywords/lexique-suggest` |
-| `lexique-ai-panel.md` | Analyse les termes TF-IDF : obligatoires, différenciants, optionnels | `/keywords/:keyword/ai-lexique` |
-| `lexique-analysis-upfront.md` | Analyse préliminaire du lexique avant la rédaction | `/keywords/:keyword/ai-lexique-upfront` |
-| `lieutenants-hn-structure.md` | Recommande une structure H2/H3 optimisée pour les lieutenants choisis | `/keywords/:keyword/ai-hn-structure` |
+| Prompt | Rôle | Variables | Sections | Globales | Chargé par |
+|---|---|---|---|---|---|
+| `capitaine-ai-panel.md` | Avis d’expert sur le candidat capitaine | `keyword`, `level`, `marketScore`, `painPoint`, `relevanceScore` | — | `strategy_context` | `server/routes/keyword-ai-panel.routes.ts` |
+| `captain-paa-judge.md` | Juge la pertinence des PAA du capitaine face à la douleur | `article_title`, `keyword`, `paa_list_formatted`, `pain_intent_expected`, `pain_point` | — | — | `server/services/keyword/captain-paa-judge.service.ts` |
+| `intent-keywords.md` | Mots-clés courts pour chercher les PAA (Radar) | `keyword`, `painPoint`, `title` | — | — | `server/services/keyword/keyword-radar.service.ts` |
+| `lexique-ai-panel.md` | Avis d’expert sur les termes TF-IDF | `differenciateur_terms`, `keyword`, `level`, `obligatoire_terms`, `optionnel_terms`, `painPoint` | — | `strategy_context` | `server/routes/keyword-ai-panel.routes.ts` |
+| `lexique-analysis-upfront.md` | Recommande ou écarte chaque terme TF-IDF, avec une raison | `differenciateur_terms`, `keyword`, `level`, `obligatoire_terms`, `optionnel_terms`, `painPoint` | — | `strategy_context` | `server/routes/keyword-ai-panel.routes.ts` |
+| `lexique-suggest.md` | Champ sémantique du capitaine (termes attendus) | `articleTitle`, `capitaine`, `cocoonName`, `painPoint` | — | — | `server/routes/keywords.routes.ts` |
+| `lieutenants-hn-structure.md` | Structure H2/H3 à partir des lieutenants retenus | `hn_structure`, `keyword`, `level`, `lieutenants`, `locked_headings`, `painPoint`, `type_rules` | — | `strategy_context` | `server/routes/keyword-ai-panel.routes.ts` |
+| `propose-lieutenants.md` | Candidats lieutenants depuis SERP, PAA, racines et groupes de mots | `existing_lieutenants`, `hn_recurrence`, `keyword`, `level`, `paa_questions`, `painPoint`, `root_keywords`, `root_keywords_serp_data`, `serp_competitors`, `type_rules`, `word_groups` | — | — | `server/routes/keyword-ai-panel.routes.ts` |
+| `radar-long-tail-suggest.md` | Longues traînes scorées à partir des racines du Radar | `article_pain_point`, `article_title`, `candidate_combinations`, `radar_keywords_with_kpis` | — | `strategy_context` | `server/services/keyword/long-tail-suggest.service.ts` |
 
-### Stratégie
+## Rédaction
 
-| Prompt | Rôle | Route / Déclencheur |
-|---|---|---|
-| `strategy-suggest.md` | Conseils stratégiques selon le type d'article (Pilier, Intermédiaire, Spécialisé) | `/generate/micro-context-suggest` |
-| `strategy-deepen.md` | Approfondit une question stratégique en ajoutant des sous-questions | Workflow stratégie interne |
-| `strategy-consolidate.md` | Fusionne réponse principale + sous-réponses en texte stratégique complet | Workflow stratégie interne |
-| `strategy-merge.md` | Fusionne deux réponses stratégiques (ex: combiner 2 cocons) | Workflow cocon interne |
-| `strategy-enrich.md` | Enrichit un texte stratégique avec des sous-réponses validées | Workflow stratégie interne |
+| Prompt | Rôle | Variables | Sections | Globales | Chargé par |
+|---|---|---|---|---|---|
+| `brief-ia-panel.md` | Lecture critique du brief complet | `articleTitle`, `articleType`, `cocoonArticles`, `cocoonName`, `hnStructure`, `keyword`, `keywords`, `lexique`, `microContext`, `paaQuestions`, `topCompetitors` | — | — | `server/routes/generate/brief-explain.routes.ts` |
+| `generate-article-section.md` | Rédige une section avec son budget de mots | `articleTitle`, `articleType`, `cocoonName`, `fullOutline`, `keyword`, `keywordContext`, `microContext`, `positionDirectives`, `previousContext`, `secondaryKeywords`, `sectionBudgetHint`, `sectionOutline`, `sectionRole`, `strategyContext`, `wordCountBudget` | — | — | `server/routes/generate/article.routes.ts` |
+| `generate-meta.md` | Meta title et meta description | `articleContent`, `articleTitle`, `keyword` | — | — | `server/routes/generate/meta.routes.ts` |
+| `generate-outline.md` | Sommaire H1/H2/H3 en JSON (prompt système du sommaire) | `articleTitle`, `articleType`, `cocoonName`, `competitorStructure`, `keyword`, `keywordContext`, `microContext`, `paaQuestions`, `secondaryKeywords`, `strategyContext`, `theme`, `type_rules` | — | — | `server/routes/generate/outline.routes.ts` |
+| `humanize-section.md` | Retire les tics d’écriture IA d’une section | `keyword`, `keywords`, `reinforcement`, `sectionHtml`, `sectionTitle` | — | — | `server/routes/generate/humanize-section.routes.ts` |
+| `micro-context-suggest.md` | Angle, ton et consignes proposés pour l’article | `articleTitle`, `articleType`, `cocoonName`, `keyword`, `siloName`, `themeConfig` | `strategy_context` | `strategy_context` | `server/routes/generate/micro-context-suggest.routes.ts` |
+| `reduce-section.md` | Raccourcit une section en gardant structure et SEO | `currentWordCount`, `keyword`, `keywords`, `sectionHtml`, `sectionTitle`, `strategyContext`, `targetWordCount` | — | — | `server/routes/generate/reduce-section.routes.ts` |
 
-### Cocon sémantique
+## Actions contextuelles
 
-| Prompt | Rôle | Route / Déclencheur |
-|---|---|---|
-| `cocoon-brainstorm.md` | Brainstorme des idées d'articles pour un cocon sémantique | Planification du cocon |
-| `cocoon-paa-queries.md` | Propose des requêtes Google réalistes pour récupérer les PAA | Découverte PAA |
-| `cocoon-articles.md` | Propose la liste complète des articles du cocon (pilier + intermédiaire + spécialisé) | Architecture du cocon |
-| `cocoon-articles-topics.md` | Propose les articles thématiques intermédiaires | Planification cocon |
-| `cocoon-articles-spe.md` | Propose les articles spécialisés/niche | Planification cocon |
-| `cocoon-add-article.md` | Recommande si un article doit être ajouté au cocon et à quelle position | Gestion du cocon |
+| Prompt | Rôle | Variables | Sections | Globales | Chargé par |
+|---|---|---|---|---|---|
+| `actions/add-statistic.md` | Ajouter une statistique sourcée | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/answer-capsule.md` | Capsule réponse pour l’extraction par les IA | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/ce-quil-faut-retenir.md` | Bloc « Ce qu’il faut retenir » | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/convert-list.md` | Convertir un paragraphe en liste | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/exemples-reels.md` | Bloc « Exemples réels » (recherche web) | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/keyword-optimize.md` | Intégrer le mot-clé naturellement | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/pme-example.md` | Exemple « grande marque → PME » | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/question-heading.md` | Transformer un titre en question | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/reformulate.md` | Reformuler la sélection | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/simplify.md` | Simplifier le vocabulaire | `keywordInstruction`, `selectedText` | — | — | `server/routes/generate/action.routes.ts` |
+| `actions/sources-chiffrees.md` | Bloc « Sources chiffrées » (recherche web) | `keywordInstruction`, `selectedText` | — | `year` | `server/routes/generate/action.routes.ts` |
 
-### Configuration & Contexte
+## Mode automatique
 
-| Prompt | Rôle | Route / Déclencheur |
-|---|---|---|
-| `theme-parse.md` | Transforme une description libre ("je suis plombier à Toulouse") en config JSON structurée | Configuration initiale |
-| `micro-context-suggest.md` | Suggère l'angle, le ton, les directives et le word count pour un article | Préparation de l'article |
-| `brief-ia-panel.md` | Analyse le brief complet et donne des recommandations stratégiques au rédacteur | Panneau IA du brief |
-
----
-
-## Génération d'article (6 prompts)
-
-Phase d'**écriture** : génération du contenu, réduction, humanisation.
-
-| Prompt | Rôle | Route / Déclencheur |
-|---|---|---|
-| `generate-outline.md` | Génère le plan de l'article (titres H2/H3) en JSON structuré | `POST /generate/outline` — Bouton "Générer le plan" |
-| `generate-article-section.md` | Écrit le contenu HTML d'une section (intro, corps ou conclusion) avec budget de mots indicatif | `POST /generate/article` — Appelé N fois, une fois par section |
-| `generate-meta.md` | Génère le meta title (≤60 cars) et la meta description (≤160 cars) | `POST /generate/meta` — Automatique après génération |
-| `generate-reduce.md` | Réduit l'article pour atteindre le word count cible en gardant structure et SEO | `POST /generate/reduce` — Bouton "Réduire l'article" |
-| `humanize-section.md` | Enlève les marqueurs IA (phrases trop lisses, transitions robotiques) section par section | `POST /generate/humanize-section` — Bouton "Humaniser l'article" |
-| `generate-article.md` | Orchestration de la génération complète (utilisé conjointement avec `generate-article-section.md`) | `POST /generate/article` |
-
----
-
-## Actions contextuelles (12 prompts)
-
-Mini-éditions disponibles dans l'éditeur, déclenchées via le menu contextuel sur du texte sélectionné. Toutes passent par la route `POST /generate/action` avec un paramètre `actionType`.
-
-| Prompt | Rôle | Action dans l'éditeur |
-|---|---|---|
-| `actions/reformulate.md` | Reformule le texte sélectionné en gardant le même sens et la même longueur | "Reformuler" |
-| `actions/simplify.md` | Simplifie le vocabulaire pour être plus accessible | "Simplifier" |
-| `actions/convert-list.md` | Transforme un paragraphe en liste à puces HTML | "Convertir en liste" |
-| `actions/pme-example.md` | Génère un exemple concret PME avec le pattern "Grande marque → PME" | "Exemple PME" |
-| `actions/keyword-optimize.md` | Réécrit le texte en intégrant le mot-clé naturellement | "Optimiser mot-clé" |
-| `actions/add-statistic.md` | Ajoute une statistique sourcée ("selon Source, Année") | "Ajouter statistique" |
-| `actions/answer-capsule.md` | Synthétise en 20-25 mots pour l'extraction IA (GEO) | "Capsule réponse" |
-| `actions/question-heading.md` | Transforme un titre en question naturelle optimisée GEO | "Titre → Question" |
-| `actions/localize.md` | Ajoute des références locales Toulouse/Occitanie | "Localiser" |
-| `actions/sources-chiffrees.md` | Génère un bloc "Sources chiffrées" avec stats vérifiées et URLs (recherche web) | "Sources chiffrées" |
-| `actions/exemples-reels.md` | Génère un bloc "Exemples réels" avec cas concrets et URLs (recherche web) | "Exemples réels" |
-| `actions/ce-quil-faut-retenir.md` | Génère un bloc "Ce qu'il faut retenir" avec 3-5 points clés techniques | "À retenir" |
-
----
-
-## Résumé
-
-| Domaine | Nombre de prompts |
-|---|---|
-| Système (global) | 1 |
-| Mots-clés & Stratégie | 23 |
-| Génération d'article | 6 |
-| Actions contextuelles | 12 |
-| **Total** | **42** |
+| Prompt | Rôle | Variables | Sections | Globales | Chargé par |
+|---|---|---|---|---|---|
+| `auto-intake.md` | Brief éditorial structuré à partir d’une idée | `articleType`, `businessContext`, `cocoonName`, `topic` | — | — | `server/routes/generate/auto-intake.routes.ts` |
+| `auto-placement.md` | Place un nouvel article dans l’arborescence | `articleTitle`, `businessContext`, `candidates`, `idea`, `painPoint`, `pilierKeyword` | — | — | `server/routes/generate/placement-suggest.routes.ts` |
