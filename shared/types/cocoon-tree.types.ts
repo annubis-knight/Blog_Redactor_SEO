@@ -48,6 +48,8 @@ export interface ChildCandidate extends KeywordMeasure {
   title: string
   rationale: string
   painPoint: string | null
+  /** Intention de réponse attendue de l'article, proposée avec le candidat (K9). */
+  painIntentExpected: PainIntentExpected | null
 }
 
 /** Réponse de POST /api/cocoons/:cocoonId/child-candidates. */

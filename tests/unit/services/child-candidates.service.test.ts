@@ -33,8 +33,8 @@ const PILIER: CocoonTreeNode = {
 
 const REPONSE = JSON.stringify({
   candidates: [
-    { keyword: 'changer fenetres', title: 'Changer ses fenêtres : prix et étapes', rationale: 'Large', painPoint: 'Des fenêtres qui laissent passer le froid' },
-    { keyword: 'double vitrage prix', title: 'Double vitrage : le prix', rationale: 'Prix', painPoint: 'Un budget flou' },
+    { keyword: 'changer fenetres', title: 'Changer ses fenêtres : prix et étapes', rationale: 'Large', painPoint: 'Des fenêtres qui laissent passer le froid', painIntentExpected: 'informational' },
+    { keyword: 'double vitrage prix', title: 'Double vitrage : le prix', rationale: 'Prix', painPoint: 'Un budget flou', painIntentExpected: 'bof' },
     { keyword: 'Changer Fenetres', title: 'Doublon', rationale: 'Doublon', painPoint: '' },
     { keyword: 'renovation energetique', title: 'Reprend le pilier', rationale: 'x', painPoint: '' },
     { keyword: 'fenetre pvc ou alu', title: 'PVC ou alu : que choisir ?', rationale: 'Comparaison', painPoint: 'Trop de choix' },
@@ -73,6 +73,14 @@ describe('proposeChildCandidates', () => {
       metrics: { searchVolume: 100 },
       serp: [{ domain: 'guide.fr' }],
     })
+  })
+
+  // K9 : l'intention éditoriale attendue accompagne chaque candidat — sans elle,
+  // un enfant créé depuis le constructeur échappait au contrôle d'intention de
+  // la porte capitaine et au 5e signal de pertinence.
+  it('chaque candidat porte l’intention éditoriale proposée ; une valeur inconnue devient absente', async () => {
+    const result = await proposeChildCandidates(3, { parentId: 10, parentSection: 'Changer les fenêtres' })
+    expect(result.candidates.map(c => c.painIntentExpected)).toEqual(['informational', null, null])
   })
 
   it('le pilier d’un cocon vide : aucun parent, niveau pilier', async () => {

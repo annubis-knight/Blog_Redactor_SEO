@@ -17,6 +17,11 @@ Pour chaque candidat :
 - **title** : un titre d'article qui contient le mot-clé en entier, écrit pour un lecteur humain.
 - **rationale** : une phrase qui dit pourquoi ce mot-clé sert cet article, et ce qui le distingue des autres candidats.
 - **painPoint** : la difficulté concrète du lecteur que l'article règle, en une phrase.
+- **painIntentExpected** : le type de réponse que l'article doit apporter, une seule de ces 4 valeurs :
+  - `"informational"` : il explique, guide, éduque (« comment faire », « comprendre ») — le cas le plus courant ;
+  - `"commercial"` : il compare ou recommande avant un achat (« comparatif », « meilleur », « que choisir ») ;
+  - `"transactional"` : il pousse directement à l'action (« tarifs », « devis », « réserver ») — rare ;
+  - `"navigational"` : il vise une marque ou un produit précis — très rare.
 
 Varie les candidats : une formulation plus large, une plus précise (longue traîne), une orientée question ou comparaison. Aucun candidat ne reprend le mot-clé d'un article déjà présent dans le cocon.
 
@@ -29,7 +34,7 @@ Réponds **uniquement** avec un objet JSON, sans texte autour :
 ```json
 {
   "candidates": [
-    { "keyword": "…", "title": "…", "rationale": "…", "painPoint": "…" }
+    { "keyword": "…", "title": "…", "rationale": "…", "painPoint": "…", "painIntentExpected": "informational" }
   ]
 }
 ```

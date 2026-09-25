@@ -27,6 +27,7 @@ import { normalizeKeyword } from '../../../shared/verifiers/lieutenants.js'
 import { log } from '../../utils/logger.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type { ChildCandidatesResult } from '../../../shared/types/cocoon-tree.types.js'
+import { PAIN_INTENT_EXPECTED_VALUES } from '../../../shared/types/scoring.types.js'
 
 export class ChildCandidatesError extends Error {
   constructor(
@@ -50,6 +51,8 @@ const aiResponseSchema = z.object({
     title: z.string().trim().min(3).max(200),
     rationale: z.string().trim().default(''),
     painPoint: z.string().trim().nullable().optional(),
+    // Une valeur hors des quatre intentions devient absente, sans rejeter le candidat.
+    painIntentExpected: z.enum(PAIN_INTENT_EXPECTED_VALUES).nullable().optional().catch(null),
   }).loose()),
 }).loose()
 
@@ -127,6 +130,7 @@ export async function proposeChildCandidates(
       title: c.title,
       rationale: c.rationale,
       painPoint: c.painPoint?.trim() || null,
+      painIntentExpected: c.painIntentExpected ?? null,
       metrics: measures.get(c.keyword)?.metrics ?? null,
       serp: measures.get(c.keyword)?.serp ?? [],
     })),

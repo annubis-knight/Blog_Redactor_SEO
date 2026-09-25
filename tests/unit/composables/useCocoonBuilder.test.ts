@@ -72,6 +72,7 @@ function candidate(overrides: Partial<ChildCandidate> = {}): ChildCandidate {
     title: 'Refonte de site internet à Toulouse',
     rationale: 'La section « La refonte » annonce ce sujet.',
     painPoint: 'Un site vieillissant qui ne rapporte plus de contacts',
+    painIntentExpected: null,
     metrics: { searchVolume: 320, keywordDifficulty: 18, cpc: 2.1, intent: 'commercial' },
     serp: [{ position: 1, title: 'Refonte de site', domain: 'exemple.fr', url: 'https://exemple.fr/refonte' }],
     ...overrides,
@@ -308,6 +309,19 @@ describe('useCocoonBuilder — créer l’article choisi', () => {
       accepted: true,
     })
     expect(carte[1]!.id).toBe('carte-8')
+  })
+
+  // K9 : sans proposition de même titre sur la carte, l'intention proposée
+  // avec le candidat part avec l'article (la carte, pensée avant, l'emporte).
+  it('l’intention éditoriale du candidat part avec l’article', async () => {
+    routeApi([PILIER])
+    const { builder } = setup([])
+    await builder.loadTree()
+    await builder.proposeCandidates({ parentId: 10, parentSection: 'La refonte', level: 'intermediaire' })
+
+    await builder.createFromCandidate(candidate({ painIntentExpected: 'commercial' }), 'Refonte de site internet à Toulouse')
+
+    expect(postsTo(`/cocoons/${COCOON_ID}/articles`)[0]![1]).toMatchObject({ painIntentExpected: 'commercial' })
   })
 
   it('n’écrase jamais une proposition déjà liée à un autre article', async () => {

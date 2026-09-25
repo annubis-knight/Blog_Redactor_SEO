@@ -256,7 +256,9 @@ export function useCocoonBuilder(params: {
     // douleur suivent l'article, pour que base et carte disent la même chose.
     const existing = strategyStore.strategy?.proposedArticles.find(p => !p.createdInDb && normalizeTitle(p.title) === normalizeTitle(cleanTitle)) ?? null
     const painPoint = candidate.painPoint?.trim() || existing?.painPoint?.trim() || null
-    const painIntentExpected = existing?.painIntentExpected ?? null
+    // L'intention pensée sur la carte l'emporte ; sinon, celle proposée avec le
+    // candidat (K9) — sans elle, la porte capitaine ne jugerait pas l'écart d'intention.
+    const painIntentExpected = existing?.painIntentExpected ?? candidate.painIntentExpected ?? null
 
     const create = () => apiPost<Article>(`/cocoons/${cocoonId}/articles`, {
       title: cleanTitle,

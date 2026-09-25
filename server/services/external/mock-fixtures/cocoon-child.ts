@@ -29,10 +29,10 @@ registerStreamFixture(
     const capitalized = base.charAt(0).toUpperCase() + base.slice(1)
     return JSON.stringify({
       candidates: [
-        { keyword: base, title: `${capitalized} : le guide complet`, rationale: 'La formulation la plus large du sujet (mock).', painPoint: 'Le lecteur ne sait pas par où commencer.' },
-        { keyword: `${base} etapes`, title: `${capitalized} etapes : la méthode pas à pas`, rationale: 'Une intention pratique, plus précise (mock).', painPoint: 'Le lecteur veut un déroulé clair.' },
-        { keyword: `${base} prix`, title: `${capitalized} prix : ce qu’il faut prévoir`, rationale: 'Une intention commerciale : le budget (mock).', painPoint: 'Le lecteur craint un budget qui dérape.' },
-        { keyword: `${base} erreurs`, title: `${capitalized} erreurs : les pièges à éviter`, rationale: 'Une longue traîne sur les erreurs courantes (mock).', painPoint: 'Le lecteur a peur de mal faire.' },
+        { keyword: base, title: `${capitalized} : le guide complet`, rationale: 'La formulation la plus large du sujet (mock).', painPoint: 'Le lecteur ne sait pas par où commencer.', painIntentExpected: 'informational' },
+        { keyword: `${base} etapes`, title: `${capitalized} etapes : la méthode pas à pas`, rationale: 'Une intention pratique, plus précise (mock).', painPoint: 'Le lecteur veut un déroulé clair.', painIntentExpected: 'informational' },
+        { keyword: `${base} prix`, title: `${capitalized} prix : ce qu’il faut prévoir`, rationale: 'Une intention commerciale : le budget (mock).', painPoint: 'Le lecteur craint un budget qui dérape.', painIntentExpected: 'commercial' },
+        { keyword: `${base} erreurs`, title: `${capitalized} erreurs : les pièges à éviter`, rationale: 'Une longue traîne sur les erreurs courantes (mock).', painPoint: 'Le lecteur a peur de mal faire.', painIntentExpected: 'informational' },
       ],
     })
   },
