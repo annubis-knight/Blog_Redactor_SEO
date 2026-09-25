@@ -49,6 +49,21 @@ const STUBS = {
   Transition: { template: '<div><slot /></div>' },
 }
 
+// Le vrai serveur ne renvoie jamais `null` pour la configuration du thème
+// (getThemeConfig retombe sur une configuration vide) : le faux non plus.
+// Sinon le composant plante en arrière-plan (« reading 'positioning' ») et
+// Vitest sort en erreur même quand tous les tests passent.
+const THEME_CONFIG_VIDE = {
+  avatar: { sector: '', companySize: '', location: '', budget: '', digitalMaturity: '' },
+  positioning: { targetAudience: '', mainPromise: '', differentiators: [], painPoints: [] },
+  offerings: { services: [], mainCTA: '', ctaTarget: '' },
+  toneOfVoice: { style: '', vocabulary: [] },
+}
+
+function fauxServeur(url: string): Promise<unknown> {
+  return Promise.resolve(url === '/theme/config' ? structuredClone(THEME_CONFIG_VIDE) : null)
+}
+
 const BASE_PROPS = {
   articleId: 42,
   cocoonName: 'Mon Cocon SEO',
@@ -61,7 +76,7 @@ describe('BriefStructureStep — comportements macro user-facing', () => {
     setActivePinia(createPinia())
     mockedGet.mockReset()
     mockedPut.mockReset()
-    mockedGet.mockResolvedValue(null) // pas de micro-context existant par défaut
+    mockedGet.mockImplementation(fauxServeur as never) // pas de micro-context existant par défaut
     mockedPut.mockResolvedValue({ ok: true })
   })
 
