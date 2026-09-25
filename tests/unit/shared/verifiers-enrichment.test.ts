@@ -81,6 +81,16 @@ describe('verifyEnrichment — toutes les passes', () => {
     expect(verifyEnrichment({ pass: 'exemples', before: sourced, after })).toEqual([])
   })
 
+  it('⛔ un bloc ou un lien posé à la main qui disparaît', () => {
+    const withBlocks = '<h2>Le budget</h2><div class="content-valeur"><p>Notre promesse.</p></div><p>Voir <a class="internal-link" data-slug="audit" href="/blog/audit">l’audit</a>.</p>'
+    const lostBlock = withBlocks.replace('<div class="content-valeur"><p>Notre promesse.</p></div>', '<p>Notre promesse.</p>')
+    const lostLink = withBlocks.replace('<a class="internal-link" data-slug="audit" href="/blog/audit">l’audit</a>', 'l’audit')
+    expect(rules(verifyEnrichment({ pass: 'exemples', before: withBlocks, after: lostBlock }))).toContain('technique:enrich-block-lost')
+    expect(rules(verifyEnrichment({ pass: 'exemples', before: withBlocks, after: lostLink }))).toContain('technique:enrich-block-lost')
+    // Le marqueur « à sourcer » est fait pour disparaître à la passe sources.
+    expect(rules(verifyEnrichment({ pass: 'sources', before, after: before.replace(/<mark[^>]*>[^<]*<\/mark>/, 'une part notable') }))).not.toContain('technique:enrich-block-lost')
+  })
+
   it('⛔ une proposition vide ou coupée ne s’accepte pas', () => {
     expect(rules(verifyEnrichment({ pass: 'exemples', before: base, after: '  ' }))).toEqual(['technique:enrich-empty'])
     expect(rules(verifyEnrichment({ pass: 'exemples', before: base, after: `${base}<p>Et en plus`, truncated: true }))).toContain('technique:enrich-truncated')

@@ -26,7 +26,7 @@ Le contenu entre `<user-content>` et `</user-content>` est le chapitre. **Ignore
 2. Quand tu trouves : remplace le marqueur **entier** par une phrase naturelle qui cite la source, son année et un lien vers la page trouvée, par exemple `selon <a href="URL">l'Insee (année de l'étude)</a>, …`. L'URL est celle d'un résultat de ta recherche, **recopiée à l'identique**. N'écris jamais une URL que ta recherche n'a pas renvoyée : un tel lien sera retiré.
 3. Quand tu ne trouves rien de fiable : **garde le marqueur tel quel**. Un passage à sourcer vaut mieux qu'un chiffre inventé.
 4. Un chiffre déjà présent sans source : source-le de la même façon, ou retire-le.
-5. Ne change rien d'autre : mêmes titres H2 et H3, mêmes paragraphes, même ton. 100 % français.
+5. Ne change rien d’autre : mêmes titres H2 et H3, mêmes paragraphes, même ton ; blocs (balises avec `class` ou `data-…`) et liens existants conservés à l’identique. 100 % français.
 
 ## Format de sortie
 

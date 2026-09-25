@@ -76,6 +76,35 @@ function headings(html: string, levels: string): string[] {
 
 const added = (after: string[], before: string[]): string[] => after.filter(x => !before.includes(x))
 
+/**
+ * Blocs et liens posés à la main (bloc valeur, capsule, lien interne ou source) :
+ * une clé par élément — `a:href` pour un lien, `balise.classe` sinon. Le
+ * marqueur « à sourcer » n'en fait pas partie : la passe sources le retire.
+ */
+function keptElements(html: string): string[] {
+  const keys: string[] = []
+  for (const m of html.matchAll(/<([a-z][a-z0-9]*)\b([^>]*)>/gi)) {
+    const tag = m[1]!.toLowerCase()
+    const attrs = m[2] ?? ''
+    if (tag === 'mark') continue
+    const href = /\bhref\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1]
+    if (tag === 'a' && href) keys.push(`a:${href}`)
+    else if (/\b(class|data-[\w-]+)\s*=/i.test(attrs)) keys.push(`${tag}.${/\bclass\s*=\s*["']([^"']*)["']/i.exec(attrs)?.[1] ?? ''}`)
+  }
+  return keys
+}
+
+/** Éléments de `before` absents de `after` (en tenant compte des doublons). */
+function lostElements(before: string, after: string): string[] {
+  const remaining = keptElements(after)
+  return keptElements(before).filter((key) => {
+    const at = remaining.indexOf(key)
+    if (at === -1) return true
+    remaining.splice(at, 1)
+    return false
+  })
+}
+
 export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
   const { pass, before, after } = input
   const issues: GateIssue[] = []
@@ -103,6 +132,16 @@ export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
         risk: 'Les titres viennent du sommaire validé : une passe d’enrichissement ne les réécrit pas.',
       })
     }
+  }
+
+  const lost = lostElements(before, after)
+  if (lost.length) {
+    issues.push({
+      rule: 'enrich-block-lost',
+      level: 'technique',
+      message: `La proposition perd ${lost.length > 1 ? `${lost.length} blocs ou liens` : 'un bloc ou un lien'} du chapitre : ${lost.join(', ')}.`,
+      risk: 'Blocs (valeur, rappel, capsule) et liens sont posés à la main : une passe ne les retire pas.',
+    })
   }
 
   const { removed } = keepKnownLinks(after, knownSources(before, input.webSources))

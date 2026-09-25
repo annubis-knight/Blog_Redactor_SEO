@@ -28,7 +28,7 @@ Le contenu entre `<user-content>` et `</user-content>` est la consigne. Elle por
 1. Le titre H2 reste **identique** ; les H3 peuvent évoluer si la consigne le demande.
 2. Le chapitre s'accorde avec le reste de l'article : il ne répète pas un autre chapitre et ne conclut pas l'article, sauf s'il en est la conclusion.
 3. Longueur : à 20 % près de l'actuelle, sauf si la consigne demande autre chose.
-4. Liens et marqueurs `<mark data-a-sourcer>` conservés. Aucun chiffre inventé : une valeur à trouver s'écrit `<mark data-a-sourcer>[à sourcer : …]</mark>`.
+4. Blocs (balises avec `class` ou `data-…`), liens et marqueurs `<mark data-a-sourcer>` conservés à l’identique. Aucun chiffre inventé : une valeur à trouver s'écrit `<mark data-a-sourcer>[à sourcer : …]</mark>`.
 5. 100 % français, paragraphes courts, vouvoiement.
 
 ## Format de sortie

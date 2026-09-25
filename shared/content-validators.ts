@@ -39,10 +39,13 @@ export interface ContentIssue {
 const META_TITLE_MAX = 60
 const META_DESCRIPTION_MAX = 160
 
-/** Balises éditoriales admises dans le corps d'un article. */
+/**
+ * Balises éditoriales admises dans le corps d'un article. `colgroup` / `col` :
+ * l'éditeur (TipTap Table) les ajoute à chaque tableau.
+ */
 const ALLOWED_TAGS = new Set([
   'h2', 'h3', 'h4', 'p', 'ul', 'ol', 'li', 'strong', 'em', 'b', 'i', 'u', 's',
-  'a', 'br', 'blockquote', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'th', 'td',
+  'a', 'br', 'blockquote', 'code', 'pre', 'table', 'thead', 'tbody', 'tr', 'th', 'td', 'colgroup', 'col',
   'img', 'figure', 'figcaption', 'span', 'sup', 'sub', 'hr', 'mark', 'cite', 'small', 'time',
 ])
 

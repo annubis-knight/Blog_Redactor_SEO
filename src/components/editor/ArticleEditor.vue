@@ -4,6 +4,8 @@ import { useEditor, EditorContent } from '@tiptap/vue-3'
 import type { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
 import Link from '@tiptap/extension-link'
+import Image from '@tiptap/extension-image'
+import { TableKit } from '@tiptap/extension-table'
 import Placeholder from '@tiptap/extension-placeholder'
 import { ContentValeur } from './tiptap/extensions/content-valeur'
 import { ContentReminder } from './tiptap/extensions/content-reminder'
@@ -48,6 +50,10 @@ function createExtensions(placeholder: string) {
   return [
     StarterKit,
     Link.configure({ openOnClick: false }),
+    // Passes d'enrichissement : sans ces extensions, un tableau ou une image
+    // accepté disparaissait au premier rendu (FR-RED-ENRICH-PASSES).
+    TableKit.configure({ table: { resizable: false } }),
+    Image.configure({ inline: false, allowBase64: false }),
     Placeholder.configure({ placeholder }),
     ContentValeur,
     ContentReminder,

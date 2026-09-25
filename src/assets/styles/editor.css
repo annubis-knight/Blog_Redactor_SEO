@@ -108,6 +108,45 @@
   padding: 0 0.2rem;
 }
 
+/* Tableaux et images des passes d'enrichissement (FR-RED-ENRICH-PASSES) */
+.ProseMirror table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 1rem 0;
+  font-family: system-ui, sans-serif;
+  font-size: 0.9375rem;
+}
+
+.ProseMirror th,
+.ProseMirror td {
+  border: 1px solid var(--color-border);
+  padding: 0.4rem 0.6rem;
+  vertical-align: top;
+  text-align: left;
+}
+
+.ProseMirror th {
+  background: var(--color-bg-soft);
+  font-weight: 600;
+}
+
+.ProseMirror th p,
+.ProseMirror td p {
+  margin: 0;
+}
+
+.ProseMirror img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem auto;
+  border-radius: 6px;
+}
+
+.ProseMirror img.ProseMirror-selectednode {
+  outline: 2px solid var(--color-primary);
+}
+
 /* Dynamic blocks — générés par l'IA au drop */
 .dynamic-block {
   position: relative;
