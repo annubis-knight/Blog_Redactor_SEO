@@ -1,8 +1,8 @@
 /**
- * Slugification identique à celle du backend (`addArticlesToCocoon`) :
- * minuscules → NFD → retrait diacritiques → non-alphanum en tirets → trim.
- * Permet de retrouver un article par slug quand la création tombe sur un
- * conflit (ON CONFLICT (slug) DO NOTHING).
+ * Slugification identique à celle du backend (`slugFromTitle`,
+ * `cocoon-article.service.ts`) : minuscules → NFD → retrait diacritiques →
+ * non-alphanum en tirets → trim. Permet de retrouver un article par slug quand
+ * la création est refusée pour adresse déjà prise (409 `SLUG_TAKEN`).
  */
 
 const DIACRITICS = new RegExp('[\\u0300-\\u036f]', 'g')

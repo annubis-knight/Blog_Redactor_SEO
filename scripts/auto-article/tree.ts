@@ -4,10 +4,11 @@
  * Arborescence réelle en base :
  *   silos → cocoons → articles (niveau porté par `articles.type`)
  *
- * Il n'existe **pas** de relation parent/enfant entre articles (pas de
- * `parent_id`) : la hiérarchie interne à un cocon est donc *implicite*, portée
- * par le niveau (Pilier / Intermédiaire / Spécialisé). Le rendu groupe les
- * articles par niveau, ce qui suffit à décider d'un emplacement.
+ * Depuis C7, un article connaît son parent (`articles.parent_id`) et la
+ * section du parent dont il est né ; le choix du parent se fait à la création
+ * (`heuristics/pick-parent-section.ts`, sur `GET /cocoons/:id/tree`). Ce rendu,
+ * lui, groupe encore les articles par niveau (Pilier / Intermédiaire /
+ * Spécialisé), ce qui suffit à décider d'un emplacement.
  *
  * Le style est **injecté** (`TreeTheme`) : le module reste pur et testable en
  * texte brut, tandis que le CLI passe un thème coloré (chalk).

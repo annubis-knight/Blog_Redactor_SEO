@@ -120,6 +120,46 @@ export async function createTestArticle(
   throw new Error(`createTestArticle: failed after 10 attempts (race conditions)`)
 }
 
+/**
+ * Article de test complet, écrit en SQL : titre étiqueté, parent et section du
+ * parent (C7), mot-clé, douleur. Pour préparer un cocon sans passer par la
+ * création unitaire, qui exige un parent rédigé et un mot-clé mesuré — elle a
+ * ses propres tests (`cocoon-article.service.test.ts`, contrat, parcours).
+ */
+export async function createTestCocoonArticle(
+  runId: string,
+  cocoonId: number,
+  article: {
+    base: string
+    type: 'Pilier' | 'Intermédiaire' | 'Spécialisé'
+    slug: string
+    parentId?: number | null
+    parentSection?: string | null
+    suggestedKeyword?: string | null
+    painPoint?: string | null
+    painIntentExpected?: string | null
+  },
+): Promise<TestArticle> {
+  const titre = taggedName(article.base, runId)
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const maxRes = await query<{ max: number | null }>(`SELECT COALESCE(MAX(id), 0) AS max FROM articles`)
+    const nextId = (maxRes.rows[0].max ?? 0) + 1 + attempt
+    try {
+      await query(
+        `INSERT INTO articles (id, titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps,
+                               parent_id, parent_section, suggested_keyword, pain_point, pain_intent_expected)
+         VALUES ($1, $2, $3, $4, $5, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb, $6, $7, $8, $9, $10)`,
+        [nextId, titre, cocoonId, article.slug, article.type, article.parentId ?? null, article.parentSection ?? null,
+          article.suggestedKeyword ?? null, article.painPoint ?? null, article.painIntentExpected ?? null],
+      )
+      return { id: nextId, titre, cocoonId, slug: article.slug, type: article.type }
+    } catch (err) {
+      if (!(err as Error).message.includes('articles_pkey')) throw err
+    }
+  }
+  throw new Error('createTestCocoonArticle: failed after 10 attempts (race conditions)')
+}
+
 // ---------------------------------------------------------------------------
 // CLEANUP — par runId (strict)
 // ---------------------------------------------------------------------------

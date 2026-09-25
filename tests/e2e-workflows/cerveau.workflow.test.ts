@@ -4,7 +4,7 @@
  *
  * Phase 1 — ThemeConfig
  * Phase 2 — Stratégie cocon (steps : cible, douleur, angle, promesse, cta + articles-*)
- * Phase 3 — Propositions articles (création directe via batch-create)
+ * Phase 3 — Création des articles, un à la fois (pilier d'abord, C7)
  *
  * Pré-requis : serveur dev lancé avec AI_PROVIDER=mock.
  */
@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, apiPut } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
+import { grantCheck } from '../helpers/gates.js'
 
 const ctx = setupTestContext()
 
@@ -188,40 +189,89 @@ describe('Cerveau Workflow — Phase 2 : Stratégie cocon', () => {
 // ---------------------------------------------------------------------------
 
 describe('Cerveau Workflow — Phase 3 : Création articles', () => {
-  it('POST /articles/batch-create avec body invalide → 400 VALIDATION_ERROR', async ({ skip }) => {
+  // C7 (FR-CER-COCOON-PROGRESSIVE) : un article à la fois, pilier d'abord, puis
+  // chaque enfant depuis une section de son parent rédigé.
+  it('POST /cocoons/:id/articles avec body invalide → 400 VALIDATION_ERROR', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/articles/batch-create', {})
+    const res = await apiPost('/cocoons/1/articles', { title: 'x' })
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST /articles/batch-create avec articles vide → 400', async ({ skip }) => {
-    if (requireServer().skip) skip()
-    const res = await apiPost('/articles/batch-create', { cocoonName: 'x', articles: [] })
-    expect(res.status).toBe(400)
-  })
-
-  it('POST /articles/batch-create avec cocoonName + articles[] valides crée en DB', { timeout: 90000 }, async ({ skip }) => {
+  it('cocon vide : un spécialisé est refusé, le pilier se crée', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
-    const cocoon = await ctx.createCocoon(silo.id, 'Batch Real Cocon')
+    const cocoon = await ctx.createCocoon(silo.id, 'Progressif Vide')
 
-    const res = await apiPost<unknown>('/articles/batch-create', {
-      cocoonName: cocoon.nom,
-      // L'API parle le format canonique depuis l'unification du 2026-05-13
-      // (`ArticleLevel`) ; la base, elle, stocke toujours le PascalCase.
-      articles: [
-        { title: `[test:${ctx.runId}] Batch P1`, type: 'pilier' },
-        { title: `[test:${ctx.runId}] Batch S1`, type: 'specifique' },
-      ],
+    const refus = await apiPost<unknown>(`/cocoons/${cocoon.id}/articles`, { title: `[test:${ctx.runId}] Spécialisé trop tôt`, type: 'specifique' })
+    expect(refus.status).toBe(409)
+    expect(refus.error?.code).toBe('HIERARCHY_VIOLATION')
+
+    const pilier = await apiPost<{ id: number; parentId: number | null }>(`/cocoons/${cocoon.id}/articles`, {
+      title: `[test:${ctx.runId}] Pilier progressif`, type: 'pilier', slug: `test-${ctx.runId}-pilier-progressif`,
     })
-    expect([200, 201]).toContain(res.status)
+    expect(pilier.status).toBe(201)
+    expect(pilier.data?.parentId).toBeNull()
+    const dbRes = await query<{ type: string; parent_id: number | null }>(`SELECT type, parent_id FROM articles WHERE id = $1`, [pilier.data!.id])
+    expect(dbRes.rows[0]).toEqual({ type: 'Pilier', parent_id: null })
+  })
 
-    const dbRes = await query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM articles WHERE cocoon_id = $1`,
-      [cocoon.id],
-    )
-    expect(parseInt(dbRes.rows[0].count, 10)).toBeGreaterThanOrEqual(2)
+  it('un enfant naît d’une section d’un pilier rédigé, et une section ne donne qu’un article', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const silo = await ctx.getSilo()
+    const cocoon = await ctx.createCocoon(silo.id, 'Progressif Chaîne')
+    const pilier = await apiPost<{ id: number }>(`/cocoons/${cocoon.id}/articles`, {
+      title: `[test:${ctx.runId}] Pilier chaîne`, type: 'pilier', slug: `test-${ctx.runId}-pilier-chaine`,
+    })
+    const pilierId = pilier.data!.id
+    const enfant = {
+      title: `[test:${ctx.runId}] Isoler ses combles`, type: 'intermediaire', slug: `test-${ctx.runId}-combles`,
+      parentId: pilierId, parentSection: 'Isoler les combles',
+    }
+
+    // Pilier sans texte : sa porte du premier jet refuse (⛔ texte vide) ; l'évaluation part avec le refus.
+    const avant = await apiPost<unknown>(`/cocoons/${cocoon.id}/articles`, enfant)
+    expect(avant.status).toBe(409)
+    expect(avant.error?.code).toBe('GATE_BLOCKED')
+    expect((avant.raw as { error: { details: { gateId: string } } }).error.details.gateId).toBe('draft')
+
+    // Le pilier est rédigé, puis son premier jet accepté.
+    await apiPut(`/articles/${pilierId}`, {
+      content: '<h1>Rénovation énergétique</h1><p>Chapeau.</p><h2>Isoler les combles</h2><p>Les combles perdent de la chaleur.</p><h2>Changer les fenêtres</h2><p>Le double vitrage.</p>',
+    })
+    expect((await grantCheck(pilierId, 'redaction:draft_accepted')).status).toBe(200)
+
+    const inconnue = await apiPost<unknown>(`/cocoons/${cocoon.id}/articles`, { ...enfant, parentSection: 'Le chauffage au bois' })
+    expect(inconnue.status).toBe(409)
+    expect(inconnue.error?.code).toBe('HIERARCHY_VIOLATION')
+
+    const cree = await apiPost<{ id: number; parentId: number; parentSection: string }>(`/cocoons/${cocoon.id}/articles`, enfant)
+    expect(cree.status).toBe(201)
+    expect(cree.data).toMatchObject({ parentId: pilierId, parentSection: 'Isoler les combles' })
+
+    const doublon = await apiPost<unknown>(`/cocoons/${cocoon.id}/articles`, { ...enfant, title: `[test:${ctx.runId}] Combles bis`, slug: `test-${ctx.runId}-combles-bis` })
+    expect(doublon.status).toBe(409)
+    expect(doublon.error?.message).toContain('Isoler ses combles')
+
+    // L'arbre le montre : la section prise, l'autre libre.
+    const tree = await apiGet<Array<{ id: number; drafted: boolean; sections: Array<{ title: string; childId: number | null }> }>>(`/cocoons/${cocoon.id}/tree`)
+    const noeud = tree.data!.find(n => n.id === pilierId)!
+    expect(noeud.drafted).toBe(true)
+    expect(noeud.sections).toEqual([
+      { title: 'Isoler les combles', childId: cree.data!.id, childTitle: enfant.title },
+      { title: 'Changer les fenêtres', childId: null, childTitle: null },
+    ])
+  })
+
+  it('un mot-clé jamais mesuré n’est pas enregistré → 422', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const silo = await ctx.getSilo()
+    const cocoon = await ctx.createCocoon(silo.id, 'Progressif Mot-clé')
+    const res = await apiPost<unknown>(`/cocoons/${cocoon.id}/articles`, {
+      title: `[test:${ctx.runId}] Pilier mot-clé`, type: 'pilier', suggestedKeyword: `jamais-mesure-${ctx.runId}`,
+    })
+    expect(res.status).toBe(422)
+    expect(res.error?.code).toBe('KEYWORD_NOT_MEASURED')
   })
 
   it('GET /articles/:id retourne { article, cocoonName }', async ({ skip }) => {

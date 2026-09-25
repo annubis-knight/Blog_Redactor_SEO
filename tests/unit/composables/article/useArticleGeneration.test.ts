@@ -143,29 +143,30 @@ describe('useArticleGeneration', () => {
   })
 
   // FR-RED-DRAFT-SINGLE-PASS — le premier jet enregistré passe sa porte ;
-  // l'alarme s'ouvre s'il ne la passe pas, sans bloquer la suite.
-  it('soumet le premier jet enregistré à la porte « accepter le premier jet »', async () => {
+  // l'alarme s'ouvre s'il ne la passe pas, sans bloquer la suite. Depuis C7,
+  // la porte accorde une étape enregistrée (`redaction:draft_accepted`).
+  it('demande l’étape « premier jet accepté » à la porte du premier jet', async () => {
     const deps = buildDeps()
     deps.editorStore.generateArticle = vi.fn(async () => {
       deps.editorStore.content = '<p>généré</p>' as never
     }) as never
     const gateAlarm = useGateAlarmStore()
-    gateAlarm.ensure = vi.fn().mockResolvedValue(true) as never
+    gateAlarm.runThroughGate = vi.fn().mockResolvedValue({ ok: true, value: undefined }) as never
 
     await useArticleGeneration(deps).handleGenerateArticle()
 
-    expect(gateAlarm.ensure).toHaveBeenCalledWith(1, 'draft')
+    expect(gateAlarm.runThroughGate).toHaveBeenCalledWith(1, expect.any(Function))
   })
 
   it('pas de porte si la génération a échoué', async () => {
     const deps = buildDeps()
     deps.editorStore.generateArticle = vi.fn(async () => { deps.editorStore.error = 'fail' as never }) as never
     const gateAlarm = useGateAlarmStore()
-    gateAlarm.ensure = vi.fn().mockResolvedValue(true) as never
+    gateAlarm.runThroughGate = vi.fn().mockResolvedValue({ ok: true, value: undefined }) as never
 
     await useArticleGeneration(deps).handleGenerateArticle()
 
-    expect(gateAlarm.ensure).not.toHaveBeenCalled()
+    expect(gateAlarm.runThroughGate).not.toHaveBeenCalled()
   })
 
   it('AC.M.8 — handleGenerateArticle saute meta si error post-generation', async () => {

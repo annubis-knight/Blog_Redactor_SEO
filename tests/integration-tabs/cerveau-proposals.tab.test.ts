@@ -2,8 +2,9 @@
 /**
  * Integration — Onglet Cerveau · Propositions d'articles (ui-sections-guide §4.3)
  *
- * NB : il n'y a pas de POST /generate/structure dédié — la création d'articles
- * passe par /articles/batch-create (avec une liste manuelle ou pré-IA).
+ * NB : la création d'articles passe par POST /cocoons/:id/articles, un article
+ * à la fois (C7 : pilier d'abord, puis chaque enfant depuis une section de son
+ * parent rédigé) ; la création en lot (/articles/batch-create) a disparu.
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
@@ -13,40 +14,35 @@ import { query } from '../../server/db/client.js'
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
-describe('Tab cerveau/proposals — Création batch', () => {
-  it('POST /articles/batch-create sans body → 400 VALIDATION_ERROR', async ({ skip }) => {
+describe('Tab cerveau/proposals — Création un article à la fois (C7)', () => {
+  it('POST /cocoons/:id/articles sans body → 400 VALIDATION_ERROR', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/articles/batch-create', {})
+    const res = await apiPost('/cocoons/1/articles', {})
     expect(res.status).toBe(400)
   })
 
-  it('POST /articles/batch-create articles=[] → 400', async ({ skip }) => {
+  it('la création en lot a disparu : POST /articles/batch-create → 404', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/articles/batch-create', { cocoonName: 'x', articles: [] })
-    expect(res.status).toBe(400)
+    const res = await apiPost('/articles/batch-create', { cocoonName: 'x', articles: [{ title: 'Un', type: 'pilier' }] })
+    expect(res.status).toBe(404)
   })
 
-  it('POST /articles/batch-create crée articles + cascade en DB', { timeout: 30000 }, async ({ skip }) => {
+  it('le pilier se crée, puis l’arbre du cocon le montre', { timeout: 30000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
-    const cocoon = await ctx.createCocoon(silo.id, 'Batch Tab Cocon')
+    const cocoon = await ctx.createCocoon(silo.id, 'Arbre Tab Cocon')
 
-    const res = await apiPost('/articles/batch-create', {
-      cocoonName: cocoon.nom,
-      // Format canonique attendu par l'API depuis l'unification du 2026-05-13.
-      articles: [
-        { title: `[test:${ctx.runId}] Tab Batch P1`, type: 'pilier' },
-        { title: `[test:${ctx.runId}] Tab Batch I1`, type: 'intermediaire' },
-        { title: `[test:${ctx.runId}] Tab Batch S1`, type: 'specifique' },
-      ],
+    const res = await apiPost<{ id: number }>(`/cocoons/${cocoon.id}/articles`, {
+      title: `[test:${ctx.runId}] Tab Pilier`, type: 'pilier', slug: `test-${ctx.runId}-tab-pilier`,
     })
-    expect([200, 201]).toContain(res.status)
+    expect(res.status).toBe(201)
 
-    const dbRes = await query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM articles WHERE cocoon_id = $1`,
-      [cocoon.id],
-    )
-    expect(parseInt(dbRes.rows[0].count, 10)).toBeGreaterThanOrEqual(3)
+    const tree = await apiGet<Array<{ id: number; level: string; drafted: boolean }>>(`/cocoons/${cocoon.id}/tree`)
+    expect(tree.status).toBe(200)
+    expect(tree.data).toEqual([expect.objectContaining({ id: res.data!.id, level: 'pilier', drafted: false })])
+
+    const dbRes = await query<{ count: string }>(`SELECT COUNT(*) AS count FROM articles WHERE cocoon_id = $1`, [cocoon.id])
+    expect(parseInt(dbRes.rows[0].count, 10)).toBe(1)
   })
 })
 

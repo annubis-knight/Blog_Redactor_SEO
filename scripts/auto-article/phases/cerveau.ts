@@ -10,7 +10,9 @@
  *
  * B. `makeCerveauCommit` — **écritures, après validation du Gate 1** :
  *      6. création du cocon si nécessaire
- *      7. création de l'article au niveau validé (ou réutilisation par slug)
+ *      7. création de l'article au niveau validé, à sa place dans l'arbre (C7) :
+ *         pilier d'abord, puis chaque enfant depuis une section libre de son
+ *         parent rédigé (ou réutilisation par slug)
  *      8. PUT /strategy/:id
  *
  * Rien n'est créé tant que l'utilisateur n'a pas accepté l'emplacement.
@@ -26,6 +28,11 @@ import { buildTree, renderTree } from '../tree.js'
 import { COLOR_TREE_THEME } from '../tree-theme.js'
 import { preselectPlacements, suggestLevel } from '../heuristics/pick-placement.js'
 import { buildStrategyPayload, buildStrategyRecap } from './cerveau-map.js'
+import { pickParentSection, type ParentChoice } from '../heuristics/pick-parent-section.js'
+import { ApiError } from '../http-client.js'
+import { describeGateRefusal } from '../checks.js'
+import { REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
+import type { CocoonTreeNode } from '../../../shared/types/cocoon-tree.types.js'
 
 /**
  * Texte servant à mesurer l'affinité avec les cocons de l'arbre :
@@ -180,34 +187,49 @@ export function makeCerveauCommit(deps: PhaseDeps): PhaseFn {
       report.addStep('Cerveau · cocon créé')
     }
 
-    // 7. Création de l'article au niveau validé
+    // 7. Création de l'article au niveau validé, à sa place dans l'arbre (C7) :
+    // un enfant naît d'une section libre de son parent, qui doit être rédigé.
     if (ctx.articleId == null) {
-      const created = await client.apiPost<{ id: number }[]>('/articles/batch-create', {
-        cocoonName: cocoon.name,
-        articles: [
-          {
-            title: intake.articleTitle,
-            type: placement.level,
-            suggestedKeyword: intake.pilierKeyword,
-            painPoint: intake.painPoint,
-          },
-        ],
-      })
-      const first = created[0]
-      if (first) {
-        ctx.articleId = first.id
+      let parent: ParentChoice | null = null
+      if (placement.level !== 'pilier') {
+        const tree = await client.apiGet<CocoonTreeNode[]>(`/cocoons/${cocoon.id}/tree`)
+        parent = pickParentSection(tree, placement.level, `${intake.articleTitle} ${intake.pilierKeyword}`)
+        if (parent && !parent.ok) throw new Error(`Emplacement impossible dans « ${cocoon.name} » : ${parent.reason}`)
+        if (parent?.ok) logger.dim(`parent : « ${parent.parentTitle} », section « ${parent.parentSection} »`)
+      }
+      try {
+        const created = await client.apiPost<{ id: number }>(`/cocoons/${cocoon.id}/articles`, {
+          title: intake.articleTitle,
+          type: placement.level,
+          parentId: parent?.ok ? parent.parentId : null,
+          parentSection: parent?.ok ? parent.parentSection : null,
+          // Le mot-clé pilier n'est pas mesuré à ce stade : il ne s'enregistre
+          // pas sur l'article (FR-CER-KEYWORD-REAL-DATA). Le Moteur le mesure,
+          // puis le verrouille comme capitaine.
+          painPoint: intake.painPoint,
+        })
+        ctx.articleId = created.id
         logger.success(`Article #${ctx.articleId} créé — ${placement.level} dans « ${cocoon.name} »`)
-      } else {
-        // Slug déjà pris (ON CONFLICT DO NOTHING) → réutilisation de l'existant.
-        const slug = slugify(intake.articleTitle)
-        const existing = await client
-          .apiGet<{ id: number }>(`/articles/by-slug/${encodeURIComponent(slug)}`)
-          .catch(() => null)
-        if (!existing) {
-          throw new Error(`Article non créé (slug "${slug}" en conflit) et introuvable par slug`)
+      } catch (err) {
+        if (!(err instanceof ApiError)) throw err
+        if (err.code === 'SLUG_TAKEN') {
+          // Adresse déjà prise → réutilisation de l'existant.
+          const slug = slugify(intake.articleTitle)
+          const existing = await client
+            .apiGet<{ id: number }>(`/articles/by-slug/${encodeURIComponent(slug)}`)
+            .catch(() => null)
+          if (!existing) throw new Error(`Article non créé (slug "${slug}" en conflit) et introuvable par slug`)
+          ctx.articleId = existing.id
+          logger.warn(`Article déjà existant (slug « ${slug} ») — réutilisation #${ctx.articleId}.`)
+        } else if (err.code === 'GATE_BLOCKED' && parent?.ok) {
+          // Le parent n'est pas rédigé : le script ne déroge jamais à la place d'un humain.
+          throw new ApiError(
+            `« ${parent.parentTitle} » n’est pas encore rédigé : impossible d’y rattacher cet article.\n${describeGateRefusal(REDACTION_DRAFT_ACCEPTED, err.details)}`,
+            err.code, err.status, err.details,
+          )
+        } else {
+          throw err
         }
-        ctx.articleId = existing.id
-        logger.warn(`Article déjà existant (slug « ${slug} ») — réutilisation #${ctx.articleId}.`)
       }
     }
 

@@ -3,19 +3,21 @@
  *            travail des propositions), puis `articles` et `keywords_seo` une fois
  *            une proposition acceptée.
  * READS FROM: useCocoonStrategyStore.strategy (hydraté par le Cerveau).
- * WRITES TO: saveStrategy (proposedArticles), POST /articles/batch-create,
+ * WRITES TO: saveStrategy (proposedArticles), POST /cocoons/:cocoonId/articles
+ *            (un article à la fois, hiérarchie vérifiée par le serveur — C7),
  *            POST /keywords (pool du cocon, type KeywordType), PATCH/DELETE /articles/:id.
  * CONSUMERS: BrainArticleProposalView (grille des propositions), useCocoonsStore
  *            (dashboard, liste du Moteur).
- * RELATED FR: FR-CER-BATCH-CREATE, FR-CER-CREATION-HONNETE, FR-CER-TYPE-TOLERANT,
- *             FR-INFRA-KEYWORDS-SEO.
+ * RELATED FR: FR-CER-COCOON-PROGRESSIVE (remplace FR-CER-BATCH-CREATE),
+ *             FR-CER-CREATION-HONNETE, FR-CER-TYPE-TOLERANT, FR-INFRA-KEYWORDS-SEO.
  */
 import { ref, watch, type Ref } from 'vue'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import type { ProposedArticle, CocoonSuggestRequest } from '@shared/types/index.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
-import { apiPost, apiDelete, apiPatch } from '@/services/api.service'
+import { apiPost, apiDelete, apiPatch, ApiRequestError } from '@/services/api.service'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { log } from '@/utils/logger'
 import { useNotify } from '@/composables/ui/useNotify'
 import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
@@ -39,7 +41,7 @@ import { createTopicsManager } from './article-proposals/topics'
  * `./article-proposals/`):
  *  - migration / hydratation des `proposedArticles` au chargement (watcher)
  *  - CRUD article (ajout vide, ajout intelligent via IA, suppression, accept)
- *  - persistance DB via `apiPost('/articles/batch-create')` / `apiPatch` / `apiDelete`
+ *  - persistance DB via `apiPost('/cocoons/:cocoonId/articles')` / `apiPatch` / `apiDelete`
  *  - édition manuelle (titre, mot-clé, slug, parent)
  *  - sujets éditoriaux (suggestedTopics) + auto-generation à l'arrivée à l'étape
  *
@@ -172,34 +174,39 @@ export function useArticleProposals(params: {
     await cocoonsStore.fetchCocoons()
   }
 
+  /**
+   * Crée l'article en base, un à la fois (FR-CER-COCOON-PROGRESSIVE). Le serveur
+   * vérifie la hiérarchie : pilier d'abord, puis chaque enfant depuis une section
+   * de son parent rédigé. Un parent pas encore rédigé ouvre l'alarme de sa porte
+   * du premier jet ; les autres refus sont dits tels quels.
+   */
   async function createArticleInDb(article: ProposedArticle): Promise<void> {
     if (article.createdInDb || !article.title.trim()) return
+    const cocoon = cocoonsStore.cocoons.find(c => c.name === cocoonName.value)
+    if (!cocoon) {
+      notify.error(`Cocon « ${cocoonName.value} » introuvable : rechargez la page.`)
+      return
+    }
+    const parent = article.parentTitle
+      ? store.strategy?.proposedArticles.find(p => normalizeTitle(p.title) === normalizeTitle(article.parentTitle!))
+      : null
+    const parentId = parent?.dbId || null
+    const create = () => apiPost<{ id: number; slug: string }>(`/cocoons/${cocoon.id}/articles`, {
+      title: article.title,
+      type: article.type,
+      parentId,
+      parentSection: article.parentSection?.trim() || null,
+      slug: article.suggestedSlug || undefined,
+      suggestedKeyword: article.suggestedKeyword?.trim() || null,
+      painPoint: article.painPoint?.trim() || null,
+      painIntentExpected: article.painIntentExpected ?? null,
+    })
     try {
-      const created = await apiPost<Array<{ id: number; slug: string }>>('/articles/batch-create', {
-        cocoonName: cocoonName.value,
-        articles: [{
-          title: article.title,
-          type: article.type,
-          slug: article.suggestedSlug || undefined,
-          suggestedKeyword: article.suggestedKeyword?.trim() || null,
-          painPoint: article.painPoint?.trim() || null,
-          painIntentExpected: article.painIntentExpected,
-        }],
-      })
-      // FR-CER-CREATION-HONNETE — l'insertion est en `ON CONFLICT (slug) DO
-      // NOTHING` : un slug déjà pris renvoie une liste vide, sans erreur HTTP.
-      // Marquer l'article « créé » dans ce cas affichait une coche verte sur un
-      // article qui n'existait nulle part. Le cas se produit notamment avec un
-      // article fantôme — rattaché à aucun cocon depuis la suppression du sien,
-      // donc invisible à l'écran, mais dont le slug reste réservé.
-      const id = created?.[0]?.id
-      if (!id) {
-        log.warn('createArticleInDb: aucune ligne créée', { title: article.title, slug: article.suggestedSlug })
-        notify.error(
-          `« ${article.title} » n'a pas été créé : l'adresse /${article.suggestedSlug} est déjà prise par un autre article. Modifiez le slug puis réessayez.`,
-        )
-        return
-      }
+      // Parent pas encore rédigé : l'alarme s'ouvre sur SA porte du premier jet,
+      // puis la création est rejouée si l'utilisateur assume (FR-CER-PARENT-WRITTEN-GATE).
+      const outcome = parentId !== null ? await useGateAlarmStore().runThroughGate(parentId, create) : { ok: true as const, value: await create() }
+      if (!outcome.ok) return
+      const id = outcome.value.id
       article.dbId = id
       // L'article existe en base : il est créé, même si son mot-clé est refusé
       // ensuite. Sinon un second clic tombait sur « adresse déjà prise » (K1).
@@ -221,6 +228,9 @@ export function useArticleProposals(params: {
       }
     } catch (err) {
       log.error('createArticleInDb failed', { title: article.title, error: (err as Error).message })
+      // FR-CER-CREATION-HONNETE : un refus (ordre du cocon, adresse prise, mot-clé
+      // jamais mesuré) est dit, jamais maquillé en article créé.
+      notify.error(err instanceof ApiRequestError ? `« ${article.title} » n'a pas été créé : ${err.message}` : `« ${article.title} » n'a pas été créé.`)
     }
   }
 

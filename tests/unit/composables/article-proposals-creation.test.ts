@@ -1,14 +1,13 @@
 /**
  * FR-CER-CREATION-HONNETE — un article annoncé créé doit exister en base.
  *
- * `POST /articles/batch-create` insère en `ON CONFLICT (slug) DO NOTHING` :
- * quand l'adresse est déjà prise, la requête réussit (HTTP 200) mais ne
- * renvoie aucune ligne. Le composable marquait quand même `createdInDb`, et
- * l'écran affichait une coche verte sur un article qui n'existait nulle part.
- *
- * Le cas n'est pas théorique : `articles.cocoon_id` est en ON DELETE SET NULL,
- * donc supprimer un cocon laisse des articles fantômes — invisibles dans
- * l'application, mais dont le slug reste réservé.
+ * Historique : `POST /articles/batch-create` insérait en `ON CONFLICT (slug) DO
+ * NOTHING` ; une adresse déjà prise répondait 200 sans ligne, et l'écran
+ * affichait une coche verte sur un article inexistant. Depuis C7, la création
+ * passe par `POST /cocoons/:cocoonId/articles`, un article à la fois : tout
+ * refus (adresse prise, ordre du cocon, mot-clé jamais mesuré) est une erreur
+ * HTTP, dite telle quelle ; un parent pas encore rédigé ouvre l'alarme de sa
+ * porte du premier jet (FR-CER-PARENT-WRITTEN-GATE).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
@@ -17,11 +16,17 @@ const apiPost = vi.fn()
 const notifyError = vi.fn()
 const notifyWarning = vi.fn()
 
-vi.mock('../../../src/services/api.service', () => ({
+vi.mock('../../../src/services/api.service', async (importOriginal) => ({
+  ApiRequestError: (await importOriginal<typeof import('../../../src/services/api.service')>()).ApiRequestError,
   apiPost: (...args: unknown[]) => apiPost(...args),
   apiDelete: vi.fn(),
   apiPatch: vi.fn(),
   apiGet: vi.fn(),
+}))
+
+const runThroughGate = vi.fn(async (_id: number, action: () => Promise<unknown>) => ({ ok: true, value: await action() }))
+vi.mock('../../../src/stores/ui/gate-alarm.store', () => ({
+  useGateAlarmStore: () => ({ runThroughGate }),
 }))
 
 vi.mock('../../../src/composables/ui/useNotify', () => ({
@@ -29,10 +34,11 @@ vi.mock('../../../src/composables/ui/useNotify', () => ({
 }))
 
 vi.mock('../../../src/stores/strategy/cocoons.store', () => ({
-  useCocoonsStore: () => ({ fetchCocoons: vi.fn(), cocoons: [] }),
+  useCocoonsStore: () => ({ fetchCocoons: vi.fn(), cocoons: [{ id: 3, name: 'Cocon test', articles: [] }] }),
 }))
 
 import { useArticleProposals } from '../../../src/composables/editor/useArticleProposals'
+import { ApiRequestError } from '../../../src/services/api.service'
 import { useCocoonStrategyStore } from '../../../src/stores/strategy/cocoon-strategy.store'
 import type { ProposedArticle } from '../../../shared/types/index.js'
 
@@ -81,20 +87,34 @@ describe('createArticleInDb — ne pas annoncer une création qui n’a pas eu l
   })
 
   it('marque l’article créé quand la base renvoie une ligne', async () => {
-    apiPost.mockResolvedValue([{ id: 4242, slug: 'creation-site-internet-toulouse' }])
+    apiPost.mockResolvedValue({ id: 4242, slug: 'creation-site-internet-toulouse' })
     const article = proposition()
     const api = monter([article])
 
     await api.toggleAccept(0)
 
+    expect(apiPost.mock.calls[0]![0]).toBe('/cocoons/3/articles')
+    expect(apiPost.mock.calls[0]![1]).toMatchObject({ title: 'Création de site internet à Toulouse', type: 'pilier', parentId: null })
     const resultat = useCocoonStrategyStore().strategy!.proposedArticles[0]
     expect(resultat.createdInDb, 'la création est confirmée').toBe(true)
     expect(resultat.dbId).toBe(4242)
     expect(notifyError, 'aucune alerte inutile').not.toHaveBeenCalled()
   })
 
+  it('un enfant part avec son parent (retrouvé sur la carte) et sa section, derrière la porte du parent', async () => {
+    apiPost.mockResolvedValue({ id: 51, slug: 'refonte' })
+    const pilier = proposition({ createdInDb: true, dbId: 50 })
+    const enfant = proposition({ id: 'p-2', title: 'Refonte de site', type: 'intermediaire', parentTitle: 'création de site internet à toulouse', parentSection: 'La refonte', suggestedSlug: 'refonte' })
+    const api = monter([pilier, enfant])
+
+    await api.toggleAccept(1)
+
+    expect(runThroughGate).toHaveBeenCalledWith(50, expect.any(Function))
+    expect(apiPost.mock.calls[0]![1]).toMatchObject({ parentId: 50, parentSection: 'La refonte', type: 'intermediaire' })
+  })
+
   it('refuse de marquer créé quand le slug est déjà pris', async () => {
-    apiPost.mockResolvedValue([])
+    apiPost.mockRejectedValue(new ApiRequestError('L’adresse /creation-site-internet-toulouse est déjà prise par un autre article : changez le titre ou l’adresse.', 409, 'SLUG_TAKEN'))
     const article = proposition()
     const api = monter([article])
 
@@ -106,7 +126,7 @@ describe('createArticleInDb — ne pas annoncer une création qui n’a pas eu l
   })
 
   it('explique à l’utilisateur pourquoi la création a échoué', async () => {
-    apiPost.mockResolvedValue([])
+    apiPost.mockRejectedValue(new ApiRequestError('L’adresse /creation-site-internet-toulouse est déjà prise par un autre article : changez le titre ou l’adresse.', 409, 'SLUG_TAKEN'))
     const api = monter([proposition()])
 
     await api.toggleAccept(0)
@@ -115,11 +135,11 @@ describe('createArticleInDb — ne pas annoncer une création qui n’a pas eu l
     const message = String(notifyError.mock.calls[0][0])
     expect(message, 'le titre concerné est nommé').toContain('Création de site internet à Toulouse')
     expect(message, 'la cause est donnée').toContain('creation-site-internet-toulouse')
-    expect(message, 'et la marche à suivre aussi').toMatch(/slug/i)
+    expect(message, 'et la marche à suivre aussi').toMatch(/adresse/i)
   })
 
   it('n’enregistre pas le mot-clé d’un article qui n’a pas été créé', async () => {
-    apiPost.mockResolvedValue([])
+    apiPost.mockRejectedValue(new ApiRequestError('Un cocon commence par son pilier : créez-le d’abord.', 409, 'HIERARCHY_VIOLATION'))
     const api = monter([proposition({ suggestedKeyword: 'creation site internet toulouse' })])
 
     await api.toggleAccept(0)
@@ -138,7 +158,7 @@ describe('createArticleInDb — le mot-clé de l’article rejoint le pool du co
   })
 
   it('envoie le type attendu par le pool (« Pilier »), pas le niveau en minuscules', async () => {
-    apiPost.mockImplementation(async (url: string) => (url === '/articles/batch-create' ? [{ id: 7, slug: 's' }] : { success: true }))
+    apiPost.mockImplementation(async (url: string) => (url === '/cocoons/3/articles' ? { id: 7, slug: 's' } : { success: true }))
     const api = monter([proposition({ suggestedKeyword: 'creation site internet toulouse' })])
 
     await api.toggleAccept(0)
@@ -153,7 +173,7 @@ describe('createArticleInDb — le mot-clé de l’article rejoint le pool du co
     // utilisé par un autre cocon) le laissait « non créé », sans message. Un
     // second clic tombait alors sur « adresse déjà prise ».
     apiPost.mockImplementation(async (url: string) => {
-      if (url === '/articles/batch-create') return [{ id: 1013, slug: 'strategie-digitale-entreprises-toulouse' }]
+      if (url === '/cocoons/3/articles') return { id: 1013, slug: 'strategie-digitale-entreprises-toulouse' }
       throw new Error('Le mot-clé « stratégie digitale entreprises toulouse » est déjà utilisé dans le cocon « Croissance digitale Toulouse ».')
     })
     const api = monter([proposition({ suggestedKeyword: 'stratégie digitale entreprises toulouse' })])

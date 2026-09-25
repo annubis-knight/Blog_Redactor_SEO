@@ -101,6 +101,7 @@ export const proposedArticleSchema = z.object({
   suggestedTitles: z.array(z.string()).default([]),
   type: articleTypeSchema,
   parentTitle: z.string().nullable(),
+  parentSection: z.string().nullable().optional(),
   rationale: z.string(),
   painPoint: z.string().default(''),
   painIntentExpected: painIntentExpectedSchema,

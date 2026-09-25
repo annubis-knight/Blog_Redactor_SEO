@@ -72,9 +72,16 @@ describe('Contract /articles', () => {
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('POST /articles/batch-create body invalide → 400', async ({ skip }) => {
+  // C7 (K6) : la création en lot a disparu ; un article se crée à la fois.
+  it('POST /articles/batch-create n’existe plus → 404', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/articles/batch-create', {})
+    const res = await apiPost('/articles/batch-create', { cocoonName: 'x', articles: [{ title: 'Un', type: 'pilier' }] })
+    expect(res.status).toBe(404)
+  })
+
+  it('POST /cocoons/:id/articles body invalide → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const res = await apiPost('/cocoons/1/articles', {})
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 

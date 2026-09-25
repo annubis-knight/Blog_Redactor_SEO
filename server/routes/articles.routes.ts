@@ -1,8 +1,8 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleById, getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleChecks, getArticleKeywords } from '../services/infra/data.service.js'
+import { getArticleById, getArticleBySlug, updateArticleStatus, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleChecks, getArticleKeywords } from '../services/infra/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article/article-content.service.js'
-import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
+import { updateArticleContentSchema, updateArticleStatusSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
 import { articleProgressSchema, addCheckSchema } from '../../shared/schemas/article-progress.schema.js'
 import { flattenHnStructure } from '../../shared/utils/hn-structure.js'
@@ -184,25 +184,6 @@ router.delete('/articles/:id', async (req, res) => {
   } catch (err) {
     log.error(`DELETE /api/articles/${id} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete article' } })
-  }
-})
-
-/** POST /api/articles/batch-create — Create multiple articles in a cocoon */
-router.post('/articles/batch-create', async (req, res) => {
-  const parsed = batchCreateArticlesSchema.safeParse(req.body)
-  if (!parsed.success) {
-    res.status(400).json({
-      error: { code: 'VALIDATION_ERROR', message: parsed.error.message },
-    })
-    return
-  }
-
-  try {
-    const created = await addArticlesToCocoon(parsed.data.cocoonName, parsed.data.articles)
-    res.json({ data: created })
-  } catch (err) {
-    log.error(`POST /api/articles/batch-create — ${(err as Error).message}`)
-    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create articles' } })
   }
 })
 

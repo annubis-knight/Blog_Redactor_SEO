@@ -377,22 +377,17 @@ describe('Cocoon strategy schemas', () => {
     expect(valid.type).toBe('pilier')
   })
 
-  it('batchCreateArticlesSchema validates', async () => {
-    const { batchCreateArticlesSchema } = await import('../../../shared/schemas/article.schema')
+  // C7 (K6) : la création en lot a disparu ; un article se crée à la fois.
+  it('createCocoonArticleSchema validates', async () => {
+    const { createCocoonArticleSchema } = await import('../../../shared/schemas/article.schema')
 
-    const valid = batchCreateArticlesSchema.parse({
-      cocoonName: 'Mon cocon',
-      articles: [
-        { title: 'Article 1', type: 'pilier' },
-        { title: 'Article 2', type: 'specifique' },
-      ],
-    })
-    expect(valid.articles).toHaveLength(2)
+    const pilier = createCocoonArticleSchema.parse({ title: 'Article 1', type: 'pilier' })
+    expect(pilier.type).toBe('pilier')
+    const enfant = createCocoonArticleSchema.parse({ title: 'Article 2', type: 'specifique', parentId: 4, parentSection: 'Le prix' })
+    expect(enfant).toMatchObject({ parentId: 4, parentSection: 'Le prix' })
 
-    expect(() => batchCreateArticlesSchema.parse({
-      cocoonName: 'Test',
-      articles: [],
-    })).toThrow()
+    expect(createCocoonArticleSchema.safeParse({ title: 'x', type: 'pilier' }).success, 'titre trop court').toBe(false)
+    expect(createCocoonArticleSchema.safeParse({ title: 'Article 3', type: 'Pilier' }).success, 'type au format base').toBe(false)
   })
 })
 

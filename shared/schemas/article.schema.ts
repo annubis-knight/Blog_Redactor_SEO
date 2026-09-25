@@ -65,17 +65,23 @@ export const updateArticleStatusSchema = z.object({
 
 export type UpdateArticleStatusRequest = z.infer<typeof updateArticleStatusSchema>
 
-export const batchCreateArticlesSchema = z.object({
-  cocoonName: z.string().min(1),
-  articles: z.array(z.object({
-    title: z.string().min(1),
-    type: articleTypeSchema,
-    slug: z.string().optional(),
-    suggestedKeyword: z.string().nullable().optional(),
-    painPoint: z.string().nullable().optional(),
-    painIntentExpected: painIntentExpectedSchema.optional(),
-  })).min(1),
+/**
+ * Création d'UN article dans un cocon (FR-CER-COCOON-PROGRESSIVE) : pilier
+ * d'abord, puis chaque enfant depuis une section (`parentSection`, un H2) de son
+ * parent. Remplace la création en lot (K6).
+ */
+export const createCocoonArticleSchema = z.object({
+  title: z.string().trim().min(3).max(200),
+  type: articleTypeSchema,
+  parentId: z.number().int().positive().nullable().optional(),
+  parentSection: z.string().trim().min(1).max(300).nullable().optional(),
+  slug: z.string().trim().min(1).max(200).optional(),
+  suggestedKeyword: z.string().trim().min(1).max(200).nullable().optional(),
+  painPoint: z.string().trim().max(2000).nullable().optional(),
+  painIntentExpected: painIntentExpectedSchema.nullable().optional(),
 })
+
+export type CreateCocoonArticleRequest = z.infer<typeof createCocoonArticleSchema>
 
 export const patchArticleSchema = z.object({
   title: z.string().min(1).optional(),
