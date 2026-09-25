@@ -90,6 +90,26 @@ function reportKnownError(code: string | undefined, path: string): void {
   }
 }
 
+/**
+ * Erreur d'une requête API : garde le statut HTTP, le code métier et le détail
+ * renvoyés par le serveur (`{ error: { code, message, details } }`). Un écran
+ * peut ainsi réagir à un refus précis — une porte de qualité (422
+ * `GATE_BLOCKED`) ouvre l'alarme au lieu d'un simple message.
+ */
+export class ApiRequestError extends Error {
+  readonly status: number
+  readonly code: string | undefined
+  readonly details: unknown
+
+  constructor(message: string, status: number, code?: string, details?: unknown) {
+    super(message)
+    this.name = 'ApiRequestError'
+    this.status = status
+    this.code = code
+    this.details = details
+  }
+}
+
 async function handleApiError(res: Response, method: string, path: string): Promise<never> {
   const json = await res.json().catch((err: unknown) => {
     if (err instanceof Error && err.name === 'AbortError') throw err
@@ -99,7 +119,7 @@ async function handleApiError(res: Response, method: string, path: string): Prom
   const message = json?.error?.message ?? `Erreur HTTP ${res.status}`
   log.error(`${method} /api${path} — ${message}`)
   reportKnownError(code, path)
-  throw new Error(message)
+  throw new ApiRequestError(message, res.status, code, json?.error?.details)
 }
 
 /** Fetch wrapper for the backend API — GET */

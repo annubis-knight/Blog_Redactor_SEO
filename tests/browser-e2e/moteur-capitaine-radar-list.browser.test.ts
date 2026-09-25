@@ -25,6 +25,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { test as testWithCtx } from './helpers/test-fixtures'
 import { dismissLoadPrompt, openMoteur, selectArticleByTitle } from './helpers/moteur-ui'
+import { passThroughGate } from './helpers/gate-alarm'
 
 /** Sélectionne la première entrée de la liste (clavier : les mots du mot-clé captent le clic). */
 async function selectFirstEntry(page: Page): Promise<void> {
@@ -160,7 +161,7 @@ testWithCtx.describe('Barre du haut — le mot-clé passe de suggéré à verrou
     const lock = page.locator('[data-testid="radar-card-lock"]').first()
     await expect(lock).toBeVisible({ timeout: 30000 })
 
-    await lock.click()
+    await passThroughGate(page, 'captain-lock', () => lock.click())
     await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 })
     await expect(chip, 'verrouillé : le mot-clé n’est plus une suggestion')
       .not.toHaveClass(/is-suggested/, { timeout: 20000 })

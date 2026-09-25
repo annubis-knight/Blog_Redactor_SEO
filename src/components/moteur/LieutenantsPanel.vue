@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { computed, watch, toRef } from 'vue'
+import { computed, ref, watch, toRef } from 'vue'
 import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { hnToOutline } from '@/stores/article/outline.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { extractRoots } from '@/composables/keyword/useCapitaineScan'
 import { useLieutenantsSerp } from '@/composables/moteur/useLieutenantsSerp'
 import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
@@ -21,6 +22,7 @@ import LieutenantsResultsLayout from '@/components/moteur/lieutenants/Lieutenant
 import type { SelectedArticle, SerpAnalysisResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { WordGroup } from '@shared/types/discovery-tab.types.js'
+import type { GateEvaluation } from '@shared/verifiers/gate.js'
 export type { HnRecurrenceItem } from '@shared/types/serp-analysis.types.js'
 
 const props = withDefaults(defineProps<{
@@ -276,6 +278,99 @@ async function recommendAndPropagateWordCount(articleId: number): Promise<void> 
 // du template. Le déverrouillage individuel passe par toggleLieutenant
 // (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
 
+// --- Porte « valider les lieutenants » (FR-LIE-LOCK-GATE) ---
+// L'étape n'est validée que si la porte passe (nombre de lieutenants selon le
+// type d'article, cannibalisation dans le cocon). Vérification SILENCIEUSE :
+// pas d'alarme à chaque case cochée ; tant que la porte retient l'étape, un
+// bandeau le dit, et l'alarme ne s'ouvre qu'à la demande de l'utilisateur.
+// Store lu à la demande, comme le store de progression : les tests qui montent
+// ce panneau sans Pinia ne doivent pas tomber au montage.
+const lieutenantsGateBlocked = ref<GateEvaluation | null>(null)
+let gateSyncRunning: Promise<void> | null = null
+/** Étape demandée par ce panneau, pas encore reflétée par le store de progression. */
+let checkRequested = false
+/** La première vérification (transition vers « active ») est terminée. */
+let transitionSettled = false
+
+function hasLieutenantsCheck(id: number): boolean {
+  try {
+    return checkRequested || (useArticleProgressStore().getProgress(id)?.completedChecks.includes(MOTEUR_LIEUTENANTS_LOCKED) ?? false)
+  } catch {
+    return checkRequested
+  }
+}
+
+// Autre article : ce que ce panneau savait de l'étape ne vaut plus.
+watch(() => props.selectedArticle?.id ?? null, (id, previous) => {
+  if (id === previous) return
+  checkRequested = false
+  transitionSettled = false
+  lieutenantsGateBlocked.value = null
+})
+
+function requestCheck(): void {
+  checkRequested = true
+  emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
+}
+
+function withdrawCheck(): void {
+  checkRequested = false
+  emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
+}
+
+/** Demande le verdict du serveur et accorde (ou retire) l'étape en conséquence. */
+async function syncLieutenantsGate(): Promise<void> {
+  const id = props.selectedArticle?.id
+  if (!id || props.mode === 'libre') return
+  let evaluation: GateEvaluation
+  try {
+    evaluation = await useGateAlarmStore().evaluate(id, 'lieutenants-lock')
+  } catch (err) {
+    log.warn('[LieutenantsPanel] vérification de la porte impossible', { articleId: id, error: (err as Error).message })
+    return
+  }
+  if (props.selectedArticle?.id !== id || !lieutenantsCheckActive.value) return
+  const present = hasLieutenantsCheck(id)
+  if (evaluation.passed) {
+    lieutenantsGateBlocked.value = null
+    if (!present) requestCheck()
+  } else {
+    lieutenantsGateBlocked.value = evaluation
+    if (present) withdrawCheck()
+  }
+}
+
+/** Une vérification à la fois : deux cases cochées vite ne doublent pas l'étape. */
+function requestLieutenantsGate(): Promise<void> {
+  gateSyncRunning = (gateSyncRunning ?? Promise.resolve()).then(syncLieutenantsGate)
+  return gateSyncRunning
+}
+
+/** Bouton du bandeau : ouvre l'alarme sur un verdict frais. */
+async function reviewLieutenantsGate(): Promise<void> {
+  const id = props.selectedArticle?.id
+  if (!id) return
+  let passed = false
+  try {
+    passed = await useGateAlarmStore().ensure(id, 'lieutenants-lock')
+  } catch (err) {
+    log.warn('[LieutenantsPanel] alarme indisponible', { articleId: id, error: (err as Error).message })
+    return
+  }
+  if (passed) {
+    lieutenantsGateBlocked.value = null
+    if (!hasLieutenantsCheck(id)) requestCheck()
+  }
+}
+
+const gateBannerText = computed(() => {
+  const blocking = lieutenantsGateBlocked.value?.blocking ?? []
+  const first = blocking[0]
+  if (!first) return ''
+  const more = blocking.length > 1 ? ` (+${blocking.length - 1} autre${blocking.length > 2 ? 's' : ''})` : ''
+  return `${first.message}${more}`
+})
+
 /**
  * Gating workflow : émet/retire check `MOTEUR_LIEUTENANTS_LOCKED`.
  * Actif ssi (≥1 verrouillé) ET (hn_structure non-vide).
@@ -306,13 +401,13 @@ watch(
       const hnStructureSize = articleKeywordsStore.keywords?.hnStructure?.length ?? 0
       let decision: 'add' | 'remove' | 'noop'
       if (active && !checkPresent) {
-        // Cas rare : la regle est remplie mais le check manque → l'ajouter.
+        // Cas rare : la regle est remplie mais le check manque → la porte décide.
         decision = 'add'
-        emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
+        void requestLieutenantsGate()
       } else if (!active && checkPresent) {
         // Check legacy en DB mais nouvelle règle (locked + hn_structure) non remplie → retirer.
         decision = 'remove'
-        emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
+        withdrawCheck()
       } else {
         decision = 'noop'
       }
@@ -329,14 +424,18 @@ watch(
     }
 
     if (active && !previousCheckActive) {
-      emit('check-completed', MOTEUR_LIEUTENANTS_LOCKED)
+      previousCheckActive = active
       emit('lieutenants-updated', Array.from(selectedCards.value.keys()))
-      // Side-effects : persister hnStructure + outline + reco wordCount.
+      // Side-effects : persister hnStructure + outline + reco wordCount. Ils
+      // passent AVANT l'étape : la porte lit la base, pas l'écran.
       const id = props.selectedArticle?.id
       const title = props.selectedArticle?.title
       if (id && title && articleKeywordsStore.keywords) {
         articleKeywordsStore.keywords.hnStructure = hnStructure.value
-        await articleKeywordsStore.saveDecisions(id)
+        if ((await articleKeywordsStore.saveDecisions(id)) === false) {
+          log.warn('[LieutenantsPanel] lieutenants non enregistrés : étape non demandée', { articleId: id })
+          return
+        }
         if (hnStructure.value.length > 0) {
           const outline = hnToOutline(hnStructure.value, title)
           await apiPut(`/articles/${id}`, { outline }).catch((err) => {
@@ -345,8 +444,13 @@ watch(
         }
         void recommendAndPropagateWordCount(id)
       }
+      await requestLieutenantsGate()
+      transitionSettled = true
+      return
     } else if (!active && previousCheckActive) {
-      emit('check-removed', MOTEUR_LIEUTENANTS_LOCKED)
+      lieutenantsGateBlocked.value = null
+      transitionSettled = false
+      withdrawCheck()
       const id = props.selectedArticle?.id
       if (id) void articleKeywordsStore.saveDecisions(id)
     }
@@ -354,6 +458,23 @@ watch(
   },
   { immediate: true },
 )
+
+// Un lieutenant ajouté ou retiré alors que l'étape est déjà active : la porte
+// est revérifiée sur les décisions enregistrées (FR-LIE-LOCK-GATE). La
+// transition false → true, elle, est traitée par le watcher ci-dessus.
+const lockedLieutenantsSignature = computed(() =>
+  (articleKeywordsStore.lockedLieutenants ?? []).map(lt => lt.keyword.toLowerCase()).sort().join('|'),
+)
+watch(lockedLieutenantsSignature, async (signature, previous) => {
+  // Tant que la transition n'a pas fini sa vérification, c'est elle qui décide :
+  // sans cette garde, cocher le lieutenant qui active l'étape lançait deux
+  // vérifications en parallèle, et l'étape pouvait être demandée deux fois.
+  if (signature === previous || !transitionSettled || !lieutenantsCheckActive.value) return
+  const id = props.selectedArticle?.id
+  if (!id || props.mode === 'libre') return
+  if ((await articleKeywordsStore.saveDecisions(id)) === false) return
+  await requestLieutenantsGate()
+})
 
 // (currentStep + AnalysisStep moved to useLieutenantsIa above)
 
@@ -588,6 +709,16 @@ async function analyzeSERPWithStep(): Promise<void> {
       <p>{{ error }}</p>
     </div>
 
+    <!-- FR-LIE-LOCK-GATE — la porte retient l'étape : on le dit, l'alarme s'ouvre à la demande. -->
+    <div v-if="lieutenantsGateBlocked" class="gate-banner" role="status" data-testid="lieutenants-gate-banner">
+      <p class="gate-banner-text">
+        <strong>Étape non validée.</strong> {{ gateBannerText }}
+      </p>
+      <button type="button" class="gate-banner-btn" data-testid="lieutenants-gate-review" @click="reviewLieutenantsGate">
+        Voir pourquoi / décider
+      </button>
+    </div>
+
     <!-- LieutenantsResultsLayout encapsule ensemble + formalise FR-LIE-AI-FRONTIER (PRD §8.7). -->
     <LieutenantsResultsLayout
       :serp-result="serpResult"
@@ -634,6 +765,34 @@ async function analyzeSERPWithStep(): Promise<void> {
 }
 
 /* Legacy styles supprimés (.lieutenants-header, .captain-badge, .captain-icon, .level-badge). */
+
+/* --- Porte Lieutenants --- */
+.gate-banner {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.625rem 0.875rem;
+  border: 1px solid var(--color-block-warning-border, #f59e0b);
+  border-radius: 6px;
+  background: var(--color-block-warning-bg, #fffbeb);
+  font-size: 0.8125rem;
+}
+
+.gate-banner-text {
+  margin: 0;
+}
+
+.gate-banner-btn {
+  padding: 0.375rem 0.75rem;
+  border: 1px solid var(--color-border, #e2e8f0);
+  border-radius: 6px;
+  background: var(--color-surface, #fff);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+}
 
 /* --- Soft gate --- */
 .soft-gate-message {

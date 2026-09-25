@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute } from 'vue-router'
 import { apiGet, apiPut } from '@/services/api.service'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { log } from '@/utils/logger'
 
 const route = useRoute()
@@ -20,6 +21,9 @@ const articleTitle = ref('')
 const isLoading = ref(true)
 const error = ref<string | null>(null)
 const isExporting = ref(false)
+/** Message sous la barre quand la publication n'a pas eu lieu. */
+const exportNotice = ref<string | null>(null)
+const gateAlarm = useGateAlarmStore()
 
 async function loadPreview() {
   if (!articleId.value) return
@@ -50,15 +54,31 @@ function downloadHtml() {
   URL.revokeObjectURL(url)
 }
 
+/**
+ * FR-RED-PUBLISH-GATE — publier, c'est passer la porte de publication AVANT le
+ * téléchargement : un article refusé n'est ni marqué publié ni exporté. Si la
+ * porte refuse, l'alarme montre chaque point (et réaffiche les dérogations
+ * posées en amont) ; après dérogation, la publication est rejouée.
+ */
 async function handleExport() {
-  if (!articleId.value) return
+  const id = articleId.value
+  if (!id) return
   isExporting.value = true
+  exportNotice.value = null
   try {
+    const published = await gateAlarm.runThroughGate(id, () =>
+      apiPut(`/articles/${id}/status`, { status: 'publié' }),
+    )
+    if (!published.ok) {
+      exportNotice.value = 'Publication annulée : corrigez les points signalés, puis exportez à nouveau.'
+      log.info('Export suspendu par la porte de publication', { articleId: id })
+      return
+    }
     downloadHtml()
-    await apiPut(`/articles/${articleId.value}/status`, { status: 'publié' })
-    log.info('Article exported and status set to publié', { articleId: articleId.value })
+    log.info('Article published and exported', { articleId: id })
   } catch (err) {
-    log.error('Export status update failed', { articleId: articleId.value, error: (err as Error).message })
+    exportNotice.value = `Publication impossible : ${(err as Error).message}`
+    log.error('Export status update failed', { articleId: id, error: (err as Error).message })
   } finally {
     isExporting.value = false
   }
@@ -101,6 +121,8 @@ onMounted(async () => {
         </button>
       </div>
     </header>
+
+    <p v-if="exportNotice" class="preview-notice" role="status" data-testid="preview-export-notice">{{ exportNotice }}</p>
 
     <div v-if="isLoading" class="preview-state">
       <p>Chargement de l'aperçu...</p>
@@ -213,5 +235,13 @@ onMounted(async () => {
 
 .preview-state--error {
   color: var(--color-error);
+}
+
+.preview-notice {
+  margin: 0;
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid var(--color-block-warning-border, #f59e0b);
+  background: var(--color-block-warning-bg, #fffbeb);
+  font-size: 0.8125rem;
 }
 </style>

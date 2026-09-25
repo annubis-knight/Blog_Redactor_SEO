@@ -8,6 +8,7 @@
  * rouvert sur le dernier visité, carte du Capitaine encore en cours de scan.
  */
 import { expect, type Page } from '@playwright/test'
+import { answerGateAlarm, passThroughGate } from './gate-alarm'
 
 /** Ouvre le Moteur d'un cocon (l'index, pas la clé primaire). */
 export async function openMoteur(page: Page, cocoonIndex: number): Promise<void> {
@@ -61,7 +62,9 @@ export async function scanAndLockCaptain(page: Page, keyword: string): Promise<v
 
   const lock = page.locator('[data-testid="radar-card-lock"]').first()
   await expect(lock, 'le cadenas de la carte doit être rendu').toBeVisible({ timeout: 30000 })
-  await lock.click()
+  // Le verrou passe par la porte (FR-CAP-LOCK-GATE) : sur données simulées,
+  // l'alarme peut s'ouvrir ; on y répond comme un utilisateur qui assume.
+  await passThroughGate(page, 'captain-lock', () => lock.click())
   await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 15000 })
 }
 
@@ -127,9 +130,14 @@ export async function lockLieutenants(page: Page, articleId: number): Promise<vo
     await expect(cartes, 'les propositions IA doivent arriver').toBeVisible({ timeout: 180000 })
   }
 
+  // Un pilier appelle au moins 3 lieutenants (FR-LIE-LOCK-GATE) : on en retient
+  // autant qu'un utilisateur le ferait, pas seulement le premier.
   const cases = page.locator('[data-testid="lt-card-checkbox"]')
   await expect(cases.first()).toBeVisible({ timeout: 60000 })
-  if (!(await cases.first().isChecked())) await cases.first().check()
+  const retenus = Math.min(3, await cases.count())
+  for (let i = 0; i < retenus; i++) {
+    if (!(await cases.nth(i).isChecked())) await cases.nth(i).check()
+  }
 
   if (await page.locator('[data-testid="hn-structure-empty"]').count() > 0) {
     const generer = page.locator('[data-testid="hn-generate-btn"]')
@@ -144,6 +152,18 @@ export async function lockLieutenants(page: Page, articleId: number): Promise<vo
   await sauvegarder.click()
   await expect(page.locator('.hn-saved-badge'), 'le plan doit être marqué sauvegardé')
     .toBeVisible({ timeout: 60000 })
+
+  // La porte peut encore retenir l'étape (cannibalisation, trop peu de
+  // propositions) : le bandeau le dit, l'alarme s'ouvre à la demande.
+  const bandeau = page.locator('[data-testid="lieutenants-gate-banner"]')
+  await expect.poll(async () => {
+    if (await bandeau.isVisible()) return 'bandeau'
+    return (await checksDeLArticle(page, articleId)).includes('moteur:lieutenants_locked') ? 'validée' : 'en attente'
+  }, { timeout: 60000 }).not.toBe('en attente')
+  if (await bandeau.isVisible()) {
+    await page.locator('[data-testid="lieutenants-gate-review"]').click()
+    await answerGateAlarm(page)
+  }
 
   await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
     .toContain('moteur:lieutenants_locked')

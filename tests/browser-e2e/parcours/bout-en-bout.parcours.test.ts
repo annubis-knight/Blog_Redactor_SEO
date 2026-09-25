@@ -22,6 +22,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { query } from '../../../server/db/client.js'
 import { ETAPES_STRATEGIE, REPONSES, useCerveau } from '../helpers/cerveau-fixtures'
+import { publishThroughGate } from '../helpers/gate-alarm'
 import {
   checksDeLArticle,
   dismissLoadPrompt,
@@ -362,8 +363,11 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
       await expect(exporter, 'l’export est proposé').toBeVisible({ timeout: 60000 })
       await expect(exporter).toBeEnabled({ timeout: 60000 })
 
-      const telechargement = onglet.waitForEvent('download', { timeout: 60000 })
-      await exporter.click()
+      // Publier passe la porte (FR-RED-PUBLISH-GATE) : si elle alerte sur ce
+      // texte simulé, l'utilisateur assume ; un défaut ⛔ ferait échouer le test.
+      const telechargement = onglet.waitForEvent('download', { timeout: 120000 })
+      const alertes = await publishThroughGate(onglet, () => exporter.click())
+      if (alertes.length > 0) test.info().annotations.push({ type: 'porte de publication', description: alertes.join(', ') })
       const fichier = await telechargement
       expect(fichier.suggestedFilename(), 'un fichier HTML est proposé').toMatch(/\.html$/)
 

@@ -18,6 +18,7 @@
  */
 import { test, expect, type Page, type Response } from '@playwright/test'
 import { scanAndLockCaptain, selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -170,12 +171,16 @@ for (const level of LEVELS) {
       }
     })
 
-    await test.step('⑧ décision — un Lieutenant coché et un plan Hn enregistré valident l’étape', async () => {
+    await test.step('⑧ décision — les Lieutenants requis par le type et un plan Hn enregistré valident l’étape', async () => {
       const cases = page.locator('[data-testid="lt-card-checkbox"]')
       await expect(cases.first()).toBeVisible({ timeout: 30000 })
       // L'IA propose, l'utilisateur valide : les cartes arrivent décochées.
       expect(await cases.first().isChecked(), 'une proposition n’est pas validée d’office').toBe(false)
-      await cases.first().check()
+      // La porte (FR-LIE-LOCK-GATE) attend le minimum du type : 3 pour un
+      // pilier, 2 pour un intermédiaire, 1 pour un spécialisé.
+      const requis = ARTICLE_TYPE_RULES[level].minLieutenants
+      expect(await cases.count(), `au moins ${requis} proposition(s) à retenir`).toBeGreaterThanOrEqual(requis)
+      for (let i = 0; i < requis; i++) await cases.nth(i).check()
 
       // Le clic doit se traduire en base : statut « locked » sur le Lieutenant.
       await expect
@@ -183,7 +188,19 @@ for (const level of LEVELS) {
           const kw = await apiJson<{ richLieutenants?: Array<{ status: string }> } | null>(page, `/articles/${article.id}/keywords`)
           return kw?.richLieutenants?.filter(lt => lt.status === 'locked').length ?? 0
         }, { timeout: 20000 })
-        .toBeGreaterThan(0)
+        .toBe(requis)
+
+      // Ce que la Rédaction et la porte lisent (la liste « plate ») doit être
+      // exactement ce que l'utilisateur a coché — ni plus, ni moins.
+      await expect
+        .poll(async () => {
+          const kw = await apiJson<{ lieutenants: string[]; richLieutenants?: Array<{ keyword: string; status: string }> } | null>(
+            page, `/articles/${article.id}/keywords`)
+          const coches = (kw?.richLieutenants ?? []).filter(lt => lt.status === 'locked').map(lt => lt.keyword).sort()
+          const plate = [...(kw?.lieutenants ?? [])].sort()
+          return { identiques: JSON.stringify(plate) === JSON.stringify(coches), plate, coches }
+        }, { timeout: 20000, message: 'liste plate = lieutenants cochés' })
+        .toMatchObject({ identiques: true })
 
       // La règle du workflow demande aussi un plan Hn : on le génère s'il manque…
       const vide = page.locator('[data-testid="hn-structure-empty"]')

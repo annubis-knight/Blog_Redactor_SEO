@@ -6,6 +6,7 @@ import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { useDiscoveryPanel } from '@/composables/keyword/useDiscoveryPanel'
 import { useArticleResults } from '@/composables/editor/useArticleResults'
 import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
@@ -14,6 +15,7 @@ import { apiGet } from '@/services/api.service'
 import type { RadarCacheStatus } from '@/composables/keyword/useResonanceScore'
 import { log } from '@/utils/logger'
 import type { SelectedArticle, Article } from '@shared/types/index.js'
+import { parseArticleLevel } from '@shared/utils/article-level.js'
 import Breadcrumb from '@/components/shared/Breadcrumb.vue'
 import LoadingSpinner from '@/components/shared/LoadingSpinner.vue'
 import MoteurContextRecap from '@/components/moteur/MoteurContextRecap.vue'
@@ -93,6 +95,7 @@ const {
   selectedArticle,
   cocoonName,
   articleProgressStore,
+  gateAlarm: useGateAlarmStore(),
 })
 
 const breadcrumbItems = computed(() => [
@@ -313,11 +316,12 @@ const captainKeyword = computed(() =>
   articleKeywordsStore.keywords?.capitaine ?? selectedArticle.value?.keyword ?? null,
 )
 
-const articleLevelForLieutenants = computed(() => {
-  if (!selectedArticle.value) return null
-  const typeMap: Record<string, string> = { Pilier: 'pilier', Cluster: 'intermediaire', Support: 'specifique' }
-  return (typeMap[selectedArticle.value.type ?? ''] ?? 'intermediaire') as 'pilier' | 'intermediaire' | 'specifique'
-})
+// M12 — l'ancienne table { Pilier, Cluster, Support } ne reconnaissait aucun
+// niveau réel : les lieutenants d'un pilier étaient proposés comme pour un
+// intermédiaire. `parseArticleLevel` lit les deux formats (base et code).
+const articleLevelForLieutenants = computed(() =>
+  selectedArticle.value ? parseArticleLevel(selectedArticle.value.type) : null,
+)
 
 // --- Suggested keywords from strategy for CaptainPanel ---
 const suggestedKeywordsForArticle = computed(() => {

@@ -21,6 +21,7 @@
  */
 import { test, expect, type Page, type Response } from '@playwright/test'
 import { selectArticle, useParcours, type ParcoursLevel } from '../helpers/parcours-fixtures'
+import { passThroughGate } from '../helpers/gate-alarm'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -182,10 +183,12 @@ for (const level of LEVELS) {
       await expectKpiDisplay(page, scan, 'volume', 'Volume', /rech\/m$/)
     })
 
-    await test.step('⑧ décision — verrouiller enregistre le check du workflow', async () => {
+    await test.step('⑧ décision — verrouiller passe la porte, puis enregistre le check du workflow', async () => {
       const lock = page.locator('[data-testid="radar-card-lock"]').first()
       await expect(lock, 'le cadenas de la carte doit être présent').toBeVisible({ timeout: 15000 })
-      await lock.click()
+      // FR-CAP-LOCK-GATE : si la porte alerte sur ces données simulées,
+      // l'utilisateur assume avec une vraie raison.
+      await passThroughGate(page, 'captain-lock', () => lock.click())
       await expect(lock).toHaveAttribute('aria-pressed', 'true', { timeout: 10000 })
 
       await expect

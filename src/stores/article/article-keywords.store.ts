@@ -201,7 +201,12 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Decision-only save (article_keywords table) ----
 
-  async function saveDecisions(id: number) {
+  /**
+   * Enregistre les décisions. Renvoie `false` si l'enregistrement a échoué :
+   * l'appelant qui enchaîne sur une étape gardée (check du Moteur) ne doit pas
+   * la déclencher, le serveur évaluerait des données périmées.
+   */
+  async function saveDecisions(id: number): Promise<boolean> {
     if (!keywords.value) ensureKeywords(id)
     const kw = keywords.value!
     isSaving.value = true
@@ -216,16 +221,18 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         hnStructure: kw.hnStructure ?? [],
       })
       log.debug(`[article-keywords] decisions saved for article ${id}`)
+      return true
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de sauvegarde'
       log.error(`[article-keywords] saveDecisions failed`, { articleId: id, error: error.value })
+      return false
     } finally {
       isSaving.value = false
     }
   }
 
   /** @deprecated Use saveDecisions() — kept as alias during transition */
-  async function saveKeywords(id: number) {
+  async function saveKeywords(id: number): Promise<boolean> {
     return saveDecisions(id)
   }
 

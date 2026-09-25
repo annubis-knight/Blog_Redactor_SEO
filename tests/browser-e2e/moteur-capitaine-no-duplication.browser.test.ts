@@ -13,6 +13,7 @@
 import { expect } from '@playwright/test'
 import { test as testWithCtx } from './helpers/test-fixtures'
 import { openMoteur, selectArticleByTitle } from './helpers/moteur-ui'
+import { passThroughGate } from './helpers/gate-alarm'
 
 testWithCtx.describe('Capitaine — Anti-duplication FR-CAP-LOCK-NO-DUPLICATE', () => {
   testWithCtx('cinq verrouillages/déverrouillages ne dupliquent pas la carte', async ({ page, ctx }) => {
@@ -40,10 +41,13 @@ testWithCtx.describe('Capitaine — Anti-duplication FR-CAP-LOCK-NO-DUPLICATE', 
     // Cinq bascules, en attendant chaque fois que l'état soit vraiment posé :
     // c'est la succession lock → unlock → lock qui déclenchait la duplication.
     const lock = page.locator('[data-testid="radar-card-lock"]').first()
+    // Chaque verrouillage passe par la porte (FR-CAP-LOCK-GATE) ; la dérogation
+    // posée au premier vaut pour les suivants, puisque les données n'ont pas changé.
     for (let i = 0; i < 5; i++) {
-      const attendu = i % 2 === 0 ? 'true' : 'false'
-      await lock.click()
-      await expect(lock, `bascule ${i + 1}`).toHaveAttribute('aria-pressed', attendu, { timeout: 20000 })
+      const verrouille = i % 2 === 0
+      if (verrouille) await passThroughGate(page, 'captain-lock', () => lock.click())
+      else await lock.click()
+      await expect(lock, `bascule ${i + 1}`).toHaveAttribute('aria-pressed', String(verrouille), { timeout: 20000 })
     }
 
     await expect(cartes, 'la liste n’a pas grossi d’un doublon').toHaveCount(avant, { timeout: 10000 })

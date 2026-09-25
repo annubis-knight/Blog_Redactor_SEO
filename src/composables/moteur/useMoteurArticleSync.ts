@@ -1,11 +1,22 @@
 import { ref, watch, type Ref, type ComputedRef } from 'vue'
 import { apiGet, apiDelete } from '@/services/api.service'
 import { log } from '@/utils/logger'
+import { useNotify } from '@/composables/ui/useNotify'
+import { isGateBlocked } from '@/stores/ui/gate-alarm.store'
 import type { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import type { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import type { SelectedArticle } from '@shared/types/index.js'
 import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 
 /**
+ * AUTHORITY: PostgreSQL `articles.completed_checks` (via article-progress.store) ;
+ *            les checks gardés passent par les portes du serveur (422 GATE_BLOCKED).
+ * READS FROM: GET /cocoons/:name/capitaines, GET /articles/:id/explorations/counts.
+ * WRITES TO: POST /articles/:id/progress/check et /uncheck (addCheck / removeCheck),
+ *            DELETE /articles/:id/external-cache.
+ * CONSUMERS: MoteurView (capitainesMap, explorationCounts, emitCheckCompleted, handleCheckRemoved).
+ * RELATED FR: FR-MOT-CHECKS, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-MOT-RECAP-LOCK-SYNC
+ *
  * Vague 5 — Composable extrait de MoteurView.
  *
  * Encapsule la synchronisation article-side du Moteur :
@@ -22,6 +33,12 @@ export interface MoteurArticleSyncDeps {
   selectedArticle: Ref<SelectedArticle | null>
   cocoonName: ComputedRef<string>
   articleProgressStore: ReturnType<typeof useArticleProgressStore>
+  /**
+   * Alarme graduée : un check gardé par une porte et refusé par le serveur
+   * (422 `GATE_BLOCKED`) l'ouvre, puis est rejoué après dérogation.
+   * FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE.
+   */
+  gateAlarm?: Pick<ReturnType<typeof useGateAlarmStore>, 'runThroughGate'>
 }
 
 export interface MoteurArticleSyncApi {
@@ -45,7 +62,7 @@ export interface MoteurArticleSyncApi {
 }
 
 export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticleSyncApi {
-  const { selectedArticle, cocoonName, articleProgressStore } = deps
+  const { selectedArticle, cocoonName, articleProgressStore, gateAlarm } = deps
 
   const capitainesMap = ref<Record<number, string>>({})
 
@@ -101,12 +118,29 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
   function emitCheckCompleted(check: string): void {
     const id = selectedArticle.value?.id
     if (!id) return
-    articleProgressStore.addCheck(id, check).catch(err =>
-      log.warn('[useMoteurArticleSync] addCheck failed', { articleId: id, check, error: err }),
-    )
-    // Compare check constant (moteur:capitaine_locked, pas 'capitaine_locked').
-    if (check === MOTEUR_CAPITAINE_LOCKED) refreshCapitainesMap()
-    refreshExplorationCounts()
+    const addCheck = () => articleProgressStore.addCheck(id, check)
+    const attempt = gateAlarm
+      ? gateAlarm.runThroughGate(id, addCheck)
+      : addCheck().then(() => ({ ok: true as const }))
+    attempt
+      .then((res) => {
+        if (!res.ok) log.info('[useMoteurArticleSync] étape non validée : porte refusée', { articleId: id, check })
+      })
+      .catch((err) => {
+        log.warn('[useMoteurArticleSync] addCheck failed', { articleId: id, check, error: err })
+        // Refusée même après la décision de l'utilisateur (les données ont bougé
+        // entre-temps) : il doit le savoir, pas croire l'étape validée.
+        if (isGateBlocked(err)) {
+          try { useNotify().warning(`Étape toujours refusée : ${err.details.blocking.length} point(s) à revoir.`) } catch { /* hors contexte Pinia */ }
+        }
+      })
+      // La carte des capitaines et les compteurs relisent la base : on attend
+      // la réponse du serveur, qui a pu refuser l'étape.
+      .finally(() => {
+        // Compare check constant (moteur:capitaine_locked, pas 'capitaine_locked').
+        if (check === MOTEUR_CAPITAINE_LOCKED) refreshCapitainesMap()
+        refreshExplorationCounts()
+      })
   }
 
   function handleCheckRemoved(check: string): void {

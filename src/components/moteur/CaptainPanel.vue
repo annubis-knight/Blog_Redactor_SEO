@@ -29,6 +29,7 @@ import { apiStream } from '@/services/api.service'
 import { VERDICT_COLORS } from '@/composables/ui/useVerdictColors'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import { adviceMarkdown, aiAdviceDoneContract } from '@shared/contracts/ai-advice.contract.js'
 import { useNotify } from '@/composables/ui/useNotify'
@@ -81,6 +82,7 @@ const emit = defineEmits<{
 
 const articleKeywordsStore = useArticleKeywordsStore()
 const notify = useNotify()
+const gateAlarm = useGateAlarmStore()
 
 // Debounced save: coalesces rafales de mutations (validate, root variants, AI panel)
 // en un seul PUT. Évite les races read-modify-write et le spam EPERM Windows.
@@ -175,6 +177,13 @@ const isLocked = computed(() => {
   if (kw.articleId !== props.selectedArticle?.id) return props.initialLocked
   return kw.richCaptain?.status === 'locked'
 })
+
+// Déclarés AVANT les watchers `immediate: true` ci-dessous, qui les lisent dès
+// le montage : ouvert sur un capitaine déjà verrouillé, le panneau levait
+// « Cannot access 'lockedKeyword' before initialization » (M13, épopée qualité SEO).
+const carousel = useExploredKeywords()
+const carouselEntries = computed(() => carousel.entries.value)
+const lockedKeyword = ref<string | null>(null)
 
 // --- Debug log: state on mount ---
 watch(
@@ -503,9 +512,8 @@ function handleHistoryClick(index: number) {
 }
 
 // ===== CAROUSEL (data layer) + RADAR-LIST UI (workflow) =====
-const carousel = useExploredKeywords()
-const carouselEntries = computed(() => carousel.entries.value)
-const lockedKeyword = ref<string | null>(null)
+// (`carousel`, `carouselEntries` et `lockedKeyword` sont déclarés plus haut,
+// avant les watchers `immediate` qui les lisent au montage.)
 
 // L'item verrouillé reste TOUJOURS en tête, peu importe le critère choisi.
 // Score Pertinence STRICT (relevanceScore.total), cohérent avec l'affichage.
@@ -929,13 +937,38 @@ async function lockEntry(idx: number) {
   //   - Le pinnedPredicate (qui matche originalCard.keyword) reste cohérent
   //   - Aucune ambiguïté sur "qu'est-ce qui est verrouillé ?"
   const newKw = entry.originalCard.keyword
-  const previousKw = lockedKeyword.value
-  const isTransfer = previousKw !== null && previousKw !== newKw
+  const articleId = props.selectedArticle?.id
 
-  if (isTransfer) {
+  // FR-CAP-LOCK-GATE — la porte est vérifiée AVANT tout changement : un capitaine
+  // qu'elle refuse ne se verrouille pas (et ne déverrouille pas le précédent),
+  // sauf dérogation assumée dans l'alarme.
+  if (articleId && props.mode !== 'libre') {
+    let passed = false
+    try {
+      passed = await gateAlarm.ensure(articleId, 'captain-lock', { keyword: newKw })
+    } catch (err) {
+      notify.error(`Vérification du capitaine impossible : ${(err as Error).message}`)
+    }
+    if (!passed) {
+      log.info('CaptainPanel — verrouillage suspendu par la porte', { keyword: newKw })
+      return
+    }
+    // Pendant l'alarme, l'utilisateur a pu changer d'article : on ne verrouille
+    // pas sur un contexte périmé (les mots-clés chargés seraient ceux d'un autre).
+    const loadedFor = articleKeywordsStore.keywords?.articleId
+    if (props.selectedArticle?.id !== articleId || (loadedFor !== undefined && loadedFor !== articleId)) {
+      log.warn('CaptainPanel — article changé pendant l’alarme : verrouillage abandonné', { articleId })
+      return
+    }
+  }
+
+  const previousKw = lockedKeyword.value
+  const previousRoots = [...(articleKeywordsStore.keywords?.rootKeywords ?? [])]
+  if (previousKw !== null && previousKw !== newKw) {
+    // Transfert : pas de retrait d'étape préalable. L'étape redemandée plus bas
+    // repasse la porte sur le nouveau capitaine ; retirer puis rajouter en
+    // parallèle laissait le serveur trancher dans le désordre.
     log.info('CaptainPanel — lock transfert', { from: previousKw, to: newKw })
-    if (props.mode !== 'libre') emit('check-removed', MOTEUR_CAPITAINE_LOCKED)
-    await nextTick()
   }
 
   selectedIndex.value = idx
@@ -944,10 +977,19 @@ async function lockEntry(idx: number) {
   emit('validated', newKw)
 
   const aiMarkdown = carouselAiCache.value.get(newKw) ?? null
-  articleKeywordsStore.lockCaptain(newKw, aiMarkdown, props.selectedArticle?.id)
+  articleKeywordsStore.lockCaptain(newKw, aiMarkdown, articleId)
   const rootKeys = Array.from(entry.rootVariants.keys())
   articleKeywordsStore.setRootKeywords(rootKeys)
-  if (props.selectedArticle?.id) await articleKeywordsStore.saveKeywords(props.selectedArticle.id)
+  if (articleId && (await articleKeywordsStore.saveKeywords(articleId)) === false) {
+    // Retour à l'état d'avant : l'écran ne montre pas un verrou que la base n'a
+    // pas, et « Réessayez » reste possible. L'étape n'est pas demandée.
+    if (previousKw) articleKeywordsStore.lockCaptain(previousKw, carouselAiCache.value.get(previousKw) ?? null, articleId)
+    else articleKeywordsStore.unlockCaptain()
+    articleKeywordsStore.setRootKeywords(previousRoots)
+    lockedKeyword.value = previousKw
+    notify.error('Le capitaine n’a pas pu être enregistré : l’étape n’est pas validée. Réessayez.')
+    return
+  }
 
   // Le check part APRÈS la persistance, pour que la barre du haut relise un
   // état à jour et non celui d'avant. FR-MOT-RECAP-LOCK-SYNC.
