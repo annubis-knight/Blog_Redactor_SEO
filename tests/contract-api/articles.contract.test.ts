@@ -218,29 +218,34 @@ describe('Contract /articles/:id/explorations', () => {
 
     const res = await apiGet<Record<string, unknown>>(`/articles/${article.id}/explorations`)
     expect(res.status).toBe(200)
-    // Clés réelles : capitaineKeyword, radar, captain, lieutenants, intent, local, contentGap, lexique
+    // Clés réelles : capitaineKeyword, radar, captain, lieutenants, local, contentGap, lexique
     expect(res.data).toHaveProperty('captain')
     expect(res.data).toHaveProperty('lieutenants')
     expect(res.data).toHaveProperty('lexique')
+    // M3 : plus de groupe `intent` (`keyword_intent_analyses` sans producteur).
+    expect(res.data).not.toHaveProperty('intent')
   })
 })
 
 describe('Contract /articles/:id/explorations/counts', () => {
-  it('GET retourne 8 compteurs à 0 pour article neuf', async ({ skip }) => {
+  it('GET retourne 7 compteurs à 0 pour article neuf, sans compteur intent', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CountsC Cocon')
     const article = await ctx.createArticle(cocoon.id, 'CountsC Article')
 
-    const res = await apiGet<{ radar: number; captain: number; lieutenants: number; paa: number; intent: number; local: number; contentGap: number; lexique: number }>(`/articles/${article.id}/explorations/counts`)
-    expect(res.data?.radar).toBe(0)
-    expect(res.data?.captain).toBe(0)
-    expect(res.data?.lieutenants).toBe(0)
-    expect(res.data?.paa).toBe(0)
-    expect(res.data?.intent).toBe(0)
-    expect(res.data?.local).toBe(0)
-    expect(res.data?.contentGap).toBe(0)
-    expect(res.data?.lexique).toBe(0)
+    const res = await apiGet<Record<string, number>>(`/articles/${article.id}/explorations/counts`)
+    expect(res.data).toEqual({
+      radar: 0,
+      captain: 0,
+      lieutenants: 0,
+      paa: 0,
+      lexique: 0,
+      local: 0,
+      contentGap: 0,
+    })
+    // M3 : `keyword_intent_analyses` n'est plus comptée.
+    expect(res.data).not.toHaveProperty('intent')
   })
 })
 

@@ -1,9 +1,12 @@
 /**
  * Tests de cohérence data-flow pour les analyses d'intention SERP.
  *
- * AUTHORITY: PostgreSQL `keyword_intent_analyses`
- * READS FROM: POST /intent/analyze (hydrate intentData store), scanIntent (Radar), scanRadarKeywords
- * WRITES TO: intentData, comparisonData, autocompleteData refs du useIntentStore
+ * AUTHORITY: aucune table — tests purs sur le type `IntentAnalysis` et sur
+ *            `intentValueToPseudoScore` (shared/scoring-kpi.ts). `keyword_intent_analyses`
+ *            n'est plus lue ni écrite (M3, épopée qualité SEO) : son service, son TTL
+ *            de 7 jours et `intentStore.intentData` sont supprimés.
+ * READS FROM: scanIntent (Radar), scanRadarKeywords
+ * WRITES TO: rien
  * CONSUMERS: IntentStep.vue, ExplorationVerdict.vue, RadarKeywordCard.vue, scoring KPI/pertinence
  * RELATED FR: FR-EXP-INTENT-ANALYZE, FR-RAD-SCAN-2PASS, FR-CAP-VALIDATE, FR-DIS-INTENT-SCAN
  *
@@ -294,48 +297,10 @@ describe('FR-CAP-VALIDATE — intent modules cross-article shared correctness', 
   })
 })
 
-describe('FR-EXP-INTENT-ANALYZE — stability et freshness', () => {
-  it('intent frais (< 7j) ne doit pas diverger au reload', () => {
-    // Arrange
-    const now = new Date()
-    const freshDate = new Date(now.getTime() - 6 * 24 * 3600 * 1000) // 6 days ago
-
-    const analysis = makeMockIntentAnalysis({
-      cachedAt: freshDate.toISOString(),
-    })
-
-    // Simule freshness check (keyword-intent-analysis.service.ts ligne 97-101)
-    const isKeywordIntentFresh = (fetchedAt: string | Date | null | undefined, ttlDays: number = 7): boolean => {
-      if (!fetchedAt) return false
-      const ts = typeof fetchedAt === 'string' ? new Date(fetchedAt).getTime() : fetchedAt.getTime()
-      return Date.now() - ts < ttlDays * 24 * 60 * 60 * 1000
-    }
-
-    // Assert
-    expect(isKeywordIntentFresh(analysis.cachedAt, 7)).toBe(true)
-  })
-
-  it('intent stale (>= 7d) → refetch, affichage peut différer', () => {
-    // Arrange
-    const now = new Date()
-    const staleDate = new Date(now.getTime() - 8 * 24 * 3600 * 1000) // 8 days ago
-
-    const analysis = makeMockIntentAnalysis({
-      cachedAt: staleDate.toISOString(),
-    })
-
-    // Freshness check
-    const isKeywordIntentFresh = (fetchedAt: string | Date | null | undefined, ttlDays: number = 7): boolean => {
-      if (!fetchedAt) return false
-      const ts = typeof fetchedAt === 'string' ? new Date(fetchedAt).getTime() : fetchedAt.getTime()
-      return Date.now() - ts < ttlDays * 24 * 60 * 60 * 1000
-    }
-
-    // Assert
-    expect(isKeywordIntentFresh(analysis.cachedAt, 7)).toBe(false)
-    // → Service should refetch instead of using stale data
-  })
-})
+// M3 (épopée qualité SEO) : les deux tests « stability et freshness » simulaient
+// une copie locale de `isKeywordIntentFresh` (keyword-intent-analysis.service.ts,
+// supprimé avec les lecteurs de `keyword_intent_analyses`). Ils ne prouvaient
+// rien sur le code réel ; ils sont retirés avec le service.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Placeholders (to be implemented with full store/service setup)

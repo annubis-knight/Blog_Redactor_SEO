@@ -597,7 +597,7 @@ describe('Moteur Workflow — Onglet Lexique', () => {
 // ---------------------------------------------------------------------------
 
 describe('Moteur Workflow — Cross-tab transitions', () => {
-  it('GET /articles/:id/explorations/counts retourne 8 compteurs à 0 pour article neuf', async ({ skip }) => {
+  it('GET /articles/:id/explorations/counts retourne 7 compteurs à 0 pour article neuf', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Counts Cocon')
@@ -608,7 +608,6 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
       captain: number
       lieutenants: number
       paa: number
-      intent: number
       local: number
       contentGap: number
       lexique: number
@@ -618,7 +617,8 @@ describe('Moteur Workflow — Cross-tab transitions', () => {
     expect(res.data?.captain).toBe(0)
     expect(res.data?.lieutenants).toBe(0)
     expect(res.data?.paa).toBe(0)
-    expect(res.data?.intent).toBe(0)
+    // M3 : plus de compteur `intent` (`keyword_intent_analyses` sans producteur).
+    expect(res.data).not.toHaveProperty('intent')
     expect(res.data?.local).toBe(0)
     expect(res.data?.contentGap).toBe(0)
     expect(res.data?.lexique).toBe(0)

@@ -3,16 +3,19 @@
  *
  * Relecture en base de tout ce que l'article a déjà exploré, au montage du
  * Moteur et au changement d'article : thermomètre du Radar, onglets Lexique
- * par mot-clé source, analyses d'intention, locale et de contenu manquant.
+ * par mot-clé source, analyses locale et de contenu manquant.
  * Chaque bloc reprend le contrat de sa famille : une ligne abîmée est écartée
  * (signalée au journal), les autres sont servies.
  *
+ * Plus de groupe `intent` (M3, épopée qualité SEO) : `keyword_intent_analyses`
+ * n'a plus de producteur ; ses lignes figées ne sont plus relues.
+ *
  * AUTHORITY: PostgreSQL `radar_explorations`, `captain_explorations`,
  *            `lieutenant_explorations`, `lexique_explorations`,
- *            `keyword_intent_analyses`, `keyword_metrics` (local, content gap)
+ *            `keyword_metrics` (local, content gap)
  * READS FROM: GET /articles/:id/explorations
- * CONSUMERS: useArticleResults (MoteurView : thermomètre Radar, stores intention
- *            et local), useLexiqueExplorations (LexiquePanel)
+ * CONSUMERS: useArticleResults (MoteurView : thermomètre Radar, store local,
+ *            comparaison locale du store intention), useLexiqueExplorations (LexiquePanel)
  * RELATED FR: NFR-INT-DISPLAY-CONTRACTS, FR-MOT-EXPLORATIONS-HYDRATATION,
  *             FR-LEX-MULTI-KEYWORD-TABS
  */
@@ -28,7 +31,7 @@ import type {
   LocalExplorationSnapshot,
 } from '../types/article-explorations.types.js'
 
-/** Analyses d'autres onglets (intention, contenu manquant) : servies telles quelles, jamais bloquantes. */
+/** Analyses d'autres onglets (locale, contenu manquant) : servies telles quelles, jamais bloquantes. */
 function group<T>(capitaine: z.ZodType<T, unknown>, field: string): z.ZodType<ExplorationGroup<T>, unknown> {
   return withFallback(
     z.looseObject({
@@ -55,7 +58,6 @@ export const articleExplorationsContract = defineContract<ArticleExplorations>(
     radar: withFallback(radarExplorationContract.schema, null, 'radar'),
     captain: tolerantArray(captainScanEntrySchema, 'captain'),
     lieutenants: tolerantArray(richLieutenantSchema, 'lieutenants'),
-    intent: group(z.unknown(), 'intent'),
     local: group(localSnapshotSchema, 'local'),
     contentGap: group(z.unknown(), 'contentGap'),
     lexique: tolerantArray(lexiqueExplorationSchema, 'lexique'),

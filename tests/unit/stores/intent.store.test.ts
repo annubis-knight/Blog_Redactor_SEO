@@ -9,10 +9,16 @@ describe('intent.store', () => {
 
   it('initializes with null data', () => {
     const store = useIntentStore()
-    expect(store.intentData).toBeNull()
     expect(store.comparisonData).toBeNull()
     expect(store.autocompleteData).toBeNull()
     expect(store.localComparisons.size).toBe(0)
+  })
+
+  it('M3 — plus d’analyse d’intention relue : le store n’expose plus `intentData`', () => {
+    // `intentData` relisait `keyword_intent_analyses`, table sans producteur
+    // depuis la suppression de /api/intent/analyze, et aucun écran ne le lisait.
+    const store = useIntentStore()
+    expect('intentData' in store).toBe(false)
   })
 
   it('localComparisons accepts external mutation (Map shared with KeywordAuditTable switcher)', () => {
@@ -31,16 +37,12 @@ describe('intent.store', () => {
 
   it('reset clears all refs and the localComparisons map', () => {
     const store = useIntentStore()
-    store.intentData = {
-      keyword: 'test', modules: [], scores: [], dominantIntent: 'informational',
-      classification: { type: 'informational', confidence: 0.5, reasoning: '' },
-      recommendations: [], topOrganicResults: [], cachedAt: '2026-03-10',
-    }
+    store.comparisonData = { keyword: 'test' } as never
+    store.autocompleteData = { keyword: 'test' } as never
     store.localComparisons.set('foo', {} as never)
 
     store.reset()
 
-    expect(store.intentData).toBeNull()
     expect(store.comparisonData).toBeNull()
     expect(store.autocompleteData).toBeNull()
     expect(store.localComparisons.size).toBe(0)

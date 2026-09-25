@@ -79,7 +79,6 @@ describe('articleExplorationsContract — tout ce que l’article a déjà explo
     radar: null,
     captain: [],
     lieutenants: [],
-    intent: { capitaine: { dominant: 'commercial' }, all: [] },
     local: { capitaine: { hasLocalPack: true, listings: [], comparison: { gap: 2 } }, all: [] },
     contentGap: { capitaine: null, all: [] },
     lexique: [{
@@ -117,5 +116,14 @@ describe('articleExplorationsContract — tout ce que l’article a déjà explo
   it('un bloc d’analyse manquant devient vide au lieu de faire planter l’écran', () => {
     const { contentGap: _omitted, ...raw } = payload()
     expect(parseContract(articleExplorationsContract, raw, 'db').contentGap).toEqual({ capitaine: null, all: [] })
+  })
+
+  it('M3 — le contrat ne déclare plus de groupe `intent` (keyword_intent_analyses sans producteur)', () => {
+    const shape = (articleExplorationsContract.schema as unknown as { shape: Record<string, unknown> }).shape
+    expect(Object.keys(shape).sort()).toEqual(
+      ['capitaineKeyword', 'captain', 'contentGap', 'lexique', 'lieutenants', 'local', 'radar'],
+    )
+    // Un agrégat sans groupe `intent` n'en reçoit pas un vide inventé.
+    expect(parseContract(articleExplorationsContract, payload(), 'db')).not.toHaveProperty('intent')
   })
 })

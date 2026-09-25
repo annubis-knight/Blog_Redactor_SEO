@@ -20,7 +20,9 @@ import { apiGet } from '../helpers/api-client.js'
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
-const EXPECTED_SOURCES = ['radar', 'captain', 'lieutenants', 'paa', 'lexique', 'intent', 'local', 'contentGap'] as const
+// M3 (épopée qualité SEO) : plus de source `intent` — `keyword_intent_analyses`
+// n'a plus de producteur et n'est plus comptée.
+const EXPECTED_SOURCES = ['radar', 'captain', 'lieutenants', 'paa', 'lexique', 'local', 'contentGap'] as const
 type CountsResponse = Record<string, number>
 
 describe('Contract GET /articles/:id/explorations/counts', () => {
@@ -46,6 +48,8 @@ describe('Contract GET /articles/:id/explorations/counts', () => {
       expect(res.data).toHaveProperty(source)
       expect(res.data![source]).toBe(0)
     }
+    // Ni plus ni moins : aucune source fantôme (dont l'ancien `intent`).
+    expect(Object.keys(res.data!).sort()).toEqual([...EXPECTED_SOURCES].sort())
   })
 
   it('shape stable : counts sont des entiers positifs ou zéro', async ({ skip }) => {

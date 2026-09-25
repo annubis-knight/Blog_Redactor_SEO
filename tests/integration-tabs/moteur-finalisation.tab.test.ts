@@ -70,12 +70,13 @@ describe('Tab moteur/finalisation — Affichage agrégé', () => {
     expect(res.status).toBe(200)
     // Toutes les clés présentes même si vides
     // Shape réelle (server/routes/article-explorations.routes.ts) :
-    // capitaineKeyword, radar, captain, lieutenants, intent, local, contentGap, lexique
+    // capitaineKeyword, radar, captain, lieutenants, local, contentGap, lexique
     expect(res.data).toHaveProperty('captain')
     expect(res.data).toHaveProperty('lieutenants')
     expect(res.data).toHaveProperty('lexique')
     expect(res.data).toHaveProperty('radar')
-    expect(res.data).toHaveProperty('intent')
+    // M3 : plus de groupe `intent` (`keyword_intent_analyses` sans producteur).
+    expect(res.data).not.toHaveProperty('intent')
     expect(res.data).toHaveProperty('local')
     expect(res.data).toHaveProperty('contentGap')
     expect(res.data).toHaveProperty('capitaineKeyword')

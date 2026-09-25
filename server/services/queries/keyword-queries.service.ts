@@ -9,10 +9,26 @@
  *     drop idempotent pour aligner le code avec la réalité)
  *
  * Leurs données vivent maintenant dans des tables cross-article
- * (keyword_metrics, keyword_intent_analyses, keyword_discoveries).
+ * (keyword_metrics, keyword_discoveries).
  *
  * Ces helpers reconstruisent à la volée les informations que l'UI attend via
  * des JOIN SQL, sans introduire de nouvelles tables.
+ *
+ * AUTHORITY: PostgreSQL `keyword_metrics` (KPIs, local, content gap),
+ *            `captain_explorations`, `lieutenant_explorations`,
+ *            `article_keywords`, `articles`, `cocoons`, `cocoon_strategies`,
+ *            et via les services lus `radar_explorations`, `lexique_explorations`,
+ *            `keyword_serp_results` (lecture seule, aucune écriture).
+ * READS FROM: keyword-metrics.service, data.service, radar-exploration.service,
+ *             lexique-exploration.service, keyword-serp.service
+ * WRITES TO: rien.
+ * CONSUMERS: keyword-queries.routes.ts (GET /keywords/:keyword/usage|metrics,
+ *            /keywords/:keyword/local-for-article|content-gap-for-article/:articleId,
+ *            /cocoons/:id/keyword-metrics). `listArticleExplorations` : aucun
+ *            appelant à ce jour (la route GET /articles/:id/explorations a le sien).
+ *            `keyword_intent_analyses` n'est plus lue (M3, épopée qualité SEO) :
+ *            la table n'a plus de producteur ; `getKeywordIntentForArticle`, sa
+ *            route `intent-for-article` et les champs intent des agrégats sont supprimés.
  */
 import { query } from '../../db/client.js'
 import {
@@ -20,10 +36,6 @@ import {
   type KeywordMetrics,
   isKeywordMetricsFresh,
 } from '../keyword/keyword-metrics.service.js'
-import {
-  getKeywordIntentAnalysis,
-  type KeywordIntentAnalysis,
-} from '../intent/keyword-intent-analysis.service.js'
 import { getRadarExploration } from '../infra/radar-exploration.service.js'
 import {
   getArticleKeywords,
@@ -47,15 +59,6 @@ export interface ArticleUsingKeyword {
   since: string | null
 }
 
-export interface KeywordIntentForArticle {
-  analysis: KeywordIntentAnalysis | null
-  articleContext: {
-    role: KeywordRole | 'not-used'
-    articleLevel: string | null
-    articleTitle: string | null
-  }
-}
-
 export interface KeywordMetricsWithFreshness {
   exists: boolean
   fetchedAt: string | null
@@ -72,7 +75,6 @@ export interface CocoonKeywordMetrics {
     keyword: string
     usedByArticleIds: number[]
     metrics: KeywordMetrics | null
-    intentAnalysis: KeywordIntentAnalysis | null
   }>
   aggregates: {
     totalKeywords: number
@@ -172,45 +174,7 @@ export async function getArticlesUsingKeyword(
 }
 
 // ---------------------------------------------------------------------------
-// 2. Keyword intent analysis for an article context
-// ---------------------------------------------------------------------------
-
-export async function getKeywordIntentForArticle(
-  articleId: number,
-  keyword: string,
-): Promise<KeywordIntentForArticle> {
-  const analysis = await getKeywordIntentAnalysis(keyword).catch(() => null)
-
-  // Determine role of this keyword for this article
-  const { data: articleKeywords } = await getArticleKeywords(articleId)
-  let role: KeywordIntentForArticle['articleContext']['role'] = 'not-used'
-  if (articleKeywords) {
-    if (articleKeywords.capitaine?.toLowerCase() === keyword.toLowerCase()) role = 'capitaine'
-    else if (articleKeywords.lieutenants?.some((l: string) => l.toLowerCase() === keyword.toLowerCase())) role = 'lieutenant'
-  }
-
-  const articleRow = await query<{ titre: string; type: string }>(
-    `SELECT titre, type FROM articles WHERE id = $1`,
-    [articleId],
-  )
-  const articleLevelMap: Record<string, string> = {
-    'Pilier': 'pilier',
-    'Intermédiaire': 'intermediaire',
-    'Spécialisé': 'specifique',
-  }
-
-  return {
-    analysis,
-    articleContext: {
-      role,
-      articleLevel: articleRow.rows[0] ? (articleLevelMap[articleRow.rows[0].type] ?? null) : null,
-      articleTitle: articleRow.rows[0]?.titre ?? null,
-    },
-  }
-}
-
-// ---------------------------------------------------------------------------
-// 3. Local analysis for an article context (reads keyword_metrics.local_analysis)
+// 2. Local analysis for an article context (reads keyword_metrics.local_analysis)
 // ---------------------------------------------------------------------------
 
 export async function getKeywordLocalAnalysisForArticle(articleId: number, keyword: string) {
@@ -225,7 +189,7 @@ export async function getKeywordLocalAnalysisForArticle(articleId: number, keywo
 }
 
 // ---------------------------------------------------------------------------
-// 4. Content gap for an article context (reads keyword_metrics.content_gap_analysis)
+// 3. Content gap for an article context (reads keyword_metrics.content_gap_analysis)
 // ---------------------------------------------------------------------------
 
 export async function getKeywordContentGapForArticle(articleId: number, keyword: string) {
@@ -239,19 +203,18 @@ export async function getKeywordContentGapForArticle(articleId: number, keyword:
 }
 
 // ---------------------------------------------------------------------------
-// 5. Full explorations aggregate for an article
+// 4. Full explorations aggregate for an article
 // ---------------------------------------------------------------------------
 
 export async function listArticleExplorations(articleId: number) {
   const { data: articleKeywords } = await getArticleKeywords(articleId)
   const capitaineKeyword = articleKeywords?.capitaine ?? null
 
-  const [radar, captainRes, lieutenantsRes, lexique, intentCapitaine, metricsCapitaine] = await Promise.all([
+  const [radar, captainRes, lieutenantsRes, lexique, metricsCapitaine] = await Promise.all([
     getRadarExploration(articleId).catch(() => null),
     getCaptainExplorations(articleId).catch(() => ({ data: [], dbOps: [] })),
     getLieutenantExplorations(articleId).catch(() => ({ data: [], dbOps: [] })),
     listLexiqueExplorations(articleId).catch(() => []),
-    capitaineKeyword ? getKeywordIntentAnalysis(capitaineKeyword).catch(() => null) : null,
     capitaineKeyword ? getKeywordMetrics(capitaineKeyword).catch(() => null) : null,
   ])
   const captain = captainRes.data
@@ -263,7 +226,6 @@ export async function listArticleExplorations(articleId: number) {
     captain,
     lieutenants,
     lexique,
-    intent: intentCapitaine,
     local: metricsCapitaine?.localAnalysis ?? null,
     contentGap: metricsCapitaine?.contentGapAnalysis ?? null,
     comparison: metricsCapitaine?.localComparison ?? null,
@@ -276,7 +238,7 @@ export async function listArticleExplorations(articleId: number) {
 }
 
 // ---------------------------------------------------------------------------
-// 6. Freshness introspection
+// 5. Freshness introspection
 // ---------------------------------------------------------------------------
 
 export async function getKeywordMetricsWithFreshness(keyword: string): Promise<KeywordMetricsWithFreshness> {
@@ -304,7 +266,7 @@ export async function getKeywordMetricsWithFreshness(keyword: string): Promise<K
 }
 
 // ---------------------------------------------------------------------------
-// 7. Cocoon-level aggregate of keyword metrics
+// 6. Cocoon-level aggregate of keyword metrics
 // ---------------------------------------------------------------------------
 
 export async function getCocoonKeywordMetrics(cocoonId: number): Promise<CocoonKeywordMetrics> {
@@ -351,21 +313,17 @@ export async function getCocoonKeywordMetrics(cocoonId: number): Promise<CocoonK
     }
   }
 
-  // Fetch metrics + intent for each keyword
+  // Fetch metrics for each keyword
   const keywords: CocoonKeywordMetrics['keywords'] = []
   let totalVolume = 0
   let totalKD = 0
   let kpiCount = 0
   for (const [kw, articleSet] of keywordToArticles) {
-    const [metrics, intent] = await Promise.all([
-      getKeywordMetrics(kw).catch(() => null),
-      getKeywordIntentAnalysis(kw).catch(() => null),
-    ])
+    const metrics = await getKeywordMetrics(kw).catch(() => null)
     keywords.push({
       keyword: kw,
       usedByArticleIds: Array.from(articleSet).sort((a, b) => a - b),
       metrics,
-      intentAnalysis: intent,
     })
     if (metrics?.searchVolume !== null && metrics?.searchVolume !== undefined) {
       totalVolume += metrics.searchVolume
