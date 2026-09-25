@@ -54,10 +54,10 @@ describe('Tab redaction/editor — Génération via stream IA', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST /generate/article sans body → 400/500', async ({ skip }) => {
+  it('POST /generate/article-draft sans body → 400/500', async ({ skip }) => {
     if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
-    const res = await apiPost('/generate/article', {})
+    const res = await apiPost('/generate/article-draft', {})
     expect([400, 500]).toContain(res.status)
   })
 

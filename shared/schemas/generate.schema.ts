@@ -23,24 +23,20 @@ export const generateOutlineRequestSchema = z.object({
 
 export type GenerateOutlineRequest = z.infer<typeof generateOutlineRequestSchema>
 
-export const generateArticleRequestSchema = z.object({
+/**
+ * Premier jet en un appel (FR-RED-DRAFT-SINGLE-PASS). Ni PAA ni recherche web :
+ * les sources viennent à la passe d'enrichissement.
+ */
+export const generateArticleDraftRequestSchema = z.object({
   articleId: z.number().int().positive(),
   outline: z.union([z.string().min(1), z.record(z.string(), z.unknown())]), // Outline object or JSON string
   keyword: z.string().min(1),
   keywords: z.array(z.string()),
-  paa: z.array(z.object({
-    question: z.string(),
-    answer: z.string().nullable(),
-  })),
   articleType: articleTypeSchema,
   articleTitle: z.string().min(1),
   cocoonName: z.string().min(1),
-  topic: z.string().nullable(),
   targetWordCount: z.number().int().positive().optional(),
-  webSearchEnabled: z.boolean().optional().default(true),
 })
-
-export type GenerateArticleRequest = z.infer<typeof generateArticleRequestSchema>
 
 export const generateMetaRequestSchema = z.object({
   articleId: z.number().int().positive(),

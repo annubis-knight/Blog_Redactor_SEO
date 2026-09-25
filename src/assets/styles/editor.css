@@ -100,6 +100,14 @@
   font-size: 0.9375rem;
 }
 
+/* Marqueur « à sourcer » du premier jet (FR-RED-DRAFT-TO-SOURCE) */
+.to-source {
+  background: var(--color-block-warning-bg);
+  color: var(--color-warning);
+  border-radius: 3px;
+  padding: 0 0.2rem;
+}
+
 /* Dynamic blocks — générés par l'IA au drop */
 .dynamic-block {
   position: relative;

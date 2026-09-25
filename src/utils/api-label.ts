@@ -10,7 +10,7 @@
 const URL_LABELS: [RegExp, string][] = [
   // Génération de contenu
   [/\/generate\/outline/, 'Génération sommaire'],
-  [/\/generate\/article/, 'Génération article'],
+  [/\/generate\/article-draft/, 'Premier jet'],
   [/\/generate\/reduce/, 'Réduction article'],
   [/\/generate\/humanize-section/, 'Humanisation section'],
   [/\/generate\/action/, 'Action IA'],

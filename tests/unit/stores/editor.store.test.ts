@@ -70,7 +70,7 @@ describe('editor.store — generateArticle', () => {
     await store.generateArticle(mockBriefData, mockOutline)
 
     expect(mockStartStream).toHaveBeenCalledWith(
-      '/api/generate/article',
+      '/api/generate/article-draft',
       expect.objectContaining({
         articleId: 1,
         outline: mockOutline,
@@ -79,7 +79,6 @@ describe('editor.store — generateArticle', () => {
         articleType: 'Pilier',
         articleTitle: 'Test Article',
         cocoonName: 'Test Cocoon',
-        topic: 'Test Theme',
       }),
       expect.objectContaining({
         onChunk: expect.any(Function),
@@ -87,6 +86,17 @@ describe('editor.store — generateArticle', () => {
         onError: expect.any(Function),
       }),
     )
+  })
+
+  // FR-RED-DRAFT-SINGLE-PASS — le premier jet n'a ni recherche web ni PAA :
+  // les sources viennent à la passe d'enrichissement.
+  it('le premier jet n’envoie ni recherche web, ni PAA, ni thème', async () => {
+    const store = useEditorStore()
+    await store.generateArticle(mockBriefData, mockOutline)
+    const body = mockStartStream.mock.calls[0]![1] as Record<string, unknown>
+    expect(Object.keys(body)).not.toContain('webSearchEnabled')
+    expect(Object.keys(body)).not.toContain('paa')
+    expect(Object.keys(body)).not.toContain('topic')
   })
 
   it('sets isGenerating during generation', async () => {
@@ -142,7 +152,7 @@ describe('editor.store — generateArticle', () => {
     await store.generateArticle(intermediaire, mockOutline)
 
     expect(mockStartStream).toHaveBeenCalledWith(
-      '/api/generate/article',
+      '/api/generate/article-draft',
       expect.objectContaining({ keyword: 'audit site web' }),
       expect.any(Object),
     )
@@ -159,7 +169,7 @@ describe('editor.store — generateArticle', () => {
     await store.generateArticle(briefNoPilier, mockOutline)
 
     expect(mockStartStream).toHaveBeenCalledWith(
-      '/api/generate/article',
+      '/api/generate/article-draft',
       expect.objectContaining({ keyword: 'Test Article' }),
       expect.any(Object),
     )

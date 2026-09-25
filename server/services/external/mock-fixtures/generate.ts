@@ -106,26 +106,6 @@ registerStreamFixture(
   },
 )
 
-// generate/article — section par section
-registerStreamFixture(
-  'generate-article-section',
-  ({ userPrompt }) =>
-    /Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt)
-    || /section\s*\d|<h2>|g[eé]n[eé]rer.*section/i.test(userPrompt),
-  ({ userPrompt }) => {
-    const titleMatch = userPrompt.match(/H2\s*:\s*([^\n]{5,120})/i)
-    const title = titleMatch?.[1]?.trim() ?? 'Section'
-    return [
-      `<h2>${title}</h2>\n`,
-      `<p>Premier paragraphe de la section "${title}". `,
-      `Il pose le contexte et introduit les points-clés.</p>\n\n`,
-      `<p>Deuxième paragraphe. On entre dans le détail concret avec un exemple chiffré : `,
-      `selon les retours de PME locales, environ <strong>62 %</strong> améliorent leur trafic dans les 90 jours.</p>\n\n`,
-      `<ul>\n  <li>Action 1 : auditer la situation actuelle</li>\n  <li>Action 2 : prioriser les chantiers</li>\n  <li>Action 3 : mesurer les progrès chaque semaine</li>\n</ul>\n`,
-    ]
-  },
-)
-
 // generate/article-meta
 registerStreamFixture(
   'generate-article-meta',

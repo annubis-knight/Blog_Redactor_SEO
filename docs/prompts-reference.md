@@ -12,7 +12,7 @@ Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur 
 
 | Prompt | Rôle | Variables | Sections | Globales | Chargé par |
 |---|---|---|---|---|---|
-| `system-propulsite.md` | Identité et règles d’écriture (ton, SEO, GEO, liste noire) ; prompt système des générations de texte | — | `zone`, `zone_landmarks` | `today`, `year`, `zone`, `zone_landmarks` | `server/routes/generate/action.routes.ts`, `server/routes/generate/article.routes.ts`, `server/routes/generate/humanize-section.routes.ts`, `server/routes/generate/meta.routes.ts`, `server/routes/generate/reduce-section.routes.ts` |
+| `system-propulsite.md` | Identité et règles d’écriture (ton, SEO, GEO, liste noire) ; prompt système des générations de texte | — | `zone`, `zone_landmarks` | `today`, `year`, `zone`, `zone_landmarks` | `server/routes/generate/action.routes.ts`, `server/routes/generate/article-draft.routes.ts`, `server/routes/generate/humanize-section.routes.ts`, `server/routes/generate/meta.routes.ts`, `server/routes/generate/reduce-section.routes.ts` |
 
 ## Cerveau — stratégie et cocon
 
@@ -50,7 +50,7 @@ Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur 
 | Prompt | Rôle | Variables | Sections | Globales | Chargé par |
 |---|---|---|---|---|---|
 | `brief-ia-panel.md` | Lecture critique du brief complet | `articleTitle`, `articleType`, `cocoonArticles`, `cocoonName`, `hnStructure`, `keyword`, `keywords`, `lexique`, `microContext`, `paaQuestions`, `topCompetitors` | — | — | `server/routes/generate/brief-explain.routes.ts` |
-| `generate-article-section.md` | Rédige une section avec son budget de mots | `articleTitle`, `articleType`, `cocoonName`, `fullOutline`, `keyword`, `keywordContext`, `microContext`, `positionDirectives`, `previousContext`, `secondaryKeywords`, `sectionBudgetHint`, `sectionOutline`, `sectionRole`, `strategyContext`, `wordCountBudget` | — | — | `server/routes/generate/article.routes.ts` |
+| `generate-article-draft.md` | Premier jet de l’article entier en un appel, sans recherche web ; chiffres posés « à sourcer » | `articleTitle`, `articleType`, `cocoonName`, `continuation`, `keyword`, `keywordContext`, `microContext`, `outlinePlan`, `previousText`, `secondaryKeywords`, `strategyContext`, `type_rules`, `wordCountBudget` | `continuation` | — | `server/routes/generate/article-draft.routes.ts` |
 | `generate-meta.md` | Meta title et meta description | `articleContent`, `articleTitle`, `keyword` | — | — | `server/routes/generate/meta.routes.ts` |
 | `generate-outline.md` | Sommaire H1/H2/H3 en JSON (prompt système du sommaire) | `articleTitle`, `articleType`, `cocoonName`, `competitorStructure`, `keyword`, `keywordContext`, `microContext`, `paaQuestions`, `secondaryKeywords`, `strategyContext`, `theme`, `type_rules` | — | — | `server/routes/generate/outline.routes.ts` |
 | `humanize-section.md` | Retire les tics d’écriture IA d’une section | `keyword`, `keywords`, `reinforcement`, `sectionHtml`, `sectionTitle` | — | — | `server/routes/generate/humanize-section.routes.ts` |

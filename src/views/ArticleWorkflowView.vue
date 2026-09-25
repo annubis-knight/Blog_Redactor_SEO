@@ -395,15 +395,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
           <!-- Step 2: Article -->
           <div v-if="currentStep === 'article'" class="workflow-step">
             <CollapsableSection title="Article">
-              <label class="web-search-toggle">
-                <input
-                  v-model="editorStore.webSearchEnabled"
-                  type="checkbox"
-                  data-testid="web-search-toggle"
-                  :disabled="editorStore.isGenerating"
-                />
-                Recherche web
-              </label>
 
               <ArticleActions
                 :is-generating="editorStore.isGenerating"
@@ -516,16 +507,6 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
   color: var(--color-error, #e53e3e);
 }
 
-.web-search-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--color-text-muted, #888);
-  cursor: pointer;
-  margin-bottom: 0.5rem;
-}
-.web-search-toggle input { cursor: pointer; }
 
 .workflow-layout {
   display: flex;

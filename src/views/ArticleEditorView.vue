@@ -452,14 +452,6 @@ onMounted(async () => {
             @humanize="handleHumanize()"
             @abort-humanize="handleAbortHumanize()"
           />
-          <label class="web-search-toggle">
-            <input
-              v-model="editorStore.webSearchEnabled"
-              type="checkbox"
-              :disabled="editorStore.isGenerating"
-            />
-            Recherche web
-          </label>
         </div>
         <EditorToolbar :editor="articleEditorRef?.editor" />
 
@@ -693,16 +685,6 @@ onMounted(async () => {
   border-radius: 6px;
 }
 
-.web-search-toggle {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  font-size: 0.85rem;
-  color: var(--color-text-muted);
-  cursor: pointer;
-  white-space: nowrap;
-}
-.web-search-toggle input { cursor: pointer; }
 
 .btn-back {
   display: inline-block;

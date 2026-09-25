@@ -2,7 +2,7 @@
  
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
-import { sectionMaxTokens } from '../../../server/routes/generate/_helpers'
+import { draftMaxTokens, MAX_DRAFT_CONTINUATIONS } from '../../../server/routes/generate/article-draft.routes'
 
 const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext, mockValidateHtmlStructurePreserved } = vi.hoisted(() => ({
   mockStreamChatCompletion: vi.fn(),
@@ -82,22 +82,24 @@ async function* fakeStream(chunks: string[]) {
   yield `__USAGE__${JSON.stringify(fakeUsage)}`
 }
 
-const validArticleBody = {
+const draftOutline = {
+  sections: [
+    { id: 'h1', level: 1, title: 'Test Article Title', annotation: null, status: 'accepted' },
+    { id: 'a', level: 2, title: 'Introduction', annotation: null, status: 'accepted' },
+    { id: 'b', level: 2, title: 'Deuxième chapitre', annotation: 'content-valeur', status: 'accepted' },
+    { id: 'b1', level: 3, title: 'Un détail', annotation: null, status: 'accepted' },
+    { id: 'c', level: 2, title: 'Conclusion', annotation: null, status: 'accepted' },
+  ],
+}
+
+const validDraftBody = {
   articleId: 1,
-  outline: JSON.stringify({
-    sections: [
-      { id: 'h1', level: 1, title: 'Test Article Title', annotation: null, status: 'accepted' },
-      { id: 'h2-1', level: 2, title: 'First Section', annotation: null, status: 'accepted' },
-      { id: 'h3-1', level: 3, title: 'Subsection', annotation: null, status: 'accepted' },
-    ],
-  }),
+  outline: JSON.stringify(draftOutline),
   keyword: 'test keyword',
   keywords: ['test keyword', 'secondary'],
-  paa: [{ question: 'What?', answer: 'Something' }],
   articleType: 'pilier' as const,
   articleTitle: 'Test Article Title',
   cocoonName: 'Test Cocoon',
-  topic: 'Test Theme',
 }
 
 beforeEach(() => {
@@ -226,171 +228,6 @@ describe('POST /generate/outline', () => {
     await handler(req, res)
 
     expect(mockLoadPrompt).toHaveBeenCalledWith('generate-outline', expect.objectContaining({
-      keywordContext: '',
-    }))
-  })
-})
-
-describe('POST /generate/article (section-by-section)', () => {
-  const handler = findHandler('post', '/generate/article')
-
-  function createArticleReq(body: unknown) {
-    return { body, socket: { setTimeout: vi.fn(), destroyed: false } } as unknown as Request
-  }
-
-  it('streams article section-by-section and sends done event', async () => {
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>', '<p>World</p>']))
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(mockLoadPrompt).toHaveBeenCalledWith('system-propulsite')
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      articleTitle: 'Test Article Title',
-      keyword: 'test keyword',
-      sectionOutline: expect.stringContaining('First Section'),
-      // Le budget de la section atteint enfin le prompt (R1) ; la position passe
-      // par ses consignes (positionDirectives), plus par une clé que rien ne lisait.
-      sectionBudgetHint: expect.stringMatching(/^~\d+ mots/),
-    }))
-    expect(mockLoadPrompt).not.toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      sectionPosition: expect.anything(),
-    }))
-    // maxTokens is now dynamic (computeSectionBudget), not hardcoded 4096 (F12)
-    // 4th arg is [WEB_SEARCH_TOOL] tools array
-    expect(mockStreamChatCompletion).toHaveBeenCalledWith('mock prompt', 'mock prompt', expect.any(Number), expect.any(Array))
-    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
-      'Content-Type': 'text/event-stream',
-    }))
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: section-start'))
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: chunk'))
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: section-done'))
-    expect(res.write).toHaveBeenCalledWith(expect.stringContaining('event: done'))
-    expect(res.end).toHaveBeenCalled()
-  })
-
-  it('returns 400 on invalid body', async () => {
-    const req = { body: { slug: 'test' } } as unknown as Request
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(res.status).toHaveBeenCalledWith(400)
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
-      }),
-    )
-  })
-
-  it('sends SSE error event when Claude API fails after retry', async () => {
-    // Section-by-section retries once per section — both attempts must fail
-    mockStreamChatCompletion
-       
-      .mockReturnValueOnce((async function* () { if (false) yield ''; throw new Error('Claude API error') })())
-       
-      .mockReturnValueOnce((async function* () { if (false) yield ''; throw new Error('Claude API error') })())
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-    res.writeHead = vi.fn().mockImplementation(() => {
-      ;(res as any).headersSent = true
-    })
-
-    await handler(req, res)
-
-    expect(res.write).toHaveBeenCalledWith(
-      expect.stringContaining('event: error'),
-    )
-    expect(res.end).toHaveBeenCalled()
-  })
-
-  it('returns JSON error when prompt loading fails before headers sent', async () => {
-    mockLoadPrompt.mockRejectedValueOnce(new Error('Prompt not found'))
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(res.status).toHaveBeenCalledWith(500)
-    expect(res.json).toHaveBeenCalledWith(
-      expect.objectContaining({
-        error: expect.objectContaining({ code: 'CLAUDE_API_ERROR', message: 'Prompt not found' }),
-      }),
-    )
-  })
-
-  it('includes strategy context in section prompt when strategy exists', async () => {
-    mockGetStrategy.mockResolvedValueOnce(fakeStrategy)
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(mockGetStrategy).toHaveBeenCalledWith(1)
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      strategyContext: expect.stringContaining('PME toulousaines'),
-    }))
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      strategyContext: expect.stringContaining('Approche sur mesure'),
-    }))
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      strategyContext: expect.stringContaining('/creation-site'),
-    }))
-  })
-
-  it('passes empty strategyContext when getStrategy returns null', async () => {
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(mockGetStrategy).toHaveBeenCalledWith(1)
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      strategyContext: '',
-    }))
-  })
-
-  it('includes keyword context in section prompt when article keywords exist', async () => {
-    const articleKw = {
-      articleSlug: 'test-article',
-      capitaine: 'création site web',
-      lieutenants: ['refonte site internet'],
-      lexique: ['responsive', 'UX'],
-    }
-    mockGetArticleKeywords.mockResolvedValueOnce({ data: articleKw, dbOps: [] })
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(mockGetArticleKeywords).toHaveBeenCalledWith(1)
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      keywordContext: expect.stringContaining('création site web'),
-    }))
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
-      keywordContext: expect.stringContaining('Lieutenants'),
-    }))
-  })
-
-  it('passes empty keywordContext for article when no article keywords', async () => {
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2>']))
-
-    const req = createArticleReq(validArticleBody)
-    const res = createMockRes()
-
-    await handler(req, res)
-
-    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-section', expect.objectContaining({
       keywordContext: '',
     }))
   })
@@ -1155,69 +992,110 @@ describe('POST /generate/humanize-section', () => {
 })
 
 // ---------------------------------------------------------------------------
-// POST /generate/article — updated tests for dynamic maxTokens + targetWordCount
+// POST /generate/article-draft — premier jet en UN appel (FR-RED-DRAFT-SINGLE-PASS)
 // ---------------------------------------------------------------------------
 
-describe('POST /generate/article (dynamic maxTokens & targetWordCount)', () => {
-  const handler = findHandler('post', '/generate/article')
 
-  function createArticleReq(body: unknown) {
-    return { body, socket: { setTimeout: vi.fn(), destroyed: false } } as unknown as Request
-  }
+async function* usageStream(chunks: string[], stopReason: 'end' | 'max_tokens') {
+  for (const chunk of chunks) yield chunk
+  yield `__USAGE__${JSON.stringify({ ...fakeUsage, stopReason })}`
+}
 
-  it('uses dynamic maxTokens (NOT hardcoded 4096) based on computeSectionBudget', async () => {
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2><p>World</p>']))
+function sseEvents(res: ReturnType<typeof createMockRes>): Array<{ event: string; data: Record<string, unknown> }> {
+  return res.write.mock.calls.map(([raw]: [string]) => {
+    const m = /^event: (\S+)\ndata: (.*)\n\n$/s.exec(raw)
+    return { event: m?.[1] ?? '', data: JSON.parse(m?.[2] ?? '{}') as Record<string, unknown> }
+  })
+}
 
-    const req = createArticleReq(validArticleBody)
+describe('POST /generate/article-draft', () => {
+  const handler = findHandler('post', '/generate/article-draft')
+  const req = (body: unknown) => ({ body, socket: { setTimeout: vi.fn(), destroyed: false } }) as unknown as Request
+
+  it('un seul appel, sans recherche web, au plafond de jetons du type', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h1>T</h1><p>Chapeau</p><h2>Introduction</h2><p>a</p>', '<h2>Deuxième chapitre</h2><p>b</p><h2>Conclusion</h2><p>c</p>'], 'end'))
     const res = createMockRes()
 
-    await handler(req, res)
+    await handler(req({ ...validDraftBody, targetWordCount: 2500 }), res)
 
-    // The default target for Pilier is 2500. With 1 H2 group (intro position),
-    // the budget is computed dynamically. The maxTokens argument should NOT be 4096.
-    const callArgs = mockStreamChatCompletion.mock.calls[0]
-    const maxTokensArg = callArgs[2]
-    // Must be a number computed dynamically (NOT the old hardcoded 4096)
-    expect(typeof maxTokensArg).toBe('number')
-    expect(maxTokensArg).toBeGreaterThanOrEqual(4096)
-    expect(maxTokensArg).toBeLessThanOrEqual(8192)
-    // Plafond relevé le 2026-09-21 (budget × 6, plancher 4 096) : l'ancien coupait
-    // le modèle en plein mot. Pilier (2500 mots), un seul groupe → 8192.
-    expect(maxTokensArg).toBe(Math.min(8192, Math.max(4096, Math.ceil(2500 * 6))))
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(1)
+    expect(mockStreamChatCompletion.mock.calls[0]).toEqual(['mock prompt', 'mock prompt', draftMaxTokens(2500)])
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-draft', expect.objectContaining({
+      wordCountBudget: '2500',
+      outlinePlan: expect.stringContaining('- H2: Deuxième chapitre [annotation: content-valeur] (≈'),
+      type_rules: expect.stringContaining('Règles du type Pilier'),
+      continuation: '',
+      previousText: '',
+    }))
   })
 
-  it('passes targetWordCount from parsed.data when provided (F7)', async () => {
-    const customTarget = 1200
-    mockStreamChatCompletion.mockReturnValueOnce(fakeStream(['<h2>Hello</h2><p>World</p>']))
-
-    const bodyWithTarget = { ...validArticleBody, targetWordCount: customTarget }
-    const req = createArticleReq(bodyWithTarget)
+  it('réémet la progression chapitre par chapitre, puis le texte réparé', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h1>T</h1><p>Chapeau</p><h2>Introduction</h2><p>a</p><', 'h2>Deuxième chapitre</h2><p>b</p><h2>Conclusion</h2><p>c</p>'], 'end'))
     const res = createMockRes()
 
-    await handler(req, res)
+    await handler(req(validDraftBody), res)
 
-    // With targetWordCount = 1200 and 1 group: budget = 1200, maxTokens = ceil(1200*6) = 7200
-    const callArgs = mockStreamChatCompletion.mock.calls[0]
-    const maxTokensArg = callArgs[2]
-    const expectedMaxTokens = Math.min(8192, Math.max(4096, Math.ceil(customTarget * 6)))
-    expect(maxTokensArg).toBe(expectedMaxTokens)
-  })
-})
-
-// ---------------------------------------------------------------------------
-// sectionMaxTokens — plafond de jetons d'un groupe de sections
-// ---------------------------------------------------------------------------
-
-describe('sectionMaxTokens', () => {
-  it('garde un plancher de 4 096 jetons, même pour un petit budget', () => {
-    expect(sectionMaxTokens(150)).toBe(4096)
+    const chapters = sseEvents(res).filter(e => e.event.startsWith('section-')).map(e => `${e.event}:${e.data.index}`)
+    expect(chapters).toEqual(['section-start:0', 'section-done:0', 'section-start:1', 'section-done:1', 'section-start:2', 'section-done:2'])
+    const done = sseEvents(res).find(e => e.event === 'done')
+    expect(done?.data.content).toContain('<h2>Conclusion</h2>')
+    expect((done?.data.usage as { stopReason?: string } | undefined)?.stopReason).toBe('end')
+    expect(res.end).toHaveBeenCalled()
   })
 
-  it('laisse une marge de ×6 sur le budget de mots (le modèle le dépasse)', () => {
-    expect(sectionMaxTokens(1000)).toBe(6000)
+  it('coupé au plafond : reprend au chapitre coupé, sans le dupliquer', async () => {
+    mockStreamChatCompletion
+      .mockReturnValueOnce(usageStream(['<h1>T</h1><p>Chapeau.</p><h2>Introduction</h2><p>Texte a.</p><h2>Deuxième chapitre</h2><p>début coup'], 'max_tokens'))
+      .mockReturnValueOnce(usageStream(['<h2>Deuxième chapitre</h2><p>Texte b complet.</p><h2>Conclusion</h2><p>Texte c.</p>'], 'end'))
+    const res = createMockRes()
+
+    await handler(req(validDraftBody), res)
+
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(2)
+    expect(mockLoadPrompt).toHaveBeenLastCalledWith('generate-article-draft', expect.objectContaining({
+      continuation: 'Deuxième chapitre',
+      previousText: expect.stringContaining('Chapeau'),
+    }))
+    const events = sseEvents(res)
+    expect(events.find(e => e.event === 'continuation')?.data).toEqual({ fromIndex: 1, attempt: 1 })
+    const content = String(events.find(e => e.event === 'done')?.data.content)
+    expect(content.match(/<h2>Deuxième chapitre<\/h2>/g)).toHaveLength(1)
+    expect(content).not.toContain('début coup')
+    expect(content).toContain('Texte b complet.')
+    expect(content).toContain('Chapeau.')
+    const chapters = events.filter(e => e.event.startsWith('section-')).map(e => `${e.event}:${e.data.index}`)
+    expect(chapters).toEqual(['section-start:0', 'section-done:0', 'section-start:1', 'section-done:1', 'section-start:2', 'section-done:2'])
   })
 
-  it('plafonne à 8 192 jetons', () => {
-    expect(sectionMaxTokens(5000)).toBe(8192)
+  it('au plus deux continuations', async () => {
+    for (let i = 0; i < 3; i++) {
+      mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>a</p><h2>Deuxième chapitre</h2><p>coupé'], 'max_tokens'))
+    }
+    await handler(req(validDraftBody), createMockRes())
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(1 + MAX_DRAFT_CONTINUATIONS)
+  })
+
+  it('400 sur un corps invalide ou un sommaire sans H2', async () => {
+    const res = createMockRes()
+    await handler(req({ articleId: 1 }), res)
+    expect(res.status).toHaveBeenCalledWith(400)
+
+    const res2 = createMockRes()
+    await handler(req({ ...validDraftBody, outline: JSON.stringify({ sections: [{ id: 'h1', level: 1, title: 'T', status: 'accepted' }] }) }), res2)
+    expect(res2.status).toHaveBeenCalledWith(400)
+    expect(mockStreamChatCompletion).not.toHaveBeenCalled()
+  })
+
+  it('une erreur après l’envoi des en-têtes part en événement error', async () => {
+    mockStreamChatCompletion.mockImplementationOnce(async function* () {
+      yield '<h1>T</h1>'
+      throw new Error('fournisseur indisponible')
+    })
+    const res = createMockRes()
+    res.writeHead.mockImplementation(() => { res.headersSent = true })
+
+    await handler(req(validDraftBody), res)
+
+    expect(sseEvents(res).find(e => e.event === 'error')?.data).toEqual({ code: 'CLAUDE_API_ERROR', message: 'fournisseur indisponible' })
   })
 })

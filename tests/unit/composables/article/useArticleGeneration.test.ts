@@ -11,6 +11,7 @@ import { useEditorStore } from '../../../../src/stores/article/editor.store'
 import { useBriefStore } from '../../../../src/stores/strategy/brief.store'
 import { useOutlineStore } from '../../../../src/stores/article/outline.store'
 import { useArticleKeywordsStore } from '../../../../src/stores/article/article-keywords.store'
+import { useGateAlarmStore } from '../../../../src/stores/ui/gate-alarm.store'
 
 vi.mock('../../../../src/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
@@ -139,6 +140,32 @@ describe('useArticleGeneration', () => {
       'Mon article',
       '<p>généré</p>',
     )
+  })
+
+  // FR-RED-DRAFT-SINGLE-PASS — le premier jet enregistré passe sa porte ;
+  // l'alarme s'ouvre s'il ne la passe pas, sans bloquer la suite.
+  it('soumet le premier jet enregistré à la porte « accepter le premier jet »', async () => {
+    const deps = buildDeps()
+    deps.editorStore.generateArticle = vi.fn(async () => {
+      deps.editorStore.content = '<p>généré</p>' as never
+    }) as never
+    const gateAlarm = useGateAlarmStore()
+    gateAlarm.ensure = vi.fn().mockResolvedValue(true) as never
+
+    await useArticleGeneration(deps).handleGenerateArticle()
+
+    expect(gateAlarm.ensure).toHaveBeenCalledWith(1, 'draft')
+  })
+
+  it('pas de porte si la génération a échoué', async () => {
+    const deps = buildDeps()
+    deps.editorStore.generateArticle = vi.fn(async () => { deps.editorStore.error = 'fail' as never }) as never
+    const gateAlarm = useGateAlarmStore()
+    gateAlarm.ensure = vi.fn().mockResolvedValue(true) as never
+
+    await useArticleGeneration(deps).handleGenerateArticle()
+
+    expect(gateAlarm.ensure).not.toHaveBeenCalled()
   })
 
   it('AC.M.8 — handleGenerateArticle saute meta si error post-generation', async () => {

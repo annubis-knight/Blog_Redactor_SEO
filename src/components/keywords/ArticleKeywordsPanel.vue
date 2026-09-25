@@ -355,7 +355,7 @@ onMounted(() => {
 .lexique-notice {
   margin: 0.25rem 0 0.5rem;
   font-size: 0.8rem;
-  color: var(--color-warning-text);
+  color: var(--color-warning);
 }
 
 .btn-suggest-lexique {

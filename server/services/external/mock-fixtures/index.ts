@@ -4,8 +4,8 @@
  * Enregistre toutes les fixtures disponibles pour le provider `mock`.
  * Chaque fixture simule la réponse d'un tool call ou d'un stream IA.
  */
+import './article-draft.js'
 import './auto-meta-priority.js'
-import './auto-section-priority.js'
 import './discovery.js'
 import './radar.js'
 import './intent.js'

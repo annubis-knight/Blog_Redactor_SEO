@@ -146,9 +146,9 @@ describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
     expect(dbRes.rows[0]?.status).toBe('brouillon')
   })
 
-  it('POST /generate/article sans body → 400/500', async ({ skip }) => {
+  it('POST /generate/article-draft sans body → 400/500', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/generate/article', {})
+    const res = await apiPost('/generate/article-draft', {})
     expect([400, 500]).toContain(res.status)
   })
 

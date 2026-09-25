@@ -4,8 +4,15 @@ import type { useEditorStore } from '@/stores/article/editor.store'
 import type { useBriefStore } from '@/stores/strategy/brief.store'
 import type { useOutlineStore } from '@/stores/article/outline.store'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
+import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 
 /**
+ * AUTHORITY: PostgreSQL `article_content` (contenu, méta) via editorStore.saveArticle
+ * READS FROM: briefStore (cible de mots), outlineStore (sommaire), articleKeywordsStore (capitaine)
+ * WRITES TO: PUT /articles/:id (après le premier jet, puis après la méta)
+ * CONSUMERS: ArticleWorkflowView, ArticleEditorView ; porte « accepter le premier jet » (gate-alarm)
+ * RELATED FR: FR-RED-DRAFT-SINGLE-PASS, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL
+ *
  * Vague 4 — Composable extrait de ArticleWorkflowView et ArticleEditorView.
  *
  * Référence FR PRD : FR-RED-* (génération article + meta + reduce + humanize).
@@ -79,6 +86,15 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
     briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
   )
 
+  /** Soumet le premier jet à sa porte, sans bloquer la suite (l'utilisateur décide dans l'alarme). */
+  async function reviewDraft(id: number): Promise<void> {
+    try {
+      await useGateAlarmStore().ensure(id, 'draft')
+    } catch (err) {
+      log.warn('[useArticleGeneration] porte du premier jet indisponible', { articleId: id, error: (err as Error).message })
+    }
+  }
+
   async function handleGenerateArticle(): Promise<void> {
     if (!articleId.value) return
     const id = articleId.value
@@ -117,6 +133,9 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
           metaTitle: editorStore.metaTitle,
         })
         await editorStore.saveArticle(id)
+        // Porte « accepter le premier jet » (FR-RED-DRAFT-SINGLE-PASS) : jugée
+        // sur le texte enregistré ; l'alarme s'ouvre s'il ne la passe pas.
+        void reviewDraft(id)
       } else {
         log.warn('[useArticleGeneration] Meta generation failed — article content was already saved', {
           error: editorStore.error,

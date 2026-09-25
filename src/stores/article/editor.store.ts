@@ -99,8 +99,6 @@ export const useEditorStore = defineStore('editor', () => {
   const reduceProgress = ref<{ current: number; total: number; title: string } | null>(null)
   let reduceAbortController: AbortController | null = null
 
-  // --- Web search toggle (session-level) ---
-  const webSearchEnabled = ref(true)
 
   // --- SSOT word count (finding G5) ---
   const wordCount = computed(() => countWordsFromHtml(content.value ?? ''))
@@ -132,23 +130,22 @@ export const useEditorStore = defineStore('editor', () => {
     const mainKeyword = articleMainKeyword(briefData.article)
     log.debug('[editor] mot-clé principal', { keyword: mainKeyword })
 
+    // Premier jet en un appel, sans recherche web (FR-RED-DRAFT-SINGLE-PASS) :
+    // les sources viennent à la passe d'enrichissement.
     const body = {
       articleId: briefData.article.id,
       outline,
       keyword: mainKeyword,
       keywords: briefData.keywords.map(kw => kw.keyword),
-      paa: briefData.dataForSeo?.paa ?? [],
       articleType: briefData.article.type,
       articleTitle: briefData.article.title,
       cocoonName: briefData.article.cocoonName,
-      topic: briefData.article.topic,
       ...(targetWordCount ? { targetWordCount } : {}),
-      webSearchEnabled: webSearchEnabled.value,
     }
 
     const streaming = useStreaming<{ content: string }>()
 
-    await streaming.startStream('/api/generate/article', body, {
+    await streaming.startStream('/api/generate/article-draft', body, {
       onChunk: (accumulated) => { streamedText.value = accumulated },
       onDone: (data) => {
         content.value = data.content
@@ -709,7 +706,7 @@ export const useEditorStore = defineStore('editor', () => {
   return {
     content, streamedText, isGenerating, isGeneratingMeta, error,
     metaTitle, metaDescription, isDirty, isSaving, lastSavedAt,
-    lastArticleUsage, lastMetaUsage, sectionProgress, webSearchEnabled,
+    lastArticleUsage, lastMetaUsage, sectionProgress,
     // reduce / humanize
     isReducing, isHumanizing, humanizeProgress, reduceProgress,
     lastReduceUsage, lastHumanizeUsage, lastHumanizeError, humanizeFallbackCount,

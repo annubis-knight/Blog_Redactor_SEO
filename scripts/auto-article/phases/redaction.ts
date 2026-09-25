@@ -2,7 +2,7 @@
  * Phase 3 — Rédaction : outline → article → meta → save → export.
  *
  *   1. POST /generate/outline (SSE)      → outline, persisté via PUT /articles/:id
- *   2. POST /generate/article (SSE)      → contenu HTML section par section
+ *   2. POST /generate/article-draft (SSE) → premier jet en un appel (FR-RED-DRAFT-SINGLE-PASS)
  *   3. POST /generate/meta               → metaTitle + metaDescription
  *   4. PUT  /articles/:id                → save content + meta
  *   5. PUT  /articles/:id/status         → brouillon
@@ -145,18 +145,21 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       : 0
     report.addStep(`Rédaction · Sommaire (${sectionCount} sections)`)
 
-    // 2. Article (streaming section par section)
-    logger.step('Article — rédaction section par section…')
+    // 2. Premier jet, en un appel et sans recherche web : un chiffre à sourcer
+    //    est posé dans un marqueur, la passe « sources » le traitera.
+    logger.step('Article — premier jet en un appel…')
+    const { paa: _paa, topic: _topic, ...draftBase } = base
     const articleDone = await collectSse(
       deps,
-      '/generate/article',
-      // Recherche web activée en réel seulement : elle ancre factuellement les
-      // sections (chiffres, sources) mais coûte et rallonge — inutile en mock.
-      { ...base, outline, webSearchEnabled: ctx.config.mode === 'real' },
+      '/generate/article-draft',
+      { ...draftBase, outline },
       (ev) => {
         if (ev.event === 'section-start') {
           const d = ev.data as { index: number; total: number; title: string }
-          logger.dim(`  section ${d.index + 1}/${d.total} — ${d.title}`)
+          logger.dim(`  chapitre ${d.index + 1}/${d.total} — ${d.title}`)
+        } else if (ev.event === 'continuation') {
+          const d = ev.data as { fromIndex: number; attempt: number }
+          logger.dim(`  coupé au plafond : reprise au chapitre ${d.fromIndex + 1} (${d.attempt}/2)`)
         }
       },
     )

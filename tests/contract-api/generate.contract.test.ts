@@ -40,16 +40,16 @@ describe('Contract /generate/outline', () => {
   })
 })
 
-describe('Contract /generate/article', () => {
+describe('Contract /generate/article-draft', () => {
   it('POST sans body valide → 400 ou 500', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/generate/article', {})
+    const res = await apiPost('/generate/article-draft', {})
     expect([400, 500]).toContain(res.status)
   })
 
   it('POST avec body invalide → 400 VALIDATION_ERROR', async ({ skip }) => {
     if (requireServer().skip) skip()
-    const res = await apiPost('/generate/article', { articleId: 1 })
+    const res = await apiPost('/generate/article-draft', { articleId: 1 })
     expect([400, 500]).toContain(res.status)
   })
 

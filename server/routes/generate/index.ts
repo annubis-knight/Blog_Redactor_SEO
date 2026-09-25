@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import type { Router as ExpressRouter } from 'express'
 import outlineRouter from './outline.routes.js'
-import articleRouter from './article.routes.js'
+import articleDraftRouter from './article-draft.routes.js'
 import reduceSectionRouter from './reduce-section.routes.js'
 import humanizeSectionRouter from './humanize-section.routes.js'
 import metaRouter from './meta.routes.js'
@@ -29,7 +29,7 @@ function mergeRouter(parent: ExpressRouter, child: ExpressRouter): void {
 }
 
 mergeRouter(router, outlineRouter)
-mergeRouter(router, articleRouter)
+mergeRouter(router, articleDraftRouter)
 mergeRouter(router, reduceSectionRouter)
 mergeRouter(router, humanizeSectionRouter)
 mergeRouter(router, metaRouter)

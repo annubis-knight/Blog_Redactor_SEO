@@ -45,7 +45,7 @@ const ROLES: Record<string, { domain: Domain; role: string }> = {
   'micro-context-suggest': { domain: 'Rédaction', role: 'Angle, ton et consignes proposés pour l’article' },
   'brief-ia-panel': { domain: 'Rédaction', role: 'Lecture critique du brief complet' },
   'generate-outline': { domain: 'Rédaction', role: 'Sommaire H1/H2/H3 en JSON (prompt système du sommaire)' },
-  'generate-article-section': { domain: 'Rédaction', role: 'Rédige une section avec son budget de mots' },
+  'generate-article-draft': { domain: 'Rédaction', role: 'Premier jet de l’article entier en un appel, sans recherche web ; chiffres posés « à sourcer »' },
   'generate-meta': { domain: 'Rédaction', role: 'Meta title et meta description' },
   'reduce-section': { domain: 'Rédaction', role: 'Raccourcit une section en gardant structure et SEO' },
   'humanize-section': { domain: 'Rédaction', role: 'Retire les tics d’écriture IA d’une section' },

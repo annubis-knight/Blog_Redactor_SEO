@@ -9,6 +9,7 @@ import { ContentValeur } from './tiptap/extensions/content-valeur'
 import { ContentReminder } from './tiptap/extensions/content-reminder'
 import { AnswerCapsule } from './tiptap/extensions/answer-capsule'
 import { InternalLink } from './tiptap/extensions/internal-link'
+import { ToSource } from './tiptap/extensions/to-source'
 import { DragHandle } from './tiptap/extensions/drag-handle'
 import { DynamicBlock } from './tiptap/extensions/dynamic-block'
 import { DynamicBlockDrop } from './tiptap/extensions/dynamic-block-drop'
@@ -52,6 +53,7 @@ function createExtensions(placeholder: string) {
     ContentReminder,
     AnswerCapsule,
     InternalLink,
+    ToSource,
     DynamicBlock,
     DynamicBlockDrop.configure({
       articleId: props.articleId,
