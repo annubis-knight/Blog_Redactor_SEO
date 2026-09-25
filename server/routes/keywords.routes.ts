@@ -28,6 +28,7 @@ import { hasSerpScrape } from '../services/keyword/keyword-serp.service.js'
 import type { ArticleKeywordAssignment } from '../services/keyword/keyword-assignment.service.js'
 import type { Keyword, KeywordStatus } from '../../shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
+import { hnStructureSchema } from '../../shared/schemas/keyword.schema.js'
 import { splitGenericTerms } from '../../shared/utils/generic-terms.js'
 
 const router = Router()
@@ -303,6 +304,12 @@ router.put('/articles/:id/keywords', async (req, res) => {
     }
     if (capitaine === undefined) {
       res.status(400).json({ error: { code: 'MISSING_PARAM', message: 'capitaine is required' } })
+      return
+    }
+    // La porte `hn-lock` lit `{ level: nombre, text }` : une autre forme passait
+    // en base, et la porte voyait une structure vide (FR-HN-TAB).
+    if (hnStructure !== undefined && !hnStructureSchema.safeParse(hnStructure).success) {
+      res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'hnStructure : chaque titre attend { level: 1 à 6, text }' } })
       return
     }
     const saved = await saveArticleKeywords(id, {

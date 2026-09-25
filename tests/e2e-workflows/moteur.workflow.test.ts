@@ -504,16 +504,27 @@ describe('Moteur Workflow — Onglet Lieutenants', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'HnStruct E2E Cocon')
     const article = await ctx.createArticle(cocoon.id, 'HnStruct E2E Article')
 
-    await apiPut(`/articles/${article.id}/keywords`, {
+    const hnStructure = [
+      { level: 1, text: `Structure ${ctx.runId}` },
+      { level: 2, text: 'Le prix du service', children: [{ level: 3, text: 'Les devis' }] },
+    ]
+    const res = await apiPut(`/articles/${article.id}/keywords`, {
       capitaine: `test-${ctx.runId}-hn`,
-      lieutenants: [], lexique: [], rootKeywords: [],
-      hnStructure: [{ level: 'H2', title: 'Intro' }, { level: 'H2', title: 'Conclusion' }],
+      lieutenants: [], lexique: [], rootKeywords: [], hnStructure,
     })
+    expect(res.status).toBe(200)
 
     const dbRes = await query<{ hn_structure: unknown }>(
       `SELECT hn_structure FROM article_keywords WHERE article_id = $1`, [article.id],
     )
-    expect(dbRes.rows[0]?.hn_structure).toBeDefined()
+    expect(dbRes.rows[0]?.hn_structure).toEqual(hnStructure)
+
+    // L'ancien format `{ level: 'H2', title }` est refusé : la porte le lisait vide.
+    const refus = await apiPut(`/articles/${article.id}/keywords`, {
+      capitaine: `test-${ctx.runId}-hn`,
+      lieutenants: [], lexique: [], rootKeywords: [], hnStructure: [{ level: 'H2', title: 'Intro' }],
+    })
+    expect(refus.status).toBe(400)
   })
 })
 

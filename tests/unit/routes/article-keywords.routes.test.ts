@@ -157,6 +157,26 @@ describe('PUT /articles/:id/keywords', () => {
     expect(mockSaveArticleKeywords).toHaveBeenCalledWith(1, expect.objectContaining({ hnStructure }))
   })
 
+  // La porte `hn-lock` lit `{ level: nombre, text }` : une structure à l'ancien
+  // format (`{ level: 'H2', title }`) passait en base et la porte la voyait vide.
+  it.each([
+    ['l’ancien format { level: "H2", title }', [{ level: 'H2', title: 'Intro' }]],
+    ['un niveau hors de 1 à 6', [{ level: 7, text: 'Trop profond' }]],
+    ['un sous-titre mal formé', [{ level: 2, text: 'Choisir', children: [{ level: 3 }] }]],
+    ['autre chose qu’une liste', { level: 1, text: 'Seul' }],
+  ])('FR-HN-TAB — hnStructure refusée (400) : %s', async (_label, hnStructure) => {
+    const req = {
+      params: { id: '1' },
+      body: { capitaine: 'main keyword', lieutenants: [], lexique: [], hnStructure },
+    } as unknown as Request
+    const res = createMockRes()
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(400)
+    expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ error: expect.objectContaining({ code: 'VALIDATION_ERROR' }) }))
+    expect(mockSaveArticleKeywords).not.toHaveBeenCalled()
+  })
+
   it('returns 400 when capitaine is missing', async () => {
     const req = {
       params: { id: '1' },
