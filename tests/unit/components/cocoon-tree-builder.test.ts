@@ -113,6 +113,53 @@ describe('CocoonTreeBuilder — un cocon vide', () => {
   })
 })
 
+// U7 : le menu « Générer avec Claude » de la carte ouvre la même porte que
+// « Créer le pilier ». Un seul chemin de création, deux entrées.
+describe('CocoonTreeBuilder — startPillar, l’entrée du menu « Générer avec Claude »', () => {
+  type Exposed = { startPillar: () => void; canStartPillar: boolean; hasPillar: boolean }
+
+  it('cocon vide : même proposition que « Créer le pilier »', async () => {
+    apiPost.mockResolvedValue({ level: 'pilier', parentId: null, parentSection: null, candidates: [candidate()], usage: null })
+    const wrapper = await mountBuilder([])
+    const exposed = wrapper.vm as unknown as Exposed
+
+    expect(exposed.canStartPillar).toBe(true)
+    expect(exposed.hasPillar).toBe(false)
+    exposed.startPillar()
+    await flushPromises()
+
+    expect(apiPost).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/child-candidates`, { parentId: null, parentSection: null })
+    expect(wrapper.find('[data-testid="cocoon-candidates-panel"]').exists()).toBe(true)
+  })
+
+  it('proposition déjà en cours : pas de second appel', async () => {
+    let resolve: (v: unknown) => void = () => {}
+    apiPost.mockImplementation(() => new Promise((r) => { resolve = r }))
+    const wrapper = await mountBuilder([])
+    const exposed = wrapper.vm as unknown as Exposed
+
+    exposed.startPillar()
+    exposed.startPillar()
+    await flushPromises()
+    expect(apiPost, 'le second clic attend le premier').toHaveBeenCalledTimes(1)
+
+    resolve({ level: 'pilier', parentId: null, parentSection: null, candidates: [candidate()], usage: null })
+    await flushPromises()
+  })
+
+  it('pilier existant : rien n’est proposé', async () => {
+    const wrapper = await mountBuilder([node({ id: 10, title: 'Un pilier', level: 'pilier', drafted: true })])
+    const exposed = wrapper.vm as unknown as Exposed
+
+    expect(exposed.canStartPillar).toBe(false)
+    expect(exposed.hasPillar).toBe(true)
+    exposed.startPillar()
+    await flushPromises()
+
+    expect(apiPost, 'un seul pilier par cocon').not.toHaveBeenCalled()
+  })
+})
+
 describe('CocoonTreeBuilder — l’arbre', () => {
   it('parent non rédigé : le bouton de section est désactivé, avec l’explication', async () => {
     const wrapper = await mountBuilder([

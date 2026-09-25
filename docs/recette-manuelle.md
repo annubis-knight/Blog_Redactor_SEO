@@ -1,6 +1,6 @@
 ---
 title: Recette manuelle — Blog Redactor SEO
-version: 1.0.0
+version: 1.1.0
 last_updated: 2026-09-25
 synced_with:
   - docs/testing-guide.md
@@ -63,18 +63,25 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
    - clique **« Valider ▾ »**, puis **« Mon texte »** ;
    - clique **« Suivant »**.
 5. À la 5ᵉ étape, le bouton devient **« Terminer le brainstorm »** : clique-le. Sans ce clic, la Rédaction restera verrouillée.
-6. Sur l'étape « Articles », le bloc « Construire le cocon » dit : « Ce cocon n'a pas encore de pilier. Commencez par lui… ». Clique **« Créer le pilier »**.
+6. L'étape « Articles » montre deux blocs l'un sous l'autre :
+   - **en haut, « Construire le cocon »** : c'est lui qui crée les vrais articles. Il dit « Ce cocon n'a pas encore de pilier. Commencez par lui… » ;
+   - **en dessous, « Carte indicative du cocon »** : un aperçu, qui ne crée rien.
+
+   Clique **« Créer le pilier »** en haut. Ou bien, dans la carte, ouvre le menu **« Générer avec Claude ▾ »** et choisis **« Le pilier, puis un article à la fois »** : c'est le même chemin.
 7. Dans le panneau « Le pilier du cocon » :
    - attends la fin de « Recherche de mots-clés candidats, puis mesure de leurs données réelles… » ;
    - choisis un mot-clé dans la liste ;
    - vérifie le titre, puis clique **« Créer l'article »**.
 
 **Tu dois voir :**
-- tant que le pilier n'existe pas, **un seul** bouton : « Créer le pilier » ;
+- tant que le pilier n'existe pas, **un seul** bouton de création dans « Construire le cocon » : « Créer le pilier » ;
+- dans le menu « Générer avec Claude ▾ », deux choix. « La carte complète du cocon » dessine l'aperçu de tout le cocon, mais **ne crée aucun article** ;
+- une fois le pilier créé, le choix « Le pilier, puis un article à la fois » est **grisé** et dit « Le pilier existe déjà : chaque article suivant naît d'une section, dans « Construire le cocon ». » ;
 - ensuite, le pilier avec le badge « Pilier », l'état « À rédiger », et « Pas encore de section : elles apparaissent quand sa structure est validée ou son texte rédigé ».
 
 **C'est un bug si :**
 - on peut créer un autre article avant le pilier ;
+- « La carte complète du cocon » fait apparaître des articles dans « Construire le cocon » ;
 - un candidat « Non mesuré » peut être choisi.
 
 ### Étape 2 — L'ordre des onglets du Moteur

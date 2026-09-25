@@ -5,6 +5,7 @@ import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
 import GenerationStepper from '@/components/production/GenerationStepper.vue'
 import TopicSuggestions from '@/components/production/TopicSuggestions.vue'
+import GenerateCocoonMenu from '@/components/production/brain/GenerateCocoonMenu.vue'
 import type { ProposedArticle, SuggestedTopic, CompositionCheckResult } from '@shared/types/index.js'
 import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
@@ -42,10 +43,15 @@ defineProps<{
   topicsError: string | null
   suggestedTopics: SuggestedTopic[]
   topicsUserContext: string
+  /** Le constructeur du cocon peut faire naître le pilier (U7). */
+  canStartPillar: boolean
+  /** Le cocon a déjà son pilier (U7). */
+  hasPillar: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'generate-proposals'): void
+  (e: 'start-pillar'): void
   (e: 'toggle-topic', index: number): void
   (e: 'remove-topic', index: number): void
   (e: 'add-topic', topic: string): void
@@ -135,7 +141,7 @@ function isProcessing(phase: GenerationPhase): boolean {
     <div class="brain-step-content article-proposal">
       <div class="step-header-row">
         <div class="step-header-text">
-          <h3 class="step-title">Proposition d'articles</h3>
+          <h3 class="step-title">Carte indicative du cocon</h3>
           <p class="indicative-note" data-testid="proposal-indicative-note">
             Carte indicative : elle guide les articles à créer, elle n'en crée aucun.
             On crée le pilier, puis chaque article depuis une section de son parent rédigé.
@@ -146,12 +152,13 @@ function isProcessing(phase: GenerationPhase): boolean {
           </p>
         </div>
         <div class="step-header-actions">
-          <button class="btn-generate"
-            data-testid="brain-generate-articles"
-            :disabled="isProcessing(generationPhase)"
-            @click="emit('generate-proposals')">
-            {{ isProcessing(generationPhase) ? 'Génération...' : 'Générer avec Claude' }}
-          </button>
+          <GenerateCocoonMenu
+            :is-generating="isProcessing(generationPhase)"
+            :can-start-pillar="canStartPillar"
+            :has-pillar="hasPillar"
+            @pillar="emit('start-pillar')"
+            @map="emit('generate-proposals')"
+          />
           <div class="swiper-nav">
             <button class="swiper-arrow" :disabled="articleSlide === 0" @click="scrollToSlide(0)">
               <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -391,27 +398,6 @@ function isProcessing(phase: GenerationPhase): boolean {
   line-height: 1.5;
   background: var(--color-block-info-bg);
   color: var(--color-text);
-}
-
-.btn-generate {
-  padding: 0.5rem 1rem;
-  border: 1px solid var(--color-primary);
-  border-radius: 6px;
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: var(--color-primary);
-  background: transparent;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.btn-generate:hover:not(:disabled) {
-  background: var(--color-primary-soft);
-}
-
-.btn-generate:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
 }
 
 .article-columns {

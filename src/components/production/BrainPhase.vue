@@ -32,6 +32,10 @@ const silosStore = useSilosStore()
 const themeConfigStore = useThemeConfigStore()
 const suggestingSubId = ref<string | null>(null)
 
+// U7 : le menu « Générer avec Claude » de la carte passe par le constructeur
+// pour faire naître le pilier, et lit son état pour dire si c'est possible.
+const treeBuilder = ref<InstanceType<typeof CocoonTreeBuilder> | null>(null)
+
 const cocoonSlug = computed(() =>
   props.cocoonName
     .toLowerCase()
@@ -461,9 +465,12 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
       <!-- Step 6: le constructeur crée les articles (arbre réel) ; la proposition
            de plan n'est plus qu'une carte indicative (FR-CER-COCOON-PROGRESSIVE). -->
       <template v-else>
-        <CocoonTreeBuilder :cocoon-id="props.cocoonId" :cocoon-name="props.cocoonName" :cocoon-slug="cocoonSlug" />
+        <CocoonTreeBuilder ref="treeBuilder" :cocoon-id="props.cocoonId" :cocoon-name="props.cocoonName" :cocoon-slug="cocoonSlug" />
 
         <BrainArticleProposalView
+          :can-start-pillar="treeBuilder?.canStartPillar ?? false"
+          :has-pillar="treeBuilder?.hasPillar ?? false"
+          @start-pillar="treeBuilder?.startPillar()"
           :article-columns="articleColumns"
           :grouped-spec-articles="groupedSpecArticles"
           :composition-results="compositionResults"

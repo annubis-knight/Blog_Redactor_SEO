@@ -140,14 +140,18 @@ test('Cerveau — l’étape Articles : la carte indicative guide, elle ne crée
   await page.waitForLoadState('networkidle', { timeout: 20000 })
   await page.locator('[data-testid="wf-step-articles"]').click()
 
-  const generer = page.locator('[data-testid="brain-generate-articles"]')
-  await expect(generer, 'le bouton de génération est là').toBeVisible({ timeout: 30000 })
-  await expect(generer).toBeEnabled({ timeout: 60000 })
-  await generer.click()
+  // U7 : « Générer avec Claude » est un menu. Il propose le pilier (de vrais
+  // articles) ou la carte complète (un aperçu) ; ici, la carte.
+  const menu = page.locator('[data-testid="brain-generate-menu"]')
+  await expect(menu, 'le menu de génération est là').toBeVisible({ timeout: 30000 })
+  await expect(menu).toBeEnabled({ timeout: 60000 })
+  await menu.click()
+  await expect(page.locator('[data-testid="brain-generate-pillar"]'), 'cocon vide : le pilier peut naître').toBeEnabled()
+  await page.locator('[data-testid="brain-generate-articles"]').click()
 
   const lignes = page.locator('[data-testid="proposal-item"]')
   await expect(lignes.first(), 'des articles sont proposés').toBeVisible({ timeout: 300000 })
-  await expect(generer, 'la génération doit être terminée').toBeEnabled({ timeout: 300000 })
+  await expect(menu, 'la génération doit être terminée').toBeEnabled({ timeout: 300000 })
 
   await expect(page.locator('[data-testid="proposal-indicative-note"]'), 'la carte se dit indicative').toBeVisible()
   await expect(page.locator('[data-testid="brain-validate-all"]'), 'plus de « Tout valider »').toHaveCount(0)
@@ -155,12 +159,14 @@ test('Cerveau — l’étape Articles : la carte indicative guide, elle ne crée
   expect(await articlesEnBase(), 'proposer n’a créé aucun article').toBe(0)
 })
 
+// Le bouton « Créer le pilier » est parcouru par bout-en-bout.parcours ; ici,
+// le pilier naît par le menu « Générer avec Claude » (U7) : même chemin.
 test('Cerveau — le pilier naît du constructeur, avec un mot-clé mesuré', async ({ page }) => {
   test.setTimeout(240_000)
   const tree = await openCocoonTree(page, cerveau.cerveauUrl())
 
   await expect(tree.locator('[data-testid="tree-section-create"]'), 'un cocon vide n’offre que le pilier').toHaveCount(0)
-  const pilier = await createPillar(page, tree)
+  const pilier = await createPillar(page, tree, 120_000, 'menu')
 
   const res = await query<{ titre: string; type: string; parent_id: number | null; suggested_keyword: string | null; pain_point: string | null }>(
     `SELECT titre, type, parent_id, suggested_keyword, pain_point FROM articles WHERE id = $1`, [pilier.id])
@@ -175,6 +181,13 @@ test('Cerveau — le pilier naît du constructeur, avec un mot-clé mesuré', as
   await expect(tree.locator('[data-testid="cocoon-create-pillar"]')).toHaveCount(0)
   await expect(tree.locator(`[data-testid="tree-node-${pilier.id}"] [data-testid="tree-node-state"]`)).toHaveText('À rédiger')
   expect(await articlesEnBase(), 'un seul article, le pilier').toBe(1)
+
+  // Le menu le sait aussi : plus de second pilier, et il dit où continuer.
+  await page.locator('[data-testid="brain-generate-menu"]').click()
+  const choixPilier = page.locator('[data-testid="brain-generate-pillar"]')
+  await expect(choixPilier, 'un seul pilier par cocon').toBeDisabled()
+  await expect(choixPilier).toContainText('Le pilier existe déjà')
+  await page.keyboard.press('Escape')
 
   // La carte indicative l'a inscrit : le Moteur en tire sa liste.
   await expect.poll(async () => {

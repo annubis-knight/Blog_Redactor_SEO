@@ -5,7 +5,7 @@
  * article par section (H2) d'un parent rédigé, son mot-clé choisi parmi des
  * candidats mesurés. C'est lui — pas la carte indicative — qui crée les articles.
  */
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import CocoonCandidatesPanel from '@/components/production/brain/CocoonCandidatesPanel.vue'
 import { useCocoonBuilder, childLevelOf } from '@/composables/strategy/useCocoonBuilder'
 import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
@@ -75,6 +75,25 @@ function proposePillar(): void {
   void proposeCandidates({ parentId: null, parentSection: null, level: 'pilier' })
 }
 
+// Le pilier peut naître : arbre chargé, sans erreur, et pas encore de pilier.
+// Même condition pour le bouton « Créer le pilier » et pour le menu
+// « Générer avec Claude » de la carte (U7).
+const canStartPillar = computed(() => !isLoadingTree.value && !treeError.value && !hasPillar.value)
+
+const root = ref<HTMLElement | null>(null)
+
+/**
+ * Entrée du menu « Générer avec Claude » (U7) : amène le constructeur à
+ * l'écran, puis ouvre la même proposition que « Créer le pilier ».
+ */
+function startPillar(): void {
+  if (typeof root.value?.scrollIntoView === 'function') root.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  // Comme le bouton du haut, désactivé pendant une proposition ou une création.
+  if (canStartPillar.value && !isProposing.value && !isCreating.value) proposePillar()
+}
+
+defineExpose({ startPillar, canStartPillar, hasPillar })
+
 function proposeForSection(node: CocoonTreeNode, section: CocoonTreeSection): void {
   const level = childLevelOf(node.level)
   if (!level || !node.drafted) return
@@ -117,7 +136,7 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
 </script>
 
 <template>
-  <section class="cocoon-tree" data-testid="cocoon-tree" aria-labelledby="cocoon-tree-title">
+  <section ref="root" class="cocoon-tree" data-testid="cocoon-tree" aria-labelledby="cocoon-tree-title">
     <header class="tree-header">
       <h3 id="cocoon-tree-title" class="tree-title">Construire le cocon</h3>
       <p class="tree-desc">
@@ -134,7 +153,7 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
       <button type="button" class="btn-link" data-testid="cocoon-tree-retry" @click="loadTree">Réessayer</button>
     </div>
 
-    <div v-if="!isLoadingTree && !treeError && !hasPillar" class="tree-empty">
+    <div v-if="canStartPillar" class="tree-empty">
       <p class="tree-empty-text">
         Ce cocon n’a pas encore de pilier. Commencez par lui : les autres articles naîtront de ses sections.
       </p>

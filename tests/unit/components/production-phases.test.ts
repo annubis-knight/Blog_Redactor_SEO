@@ -147,8 +147,8 @@ describe('BrainPhase', () => {
     await flushPromises()
 
     expect(wrapper.findComponent(strategyStepStub).exists()).toBe(false)
-    expect(wrapper.find('.step-title').text()).toBe("Proposition d'articles")
-    expect(wrapper.get('[data-testid="brain-generate-articles"]').text()).toBe('Générer avec Claude')
+    expect(wrapper.find('.step-title').text()).toBe('Carte indicative du cocon')
+    expect(wrapper.get('[data-testid="brain-generate-menu"]').text()).toBe('Générer avec Claude ▾')
     expect(wrapper.findAll('.article-column')).toHaveLength(3)
     expect(wrapper.findAll('.add-article-placeholder')).toHaveLength(3)
     expect(useWorkflowNavStore().state?.activeId).toBe('articles')

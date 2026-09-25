@@ -14,7 +14,8 @@
  * possible si quelqu'un fusionne les deux par erreur).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount } from '@vue/test-utils'
+import { defineComponent, h } from 'vue'
+import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
 vi.mock('../../../src/services/api.service', () => ({
@@ -191,6 +192,62 @@ describe('BrainPhase — étape Articles : l’arbre crée, la carte guide (C7)'
       'Carte indicative : elle guide les articles à créer, elle n\'en crée aucun. On crée le pilier, puis chaque article depuis une section de son parent rédigé.',
     )
     expect(wrapper.find('[data-testid="brain-validate-all"]').exists()).toBe(false)
-    expect(wrapper.find('[data-testid="brain-generate-articles"]').exists(), 'la génération de la carte reste').toBe(true)
+    expect(wrapper.find('[data-testid="brain-generate-menu"]').exists(), 'la génération de la carte reste, dans le menu').toBe(true)
+  })
+})
+
+/**
+ * U7 (recette d'Arnaud, 2026-09-25) — « Générer avec Claude » est un menu : le
+ * choix « pilier » passe par le constructeur, le même chemin que « Créer le
+ * pilier ». La carte n'est plus le seul geste proposé.
+ */
+describe('BrainPhase — le menu « Générer avec Claude » relie la carte au constructeur (U7)', () => {
+  function mountWithTree(exposed: { canStartPillar: boolean; hasPillar: boolean }) {
+    const startPillar = vi.fn()
+    const TreeStub = defineComponent({
+      name: 'CocoonTreeBuilder',
+      props: ['cocoonId', 'cocoonName', 'cocoonSlug'],
+      setup(_props, { expose }) {
+        expose({ startPillar, ...exposed })
+        return () => h('div', { 'data-testid': 'cocoon-tree' })
+      },
+    })
+    const store = useCocoonStrategyStore()
+    store.strategy = buildEmptyStrategy(5) as never
+    store.currentStep = 5
+    store.isLoading = false
+    // Le montage recharge la stratégie : sans réponse d'API, l'étape repartirait à zéro.
+    store.fetchStrategy = vi.fn(async () => {})
+    const wrapper = mount(BrainPhase, {
+      props: { cocoonName: 'cocoon-test', siloName: 'silo-test', cocoonId: 1 },
+      global: { stubs: { StrategyStep: stubs.StrategyStep, ContextRecap: stubs.ContextRecap, CocoonTreeBuilder: TreeStub } },
+      attachTo: document.body,
+    })
+    return { wrapper, startPillar }
+  }
+
+  it('« Le pilier, puis un article à la fois » demande au constructeur de créer le pilier', async () => {
+    const { wrapper, startPillar } = mountWithTree({ canStartPillar: true, hasPillar: false })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
+    await wrapper.get('[data-testid="brain-generate-pillar"]').trigger('click')
+
+    expect(startPillar).toHaveBeenCalledTimes(1)
+    wrapper.unmount()
+  })
+
+  it('le menu lit l’état du constructeur : pilier existant, choix désactivé', async () => {
+    const { wrapper, startPillar } = mountWithTree({ canStartPillar: false, hasPillar: true })
+    await flushPromises()
+
+    await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
+    const pilier = wrapper.get('[data-testid="brain-generate-pillar"]')
+    expect(pilier.attributes('disabled')).toBeDefined()
+    expect(pilier.text()).toContain('Le pilier existe déjà')
+    await pilier.trigger('click')
+
+    expect(startPillar).not.toHaveBeenCalled()
+    wrapper.unmount()
   })
 })

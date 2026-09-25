@@ -149,6 +149,18 @@ function setupApiPostMock(
   })
 }
 
+/**
+ * « Générer avec Claude » est un menu (U7) : la carte complète est l'un de ses
+ * deux choix. C'est elle qui déclenche la cascade PAA.
+ */
+async function genererLaCarte(wrapper: ReturnType<typeof mount>): Promise<void> {
+  // Le montage recharge la stratégie (« Chargement… ») puis reconstruit
+  // l'étape : on attend la page stable, comme l'utilisateur, avant d'ouvrir.
+  await flushPromises()
+  await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
+  await wrapper.get('[data-testid="brain-generate-articles"]').trigger('click')
+}
+
 function mountBrainPhase() {
   const pinia = createPinia()
   setActivePinia(pinia)
@@ -189,8 +201,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     // Filter only suggest calls
@@ -212,8 +223,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     const paaCalls = mockApiPost.mock.calls.filter(
@@ -235,8 +245,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     const suggestCalls = mockApiPost.mock.calls.filter(
@@ -256,8 +265,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper, store } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     const articles = store.strategy!.proposedArticles
@@ -276,8 +284,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     // Phase 3 should still be called
@@ -297,8 +304,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     // Phase 3 should have cocoon PAA injected for each Inter
@@ -317,8 +323,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper, store } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     // Phase 1 articles should be preserved
@@ -338,8 +343,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     })
 
     const { wrapper } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     // Stepper should be visible
@@ -363,8 +367,7 @@ describe('BrainPhase — PAA cascade 3 phases', () => {
     )
 
     const { wrapper, store } = mountBrainPhase()
-    const btn = wrapper.find('.btn-generate')
-    await btn.trigger('click')
+    await genererLaCarte(wrapper)
     await flushPromises()
 
     // No articles should be generated
