@@ -46,6 +46,14 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getCaptainExplorations: vi.fn().mockResolvedValue([]),
 }))
 
+const mockGetArticlePainIntent = vi.hoisted(() => vi.fn())
+vi.mock('../../../server/services/queries/article-pain-intent.service', () => ({
+  getArticlePainIntent: mockGetArticlePainIntent,
+}))
+vi.mock('../../../server/services/infra/radar-exploration.service', () => ({
+  getRadarExploration: vi.fn().mockResolvedValue(null),
+}))
+
 vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
@@ -379,5 +387,48 @@ describe('intention — mot-clé avec majuscules', () => {
       'stratégie digitale entreprises Toulouse',
       expect.objectContaining({ intentRaw: 0.72, intentLabel: 'commercial' }),
     )
+  })
+})
+
+// Épopée qualité SEO, checklist M2 : le scan passait `intentTypes: []` et jamais
+// l'intention attendue de l'article. Le score marché lisait « Intent : inconnu »,
+// et le 5e signal de pertinence (intention SERP × intention éditoriale) restait
+// neutre au scan… alors que le rechargement (captain-relevance.service) le
+// calculait : deux scores différents pour le même mot-clé (CLAUDE.md §2.0).
+describe('intention — score marché et 5e signal de pertinence (M2)', () => {
+  const PAIN = 'Le dirigeant ne sait pas par où commencer son référencement.'
+  const component = (data: any, name: string) => data.marketScore.components.find((c: any) => c.name === name)
+
+  it('le score marché lit l’intention de la SERP', async () => {
+    const res = makeRes()
+    await getHandler()(makeReq('seo', { level: 'pilier' }), res)
+    expect(component(res.json.mock.calls[0][0].data, 'intent').rawLabel).toBe('informational')
+  })
+
+  it('en base aussi : l’intention enregistrée entre dans le score marché', async () => {
+    mockIsKeywordMetricsFresh.mockReturnValue(true)
+    mockGetKeywordMetrics.mockResolvedValue({
+      keyword: 'seo', searchVolume: 1500, keywordDifficulty: 30, cpc: 2.5, competition: 0.5,
+      intentRaw: 0.8, intentLabel: 'commercial', autocompleteSuggestions: [], autocompleteSource: 'google',
+      paaQuestions: [], fetchedAt: new Date().toISOString(),
+    } as any)
+    const res = makeRes()
+    await getHandler()(makeReq('seo', { level: 'pilier' }), res)
+    expect(component(res.json.mock.calls[0][0].data, 'intent').rawLabel).toBe('commercial')
+  })
+
+  it('l’intention attendue de l’article croise celle de la SERP : un écart pénalise', async () => {
+    mockGetArticlePainIntent.mockResolvedValue('commercial')
+    const aligned = makeRes()
+    await getHandler()(makeReq('seo', { level: 'pilier', articleId: 7, painPoint: PAIN }), aligned)
+
+    mockGetArticlePainIntent.mockResolvedValue('informational')
+    const matching = makeRes()
+    await getHandler()(makeReq('seo', { level: 'pilier', articleId: 7, painPoint: PAIN }), matching)
+
+    const intentPain = (res: any) => res.json.mock.calls[0][0].data.relevanceScore.breakdown.intentPain.normalized
+    expect(mockGetArticlePainIntent).toHaveBeenCalledWith(7)
+    expect(intentPain(matching), 'SERP informationnelle, article informationnel').toBe(100)
+    expect(intentPain(aligned), 'SERP informationnelle, article commercial : écart').toBeLessThan(50)
   })
 })

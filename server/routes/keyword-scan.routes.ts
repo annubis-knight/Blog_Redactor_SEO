@@ -4,6 +4,7 @@ import { fetchKeywordOverview, fetchSearchIntentBatch } from '../services/extern
 import { respondWithError } from '../utils/api-error.js'
 import { saveCaptainExploration } from '../services/infra/data.service.js'
 import { getRadarExploration } from '../services/infra/radar-exploration.service.js'
+import { getArticlePainIntent } from '../services/queries/article-pain-intent.service.js'
 import { computeMarketScore } from '../../shared/scoring-kpi.js'
 import { computeRelevanceScore } from '../../shared/scoring.js'
 import { extractRoots } from '../../shared/utils/keyword-roots.js'
@@ -81,6 +82,9 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
     let rawCpc: number | null = cachedMetrics?.cpc ?? null
     let rawCompetition: number | null = cachedMetrics?.competition ?? null
     let rawIntentScore: number | null = cachedMetrics?.intentRaw ?? null
+    // Intention de la SERP (M2) : elle entre dans le score marché et dans le 5e
+    // signal de pertinence, comme au rechargement (captain-relevance.service).
+    let serpIntentLabel: PainIntentExpected | null = coerceIntentLabel(cachedMetrics?.intentLabel)
     let autocompleteSuggestions = cachedMetrics?.autocompleteSuggestions ?? []
     let paaQuestionsRaw = cachedMetrics?.paaQuestions ?? []
 
@@ -120,6 +124,7 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
       rawIntentScore = intentData?.intentProbability ?? null
       // Label intent SERP — alimente le 5e signal Pertinence (FR-CAP-RELEVANCE-INTENT-SIGNAL).
       const rawIntentLabel = coerceIntentLabel(intentData?.intent)
+      serpIntentLabel = rawIntentLabel
       autocompleteSuggestions = autocomplete.suggestions.map((text, idx) => ({ text, position: idx + 1 }))
       paaQuestionsRaw = paa.map(p => ({ question: p.question, answer: p.answer ?? null }))
 
@@ -183,7 +188,7 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
       difficulty: rawKd,
       cpc: rawCpc,
       competition: rawCompetition,
-      intentTypes: [],
+      intentTypes: serpIntentLabel ? [serpIntentLabel] : [],
       intentProbability: rawIntentScore,
       autocompleteMatchCount: autocompleteValue ?? 0,
       paaMatchCount: matchedPaaItems.filter(p => p.match !== 'none').length,
@@ -252,7 +257,12 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
     const finalKwPainAlignment = cachedKwPainAlignment ?? lexicalKwPainAlignment
     const finalPaaPainAvg = cachedPaaPainAvg ?? lexicalPaaPainAvg
     const finalAutoPainAvg = cachedAutoPainAvg ?? lexicalAutoPainAvg
-    const finalIntentTypes = cachedIntentTypes ?? kpisForMarket.intentTypes
+    const finalIntentTypes = cachedIntentTypes?.length ? cachedIntentTypes : kpisForMarket.intentTypes
+    // L'intention éditoriale attendue de l'article : même source qu'au
+    // rechargement, sinon le scan et le rechargement divergeaient (M2).
+    const painIntentExpected = typeof articleId === 'number' && Number.isFinite(articleId)
+      ? await getArticlePainIntent(articleId)
+      : null
 
     const hasAnyPainSignal =
       finalKwPainAlignment != null || finalPaaPainAvg != null || finalAutoPainAvg != null
@@ -264,6 +274,7 @@ router.post('/keywords/:keyword/scan', async (req, res) => {
         autocompletePainAlignmentAvg: finalAutoPainAvg,
         rootsAverageScore: null,
         intentTypes: finalIntentTypes,
+        painIntentExpected: painIntentExpected ?? undefined,
       })
     }
 
