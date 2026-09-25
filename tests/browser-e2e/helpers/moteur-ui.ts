@@ -80,8 +80,8 @@ export async function dismissLoadPrompt(page: Page): Promise<void> {
   }
 }
 
-/** Les cinq onglets du Moteur, dans l'ordre de la navigation. */
-export const MOTEUR_TABS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique'] as const
+/** Les six onglets du Moteur, dans l'ordre de la navigation (Structure : FR-HN-TAB). */
+export const MOTEUR_TABS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'structure', 'lexique'] as const
 type MoteurTab = (typeof MOTEUR_TABS)[number]
 
 /** Repère de l'onglet dans la navigation (`WorkflowNav.vue`). */
@@ -98,9 +98,9 @@ export async function checksDeLArticle(page: Page, articleId: number): Promise<s
 }
 
 /**
- * Sous-phase Lieutenants complète : analyse SERP, une proposition retenue,
- * plan Hn généré et enregistré. C'est ce plan qui deviendra le sommaire de la
- * Rédaction — la sous-phase n'est close qu'une fois les deux posés.
+ * Sous-phase Lieutenants complète : analyse SERP, propositions retenues. La
+ * structure H1/H2/H3 a désormais son onglet (`validerStructure`, FR-HN-TAB) ;
+ * avant C6, l'étape exigeait un plan produit avant même le choix (M7).
  */
 export async function lockLieutenants(page: Page, articleId: number): Promise<void> {
   await tabLocator(page, 'lieutenants').click()
@@ -139,27 +139,23 @@ export async function lockLieutenants(page: Page, articleId: number): Promise<vo
     if (!(await cases.nth(i).isChecked())) await cases.nth(i).check()
   }
 
-  if (await page.locator('[data-testid="hn-structure-empty"]').count() > 0) {
-    const generer = page.locator('[data-testid="hn-generate-btn"]')
-    await expect(generer).toBeEnabled({ timeout: 20000 })
-    await generer.click()
-  }
-  await expect(page.locator('.hn-structure-item').first(), 'un plan Hn doit s’afficher')
-    .toBeVisible({ timeout: 180000 })
-
-  const sauvegarder = page.locator('.btn-save-hn')
-  await expect(sauvegarder).toBeEnabled({ timeout: 20000 })
-  await sauvegarder.click()
-  await expect(page.locator('.hn-saved-badge'), 'le plan doit être marqué sauvegardé')
-    .toBeVisible({ timeout: 60000 })
-
   // La porte peut encore retenir l'étape (cannibalisation, trop peu de
-  // propositions) : le bandeau le dit, l'alarme s'ouvre à la demande.
+  // propositions) : le bandeau le dit, l'alarme s'ouvre à la demande. Chaque
+  // case cochée relance la porte : le bandeau « trop peu de lieutenants » peut
+  // apparaître puis s'effacer à la dernière case. On attend un état stable
+  // (deux lectures identiques à une seconde d'écart) avant d'agir.
   const bandeau = page.locator('[data-testid="lieutenants-gate-banner"]')
-  await expect.poll(async () => {
+  const etat = async () => {
     if (await bandeau.isVisible()) return 'bandeau'
     return (await checksDeLArticle(page, articleId)).includes('moteur:lieutenants_locked') ? 'validée' : 'en attente'
-  }, { timeout: 60000 }).not.toBe('en attente')
+  }
+  let precedent = ''
+  await expect.poll(async () => {
+    const courant = await etat()
+    const stable = courant !== 'en attente' && courant === precedent
+    precedent = courant
+    return stable
+  }, { timeout: 60000, intervals: [1000] }).toBe(true)
   if (await bandeau.isVisible()) {
     await page.locator('[data-testid="lieutenants-gate-review"]').click()
     await answerGateAlarm(page)
@@ -167,6 +163,42 @@ export async function lockLieutenants(page: Page, articleId: number): Promise<vo
 
   await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
     .toContain('moteur:lieutenants_locked')
+}
+
+/**
+ * Sous-phase Structure complète (FR-HN-TAB) : structure proposée à partir des
+ * lieutenants retenus, puis validée. La porte `hn-lock` peut retenir l'étape :
+ * l'alarme s'ouvre alors, et l'utilisateur corrige ou assume.
+ */
+export async function validerStructure(page: Page, articleId: number): Promise<void> {
+  await tabLocator(page, 'structure').click()
+  await dismissLoadPrompt(page)
+
+  if ((await checksDeLArticle(page, articleId)).includes('moteur:hn_locked')) return
+
+  const panneau = page.locator('[data-testid="structure-panel"]')
+  await expect(panneau, 'l’onglet Structure doit s’afficher').toBeVisible({ timeout: 30000 })
+  if (await panneau.locator('[data-testid="hn-structure-empty"]').count() > 0) {
+    const generer = panneau.locator('[data-testid="hn-generate-btn"]')
+    await expect(generer, 'la génération suppose des lieutenants retenus').toBeEnabled({ timeout: 20000 })
+    await generer.click()
+  }
+  await expect(panneau.locator('.hn-structure-item').first(), 'une structure doit s’afficher')
+    .toBeVisible({ timeout: 180000 })
+
+  const valider = panneau.locator('[data-testid="structure-validate"]')
+  await expect(valider).toBeEnabled({ timeout: 20000 })
+  await valider.click()
+
+  const alarme = page.locator('[data-testid="gate-alarm"]')
+  await expect.poll(async () => {
+    if (await alarme.isVisible()) return 'alarme'
+    return (await checksDeLArticle(page, articleId)).includes('moteur:hn_locked') ? 'validée' : 'en attente'
+  }, { timeout: 60000 }).not.toBe('en attente')
+  if (await alarme.isVisible()) await answerGateAlarm(page)
+
+  await expect.poll(() => checksDeLArticle(page, articleId), { timeout: 60000 })
+    .toContain('moteur:hn_locked')
 }
 
 /** Sous-phase Lexique complète : extraction puis au moins un terme retenu. */

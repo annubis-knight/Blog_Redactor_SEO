@@ -35,7 +35,7 @@ test.describe('Moteur — Charge avec un article test', () => {
 })
 
 test.describe('Moteur — Onglets (gate frontend F1)', () => {
-  test('les 5 onglets sont rendus une fois un article sélectionné', async ({ page, ctx }) => {
+  test('les 6 onglets sont rendus une fois un article sélectionné', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Tabs Article')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
@@ -56,20 +56,20 @@ test.describe('Moteur — Onglets (gate frontend F1)', () => {
     await expect(tabLocator(page, 'radar'), 'Radar reste cliquable').toBeEnabled({ timeout: 15000 })
   })
 
-  test('navigation libre : Lieutenants, Lexique et Finalisation restent ouverts (FR-MOT-FREE-NAV)', async ({ page, ctx }) => {
+  test('navigation libre : Lieutenants, Structure, Lexique et Finalisation restent ouverts (FR-MOT-FREE-NAV)', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Gate Article')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
 
     // Gating souple : on peut aller voir n'importe quelle étape sur un article
     // neuf. Ce qui est gardé, ce sont les écritures — pas la visite.
-    for (const tab of ['lieutenants', 'lexique', 'finalisation'] as const) {
+    for (const tab of ['lieutenants', 'structure', 'lexique', 'finalisation'] as const) {
       await expect(tabLocator(page, tab), `l’onglet ${tab} reste visitable`)
         .toBeEnabled({ timeout: 15000 })
     }
   })
 
-  test('le passage en Rédaction est refusé tant que les 3 verrous manquent, et dit lesquels', async ({ page, ctx }) => {
+  test('le passage en Rédaction est refusé tant que les 4 verrous manquent, et dit lesquels', async ({ page, ctx }) => {
     const article = await ctx.createArticle('Final Gate Article')
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
@@ -82,7 +82,7 @@ test.describe('Moteur — Onglets (gate frontend F1)', () => {
     await expect(cta, 'le bouton de passage en Rédaction est rendu').toBeVisible({ timeout: 15000 })
     await expect(cta, 'et refusé sur un article neuf').toBeDisabled()
     await expect(cta, 'en nommant les étapes restantes')
-      .toHaveAttribute('title', /Capitaine à verrouiller.*Lieutenants à verrouiller.*Lexique à valider/)
+      .toHaveAttribute('title', /Capitaine à verrouiller.*Lieutenants à verrouiller.*Structure à valider.*Lexique à valider/)
   })
 
   test('cliquer un onglet le rend actif', async ({ page, ctx }) => {

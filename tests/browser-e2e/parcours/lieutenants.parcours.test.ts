@@ -171,7 +171,8 @@ for (const level of LEVELS) {
       }
     })
 
-    await test.step('⑧ décision — les Lieutenants requis par le type et un plan Hn enregistré valident l’étape', async () => {
+    // M7 (FR-HN-TAB) : la structure a son onglet ; retenir les lieutenants suffit à cette étape.
+    await test.step('⑧ décision — les Lieutenants requis par le type valident l’étape', async () => {
       const cases = page.locator('[data-testid="lt-card-checkbox"]')
       await expect(cases.first()).toBeVisible({ timeout: 30000 })
       // L'IA propose, l'utilisateur valide : les cartes arrivent décochées.
@@ -202,22 +203,8 @@ for (const level of LEVELS) {
         }, { timeout: 20000, message: 'liste plate = lieutenants cochés' })
         .toMatchObject({ identiques: true })
 
-      // La règle du workflow demande aussi un plan Hn : on le génère s'il manque…
-      const vide = page.locator('[data-testid="hn-structure-empty"]')
-      if (await vide.count() > 0) {
-        const générer = page.locator('[data-testid="hn-generate-btn"]')
-        await expect(générer).toBeEnabled({ timeout: 15000 })
-        await générer.click()
-      }
-      await expect(page.locator('.hn-structure-item').first(), 'un plan Hn doit s’afficher')
-        .toBeVisible({ timeout: 120000 })
-
-      // …puis on l'enregistre : c'est ce geste qui clôt la sous-phase.
-      const sauvegarder = page.locator('.btn-save-hn')
-      await expect(sauvegarder).toBeEnabled({ timeout: 15000 })
-      await sauvegarder.click()
-      await expect(page.locator('.hn-saved-badge'), 'le plan doit être marqué sauvegardé')
-        .toBeVisible({ timeout: 30000 })
+      // Aucun plan Hn ici : l'onglet Lieutenants n'en produit plus (M7).
+      await expect(page.locator('.lieutenants-selection').locator('[data-testid="hn-structure-section"], .hn-structure-item'), 'la structure a quitté cet onglet').toHaveCount(0)
 
       await expect
         .poll(async () => (await apiJson<{ completedChecks: string[] }>(page, `/articles/${article.id}/progress`)).completedChecks,

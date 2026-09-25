@@ -103,32 +103,38 @@ test('Lieutenants — le tri réordonne sans perdre de carte', async ({ page }) 
   await expect.poll(() => cartes.count(), { timeout: 10000 }).toBe(avant)
 })
 
-test('Lieutenants — un titre verrouillé survit à la régénération du plan', async ({ page }) => {
+// FR-HN-TAB : la structure a quitté l'onglet Lieutenants pour le sien ; elle se
+// construit à partir des lieutenants retenus.
+test('Structure — un titre verrouillé survit à la régénération', async ({ page }) => {
   test.setTimeout(300_000)
   await lieutenantsAvecPropositions(page, 'specifique')
 
-  // Il faut au moins un Lieutenant coché pour pouvoir (re)générer.
+  // Il faut au moins un Lieutenant retenu pour pouvoir (re)générer.
   const cases = page.locator('[data-testid="lt-card-checkbox"]')
   await expect(cases.first()).toBeVisible({ timeout: 30000 })
   if (!(await cases.first().isChecked())) await cases.first().check()
 
-  const vide = page.locator('[data-testid="hn-structure-empty"]')
+  await page.locator('[data-testid="wf-item-structure"]').click()
+  const panneau = page.locator('[data-testid="structure-panel"]')
+  await expect(panneau).toBeVisible({ timeout: 30000 })
+
+  const vide = panneau.locator('[data-testid="hn-structure-empty"]')
   if (await vide.count() > 0) {
-    await page.locator('[data-testid="hn-generate-btn"]').click()
+    await panneau.locator('[data-testid="hn-generate-btn"]').click()
   }
-  const titres = page.locator('.hn-structure-item')
-  await expect(titres.first(), 'un plan Hn est affiché').toBeVisible({ timeout: 180000 })
+  const titres = panneau.locator('.hn-structure-item')
+  await expect(titres.first(), 'une structure est affichée').toBeVisible({ timeout: 180000 })
 
   const premierTitre = (await titres.first().locator('.hn-text').first().innerText()).trim()
   const cadenas = titres.first().locator('.hn-lock-btn').first()
   await cadenas.click()
   await expect(cadenas, 'le titre est verrouillé').toHaveAttribute('aria-pressed', 'true', { timeout: 10000 })
 
-  await page.locator('[data-testid="hn-regenerate-btn"]').click()
-  await expect(titres.first(), 'le plan est reconstruit').toBeVisible({ timeout: 180000 })
+  await panneau.locator('[data-testid="hn-regenerate-btn"]').click()
+  await expect(titres.first(), 'la structure est reconstruite').toBeVisible({ timeout: 180000 })
 
   await expect
-    .poll(async () => (await page.locator('.hn-structure-section, [data-testid="hn-structure-section"]').innerText()), { timeout: 60000 })
+    .poll(async () => (await panneau.locator('[data-testid="hn-structure-section"]').innerText()), { timeout: 60000 })
     .toContain(premierTitre)
 })
 

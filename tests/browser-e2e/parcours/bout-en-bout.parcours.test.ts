@@ -32,6 +32,7 @@ import {
   selectArticleByTitle,
   tabLocator,
   validerLexique,
+  validerStructure,
 } from '../helpers/moteur-ui'
 
 test.describe.configure({ mode: 'serial' })
@@ -170,7 +171,7 @@ async function ouvrirArticle(page: Page, article: ArticleDuParcours): Promise<vo
 }
 
 for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
-  test(`Moteur — ${type} : Capitaine, Lieutenants et Lexique verrouillés`, async ({ page }) => {
+  test(`Moteur — ${type} : Capitaine, Lieutenants, Structure et Lexique verrouillés`, async ({ page }) => {
     test.setTimeout(REEL ? 900_000 : 600_000)
     const article = articles[type]
     expect(article, 'l’article du Cerveau doit être connu').toBeTruthy()
@@ -187,8 +188,13 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
         .toContain('moteur:capitaine_locked')
     })
 
-    await test.step('Lieutenants et plan Hn', async () => {
+    await test.step('Lieutenants', async () => {
       await lockLieutenants(page, article!.id)
+    })
+
+    // FR-HN-TAB : la structure naît des lieutenants retenus, dans son onglet.
+    await test.step('Structure', async () => {
+      await validerStructure(page, article!.id)
     })
 
     await test.step('Lexique', async () => {
@@ -199,7 +205,7 @@ for (const type of ['Pilier', 'Intermédiaire', 'Spécialisé'] as const) {
       await tabLocator(page, 'finalisation').click()
       const cta = page.locator('[data-testid="finalisation-cta-redaction"]')
       await expect(cta, 'le récapitulatif propose la sortie').toBeVisible({ timeout: 30000 })
-      await expect(cta, 'les trois verrous posés, la porte s’ouvre').toBeEnabled({ timeout: 30000 })
+      await expect(cta, 'les quatre verrous posés, la porte s’ouvre').toBeEnabled({ timeout: 30000 })
       await expect(page.locator('[data-testid="finalisation-title"]')).toContainText('Prêt pour la Rédaction')
     })
   })
