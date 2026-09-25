@@ -369,7 +369,7 @@ Dans le bottom-nav de `MoteurView.vue` :
 
 ### 4.1 `ArticleWorkflowView` — `/cocoon/:cocoonId/article/:articleId`
 
-**Architecture** : stepper 2 étapes (**Brief & Structure** → **Article**) + **panneaux latéraux** (SEO, GEO, Maillage, IA Brief) actifs uniquement après génération.
+**Architecture** : stepper 2 étapes (**Brief & Structure** → **Article**) + **panneaux latéraux** (SEO, GEO, Maillage, Enrichir actifs uniquement après génération ; IA Brief toujours).
 
 ### 4.2 Étape 1 — `BriefStructureStep`
 
@@ -386,9 +386,9 @@ Dans le bottom-nav de `MoteurView.vue` :
 
 | Section | Composant | Rôle | Déclencheurs | Sorties | Gate |
 |---|---|---|---|---|---|
-| **Toggle Web Search** | inline | Checkbox active/désactive la recherche web pour la génération | Montage | Mutation `editorStore.webSearchEnabled` | — |
-| **Barre d'actions article** | `ArticleActions` | Boutons contextuels : Générer / Régénérer / Réduire (si > target + 15 %) / Humaniser | clic par bouton | `POST /api/generate/article` (stream) + `/api/generate/article-meta` + `PUT /articles/:id/content` ; `POST /articles/:id/reduce-sections` ou `/humanize-sections` (itératif) | `isGenerating`/`isReducing`/`isHumanizing` mutex |
-| **Progress section** | inline | "Section X/Y — Titre" + barre remplie | `isGenerating && sectionProgress` | Affichage live | — |
+| ~~**Toggle Web Search**~~ | — | Retiré le 2026-09-25 (C5a) : le premier jet n'a pas de recherche web ; seule la passe Sources du panneau Enrichir cherche sur le web | — | — | — |
+| **Barre d'actions article** | `ArticleActions` | Boutons contextuels : Générer / Régénérer / Réduire (si > cible + 15 %) / Humaniser (relit aussi la langue depuis le 2026-09-25) | clic par bouton | `POST /api/generate/article-draft` (premier jet en un appel, stream) + `PUT /articles/:id` + `POST /api/generate/meta` + `PUT /articles/:id` + porte `GET /articles/:id/gates/draft` ; `POST /api/generate/reduce-section` ou `/api/generate/humanize-section` (une section après l'autre) | `isGenerating`/`isReducing`/`isHumanizing` mutex |
+| **Progress section** | inline | "Section X/Y — Titre" + barre remplie (le serveur réémet un début de chapitre à chaque H2 du premier jet) | `isGenerating && sectionProgress` | Affichage live | — |
 | **Message d'erreur** | `ErrorMessage` | Affichage + retry | `editorStore.error && !isGenerating` | Retry call | — |
 | **Meta SEO** | `ArticleMetaDisplay` | Meta title (60 c) + description (160 c) read-only + compteurs + warning si dépassement | Montage ; après génération | Affichage ; compte `meta-count--warning` | — |
 | **OutlineRecap** | `OutlineRecap` | TOC read-only H1/H2/H3 | Outline chargé | Affichage | — |
@@ -399,7 +399,7 @@ Dans le bottom-nav de `MoteurView.vue` :
 
 ### 4.4 Panneaux latéraux
 
-**Gate global** : `hasBody = !!editorStore.content`. Les panneaux SEO/GEO/Maillage sont désactivés (overlay grisé) avant génération.
+**Gate global** : `hasBody = !!editorStore.content`. Les panneaux SEO/GEO/Maillage/Enrichir sont désactivés (overlay grisé) avant génération.
 
 #### 4.4.1 Panneau SEO
 
@@ -431,6 +431,19 @@ Dans le bottom-nav de `MoteurView.vue` :
 - Parsing markdown via `marked.parse()` → v-safe-html.
 - Bouton "Relancer l'analyse".
 
+#### 4.4.5 Panneau Enrichir (depuis le 2026-09-25)
+
+**Composant** : `EnrichmentPanel` (store `enrichment.store`), bouton `toggle-enrich` « Enrichir » dans la barre des panneaux, dans les deux vues de rédaction.
+
+| Section | Rôle | Déclencheurs | Sorties | Gate |
+|---|---|---|---|---|
+| **Passes** (`enrich-pass-sources`, `-exemples`, `-tableaux`, `-images`, `-faq`) | Lance une passe : une proposition par chapitre visé, l'un après l'autre | Clic | `POST /api/generate/enrich/:pass` (SSE, un `done` par chapitre) ; message « rien à faire » sans appel quand aucun chapitre n'est visé | Contenu + capitaine verrouillé + aucune génération / réduction / humanisation / passe en cours |
+| **Relecture de la langue** (`enrich-pass-langue`) | Humanisation qui corrige aussi anglais, franglais, accords, typographie ; appliquée directement | Clic | `POST /api/generate/humanize-section` × N, puis `PUT /articles/:id` | idem |
+| **Progression** (`enrich-progress`) | « Chapitre n/N — titre » (ou « Relecture n/N ») + « Arrêter » | Passe ou relecture en cours | Abandon (`AbortController`) | — |
+| **Propositions** (`proposal-<index>`) | Statut, alertes 🟠/🔴/⛔, « Sources trouvées », « Comparer avant / après » | Proposition reçue | « Accepter » (grisé si ⛔) → chapitre remplacé + `PUT /articles/:id` ; « Refuser » ; statut « chapitre modifié depuis » si le chapitre a changé | — |
+| **Accepter celles sans alerte** (`enrich-accept-clean`) | Accepte toutes les propositions sans aucune alerte | Plus d'une proposition prête | idem | — |
+| **Réécrire un chapitre** (`rewrite-chapter`, `rewrite-instruction`, `rewrite-submit`) | Choisir un chapitre, écrire une consigne (5 caractères au moins) | Clic « Proposer une réécriture » | `POST /api/generate/section-rewrite` → une proposition, à accepter comme les autres | idem + chapitre choisi + consigne |
+
 ---
 
 ## 5. Vues de rédaction
@@ -455,7 +468,7 @@ Espace de travail complet (éditeur TipTap + panneaux en temps réel).
 | Section | Composant | Rôle | Déclencheurs | Sorties |
 |---|---|---|---|---|
 | **Back link + SaveStatusIndicator** | inline + `SaveStatusIndicator` | Retour cocon + statut propre/modifié/sauvegarde | Mutation content (`isDirty`) ; save (`isSaving`) | Nav + feedback icône |
-| **Segment control panneaux** | inline (SEO/GEO/Maillage/Blocs) | Toggle panneaux ; **gate** `!hasBody` désactive SEO/GEO/Maillage/Blocs | Clic | Toggle `activePanel` |
+| **Segment control panneaux** | inline (SEO/GEO/Maillage/Blocs/Enrichir) | Toggle panneaux ; **gate** `!hasBody` désactive SEO/GEO/Maillage/Blocs/Enrichir | Clic | Toggle `activePanel` |
 | **Boutons action** | inline | Supprimer contenu / Save (Ctrl+S) / Preview | Ctrl+S ou clic | `PUT /articles/:id` ; ouverture preview window ; reset |
 
 #### 5.2.2 Zones de contenu (3 branches)
@@ -482,7 +495,7 @@ Espace de travail complet (éditeur TipTap + panneaux en temps réel).
 
 #### 5.2.5 Panneaux latéraux (idem 4.4 + Blocs)
 
-- **SEO / GEO / Maillage** : mêmes composants et rôles qu'en §4.4.
+- **SEO / GEO / Maillage / Enrichir** : mêmes composants et rôles qu'en §4.4 (Enrichir : §4.4.5).
 - **Blocs** (`BlocksPanel`) : palette drag-drop de blocs statiques (HTML) et dynamiques (IA-generated). Drop sur TipTap → insertion directe ou placeholder + `POST /generate/action` (streaming replacement).
 
 ### 5.3 `ArticlePreviewView` — `/article/:articleId/preview` (`hideNavbar`)
@@ -569,7 +582,9 @@ Monitoring GSC.
 | Bouton "Générer Article" | `!hasContent && isOutlineValidated` | Outline validé + no content |
 | Bouton "Réduire" | `hasContent && canReduce && !isReducing && !isGenerating` | Delta > 15 % au-dessus cible |
 | Bouton "Humaniser" | `hasContent && !isReducing && !isGenerating` | Content existe |
-| Panneaux SEO/GEO/Maillage/Blocs (Editor) | `hasBody = !!editorStore.content` | Article généré |
+| Panneaux SEO/GEO/Maillage/Blocs/Enrichir (Editor) | `hasBody = !!editorStore.content` | Article généré |
+| Passes du panneau Enrichir, relecture, réécriture | `articleId && capitaine verrouillé && content && !isRunning && !isGenerating && !isReducing && !isHumanizing` | Premier jet écrit, capitaine verrouillé |
+| « Accepter » une proposition | statut `ready` et aucun défaut ⛔ (`proposal.blocked`) ; chapitre inchangé depuis la proposition, sinon statut « chapitre modifié depuis » | — |
 | Smart Tab | selon `completedChecks` | Article sélectionné |
 | Cerveau — Validation étape | Input non vide OU suggestion existe (`canValidate`) | — |
 | Cerveau — Deepen | Pas de suggestion/deepening/merge en cours (`canDeepen`) | — |
@@ -649,11 +664,14 @@ Monitoring GSC.
 | `/keywords/lexique-suggest` | POST | Suggérer lexique |
 | `/dataforseo/brief` | POST | Données DFS brief (+ forceRefresh) |
 | `/articles/:id/outline` | PUT | Valider sommaire |
-| `/api/generate/article` | POST (SSE) | Génération article |
-| `/api/generate/article-meta` | POST | Meta title + description |
-| `/articles/:id/content` | PUT | Sauvegarde contenu |
-| `/articles/:id/reduce-sections` | POST | Réduction itérative |
-| `/articles/:id/humanize-sections` | POST | Humanisation itérative |
+| `/api/generate/article-draft` | POST (SSE) | Premier jet de l'article, en un appel (remplace `/api/generate/article`, retiré le 2026-09-25) |
+| `/api/generate/meta` | POST | Meta title + description |
+| `/articles/:id/gates/draft` | GET | Porte « accepter le premier jet » (alarme graduée) |
+| `/articles/:id` | PUT | Sauvegarde contenu (+ méta, scores) |
+| `/api/generate/reduce-section` | POST (SSE) | Réduction, une section après l'autre |
+| `/api/generate/humanize-section` | POST (SSE) | Humanisation et relecture de la langue, une section après l'autre |
+| `/api/generate/enrich/:pass` | POST (SSE) | Passe d'enrichissement sur un chapitre (`sources`, `exemples`, `tableaux`, `images`, `faq`) |
+| `/api/generate/section-rewrite` | POST (SSE) | Réécriture d'un chapitre sur consigne |
 | `/api/generate/action` | POST (SSE) | Action contextuelle IA |
 | `/api/generate/brief-explain` | POST (SSE) | Panel IA brief |
 | `/api/articles/:id/link-suggestions` | POST | Suggestions liens internes |
@@ -1175,25 +1193,30 @@ sequenceDiagram
 
     U->>AV: clic Générer l'article
     AV->>ES: generateArticle(brief, outline, target)
-    ES->>API: POST /api/generate/article (SSE)
-    API->>DB: SELECT article_content.outline<br/>+ article_keywords<br/>+ article_micro_contexts<br/>+ theme_config
-    API->>Claude: stream prompt
+    ES->>API: POST /api/generate/article-draft (SSE)
+    API->>DB: SELECT article_strategies + cocoon_strategies<br/>+ article_keywords + article_micro_contexts
+    API->>DB: INSERT article_micro_contexts.target_word_count<br/>(cible retenue, si aucune n'était choisie)
+    API->>Claude: un seul appel, tout le plan, sans recherche web
     loop chaque chunk
         Claude-->>API: chunk HTML
-        API-->>ES: SSE chunk
+        API-->>ES: SSE chunk (+ section-start / section-done à chaque H2)
         ES->>AV: update streamedText + sectionProgress
+        ES->>DB: PUT /articles/:id (texte reçu, à chaque section-done)
     end
-    Claude-->>API: stream end
-    API->>DB: UPDATE article_content SET content=?
-    API-->>ES: content final
+    Claude-->>API: stream end (reprise au chapitre coupé si max_tokens, 2 au plus)
+    API-->>ES: done { content, usage }
+    ES->>DB: PUT /articles/:id (texte final)
 
-    ES->>API: POST /api/generate/article-meta
+    ES->>API: POST /api/generate/meta
     API->>Claude: prompt meta
     Claude-->>API: title + description
-    API->>DB: UPDATE articles SET meta_title=?, meta_description=?
     API-->>ES: meta
+    ES->>DB: PUT /articles/:id (texte + méta)
+    AV->>API: GET /articles/:id/gates/draft (alarme si la porte ne passe pas)
     ES->>AV: affichage ArticleMetaDisplay + word count
 ```
+
+Ensuite, panneau **Enrichir** (§4.4.5) : pour chaque chapitre visé, `POST /api/generate/enrich/:pass` rend une proposition vérifiée ; rien n'est écrit tant que l'utilisateur n'a pas cliqué « Accepter », qui remplace ce seul chapitre puis `PUT /articles/:id`. La passe Sources lit `theme_config` (zone) pour localiser la recherche web ; aucune route de passe n'écrit en base.
 
 ### 11.8 Stratégie de persistance (après Sprints 9-13)
 
@@ -1531,8 +1554,9 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | ContentRecommendation | `article_micro_contexts.target_word_count` | R + W |
 | **OutlineEditor / OutlineDisplay** | `article_content.outline` | R + W (à la validation) |
 | Bouton "Continuer" (outline validé) | Plus de check workflow émis depuis 2026-05-13 (cf. DRIFT-002). La validation du sommaire persiste l'`article_content.outline` JSONB, sans check `redaction:*`. | W |
-| **Bouton Générer article** | `article_content.content`, `articles.meta_title`, `meta_description` | W (stream + save) |
-| Réduction / Humanisation | `article_content.content` (sections réécrites) | W |
+| **Bouton Générer article** (premier jet) | `article_strategies`, `cocoon_strategies`, `article_keywords`, `article_micro_contexts` (R, + W de la cible retenue) ; `article_content.content`, `articles.meta_title`, `meta_description` | R + W (stream + save au fil + save final) |
+| Réduction / Humanisation (relecture de la langue comprise) | `article_content.content` (sections réécrites) | W |
+| **Panneau Enrichir** (passes, réécriture) | `theme_config` (zone, passe Sources, côté serveur) ; `article_content.content` à l'acceptation | R + W (accept) |
 | `ApiCostBadge` | store `editorStore.lastXxxUsage` (non persisté) | — |
 | **Panneau SEO** — KeywordsTab | `article_keywords`, `article_content.content` (+ calcul dynamique `seoStore.score.lexiqueCoverage`) | R |
 | Panneau SEO — IndicatorsTab | `article_content.content`, `articles.meta_*` | R |
@@ -1551,6 +1575,7 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | **ArticleEditor TipTap (3 sections)** | `article_content.content` | W (auto-save 30s) |
 | ActionMenu → ActionResult | `article_content.content` (remplace sélection) | W |
 | ArticlePicker (lien interne) | `articles` (liste pour choix), `internal_links` (création possible) | R + W |
+| **Panneau Enrichir** (passes, relecture, réécriture) | `theme_config` (zone, passe Sources) ; `article_content.content` à l'acceptation | R + W (accept) |
 | **Panneau Blocs** — statiques | — (HTML direct) | — |
 | Panneau Blocs — dynamiques (IA) | `api_cache` C (type dédié éventuel) ; `article_content.content` | W + C |
 | **ArticlePreviewView** | `article_content.content`, `articles.meta_*` | R |

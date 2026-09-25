@@ -3,6 +3,7 @@
 > Vue d'ensemble des flux, composants, stores et données du projet.
 > Dernière mise à jour : 2026-05-04
 > **2026-05-04** : ajout des notes Sprint 4/5 stabilisation (découpage routes/services par responsabilité — voir [Annexe — Découpages structurels post-stabilisation](#annexe--découpages-structurels-post-stabilisation-2026-05-04))
+> **2026-09-25** : rédaction en deux temps (épopée qualité SEO, C5) — premier jet en un appel (`POST /api/generate/article-draft`, remplace `/api/generate/article`), puis passes d'enrichissement proposées chapitre par chapitre (`POST /api/generate/enrich/:pass`, `POST /api/generate/section-rewrite`). Passages concernés mis à jour (§3.1, §3.2, §3.3, §7, §10, annexes) ; le reste du document n'a pas été revu.
 
 ---
 
@@ -194,9 +195,10 @@ graph LR
 
 ```mermaid
 graph TB
-    subgraph Article["📝 stores/article/ (8 stores)"]
+    subgraph Article["📝 stores/article/ (8 stores + enrichment.store depuis 2026-09-25)"]
         articles["articles.store"]
         editor["editor.store"]
+        enrichment["enrichment.store"]
         basket["moteur-basket.store"]
         outline["outline.store"]
         seo["seo.store"]
@@ -290,9 +292,14 @@ sequenceDiagram
     outlineStore->>API: POST /api/generate/outline (SSE)
     API-->>outlineStore: streaming chunks
 
-    User->>editorStore: generateArticle(briefData, outline)
-    editorStore->>API: POST /api/generate/article (SSE)
-    API-->>editorStore: streaming chunks
+    User->>editorStore: generateArticle(briefData, outline, targetWordCount)
+    editorStore->>API: POST /api/generate/article-draft (SSE, un seul appel IA)
+    API-->>editorStore: chunks + section-start / section-done par H2
+
+    User->>enrichmentStore: runPass(pass) / rewriteChapter(index, consigne)
+    enrichmentStore->>API: POST /api/generate/enrich/:pass (un appel par chapitre)
+    API-->>enrichmentStore: done { proposition vérifiée }
+    enrichmentStore->>editorStore: accept → setContent (un seul chapitre) + saveArticle
 
     editorStore->>seoStore: recalculate(content, kw, meta...)
     Note over seoStore: Calcul SEO client-side, 300ms debounce
@@ -327,9 +334,17 @@ sequenceDiagram
 #### editor.store (article/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `generateArticle(briefData, outline)` | BriefData, Outline | content (streamé) | POST `/api/generate/article` SSE |
+| `generateArticle(briefData, outline, target?, id?)` | BriefData, Outline | content (streamé, premier jet en un appel) | POST `/api/generate/article-draft` SSE |
 | `generateMeta(...)` | 4 strings | metaTitle + metaDescription | POST `/api/generate/meta` |
+| `humanizeArticle(id, kw, kws)` | — | content relu section par section (tics d'IA + langue) | POST `/api/generate/humanize-section` × N |
 | `saveArticle(articleId)` | string | persisté | PUT `/api/articles/:id` |
+
+#### enrichment.store (article/) — depuis 2026-09-25
+| Action | Input | Output | API |
+|--------|-------|--------|-----|
+| `runPass(pass, ctx)` | `sources` \| `exemples` \| `tableaux` \| `images` \| `faq` | une proposition vérifiée par chapitre visé | POST `/api/generate/enrich/:pass` SSE (un `done` par appel) |
+| `rewriteChapter(index, consigne, ctx)` | number, string | une proposition | POST `/api/generate/section-rewrite` SSE |
+| `accept(key)` / `refuse(key)` / `acceptAllClean()` | clé | chapitre remplacé (ou FAQ insérée) dans `editorStore.content` ; `stale` si le chapitre a changé | — (le panneau enregistre ensuite : PUT `/api/articles/:id`) |
 
 #### intent.store (keyword/) — **simplifié 2026-05-10**
 Plus d'actions network. Refs (`intentData`, `comparisonData`, `autocompleteData`,
@@ -637,18 +652,24 @@ graph TB
     end
 
     subgraph Step2["Step 2 — ARTICLE"]
-        GEN_ARTICLE["🤖 generateArticle(briefData, outline)<br>POST /api/generate/article (SSE)<br>sectionProgress tracking"]
-        EDITOR["📝 TipTap Editor (ArticleEditor)<br>Extensions : link, placeholder, starter-kit"]
+        GEN_ARTICLE["🤖 generateArticle(briefData, outline, target)<br>POST /api/generate/article-draft (SSE)<br>premier jet en un appel, sans recherche web<br>sectionProgress réémis par H2"]
+        GATE_DRAFT["🚦 porte « accepter le premier jet »<br>GET /api/articles/:id/gates/draft<br>(alerte, ne bloque pas)"]
+        EDITOR["📝 TipTap Editor (ArticleEditor)<br>Extensions : starter-kit, link, table, image,<br>placeholder, blocs maison, marque toSource"]
         GEN_META["🏷️ generateMeta<br>POST /api/generate/meta"]
+        ENRICH["✨ Panneau Enrichir (enrichment.store)<br>POST /api/generate/enrich/:pass<br>sources · exemples · tableaux · images · faq<br>POST /api/generate/section-rewrite<br>une proposition vérifiée par chapitre → accepter / refuser"]
+        LANG["🔤 Relecture de la langue<br>humanizeArticle → POST /api/generate/humanize-section × N"]
         SEO_LIVE["📊 SEO Score Live<br>useSeoScoring watcher<br>300ms debounce + requestIdleCallback"]
-        SAVE_ART["💾 saveArticle(articleId)<br>PUT /api/articles/:id<br>autoSave (useAutoSave)"]
+        SAVE_ART["💾 saveArticle(articleId)<br>PUT /api/articles/:id<br>autoSave (useAutoSave, éditeur libre) · Ctrl+S"]
         ACTIONS["⚡ Actions contextuelles<br>useContextualActions<br>server/prompts/actions/*.md"]
 
-        GEN_ARTICLE --> EDITOR
-        EDITOR --> GEN_META
+        GEN_ARTICLE --> GEN_META --> GATE_DRAFT --> EDITOR
+        EDITOR --> ENRICH
+        EDITOR --> LANG
         EDITOR --> SEO_LIVE
         EDITOR --> SAVE_ART
         EDITOR --> ACTIONS
+        ENRICH --> SAVE_ART
+        LANG --> SAVE_ART
     end
 
     VALIDATE --> GEN_ARTICLE
@@ -670,12 +691,14 @@ graph LR
         SEO_PANEL["SeoPanel<br>① Keywords<br>② Indicators<br>③ SerpData"]
         GEO_PANEL["GeoPanel<br>Scoring géographique"]
         LINK_PANEL["LinkSuggestions<br>Suggestions liens internes"]
+        ENRICH_PANEL["EnrichmentPanel<br>Passes d'enrichissement,<br>relecture, réécriture"]
         ALERTS["ParagraphAlerts + JargonAlerts"]
     end
 
     ARTICLE_PANEL --> SEO_PANEL
     ARTICLE_PANEL --> GEO_PANEL
     ARTICLE_PANEL --> LINK_PANEL
+    ARTICLE_PANEL --> ENRICH_PANEL
     ARTICLE_PANEL --> ALERTS
 ```
 
@@ -838,7 +861,7 @@ sequenceDiagram
 
     UI->>Store: generateOutline(briefData) / generateArticle(briefData, outline)
     Store->>Hook: startStream(url, body, callbacks)
-    Hook->>API: POST /api/generate/outline (ou /article)
+    Hook->>API: POST /api/generate/outline (ou /article-draft)
     API->>AI: prompt enrichi via loadPrompt()
 
     loop Chunks SSE
@@ -849,11 +872,11 @@ sequenceDiagram
         Store->>Store: streamedText += text
     end
 
-    opt Section tracking (article only)
-        API-->>Hook: event: section_start {title}
-        Hook-->>Store: onSectionStart(title)
-        API-->>Hook: event: section_done {title}
-        Hook-->>Store: onSectionDone(title)
+    opt Section tracking (premier jet only — le serveur repère chaque H2 du flux)
+        API-->>Hook: event: section-start {index, total, title}
+        Hook-->>Store: onSectionStart(info)
+        API-->>Hook: event: section-done {index}
+        Hook-->>Store: onSectionDone(index)
     end
 
     API-->>Hook: event: usage {inputTokens, outputTokens, cost}
@@ -862,6 +885,8 @@ sequenceDiagram
     Hook-->>Store: onDone(result)
     Store->>Store: content = result / outline = parse(result)
 ```
+
+**Passes d'enrichissement et réécriture** (depuis le 2026-09-25) : pas de `chunk`. Le serveur accumule la réponse, la vérifie (`verifyEnrichment`), puis envoie **un seul** `event: done` (la proposition entière, `usage` compris) ou `event: error` ; pendant une recherche web, un commentaire SSE `: en cours` part toutes les 15 s pour garder la connexion. Côté écran : `startStreamOnce` (`enrichment.store`). Avec un outil (recherche web), `ai-provider` n'essaie que Claude (ou la simulation) : pas de repli vers Gemini / OpenRouter.
 
 ### useStreaming — État interne
 
@@ -879,9 +904,9 @@ stateDiagram-v2
 
     state Streaming {
         [*] --> ReceivingChunks
-        ReceivingChunks --> SectionStart: section_start event
+        ReceivingChunks --> SectionStart: section-start event
         SectionStart --> ReceivingChunks
-        ReceivingChunks --> SectionDone: section_done event
+        ReceivingChunks --> SectionDone: section-done event
         SectionDone --> ReceivingChunks
     }
 ```
@@ -1180,7 +1205,10 @@ graph TB
 | GET | `/api/articles/:id/progress` | article-progress | Progress article |
 | POST | `/api/articles/:id/progress/check` | article-progress | Ajoute un check |
 | POST | `/api/generate/outline` | outline | Génération plan (SSE) — `server/routes/generate/outline.routes.ts` |
-| POST | `/api/generate/article` | editor | Génération article (SSE) — `server/routes/generate/article.routes.ts` |
+| POST | `/api/generate/article-draft` | editor | Premier jet en un appel (SSE, progression par H2, reprise après coupure) — `server/routes/generate/article-draft.routes.ts` ; remplace `/api/generate/article` (retiré le 2026-09-25) |
+| POST | `/api/generate/enrich/:pass` | enrichment | Passe d'enrichissement sur un chapitre : `sources` (recherche web), `exemples`, `tableaux`, `images`, `faq` (SSE, un seul `done`) — `server/routes/generate/enrich.routes.ts` |
+| POST | `/api/generate/section-rewrite` | enrichment | Réécriture d'un chapitre sur consigne (SSE, un seul `done`) — `server/routes/generate/enrich.routes.ts` |
+| GET | `/api/articles/:id/gates/:gateId` | gate-alarm | Évaluation d'une porte de qualité (`draft`, `publish`…) — `server/routes/gates.routes.ts` |
 | POST | `/api/generate/meta` | editor | Génération meta tags — `server/routes/generate/meta.routes.ts` |
 | POST | `/api/generate/reduce-section` | editor | Réduction de section — `server/routes/generate/reduce-section.routes.ts` |
 | POST | `/api/generate/humanize-section` | editor | Humanisation section — `server/routes/generate/humanize-section.routes.ts` |
@@ -1244,7 +1272,7 @@ server/routes/
     ├── index.ts                    ← mergeRouter (préserve la forme publique de router.stack)
     ├── _helpers.ts                 ← rate-limit, consumeStream, prompt builders, SSE_HEADERS, etc.
     ├── outline.routes.ts           ← POST /api/generate/outline
-    ├── article.routes.ts           ← POST /api/generate/article
+    ├── article.routes.ts           ← POST /api/generate/article (retiré le 2026-09-25 : remplacé par article-draft.routes.ts ; enrich.routes.ts ajouté pour les passes et la réécriture)
     ├── reduce-section.routes.ts    ← POST /api/generate/reduce-section
     ├── humanize-section.routes.ts  ← POST /api/generate/humanize-section
     ├── meta.routes.ts              ← POST /api/generate/meta

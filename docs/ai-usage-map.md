@@ -83,11 +83,13 @@ Lignes grisées = `classifyWithTool` (JSON structuré). Lignes normales = `strea
 | Fonctionnalité | Route | Fichier:ligne | Type appel | Modèle par défaut | Où changer |
 |---|---|---|---|---|---|
 | Génération outline (sommaire) | `POST /generate/outline` | [generate.routes.ts:191](../server/routes/generate.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
-| Génération article section-by-section | `POST /generate/article` | [generate.routes.ts:538](../server/routes/generate.routes.ts) | `streamChatCompletion` (avec `WEB_SEARCH_TOOL` optionnel) | `CLAUDE_MODEL` env | idem |
+| Premier jet de l'article, en un appel (remplace la génération section par section depuis le 2026-09-25) | `POST /generate/article-draft` | [article-draft.routes.ts:163](../server/routes/generate/article-draft.routes.ts) | `streamChatCompletion` **sans outil** (pas de recherche web) ; reprise au chapitre coupé, 2 au plus | `CLAUDE_MODEL` env | idem |
+| Passe d'enrichissement sur un chapitre (`sources`, `exemples`, `tableaux`, `images`, `faq`) | `POST /generate/enrich/:pass` | [enrichment.service.ts:96](../server/services/article/enrichment.service.ts) | `collectStreamWithUsage` ; passe `sources` seulement : `webSearchTool(zone)` (France, `Europe/Paris`, ville de la zone, 3 recherches max) → **Claude uniquement**, jamais de repli | `CLAUDE_MODEL` env | idem |
+| Réécriture d'un chapitre sur consigne | `POST /generate/section-rewrite` | [enrichment.service.ts:96](../server/services/article/enrichment.service.ts) | `collectStreamWithUsage` (sans outil) | `CLAUDE_MODEL` env | idem |
 | Génération meta (title + description) | `POST /generate/meta` | [generate.routes.ts:891](../server/routes/generate.routes.ts) | `streamChatCompletion` (`maxTokens: 1024`) | `CLAUDE_MODEL` env | idem |
 | Réduction de section | `POST /generate/reduce-section` | [generate.routes.ts:676](../server/routes/generate.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
-| Humanisation de section (2 passes) | `POST /generate/humanize-section` | [generate.routes.ts:773, 804](../server/routes/generate.routes.ts) | `streamChatCompletion` × 2 | `CLAUDE_MODEL` env | idem |
-| Actions contextuelles (reformuler, ajouter exemple...) | `POST /generate/action` | [generate.routes.ts:994](../server/routes/generate.routes.ts) | `streamChatCompletion` (avec tools) | `CLAUDE_MODEL` env | idem |
+| Humanisation de section (2 essais) — aussi « Relecture de la langue » du panneau Enrichir depuis le 2026-09-25 | `POST /generate/humanize-section` | [generate.routes.ts:773, 804](../server/routes/generate.routes.ts) | `streamChatCompletion` × 2 | `CLAUDE_MODEL` env | idem |
+| Actions contextuelles (reformuler, ajouter exemple...) | `POST /generate/action` | [action.routes.ts:51](../server/routes/generate/action.routes.ts) | `streamChatCompletion` (avec `WEB_SEARCH_TOOL` — France, sans ville — pour `sources-chiffrees` et `exemples-reels` : Claude uniquement) | `CLAUDE_MODEL` env | idem |
 | Suggestion micro-context | `POST /generate/micro-context-suggest` | [generate.routes.ts:1060](../server/routes/generate.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
 | Brief-explain (explication guidée) | `POST /generate/brief-explain` | [generate.routes.ts:1152](../server/routes/generate.routes.ts) | `streamChatCompletion` (`maxTokens: 4096`) | `CLAUDE_MODEL` env | idem |
 
@@ -160,7 +162,8 @@ D'après [claude.service.ts:19-21](../server/services/external/claude.service.ts
 **Coût typique par fonctionnalité** (observé pendant les tests) :
 - `radar/generate` avec Haiku : **~$0.003** (1255 input + 584 output tokens)
 - `analyze-discovery` avec Sonnet : **~$0.02-0.04**
-- `generate/article` (pilier complet) avec Sonnet : **~$0.10-0.30**
+- `generate/article` (pilier complet, rédaction section par section, retirée le 2026-09-25) avec Sonnet : **~$0.10-0.30** — le premier jet (`generate/article-draft`) n'a pas encore de mesure publiée ici
+- Passe `enrich/sources` : chaque recherche web ajoute ~10-15k jetons d'entrée (jusqu'à 3 par chapitre), un appel par chapitre à sourcer — la passe la plus chère ; les autres passes coûtent un appel sans outil par chapitre visé
 
 ---
 
@@ -265,7 +268,10 @@ Si rien ne s'affiche :
 | Route | Type | Usage remonté ? |
 |---|---|---|
 | `/generate/outline` | SSE | ✅ |
-| `/generate/article` | SSE | ✅ |
+| `/generate/article` | SSE | ✅ (route retirée le 2026-09-25) |
+| `/generate/article-draft` | SSE | ✅ (usage de `done`, modèles de chaque appel) — ajout 2026-09-25 |
+| `/generate/enrich/:pass` | SSE | ✅ (`usage` dans la proposition de `done`, `webSources` compris) — ajout 2026-09-25 |
+| `/generate/section-rewrite` | SSE | ✅ (idem) — ajout 2026-09-25 |
 | `/generate/meta` | SSE | ✅ |
 | `/generate/reduce-section` | SSE | ✅ |
 | `/generate/humanize-section` | SSE | ✅ |
@@ -307,6 +313,8 @@ Voir [ai-provider.service.ts::getProviderChain](../server/services/external/ai-p
 
 Désactiver : `AI_PROVIDER_NO_FALLBACK=1` dans `.env`.
 
+**Exception — recherche web** (depuis le 2026-09-25) : une requête qui passe un outil (passe `enrich/sources`, actions `sources-chiffrees` / `exemples-reels`) n'essaie que Claude (ou `mock`) : `TOOL_CAPABLE_PROVIDERS` dans [ai-provider.service.ts](../server/services/external/ai-provider.service.ts). Claude épuisé → la requête échoue avec son erreur ; aucun fournisseur capable dans la chaîne → « La recherche web exige Claude… ». Gemini et OpenRouter ignoreraient l'outil et répondraient sans source.
+
 ---
 
-**Dernière mise à jour** : 2026-04-23
+**Dernière mise à jour** : 2026-09-25 (rédaction en deux temps : premier jet, passes d'enrichissement, recherche web sans repli ; le reste du document date du 2026-04-23)

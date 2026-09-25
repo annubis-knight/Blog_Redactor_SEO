@@ -89,7 +89,7 @@ Projet brownfield mature. Aucun starter template. Le stack est en place.
 | Vue Router | 5.0.3 | Routing SPA |
 | Pinia | 3.0.4 | State management |
 | TipTap Core | 3.22.3 | Éditeur rich-text |
-| TipTap extensions | 3.20.1 (link, placeholder, starter-kit, vue-3) | Éditeur |
+| TipTap extensions | 3.20.1 (link, placeholder, starter-kit, vue-3) ; 3.22.3 (table, image — depuis le 2026-09-25, pour les passes d'enrichissement) | Éditeur |
 | Express | 5.2.1 | Serveur API |
 | PostgreSQL (pg) | 8.20.0 | Base de données |
 | TypeScript | 5.9.3 | Typage |
@@ -216,7 +216,7 @@ Pour les métriques mot-clé : consultation `keyword_metrics` AVANT DataForSEO (
 - Prefix : `/api/`
 - Format succès : `{ data: T }`
 - Format erreur : `{ error: { code: string, message: string, details?: unknown } }` — `details` porte l'évaluation complète d'une porte refusée (422 `GATE_BLOCKED`, cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)) ; côté client, `ApiRequestError` expose `status`, `code` et `details`
-- Streaming : SSE pour génération (outline, article, reduce-section, AI panels)
+- Streaming : SSE pour génération (outline, premier jet `article-draft`, reduce-section, humanize-section, AI panels) ; les passes d'enrichissement et la réécriture d'un chapitre (`enrich/:pass`, `section-rewrite`) accumulent puis envoient un seul événement `done` (proposition vérifiée)
 - Proxy Vite : `/api` → `http://localhost:3400` (frontend dev sur `:5400` — NFR-CFG-APP-PORTS)
 
 **Wrapper frontend :**
@@ -233,7 +233,7 @@ Pour les métriques mot-clé : consultation `keyword_metrics` AVANT DataForSEO (
 | keywords.routes | `/api` | Keywords (discover, audit, suggest-lexique…) |
 | articles.routes | `/api` | Articles (CRUD, status, micro-context, progress) |
 | dataforseo.routes | `/api/dataforseo` | DataForSEO (brief, cost-status) |
-| generate.routes | `/api` | Génération SSE (outline, article, reduce-section, meta) |
+| generate.routes | `/api` | Génération SSE (outline, premier jet `article-draft`, meta, reduce-section, humanize-section, action, passes `enrich/:pass`, `section-rewrite`…) ; `/generate/article` retirée le 2026-09-25 |
 | links.routes | `/api` | Matrice liens internes |
 | export.routes | `/api` | Export HTML |
 | intent.routes | `/api` | Analyse d'intention |
@@ -337,7 +337,7 @@ Scraping top N résultats (curseur 3-10, défaut 10, DataForSEO)
 | **Dérogations liées à une empreinte** | Table `gate_waivers` (article, porte, règle, niveau, catégorie, raison, `input_hash`, date ; UNIQUE `(article_id, gate_id, rule, input_hash)`, CASCADE sur `articles`). `hashGateInput` = FNV-1a 32 bits sur JSON à clés triées. Une règle multi-éléments embarque l'élément dans son identifiant (`lieutenant-cannibalization:<mot>`). | Une dérogation tombe dès que les données vérifiées changent, et ne couvre qu'un point. |
 | **Alarme globale unique** | `src/stores/ui/gate-alarm.store.ts` (`evaluate`, `ensure`, `open`, `submit`, `cancel`, `runThroughGate` qui rejoue l'action une fois après dérogation) + `src/components/shared/GateAlarm.vue`, monté une seule fois dans `App.vue`. | Le geste a lieu dans n'importe quel panneau, l'alarme s'affiche au-dessus de tout, une seule à la fois. |
 
-**Portes livrées** : `captain-lock`, `lieutenants-lock`, `publish`. **Réservées** (acceptées par la route, sans alerte tant que leur chantier n'est pas livré) : `lexique-lock` (C3), `draft` (C5), `hn-lock` (C6).
+**Portes livrées** : `captain-lock`, `lieutenants-lock`, `publish` (C2), `lexique-lock` (C3), `draft` (C5a : « accepter le premier jet », qui alerte sans bloquer). **Réservée** (acceptée par la route, sans alerte tant que son chantier n'est pas livré) : `hn-lock` (C6). **Hors portes** : `shared/verifiers/enrichment.ts` juge chaque proposition des passes d'enrichissement avant qu'elle soit montrée (mêmes niveaux, sans empreinte ni dérogation ; une proposition ⛔ ne s'accepte pas — C5b).
 
 **Invariants** : aucune dérogation automatique (les scripts s'arrêtent) ; tout nouveau vérificateur est pur et vit dans `shared/verifiers/` ; tout nouveau point de passage gardé passe par `evaluateArticleGate`. Détails : `design-registry.md` (`DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`).
 
@@ -500,8 +500,8 @@ res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: 'Invalid id' 
 
 ```
 event: chunk\ndata: {"text": "..."}\n\n
-event: section_start\ndata: {"title": "..."}\n\n
-event: section_done\ndata: {"title": "..."}\n\n
+event: section-start\ndata: {"index": 0, "total": 7, "title": "..."}\n\n   (premier jet)
+event: section-done\ndata: {"index": 0}\n\n                               (premier jet)
 event: usage\ndata: {"inputTokens": ..., "outputTokens": ..., "cost": ...}\n\n
 event: done\ndata: {"result": ...}\n\n
 event: error\ndata: {"message": "..."}\n\n
@@ -663,7 +663,8 @@ Blog_Redactor_SEO_rebirth/
 │   │   ├── infra/                # data, discovery-cache, paa-cache, radar-cache, radar-exploration, local-entities
 │   │   └── queries/              # keyword-queries
 │   ├── prompts/                  # 45 prompts .md
-│   │   ├── generate-outline.md, generate-article.md, generate-article-section.md, generate-meta.md, generate-reduce-section.md
+│   │   ├── generate-outline.md, generate-article-draft.md, generate-meta.md, reduce-section.md   (generate-article.md, generate-article-section.md supprimés en 2026-09)
+│   │   ├── enrich-sources.md, enrich-exemples.md, enrich-tableaux.md, enrich-images.md, enrich-faq.md, section-rewrite.md   (passes d'enrichissement, 2026-09-25)
 │   │   ├── strategy-suggest.md, strategy-deepen.md, strategy-consolidate.md, strategy-merge.md, strategy-enrich.md
 │   │   ├── cocoon-brainstorm.md, cocoon-paa-queries.md, cocoon-articles.md, cocoon-articles-topics.md, cocoon-articles-spe.md, cocoon-add-article.md
 │   │   ├── intent-keywords.md, intent-scan.md
@@ -978,7 +979,7 @@ Appel service keyword-validate pour "crm pme"
 | FR46-FR48 : Labo | `src/views/LaboView.vue` (composants en mode `libre`) |
 | FR49-FR52 : Cache & persistance | `server/services/infra/*-cache.service.ts`, `server/services/keyword/keyword-metrics.service.ts`, `server/db/client.ts`, purge horaire dans `server/index.ts` |
 | FR53-FR54 : Cerveau | `src/views/CerveauView.vue`, `src/components/strategy/*`, `src/stores/strategy/{strategy,cocoon-strategy}.store.ts`, `server/services/strategy/*`, prompts `strategy-*.md` |
-| FR55-FR60 : Rédaction | `src/views/RedactionView.vue`, `ArticleWorkflowView.vue`, `ArticleEditorView.vue`, `src/components/editor/ArticleEditor.vue`, `src/components/outline/*`, `src/stores/article/{brief,outline,editor,seo}.store.ts`, `server/routes/generate.routes.ts`, `server/services/article/*`, prompts `generate-*.md`, `actions/*.md` |
+| FR55-FR60 : Rédaction | `src/views/RedactionView.vue`, `ArticleWorkflowView.vue`, `ArticleEditorView.vue`, `src/components/editor/ArticleEditor.vue`, `src/components/outline/*`, `src/stores/article/{brief,outline,editor,seo,enrichment}.store.ts`, `src/components/panels/EnrichmentPanel.vue`, `server/routes/generate.routes.ts` (dont `generate/article-draft.routes.ts`, `generate/enrich.routes.ts`), `server/services/article/*`, prompts `generate-*.md`, `actions/*.md` |
 
 ---
 

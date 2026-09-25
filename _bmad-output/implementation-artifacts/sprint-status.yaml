@@ -929,9 +929,17 @@ development_status:
   # répétitions 🔴 à la publication ; l'ancienne rédaction section par section
   # est retirée. FR-RED-DRAFT-SINGLE-PASS et FR-RED-DRAFT-TO-SOURCE versées au
   # PRD et au registre, FR-RED-ARTICLE superseded. Restes : R14-R16, U1, U2.
-  # C5b (feat/redaction-enrichissement) : à faire — réécriture d'une section,
-  # passes d'enrichissement, relecture de la langue, maillage manuel.
-  qualite-seo-c5-redaction-deux-temps: in-progress
+  # C5b (feat/redaction-enrichissement, 2026-09-25) : code livré, en revue, PR à
+  # ouvrir. Recherche web localisée, sources réelles gardées, sans repli silencieux
+  # (Claude seul) ; passes Sources, Exemples, Tableaux, Images, FAQ proposées
+  # chapitre par chapitre et vérifiées (POST /generate/enrich/:pass), réécriture
+  # d'un chapitre sur consigne (POST /generate/section-rewrite), relecture de la
+  # langue (humanisation enrichie) ; panneau « Enrichir » ; TipTap Table + Image ;
+  # ⛔ image « à fournir » à la publication ; R16 soldée à l'écran. FR-RED-ENRICH-
+  # PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE, FR-RED-LANG-REVIEW
+  # versées au PRD et au registre. Non livrée : FR-RED-LINKING-MANUAL (reste
+  # réservée). Restes : R13-R15, R17-R24, U1, T12.
+  qualite-seo-c5-redaction-deux-temps: review
   qualite-seo-c6-onglet-structure-hn: backlog
   qualite-seo-c7-cocon-progressif: backlog
   qualite-seo-c8-recette-reelle: backlog

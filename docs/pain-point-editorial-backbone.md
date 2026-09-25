@@ -3,7 +3,7 @@
 > Dernière mise à jour : **2026-05-06** (Sprint 10.5 — formalisation immutabilité après Cerveau)
 > Doc complémentaire : [docs/scoring-kpi-vs-relevance.md](./scoring-kpi-vs-relevance.md)
 > Source de vérité technique : code dans `src/`, `server/`, `shared/` — ce document décrit l'intention et l'usage transverse.
-> Last verified against code : **2026-05-06**.
+> Last verified against code : **2026-05-06** ; passages Rédaction (premier jet, passes d'enrichissement) revus le **2026-09-25**.
 
 ---
 
@@ -75,9 +75,10 @@ Dans la phase **Cerveau** (stratégie cocon), au moment de la création de chaqu
 ┌────────────────────────────────────────────────────────────┐
 │  RÉDACTION                                                 │
 │  ─────────                                                 │
-│  Outline + sections + meta : painPoint via strategyContext │
-│  Prompts : generate-article-section, generate-outline,     │
-│            humanize-section                                │
+│  Outline + premier jet : painPoint via strategyContext     │
+│  Prompts : generate-article-draft, generate-outline        │
+│  Passes d'enrichissement, réécriture, humanisation :       │
+│            PAS de painPoint (aucune stratégie transmise)   │
 └────────────────────────────────────────────────────────────┘
 ```
 
@@ -164,7 +165,7 @@ Avantage : la richesse sémantique fine des PAA (5 niveaux topicWeight × 3 nive
 | [cocoon-articles-spe.md](../server/prompts/cocoon-articles-spe.md) | structure JSON `painPoint` | Idem pour les articles Spécialisés (sous-douleurs) | Cerveau |
 | [strategy-deepen.md](../server/prompts/strategy-deepen.md) | `{{contextBlock}}` (contient painPoint) | Approfondissement progressif via sous-questions | Cerveau |
 | [theme-parse.md](../server/prompts/theme-parse.md) | parsing libre | Extrait douleurs métier d'un brief client | Cerveau |
-| [generate-article-section.md](../server/prompts/generate-article-section.md) | `{{strategyContext}}` (agrège douleur) | Calibre ton et angle des sections rédigées | Rédaction |
+| [generate-article-draft.md](../server/prompts/generate-article-draft.md) | `{{strategyContext}}` (agrège douleur ; stratégie de l'article, sinon du cocon) | Calibre ton et angle du premier jet, écrit en un appel (remplace `generate-article-section.md`, supprimé le 2026-09-25) | Rédaction |
 | [system-propulsite.md](../server/prompts/system-propulsite.md) | system prompt global | Règles Brain-First : la douleur prime sur le keyword | Tous |
 
 ### 🟢 Prompts Moteur — couverture livrée (Sprint S1) ✅
@@ -185,7 +186,8 @@ Avantage : la richesse sémantique fine des PAA (5 niveaux topicWeight × 3 nive
 | [brief-ia-panel.md](../server/prompts/brief-ia-panel.md) | Rédaction | Analyse brief calibrée douleur (ton, angles, omissions) |
 | [generate-outline.md](../server/prompts/generate-outline.md) | Rédaction | Outline qui répond explicitement à la douleur (déjà partiel via strategyContext) |
 | [micro-context-suggest.md](../server/prompts/micro-context-suggest.md) | Rédaction | Micro-context qui ramène en permanence la rédaction à la douleur |
-| [humanize-section.md](../server/prompts/humanize-section.md) | Rédaction | Humanisation alignée sur le vocabulaire de la douleur |
+| [humanize-section.md](../server/prompts/humanize-section.md) | Rédaction | Humanisation (et, depuis le 2026-09-25, relecture de la langue) alignée sur le vocabulaire de la douleur |
+| [enrich-sources.md](../server/prompts/enrich-sources.md), [enrich-exemples.md](../server/prompts/enrich-exemples.md), [enrich-tableaux.md](../server/prompts/enrich-tableaux.md), [enrich-images.md](../server/prompts/enrich-images.md), [enrich-faq.md](../server/prompts/enrich-faq.md), [section-rewrite.md](../server/prompts/section-rewrite.md) | Rédaction (passes d'enrichissement, 2026-09-25) | Aujourd'hui sans douleur ni stratégie : `enrichment.service.ts` charge ces prompts sans `cocoonSlug`, `{{strategy_context}}` reste vide. Un exemple ou une FAQ qui partent de la douleur du lecteur gagneraient en pertinence (épopée qualité SEO, checklist R18) |
 
 ---
 
