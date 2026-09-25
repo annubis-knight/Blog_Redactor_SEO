@@ -32,7 +32,7 @@
     "test:unit": "vitest",
     "test:snapshot": "tsx scripts/test-snapshot.ts",
     "test:check": "tsx scripts/test-check.ts",
-    "pretest:browser": "node scripts/kill-port.mjs 3410 5410",
+    "pretest:browser": "node scripts/kill-port.mjs 3410 5410 && tsx scripts/e2e-test-db.ts",
     "test:browser": "playwright test",
     "test:browser:ui": "playwright test --ui",
     "build-only": "vite build",

@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { e2eDatabaseName, e2eUsesOwnDatabase } from './tests/browser-e2e/e2e-database'
 
 /**
  * Ports propres aux tests navigateur (épopée qualité SEO, checklist T8).
@@ -14,6 +15,16 @@ const E2E_CLIENT_PORT = Number(process.env.E2E_CLIENT_PORT) || 5410
 // Seulement quand Playwright démarre lui-même le serveur : sinon (PLAYWRIGHT_NO_SERVER),
 // c'est l'appelant qui choisit PORT pour viser son propre serveur.
 if (!process.env.PLAYWRIGHT_NO_SERVER) process.env.PORT = String(E2E_SERVER_PORT)
+
+/**
+ * Base propre aux tests navigateur (T10), recréée par `pretest:browser`
+ * (`scripts/e2e-test-db.ts`) : le serveur de test et les helpers (qui lisent la
+ * base directement) y pointent, jamais sur celle de développement. Un passage
+ * réel (`PARCOURS_REEL=1`) garde la base de développement : ses données sont
+ * faites pour être relues.
+ */
+const E2E_DATABASE = e2eUsesOwnDatabase(process.env) ? e2eDatabaseName(process.env) : null
+if (E2E_DATABASE) process.env.PG_DATABASE = E2E_DATABASE
 
 /**
  * Playwright config — tests browser pour les comportements UI qui ne peuvent
@@ -56,7 +67,12 @@ export default defineConfig({
           port: E2E_SERVER_PORT,
           reuseExistingServer: true,
           timeout: 60000,
-          env: { AI_PROVIDER: 'mock', NODE_ENV: 'development', PORT: String(E2E_SERVER_PORT) },
+          env: {
+            AI_PROVIDER: 'mock',
+            NODE_ENV: 'development',
+            PORT: String(E2E_SERVER_PORT),
+            ...(E2E_DATABASE ? { PG_DATABASE: E2E_DATABASE } : {}),
+          },
         },
         {
           command: 'npm run dev:client',
