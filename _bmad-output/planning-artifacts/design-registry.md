@@ -116,6 +116,7 @@ Ce bloc est important parce que c'est typiquement là que se cachent les bugs de
 - [§8.5 — Moteur — Radar (DESIGN-RAD)](#85--moteur--radar-design-rad)
 - [§8.6 — Moteur — Capitaine (DESIGN-CAP)](#86--moteur--capitaine-design-cap)
 - [§8.7 — Moteur — Lieutenants (DESIGN-LIE)](#87--moteur--lieutenants-design-lie)
+- [§8.7.bis — Moteur — Structure (DESIGN-HN)](#87bis--moteur--structure-design-hn) — depuis C6 (2026-09-25)
 - [§8.8 — Moteur — Lexique (DESIGN-LEX)](#88--moteur--lexique-design-lex)
 - [§8.9 — Moteur — Finalisation (DESIGN-FIN)](#89--moteur--finalisation-design-fin)
 - [§8.10 — Rédaction (DESIGN-RED)](#810--rédaction-design-red)
@@ -369,6 +370,8 @@ Sans données concurrentes, la base de la recommandation est la longueur visée 
 
 *Écriture* : aucune par l'endpoint lui-même. Si l'utilisateur accepte la recommandation, l'écriture passe par le flux micro-context (`PUT /api/articles/:id/micro-context`).
 
+*Déclenchement automatique* (C6, commit `d24e530`) : « Valider la structure » appelle `recommendWordCount` ([useStructureHn.ts:166-192](../../src/composables/moteur/useStructureHn.ts)) : recommandation, lecture du micro-contexte, écriture de `targetWordCount` **seulement** s'il est vide (jamais d'écrasement d'une valeur choisie), message « 💡 Longueur conseillée » dans la pile d'activité. Avant C6, le même enchaînement partait du verrouillage du premier lieutenant (`recommendAndPropagateWordCount` de `LieutenantsPanel.vue`, supprimée), sur une structure produite avant le choix des lieutenants.
+
 **Stores Pinia**
 - `useBriefStore` — fetch initial avec une recommandation heuristique synchrone (calcul local basé sur le type, pour éviter le flicker), puis appel IA non-bloquant qui remplace la valeur dans `briefData.contentLengthRecommendation` quand la réponse arrive. Garantit qu'un brief s'affiche toujours, même si l'endpoint IA échoue ou tarde.
 
@@ -553,9 +556,9 @@ Seules les valeurs **validated** sont incluses. Les valeurs non-validées ou vid
 
 **Réf PRD :** [FR-DASH-PROGRESS](./prd.md#fr-dash-progress)
 
-**Refs code**
-- [src/components/dashboard/ArticleCard.vue](../../src/components/dashboard/ArticleCard.vue) — rendu des dots ●/○.
-- [src/components/dashboard/ProgressDots.vue](../../src/components/dashboard/ProgressDots.vue) — composant atomique réutilisable (consommé aussi par le tree Moteur, cf. `FR-MOT-DISPLAY-FROM-STORE`).
+**Refs code** *(corrigées le 2026-09-25, C6 : `src/components/dashboard/ProgressDots.vue` n'existe pas et `ArticleCard.vue` n'affiche aucun dot)*
+- [src/components/moteur/ProgressDots.vue](../../src/components/moteur/ProgressDots.vue) — composant atomique : `PHASE_GROUPS` (lignes 13-16) = Explorer [`MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`] puis Valider [`MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`] (2 + 4, depuis C6) ; `CHECK_TOOLTIPS` (18-25, « Structure » pour `MOTEUR_HN_LOCKED`) ; `aria-label` « Progression : n sur `MOTEUR_CHECKS.length` » (48). Prop `completedChecks: string[]`.
+- [src/components/moteur/MoteurContextRecap.vue](../../src/components/moteur/MoteurContextRecap.vue) — seul consommateur : un `ProgressDots` par article des listes du haut du Moteur (lignes 207 et 246, `getChecks(art.id)`).
 - [src/stores/article/article-progress.store.ts](../../src/stores/article/article-progress.store.ts) — store Pinia qui hydrate `articles.completed_checks` et expose `progressMap`.
 
 **Tables consommées** : `articles` (colonne `completed_checks` TEXT[] — SSOT progression, cf. `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS`).
@@ -571,8 +574,14 @@ Seules les valeurs **validated** sont incluses. Les valeurs non-validées ou vid
 - `useArticlesStore` — fournit l'identité et le titre des articles ; la jointure visuelle (titre + dots) se fait au composant.
 
 **Watchers & réactivité**
-- `progressMap` est un **computed indexé** observable : tout `addCheck` côté Moteur déclenche un re-rendu des dots affichés sur le dashboard à l'arrière-plan (même session navigateur).
-- Pattern « lire depuis le store, pas depuis les props » — `ArticleCard.vue` lit `progressMap[id]` plutôt qu'une prop figée passée par le parent (cf. `DESIGN-MOT-DISPLAY-FROM-STORE`).
+- `progressMap` est un **computed indexé** observable : tout `addCheck` côté Moteur déclenche un re-rendu des dots des listes d'articles (même session navigateur).
+- Pattern « lire depuis le store, pas depuis les props » — `MoteurContextRecap.vue` lit les checks de chaque article dans le store (`getChecks`) plutôt qu'une prop figée passée par le parent (cf. `DESIGN-MOT-DISPLAY-FROM-STORE`).
+
+**Critères d'acceptation techniques**
+- AC.DASHPROG.1 : 6 dots en deux groupes (2 + 4) ; le point « Structure » (3ᵉ de la phase Valider) suit `moteur:hn_locked` ; un check inconnu ou retiré n'est pas compté ; `MoteurContextRecap` passe les checks du store. *(test : `tests/unit/components/progress-dots.test.ts`)*
+
+**Historique**
+- 2026-09-25 — sixième dot « Structure » (`MOTEUR_HN_LOCKED`, épopée qualité SEO, C6, commit `d24e530`). Refs code corrigées : les dots ne vivent que dans `MoteurContextRecap`.
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS` (émetteurs des checks).
@@ -628,9 +637,11 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 - [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — vue qui consomme `useMoteurTabs` et publie `navGroups` dans la `WorkflowNav` du slot navbar.
 - [src/components/shared/WorkflowNav.vue](../../src/components/shared/WorkflowNav.vue) — rendu visuel des groupes de phases avec leur numéro.
 
-**Constantes**
-- `TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation']` (ordre canonique).
-- Phase `generer` (n°1) = `discovery`, `radar`. Phase `valider` (n°2) = `capitaine`, `lieutenants`, `lexique`. Phase `finaliser` (n°3) = `finalisation`.
+**Constantes** *(lignes relevées au commit `d24e530`, C6)*
+- `TAB_IDS = ['discovery', 'radar', 'capitaine', 'lieutenants', 'structure', 'lexique', 'finalisation']` ([useMoteurTabs.ts:30](../../src/composables/moteur/useMoteurTabs.ts), ordre canonique ; `structure` depuis C6) ; `TAB_LABELS` (40-48) et sa copie locale dans `MoteurView.vue` (`TAB_LABELS`, libellé « Structure »).
+- Phase `generer` (n°1) = `discovery`, `radar`. Phase `valider` (n°2) = `capitaine`, `lieutenants`, `structure`, `lexique` (104-114). Phase `finaliser` (n°3) = `finalisation`.
+- `computeSmartTab(articleId)` (135-144) : aucun check → `capitaine` ; `MOTEUR_HN_LOCKED` → `lexique` ; `MOTEUR_LIEUTENANTS_LOCKED` → `structure` ; `MOTEUR_CAPITAINE_LOCKED` → `lieutenants` ; jamais `finalisation`. Appelé par `handleSelectArticle` (`MoteurView.vue:207`).
+- Onglet monté par `MoteurView.vue` : `<StructureHnPanel :mode="'workflow'" …>` sous `v-if="visitedTabs.structure"` / `v-show="activeTab === 'structure'"`, entre Lieutenants et Lexique ; `@check-completed="emitCheckCompleted"`, `@check-removed="handleCheckRemoved"` (cf. `DESIGN-HN-TAB`).
 
 **Flux DB**
 
@@ -646,10 +657,17 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 - `watch([navGroups, activeTab], ...)` dans `useMoteurTabs` republie l'état nav vers le store à chaque mutation — la navbar globale reflète immédiatement le changement d'onglet ou de gating.
 - `onBeforeUnmount` appelle `workflowNavStore.clearWorkflowNav()` — la navbar reprend son état neutre quand on quitte la vue Moteur.
 
+**Critères d'acceptation techniques**
+- AC.MOTPHASES.1 : 7 onglets, `structure` entre `lieutenants` et `lexique`, 4 onglets en phase Valider ; `computeSmartTab` ouvre Structure après les lieutenants et Lexique après la structure. *(tests : `tests/unit/composables/moteur/useMoteurTabs.test.ts`, `tests/unit/composables/moteur-smart-tab.test.ts`, `tests/unit/components/moteur-smart-navigation.test.ts` ; `MOTEUR_TABS` du helper navigateur = `TAB_IDS` sans `finalisation` : `tests/unit/architecture/moteur-tabs-helper.test.ts`, checklist T5)*
+
+**Historique**
+- 2026-09-25 — onglet `structure` (épopée qualité SEO, C6, commit `d24e530`).
+
 **Voir aussi**
 - `DESIGN-MOT-FREE-NAV` (l'utilisateur peut cliquer dans n'importe quelle phase).
 - `DESIGN-MOT-SOFT-GATING` (verrouillage doux par phase).
 - `DESIGN-MOT-PHASE-TRANSITION` (bandeau d'invitation au passage de phase).
+- `DESIGN-HN-TAB` (l'onglet Structure).
 
 ---
 
@@ -665,6 +683,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Décisions d'architecture**
 - **Pas de blocage dur cross-phases.** Le PRD assume un utilisateur expert qui peut vouloir consulter une étape future pour comprendre, sans encore l'avoir préparée. Une porte fermée = friction inutile.
 - **Le `locked` visuel** (cf. `navGroups[].items[].locked`) n'est posé que dans 2 cas : article non sélectionné, ou Discovery/Radar gelés car validation cocon faite (cf. `DESIGN-MOT-SOFT-GATING` règle 2).
+- **Onglet Structure (C6)** : jamais verrouillé dans la navigation, sans message de « soft gate » dans `MoteurView` (contrairement au Lexique) ; c'est le panneau qui affiche `structure-needs-lieutenants` tant qu'aucun lieutenant n'est retenu et qui refuse de générer (`useStructureHn.generate`, garde `lockedLieutenants.length === 0`). Cf. `DESIGN-HN-TAB`.
 
 **Voir aussi**
 - `DESIGN-MOT-SOFT-GATING` (ce qui est conditionné côté écriture).
@@ -677,17 +696,17 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Réf PRD :** [FR-MOT-SOFT-GATING](./prd.md#fr-mot-soft-gating--verrouillage-doux-des-écritures-phase--)
 
 **Refs code**
-- [src/composables/moteur/useMoteurSoftGating.ts](../../src/composables/moteur/useMoteurSoftGating.ts) — composable extrait de `MoteurView` (Vague 3) qui dérive les booléens `isCaptaineLocked`, `isLieutenantsLocked`, `isLexiqueValidated`, `finalisationUnlocked`, `finalisationButtonTitle`, `isDiscoveryAllowed`.
-- [src/composables/moteur/useFinalisationGating.ts](../../src/composables/moteur/useFinalisationGating.ts) — logique pure testable : `isFinalisationUnlocked(checks)` + `finalisationButtonTitle(checks)`.
+- [src/composables/moteur/useMoteurSoftGating.ts](../../src/composables/moteur/useMoteurSoftGating.ts) — composable extrait de `MoteurView` (Vague 3) qui dérive les booléens `isCaptaineLocked`, `isLieutenantsLocked`, `isStructureLocked` (`MOTEUR_HN_LOCKED`, ligne 66, depuis C6), `isLexiqueValidated`, `finalisationUnlocked`, `finalisationButtonTitle`, `isDiscoveryAllowed` ; `finalisationChecksInput` (69-74) passe les quatre verrous.
+- [src/composables/moteur/useFinalisationGating.ts](../../src/composables/moteur/useFinalisationGating.ts) — logique pure testable : `FinalisationChecks { capitaineLocked, lieutenantsLocked, structureLocked, lexiqueValidated }` (12-17), `isFinalisationUnlocked(checks)` (19-21, les quatre à vrai), `finalisationMissingChecks` (23-30 : « Capitaine à verrouiller », « Lieutenants à verrouiller », « Structure à valider », « Lexique à valider »), `finalisationButtonTitle(checks)` (32-36).
 - [tests/unit/composables/moteur/useMoteurSoftGating.test.ts](../../tests/unit/composables/moteur/useMoteurSoftGating.test.ts) — tests unitaires.
 
 **Tables consommées** : `articles.completed_checks` TEXT[] (lecture via `useArticleProgressStore`).
 
 **Flux DB**
 
-*Lecture* : `completed_checks` est hydraté par `useArticleProgressStore.fetchProgress(id)` au switch d'article (cf. `DESIGN-MOT-ARTICLE-SELECTION`). Les 3 booléens sont des `computed` qui appellent `articleProgressStore.getProgress(id)?.completedChecks?.includes(MOTEUR_*_LOCKED)`.
+*Lecture* : `completed_checks` est hydraté par `useArticleProgressStore.fetchProgress(id)` au switch d'article (cf. `DESIGN-MOT-ARTICLE-SELECTION`). Les 4 booléens de verrou sont des `computed` qui appellent `articleProgressStore.getProgress(id)?.completedChecks?.includes(MOTEUR_*)` (`hasCheck`, lignes 58-62).
 
-*Écriture* : aucune écriture côté composable — il ne fait que dériver. Les écritures viennent des onglets Capitaine / Lieutenants / Lexique qui posent leur check au moment du verrouillage utilisateur.
+*Écriture* : aucune écriture côté composable — il ne fait que dériver. Les écritures viennent des onglets Capitaine / Lieutenants / Structure / Lexique qui demandent leur check (accordé par la porte) au moment du geste utilisateur.
 
 **Stores Pinia**
 - `useArticleProgressStore` — source des `completedChecks`.
@@ -697,11 +716,17 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 - Tous les booléens sont des `computed` chaînés sur le store. Toute action `addCheck(MOTEUR_CAPITAINE_LOCKED)` côté Capitaine déclenche instantanément la bascule de `finalisationUnlocked` si c'était le dernier verrou manquant, et donc l'activation du bouton « Continuer vers la Rédaction » dans la même tick (cf. `DESIGN-FIN-LINK-REDACTION`).
 
 **Décisions d'architecture**
-- **Composable séparé de la logique pure (`useFinalisationGating`)** : la formule `capitaineLocked && lieutenantsLocked && lexiqueValidated` est extraite dans un module testable sans monter Vue. `useMoteurSoftGating` glue le store + composants ; `useFinalisationGating` reste pure.
+- **Composable séparé de la logique pure (`useFinalisationGating`)** : la formule `capitaineLocked && lieutenantsLocked && structureLocked && lexiqueValidated` est extraite dans un module testable sans monter Vue. `useMoteurSoftGating` glue le store + composants ; `useFinalisationGating` reste pure. `FinalisationPanel.vue` construit la même entrée (`checks`, avec `structureLocked`) et appelle la même fonction.
 - **`isDiscoveryAllowed` côté composable, pas côté store** : c'est une **dérivation** de l'état keyword article, pas un état stocké. Le store keywords ne porte pas de notion de « phase ② ».
 
+**Critères d'acceptation techniques**
+- AC.SOFTGATE.1 : la Rédaction ne s'ouvre qu'avec les quatre verrous ; un verrou manquant est nommé dans le titre du bouton (« Structure à valider »). *(tests : `tests/unit/composables/finalisation-gating.test.ts`, `tests/unit/composables/moteur/useMoteurSoftGating.test.ts`)*
+
+**Historique**
+- 2026-09-25 — quatrième verrou, `structureLocked` (épopée qualité SEO, C6, commit `d24e530`).
+
 **Voir aussi**
-- `DESIGN-MOT-CHECKS` (producteurs des 3 verrous).
+- `DESIGN-MOT-CHECKS` (producteurs des 4 verrous).
 - `DESIGN-FIN-LINK-REDACTION` (consommateur direct de `finalisationUnlocked`).
 
 ---
@@ -846,6 +871,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Refs code**
 - [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — prop `mode: "workflow" | "libre"`, `v-if="mode === 'workflow'"` sur les boutons et watchers de check.
 - [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — même contrat.
+- [src/components/moteur/StructureHnPanel.vue](../../src/components/moteur/StructureHnPanel.vue) — même contrat depuis C6 : en `libre`, pas de bouton « Valider la structure » (`canValidate` exige `workflow`, ligne 74) et aucun `check-removed` à l'enregistrement (81) ; l'enregistrement reste possible. Seul `MoteurView` le monte, en `workflow`.
 - [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — même contrat.
 
 **Décisions d'architecture**
@@ -861,14 +887,17 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 ### DESIGN-MOT-CHECKS
 
-**Réf PRD :** [FR-MOT-CHECKS](./prd.md#fr-mot-checks--cinq-étapes-moteur-tracées-dans-la-progression-de-larticle)
+**Réf PRD :** [FR-MOT-CHECKS](./prd.md#fr-mot-checks--six-étapes-moteur-tracées-dans-la-progression-de-larticle)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — déclare les 5 constantes `MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED` (lignes 15-19).
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — déclare les 6 constantes `MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED = 'moteur:hn_locked'` (depuis C6), `MOTEUR_LEXIQUE_VALIDATED` (lignes 20-26) et l'agrégat `MOTEUR_CHECKS` dans cet ordre (28-35).
 - [src/composables/moteur/useMoteurCrossTabState.ts](../../src/composables/moteur/useMoteurCrossTabState.ts) — émet `MOTEUR_DISCOVERY_DONE` (handleSendToRadar) et `MOTEUR_RADAR_DONE` (handleRadarScanned).
 - [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — émet `MOTEUR_CAPITAINE_LOCKED` (verrouillage utilisateur).
 - [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — émet `MOTEUR_LIEUTENANTS_LOCKED`.
+- [src/components/moteur/StructureHnPanel.vue](../../src/components/moteur/StructureHnPanel.vue) — émet `MOTEUR_HN_LOCKED` après « Valider la structure » (ligne 97), le retire quand une structure validée est modifiée puis enregistrée (81) — cf. `DESIGN-HN-TAB`.
 - [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — émet `MOTEUR_LEXIQUE_VALIDATED`.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `CHECK_GATES` (lignes 57-62) : `capitaine_locked`, `lieutenants_locked`, `hn_locked`, `lexique_validated` ne sont accordés que si leur porte passe (422 `GATE_BLOCKED` sinon, `POST /progress/check`).
+- [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) — le mode automatique demande les quatre étapes de la phase Valider, chacune après l'enregistrement de sa décision (`saveThenEmit`, `MOTEUR_HN_LOCKED` ligne 206).
 - [src/stores/article/article-progress.store.ts](../../src/stores/article/article-progress.store.ts) — `addCheck(id, check)` et `removeCheck(id, check)`.
 
 **Endpoints**
@@ -890,8 +919,16 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 - Le `progressMap` est observable : tout `addCheck` met à jour les dots du dashboard à l'arrière-plan dans la même session (cf. `DESIGN-DASH-PROGRESS`) et la barre de gating souple (cf. `DESIGN-MOT-SOFT-GATING`).
 
 **Décisions d'architecture**
-- **5 checks Moteur, pas 6** : pas de `MOTEUR_FINALISATION_*` — l'onglet Finalisation est read-only (cf. `DESIGN-FIN-CHECK`).
+- **6 checks Moteur, pas 7** : pas de `MOTEUR_FINALISATION_*` — l'onglet Finalisation est read-only (cf. `DESIGN-FIN-CHECK`). Le 6ᵉ, `MOTEUR_HN_LOCKED`, arrive avec l'onglet Structure (C6).
 - **Émission strictement via constantes** (cf. `DESIGN-MOT-CHECKS-CONSTANTS`).
+- **Articles d'avant C6** : ils ont `lieutenants_locked` sans `hn_locked`, leur Finalisation est fermée. `npm run db:reconcile-hn` ([scripts/reconcile-hn-checks.ts](../../scripts/reconcile-hn-checks.ts), commit `103c38b`) les liste et, avec `--apply`, n'ajoute l'étape qu'aux structures qui passent la porte `hn-lock` (cf. `DESIGN-HN-TAB`).
+
+**Critères d'acceptation techniques**
+- AC.MOTCHECKS.1 : `MOTEUR_CHECKS` = 6 checks dans l'ordre des onglets (`hn_locked` entre `lieutenants_locked` et `lexique_validated`) ; `moteur:hn_locked` accepté par le schéma, `hn_locked` sans préfixe refusé. *(test : `tests/unit/coherence/completed-checks.test.ts`)*
+- AC.MOTCHECKS.2 : `addCheck` pour chacun des 6 checks *(test : `tests/unit/components/moteur-check-completed.test.ts`)* ; l'onglet Structure émet `moteur:hn_locked` après l'enregistrement de la structure et du sommaire, jamais avant *(test : `tests/unit/components/structure-hn-panel.test.ts`)*.
+
+**Historique**
+- 2026-09-25 — sixième check `MOTEUR_HN_LOCKED` (épopée qualité SEO, C6, commit `d24e530`) ; réconciliation des articles existants (commit `103c38b`).
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS-CONSTANTS` (validation regex + test garde anti-régression).
@@ -905,7 +942,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Réf PRD :** [FR-MOT-CHECKS-CONSTANTS](./prd.md#fr-mot-checks-constants--catalogue-strict-des-étapes-de-progression)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue unique des 13 checks (5 Moteur + 3 Cerveau + 5 Rédaction).
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue unique : 6 checks Moteur depuis C6 (5 avant ; les familles Cerveau et Rédaction ont été retirées le 2026-05-13, cf. DRIFT-002 — l'ancienne mention « 13 checks » était périmée).
 - [shared/schemas/article-progress.schema.ts](../../shared/schemas/article-progress.schema.ts) — `addCheckSchema = z.object({ check: z.string().regex(workflowCheckRegex, ...) })` — validation backend.
 - [tests/unit/coherence/completed-checks.test.ts](../../tests/unit/coherence/completed-checks.test.ts) — test garde-fou qui scanne tous les `.ts` / `.vue` de `src/` et échoue si un littéral check legacy y apparaît.
 
@@ -928,7 +965,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS` (consommateurs).
-- `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` (catalogue exhaustif des 13 checks).
+- `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` (catalogue exhaustif : 6 checks Moteur).
 
 ---
 
@@ -1267,6 +1304,8 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - **Routes existantes uniquement** — pas de SQL direct côté front. Garantit que le serveur reste l'autorité.
 - **No-op silencieux** quand DB et store sont déjà cohérents — pas de bruit réseau gratuit.
 - **Mount/first-run, pas reactive watcher** — la réconciliation s'exécute une fois au chargement, pas à chaque mutation. Le watcher principal d'écriture utilisateur (toggle lock) reste responsable du temps réel.
+- **Pas de réconciliation pour l'onglet Structure** (C6) : `StructureHnPanel.vue` ne compare pas la structure enregistrée à `moteur:hn_locked` au montage. Son étape ne bouge qu'à « Valider la structure » (`check-completed`) ou à l'enregistrement d'une structure déjà validée (`check-removed`). Depuis l'écran, une structure ne peut pas être vidée (`save` refuse une structure vide) ; une structure vidée hors écran garderait son étape jusqu'à la publication, qui rejoue la porte (⛔ `hn-empty`).
+- **Lieutenants** (C6, M7) : la règle réconciliée n'est plus « lieutenant verrouillé ET structure » mais « lieutenant verrouillé » seul (cf. `DESIGN-LIE-CHECK`).
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS` (émetteurs des checks).
@@ -1416,18 +1455,22 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 **Réf PRD :** [FR-MOT-WORKFLOW-GATING-DUAL](./prd.md#fr-mot-workflow-gating-dual--règle-de-gating-à-double-condition-pour-capitaine-et-lieutenants-déplacée-depuis-86-le-2026-05-12)
 
-**Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — computed `lieutenantsCheckActive`.
-- Watcher avec garde « first run » qui réconcilie l'état réel avec le check stocké en DB au mount.
+**Refs code** *(relevées au commit `d24e530`, C6 ; `LieutenantsSelection.vue`, cité ici auparavant, a été renommé `LieutenantsPanel.vue` au Sprint 15)*
+- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — `hasAnyLockedLieutenant` (lignes 140-144 : un `richLieutenants` au statut `locked`, pour l'article affiché) ; `lieutenantsCheckActive = computed(() => hasAnyLockedLieutenant.value)` (178) ; watcher `immediate` sur `lieutenantsCheckActive` avec garde « first run » qui réconcilie l'état réel avec le check stocké en base au montage (345-408).
+- Porte : `lieutenants-lock` (cf. `DESIGN-LIE-LOCK-GATE`) — la règle ci-dessous **demande** l'étape, la porte l'**accorde**.
 
-**Tables consommées** : `lieutenant_explorations.status`, `article_keywords.hn_structure`, `articles.completed_checks`.
+**Tables consommées** : `lieutenant_explorations.status`, `articles.completed_checks` (plus `article_keywords.hn_structure` depuis C6).
 
 **Décisions d'architecture**
-- Règle Lieutenants : check actif ssi (≥ 1 Lieutenant `locked`) ET (`hn_structure` non vide).
+- Règle Lieutenants : check demandé ssi ≥ 1 Lieutenant `locked` (depuis C6, checklist M7). Avant : ≥ 1 Lieutenant `locked` ET `hn_structure` non vide — mais la structure naissait de `propose-lieutenants`, avant tout choix : une seule case cochée suffisait en pratique.
 - Règle Capitaine : check actif ssi `article_keywords.capitaine` non-vide (extension possible selon évolution métier).
 - Réconciliation défensive : cleanup état hérité au mount (cf. `DESIGN-MOT-CHECK-RECONCILIATION`).
+- La structure a sa propre étape (`MOTEUR_HN_LOCKED`) et sa propre porte (`hn-lock`) : cf. `DESIGN-HN-TAB`, `DESIGN-HN-LOCK-GATE`.
 
-**Voir aussi** : `DESIGN-MOT-CHECK-RECONCILIATION`.
+**Historique**
+- 2026-09-25 — règle Lieutenants réduite à « ≥ 1 lieutenant verrouillé » (épopée qualité SEO, C6, commit `d24e530`).
+
+**Voir aussi** : `DESIGN-MOT-CHECK-RECONCILIATION`, `DESIGN-LIE-CHECK`, `DESIGN-HN-TAB`.
 
 ---
 
@@ -1764,9 +1807,9 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 **Voir aussi**
 - `DESIGN-DIS-SEND-TO-RADAR` — déclencheur amont du check.
 - `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue + règle « jamais de string en dur ».
-- `DESIGN-DASH-PROGRESS` — affichage du dot 1/5 Moteur sur le dashboard.
+- `DESIGN-DASH-PROGRESS` — affichage du dot 1/6 Moteur dans les listes d'articles du Moteur.
 - `DESIGN-MOT-SOFT-GATING` — lecture aval du check pour les gating.
-- `DESIGN-MOT-CHECKS` — émetteurs des 5 checks Moteur (vue d'ensemble).
+- `DESIGN-MOT-CHECKS` — émetteurs des 6 checks Moteur (vue d'ensemble ; 5 avant C6).
 
 ---
 
@@ -2774,7 +2817,9 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-EXTRACT-HEADINGS](./prd.md#fr-lie-extract-headings)
 
 **Refs code**
-- [server/services/external/serp-analysis.service.ts](../../server/services/external/serp-analysis.service.ts) — extraction regex `<h[1-3]>...</h[1-3]>` + `extractTextContent` + `computeHnRecurrenceFrom`.
+- [server/services/external/serp-analysis.service.ts](../../server/services/external/serp-analysis.service.ts) — extraction regex `<h[1-3]>...</h[1-3]>` + `extractTextContent` (titres de chaque page, `headings[]`).
+- [shared/utils/hn-structure.ts](../../shared/utils/hn-structure.ts) — `computeHnRecurrence(competitors)` (lignes 43-68, depuis C6) : pages lues sans erreur, un titre compté une fois par page (clé `niveau:texte en minuscules`), `{ level, text, count, total, percent }` trié par pourcentage puis niveau ; `recurringHeadings` (71-75) ne garde que les titres vus sur `MIN_RECURRING_PAGES = 2` pages au moins (21), forme envoyée aux prompts.
+- [src/composables/moteur/useLieutenantsSerp.ts](../../src/composables/moteur/useLieutenantsSerp.ts) — `computeHnRecurrenceFrom` (119-121) délègue à `computeHnRecurrence` ; `hnRecurrence` (123-125) sur les concurrents affichés (curseur). Même calcul dans l'onglet Structure (`useStructureHn.loadCompetitors`, cf. `DESIGN-HN-TAB`).
 
 **Tables consommées** : `keyword_serp_scrapes` (colonne `headings JSONB` extraite au scrape).
 
@@ -2782,9 +2827,13 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 
 **Décisions d'architecture**
 - Extraction par regex (pas parsing DOM lourd) — suffisant pour H1/H2/H3.
-- Calcul de récurrence (`HnRecurrenceItem[]`) côté service pour éviter re-calcul côté front.
+- Calcul de récurrence (`HnRecurrenceItem[]`) **dans le navigateur**, par une fonction partagée (`shared/`) : *corrigé le 2026-09-25 (C6), le code fait foi* — ce registre le disait « côté service ». Avant C6, le calcul vivait dans l'état local du panneau Lieutenants (`useLieutenantsSerp`), que l'onglet Structure ne pouvait pas lire ; il est extrait dans `shared/utils/hn-structure.ts` et lu par les deux onglets.
+- **Affichage** (C6) : la section « Structure Hn concurrents » fait partie de `LieutenantH2Structure`, qui a quitté l'onglet Lieutenants ; la récurrence s'affiche donc dans l'onglet Structure (une entrée, la SERP du capitaine). L'onglet Lieutenants la calcule toujours pour `propose-lieutenants` (`{{hn_recurrence}}`, via `useLieutenantsIa`) sans l'afficher. Tests : `lieutenants-selection.test.ts` (« recurrence is computed (IA input) but not rendered in the Lieutenants tab »).
 
-**Voir aussi** : `DESIGN-LIE-SERP-ANALYZE`.
+**Historique**
+- 2026-09-25 — `computeHnRecurrence` extrait dans `shared/utils/hn-structure.ts` (épopée qualité SEO, C6, commit `d24e530`).
+
+**Voir aussi** : `DESIGN-LIE-SERP-ANALYZE`, `DESIGN-HN-TAB`.
 
 ---
 
@@ -2793,9 +2842,10 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-PROPOSE-AI](./prd.md#fr-lie-propose-ai)
 
 **Refs code**
-- [server/routes/keyword-ai-panel.routes.ts](../../server/routes/keyword-ai-panel.routes.ts) — endpoint `POST /keywords/:keyword/propose-lieutenants` (SSE).
-- [server/prompts/propose-lieutenants.md](../../server/prompts/propose-lieutenants.md) — prompt enrichi (SERP + PAA + racines).
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — panel consommateur.
+- [server/routes/keyword-ai-panel.routes.ts](../../server/routes/keyword-ai-panel.routes.ts) — endpoint `POST /keywords/:keyword/propose-lieutenants` (SSE) ; `filterLieutenants` (180-192) renvoie `selectedLieutenants`, `eliminatedLieutenants`, `contentGapInsights`, `totalGenerated` — **plus de `hnStructure`** depuis C6.
+- [server/prompts/propose-lieutenants.md](../../server/prompts/propose-lieutenants.md) — prompt enrichi (SERP + PAA + racines). Depuis C6 (checklist M7), la section « Structure Hn recommandée » et le champ `hnStructure` du format de sortie sont retirés ; la consigne précise que la structure « sera construite à l'étape suivante, à partir des seuls lieutenants retenus ».
+- [shared/contracts/lieutenants.contract.ts](../../shared/contracts/lieutenants.contract.ts) — `proposeLieutenantsAiContract` (serveur) et `proposeLieutenantsContract` (client) sans `hnStructure` ; types `ProposeLieutenantsResult` / `FilteredProposeLieutenantsResult` idem ([shared/types/serp-analysis.types.ts](../../shared/types/serp-analysis.types.ts)).
+- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — panel consommateur (anciennement `LieutenantsSelection.vue`), via [src/composables/moteur/useLieutenantsIa.ts](../../src/composables/moteur/useLieutenantsIa.ts) (`proposeLieutenants` ; `regenerateHnStructure` et l'état `hnStructure` retirés en C6).
 
 **Tables consommées** : `lieutenant_explorations(article_id, keyword, status, score, reasoning, ...)`.
 
@@ -2809,8 +2859,9 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 - Streaming SSE pour voir la réflexion IA en direct (UX).
 - Filtre auto post-IA : cap par level (Pilier 5 / Intermédiaire 5 / Spécifique 4).
 - Modèle Claude Sonnet (qualité supérieure à Haiku sur ce raisonnement).
+- **Pas de structure dans la proposition** (C6, M7) : elle naissait ici, avant tout choix, et une seule case cochée validait ensuite l'étape. Elle naît désormais des lieutenants retenus, dans l'onglet Structure (`DESIGN-HN-TAB`).
 
-**Voir aussi** : `DESIGN-LIE-GEOFUNNEL-RULE`, `DESIGN-LIE-HN-STRUCTURE`.
+**Voir aussi** : `DESIGN-LIE-GEOFUNNEL-RULE`, `DESIGN-HN-TAB` (avant C6 : `DESIGN-LIE-HN-STRUCTURE`).
 
 ---
 
@@ -2831,15 +2882,19 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 
 ---
 
-### DESIGN-LIE-HN-STRUCTURE
+### DESIGN-LIE-HN-STRUCTURE — *(superseded 2026-09-25)*
 
 **Réf PRD :** [FR-LIE-HN-STRUCTURE](./prd.md#fr-lie-hn-structure)
+
+**Statut** : superseded le 2026-09-25 par [`DESIGN-HN-TAB`](#design-hn-tab) et [`DESIGN-HN-LOCK-GATE`](#design-hn-lock-gate) (épopée qualité SEO, C6, commit `d24e530`, checklist M7). **N'existent plus** : `src/composables/moteur/useLieutenantsHn.ts` (supprimé, avec son test `tests/unit/composables/moteur/useLieutenantsHn.test.ts`), `useLieutenantsIa.regenerateHnStructure` et l'état `hnStructure` du panneau Lieutenants, le rendu de `LieutenantH2Structure` dans `LieutenantsResultsLayout.vue`, le champ `hnStructure` de la sortie de `propose-lieutenants` (prompt, contrats, types), `recommendAndPropagateWordCount` et l'écriture du sommaire dans `LieutenantsPanel.vue`. **Restent, réutilisés par l'onglet Structure** : la route `POST /keywords/:keyword/ai-hn-structure`, le prompt `lieutenants-hn-structure.md` (réécrit, cf. `DESIGN-HN-TAB`), le composant `LieutenantH2Structure.vue` (rendu par `StructureHnPanel.vue`), la colonne `article_keywords.hn_structure`.
+
+Corrigé au passage (le code fait foi) : la colonne est **JSONB** (`server/db/schema.sql`), pas TEXT ; la sortie de l'IA est une liste JSON `{ hnStructure: [{ level, text, children? }], justification }` validée par `hnOutlineContract`, pas du markdown libre. Contenu historique ci-dessous.
 
 **Refs code**
 - [server/routes/keyword-ai-panel.routes.ts](../../server/routes/keyword-ai-panel.routes.ts) — endpoint `POST /keywords/:keyword/ai-hn-structure` (SSE).
 - [server/prompts/lieutenants-hn-structure.md](../../server/prompts/lieutenants-hn-structure.md) — prompt structure Hn.
 
-**Tables consommées** : `article_keywords.hn_structure` (TEXT).
+**Tables consommées** : `article_keywords.hn_structure` (TEXT — en réalité JSONB).
 
 **Flux DB**
 
@@ -2848,10 +2903,10 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 *Écriture* : à la fin du streaming, l'utilisateur peut sauvegarder le résultat dans `article_keywords.hn_structure`.
 
 **Décisions d'architecture**
-- Sortie texte libre markdown (pas JSON strict) — laisse à l'utilisateur le soin d'arbitrer le plan final.
+- Sortie texte libre markdown (pas JSON strict) — laisse à l'utilisateur le soin d'arbitrer le plan final. *(Périmé : sortie JSON.)*
 - Régénération possible à volonté.
 
-**Voir aussi** : `DESIGN-LIE-PROPOSE-AI`, `DESIGN-LIE-CHECK` (la structure Hn est l'une des deux conditions d'émission du check).
+**Voir aussi** : `DESIGN-LIE-PROPOSE-AI`, `DESIGN-LIE-CHECK` (la structure Hn était l'une des deux conditions d'émission du check jusqu'à C6).
 
 ---
 
@@ -2860,9 +2915,10 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-SECTIONS-FOLDABLE](./prd.md#fr-lie-sections-foldable)
 
 **Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — parent.
-- Sous-composants : `LieutenantSerpAnalysis`, `LieutenantH2Structure`, `LieutenantsAiPanel`, `LieutenantProposals`.
+- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — parent (anciennement `LieutenantsSelection.vue`).
+- Sous-composants : `LieutenantSerpAnalysis`, `LieutenantsAiPanel`, `LieutenantProposals` (via [lieutenants/LieutenantsResultsLayout.vue](../../src/components/moteur/lieutenants/LieutenantsResultsLayout.vue)). `LieutenantH2Structure` n'est plus rendu dans cet onglet depuis C6 : il vit dans l'onglet Structure (`DESIGN-HN-TAB`).
 - `CollapsableSection` (atomique global) avec lazy-load.
+- Sections de l'onglet depuis C6 : « Sources IA : questions Google (PAA) » et « Sources IA : clusters Discovery ». « Structure Hn concurrents » (dans `LieutenantH2Structure`) est partie dans l'onglet Structure. Tests : `tests/unit/components/lieutenants-selection.test.ts` (« renders the two IA source sections (PAA + clusters) after analysis, and no Hn section », « no "Structure Hn concurrents" section in the Lieutenants tab »).
 
 **Flux DB** : aucun — pure UI.
 
@@ -2880,7 +2936,7 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-CANDIDATES-BADGES](./prd.md#fr-lie-candidates-badges)
 
 **Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — rendu badges.
+- [src/components/moteur/LieutenantCard.vue](../../src/components/moteur/LieutenantCard.vue) — rendu badges (dans [LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue), anciennement `LieutenantsSelection.vue`).
 
 **Flux DB** : aucun — affichage à partir des propositions IA (source + pertinence vient du backend).
 
@@ -2896,7 +2952,7 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-CHECKBOX-COUNT](./prd.md#fr-lie-checkbox-count)
 
 **Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — checkboxes + compteur.
+- [src/components/moteur/LieutenantProposals.vue](../../src/components/moteur/LieutenantProposals.vue) — checkboxes + compteur (dans [LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue), anciennement `LieutenantsSelection.vue`).
 
 **Endpoints** : `POST /api/articles/:id/keywords` (sauvegarde sélection Lieutenants).
 
@@ -2921,7 +2977,7 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-SLIDER-INTELLIGENT](./prd.md#fr-lie-slider-intelligent)
 
 **Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — gestion curseur.
+- [src/components/moteur/LieutenantSerpAnalysis.vue](../../src/components/moteur/LieutenantSerpAnalysis.vue) et [src/composables/moteur/useLieutenantsSerp.ts](../../src/composables/moteur/useLieutenantsSerp.ts) — gestion curseur (dans [LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue), anciennement `LieutenantsSelection.vue`).
 
 **Flux DB**
 
@@ -2936,23 +2992,30 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 
 **Réf PRD :** [FR-LIE-CHECK](./prd.md#fr-lie-check)
 
-**Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — computed `lieutenantsCheckActive` + watcher d'émission.
+**Refs code** *(lignes relevées au commit `d24e530`, C6)*
+- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — `lieutenantsCheckActive = computed(() => hasAnyLockedLieutenant.value)` (ligne 178) + watcher d'émission (345-408) ; `verifyLockedLieutenants(saveFirst)` (316-337). *(`LieutenantsSelection.vue`, cité ici jusqu'en C6, a été renommé au Sprint 15.)*
 - [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — constante `MOTEUR_LIEUTENANTS_LOCKED`.
 
-**Flux DB** : POST `/api/articles/:id/progress/check` ou `/uncheck` selon transition de la computed.
+**Flux DB** : POST `/api/articles/:id/progress/check` (accordé par la porte `lieutenants-lock`) ou `/uncheck` selon transition de la computed.
 
-**Stores Pinia** : `useArticleProgressStore`.
+**Stores Pinia** : `useArticleProgressStore` ; `useArticleKeywordsStore` (`saveDecisions`, **sans la structure** depuis C6 — cf. `DESIGN-HN-TAB`).
 
 **Watchers & réactivité**
-- Watcher sur `lieutenantsCheckActive` (computed = ≥ 1 Lieutenant `locked` ET `hn_structure` non-vide).
-- Réconciliation défensive au mount : si DB contient le check mais qu'une des deux conditions n'est plus vraie, retrait automatique (cf. `DESIGN-MOT-CHECK-RECONCILIATION`).
+- Watcher sur `lieutenantsCheckActive` (computed = ≥ 1 Lieutenant `locked` ; plus de condition sur `hn_structure` depuis C6). Transition `false → true` : `lieutenants-updated`, puis `verifyLockedLieutenants(true)` (décisions enregistrées, puis porte). Plus d'écriture du sommaire ni de recommandation de longueur ici : elles partent à la validation de la structure.
+- Réconciliation défensive au mount : si la base contient le check mais qu'aucun lieutenant n'est verrouillé, retrait automatique ; si un lieutenant est verrouillé mais le check absent, la porte décide (cf. `DESIGN-MOT-CHECK-RECONCILIATION`).
 
 **Décisions d'architecture**
-- Règle de gating duale — éviter qu'un check Lieutenants soit posé alors que la Rédaction n'a pas la structure Hn dont elle a besoin.
-- Depuis le 2026-09-25, la règle duale ne fait que **déclencher** la vérification : c'est la porte `lieutenants-lock` qui accorde ou retire le check (cf. `DESIGN-LIE-LOCK-GATE`). Le composant réel est `src/components/moteur/LieutenantsPanel.vue` (`LieutenantsSelection.vue`, cité plus haut, n'existe plus).
+- **Un lieutenant suffit** (C6, checklist M7) : la condition « `hn_structure` non vide » est retirée. La structure naissait de `propose-lieutenants`, **avant** le choix des lieutenants : la règle duale ne protégeait rien, et une seule case cochée validait l'étape. La structure a désormais son étape (`MOTEUR_HN_LOCKED`) et sa porte (`DESIGN-HN-TAB`, `DESIGN-HN-LOCK-GATE`).
+- Depuis le 2026-09-25 (C2), la règle ne fait que **déclencher** la vérification : c'est la porte `lieutenants-lock` qui accorde ou retire le check (cf. `DESIGN-LIE-LOCK-GATE`).
 
-**Voir aussi** : `DESIGN-MOT-WORKFLOW-GATING-DUAL`, `DESIGN-MOT-CHECK-RECONCILIATION`, `DESIGN-LIE-LOCK-GATE`.
+**Critères d'acceptation techniques**
+- AC.LIECHECK.1 (M7) : l'étape s'active dès un lieutenant verrouillé, sans structure Hn ; sans lieutenant verrouillé, pas d'étape, même avec une structure en base. *(test : `tests/unit/components/lieutenants-gate.test.ts`)*
+
+**Historique**
+- 2026-09-25 — porte `lieutenants-lock` (C2).
+- 2026-09-25 — règle réduite à « ≥ 1 lieutenant verrouillé » ; sommaire et longueur conseillée déplacés vers l'onglet Structure (C6, commit `d24e530`).
+
+**Voir aussi** : `DESIGN-MOT-WORKFLOW-GATING-DUAL`, `DESIGN-MOT-CHECK-RECONCILIATION`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-HN-TAB`.
 
 ---
 
@@ -2964,7 +3027,7 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 - [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) — vérificateur pur `verifyLieutenants(input: LieutenantsGateInput): GateIssue[]` ; `normalizeKeyword` (trim, minuscules, accents retirés, espaces réduits) ; types `CocoonKeywordClaim`, `LieutenantsGateInput`.
 - [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES[level].minLieutenants` : pilier 3, intermédiaire 2, spécialisé 1.
 - [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `lieutenantsGate(articleId)` (privée) appelée par `evaluateArticleGate(id, 'lieutenants-lock')`.
-- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — `lieutenantsGateBlocked` (ref `GateEvaluation | null`), `syncLieutenantsGate` (verdict **silencieux** via `useGateAlarmStore().evaluate`), `requestLieutenantsGate` (sérialise les vérifications : deux cases cochées vite ne doublent pas l'étape), `reviewLieutenantsGate` (bouton du bandeau → `ensure` → alarme), `gateBannerText` (première raison + « (+n autres) »), bandeau `data-testid="lieutenants-gate-banner"`.
+- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — `lieutenantsGateBlocked` (ref `GateEvaluation | null`), `syncLieutenantsGate` (251-270 : verdict **silencieux** via `useGateAlarmStore().evaluate`), `requestLieutenantsGate` (273-276 : sérialise les vérifications : deux cases cochées vite ne doublent pas l'étape), `lockedLieutenantsSignature` (304-306), **`verifyLockedLieutenants(saveFirst)`** (316-337, C6 : enregistre, vérifie, puis recommence tant que la signature a changé pendant la vérification ; `transitionSettled` à faux pendant, vrai après), `reviewLieutenantsGate` (279-293 : bouton du bandeau → `ensure` → alarme), `gateBannerText` (première raison + « (+n autres) »), bandeau `data-testid="lieutenants-gate-banner"` (634).
 - [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — `articleLevelForLieutenants` = `parseArticleLevel(selectedArticle.type)` ([shared/utils/article-level.ts](../../shared/utils/article-level.ts)) : correctif M12.
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `CHECK_GATES[MOTEUR_LIEUTENANTS_LOCKED] = 'lieutenants-lock'` → 422 `GATE_BLOCKED`.
 
@@ -2985,13 +3048,12 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 *Écriture* : les décisions (`article_keywords`) sont enregistrées par le panneau **avant** la vérification (`saveDecisions` ; `false` → pas de vérification, pas d'étape) ; l'étape passe par `POST /progress/check` / `/uncheck` via `emit('check-completed' | 'check-removed')`.
 
-**Watchers & réactivité**
-- Watcher `lieutenantsCheckActive` (règle duale de `DESIGN-LIE-CHECK`), transition `false → true` : `lieutenants-updated` → `saveDecisions` → sommaire (`hnToOutline`) + recommandation de longueur → `requestLieutenantsGate()`. Plus d'émission directe du check.
-- Réconciliation au montage : règle remplie mais check absent → `requestLieutenantsGate()` (la porte décide) ; check présent mais règle non remplie → retrait (inchangé).
-- Watcher `lockedLieutenantsSignature` (lieutenants verrouillés, minuscules, triés) : un ajout ou un retrait alors que la règle duale est déjà remplie → `saveDecisions` → `requestLieutenantsGate()` (la transition `false → true` reste traitée par le watcher précédent).
-- Au montage, un check déjà présent avec une règle duale remplie n'est pas revérifié (`noop`).
-- `syncLieutenantsGate` : porte passée → bandeau effacé et `check-completed` si absent ; porte refusée → bandeau et `check-removed` si présent. Ignore un verdict arrivé après un changement d'article ou une règle duale redevenue fausse.
-- Transition `true → false` : bandeau effacé, `check-removed` (inchangé).
+**Watchers & réactivité** *(mis à jour pour C6, commit `d24e530`)*
+- Watcher `lieutenantsCheckActive` (≥ 1 lieutenant verrouillé, `DESIGN-LIE-CHECK`), transition `false → true` : `lieutenants-updated` → `verifyLockedLieutenants(true)` (`saveDecisions`, sans la structure → `requestLieutenantsGate()`). Plus d'émission directe du check ; plus de sommaire ni de recommandation de longueur (partis vers l'onglet Structure).
+- Réconciliation au montage : règle remplie mais check absent → `verifyLockedLieutenants(false)` (la porte décide) ; check présent mais règle non remplie → retrait (inchangé) ; check présent et règle remplie → `noop`, **mais `transitionSettled = true`** (ligne 380) : un changement ultérieur relance la porte. Avant C6, ce cas laissait `transitionSettled` à faux et le watcher de signature n'agissait plus — l'étape restait accordée avec trop peu de lieutenants.
+- Watcher `lockedLieutenantsSignature` (lieutenants verrouillés, minuscules, triés ; 414-418) : un ajout ou un retrait alors que la règle est remplie et qu'aucune vérification n'est en cours (`transitionSettled`) → `verifyLockedLieutenants(true)`. Pendant une vérification, c'est elle qui reprend le changement : elle compare la signature d'avant et d'après le verdict et recommence si elle a bougé. **Course corrigée en C6** : l'étape se demandant dès la première case (M7), la deuxième case, cochée pendant la vérification de la première, était ignorée — un intermédiaire restait retenu à « trop peu de lieutenants » avec deux cases cochées.
+- `syncLieutenantsGate` : porte passée → bandeau effacé et `check-completed` si absent ; porte refusée → bandeau et `check-removed` si présent. Ignore un verdict arrivé après un changement d'article ou une règle redevenue fausse.
+- Transition `true → false` : bandeau effacé, `transitionSettled = false`, `check-removed`, `saveDecisions` (inchangé).
 
 **Stores Pinia**
 - `useGateAlarmStore` — lu **à la demande** dans les fonctions (pas au `setup`) : les tests qui montent le panneau sans Pinia ne tombent pas au montage.
@@ -3010,14 +3072,15 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Critères d'acceptation techniques**
 - AC.LIEGATE.1 : 🔴 un seul lieutenant pour un pilier, pistes = candidats non retenus ; minimum atteint → passe ; 🔴 cannibalisation ; 🟠 partage ; 🟠 identique au capitaine ; une alerte par lieutenant. *(test : `tests/unit/shared/verifiers-lieutenants.test.ts`, dans `npm run verify`)*
-- AC.LIEGATE.2 : porte refusée → aucune étape, bandeau ; décisions enregistrées avant le verdict ; bandeau → alarme → dérogation → étape ; « Revenir corriger » → étape non validée ; porte passée → étape émise une fois, sans bandeau ; lieutenant ajouté → porte relancée → étape ; étape retirée si la porte refuse après un changement. *(test : `tests/unit/components/lieutenants-gate.test.ts`)*
+- AC.LIEGATE.2 : porte refusée → aucune étape, bandeau ; décisions enregistrées avant le verdict ; bandeau → alarme → dérogation → étape ; « Revenir corriger » → étape non validée ; porte passée → étape émise une fois, sans bandeau ; lieutenant ajouté → porte relancée → étape, que la règle soit remplie dès le montage ou après ; étape retirée si la porte refuse après un changement ; **une case cochée pendant la vérification est reprise ensuite : l'étape est accordée** (C6) ; M7 : l'étape s'active sans structure. *(test : `tests/unit/components/lieutenants-gate.test.ts`)*
 - AC.LIEGATE.3 : 🔴 pilier avec un seul lieutenant refusé par le serveur. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
 - AC.LIEGATE.4 : aucune table de traduction `Cluster` / `Support` vers un niveau. *(test : `tests/unit/architecture/article-level-names.test.ts`, dans `npm run verify`)*
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2).
+- 2026-09-25 — C6 (commit `d24e530`) : plus de structure dans la règle ni dans l'enregistrement ; `verifyLockedLieutenants` reprend les changements survenus pendant une vérification ; une étape accordée au montage est revérifiée au changement suivant.
 
-**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-LIE-CHECK`, `DESIGN-LIE-CHECKBOX-COUNT`, `DESIGN-MOT-CANNIBALIZATION`.
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-LIE-CHECK`, `DESIGN-LIE-CHECKBOX-COUNT`, `DESIGN-MOT-CANNIBALIZATION`, `DESIGN-HN-LOCK-GATE`.
 
 ---
 
@@ -3026,16 +3089,16 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Réf PRD :** [FR-LIE-AI-FRONTIER](./prd.md#fr-lie-ai-frontier)
 
 **Refs code**
-- [src/components/moteur/LieutenantsSelection.vue](../../src/components/moteur/LieutenantsSelection.vue) — disposition stricte des containers (lignes ~735-890 selon la version actuelle).
-- [tests/unit/components/lieutenants-selection-architecture.test.ts](../../tests/unit/components/lieutenants-selection-architecture.test.ts) — test architectural permanent.
+- [src/components/moteur/lieutenants/LieutenantsResultsLayout.vue](../../src/components/moteur/lieutenants/LieutenantsResultsLayout.vue) — disposition stricte des containers : `LieutenantProposals` descendant direct de `.serp-results`, jamais du `LieutenantsAiPanel` ; monté par [LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) (anciennement `LieutenantsSelection.vue`). Depuis C6, `LieutenantH2Structure` n'y est plus rendu (props `hnStructure`, `activeHnRecurrence`, `hnRecurrence`, `serpResultsByKeyword`, `activeHnTab`, `hnSaved`, `isSavingHn`, `hnRegen*`, `selectedCardsSize` et événements `save-hn`, `regenerate-hn`, `update:active-hn-tab` retirés).
+- [tests/unit/components/lieutenants-results-layout-architecture.test.ts](../../tests/unit/components/lieutenants-results-layout-architecture.test.ts) — test architectural permanent ; AC.J.18 réécrit en C6 : `LieutenantH2Structure` ne doit **plus** être rendu dans le layout Lieutenants (stub gardé pour détecter une réintroduction). Voir aussi [tests/unit/components/lieutenants-selection-architecture.test.ts](../../tests/unit/components/lieutenants-selection-architecture.test.ts).
 
 **Flux DB** : aucun — invariant UX/architectural.
 
 **Décisions d'architecture**
-- Séparation visuelle stricte entre **données utilisateur** (cards verrouillés/éliminés, structure Hn validée) et **coque IA** (suggestions non actées).
+- Séparation visuelle stricte entre **données utilisateur** (cards verrouillés/éliminés) et **coque IA** (suggestions non actées). La structure Hn validée, qui faisait partie des données utilisateur de l'onglet, a son onglet depuis C6 (`DESIGN-HN-TAB`).
 - Test architectural permanent qui échoue si un refactor absorbe les containers utilisateur dans la coque IA.
 
-**Historique** : régression Sprint C-1 (commit `890b285`, 2026-05-02) avait fusionné les zones — restauration sprint 1 (2026-05-04), formalisée par cette FR.
+**Historique** : régression Sprint C-1 (commit `890b285`, 2026-05-02) avait fusionné les zones — restauration sprint 1 (2026-05-04), formalisée par cette FR. 2026-09-25 (C6, commit `d24e530`) : la structure Hn quitte l'onglet.
 
 **Voir aussi** : `DESIGN-UI-AI-PANELS-PATTERN`.
 
@@ -3076,7 +3139,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Tables consommées** : `lieutenant_explorations.status` (`'locked'` ↔ `'suggested'`).
 
-**Flux DB** : cochage/décochage → POST/DELETE immédiat → mise à jour `status`. Watcher `lieutenantsCheckActive` émet/retire le check workflow (cf. `DESIGN-MOT-WORKFLOW-GATING-DUAL`).
+**Flux DB** : cochage/décochage → POST/DELETE immédiat → mise à jour `status`. Watcher `lieutenantsCheckActive` (≥ 1 lieutenant verrouillé depuis C6) demande/retire le check workflow, accordé par la porte (cf. `DESIGN-MOT-WORKFLOW-GATING-DUAL`, `DESIGN-LIE-LOCK-GATE`). Le bouton « Sauvegarder la structure » a quitté l'onglet (C6, `DESIGN-HN-TAB`).
 
 **Décisions d'architecture (mise à jour 2026-05-08)**
 - Suppression du concept « panel locked » qui désactivait toutes les checkboxes — cul-de-sac UX.
@@ -3084,6 +3147,147 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - Badge « Lieutenants verrouillés » et badge « Validée avec les lieutenants » supprimés.
 
 **Voir aussi** : `DESIGN-MOT-WORKFLOW-GATING-DUAL`, `DESIGN-LEX-CHECKBOX-LOCK-IMMEDIATE` (jumeau côté Lexique).
+
+---
+
+## §8.7.bis — Moteur — Structure (DESIGN-HN)
+
+Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-structure-hn`, commits `d24e530`, `9631612`, `103c38b`, `94c7e91`). Tech-spec : [tech-spec-onglet-structure-hn.md](../implementation-artifacts/tech-spec-onglet-structure-hn.md). Lignes relevées au commit `94c7e91`.
+
+### DESIGN-HN-TAB
+
+**Réf PRD :** [FR-HN-TAB](./prd.md#fr-hn-tab--la-structure-de-larticle-a-son-propre-onglet)
+
+**Refs code**
+- [src/components/moteur/StructureHnPanel.vue](../../src/components/moteur/StructureHnPanel.vue) — onglet « Structure ». Props (26-35) : `selectedArticle`, `mode: 'workflow' | 'libre'` (défaut `workflow`), `captainKeyword`, `articleLevel`, `cocoonSlug` ; événements `check-completed` / `check-removed` (37-40). `hasStructureCheck` (62-70 : store de progression lu à la demande, les tests qui montent le panneau sans lui ne tombent pas) ; `validated` = étape présente et structure inchangée (72) ; `canValidate` = `workflow`, structure non vide, rien en cours (73-75). `handleSave` (77-82) : enregistre, puis `check-removed` si l'étape était posée. `handleGenerate` (84-87) : charge la récurrence si elle manque, puis génère. `validate` (89-101) : `prepareValidation()` puis `check-completed` `MOTEUR_HN_LOCKED` ; rien si l'enregistrement échoue. Watchers : changement d'article → `restore()` + `loadCompetitors()` (104-108) ; structure arrivée après le montage → `restore()` (111-113) ; `onMounted` → `restore()` + `loadCompetitors()` si un capitaine est connu (115-118). Gabarit : `structure-needs-lieutenants` (131-133) ou pastilles des lieutenants retenus (134-136) ; `structure-validated` (138-140) ; `structure-changed` (141-143) ; erreur ou chargement de la SERP (145-146) ; `LieutenantH2Structure` (148-162) ; bouton `structure-validate` « Valider la structure » en `workflow` seulement (164-175).
+- [src/composables/moteur/useStructureHn.ts](../../src/composables/moteur/useStructureHn.ts) — en-tête `AUTHORITY:` (1-15 : `article_keywords.hn_structure` + `article_content.outline`). `structure` (copie de travail), `dirty` = copie ≠ structure enregistrée (86-87, comparaison JSON) ; `lockedLieutenants` = `richLieutenants` verrouillés, sinon la liste plate `keywords.lieutenants` (89-92) ; `restore` (94-96) ; `loadCompetitors` (98-118) : `POST /serp/analyze { keyword: capitaine, topN: 10, articleLevel, articleId }` (contrat `serpAnalysisContract`) → `computeHnRecurrence(result.competitors)`, erreur affichée « Structure des concurrents indisponible : … » ; `generate(lockedHeadings)` (120-144) : rien sans capitaine, article ou lieutenant retenu, sinon `startStream('/api/keywords/:capitaine/ai-hn-structure', { lieutenants: lockedLieutenants, level, hnStructure: recurringHeadings(recurrence), lockedHeadings, articleId, cocoonSlug? })`, contrat `hnOutlineContract` ; `save` (146-160) : refuse une structure vide, `articleKeywordsStore.saveStructure` ; `recommendWordCount` (166-192) : `POST /articles/:id/recommend-word-count`, puis `PUT /articles/:id/micro-context` **seulement** si `targetWordCount` est vide (angle de repli « Angle à préciser (suggéré à la validation de la structure) »), message « 💡 Longueur conseillée » dans la pile d'activité ; `prepareValidation` (194-205) : `save()` (faux → arrêt), `PUT /articles/:id { outline: hnToOutline(structure, titre) }` (échec journalisé seulement), `void recommendWordCount(id)`, vrai.
+- [src/components/moteur/LieutenantH2Structure.vue](../../src/components/moteur/LieutenantH2Structure.vue) — composant réutilisé tel quel (anciennement rendu par l'onglet Lieutenants) : liste H1/H2/H3, bouton 🔒 par titre (`toggleHeadingLock`), « Générer la structure Hn » / « Régénérer la structure » (`regenerate-hn` avec les titres verrouillés), « Sauvegarder la structure » (`save-hn`), section repliable « Structure Hn concurrents » (récurrence, onglets par mot-clé).
+- [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — monte `StructureHnPanel` en `workflow` entre Lieutenants et Lexique (`captain-keyword`, `article-level` = `articleLevelForLieutenants`, `cocoon-slug`) ; cf. `DESIGN-MOT-PHASES`.
+- [server/routes/keyword-ai-panel.routes.ts](../../server/routes/keyword-ai-panel.routes.ts) — `POST /keywords/:keyword/ai-hn-structure` (107-176) : 400 `VALIDATION_ERROR` si `level` manque ou si la liste des lieutenants est vide (118-121) ; récurrence formatée « H2: texte (nx) » ou « Aucune donnee de structure concurrente » ; titres verrouillés ; douleur (`getArticlePainPoint`) ; **autres articles du cocon** (`getCocoonSiblings(articleId)`, panne → `[]`, 142-143) → `{{cocoon_articles}}` (152) ; `{{type_rules}}` (151) ; SSE `runAiPanelStream`, sortie refusée sans liste de titres (`parseContract(hnOutlineContract, …, 'server')`, 169).
+- [server/services/queries/cocoon-siblings.service.ts](../../server/services/queries/cocoon-siblings.service.ts) — en-tête `AUTHORITY:`. `getCocoonSiblings(articleId)` (22-37) : titre, type, capitaine des **autres** articles du même cocon (`articles` ⨝ `article_keywords`), `[]` hors cocon ; `describeCocoonSiblings` (40-44) : « - titre (type, mot-clé « … ») ». Lu aussi par la porte (`DESIGN-HN-LOCK-GATE`).
+- [server/prompts/lieutenants-hn-structure.md](../../server/prompts/lieutenants-hn-structure.md) — `{{type_rules}}` (11) ; la douleur n'invite plus à nommer la douleur dans une introduction ou une conclusion (13) ; bloc facultatif `{{#cocoon_articles}}` (36-42 : « Un chapitre ne developpe pas un sujet deja traite par l'un de ces articles : il le resume et y renvoie ») ; règle 1 (46) : **H1 = le capitaine en entier** (avant C6 : « le H1 ne doit PAS être un copier-coller du mot-clé », contraire à la publication) ; règle 2 (47) : **« N'ecris ni introduction ni conclusion »**, les H2 comptés sont les H2 de fond.
+- [shared/structure-outline.ts](../../shared/structure-outline.ts) — `structureToOutline(nodes, articleTitle)` (11-47), partagé par l'écran (`hnToOutline`, [outline.store.ts:15-17](../../src/stores/article/outline.store.ts)) et le mode automatique : H1 de la structure en tête, sinon le titre de l'article (18-19) ; « Introduction » ajoutée **sauf** si un H2 de la structure en est une (21-26, `isIntroductionTitle`) ; niveaux bornés à 2-3, un seul H1 (28-41) ; « Conclusion » ajoutée sauf si un H2 en est une (43-45, `isConclusionTitle`). Avant C6, `hnToOutline` ajoutait toujours les deux : doublons avec le prompt qui les écrivait.
+- [shared/utils/hn-structure.ts](../../shared/utils/hn-structure.ts) — `computeHnRecurrence` (43-68) et `recurringHeadings` (71-75), partagés avec l'onglet Lieutenants (`DESIGN-LIE-EXTRACT-HEADINGS`).
+- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — `saveDecisions` (215-240) **n'envoie plus** `hnStructure` ; `saveStructure(id, structure)` (247-270) l'envoie avec les décisions et renvoie `false` en cas d'échec ; `fetchKeywordsMerge` adopte la structure de la base quand la mémoire n'en a pas (144-148).
+- [server/routes/keywords.routes.ts](../../server/routes/keywords.routes.ts) — `PUT /articles/:id/keywords` : `hnStructure` transmis tel quel, `undefined` s'il est absent (313-314 ; avant C6 : `hnStructure ?? []`, qui effaçait la structure) ; [data.service.ts:702-704](../../server/services/infra/data.service.ts) (`saveArticleKeywords`) garde alors la valeur en base.
+- [shared/verifiers/structure.ts](../../shared/verifiers/structure.ts) — `isIntroductionTitle` / `isConclusionTitle` (48-52), `structureHeadings` (61-73), `bodyH2` (80-82), partagés par le sommaire et la porte (cf. `DESIGN-HN-LOCK-GATE`).
+- [server/services/external/mock-fixtures/streams.ts](../../server/services/external/mock-fixtures/streams.ts) — fixture `lieutenants-hn-structure` (93 et suiv.) : H1 « <Capitaine> : le guide pratique », un H2 par lieutenant retenu complété de H2 thématiques jusqu'au minimum du type, un H3 sous le premier, ni introduction, ni conclusion, ni FAQ : la simulation passe la porte.
+- Mode automatique (commit `9631612`) : [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) — étape « 2bis. Structure » (193-208) : `collectSse('/keywords/:capitaine/ai-hn-structure', { lieutenants, level, hnStructure: récurrence, lockedHeadings: [], articleId })`, erreur si aucune structure, `ctx.articleStructure`, `saveThenEmit(…, MOTEUR_HN_LOCKED)` ; `decisions()` envoie `ctx.articleStructure`, jamais la récurrence des concurrents (124-131). [scripts/auto-article/phases/redaction.ts](../../scripts/auto-article/phases/redaction.ts) — sommaire = `structureToOutline(ctx.articleStructure, ctx.articleTitle)` si une structure existe, sinon `POST /generate/outline` (115-131). [scripts/auto-article/resume.ts](../../scripts/auto-article/resume.ts) — une reprise relit `hnStructure` dans `ctx.articleStructure` (46-48). [scripts/auto-article/resume-plan.ts](../../scripts/auto-article/resume-plan.ts) — `skipMoteur` exige `MOTEUR_HN_LOCKED` **et** `MOTEUR_LEXIQUE_VALIDATED` et un capitaine (25-27). [scripts/auto-article/collect-sse.ts](../../scripts/auto-article/collect-sse.ts) — `collectSse` extrait de la phase Rédaction ; `AutoRunContext.articleStructure` ([types.ts](../../scripts/auto-article/types.ts)), distinct de `hnStructure` (récurrence des concurrents).
+- Articles existants (commit `103c38b`) : [scripts/reconcile-hn-checks.ts](../../scripts/reconcile-hn-checks.ts), `npm run db:reconcile-hn` ([package.json](../../package.json)) — articles avec `moteur:lieutenants_locked` sans `moteur:hn_locked` (25-32) ; sans structure : listés « à construire » (38-41) ; sinon `evaluateArticleGate(id, 'hn-lock')` (42) : passe → `addArticleCheck` avec `--apply` (43-47), sinon les points bloquants sont listés (49-52). Simulation par défaut.
+
+**Endpoints**
+- `POST /api/keywords/:keyword/ai-hn-structure` — SSE, `done { outline: { hnStructure, justification }, metadata, usage }`.
+- `POST /api/serp/analyze` — relu à l'ouverture de l'onglet (cache `keyword_serp_results` 7 jours ; au-delà, nouvelle analyse payante).
+- `PUT /api/articles/:id/keywords` (`saveStructure`), `PUT /api/articles/:id` (`{ outline }`), `POST /api/articles/:id/recommend-word-count`, `GET` / `PUT /api/articles/:id/micro-context`.
+- `POST /api/articles/:id/progress/check` (`moteur:hn_locked`, porte `hn-lock`) / `…/uncheck`.
+
+**Flux DB**
+
+*Lecture* : ouverture de l'onglet → structure enregistrée lue dans le store (`article_keywords.hn_structure`, hydraté par `fetchKeywordsMerge`) → copie de travail ; SERP du capitaine (`keyword_serp_results` / `keyword_serp_scrapes`) → récurrence. Génération → serveur : douleur de l'article, autres articles du cocon (`articles`, `article_keywords.capitaine`), stratégie du cocon.
+
+*Écriture* :
+1. « Sauvegarder la structure » → `saveStructure` → `PUT /articles/:id/keywords { …décisions, hnStructure }` → `article_keywords.hn_structure` (JSONB) ; si l'étape était posée → `POST …/progress/uncheck`.
+2. « Valider la structure » → même enregistrement → `PUT /articles/:id { outline }` → `article_content.outline` → (en parallèle, sans attendre) recommandation → `article_micro_contexts.target_word_count` si vide → `POST …/progress/check { check: 'moteur:hn_locked' }` → porte `hn-lock` → `articles.completed_checks` ou 422 `GATE_BLOCKED` (alarme).
+
+**Stores Pinia**
+- `useArticleKeywordsStore` — `keywords.hnStructure`, `lockedLieutenants`, `saveStructure`.
+- `useArticleProgressStore` — `completedChecks` (étape présente ?), `addCheck` / `removeCheck` via `MoteurView`.
+- `useCostLogStore` — message « 💡 Longueur conseillée ».
+- `useGateAlarmStore` — alarme sur un refus (via `emitCheckCompleted` de `MoteurView`).
+
+**Watchers & réactivité**
+- `dirty` (computed) : copie ≠ base → message « La structure a changé depuis sa validation » quand l'étape est posée.
+- Changement d'article : copie rechargée, SERP relue. Structure arrivée après le montage : copie rechargée si elle est vide.
+- **Aucune** réaction à un changement de capitaine ou de lieutenants retenus : l'étape reste posée (limite, cf. ci-dessous).
+
+**Décisions d'architecture**
+- **Enregistrer ≠ valider** : on peut garder une structure en chantier sans demander l'étape. Valider enregistre d'abord : la porte lit la base, pas l'écran.
+- **Une structure enregistrée après validation perd son étape** : l'étape ne vaut que pour la structure jugée.
+- **Pas d'écrasement silencieux** : `hnStructure` absent d'un enregistrement = inchangé en base ; seul `saveStructure` l'écrit. Avant C6, tout enregistrement Lieutenants ou Lexique fait sur un store sans structure l'effaçait (`hnStructure ?? []` côté store et route).
+- **Récurrence des concurrents relue, pas recalculée côté serveur** : la tech-spec prévoyait un calcul serveur « si absente » ; livré : l'onglet relit la SERP du capitaine (même route que l'onglet Lieutenants) et calcule la récurrence dans le navigateur (`shared/`). La route de structure reçoit les **lieutenants retenus du client** (`lockedLieutenants`), pas de la base.
+- **Sommaire partagé** (`shared/structure-outline.ts`) : l'écran et le mode automatique produisent le même sommaire à partir de la même structure.
+- **Mode automatique** : il enregistrait comme structure la récurrence des concurrents (sans H1 ni capitaine), que la porte aurait refusée ; il demande désormais une vraie structure à la route de l'écran, et la porte en décide.
+
+**Limites connues** *(relevées en documentant C6)*
+- `loadCompetitors` part au montage et à chaque changement d'article (`StructureHnPanel.vue:104-108,115-118`) : `POST /serp/analyze` refait une analyse payante (DataForSEO + lecture des pages) si la SERP du capitaine a plus de 7 jours. Contraire à `FR-MOT-NO-AUTO-ACTION`. `computeSmartTab` ouvre directement cet onglet quand les lieutenants sont validés : sélectionner l'article suffit à déclencher l'appel.
+- Aucune revérification de `moteur:hn_locked` quand le capitaine ou les lieutenants changent après la validation (pas de watcher, contrairement aux onglets Lieutenants et Lexique) : seule la publication rejoue la porte. Les dérogations, elles, tombent (l'empreinte contient capitaine et lieutenants).
+- `prepareValidation` n'attend pas la recommandation (`void`, `useStructureHn.ts:203`) alors que son commentaire (199) dit que « le sommaire et la longueur partent AVANT l'étape » ; un échec du `PUT { outline }` est journalisé et l'étape est quand même demandée (200-202). Valider remplace aussi un sommaire retouché dans la Rédaction.
+- `saveStructure` écrit la structure dans le store **avant** la réponse du serveur, sans retour arrière en cas d'échec (`article-keywords.store.ts:250`) : après un refus, la copie de travail paraît enregistrée (`dirty` faux) alors que la base ne l'a pas.
+- Les textes de `LieutenantH2Structure.vue` parlent encore de l'onglet Lieutenants : « Coche au moins un lieutenant ci-dessus, puis lance la generation IA » (structure vide, ligne 205 ; titres des boutons, 122 et 210 ; consigne « integrera les nouveaux lieutenants coches », 117), alors que l'onglet Structure n'a pas de case à cocher.
+- Pas d'édition d'un titre à la main dans l'onglet (verrouiller et régénérer seulement).
+
+**Critères d'acceptation techniques**
+- AC.HNTAB.1 : la structure naît des seuls lieutenants retenus, avec la récurrence des concurrents ; sans lieutenant retenu, aucune demande ; valider enregistre la structure puis le sommaire ; un enregistrement refusé arrête la validation ; la longueur conseillée n'écrase pas une longueur choisie. *(test : `tests/unit/composables/moteur/useStructureHn.test.ts`)*
+- AC.HNTAB.2 : sans lieutenant retenu, l'écran le demande et rien n'est validable ; valider enregistre structure et sommaire **puis** demande l'étape ; structure validée et inchangée annoncée ; structure validée, modifiée puis enregistrée → étape retirée ; mode libre sans bouton ni étape. *(test : `tests/unit/components/structure-hn-panel.test.ts`)*
+- AC.HNTAB.3 : `saveDecisions` n'envoie pas la structure ; `saveStructure` l'envoie et renvoie `false` sur un refus ; `fetchKeywordsMerge` adopte la structure de la base *(test : `tests/unit/stores/article-keywords.store.test.ts`)* ; la route transmet `undefined` quand `hnStructure` est absent, jamais `[]` *(test : `tests/unit/routes/article-keywords.routes.test.ts`)* ; enregistrer sans structure ne l'efface plus en base *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*.
+- AC.HNTAB.4 : ni introduction ni conclusion ajoutées quand la structure en a déjà *(test : `tests/unit/stores/outline-hn-to-outline.test.ts`)* ; la simulation passe la porte sans ⛔ ni 🔴 *(test : `tests/unit/services/mock-hn-structure.test.ts`)*.
+- AC.HNTAB.5 : mode automatique — le Moteur n'est sauté que si structure **et** lexique sont validés, un article d'avant C6 y repasse *(test : `tests/unit/scripts/auto-article/resume-plan.test.ts`)*.
+- AC.HNTAB.6 : navigateur, mode simulé — une structure proposée à partir des lieutenants retenus se valide, pose `moteur:hn_locked` et devient le sommaire (H1 en tête, une introduction, une conclusion, un lieutenant en chapitre) *(test : `tests/browser-e2e/structure.browser.test.ts` ②)* ; parcours alignés (helper `validerStructure`, `MOTEUR_TABS` à 6 onglets, bout-en-bout, Lieutenants, interactions — titre verrouillé qui survit à la régénération —, onglets, navigation, finalisation ; commit `94c7e91`).
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C6) : onglet, composable, route enrichie, sommaire partagé, pas d'écrasement (`d24e530`) ; mode automatique (`9631612`) ; réconciliation (`103c38b`) ; parcours navigateur (`94c7e91`). Simulation de la réconciliation le 2026-09-25 : #1012 et #1013 retenus par la porte (le 1013 : 12 H2 de fond, H1 sans le capitaine).
+
+**Voir aussi** : `DESIGN-HN-LOCK-GATE`, `DESIGN-LIE-HN-STRUCTURE` (remplacée), `DESIGN-LIE-CHECK`, `DESIGN-MOT-PHASES`, `DESIGN-MOT-CHECKS`, `DESIGN-RED-OUTLINE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-INFRA-TYPE-RULES-SSOT`.
+
+---
+
+### DESIGN-HN-LOCK-GATE
+
+**Réf PRD :** [FR-HN-LOCK-GATE](./prd.md#fr-hn-lock-gate--une-structure-conforme-au-type-darticle)
+
+**Refs code**
+- [shared/verifiers/structure.ts](../../shared/verifiers/structure.ts) — vérificateur pur `verifyStructure(input: StructureGateInput): GateIssue[]` (84-198). `StructureGateInput` (30-41) : `level`, `captain`, `structure` (`article_keywords.hn_structure`, format `{ level, text, children? }` ou l'ancien `{ level: 'H2', title }`), `lockedLieutenants`, `cocoonArticles` (`CocoonArticleRef { title, captain }`, les **autres** articles du cocon), `zone`. `structureHeadings` (61-73) aplatit dans l'ordre de lecture, titres vides compris ; `bodyH2` (80-82) = H2 non vides hors introduction et conclusion (`INTRODUCTION`, `CONCLUSION`, 48-49). Règles par type lues dans `ARTICLE_TYPE_RULES` ; couverture des mots par `keywordCoverage` (`shared/seo-validators.ts`) ; `distinctRules` (de `publish.ts`) donne un identifiant par occurrence.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `hnGate(articleId)` (197-233) : `getArticleById` (type), `getArticleKeywords` (capitaine, sinon `captain_keyword_locked` ; `hnStructure` ; `lieutenants`), `getCocoonSiblings`, `loadZoneContext().zone` ; empreinte (216-231). `CHECK_GATES[MOTEUR_HN_LOCKED] = 'hn-lock'` (60). `evaluateArticleGate` : `case 'hn-lock'` (325) ; le `default` qui répondait « passe » pour une porte réservée est retiré. `publishGate` rejoue `hn-lock` (287). En-tête `AUTHORITY:` : `FR-HN-LOCK-GATE`.
+- [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — `hn-lock` était déjà dans `GATE_IDS` depuis C2, libellé `GATE_LABELS['hn-lock']` = « valider la structure » (alarme « Avant de valider la structure »).
+- [server/services/queries/cocoon-siblings.service.ts](../../server/services/queries/cocoon-siblings.service.ts) — `getCocoonSiblings` (cf. `DESIGN-HN-TAB`).
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `POST /articles/:id/progress/check` avec `moteur:hn_locked` → porte ; refus → 422 `GATE_BLOCKED`.
+- Écran : `StructureHnPanel.validate` → `check-completed` → `MoteurView.emitCheckCompleted` → `useGateAlarmStore` (alarme si 422). Pas de vérification silencieuse ni de bandeau (contrairement aux Lieutenants) : la porte ne juge qu'au clic sur « Valider la structure ».
+
+**Règles**
+
+| Règle (`GateIssue.rule`) | Niveau | Condition (lignes de `shared/verifiers/structure.ts`) |
+|---|---|---|
+| `hn-empty` | ⛔ | Aucun H2 non vide ; **seule alerte renvoyée** (89-96) |
+| `hn-h1-missing` | ⛔ | Pas de H1, ou H1 vide (98-100) |
+| `hn-captain-not-in-h1` | 🔴 | Capitaine connu et `keywordCoverage(capitaine, H1) < 1` (101-109) ; extrait = le H1 |
+| `hn-empty-title` | ⛔ | Un titre vide, quel que soit son niveau (111-113) |
+| `hn-h3-without-h2` | ⛔ | Un H3 avant tout H2 ; une seule alerte (115-122) |
+| `hn-h2-count` | 🔴 | `bodyH2` hors `[h2Min, h2Max]` du type ; message « n H2 de fond … (introduction et conclusion en plus) », risque « trop de chapitres » ou « trop peu » (124-134) |
+| `hn-intro-conclusion` | 🟠 | Un H2 d'introduction ou de conclusion écrit dans la structure (136-138) |
+| `hn-h3-too-many` | 🟠 | Plus de `h3PerH2Max` (3) H3 sous un H2 (140-151) |
+| `hn-local-overuse` | 🔴 | Plus de `localH2Max` H2 de fond qui contiennent la ville (premier segment de la zone, `keywordCoverage ≥ 1`) : pilier 2, sinon 0 (153-164) |
+| `hn-lieutenant-missing:<lieutenant>` | 🟠 | Lieutenant retenu couvert à moins de 0,75 par chaque H2 et H3 (166-171) |
+| `hn-overlaps-article:<titre de l'article>` | 🔴 | **Pilier seulement** : un H2 contient en entier le capitaine d'un autre article du cocon **et** a au moins un H3 ; alternative « Garder ce H2 sans H3 : un résumé de 150 à 250 mots et un lien vers … » (173-188) |
+| `hn-overlaps-article:<titre de l'article>` | 🟠 | Même recoupement, sans H3 : « résumez-le et liez-le » (189-193) |
+
+**Flux DB**
+
+*Lecture* (`hnGate`) : `articles` (type, `captain_keyword_locked`), `article_keywords` (`capitaine`, `hn_structure`, `lieutenants`), autres articles du cocon (`articles` ⨝ `article_keywords.capitaine`), `theme_config` (zone, via `loadZoneContext`), `gate_waivers` de la porte.
+
+*Écriture* : aucune par la porte ; l'étape (`articles.completed_checks`) n'est écrite que si elle passe ; dérogations dans `gate_waivers` (cf. `DESIGN-INFRA-GATE-WAIVER`).
+
+**Décisions d'architecture**
+- **H1 sans capitaine = 🔴, pas ⛔** (écart avec l'épopée, qui réservait ⛔) : même niveau qu'au premier jet (`draft-captain-not-in-h1`) et à la publication (`seo-capitaine-not-in-title`). Seul un H1 absent est ⛔.
+- **« H2 de fond »** : `h2Min` / `h2Max` ne comptent pas l'introduction ni la conclusion, que le sommaire ajoute toujours ; une introduction ou une conclusion écrite dans la structure est signalée 🟠 (elle ferait doublon si elle n'était pas reconnue).
+- **Recoupement gradué** : un pilier *résume* ses enfants (FR-CER-CHILD-FROM-PILLAR-H2, C7) ; le 🔴 est réservé au H2 qui les *développe* (H3). Intermédiaires et spécialisés ne sont pas jugés sur ce point.
+- **Empreinte** (216-231) : `{ level, captain normalisé, headings: "niveau:texte" dans l'ordre, lieutenants normalisés triés, overlapping, city }`, où `overlapping` = capitaines normalisés des seuls articles du cocon qu'un H2 recoupe. Un voisin sans rapport, créé plus tard, ne fait pas tomber une dérogation ; toute retouche d'un titre, si.
+- **Porte au clic, pas en continu** : la structure change rarement et se valide d'un geste ; pas de vérification silencieuse ni de bandeau.
+- **Rejouée à la publication** : une structure modifiée ou une dérogation tombée remonte dans l'alarme de publication (`hn-lock:<règle>`), cf. `DESIGN-RED-PUBLISH-GATE`.
+
+**Limites connues**
+- Recoupement détecté seulement si le H2 contient **tout** le capitaine de l'autre article (`keywordCoverage ≥ 1`), et seulement pour un pilier.
+- Une structure vide ou absente donne ⛔ `hn-empty` — à l'étape comme **à la publication**, où la porte est rejouée : un article sans structure enregistrée (rédigé sans passer par l'onglet Structure, ou d'avant C6 sans structure) ne peut pas être publié, sans dérogation possible. Le lexique vide, lui, a été passé en 🔴 par C3 pour pouvoir s'assumer. À trancher.
+- Introduction / conclusion reconnues à leurs premiers mots seulement (48-49).
+
+**Critères d'acceptation techniques**
+- AC.HNGATE.1 : une bonne structure passe (H1 avec le capitaine, 6 H2 de fond, lieutenants couverts, ville citée avec mesure) ; ⛔ aucun H2, H1 absent, titre vide, H3 sans H2 ; 🔴 le pilier 1013 (H1 sans capitaine, trop de chapitres) ; introduction et conclusion hors du compte et 🟠 ; ville trop citée ; pilier qui développe (🔴) ou recoupe (🟠) un article du cocon ; un spécialisé n'est pas jugé sur les recoupements ; 🟠 lieutenant absent, trop de H3 ; ancien format lu. *(test : `tests/unit/shared/verifiers-structure.test.ts`, dans `npm run verify`)*
+- AC.HNGATE.2 : ⛔ une structure sans H1 : l'étape est refusée en 422 et aucune raison ne la débloque ; une structure conforme passe. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.HNGATE.3 : navigateur — une structure sans H1 ouvre l'alarme ⛔ sans champ de dérogation, bouton grisé, étape non posée. *(test : `tests/browser-e2e/structure.browser.test.ts` ①)*
+
+**Historique**
+- 2026-09-25 — porte réservée par C2 (`GATE_IDS`, évaluée « passe » sans alerte) ; livrée par C6 (commit `d24e530`).
+
+**Voir aussi** : `DESIGN-HN-TAB`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-DRAFT-SINGLE-PASS`.
 
 ---
 
@@ -3476,33 +3680,39 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Réf PRD :** [FR-FIN-RECAP](./prd.md#fr-fin-recap)
 
 **Refs code**
-- [src/components/moteur/FinalisationPanel.vue](../../src/components/moteur/FinalisationPanel.vue) — composant de l'onglet Finalisation, 3 sections repliables (Capitaine / Lieutenants / Lexique), 100 % lecture seule. *(Nommage historique `FinalisationRecap.vue` retiré — cf. §7 « Évolutions de nommage » du PRD.)*
-- [src/components/shared/CollapsableSection.vue](../../src/components/shared/CollapsableSection.vue) — primitive UI repliable utilisée pour les 3 blocs.
-- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — seule source de données lue par le panneau (champs `richCaptain`, `richLieutenants`, `lexique`).
+- [src/components/moteur/FinalisationPanel.vue](../../src/components/moteur/FinalisationPanel.vue) — composant de l'onglet Finalisation, 4 sections repliables (Capitaine / Lieutenants / Structure / Lexique, depuis C6), 100 % lecture seule. Section Structure : `structure = computed(() => structureHeadings(articleKeywordsStore.keywords?.hnStructure ?? []))` (`structureHeadings` de [shared/verifiers/structure.ts](../../shared/verifiers/structure.ts)), titre « Structure (n H2) » (nombre de H2 de la liste, introduction ou conclusion comprises s'il y en a), `data-testid="finalisation-structure"`, étiquette `H1`/`H2`/`H3` par titre, H3 en retrait (`finalisation__heading--h3`), « Aucune structure validée. » si vide. *(Nommage historique `FinalisationRecap.vue` retiré — cf. §7 « Évolutions de nommage » du PRD.)*
+- [src/components/shared/CollapsableSection.vue](../../src/components/shared/CollapsableSection.vue) — primitive UI repliable utilisée pour les 4 blocs.
+- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — seule source de données lue par le panneau (champs `richCaptain`, `richLieutenants`, `hnStructure`, `lexique`).
 
-**Endpoints** : aucun appel direct. Le composant consomme exclusivement ce que `useArticleKeywordsStore` a déjà hydraté pendant la session Moteur (Capitaine + Lieutenants + Lexique).
+**Endpoints** : aucun appel direct. Le composant consomme exclusivement ce que `useArticleKeywordsStore` a déjà hydraté pendant la session Moteur (Capitaine + Lieutenants + Structure + Lexique).
 
 **Tables consommées** : `article_keywords` (lecture indirecte via le store). Pas d'écriture.
 
 **Flux DB**
 
-*Lecture* : aucune lecture initiée par cet onglet. Au moment où l'utilisateur bascule sur `Finalisation`, le store `useArticleKeywordsStore` est déjà peuplé par les onglets précédents (Capitaine pose `richCaptain`, Lieutenants pose `richLieutenants` avec statut `locked`, Lexique pose `lexique`). Le composant lit ces refs réactivement via 3 `computed`.
+*Lecture* : aucune lecture initiée par cet onglet. Au moment où l'utilisateur bascule sur `Finalisation`, le store `useArticleKeywordsStore` est déjà peuplé par les onglets précédents (Capitaine pose `richCaptain`, Lieutenants pose `richLieutenants` avec statut `locked`, Structure pose `hnStructure`, Lexique pose `lexique`). Le composant lit ces refs réactivement via 4 `computed`.
 
-*Écriture* : aucune. Le composant n'expose ni input ni mutation — pour modifier une valeur, l'utilisateur revient sur l'onglet source (Capitaine / Lieutenants / Lexique).
+*Écriture* : aucune. Le composant n'expose ni input ni mutation — pour modifier une valeur, l'utilisateur revient sur l'onglet source (Capitaine / Lieutenants / Structure / Lexique).
 
 **Stores Pinia**
-- `useArticleKeywordsStore` — unique store consommé, fournit `keywords.richCaptain`, `keywords.richLieutenants` (filtrés sur `status === 'locked'`), `keywords.lexique`. Cf. son header `AUTHORITY:`.
+- `useArticleKeywordsStore` — unique store de données consommé, fournit `keywords.richCaptain`, `keywords.richLieutenants` (filtrés sur `status === 'locked'`), `keywords.hnStructure`, `keywords.lexique`. Cf. son header `AUTHORITY:`. (`useArticleProgressStore` est lu pour les verrous du bouton, cf. `DESIGN-FIN-LINK-REDACTION`.)
 
 **Watchers & réactivité**
-- 3 `computed` (`captain`, `lieutenants`, `lexique`) recalculés à chaque mutation du store. Si l'utilisateur revient sur l'onglet Capitaine, change le keyword verrouillé puis re-bascule sur Finalisation, le récap reflète instantanément le nouveau Capitaine — pas de cache local côté composant.
+- 4 `computed` (`captain`, `lieutenants`, `structure`, `lexique`) recalculés à chaque mutation du store. La section Structure montre la structure **enregistrée**, validée ou non : c'est le dot « Structure » et le bouton de transition qui disent si elle est validée. Si l'utilisateur revient sur l'onglet Capitaine, change le keyword verrouillé puis re-bascule sur Finalisation, le récap reflète instantanément le nouveau Capitaine — pas de cache local côté composant.
 - Fallback historique sur `lieutenants` : si `richLieutenants` est vide mais que la liste flat `keywords.lieutenants` existe (forme legacy avant l'introduction du statut `locked`), le composant retombe sur la liste flat avec `hnLevel: 2` par défaut. À documenter comme dette tant que `richLieutenants` n'est pas systématiquement peuplé.
 
 **Décisions d'architecture**
-- **Pas de check `moteur:finalisation_*`** : cohérent avec `DESIGN-FIN-CHECK`. Le panneau est un miroir des trois verrous Phase ②, pas un producteur de progression.
+- **Pas de check `moteur:finalisation_*`** : cohérent avec `DESIGN-FIN-CHECK`. Le panneau est un miroir des quatre verrous Phase ②, pas un producteur de progression.
 - **Pas de fetch propre** : héberger des appels dédiés dans `FinalisationPanel` créerait un risque de divergence si les onglets précédents mutaient le store sans réhydrater la DB — préférer la lecture du store comme SSOT de session.
 
+**Critères d'acceptation techniques**
+- AC.FINRECAP.1 : structure affichée H1, H2, H3 dans l'ordre de lecture avec le compteur de H2 ; structure vide → message dédié. *(test : `tests/unit/components/finalisation-panel.test.ts`)*
+
+**Historique**
+- 2026-09-25 — section Structure (épopée qualité SEO, C6, commit `d24e530`).
+
 **Voir aussi**
-- `DESIGN-CAP-LOCK`, `DESIGN-LIE-LOCK`, `DESIGN-LEX-VALIDATE` — producteurs des trois verrous lus ici.
+- `DESIGN-CAP-LOCK`, `DESIGN-LIE-LOCK`, `DESIGN-HN-TAB`, `DESIGN-LEX-VALIDATE` — producteurs des quatre verrous lus ici.
 - `DESIGN-FIN-LINK-REDACTION` — bouton de transition aval.
 - `DESIGN-FIN-CHECK` — explicitation du choix « pas de check Finalisation ».
 
@@ -3515,8 +3725,8 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Refs code**
 - [src/components/moteur/FinalisationPanel.vue](../../src/components/moteur/FinalisationPanel.vue) — bouton « Aller à la Rédaction » dans l'onglet, émet l'event `navigate-redaction`.
 - [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — handler `navigateToRedaction` (push vers `/cocoon/:cocoonId/redaction?articleId=...`) + bouton global « Continuer vers la Rédaction » en pied de page, désactivé via `:disabled="!finalisationUnlocked"` avec tooltip `finalisationButtonTitle`.
-- [src/composables/moteur/useFinalisationGating.ts](../../src/composables/moteur/useFinalisationGating.ts) — logique pure : `isFinalisationUnlocked(checks)` et `finalisationButtonTitle(checks)`, testable sans monter Vue.
-- [src/composables/moteur/useMoteurSoftGating.ts](../../src/composables/moteur/useMoteurSoftGating.ts) — composable qui dérive `finalisationUnlocked` + `finalisationButtonTitle` à partir des 3 checks `MOTEUR_CAPITAINE_LOCKED` / `MOTEUR_LIEUTENANTS_LOCKED` / `MOTEUR_LEXIQUE_VALIDATED`.
+- [src/composables/moteur/useFinalisationGating.ts](../../src/composables/moteur/useFinalisationGating.ts) — logique pure : `isFinalisationUnlocked(checks)` et `finalisationButtonTitle(checks)`, testable sans monter Vue ; quatre booléens depuis C6 (`structureLocked`, « Structure à valider »).
+- [src/composables/moteur/useMoteurSoftGating.ts](../../src/composables/moteur/useMoteurSoftGating.ts) — composable qui dérive `finalisationUnlocked` + `finalisationButtonTitle` à partir des 4 checks `MOTEUR_CAPITAINE_LOCKED` / `MOTEUR_LIEUTENANTS_LOCKED` / `MOTEUR_HN_LOCKED` / `MOTEUR_LEXIQUE_VALIDATED`. `FinalisationPanel.vue` (`checks`) construit la même entrée pour son bouton.
 
 **Routes Vue Router**
 - Cible du bouton actif : `/cocoon/:cocoonId/redaction?articleId=<id>` (avec `articleId` issu de `selectedArticle.id`).
@@ -3529,7 +3739,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 *Écriture* : aucune. La transition est un simple `router.push` — pas de mutation côté DB.
 
 **Stores Pinia**
-- `useArticleProgressStore` (indirect via `useMoteurSoftGating`) — source des trois booléens de gating.
+- `useArticleProgressStore` (indirect via `useMoteurSoftGating`) — source des quatre booléens de gating.
 - `useKeywordsStore` (indirect) — utilisé par `useMoteurSoftGating` pour `isDiscoveryAllowed` (hors scope de cette FR, mais le composable est partagé).
 
 **Watchers & réactivité**
@@ -3538,7 +3748,13 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Décisions d'architecture**
 - **Double bouton, règle unique** : deux entry points UI (bouton dans le panel + bouton en pied de page de MoteurView), mais une seule règle de déverrouillage (`isFinalisationUnlocked` pur). C'est l'invariant qui empêche un état contradictoire — par construction les deux boutons ne peuvent pas diverger.
-- **Pas de transaction « check finalisation »** côté backend : la transition est purement navigation, l'état d'avancement reste porté par `articles.completed_checks` qui est déjà à jour grâce aux 3 checks Phase ②.
+- **Pas de transaction « check finalisation »** côté backend : la transition est purement navigation, l'état d'avancement reste porté par `articles.completed_checks` qui est déjà à jour grâce aux 4 checks Phase ②.
+
+**Critères d'acceptation techniques**
+- AC.FINLINK.1 : l'ancien trio (sans Structure) ne suffit plus ; le bouton s'ouvre une fois les quatre verrous posés. *(tests : `tests/unit/components/finalisation-panel.test.ts`, `tests/unit/composables/finalisation-gating.test.ts` ; navigateur : `tests/browser-e2e/finalisation-gate.browser.test.ts`)*
+
+**Historique**
+- 2026-09-25 — quatrième verrou, Structure (épopée qualité SEO, C6, commit `d24e530`) ; les articles d'avant C6 retrouvent l'accès par `npm run db:reconcile-hn` (commit `103c38b`) ou en validant leur structure.
 
 **Voir aussi**
 - `DESIGN-MOT-SOFT-GATING` — règles de gating souple Phase ②/③ globales du Moteur.
@@ -3552,17 +3768,17 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Réf PRD :** [FR-FIN-CHECK](./prd.md#fr-fin-check)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue exhaustif : `MOTEUR_CHECKS` contient **5 constantes** (`MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`). Aucune `MOTEUR_FINALISATION_*`.
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue exhaustif : `MOTEUR_CHECKS` contient **6 constantes** depuis C6 (`MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`). Aucune `MOTEUR_FINALISATION_*`.
 - [src/components/moteur/FinalisationPanel.vue](../../src/components/moteur/FinalisationPanel.vue) — aucun `emit('check-completed', ...)` dans le composant (vérifiable par `grep "check-completed" src/components/moteur/FinalisationPanel.vue` → 0 match).
-- [src/composables/moteur/useFinalisationGating.ts](../../src/composables/moteur/useFinalisationGating.ts) — confirme la formule : `isFinalisationUnlocked = capitaineLocked && lieutenantsLocked && lexiqueValidated`. Pas de 4ᵉ booléen.
+- [src/composables/moteur/useFinalisationGating.ts](../../src/composables/moteur/useFinalisationGating.ts) — confirme la formule : `isFinalisationUnlocked = capitaineLocked && lieutenantsLocked && structureLocked && lexiqueValidated` (ligne 20). Pas de 5ᵉ booléen « finalisation ».
 
 **Tables consommées** : `articles.completed_checks` TEXT[] (lecture seule depuis le Moteur — cf. `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS`).
 
 **Flux DB**
 
-*Lecture* : `articles.completed_checks` est lu une fois au mount de la vue Moteur via `useArticleProgressStore`. Les valeurs des 3 booléens `isCaptaineLocked` / `isLieutenantsLocked` / `isLexiqueValidated` sont des `computed` indexés sur ce tableau (présence/absence d'une constante).
+*Lecture* : `articles.completed_checks` est lu une fois au mount de la vue Moteur via `useArticleProgressStore`. Les valeurs des 4 booléens `isCaptaineLocked` / `isLieutenantsLocked` / `isStructureLocked` / `isLexiqueValidated` sont des `computed` indexés sur ce tableau (présence/absence d'une constante).
 
-*Écriture* : **aucune** depuis l'onglet Finalisation. Les seules écritures dans `completed_checks` pertinentes pour la transition vers Rédaction viennent des onglets Capitaine / Lieutenants / Lexique (via `POST /api/progress/check` côté backend, cf. `DESIGN-MOT-CHECKS`).
+*Écriture* : **aucune** depuis l'onglet Finalisation. Les seules écritures dans `completed_checks` pertinentes pour la transition vers Rédaction viennent des onglets Capitaine / Lieutenants / Structure / Lexique (via `POST /api/articles/:id/progress/check`, gardé par la porte de l'étape, cf. `DESIGN-MOT-CHECKS`).
 
 **Stores Pinia**
 - `useArticleProgressStore` — lecture seule depuis l'onglet Finalisation. Le composant Finalisation n'appelle ni `addCheck` ni `removeCheck`.
@@ -3571,15 +3787,18 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - Aucun watcher propre à la Finalisation : la chaîne de réactivité est entièrement déléguée à `useMoteurSoftGating` (cf. `DESIGN-FIN-LINK-REDACTION`).
 
 **Décisions d'architecture**
-- **Le Moteur reste à 5 checks, pas 6.** Choix produit délibéré : la Finalisation est une vue d'**inspection**, pas une étape de production. Ajouter un `MOTEUR_FINALISATION_COMPLETED` créerait un check fantôme posé automatiquement dès que les trois autres sont posés, donc redondant et source potentielle de divergence (cas où un seul des deux serait persisté).
-- **Conséquence sur le dashboard** : les dots de progression d'un article affichent au maximum 5 dots « Moteur » remplis (cf. `DESIGN-DASH-PROGRESS`). Tout consommateur ajoutant un 6ᵉ dot « Finalisation » introduirait une incohérence cross-vues.
+- **Le Moteur reste à 6 checks, pas 7** (5 avant C6, qui a ajouté `MOTEUR_HN_LOCKED` — une vraie étape de production, avec sa porte). Choix produit délibéré : la Finalisation est une vue d'**inspection**, pas une étape de production. Ajouter un `MOTEUR_FINALISATION_COMPLETED` créerait un check fantôme posé automatiquement dès que les quatre autres sont posés, donc redondant et source potentielle de divergence (cas où un seul des deux serait persisté).
+- **Conséquence sur les dots** : les dots de progression d'un article affichent au maximum 6 dots « Moteur » remplis (cf. `DESIGN-DASH-PROGRESS`). Tout consommateur ajoutant un 7ᵉ dot « Finalisation » introduirait une incohérence cross-vues.
 - **Conséquence sur le PRD initial** : la mention historique d'un éventuel `moteur:finalisation_completed` (suspens dans le PRD pré-migration) est tranchée : ce check **n'existe pas**, ne doit pas être ajouté sans FR dédiée.
 
+**Historique**
+- 2026-09-25 — 6 checks, 4 verrous (épopée qualité SEO, C6, commit `d24e530`).
+
 **Voir aussi**
-- `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue des 5 checks Moteur et règles d'écriture.
-- `DESIGN-MOT-CHECKS` — émetteurs des 5 checks (composants Capitaine / Lieutenants / Lexique / Discovery / Radar).
-- `DESIGN-FIN-LINK-REDACTION` — comment l'état « prêt rédaction » est dérivé sans 6ᵉ check.
-- `DESIGN-DASH-PROGRESS` — affichage des dots, basé sur les 5 checks.
+- `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue des 6 checks Moteur et règles d'écriture.
+- `DESIGN-MOT-CHECKS` — émetteurs des 6 checks (composants Capitaine / Lieutenants / Structure / Lexique / Discovery / Radar).
+- `DESIGN-FIN-LINK-REDACTION` — comment l'état « prêt rédaction » est dérivé sans 7ᵉ check.
+- `DESIGN-DASH-PROGRESS` — affichage des dots, basé sur les 6 checks.
 
 ---
 
@@ -3638,6 +3857,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - [server/routes/generate/_helpers.ts](../../server/routes/generate/_helpers.ts) — fonction `parseOutlineFromText(fullContent)` qui transforme la sortie JSON brute du LLM en `Outline` typé.
 - [src/stores/article/outline.store.ts](../../src/stores/article/outline.store.ts) — store Pinia `useOutlineStore` : actions `generateOutline(briefData)`, `updateSection`, `moveSection`, `addSection`, `removeSection`, `undo`, `redo`, `setValidated`. État `outline`, `isGenerating`, `isValidated`, `undoStack`, `redoStack`.
 - [src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue) — composant qui déclenche la génération et expose l'édition du sommaire. (N'émet plus de check workflow depuis 2026-05-13 — la validation du sommaire ne pose plus de check `redaction:*`, cf. DRIFT-002.)
+- **Sommaire venu du Moteur** (C6) : [shared/structure-outline.ts](../../shared/structure-outline.ts) `structureToOutline(nodes, articleTitle)` (11-47), appelé par `hnToOutline` ([outline.store.ts:15-17](../../src/stores/article/outline.store.ts)) à la validation de la structure (`useStructureHn.prepareValidation` → `PUT /articles/:id { outline }`, cf. `DESIGN-HN-TAB`) et par le mode automatique ([scripts/auto-article/phases/redaction.ts:115-131](../../scripts/auto-article/phases/redaction.ts)). La Rédaction relit ce sommaire au chargement (`outlineStore.loadExistingOutline`, `isValidated = true`) : il n'y a rien à générer.
 
 **Endpoints**
 - `POST /api/generate/outline` — SSE (chunks markdown puis `event: done` avec `outline` parsé).
@@ -3667,11 +3887,19 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Décisions d'architecture**
 - **Outline JSONB plutôt que table normalisée** : un outline est une structure arborescente courte (~20 sections max), souvent lu/écrit en bloc. Une table `outline_sections` normalisée coûterait plus en jointures qu'elle ne rapporte en flexibilité.
 - **Undo/Redo client-only, profondeur 20** : pas de persistance des stacks (pas d'historique sur reload). C'est une UX d'édition session courte, pas un historique long terme.
-- **Niveaux H4+ exclus** : helper `hnToOutline` (utilisé quand on importe une structure HN du Moteur) clampe `level` à `[2, 3]`. Le prompt `generate-outline.md` est aussi instruit de se limiter à H1/H2/H3.
+- **Niveaux H4+ exclus** : `structureToOutline` (via `hnToOutline`, quand on importe la structure du Moteur) garde le premier H1 non vide de la structure, borne les autres niveaux à `[2, 3]` (un second H1 devient H2). Le prompt `generate-outline.md` est aussi instruit de se limiter à H1/H2/H3.
+- **Une seule introduction, une seule conclusion** (C6) : `structureToOutline` ajoute « Introduction » (annotation `content-valeur`) et « Conclusion » (`content-reminder`) **sauf** si un H2 de la structure en est déjà une (`isIntroductionTitle` / `isConclusionTitle`, [shared/verifiers/structure.ts:48-52](../../shared/verifiers/structure.ts)). Avant C6, les deux étaient toujours ajoutées alors que le prompt de structure invitait à les écrire : doublons. Les règles du type (`{{type_rules}}` de `generate-outline.md`) comptent les **H2 de fond** (cf. `DESIGN-INFRA-TYPE-RULES-SSOT`).
+- **Conversion partagée** : la fonction vit dans `shared/` depuis C6 pour que l'écran et le mode automatique produisent le même sommaire (le mode automatique ne passait pas par `hnToOutline`).
+
+**Limite connue** *(C6)* : valider la structure remplace `article_content.outline`, même si le sommaire a été retouché dans la Rédaction depuis (cf. `DESIGN-HN-TAB`).
+
+**Historique**
+- 2026-09-24 — le H1 du Moteur n'est plus rétrogradé en H2 (épopée qualité SEO, C1, M8).
+- 2026-09-25 — `structureToOutline` partagé, introduction et conclusion jamais doublées ; le sommaire est écrit à la validation de la structure et non plus au verrouillage des lieutenants (C6, commit `d24e530` ; mode automatique, `9631612`).
 
 **Voir aussi**
 - `DESIGN-RED-DRAFT-SINGLE-PASS` — consommateur direct de l'outline (groupes H2 envoyés en un seul plan, avec leur budget ; avant C5a, `DESIGN-RED-ARTICLE` : un appel par groupe).
-- `DESIGN-LIE-HN-STRUCTURE` (à créer §8.7) — passerelle Moteur → Rédaction via `hnToOutline()`.
+- `DESIGN-HN-TAB` — passerelle Moteur → Rédaction (`structureToOutline`) ; avant C6 : `DESIGN-LIE-HN-STRUCTURE`.
 - ~~`DESIGN-RED-CHECKS`~~ — retirée 2026-05-13 (la validation du sommaire ne pose plus de check workflow, cf. DRIFT-002).
 
 ---
@@ -4676,12 +4904,12 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | `repeated-paragraph` : paragraphe qui en répète un autre (C5a) | 🔴 |
 | Porte `draft` (premier jet) | **non rejouée** : sa règle ±15 % ne vaut que pour le premier jet |
 | `waiver-reconfirm:<porte>:<règle>` : une par dérogation **encore debout** d'une porte amont (`standingWaivers`) | 🟠 |
-| `captain-lock:<règle>`, `lieutenants-lock:<règle>`, `lexique-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication (`lexique-lock:lexique-empty` 🔴, `lexique-lock:lexique-generic-term:<terme>` 🔴 depuis C3) | niveau d'origine |
+| `captain-lock:<règle>`, `lieutenants-lock:<règle>`, `hn-lock:<règle>`, `lexique-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication (`lexique-lock:lexique-empty` 🔴, `lexique-lock:lexique-generic-term:<terme>` 🔴 depuis C3 ; `hn-lock:hn-empty` ⛔, `hn-lock:hn-captain-not-in-h1` 🔴, `hn-lock:hn-h2-count` 🔴… depuis C6, cf. `DESIGN-HN-LOCK-GATE`) | niveau d'origine |
 | Une même règle visant plusieurs endroits (deux chiffres invérifiables…) | un identifiant par occurrence, suffixé par l'extrait (`distinctRules`) |
 
 **Flux DB**
 
-*Lecture* (`publishGate`) : `evaluateArticleGate(id, 'captain-lock')`, `evaluateArticleGate(id, 'lieutenants-lock')` et, depuis C3, `evaluateArticleGate(id, 'lexique-lock')` (portes amont rejouées sur les données du jour) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants). H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
+*Lecture* (`publishGate`, [gate.service.ts:272-314](../../server/services/gates/gate.service.ts)) : `evaluateArticleGate(id, 'captain-lock')`, `evaluateArticleGate(id, 'lieutenants-lock')`, depuis C6 `evaluateArticleGate(id, 'hn-lock')` (287) et, depuis C3, `evaluateArticleGate(id, 'lexique-lock')` (portes amont rejouées sur les données du jour, 284-289) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants). H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
 
 *Écriture* : `articles.status = 'publié'` seulement si la porte passe (`updateArticleStatus`). Dérogations de publication (reconfirmations 🟠, risques 🔴) via `saveGateWaivers`.
 
@@ -4690,14 +4918,14 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Décisions d'architecture**
 - **Publier avant de télécharger** : l'ancien `handleExport` téléchargeait puis marquait publié (erreur avalée). Désormais le fichier n'est produit que si le statut a été accepté.
 - **Rejouer, pas réécrire** : la porte ne duplique aucune règle ; elle convertit les verdicts des valideurs existants en niveaux.
-- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine, lieutenants et — depuis C3 (2026-09-25) — lexique : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication. Conséquence de la porte du lexique : un article sans lexique ne se publie qu'avec une raison écrite (`lexique-lock:lexique-empty` 🔴), et `verify:content` signale (`publish-gate-refused`) tout article rédigé sans lexique qu'aucune dérogation ne couvre.
+- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine, lieutenants, lexique (depuis C3) et structure (depuis C6), toutes le 2026-09-25 : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication. Conséquence de la porte du lexique : un article sans lexique ne se publie qu'avec une raison écrite (`lexique-lock:lexique-empty` 🔴), et `verify:content` signale (`publish-gate-refused`) tout article rédigé sans lexique qu'aucune dérogation ne couvre. Conséquence de la porte de la structure : un article sans structure enregistrée est refusé ⛔ (`hn-lock:hn-empty`), cf. « Limites connues ».
 - **Empreinte** : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, upstream, waivers }` où `upstream` = `gateId:inputHash` des portes amont et `waivers` = `gateId:rule:inputHash` des dérogations debout (triées). Un changement en amont rouvre la décision ; les dérogations de la publication elle-même sont exclues (sinon en enregistrer une changerait l'empreinte et l'annulerait aussitôt).
 - **Écarts avec l'épopée (le code fait foi)** : le capitaine absent du H1 est 🔴 (erreur SEO), pas ⛔ ; un H1 absent du corps n'est pas une alerte (le titre de l'article sert de H1) ; plusieurs H1 dans le corps sont ⛔ (`hn-multiple-h1`).
 
 **Limites connues**
 - Le score SEO enregistré (`DESIGN-RED-SEO-SCORE-PERSIST`) n'est pas encore lu par la porte.
-- La porte structure (C6) n'est pas encore rejouée à la publication (la porte lexique l'est depuis C3).
-- La porte du premier jet n'est pas rejouée (choix, cf. `DESIGN-RED-DRAFT-SINGLE-PASS`) : ses dérogations ne sont ni réaffichées ni reconfirmées (`existingWaivers` ne lit que les portes amont, `gate.service.ts:241-246`) ; `verify:content` les liste avec les autres.
+- ~~La porte structure (C6) n'est pas encore rejouée à la publication.~~ Rejouée depuis C6 (commit `d24e530`). Conséquence : la porte juge `article_keywords.hn_structure`, validée ou non ; un article **sans structure enregistrée** reçoit `hn-lock:hn-empty` ⛔ et ne peut pas être publié, même avec une raison (un article rédigé sans l'onglet Structure, ou d'avant C6 sans structure). À trancher (C3 avait passé `lexique-empty` en 🔴 pour ce cas).
+- La porte du premier jet n'est pas rejouée (choix, cf. `DESIGN-RED-DRAFT-SINGLE-PASS`) : ses dérogations ne sont ni réaffichées ni reconfirmées (`existingWaivers` ne lit que les portes amont, `gate.service.ts:284-290`) ; `verify:content` les liste avec les autres.
 - ~~`image-to-provide` dit « remplacez l'image ou retirez-la », mais l'éditeur n'a aucune commande pour remplacer une image.~~ Soldé par le commit `093ee57` (checklist R20) : le bouton « Image » de l'éditeur remplace la place (`DESIGN-RED-EDITOR-TIPTAP`), et le risque de la règle le cite : « remplacez l'image (bouton Image de la barre d'outils) ou retirez-la » ([shared/verifiers/publish.ts:157](../../shared/verifiers/publish.ts)). Reste : le bouton n'existe que dans la vue Éditeur.
 
 **Tests** : `tests/unit/shared/verifiers-publish.test.ts` (1013 rejeté, `article-too-long`, identifiants distincts par occurrence, chiffres sans source du 1013 relevés en 🔴 depuis C5a ; marqueurs comptés une fois et ⛔ image à fournir depuis C5b), `tests/browser-e2e/enrichment.browser.test.ts` (une image acceptée par la passe Images fait refuser la publication, ⛔ `image-to-provide`), `tests/contract-api/gates.contract.test.ts` (dérogation tombée non réaffichée et alerte revenue ; cannibalisation apparue après coup remontée à la publication), `tests/browser-e2e/gates.browser.test.ts` (⛔ sans champ, ni statut ni fichier).
@@ -4716,8 +4944,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - 2026-09-25 — `unsourced-figure`, `non-french-sentence`, `repeated-paragraph` 🔴 (C5a, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-DRAFT-TO-SOURCE`) ; la porte du premier jet n'est pas rejouée.
 - 2026-09-25 — ⛔ `image-to-provide` ; `countToSourceMarkers` ne compte plus deux fois un marqueur balisé (C5b, commit `6dd3b74`, `DESIGN-RED-ENRICH-PASSES`).
 - 2026-09-25 — le message de `image-to-provide` cite le bouton « Image » de l'éditeur (C5b, commit `093ee57`, checklist R20).
+- 2026-09-25 — la porte `hn-lock` est rejouée à la publication ; ses dérogations debout sont reconfirmées (C6, commit `d24e530`, `DESIGN-HN-LOCK-GATE`).
 
-**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-ENRICH-PASSES`.
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-ENRICH-PASSES`, `DESIGN-HN-LOCK-GATE`.
 
 ---
 
@@ -5497,9 +5726,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Réf PRD :** [FR-INFRA-TYPE-RULES-SSOT](./prd.md#fr-infra-type-rules-ssot--une-seule-définition-de-ce-quest-un-pilier-un-intermédiaire-un-spécialisé)
 
 **Refs code**
-- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — **la seule table**. `ArticleTypeRules` : `label`, `targetWords`, `wordsMin`, `wordsMax`, `wordsFloor`, `h2Min`, `h2Max`, `h2Floor`, `h3PerH2Min`, `h3PerH2Max`, `minLieutenants`, `maxLieutenants`, `lieutenantCandidatesMin`, `lieutenantCandidatesMax`, `faqMin`, `faqMax` (lignes 40-42, depuis le commit `093ee57`, checklist R22), `localH2Max`. `ARTICLE_TYPE_RULES` (lignes 47-69), `DEFAULT_TARGET_WORDS_FALLBACK = 2000` (ligne 72, type inconnu), `targetWordsFor(level)` (lignes 75-79), `describeTypeRules(level)` (lignes 87-99, dont la ligne « - FAQ : n à m questions, ajoutées par la passe d'enrichissement. », 94) → texte injecté par `{{type_rules}}`. *(Lignes relevées au commit `093ee57`.)*
+- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — **la seule table**. `ArticleTypeRules` : `label`, `targetWords`, `wordsMin`, `wordsMax`, `wordsFloor`, `h2Min`, `h2Max`, `h2Floor`, `h3PerH2Min`, `h3PerH2Max`, `minLieutenants`, `maxLieutenants`, `lieutenantCandidatesMin`, `lieutenantCandidatesMax`, `faqMin`, `faqMax` (lignes 40-42, depuis le commit `093ee57`, checklist R22), `localH2Max`. `ARTICLE_TYPE_RULES` (lignes 47-69), `DEFAULT_TARGET_WORDS_FALLBACK = 2000` (ligne 72, type inconnu), `targetWordsFor(level)` (lignes 75-79), `describeTypeRules(level)` (lignes 87-99, dont la ligne « - FAQ : n à m questions, ajoutées par la passe d'enrichissement. », 94) → texte injecté par `{{type_rules}}`. Depuis C6 (commit `d24e530`), `h2Min` / `h2Max` comptent les **H2 de fond** (commentaire ligne 25 : « hors introduction et conclusion (ajoutées par `hnToOutline`) ») et la ligne « Sommaire » de `describeTypeRules` (92) dit « n à m H2 de fond (l'introduction et la conclusion s'ajoutent à part) ». *(Lignes relevées au commit `94c7e91`, identiques à `093ee57`.)*
 
-| Type | Mots (cible [min–max], plancher) | H2 (min–max, plancher) | H3 par H2 | Lieutenants (candidats, min–max retenus) | Questions de FAQ | H2 citant la ville |
+| Type | Mots (cible [min–max], plancher) | H2 de fond (min–max) ; plancher d'alerte (tous les H2) | H3 par H2 | Lieutenants (candidats, min–max retenus) | Questions de FAQ | H2 citant la ville |
 |---|---|---|---|---|---|---|
 | `pilier` | 2 500 [1 800–3 500], 1 500 | 6–8, 5 | 2–3 | 8–12, 3–5 | 4–6 | 2 au plus |
 | `intermediaire` | 1 800 [1 200–2 500], 900 | 4–6, 3 | 2–3 | 6–10, 2–5 | 3–5 | 0 |
@@ -5509,7 +5738,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 
 | Consommateur | Lit | Avant C4 |
 |---|---|---|
-| Prompts `generate-outline.md` (ligne 54), `propose-lieutenants.md` (ligne 13), `lieutenants-hn-structure.md` (ligne 11) | `{{type_rules}}` : [server/routes/generate/outline.routes.ts:74](../../server/routes/generate/outline.routes.ts), [server/routes/keyword-ai-panel.routes.ts:18-21,148,273](../../server/routes/keyword-ai-panel.routes.ts) (vide si le niveau est inconnu) | Fourchettes écrites en dur, contradictoires |
+| Prompts `generate-outline.md` (ligne 54), `propose-lieutenants.md` (ligne 13), `lieutenants-hn-structure.md` (ligne 11) | `{{type_rules}}` : [server/routes/generate/outline.routes.ts:74](../../server/routes/generate/outline.routes.ts), [server/routes/keyword-ai-panel.routes.ts:19-22,151,276](../../server/routes/keyword-ai-panel.routes.ts) (vide si le niveau est inconnu ; lignes au commit `94c7e91`) | Fourchettes écrites en dur, contradictoires |
 | Budget de rédaction — [server/routes/generate/article-draft.routes.ts:118](../../server/routes/generate/article-draft.routes.ts) (avant C5a : `article.routes.ts:91-94`) | `targetWordsFor` (client > micro-contexte > type) | `DEFAULT_TARGET_WORDS_BY_TYPE` dans `_helpers.ts` |
 | Prompt du premier jet — `generate-article-draft.md` (ligne 15) | `{{type_rules}}` : [article-draft.routes.ts:137](../../server/routes/generate/article-draft.routes.ts) (vide si le type est inconnu) ; `label` du type (130) | — (C5a) |
 | Porte du premier jet — [server/services/gates/gate.service.ts:223](../../server/services/gates/gate.service.ts) | `targetWordsFor` (micro-contexte > type ; le micro-contexte reçoit la cible retenue par le premier jet, checklist R16) | — (C5a) |
@@ -5517,7 +5746,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | Repli du brief — [src/stores/strategy/brief.store.ts:15-17](../../src/stores/strategy/brief.store.ts) | `calculateContentLength` = `targetWordsFor` | Milieux 2 650 / 1 850 / 1 150 |
 | [src/components/panels/SeoPanel.vue:33](../../src/components/panels/SeoPanel.vue) | `DEFAULT_TARGET_WORDS_FALLBACK` | `?? 1500` |
 | Alertes SEO — [shared/seo-validators.ts:47-48](../../shared/seo-validators.ts) | `wordsFloor` (`seo-thin-content`), `h2Floor` (`seo-too-few-sections`) | `MIN_WORDS`, `MIN_H2` locaux (mêmes valeurs) |
-| Filtre des lieutenants de l'IA — [server/routes/keyword-ai-panel.routes.ts:178](../../server/routes/keyword-ai-panel.routes.ts) | `maxLieutenants` | `MAX_SELECTED` local |
+| Filtre des lieutenants de l'IA — [server/routes/keyword-ai-panel.routes.ts:182](../../server/routes/keyword-ai-panel.routes.ts) | `maxLieutenants` | `MAX_SELECTED` local |
+| Porte de la structure — [shared/verifiers/structure.ts:124-134,153-164,140-151](../../shared/verifiers/structure.ts) (C6) | `h2Min` / `h2Max` sur les **H2 de fond** (`bodyH2`), `localH2Max`, `h3PerH2Max`, `label` | — (porte réservée, « passe » sans alerte avant C6) |
+| Simulation de la structure — [mock-fixtures/streams.ts](../../server/services/external/mock-fixtures/streams.ts) (C6) | `h2Min` / `h2Max` : H2 complétés jusqu'au minimum du type | Un H2 par lieutenant (6 au plus) + une FAQ |
 | Mode automatique — [scripts/auto-article/heuristics/pick-lieutenants.ts:23](../../scripts/auto-article/heuristics/pick-lieutenants.ts) | `maxLieutenants` (5 / 5 / 4) | `LIEUTENANT_MAX` 8 / 5 / 3 |
 | Vérificateurs — [shared/verifiers/lieutenants.ts:42](../../shared/verifiers/lieutenants.ts), [shared/verifiers/publish.ts:114](../../shared/verifiers/publish.ts) (ligne 102 avant C5a) | `minLieutenants` ; `wordsMax` (plafond), `targetWords` (message) | Déjà branchés en C2 |
 | Prompt de la passe FAQ — `enrich-faq.md` (ligne 10, consigne ligne 22) | `{{type_rules}}` : [enrichment.service.ts:74](../../server/services/article/enrichment.service.ts) (vide si le type est inconnu), type lu sur l'article par [enrich.routes.ts:45](../../server/routes/generate/enrich.routes.ts) | « 3 à 6 questions » écrit dans le prompt, pour tous les types (C5b, avant `093ee57`) |
@@ -5535,6 +5766,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - **Le mode automatique suit l'écran** : il gardait 8 lieutenants pour un pilier quand l'écran en garde 5.
 - **Tables par type qui ne sont pas des règles d'article**, exclues du test : profondeur dans le cocon (`linking.service.ts`), poids de l'intention par type (`keyword-scan.service.ts`), taille du balayage Radar du mode automatique (`pick-radar-candidates.ts`).
 - **Règle de FAQ par type** (commit `093ee57`, checklist R22) : la passe FAQ, livrée par C5b, écrivait « 3 à 6 questions en `<h3>` » dans son prompt, pour tous les types, et le vérificateur n'en contrôlait pas le nombre. Désormais `faqMin` / `faqMax` vivent ici ; le prompt cite `{{type_rules}}` (« autant de questions … que le fixent les règles du type ci-dessus ») et `verifyEnrichment` signale 🟠 `enrich-faq-count` une FAQ hors fourchette. 🟠 plutôt que 🔴 : une question de plus ou de moins ne rend pas la FAQ fausse.
+- **« H2 de fond »** (C6, commit `d24e530`) : « Sommaire : 6 à 8 H2 » ne disait pas si l'introduction et la conclusion comptaient ; le prompt de structure invitait à les écrire, `hnToOutline` les ajoutait d'office (doublons), et un plan « à 6 H2 » pouvait n'en compter que 4 de fond. `h2Min` / `h2Max` comptent désormais les H2 de fond seuls ; le prompt de structure n'écrit plus d'introduction ni de conclusion ; le sommaire les ajoute une fois (`shared/structure-outline.ts`) ; la porte de la structure compte `bodyH2`. **Reste distinct** : `h2Floor` (alerte `seo-too-few-sections`, [shared/seo-validators.ts:48,147-149](../../shared/seo-validators.ts)) compte **tous** les H2 de l'article rédigé, introduction et conclusion comprises — deux assiettes différentes pour la même famille de nombres (sans fausse alerte : le plancher est sous le minimum de fond).
 
 **Critères d'acceptation techniques**
 - AC.TYPERULES.1 : aucun prompt n'écrit de fourchette de mots, de H2 ou de candidats sur une ligne qui nomme un type ; `describeTypeRules` rend chaque valeur de la source. *(test : `tests/unit/coherence/type-rules-ssot.test.ts`)*
@@ -5547,8 +5779,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - 2026-09-25 — table créée pour les vérificateurs (C2, `DESIGN-INFRA-VERIFIER-SHARED`).
 - 2026-09-25 — source unique : prompts, calculs, écran et mode automatique branchés (épopée qualité SEO, C4, checklist M10).
 - 2026-09-25 — `faqMin` / `faqMax` : la passe FAQ et son vérificateur lisent la table (C5b, commit `093ee57`, checklist R22).
+- 2026-09-25 — « H2 de fond » ; la porte de la structure lit la table (C6, commit `d24e530`).
 
-**Voir aussi** : `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-RED-DRAFT-SINGLE-PASS` (avant C5a : `DESIGN-RED-ARTICLE`), `DESIGN-LIE-GEOFUNNEL-RULE`.
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-HN-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-RED-DRAFT-SINGLE-PASS` (avant C5a : `DESIGN-RED-ARTICLE`), `DESIGN-LIE-GEOFUNNEL-RULE`.
 
 ---
 
@@ -5559,16 +5792,17 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Refs code**
 - [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) lignes 1-63 — sources de toutes les chaînes de checks workflow.
 
-**Inventaire des constantes (mis à jour 2026-05-13)**
+**Inventaire des constantes (mis à jour 2026-09-25, C6)**
 | Workflow | Constante | Valeur string |
 |---|---|---|
-| Moteur (5) | `MOTEUR_DISCOVERY_DONE` | `moteur:discovery_done` |
+| Moteur (6) | `MOTEUR_DISCOVERY_DONE` | `moteur:discovery_done` |
 | | `MOTEUR_RADAR_DONE` | `moteur:radar_done` |
 | | `MOTEUR_CAPITAINE_LOCKED` | `moteur:capitaine_locked` |
 | | `MOTEUR_LIEUTENANTS_LOCKED` | `moteur:lieutenants_locked` |
+| | `MOTEUR_HN_LOCKED` (C6) | `moteur:hn_locked` |
 | | `MOTEUR_LEXIQUE_VALIDATED` | `moteur:lexique_validated` |
 
-Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS[number]`. (Les constantes Cerveau et Rédaction historiques ont été retirées 2026-05-13, cf. DRIFT-002.)
+Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenants_locked` et `lexique_validated`), `ALL_WORKFLOW_CHECKS` et le type `WorkflowCheck` (lignes 28-40 au commit `94c7e91`). (Les constantes Cerveau et Rédaction historiques ont été retirées 2026-05-13, cf. DRIFT-002.)
 
 **Stockage** : colonne `articles.completed_checks` TEXT[] (cf. [server/db/schema.sql](../../server/db/schema.sql) ligne 74). SSOT unique pour la progression Moteur (cf. NFR-INT-COMPLETED-CHECKS-SSOT). D'éventuelles valeurs legacy `cerveau:*` / `redaction:*` persistées avant 2026-05-13 sont tolérées en lecture (ignorées côté affichage).
 
@@ -6192,10 +6426,10 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Refs code**
 - [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — noyau pur (aucune I/O) : types `GateLevel` (`attention` | `risque` | `technique`), `GateIssue` (`rule`, `level`, `message`, `risk?`, `excerpt?`, `alternatives?`), `GateResult`, `GateEvaluation` (`gateId`, `issues`, `inputHash`, `passed`, `blocking`, `waived`) ; `GATE_IDS` (`captain-lock`, `lieutenants-lock`, `lexique-lock`, `hn-lock`, `draft`, `publish`), `GATE_LABELS` (« verrouiller le capitaine », « valider les lieutenants », « publier »…), `evaluateGate(gateId, issues, waivers, inputHash)`, `hashGateInput(input)`, `worstLevel(issues)`.
-- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique` (`DESIGN-LEX-METIER-ONLY`, C3), [shared/verifiers/draft.ts](../../shared/verifiers/draft.ts) `verifyDraft` (`DESIGN-RED-DRAFT-SINGLE-PASS`, C5a), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
+- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/structure.ts](../../shared/verifiers/structure.ts) `verifyStructure` (`DESIGN-HN-LOCK-GATE`, C6), [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique` (`DESIGN-LEX-METIER-ONLY`, C3), [shared/verifiers/draft.ts](../../shared/verifiers/draft.ts) `verifyDraft` (`DESIGN-RED-DRAFT-SINGLE-PASS`, C5a), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
 - Hors portes (C5b) : [shared/verifiers/enrichment.ts](../../shared/verifiers/enrichment.ts) `verifyEnrichment` juge une proposition de passe d'enrichissement ou de réécriture **avant** qu'elle soit montrée, avec les mêmes `GateIssue` et les mêmes niveaux, mais sans empreinte, sans dérogation et sans `evaluateArticleGate` : une proposition ⛔ ne s'accepte pas, les autres alertes s'affichent (`DESIGN-RED-ENRICH-PASSES`). Évaluée par le serveur seul (`enrichment.service.ts`).
 - [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES` : pilier 2 500 mots [1 800–3 500], 6–8 H2, 3 lieutenants ; intermédiaire 1 800 [1 200–2 500], 4–6, 2 ; spécialisé 1 200 [800–1 500], 3–5, 1. Lu par `verifyLieutenants` (`minLieutenants`) et `verifyPublish` (`wordsMax`). Devenue la source unique des règles par type en C4 (prompts, calculs de longueur, alertes SEO, mode automatique) : cf. `DESIGN-INFRA-TYPE-RULES-SSOT`.
-- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `lexiqueGate` / `draftGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` (exporté, lu par `articles.routes.ts`) : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`, `MOTEUR_LEXIQUE_VALIDATED` → `lexique-lock` (C3).
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `hnGate` (C6) / `lexiqueGate` / `draftGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` (exporté, lu par `articles.routes.ts` ; lignes 57-62) : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`, `MOTEUR_HN_LOCKED` → `hn-lock` (C6), `MOTEUR_LEXIQUE_VALIDATED` → `lexique-lock` (C3). Le `switch` de `evaluateArticleGate` (322-329) couvre les six portes : la branche `default`, qui faisait « passer » une porte réservée, est retirée en C6.
 - [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — évaluation et dérogations (Zod : `z.enum(GATE_IDS)`), monté sous `/api` dans [server/index.ts](../../server/index.ts).
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `respondGateBlocked(res, evaluation, message)` ; points de passage gardés : `POST /articles/:id/progress/check` (check présent dans `CHECK_GATES`) et `PUT /articles/:id/status` vers `publié`.
 - [src/services/api.service.ts](../../src/services/api.service.ts) — `ApiRequestError` (`status`, `code`, `details`) levée par `handleApiError` : le refus arrive à l'écran avec l'évaluation.
@@ -6221,7 +6455,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - **Refus = 422 avec l'évaluation en `details`** : l'écran n'a pas à redemander le verdict pour ouvrir l'alarme ; les outils en ligne de commande l'affichent tel quel.
 - **La porte garde l'étape et le statut, pas l'écriture des décisions** : l'enregistrement de `article_keywords` (autosave, cases cochées) reste libre ; c'est l'étape (`articles.completed_checks`) — qui ouvre la Finalisation et la Rédaction — et le statut `publié` qui sont gardés.
 - **Rattachement aux exigences** par module (`verifyCaptain` ↔ `FR-CAP-LOCK-GATE`…) et par les en-têtes de fichiers : `GateIssue` ne porte pas l'ID d'exigence, mais un `rule` stable.
-- **Porte réservée** (`hn-lock`, C6) : acceptée par la route, évaluée sans alerte tant que son chantier n'est pas livré. `lexique-lock` est livrée par C3, `draft` par C5a (2026-09-25).
+- **Plus de porte réservée** : `hn-lock`, acceptée par la route depuis C2 mais évaluée sans alerte, est livrée par C6 (`DESIGN-HN-LOCK-GATE`). `lexique-lock` est livrée par C3, `draft` par C5a (2026-09-25).
 - **Une porte qui alerte sans garder** : `draft` n'est dans `CHECK_GATES` ni n'est rejouée par `publishGate` ; l'écran la consulte (`ensure`) juste après la rédaction et sa méta, l'alarme s'ouvre si elle ne passe pas, rien n'est refusé. `auto:article` ne la consulte pas.
 - **Audit tolérant** : un article déjà rédigé que la porte refuserait donne un avertissement (`publish-gate-refused`), pas une erreur — ses défauts sont déjà comptés par les validateurs.
 - **Aucune dérogation automatique** : le script `auto:article` s'arrête sur un refus ; seul un humain déroge.
@@ -6237,8 +6471,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - 2026-09-25 — créée (épopée qualité SEO, C2).
 - 2026-09-25 — porte `lexique-lock` livrée (C3) : `verifyLexique`, `lexiqueGate`, `CHECK_GATES[MOTEUR_LEXIQUE_VALIDATED]`, rejouée par `publishGate`.
 - 2026-09-25 — porte `draft` livrée (C5a) : `verifyDraft`, `draftGate` ; ni étape gardée ni rejeu à la publication.
+- 2026-09-25 — porte `hn-lock` livrée (C6, commit `d24e530`) : `verifyStructure`, `hnGate`, `CHECK_GATES[MOTEUR_HN_LOCKED]`, rejouée par `publishGate`.
 
-**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
+**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-HN-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
 
 ---
 
@@ -6266,12 +6501,13 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 *Écriture* : réponses dans l'alarme → `waiverDraftsFrom` (bouton actif quand `missing` est vide) → `submit` → `POST …/waivers` → `saveGateWaivers` → `INSERT … ON CONFLICT (article_id, gate_id, rule, input_hash) DO UPDATE SET level, category, reason, created_at = now()` → réévaluation → alarme fermée si la porte passe, sinon motifs affichés.
 
-*Lecture* : `evaluateArticleGate` (dérogations de la porte) ; `publishGate` (celles encore debout des portes amont rejouées — capitaine, lieutenants, lexique —, pour la reconfirmation et l'empreinte ; pas celles de la porte `draft`, qui n'est pas rejouée : *précisé le 2026-09-25, C5a*) ; `GET /waivers` ; `npm run verify:content` (`listArticleWaivers`).
+*Lecture* : `evaluateArticleGate` (dérogations de la porte) ; `publishGate` (celles encore debout des portes amont rejouées — capitaine, lieutenants, structure depuis C6, lexique —, pour la reconfirmation et l'empreinte ; pas celles de la porte `draft`, qui n'est pas rejouée : *précisé le 2026-09-25, C5a*) ; `GET /waivers` ; `npm run verify:content` (`listArticleWaivers`).
 
 **Empreinte par porte** (`hashInput`)
 - `captain-lock` : `{ keyword normalisé, level, volume, autocompleteCount, verdict, serpIntent, expectedIntent }` — alternatives exclues.
 - `lieutenants-lock` : `{ level, captain normalisé, lieutenants normalisés triés, revendications du cocon triées }`.
 - `lexique-lock` (C3) : `{ terms: termes normalisés (sans accents, minuscules) triés }`.
+- `hn-lock` (C6) : `{ level, captain normalisé, headings: "niveau:texte" dans l'ordre de lecture, lieutenants normalisés triés, overlapping: capitaines normalisés des seuls articles du cocon qu'un H2 recoupe, city }` ([gate.service.ts:216-231](../../server/services/gates/gate.service.ts)) — cf. `DESIGN-HN-LOCK-GATE`.
 - `publish` : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, waivers des autres portes }` — dérogations de publication exclues.
 
 **Décisions d'architecture**
@@ -6295,8 +6531,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2) ; table `gate_waivers` (migration `2026-09-25-gate-waivers.sql`).
 - 2026-09-25 — dérogations de la porte `lexique-lock` (C3) : une par terme générique, une pour le lexique vide.
+- 2026-09-25 — dérogations de la porte `hn-lock` (C6) : une par lieutenant absent des titres (`hn-lieutenant-missing:<lieutenant>`), une par article du cocon recoupé (`hn-overlaps-article:<titre>`).
 
-**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-PUBLISH-GATE`.
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-HN-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-PUBLISH-GATE`.
 
 ---
 
@@ -6457,17 +6694,17 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 | `KeywordAssistPanel` | [src/components/moteur/KeywordAssistPanel.vue](../../src/components/moteur/KeywordAssistPanel.vue) | `LieutenantsPanel.vue`, `LexiquePanel.vue` (vérifié par grep) |
 | `MoteurContextRecap` | [src/components/moteur/MoteurContextRecap.vue](../../src/components/moteur/MoteurContextRecap.vue) | `MoteurView.vue` (header, monté une fois pour tous les onglets) |
 | `PhaseTransitionBanner` | [src/components/moteur/PhaseTransitionBanner.vue](../../src/components/moteur/PhaseTransitionBanner.vue) | `MoteurView.vue` (banner Phase ② → ③) |
-| `ProgressDots` | [src/components/moteur/ProgressDots.vue](../../src/components/moteur/ProgressDots.vue) | `MoteurView.vue` (header), reflet des 5 checks `MOTEUR_*` |
+| `ProgressDots` | [src/components/moteur/ProgressDots.vue](../../src/components/moteur/ProgressDots.vue) | `MoteurContextRecap.vue` (un par article des listes du haut, lignes 207 et 246), reflet des 6 checks `MOTEUR_*` (5 avant C6) |
 
 **Stores Pinia mobilisés**
-- `useArticleProgressStore` — source des 5 checks consommés par `ProgressDots` et `PhaseTransitionBanner`.
+- `useArticleProgressStore` — source des 6 checks consommés par `ProgressDots` et `PhaseTransitionBanner`.
 - `useArticleKeywordsStore` — source du Capitaine verrouillé affiché par `MoteurContextRecap`.
 - `useStrategyStore` (via `useCocoonStrategyStore`) — source du contexte stratégie (cocon, articles suggérés / publiés) consommé par `MoteurContextRecap`.
 - `useRadarExplorationStore` + `useArticleKeywordsStore` (composables utilitaires) — sources des counts cache exposés par `TabCachePanel`.
 
 **Watchers & réactivité**
 - `TabCachePanel` reçoit `entries` (counts par onglet) via prop calculée dans `MoteurView`. Le passage de `active-tab` ajuste les éléments visibles sans démontage — le panel reste sticky.
-- `ProgressDots` recalcule l'état des 5 dots par computed à partir de `useArticleProgressStore.completedChecks` — toute mutation `addCheck(MOTEUR_*)` propage immédiatement.
+- `ProgressDots` recalcule l'état des 6 dots (2 + 4, depuis C6) par computed à partir des `completedChecks` que lui passe `MoteurContextRecap` (lus dans `useArticleProgressStore`) — toute mutation `addCheck(MOTEUR_*)` propage immédiatement.
 - `MoteurContextRecap` lit les sections « Articles suggérés » / « Articles publiés » via le champ dérivé `cocoon.publishedArticles` exposé par `loadArticlesDb` (cf. `FR-MOT-RECAP-PUBLISHED`) — la dérivation est faite côté backend pour empêcher la divergence frontend.
 
 **Décisions d'architecture**
@@ -6482,7 +6719,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Voir aussi**
 - `DESIGN-MOT-CONTEXT-RECAP`, `DESIGN-MOT-PHASE-TRANSITION`, `DESIGN-MOT-PROGRESS-DOTS`, `DESIGN-MOT-LOAD-PROMPT`, `DESIGN-MOT-ASSIST-PANEL`, `DESIGN-MOT-CACHE-CLEAR` — instances individuelles à formaliser dans §8.3.
-- `DESIGN-DASH-PROGRESS` — affichage miroir des 5 checks côté dashboard (cohérence cross-vues).
+- `DESIGN-DASH-PROGRESS` — les 6 dots (les listes d'articles du Moteur sont leur seul site d'affichage, cf. sa correction du 2026-09-25).
 - `DRIFT-011` — `BasketStrip.vue` supprimé 2026-05-11, encore référencé dans le PRD pré-migration.
 
 ---

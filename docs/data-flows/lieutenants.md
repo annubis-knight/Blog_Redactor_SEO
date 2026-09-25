@@ -1,9 +1,9 @@
 ---
 name: lieutenants
 description: "Flux des Lieutenants (sous-keywords H2/H3) d'un article — extraction Hn via SERP, scoring IA, anti-cannibalisation géo-funnel, persistance JSONB article_keywords."
-type: "{ richLieutenants: RichLieutenant[], selectedLieutenants: string[], hnStructure: ProposeLieutenantsHnNode[] }"
-last_updated: 2026-05-09
-related_fr: [FR-MOT-PHASES, FR-MOT-MODE-BIMODAL, FR-MOT-CHECKS, FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-HN-STRUCTURE, FR-LIE-SECTIONS-FOLDABLE, FR-LIE-CANDIDATES-BADGES, FR-LIE-CHECKBOX-COUNT, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-CHECK, FR-INFRA-KPI-NULLABLE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION]
+type: "{ richLieutenants: RichLieutenant[], selectedLieutenants: string[] }"
+last_updated: 2026-09-25
+related_fr: [FR-MOT-PHASES, FR-MOT-MODE-BIMODAL, FR-MOT-CHECKS, FR-LIE-SERP-ANALYZE, FR-LIE-EXTRACT-HEADINGS, FR-LIE-PROPOSE-AI, FR-LIE-GEOFUNNEL-RULE, FR-LIE-HN-STRUCTURE (superseded par FR-HN-TAB), FR-HN-TAB, FR-LIE-LOCK-GATE, FR-LIE-SECTIONS-FOLDABLE, FR-LIE-CANDIDATES-BADGES, FR-LIE-CHECKBOX-COUNT, FR-LIE-SLIDER-INTELLIGENT, FR-LIE-CHECK, FR-INFRA-KPI-NULLABLE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION]
 synced_with: [docs/data-flows/keyword-metrics.md, docs/moteur-data-flow.md, _bmad-output/planning-artifacts/prd.md]
 ---
 
@@ -11,9 +11,11 @@ synced_with: [docs/data-flows/keyword-metrics.md, docs/moteur-data-flow.md, _bma
 >
 > **Sprint decouplage-lieutenants-lexique (2026-05-09)** — `analyzeSerpCompetitors` est **supprimé**. Le scrape SERP est désormais porté par `scrape-corpus.service.ts` (single producer cross-domaine, cache mémoire 1h LRU module-scoped). Les Lieutenants consomment via `lieutenants-analysis.service.ts` (`proposeLieutenants(keyword, articleLevel)` qui lit headings + paa, **jamais textContent** — cf. AC.LIE-SCRAPE.2). La route `POST /api/serp/analyze` appelle directement `scrape-corpus.fetchAndPersist`. L'IA SSE de proposition Lieutenants reste portée par `keyword-ai-panel.routes.ts:/keywords/:kw/propose-lieutenants` (inchangée).
 
+> **Chantier C6 (2026-09-25, épopée qualité SEO, checklist M7)** — la structure H1/H2/H3 **n'appartient plus à ce flux**. Elle naissait de `propose-lieutenants`, avant tout choix de lieutenant, et l'étape `moteur:lieutenants_locked` exigeait « lieutenant verrouillé ET structure non vide ». Désormais : `propose-lieutenants` ne produit plus de `hnStructure` ; l'étape Lieutenants se demande dès **un** lieutenant verrouillé (porte `lieutenants-lock`) ; `saveDecisions` n'envoie plus la structure ; la structure naît des lieutenants retenus dans l'onglet **Structure** (`StructureHnPanel.vue` + `useStructureHn.ts`, étape `moteur:hn_locked`, porte `hn-lock`). Cf. `DESIGN-HN-TAB`, `DESIGN-HN-LOCK-GATE`. Les mentions de la structure non marquées « (C6) » plus bas décrivent l'état d'avant.
+
 # Data Flow — lieutenants
 
-> **Description métier :** Flux des mots-clés secondaires (Lieutenants, H2/H3) d'un article — depuis l'extraction des headings récurrents dans le SERP via scraping cross-article, passant par une proposition IA (Claude Sonnet) avec filtre auto post-IA, jusqu'au verrouillage et persistance dans `article_keywords.lieutenants` JSONB + `article_keywords.hn_structure` JSONB. Inclut une règle anti-cannibalisation géo-funnel pour les articles localisés.
+> **Description métier :** Flux des mots-clés secondaires (Lieutenants, H2/H3) d'un article — depuis l'extraction des headings récurrents dans le SERP via scraping cross-article, passant par une proposition IA (Claude Sonnet) avec filtre auto post-IA, jusqu'au verrouillage et persistance dans `article_keywords.lieutenants` (TEXT[]) et `lieutenant_explorations`. (C6) La structure `article_keywords.hn_structure` (JSONB) est produite par l'onglet Structure, à partir des lieutenants retenus. Inclut une règle anti-cannibalisation géo-funnel pour les articles localisés.
 > **Type/format :** Pinia store `useArticleKeywordsStore` (cache mémoire) + DB PostgreSQL `article_keywords` (persistance) + composants Vue bimodaux. Trois phases : scraping SERP → IA Sonnet + filtre → sélection + verrouillage.
 
 ## Producteurs
@@ -24,17 +26,17 @@ Qui crée ou met à jour cette donnée :
 
 - **Service** `scrape-corpus.fetchAndPersist()` ([server/services/external/scrape-corpus.service.ts](../../server/services/external/scrape-corpus.service.ts), post chantier 2) — exécute le scraping en parallèle (Promise.all 10 requêtes HTTP), extrait `headings[]` (Lieutenants), `text_content` (Lexique), `is_blog`, persiste atomiquement dans `keyword_serp_results` + `keyword_serp_scrapes` + `keyword_paa_questions`. Cache mémoire 1h LRU module-scoped (clé `keyword:lang:country`). Le service `lieutenants-analysis.service.proposeLieutenants` consomme `getHeadings` + `getPaaQuestions` (jamais `getTextContent`).
 
-- **Endpoint** `POST /keywords/:keyword/propose-lieutenants` ([server/routes/keyword-ai-panel.routes.ts:151-249](../../server/routes/keyword-ai-panel.routes.ts)) — reçoit `{ level, articleId, serpHeadings, paaQuestions, wordGroups, rootKeywords, serpCompetitors, rootKeywordsSerpData, cocoonSlug }`, forge le prompt `propose-lieutenants.md` (variabilité `{{keyword}}`, `{{level}}`, `{{painPoint}}`, `{{hn_recurrence}}`, `{{paa_questions}}`, `{{existing_lieutenants}}`), appelle Claude Sonnet (SSE, 8192 tokens max), reçoit JSON `ProposeLieutenantsResult { lieutenants[], hnStructure[], contentGapInsights }`, applique le filtre `filterLieutenants()` (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4, tri desc score).
+- **Endpoint** `POST /keywords/:keyword/propose-lieutenants` ([server/routes/keyword-ai-panel.routes.ts:151-249](../../server/routes/keyword-ai-panel.routes.ts)) — reçoit `{ level, articleId, serpHeadings, paaQuestions, wordGroups, rootKeywords, serpCompetitors, rootKeywordsSerpData, cocoonSlug }`, forge le prompt `propose-lieutenants.md` (variabilité `{{keyword}}`, `{{level}}`, `{{painPoint}}`, `{{hn_recurrence}}`, `{{paa_questions}}`, `{{existing_lieutenants}}`), appelle Claude Sonnet (SSE, 8192 tokens max), reçoit JSON `ProposeLieutenantsResult { lieutenants[], contentGapInsights }` (C6 : plus de `hnStructure[]`), applique le filtre `filterLieutenants()` (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4, tri desc score).
 
 - **Service `filterLieutenants()`** ([server/routes/keyword-ai-panel.routes.ts:133-145](../../server/routes/keyword-ai-panel.routes.ts)) — tri descendants par score (null en bas, respecte règle cohérence), partage entre `selectedLieutenants` (topK) et `eliminatedLieutenants` (reste). Utilise `compareScores()` pour placer les null correctement (jamais convertis en 0).
 
-- **Composant frontend** `LieutenantsPanel.vue` ([src/components/moteur/LieutenantsPanel.vue:49-173](../../src/components/moteur/LieutenantsPanel.vue)) — émet `lieutenants-updated` au debounce 300ms, appelle `articleKeywordsStore.saveDecisions(articleId)` pour écrire `{ lieutenants: selectedKeywords[] }` + `{ hnStructure }` dans DB.
+- **Composant frontend** `LieutenantsPanel.vue` ([src/components/moteur/LieutenantsPanel.vue:49-173](../../src/components/moteur/LieutenantsPanel.vue)) — émet `lieutenants-updated` au debounce 300ms, appelle `articleKeywordsStore.saveDecisions(articleId)` pour écrire `{ capitaine, lieutenants, lexique, rootKeywords }` en base — **sans** `hnStructure` depuis C6 (l'envoyer effaçait la structure quand le store n'en avait pas en mémoire). Puis `verifyLockedLieutenants` demande le verdict de la porte `lieutenants-lock`, et recommence si une case a changé pendant la vérification (C6).
 
 - **Anti-cannibalisation check** `getCocoonExistingLieutenants(articleId)` ([server/services/infra/data.service.js](../../server/services/infra/data.service.js)) — requête SQL `SELECT DISTINCT jsonb_array_elements(lieutenants)::TEXT FROM article_keywords WHERE article_id IN (SELECT id FROM articles WHERE cocoon_id = ...)` → liste des lieutenants déjà utilisés dans le cocon, incluse dans le prompt pour l'IA (« INTERDITS »).
 
 ## Persistance
 
-**Autorité** : `article_keywords` table PostgreSQL, colonnes `lieutenants TEXT[]` (liste plate de keywords verrouillés) + `hn_structure JSONB` (structure H1→H2→H3 recommandée).
+**Autorité** : `article_keywords` table PostgreSQL, colonne `lieutenants TEXT[]` (liste plate de keywords verrouillés). La colonne voisine `hn_structure JSONB` (structure H1→H2→H3) appartient depuis C6 à l'onglet Structure (`saveStructure`, cf. `DESIGN-HN-TAB`).
 
 - **Table** `article_keywords(article_id PK)` ([server/db/migrations/001_initial_schema.sql:98-106](../../server/db/migrations/001_initial_schema.sql)) — colonnes créées initialement : `lieutenants TEXT[] DEFAULT '{}'`, `hn_structure JSONB`, `updated_at TIMESTAMPTZ DEFAULT NOW()` + trigger `article_keywords_updated_at`.
 
@@ -42,11 +44,11 @@ Qui crée ou met à jour cette donnée :
 
 - **Endpoint GET** `GET /articles/:id/keywords` ([server/routes/articles.routes.ts](../../server/routes/articles.routes.ts)) — rapatrie `{ capitaine, lieutenants, lexique, rootKeywords, hnStructure, richLieutenants, richCaptain }` via hydratation Pinia `articleKeywordsStore.fetchKeywords(id)` (consultation mémoire sans re-fetch DB si frais).
 
-- **Endpoint PUT** `PUT /articles/:id/keywords` — reçoit `{ capitaine, lieutenants[], lexique[], rootKeywords, hnStructure }`, upserte atomiquement `article_keywords`, retourne payload complet incluant `richLieutenants` hydraté.
+- **Endpoint PUT** `PUT /articles/:id/keywords` — reçoit `{ capitaine, lieutenants[], lexique[], rootKeywords, hnStructure? }`, upserte atomiquement `article_keywords`, retourne payload complet incluant `richLieutenants` hydraté. (C6) `hnStructure` absent = structure inchangée en base (la route le transmet `undefined`, `saveArticleKeywords` garde la valeur existante) ; seul `saveStructure` (onglet Structure) l'envoie.
 
-- **Pinia store** `useArticleKeywordsStore` ([src/stores/article/article-keywords.store.ts:10-200](../../src/stores/article/article-keywords.store.ts)) — slot unique `keywords: ArticleKeywords | null` par article (fetch + merge pattern), `saveDecisions(articleId)` → `PUT /articles/:id/keywords`, `fetchKeywordsMerge()` → union des listes lieutenants + richLieutenants par keyword (status DB gagne si collision).
+- **Pinia store** `useArticleKeywordsStore` ([src/stores/article/article-keywords.store.ts:10-200](../../src/stores/article/article-keywords.store.ts)) — slot unique `keywords: ArticleKeywords | null` par article (fetch + merge pattern), `saveDecisions(articleId)` → `PUT /articles/:id/keywords`, `fetchKeywordsMerge()` → union des listes lieutenants + richLieutenants par keyword (status DB gagne si collision) ; (C6) adopte aussi la structure de la base quand la mémoire n'en a pas.
 
-> Hiérarchie d'autorité : `article_keywords.lieutenants` (liste flat verrouillés) + `article_keywords.hn_structure` (structure Hn) ← `keyword_metrics.serp_raw_json` (source SERP cross-article) ← composants IA frontend (proposal streaming). Écriture : toujours via `PUT /articles/:id/keywords`.
+> Hiérarchie d'autorité : `article_keywords.lieutenants` (liste flat verrouillés) ← `keyword_serp_scrapes.headings` (source SERP cross-article) ← composants IA frontend (proposal streaming). Écriture : toujours via `PUT /articles/:id/keywords`. (C6) `hn_structure` n'est plus écrite par ce flux.
 
 ## Consommateurs
 
@@ -60,11 +62,11 @@ Qui crée ou met à jour cette donnée :
 
 - **[src/components/moteur/LieutenantsAiPanel.vue](../../src/components/moteur/LieutenantsAiPanel.vue)** — panel IA contextuel SSE, charge `getArticlePainPoint(articleId)` + `{{painPoint}}` injection dans prompt `propose-lieutenants.md`.
 
-- **[src/components/moteur/LieutenantH2Structure.vue](../../src/components/moteur/LieutenantH2Structure.vue)** — affichage interactif de la structure Hn générée (`ProposeLieutenantsHnNode[]`), éditable (drag-drop H2/H3), sauvegarde atomique `saveHnStructure()` → `PUT /articles/:id` (outline) + store.
+- ~~**LieutenantH2Structure.vue**~~ — **(C6) n'est plus rendu dans l'onglet Lieutenants** (test `lieutenants-results-layout-architecture.test.ts`, AC.J.18) : il vit dans l'onglet Structure (`StructureHnPanel.vue`), où il affiche la structure, le verrou 🔒 par titre, la régénération et « Sauvegarder la structure » (pas de glisser-déposer). `saveHnStructure` et `useLieutenantsHn` sont supprimés.
 
 - **[src/components/moteur/LieutenantSerpAnalysis.vue](../../src/components/moteur/LieutenantSerpAnalysis.vue)** — tableau `HnRecurrenceItem` avec colonnes Heading / Niveau / Récurrence / Pourcentage. Tabs par keyword si multi-scan.
 
-- **FinalisationPanel.vue** — affichage read-only `Lieutenants sélectionnés: [list]` + Hn structure preview.
+- **FinalisationPanel.vue** — affichage read-only des Lieutenants verrouillés ; (C6) la structure a sa propre section « Structure (n H2) ».
 
 ### Calcul / tri / filtre / agrégat
 
@@ -91,7 +93,7 @@ Qui crée ou met à jour cette donnée :
 | Sélection rapide Lieutenants (debounce 300ms) | `selectedCards.value` (mémoire Vue) | grouped emit `lieutenants-updated` → `saveDecisions()` → DB | Faible si debounce respecté — une seule write par 300ms. Risque : utilisateur retro-clique avant debounce → l'ancienne sélection persiste en mémoire. |
 | Proposition IA re-générée (button "Régénérer") | `iaChunks` (SSE stream) | `/propose-lieutenants` → nouveau JSON IA | **Risque MODÉRÉ** : l'utilisateur avait sélectionné des cards de l'ancienne génération → élimination silencieuse si nouvel IA ne les reproduit pas. Solution : afficher toast "Nouvelles propositions générées, sélection antérieure conservée si match keyword". |
 | Multi-scan SERP (article a 3 Capitaines test = 3 keywords) | `serpResultsByKeyword: Map<keyword, SerpAnalysisResult>` (mémoire) | chaque `/serp/analyze` → DB + `serpResultsByKeyword.set(kw, result)` | Modéré — tab active peut devenir stale si re-scan un keyword. Affichage par tab mais DB unique par keyword. |
-| Validation finale + lock Lieutenants | `article_keywords.richLieutenants[]` + `article_keywords.hnStructure` (mémoire Pinia) | `saveDecisions()` → upsert `article_keywords` | Faible si locking atomique (emit `moteur:lieutenants_locked` APRÈS DB OK). |
+| Validation finale + lock Lieutenants | `article_keywords.richLieutenants[]` (mémoire Pinia) | `saveDecisions()` (sans structure, C6) → upsert `article_keywords` → porte `lieutenants-lock` | Faible : l'étape n'est demandée qu'APRÈS l'enregistrement ; (C6) une case cochée pendant la vérification est reprise (`verifyLockedLieutenants`). |
 | Restore depuis history (slider à -2h) | `captain_explorations` historique | aucune | **Risque CRITIQUE** : les richLieutenants historiques n'existent que si le snapshot IA a été sauvegardé — sinon l'utilisateur ne voit que `{ keyword, status }` aplati. Solution : ne jamais restaurer sans enrichir richLieutenants depuis `/propose-lieutenants` re-exécuté (coûteux). |
 | Merge cache DB + mémoire (user revient après 2h) | `fetchKeywordsMerge()` → union richLieutenants par keyword | aucune | Modéré — merge compare `lockedAt` timestamp, la plus récente gagne. Possible divergence si timestamps asynchrones (DB + local mismatch). |
 | Anti-cannibalisation : ajouter Lieutenant déjà dans sibling | Validation IA via `existing_lieutenants` (requête SQL au temps de requête) | `/propose-lieutenants` rejette (pas de proposition) | **Risque MODÉRÉ** : si un sibling a ajouté un lieutenant ENTRE le chargement du composant et le POST /propose-lieutenants, le check anti-cannibal est stale. Solution : re-fetch `existing_lieutenants` au moment du POST. |
@@ -139,27 +141,24 @@ flowchart TD
         COMP1["LieutenantSerpAnalysis.vue<br/>affichage HnRecurrence + slider"]
         COMP2["LieutenantsAiPanel.vue<br/>SSE streaming proposal"]
         COMP3["LieutenantProposals.vue<br/>cards candidats + badges"]
-        COMP4["LieutenantH2Structure.vue<br/>Hn interactive"]
         PARENT["LieutenantsPanel.vue (parent)<br/>orchestration 3 phases"]
     end
     
-    KM -.->|GET /articles/:id/keywords| STORE["Pinia Store<br/>useArticleKeywordsStore<br/>{ keywords, richLieutenants, hnStructure }"]
+    KM -.->|GET /articles/:id/keywords| STORE["Pinia Store<br/>useArticleKeywordsStore<br/>{ keywords, richLieutenants }"]
     
     PARENT --> COMP1
     PARENT --> COMP2
     PARENT --> COMP3
-    PARENT --> COMP4
     
     RESULT --> COMP3
     STORE --> COMP1
     STORE --> COMP3
-    STORE --> COMP4
     
     subgraph Selection["Sélection + Verrouillage"]
         TOGGLE["toggleLieutenant()<br/>selectedCards: Map<keyword, card>"]
         DEBOUNCE["debounce 300ms<br/>emit lieutenants-updated"]
-        SAVE["saveDecisions(articleId)<br/>PUT /articles/:id/keywords"]
-        LOCK["emit moteur:lieutenants_locked"]
+        SAVE["saveDecisions(articleId), sans structure (C6)<br/>PUT /articles/:id/keywords"]
+        LOCK["porte lieutenants-lock<br/>puis moteur:lieutenants_locked"]
     end
     
     COMP3 -->|checkbox| TOGGLE
@@ -167,8 +166,7 @@ flowchart TD
     DEBOUNCE --> SAVE
     SAVE --> AK
     SAVE --> LOCK
-    
-    COMP4 -->|saveHnStructure| SAVE
+    AK -.->|lieutenants retenus, C6| STRUCT["Onglet Structure<br/>StructureHnPanel + useStructureHn<br/>(DESIGN-HN-TAB)"]
     
     subgraph AntiCannibal["Anti-cannibalisation géo-funnel"]
         GEO["getCocoonExistingLieutenants(articleId)<br/>SELECT FROM article_keywords WHERE cocoon_id"]
@@ -186,10 +184,12 @@ flowchart TD
     class FILTER,EXTRACT,PENALTY calc
     class KM,AK,SAVE persist
     class A external
-    class COMP1,COMP2,COMP3,COMP4,PARENT,TOGGLE,DEBOUNCE ui
+    class COMP1,COMP2,COMP3,PARENT,TOGGLE,DEBOUNCE,STRUCT ui
 ```
 
 ## Régressions historiques
+
+- **2026-09-25 (C6, M7)** — Structure sortie de l'onglet ; un lieutenant verrouillé suffit à demander l'étape. Deux défauts corrigés dans `LieutenantsPanel.vue` : une case cochée pendant la vérification de la porte était perdue (`verifyLockedLieutenants`, lignes 316-337) ; une étape accordée au montage n'était plus revérifiée au changement suivant (ligne 380). Test : `tests/unit/components/lieutenants-gate.test.ts`.
 
 - **Sprint 1 (2026-05-04 — Restauration après C-1)** — Les conteneurs `LieutenantProposals` et `LieutenantH2Structure` avaient été migrés dans `LieutenantsAiPanel` lors de la refonte UX (C-1). Regression : les proposals IA n'étaient pas affichées en temps réel. Rollback : réimportation en tant que containers principaux dans `LieutenantsPanel.vue` (ligne 21-22). Verrouillage architecture ajouté via test unitaire pour éviter future régression.
 
@@ -217,7 +217,7 @@ flowchart TD
 
 4. **`describe('FR-LIE-GEOFUNNEL-RULE — pénalité anti-cannibalisation géo')`** — Intégration test : appel `/propose-lieutenants` pour Capitaine="création site web Toulouse" (contient ville), level='pilier'. Vérifier que la pénalité -15 à -25 est appliquée aux candidats `"prix site Toulouse"` / `"devis site Toulouse"` (cannibalise). Candidats thématiques `"création site responsive"` / `"agence web Occitanie"` gardent score normal. Cas intermédiaire / spécifique : 0 tolérance, tous les lieutenants `"... Toulouse"` → score < 40 (rejeté par cap).
 
-5. **`describe('FR-LIE-HN-STRUCTURE — saveHnStructure atomique + outline sync')`** — Vérifier que `saveHnStructure()` sauvegarde `hnStructure: ProposeLieutenantsHnNode[]` dans DB ET synchronise avec outline article. Cas : structure avec H1+3 H2+2 H3 → `PUT /articles/:id` produit `outline.sections` avec hiérarchie correcte. Reload → outline reflète la structure.
+5. ~~`FR-LIE-HN-STRUCTURE — saveHnStructure atomique + outline sync`~~ — **sans objet depuis C6** (la structure est sortie de ce flux). Couvert côté onglet Structure par `tests/unit/composables/moteur/useStructureHn.test.ts` (structure puis sommaire enregistrés), `tests/unit/stores/outline-hn-to-outline.test.ts` et `tests/unit/stores/article-keywords.store.test.ts` (bloc « structure Hn »).
 
 6. **`it.todo('FR-LIE-CHECKS — emit moteur:lieutenants_locked après verrouillage')`** — Vérifier que le composant émet `check-completed` avec la constante `MOTEUR_LIEUTENANTS_LOCKED` ([shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts)) APRÈS save DB OK. Cas : save rejected → pas d'emit. Save OK → emit + toast.
 

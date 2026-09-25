@@ -940,7 +940,16 @@ development_status:
   # versées au PRD et au registre. Non livrée : FR-RED-LINKING-MANUAL (reste
   # réservée). Restes : R13-R15, R17-R24, U1, T12.
   qualite-seo-c5-redaction-deux-temps: review
-  qualite-seo-c6-onglet-structure-hn: backlog
+  # C6 (feat/onglet-structure-hn, 2026-09-25) : code livré, en revue, PR à ouvrir.
+  # Onglet Structure entre Lieutenants et Lexique, étape moteur:hn_locked
+  # (6 checks, Finalisation à 4 verrous) ; structure proposée à partir des
+  # lieutenants retenus, validée par la porte hn-lock (rejouée à la publication) ;
+  # M7 soldée (un lieutenant suffit à l'étape Lieutenants) ; plus d'écrasement
+  # de la structure ; « H2 de fond » ; mode automatique aligné ; réconciliation
+  # des articles existants (npm run db:reconcile-hn). FR-HN-TAB et
+  # FR-HN-LOCK-GATE versées au PRD et au registre, FR-LIE-HN-STRUCTURE
+  # superseded. Restes : M18-M21, P6, U3, D6, T13 ; T2 (describe.skip).
+  qualite-seo-c6-onglet-structure-hn: review
   qualite-seo-c7-cocon-progressif: backlog
   qualite-seo-c8-recette-reelle: backlog
 

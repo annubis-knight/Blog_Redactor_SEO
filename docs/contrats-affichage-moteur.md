@@ -1,8 +1,9 @@
 ---
 name: contrats-affichage-moteur
 type: doc
-last_updated: 2026-09-22
+last_updated: 2026-09-25
 synced_with:
+  - _bmad-output/implementation-artifacts/tech-spec-onglet-structure-hn.md (C6 : le plan Hn quitte l'onglet Lieutenants pour l'onglet Structure)
   - _bmad-output/implementation-artifacts/tech-spec-contrats-affichage.md
   - _bmad-output/planning-artifacts/prd.md (NFR-INT-DISPLAY-CONTRACTS)
   - _bmad-output/planning-artifacts/design-registry.md (DESIGN-INT-DISPLAY-CONTRACTS)
@@ -124,7 +125,8 @@ Pourquoi trois fois ? Parce que c'est la même expression qui doit produire l'af
 | **Découverte** | `DiscoveryPanel`, `DiscoverySourcesList`, `DiscoveryAnalysisResults`, `DiscoveryWordGroupsSidebar`, `KeywordDiscoveryRelevanceToggle` | Google Suggest, DataForSEO, IA (JSON), calcul, cache 30 j | `suggest-all`, `discover`, `discover-from-site`, `analyze-discovery`, `relevance-score`, `word-groups`, `discovery-cache`, `discovery-cache-status`, `radar-generate` |
 | **Radar** | `RadarPanel`, `DouleurScannerResults`, `RadarThermometer`, `RadarKeywordCard` (+ `RadarCardScoreRing`, `RadarCardPaaTree`), `RadarLongTailSuggestions`, `RadarAiPanel` | DataForSEO, Google (PAA, autocomplétion), calcul, IA (JSON), base | `radar-scan`, `radar-generate`, `radar-exploration`, `radar-exploration-add/-batch/-remove`, `long-tail-suggestions` |
 | **Capitaine** | `CaptainPanel`, `CaptainRadarList`, `CaptainSidePanel`, `CaptainRootsSidebar`, `ScoreRing`, `AiAdviceMarkdown`, `CaptainLockPanel` | DataForSEO, Google, calcul, IA (texte, JSON), base | `captain-scan`, `captain-history`, `article-keywords`, `captain-paa-judge`, `ai-advice-done` |
-| **Lieutenants** | `LieutenantsPanel`, `LieutenantSerpAnalysis`, `LieutenantsResultsLayout`, `LieutenantProposals`, `LieutenantCard`, `LieutenantH2Structure`, `LieutenantsAiPanel` | DataForSEO + pages concurrentes lues, IA (flux SSE), base | `serp-analysis`, `propose-lieutenants`, `ai-hn-structure`, `article-keywords` |
+| **Lieutenants** | `LieutenantsPanel`, `LieutenantSerpAnalysis`, `LieutenantsResultsLayout`, `LieutenantProposals`, `LieutenantCard`, `LieutenantsAiPanel` | DataForSEO + pages concurrentes lues, IA (flux SSE), base | `serp-analysis`, `propose-lieutenants`, `article-keywords` |
+| **Structure** (C6, 2026-09-25) | `StructureHnPanel`, `LieutenantH2Structure` | SERP du capitaine relue, IA (flux SSE), base | `serp-analysis`, `ai-hn-structure`, `article-keywords` |
 | **Lexique** | `LexiquePanel`, `LexiqueTermsList`, `LexiqueAiPanel` | TF-IDF local, IA (flux SSE), base | `tfidf`, `lexique-ai`, `explorations`, `serp-exists` |
 | **Finalisation** | `FinalisationPanel`, `MoteurContextRecap` | base | `article-keywords` (Finalisation) ; données de pilotage hors contrat (récap) |
 
@@ -719,20 +721,20 @@ Un verdict inconnu devient `GRAY` : le bouton reste désactivé, comme pour un v
 
 ### 1.4 Lieutenants
 
-Les Lieutenants (futurs H2/H3) naissent de l'analyse SERP des concurrents, puis d'une proposition IA en flux.
+Les Lieutenants (futurs H2/H3) naissent de l'analyse SERP des concurrents, puis d'une proposition IA en flux. Depuis C6 (2026-09-25), le plan Hn n'est plus proposé ni affiché ici : il naît des lieutenants retenus, dans l'onglet Structure (`StructureHnPanel`, cf. `#### LieutenantH2Structure` plus bas).
 
 ```mermaid
 flowchart LR
   DFS{{"DataForSEO SERP<br/>top 10 + PAA"}}:::src --> SC["lecture des pages<br/>titres Hn + texte"]
   SC --> K1["serp-analysis"]:::contrat
   DB1[("keyword_serp_results<br/>keyword_serp_scrapes")]:::src --> K1
-  K1 --> LS["useLieutenantsSerp<br/>récurrence des titres"]
-  LS --> IA{{"IA — flux SSE<br/>propose-lieutenants · ai-hn-structure"}}:::src
-  IA --> K2["propose-lieutenants-ai (serveur)<br/>propose-lieutenants · ai-hn-structure (client)"]:::contrat
+  K1 --> LS["useLieutenantsSerp<br/>récurrence des titres (entrée de l'IA)"]
+  LS --> IA{{"IA — flux SSE<br/>propose-lieutenants"}}:::src
+  IA --> K2["propose-lieutenants-ai (serveur)<br/>propose-lieutenants (client)"]:::contrat
   K2 --> LI["useLieutenantsIa"]
-  DB2[("lieutenant_explorations<br/>article_keywords.hn_structure")]:::src --> K3["article-keywords"]:::contrat
+  DB2[("lieutenant_explorations")]:::src --> K3["article-keywords"]:::contrat
   K3 --> LI
-  LI --> UI["LieutenantProposals · LieutenantH2Structure"]:::zone
+  LI --> UI["LieutenantProposals"]:::zone
   LS --> UI2["LieutenantSerpAnalysis"]:::zone
   classDef src fill:#fff1e0,stroke:#d9822b,color:#321
   classDef contrat fill:#e6f6ea,stroke:#2f9e44,color:#132
@@ -751,7 +753,6 @@ flowchart LR
     AS["KeywordAssistPanel (mots-clés du panier Radar)"]:::zone
     SA["LieutenantSerpAnalysis"]:::zone
     PR["LieutenantsResultsLayout › LieutenantProposals"]:::zone
-    H2["LieutenantsResultsLayout › LieutenantH2Structure"]:::zone
     SRCS["LieutenantsResultsLayout › Sources IA : questions Google (PAA) · clusters Discovery"]:::zone
     AI["LieutenantsResultsLayout › LieutenantsAiPanel"]:::zone
   end
@@ -846,7 +847,7 @@ Une carte ajoutée depuis le panier, ou restaurée d'une ancienne liste sans dé
 
 #### `LieutenantH2Structure` — le plan Hn
 
-`src/components/moteur/LieutenantH2Structure.vue`
+`src/components/moteur/LieutenantH2Structure.vue` — **rendu par l'onglet Structure depuis C6** (`src/components/moteur/StructureHnPanel.vue`, données par `src/composables/moteur/useStructureHn.ts`), plus par `LieutenantsResultsLayout`. `hnStructure` vient de `ai-hn-structure` (lieutenants retenus, titres 🔒, autres articles du cocon) ou de la base (`article-keywords`) ; `hnRecurrence` de `serp-analysis` sur le seul capitaine (un onglet « Tous »), relu à l'ouverture de l'onglet. Au-dessus du composant, `StructureHnPanel` affiche les lieutenants retenus, l'état de validation et le bouton « Valider la structure » (étape `moteur:hn_locked`, porte `hn-lock`).
 
 ```mermaid
 flowchart LR
@@ -1122,7 +1123,7 @@ flowchart LR
   DFS --> KS["serp-analysis (serveur)"]:::contrat
   KD --> KC["serp-analysis (client)"]:::contrat
   KS --> KC
-  KC --> REC["récurrence des titres<br/>(pages lues seulement)"] --> UI["LieutenantSerpAnalysis · LieutenantH2Structure"]:::zone
+  KC --> REC["récurrence des titres<br/>(pages lues seulement)"] --> UI["LieutenantSerpAnalysis · LieutenantH2Structure (onglet Structure, C6)"]:::zone
   T2(["Extraire le Lexique"]):::action --> TF["TF-IDF sur les pages lues"]
   SV --> TF
   TF --> KT["tfidf (serveur, client)"]:::contrat --> UI2["LexiqueTermsList"]:::zone
@@ -1146,12 +1147,12 @@ sequenceDiagram
   S-->>E: event chunk (progression affichée en brut)
   Note over S: parser = parseAiJson puis contrat propose-lieutenants-ai<br/>score 0-100 ou null, H2/H3, doublons écartés
   S->>DB: sauvegarde lieutenant_explorations (forme contrôlée)
-  S-->>E: event done (retenus, éliminés, plan Hn)
+  S-->>E: event done (retenus, éliminés — plus de plan Hn depuis C6)
   Note over E: contrat propose-lieutenants (client)<br/>refus → onError → message + Régénérer
-  E->>E: cartes, cases pré-cochées, plan Hn
+  E->>E: cartes des lieutenants
 ```
 
-Le même schéma vaut pour `ai-hn-structure` (régénération du plan seul) : sans liste de titres, la réponse est refusée et le plan affiché reste en place.
+Le même schéma vaut pour `ai-hn-structure`, appelée depuis C6 par l'onglet Structure (`useStructureHn.generate`) avec les lieutenants retenus : sans liste de titres, la réponse est refusée et le plan affiché reste en place.
 
 ### 2.5 Lexique IA et explorations relues
 

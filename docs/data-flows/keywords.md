@@ -2,11 +2,13 @@
 name: article_keywords
 description: "Décisions de mots-clés d'un article (Capitaine + Lieutenants + Lexique + HN Structure) — données de 3e phase du Moteur validées et persistées en PostgreSQL, hydratées avec richesses (validations Capitaine, Lieutenant explorations, IA panels, scoring)."
 type: "{ capitaine: string, lieutenants: string[], lexique: string[], rootKeywords?: string[], hnStructure?: ProposeLieutenantsHnNode[], richCaptain?: RichCaptain, richLieutenants?: RichLieutenant[], richRootKeywords?: RichRootKeyword[] }"
-last_updated: 2026-05-04
-related_fr: [FR-CAP-LOCK-RADIO, FR-CAP-PERSIST, FR-LIE-CHECKBOX-COUNT, FR-LEX-SELECT, FR-FIN-RECAP, FR-MOT-PHASES, FR-INFRA-API-WRAPPER]
+last_updated: 2026-09-25
+related_fr: [FR-CAP-LOCK-RADIO, FR-CAP-PERSIST, FR-LIE-CHECKBOX-COUNT, FR-LEX-SELECT, FR-FIN-RECAP, FR-MOT-PHASES, FR-INFRA-API-WRAPPER, FR-HN-TAB, FR-HN-LOCK-GATE]
 ---
 
 # Data Flow — article_keywords
+
+> **Chantier C6 (2026-09-25)** — `hn_structure` a désormais **un seul producteur** : l'onglet Structure (`useStructureHn` → `articleKeywordsStore.saveStructure`, envoyé avec les décisions). `saveDecisions` (Capitaine, Lieutenants, Lexique) **n'envoie plus** `hnStructure` ; `PUT /articles/:id/keywords` transmet un `hnStructure` absent en `undefined` (`keywords.routes.ts:313-314` au commit `94c7e91`) et `saveArticleKeywords` garde alors la valeur en base (`data.service.ts:702-704`). Avant C6, tout enregistrement fait sur un store sans structure en mémoire l'effaçait (`hnStructure ?? []` côté store et route). `fetchKeywordsMerge` adopte la structure de la base quand la mémoire n'en a pas. Consommateurs ajoutés : la porte `hn-lock` (`gate.service.ts`, `hnGate`), `FinalisationPanel` (section Structure), le mode automatique (reprise). Les numéros de ligne non datés plus bas sont antérieurs à C6.
 
 > **Description métier :** Ensemble des mots-clés validés pour un article — Capitaine (principal), Lieutenants (secondaires 2-5), Lexique (termes LSI 10-15) et structure de titres (H1/H2/H3) — plus métadonnées enrichies (historique validations, IA panels, scores scoring, statuts).
 > **Type/format :** `ArticleKeywords` TypeScript interface. Persisté en table `article_keywords` PostgreSQL (colonnes capitaine TEXT, lieutenants TEXT[], lexique TEXT[], hn_structure JSONB, captain_locked_at TIMESTAMPTZ, root_keywords TEXT[]). Hydraté frontend via store Pinia `useArticleKeywordsStore`.
@@ -25,7 +27,8 @@ Qui crée ou met à jour cette donnée :
   - `CaptainPanel.vue` — radio lock (emit 'check-completed' → `lockCaptain()` côté store).
   - `LieutenantsPanel.vue` — checkboxes sélection → `setRichLieutenants()`.
   - `LexiquePanel.vue` — checkboxes termes → mutations `addLexiqueTerm()`.
-  - Tous appellent `saveDecisions(id)` au blur ou via bouton Valider.
+  - Tous appellent `saveDecisions(id)` au blur ou via bouton Valider — sans la structure depuis C6.
+  - `StructureHnPanel.vue` (C6) — « Sauvegarder la structure » / « Valider la structure » → `saveStructure(id, structure)` : seul chemin qui écrit `hn_structure`.
 
 - **Endpoints d'exploration dédiés** — produisent des données `richCaptain`, `richLieutenants` hydratées :
   - `POST /articles/:id/captain-explorations` → `saveCaptainExploration()` (table `captain_explorations`).
@@ -97,6 +100,7 @@ flowchart TD
         UI1["CaptainPanel.vue<br/>CaptainLockPanel.vue"]
         UI2["LieutenantsPanel.vue"]
         UI3["LexiquePanel.vue"]
+        UI4["StructureHnPanel.vue (C6)<br/>saveStructure → hn_structure"]
         STORE["useArticleKeywordsStore<br/>mutations + actions"]
     end
 
@@ -121,7 +125,8 @@ flowchart TD
         CVP["CaptainVerdictPanel.vue<br/>verdict badges"]
         LH2["LieutenantsPanel.vue<br/>liste checkboxes"]
         LEX["LexiquePanel.vue<br/>termes 3 niveaux"]
-        FIN["FinalisationPanel.vue<br/>recap 3-phase"]
+        FIN["FinalisationPanel.vue<br/>recap 4 sections (C6)"]
+        GATE["porte hn-lock (C6)<br/>gate.service.ts hnGate"]
     end
 
     subgraph Consommateurs_Calc
@@ -134,6 +139,7 @@ flowchart TD
     UI1 --> STORE
     UI2 --> STORE
     UI3 --> STORE
+    UI4 --> STORE
     STORE --> E1
     E1 --> S1
 
@@ -157,7 +163,8 @@ flowchart TD
     CE -->|aiPanelMarkdown| CVH
     LE -->|richLieutenants[]| LH2
     AK -->|lexique[]| LEX
-    AK -->|capitaine, lieutenants[], lexique[]| FIN
+    AK -->|capitaine, lieutenants[], hn_structure, lexique[]| FIN
+    AK -->|capitaine, lieutenants[], hn_structure| GATE
     A -->|pain_point| PROMPT
 
     CVH --> SORT

@@ -4,6 +4,7 @@
 > Dernière mise à jour : 2026-05-04
 > **2026-05-04** : ajout des notes Sprint 4/5 stabilisation (découpage routes/services par responsabilité — voir [Annexe — Découpages structurels post-stabilisation](#annexe--découpages-structurels-post-stabilisation-2026-05-04))
 > **2026-09-25** : rédaction en deux temps (épopée qualité SEO, C5) — premier jet en un appel (`POST /api/generate/article-draft`, remplace `/api/generate/article`), puis passes d'enrichissement proposées chapitre par chapitre (`POST /api/generate/enrich/:pass`, `POST /api/generate/section-rewrite`). Passages concernés mis à jour (§3.1, §3.2, §3.3, §7, §10, annexes) ; le reste du document n'a pas été revu.
+> **2026-09-25** : onglet Structure (épopée qualité SEO, C6) — 7 onglets, la structure H1/H2/H3 naît des lieutenants retenus dans `StructureHnPanel` (plus dans l'onglet Lieutenants), 6 checks Moteur (`moteur:hn_locked`, porte `hn-lock` rejouée à la publication), Finalisation à 4 verrous. Passages Moteur concernés mis à jour (routes, parcours, phase ②, checks, arbre des composants).
 
 ---
 
@@ -125,7 +126,7 @@ graph LR
     subgraph Cocoon["Cocoon Routes"]
         CL["/cocoon/:cocoonId<br>CocoonLandingView"]
         CV["/cocoon/:cocoonId/cerveau<br>CerveauView"]
-        MV["/cocoon/:cocoonId/moteur<br>MoteurView (6 onglets)"]
+        MV["/cocoon/:cocoonId/moteur<br>MoteurView (7 onglets)"]
         RV["/cocoon/:cocoonId/redaction<br>RedactionView"]
     end
 
@@ -170,7 +171,7 @@ graph LR
 | `/silo/:siloId` | SiloDetailView | silos (strategy/) | Détail silo |
 | `/cocoon/:cocoonId` | CocoonLandingView | cocoons (strategy/) | Landing cocon |
 | `/cocoon/:cocoonId/cerveau` | CerveauView | cocoon-strategy, strategy (strategy/) | Stratégie Brain-First |
-| `/cocoon/:cocoonId/moteur` | MoteurView | keyword-discovery, moteur-basket (article/), intent (keyword/) | Moteur mots-clés 6 onglets |
+| `/cocoon/:cocoonId/moteur` | MoteurView | keyword-discovery, moteur-basket (article/), intent (keyword/) | Moteur mots-clés 7 onglets (Structure depuis C6) |
 | `/cocoon/:cocoonId/redaction` | RedactionView | articles (article/) | Liste & création articles |
 | `/cocoon/:cocoonId/article/:articleId` | ArticleWorkflowView | brief (strategy/), outline + editor (article/) | Workflow article complet |
 | `/article/:articleId/editor` | ArticleEditorView | editor + seo (article/) | Éditeur TipTap avancé |
@@ -392,7 +393,7 @@ graph TB
     end
 
     subgraph Phase3["Phase 3 — Mots-clés (Moteur)"]
-        MOTEUR["⚡ MoteurView — 6 onglets<br>① Explorer: Discovery + Radar<br>② Valider: Capitaine → Lieutenants → Lexique<br>③ Finalisation: récap read-only"]
+        MOTEUR["⚡ MoteurView — 7 onglets<br>① Explorer: Discovery + Radar<br>② Valider: Capitaine → Lieutenants → Structure → Lexique<br>③ Finalisation: récap read-only"]
     end
 
     subgraph Phase4["Phase 4 — Rédaction"]
@@ -515,15 +516,17 @@ graph TB
     subgraph Phase2["Phase ② VALIDER (verrouillage séquentiel)"]
         direction TB
         CAPT["👑 CaptainValidation<br>─────<br>POST /api/keywords/:kw/validate<br>6 KPIs contextuels<br>Feu tricolore GO/ORANGE/NO-GO<br>Panel IA streaming SSE<br>→ moteur:capitaine_locked"]
-        LT["🎖️ LieutenantsSelection<br>─────<br>POST /api/serp/analyze<br>Hn + PAA + Groupes<br>Badges [SERP] [PAA] [Groupe]<br>→ moteur:lieutenants_locked"]
-        LEX["📚 LexiqueExtraction<br>─────<br>POST /api/serp/tfidf<br>(contenus SERP hérités, ZÉRO requête)<br>Obligatoire / Différenciateur / Optionnel<br>→ moteur:lexique_validated"]
+        LT["🎖️ LieutenantsPanel<br>─────<br>POST /api/serp/analyze<br>PAA + Groupes (récurrence Hn pour l'IA)<br>Badges [SERP] [PAA] [Groupe]<br>→ moteur:lieutenants_locked (dès 1 lieutenant, porte)"]
+        HN["🏗️ StructureHnPanel (C6)<br>─────<br>POST /api/keywords/:kw/ai-hn-structure<br>lieutenants retenus + récurrence + cocon<br>Valider : structure + sommaire + longueur<br>→ moteur:hn_locked (porte hn-lock)"]
+        LEX["📚 LexiquePanel<br>─────<br>POST /api/serp/tfidf<br>(contenus SERP hérités, ZÉRO requête)<br>Obligatoire / Différenciateur / Optionnel<br>→ moteur:lexique_validated"]
 
         CAPT -.->|unlock| LT
-        LT -.->|unlock| LEX
+        LT -.->|lieutenants retenus| HN
+        HN -.-> LEX
     end
 
     subgraph Phase3["Phase ③ FINALISATION"]
-        FINAL["✅ FinalisationRecap<br>─────<br>Read-only, débloqué quand<br>les 3 checks Phase ② OK<br>Écriture ArticleKeywords<br>(capitaine + lieutenants + lexique)"]
+        FINAL["✅ FinalisationPanel<br>─────<br>Read-only ; bouton Rédaction<br>actif quand les 4 checks Phase ② sont OK<br>(capitaine + lieutenants + structure + lexique)"]
     end
 
     BASKET --> CAPT
@@ -554,19 +557,22 @@ flowchart LR
   - Capitaine + Lieutenants : `articleKeywordsStore.fetchKeywordsMerge(articleId)`
   - Lexique : `LexiqueExtraction.mergeFromDb()` (via `defineExpose`)
 
-### Les 5 checks Moteur
+### Les 6 checks Moteur (5 avant C6)
 
 ```mermaid
 graph LR
-    C1["moteur:discovery_done"] --> C2["moteur:radar_done"] --> C3["moteur:capitaine_locked"] --> C4["moteur:lieutenants_locked"] --> C5["moteur:lexique_validated"]
+    C1["moteur:discovery_done"] --> C2["moteur:radar_done"] --> C3["moteur:capitaine_locked"] --> C4["moteur:lieutenants_locked"] --> C6["moteur:hn_locked (C6)"] --> C5["moteur:lexique_validated"]
 
     C1 -.->|"Phase ①"| EXP[Explorer]
     C2 -.->|"Phase ①"| EXP
     C3 -.->|"Phase ②"| VAL[Valider]
     C4 -.->|"Phase ②"| VAL
+    C6 -.->|"Phase ②"| VAL
     C5 -.->|"Phase ②"| VAL
-    VAL -.->|"3/3 done"| FINAL[Phase ③ Finalisation débloquée]
+    VAL -.->|"4/4 done"| FINAL[Phase ③ Finalisation : Rédaction ouverte]
 ```
+
+Les quatre checks de la phase ② ne sont écrits que si leur porte passe (`CHECK_GATES`, `server/services/gates/gate.service.ts`) ; la publication rejoue les quatre portes.
 
 ### Filtres Discovery
 
@@ -602,11 +608,13 @@ stateDiagram-v2
     }
 ```
 
-### Cascade SERP (un scraping, deux usages)
+### Cascade SERP (un scraping, deux usages — trois depuis C6)
+
+Depuis C6 (2026-09-25), l'onglet Structure relit aussi la SERP du capitaine (`POST /api/serp/analyze`, au montage et au changement d'article) pour calculer la récurrence des titres concurrents (`computeHnRecurrence`, `shared/utils/hn-structure.ts`) ; au-delà de 7 jours de cache, c'est une nouvelle analyse payante (checklist M18).
 
 ```mermaid
 sequenceDiagram
-    participant LT as LieutenantsSelection
+    participant LT as LieutenantsPanel
     participant SerpSvc as serp-analysis.service
     participant Cache as api_cache
     participant DFSEO as DataForSEO
@@ -626,7 +634,7 @@ sequenceDiagram
     end
     SerpSvc-->>LT: { hnData, paaData, groupCrossData, rawContents }
 
-    Note over LT,LEX: User verrouille Lieutenants → émet moteur:lieutenants_locked
+    Note over LT,LEX: User verrouille un Lieutenant → porte → moteur:lieutenants_locked, puis onglet Structure → moteur:hn_locked (C6)
 
     LEX->>TfidfSvc: POST /api/serp/tfidf (articleId)
     TfidfSvc->>PG: lire rawContents depuis article_explorations
@@ -649,6 +657,8 @@ graph TB
         VALIDATE["✅ validateOutline(articleId)<br>(plus de check workflow émis depuis 2026-05-13 — cf. DRIFT-002)"]
 
         FETCH --> BRIEF_DATA --> GEN_OUTLINE --> EDIT_OUTLINE --> VALIDATE
+        MOTEUR_HN["🏗️ Structure validée au Moteur (C6)<br>structureToOutline : H1, une introduction,<br>chapitres, une conclusion<br>→ article_content.outline"]
+        MOTEUR_HN -.->|"sommaire déjà écrit : pas de génération"| EDIT_OUTLINE
     end
 
     subgraph Step2["Step 2 — ARTICLE"]
@@ -1041,7 +1051,7 @@ graph TB
         CERV_V --> PROP_ART["ProposedArticleRow"]
     end
 
-    subgraph MoteurViews["Pages Moteur — 6 onglets"]
+    subgraph MoteurViews["Pages Moteur — 7 onglets"]
         MOT_V["MoteurView"]
         MOT_V --> SEL_ART["SelectedArticlePanel"]
         MOT_V --> MCTX["MoteurContextRecap + MoteurStrategyContext"]
@@ -1058,7 +1068,8 @@ graph TB
 
         subgraph P2["Phase ② Valider"]
             CAPT_VAL["CaptainValidation"]
-            LT_SEL["LieutenantsSelection"]
+            LT_SEL["LieutenantsPanel"]
+            HN_PANEL["StructureHnPanel (C6)"]
             LEX_EXT["LexiqueExtraction"]
 
             CAPT_VAL --> CAPT_IN["CaptainInput"]
@@ -1071,14 +1082,14 @@ graph TB
             CAPT_VAL --> THERMO["shared/RadarThermometer"]
 
             LT_SEL --> LT_SERP["LieutenantSerpAnalysis"]
-            LT_SEL --> LT_H2["LieutenantH2Structure"]
+            HN_PANEL --> LT_H2["LieutenantH2Structure"]
             LT_SEL --> LT_PROP["LieutenantProposals"]
             LT_SEL --> LT_CARD["LieutenantCard"]
             LT_SEL --> UNLOCK["UnlockLieutenantsModal"]
         end
 
         subgraph P3["Phase ③ Finalisation"]
-            FINAL_R["FinalisationRecap"]
+            FINAL_R["FinalisationPanel<br>(4 sections : Capitaine, Lieutenants, Structure, Lexique)"]
         end
 
         MOT_V --> P1
@@ -1223,7 +1234,7 @@ graph TB
 | POST | `/api/keywords/audit` | keyword-audit | Audit keywords (legacy — ex-Explorateur, plus appelé par UI active) |
 | POST | `/api/keywords/:keyword/validate` | — | Verdict GO/NO-GO Capitaine |
 | POST | `/api/keywords/:keyword/ai-panel` | — | Panel IA Capitaine (SSE) |
-| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn recommandée |
+| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn proposée à partir des lieutenants retenus (onglet Structure depuis C6, autres articles du cocon en contexte) |
 | POST | `/api/keywords/:keyword/propose-lieutenants` | — | Propositions Lieutenants |
 | GET | `/api/keywords/:keyword/usage` | — | Usage du mot-clé |
 | GET | `/api/keywords/:keyword/metrics` | — | Métriques (keyword_metrics) |

@@ -1,14 +1,24 @@
 # Moteur Workflow — Diagramme de flux
 
-> Mis à jour : 2026-05-03 (P0 longue-traîne ajoutée — section §X)
+> Mis à jour : 2026-09-25 (onglet Structure, C6 — §1, §2, §5, §5 bis, §7, §9) ; 2026-05-03 (P0 longue-traîne ajoutée — section §X)
 > Source de vérité : `src/views/MoteurView.vue` + composants `src/components/moteur/*` + constantes `shared/constants/workflow-checks.constants.ts`
+
+> **2026-09-25 — Onglet Structure (épopée qualité SEO, chantier C6).** Un
+> septième onglet, **Structure**, s'insère entre Lieutenants et Lexique
+> (`TAB_IDS`, `useMoteurTabs.ts:30`). La structure H1/H2/H3 ne naît plus dans
+> l'onglet Lieutenants (où `propose-lieutenants` la produisait avant tout choix,
+> checklist M7) mais des lieutenants **retenus**, dans `StructureHnPanel.vue` +
+> `useStructureHn.ts`. Nouvelle étape `moteur:hn_locked` (6 checks), gardée par
+> la porte `hn-lock` (`shared/verifiers/structure.ts`) et rejouée à la
+> publication ; la Finalisation exige 4 verrous. L'étape Lieutenants se demande
+> dès un lieutenant verrouillé. Cf. `DESIGN-HN-TAB`, `DESIGN-HN-LOCK-GATE`.
 
 > **2026-05-03 — Plan de sécurisation Moteur (6 blocs livrés).**
 > 1. **Bloc 1** — Computed défensif `lockedLieutenantCount?.length ?? 0` dans
 >    `CaptainPanel.vue` (réparation de 32 tests cassés).
 > 2. **Bloc 2** — Onglet `'finalisation'` ajouté à `TAB_IDS`, modale
 >    supprimée. Bouton « Continuer vers la Rédaction » désactivé tant que
->    les 3 verrous Phase ② ne sont pas posés (computed `finalisationUnlocked`
+>    les 3 verrous Phase ② (4 depuis C6, Structure comprise) ne sont pas posés (computed `finalisationUnlocked`
 >    + tooltip natif HTML listant les checks manquants). Logique pure
 >    extraite dans `src/composables/moteur/useFinalisationGating.ts` (testée).
 > 3. **Bloc 3** — `handleSelectArticle` appelle `fetchKeywordsMerge` au lieu
@@ -40,7 +50,7 @@
 > marketScore + relevanceScore pour Radar). Tech-spec archivée :
 > `_bmad-output/implementation-artifacts/_archive/tech-spec-moteur-ai-panel-unification.md`.
 
-## 1. Vue globale du workflow — 3 phases / 6 onglets
+## 1. Vue globale du workflow — 3 phases / 7 onglets
 
 ```mermaid
 flowchart LR
@@ -60,12 +70,13 @@ flowchart LR
   subgraph P2["Phase ② VALIDER (verrouillage séquentiel, gating souple)"]
     direction LR
     CAPT["<b>Capitaine</b><br/>CaptainValidation<br/>6 KPIs + feu tricolore<br/>check: moteur:capitaine_locked"]:::validate
-    LT["<b>Lieutenants</b><br/>LieutenantsSelection<br/>SERP top 3-10<br/>check: moteur:lieutenants_locked"]:::validate
-    LEX["<b>Lexique</b><br/>LexiqueExtraction<br/>TF-IDF (zéro requête)<br/>check: moteur:lexique_validated"]:::validate
+    LT["<b>Lieutenants</b><br/>LieutenantsPanel<br/>SERP top 3-10<br/>check: moteur:lieutenants_locked<br/>(dès 1 lieutenant, porte lieutenants-lock)"]:::validate
+    HN["<b>Structure</b> (C6)<br/>StructureHnPanel<br/>H1/H2/H3 des lieutenants retenus<br/>check: moteur:hn_locked<br/>(porte hn-lock)"]:::validate
+    LEX["<b>Lexique</b><br/>LexiquePanel<br/>TF-IDF (zéro requête)<br/>check: moteur:lexique_validated"]:::validate
   end
 
   subgraph P3["Phase ③ FINALISATION (onglet dédié, read-only)"]
-    FINAL["<b>Finalisation</b><br/>FinalisationRecap<br/>onglet TAB_IDS depuis 2026-05-03<br/>bouton Rédaction grisé si 3 checks ② manquants<br/>→ /cocoon/:id/redaction"]:::finalisation
+    FINAL["<b>Finalisation</b><br/>FinalisationPanel<br/>onglet TAB_IDS depuis 2026-05-03<br/>bouton Rédaction grisé si l'un des 4 checks ② manque<br/>→ /cocoon/:id/redaction"]:::finalisation
   end
 
   CTX --> DISC
@@ -78,9 +89,10 @@ flowchart LR
 
   CAPT -- "capitaine verrouillé<br/><i>unlock Lieutenants</i>" --> LT
   LT -- "SERP rawContents<br/><i>article_explorations</i>" --> LEX
-  LT -- "lieutenants[] verrouillés<br/><i>unlock Lexique</i>" --> LEX
+  LT -- "lieutenants[] retenus<br/><i>matière de la structure</i>" --> HN
+  HN -- "structure validée<br/><i>article_keywords.hn_structure<br/>+ sommaire article_content.outline</i>" --> LEX
 
-  LEX -- "ArticleKeywords écrit<br/><i>capitaine + lieutenants + lexique</i>" --> FINAL
+  LEX -- "ArticleKeywords écrit<br/><i>capitaine + lieutenants + structure + lexique</i>" --> FINAL
   FINAL -- "Bouton<br/>Passer à la Rédaction" --> REDAC["RedactionView"]
 ```
 
@@ -100,13 +112,13 @@ flowchart TB
       R1["selectedArticle<br/><code>SelectedArticle | null</code>"]:::ref
       R2["capitainesMap<br/><code>Record&lt;articleId, keyword&gt;</code><br/><i>détection cannibalisation</i>"]:::ref
       R3["radarScanResult<br/><code>{ globalScore, heatLevel } | null</code>"]:::ref
-      R4["activeTab<br/><code>'discovery'|'radar'|'capitaine'|'lieutenants'|'lexique'|'finalisation'</code>"]:::ref
+      R4["activeTab<br/><code>'discovery'|'radar'|'capitaine'|'lieutenants'|'structure'|'lexique'|'finalisation'</code>"]:::ref
     end
 
     subgraph COMP["Computed"]
       C1["cocoonName<br/><code>cocoon.name via cocoonsStore</code>"]:::computed
       C2["phaseChecks<br/><code>status de chaque check moteur:*</code>"]:::computed
-      C3["finalisationUnlocked<br/><code>capitaine_locked && lieutenants_locked && lexique_validated</code>"]:::computed
+      C3["finalisationUnlocked<br/><code>capitaine_locked && lieutenants_locked && hn_locked && lexique_validated</code>"]:::computed
     end
 
     subgraph PANELS["Panels persistants"]
@@ -115,7 +127,7 @@ flowchart TB
       P3["MoteurStrategyContext<br/><i>cible, angle, promesse du Cerveau</i>"]:::panel
       P4["BasketStrip + BasketFloatingPanel<br/><i>moteur-basket.store</i>"]:::panel
       P5["TabCachePanel<br/><i>état cache par onglet</i>"]:::panel
-      P6["ProgressDots<br/><i>5 dots moteur:*</i>"]:::panel
+      P6["ProgressDots<br/><i>6 dots moteur:* (2 + 4), dans MoteurContextRecap</i>"]:::panel
       P7["PhaseTransitionBanner"]:::panel
     end
 
@@ -295,7 +307,7 @@ flowchart LR
   classDef cache fill:#2a1a1a,stroke:#ef4444,color:#fca5a5
   classDef emit fill:#1a2e1a,stroke:#22c55e,color:#86efac
 
-  subgraph LT["Lieutenants — LieutenantsSelection"]
+  subgraph LT["Lieutenants — LieutenantsPanel"]
     direction TB
 
     HEAD["En-tête<br/><i>Capitaine verrouillé + niveau article</i>"]:::data
@@ -309,10 +321,9 @@ flowchart LR
       STORE_DB["Stockage article_explorations<br/>(rawContents bruts)"]:::cache
     end
 
-    subgraph SECTIONS["3 sections dépliables"]
-      H2["LieutenantH2Structure<br/>Hn concurrents % récurrence"]:::tab
-      PAA["PAA N+2 pertinence"]:::tab
-      GROUPS["Groupes croisés<br/><i>issus du Cerveau</i>"]:::tab
+    subgraph SECTIONS["2 sections dépliables (3 avant C6)"]
+      PAA["Sources IA : questions Google (PAA)"]:::tab
+      GROUPS["Sources IA : clusters Discovery"]:::tab
     end
 
     subgraph CANDIDATS["Candidats Lieutenants"]
@@ -321,9 +332,9 @@ flowchart LR
       COUNT["Compteur recommandé<br/>Pilier 5-8, Intermédiaire 3-5, Spécifique 1-3"]:::data
     end
 
-    AI_LT["Panel IA structure Hn<br/><i>streaming SSE</i><br/>POST /api/keywords/:kw/ai-hn-structure<br/>prompts: propose-lieutenants.md<br/>+ lieutenants-hn-structure.md"]:::action
-    VALIDATE["Valider les Lieutenants<br/><i>UnlockLieutenantsModal (confirm)</i>"]:::action
-    CHECK["emit moteur:lieutenants_locked<br/><i>→ unlock Lexique</i>"]:::emit
+    AI_LT["Panel IA propositions<br/><i>streaming SSE</i><br/>POST /api/keywords/:kw/propose-lieutenants<br/>prompt: propose-lieutenants.md<br/>(plus de structure Hn depuis C6)"]:::action
+    VALIDATE["Case cochée = lieutenant verrouillé<br/><i>saveDecisions, sans structure</i>"]:::action
+    CHECK["porte lieutenants-lock<br/>puis moteur:lieutenants_locked<br/><i>dès 1 lieutenant (M7)</i>"]:::emit
 
     HEAD --> CURSOR
     CURSOR --> BTN
@@ -350,6 +361,47 @@ flowchart LR
 Le watcher d'auto-trigger SERP au lock Capitaine a été retiré. L'utilisateur déclenche désormais le SERP manuellement via le bouton « Analyser SERP » du sous-composant `LieutenantSerpAnalysis`. Bénéfices : (a) plus de pollution cross-keyword si le user change de Capitaine pendant qu'un SERP est en vol, (b) plus de gaspillage de crédits API en dehors du contrôle utilisateur. Les Lieutenants déjà verrouillés survivent à toute nouvelle analyse (cf. `mergeRichLieutenants` dans `article-keywords.store.ts`).
 
 **Modale `UnlockLieutenantsModal` simplifiée** : 2 boutons (Garder / Tout réinitialiser) au lieu de 3. L'annulation se fait via Échap ou clic-extérieur (listener `keydown` ajouté).
+
+**Depuis C6 (2026-09-25)** : cocher une case verrouille le lieutenant ; dès le premier, `verifyLockedLieutenants` enregistre les décisions (sans la structure) puis demande le verdict de la porte `lieutenants-lock`, et recommence si une case a changé pendant la vérification. L'onglet n'affiche plus de structure ni la section « Structure Hn concurrents ».
+
+## 5 bis. Phase ② Valider — Structure (C6, 2026-09-25)
+
+```mermaid
+flowchart LR
+  classDef tab fill:#1a2744,stroke:#3b82f6,color:#93c5fd
+  classDef data fill:#1c1c1c,stroke:#f59e0b,color:#fbbf24
+  classDef action fill:#2a1a2e,stroke:#a855f7,color:#d8b4fe
+  classDef cache fill:#2a1a1a,stroke:#ef4444,color:#fca5a5
+  classDef emit fill:#1a2e1a,stroke:#22c55e,color:#86efac
+
+  subgraph HN["Structure — StructureHnPanel + useStructureHn"]
+    direction TB
+
+    CHIPS["Lieutenants retenus<br/><i>articleKeywordsStore.lockedLieutenants</i><br/>aucun → « Retenez d'abord un lieutenant »"]:::data
+    SERP["POST /api/serp/analyze (capitaine)<br/><i>au montage et au changement d'article,<br/>cache 7 j, sinon analyse payante (M18)</i>"]:::cache
+    REC["computeHnRecurrence<br/><i>shared/utils/hn-structure.ts</i><br/>titres vus sur ≥ 2 pages"]:::data
+    GEN["Générer / Régénérer<br/>POST /api/keywords/:capitaine/ai-hn-structure<br/><i>lieutenants retenus + récurrence<br/>+ titres verrouillés 🔒 + autres articles du cocon</i>"]:::action
+    EDIT["LieutenantH2Structure<br/><i>🔒 par titre, « Structure Hn concurrents »</i>"]:::tab
+    SAVE["Sauvegarder la structure<br/>saveStructure → PUT /articles/:id/keywords<br/><i>article_keywords.hn_structure</i>"]:::cache
+    VALID["Valider la structure<br/>1. saveStructure<br/>2. PUT /articles/:id { outline: hnToOutline }<br/>3. recommandation de longueur (sans attendre)"]:::action
+    GATE["porte hn-lock<br/><i>shared/verifiers/structure.ts</i><br/>⛔ / 🔴 / 🟠 → alarme"]:::action
+    CHECK["moteur:hn_locked<br/><i>→ Lexique (computeSmartTab)</i>"]:::emit
+    DROP["structure validée, modifiée puis enregistrée<br/>→ check-removed"]:::emit
+
+    CHIPS --> GEN
+    SERP --> REC --> GEN
+    GEN --> EDIT
+    EDIT --> SAVE
+    EDIT --> VALID
+    SAVE --> DROP
+    VALID --> GATE --> CHECK
+  end
+```
+
+- **Sommaire** : `structureToOutline` (`shared/structure-outline.ts`) met le H1 de la structure en tête, ajoute une introduction et une conclusion **sauf** si la structure en porte déjà une, borne les niveaux à 2-3. Le même sommaire sert au mode automatique.
+- **Porte** (`hnGate`, `gate.service.ts:197-233`) : ⛔ structure vide, H1 absent, titre vide, H3 sans H2 ; 🔴 H1 sans le capitaine en entier, H2 de fond hors `h2Min..h2Max`, ville trop citée, pilier qui développe (H3) le sujet d'un autre article du cocon ; 🟠 lieutenant absent des titres, introduction ou conclusion écrites, trop de H3, recoupement sans H3. Rejouée à la publication.
+- **Pas d'écrasement** : `saveDecisions` (Capitaine, Lieutenants, Lexique) n'envoie plus `hnStructure` ; la route garde la structure quand elle est absente du corps.
+- Détail : `DESIGN-HN-TAB`, `DESIGN-HN-LOCK-GATE`.
 
 ## 6. Phase ② Valider — Lexique (TF-IDF zéro requête)
 
@@ -417,23 +469,25 @@ flowchart LR
   subgraph P2_DONE["Phase ② Complète"]
     CH1["moteur:capitaine_locked ✓"]:::data
     CH2["moteur:lieutenants_locked ✓"]:::data
+    CH4["moteur:hn_locked ✓ (C6)"]:::data
     CH3["moteur:lexique_validated ✓"]:::data
   end
 
-  GATE["Gating<br/><i>finalisationUnlocked = all 3 checks</i>"]:::gate
+  GATE["Gating<br/><i>finalisationUnlocked = all 4 checks</i>"]:::gate
 
   subgraph FINAL["FinalisationPanel.vue (read-only)"]
     direction TB
     R1["Capitaine validé<br/><i>avec KPIs</i>"]:::data
     R2["Lieutenants[] sélectionnés<br/><i>avec badges</i>"]:::data
+    R4["Structure (n H2)<br/><i>H1, H2, H3 dans l'ordre (C6)</i>"]:::data
     R3["Lexique[] validé<br/><i>3 niveaux</i>"]:::data
-    R4["Structure Hn recommandée"]:::data
   end
 
   LINK["Passer à la Rédaction<br/><i>router.push /cocoon/:cocoonId/redaction</i>"]:::link
 
   CH1 --> GATE
   CH2 --> GATE
+  CH4 --> GATE
   CH3 --> GATE
   GATE --> FINAL
   FINAL --> LINK
@@ -514,7 +568,7 @@ flowchart LR
   - `articleKeywordsStore.fetchKeywordsMerge(articleId)` — singleton Pinia, donc accessible directement depuis MoteurView.
   - `LexiqueExtraction.mergeFromDb()` — exposé via `defineExpose`.
 
-## 9. Progression — 5 checks moteur
+## 9. Progression — 6 checks moteur (5 avant C6)
 
 ```mermaid
 flowchart LR
@@ -524,9 +578,10 @@ flowchart LR
 
   C1["<b>moteur:discovery_done</b><br/><i>Discovery résultats</i>"]:::check
   C2["<b>moteur:radar_done</b><br/><i>Radar scan complet</i>"]:::check
-  C3["<b>moteur:capitaine_locked</b><br/><i>Capitaine verrouillé</i>"]:::check
-  C4["<b>moteur:lieutenants_locked</b><br/><i>Lieutenants verrouillés</i>"]:::check
-  C5["<b>moteur:lexique_validated</b><br/><i>Lexique validé + ArticleKeywords</i>"]:::check
+  C3["<b>moteur:capitaine_locked</b><br/><i>Capitaine verrouillé (porte captain-lock)</i>"]:::check
+  C4["<b>moteur:lieutenants_locked</b><br/><i>≥ 1 lieutenant verrouillé (porte lieutenants-lock)</i>"]:::check
+  C6["<b>moteur:hn_locked</b> (C6)<br/><i>Structure validée (porte hn-lock)</i>"]:::check
+  C5["<b>moteur:lexique_validated</b><br/><i>Lexique validé (porte lexique-lock)</i>"]:::check
 
   PHASE1["Phase ① Explorer"]:::phase
   PHASE2["Phase ② Valider"]:::phase
@@ -535,18 +590,20 @@ flowchart LR
   PHASE1 --> C2
   PHASE2 --> C3
   C3 --> C4
-  C4 --> C5
+  C4 --> C6
+  C6 --> C5
 
   subgraph PERSIST["Persistance"]
-    STORE["article-progress.store.addCheck()<br/>POST /api/articles/:articleId/progress/check"]:::persist
+    STORE["article-progress.store.addCheck()<br/>POST /api/articles/:articleId/progress/check<br/><i>422 GATE_BLOCKED si la porte refuse</i>"]:::persist
     DB["UPDATE articles<br/>SET completed_checks = array_append(...)<br/><i>TEXT[] column</i>"]:::persist
-    DOTS["ProgressDots (5 dots ●/○)<br/>PhaseTransitionBanner"]:::persist
+    DOTS["ProgressDots (6 dots ●/○, 2 + 4)"]:::persist
   end
 
   C1 --> STORE
   C2 --> STORE
   C3 --> STORE
   C4 --> STORE
+  C6 --> STORE
   C5 --> STORE
   STORE --> DB
   DB --> DOTS
@@ -559,13 +616,21 @@ export const MOTEUR_DISCOVERY_DONE = 'moteur:discovery_done'
 export const MOTEUR_RADAR_DONE = 'moteur:radar_done'
 export const MOTEUR_CAPITAINE_LOCKED = 'moteur:capitaine_locked'
 export const MOTEUR_LIEUTENANTS_LOCKED = 'moteur:lieutenants_locked'
+/** Structure H1/H2/H3 validée (onglet Structure, FR-HN-TAB, porte `hn-lock`). */
+export const MOTEUR_HN_LOCKED = 'moteur:hn_locked'
 export const MOTEUR_LEXIQUE_VALIDATED = 'moteur:lexique_validated'
 
 export const MOTEUR_CHECKS = [
-  MOTEUR_DISCOVERY_DONE, MOTEUR_RADAR_DONE,
-  MOTEUR_CAPITAINE_LOCKED, MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_LEXIQUE_VALIDATED,
+  MOTEUR_DISCOVERY_DONE,
+  MOTEUR_RADAR_DONE,
+  MOTEUR_CAPITAINE_LOCKED,
+  MOTEUR_LIEUTENANTS_LOCKED,
+  MOTEUR_HN_LOCKED,
+  MOTEUR_LEXIQUE_VALIDATED,
 ] as const
 ```
+
+`PhaseTransitionBanner`, cité ici jusqu'en C6 comme consommateur des checks, n'est monté par aucun écran (vérifié le 2026-09-25).
 
 ## 10. Pont Cerveau→Moteur — Enrichissement prompts
 
@@ -715,7 +780,7 @@ La `RadarKeywordCard` bascule via `displayMode: 'kpi' | 'relevance'`. En mode Ca
 | POST | `/api/keywords/intent-scan/radar/scan` | intent-scan | Radar Douleur Intent |
 | POST | `/api/keywords/:keyword/validate` | keyword-validate | Verdict GO/NO-GO Capitaine |
 | POST | `/api/keywords/:keyword/ai-panel` | — | Panel IA Capitaine (SSE) |
-| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn recommandée |
+| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn proposée à partir des lieutenants retenus (onglet Structure depuis C6 ; `{{cocoon_articles}}`) |
 | POST | `/api/keywords/:keyword/propose-lieutenants` | — | Propositions Lieutenants |
 | GET | `/api/keywords/:keyword/metrics` | keyword-queries | Lecture `keyword_metrics` |
 | POST | `/api/serp/analyze` | serp-analysis | Scraping SERP top N |

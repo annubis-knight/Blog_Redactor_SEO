@@ -1,15 +1,17 @@
 ---
 name: completed-checks
-description: Progression Moteur d'un article — suivi des 5 étapes achevées via un tableau TEXT[] de checks préfixés `moteur:*` en PostgreSQL.
+description: Progression Moteur d'un article — suivi des 6 étapes achevées (5 avant l'onglet Structure, C6) via un tableau TEXT[] de checks préfixés `moteur:*` en PostgreSQL.
 type: "TEXT[] (PostgreSQL)" 
-last_updated: 2026-05-13
-related_fr: [FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE]
+last_updated: 2026-09-25
+related_fr: [FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE, FR-HN-TAB, FR-HN-LOCK-GATE, FR-FIN-CHECK]
 synced_with: [captain-keyword-locked.md]
 ---
 
 # Data Flow — completed-checks
 
-> **Description métier :** Colonne `articles.completed_checks` (TEXT[] en PostgreSQL) stocke la progression Moteur d'un article (5 checks préfixés `moteur:*`). Source unique de vérité de la progression Moteur. (Les familles `cerveau:*` et `redaction:*` ont été retirées 2026-05-13, cf. DRIFT-002 — les valeurs legacy éventuellement persistées sont tolérées en lecture mais plus émises.)
+> **Chantier C6 (2026-09-25)** — sixième check `moteur:hn_locked` (« Structure validée », onglet Structure, porte `hn-lock`), entre `lieutenants_locked` et `lexique_validated` ; la Finalisation exige 4 verrous. Les articles d'avant C6 ont `lieutenants_locked` sans `hn_locked` : `npm run db:reconcile-hn` (simulation par défaut, `--apply`) accorde l'étape à ceux dont la structure passe la porte. Les numéros de ligne non datés plus bas sont antérieurs à C6.
+
+> **Description métier :** Colonne `articles.completed_checks` (TEXT[] en PostgreSQL) stocke la progression Moteur d'un article (6 checks préfixés `moteur:*`). Source unique de vérité de la progression Moteur. (Les familles `cerveau:*` et `redaction:*` ont été retirées 2026-05-13, cf. DRIFT-002 — les valeurs legacy éventuellement persistées sont tolérées en lecture mais plus émises.)
 > **Type/format :** `TEXT[]` — array de strings, ex. `['moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked']`
 
 ## Producteurs
@@ -17,7 +19,8 @@ synced_with: [captain-keyword-locked.md]
 Qui crée ou met à jour cette donnée :
 
 - **Constantes centralisées** : `shared/constants/workflow-checks.constants.ts` — catalogue Moteur uniquement depuis 2026-05-13 :
-  - `MOTEUR_CHECKS` : `DISCOVERY_DONE`, `RADAR_DONE`, `CAPITAINE_LOCKED`, `LIEUTENANTS_LOCKED`, `LEXIQUE_VALIDATED`
+  - `MOTEUR_CHECKS` : `DISCOVERY_DONE`, `RADAR_DONE`, `CAPITAINE_LOCKED`, `LIEUTENANTS_LOCKED`, `HN_LOCKED` (`moteur:hn_locked`, C6), `LEXIQUE_VALIDATED`
+  - Portes : `CHECK_GATES` (`server/services/gates/gate.service.ts:57-62`) — `capitaine_locked`, `lieutenants_locked`, `hn_locked`, `lexique_validated` ne sont écrits par `POST /progress/check` que si leur porte passe (422 `GATE_BLOCKED` sinon).
 
 - **Endpoints REST** :
   - `POST /api/articles/:id/progress/check` ([server/routes/articles.routes.ts:341-360](../../server/routes/articles.routes.ts)) — reçoit `{ check: string }`, valide via Zod `addCheckSchema`, appelle `addArticleCheck()`.
@@ -31,7 +34,8 @@ Qui crée ou met à jour cette donnée :
 
 - **Émetteurs frontend** — composants Vue qui émettent `check-completed` ou `check-removed` :
   - `CaptainPanel.vue` ([lignes 47-52](../../src/components/moteur/CaptainPanel.vue)) — emit `check-completed` quand Capitaine est verrouillé.
-  - `LieutenantsPanel.vue` ([lignes 49-54](../../src/components/moteur/LieutenantsPanel.vue)) — emit `check-completed` quand Lieutenants sont verrouillés.
+  - `LieutenantsPanel.vue` ([lignes 49-54](../../src/components/moteur/LieutenantsPanel.vue)) — emit `check-completed` dès qu'un lieutenant est verrouillé et que la porte passe (C6 : plus de condition de structure).
+  - `StructureHnPanel.vue` (C6) — emit `check-completed` `MOTEUR_HN_LOCKED` après « Valider la structure » (structure et sommaire enregistrés), `check-removed` quand une structure validée est modifiée puis enregistrée (lignes 81 et 97 au commit `94c7e91`).
   - `LexiquePanel.vue` ([lignes 43-46](../../src/components/moteur/LexiquePanel.vue)) — emit `check-completed` quand Lexique est validé.
   - `RadarCardCheckable.vue` — emit `check-completed` pour Radar (phase découverte).
 
@@ -71,7 +75,7 @@ Qui crée ou met à jour cette donnée :
 ### Affichage (UI)
 
 - **ProgressDots.vue** ([src/components/moteur/ProgressDots.vue:26-42](../../src/components/moteur/ProgressDots.vue)) — reçoit `completedChecks: string[]`, affiche des dots de progression groupés par phases (Explorer / Valider).
-  - Deux groupes : [Discovery, Radar] et [Capitaine, Lieutenants, Lexique].
+  - Deux groupes : [Discovery, Radar] et [Capitaine, Lieutenants, Structure, Lexique] (2 + 4 depuis C6).
   - Dot rempli si check ∈ `completedChecks`, vide sinon. Tooltips per-check.
 
 - **MoteurContextRecap.vue** ([src/components/moteur/MoteurContextRecap.vue:104-106](../../src/components/moteur/MoteurContextRecap.vue)) — pour chaque article affiché, fetch et affiche ses checks :
@@ -82,21 +86,22 @@ Qui crée ou met à jour cette donnée :
   ```
   Utilisé pour rendre `<ProgressDots :completedChecks="getChecks(article.id)" />`.
 
-- **ArticleCard.vue** (dashboard) — affiche un badge de phase / state (si implémenté).
+- **ArticleCard.vue** (dashboard) — n'affiche aucun check (vérifié le 2026-09-25) : les dots ne vivent que dans `MoteurContextRecap`.
+- **FinalisationPanel.vue** — lit les checks pour son bouton « Aller à la Rédaction » (4 verrous depuis C6) ; **StructureHnPanel.vue** — lit `moteur:hn_locked` pour afficher « Structure validée » ou « La structure a changé depuis sa validation ».
 
 ### Calcul / tri / filtre / agrégat
 
-- **Gating de la Finalisation (phase ③)** — `useFinalisationGating.ts` ([lignes 17-32](../../src/composables/moteur/useFinalisationGating.ts)) :
+- **Gating de la Finalisation (phase ③)** — `useFinalisationGating.ts` ([lignes 19-21](../../src/composables/moteur/useFinalisationGating.ts), commit `94c7e91`) :
   ```typescript
   function isFinalisationUnlocked(checks: FinalisationChecks): boolean {
-    return checks.capitaineLocked && checks.lieutenantsLocked && checks.lexiqueValidated
+    return checks.capitaineLocked && checks.lieutenantsLocked && checks.structureLocked && checks.lexiqueValidated
   }
   ```
-  Détecte si `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED` sont tous présents.
+  Détecte si `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED` (C6) et `MOTEUR_LEXIQUE_VALIDATED` sont tous présents.
   Gère le disable/enable du bouton "Continuer vers la Rédaction" et le tooltip des étapes manquantes.
 
 - **Tabbing en Phase ②** — MoteurView.vue ([ligne ~232](../../src/views/MoteurView.vue)) :
-  - Tabs `['discovery', 'radar', 'capitaine', 'lieutenants', 'lexique', 'finalisation']`.
+  - Tabs `['discovery', 'radar', 'capitaine', 'lieutenants', 'structure', 'lexique', 'finalisation']` (`TAB_IDS`, `useMoteurTabs.ts:30`, `structure` depuis C6) ; `computeSmartTab` : `lieutenants_locked` → Structure, `hn_locked` → Lexique.
   - Discovery/Radar tabs bloquées si Capitaine déjà validé (logique `isDiscoveryAllowed` [lignes 216-224](../../src/views/MoteurView.vue)).
 
 - **Détection de cannibalization** — MoteurContextRecap.vue ([lignes 125-127](../../src/components/moteur/MoteurContextRecap.vue)) :
@@ -131,6 +136,7 @@ flowchart TD
         SVC["addArticleCheck / removeArticleCheck<br/>data.service.ts:296-322"]
         CaptainC["CaptainPanel.vue<br/>emit check-completed"]
         LieutenantC["LieutenantsPanel.vue<br/>emit check-completed"]
+        StructureC["StructureHnPanel.vue (C6)<br/>emit check-completed hn_locked"]
         LexiqueC["LexiquePanel.vue<br/>emit check-completed"]
         RadarC["RadarCardCheckable.vue<br/>emit check-completed"]
         MView["MoteurView.emitCheckCompleted()<br/>calls articleProgressStore.addCheck"]
@@ -143,6 +149,7 @@ flowchart TD
     
     CaptainC --> MView
     LieutenantC --> MView
+    StructureC --> MView
     LexiqueC --> MView
     RadarC --> MView
     
@@ -191,13 +198,13 @@ flowchart TD
    - Interdire hardcoded strings : grep tous les `.vue` pour des strings comme `'moteur:capitaine_locked'` directement.
 
 3. **`describe('FR-MOT-CHECKS — gating finalisation cohérent')`** :
-   - `isFinalisationUnlocked()` return `false` si l'un des 3 checks manque ; `true` si tous 3 présents.
+   - `isFinalisationUnlocked()` return `false` si l'un des 4 checks manque ; `true` si tous 4 présents (C6 ; couvert par `tests/unit/composables/finalisation-gating.test.ts` et `tests/unit/components/finalisation-panel.test.ts` — « l'ancien trio (sans Structure) ne suffit plus »).
    - Test avec `completedChecks = []` → retour `false`.
-   - Test avec `['moteur:capitaine_locked', 'moteur:lieutenants_locked']` → retour `false` (Lexique manque).
-   - Test avec `['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated']` → retour `true`.
+   - Test avec `['moteur:capitaine_locked', 'moteur:lieutenants_locked', 'moteur:lexique_validated']` → retour `false` (Structure manque).
+   - Test avec les quatre, `moteur:hn_locked` compris → retour `true`.
 
 4. **`describe('NFR-INT-CHECKS-NAMESPACE — préfixe moteur:')`** :
-   - Vérifier que les 5 checks Moteur utilisent tous le préfixe `moteur:`.
+   - Vérifier que les 6 checks Moteur utilisent tous le préfixe `moteur:` (fait : `tests/unit/coherence/completed-checks.test.ts`, dont « refuse "hn_locked" (sans prefixe) »).
    - Test : tout check sans préfixe `moteur:` lu en DB est ignoré côté affichage.
 
 5. **`describe('article-progress.store — LRU cache eviction')`** (déjà partiellement couvert en [store.test.ts:154-172](../../tests/unit/stores/article-progress.store.test.ts)):
@@ -206,7 +213,7 @@ flowchart TD
 6. **`describe('ProgressDots — affichage cohérent')`** :
    - Composant reçoit `completedChecks = ['moteur:radar_done', 'moteur:capitaine_locked']`.
    - Vérifier que seulement ces deux checks affichent un dot rempli.
-   - Vérifier que les autres (discovery, lieutenants, lexique) affichent des dots vides.
+   - Vérifier que les autres (discovery, lieutenants, structure, lexique) affichent des dots vides.
 
 7. **`it.todo('check_timestamps — horodatage et audit')`** : placeholder.
    - À implémenter si audit trail requis : vérifier que `check_timestamps` enregistre l'ISO timestamp au moment de l'ajout.

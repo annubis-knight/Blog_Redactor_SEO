@@ -183,14 +183,15 @@ Boutons Précédent / Suivant (ou "Terminer" sur step 6).
 
 ### 3.1 `MoteurView` — `/cocoon/:cocoonId/moteur`
 
-Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décisions sont persistées dans le store Pinia `article-keywords` + `article-progress` (`completedChecks`).
+Architecture à **3 phases** (Explorer, Valider, Finaliser) et **7 onglets** depuis l'onglet Structure (C6, 2026-09-25 ; 6 avant). Les décisions sont persistées dans le store Pinia `article-keywords` + `article-progress` (`completedChecks`).
 
-**Phases** :
-- **Phase ① Explorer** (S1 — anciennement « Générer ») : onglets `discovery` + `radar` (toujours accessibles — F1).
-- **Phase ② Valider** : onglets `capitaine` → `lieutenants` → `lexique` → `finalisation` (récap lecture seule — F7).
+**Phases** (`TAB_IDS`, `src/composables/moteur/useMoteurTabs.ts`) :
+- **Phase ① Explorer** (S1 — libellé « Générer » dans la navigation) : onglets `discovery` + `radar` (toujours accessibles — F1).
+- **Phase ② Valider** : onglets `capitaine` → `lieutenants` → `structure` (C6) → `lexique`.
+- **Phase ③ Finaliser** : onglet `finalisation` (récap lecture seule — F7).
 
 **Checks possibles** (S3 — Moteur uniquement depuis 2026-05-13, constants exportées depuis `shared/constants/workflow-checks.constants.ts`) :
-- Moteur : `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:lexique_validated`.
+- Moteur : `moteur:discovery_done`, `moteur:radar_done`, `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:hn_locked` (C6), `moteur:lexique_validated`. Les quatre de la phase Valider passent par une porte serveur (alarme graduée).
 - ~~Cerveau / Rédaction~~ : familles retirées 2026-05-13 (cf. DRIFT-002).
 
 **Règles produit transversales** :
@@ -284,9 +285,11 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 
 **Gate principal** : verdict `!= RED` pour pouvoir lock. **Unlock non-cascadant (F5)** : le déverrouillage n'invalide ni Lieutenants ni Lexique, mais **D3** ajoute un modal de confirmation si des lieutenants existent.
 
-### 3.6 Onglet `lieutenants` — Mots-clés secondaires + structure Hn
+### 3.6 Onglet `lieutenants` — Mots-clés secondaires
 
-**Composant** : `LieutenantsSelection`.
+**Composant** : `LieutenantsPanel` (anciennement `LieutenantsSelection`).
+
+> **C6 (2026-09-25)** — la structure Hn a quitté cet onglet pour le sien (§3.6 bis) : plus de container « Structure Hn » ni de section « Structure Hn concurrents » ici, et `propose-lieutenants` ne produit plus de structure. L'étape `moteur:lieutenants_locked` se demande dès **un** lieutenant coché (plus de condition « structure non vide », checklist M7) ; la porte `lieutenants-lock` l'accorde. Le container n°2 et la ligne « Structure Hn » du tableau ci-dessous décrivent l'état d'avant.
 
 **Gate adouci (F5)** : le gate `isCaptaineLocked` ne s'applique qu'au **premier passage**. Dès que `richLieutenants.length > 0` (au moins une analyse IA a eu lieu), l'onglet devient accessible même si le Capitaine est déverrouillé.
 
@@ -295,7 +298,7 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 > Cet onglet a **3 sections distinctes** :
 >
 > 1. **Container principal n°1 — Propositions Lieutenants** (`LieutenantProposals`). Contient les cards de mots-clés (locked + suggested + eliminated). C'est ici que l'utilisateur sélectionne ses Lieutenants.
-> 2. **Container principal n°2 — Structure Hn** (`LieutenantH2Structure`). Contient à la fois la structure Hn recommandée IA *et* la section "Structure Hn concurrents".
+> 2. ~~**Container principal n°2 — Structure Hn** (`LieutenantH2Structure`). Contient à la fois la structure Hn recommandée IA *et* la section "Structure Hn concurrents".~~ **Déplacé dans l'onglet Structure (C6)** ; le test `lieutenants-results-layout-architecture.test.ts` (AC.J.18) échoue s'il revient ici.
 > 3. **Panel IA (coque purple)** (`LieutenantsAiPanel`). Contient UNIQUEMENT les éléments propres à l'IA : streaming chunk, bouton Régénérer, erreur, content-gap insights.
 >
 > **NE JAMAIS wrapper les containers principaux 1 et 2 dans le panel IA 3.** Sprint C-1 (commit `890b285`, 2026-05-02) avait commis cette erreur : `LieutenantProposals` et `LieutenantH2Structure` se retrouvaient affichés sous l'étiquette "Suggestions IA Lieutenants", brouillant la frontière entre données utilisateur et suggestions IA. Sprint 1 (2026-05-04) a restauré la séparation.
@@ -313,8 +316,22 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 | **Onglets SERP par keyword** | section `serp-keyword-tabs` | Si capitaine + racines analysés, tabs par keyword avec URLs et position | Multi-keyword SERP | Switch tab local |
 | **Propositions IA (streaming, U5 + E2)** | `LieutenantProposals` | Cartes lieutenant recommandées + éliminés (collapsable) avec reasoning + priorité. **Règle TTL 7 jours (U5)** : si `richLieutenants` existent et que tous ont `exploredAt < 7j`, on réhydrate depuis DB via `restoreLockedLieutenants` au lieu de relancer l'IA. **E2 — Persistance serveur-side** : quand l'IA a fini de produire le JSON parsé, la route `POST /keywords/:captain/propose-lieutenants` appelle `saveLieutenantExplorations()` **avant** d'émettre `event: done`. Si la connexion client se coupe à ce moment, la DB a déjà les propositions — l'utilisateur les retrouvera au retour. | Analyse SERP terminée ; vérification `shouldRegenerate` sur chaque lt | `POST /keywords/:captain/propose-lieutenants` (SSE) uniquement si stale ou absent. Persistance backend automatique + client `saveLieutenantExplorationEntries` en résilience (upsert idempotent). |
 | **Sélection lieutenants** | Cartes répétées | Checkbox sur chaque proposition recommandée | Click card | Map `selectedCards` ; emit `lieutenants-updated` |
-| **Structure Hn** | `LieutenantH2Structure` | Structure H2/H3 recommandée IA + fréquence concurrents | `hnStructure` peuplé | `PUT /articles/:id` avec outline ; sauvegarde `articleKeywordsStore.hnStructure` |
-| **Lock Lieutenants** | inline | "Verrouiller Lieutenants" / "Déverrouiller" | `selectedCards.size > 0` && `moteur:capitaine_locked` | `POST /articles/:id/lieutenants/lock` ; mutation store ; `check-completed(MOTEUR_LIEUTENANTS_LOCKED)` |
+| ~~**Structure Hn**~~ | ~~`LieutenantH2Structure`~~ | **Déplacée dans l'onglet Structure (C6, §3.6 bis)** | — | — |
+| **Étape Lieutenants** | inline (pas de bouton) | Case cochée = lieutenant verrouillé ; bandeau « Étape non validée » + « Voir pourquoi / décider » quand la porte retient l'étape | Dès **un** lieutenant verrouillé (C6, M7) | `saveDecisions` (sans structure) → porte `lieutenants-lock` → `check-completed(MOTEUR_LIEUTENANTS_LOCKED)` ; une case cochée pendant la vérification est reprise (`verifyLockedLieutenants`) |
+
+### 3.6 bis Onglet `structure` — Titre, chapitres et sous-parties (C6, 2026-09-25)
+
+**Composant** : `StructureHnPanel` (prop `mode`), composable `useStructureHn` ; réutilise `LieutenantH2Structure`. Cf. `DESIGN-HN-TAB`, `DESIGN-HN-LOCK-GATE`.
+
+**Gate** : aucun lieutenant retenu → message « Retenez d'abord au moins un lieutenant dans l'onglet Lieutenants » (`structure-needs-lieutenants`) et génération impossible. L'onglet n'est jamais grisé dans la navigation.
+
+| Section | Composant | Rôle | Déclencheurs | Sorties |
+|---|---|---|---|---|
+| **Lieutenants retenus** | pastilles `lieutenant-chip` | Rappelle la matière de la structure | ≥ 1 lieutenant retenu | — |
+| **Statut** | `structure-validated` / `structure-changed` | « ✅ Structure validée : elle sert de sommaire à la rédaction » ; « La structure a changé depuis sa validation : enregistrez-la puis validez-la de nouveau » | Étape posée, structure inchangée / modifiée | — |
+| **Concurrents** | message | « Lecture de la structure des concurrents… » ou « Structure des concurrents indisponible : … » | Au montage et au changement d'article (**appel `POST /serp/analyze` sans clic**, payant si la SERP a plus de 7 jours — checklist M18) | `recurrence` (`computeHnRecurrence`) |
+| **Structure** | `LieutenantH2Structure` | H1/H2/H3, 🔒 par titre, « Générer la structure Hn » / « Régénérer la structure », « Sauvegarder la structure », section repliable « Structure Hn concurrents » | Clic | `POST /keywords/:capitaine/ai-hn-structure` (lieutenants retenus, récurrence, titres 🔒, autres articles du cocon) ; `saveStructure` → `PUT /articles/:id/keywords` ; enregistrer une structure déjà validée → `check-removed(MOTEUR_HN_LOCKED)` |
+| **Valider la structure** | bouton `structure-validate` (mode `workflow`) | Enregistre, écrit le sommaire, recalcule la longueur conseillée, demande l'étape | Structure non vide, rien en cours | `saveStructure` → `PUT /articles/:id { outline }` → recommandation de longueur (sans attendre) → `check-completed(MOTEUR_HN_LOCKED)` → porte `hn-lock` (alarme si ⛔ / 🔴 / 🟠) |
 
 ### 3.7 Onglet `lexique` — Vocabulaire spécialisé (TF-IDF)
 
@@ -336,7 +353,7 @@ Architecture à **2 phases** (Explorer, Valider) et **6 onglets**. Les décision
 
 ### 3.8 Onglet `finalisation` — Récap lecture seule (F7/U7)
 
-**Composant** : `FinalisationRecap`. **Gate** : `isFullyValidated` (les 3 checks `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:lexique_validated` doivent être présents). Sinon, message soft-gate « Verrouillez le Capitaine, les Lieutenants et le Lexique pour débloquer la Finalisation ».
+**Composant** : `FinalisationPanel` (anciennement `FinalisationRecap`). **Gate** du bouton « Aller à la Rédaction » : les 4 checks `moteur:capitaine_locked`, `moteur:lieutenants_locked`, `moteur:hn_locked` (C6), `moteur:lexique_validated` (`isFinalisationUnlocked`, même règle que le bouton de pied de page ; titre « Étapes restantes : … » sinon). L'onglet reste consultable sans eux.
 
 Lecture seule totale — aucune édition possible. Les seules interactions sont : (a) déplier/replier une section, (b) cliquer le CTA "Aller à la Rédaction".
 
@@ -345,17 +362,19 @@ Lecture seule totale — aucune édition possible. Les seules interactions sont 
 | **En-tête "✅ Prêt pour la Rédaction"** | Titre vert + sous-titre avec le titre de l'article | Props `selectedArticle.title` |
 | **Section Capitaine** (collapse, ouverte par défaut) | Mot-clé capitaine + date de verrouillage | `articleKeywordsStore.keywords.richCaptain.keyword` + `.lockedAt` |
 | **Section Lieutenants (N)** (collapse, ouverte par défaut) | Liste des lieutenants verrouillés avec H-level + reasoning (si présent) | `richLieutenants.filter(l => l.status === 'locked')` (fallback : `lieutenants[]`) |
+| **Section Structure (N H2)** (C6, collapse, ouverte par défaut) | H1, H2, H3 dans l'ordre de lecture, étiquette de niveau, H3 en retrait ; « Aucune structure validée. » si vide | `structureHeadings(articleKeywordsStore.keywords.hnStructure)` |
 | **Section Lexique (N termes)** (collapse, ouverte par défaut) | Chips avec tous les termes validés | `articleKeywordsStore.keywords.lexique` |
 | **CTA "Aller à la Rédaction →"** | Bouton primaire en bas de la vue | Emit `navigate-redaction` → `$router.push('/cocoon/:id/redaction')` |
 
 ### 3.9 Smart navigation (computeSmartTab)
 
-À la sélection d'un article dans le Récap, la fonction lit `articles.completed_checks` (préfixés `moteur:*` depuis S3) et choisit l'onglet :
+À la sélection d'un article dans le Récap, la fonction lit `articles.completed_checks` (préfixés `moteur:*` depuis S3) et choisit l'onglet (`useMoteurTabs.ts:135-144`, commit `94c7e91`) :
 - Aucun check → `capitaine`
-- **Les 3 checks `moteur:capitaine_locked` + `moteur:lieutenants_locked` + `moteur:lexique_validated` présents → `finalisation`** (F7 — au lieu de `capitaine` cycle-back)
-- `moteur:lieutenants_locked` présent → `lexique`
+- `moteur:hn_locked` présent → `lexique` (C6)
+- `moteur:lieutenants_locked` présent → `structure` (C6 ; `lexique` avant)
 - `moteur:capitaine_locked` présent → `lieutenants`
 - Default → `capitaine`
+- **Jamais d'auto-navigation vers `finalisation`** (tous les checks Valider posés → `lexique`). *Corrigé le 2026-09-25 : ce guide annonçait `finalisation` quand les trois checks étaient posés ; le code ne le faisait déjà plus avant C6 (« Pas d'auto-nav vers Finalisation » ; test `moteur-smart-navigation.test.ts`, « all Phase 2 checks → lexique, never finalisation »).*
 
 ### 3.10 CTA contextuel bottom-nav (U2-bis)
 
@@ -566,7 +585,8 @@ Monitoring GSC.
 | Lock Lieutenants | `selectedCards.size > 0` ET (`moteur:capitaine_locked` OU `hasEverAnalyzed`) | F5 — gate adouci après 1re analyse IA |
 | Lock Lexique | `selectedTerms.size > 0` ET (`moteur:capitaine_locked` OU `hasEverValidated`) | F5 — gate adouci après 1re validation |
 | Onglet Discovery/Radar (Moteur) | **Aucun gate — toujours cliquable (F1)** | — |
-| Onglet Finalisation (Moteur) | `isFullyValidated` (3 checks `moteur:*` verts) | F7 — nouveau |
+| Onglet Finalisation (Moteur) | Bouton « Aller à la Rédaction » : 4 checks `moteur:*` verts (Capitaine, Lieutenants, Structure depuis C6, Lexique) | F7 ; C6 |
+| Étape Structure (Moteur) | Structure enregistrée + porte `hn-lock` (⛔ / 🔴 / 🟠) | C6 |
 | CTA "Voir la Finalisation" bottom-nav | `isFullyValidated && activeTab !== 'finalisation'` | U2-bis |
 | Régénération IA (Capitaine AI Panel, Lieutenants IA, Lexique) | Donnée persistée absente OU `shouldRegenerate(exploredAt, 7j)` | U5 — règle TTL 7 jours |
 | Appel DataForSEO (`/validate`, `/serp/analyze`, `/local/maps`, `/compare-local`) | Si `articleId` fourni : table `*_explorations` absente OU `exploredAt > 7j` ; sinon `api_cache` legacy | Sprint 13 — DB-first sur les données payantes |
@@ -1028,7 +1048,8 @@ stateDiagram-v2
     state "Phase ② Valider" as P2 {
         direction LR
         Capitaine --> Lieutenants : lock Capitaine\n+ moteur:capitaine_locked
-        Lieutenants --> Lexique : lock Lieutenants\n+ moteur:lieutenants_locked
+        Lieutenants --> Structure : 1 lieutenant coché\n+ moteur:lieutenants_locked
+        Structure --> Lexique : Valider la structure\n+ moteur:hn_locked (C6)
         Lexique --> Finalisation : validate Lexique\n+ moteur:lexique_validated
         Finalisation --> PhaseDone2 : CTA Aller à la Rédaction
     }
@@ -1036,8 +1057,8 @@ stateDiagram-v2
     SmartTab --> Discovery : 0 check
     SmartTab --> Capitaine : fallback
     SmartTab --> Lieutenants : moteur:capitaine_locked
-    SmartTab --> Lexique : moteur:lieutenants_locked
-    SmartTab --> Finalisation : 3 checks moteur:* verts
+    SmartTab --> Structure : moteur:lieutenants_locked
+    SmartTab --> Lexique : moteur:hn_locked
 
     PhaseDone1 --> Capitaine : PhaseTransitionBanner
     PhaseDone2 --> [*] : Nav → Rédaction
@@ -1328,7 +1349,8 @@ flowchart LR
 | [LieutenantCard.vue](../src/components/moteur/LieutenantCard.vue) | 10 | [lieutenant-card.test.ts](../tests/unit/components/lieutenant-card.test.ts) | carte unitaire ; badges sources avec classe par type ; **REGRESSION GUARD** source inconnue → fallback |
 | [LieutenantSerpAnalysis.vue](../src/components/moteur/LieutenantSerpAnalysis.vue) | 15 | [lieutenant-serp-analysis.test.ts](../tests/unit/components/lieutenant-serp-analysis.test.ts) | analyse SERP top concurrents ; slider 3-10 ; filtre Blogs/Autres toggle on/off ; bouton Refresh masqué si isLocked |
 | [LieutenantProposals.vue](../src/components/moteur/LieutenantProposals.vue) | 11 | [lieutenant-proposals.test.ts](../tests/unit/components/lieutenant-proposals.test.ts) | liste cards IA ; états streaming/error/empty ; eliminated section toggle ; contentGapInsights markdown |
-| [LieutenantH2Structure.vue](../src/components/moteur/LieutenantH2Structure.vue) | 13 | [lieutenant-h2-structure.test.ts](../tests/unit/components/lieutenant-h2-structure.test.ts) | structure Hn IA hiérarchique H2→H3 ; bouton Sauvegarder masqué si isLocked ; tabs keywords si multi-SERP |
+| [LieutenantH2Structure.vue](../src/components/moteur/LieutenantH2Structure.vue) | 13 | [lieutenant-h2-structure.test.ts](../tests/unit/components/lieutenant-h2-structure.test.ts) | structure Hn IA hiérarchique H2→H3 ; bouton Sauvegarder masqué si isLocked ; tabs keywords si multi-SERP. **Rendu par l'onglet Structure depuis C6**, plus par l'onglet Lieutenants |
+| [StructureHnPanel.vue](../src/components/moteur/StructureHnPanel.vue) (C6) | 5 | [structure-hn-panel.test.ts](../tests/unit/components/structure-hn-panel.test.ts) | sans lieutenant retenu, rien à valider ; valider enregistre structure et sommaire PUIS demande l'étape ; structure validée annoncée ; modifiée puis enregistrée → étape retirée ; mode libre sans bouton ni étape (composable : [useStructureHn.test.ts](../tests/unit/composables/moteur/useStructureHn.test.ts)) |
 | [SerpDataTab.vue](../src/components/moteur/SerpDataTab.vue) | 14 | [serp-data-tab.test.ts](../tests/unit/components/serp-data-tab.test.ts) | tab data SERP ; affichage concurrents ; PAA ; metrics |
 
 ### 12.3 Composants Moteur — Discovery, Radar, Lexique, Finalisation
@@ -1529,8 +1551,9 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | **Lieutenants** — SERP analysis | `serp_explorations` (Sprint 13 DB-first : lecture avant DataForSEO + persist si `articleId`) ; `api_cache` C (type=serp, paa) en fallback ; `paa_explorations` W. P1 : push `info` dans la pile d'activité au lancement. | R + W + C |
 | Lieutenants — IA propose (E2) | `lieutenant_explorations` W (bulk upsert **côté serveur avant `done`** via `/propose-lieutenants`) + W côté client (idempotent résilience) | W |
 | Lieutenants — sélection | `lieutenant_explorations.status` (suggested ↔ selected) | W |
-| Lieutenants — HN structure save | `article_content.outline` ; `article_keywords.hn_structure` | W |
-| Lieutenants — Lock | `article_keywords.lieutenants[]`, `lieutenant_explorations.status='locked'`, `articles.completed_checks += 'moteur:lieutenants_locked'` | W |
+| ~~Lieutenants — HN structure save~~ | **Déplacé vers « Structure » (C6)** | — |
+| Lieutenants — Lock | `article_keywords.lieutenants[]` (sans toucher `hn_structure` depuis C6), `lieutenant_explorations.status='locked'`, `articles.completed_checks += 'moteur:lieutenants_locked'` (si la porte passe) | W |
+| **Structure** (C6) — Sauvegarder / Valider | `article_keywords.hn_structure` W ; à la validation, `article_content.outline` W, `article_micro_contexts.target_word_count` W si vide, `articles.completed_checks += 'moteur:hn_locked'` (si la porte passe) ; `keyword_serp_results` / `keyword_serp_scrapes` R au montage | R + W |
 | **Lexique** — TF-IDF (Sprint 11) | `lexique_explorations.tfidf_terms` W (DB-first via `saveLexiqueTfidf` si `articleId`) ; `serp_explorations` R (pour concurrents, DB-first) | R + W |
 | Lexique — IA upfront (Sprint 11) | `lexique_explorations.ai_recommendations/ai_summary` W (persisté **avant** SSE `done`, pattern E2) | W |
 | Lexique — champ saisie libre D4 (Sprint 11) | `lexique_explorations(article_id, source_keyword)` W — chaque keyword arbitraire testé crée/met-à-jour une row | W |
@@ -1644,7 +1667,7 @@ Les 5 onglets du Moteur qui exposent (ou devraient exposer) un panel IA partagen
 | Discovery | Usage direct de `<AiPanel>` dans `DiscoveryPanel.vue` *(refonte 2026-05-11, ex-`DiscoveryAiPanel`)* | suggestion | bas de page | **Oui** — `POST /api/keywords/analyze-discovery` (Claude curation 20-30 keywords stratégiques) |
 | Radar | `RadarAiPanel.vue` | suggestion | bas de page | **Non** — tri local (marketScore + relevanceScore) |
 | Capitaine | `CaptainSidePanel.vue` (utilise `<AiPanel variant="advice">`) | advice | sidepanel droit | Oui — `/keywords/:kw/ai-panel` |
-| Lieutenants | `LieutenantsAiPanel.vue` | suggestion | bas de page (tabs Propositions / Hn) | Oui — propose-lieutenants + ai-hn-structure |
+| Lieutenants | `LieutenantsAiPanel.vue` | suggestion | bas de page | Oui — propose-lieutenants (plus d'onglet « Hn » ; `ai-hn-structure` est appelé par l'onglet Structure depuis C6) |
 | Lexique | `LexiqueAiPanel.vue` | suggestion | bas de page (TF-IDF reste en haut) | Oui — `/keywords/:kw/ai-lexique-upfront` |
 
 ### 13.3 Backend
