@@ -1,7 +1,8 @@
 /**
  * Phase 2 — Moteur · Valider (Capitaine + Lieutenants + Structure + Lexique).
  *
- *   1. scan de chaque candidat Radar → pickCapitaine (GO préféré, sinon forcé)
+ *   1. scan de chaque candidat Radar → rankCapitaines, puis le premier que la
+ *      porte capitaine accepte sans alerte (chooseThroughGate)
  *   2. SERP analyze sur le Capitaine (peuple le scrape pour le Lexique)
  *   3. pickLieutenants (dérivés des candidats)
  *   4. structure H1/H2/H3 proposée à partir des lieutenants retenus
@@ -15,7 +16,7 @@ import type { PhaseDeps } from '../deps.js'
 import type { AutoRunContext } from '../types.js'
 import { toCanonicalType } from '../canonical.js'
 import { saveThenEmit, type MoteurDecisions } from '../checks.js'
-import { pickCapitaine, type CapitaineInput } from '../heuristics/pick-capitaine.js'
+import { rankCapitaines, chooseThroughGate, type CapitaineInput } from '../heuristics/pick-capitaine.js'
 import { pickLieutenants } from '../heuristics/pick-lieutenants.js'
 import { pickLexique, type TfidfResultLite } from '../heuristics/pick-lexique.js'
 import { detectCannibalization, requiresConfirmation, type ExistingCapitaine } from '../heuristics/detect-cannibalization.js'
@@ -34,6 +35,11 @@ interface ScanResp {
   verdict: { level: string }
   relevanceScore: { total: number } | null
   marketScore: { total: number } | null
+}
+
+/** Ce que le mode automatique lit d'une évaluation de porte : ses alertes. */
+interface GateEvaluationLite {
+  issues: { message: string }[]
 }
 
 interface SerpResp {
@@ -80,8 +86,21 @@ async function pickFromScans(
   // Le sujet sert à calculer l'affinité topique (le relevanceScore produit
   // s'étant révélé non-discriminant en run réel).
   const topic = `${ctx.articleTitle} ${ctx.pilierKeyword} ${ctx.painPoint}`
-  const choice = pickCapitaine(scanned, topic, level)
-  if (!choice) throw new Error('Moteur : aucun Capitaine sélectionnable')
+  // La porte capitaine juge chaque candidat sur les données que le scan vient
+  // d'enregistrer (gratuit) : le premier qu'elle accepte sans alerte est retenu.
+  // Recette C8 : « artisan local » (SERP commerciale) était retenu pour un
+  // pilier informationnel, la porte le refusait, et le run s'arrêtait.
+  const articleId = ctx.articleId
+  const gated = await chooseThroughGate(rankCapitaines(scanned, topic, level), async (keyword) => {
+    const evaluation = await client.apiGet<GateEvaluationLite>(
+      `/articles/${articleId}/gates/captain-lock?keyword=${encodeURIComponent(keyword)}`,
+    )
+    return evaluation.issues.map(i => i.message)
+  })
+  if (!gated) throw new Error('Moteur : aucun Capitaine sélectionnable')
+  for (const r of gated.rejected) logger.dim(`« ${r.keyword} » écarté par la porte capitaine : ${r.issues.join(' ; ')}`)
+  if (!gated.clean) logger.warn('Aucun candidat ne passe la porte capitaine sans alerte : le meilleur est soumis, la porte dira pourquoi.')
+  const choice = gated.choice
 
   const scores = `affinité ${(choice.affinity * 100).toFixed(0)}%, pertinence ${choice.relevance ?? '—'}, marché ${choice.market ?? '—'}`
   if (choice.forced) {

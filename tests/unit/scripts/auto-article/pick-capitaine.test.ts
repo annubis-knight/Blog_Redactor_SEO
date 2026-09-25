@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { pickCapitaine, type CapitaineInput } from '../../../../scripts/auto-article/heuristics/pick-capitaine.js'
+import { pickCapitaine, rankCapitaines, chooseThroughGate, type CapitaineInput } from '../../../../scripts/auto-article/heuristics/pick-capitaine.js'
 
 const c = (keyword: string, verdict: string, relevance: number | null, market: number | null): CapitaineInput =>
   ({ keyword, verdict, relevance, market })
@@ -119,5 +119,42 @@ describe('auto:pick-capitaine — drapeau forced & cas limites', () => {
   it('fonctionne sans sujet fourni (affinité 0 partout → marché décide)', () => {
     const choice = pickCapitaine([c('a', 'GO', 0, 10), c('b', 'GO', 0, 90)])
     expect(choice?.keyword).toBe('b')
+  })
+})
+
+// C8 (recette réelle du 2026-09-25) : le mode automatique retenait « artisan
+// local » pour un pilier informationnel ; la porte capitaine le refusait (SERP
+// commerciale) et le run s'arrêtait, alors que d'autres candidats passaient.
+describe('auto:pick-capitaine — le choix passe par la porte capitaine', () => {
+  const ranked = rankCapitaines(
+    [c('artisan local', 'ORANGE', 10, 90), c('référencement local artisan', 'GO', 10, 60), c('fiche google artisan', 'GO', 10, 40)],
+    'être trouvé sur Google quand on est artisan : référencement local',
+    'pilier',
+  )
+
+  it('rankCapitaines classe tous les candidats ; pickCapitaine rend le premier', () => {
+    expect(ranked.map(r => r.keyword)).toHaveLength(3)
+    expect(pickCapitaine([c('artisan local', 'ORANGE', 10, 90), c('référencement local artisan', 'GO', 10, 60), c('fiche google artisan', 'GO', 10, 40)], 'être trouvé sur Google quand on est artisan : référencement local', 'pilier')?.keyword).toBe(ranked[0]!.keyword)
+  })
+
+  it('le premier candidat que la porte accepte sans alerte est retenu ; les écartés sont dits', async () => {
+    const alertes: Record<string, string[]> = { [ranked[0]!.keyword]: ['SERP commerciale, article informationnel'] }
+    const result = await chooseThroughGate(ranked, async kw => alertes[kw] ?? [])
+    expect(result!.choice.keyword).toBe(ranked[1]!.keyword)
+    expect(result!.clean).toBe(true)
+    expect(result!.rejected).toEqual([{ keyword: ranked[0]!.keyword, issues: ['SERP commerciale, article informationnel'] }])
+  })
+
+  it('aucun candidat propre : le premier du classement, sans déroger à la place de l’utilisateur', async () => {
+    const result = await chooseThroughGate(ranked, async () => ['volume nul'])
+    expect(result!.choice.keyword).toBe(ranked[0]!.keyword)
+    expect(result!.clean).toBe(false)
+    expect(result!.rejected).toHaveLength(3)
+  })
+
+  it('la porte n’est interrogée que sur les premiers candidats', async () => {
+    const asked: string[] = []
+    await chooseThroughGate(ranked, async (kw) => { asked.push(kw); return ['x'] }, 2)
+    expect(asked).toEqual([ranked[0]!.keyword, ranked[1]!.keyword])
   })
 })
