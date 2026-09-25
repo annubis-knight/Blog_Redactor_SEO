@@ -14,6 +14,7 @@
     "db:backup": "tsx scripts/db-backup.ts",
     "db:clean-tests": "tsx scripts/db-clean-tests.ts",
     "db:reconcile-hn": "tsx scripts/reconcile-hn-checks.ts",
+    "db:backfill-cocoon": "tsx scripts/backfill-cocoon.ts",
     "content:clean": "tsx scripts/clean-article-content.ts",
     "docs:prompts": "tsx scripts/prompts-reference.ts",
     "verify": "run-p --print-label verify:lint verify:types verify:unit verify:content db:check",
