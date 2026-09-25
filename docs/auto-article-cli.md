@@ -40,7 +40,7 @@ contexte business optionnel.
 | `--level=<niveau>` | Impose `pilier`, `intermediaire` ou `specifique`. |
 | `--capitaine=<mot-clé>` | Impose le mot-clé principal : le classement et le passage des candidats par la porte sont court-circuités ; la porte capitaine juge quand même ce mot-clé à la demande de l'étape (un refus arrête le run). |
 | `--resume=<id>` | Reprend un article existant : saute les phases déjà réalisées (idempotent). Voir « Reprise » plus bas. |
-| `--relink=<id>` | Relance **uniquement** le maillage interne sur un article existant (déterministe, gratuit) ; vers les seuls articles publiés, sans retirer les liens déjà présents vers un non-publié. |
+| `--relink=<id>` | Relance **uniquement** le maillage interne sur un article existant (déterministe, gratuit) ; vers les seuls articles publiés, puis retire les liens déjà présents vers un non-publié (comme la fin de rédaction). |
 | `--verbose`, `-v` | Logs détaillés. |
 | `--help`, `-h` | Aide. |
 
