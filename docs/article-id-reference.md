@@ -64,13 +64,21 @@ export const rawArticleSchema = z.object({
 
 ### Génération d'`id` (création d'articles)
 
+> **Mis à jour le 2026-09-25 (chantier C7).** `addArticlesToCocoon` (création en lot, époque JSON puis SQL) est supprimée ; un article naît seul, par `POST /api/cocoons/:cocoonId/articles` → `createCocoonArticle` → `insertCocoonArticle` ([server/services/infra/data.service.ts:508 et suiv.](../server/services/infra/data.service.ts)).
+
 ```typescript
-// addArticlesToCocoon() — ligne ~556
-const allRawIds = raw.silos.flatMap(s => s.cocons.flatMap(c => c.articles.map(a => a.id)))
-let nextIdCounter = allRawIds.length > 0 ? Math.max(...allRawIds) : 0
-nextIdCounter++ // auto-incrément sur le max existant
-const rawArticle: RawArticle = { id: nextIdCounter, ... }
+// insertCocoonArticle() — la table `articles.id` n'a pas de séquence
+const maxRes = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM articles`)
+const nextId = maxRes.rows[0].max_id + 1
+// INSERT … ON CONFLICT (slug) DO NOTHING → 'slug-taken' (409 SLUG_TAKEN)
+// conflit sur la clé primaire (deux créations simultanées) → on relit le max et on retente (5 essais)
 ```
+
+### Le parent d'un article est un `id` (C7)
+
+Depuis C7, un article connaît son parent dans le cocon par **son identifiant** : `articles.parent_id INTEGER REFERENCES articles(id) ON DELETE RESTRICT` (jamais soi-même), et la section du parent dont il est né par son titre (`parent_section`). Jamais par slug ni par titre d'article : renommer le parent ne casse rien (avant C7, la hiérarchie ne vivait que dans `proposedArticles[].parentTitle`, rapprochée par titre). Exposé en `Article.parentId` / `parentSection` ([shared/types/article.types.ts:82-89](../shared/types/article.types.ts)).
+
+Les liens internes suivent la même règle : le mark TipTap `internalLink` porte `targetId` et `href="#article-<id>"`, résolu à l'export — le panneau Maillage comme l'action « lien interne » (qui posait encore `/<slug>` avant C7).
 
 ### Fonctions de lookup par `id`
 
@@ -79,7 +87,9 @@ const rawArticle: RawArticle = { id: nextIdCounter, ... }
 | `getArticleById` | `(id: number)` | Renvoie `{ article, cocoonName }` ou `null` |
 | `getArticleBySlug` | `(slug: string)` | Lookup secondaire pour résolution slug→id |
 | `updateArticleInCocoon` | `(id: number, updates)` | Modifie titre/slug d'un article |
-| `removeArticleFromCocoon` | `(id: number)` | Supprime un article |
+| `removeArticleFromCocoon` | `(id: number)` | Détache un article de son cocon — il reste en base (`cocoon_id`, `parent_id`, `parent_section` à `NULL`) ; refusé (`'has-children'`) si des enfants sont encore dans le cocon (C7) |
+| `getArticleChildren` | `(articleId: number)` | Enfants d'un article (`parent_id = articleId`) : id, titre, section du parent, mot-clé, statut (C7) |
+| `insertCocoonArticle` | `(cocoonId: number, article)` | Seul chemin d'insertion (C7), appelé par `createCocoonArticle` après la vérification de la hiérarchie |
 | `getArticleKeywords` | `(id: number)` | Renvoie les mots-clés d'un article |
 | `saveArticleKeywords` | `(id: number, data)` | Sauvegarde les mots-clés |
 | `getArticleKeywordsByCocoon` | `(cocoonName)` | Filtre par `cocoon.articles.map(a => a.id)` |
@@ -129,7 +139,11 @@ if (isNaN(id)) {
 | `/articles/:id` | PUT | `articles.routes.ts` | `saveArticleContent(id, data)` |
 | `/articles/:id/status` | PUT | `articles.routes.ts` | `updateArticleStatus(id, status)` |
 | `/articles/:id` | PATCH | `articles.routes.ts` | `updateArticleInCocoon(id, updates)` |
-| `/articles/:id` | DELETE | `articles.routes.ts` | `removeArticleFromCocoon(id)` |
+| `/articles/:id` | DELETE | `articles.routes.ts` | `removeArticleFromCocoon(id)` — 409 `HAS_CHILDREN` si des enfants sont encore dans le cocon (C7) |
+| `/articles/:id/children` | GET | `articles.routes.ts` | `getArticleChildren(id)` (C7) |
+| `/cocoons/:cocoonId/articles` | POST | `cocoons.routes.ts` | `createCocoonArticle(cocoonId, input)` — crée **un** article ; `parentId` est l'`id` du parent (C7) |
+| `/cocoons/:cocoonId/tree` | GET | `cocoons.routes.ts` | `getCocoonTree(cocoonId)` — arbre réel, par `id` (C7) |
+| `/cocoons/:cocoonId/child-candidates` | POST | `cocoons.routes.ts` | `proposeChildCandidates(cocoonId, { parentId, parentSection })` (C7) |
 | `/articles/:id/micro-context` | GET/PUT | `articles.routes.ts` | `loadArticleMicroContext` / `saveArticleMicroContext` |
 | `/articles/:id/keywords` | GET | `keywords.routes.ts` | `getArticleKeywords(id)` |
 | `/articles/:id/keywords` | PUT | `keywords.routes.ts` | `saveArticleKeywords(id, data)` |
@@ -262,5 +276,7 @@ Le `slug` n'est **plus jamais** utilisé comme clé de lookup dans les opératio
 3. **Les vues** naviguent par `articleId` (number) directement dans l'URL. Ne jamais passer le slug aux stores ou composables.
 
 4. **Les nouvelles données** liées à un article (fichiers JSON de sauvegarde, etc.) doivent être indexées par `articleId: number`, pas par slug.
+
+5. **Une relation entre articles** (parent, lien interne) se stocke par `id` — `articles.parent_id`, `internal_links.target_id`, `href="#article-<id>"` — jamais par slug ni par titre (C7).
 
 5. **Génération d'id** : toujours utiliser `Math.max(...existingIds) + 1` — ne pas utiliser `length` (risque de collision si des articles ont été supprimés).

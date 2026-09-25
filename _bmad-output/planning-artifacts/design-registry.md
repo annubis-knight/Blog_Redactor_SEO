@@ -185,8 +185,10 @@ Ce bloc est important parce que c'est typiquement là que se cachent les bugs de
 **Watchers & réactivité**
 - Watcher sur `store.strategy?.proposedArticles` dans `useArticleProposals` (`{ immediate: true }`) : à chaque hydratation, complète les articles manquant un `id`/`suggestedSlug`/`dbId` et déclenche un `saveStrategy` si une migration a été appliquée. C'est le watcher load-bearing du Cerveau cocon — il garantit l'idempotence de la structure entre les sessions.
 
+**Carte indicative (C7, commit `fb92b46`)** : `proposedArticles` ne crée plus aucun article. [BrainPhase.vue:464-466](../../src/components/production/BrainPhase.vue) monte `CocoonTreeBuilder` (qui crée, cf. `DESIGN-CER-COCOON-PROGRESSIVE`) au-dessus de `BrainArticleProposalView`, qui affiche « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » ([BrainArticleProposalView.vue:139-140](../../src/components/production/brain/BrainArticleProposalView.vue), `data-testid="proposal-indicative-note"`) ; « Tout valider » (`brain-validate-all`) et le bouton « Valider » de chaque proposition (`proposal-accept-*`, `toggle-accept`) sont retirés ; un article créé porte le badge « Créé » ([ProposedArticleRow.vue:166](../../src/components/strategy/ProposedArticleRow.vue), `proposal-created-badge`). La carte reste générable et retouchable (ajout, titre, mot-clé, adresse, parent, intention). Le constructeur y inscrit l'article qu'il crée (`registerInStrategy`) : `MoteurView.buildRecapArticles` tire toujours sa liste de `proposedArticles`.
+
 **Voir aussi**
-- `DESIGN-CER-BATCH-CREATE` (production des articles à partir de la structure cocon).
+- `DESIGN-CER-COCOON-PROGRESSIVE` (création un article à la fois ; avant C7 : `DESIGN-CER-BATCH-CREATE`).
 
 ---
 
@@ -198,33 +200,37 @@ Ce bloc est important parce que c'est typiquement là que se cachent les bugs de
 - [shared/types/strategy.types.ts](../../shared/types/strategy.types.ts) — type `ArticleLevel = 'pilier' | 'intermediaire' | 'specifique'`.
 - [server/prompts/cocoon-articles.md](../../server/prompts/cocoon-articles.md) — règles de hiérarchisation utilisées par l'IA d'aiguillage.
 
-**Modèle de hiérarchie**
-- **Pilier** : `parent_slug = null` — racine du cocon.
-- **Intermédiaire** : `parent_slug = <slug du Pilier>`.
-- **Spécifique** : `parent_slug = <slug d'un Intermédiaire>`.
-- La hiérarchie est utilisée par `DESIGN-RED-INTERNAL-LINKING` (suggestions de maillage interne) et par le scoring contextuel du Moteur (seuils par niveau, cf. `DESIGN-CAP-VALIDATE`).
+**Modèle de hiérarchie** *(corrigé le 2026-09-25, C7 — le code fait foi : la colonne `articles.parent_slug` décrite ici n'a jamais existé ; jusqu'à C7, la hiérarchie ne vivait que dans `cocoon_strategies.data.proposedArticles[].parentTitle`)*
+- **Pilier** : `articles.parent_id IS NULL` — racine du cocon.
+- **Intermédiaire** : `parent_id` = l'id du pilier, `parent_section` = le titre du H2 du pilier dont il est né.
+- **Spécialisé** : `parent_id` = l'id d'un intermédiaire, `parent_section` = un H2 de cet intermédiaire.
+- Colonnes posées par le changement daté [server/db/changes/2026-09-25-article-parent.sql](../../server/db/changes/2026-09-25-article-parent.sql) (commit `f02fbbf`) ; règles vérifiées à la création par `verifyCocoonHierarchy` (cf. `DESIGN-CER-COCOON-PROGRESSIVE`).
+- La hiérarchie est utilisée par `DESIGN-RED-LINKING-MANUAL` (famille proposée d'office), `DESIGN-INFRA-COCOON-CONTEXT` (état du cocon dans les prompts), `DESIGN-RED-PUBLISH-GATE` (résumés des enfants) et par le scoring contextuel du Moteur (seuils par niveau, cf. `DESIGN-CAP-VALIDATE`).
 
 **Flux DB**
 
-*Lecture* : le niveau (`Pilier` / `Intermédiaire` / `Spécialisé`) est lu depuis `articles.type` à chaque chargement d'article. La hiérarchie parent/enfant est dérivée du champ `articles.parent_slug` joint à `articles.slug`.
+*Lecture* : le niveau (`Pilier` / `Intermédiaire` / `Spécialisé`) est lu depuis `articles.type` à chaque chargement d'article. Le parent est lu depuis `articles.parent_id` / `parent_section` (`rowToArticle`, [data.service.ts:94-95](../../server/services/infra/data.service.ts) → `Article.parentId` / `parentSection`).
 
-*Écriture* : assignée à la création de l'article (cf. `DESIGN-CER-BATCH-CREATE`). Modifiable post-création via `PATCH /api/articles/:id` (action « changer le parent » dans le panneau Articles du Cerveau cocon) — propage immédiatement au mapping parent/enfant.
+*Écriture* : assignée à la création de l'article (`POST /api/cocoons/:cocoonId/articles`, cf. `DESIGN-CER-COCOON-PROGRESSIVE`). **Non modifiable ensuite** : `PATCH /api/articles/:id` ne connaît que `title`, `slug`, `painIntentExpected` (`patchArticleSchema`) ; l'action « changer le parent » du panneau Articles ne change que `proposedArticles[].parentTitle`, sur la carte indicative. Seuls le rattrapage (`npm run db:backfill-cocoon`) et le retrait d'un enfant de son cocon (`parent_id` / `parent_section` remis à `NULL`) écrivent ces colonnes après coup.
 
 **Stores Pinia**
-- `useCocoonStrategyStore` — porte la hiérarchie en mémoire (via `proposedArticles[i].parentTitle` et `proposedArticles[i].type`) tant que les articles ne sont pas persistés. Une fois en DB, c'est `useCocoonsStore` qui est l'autorité (jointure `cocoons.articles[]`).
-- `useArticlesStore` / `useCocoonsStore` — exposent le `type` et le `parent_slug` aux consommateurs (Moteur, Rédaction, scoring).
+- `useCocoonStrategyStore` — porte la hiérarchie **indicative** en mémoire (via `proposedArticles[i].parentTitle` et `proposedArticles[i].type`). Une fois en DB, c'est l'arbre réel qui fait foi (`GET /api/cocoons/:cocoonId/tree`, `useCocoonBuilder`).
+- `useArticlesStore` / `useCocoonsStore` — exposent le `type`, `parentId` et `parentSection` aux consommateurs (Moteur, Rédaction, scoring).
 
 **Watchers & réactivité**
 - Aucun watcher actif — le niveau est attribué à la création puis figé jusqu'à modification explicite par l'utilisateur. Pas de propagation réactive nécessaire.
 
 **Voir aussi**
 - `DESIGN-CER-WORD-COUNT-RECOMMEND` (le niveau drive la fourchette de base).
+- `DESIGN-CER-COCOON-PROGRESSIVE`, `DESIGN-CER-CHILD-FROM-PILLAR-H2` (parent et section enregistrés, C7).
 
 ---
 
-### DESIGN-CER-BATCH-CREATE
+### DESIGN-CER-BATCH-CREATE — *(superseded 2026-09-25)*
 
 **Réf PRD :** [FR-CER-BATCH-CREATE](./prd.md#fr-cer-batch-create)
+
+**Statut** : superseded le 2026-09-25 par [`DESIGN-CER-COCOON-PROGRESSIVE`](#design-cer-cocoon-progressive) (épopée qualité SEO, C7, commit `d22ea8e`, checklist K6). **N'existent plus** : la route `POST /api/articles/batch-create` (un appel répond désormais 404 — tests `tests/contract-api/articles.contract.test.ts`, `tests/integration-tabs/cerveau-proposals.tab.test.ts`), `addArticlesToCocoon` (`data.service.ts`), `batchCreateArticlesSchema`, `useArticleProposals.createArticleInDb`, `toggleAccept` / `validateArticles` (retirés de l'écran par le commit `fb92b46`). **Remplacés par** : `POST /api/cocoons/:cocoonId/articles` → `createCocoonArticle` → `insertCocoonArticle` (un article, hiérarchie vérifiée) ; le constructeur `CocoonTreeBuilder` / `useCocoonBuilder`. Corrigé au passage : l'insertion n'a jamais été transactionnelle (une boucle `INSERT … ON CONFLICT (slug) DO NOTHING` par article) — un slug pris renvoyait une liste vide, sans erreur. Contenu historique ci-dessous.
 
 **Refs code**
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — handler `POST /api/articles/batch-create`.
@@ -258,12 +264,258 @@ Response : { created: Article[], failed: { index, error }[] }
 
 ---
 
+### DESIGN-CER-COCOON-PROGRESSIVE
+
+**Réf PRD :** [FR-CER-COCOON-PROGRESSIVE](./prd.md#fr-cer-cocoon-progressive--le-cocon-se-construit-article-par-article)
+
+Chantier C7 de l'épopée qualité SEO (branche `feat/cocon-progressif`, tech-spec [tech-spec-cocon-progressif.md](../implementation-artifacts/tech-spec-cocon-progressif.md)). Commits `f02fbbf` (colonnes), `d22ea8e` (vérificateur, création unitaire), `e738f99` + `1550555` (rattrapage), `fb92b46` (écran du Cerveau, retrait d'un parent refusé). Lignes relevées au commit `fb92b46`.
+
+**Refs code**
+- Schéma : [server/db/changes/2026-09-25-article-parent.sql](../../server/db/changes/2026-09-25-article-parent.sql) — changement daté, idempotent : `ADD COLUMN IF NOT EXISTS parent_id INTEGER` et `parent_section TEXT` (8-9), contraintes `articles_parent_id_fkey` (`REFERENCES articles(id) ON DELETE RESTRICT`, 13-16) et `articles_parent_not_self` (`CHECK (parent_id IS NULL OR parent_id <> id)`, 17-19), index `idx_articles_parent_id` (22). Appliqué par [scripts/db-apply-change.ts](../../scripts/db-apply-change.ts) (`npm run db:apply -- <fichier>` : seuls les fichiers de `server/db/changes/`, dans une transaction, 16-40), puis capturé par `npm run db:snapshot` ([server/db/schema.sql:82-88,360](../../server/db/schema.sql), [server/db/bootstrap.sql](../../server/db/bootstrap.sql)). `Article.parentId?` / `parentSection?` ([shared/types/article.types.ts:82-89](../../shared/types/article.types.ts)), lus par `rowToArticle` ([data.service.ts:94-95](../../server/services/infra/data.service.ts)) et `loadArticlesDb` (125). Les nettoyages de tests détachent les enfants avant de supprimer un parent (`tests/helpers/db-fixtures.ts`, `scripts/db-clean-tests.ts`).
+- [shared/verifiers/cocoon-hierarchy.ts](../../shared/verifiers/cocoon-hierarchy.ts) — vérificateur pur. `CocoonHierarchyInput` (35-48 : `level`, `parentId`, `parentSection`, `cocoonArticles`, `parentSections` — `null` = sections pas encore vérifiées) ; `PARENT_LEVEL` (51-55) ; `parentSectionsOf(content, structure)` (75-81 : H2 du texte, sinon H2 de `hn_structure`, sans introduction, conclusion ni FAQ) ; `verifyCocoonHierarchy` (83-155) — règles ci-dessous ; `sectionKey` réexporté de [shared/chapters.ts:18-20](../../shared/chapters.ts) (casse, espaces et ponctuation finale ignorés).
+- [server/services/article/cocoon-article.service.ts](../../server/services/article/cocoon-article.service.ts) — en-tête `AUTHORITY:` (1-17). `CocoonArticleError { status, code: 'COCOON_NOT_FOUND' | 'HIERARCHY_VIOLATION' | 'GATE_BLOCKED' | 'KEYWORD_NOT_MEASURED' | 'SLUG_TAKEN', details }` (42-52). `getCocoonTree(cocoonId)` (58-89) : pour chaque article (hors spécialisé), `parentSectionsOf(texte, structure)` et l'enfant né de chaque section ; un enfant dont la section a disparu du parent reste listé (71-76) ; `drafted` = `completed_checks` contient `REDACTION_DRAFT_ACCEPTED` (85). `createCocoonArticle(cocoonId, input)` (100-169) : 1. hiérarchie sans les sections (118-121) ; 2. mot-clé mesuré (123-127, cf. `DESIGN-CER-KEYWORD-REAL-DATA`) ; 3. porte du parent (129-142, cf. `DESIGN-CER-PARENT-WRITTEN-GATE`) ; 4. section connue du parent (144-151) ; slug = celui fourni, sinon `slugFromTitle(title)` (153) ; `insertCocoonArticle` (154-166).
+- [server/services/infra/data.service.ts](../../server/services/infra/data.service.ts) — `insertCocoonArticle(cocoonId, article)` (508 et suiv.) : seul chemin d'écriture ; `id` = `MAX(id)+1` relu et retenté (5 essais) sur conflit de clé primaire ; `ON CONFLICT (slug) DO NOTHING` → `'slug-taken'`. `removeArticleFromCocoon(id)` (410-430) : renvoie `'has-children'` si un article du cocon a `parent_id = id` (416-423), sinon `UPDATE … SET cocoon_id = NULL, parent_id = NULL, parent_section = NULL` (424-427) → `'removed'` / `'not-found'`.
+- [server/routes/cocoons.routes.ts](../../server/routes/cocoons.routes.ts) — `GET /cocoons/:cocoonId/tree` (48-65) ; `POST /cocoons/:cocoonId/articles` (75-97) : `createCocoonArticleSchema` ([shared/schemas/article.schema.ts:73-82](../../shared/schemas/article.schema.ts) : `title` 3-200, `type`, `parentId?`, `parentSection?` 1-300, `slug?`, `suggestedKeyword?`, `painPoint?`, `painIntentExpected?`), 201 `{ data: Article }`, refus `{ error: { code, message, details } }`.
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `DELETE /articles/:id` (170-195) : `'has-children'` → 409 `HAS_CHILDREN` (« Des articles sont nés de ses sections : retirez-les d'abord du cocon, sinon ils perdraient leur parent. », 184-188) ; `'not-found'` → 404. La route `batch-create` est supprimée (commit `d22ea8e`).
+- [shared/types/cocoon-tree.types.ts](../../shared/types/cocoon-tree.types.ts) — `CocoonTreeSection { title, childId, childTitle }` (11-17), `CocoonTreeNode { id, title, level, parentId, parentSection, keyword, drafted, sections }` (19-31).
+- Écran (commit `fb92b46`) :
+  - [src/composables/strategy/useCocoonBuilder.ts](../../src/composables/strategy/useCocoonBuilder.ts) — en-tête `AUTHORITY:` (1-21). `loadTree` (88-104 : `GET /cocoons/:cocoonId/tree`, erreur dite dans `treeError`) ; `hasPillar` (107) ; `blocks` (110-122 : chaque pilier suivi de ses intermédiaires, dans l'ordre de ses sections) ; `orphans` (125-133 : articles sans place dans l'arbre ; un spécialisé rattaché à un intermédiaire de l'arbre n'y figure pas) ; `proposeCandidates` / `closeCandidates` (150-183, cf. `DESIGN-CER-KEYWORD-REAL-DATA`) ; `addToKeywordPool` (186-198 : `POST /keywords` avec le `KeywordType` du niveau, refus = `notify.warning`, l'article reste) ; `registerInStrategy` (204-230 : inscrit l'article sur la carte — la proposition de même `dbId`, sinon de même titre non encore créée, sinon une nouvelle — puis `saveStrategy` ; échec = avertissement) ; `createFromCandidate(candidate, title)` (237-317 : titre ≥ 3 caractères, candidat mesuré exigé, intention et douleur reprises d'une proposition de même titre (257-259), `POST /cocoons/:cocoonId/articles` derrière `runThroughGate(parentId)` pour un enfant (277-279), refus → `createError` (283), alarme refermée → « doit d'abord être rédigé » (287-290), puis pool, carte, `notify.success`, rechargement de l'arbre et des cocons (295-312)).
+  - [src/components/production/brain/CocoonTreeBuilder.vue](../../src/components/production/brain/CocoonTreeBuilder.vue) — « Construire le cocon » : arbre chargé au montage et au changement de cocon (47-52) ; « Créer le pilier » (`cocoon-create-pillar`, 115-126) sans pilier ; par nœud, badge « Rédigé » / « À rédiger » (`tree-node-state`, 151-156) et lien vers sa rédaction (157-159) ; message sans section (162-164) ; message `tree-node-blocked` quand le parent n'est pas rédigé (166-168) ; par section, lien vers l'enfant (`tree-section-child`, 177-183) ou bouton « Créer l'article de cette section » (`tree-section-create`, 184-196), grisé tant que le parent n'est pas rédigé ; « Articles hors de l'arbre » (`tree-orphans`, 215-229).
+  - [src/components/production/brain/CocoonCandidatesPanel.vue](../../src/components/production/brain/CocoonCandidatesPanel.vue) — cf. `DESIGN-CER-KEYWORD-REAL-DATA`.
+  - [src/components/production/BrainPhase.vue](../../src/components/production/BrainPhase.vue) — étape Articles : `CocoonTreeBuilder` (464) au-dessus de la carte indicative `BrainArticleProposalView` (466 et suiv. ; cf. `DESIGN-CER-STEPS-COCOON`).
+  - [src/composables/editor/useArticleProposals.ts](../../src/composables/editor/useArticleProposals.ts) — en-tête `AUTHORITY:` réécrit (la carte ne crée rien) ; `removeProposedArticle` (156 et suiv.) : un refus autre que 404 (par exemple 409 `HAS_CHILDREN`) → `notify.error` et la carte garde l'article (169-175) ; avant, tout refus était avalé et l'article disparaissait de la carte et du Moteur en restant en base.
+- Mode automatique (commit `d22ea8e`) : [scripts/auto-article/phases/cerveau.ts](../../scripts/auto-article/phases/cerveau.ts) — étape 7 (190-235) : pour un non-pilier, `GET /cocoons/:id/tree` puis `pickParentSection` (196), `POST /cocoons/:id/articles` sans mot-clé (201-210), `SLUG_TAKEN` → réutilisation de l'article existant (215-223), `GATE_BLOCKED` → arrêt avec `describeGateRefusal(REDACTION_DRAFT_ACCEPTED, …)` (224-229). [scripts/auto-article/heuristics/pick-parent-section.ts](../../scripts/auto-article/heuristics/pick-parent-section.ts) — `pickParentSection(tree, level, topic)` (25-44) : sections libres des parents du niveau au-dessus, triées par `topicalAffinity(section, sujet)` puis parent rédigé d'abord ; raison dite s'il n'y a ni parent ni section libre.
+- Rattrapage (commits `e738f99`, `1550555`) : [scripts/backfill-cocoon-plan.ts](../../scripts/backfill-cocoon-plan.ts) — plan **pur** `planCocoonBackfill(articles, proposals, sectionsOf)` (69 et suiv.) : orphelins traités du haut vers le bas (`TOP_DOWN`, 42 ; liste et non plus table de nombres par type, commit `1550555`, règle `type-rules-ssot`) ; parent = `parentTitle` de la proposition (par `dbId`, sinon par titre), sinon, pour un intermédiaire, le pilier unique ; parent du mauvais niveau → listé ; section = affectation globale du rapprochement le plus fort au plus faible, sur les mots **propres à la section** (hors titre et mot-clé du parent), `MIN_AFFINITY = 0,5` (45) et `MIN_SHARED_WORDS = 2` (47), à égalité celui dont le titre parle le plus de la section ; une section prise ne se redonne pas. [scripts/backfill-cocoon.ts](../../scripts/backfill-cocoon.ts) — `npm run db:backfill-cocoon` (simulation par défaut, `--apply` écrit) : par cocon, sections des parents (`parentSectionsOf`, 42-46), plan (52-56), `UPDATE articles SET parent_id, parent_section … WHERE parent_id IS NULL` (60-65), non rapprochés listés (69) ; puis l'étape « premier jet accepté » (cf. `DESIGN-CER-PARENT-WRITTEN-GATE`).
+
+**Endpoints**
+- `POST /api/cocoons/:cocoonId/articles` — 201 `{ data: Article }` ; 400 `INVALID_ID` / `VALIDATION_ERROR` ; 404 `COCOON_NOT_FOUND` ; 409 `HIERARCHY_VIOLATION` (`details.issues`), `GATE_BLOCKED` (`details` = évaluation de la porte `draft` du **parent**), `SLUG_TAKEN` ; 422 `KEYWORD_NOT_MEASURED`.
+- `GET /api/cocoons/:cocoonId/tree` — `{ data: CocoonTreeNode[] }` ; 404 si le cocon est inconnu.
+- `DELETE /api/articles/:id` — détache l'article de son cocon (il reste en base) ; 409 `HAS_CHILDREN` s'il a encore des enfants dans le cocon.
+- `POST /api/keywords` (pool du cocon, après création), `PUT /api/strategy/cocoon/:slug` (carte, via `saveStrategy`).
+
+**Règles de `verifyCocoonHierarchy`** (toutes ⛔, jamais dérogeables)
+
+| Règle | Condition (lignes de `shared/verifiers/cocoon-hierarchy.ts`) |
+|---|---|
+| `hierarchy-one-pillar` | Un pilier existe déjà dans le cocon (88-95) |
+| `hierarchy-pillar-has-parent` | Un pilier avec un parent (96-98) |
+| `hierarchy-pillar-first` | Un non-pilier dans un cocon sans pilier (102-109) |
+| `hierarchy-parent-missing` | Un non-pilier sans parent (111-113) |
+| `hierarchy-parent-elsewhere` | Parent absent des articles du cocon (115-118) |
+| `hierarchy-parent-level` | Parent qui n'est pas du niveau juste au-dessus (120-127) |
+| `hierarchy-section-missing` | Section vide (129-132) |
+| `hierarchy-section-unknown` | Section absente des sections du parent — seulement si `parentSections` n'est pas `null` (134-142) |
+| `hierarchy-section-taken` | Section déjà prise par un autre enfant du même parent (144-152) |
+
+**Flux DB**
+
+*Lecture* : `getArticlesByCocoon` (articles, `parent_id`, `parent_section`, `completed_checks`) ; pour les sections : `article_content.content` du parent, sinon `article_keywords.hn_structure` ; `keyword_metrics` (mot-clé) ; porte `draft` du parent.
+
+*Écriture* : 1. écran → `POST /cocoons/:cocoonId/articles` → `insertCocoonArticle` → `INSERT INTO articles (…, suggested_keyword, pain_point, pain_intent_expected, parent_id, parent_section)` ; 2. `POST /keywords` → `keywords_seo` ; 3. `saveStrategy` → `cocoon_strategies.data.proposedArticles` (article inscrit, `createdInDb`, `dbId`). Retrait : `DELETE /articles/:id` → `articles.cocoon_id`, `parent_id`, `parent_section` à `NULL`, ou 409.
+
+**Stores Pinia**
+- `useCocoonStrategyStore` — carte indicative (`proposedArticles`), où le constructeur inscrit l'article créé ; lue par le Moteur (`buildRecapArticles`).
+- `useCocoonsStore` — `fetchCocoons()` rappelé après une création (dashboard, sélection d'article).
+- `useGateAlarmStore` — `runThroughGate(parentId, create)` : 409 `GATE_BLOCKED` → alarme sur la porte `draft` du parent → rejeu unique de la création.
+
+**Watchers & réactivité**
+- `CocoonTreeBuilder` : `loadTree()` au montage, et `watch(cocoonId)` → `closeCandidates()` + `loadTree()`.
+- `blocks`, `orphans`, `hasPillar` sont des computed de `tree` : l'arbre rechargé après une création redessine l'écran.
+
+**Décisions d'architecture**
+- **L'arbre réel crée, la carte guide** : la proposition de plan de l'IA reste utile pour se projeter, mais ne peut plus rien créer ; le constructeur lit la base (`GET /tree`), jamais `proposedArticles`. Écart assumé avec la tech-spec (décision 9, « lecture seule ») : la carte se retouche encore, elle ne crée simplement plus rien.
+- **Vérificateur en deux temps** : la hiérarchie est jugée sans les sections (`parentSections: null`), puis la porte du parent, puis les sections. Un parent sans texte n'a pas de section : « rédigez-le d'abord » est la vraie cause, pas « section inconnue ».
+- **Tout ⛔** : ce sont des règles de structure ; aucune dérogation (pas d'empreinte, pas de `gate_waivers`).
+- **Parent dans la base, pas dans le JSON** : l'arbre ne se déduit plus d'un rapprochement de titres de la stratégie (`parentTitle`) ; `ON DELETE RESTRICT` empêche d'effacer un parent en base, et `removeArticleFromCocoon` refuse de le détacher de son cocon.
+- **Un enfant détaché libère sa section** : `parent_id` / `parent_section` remis à `NULL` ; la section redevient libre dans l'arbre.
+- **Rattrapage prudent** : ce qui ne se rapproche pas sûrement est listé, jamais deviné ; simulation par défaut, comme `db:reconcile-hn` (C6).
+
+**Limites connues**
+- Aucune route ne change le parent ou la section d'un article existant (`patchArticleSchema` : titre, adresse, intention) ; « changer le parent » ne touche que la carte. Un article « hors de l'arbre » y reste, sauf rattrapage.
+- `insertCocoonArticle` calcule `id = MAX(id)+1` (pas de séquence) : deux créations simultanées se départagent par nouvel essai (5 au plus).
+- Les parcours navigateur appellent encore `/articles/batch-create` ([bout-en-bout.parcours.test.ts:103](../../tests/browser-e2e/parcours/bout-en-bout.parcours.test.ts), [cerveau.parcours.test.ts:145](../../tests/browser-e2e/parcours/cerveau.parcours.test.ts)) : ils sont à réécrire avec le lot L7 (parcours pilier → intermédiaire → spécialisé), en cours au 2026-09-25.
+
+**Critères d'acceptation techniques**
+- AC.COCPROG.1 : cocon vide → pilier seul ; second pilier, pilier avec parent, enfant sans parent, parent hors cocon ou du mauvais niveau, section absente, inconnue ou déjà prise → ⛔ ; casse et ponctuation finale ignorées ; sections du texte, sinon de la structure, sans introduction, conclusion ni FAQ. *(test : `tests/unit/shared/verifiers-cocoon-hierarchy.test.ts`, dans `npm run verify`)*
+- AC.COCPROG.2 : `createCocoonArticle` — 404 cocon inconnu ; pilier sans parent ; intermédiaire dans un cocon vide 409 et rien de créé ; enfant d'un parent rédigé sans rejouer sa porte ; section inconnue 409 ; 409 `SLUG_TAKEN` ; `getCocoonTree` : sections, enfant né de chacune, rédigé ou non, enfant dont la section a disparu toujours listé. *(test : `tests/unit/services/cocoon-article.service.test.ts`)*
+- AC.COCPROG.3 : routes `POST /cocoons/:cocoonId/articles` (201, 500) et `GET /cocoons/:cocoonId/tree` (404, 400) *(test : `tests/unit/routes/cocoon-articles.routes.test.ts`)* ; `batch-create` → 404, cocon vide : spécialisé refusé puis pilier créé ; un enfant naît d'une section d'un pilier rédigé et une section ne donne qu'un article *(tests : `tests/contract-api/articles.contract.test.ts`, `tests/e2e-workflows/cerveau.workflow.test.ts`, `tests/integration-tabs/cerveau-proposals.tab.test.ts`, serveur requis)*.
+- AC.COCPROG.4 : `DELETE /articles/:id` d'un parent qui a des enfants → 409 `HAS_CHILDREN` *(test : `tests/unit/routes/articles.routes.test.ts`)* ; l'enfant, lui, se détache et libère sa section *(test : `tests/contract-api/articles.contract.test.ts`, serveur requis)* ; la carte garde l'article refusé et le dit, suit un 404, retire l'article détaché *(test : `tests/unit/composables/proposed-articles-map.test.ts`, « Carte indicative — retirer un article créé »)*.
+- AC.COCPROG.5 : constructeur — arbre rangé pilier puis intermédiaires, orphelins à part, erreur de chargement dite ; pilier créé sans porte, inscrit sur la carte, arbre rechargé ; enfant créé derrière la porte de son parent ; proposition de même titre mise à jour (intention reprise), jamais une proposition liée à un autre article ; titre de moins de 3 caractères refusé sans appel ; retour « corriger » depuis l'alarme → rien de créé ; mot-clé refusé par le pool → article gardé et avertissement *(test : `tests/unit/composables/useCocoonBuilder.test.ts`)* ; écran — cocon vide : « Créer le pilier », appel payant seulement au clic ; parent non rédigé : bouton de section désactivé et expliqué ; section prise : lien vers l'enfant ; orphelins sans action *(test : `tests/unit/components/cocoon-tree-builder.test.ts`)* ; la carte n'offre plus d'action qui crée un article, un article créé garde sa marque *(tests : `tests/unit/composables/proposed-articles-map.test.ts`, `tests/unit/components/brain-phase-architecture.test.ts`)*.
+- AC.COCPROG.6 : mode automatique — section libre la plus proche du sujet, jamais une section prise, raison dite sans parent ni section libre *(test : `tests/unit/scripts/auto-article/pick-parent-section.test.ts`)*.
+- AC.COCPROG.7 : rattrapage — parent de la carte et section qui parle de l'enfant ; intermédiaire sans parent → pilier unique ; aucune section ne parle du sujet → listé ; une section ne donne qu'un article ; la section va à l'article qui en parle le plus ; les mots du sujet du parent ne suffisent pas ; un article déjà rattaché n'est pas touché *(test : `tests/unit/scripts/backfill-cocoon-plan.test.ts`)*.
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C7 ; remplace `DESIGN-CER-BATCH-CREATE` ; checklist K6).
+
+**Voir aussi** : `DESIGN-CER-PARENT-WRITTEN-GATE`, `DESIGN-CER-CHILD-FROM-PILLAR-H2`, `DESIGN-CER-KEYWORD-REAL-DATA`, `DESIGN-INFRA-COCOON-CONTEXT`, `DESIGN-CER-STEPS-COCOON`, `DESIGN-CER-AIGUILLAGE`, `DESIGN-CER-CREATION-HONNETE`, `DESIGN-CER-BATCH-CREATE` (remplacée).
+
+---
+
+### DESIGN-CER-PARENT-WRITTEN-GATE
+
+**Réf PRD :** [FR-CER-PARENT-WRITTEN-GATE](./prd.md#fr-cer-parent-written-gate--pas-denfant-tant-que-le-parent-nest-pas-rédigé)
+
+Commits `749d8c5` (étape), `d22ea8e` (porte du parent à la création), `e738f99` (rattrapage), `fb92b46` (écran du Cerveau).
+
+**Refs code**
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — `REDACTION_DRAFT_ACCEPTED = 'redaction:draft_accepted'` (61), `REDACTION_CHECKS` (63), `ALL_WORKFLOW_CHECKS = [...MOTEUR_CHECKS, ...REDACTION_CHECKS]` (66) ; commentaire d'en-tête (10-15) : la famille `redaction:*` revient pour cette seule étape. Pas de dépendance dans `CHECK_DEPENDENTS` (49-52) : l'étape est **collante**.
+- [shared/schemas/article-progress.schema.ts](../../shared/schemas/article-progress.schema.ts) — `writeCheckRegex = /^(moteur:[a-z]+(_[a-z]+)*|redaction:draft_accepted)$/` (11) : toute autre étape `redaction:*` est refusée à l'écriture (400) ; `readCheckRegex` (19) tolère toujours les anciennes.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `CHECK_GATES[REDACTION_DRAFT_ACCEPTED] = 'draft'` (60-67) : `POST /articles/:id/progress/check` joue la porte `draft` (`draftGate`, 256-275 : texte enregistré, capitaine, cible `article_micro_contexts.target_word_count` sinon type, nombre de H2 du sommaire) ; refus → 422 `GATE_BLOCKED`.
+- [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — `acceptDraft(id)` (101-111) : `useGateAlarmStore().runThroughGate(id, () => progress.addCheck(id, REDACTION_DRAFT_ACCEPTED))`, vrai si l'étape est posée, panne journalisée ; appelée d'office après la méta (`void acceptDraft(id)`, 159), jamais si la génération ou la méta échoue ; exposée (204) pour le bandeau. Remplace `reviewDraft` (qui ne faisait que `ensure(id, 'draft')`).
+- [src/components/article/DraftAcceptance.vue](../../src/components/article/DraftAcceptance.vue) — bandeau (`data-testid="draft-acceptance"`, `data-accepted`) : `accepted` lu dans `useArticleProgressStore` (25-27), progression rechargée au montage et au changement d'article (29-34) ; étape posée → « ✓ Premier jet accepté : l'article peut donner naissance à ses articles enfants dans le cocon. » (`draft-accepted`, 39-41) ; sinon message et bouton « Valider le premier jet » (`draft-accept`, 43-48) qui émet `accept`. Rien sans texte. Monté par [ArticleEditorView.vue:461](../../src/views/ArticleEditorView.vue) et [ArticleWorkflowView.vue:463](../../src/views/ArticleWorkflowView.vue), qui branchent `accept` sur `acceptDraft`.
+- [server/services/article/cocoon-article.service.ts](../../server/services/article/cocoon-article.service.ts) — `createCocoonArticle`, étape 3 (129-142) : parent sans l'étape → `evaluateArticleGate(parent.id, 'draft')` ; refus → 409 `GATE_BLOCKED` avec l'évaluation (`details`) ; passe (ou dérogations enregistrées) → `addArticleCheck(parent.id, REDACTION_DRAFT_ACCEPTED)` puis création. `getCocoonTree` expose `drafted` (85).
+- [server/services/strategy/child-candidates.service.ts](../../server/services/strategy/child-candidates.service.ts) — parent non rédigé → 409 `PARENT_NOT_WRITTEN` **avant** tout appel payant (82-84).
+- Écran du Cerveau : [CocoonTreeBuilder.vue:166-168,184-196](../../src/components/production/brain/CocoonTreeBuilder.vue) — bouton de section désactivé (`!block.node.drafted`) et message « Validez d'abord le premier jet de … » ; [useCocoonBuilder.ts:277-290](../../src/composables/strategy/useCocoonBuilder.ts) — `runThroughGate(parentId, create)` ; alarme refermée sans dérogation → `createError` « … doit d'abord être rédigé ».
+- Mode automatique : [scripts/auto-article/phases/redaction.ts:178-182](../../scripts/auto-article/phases/redaction.ts) — étape « 4 bis » après l'enregistrement du texte et de la méta, `emitCheck(…, REDACTION_DRAFT_ACCEPTED)` ; un refus arrête le run ; [scripts/auto-article/checks.ts:22-35](../../scripts/auto-article/checks.ts) — `describeGateRefusal` : « Décidez dans la Rédaction » pour une étape `redaction:*` (28).
+- Rattrapage : [scripts/backfill-cocoon.ts:71-85](../../scripts/backfill-cocoon.ts) — pour chaque article sans l'étape : publié → étape posée (sans jouer la porte) ; texte vide → ignoré ; sinon `evaluateArticleGate(id, 'draft')` passe → étape posée (`--apply`), refuse → défauts listés.
+
+**Endpoints**
+- `POST /api/articles/:id/progress/check { check: 'redaction:draft_accepted' }` — 200, ou 422 `GATE_BLOCKED` (porte `draft`).
+- `POST /api/cocoons/:cocoonId/articles` — 409 `GATE_BLOCKED` (porte du parent) ; `POST /api/cocoons/:cocoonId/child-candidates` — 409 `PARENT_NOT_WRITTEN`.
+
+**Flux DB**
+
+*Lecture* : `articles.completed_checks` (étape présente ?) ; porte `draft` : `article_content` (texte, sommaire), `article_keywords.capitaine`, `article_micro_contexts.target_word_count`, `gate_waivers` (`gate_id = 'draft'`).
+
+*Écriture* : `articles.completed_checks` + `check_timestamps` (`addArticleCheck`) — par l'écran de rédaction, par la création d'un enfant, par le mode automatique ou par le rattrapage ; dérogations dans `gate_waivers`.
+
+**Stores Pinia**
+- `useArticleProgressStore` — `addCheck`, `getProgress`, `fetchProgress` (bandeau).
+- `useGateAlarmStore` — `runThroughGate` (alarme puis rejeu, pour l'étape comme pour la création d'un enfant).
+
+**Décisions d'architecture**
+- **« Rédigé » = une étape enregistrée**, pas une présence de contenu : la phase `redaction` naissait dès qu'un texte non vide était enregistré, et un article enrichi s'éloigne de sa cible (±15 %) sans cesser d'être rédigé.
+- **Étape collante** : ni l'enrichissement, ni une réécriture, ni une étape Moteur retirée ne la retirent (aucune entrée dans `CHECK_DEPENDENTS`).
+- **Alarme sur le parent, au moment de créer l'enfant** : le serveur rejoue la porte du parent plutôt que de répondre « pas rédigé » ; ses dérogations y sont enregistrées, puis la création est rejouée. L'écran du Cerveau, lui, grise le bouton tant que l'arbre dit le parent non rédigé : ce chemin sert quand l'état a changé entre-temps, et au mode automatique (qui s'arrête).
+- **Rattrapage : publié = rédigé** : un article publié a passé la porte de publication ; lui rejouer la porte du premier jet (±15 % d'une cible) le refuserait pour sa longueur enrichie. Écart avec la décision 10 de la tech-spec (corrigée).
+- **Pas de dot** : `ProgressDots` ne compte que `MOTEUR_CHECKS` ; l'étape se lit dans le bandeau et dans l'arbre.
+
+**Limites connues**
+- Méta en échec : l'étape n'est pas demandée d'office (le bandeau la redemande).
+- Le 409 `GATE_BLOCKED` de la création (au lieu du 422 des étapes) vient d'un autre refus que celui de `POST /progress/check` ; l'écran les traite de la même façon (`isGateBlocked` lit le code et les `details`, pas le statut).
+
+**Critères d'acceptation techniques**
+- AC.PARWRIT.1 : `ALL_WORKFLOW_CHECKS` = les 6 étapes Moteur + la seule étape Rédaction ; `redaction:draft_accepted` accepté à l'écriture, `redaction:brief_validated` refusé. *(test : `tests/unit/coherence/completed-checks.test.ts`)*
+- AC.PARWRIT.2 : ⛔ sans texte, la porte refuse l'étape ; une autre étape `redaction:*` est refusée à l'écriture. *(test : `tests/contract-api/gates.contract.test.ts`, « Étape « premier jet accepté » », serveur requis)*
+- AC.PARWRIT.3 : après le premier jet, l'étape est demandée à la porte ; premier jet en erreur → aucune étape ; refusée à l'alarme → faux, aucune étape. *(test : `tests/unit/composables/useArticleGeneration.test.ts`)* ; bandeau : étape absente → bouton ; posée → message sans bouton ; sans texte → rien *(test : `tests/unit/components/draft-acceptance.test.ts`)*.
+- AC.PARWRIT.4 : parent pas rédigé — sa porte refuse : 409 `GATE_BLOCKED` avec l'évaluation du parent, rien de créé ; elle passe : étape posée sur le parent puis enfant créé *(test : `tests/unit/services/cocoon-article.service.test.ts`)* ; candidats : 409, rien de payé *(test : `tests/unit/services/child-candidates.service.test.ts`)*.
+- AC.PARWRIT.5 : mode automatique — refus du premier jet : le message renvoie à la Rédaction *(test : `tests/unit/scripts/auto-article/checks.test.ts`)*.
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C7).
+
+**Voir aussi** : `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-CER-COCOON-PROGRESSIVE`, `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS`, `DESIGN-MOT-CHECKS-CONSTANTS`, `DESIGN-INFRA-GATE-WAIVER`.
+
+---
+
+### DESIGN-CER-CHILD-FROM-PILLAR-H2
+
+**Réf PRD :** [FR-CER-CHILD-FROM-PILLAR-H2](./prd.md#fr-cer-child-from-pillar-h2--chaque-enfant-naît-dune-section-de-son-parent)
+
+Commits `f02fbbf` (colonnes), `d22ea8e` (section vérifiée), `04d90a2` (section transmise à l'enfant), `1882030` (résumé et publication).
+
+**Refs code**
+- Section d'origine : `articles.parent_section` (titre du H2), posée par `createCocoonArticle` (cf. `DESIGN-CER-COCOON-PROGRESSIVE`) ; sections admissibles = `parentSectionsOf` ([shared/verifiers/cocoon-hierarchy.ts:75-81](../../shared/verifiers/cocoon-hierarchy.ts)) ; comparaison par `sectionKey` ([shared/chapters.ts:18-20](../../shared/chapters.ts), déplacée là par le commit `1882030` pour éviter un cycle d'import).
+- Ce que l'enfant sait de sa section : `parentSectionText` ([server/services/strategy/cocoon-context.service.ts:25-29](../../server/services/strategy/cocoon-context.service.ts) : texte brut du chapitre du parent, 2 000 caractères au plus) → `renderCocoonContext` (« Il naît de la section … Ce que « … » en dit déjà : … », [shared/cocoon-context.ts:79-87](../../shared/cocoon-context.ts)) — cf. `DESIGN-INFRA-COCOON-CONTEXT`.
+- [shared/constants/article-type-rules.ts:76](../../shared/constants/article-type-rules.ts) — `CHILD_SUMMARY_WORDS = { min: 150, max: 250 }`, lu par la porte de publication, la passe « Résumer » et son vérificateur.
+- Porte de publication : [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — `PublishGateInput.children` (39) ; `childSummaryIssues` (185-210) : chapitre retrouvé par `sectionKey` ; absent → 🟠 `child-section-missing:<id>` ; présent, mots hors H2 > 250 → 🔴 `child-section-too-long:<id>` (message qui cite la passe « Résumer »). Données : `publishCocoonLinks` ([gate.service.ts:283-307](../../server/services/gates/gate.service.ts)) — `SELECT id, titre, parent_section FROM articles WHERE parent_id = $1 AND parent_section IS NOT NULL`.
+- Passe « Résumer » : cf. `DESIGN-RED-ENRICH-PASSES` (prompt [enrich-resumes.md](../../server/prompts/enrich-resumes.md), vérification `enrich-summary-length`) ; `GET /api/articles/:id/children` ([articles.routes.ts:202 et suiv.](../../server/routes/articles.routes.ts) → `getArticleChildren`, [data.service.ts:488 et suiv.](../../server/services/infra/data.service.ts) : `id`, titre, `parent_section`, mot-clé = capitaine, sinon `captain_keyword_locked`, sinon `suggested_keyword`, statut).
+- Lien vers l'enfant : cf. `DESIGN-RED-LINKING-MANUAL` (`familySuggestions`).
+
+**Endpoints**
+- `GET /api/articles/:id/children` — `{ data: Array<{ id, title, parentSection, keyword, status }> }` ; 400 sur un identifiant invalide.
+
+**Flux DB**
+
+*Lecture* : `articles.parent_id` / `parent_section` des enfants ; `article_content.content` du parent (sections, texte de la section).
+
+*Écriture* : `articles.parent_section` à la création ; le résumé accepté remplace le chapitre dans `article_content.content` (`saveArticle`).
+
+**Décisions d'architecture**
+- **Section = titre du H2**, comparé sans casse ni ponctuation finale : pas d'identifiant de section dans le texte. Simple, mais un chapitre renommé « disparaît » (🟠 à la publication).
+- **Résumé contrôlé à la publication par le haut seulement** (> 250 mots 🔴) : trop court n'est pas un risque de cannibalisation ; le minimum n'est vérifié que sur la proposition de la passe (`enrich-summary-length`).
+- **Pour tout parent**, pas seulement le pilier : un intermédiaire résume ses spécialisés de la même façon.
+
+**Limites connues**
+- Renommer le chapitre dans le parent ne met pas à jour `parent_section` de l'enfant.
+- La porte de publication compte les mots du chapitre sans son H2, H3 compris.
+
+**Critères d'acceptation techniques**
+- AC.CHILDH2.1 : 🔴 une section qui développe, au-delà de 250 mots, le sujet d'un enfant ; 200 mots : rien ; une section sans enfant peut être longue ; 🟠 la section dont est né un enfant a disparu. *(test : `tests/unit/shared/verifiers-publish.test.ts`, « verifyPublish — un parent résume ses enfants »)*
+- AC.CHILDH2.2 : publier un pilier : section trop longue pour un enfant 🔴. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.CHILDH2.3 : `GET /articles/:id/children` renvoie les enfants, 400 sur un identifiant invalide. *(test : `tests/unit/routes/articles.routes.test.ts`)*
+- AC.CHILDH2.4 : un enfant connaît la section qui l'annonce et ce que son parent en dit, texte borné. *(test : `tests/unit/shared/cocoon-context.test.ts`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C7).
+
+**Voir aussi** : `DESIGN-CER-COCOON-PROGRESSIVE`, `DESIGN-RED-ENRICH-PASSES`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-RED-LINKING-MANUAL`, `DESIGN-INFRA-COCOON-CONTEXT`, `DESIGN-HN-LOCK-GATE` (recoupement d'un pilier avec un article du cocon).
+
+---
+
+### DESIGN-CER-KEYWORD-REAL-DATA
+
+**Réf PRD :** [FR-CER-KEYWORD-REAL-DATA](./prd.md#fr-cer-keyword-real-data--le-mot-clé-dun-nouvel-article-se-choisit-sur-des-données-réelles)
+
+Commits `04d90a2` (candidats, mesure), `d22ea8e` (mot-clé mesuré exigé), `fb92b46` (écran).
+
+**Refs code**
+- [server/services/strategy/child-candidates.service.ts](../../server/services/strategy/child-candidates.service.ts) — en-tête `AUTHORITY:` (1-16). `ChildCandidatesError { status, code: 'COCOON_NOT_FOUND' | 'HIERARCHY_VIOLATION' | 'PARENT_NOT_WRITTEN' | 'AI_UNREADABLE' }` (31-41) ; `proposeChildCandidates(cocoonId, { parentId, parentSection })` (56-135) : arbre (`getCocoonTree`, 60) ; niveau déduit du parent (`CHILD_LEVEL`, 43, 67) ; **avant l'appel payant** : parent spécialisé ⛔, `verifyCocoonHierarchy` avec les sections du parent (69-81), parent non rédigé → 409 `PARENT_NOT_WRITTEN` (82-84) ; contexte `cocoonContextForNewArticle` (86) ; prompt `cocoon-child-keywords` avec `cocoon_context`, `articleLevel`, `parentSection`, `type_rules` et le global `{{strategy_context}}` du cocon (`cocoonSlug`, 89-97) ; `collectStreamWithUsage(…, 1500)` (98) ; réponse lue par `parseAiJson` + Zod (`aiResponseSchema`, 47-54) ; candidats qui reprennent un mot-clé du cocon ou un autre candidat écartés (`normalizeKeyword`, 105-113), 5 au plus (`MAX_CANDIDATES`, 45) ; aucun → 502 `AI_UNREADABLE` (114-117) ; `measureKeywords` (119).
+- [server/services/keyword/keyword-measure.service.ts](../../server/services/keyword/keyword-measure.service.ts) — en-tête `AUTHORITY:` (1-16). `measureKeywords(keywords)` (87 et suiv.) : `keyword_metrics` relu ; absents ou périmés (`isKeywordMetricsFresh`, 7 jours) → `fetchMissingKpis` (35-58) : **un** `fetchKeywordOverviewBatch` + `fetchSearchIntentBatch` groupés, `upsertKeywordKpis` ; panne des volumes → rien d'enregistré, `metrics: null`. SERP (`serpTop`, 62-86, lignes au commit `1062072`) : l'analyse du Moteur si elle a moins de 7 jours (`getSerpResultsFresh`, gratuit), sinon un **relevé** mis en cache 7 jours dans `external_api_cache` (`getOrFetch('serp-top', slugify(keyword), SERP_TOP_TTL_MS, () => fetchSerp(keyword))`, 74 ; `SERP_TOP_CACHE`, `SERP_TOP_TTL_MS`, 27-28), **jamais** dans `keyword_serp_results` ; panne → `serp: []` ; `SERP_TOP = 3` (26).
+- **Correctif `1062072` (2026-09-25)** : la mesure écrivait son relevé dans `keyword_serp_results` (`upsertSerpResults`). Pour l'analyse SERP du Moteur, c'était une analyse fraîche sans aucune page lue : pendant 7 jours, le mot-clé choisi n'était jamais scrapé, et Lieutenants, Structure et Lexique restaient sans pages concurrentes (révélé par le parcours de bout en bout). Désormais le relevé vit dans `external_api_cache` (`serp-top`), et `reconstructSerpAnalysisResult` rend `null` quand aucune page n'a été lue (cf. `DESIGN-INT-SERP-ONCE`), ce qui répare aussi les mots-clés déjà touchés.
+- **Correctif `f16cab5` (2026-09-25), mode simulé** : le bac à sable DataForSEO répond aux appels groupés par des mots-clés factices ; `pairWithRequested` ([server/services/external/dataforseo/keywords.ts:20-26](../../server/services/external/dataforseo/keywords.ts)) rattache alors ses réponses, dans l'ordre, aux mots-clés demandés (`fetchKeywordOverviewBatch`, 196 et suiv. ; `fetchSearchIntentBatch`, 256 et suiv.). Sans lui, aucun candidat n'était mesuré en mode simulé et aucun article ne pouvait naître (cf. `DESIGN-EXT-DATAFORSEO-SANDBOX`).
+- [server/prompts/cocoon-child-keywords.md](../../server/prompts/cocoon-child-keywords.md) — `{{strategy_context}}` (3), `{{cocoon_context}}` (5), mission par niveau (7), bloc `{{#parentSection}}` (9-11), « entre 3 et 5 candidats » (13), champs `keyword` / `title` / `rationale` / `painPoint` (15-19), variété et « aucun candidat ne reprend le mot-clé d'un article déjà présent » (21), `{{type_rules}}` (23), sortie JSON (25-35). Rôle dans [docs/prompts-reference.md](../../docs/prompts-reference.md) (généré).
+- [server/routes/cocoons.routes.ts:105-128](../../server/routes/cocoons.routes.ts) — `POST /cocoons/:cocoonId/child-candidates` : `childCandidatesSchema` ([shared/schemas/article.schema.ts:86-89](../../shared/schemas/article.schema.ts)), `req.socket.setTimeout(0)`, refus `ChildCandidatesError` avec son statut et son code.
+- Mot-clé mesuré exigé : [cocoon-article.service.ts:123-127](../../server/services/article/cocoon-article.service.ts) — `getKeywordMetrics(keyword)` absent → 422 `KEYWORD_NOT_MEASURED` (présence seulement, pas de fraîcheur).
+- Types : `KeywordMeasure`, `ChildCandidate`, `ChildCandidatesResult` ([shared/types/cocoon-tree.types.ts:33-60](../../shared/types/cocoon-tree.types.ts)).
+- Simulation : [server/services/external/mock-fixtures/cocoon-child.ts](../../server/services/external/mock-fixtures/cocoon-child.ts) — 4 candidats dérivés de la section du parent (ou du nom du cocon pour un pilier), enregistrée avant les fixtures génériques.
+- Écran (commit `fb92b46`) : [useCocoonBuilder.ts:150-183](../../src/composables/strategy/useCocoonBuilder.ts) — `proposeCandidates(target)` sur un clic seulement ; une réponse arrivée après un changement de cible est ignorée (`proposalSeq`) ; aucun candidat → message ; refus → `proposeError` avec le message du serveur ; `createFromCandidate` refuse un candidat sans `metrics` sans rien envoyer (248-251). [src/components/production/brain/CocoonCandidatesPanel.vue](../../src/components/production/brain/CocoonCandidatesPanel.vue) — rien de choisi d'office (nouvelle liste → choix et titre vidés) ; choisir préremplit le titre avec celui du candidat ; `canCreate` = candidat mesuré + titre ≥ 3 caractères ; radio désactivée et mention « Non mesuré » (`candidate-unmeasured`) pour un candidat sans mesure ; volume, difficulté (`/100`), intention en clair, trois premiers résultats ; aide « Comment lire ces chiffres ? ».
+- Mode automatique : aucun mot-clé envoyé à la création ([cerveau.ts:201-210](../../scripts/auto-article/phases/cerveau.ts)).
+
+**Endpoints**
+- `POST /api/cocoons/:cocoonId/child-candidates { parentId?, parentSection? }` — `{ data: ChildCandidatesResult }` ; 400 ; 404 `COCOON_NOT_FOUND` ; 409 `HIERARCHY_VIOLATION`, `PARENT_NOT_WRITTEN` ; 502 `AI_UNREADABLE`. **Payant** (IA + DataForSEO).
+
+**Flux DB**
+
+*Lecture* : arbre du cocon (`articles`, `article_content`, `article_keywords`) ; `cocoon_strategies` (`{{strategy_context}}`) ; `keyword_metrics` ; premiers résultats : `keyword_serp_results` (analyse du Moteur, < 7 jours), sinon `external_api_cache` (`cache_type = 'serp-top'`, < 7 jours).
+
+*Écriture* : `keyword_metrics` (`upsertKeywordKpis`) pour ce qui manquait ; `external_api_cache` (`serp-top`) pour un relevé payé ; **jamais** `keyword_serp_results` (réservée aux analyses du Moteur, pages lues ; avant le commit `1062072`, la mesure y écrivait) ; rien sur `articles` (la création est un autre appel).
+
+**Décisions d'architecture**
+- **Base d'abord, un seul appel groupé pour les volumes** (règle §3.6 de `.claude/CLAUDE.md`) ; la SERP, elle, se paie mot-clé par mot-clé quand elle manque (pas d'appel groupé pour les SERP chez DataForSEO dans ce service).
+- **Un relevé n'est pas une analyse** (commit `1062072`) : les trois premiers résultats d'un candidat vont dans le cache TTL (`external_api_cache`, `serp-top`), pas dans `keyword_serp_results`, que le Moteur prend pour une analyse faite (pages concurrentes lues).
+- **Aucun zéro inventé** : une mesure échouée reste `metrics: null` ; l'écran ne permet pas de la choisir, et la création la refuserait (422).
+- **Tout refus avant la dépense** : hiérarchie et parent rédigé sont vérifiés avant l'IA.
+- **La nature de la SERP n'est pas qualifiée** : les trois premiers résultats (titre, domaine) suffisent à l'utilisateur ; aucune classification « guides / agences ».
+
+**Limites connues**
+- `KEYWORD_NOT_MEASURED` ne regarde que la présence dans `keyword_metrics`, pas l'âge de la mesure.
+- La difficulté affichée est celle de `keyword_metrics.keyword_difficulty` ; le CPC est renvoyé mais pas affiché par le panneau.
+
+**Critères d'acceptation techniques**
+- AC.KWREAL.1 : un intermédiaire depuis une section libre du pilier : 3 à 5 candidats mesurés, sans doublon ni mot-clé déjà pris ; pilier d'un cocon vide : sans parent, niveau pilier ; parent non rédigé : 409, rien de payé ; cocon inconnu 404 ; réponse illisible 502. *(test : `tests/unit/services/child-candidates.service.test.ts`)*
+- AC.KWREAL.2 : tout en base et frais → aucun appel payant ; absents mesurés en **un** appel groupé puis enregistrés ; DataForSEO en panne → sans mesure, jamais inventée ; SERP absente : relevé mis en cache `serp-top` 7 jours, jamais écrit dans `keyword_serp_results` *(test : `tests/unit/services/keyword-measure.service.test.ts`)* ; des résultats sans aucune page lue ne font pas une analyse (`reconstructSerpAnalysisResult` → `null`) *(test : `tests/integration/serp-analyze-cache-c2.test.ts`, base requise)*.
+- AC.KWREAL.2 bis : bac à sable — les réponses factices des appels groupés sont rattachées, dans l'ordre, aux mots-clés demandés (volumes et intentions). *(test : `tests/unit/services/dataforseo.service.test.ts`, « dataforseo.service — appels groupés dans le bac à sable »)*
+- AC.KWREAL.3 : route — candidats d'une section, du pilier ; 400 ; refus du service avec son code. *(test : `tests/unit/routes/cocoon-articles.routes.test.ts`)*
+- AC.KWREAL.4 : mot-clé jamais mesuré : 422, rien de créé ni accordé ; mesuré : gardé *(test : `tests/unit/services/cocoon-article.service.test.ts`)* ; 422 bout en bout *(test : `tests/contract-api/articles.contract.test.ts`, serveur requis)*.
+- AC.KWREAL.5 : simulation — candidats tirés de la section du parent, ou du nom du cocon. *(test : `tests/unit/services/mock-cocoon-child.test.ts`)*
+- AC.KWREAL.6 : écran — appel payant seulement au clic ; données réelles de chaque candidat, candidat non mesuré marqué ; bouton désactivé sans candidat choisi ou avec un titre trop court ; choix + titre → article créé avec ce mot-clé *(test : `tests/unit/components/cocoon-tree-builder.test.ts`)* ; le mot-clé d'un candidat non mesuré n'est jamais envoyé *(test : `tests/unit/composables/useCocoonBuilder.test.ts`)*.
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C7).
+- 2026-09-25 — commit `f16cab5` : appels groupés mesurés en mode simulé (`pairWithRequested`).
+- 2026-09-25 — commit `1062072` : relevé des premiers résultats en cache `serp-top`, plus dans `keyword_serp_results`.
+
+**Voir aussi** : `DESIGN-CER-COCOON-PROGRESSIVE`, `DESIGN-INFRA-COCOON-CONTEXT`, `DESIGN-INFRA-KEYWORD-METRICS`, `DESIGN-INFRA-API-CACHE` (`external_api_cache`), `DESIGN-INT-SERP-ONCE`, `DESIGN-EXT-DATAFORSEO`, `DESIGN-EXT-DATAFORSEO-SANDBOX`, `DESIGN-CAP-LOCK-GATE` (le capitaine se juge ensuite au Moteur).
+
+---
+
 ### DESIGN-CER-CREATION-HONNETE
 
 **Réf PRD :** [FR-CER-CREATION-HONNETE](./prd.md#fr-cer-creation-honnete--un-article-annoncé-créé-existe-vraiment-et-un-refus-sexplique)
 
 **Refs code**
-- [src/composables/editor/useArticleProposals.ts](../../src/composables/editor/useArticleProposals.ts) — `createArticleInDb` : `createdInDb` posé dès que `batch-create` renvoie un id ; l'ajout du mot-clé au pool est dans son propre `try/catch`, et son refus déclenche `notify.warning` avec le message du serveur.
+- ~~[src/composables/editor/useArticleProposals.ts](../../src/composables/editor/useArticleProposals.ts) — `createArticleInDb` : `createdInDb` posé dès que `batch-create` renvoie un id ; l'ajout du mot-clé au pool est dans son propre `try/catch`, et son refus déclenche `notify.warning` avec le message du serveur.~~ Depuis C7 : [src/composables/strategy/useCocoonBuilder.ts](../../src/composables/strategy/useCocoonBuilder.ts) `createFromCandidate` (même principe : article créé = annoncé créé, pool dans son propre `try/catch`) — cf. le bloc « C7 » plus bas.
 - [server/routes/keywords.routes.ts](../../server/routes/keywords.routes.ts) — `POST /keywords` : le 409 `DUPLICATE` nomme le cocon qui utilise déjà le mot-clé (message affiché tel quel par l'écran).
 - [server/services/infra/data.service.ts](../../server/services/infra/data.service.ts) — `addKeyword` renvoie `existingCocoon`.
 
@@ -272,12 +524,15 @@ Response : { created: Article[], failed: { index, error }[] }
 - `apiPost` relaie le `message` du serveur : c'est donc le serveur qui formule l'explication.
 
 **Critères d'acceptation techniques**
-- AC.CERHON.1 : slug déjà pris (`batch-create` renvoie `[]`) → `createdInDb` reste faux, `notify.error` nomme titre et slug. *(test : `tests/unit/composables/article-proposals-creation.test.ts`)*
-- AC.CERHON.2 : `batch-create` OK puis `/keywords` refusé → `createdInDb` vrai, `dbId` posé, `notify.warning` nomme le titre et le cocon concurrent. *(test : idem)*
+- AC.CERHON.1 : ~~slug déjà pris (`batch-create` renvoie `[]`) → `createdInDb` reste faux, `notify.error` nomme titre et slug.~~ Depuis C7 : slug déjà pris → 409 `SLUG_TAKEN` (« L'adresse /… est déjà prise par un autre article : changez le titre ou l'adresse. ») *(test : `tests/unit/services/cocoon-article.service.test.ts`)* ; tout refus du serveur → `createError` « « titre » n'a pas été créé : <message du serveur> », rien d'inscrit sur la carte *(test : `tests/unit/composables/useCocoonBuilder.test.ts`)*.
+- AC.CERHON.2 : création OK puis `/keywords` refusé → l'article reste créé, inscrit sur la carte, `notify.warning` le dit *(test : `tests/unit/composables/useCocoonBuilder.test.ts`, « garde l'article créé quand son mot-clé est refusé par le pool, et dit pourquoi » ; avant C7 : `article-proposals-creation.test.ts`, renommé `proposed-articles-map.test.ts` par le commit `fb92b46`)*.
 - AC.CERHON.3 : `POST /keywords` en doublon → 409 dont le message contient le mot-clé et le cocon existant. *(test : `tests/unit/routes/keywords-pool.routes.test.ts`)*
+- AC.CERHON.4 (C7) : retirer un article de la carte — refus du serveur (409 `HAS_CHILDREN`) → `notify.error` et l'article reste sur la carte ; 404 → la carte suit. *(test : `tests/unit/composables/proposed-articles-map.test.ts`, « Carte indicative — retirer un article créé »)*
+
+**C7 (commits `d22ea8e`, `fb92b46`)** : `createArticleInDb` a quitté `useArticleProposals` ; la création passe par le constructeur ([useCocoonBuilder.ts:237-317](../../src/composables/strategy/useCocoonBuilder.ts) : refus → `createError` (283) ; création réussie → « à partir d'ici l'article existe » (291), pool (`addToKeywordPool`, 186-198) et carte (`registerInStrategy`, 204-230) ne peuvent plus le dire « non créé », leurs échecs sont des avertissements). Retrait : [useArticleProposals.ts](../../src/composables/editor/useArticleProposals.ts) `removeProposedArticle` (156 et suiv.) ne fait plus disparaître un article que le serveur refuse de détacher.
 
 **Voir aussi**
-- `DESIGN-CER-BATCH-CREATE`, `DESIGN-INFRA-KEYWORDS-SEO`.
+- `DESIGN-CER-COCOON-PROGRESSIVE` (avant C7 : `DESIGN-CER-BATCH-CREATE`), `DESIGN-INFRA-KEYWORDS-SEO`.
 
 ---
 
@@ -890,13 +1145,13 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Réf PRD :** [FR-MOT-CHECKS](./prd.md#fr-mot-checks--six-étapes-moteur-tracées-dans-la-progression-de-larticle)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — déclare les 6 constantes `MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED = 'moteur:hn_locked'` (depuis C6), `MOTEUR_LEXIQUE_VALIDATED` (lignes 20-26) et l'agrégat `MOTEUR_CHECKS` dans cet ordre (28-35).
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — déclare les 6 constantes `MOTEUR_DISCOVERY_DONE`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED = 'moteur:hn_locked'` (depuis C6), `MOTEUR_LEXIQUE_VALIDATED` (lignes 25-31 au commit `fb92b46` ; 20-26 avant l'en-tête ajouté par C7) et l'agrégat `MOTEUR_CHECKS` dans cet ordre (33-40). Depuis C7, le même fichier porte l'étape Rédaction `REDACTION_DRAFT_ACCEPTED` (61), hors `MOTEUR_CHECKS` : elle n'est pas un dot (cf. `DESIGN-CER-PARENT-WRITTEN-GATE`).
 - [src/composables/moteur/useMoteurCrossTabState.ts](../../src/composables/moteur/useMoteurCrossTabState.ts) — émet `MOTEUR_DISCOVERY_DONE` (handleSendToRadar) et `MOTEUR_RADAR_DONE` (handleRadarScanned).
 - [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — émet `MOTEUR_CAPITAINE_LOCKED` (verrouillage utilisateur).
 - [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — émet `MOTEUR_LIEUTENANTS_LOCKED`.
 - [src/components/moteur/StructureHnPanel.vue](../../src/components/moteur/StructureHnPanel.vue) — émet `MOTEUR_HN_LOCKED` après « Valider la structure » (ligne 97), le retire quand une structure validée est modifiée puis enregistrée (81) — cf. `DESIGN-HN-TAB`.
 - [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — émet `MOTEUR_LEXIQUE_VALIDATED`.
-- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `CHECK_GATES` (lignes 57-62) : `capitaine_locked`, `lieutenants_locked`, `hn_locked`, `lexique_validated` ne sont accordés que si leur porte passe (422 `GATE_BLOCKED` sinon, `POST /progress/check`).
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `CHECK_GATES` (lignes 60-67 au commit `fb92b46`) : `capitaine_locked`, `lieutenants_locked`, `hn_locked`, `lexique_validated` — et, depuis C7, `redaction:draft_accepted` (porte `draft`) — ne sont accordés que si leur porte passe (422 `GATE_BLOCKED` sinon, `POST /progress/check`).
 - [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) — le mode automatique demande les quatre étapes de la phase Valider, chacune après l'enregistrement de sa décision (`saveThenEmit`, `MOTEUR_HN_LOCKED` ligne 206).
 - [src/stores/article/article-progress.store.ts](../../src/stores/article/article-progress.store.ts) — `addCheck(id, check)` et `removeCheck(id, check)`.
 
@@ -929,6 +1184,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 **Historique**
 - 2026-09-25 — sixième check `MOTEUR_HN_LOCKED` (épopée qualité SEO, C6, commit `d24e530`) ; réconciliation des articles existants (commit `103c38b`).
+- 2026-09-25 — C7 (commit `749d8c5`) : `REDACTION_DRAFT_ACCEPTED` rejoint le catalogue et `CHECK_GATES`, hors des 6 checks Moteur (cf. `DESIGN-CER-PARENT-WRITTEN-GATE`).
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS-CONSTANTS` (validation regex + test garde anti-régression).
@@ -942,8 +1198,8 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Réf PRD :** [FR-MOT-CHECKS-CONSTANTS](./prd.md#fr-mot-checks-constants--catalogue-strict-des-étapes-de-progression)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue unique : 6 checks Moteur depuis C6 (5 avant ; les familles Cerveau et Rédaction ont été retirées le 2026-05-13, cf. DRIFT-002 — l'ancienne mention « 13 checks » était périmée).
-- [shared/schemas/article-progress.schema.ts](../../shared/schemas/article-progress.schema.ts) — `addCheckSchema = z.object({ check: z.string().regex(workflowCheckRegex, ...) })` — validation backend.
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue unique : 6 checks Moteur depuis C6 (5 avant ; les familles Cerveau et Rédaction ont été retirées le 2026-05-13, cf. DRIFT-002 — l'ancienne mention « 13 checks » était périmée), plus, depuis C7, la seule étape Rédaction `REDACTION_DRAFT_ACCEPTED` (61-66).
+- [shared/schemas/article-progress.schema.ts](../../shared/schemas/article-progress.schema.ts) — `addCheckSchema = z.object({ check: z.string().regex(writeCheckRegex, ...) })` (28-32) — validation backend ; `writeCheckRegex = /^(moteur:[a-z]+(_[a-z]+)*|redaction:draft_accepted)$/` (11) ; `readCheckRegex` (19, lecture tolérante `moteur|cerveau|redaction`).
 - [tests/unit/coherence/completed-checks.test.ts](../../tests/unit/coherence/completed-checks.test.ts) — test garde-fou qui scanne tous les `.ts` / `.vue` de `src/` et échoue si un littéral check legacy y apparaît.
 
 **Tables consommées** : `articles.completed_checks` TEXT[].
@@ -952,7 +1208,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 
 *Lecture* : tous les lecteurs de checks (gating, dots, recap) lisent via les constantes — aucune string en dur.
 
-*Écriture* : `addCheckSchema.safeParse({ check })` rejette tout format non-conforme avec un 400 avant insertion. La regex impose `<prefix>:<snake_case_action>` avec préfixe ∈ {`moteur`, `cerveau`, `redaction`}.
+*Écriture* : `addCheckSchema.safeParse({ check })` rejette tout format non-conforme avec un 400 avant insertion. La regex d'écriture n'admet que `moteur:<snake_case_action>` et, depuis C7, la valeur exacte `redaction:draft_accepted` ; `cerveau:*` et toute autre `redaction:*` sont refusés à l'écriture (tolérés à la lecture). *(Corrigé le 2026-09-25 : ce paragraphe disait « préfixe ∈ {`moteur`, `cerveau`, `redaction`} » pour l'écriture, ce qui ne valait que pour la lecture.)*
 
 **Décisions d'architecture**
 - **Préfixe par workflow** : permet la cohabitation des checks Moteur / Cerveau / Rédaction dans la même colonne flat `TEXT[]` sans collision (un `capitaine_locked` Moteur et un hypothétique `capitaine_locked` Cerveau ne se confondent jamais).
@@ -962,6 +1218,7 @@ Aucune porte n'est désactivée par l'absence d'étapes précédentes. C'est un 
 **Historique**
 - **2026-05-08** : migration `020_normalize_completed_checks.sql` (archivée dans `server/db/migrations/_archive/`) — convertit tous les checks legacy en base au format préfixé, élimine les doublons. Le snapshot `server/db/schema.sql` actuel reflète l'état post-migration. *(cf. DRIFT-010.)*
 - Sites corrigés en parallèle : `CaptainPanel.vue` (4 emits), `BriefStructureStep.vue` (1 emit), `useMoteurSoftGating.ts` (3 lectures), `useMoteurTabs.ts` (2 lectures), `useMoteurCrossTabState.ts` (2 emits).
+- **2026-09-25 (C7, commit `749d8c5`)** : `redaction:draft_accepted` admis à l'écriture ; test « accepte "redaction:draft_accepted", la seule étape Rédaction (C7) » et « refuse "redaction:brief_validated" » dans `tests/unit/coherence/completed-checks.test.ts`.
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS` (consommateurs).
@@ -3174,6 +3431,7 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 - [server/services/external/mock-fixtures/streams.ts](../../server/services/external/mock-fixtures/streams.ts) — fixture `lieutenants-hn-structure` (93 et suiv.) : H1 « <Capitaine> : le guide pratique », un H2 par lieutenant retenu complété de H2 thématiques jusqu'au minimum du type, un H3 sous le premier, ni introduction, ni conclusion, ni FAQ : la simulation passe la porte.
 - Mode automatique (commit `9631612`) : [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) — étape « 2bis. Structure » (193-208) : `collectSse('/keywords/:capitaine/ai-hn-structure', { lieutenants, level, hnStructure: récurrence, lockedHeadings: [], articleId })`, erreur si aucune structure, `ctx.articleStructure`, `saveThenEmit(…, MOTEUR_HN_LOCKED)` ; `decisions()` envoie `ctx.articleStructure`, jamais la récurrence des concurrents (124-131). [scripts/auto-article/phases/redaction.ts](../../scripts/auto-article/phases/redaction.ts) — sommaire = `structureToOutline(ctx.articleStructure, ctx.articleTitle)` si une structure existe, sinon `POST /generate/outline` (115-131). [scripts/auto-article/resume.ts](../../scripts/auto-article/resume.ts) — une reprise relit `hnStructure` dans `ctx.articleStructure` (46-48). [scripts/auto-article/resume-plan.ts](../../scripts/auto-article/resume-plan.ts) — `skipMoteur` exige `MOTEUR_HN_LOCKED` **et** `MOTEUR_LEXIQUE_VALIDATED` et un capitaine (25-27). [scripts/auto-article/collect-sse.ts](../../scripts/auto-article/collect-sse.ts) — `collectSse` extrait de la phase Rédaction ; `AutoRunContext.articleStructure` ([types.ts](../../scripts/auto-article/types.ts)), distinct de `hnStructure` (récurrence des concurrents).
 - Articles existants (commit `103c38b`) : [scripts/reconcile-hn-checks.ts](../../scripts/reconcile-hn-checks.ts), `npm run db:reconcile-hn` ([package.json](../../package.json)) — articles avec `moteur:lieutenants_locked` sans `moteur:hn_locked` (25-32) ; sans structure : listés « à construire » (38-41) ; sinon `evaluateArticleGate(id, 'hn-lock')` (42) : passe → `addArticleCheck` avec `--apply` (43-47), sinon les points bloquants sont listés (49-52). Simulation par défaut.
+- **C7 (commit `04d90a2`) — l'état du cocon remplace la liste des voisins** : la route ne lit plus `getCocoonSiblings` mais `cocoonContextForArticle(articleId)` ([keyword-ai-panel.routes.ts:142-144](../../server/routes/keyword-ai-panel.routes.ts), panne → `''`), passé en `cocoon_context` (153) ; le prompt remplace le bloc `{{#cocoon_articles}}` par `{{#cocoon_context}}…{{/cocoon_context}}` ([lieutenants-hn-structure.md:36-40](../../server/prompts/lieutenants-hn-structure.md)) ; `describeCocoonSiblings` est supprimé ([cocoon-siblings.service.ts](../../server/services/queries/cocoon-siblings.service.ts) ne sert plus qu'à la porte `hn-lock`). Les numéros de lignes ci-dessus (142-143, 152, 36-42) sont ceux d'avant C7. Cf. `DESIGN-INFRA-COCOON-CONTEXT`.
 
 **Endpoints**
 - `POST /api/keywords/:keyword/ai-hn-structure` — SSE, `done { outline: { hnStructure, justification }, metadata, usage }`.
@@ -3227,8 +3485,9 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C6) : onglet, composable, route enrichie, sommaire partagé, pas d'écrasement (`d24e530`) ; mode automatique (`9631612`) ; réconciliation (`103c38b`) ; parcours navigateur (`94c7e91`). Simulation de la réconciliation le 2026-09-25 : #1012 et #1013 retenus par la porte (le 1013 : 12 H2 de fond, H1 sans le capitaine).
+- 2026-09-25 — C7 (commit `04d90a2`) : `{{cocoon_context}}` remplace `{{cocoon_articles}}` ; test « l'état du cocon de l'article arrive dans le prompt ; sans article, rien » (`tests/unit/routes/keyword-ai-panel.routes.test.ts`).
 
-**Voir aussi** : `DESIGN-HN-LOCK-GATE`, `DESIGN-LIE-HN-STRUCTURE` (remplacée), `DESIGN-LIE-CHECK`, `DESIGN-MOT-PHASES`, `DESIGN-MOT-CHECKS`, `DESIGN-RED-OUTLINE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-INFRA-TYPE-RULES-SSOT`.
+**Voir aussi** : `DESIGN-INFRA-COCOON-CONTEXT`, `DESIGN-HN-LOCK-GATE`, `DESIGN-LIE-HN-STRUCTURE` (remplacée), `DESIGN-LIE-CHECK`, `DESIGN-MOT-PHASES`, `DESIGN-MOT-CHECKS`, `DESIGN-RED-OUTLINE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-INFRA-TYPE-RULES-SSOT`.
 
 ---
 
@@ -3986,7 +4245,8 @@ Onglet livré par l'épopée qualité SEO, chantier C6 (branche `feat/onglet-str
 - [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `draftGate(articleId)` (208-227) : texte et sommaire enregistrés (`getArticleContent`, sommaire en chaîne JSON ou en objet), capitaine `article_keywords.capitaine ?? articles.captain_keyword_locked` (222), cible `article_micro_contexts.target_word_count ?? targetWordsFor(articles.type)` (223), nombre de H2 du sommaire (224) ; l'entrée entière fait l'empreinte. Branchée dans `evaluateArticleGate` (282). `publishGate` ne la rejoue pas (241-245 : capitaine, lieutenants, lexique).
 - [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — `generateArticle(briefData, outline, targetWordCount?, articleIdPourSauvegarde?)` (111-193) : corps sans `paa`, `topic` ni `webSearchEnabled` (135-144) ; `startStream('/api/generate/article-draft', …)` (148) ; `onSectionStart` → `sectionProgress` (162-165) ; `onSectionDone` → `saveContenuPartiel(articleId, streamedText)` (243-253, sauvegarde au fil : `PUT /articles/:id { content }`, sans méta, sans toucher à l'état « modifié ») et chapitres du sommaire marqués `generated`. `webSearchEnabled` retiré du store. L'événement `continuation` n'est écouté nulle part côté écran ([src/services/api.service.ts:300-304](../../src/services/api.service.ts) ne traite que `section-start`, `section-done`, `done`, `error` et les paquets).
 - [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — header `AUTHORITY:` ; `wordCountTarget` = `briefStore.targetWordCount` (69, depuis C5b ; avant : `briefData.contentLengthRecommendation`) ; `handleGenerateArticle` (98-153) : `generateArticle(…, target, id)` (114-115, `target` = `wordCountTarget`) → sans erreur, `briefStore.setRetainedWordCount(target)` (118, commit `093ee57`, checklist R24 : l'écran garde la longueur que la route vient de retenir) → `saveArticle` (126) → `generateMeta` (132) → `saveArticle` (139) → `void reviewDraft(id)` (142) ; `reviewDraft` (90-96) = `useGateAlarmStore().ensure(id, 'draft')`, une panne est journalisée sans bloquer. *(Lignes relevées au commit `093ee57`.)*
-- [scripts/auto-article/phases/redaction.ts](../../scripts/auto-article/phases/redaction.ts) — `collectSse(deps, '/generate/article-draft', …)` (152-165) : corps sans `paa` ni `topic`, chapitres et reprises (`continuation`) journalisés. Le mode automatique ne consulte pas la porte du premier jet.
+- [scripts/auto-article/phases/redaction.ts](../../scripts/auto-article/phases/redaction.ts) — `collectSse(deps, '/generate/article-draft', …)` (152-165) : corps sans `paa` ni `topic`, chapitres et reprises (`continuation`) journalisés. ~~Le mode automatique ne consulte pas la porte du premier jet.~~ Depuis C7 (commit `749d8c5`), il demande l'étape `redaction:draft_accepted` après l'enregistrement du texte et de la méta (178-182) et s'arrête sur un refus (cf. `DESIGN-CER-PARENT-WRITTEN-GATE`).
+- **C7 — la porte accorde une étape** (commits `749d8c5`, `04d90a2` ; lignes au commit `fb92b46`) : `reviewDraft` (`ensure(id, 'draft')`) est remplacé par `acceptDraft(id)` ([useArticleGeneration.ts:101-111](../../src/composables/article/useArticleGeneration.ts), appelée à la ligne 159) = `runThroughGate(id, () => addCheck(id, REDACTION_DRAFT_ACCEPTED))` ; `CHECK_GATES[REDACTION_DRAFT_ACCEPTED] = 'draft'` ; `draftGate` est désormais à [gate.service.ts:256-275](../../server/services/gates/gate.service.ts), branchée dans `evaluateArticleGate` (366) ; bandeau `DraftAcceptance.vue` dans les deux vues. **État du cocon** : `cocoon_context: await cocoonContextForArticle(articleId)` ([article-draft.routes.ts:144-147](../../server/routes/generate/article-draft.routes.ts), panne → `log.warn` et premier jet sans lui) ; bloc facultatif `{{#cocoon_context}}` ([generate-article-draft.md:17-21](../../server/prompts/generate-article-draft.md) : « Un sujet qui a son propre article dans le cocon se résume ici en quelques phrases et y renvoie… »). Cf. `DESIGN-INFRA-COCOON-CONTEXT`.
 - [server/services/external/mock-fixtures/article-draft.ts](../../server/services/external/mock-fixtures/article-draft.ts) — simulation, importée **en premier** par `mock-fixtures/index.ts` (le prompt du premier jet contient la stratégie du cocon et déclenchait d'autres fixtures) ; reconnue au titre « ## Premier jet — article complet » (`MARKER`, 19). `buildDraftChunks(prompt)` (66-100) : H1 = titre s'il contient le capitaine en entier, sinon « Capitaine : titre » ; chapeau qui cite le capitaine ; un H2 par ligne du plan (`parsePlan` 54-64, lu dans `{{outlinePlan}}`), H3 compris, paragraphes variés (`paragraph` 43-52) calés sur le budget ; aucun chiffre ni marqueur ; en reprise, ni H1 ni chapeau, chapitres à partir du chapitre coupé ; paquets de 180 caractères, qui coupent des `<h2`. Fixture `article-draft-priority` (102-106). Remplace `generate-article-section` (`generate.ts`) et `auto-section-priority.ts`, qui écrivaient le même texte à chaque section sous le titre du premier H2.
 - [src/utils/api-label.ts](../../src/utils/api-label.ts) — libellé « Premier jet » dans la pile d'activité.
 
@@ -4022,7 +4282,8 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Stores Pinia**
 - `useEditorStore` — `content`, `streamedText`, `sectionProgress`, `lastArticleUsage` (usage de `done`, modèles et `stopReason` compris) ; plus de `webSearchEnabled`.
 - `useOutlineStore` — sommaire en entrée, chapitres marqués `generated` au fil des `section-done`.
-- `useGateAlarmStore` — `ensure(id, 'draft')` : verdict du serveur, alarme si la porte ne passe pas.
+- `useGateAlarmStore` — ~~`ensure(id, 'draft')`~~ depuis C7 `runThroughGate(id, addCheck(REDACTION_DRAFT_ACCEPTED))` : 422 → alarme → rejeu de l'étape.
+- `useArticleProgressStore` — `addCheck` (étape « premier jet accepté », C7), lu par `DraftAcceptance`.
 - `useBriefStore` — `targetWordCount` (longueur choisie pour l'article, sinon `contentLengthRecommendation`), la cible envoyée par l'écran depuis C5b.
 
 **Décisions d'architecture**
@@ -4033,13 +4294,13 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - **Plafond de jetons** : ~2,2 jetons par mot (français et balises), borné entre 8 000 et 16 000.
 - **Saturation** : disparaissent la pause de 15 s entre sections, le réessai unique d'une section en échec et la boucle d'attente sur 429 (événement `rate-limit`, 60 s puis 120 s puis 180 s) — boucle qui n'était de toute façon jamais atteinte, pour la même raison que celle de la méta (checklist R15). Restent les réessais (3 tentatives, attente exponentielle plafonnée à 8 s) et la bascule de fournisseur de [ai-provider.service.ts](../../server/services/external/ai-provider.service.ts) (`withRetry` 183-205, `withFallbackChain` 212-233), qui n'agissent qu'avant le premier paquet reçu.
 - **Budgets partagés** : le prompt et la porte lisent la même répartition (`sectionBudgets`).
-- **Porte non bloquante, jugée sur le texte enregistré** : évaluée après la méta, elle ouvre l'alarme sans empêcher quoi que ce soit ; elle ne garde encore aucune étape.
+- **Porte non bloquante, jugée sur le texte enregistré** : évaluée après la méta, elle ouvre l'alarme sans empêcher d'enregistrer ni d'enrichir. ~~Elle ne garde encore aucune étape.~~ Depuis C7, elle garde l'étape `redaction:draft_accepted`, sans laquelle l'article ne peut pas donner naissance à ses enfants (`DESIGN-CER-PARENT-WRITTEN-GATE`).
 - **Porte non rejouée à la publication** : ±15 % de la cible n'a plus de sens après les passes d'enrichissement ; la publication rejuge la langue, les répétitions et les chiffres sans source avec ses propres règles (cf. `DESIGN-RED-PUBLISH-GATE`).
 - **Écart assumé avec l'épopée et la tech-spec** : un H1 sans le capitaine est 🔴, pas ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme `seo-capitaine-not-in-title` à la publication) ; seul un H1 absent est ⛔.
 
 **Limites connues**
 - **Une seule cible pour la rédaction et sa porte** (checklist R16, soldée côté serveur) : la route prend `article_micro_contexts.target_word_count` (choix de l'utilisateur), sinon `targetWordCount` envoyé par l'écran (`contentLengthRecommendation`), sinon `targetWordsFor(type)` ([article-draft.routes.ts:120](../../server/routes/generate/article-draft.routes.ts)) ; sans choix enregistré, elle **enregistre la cible retenue** (`retainTargetWordCount`, `data.service.ts`, `COALESCE` : jamais d'écrasement). La porte (`gate.service.ts:223`, micro-contexte > type) juge donc contre la valeur qui a guidé la rédaction. **Côté écran, soldé en C5b** (commit `57fe1e8`) : `briefStore.targetWordCount` (micro-contexte lu par `GET /articles/:id/micro-context`, sinon recommandation) alimente la cible envoyée, la barre de mots, l'écart, la réduction et le score SEO (cf. `DESIGN-RED-WORD-COUNT-TARGET`). ~~Cas limite : sans choix préalable, la cible retenue par la route n'est relue par l'écran qu'au `fetchBrief` suivant ; une recommandation de l'IA arrivée après le lancement du premier jet s'affiche entre-temps.~~ Soldé (commit `093ee57`, checklist R24) : après un premier jet sans erreur, `useArticleGeneration` pose la cible envoyée dans `retainedWordCount` ([useArticleGeneration.ts:118](../../src/composables/article/useArticleGeneration.ts)) — c'est celle que la route retient quand aucun choix n'était enregistré. `target` n'est jamais nul au lancement : dès que le brief existe, `contentLengthRecommendation` vaut au moins `calculateContentLength(type)` ([brief.store.ts:117-118](../../src/stores/strategy/brief.store.ts)). Hypothèse du correctif : la route a retenu `target`. Elle ne l'a pas fait si un choix enregistré n'avait pas encore été relu par l'écran au lancement (lecture non bloquante du micro-contexte, [brief.store.ts:121-127](../../src/stores/strategy/brief.store.ts)) : la route garde ce choix, l'écran pose la cible envoyée — course théorique, le premier jet se lançant bien après l'ouverture du brief. Faire renvoyer la cible retenue dans l'événement `done` la fermerait.
-- **Porte consultée une fois** : seul `reviewDraft` appelle `ensure(id, 'draft')`, juste après la méta ; rien ne la relance après correction ; pas d'appel si la méta échoue ; le mode automatique ne la consulte pas.
+- ~~**Porte consultée une fois** : seul `reviewDraft` appelle `ensure(id, 'draft')`, juste après la méta ; rien ne la relance après correction ; pas d'appel si la méta échoue ; le mode automatique ne la consulte pas.~~ Soldé par C7 : le bouton « Valider le premier jet » du bandeau la relance, le mode automatique demande l'étape. Reste : pas d'appel d'office si la méta échoue.
 - **Reprise visible à l'écran** : l'événement `continuation` n'est pas écouté ; `streamedText` (et donc la sauvegarde au fil) garde le début du chapitre coupé suivi de sa réécriture jusqu'à `done`, dont le texte final remplace tout.
 - **Onglet fermé** : la route ne vérifie plus `req.socket.destroyed` (l'ancienne boucle s'arrêtait entre deux sections) ; l'appel à l'IA va à son terme, sans rien enregistrer côté serveur.
 - **Panne en cours de flux** : après le premier paquet, une erreur du fournisseur n'est ni réessayée ni reprise ; le premier jet s'arrête (événement `error`).
@@ -4063,8 +4324,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - 2026-09-25 — créée (épopée qualité SEO, C5a ; remplace `DESIGN-RED-ARTICLE` ; checklist R1, R7 soldées).
 - 2026-09-25 — C5b : la cible envoyée par l'écran est `briefStore.targetWordCount` (R16 soldée en entier) ; les passes d'enrichissement suivent le premier jet (`DESIGN-RED-ENRICH-PASSES`).
 - 2026-09-25 — C5b, commit `093ee57` : l'écran garde la cible retenue après le premier jet (`setRetainedWordCount`, checklist R24). Test : `tests/unit/composables/useArticleGeneration.test.ts`, « après le premier jet, l'écran garde la longueur qu'il a demandée ».
+- 2026-09-25 — C7, commits `749d8c5` et `04d90a2` : la porte accorde l'étape `redaction:draft_accepted` (écran, bandeau, mode automatique) ; `{{cocoon_context}}` dans le prompt. Tests : `useArticleGeneration.test.ts` (« après le premier jet, l'étape « premier jet accepté » est demandée à la porte »), `draft-acceptance.test.ts`, `generate.routes.test.ts`.
 
-**Voir aussi** : `DESIGN-RED-DRAFT-TO-SOURCE`, `DESIGN-RED-ENRICH-PASSES`, `DESIGN-RED-ARTICLE` (superseded), `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-EXT-AI-FALLBACK`.
+**Voir aussi** : `DESIGN-CER-PARENT-WRITTEN-GATE`, `DESIGN-INFRA-COCOON-CONTEXT`, `DESIGN-RED-DRAFT-TO-SOURCE`, `DESIGN-RED-ENRICH-PASSES`, `DESIGN-RED-ARTICLE` (superseded), `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-EXT-AI-FALLBACK`.
 
 ---
 
@@ -4129,9 +4391,10 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — `countImagesToProvide` (101-103) → ⛔ `image-to-provide` (151-159 ; message qui cite le bouton Image, 157), cf. `DESIGN-RED-PUBLISH-GATE`.
 - [server/services/external/mock-fixtures/enrichment.ts](../../server/services/external/mock-fixtures/enrichment.ts) — fixture `enrichment-priority`, importée juste après `article-draft` ([mock-fixtures/index.ts](../../server/services/external/mock-fixtures/index.ts) : ces prompts contiennent l'article entier et déclencheraient d'autres fixtures) ; reconnaît « # Passe d'enrichissement — … » et « # Réécriture d'un chapitre » ; Exemples (scène choisie d'après le titre, jamais la même d'un chapitre à l'autre), Tableaux (une ligne par H3 du chapitre), Images (place à fournir + texte alternatif), FAQ (`faq(keyword, prompt)`, 85-97 : autant de questions que la ligne « FAQ : n à m questions » des règles du type citées par le prompt en demande, trois à défaut, six au plus — depuis `093ee57`), réécriture (« Allons droit au but. » en tête du premier paragraphe) ; Sources, cf. `DESIGN-RED-ENRICH-SOURCES`.
 - [src/utils/api-label.ts](../../src/utils/api-label.ts) — « Passe sources (recherche web) », « Passe d'enrichissement », « Réécriture d'un chapitre » dans la pile d'activité.
+- **Passe « Résumer » (C7, commit `1882030` ; lignes à ce commit, inchangées au commit `fb92b46`)** : `ENRICHMENT_PASSES` gagne `resumes` ([shared/verifiers/enrichment.ts:28](../../shared/verifiers/enrichment.ts)) ; route ([enrich.routes.ts:44-54](../../server/routes/generate/enrich.routes.ts)) : titre du chapitre visé (`listChapters(chapterHtml)[0]`) → l'enfant né de cette section (`getArticleChildren`, `sectionKey`) ; aucun → erreur « Le chapitre « … » n'a aucun article enfant : rien à résumer. » avant tout appel à l'IA ; `ProposalInput.child = { title, keyword }` ([enrichment.service.ts:44](../../server/services/article/enrichment.service.ts)) ; `PROMPT_OF.resumes = 'enrich-resumes'` (59) ; plafond 1 200 jetons (67) ; variables `childTitle`, `childKeyword`, `summaryMin`, `summaryMax` = `CHILD_SUMMARY_WORDS` (83-89). Prompt [server/prompts/enrich-resumes.md](../../server/prompts/enrich-resumes.md) : l'article qui développe le sujet (9), chapitre dans `<user-content>` (21-23), consignes (27-31 : H2 gardé tel quel, H3 retirés, 150 à 250 mots, dernière phrase qui invite à lire l'enfant **sans poser de lien**, liens et chiffres sourcés gardés, 100 % français). Vérification : niveaux de titres comparés `12` comme la réécriture (139) ; `enrich-block-lost` 🟠 au lieu de ⛔ (151-162) ; 🔴 `enrich-summary-length` hors 150-250 mots (164-176). Écran : `enrichmentStore.childSections` + `loadChildSections(articleId)` (`GET /articles/:id/children`, [enrichment.store.ts:71-83](../../src/stores/article/enrichment.store.ts)) ; `targetsFor('resumes')` = chapitres dont le titre est une section d'enfant (85-91) ; panneau : passe « Résumer » ([EnrichmentPanel.vue:31](../../src/components/panels/EnrichmentPanel.vue)), sections rechargées à chaque article (58). Simulation : `summary(chapter, prompt)` ([mock-fixtures/enrichment.ts:99-111](../../server/services/external/mock-fixtures/enrichment.ts), environ 190 mots, H2 gardé, phrase qui annonce l'enfant).
 
 **Endpoints**
-- `POST /api/generate/enrich/:pass` (`sources` | `exemples` | `tableaux` | `images` | `faq`) — SSE : commentaires `: en cours`, puis un seul `done { EnrichmentProposal }` ou `error { message, chapterIndex }` ; 400 JSON avant le flux ; 404 `NOT_FOUND` JSON si l'article est inconnu (depuis `093ee57`).
+- `POST /api/generate/enrich/:pass` (`sources` | `exemples` | `tableaux` | `images` | `faq` | `resumes` depuis C7) — SSE : commentaires `: en cours`, puis un seul `done { EnrichmentProposal }` ou `error { message, chapterIndex }` ; 400 JSON avant le flux ; 404 `NOT_FOUND` JSON si l'article est inconnu (depuis `093ee57`).
 - `POST /api/generate/section-rewrite` — cf. `DESIGN-RED-SECTION-REWRITE`.
 - Acceptation : `PUT /api/articles/:id` (`editorStore.saveArticle`).
 
@@ -4153,6 +4416,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | `enrich-faq-malformed` | ⛔ | Pas de `<h2>` ou pas de `<h3>` | `faq` |
 | `enrich-faq-count` | 🟠 | Nombre de H3 hors de `[faqMin, faqMax]` du type (`level`), message « n questions : a à b pour un … » ; rien si le type est inconnu ou s'il n'y a aucune question ([enrichment.ts:189-193](../../shared/verifiers/enrichment.ts), commit `093ee57`, checklist R22) | `faq` |
 | `enrich-faq-not-question` | 🔴 | Un H3 qui ne finit pas par « ? » | `faq` |
+| `enrich-summary-length` | 🔴 | Mots hors H2 hors de `[CHILD_SUMMARY_WORDS.min, max]` = 150 à 250 (C7) | `resumes` |
+| `enrich-block-lost` | 🟠 | Même condition qu'au-dessus, ramenée à une attention : le détail a sa place dans l'article enfant (C7) | `resumes` |
+| `enrich-headings-changed` | ⛔ | Suite des titres H1 + H2 seulement (niveaux `12`) : les H3 peuvent partir (C7) | `resumes` |
 
 `blocked` = au moins un ⛔ : bouton grisé à l'écran, `accept` refuse aussi. Ni empreinte ni dérogation : ce vérificateur juge une proposition, ce n'est pas une porte.
 
@@ -4163,6 +4429,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | `sources` | Tout chapitre (chapeau compris) où `countToSourceMarkers > 0` ou `detectUnsourcedFigures` n'est pas vide |
 | `exemples`, `tableaux`, `images` | `index >= 0`, titre hors `FAQ_TITLE` (`/questions fr[ée]quentes\|\bfaq\b/i`), le dernier retiré s'il en reste plus d'un (la conclusion) |
 | `faq` | Aucun si un titre est déjà une FAQ ; sinon un seul item `{ index: faqInsertIndex(html), title: 'Questions fréquentes', html: '' }` |
+| `resumes` (C7) | `index >= 0` et `sectionKey(titre)` parmi les `parentSection` des enfants de l'article (`childSections`, lus par `GET /articles/:id/children`) |
 
 **Flux**
 1. Clic sur une passe → `runPass(pass, { articleId, keyword: capitaine, keywords: lieutenants })` → un item `pending` par chapitre visé ; aucun → message du panneau, aucun appel.
@@ -4225,8 +4492,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - 2026-09-25 — créée (épopée qualité SEO, C5b ; checklist R10 soldée).
 - 2026-09-25 — commit `093ee57` (checklist R17 à R20, R22, R23) : H1 protégé ; contexte de 30 000 caractères et stratégie de l'article, sinon du cocon ; 404 sur un article inconnu ; tout arrêt autre que `end` → `enrich-truncated` ; FAQ par type (`faqMin` / `faqMax`, `{{type_rules}}`, 🟠 `enrich-faq-count`) ; FAQ non insérée si la conclusion a changé (`anchor`) ; bouton « Image ».
 - 2026-09-25 — commit `2ca3d32` (suites de clôture) : `staleReason` ; rappel « image à fournir » dans le panneau dès qu'une image est acceptée (`imagesToProvide`, `data-testid="enrich-images-to-provide"`) ; FAQ d'un article de type inconnu : `describeUnknownTypeFaq()` (`article-type-rules.ts`, fourchette la plus large, annoncée) au lieu d'un `{{type_rules}}` vide.
+- 2026-09-25 — C7, commit `1882030` : passe « Résumer » (`resumes`). Tests : `verifiers-enrichment.test.ts` (« verifyEnrichment — passe Résumer »), `enrichment.service.test.ts` (« résumer : le H2 reste, les H3 partent, 150 à 250 mots qui annoncent l'article enfant »), `enrich.routes.test.ts` (« POST /generate/enrich/resumes » : l'enfant du chapitre transmis ; chapitre sans enfant → erreur, IA non appelée), `enrichment.store.test.ts` (« résumer : les chapitres dont est né un article, et eux seuls », « les sections nées d'un enfant se chargent depuis le serveur »), `enrichment-panel.test.ts` (« résumer : seul le chapitre dont est né un article est proposé ; sans enfant, le panneau le dit »).
 
-**Voir aussi** : `DESIGN-RED-ENRICH-SOURCES`, `DESIGN-RED-SECTION-REWRITE`, `DESIGN-RED-LANG-REVIEW`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-DRAFT-TO-SOURCE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-RED-EDITOR-TIPTAP`, `DESIGN-RED-PANELS-LAYOUT`, `DESIGN-INFRA-VERIFIER-SHARED`.
+**Voir aussi** : `DESIGN-CER-CHILD-FROM-PILLAR-H2`, `DESIGN-RED-ENRICH-SOURCES`, `DESIGN-RED-SECTION-REWRITE`, `DESIGN-RED-LANG-REVIEW`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-DRAFT-TO-SOURCE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-RED-EDITOR-TIPTAP`, `DESIGN-RED-PANELS-LAYOUT`, `DESIGN-INFRA-VERIFIER-SHARED`.
 
 ---
 
@@ -4593,7 +4861,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Réf PRD :** [FR-RED-CONTEXTUAL-ACTIONS](./prd.md#fr-red-contextual-actions)
 
 **Refs code**
-- [src/composables/editor/useContextualActions.ts](../../src/composables/editor/useContextualActions.ts) — composable principal : `executeAction(actionType, selectedText, context, editor)` → ouvre stream SSE vers `/api/generate/action` → accumule `streamedResult` → `acceptResult(editor)` remplace la sélection, `rejectResult()` annule. Cas spécial `actionType === 'internal-link'` : bypass SSE, ouvre `showArticlePicker` pour `applyInternalLink(article)`.
+- [src/composables/editor/useContextualActions.ts](../../src/composables/editor/useContextualActions.ts) — composable principal : `executeAction(actionType, selectedText, context, editor)` → ouvre stream SSE vers `/api/generate/action` → accumule `streamedResult` → `acceptResult(editor)` remplace la sélection, `rejectResult()` annule. Cas spécial `actionType === 'internal-link'` (48) : bypass SSE, retient `pendingSourceId = context.articleId`, ouvre `showArticlePicker` pour `applyInternalLink(article)` (96-113, depuis C7 commit `1882030`) : texte d'ancre et position (`char-<n>`) relevés dans le document, mark `internalLink` `{ targetId, href: '#article-<id>' }` (le même que le panneau Maillage), puis `useLinkingStore().saveLinks([{ sourceId, targetId, anchorText, position }])` → `PUT /api/links` → `internal_links`. Avant C7 : mark `{ slug, href: '/<slug>' }`, rien d'enregistré.
 - [src/components/editor/EditorBubbleMenu.vue](../../src/components/editor/EditorBubbleMenu.vue) — UI de la mini-barre TipTap au-dessus de la sélection ; elle émet `open-actions`, qui ouvre le menu [src/components/actions/ActionMenu.vue](../../src/components/actions/ActionMenu.vue) (monté par [src/components/article/ArticleEditorActionOverlays.vue](../../src/components/article/ArticleEditorActionOverlays.vue) ; 8 actions IA + « Lien interne » au 2026-09-25) ; `sources-chiffrees`, `exemples-reels` et `ce-quil-faut-retenir` sont proposées comme blocs dynamiques ([src/components/panels/BlocksPanel.vue](../../src/components/panels/BlocksPanel.vue)).
 - [server/routes/generate/action.routes.ts](../../server/routes/generate/action.routes.ts) — endpoint `POST /api/generate/action`, SSE. Charge `system-propulsite.md` (système) + `actions/<actionType>.md` (user prompt avec variables `selectedText`, `keywordInstruction`). Web search activé pour `sources-chiffrees` et `exemples-reels` uniquement (`needsWebSearch`, lignes 55-56). Depuis le commit `093ee57` (checklist R21 ; lignes relevées à ce commit) : outil `webSearchTool((await loadZoneContext()).zone)` — France, `Europe/Paris` et ville de la zone (56 ; avant : `WEB_SEARCH_TOOL`, sans ville) ; pour ces deux actions, rien n'est relayé pendant la génération (`consumeStream` reçoit un rappel vide, 70-73), un commentaire SSE `: en cours` part toutes les 15 s (69, arrêté dans `.finally`) ; puis `keepKnownLinks(rawContent, knownSources(selectedText, usage?.webSources))` retire tout lien externe absent des résultats de la recherche (texte gardé), `log.warn` liste les liens retirés, et le texte vérifié part en **un seul** événement `chunk` (75-80) avant `done { content, usage }` (92). Les autres actions relaient toujours chaque paquet (`writeChunk`, 67). Avec l'outil, `streamChatCompletion` n'essaie que Claude (`TOOL_CAPABLE_PROVIDERS`, cf. `DESIGN-RED-ENRICH-SOURCES`) : Claude indisponible → événement `error`, plus de réponse de Gemini sans recherche (checklist R9). `selectedText` est du texte brut (`editor.state.doc.textBetween`, [ArticleEditorView.vue:209](../../src/views/ArticleEditorView.vue) ; section en texte pour les blocs dynamiques) : `knownSources(selectedText)` n'y trouve aucun lien, seuls ceux de la recherche sont admis.
 - [server/prompts/actions/](../../server/prompts/actions/) — 11 prompts `.md` : `reformulate`, `simplify`, `convert-list`, `pme-example`, `keyword-optimize`, `add-statistic`, `answer-capsule`, `question-heading`, `sources-chiffrees`, `exemples-reels`, `ce-quil-faut-retenir` — les 11 valeurs IA de `ActionType` ([shared/types/action.types.ts](../../shared/types/action.types.ts)). **Vérifié 2026-09-25 par `ls server/prompts/actions/` : 11 fichiers.** `localize.md` est supprimé en C4 (checklist D1) : l'action avait quitté l'éditeur et `ActionType` le 2026-04-16 (commit `d3f5fa2`), plus rien ne chargeait son prompt.
@@ -4607,7 +4875,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 
 *Lecture* : aucune.
 
-*Écriture* : aucune **directement** par l'action. La modification de la sélection (`editor.insertContent(streamedResult)`) propage via `onUpdate` TipTap → `editorStore.setContent` → `isDirty = true` → autoSave → persistance standard. L'action est invisible pour la couche DB.
+*Écriture* : aucune **directement** par l'action. La modification de la sélection (`editor.insertContent(streamedResult)`) propage via `onUpdate` TipTap → `editorStore.setContent` → `isDirty = true` → autoSave → persistance standard. L'action est invisible pour la couche DB. **Exception depuis C7** : l'action « lien interne » écrit dans `internal_links` (`saveLinks`), comme le panneau Maillage (cf. `DESIGN-RED-LINKING-MANUAL`).
 
 **Stores Pinia**
 - Aucun store dédié. Le composable `useContextualActions` est local au composant qui le monte (typiquement `ArticleEditorView` ou `ArticleWorkflowView`). Il consomme indirectement `editorStore` via la chaîne de modification TipTap.
@@ -4639,17 +4907,20 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - 2026-09-25 — C4 : `localize.md` supprimé (checklist D1).
 - 2026-09-25 — C5b, commit `fc36baa` : recherche en France, sans repli (checklist R9).
 - 2026-09-25 — C5b, commit `093ee57` (checklist R21) : ville de la zone, texte accumulé et liens vérifiés, keep-alive.
+- 2026-09-25 — C7, commit `1882030` : le lien interne vise `#article-<id>` et s'enregistre dans `internal_links`. Test : `tests/unit/composables/useContextualActions.test.ts` (« applyInternalLink applies TipTap mark and closes picker »).
 - **`reformulate.md` x2 références au prompt** : un même prompt est utilisé pour l'action "reformuler" sur sélection ; ne pas confondre avec d'éventuels usages côté Moteur — c'est bien le même fichier mais avec des `selectedText` différents.
 
 **Voir aussi**
-- `DESIGN-RED-INTERNAL-LINKING` — cas particulier `internal-link` qui ouvre le picker.
+- `DESIGN-RED-LINKING-MANUAL` (avant C7 : `DESIGN-RED-INTERNAL-LINKING`) — cas particulier `internal-link` qui ouvre le picker.
 - `DESIGN-INFRA-PROMPT-LOADER` — mécanique `loadPrompt(...)` qui injecte les variables.
 
 ---
 
-### DESIGN-RED-INTERNAL-LINKING
+### DESIGN-RED-INTERNAL-LINKING — *(superseded 2026-09-25)*
 
 **Réf PRD :** [FR-RED-INTERNAL-LINKING](./prd.md#fr-red-internal-linking)
+
+**Statut** : superseded le 2026-09-25 par [`DESIGN-RED-LINKING-MANUAL`](#design-red-linking-manual) (épopée qualité SEO, C7, commit `1882030`). **Corrigé au passage** (le code fait foi) : les suggestions ne viennent ni d'une IA ni d'embeddings, mais de `linking.service.suggestLinks` (mots de plus de 3 lettres du titre retrouvés dans le texte, au moins 2, articles déjà rédigés seulement, hiérarchie respectée) ; l'enregistrement passe par `PUT /api/links` (`upsertLinks`), pas `POST /api/links/save` ; `DESIGN-INFRA-INTERNAL-LINKS` n'a jamais été créée. Le reste (panneau, mark `internalLink { targetId, href }`, matrice) est repris par `DESIGN-RED-LINKING-MANUAL`. Contenu historique ci-dessous.
 
 **Refs code**
 - [src/composables/seo/useInternalLinking.ts](../../src/composables/seo/useInternalLinking.ts) — composable : `requestSuggestions()` (passe `articleId` + content au store), `applySuggestion(suggestion, editor)` (cherche l'ancre dans le doc TipTap, pose un mark `internalLink` avec `targetId` + `href`, save dans la matrice), `dismissSuggestion`, `clearSuggestions`.
@@ -4690,6 +4961,59 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - `DESIGN-RED-CONTEXTUAL-ACTIONS` — action `internal-link` qui ouvre un picker manuel (alternative au flux suggestion).
 - `DESIGN-RED-PANELS-LAYOUT` — panel « Maillage » qui héberge l'UI.
 - `DESIGN-INFRA-INTERNAL-LINKS` (§8.14 à créer) — formalisation de la matrice cocon (orphelins, alertes).
+
+---
+
+### DESIGN-RED-LINKING-MANUAL
+
+**Réf PRD :** [FR-RED-LINKING-MANUAL](./prd.md#fr-red-linking-manual--le-maillage-interne-se-pose-à-la-main-après-la-rédaction)
+
+Commit `1882030` (C7). Lignes relevées au commit `fb92b46`.
+
+**Refs code**
+- [server/services/article/linking.service.ts](../../server/services/article/linking.service.ts) — **pas d'en-tête `AUTHORITY:`** (écart à `.claude/CLAUDE.md` §3.2, relevé en documentant C7). `bestContiguousAnchor(title, content)` (137-156) : n-grammes du titre, du plus long (6 mots) au plus court (2 mots), bords « substantiels » (ni commençant ni finissant par un mot vide), 5 caractères au moins, trouvés tels quels dans le texte. `familySuggestions(source, articles, content, existingTargets)` (158-194) : enfants (`a.parentId === source.id`) puis parent (`a.id === source.parentId`) ; déjà liés ignorés ; ancre = `bestContiguousAnchor(titre de la cible)`, sinon le mot-clé de la cible (`captainKeywordLocked ?? suggestedKeyword`) s'il est dans le texte, sinon rien ; raison « Article enfant (section « … ») » / « Article parent (section « … ») », suffixée « — pas encore publié : le lien sera cassé tant qu'il n'est pas en ligne » si la cible n'est pas publiée. `suggestLinks(articleId, content)` (197-278) : la famille d'abord (231-233, cibles ajoutées aux déjà liées), puis les suggestions par mots communs (articles **déjà rédigés** seulement, `loadWrittenArticleIds`, au moins 2 mots de plus de 3 lettres du titre dans le texte, `isValidHierarchyLink`, ancre `bestContiguousAnchor`), même cocon d'abord ; `[...family, ...suggestions].slice(0, 10)`.
+- [server/routes/links.routes.ts](../../server/routes/links.routes.ts) — `GET /links/matrix` (16), `POST /links/suggest` (38, `suggestLinksRequestSchema`), `PUT /links` (57, `saveLinksRequestSchema` → `upsertLinks` : `INSERT … ON CONFLICT (source_id, target_id, position) DO UPDATE`).
+- [src/composables/seo/useInternalLinking.ts](../../src/composables/seo/useInternalLinking.ts) — `applySuggestion(suggestion, editor)` (25 et suiv.) : ancre retrouvée dans le document, mark `internalLink { targetId, href: '#article-<id>' }` (58-60), `linkingStore.saveLinks([link])` (72). [src/components/linking/LinkSuggestions.vue](../../src/components/linking/LinkSuggestions.vue) — panneau « Maillage ».
+- Action « lien interne » : `applyInternalLink` ([useContextualActions.ts:96-113](../../src/composables/editor/useContextualActions.ts)) — même mark, même enregistrement (cf. `DESIGN-RED-CONTEXTUAL-ACTIONS`).
+- Publication : `publishCocoonLinks(articleId, html)` ([gate.service.ts:283-307](../../server/services/gates/gate.service.ts)) — cibles = `href="#article-<id>"` du texte ∪ `target_id` de `internal_links` où `source_id` = l'article, plus les `href="/<slug>"` ; celles dont `status` n'est pas « publié » → `unpublishedLinks` ; `unpublishedLinkIssues` ([shared/verifiers/publish.ts:213-220](../../shared/verifiers/publish.ts)) → 🟠 `link-to-unpublished:<id>`, une par cible.
+- Mode automatique : `runInternalLinking` après le premier jet et son étape, avant l'export ([scripts/auto-article/phases/redaction.ts:183-184](../../scripts/auto-article/phases/redaction.ts)) — inchangé, il profite de la famille proposée d'office.
+
+**Endpoints**
+- `POST /api/links/suggest { articleId, content }` → `LinkSuggestion[]` (`{ targetId, targetTitle, targetType, suggestedAnchor, reason }`).
+- `PUT /api/links { links: InternalLink[] }` → matrice.
+- `GET /api/links/matrix`.
+
+**Flux DB**
+
+*Lecture* : `articles` (arbre, `parent_id`, `parent_section`, `status`, mots-clés) via `loadArticlesDb` ; `internal_links` (liens déjà posés, pour ne pas les reproposer) ; articles rédigés (`loadWrittenArticleIds`).
+
+*Écriture* : `internal_links (source_id, target_id, position, anchor_text)` — par le panneau et, depuis C7, par l'action « lien interne ».
+
+**Stores Pinia**
+- `useLinkingStore` — `suggestions`, `fetchSuggestions`, `saveLinks` (panneau et action contextuelle).
+- `useEditorStore` — texte modifié par le mark.
+
+**Décisions d'architecture**
+- **Manuel, après la rédaction** (décision d'Arnaud, 2026-09-24) : aucun lien n'est posé d'office par l'outil à l'écran ; il propose, l'utilisateur applique.
+- **La famille d'abord, même non publiée** : un parent doit renvoyer vers chaque enfant ; proposer le lien tôt, en le signalant, vaut mieux que l'oublier ; la publication le rappelle (🟠) tant que la cible n'est pas en ligne.
+- **Ancre prise dans le texte, pas la section** : écart avec la tech-spec (décision 8, « ancre : la section parente ») — une ancre doit exister telle quelle dans le texte pour être posée ; la section n'est citée que dans la raison. Le résumé de la passe « Résumer » cite l'enfant dans sa dernière phrase, ce qui rend l'ancre possible.
+- **Un seul format de lien interne** : `#article-<id>`, résolu à l'export ; l'action contextuelle posait `/<slug>` et n'enregistrait rien.
+- **Liens enregistrés comptés à la publication** : même un lien retiré du texte depuis reste dans `internal_links`.
+
+**Limites connues**
+- Retirer un lien dans l'éditeur ne le retire pas de `internal_links` : la publication peut signaler un lien vers un article non publié qui n'est plus dans le texte.
+- Un parent dont le texte ne cite ni le titre (au moins 2 mots contigus) ni le mot-clé de son enfant ne reçoit pas de suggestion pour lui.
+- `linking.service.ts` n'a pas d'en-tête `AUTHORITY:` alors qu'il lit et écrit une donnée partagée (`internal_links`).
+
+**Critères d'acceptation techniques**
+- AC.LINKMAN.1 : un parent — un lien vers chaque enfant, ancre prise dans le texte, enfant non publié signalé ; un enfant — un lien vers son parent ; déjà lié ou ancre introuvable → rien. *(test : `tests/unit/services/linking.service.test.ts`, « familySuggestions »)*
+- AC.LINKMAN.2 : 🟠 un lien vers un article pas encore publié *(test : `tests/unit/shared/verifiers-publish.test.ts`)* ; bout en bout, à la publication d'un pilier *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*.
+- AC.LINKMAN.3 : l'action « lien interne » pose le mark `#article-<id>` et ferme le sélecteur *(test : `tests/unit/composables/useContextualActions.test.ts`)*.
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, réservée par C0, non livrée par C5b, livrée par C7 ; remplace `DESIGN-RED-INTERNAL-LINKING`).
+
+**Voir aussi** : `DESIGN-RED-INTERNAL-LINKING` (remplacée), `DESIGN-RED-CONTEXTUAL-ACTIONS`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-CER-CHILD-FROM-PILLAR-H2`, `DESIGN-RED-ENRICH-PASSES` (passe « Résumer »).
 
 ---
 
@@ -4882,12 +5206,12 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Réf PRD :** [FR-RED-PUBLISH-GATE](./prd.md#fr-red-publish-gate--on-ne-publie-pas-un-article-quun-expert-refuserait)
 
 **Refs code**
-- [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — vérificateur pur `verifyPublish(input: PublishGateInput): GateIssue[]` (`PublishGateInput` = `SeoInput` + `existingWaivers`) ; `countToSourceMarkers(html)` (91-98 : chaque `<mark … data-a-sourcer …>…</mark>` une fois, puis chaque `[à sourcer` resté hors balise — avant C5b, un marqueur balisé comptait deux fois) ; `countImagesToProvide(html)` (101-103 : `<img>` dont le `src` contient `IMAGE_TO_PROVIDE_SRC`, depuis C5b) ; constantes `TOLERATED_AT_PUBLISH` (`hn-h1-in-body`), `RISKY_CONTENT_WARNINGS` (`unverifiable-claim`, `seo-capitaine-not-in-meta-title`).
+- [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — vérificateur pur `verifyPublish(input: PublishGateInput): GateIssue[]` (`PublishGateInput` = `SeoInput` + `existingWaivers` + depuis C7 `children?` et `unpublishedLinks?`, 35-42 ; `childSummaryIssues` 185-210 et `unpublishedLinkIssues` 213-220, appelées ligne 166) ; `countToSourceMarkers(html)` (91-98 : chaque `<mark … data-a-sourcer …>…</mark>` une fois, puis chaque `[à sourcer` resté hors balise — avant C5b, un marqueur balisé comptait deux fois) ; `countImagesToProvide(html)` (101-103 : `<img>` dont le `src` contient `IMAGE_TO_PROVIDE_SRC`, depuis C5b) ; constantes `TOLERATED_AT_PUBLISH` (`hn-h1-in-body`), `RISKY_CONTENT_WARNINGS` (`unverifiable-claim`, `seo-capitaine-not-in-meta-title`).
 - [shared/content-validators.ts](../../shared/content-validators.ts) — `validateArticleContent`, `validateArticleMeta` (rejoués tels quels).
 - [shared/text-quality.ts](../../shared/text-quality.ts) — depuis C5a (commit `7900d08`), `verifyPublish` appelle `detectUnsourcedFigures`, `detectNonFrenchSentences` et `detectRepeatedParagraphs` sur le texte du jour ([shared/verifiers/publish.ts:99-109](../../shared/verifiers/publish.ts)) : le texte a pu changer depuis le premier jet (retouches, passes). Mêmes détecteurs que la porte `draft` (`DESIGN-RED-DRAFT-SINGLE-PASS`), autres noms de règles.
 - [shared/seo-validators.ts](../../shared/seo-validators.ts) — `validateArticleSeo` ; `checkCapitaine` exige désormais une couverture **1** (capitaine entier, variantes grammaticales admises par `tokensMatch`) dans le titre (H1) et le meta title, au lieu de 0,75 : « stratégie » manquait au H1 du 1013 sans alerte.
 - [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES[level].wordsMax` : pilier 3 500, intermédiaire 2 500, spécialisé 1 500.
-- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `publishGate(articleId)` (privée), via `evaluateArticleGate(id, 'publish')`.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `publishGate(articleId)` (privée, 309-353 au commit `fb92b46`), via `evaluateArticleGate(id, 'publish')` ; depuis C7, `publishCocoonLinks(articleId, html)` (283-307) fournit `children` (enfants et section dont chacun est né) et `unpublishedLinks` (cibles du texte et de `internal_links` pas encore publiées), qui entrent aussi dans l'empreinte.
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `PUT /articles/:id/status` : si `status === 'publié'`, évaluation ; refus → `respondGateBlocked` (422 `GATE_BLOCKED`, « Publication refusée : n point(s) à traiter avant de publier. »). Les autres statuts ne sont pas gardés.
 - [src/views/ArticlePreviewView.vue](../../src/views/ArticlePreviewView.vue) — `handleExport` : `gateAlarm.runThroughGate(id, () => apiPut('/articles/:id/status', { status: 'publié' }))` **avant** `downloadHtml()`. `{ ok: false }` → `exportNotice` « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » (`data-testid="preview-export-notice"`) ; autre erreur → « Publication impossible : … ».
 - [scripts/verify-content.ts](../../scripts/verify-content.ts) — rejoue `evaluateArticleGate(a.id, 'publish')` pour chaque article rédigé (cf. `DESIGN-INFRA-VERIFIER-SHARED`).
@@ -4908,14 +5232,17 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | `unsourced-figure` : phrase avec un chiffre (%, €, fois, millions) sans attribution, hors marqueur (C5a) | 🔴 |
 | `non-french-sentence` : phrase où l'anglais domine (C5a) | 🔴 |
 | `repeated-paragraph` : paragraphe qui en répète un autre (C5a) | 🔴 |
-| Porte `draft` (premier jet) | **non rejouée** : sa règle ±15 % ne vaut que pour le premier jet |
+| `child-section-too-long:<id enfant>` : section dont est né un enfant, plus de `CHILD_SUMMARY_WORDS.max` (250) mots hors H2 (C7) | 🔴 |
+| `child-section-missing:<id enfant>` : section dont est né un enfant introuvable dans le texte (`sectionKey`) (C7) | 🟠 |
+| `link-to-unpublished:<id cible>` : lien (texte ou `internal_links`) vers un article dont le statut n'est pas « publié » (C7) | 🟠 |
+| Porte `draft` (premier jet) | **non rejouée** : sa règle ±15 % ne vaut que pour le premier jet (depuis C7, elle garde l'étape `redaction:draft_accepted`, qui reste acquise) |
 | `waiver-reconfirm:<porte>:<règle>` : une par dérogation **encore debout** d'une porte amont (`standingWaivers`) | 🟠 |
-| `captain-lock:<règle>`, `lieutenants-lock:<règle>`, `hn-lock:<règle>`, `lexique-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication (`lexique-lock:lexique-empty` 🔴, `lexique-lock:lexique-generic-term:<terme>` 🔴 depuis C3 ; `hn-lock:hn-empty` ⛔, `hn-lock:hn-captain-not-in-h1` 🔴, `hn-lock:hn-h2-count` 🔴… depuis C6, cf. `DESIGN-HN-LOCK-GATE`) | niveau d'origine |
+| `captain-lock:<règle>`, `lieutenants-lock:<règle>`, `hn-lock:<règle>`, `lexique-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication (`lexique-lock:lexique-empty` 🔴, `lexique-lock:lexique-generic-term:<terme>` 🔴 depuis C3 ; `hn-lock:hn-missing` 🔴 (structure absente), `hn-lock:hn-empty` ⛔ (des titres mais aucun H2), `hn-lock:hn-captain-not-in-h1` 🔴, `hn-lock:hn-h2-count` 🔴… depuis C6, cf. `DESIGN-HN-LOCK-GATE`) | niveau d'origine |
 | Une même règle visant plusieurs endroits (deux chiffres invérifiables…) | un identifiant par occurrence, suffixé par l'extrait (`distinctRules`) |
 
 **Flux DB**
 
-*Lecture* (`publishGate`, [gate.service.ts:272-314](../../server/services/gates/gate.service.ts)) : `evaluateArticleGate(id, 'captain-lock')`, `evaluateArticleGate(id, 'lieutenants-lock')`, depuis C6 `evaluateArticleGate(id, 'hn-lock')` (287) et, depuis C3, `evaluateArticleGate(id, 'lexique-lock')` (portes amont rejouées sur les données du jour, 284-289) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants). H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
+*Lecture* (`publishGate`, [gate.service.ts:309-353](../../server/services/gates/gate.service.ts) au commit `fb92b46` ; 272-314 avant C7) : `evaluateArticleGate(id, 'captain-lock')`, `evaluateArticleGate(id, 'lieutenants-lock')`, depuis C6 `evaluateArticleGate(id, 'hn-lock')` et, depuis C3, `evaluateArticleGate(id, 'lexique-lock')` (portes amont rejouées sur les données du jour, 320-325) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants) → depuis C7, `publishCocoonLinks` (328) : `articles` où `parent_id` = l'article (enfants, `parent_section`), `internal_links` où `source_id` = l'article, `articles.status` des cibles. H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
 
 *Écriture* : `articles.status = 'publié'` seulement si la porte passe (`updateArticleStatus`). Dérogations de publication (reconfirmations 🟠, risques 🔴) via `saveGateWaivers`.
 
@@ -4924,13 +5251,16 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Décisions d'architecture**
 - **Publier avant de télécharger** : l'ancien `handleExport` téléchargeait puis marquait publié (erreur avalée). Désormais le fichier n'est produit que si le statut a été accepté.
 - **Rejouer, pas réécrire** : la porte ne duplique aucune règle ; elle convertit les verdicts des valideurs existants en niveaux.
-- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine, lieutenants, lexique (depuis C3) et structure (depuis C6), toutes le 2026-09-25 : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication. Conséquence de la porte du lexique : un article sans lexique ne se publie qu'avec une raison écrite (`lexique-lock:lexique-empty` 🔴), et `verify:content` signale (`publish-gate-refused`) tout article rédigé sans lexique qu'aucune dérogation ne couvre. Conséquence de la porte de la structure : un article sans structure enregistrée est refusé ⛔ (`hn-lock:hn-empty`), cf. « Limites connues ».
-- **Empreinte** : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, upstream, waivers }` où `upstream` = `gateId:inputHash` des portes amont et `waivers` = `gateId:rule:inputHash` des dérogations debout (triées). Un changement en amont rouvre la décision ; les dérogations de la publication elle-même sont exclues (sinon en enregistrer une changerait l'empreinte et l'annulerait aussitôt).
+- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine, lieutenants, lexique (depuis C3) et structure (depuis C6), toutes le 2026-09-25 : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication. Conséquence de la porte du lexique : un article sans lexique ne se publie qu'avec une raison écrite (`lexique-lock:lexique-empty` 🔴), et `verify:content` signale (`publish-gate-refused`) tout article rédigé sans lexique qu'aucune dérogation ne couvre. Conséquence de la porte de la structure : un article sans structure enregistrée reçoit 🔴 `hn-lock:hn-missing`, assumable (tranché aux défauts de clôture de C6, checklist P6 ; cette phrase disait ⛔ `hn-lock:hn-empty` jusqu'au 2026-09-25, corrigée en documentant C7).
+- **Le parent répond de ses enfants** (C7) : la publication d'un parent vérifie que chaque section dont est né un enfant le résume (≤ 250 mots) et existe encore ; les liens vers des articles non publiés sont signalés, qu'ils soient dans le texte ou seulement dans `internal_links`.
+- **Empreinte** : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, children, unpublishedLinks, upstream, waivers }` (`children` et `unpublishedLinks` depuis C7 : un enfant né ou publié depuis rouvre la décision) où `upstream` = `gateId:inputHash` des portes amont et `waivers` = `gateId:rule:inputHash` des dérogations debout (triées). Un changement en amont rouvre la décision ; les dérogations de la publication elle-même sont exclues (sinon en enregistrer une changerait l'empreinte et l'annulerait aussitôt).
 - **Écarts avec l'épopée (le code fait foi)** : le capitaine absent du H1 est 🔴 (erreur SEO), pas ⛔ ; un H1 absent du corps n'est pas une alerte (le titre de l'article sert de H1) ; plusieurs H1 dans le corps sont ⛔ (`hn-multiple-h1`).
 
 **Limites connues**
 - Le score SEO enregistré (`DESIGN-RED-SEO-SCORE-PERSIST`) n'est pas encore lu par la porte.
-- ~~La porte structure (C6) n'est pas encore rejouée à la publication.~~ Rejouée depuis C6 (commit `d24e530`). Conséquence : la porte juge `article_keywords.hn_structure`, validée ou non ; un article **sans structure enregistrée** reçoit `hn-lock:hn-empty` ⛔ et ne peut pas être publié, même avec une raison (un article rédigé sans l'onglet Structure, ou d'avant C6 sans structure). À trancher (C3 avait passé `lexique-empty` en 🔴 pour ce cas).
+- ~~La porte structure (C6) n'est pas encore rejouée à la publication.~~ Rejouée depuis C6 (commit `d24e530`). Conséquence : la porte juge `article_keywords.hn_structure`, validée ou non. ~~Un article sans structure enregistrée reçoit `hn-lock:hn-empty` ⛔ et ne peut pas être publié, même avec une raison.~~ Tranché aux défauts de clôture de C6 (P6, commit `6d264bc`) : 🔴 `hn-lock:hn-missing`, assumable, comme `lexique-empty`.
+- `child-section-too-long` compte les mots du chapitre sans son H2 mais H3 compris ; une section renommée dans le parent donne `child-section-missing` (🟠) sans rien dire de l'enfant (C7).
+- Un lien retiré de l'éditeur reste dans `internal_links` : `link-to-unpublished` peut viser un lien qui n'est plus dans le texte (C7).
 - La porte du premier jet n'est pas rejouée (choix, cf. `DESIGN-RED-DRAFT-SINGLE-PASS`) : ses dérogations ne sont ni réaffichées ni reconfirmées (`existingWaivers` ne lit que les portes amont, `gate.service.ts:284-290`) ; `verify:content` les liste avec les autres.
 - ~~`image-to-provide` dit « remplacez l'image ou retirez-la », mais l'éditeur n'a aucune commande pour remplacer une image.~~ Soldé par le commit `093ee57` (checklist R20) : le bouton « Image » de l'éditeur remplace la place (`DESIGN-RED-EDITOR-TIPTAP`), et le risque de la règle le cite : « remplacez l'image (bouton Image de la barre d'outils) ou retirez-la » ([shared/verifiers/publish.ts:157](../../shared/verifiers/publish.ts)). Reste : le bouton n'existe que dans la vue Éditeur.
 
@@ -4951,8 +5281,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - 2026-09-25 — ⛔ `image-to-provide` ; `countToSourceMarkers` ne compte plus deux fois un marqueur balisé (C5b, commit `6dd3b74`, `DESIGN-RED-ENRICH-PASSES`).
 - 2026-09-25 — le message de `image-to-provide` cite le bouton « Image » de l'éditeur (C5b, commit `093ee57`, checklist R20).
 - 2026-09-25 — la porte `hn-lock` est rejouée à la publication ; ses dérogations debout sont reconfirmées (C6, commit `d24e530`, `DESIGN-HN-LOCK-GATE`).
+- 2026-09-25 — C7, commit `1882030` : 🔴 `child-section-too-long`, 🟠 `child-section-missing`, 🟠 `link-to-unpublished` (`publishCocoonLinks`). Tests : `verifiers-publish.test.ts` (« verifyPublish — un parent résume ses enfants »), `gates.contract.test.ts` (« publier un pilier : section trop longue pour un enfant 🔴, lien vers un article non publié 🟠 », serveur requis).
 
-**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-ENRICH-PASSES`, `DESIGN-HN-LOCK-GATE`.
+**Voir aussi** : `DESIGN-CER-CHILD-FROM-PILLAR-H2`, `DESIGN-RED-LINKING-MANUAL`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-ENRICH-PASSES`, `DESIGN-HN-LOCK-GATE`.
 
 ---
 
@@ -5184,10 +5515,12 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - **Sandbox EXPLICIT, pas inféré** : ancienne implémentation utilisait `NODE_ENV !== 'production'`, ce qui silently failed sur `npm run dev` (qui ne set pas NODE_ENV). Décision de basculer sur une variable opt-in dédiée pour ne plus jamais consommer de crédits par accident — log warn explicite si on tape la prod.
 - **Toggle navbar = un seul switch pour deux mondes** : `RuntimeMode='mock'` impose à la fois sandbox DataForSEO et provider IA mock côté serveur. Cohérence UX : un seul clic = pas de coût, partout.
 - **Override > env** : l'override navbar prend toujours le pas sur `.env` (sinon le toggle UI serait illusoire).
+- **Réponses factices rattachées aux mots-clés demandés** (commit `f16cab5`, 2026-09-25, chantier C7) : le bac à sable répond par des mots-clés factices (« phone », « watch »), jamais ceux demandés. Les appels unitaires lisent `items[0]` quel que soit le mot-clé ; les appels groupés rattachaient par mot-clé, donc rien. `pairWithRequested(chunk, items)` ([server/services/external/dataforseo/keywords.ts:20-26](../../server/services/external/dataforseo/keywords.ts)) : en bac à sable (`isSandbox()`), la i-ème réponse (modulo leur nombre) va au i-ème mot-clé demandé ; en production, rattachement par `item.keyword` comme avant. Appliqué par `fetchKeywordOverviewBatch` et `fetchSearchIntentBatch`. Sans lui, en mode simulé, aucun candidat du Cerveau n'était mesuré et aucun article ne pouvait naître (`DESIGN-CER-KEYWORD-REAL-DATA`). Test : `tests/unit/services/dataforseo.service.test.ts` (« appels groupés dans le bac à sable »).
 
 **Voir aussi**
 - `DESIGN-EXT-AI-MULTI-PROVIDER` — partage le même toggle global mock/real.
 - `DESIGN-EXT-DATAFORSEO` — consommateur de `getBaseUrl()`.
+- `DESIGN-CER-KEYWORD-REAL-DATA` — mesure groupée des candidats (C7).
 
 ---
 
@@ -5668,7 +6001,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 
 **Refs code**
 - [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — `PROMPT_GLOBALS = ['strategy_context', 'today', 'year', 'zone', 'zone_landmarks']` (ligne 90) ; `loadGlobals(template, cocoonSlug)` (lignes 148-164) : `strategy_context` toujours posé (vide sans `cocoonSlug`), `today` / `year` lus seulement si le modèle cite l'un d'eux, `zone` / `zone_landmarks` seulement si le modèle cite l'un d'eux. Les globales ne sont jamais « inutilisées » ; celles que l'appelant fournit l'emportent (ligne 201). Mode strict et rendu : `DESIGN-INFRA-PROMPT-LOADER`.
-- [server/services/strategy/prompt-context.service.ts](../../server/services/strategy/prompt-context.service.ts) — header `AUTHORITY:`. `formatFrenchDate(date)` (« 25 septembre 2026 », `fr-FR`, `Europe/Paris`) et `currentYear(date)` ; `loadZoneContext()` : `zone` = `theme_config.avatar.location` (via `getThemeConfig`), `landmarks` = `local_entities` des types `region` (« Autres noms de la zone »), `quartier` (« Quartiers et communes »), `lieu` (« Lieux connus ») ; les entreprises sont exclues ; base illisible → valeurs vides et `log.warn`.
+- [server/services/strategy/prompt-context.service.ts](../../server/services/strategy/prompt-context.service.ts) — header `AUTHORITY:` (1-11, depuis D5 : « repères gardés seulement s'ils décrivent cette zone »). `formatFrenchDate(date)` (« 25 septembre 2026 », `fr-FR`, `Europe/Paris`) et `currentYear(date)` ; `loadZoneContext()` (63-84) : `zone` = `theme_config.avatar.location` (via `getThemeConfig`), `landmarks` = entités de la zone (`entitiesOfZone`, 75) des types `region` (« Autres noms de la zone »), `quartier` (« Quartiers et communes »), `lieu` (« Lieux connus ») (`LANDMARK_GROUPS`, 28-32) ; les entreprises sont exclues ; base illisible → valeurs vides et `log.warn`. **Tri par zone (checklist D5, commit `3638d00`)** : `normPlace(s)` (40-42 : minuscules, sans accents ni ponctuation, bordé d'espaces — « Haute-Garonne » → « haute garonne ») ; `entitiesOfZone(zone, entities)` (51-60) : zone vide → aucune ; une entité **avec** `region` n'est gardée que si la zone normalisée contient cette région ; les entités **sans** `region` forment le référentiel par défaut, gardé seulement si la zone nomme l'une de ses entités de type `region` (nom ou alias, `defaultZone`, 58) ; sinon aucun repère. `LocalEntity.region?` ([shared/types/local.types.ts:40-41](../../shared/types/local.types.ts)) est lu dans la colonne `local_entities.region` (`getEntities`, [local-entities.service.ts:12-19](../../server/services/infra/local-entities.service.ts)).
 - [server/services/strategy/strategy-prompts.service.ts](../../server/services/strategy/strategy-prompts.service.ts) — les six routes de [server/routes/strategy.routes.ts](../../server/routes/strategy.routes.ts) délèguent ici (`articleStrategyPrompt` ligne 155, `cocoonStrategyPrompt` ligne 214, `deepenPrompt` ligne 271, `consolidatePrompt` ligne 287, `enrichPrompt` ligne 298 ; appels `strategy.routes.ts:104,161,192,216,232`) : chaque modèle est chargé par `loadPrompt` avec exactement ses variables. Fin des `readFile` + `.replace` (qui ne remplaçaient que la première occurrence et interprétaient les `$`). `cocoonTemplateFor(step)` (ligne 185) : une étape = un modèle.
 - [server/services/strategy/cocoon-add-article-prompt.ts](../../server/services/strategy/cocoon-add-article-prompt.ts) — `addArticlePromptVariables(input)` (ligne 19) ne rend plus rien : il produit les variables (`articleType`, `existingArticles`, `userInput`, drapeaux `isPilier` / `isIntermediaire` / `isSpecialise`).
 - [server/routes/silos.routes.ts](../../server/routes/silos.routes.ts) — `theme-parse` passe par `loadPrompt` (ligne 125).
@@ -5688,7 +6021,7 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | Couche | Où elle vit |
 |---|---|
 | 1. Identité | `system-propulsite.md` (générations de texte) ; première phrase des prompts d'analyse |
-| 2. Contexte | Globales du chargeur (`{{today}}`, `{{year}}`, `{{zone}}`, `{{zone_landmarks}}`, `{{strategy_context}}`) ; blocs des appelants (`{{strategyContext}}`, `{{keywordContext}}`, `{{microContext}}`, `{{themeContext}}`…) |
+| 2. Contexte | Globales du chargeur (`{{today}}`, `{{year}}`, `{{zone}}`, `{{zone_landmarks}}`, `{{strategy_context}}`) ; blocs des appelants (`{{strategyContext}}`, `{{keywordContext}}`, `{{microContext}}`, `{{themeContext}}`…) ; depuis C7, l'état du cocon `{{cocoon_context}}` (variable de l'appelant, pas une globale : cf. `DESIGN-INFRA-COCOON-CONTEXT`) |
 | 3. Règles par type | `{{type_rules}}` (cf. `DESIGN-INFRA-TYPE-RULES-SSOT`) |
 | 4. Tâche | Corps du `.md` |
 | 5. Contrat de sortie | Section « Format de sortie » du `.md` ; contrats (`shared/contracts/`) ; vérificateurs (`shared/verifiers/`) |
@@ -5703,12 +6036,13 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - **Globales chargées à la demande** : le chargeur ne lit la configuration et `local_entities` que si le modèle cite `zone` ou `zone_landmarks` (test « ne lit ni la configuration ni les entités si le prompt ne cite pas la zone »).
 - **Zone vide = section retirée** : `system-propulsite.md` encadre les mentions de la zone dans `{{#zone}}…{{/zone}}` ; une base indisponible ne lève pas d'erreur.
 - **Entreprises exclues des repères** : un exemple qui les cite inviterait l'IA à leur prêter des faits qu'elle ne connaît pas.
+- **Aucun repère plutôt que ceux d'une autre ville** (D5, commit `3638d00`) : le référentiel reste unique, mais une entité ne sert que si elle décrit la zone du client — par sa colonne `region`, ou, sans région, parce que la zone nomme le référentiel par défaut (ses entités `region`). La zone est comparée par inclusion de mots normalisés : « Toulouse, Occitanie » nomme « Toulouse » et « Occitanie ».
 - **Pas d'enveloppe sur les réponses de stratégie** : cf. `DESIGN-INFRA-PROMPT-LOADER`.
 - **Identité de marque** : « Propulsite » reste écrit dans `system-propulsite.md` (hors périmètre C4).
 
 **Limites connues**
-- **Repères non triés par zone** : `loadZoneContext` renvoie toutes les `local_entities` des types `region` / `quartier` / `lieu`, sans filtre sur la zone (la colonne `region` n'est pas lue). Le référentiel est unique pour l'outil et décrit Toulouse (sauvegarde du 2026-09-20 : Saint-Cyprien, Balma, Blagnac…) ; `FR-INFRA-LOCAL-ENTITIES` le déclare non modifiable par l'utilisateur. Un client d'une autre ville reçoit donc la bonne `{{zone}}` mais des `{{zone_landmarks}}` toulousains. Le test « client à Bordeaux » simule les entités (`Chartrons`) et ne voit pas ce cas.
-- **État du cocon** : pas encore de `{{cocoon_context}}` ; il arrive avec `FR-INFRA-COCOON-CONTEXT` (épopée qualité SEO, C7).
+- ~~**Repères non triés par zone** : `loadZoneContext` renvoie toutes les `local_entities` des types `region` / `quartier` / `lieu`, sans filtre sur la zone (la colonne `region` n'est pas lue). Un client d'une autre ville reçoit donc la bonne `{{zone}}` mais des `{{zone_landmarks}}` toulousains.~~ Soldé (checklist D5, commit `3638d00`) : `entitiesOfZone`. Le référentiel reste unique et décrit Toulouse (sauvegarde du 2026-09-20 : Saint-Cyprien, Balma, Blagnac…) ; `FR-INFRA-LOCAL-ENTITIES` le déclare non modifiable par l'utilisateur : un client d'une autre ville reçoit désormais **aucun** repère, tant que des entités de sa région n'y sont pas ajoutées.
+- ~~**État du cocon** : pas encore de `{{cocoon_context}}`.~~ Arrivé avec C7 (commit `04d90a2`) : `DESIGN-INFRA-COCOON-CONTEXT`.
 - **Blocs de contexte encore construits à trois endroits** pour le micro-contexte (`buildMicroContextBlock` pour la rédaction, blocs en ligne pour le sommaire et l'explication du brief ; seul le premier ajoute la longueur cible).
 - **Consignes encore écrites dans le code, hors `.md`** : ni chargeur strict ni référence générée pour elles — filtre de pertinence et analyse Discovery ([server/routes/keywords.routes.ts:744,754,862](../../server/routes/keywords.routes.ts)), analyse d'écart ([server/services/article/content-gap.service.ts:97](../../server/services/article/content-gap.service.ts), zone désormais lue dans la configuration), conseil de longueur ([server/services/article/target-word-count.service.ts:103-116](../../server/services/article/target-word-count.service.ts), bornes lues dans la source des règles par type), lignes système de [keyword-radar.service.ts:66](../../server/services/keyword/keyword-radar.service.ts) et [captain-paa-judge.service.ts:127](../../server/services/keyword/captain-paa-judge.service.ts).
 
@@ -5719,11 +6053,59 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 - AC.LAYERS.4 : `docs/prompts-reference.md` égal à la sortie du générateur ; chaque prompt y a au moins un appelant. *(test : `tests/unit/architecture/prompts-reference.test.ts`, dans `npm run verify`)*
 - AC.LAYERS.5 : chaque appel `loadPrompt` du serveur fournit exactement les repères de son `.md` ; les actions contextuelles attendent toutes `selectedText` et `keywordInstruction`, rien d'autre (hors globales). *(test : `tests/unit/architecture/prompt-variables.test.ts`, dans `npm run verify`)*
 - AC.LAYERS.6 : la longue traîne demande au chargeur la stratégie du cocon de l'article. *(test : `tests/unit/services/long-tail-suggest.service.test.ts`)*
+- AC.LAYERS.7 (D5) : les repères suivent la zone du client — un client à Bordeaux avec le référentiel toulousain ne reçoit aucun repère ; une entité rattachée à une région n'est gardée que si la zone la nomme (accents, casse et tirets ignorés) ; le référentiel par défaut vaut quand la zone nomme l'une de ses régions. *(test : `tests/unit/services/prompt-context.service.test.ts` ; `tests/unit/coherence/prompts-no-hardcoded.test.ts` et `tests/unit/utils/prompt-template.test.ts` ajustés par le commit `3638d00`)*
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C4, checklist K5, K7, R11, D1, D2, D3 ; R1 en partie).
+- 2026-09-25 — `{{cocoon_context}}` dans la couche de contexte (C7, commit `04d90a2`, `DESIGN-INFRA-COCOON-CONTEXT`).
+- 2026-09-25 — repères locaux triés par zone (checklist D5, commit `3638d00`, sur la branche de C7).
 
-**Voir aussi** : `DESIGN-INFRA-PROMPT-LOADER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-CER-THEME-CONFIG`, `DESIGN-INFRA-LOCAL-ENTITIES`, `DESIGN-INFRA-COCOON-STRATEGIES`, `DESIGN-RED-DRAFT-SINGLE-PASS` (avant C5a : `DESIGN-RED-ARTICLE`).
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LOADER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-CER-THEME-CONFIG`, `DESIGN-INFRA-LOCAL-ENTITIES`, `DESIGN-INFRA-COCOON-STRATEGIES`, `DESIGN-INFRA-COCOON-CONTEXT`, `DESIGN-RED-DRAFT-SINGLE-PASS` (avant C5a : `DESIGN-RED-ARTICLE`).
+
+---
+
+### DESIGN-INFRA-COCOON-CONTEXT
+
+**Réf PRD :** [FR-INFRA-COCOON-CONTEXT](./prd.md#fr-infra-cocoon-context--chaque-génération-connaît-létat-du-cocon)
+
+Commit `04d90a2` (C7). Lignes relevées au commit `fb92b46`.
+
+**Refs code**
+- [shared/cocoon-context.ts](../../shared/cocoon-context.ts) — rendu **pur** `renderCocoonContext({ cocoonName, tree, focus?, parentSectionText? })` (60-97). Arbre : « ## Cocon « … » » ; cocon vide → « Le cocon est vide : cet article en sera le pilier… » (65-68) ; chaque pilier puis, récursivement, ses sections : « Section « … » → pas encore d'article » ou « → <niveau> « titre » (mot-clé « … ») — rédigé / à rédiger » (`renderNode`, 41-53 ; `describe`, 36-39) ; articles non-pilier sans parent listés à part (71-75). `focus` (« ## Cet article dans le cocon », 77-95) : parent et section (« Il naît de la section … de … »), texte de la section coupé à `PARENT_SECTION_MAX_CHARS = 1200` (34, `cut` 55-58), consigne « développe en profondeur ce que cette section résume : il ne la répète pas » (86) ; ses sections qui ont déjà leur article, « à résumer … pas à traiter en profondeur » (89-95).
+- [server/services/strategy/cocoon-context.service.ts](../../server/services/strategy/cocoon-context.service.ts) — en-tête `AUTHORITY:` (1-15, lecture seule). `parentSectionText(parentId, section)` (25-29 : chapitre du parent retrouvé par `sectionKey`, texte brut borné à 2 000 caractères, vide s'il n'y est plus) ; `cocoonContextForArticle(articleId)` (32-52 : cocon de l'article, `getCocoonTree`, focus sur l'article ; `''` hors cocon) ; `cocoonContextForNewArticle(cocoonId, parentId, parentSection)` (58-72 : pour un article à naître, avec le nom du cocon ; `null` si le cocon n'existe pas).
+- Consommateurs (variable `cocoon_context` fournie par l'appelant, pas une globale du chargeur) :
+  - Cerveau — [child-candidates.service.ts:86-97](../../server/services/strategy/child-candidates.service.ts) → [cocoon-child-keywords.md:5](../../server/prompts/cocoon-child-keywords.md) (bloc obligatoire) ; échec → la demande échoue.
+  - Moteur — [keyword-ai-panel.routes.ts:142-153](../../server/routes/keyword-ai-panel.routes.ts) → [lieutenants-hn-structure.md:36-40](../../server/prompts/lieutenants-hn-structure.md) (`{{#cocoon_context}}`, facultatif) ; échec → `''` (bloc retiré), sans journal. Remplace `{{cocoon_articles}}` / `describeCocoonSiblings`.
+  - Rédaction — [article-draft.routes.ts:144-147](../../server/routes/generate/article-draft.routes.ts) → [generate-article-draft.md:17-21](../../server/prompts/generate-article-draft.md) (`{{#cocoon_context}}`) ; échec → `log.warn` et premier jet sans lui.
+- Stratégie du cocon : `{{strategy_context}}` (global du chargeur, `cocoonSlug`) pour les candidats et la structure ; `{{strategyContext}}` (`pickStrategyContext` : article, sinon cocon) pour le premier jet.
+- Données : `getCocoonTree` (cf. `DESIGN-CER-COCOON-PROGRESSIVE`) ; mot-clé d'un nœud = `captainKeywordLocked ?? suggestedKeyword`, `drafted` = étape `redaction:draft_accepted`.
+
+**Flux DB**
+
+*Lecture* : `articles` (cocon, `parent_id`, `parent_section`, `completed_checks`, `captain_keyword_locked`, `suggested_keyword`), `cocoons.nom`, `article_content.content` (sections et texte de la section parente), `article_keywords.hn_structure` (sections d'un parent sans texte).
+
+*Écriture* : aucune.
+
+**Décisions d'architecture**
+- **Un rendu partagé, trois ateliers** : même texte pour le Cerveau, le Moteur et la Rédaction ; le rendu est pur (`shared/`), les données viennent d'un service.
+- **Lu au moment de l'appel**, jamais mis en cache : un enfant créé ou un parent rédigé entre deux générations se voit aussitôt.
+- **Variable d'appelant, pas globale** : seuls les prompts qui construisent un article la citent ; `prompt-variables.test.ts` impose que chaque appel la fournisse exactement.
+- **Texte de la section parente borné** (2 000 caractères lus, 1 200 rendus) : il sert de repère, pas de source à recopier.
+- **Écart avec l'épopée** : ni lieutenants ni structures des autres articles (seulement niveau, mot-clé, sections, statut « rédigé »).
+
+**Limites connues**
+- Un spécialisé dont l'intermédiaire est lui-même sans parent n'apparaît pas (seuls les piliers sont parcourus ; les orphelins sont listés sans leurs enfants).
+- Passes d'enrichissement, méta et actions contextuelles ne reçoivent pas l'état du cocon.
+
+**Critères d'acceptation techniques**
+- AC.COCCTX.1 : le pilier, puis chaque section et l'article né d'elle, niveau par niveau ; articles d'avant l'arbre cités ; un enfant connaît la section qui l'annonce et ce que son parent en dit ; le pilier : enfants à résumer ; article à naître : sa section ; cocon vide : l'article en sera le pilier ; texte de la section borné. *(test : `tests/unit/shared/cocoon-context.test.ts`)*
+- AC.COCCTX.2 : l'état du cocon de l'article arrive dans le prompt de structure ; sans article, rien *(test : `tests/unit/routes/keyword-ai-panel.routes.test.ts`)* ; il arrive dans le premier jet *(test : `tests/unit/routes/generate.routes.test.ts`)*.
+- AC.COCCTX.3 : chaque appel fournit exactement les variables de son prompt, `cocoon_context` compris. *(test : `tests/unit/architecture/prompt-variables.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, réservée par C0, livrée par C7 ; la stratégie du cocon est transmise à la rédaction depuis C1).
+
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-CER-COCOON-PROGRESSIVE`, `DESIGN-CER-KEYWORD-REAL-DATA`, `DESIGN-HN-TAB`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-CER-CHILD-FROM-PILLAR-H2`.
 
 ---
 
@@ -5796,9 +6178,9 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 **Réf PRD :** [FR-INFRA-WORKFLOW-CHECKS-CONSTANTS](./prd.md#fr-infra-workflow-checks-constants--source-unique-des-checks-workflow)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) lignes 1-63 — sources de toutes les chaînes de checks workflow.
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) lignes 1-68 (au commit `fb92b46`) — sources de toutes les chaînes de checks workflow.
 
-**Inventaire des constantes (mis à jour 2026-09-25, C6)**
+**Inventaire des constantes (mis à jour 2026-09-25, C7)**
 | Workflow | Constante | Valeur string |
 |---|---|---|
 | Moteur (6) | `MOTEUR_DISCOVERY_DONE` | `moteur:discovery_done` |
@@ -5807,15 +6189,17 @@ Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`d
 | | `MOTEUR_LIEUTENANTS_LOCKED` | `moteur:lieutenants_locked` |
 | | `MOTEUR_HN_LOCKED` (C6) | `moteur:hn_locked` |
 | | `MOTEUR_LEXIQUE_VALIDATED` | `moteur:lexique_validated` |
+| Rédaction (1, C7) | `REDACTION_DRAFT_ACCEPTED` | `redaction:draft_accepted` |
 
-Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenants_locked` et `lexique_validated`), `ALL_WORKFLOW_CHECKS` et le type `WorkflowCheck` (lignes 28-40 au commit `94c7e91`). (Les constantes Cerveau et Rédaction historiques ont été retirées 2026-05-13, cf. DRIFT-002.)
+Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenants_locked` et `lexique_validated`, 33-40), `CHECK_DEPENDENTS` / `checksRemovedWith` (49-57, C6), `REDACTION_CHECKS` (63), `ALL_WORKFLOW_CHECKS = [...MOTEUR_CHECKS, ...REDACTION_CHECKS]` (66) et le type `WorkflowCheck` (68). (Les trois constantes Cerveau et les cinq constantes Rédaction historiques ont été retirées 2026-05-13, cf. DRIFT-002 ; une seule étape Rédaction revient avec C7.)
 
-**Stockage** : colonne `articles.completed_checks` TEXT[] (cf. [server/db/schema.sql](../../server/db/schema.sql) ligne 74). SSOT unique pour la progression Moteur (cf. NFR-INT-COMPLETED-CHECKS-SSOT). D'éventuelles valeurs legacy `cerveau:*` / `redaction:*` persistées avant 2026-05-13 sont tolérées en lecture (ignorées côté affichage).
+**Stockage** : colonne `articles.completed_checks` TEXT[] (cf. [server/db/schema.sql](../../server/db/schema.sql) ligne 73). SSOT unique pour la progression de l'article (cf. NFR-INT-COMPLETED-CHECKS-SSOT). D'éventuelles valeurs legacy `cerveau:*` / `redaction:*` persistées avant 2026-05-13 sont tolérées en lecture (ignorées côté affichage).
 
 **Décisions d'architecture**
-- **Préfixe `moteur:`** : prefix unique côté écriture. Tout check sans ce préfixe lu depuis la DB est ignoré.
+- **Préfixe `moteur:`**, plus une seule exception exacte, `redaction:draft_accepted` (C7), côté écriture (`writeCheckRegex`, [shared/schemas/article-progress.schema.ts:11](../../shared/schemas/article-progress.schema.ts)). Les dots (`ProgressDots`) ne comptent que `MOTEUR_CHECKS` : l'étape Rédaction n'est pas un dot.
 - **Constantes immuables `as const`** : tableaux et types dérivés via `typeof MOTEUR_CHECKS[number]`.
 - **Retrait Cerveau + Rédaction 2026-05-13** : les promesses FR-CER-CHECKS (jamais émise) et FR-RED-CHECKS (1 émetteur sur 5) ont été retirées par décision produit (cf. DRIFT-002).
+- **Retour d'une étape Rédaction (C7, commit `749d8c5`)** : « rédigé » ne se lisait nulle part ; la présence de contenu ne suffisait pas (un premier jet vide enregistré une fois comptait, un article enrichi s'éloigne de sa cible). L'étape est gardée par la porte `draft` (`CHECK_GATES`) et collante (absente de `CHECK_DEPENDENTS`). Cf. `DESIGN-CER-PARENT-WRITTEN-GATE`.
 
 **Voir aussi**
 - `DESIGN-MOT-CHECKS-CONSTANTS` (§8.3) — application côté Moteur.
@@ -6257,8 +6641,9 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 **Réf PRD :** [FR-INFRA-LOCAL-ENTITIES](./prd.md#fr-infra-local-entities--référentiel-statique-dentités-locales)
 
 **Refs code**
-- [server/db/schema.sql](../../server/db/schema.sql) lignes 283-290 — `local_entities(id SERIAL PK, name TEXT NOT NULL, type TEXT, aliases TEXT[], region TEXT)`.
-- Service : [server/services/infra/local-entities.service.ts](../../server/services/infra/local-entities.service.ts) — `getEntities()`, `scoreLocalAnchoring(text, …)`.
+- [server/db/schema.sql](../../server/db/schema.sql) lignes 304-311 (au commit `fb92b46`) — `local_entities(id SERIAL PK, name TEXT NOT NULL, type TEXT, aliases TEXT[], region TEXT)`.
+- Service : [server/services/infra/local-entities.service.ts](../../server/services/infra/local-entities.service.ts) — `getEntities()` (lit `region`, exposée en `LocalEntity.region?` depuis D5), `scoreLocalAnchoring(text, …)`.
+- **Colonne `region` enfin lue (checklist D5, commit `3638d00`)** : `entitiesOfZone` ([prompt-context.service.ts:51-60](../../server/services/strategy/prompt-context.service.ts)) ne garde, pour `{{zone_landmarks}}`, que les entités de la zone du client ; une entité sans `region` appartient au référentiel par défaut (cf. `DESIGN-INFRA-PROMPT-LAYERS`).
 - Route : `server/routes/local.routes.ts` (si présente — sinon endpoints embarqués dans une autre route).
 - Seed historique : `_archive/scripts/seed-migration-json-to-pg-2026-04.ts`.
 
@@ -6462,7 +6847,7 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 - **La porte garde l'étape et le statut, pas l'écriture des décisions** : l'enregistrement de `article_keywords` (autosave, cases cochées) reste libre ; c'est l'étape (`articles.completed_checks`) — qui ouvre la Finalisation et la Rédaction — et le statut `publié` qui sont gardés.
 - **Rattachement aux exigences** par module (`verifyCaptain` ↔ `FR-CAP-LOCK-GATE`…) et par les en-têtes de fichiers : `GateIssue` ne porte pas l'ID d'exigence, mais un `rule` stable.
 - **Plus de porte réservée** : `hn-lock`, acceptée par la route depuis C2 mais évaluée sans alerte, est livrée par C6 (`DESIGN-HN-LOCK-GATE`). `lexique-lock` est livrée par C3, `draft` par C5a (2026-09-25).
-- **Une porte qui alerte sans garder** : `draft` n'est dans `CHECK_GATES` ni n'est rejouée par `publishGate` ; l'écran la consulte (`ensure`) juste après la rédaction et sa méta, l'alarme s'ouvre si elle ne passe pas, rien n'est refusé. `auto:article` ne la consulte pas.
+- ~~**Une porte qui alerte sans garder** : `draft` n'est dans `CHECK_GATES` ni n'est rejouée par `publishGate` ; l'écran la consulte (`ensure`) juste après la rédaction et sa méta, l'alarme s'ouvre si elle ne passe pas, rien n'est refusé. `auto:article` ne la consulte pas.~~ **Depuis C7 (commit `749d8c5`)**, `draft` garde l'étape `redaction:draft_accepted` (`CHECK_GATES`) : l'écran la demande après la méta (`acceptDraft`) et par le bandeau, `auto:article` la demande et s'arrête sur un refus, et la création d'un enfant la joue sur le parent (409 `GATE_BLOCKED`, cf. `DESIGN-CER-PARENT-WRITTEN-GATE`). Elle ne refuse toujours ni l'enregistrement ni l'enrichissement du texte, et n'est pas rejouée par `publishGate`.
 - **Audit tolérant** : un article déjà rédigé que la porte refuserait donne un avertissement (`publish-gate-refused`), pas une erreur — ses défauts sont déjà comptés par les validateurs.
 - **Aucune dérogation automatique** : le script `auto:article` s'arrête sur un refus ; seul un humain déroge.
 
@@ -6478,6 +6863,7 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 - 2026-09-25 — porte `lexique-lock` livrée (C3) : `verifyLexique`, `lexiqueGate`, `CHECK_GATES[MOTEUR_LEXIQUE_VALIDATED]`, rejouée par `publishGate`.
 - 2026-09-25 — porte `draft` livrée (C5a) : `verifyDraft`, `draftGate` ; ni étape gardée ni rejeu à la publication.
 - 2026-09-25 — porte `hn-lock` livrée (C6, commit `d24e530`) : `verifyStructure`, `hnGate`, `CHECK_GATES[MOTEUR_HN_LOCKED]`, rejouée par `publishGate`.
+- 2026-09-25 — `draft` garde l'étape `redaction:draft_accepted` (`CHECK_GATES`, C7, commit `749d8c5`) ; la publication gagne les règles de la famille du cocon (`child-section-*`, `link-to-unpublished`, commit `1882030`). Vérificateur pur de la hiérarchie du cocon, hors portes (pas de dérogation) : `shared/verifiers/cocoon-hierarchy.ts` (commit `d22ea8e`, `DESIGN-CER-COCOON-PROGRESSIVE`).
 
 **Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-HN-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
 
@@ -7105,7 +7491,7 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — endpoints `POST /articles/:id/progress/check` et `POST /articles/:id/progress/uncheck`.
 
 **Persistance**
-- Table `articles(completed_checks TEXT[])` — colonne flat, valeurs préfixées `moteur:*` côté écriture. (Valeurs legacy `cerveau:*` / `redaction:*` éventuellement persistées avant 2026-05-13 tolérées en lecture, cf. DRIFT-002.)
+- Table `articles(completed_checks TEXT[])` — colonne flat, valeurs préfixées `moteur:*` côté écriture, plus `redaction:draft_accepted` depuis C7 (lue par `DraftAcceptance` et `getCocoonTree`, cf. `DESIGN-CER-PARENT-WRITTEN-GATE`). (Valeurs legacy `cerveau:*` / `redaction:*` éventuellement persistées avant 2026-05-13 tolérées en lecture, cf. DRIFT-002.)
 
 **Décisions d'architecture**
 - **AUTHORITY explicite** : le store porte un header `AUTHORITY:` consultable via grep (cf. CLAUDE.md §3.2). Tout consommateur de la progression lit ce store, pas la table directement.
@@ -7126,17 +7512,19 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 **Réf PRD :** [NFR-INT-CHECKS-NAMESPACE](./prd.md#nfr-int-checks-namespace--préfixes-de-workflow-pour-ranger-les-checks)
 
 **Refs code**
-- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue Moteur uniquement depuis 2026-05-13 :
-  - `MOTEUR_DISCOVERY_DONE` = `'moteur:discovery_done'`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_LEXIQUE_VALIDATED`.
+- [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — catalogue Moteur uniquement du 2026-05-13 à C7, puis Moteur + une étape Rédaction :
+  - `MOTEUR_DISCOVERY_DONE` = `'moteur:discovery_done'`, `MOTEUR_RADAR_DONE`, `MOTEUR_CAPITAINE_LOCKED`, `MOTEUR_LIEUTENANTS_LOCKED`, `MOTEUR_HN_LOCKED` (C6), `MOTEUR_LEXIQUE_VALIDATED` ;
+  - `REDACTION_DRAFT_ACCEPTED` = `'redaction:draft_accepted'` (C7, ligne 61).
 
 **Décisions d'architecture**
-- **Convention `moteur:snake_case`** : préfixe lowercase + `:` + nom en snake_case lowercase. La constante TS est `MOTEUR_NAME` (uppercase + `_`) pour distinguer la valeur stockée vs la référence code.
-- **Colonne unique flat** : pas de colonne dédiée par check (sinon évolution coûteuse). Lecture filtrée par préfixe `moteur:` (cf. NFR-INT-CHECKS-NAMESPACE).
-- **Retrait Cerveau + Rédaction 2026-05-13** : les constantes `CERVEAU_*` (3) et `REDACTION_*` (5) ont été supprimées par décision produit (cf. `DRIFT-002`). Pour rétablir ultérieurement, recréer les constantes côté `shared/constants/` et brancher des émetteurs côté composants — la persistance accepte déjà tout préfixe.
+- **Convention `<workflow>:snake_case`** : préfixe lowercase + `:` + nom en snake_case lowercase. La constante TS est `MOTEUR_NAME` / `REDACTION_NAME` (uppercase + `_`) pour distinguer la valeur stockée vs la référence code.
+- **Colonne unique flat** : pas de colonne dédiée par check (sinon évolution coûteuse). Les dots filtrent sur `MOTEUR_CHECKS` (cf. NFR-INT-CHECKS-NAMESPACE).
+- **Retrait Cerveau + Rédaction 2026-05-13** : les constantes `CERVEAU_*` (3) et `REDACTION_*` (5) ont été supprimées par décision produit (cf. `DRIFT-002`).
+- **Rétablissement ciblé (C7)** : une seule constante Rédaction recréée ; contrairement à ce qu'annonçait ce registre, la persistance n'acceptait pas « déjà tout préfixe » à l'écriture — il a fallu ouvrir `writeCheckRegex` à la valeur exacte `redaction:draft_accepted` ([article-progress.schema.ts:11](../../shared/schemas/article-progress.schema.ts)).
 
 **Critères d'acceptation techniques**
-- AC.INTCN.1 : aucun composant n'écrit directement une string `'moteur:xxx'` — il utilise une constante.
-- AC.INTCN.2 : tous les checks émis correspondent à une constante exportée par `workflow-checks.constants.ts`.
+- AC.INTCN.1 : aucun composant n'écrit directement une string `'moteur:xxx'` ou `'redaction:xxx'` — il utilise une constante.
+- AC.INTCN.2 : tous les checks émis correspondent à une constante exportée par `workflow-checks.constants.ts` ; tous suivent `moteur:snake_case`, ou valent `redaction:draft_accepted`. *(test : `tests/unit/coherence/completed-checks.test.ts`)*
 
 **Voir aussi**
 - `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — détail des constantes.
@@ -7164,9 +7552,13 @@ Plus l'agrégat `MOTEUR_CHECKS` (ordre des onglets, `hn_locked` entre `lieutenan
 **Critères d'acceptation techniques**
 - AC.INTSO.1 : le service Lexique consomme `keyword_metrics.serp_raw_json` plutôt que de relancer un scrape.
 - AC.INTSO.2 : aucun chemin de code ne fait un double scrape pour le même (keyword, lang, country) dans la fenêtre de fraîcheur.
+- AC.INTSO.3 (C7, commit `1062072`) : des résultats sans aucune page lue ne font pas une analyse — `reconstructSerpAnalysisResult` rend `null`. *(test : `tests/integration/serp-analyze-cache-c2.test.ts`, base requise)*
+
+**Relecture en base (« DB hit »), état au commit `1062072`** *(ajouté en documentant C7 ; le code fait foi sur les blocs ci-dessus, qui décrivent encore `keyword_metrics.serp_raw_json`)* : `POST /api/serp/analyze` ([serp-analysis.routes.ts:39-58](../../server/routes/serp-analysis.routes.ts)) — avec `cacheOnly`, `reconstructSerpAnalysisResult(keyword)` seul ; sinon `getSerpResultsFresh(keyword)` (`keyword_serp_results`, 7 jours) **puis** `reconstructSerpAnalysisResult` non nul (« SERP DB hit ») ; sinon nouvelle analyse (DataForSEO + lecture des pages). Même chemin pour le Lexique (`fetchAndPersist`, `scrape-corpus.service.ts`, `fromCache: 'db'`). **Depuis le commit `1062072`**, `reconstructSerpAnalysisResult` ([keyword-serp.service.ts:479 et suiv.](../../server/services/keyword/keyword-serp.service.ts)) rend `null` si `keyword_serp_scrapes` est vide pour ce mot-clé (491) : le « DB hit » exige au moins une page lue. Motif : la mesure des candidats du Cerveau (C7, `DESIGN-CER-KEYWORD-REAL-DATA`) écrivait ses trois premiers résultats dans `keyword_serp_results`, ce qui passait pour une analyse fraîche — le mot-clé choisi n'était plus scrapé pendant 7 jours, et Lieutenants, Structure et Lexique restaient sans pages concurrentes. La mesure écrit désormais dans `external_api_cache` (`serp-top`) ; les mots-clés déjà touchés sont réparés par la même condition.
 
 **Voir aussi**
 - `DESIGN-LIE-* TODO`, `DESIGN-LEX-* TODO` — détail aval.
+- `DESIGN-INFRA-SCRAPE-CORPUS-NEUTRE` (`fetchAndPersist`), `DESIGN-CER-KEYWORD-REAL-DATA` (relevé `serp-top`).
 
 ---
 

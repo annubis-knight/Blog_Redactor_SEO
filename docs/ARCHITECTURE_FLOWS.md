@@ -4,6 +4,7 @@
 > Dernière mise à jour : 2026-05-04
 > **2026-05-04** : ajout des notes Sprint 4/5 stabilisation (découpage routes/services par responsabilité — voir [Annexe — Découpages structurels post-stabilisation](#annexe--découpages-structurels-post-stabilisation-2026-05-04))
 > **2026-09-25** : rédaction en deux temps (épopée qualité SEO, C5) — premier jet en un appel (`POST /api/generate/article-draft`, remplace `/api/generate/article`), puis passes d'enrichissement proposées chapitre par chapitre (`POST /api/generate/enrich/:pass`, `POST /api/generate/section-rewrite`). Passages concernés mis à jour (§3.1, §3.2, §3.3, §7, §10, annexes) ; le reste du document n'a pas été revu.
+> **2026-09-25** : cocon né du pilier (épopée qualité SEO, C7) — un article naît seul (`POST /api/cocoons/:cocoonId/articles`, remplace `POST /api/articles/batch-create`), pilier d'abord, puis chaque enfant depuis une section (H2) de son parent **rédigé** (`articles.parent_id`, `parent_section`) ; mot-clé choisi parmi des candidats mesurés (`POST /api/cocoons/:cocoonId/child-candidates`) ; arbre réel `GET /api/cocoons/:cocoonId/tree`, constructeur `CocoonTreeBuilder` au Cerveau, la proposition de plan devient une carte indicative ; étape `redaction:draft_accepted` (« premier jet accepté », porte `draft`) ; `{{cocoon_context}}` dans la structure et le premier jet ; passe « Résumer » ; maillage : famille proposée d'office, lien de la sélection enregistré ; publication : résumés des enfants et liens vers des articles non publiés. Passages concernés mis à jour (§3.1, §3.2, §7, §10).
 > **2026-09-25** : onglet Structure (épopée qualité SEO, C6) — 7 onglets, la structure H1/H2/H3 naît des lieutenants retenus dans `StructureHnPanel` (plus dans l'onglet Lieutenants), 6 checks Moteur (`moteur:hn_locked`, porte `hn-lock` rejouée à la publication), Finalisation à 4 verrous. Passages Moteur concernés mis à jour (routes, parcours, phase ②, checks, arbre des composants).
 
 ---
@@ -284,6 +285,18 @@ sequenceDiagram
     API->>PG: SELECT * FROM articles WHERE cocoon_id=?
     PG-->>articlesStore: articles[]
 
+    Note over User,PG: Cerveau, étape Articles (C7) : le constructeur crée un article à la fois
+    User->>cocoonBuilder: loadTree()
+    cocoonBuilder->>API: GET /api/cocoons/:cocoonId/tree
+    API->>PG: articles (parent_id, parent_section, completed_checks) + article_content / hn_structure
+    User->>cocoonBuilder: proposeCandidates(pilier | section d'un parent rédigé) — clic, payant
+    cocoonBuilder->>API: POST /api/cocoons/:cocoonId/child-candidates
+    API-->>cocoonBuilder: 3 à 5 candidats mesurés (keyword_metrics, SERP)
+    User->>cocoonBuilder: createFromCandidate(candidat, titre)
+    cocoonBuilder->>API: POST /api/cocoons/:cocoonId/articles (derrière la porte draft du parent)
+    API->>PG: INSERT articles (parent_id, parent_section)
+    cocoonBuilder->>API: POST /api/keywords + PUT /api/strategy/cocoon/:slug (carte)
+
     User->>briefStore: fetchBrief(articleId)
     briefStore->>API: GET /api/articles/:id + keywords + DataForSEO
     API->>PG: SELECT article + article_keywords + keyword_metrics
@@ -294,8 +307,9 @@ sequenceDiagram
     API-->>outlineStore: streaming chunks
 
     User->>editorStore: generateArticle(briefData, outline, targetWordCount)
-    editorStore->>API: POST /api/generate/article-draft (SSE, un seul appel IA)
+    editorStore->>API: POST /api/generate/article-draft (SSE, un seul appel IA, état du cocon depuis C7)
     API-->>editorStore: chunks + section-start / section-done par H2
+    editorStore->>API: POST /api/articles/:id/progress/check redaction:draft_accepted (porte draft, C7)
 
     User->>enrichmentStore: runPass(pass) / rewriteChapter(index, consigne)
     enrichmentStore->>API: POST /api/generate/enrich/:pass (un appel par chapitre)
@@ -343,7 +357,8 @@ sequenceDiagram
 #### enrichment.store (article/) — depuis 2026-09-25
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `runPass(pass, ctx)` | `sources` \| `exemples` \| `tableaux` \| `images` \| `faq` | une proposition vérifiée par chapitre visé | POST `/api/generate/enrich/:pass` SSE (un `done` par appel) |
+| `runPass(pass, ctx)` | `sources` \| `exemples` \| `tableaux` \| `images` \| `faq` \| `resumes` (C7) | une proposition vérifiée par chapitre visé | POST `/api/generate/enrich/:pass` SSE (un `done` par appel) |
+| `loadChildSections(articleId)` (C7) | number | sections dont est né un article enfant (visées par « Résumer ») | GET `/api/articles/:id/children` |
 | `rewriteChapter(index, consigne, ctx)` | number, string | une proposition | POST `/api/generate/section-rewrite` SSE |
 | `accept(key)` / `refuse(key)` / `acceptAllClean()` | clé | chapitre remplacé (ou FAQ insérée) dans `editorStore.content` ; `stale` si le chapitre a changé | — (le panneau enregistre ensuite : PUT `/api/articles/:id`) |
 
@@ -663,7 +678,7 @@ graph TB
 
     subgraph Step2["Step 2 — ARTICLE"]
         GEN_ARTICLE["🤖 generateArticle(briefData, outline, target)<br>POST /api/generate/article-draft (SSE)<br>premier jet en un appel, sans recherche web<br>sectionProgress réémis par H2"]
-        GATE_DRAFT["🚦 porte « accepter le premier jet »<br>GET /api/articles/:id/gates/draft<br>(alerte, ne bloque pas)"]
+        GATE_DRAFT["🚦 étape « premier jet accepté » (C7)<br>POST /api/articles/:id/progress/check<br>redaction:draft_accepted — porte draft<br>(alarme si refus ; bandeau pour la redemander ;<br>sans elle, pas d'enfant dans le cocon)"]
         EDITOR["📝 TipTap Editor (ArticleEditor)<br>Extensions : starter-kit, link, table, image,<br>placeholder, blocs maison, marque toSource"]
         GEN_META["🏷️ generateMeta<br>POST /api/generate/meta"]
         ENRICH["✨ Panneau Enrichir (enrichment.store)<br>POST /api/generate/enrich/:pass<br>sources · exemples · tableaux · images · faq<br>POST /api/generate/section-rewrite<br>une proposition vérifiée par chapitre → accepter / refuser"]
@@ -1210,14 +1225,19 @@ graph TB
 | GET | `/api/silos` | silos | Liste silos |
 | GET | `/api/cocoons` | cocoons | Liste cocons |
 | GET | `/api/cocoons/:id/capitaines` | — | Map capitaines du cocon (cannibalization) |
+| GET | `/api/cocoons/:cocoonId/tree` | useCocoonBuilder | Arbre réel du cocon : articles, rédigés ou non, sections et enfant né de chacune (C7) — `server/routes/cocoons.routes.ts` |
+| POST | `/api/cocoons/:cocoonId/articles` | useCocoonBuilder | Crée **un** article (pilier d'abord, enfant depuis une section d'un parent rédigé, mot-clé mesuré) ; 409 `HIERARCHY_VIOLATION` / `GATE_BLOCKED` / `SLUG_TAKEN`, 422 `KEYWORD_NOT_MEASURED` (C7) ; remplace `POST /api/articles/batch-create` (supprimée) |
+| POST | `/api/cocoons/:cocoonId/child-candidates` | useCocoonBuilder | 3 à 5 mots-clés candidats mesurés pour un nouvel article (IA + DataForSEO, payant) (C7) |
 | GET | `/api/articles?cocoon=id` | articles | Articles d'un cocon |
 | GET | `/api/articles/:id` | brief | Détail article |
 | PUT | `/api/articles/:id` | editor | Sauvegarde article |
+| DELETE | `/api/articles/:id` | useArticleProposals | Détache l'article de son cocon (reste en base) ; 409 `HAS_CHILDREN` s'il a encore des enfants dans le cocon (C7) |
+| GET | `/api/articles/:id/children` | enrichment | Enfants de l'article et section dont chacun est né (C7) |
 | GET | `/api/articles/:id/progress` | article-progress | Progress article |
-| POST | `/api/articles/:id/progress/check` | article-progress | Ajoute un check |
+| POST | `/api/articles/:id/progress/check` | article-progress | Ajoute un check (gardé par sa porte ; `redaction:draft_accepted` → porte `draft` depuis C7) |
 | POST | `/api/generate/outline` | outline | Génération plan (SSE) — `server/routes/generate/outline.routes.ts` |
 | POST | `/api/generate/article-draft` | editor | Premier jet en un appel (SSE, progression par H2, reprise après coupure) — `server/routes/generate/article-draft.routes.ts` ; remplace `/api/generate/article` (retiré le 2026-09-25) |
-| POST | `/api/generate/enrich/:pass` | enrichment | Passe d'enrichissement sur un chapitre : `sources` (recherche web), `exemples`, `tableaux`, `images`, `faq` (SSE, un seul `done`) — `server/routes/generate/enrich.routes.ts` |
+| POST | `/api/generate/enrich/:pass` | enrichment | Passe d'enrichissement sur un chapitre : `sources` (recherche web), `exemples`, `tableaux`, `images`, `faq`, `resumes` (C7 : chapitre dont est né un article enfant) (SSE, un seul `done`) — `server/routes/generate/enrich.routes.ts` |
 | POST | `/api/generate/section-rewrite` | enrichment | Réécriture d'un chapitre sur consigne (SSE, un seul `done`) — `server/routes/generate/enrich.routes.ts` |
 | GET | `/api/articles/:id/gates/:gateId` | gate-alarm | Évaluation d'une porte de qualité (`draft`, `publish`…) — `server/routes/gates.routes.ts` |
 | POST | `/api/generate/meta` | editor | Génération meta tags — `server/routes/generate/meta.routes.ts` |
@@ -1234,7 +1254,7 @@ graph TB
 | POST | `/api/keywords/audit` | keyword-audit | Audit keywords (legacy — ex-Explorateur, plus appelé par UI active) |
 | POST | `/api/keywords/:keyword/validate` | — | Verdict GO/NO-GO Capitaine |
 | POST | `/api/keywords/:keyword/ai-panel` | — | Panel IA Capitaine (SSE) |
-| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn proposée à partir des lieutenants retenus (onglet Structure depuis C6, autres articles du cocon en contexte) |
+| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn proposée à partir des lieutenants retenus (onglet Structure depuis C6 ; état du cocon en contexte, `{{cocoon_context}}`, depuis C7) |
 | POST | `/api/keywords/:keyword/propose-lieutenants` | — | Propositions Lieutenants |
 | GET | `/api/keywords/:keyword/usage` | — | Usage du mot-clé |
 | GET | `/api/keywords/:keyword/metrics` | — | Métriques (keyword_metrics) |

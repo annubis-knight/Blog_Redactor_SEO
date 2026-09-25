@@ -63,7 +63,7 @@ npm run auto:article -- --mode=mock --config=run.json
 flowchart LR
   I[Sujet vague + contexte] --> C[Cerveau<br/>intake IA → article + stratégie]
   C -->|Gate 1| M[Moteur<br/>Discovery → Radar → Capitaine<br/>→ Lieutenants → Lexique]
-  M -->|Gate 2| R[Rédaction<br/>outline → article → meta → export]
+  M -->|Gate 2| R[Rédaction<br/>outline → premier jet → meta<br/>→ étape premier jet accepté → export]
   R --> O[(_auto-output/*.html)]
 ```
 
@@ -99,8 +99,25 @@ flowchart LR
 
 - **Cocon** : doit préexister. Si le nom saisi est introuvable, le CLI liste les
   cocons disponibles.
+- **Place dans l'arbre du cocon** (depuis le chantier C7, 2026-09-25) : l'article
+  est créé par `POST /cocoons/:id/articles`, un à la fois, comme à l'écran. Un
+  pilier n'a pas de parent, et un cocon n'en a qu'un. Un intermédiaire ou un
+  spécialisé naît d'une **section libre** (un H2 sans article) de son parent :
+  le CLI lit l'arbre (`GET /cocoons/:id/tree`) et choisit la section dont le
+  titre parle le plus du sujet, à égalité sous un parent déjà rédigé
+  (`heuristics/pick-parent-section.ts`). Sans parent du bon niveau, ou sans
+  section libre, le run s'arrête en disant pourquoi. Si le parent n'est pas
+  **rédigé** (étape « premier jet accepté »), le serveur refuse : le run
+  s'arrête avec les défauts de son premier jet, **sans jamais déroger** à la
+  place d'un humain. Aucun mot-clé n'est posé à la création (il n'est pas
+  encore mesuré) : le Moteur le mesure, puis le verrouille comme capitaine.
+- **Premier jet accepté** : après la méta, le CLI demande l'étape
+  `redaction:draft_accepted` à la porte du premier jet ; un refus arrête le run
+  (« Décidez dans la Rédaction »). C'est elle qui permettra à l'article de
+  donner naissance à ses enfants.
 - **Idempotence** : relancer le même sujet réutilise l'article existant (conflit
-  de slug géré) ; `--resume=<id>` reprend là où le run précédent s'est arrêté.
+  de slug géré, 409 `SLUG_TAKEN`) ; `--resume=<id>` reprend là où le run
+  précédent s'est arrêté.
 - **Mock ≠ qualité réelle** : le mode mock valide le *pipeline*, pas la *qualité
   éditoriale*. Faire un run `--mode=real` de contrôle avant mise en production.
 - **Coût réel d'un run complet** : ~**$0.35** pour un article de 4 000–6 000 mots

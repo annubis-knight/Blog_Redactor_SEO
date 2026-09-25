@@ -1,3 +1,14 @@
+/**
+ * AUTHORITY: PostgreSQL `internal_links` (matrice du maillage interne).
+ * READS FROM: internal_links, articles (loadArticlesDb : titres, slugs, cocons,
+ *             parent_id / parent_section pour la famille d'un article, C7).
+ * WRITES TO: internal_links (upsertLinks : PUT /api/links ; l'action contextuelle
+ *            « lien interne » de l'éditeur y enregistre aussi ses liens).
+ * CONSUMERS: server/routes/links.routes.ts (matrice, suggestions, orphelins),
+ *            gate.service.publishCocoonLinks (liens vers des articles non publiés),
+ *            useLinkingStore (panneau de maillage, useContextualActions).
+ * RELATED FR: FR-RED-LINKING-MANUAL (suggestions : le parent et les enfants d'office).
+ */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import { loadArticlesDb } from '../infra/data.service.js'

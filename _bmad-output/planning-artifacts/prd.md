@@ -159,7 +159,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 |---|---|
 | Appels API redondants | 0 (cache `external_api_cache` + `keyword_metrics` + cache PAA hiérarchique sur `keyword_metrics.paa_questions`) |
 | Phases du Moteur identifiables | 3 phases visuelles sur 7 onglets (6 avant l'onglet Structure, C6, 2026-09-25) |
-| Progression par article | 6 checks `moteur:*` automatiquement écrits, dont « Structure validée » depuis C6 (Cerveau et Rédaction ne posent plus de checks workflow — décision 2026-05-13, cf. DRIFT-002) |
+| Progression par article | 6 checks `moteur:*` automatiquement écrits, dont « Structure validée » depuis C6 (le Cerveau ne pose plus de checks workflow — décision 2026-05-13, cf. DRIFT-002) ; la Rédaction en pose un seul depuis C7, « Premier jet accepté » (`FR-CER-PARENT-WRITTEN-GATE`) |
 | Persistance | 100% PostgreSQL (pas de fichier JSON côté chaud) |
 | Workflow sans outil externe | Oui |
 | Cache hit rate DataForSEO après première utilisation | > 90% |
@@ -181,7 +181,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 5. **Moteur — Phase ② Valider — Lieutenants** → Bouton « Analyser SERP » → scraping top 10 via DataForSEO. Hn concurrents, PAA associés, groupes croisés. Filtre auto post-IA (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4). Sélection (check `moteur:lieutenants_locked`).
 6. **Moteur — Phase ② Valider — Lexique** → TF-IDF extrait des données SERP déjà scrapées (zéro requête supplémentaire). 3 niveaux : Obligatoire / Différenciateur / Optionnel. Tri configurable (A-Z / densité / alignement douleur Jaccard). Panel IA upfront. (check `moteur:lexique_validated`).
 7. **Moteur — Phase ③ Finalisation** → Récap read-only des 3 verrouillages. Bouton « Passer à la rédaction ».
-8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Premier jet rédigé en un seul appel, sans recherche web, affiché chapitre par chapitre (`generate-article-draft.md`, depuis le 2026-09-25) → Meta titre + description (`generate-meta.md`) → porte « accepter le premier jet » (alarme graduée si le texte ne passe pas) → panneau « Enrichir » (depuis le 2026-09-25) : passes Sources (recherche web), Exemples, Tableaux, Images, FAQ, relecture de la langue et réécriture d'un chapitre, chaque proposition vérifiée puis acceptée ou refusée chapitre par chapitre → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 11 actions contextuelles sur sélection.
+8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Premier jet rédigé en un seul appel, sans recherche web, affiché chapitre par chapitre (`generate-article-draft.md`, depuis le 2026-09-25) → Meta titre + description (`generate-meta.md`) → étape « Premier jet accepté », accordée par la porte du premier jet (alarme graduée si le texte ne passe pas ; depuis C7, c'est elle qui permet à l'article de donner naissance à ses enfants dans le cocon) → panneau « Enrichir » (depuis le 2026-09-25) : passes Sources (recherche web), Exemples, Tableaux, Images, FAQ, Résumer (chapitres devenus des articles, C7), relecture de la langue et réécriture d'un chapitre, chaque proposition vérifiée puis acceptée ou refusée chapitre par chapitre → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 11 actions contextuelles sur sélection.
 9. **Résultat** → Article rédigé, mots-clés validés, export HTML.
 
 ### ~~Journey 2 — Vérification au Labo~~ — **REMOVED 2026-05-10**
@@ -286,6 +286,8 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 | 5 checks `moteur:*` automatiques (6 depuis l'onglet Structure, C6) | ✅ | PRD initial ; épopée qualité SEO (C6) |
 | ~~3 checks `cerveau:*`~~ retirés 2026-05-13 — promesse non tenue côté code (jamais émis), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
 | ~~5 checks `redaction:*`~~ retirés 2026-05-13 — promesse partiellement câblée (1 émetteur sur 5), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
+| 1 check `redaction:draft_accepted` — « Premier jet accepté », gardé par la porte du premier jet : ce qui fait d'un article un parent rédigé | ✅ 2026-09-25 | épopée qualité SEO (C7) |
+| Cocon né du pilier : création un article à la fois depuis l'arbre réel, parent et section enregistrés, mots-clés candidats mesurés, état du cocon transmis aux générations, proposition de plan en carte indicative | ✅ 2026-09-25 (parcours navigateur en cours) | épopée qualité SEO (C7), tech-spec-cocon-progressif |
 | Enrichissement prompts Cerveau → Moteur (`{{strategy_context}}`) | ✅ | PRD initial |
 | Labo & Explorateur découplés | ✅ | PRD initial |
 | Migration PostgreSQL | ✅ | tech-spec-migration-json-to-postgresql (archivé) |
@@ -341,6 +343,9 @@ Avant de produire des articles individuels, l'utilisateur peut poser une **strat
 - À l'issue des 6 étapes principales, l'utilisateur peut faire générer une proposition de structure du cocon (un Pilier + N Intermédiaires + M Spécifiques).
 - Les 4 étapes annexes sont optionnelles mais accessibles à tout moment.
 - La stratégie cocon est consultable en lecture depuis n'importe quel article du cocon (cf. `FR-CER-CONTEXT-FOR-MOTEUR`).
+- La proposition de structure du cocon est une **carte indicative**, en lecture seule : elle montre où va le cocon, mais ne crée aucun article. Les articles naissent un par un, à partir du pilier (cf. `FR-CER-COCOON-PROGRESSIVE`).
+
+**Statut :** active. **Amendée le 2026-09-25 (C7)** : la proposition de structure ne sert plus à créer les articles en lot (cf. `FR-CER-BATCH-CREATE`, superseded) ; elle devient une carte indicative.
 
 > **En situation.** L'utilisateur ouvre un nouveau cocon « Création d'entreprise ». Plutôt que de plonger directement dans un article, il pose d'abord la stratégie cocon : cible commune (« entrepreneur solo qui veut créer une structure adaptée »), douleur racine (« peur de choisir le mauvais statut »), angle (« comparatif chiffré + cas concrets »), promesse, CTA. Puis il fait travailler l'IA sur la structure : 1 Pilier (« Guide complet création entreprise »), 4 Intermédiaires (statuts, étapes, fiscalité, social), 10 Spécifiques. Quand il attaquera la stratégie de chaque article, ces choix-là sont déjà figés — il ne refait pas le travail 15 fois.
 
@@ -359,7 +364,7 @@ L'étape Aiguillage place l'article dans la hiérarchie du cocon en lui attribua
 - Le niveau choisi est visible sur la fiche article et propagé au Moteur (seuils contextuels) et à la Rédaction (longueur cible).
 - **Le niveau suggéré par l'IA est conservé tel qu'elle le rend**, quelle que soit son écriture (« Pilier » comme « pilier », avec ou sans accent). Un cocon généré a toujours une tête : si aucun pilier n'apparaît dans la proposition, c'est un défaut, pas un choix éditorial.
 
-**Statut** : durci le 2026-09-23. **Pourquoi** : les prompts demandaient `"type": "Pilier"` et le code ne reconnaissait que `"pilier"`. Aucun niveau n'était donc jamais lu : un passage réel a produit 17 articles tous classés « Spécifique », sans pilier ni intermédiaire, alors que les titres proposés étaient eux parfaitement hiérarchisés.
+**Statut** : durci le 2026-09-23. **Pourquoi** : les prompts demandaient `"type": "Pilier"` et le code ne reconnaissait que `"pilier"`. Aucun niveau n'était donc jamais lu : un passage réel a produit 17 articles tous classés « Spécifique », sans pilier ni intermédiaire, alors que les titres proposés étaient eux parfaitement hiérarchisés. **Précisée le 2026-09-25 (C7)** : le rattachement n'est plus seulement une intention de la stratégie ; l'article enregistre son parent et la section de ce parent dont il est né, et l'outil refuse à la création un parent qui n'est pas du niveau juste au-dessus (cf. `FR-CER-COCOON-PROGRESSIVE`, `FR-CER-CHILD-FROM-PILLAR-H2`).
 
 > **En situation.** Pour l'article « Statut juridique entreprise individuelle », l'IA évalue : sujet large mais pas premier au cocon → suggère **Intermédiaire** rattaché au Pilier « Statut juridique entreprise ». L'utilisateur valide. Quand il attaquera le Moteur sur cet article, les seuils de scoring du Capitaine seront ceux d'un Intermédiaire (KD moyen toléré, volume moyen attendu). En Rédaction, la longueur cible suggérée tombera dans la fourchette Intermédiaire (1200-2500 mots).
 
@@ -367,7 +372,13 @@ L'étape Aiguillage place l'article dans la hiérarchie du cocon en lui attribua
 
 ---
 
-#### FR-CER-BATCH-CREATE — Création d'articles en lot
+#### FR-CER-BATCH-CREATE — Création d'articles en lot *(superseded 2026-09-25 par FR-CER-COCOON-PROGRESSIVE)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-CER-COCOON-PROGRESSIVE` (avec `FR-CER-PARENT-WRITTEN-GATE`, `FR-CER-CHILD-FROM-PILLAR-H2` et `FR-CER-KEYWORD-REAL-DATA`). **Source :** épopée qualité SEO, chantier C7 (checklist K6).
+>
+> **Ce qui change.** Les articles ne se créent plus en lot. La création en bloc acceptait n'importe quel ordre : un intermédiaire naissait avant son pilier, sans parent ni section, et les doublons n'étaient repérés que sur une adresse identique. Le cocon se construit désormais un article à la fois, à partir du pilier ; chaque enfant naît d'une section de son parent rédigé, sur un mot-clé mesuré. La proposition de plan complet de l'IA reste affichée, en lecture seule, comme carte indicative. Restent en place : le titre, le niveau, le mot-clé, la douleur et l'intention éditoriale posés à la création ; un refus qui s'explique (cf. `FR-CER-CREATION-HONNETE`).
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 Quand la structure du cocon est validée (cf. `FR-CER-STEPS-COCOON`), l'utilisateur peut **créer en un seul geste** tous les articles proposés par l'IA — typiquement 10 à 20 articles d'un coup, chacun avec son titre, son niveau, son mot-clé suggéré, son point de douleur et son slug. Au lieu de cliquer 15 fois sur « Nouvel article » et de remplir un formulaire à chaque fois, l'utilisateur valide la structure une fois et les articles apparaissent immédiatement dans le cocon.
 
@@ -380,6 +391,112 @@ Quand la structure du cocon est validée (cf. `FR-CER-STEPS-COCOON`), l'utilisat
 > **En situation.** L'utilisateur a validé une structure de 15 articles pour son cocon « Création d'entreprise ». Il clique sur « Créer ces articles ». L'app les crée en bloc. Au lieu d'avoir passé 30 minutes à les saisir un par un (et risquer des incohérences de slug ou de niveau), il a 15 articles cohérents en 5 secondes, tous reliés au cocon, tous avec leur painPoint propre.
 
 → Conception : [DESIGN-CER-BATCH-CREATE](./design-registry.md#design-cer-batch-create)
+
+---
+
+#### FR-CER-COCOON-PROGRESSIVE — Le cocon se construit article par article
+
+Jusqu'ici, tous les articles d'un cocon naissaient d'un seul clic, à partir de la proposition de plan de l'IA : rien ne disait dans quel ordre les créer, un intermédiaire pouvait exister avant son pilier, et aucun article ne savait de quel autre il dépendait — si bien que le pilier 1013 a traité en profondeur ce que ses enfants devaient dire. Le cocon se construit désormais comme un expert le ferait : d'abord le pilier, la page qui présente tout le sujet ; puis, une fois le pilier rédigé, un article pour chacune de ses sections ; puis, de la même façon, les articles spécialisés sous chaque intermédiaire. La proposition de plan complet de l'IA reste utile pour voir où l'on va : c'est une carte, pas un bon de commande.
+
+**Critères d'acceptation**
+- Dans un cocon vide, seul un pilier peut être créé. Un cocon n'a qu'un pilier, et un pilier n'a pas de parent.
+- Les autres articles se créent un par un : un intermédiaire sous le pilier, un spécialisé sous un intermédiaire — jamais sous un autre niveau, jamais sous un article d'un autre cocon.
+- Chaque article enregistre son parent et la section de ce parent dont il est né (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; le parent doit être rédigé (cf. `FR-CER-PARENT-WRITTEN-GATE`) ; son mot-clé, s'il en a un, a été mesuré (cf. `FR-CER-KEYWORD-REAL-DATA`).
+- Ces règles de construction ne se dérogent pas (⛔) : un refus dit ce qui manque (« Un cocon commence par son pilier : créez-le d'abord. », « La section « Audit de site » a déjà donné l'article « Auditer son site web ». »). Une adresse de page déjà prise est refusée avec le même soin (cf. `FR-CER-CREATION-HONNETE`).
+- Un article qui a encore des enfants dans le cocon ne peut pas en être retiré : le retrait est refusé avec sa raison (« Des articles sont nés de ses sections : retirez-les d'abord du cocon, sinon ils perdraient leur parent. »), et la carte du Cerveau le garde. Un enfant retiré du cocon quitte l'arbre et libère sa section, qui peut donner un autre article. Un article qui a des enfants ne peut pas non plus disparaître de la base.
+- La création en lot a disparu. À l'étape Articles du Cerveau, un constructeur montre l'arbre réel du cocon — chaque pilier puis ses intermédiaires, leur état (« Rédigé » / « À rédiger »), leurs sections et l'article né de chacune — et c'est lui qui crée : « Créer le pilier » tant que le cocon n'en a pas, puis « Créer l'article de cette section » sur chaque section libre d'un parent. Ce bouton reste grisé tant que le parent n'est pas rédigé, et un message invite à valider d'abord son premier jet ; un lien ouvre sa rédaction.
+- Créer un article passe par le choix de son mot-clé parmi des candidats mesurés (cf. `FR-CER-KEYWORD-REAL-DATA`) et d'un titre (prérempli par le candidat, 3 caractères au moins). L'article créé rejoint la carte du cocon, d'où le Moteur tire sa liste d'articles, et son mot-clé rejoint le pool du cocon ; un refus du pool est dit sans annuler l'article (cf. `FR-CER-CREATION-HONNETE`).
+- La proposition de plan complet de l'IA reste affichée sous le constructeur, comme une **carte indicative** : « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » On peut encore la générer et la retoucher, mais plus rien ne s'y « valide » ; un article déjà créé y porte la marque « Créé ».
+- Les articles sans place dans l'arbre (créés avant la construction progressive) sont listés à part, « Articles hors de l'arbre », consultables mais sans enfant possible depuis le constructeur.
+- Le mode automatique suit les mêmes règles : il crée l'article dans la section libre de son parent dont le titre parle le plus de son sujet (à égalité, sous un parent déjà rédigé) ; si aucun parent du bon niveau n'existe ou si toutes ses sections ont déjà leur article, il s'arrête en le disant ; si le parent n'est pas rédigé, il s'arrête sans déroger.
+- Les cocons d'avant ce changement sont rattachés par un rattrapage, en simulation par défaut : chaque article sans parent est rapproché du parent que désigne la carte de stratégie (à défaut, pour un intermédiaire, du pilier unique du cocon), puis de la section de ce parent qui parle de son sujet — au moins deux mots propres à la section, et au moins la moitié d'entre eux, les mots du sujet du parent ne comptant pas. Ce qui ne se rapproche pas sûrement est listé, jamais deviné.
+
+**Limites connues**
+- Le parent ou la section d'un article existant ne se changent pas depuis l'outil : un article que le rattrapage n'a pas su placer reste « hors de l'arbre ».
+- La carte indicative et l'arbre réel sont deux listes : retoucher une proposition de la carte (titre, parent) ne change rien à l'arbre.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-CER-BATCH-CREATE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (checklist K6). **Amendée à la livraison :** s'ajoutent l'enregistrement du parent et de sa section, le constructeur de l'arbre réel (c'est lui qui crée), le mode automatique, le rattrapage des cocons existants et le refus de retirer un parent ; la carte indicative n'est pas en lecture seule au sens strict (elle se retouche), elle ne crée simplement plus rien. **Corrigé à la livraison** : retirer un article de la carte avalait jusque-là tout refus du serveur — l'article disparaissait de la carte et du Moteur en restant en base.
+
+> **En situation.** Arnaud démarre un cocon « Rénovation énergétique ». Le constructeur ne lui propose qu'une chose, « Créer le pilier » : il demande des candidats, choisit « rénovation énergétique maison » sur son volume et ses premiers résultats Google, et crée le pilier. Une fois sa structure validée, les sections du pilier apparaissent sous lui, mais leurs boutons « Créer l'article de cette section » restent grisés : « Validez d'abord le premier jet de « Rénovation énergétique maison » ». La proposition de plan de l'IA reste affichée en dessous — un pilier, cinq intermédiaires, douze spécialisés — pour qu'il sache où il va. Plus tard, il veut retirer le pilier du cocon : refusé, « Isolation des combles » est né de l'une de ses sections.
+
+→ Conception : [DESIGN-CER-COCOON-PROGRESSIVE](./design-registry.md#design-cer-cocoon-progressive)
+
+---
+
+#### FR-CER-PARENT-WRITTEN-GATE — Pas d'enfant tant que le parent n'est pas rédigé
+
+Un enfant développe ce que son parent résume. Tant que le parent n'est pas écrit, on ne sait ni ce qu'il dira de ce sujet ni sous quel titre : créer l'enfant revient à écrire deux pages sur le même sujet sans savoir comment elles se partagent le travail. « Rédigé » a désormais un sens précis : le premier jet de l'article a été accepté par sa porte (cf. `FR-RED-DRAFT-SINGLE-PASS`), et l'outil l'enregistre comme une étape de l'article, « Premier jet accepté ».
+
+**Critères d'acceptation**
+- L'étape « Premier jet accepté » n'est posée que si la porte du premier jet passe, ou si l'utilisateur assume par écrit ses alertes 🔴 ; un défaut ⛔ (texte vide, H1 absent…) ne se déroge pas (cf. `FR-INFRA-GATE-WAIVER`).
+- L'étape est demandée d'elle-même à la fin du premier jet, une fois le texte et sa méta enregistrés. Dans les deux vues de rédaction, un bandeau dit si le premier jet est accepté ; sinon, un bouton « Valider le premier jet » la redemande — après une correction, ou pour assumer par écrit.
+- L'étape reste acquise : enrichir l'article ensuite, ce qui l'éloigne de sa longueur visée, ne la retire pas.
+- Un intermédiaire ne se crée que sous un pilier rédigé, un spécialisé que sous un intermédiaire rédigé. Dans le Cerveau, le bouton qui crée l'article d'une section reste grisé tant que le parent n'est pas rédigé, avec un message qui invite à valider d'abord son premier jet (cf. `FR-CER-COCOON-PROGRESSIVE`).
+- Si une création arrive malgré tout pour un parent qui n'a pas l'étape (état changé entre-temps, mode automatique), sa porte du premier jet est jouée : si elle passe, l'étape est posée sur le parent et l'enfant est créé ; sinon, l'alarme s'ouvre **sur le parent** — l'utilisateur voit ce qui lui manque, corrige ou assume, puis la création reprend d'elle-même. Revenir corriger ne crée rien.
+- Les mots-clés candidats d'un enfant ne sont pas demandés tant que le parent n'est pas rédigé : l'outil le dit avant tout appel payant (« « Isolation des combles » n'est pas encore rédigé : validez d'abord son premier jet, puis créez ses articles enfants. »).
+- Le mode automatique demande aussi l'étape après le premier jet ; sur un refus, il s'arrête et dit de décider dans la Rédaction, sans jamais déroger à la place de l'utilisateur.
+- Au rattrapage des cocons existants, l'étape est posée sur les articles déjà publiés et sur ceux dont le premier jet passe la porte ; les autres sont listés avec leurs défauts.
+
+**Limites connues**
+- L'étape n'est pas un dot de progression : les dots restent ceux du Moteur. Elle se lit dans le bandeau de la Rédaction et dans l'arbre du cocon (« rédigé » / « à rédiger »).
+- Si la génération de la méta échoue, l'étape n'est pas demandée d'elle-même : le bouton du bandeau la redemande.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7. **Amendée à la livraison :** « premier jet vérifié » devient une étape enregistrée, accordée par la porte du premier jet, qui peut être assumée par écrit ; « l'alarme explique ce qui manque » : elle s'ouvre sur le parent, au moment de créer l'enfant.
+
+> **En situation.** Arnaud veut créer le spécialisé « Laine soufflée ou laine déroulée ? » sous l'intermédiaire « Isolation des combles », qui n'a encore que son plan. Dans l'arbre, la section « Choisir son isolant » est bien là, mais son bouton est grisé : « Validez d'abord le premier jet de « Isolation des combles » ». Il ouvre sa rédaction ; à la fin du premier jet, la porte relève une phrase restée en anglais (🔴) et le bandeau affiche « Premier jet pas encore accepté ». Il corrige la phrase, clique « Valider le premier jet » : l'étape est posée. Il peut maintenant créer le spécialisé depuis une section de l'intermédiaire.
+
+→ Conception : [DESIGN-CER-PARENT-WRITTEN-GATE](./design-registry.md#design-cer-parent-written-gate)
+
+---
+
+#### FR-CER-CHILD-FROM-PILLAR-H2 — Chaque enfant naît d'une section de son parent
+
+Le pilier 1013 traitait en détail, dans ses propres chapitres, les sujets que ses enfants devaient développer : deux pages sur le même sujet se concurrencent dans Google (cannibalisation), et aucune ne renvoyait vers l'autre. Chaque enfant naît désormais d'une section (un chapitre H2) de son parent. Dans le parent, cette section devient un résumé qui annonce l'enfant ; l'enfant, lui, sait ce que la section dit déjà et la développe sans la répéter.
+
+**Critères d'acceptation**
+- On crée un enfant à partir d'une section de son parent : un chapitre de son texte (hors introduction, conclusion et FAQ) ou, tant que le parent n'a pas de texte, un chapitre de sa structure.
+- Une section ne donne qu'un enfant. Une section déjà prise, ou que le parent n'a pas, est refusée (⛔).
+- L'enfant connaît la section qui l'annonce et ce qu'elle en dit : la proposition de ses mots-clés, sa structure et son premier jet la reçoivent (cf. `FR-INFRA-COCOON-CONTEXT`).
+- Dans le parent, chaque section dont est né un enfant se résume en 150 à 250 mots et y renvoie. La passe d'enrichissement « Résumer » le propose, section par section (cf. `FR-RED-ENRICH-PASSES`).
+- À la publication du parent, une telle section qui dépasse 250 mots est un risque 🔴 (elle développe ce que l'enfant doit dire) ; une telle section disparue du parent est une attention 🟠 (le lecteur ne trouve plus le chemin vers l'enfant) (cf. `FR-RED-PUBLISH-GATE`).
+- Le lien entre le parent et chacun de ses enfants se pose à la main, avec l'aide de l'outil (cf. `FR-RED-LINKING-MANUAL`).
+
+**Limites connues**
+- Une section se reconnaît à son titre (casse, espaces et ponctuation finale ignorés) : renommer ce chapitre dans le parent la fait « disparaître » (🟠 à la publication), et l'enfant garde l'ancien titre.
+- La publication ne contrôle que le plafond de 250 mots ; le minimum de 150 mots ne se vérifie que sur la proposition de la passe « Résumer ».
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7. **Amendée à la livraison :** la règle vaut pour tout parent, pas seulement le pilier (un intermédiaire donne ses spécialisés de la même façon) ; le résumé est proposé par une passe d'enrichissement et contrôlé à la publication ; le lien qui renvoie vers l'enfant se pose à la main.
+
+> **En situation.** Le H2 « Audit de site » du pilier devient l'intermédiaire « Auditer son site web ». Quand Arnaud en rédige le premier jet, l'IA sait ce que le pilier en dit déjà et va plus loin sans le répéter. De retour sur le pilier, il lance la passe « Résumer » : le chapitre « Audit de site », 640 mots et trois sous-parties, devient un résumé de 200 mots qui invite à lire « Auditer son site web ». S'il avait publié le pilier sans l'accepter, la porte lui aurait signalé une section trop longue (🔴).
+
+→ Conception : [DESIGN-CER-CHILD-FROM-PILLAR-H2](./design-registry.md#design-cer-child-from-pillar-h2)
+
+---
+
+#### FR-CER-KEYWORD-REAL-DATA — Le mot-clé d'un nouvel article se choisit sur des données réelles
+
+L'IA du Cerveau a donné au pilier 1013 un mot-clé recopié de l'exemple de sa consigne, sans volume ni intention mesurés. Pour un nouvel article, l'IA propose désormais plusieurs candidats, l'outil les mesure, et l'utilisateur choisit sur ces mesures.
+
+**Critères d'acceptation**
+- Pour le pilier d'un cocon vide, ou pour une section libre d'un parent rédigé, l'utilisateur demande des candidats. L'IA en propose 3 à 5, chacun avec un titre d'article qui le contient, une raison et la difficulté du lecteur qu'il règle ; elle reçoit l'état du cocon, sa stratégie, la section du parent et ce qu'elle en dit, et les règles du type d'article.
+- Aucun candidat ne reprend le mot-clé d'un article du cocon ni celui d'un autre candidat.
+- Chaque candidat est mesuré avant d'être montré : volume, difficulté, coût par clic, intention de recherche, et les trois premiers résultats de Google (titre, site). L'outil relit d'abord ses mesures de moins de 7 jours et ne paie que ce qui manque, en une seule demande groupée pour les volumes.
+- Une mesure qui échoue reste absente (« — ») : jamais un zéro inventé. À l'écran, un candidat qui n'a pas pu être mesuré est marqué « Non mesuré » et ne peut pas être choisi ; rien n'est choisi d'office, et une aide explique comment lire le volume, la difficulté, l'intention et les premiers résultats.
+- Mesurer un candidat ne tient pas lieu d'analyse des concurrents : les premiers résultats relevés pour le Cerveau sont gardés à part, et le Moteur analyse ensuite le mot-clé choisi normalement, pages concurrentes comprises (cf. `NFR-INT-SERP-ONCE`).
+- En mode simulé, les candidats sont mesurés comme en réel, par le bac à sable de DataForSEO (cf. `FR-EXT-DATAFORSEO-SANDBOX`).
+- Demander des candidats est payant : c'est toujours un clic de l'utilisateur. Ce qui empêcherait de créer l'article (ordre du cocon, parent pas rédigé, section inconnue ou déjà prise) se dit avant l'appel.
+- Aucun mot-clé n'est enregistré sur un article sans avoir été mesuré : la création refuse un mot-clé que l'outil n'a jamais mesuré.
+- Le mode automatique ne pose aucun mot-clé à la création : le Moteur le mesure, puis le verrouille comme capitaine.
+
+**Limites connues**
+- La nature des résultats (guides, agences, boutiques) n'est pas qualifiée par l'outil : l'utilisateur la lit dans les trois premiers résultats.
+- « Mesuré » veut dire « présent dans les mesures de l'outil », quel que soit leur âge : la création accepte un mot-clé mesuré il y a longtemps.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7. **Amendée à la livraison :** la « nature de la SERP » est donnée par ses trois premiers résultats, sans qualification ; les candidats sont proposés pour le pilier d'un cocon vide comme pour un enfant. **Corrigé à la livraison (2026-09-25)** : en mode simulé, aucun candidat n'était mesuré (le bac à sable répond par des mots-clés factices), donc aucun article ne pouvait naître ; et le relevé des premiers résultats passait pour une analyse des concurrents, si bien que le Moteur ne lisait plus les pages concurrentes du mot-clé choisi pendant 7 jours.
+
+> **En situation.** Pour la section « Audit de site » du pilier, Arnaud demande des candidats. Trois s'affichent, mesurés : « audit site web » (1 300 recherches par mois, trois agences en tête), « audit seo gratuit » (880, trois outils en ligne), « comment faire un audit de site » (140, trois guides). Il choisit le dernier : Google y montre des guides, le format de son article. Un quatrième candidat, « audit seo », n'apparaît pas : c'est déjà le mot-clé d'un article du cocon.
+
+→ Conception : [DESIGN-CER-KEYWORD-REAL-DATA](./design-registry.md#design-cer-keyword-real-data)
 
 ---
 
@@ -411,7 +528,7 @@ Quand l'utilisateur accepte un article proposé, l'écran ne doit montrer une co
 - Un article créé en base est annoncé créé, même si l'ajout de son mot-clé au pool du cocon est refusé ensuite.
 - Un mot-clé refusé parce qu'un autre cocon le vise déjà déclenche un avertissement qui nomme ce cocon : deux cocons sur le même mot-clé se font concurrence.
 
-**Statut :** active. **Depuis :** 2026-09-23 (slug déjà pris). **Durci :** 2026-09-24 (mot-clé refusé). **Source :** parcours réel, épopée qualité SEO (checklist K1).
+**Statut :** active. **Depuis :** 2026-09-23 (slug déjà pris). **Durci :** 2026-09-24 (mot-clé refusé). **Source :** parcours réel, épopée qualité SEO (checklist K1). **Précisée le 2026-09-25 (C7)** : la création se fait un article à la fois (cf. `FR-CER-COCOON-PROGRESSIVE`) ; ses nouveaux refus — ordre du cocon, section déjà prise, mot-clé jamais mesuré — s'expliquent de la même façon, et un parent pas encore rédigé ouvre l'alarme de sa porte du premier jet au lieu d'un simple message (cf. `FR-CER-PARENT-WRITTEN-GATE`). Un article créé depuis le constructeur est annoncé créé même si son mot-clé est refusé par le pool, ou si la carte du cocon n'a pas pu être enregistrée : l'avertissement dit alors ce qui manque. Le retrait d'un article est tenu au même soin : un refus du serveur (des enfants sont nés de ses sections) est dit, et la carte garde l'article au lieu de le faire disparaître en silence.
 
 > **En situation.** Arnaud accepte le pilier « Propulser la croissance digitale des entreprises toulousaines ». L'article est créé, mais son mot-clé est déjà utilisé par le cocon « Croissance digitale Toulouse ». L'article passe en « créé », et un avertissement lui dit que son mot-clé n'a pas rejoint le pool : « Le mot-clé « stratégie digitale entreprises toulouse » est déjà utilisé dans le cocon « Croissance digitale Toulouse » : deux cocons qui visent le même mot-clé se font concurrence. Choisissez-en un autre au Moteur. » Avant, rien ne s'affichait, et un second clic tombait sur « adresse déjà prise ».
 
@@ -740,7 +857,7 @@ Le Moteur écrit automatiquement **6 marqueurs de progression** dans l'avancemen
 - Le retrait d'une étape (déverrouiller un Capitaine, enregistrer une structure modifiée après sa validation, par exemple) retire le marqueur — l'utilisateur peut revenir en arrière.
 - Le Moteur ne pose **pas** de marqueur « Finalisation » — l'onglet Finalisation est en lecture seule, il ne produit aucun checkpoint.
 
-**Statut :** active. **Amendée le 2026-09-25 (C6)** : sixième étape, « Structure validée », posée par l'onglet Structure et gardée par la porte de la structure (cf. `FR-HN-TAB`, `FR-HN-LOCK-GATE`). Les articles dont les lieutenants étaient validés avant C6 n'ont pas cette étape : une réconciliation l'accorde à ceux dont la structure passe la porte.
+**Statut :** active. **Amendée le 2026-09-25 (C6)** : sixième étape, « Structure validée », posée par l'onglet Structure et gardée par la porte de la structure (cf. `FR-HN-TAB`, `FR-HN-LOCK-GATE`). Les articles dont les lieutenants étaient validés avant C6 n'ont pas cette étape : une réconciliation l'accorde à ceux dont la structure passe la porte. **Précisée le 2026-09-25 (C7)** : la progression de l'article porte aussi une étape de la Rédaction, « Premier jet accepté » (cf. `FR-CER-PARENT-WRITTEN-GATE`) ; elle n'est pas une étape du Moteur et n'a pas de dot.
 
 > **En situation.** Pendant sa session Moteur sur l'article « Indemnité rupture conventionnelle 2026 », l'utilisateur verrouille son Capitaine vers 14h32 : le 3ᵉ dot de progression de l'article se remplit, sans qu'il ait eu à faire quoi que ce soit. À 14h50, il déverrouille le Capitaine pour en tester un autre : le dot redevient vide. Plus tard, il valide la structure de l'article : le 5ᵉ dot, « Structure », se remplit. La progression suit le geste exact, ni plus ni moins.
 
@@ -749,7 +866,7 @@ Le Moteur écrit automatiquement **6 marqueurs de progression** dans l'avancemen
 ---
 
 #### FR-MOT-CHECKS-CONSTANTS — Catalogue strict des étapes de progression
-Les noms des étapes de progression sont définis dans **un catalogue unique** côté code. Chaque nom suit un format strict : préfixe `moteur:` suivi de l'action en minuscules. Aucun nom hors catalogue n'est accepté côté serveur — une tentative d'écriture avec un nom non conforme est rejetée. (Les préfixes `cerveau:` et `redaction:` historiques ne sont plus utilisés depuis 2026-05-13, cf. DRIFT-002.)
+Les noms des étapes de progression sont définis dans **un catalogue unique** côté code. Chaque nom suit un format strict : préfixe `moteur:` suivi de l'action en minuscules, avec une seule exception depuis le 2026-09-25, l'étape de la Rédaction `redaction:draft_accepted` (« Premier jet accepté », cf. `FR-CER-PARENT-WRITTEN-GATE`). Aucun nom hors catalogue n'est accepté côté serveur — une tentative d'écriture avec un nom non conforme est rejetée. (Le préfixe `cerveau:` et les cinq anciennes étapes `redaction:` ne sont plus utilisés depuis 2026-05-13, cf. DRIFT-002.)
 
 L'objectif utilisateur : **garantir que les dots de progression et les verrous Moteur lisent et écrivent toujours le même nom**, sans risque qu'une string en doublon se balade et fasse mentir l'affichage (« dot vert mais condition non remplie »).
 
@@ -758,7 +875,7 @@ L'objectif utilisateur : **garantir que les dots de progression et les verrous M
 - Aucune string littérale n'est dispersée dans le code — tout passe par les constantes définies une seule fois.
 - Un test automatique vérifie qu'aucun fichier source de l'app ne contient de nom legacy ou écrit à la main.
 
-**Statut** : active (strict). **Depuis** : prescrit dès origine, renforcé 2026-05-08.
+**Statut** : active (strict). **Depuis** : prescrit dès origine, renforcé 2026-05-08. **Amendée le 2026-09-25 (C7)** : le format accepte, en plus des étapes `moteur:*`, la seule étape `redaction:draft_accepted` ; toute autre étape `redaction:*` ou `cerveau:*` reste refusée à l'écriture.
 
 > **En situation.** En mai 2026 un bug visuel surgit : des dots Moteur restaient vides alors que l'utilisateur avait verrouillé son Capitaine, et inversement des dots apparaissaient verts sans action récente. Cause : deux noms cohabitaient en base — l'historique sans préfixe (`capitaine_locked`) et le nouveau préfixé (`moteur:capitaine_locked`). Le code écrivait dans l'un, lisait dans l'autre. La règle a été durcie : un seul format autorisé, un test garde-fou qui scanne tout le code, une migration cleanup sur les articles existants. Plus jamais ce bug.
 
@@ -2281,7 +2398,7 @@ Elle remplace `FR-LIE-HN-STRUCTURE`. La structure naissait dans l'onglet Lieuten
 - Les titres ne se retouchent pas à la main dans l'onglet : on garde (🔒) ou on redemande. La retouche fine se fait dans le sommaire de la Rédaction.
 - Changer de capitaine sans retirer son étape (remplacer directement le mot-clé verrouillé) ne retire pas l'étape « Structure validée » : la publication, qui rejoue la porte, voit alors un H1 sans le nouveau capitaine.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-LIE-HN-STRUCTURE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C6 (checklist M7). **Amendée à la livraison :** « le H1 proposé est conservé jusqu'à la rédaction » devient une règle du sommaire (le H1 de la structure en tête, jamais doublé) ; l'IA n'écrit plus d'introduction ni de conclusion, et le sommaire ne les double plus ; la validation s'ajoute à l'enregistrement ; plus aucune structure ne s'efface en silence ; le mode automatique et les articles déjà avancés suivent. **Complétée aux défauts de clôture de C6 (2026-09-25)** : plus d'analyse payante à l'ouverture de l'onglet, cascade des étapes Capitaine / Lieutenants → Structure, sommaire refusé = validation arrêtée, sommaire retouché gardé sur demande.
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-LIE-HN-STRUCTURE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C6 (checklist M7). **Amendée à la livraison :** « le H1 proposé est conservé jusqu'à la rédaction » devient une règle du sommaire (le H1 de la structure en tête, jamais doublé) ; l'IA n'écrit plus d'introduction ni de conclusion, et le sommaire ne les double plus ; la validation s'ajoute à l'enregistrement ; plus aucune structure ne s'efface en silence ; le mode automatique et les articles déjà avancés suivent. **Complétée aux défauts de clôture de C6 (2026-09-25)** : plus d'analyse payante à l'ouverture de l'onglet, cascade des étapes Capitaine / Lieutenants → Structure, sommaire refusé = validation arrêtée, sommaire retouché gardé sur demande. **Amendée le 2026-09-25 (C7)** : « les autres articles du cocon » deviennent l'état complet du cocon (cf. `FR-INFRA-COCOON-CONTEXT`) — l'IA sait aussi quelles sections de l'article ont déjà leur propre article, et, pour un enfant, ce que la section de son parent dit déjà de lui.
 
 > **En situation.** Arnaud verrouille 4 lieutenants pour son pilier « création site internet », puis ouvre Structure : les 4 lieutenants sont rappelés en tête. Il demande une structure : le H1 contient « création site internet », les H2 reprennent ses lieutenants et les titres qui reviennent chez les concurrents, sans introduction ni conclusion. Le chapitre sur l'audit se contente d'annoncer le sujet : l'article « Auditer son site » existe déjà dans le cocon. Il verrouille deux titres qu'il aime, redemande une proposition, la garde et clique « Valider la structure ». Le cinquième dot se remplit ; dans la Rédaction, le sommaire l'attend : son H1, une introduction, ses chapitres, une conclusion.
 
@@ -2670,7 +2787,7 @@ Une fois le brief consolidé, l'utilisateur déclenche la **génération du somm
 Le pilier 1013 (2026-09-24) avait été rédigé en 15 appels à l'IA, un par chapitre : chacun ne voyait que les dernières lignes du précédent, visait sa part de longueur sans savoir où en était le reste et concluait pour son compte. Résultat : 15 601 mots, six fois la cible, une conclusion par section, des paragraphes recopiés d'un chapitre à l'autre. Désormais l'article naît d'un **premier jet** écrit d'un seul tenant : l'IA reçoit une seule fois tout le plan, la part de chaque chapitre, la stratégie, les mots-clés et les règles du type d'article. Ce premier jet est jugé dès sa rédaction, avant les passes d'enrichissement (sources, exemples, tableaux, images, FAQ) qui le complètent ensuite (cf. `FR-RED-ENRICH-PASSES`).
 
 **Critères d'acceptation**
-- L'article est rédigé en un seul appel à l'IA, qui reçoit tout le sommaire validé (chapitres, sous-titres et leurs intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut, celle du cocon), les mots-clés et les règles du type d'article (cf. `FR-INFRA-TYPE-RULES-SSOT`).
+- L'article est rédigé en un seul appel à l'IA, qui reçoit tout le sommaire validé (chapitres, sous-titres et leurs intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut, celle du cocon), les mots-clés, les règles du type d'article (cf. `FR-INFRA-TYPE-RULES-SSOT`) et, depuis C7, l'état du cocon (cf. `FR-INFRA-COCOON-CONTEXT`) : un chapitre dont le sujet a son propre article le résume et y renvoie, et un enfant développe ce que la section de son parent annonce sans la répéter.
 - La longueur visée est celle que l'utilisateur a choisie pour l'article, sinon la recommandation du brief, sinon celle de son type : la même que la barre de mots affiche (cf. `FR-RED-WORD-COUNT-TARGET`). L'introduction en reçoit environ 15 %, la conclusion 10 %, les autres chapitres se partagent le reste à parts égales ; le chapeau placé sous le titre compte dans le premier chapitre.
 - Le premier jet n'a pas de recherche web : il n'invente aucun chiffre et pose « à sourcer » ceux qui seraient utiles (cf. `FR-RED-DRAFT-TO-SOURCE`).
 - La progression reste visible chapitre par chapitre (titre du chapitre en cours, rang / total) et le texte apparaît au fil de l'écriture. Il n'y a plus d'attente entre deux chapitres.
@@ -2678,7 +2795,7 @@ Le pilier 1013 (2026-09-24) avait été rédigé en 15 appels à l'IA, un par ch
 - Si la réponse de l'IA est coupée parce qu'elle a atteint sa longueur maximale, la rédaction reprend au début du chapitre interrompu, qu'elle réécrit en entier sans refaire les précédents ; deux reprises au plus.
 - Si l'IA est saturée ou indisponible avant d'écrire, l'outil réessaie, puis passe au fournisseur suivant (cf. `FR-EXT-AI-FALLBACK`). Une panne en cours d'écriture arrête le premier jet avec un message ; ce qui a déjà été enregistré au fil reste en base.
 - On sait quel modèle a écrit le premier jet : chaque modèle utilisé, reprises comprises, figure dans la pile d'activité avec le coût, dans l'ordre d'apparition.
-- Une fois le premier jet et sa méta enregistrés, le texte passe la porte « accepter le premier jet ». Si elle ne passe pas, l'alarme graduée s'ouvre (cf. `FR-INFRA-GATE-WAIVER`). Elle ne bloque rien : le texte reste enregistré, l'utilisateur corrige ou assume par écrit.
+- Une fois le premier jet et sa méta enregistrés, l'étape « Premier jet accepté » est demandée à la porte « accepter le premier jet ». Si elle ne passe pas, l'alarme graduée s'ouvre (cf. `FR-INFRA-GATE-WAIVER`) : l'utilisateur corrige ou assume par écrit. Le texte reste enregistré et les passes d'enrichissement restent ouvertes ; sans l'étape, seuls les articles enfants ne peuvent pas naître (cf. `FR-CER-PARENT-WRITTEN-GATE`). Un bandeau, dans les deux vues, dit si le premier jet est accepté et permet de redemander l'étape.
 - La porte signale :
   - ⛔ un texte vide, un bloc coupé en pleine phrase, du texte hors paragraphe, l'IA qui parle d'elle-même, du Markdown resté dans le texte, une balise interdite, un titre vide, un saut de niveau de titre, plusieurs H1, ou l'absence de H1 ;
   - 🔴 un H1 qui ne contient pas le capitaine en entier ;
@@ -2689,14 +2806,14 @@ Le pilier 1013 (2026-09-24) avait été rédigé en 15 appels à l'IA, un par ch
 - La porte n'est pas rejouée à la publication : sa règle de longueur n'a plus de sens une fois l'article enrichi. La publication rejuge elle-même la langue, les répétitions et les chiffres sans source (cf. `FR-RED-PUBLISH-GATE`).
 
 **Limites connues**
-- La porte n'est consultée qu'une fois, juste après la rédaction : aucun geste ne la relance après correction. Elle ne l'est pas quand la génération de la méta échoue (le texte est enregistré, l'alarme ne s'ouvre pas), ni par le mode automatique en ligne de commande.
+- ~~La porte n'est consultée qu'une fois, juste après la rédaction : aucun geste ne la relance après correction ; ni par le mode automatique.~~ Soldé par C7 (2026-09-25) : le bouton « Valider le premier jet » du bandeau la redemande, et le mode automatique demande l'étape (il s'arrête sur un refus). Reste : quand la génération de la méta échoue, l'étape n'est pas demandée d'elle-même (le texte est enregistré, le bandeau permet de la demander).
 - La longueur visée est retenue pour l'article quand l'utilisateur n'en avait choisi aucune, et la porte mesure contre elle ; depuis le 2026-09-25 (C5b), la barre de mots, l'écart, la réduction et le score SEO lisent la même, et l'écran la garde dès la fin du premier jet, même si la recommandation de l'IA change ensuite (épopée qualité SEO, checklist R16 et R24, soldées).
-- Passer la porte ne débloque encore aucune étape : elle servira à reconnaître un parent « rédigé » quand le cocon naîtra du pilier (épopée qualité SEO, C7).
+- ~~Passer la porte ne débloque encore aucune étape.~~ Soldé par C7 : passer la porte accorde l'étape « Premier jet accepté », qui fait de l'article un parent rédigé (cf. `FR-CER-PARENT-WRITTEN-GATE`).
 - Pendant une reprise après coupure, le texte qui défile à l'écran, et ce qui est enregistré au fil, garde le début du chapitre interrompu avant sa réécriture ; seul le texte final est propre.
 - Les dérogations posées au premier jet ne sont pas réaffichées à la publication ; l'audit du projet (`npm run verify`) les liste avec les autres.
 - La rédaction fusionne les paragraphes qui se suivent en un seul, séparés par des retours à la ligne : la structure du texte s'en trouve appauvrie (épopée qualité SEO, checklist R14).
 
-**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-ARTICLE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Amendée à la livraison :** un H1 sans le capitaine est 🔴 et non ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme à la publication) ; seul un H1 absent est ⛔. La sauvegarde au fil reste faite par l'écran, pas par le serveur. **Amendée le 2026-09-25 (C5b)** : la longueur visée est aussi celle de l'écran (R16 soldée), qui la garde dès la fin du premier jet (R24 soldée).
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-ARTICLE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Amendée à la livraison :** un H1 sans le capitaine est 🔴 et non ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme à la publication) ; seul un H1 absent est ⛔. La sauvegarde au fil reste faite par l'écran, pas par le serveur. **Amendée le 2026-09-25 (C5b)** : la longueur visée est aussi celle de l'écran (R16 soldée), qui la garde dès la fin du premier jet (R24 soldée). **Amendée le 2026-09-25 (C7)** : la porte n'est plus seulement consultée, elle accorde l'étape « Premier jet accepté », redemandable par un bandeau et demandée aussi par le mode automatique ; l'IA reçoit l'état du cocon.
 
 > **En situation.** L'utilisateur lance la rédaction de son pilier : 2 500 mots visés, 7 chapitres. La barre affiche « 1/7 — Introduction », puis chaque chapitre à son tour, sans les 15 secondes d'attente d'avant ; le texte arrive au fil, la méta suit. Puis l'alarme de la porte s'ouvre : le chapitre « Coûts » fait 610 mots pour environ 375 prévus (🔴), et une phrase est restée en anglais (🔴). Il clique « Revenir corriger », traduit la phrase et resserre le chapitre dans l'éditeur. S'il avait laissé la phrase anglaise, la porte de publication la lui aurait remontrée.
 
@@ -2733,20 +2850,22 @@ Le pilier 1013 avançait des chiffres « de 2024 » sans aucune source. Un chiff
 Le premier jet est écrit d'un seul tenant, sans recherche web, sans tableau ni image (cf. `FR-RED-DRAFT-SINGLE-PASS`). Comme dans une rédaction professionnelle, il s'enrichit ensuite **par passes** : chacune propose une nouvelle version de l'article **chapitre par chapitre**, déjà vérifiée, et rien ne change dans le texte tant que l'utilisateur n'a pas accepté.
 
 **Critères d'acceptation**
-- Un panneau « Enrichir », dans les deux vues de rédaction, propose cinq passes : Sources (cf. `FR-RED-ENRICH-SOURCES`), Exemples, Tableaux, Images et FAQ ; il donne aussi la relecture de la langue (cf. `FR-RED-LANG-REVIEW`) et la réécriture d'un chapitre (cf. `FR-RED-SECTION-REWRITE`). Il n'est utilisable qu'une fois le premier jet écrit et le capitaine verrouillé.
+- Un panneau « Enrichir », dans les deux vues de rédaction, propose six passes : Sources (cf. `FR-RED-ENRICH-SOURCES`), Exemples, Tableaux, Images, FAQ et, depuis C7, Résumer (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; il donne aussi la relecture de la langue (cf. `FR-RED-LANG-REVIEW`) et la réécriture d'un chapitre (cf. `FR-RED-SECTION-REWRITE`). Il n'est utilisable qu'une fois le premier jet écrit et le capitaine verrouillé.
 - L'utilisateur lance les passes une à une, dans l'ordre qu'il veut. Une passe traite ses chapitres l'un après l'autre ; la progression s'affiche (« Chapitre 2/5 — titre ») et un bouton « Arrêter » l'interrompt.
-- Chaque passe ne vise que les chapitres où elle a un sens : Exemples, Tableaux et Images travaillent le corps de l'article (ni le chapeau, ni la conclusion, ni la FAQ) ; Sources, les chapitres qui en ont besoin ; la FAQ ajoute un seul chapitre « Questions fréquentes », placé avant la conclusion (à la fin si l'article a moins de deux chapitres), et rien si l'article a déjà sa FAQ. Quand il n'y a rien à faire, le panneau le dit sans appeler l'IA.
+- Chaque passe ne vise que les chapitres où elle a un sens : Exemples, Tableaux et Images travaillent le corps de l'article (ni le chapeau, ni la conclusion, ni la FAQ) ; Sources, les chapitres qui en ont besoin ; la FAQ ajoute un seul chapitre « Questions fréquentes », placé avant la conclusion (à la fin si l'article a moins de deux chapitres), et rien si l'article a déjà sa FAQ ; Résumer, les seuls chapitres dont est né un article enfant du cocon. Quand il n'y a rien à faire, le panneau le dit sans appeler l'IA (« Aucun chapitre n'a encore donné naissance à un article : rien à résumer. »).
 - Chaque passe voit l'article entier pour le contexte (jusqu'à 30 000 caractères de texte, de quoi contenir un pilier de 3 500 mots) et la stratégie de l'article — cible, douleur, angle —, à défaut celle du cocon ; elle reçoit sa propre consigne :
   - Exemples : un exemple en situation, fictif et présenté comme tel, de 40 à 90 mots, sans aucun chiffre ;
   - Tableaux : un tableau seulement quand le chapitre compare ou énumère, avec une ligne d'en-tête, 2 à 4 colonnes et aucun chiffre nouveau ;
   - Images : l'emplacement d'une image, entre deux paragraphes, et son texte alternatif (8 à 16 mots) ;
-  - FAQ : autant de vraies questions que le fixe le type de l'article — 4 à 6 pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé (cf. `FR-INFRA-TYPE-RULES-SSOT`) —, au moins une avec le mot-clé principal, des réponses directes de 40 à 80 mots, sans chiffre.
+  - FAQ : autant de vraies questions que le fixe le type de l'article — 4 à 6 pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé (cf. `FR-INFRA-TYPE-RULES-SSOT`) —, au moins une avec le mot-clé principal, des réponses directes de 40 à 80 mots, sans chiffre ;
+  - Résumer : le chapitre devient un résumé de 150 à 250 mots de ce que développe l'article enfant (dont la passe reçoit le titre et le mot-clé) ; le titre du chapitre reste, ses sous-parties partent, et une dernière phrase invite à lire l'article enfant, sans poser le lien (il se pose à la main, cf. `FR-RED-LINKING-MANUAL`).
 
   Une passe qui n'a rien d'utile à ajouter rend le chapitre inchangé ; une valeur qui manque s'écrit « à sourcer ».
 - Chaque proposition est vérifiée avant d'être montrée :
   - ⛔ proposition vide ou coupée (l'IA s'est arrêtée avant une fin normale : longueur maximale atteinte, recherche web interrompue, arrêt de sécurité), titres du chapitre modifiés — le titre principal (H1), placé dans le chapeau, compris —, bloc ou lien posé à la main qui disparaît, tableau sans ligne d'en-tête, image sans texte alternatif, FAQ sans titre ou sans questions en sous-titres : la proposition ne peut pas être acceptée ;
   - 🔴 lien absent des résultats de la recherche (retiré, son texte gardé), chiffre sans source ajouté, phrase non française ajoutée, question de FAQ sans point d'interrogation ;
-  - 🟠 passage « à sourcer » qui reste après la passe Sources, proposition identique au texte d'origine, FAQ dont le nombre de questions sort de la fourchette du type.
+  - 🟠 passage « à sourcer » qui reste après la passe Sources, proposition identique au texte d'origine, FAQ dont le nombre de questions sort de la fourchette du type ;
+  - pour la passe Résumer : 🔴 résumé hors de 150 à 250 mots ; les sous-parties retirées sont attendues, et un bloc ou un lien posé à la main qui disparaît n'y est qu'une attention 🟠 (vérifier qu'il a sa place dans l'article enfant) au lieu d'un ⛔.
 - Pour chaque chapitre, l'utilisateur voit les alertes et peut comparer avant et après, puis accepte ou refuse. Accepter remplace ce seul chapitre et enregistre l'article aussitôt ; refuser ne touche à rien. « Accepter celles sans alerte » accepte d'un coup les propositions qui n'ont aucune alerte.
 - Un chapitre modifié depuis la proposition n'est jamais écrasé : la proposition passe « chapitre modifié depuis » et se relance. De même, la FAQ ne s'insère pas si le chapitre avant lequel elle devait se placer (la conclusion) a changé depuis la proposition, ni si l'article a entre-temps reçu une FAQ ; le message dit lequel des deux.
 - Une image acceptée rappelle, dans le panneau, où la fournir : dans l'éditeur, en la sélectionnant puis avec le bouton « Image », faute de quoi la publication la refuse. La rédaction guidée n'ayant pas d'éditeur, c'est là que l'utilisateur l'apprend.
@@ -2760,8 +2879,9 @@ Le premier jet est écrit d'un seul tenant, sans recherche web, sans tableau ni 
 - Les passes Exemples, Tableaux et FAQ peuvent poser de nouveaux « à sourcer » : chacun compte à la publication (🔴) jusqu'à une nouvelle passe Sources.
 - La photo se fournit par son adresse : l'éditeur n'envoie pas de fichier depuis l'ordinateur. Le bouton « Image » n'existe que dans l'éditeur, pas dans la rédaction guidée (le panneau y renvoie). Aucun tableau ne s'insère à la main.
 - Une FAQ placée à la fin de l'article (moins de deux chapitres) ne vérifie, à l'insertion, que l'absence d'une autre FAQ.
+- La passe Résumer reconnaît le chapitre d'un enfant à son titre : un chapitre renommé depuis la naissance de l'enfant n'est plus visé.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** une passe propose chapitre par chapitre (un appel par chapitre visé), pas l'article d'un bloc ; l'image proposée est une place « à fournir » que la publication refuse ; « Accepter celles sans alerte » et la protection « chapitre modifié depuis » s'ajoutent. **Amendée le 2026-09-25 (C5b, checklist R17 à R20, R22, R23)** : les limites relevées à la livraison sont levées — les passes voient l'article entier et sa stratégie ; le titre principal est protégé ; tout arrêt anormal de l'IA rend la proposition « coupée » ; le nombre de questions de FAQ suit le type, et la FAQ ne s'insère plus si la conclusion a changé ; le bouton « Image » permet de fournir la photo. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : une image acceptée dit où la fournir ; une FAQ écartée dit pourquoi ; un article de type inconnu reçoit la fourchette de questions la plus large (3 à 6), annoncée comme telle.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** une passe propose chapitre par chapitre (un appel par chapitre visé), pas l'article d'un bloc ; l'image proposée est une place « à fournir » que la publication refuse ; « Accepter celles sans alerte » et la protection « chapitre modifié depuis » s'ajoutent. **Amendée le 2026-09-25 (C5b, checklist R17 à R20, R22, R23)** : les limites relevées à la livraison sont levées — les passes voient l'article entier et sa stratégie ; le titre principal est protégé ; tout arrêt anormal de l'IA rend la proposition « coupée » ; le nombre de questions de FAQ suit le type, et la FAQ ne s'insère plus si la conclusion a changé ; le bouton « Image » permet de fournir la photo. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : une image acceptée dit où la fournir ; une FAQ écartée dit pourquoi ; un article de type inconnu reçoit la fourchette de questions la plus large (3 à 6), annoncée comme telle. **Amendée le 2026-09-25 (C7)** : sixième passe, « Résumer », pour les chapitres dont est né un article enfant (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; sa vérification tolère la perte des sous-parties et ramène la perte d'un bloc à une attention.
 
 > **En situation.** L'utilisateur ouvre « Enrichir » sur son pilier fraîchement rédigé. Il lance « Tableaux » : quatre chapitres du corps sont proposés à tour de rôle ; « Agence ou indépendant ? » reçoit un tableau à deux colonnes, les trois autres reviennent inchangés (🟠 « ne change rien »). Il compare, accepte le tableau : le chapitre est remplacé et l'article enregistré. Il lance ensuite « FAQ » : un chapitre « Questions fréquentes » est proposé avant la conclusion ; une des questions ne finit pas par un point d'interrogation (🔴). Il refuse la FAQ.
 
@@ -2959,12 +3079,12 @@ Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **min
 - Les 11 actions disponibles sont, dans le code source : reformuler, simplifier, convertir en liste, exemple PME, optimiser mot-clé, ajouter statistique, capsule de réponse, transformer en question, sources chiffrées, exemples réels, ce qu'il faut retenir. (L'action « lien interne » s'ajoute en douzième mais bypasse le pipeline IA — elle ouvre un sélecteur d'article.)
 - Le résultat de chaque action apparaît progressivement à l'écran pendant la génération (pas de fenêtre figée), sauf pour « sources chiffrées » et « exemples réels » : leur résultat arrive d'un bloc, une fois ses liens vérifiés.
 - Deux boutons permettent à l'utilisateur d'accepter (remplace la sélection par le résultat) ou de rejeter (annule, sélection conservée intacte).
-- L'action « lien interne » n'envoie pas de requête à l'IA — elle ouvre un sélecteur d'articles du même cocon ; le clic sur un article ajoute un lien sur la sélection.
+- L'action « lien interne » n'envoie pas de requête à l'IA — elle ouvre un sélecteur d'articles du même cocon ; le clic sur un article pose sur la sélection le même lien que le panneau « Maillage » (il vise l'article, pas l'adresse de sa page) et l'enregistre dans le réseau de liens du cocon, où la vue Maillage et la publication le retrouvent (cf. `FR-RED-LINKING-MANUAL`).
 - Les actions « sources chiffrées » et « exemples réels » autorisent l'IA à consulter le web pour ramener des données fraîches (les autres actions travaillent uniquement sur le texte fourni). La recherche part de France, à l'heure de Paris et, quand la zone du client est configurée, de sa ville ; seul Claude la fait : si Claude est indisponible, l'action échoue en le disant au lieu de répondre sans recherche (cf. `FR-RED-ENRICH-SOURCES`).
 - Pour ces deux actions, chaque lien du résultat est comparé aux résultats réels de la recherche : un lien absent est retiré, son texte gardé, avant d'arriver à l'écran, et le résultat dit combien de liens ont été retirés. Pendant la recherche, la connexion reste ouverte même si rien ne s'affiche, aussi longue soit-elle.
 - Une réponse coupée avant la fin (plafond atteint, recherche interrompue) n'est pas proposée : l'écran dit qu'elle a été coupée, et rien ne peut remplacer la sélection. Après une erreur, « Accepter » reste grisé.
 
-**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4, checklist D1) : l'action « localiser » est retirée de la liste. Elle avait quitté l'éditeur le 2026-04-16 ; son prompt, que plus rien n'appelait, a été supprimé. **Amendée le 2026-09-25 (C5b, checklist R6, R9)** : recherche web localisée en France, sans repli silencieux vers un fournisseur qui ne sait pas chercher. **Amendée le 2026-09-25 (C5b, checklist R21)** : ces deux actions cherchent aussi dans la ville du client et vérifient leurs liens ; leur résultat n'arrive donc plus au fil de l'écriture. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : les liens retirés sont signalés ; une réponse coupée n'est plus proposée comme complète.
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4, checklist D1) : l'action « localiser » est retirée de la liste. Elle avait quitté l'éditeur le 2026-04-16 ; son prompt, que plus rien n'appelait, a été supprimé. **Amendée le 2026-09-25 (C5b, checklist R6, R9)** : recherche web localisée en France, sans repli silencieux vers un fournisseur qui ne sait pas chercher. **Amendée le 2026-09-25 (C5b, checklist R21)** : ces deux actions cherchent aussi dans la ville du client et vérifient leurs liens ; leur résultat n'arrive donc plus au fil de l'écriture. **Amendée le 2026-09-25 (suites de clôture de C5b, commit `2ca3d32`)** : les liens retirés sont signalés ; une réponse coupée n'est plus proposée comme complète. **Amendée le 2026-09-25 (C7)** : le lien interne posé depuis la sélection est enregistré dans le réseau de liens ; il visait jusque-là l'adresse de la page et n'était enregistré nulle part, si bien que la vue Maillage et la publication l'ignoraient.
 
 > **En situation.** L'utilisateur sélectionne le paragraphe : *« L'indemnité légale dépend de l'ancienneté du salarié. »* Il clique sur l'action « ajouter une statistique ». L'IA recompose en quelques secondes : *« L'indemnité légale dépend de l'ancienneté du salarié : pour 5 ans d'ancienneté à 2 500 € brut/mois, elle s'élève à ≈ 3 100 €. »* Il accepte. La phrase remplace l'originale, le scoring SEO se met à jour automatiquement.
 
@@ -2972,7 +3092,13 @@ Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **min
 
 ---
 
-#### FR-RED-INTERNAL-LINKING — Suggestions de liens internes vers d'autres articles du cocon
+#### FR-RED-INTERNAL-LINKING — Suggestions de liens internes vers d'autres articles du cocon *(superseded 2026-09-25 par FR-RED-LINKING-MANUAL)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-RED-LINKING-MANUAL`. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (non livrée par C5b).
+>
+> **Ce qui change.** Les suggestions partent désormais de l'arbre du cocon : la famille de l'article (ses enfants pour un parent, son parent pour un enfant) vient en tête, même pas encore publiée, et la raison le signale ; les suggestions par mots communs suivent. Le lien posé depuis la sélection (action « lien interne ») est enregistré comme ceux du panneau. La publication signale chaque lien vers un article pas encore publié. Restent en place : le panneau « Maillage », appliquer ou rejeter chaque suggestion, l'enregistrement dans le réseau de liens, le bouton désactivé tant qu'aucun article n'est écrit. **Corrigé au passage** (le code fait foi) : les suggestions ne viennent pas d'une IA mais d'un rapprochement entre les titres des autres articles et le texte ; seuls les articles déjà rédigés y figuraient.
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 L'utilisateur peut demander à l'outil de **suggérer des liens internes** vers d'autres articles du cocon. L'IA analyse le contenu et propose une liste de suggestions : *pour ce texte d'ancre dans votre paragraphe, vous pourriez pointer vers cet autre article du cocon*. Pour chaque suggestion, l'utilisateur voit l'ancre proposée, l'article cible et peut soit appliquer le lien d'un clic (l'ancre devient cliquable dans l'éditeur), soit rejeter la suggestion. Les liens validés sont mémorisés et utilisés par la vue Maillage globale de l'outil.
 
@@ -2987,6 +3113,30 @@ L'utilisateur peut demander à l'outil de **suggérer des liens internes** vers 
 > **En situation.** L'utilisateur clique sur « Suggérer des liens ». Trois suggestions apparaissent : *(1) ancre « ancienneté du salarié » → article « Calculer son ancienneté », (2) ancre « rupture conventionnelle » → article « Procédure rupture conventionnelle », (3) ancre « formule légale » → article « Indemnité légale de licenciement »*. Il valide les deux premières, rejette la troisième qui doublerait avec un lien déjà présent. Dans l'éditeur, les deux ancres deviennent immédiatement cliquables et soulignées.
 
 → Conception : [DESIGN-RED-INTERNAL-LINKING](./design-registry.md#design-red-internal-linking)
+
+---
+
+#### FR-RED-LINKING-MANUAL — Le maillage interne se pose à la main, après la rédaction
+
+Des liens posés au jugé, sur des mots qui se ressemblent, ne suivent pas la logique du cocon : l'audit du 2026-09-19 a trouvé 35 liens sur 36 qui pointaient vers des articles pas encore écrits. Le maillage se fait désormais à la main, une fois le texte écrit, avec des suggestions qui partent de l'arbre du cocon : un parent renvoie vers chacun de ses enfants depuis la section qui l'annonce, un enfant renvoie vers son parent.
+
+**Critères d'acceptation**
+- Le panneau « Maillage » propose d'abord la famille de l'article : pour un parent, un lien vers chacun de ses enfants (la raison nomme la section qui l'annonce) ; pour un enfant, un lien vers son parent. Ces suggestions viennent même si la cible n'est pas encore publiée ; la raison le dit (« pas encore publié : le lien sera cassé tant qu'il n'est pas en ligne »).
+- L'ancre proposée est un passage qui existe tel quel dans le texte : un morceau du titre de la cible (deux mots au moins, sans commencer ni finir par un mot vide), à défaut son mot-clé. Sans passage trouvé, pas de suggestion.
+- Viennent ensuite, comme avant, les autres articles déjà rédigés dont le titre recoupe le texte, dans le respect de la hiérarchie du cocon ; dix suggestions au plus. Un article déjà relié n'est pas reproposé.
+- L'utilisateur applique ou rejette chaque suggestion ; appliquer pose le lien dans l'éditeur et l'enregistre dans le réseau de liens du cocon.
+- Le lien posé depuis la sélection (action « lien interne », cf. `FR-RED-CONTEXTUAL-ACTIONS`) est le même que celui du panneau et il est enregistré de la même façon.
+- À la publication, chaque lien vers un article pas encore publié — posé dans le texte ou enregistré dans le réseau de liens — est signalé 🟠 : tant que la cible n'est pas en ligne, le lien est cassé pour le lecteur (cf. `FR-RED-PUBLISH-GATE`).
+
+**Limites connues**
+- Un parent ne propose un lien vers un enfant que si le titre ou le mot-clé de l'enfant apparaît dans son texte. Le résumé de la passe « Résumer » se termine par une phrase qui cite l'enfant, ce qui rend l'ancre possible (cf. `FR-RED-ENRICH-PASSES`).
+- Retirer un lien de l'éditeur ne le retire pas du réseau de liens : la publication peut encore signaler un lien vers un article non publié qui n'est plus dans le texte.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-INTERNAL-LINKING`. **Source :** épopée qualité SEO, réservée par C0, non livrée par C5b, livrée par C7. **Amendée à la livraison :** la famille est proposée pour tout parent et tout enfant, pas seulement pour le pilier ; l'ancre est prise dans le texte (titre ou mot-clé de l'enfant), la section n'étant citée que dans la raison ; les suggestions par mots communs restent, après la famille.
+
+> **En situation.** L'intermédiaire « Auditer son site web » vient d'être publié. Arnaud ouvre le pilier et clique « Suggérer des liens » : en tête, « Article enfant (section « Audit de site ») », ancre « auditer son site web », prise dans la dernière phrase du résumé. Il l'applique. Un second enfant, « Choisir son hébergeur », est aussi proposé, avec la mention « pas encore publié » : s'il pose ce lien, la publication du pilier le lui rappellera (🟠).
+
+→ Conception : [DESIGN-RED-LINKING-MANUAL](./design-registry.md#design-red-linking-manual)
 
 ---
 
@@ -3078,14 +3228,17 @@ Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publ
 - 🔴 Des marqueurs « à sourcer » restent dans le texte ; le message en donne le nombre, chaque marqueur comptant une fois.
 - 🔴 Qualité du texte, rejugée sur le texte du jour : chaque chiffre sans source hors marqueur, chaque phrase où l'anglais domine, chaque paragraphe qui en répète un autre (cf. `FR-RED-DRAFT-TO-SOURCE`, `FR-RED-DRAFT-SINGLE-PASS`). La porte du premier jet, elle, n'est pas rejouée : sa règle de longueur ne vaut que pour le premier jet.
 - 🟠 Les autres avertissements (capitaine absent de l'introduction, lieutenants peu couverts…).
+- 🔴 Une section dont est né un article enfant du cocon compte plus de 250 mots : elle développe ce que l'enfant doit dire, au lieu de le résumer (cf. `FR-CER-CHILD-FROM-PILLAR-H2`) ; le message invite à la passe « Résumer ». Une alerte par enfant.
+- 🟠 Une section dont est né un article enfant a disparu de l'article : le lecteur ne trouve plus le chemin vers l'enfant.
+- 🟠 Un lien vers un article pas encore publié, qu'il soit dans le texte ou enregistré dans le réseau de liens (cf. `FR-RED-LINKING-MANUAL`). Une alerte par article visé.
 - 🟠 Chaque dérogation posée en amont (capitaine, lieutenants, structure, lexique) est réaffichée et doit être reconfirmée.
-- Les portes amont — capitaine, lieutenants, structure, lexique — sont rejouées sur les données du jour : une alerte qu'aucune dérogation ne couvre plus revient à son niveau d'origine. Un terme générique resté dans le lexique, ou un lexique vide, donne donc 🔴 (cf. `FR-LEX-METIER-ONLY`) ; une structure sans H1 ou sans chapitre donne ⛔, un H1 sans le capitaine ou un nombre de chapitres hors des règles du type donne 🔴 (cf. `FR-HN-LOCK-GATE`). La porte juge la structure enregistrée, validée ou non : un article qui n'en a aucune — rédigé sans passer par l'onglet Structure, par exemple — ne peut donc pas être publié (⛔, sans dérogation possible) tant qu'une structure n'est pas enregistrée. *(Conséquence relevée en documentant C6, à trancher : le lexique vide, lui, est 🔴 et s'assume par écrit.)*
+- Les portes amont — capitaine, lieutenants, structure, lexique — sont rejouées sur les données du jour : une alerte qu'aucune dérogation ne couvre plus revient à son niveau d'origine. Un terme générique resté dans le lexique, ou un lexique vide, donne donc 🔴 (cf. `FR-LEX-METIER-ONLY`) ; une structure sans H1 ou sans chapitre donne ⛔, un H1 sans le capitaine ou un nombre de chapitres hors des règles du type donne 🔴 (cf. `FR-HN-LOCK-GATE`). La porte juge la structure enregistrée, validée ou non : un article qui n'en a aucune — rédigé sans passer par l'onglet Structure, par exemple — reçoit 🔴 (« structure absente »), assumable par écrit comme un lexique vide.
 - Un H1 laissé dans le corps est toléré : l'export le retire.
 - Si la porte refuse, l'article n'est ni marqué « publié » ni téléchargé, et un message « Publication annulée » l'explique. Après dérogation, la publication reprend d'elle-même.
 - Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que cette porte refuserait.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication. **Amendée le 2026-09-25 (C5a)** : trois règles de qualité du texte (chiffre sans source, phrase non française, paragraphe répété) rejoignent la publication, parce que le texte a pu changer depuis le premier jet ; le pilier 1013 est désormais refusé aussi pour ses chiffres sans source. **Amendée le 2026-09-25 (C5b)** : ⛔ une image encore « à fournir » ; un marqueur « à sourcer » balisé n'est plus compté deux fois (sa balise et son texte). **Amendée le 2026-09-25 (C5b, checklist R20)** : la photo se fournit par le bouton « Image » de l'éditeur, que le message de la porte cite. **Amendée le 2026-09-25 (C6)** : la porte de la structure rejoint les portes amont rejouées à la publication ; ses dérogations sont réaffichées.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication. **Amendée le 2026-09-25 (C5a)** : trois règles de qualité du texte (chiffre sans source, phrase non française, paragraphe répété) rejoignent la publication, parce que le texte a pu changer depuis le premier jet ; le pilier 1013 est désormais refusé aussi pour ses chiffres sans source. **Amendée le 2026-09-25 (C5b)** : ⛔ une image encore « à fournir » ; un marqueur « à sourcer » balisé n'est plus compté deux fois (sa balise et son texte). **Amendée le 2026-09-25 (C5b, checklist R20)** : la photo se fournit par le bouton « Image » de l'éditeur, que le message de la porte cite. **Amendée le 2026-09-25 (C6)** : la porte de la structure rejoint les portes amont rejouées à la publication ; ses dérogations sont réaffichées. **Amendée le 2026-09-25 (C7)** : 🔴 une section dont est né un enfant et qui dépasse 250 mots, 🟠 une telle section disparue, 🟠 un lien vers un article pas encore publié. **Corrigé au passage (C7, le code fait foi)** : ce texte disait encore qu'un article sans structure ne pouvait pas être publié (⛔) ; depuis les défauts de clôture de C6 (checklist P6), une structure absente est 🔴 et s'assume par écrit.
 
 > **En situation.** L'utilisateur clique « Exporter » sur le pilier 1013. L'alarme « Avant de publier » s'ouvre : la meta description est coupée en plein vol (⛔), « stratégie » manque au H1 et au meta title (🔴 deux fois), et le texte fait 15 601 mots pour un pilier plafonné à 3 500 (🔴). Le bouton affiche « Correction nécessaire » et reste grisé : un défaut ⛔ ne se déroge pas. Il revient corriger ; sous la barre d'aperçu, un message indique « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'a été marqué publié, aucun fichier n'a été téléchargé.
 
@@ -3250,6 +3403,9 @@ Quand l'utilisateur veut **tester l'outil sans consommer ses crédits** (notamme
 - En mode bac à sable, aucun appel à l'API payante n'est émis ; les données reçues sont fictives mais structurellement identiques.
 - L'utilisateur peut basculer entre bac à sable et production sans redémarrer l'app : un toggle global dans la barre de navigation change le mode pour DataForSEO et l'IA en même temps.
 - Quand le mode bac à sable est actif, l'utilisateur voit un indicateur visuel clair (badge, libellé navbar) pour ne pas se tromper de mode.
+- Le bac à sable répond avec ses propres mots-clés factices : les mesures demandées en groupe sont rattachées, dans l'ordre, aux mots-clés demandés, pour que chacun reçoive une mesure comme en réel.
+
+**Statut :** active. **Précisée le 2026-09-25 (C7)** : les mesures groupées n'étaient rattachées à aucun mot-clé en bac à sable ; les mots-clés candidats d'un nouvel article (cf. `FR-CER-KEYWORD-REAL-DATA`) restaient donc « non mesurés », et aucun article ne pouvait être créé en mode simulé.
 
 > **En situation.** L'utilisateur veut tester une nouvelle fonctionnalité du Moteur sur un cocon factice pour vérifier qu'elle marche, sans payer un centime à DataForSEO. Il clique sur le toggle « Mock / Réel » de la navbar, le bascule sur « Mock » — un badge orange apparaît, l'app loggue « DataForSEO : SANDBOX » dans la pile d'activité. Il fait son test, voit que tout fonctionne avec des données factices (mais structurellement identiques au réel), revient sur « Réel » au moment de tester son vrai cocon de production. Aucun crédit consommé pendant la phase de test.
 
@@ -3545,14 +3701,38 @@ Une consigne d'IA (un « prompt ») ressemble au brief qu'un chef donne à un pi
 - Les exemples des consignes sont fictifs, pris dans un autre métier, avec « [ville] » à la place du lieu ; la consigne interdit de recopier un exemple.
 - La stratégie validée du cocon arrive une seule fois dans une consigne, lue dans ce qui est enregistré.
 - La liste des consignes, avec les informations que chacune attend et ce qui l'appelle, est produite à partir des consignes elles-mêmes ; un test échoue si elle n'est pas à jour.
-- L'état du cocon (articles, capitaines, structures, statut de rédaction) n'est pas encore une couche de contexte : il arrivera avec le cocon né du pilier (épopée qualité SEO, C7).
-- Limite connue : le référentiel des repères locaux est unique pour tout l'outil et n'est pas trié selon la zone du client. Il décrit aujourd'hui Toulouse : pour un client d'une autre ville, la consigne reçoit la bonne zone mais des repères toulousains, tant que ce référentiel n'est pas remplacé.
+- L'état du cocon (ses articles, leurs niveaux et mots-clés, les sections dont chacun est né, rédigé ou non) fait partie du contexte des consignes qui construisent un article : mots-clés d'un nouvel article, structure, premier jet (cf. `FR-INFRA-COCOON-CONTEXT`, depuis C7).
+- Les repères locaux sont ceux de la zone du client. Un repère rattaché à une région n'est proposé que si la zone du client nomme cette région (accents, majuscules et tirets ignorés) ; les repères sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'un de ses noms de zone. Sinon, aucun repère : mieux vaut aucun exemple local qu'un quartier d'une autre ville.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist K5, K7, R11, D1, D2, D3), réservée par C0, livrée par C4.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist K5, K7, R11, D1, D2, D3), réservée par C0, livrée par C4. **Amendée le 2026-09-25 (C7)** : l'état du cocon rejoint la couche de contexte (cf. `FR-INFRA-COCOON-CONTEXT`). **Amendée le 2026-09-25 (checklist D5, commit `3638d00`, sur la branche de C7)** : les repères locaux suivent la zone du client ; la limite « référentiel non trié par zone, repères toulousains pour un client d'une autre ville » est levée, et l'« En situation » est désormais tenue en entier.
 
-> **En situation.** Arnaud crée un cocon pour un client à Bordeaux et renseigne la zone dans la configuration. La consigne de rédaction annonce la date du jour et dit que la zone du client est Bordeaux : aucune consigne n'écrit plus Toulouse ni une année en dur, et aucun texte n'annonce « en 2024 ». Les repères locaux, eux, restent ceux du référentiel de l'outil (Toulouse) : pour que l'IA cite des quartiers de Bordeaux, il faudra remplacer ce référentiel, ce qu'aucun écran ne permet aujourd'hui. Au Cerveau, l'IA propose des titres pour son métier à lui : l'exemple de la consigne, celui d'un chauffagiste, ne se retrouve pas dans le plan. Le lendemain, un développeur transmet une nouvelle information au sommaire sans l'ajouter à la consigne : `npm run verify` échoue et nomme l'information inutilisée.
+> **En situation.** Arnaud crée un cocon pour un client à Bordeaux et renseigne la zone dans la configuration. La consigne de rédaction annonce la date du jour et dit que la zone du client est Bordeaux : aucune consigne n'écrit plus Toulouse ni une année en dur, et aucun texte n'annonce « en 2024 ». Le référentiel local de l'outil ne décrit que Toulouse : pour ce client, la consigne ne reçoit aucun repère local plutôt que des quartiers toulousains ; des repères rattachés à la région de Bordeaux, s'ils étaient ajoutés au référentiel, lui seraient proposés. Au Cerveau, l'IA propose des titres pour son métier à lui : l'exemple de la consigne, celui d'un chauffagiste, ne se retrouve pas dans le plan. Le lendemain, un développeur transmet une nouvelle information au sommaire sans l'ajouter à la consigne : `npm run verify` échoue et nomme l'information inutilisée.
 
 → Conception : [DESIGN-INFRA-PROMPT-LAYERS](./design-registry.md#design-infra-prompt-layers)
+
+---
+
+#### FR-INFRA-COCOON-CONTEXT — Chaque génération connaît l'état du cocon
+
+En rédigeant le pilier 1013, l'IA ne savait rien des autres articles du cocon : elle a traité en profondeur ce que ses enfants devaient dire. Les consignes d'IA qui construisent un article reçoivent désormais le même état du cocon, lu dans la base au moment de l'appel — comme un rédacteur qui aurait sous les yeux le plan du site avant d'écrire sa page.
+
+**Critères d'acceptation**
+- L'état du cocon décrit l'arbre réel : le pilier, puis, pour chaque article, ses sections et l'article né de chacune (ou « pas encore d'article ») ; pour chaque article, son niveau, son mot-clé et s'il est rédigé (cf. `FR-CER-PARENT-WRITTEN-GATE`). Les articles sans parent, créés avant l'arbre, sont listés à part. Un cocon vide le dit : l'article à venir en sera le pilier.
+- Pour l'article visé : la section de son parent dont il naît et ce qu'elle en dit déjà (un extrait d'environ 1 200 caractères au plus), avec la consigne de la développer sans la répéter ; ses propres sections qui ont déjà leur article, à résumer et à relier plutôt qu'à creuser.
+- Trois ateliers le reçoivent : la proposition de mots-clés d'un nouvel article (Cerveau, cf. `FR-CER-KEYWORD-REAL-DATA`), la structure de l'article (Moteur, cf. `FR-HN-TAB`) et le premier jet (Rédaction, cf. `FR-RED-DRAFT-SINGLE-PASS`).
+- La stratégie validée du cocon est transmise à ces trois ateliers (au premier jet, celle de l'article l'emporte quand elle existe).
+- Pour la structure et le premier jet, un état illisible n'empêche pas la génération : elle part sans lui (le premier jet le note au journal). La proposition de mots-clés candidats, qui en a besoin pour vérifier la place de l'article, échoue au contraire avec un message.
+
+**Limites connues**
+- Les lieutenants et les structures des autres articles ne sont pas décrits : seulement leur niveau, leur mot-clé (le capitaine verrouillé, sinon le mot-clé suggéré), leurs sections et leur statut « rédigé ».
+- Les passes d'enrichissement, la méta et les actions contextuelles ne reçoivent pas l'état du cocon ; la passe « Résumer » reçoit seulement le titre et le mot-clé de l'enfant concerné.
+- Un spécialisé rattaché à un intermédiaire lui-même sans parent n'apparaît pas dans l'arbre décrit : seuls les piliers, leurs descendants et les articles sans parent y figurent.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (la stratégie du cocon est transmise à la rédaction depuis C1). **Amendée à la livraison :** « articles, capitaines, lieutenants, structures, résumés, statut de rédaction » devient : niveaux, mots-clés, sections (chapitres du texte, sinon de la structure), statut « rédigé », et, pour l'article visé, le texte de la section qui l'annonce ; les lieutenants et les structures des autres articles n'y sont pas.
+
+> **En situation.** En rédigeant le pilier, l'IA sait que « Audit de site » a déjà son article dans le cocon : son chapitre « Audit de site » en dit l'essentiel en quelques phrases et annonce l'article, au lieu de trois sous-parties. Plus tard, en construisant la structure de l'intermédiaire « Auditer son site web », l'IA lit ce que le pilier en dit déjà et propose des chapitres qui vont plus loin.
+
+→ Conception : [DESIGN-INFRA-COCOON-CONTEXT](./design-registry.md#design-infra-cocoon-context)
 
 ---
 
@@ -3578,11 +3758,14 @@ Le type d'un article décide de sa longueur, de son nombre de chapitres, de lieu
 ---
 
 #### FR-INFRA-WORKFLOW-CHECKS-CONSTANTS — Source unique des checks workflow
-Les **checks de progression Moteur** (Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Structure validée — depuis C6, 2026-09-25 —, Lexique validé) ne sont jamais écrits comme des strings libres dans le code — ils passent par une liste centralisée de constantes préfixées `moteur:*`. Pour l'utilisateur, cela garantit que **les dots de progression et les bannières de transition affichent toujours le même état** quel que soit l'endroit qui a déclenché l'avancement. (Les préfixes `cerveau:*` / `redaction:*` historiques ont été retirés 2026-05-13, cf. DRIFT-002.)
+Les **checks de progression Moteur** (Discovery fait, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Structure validée — depuis C6, 2026-09-25 —, Lexique validé) ne sont jamais écrits comme des strings libres dans le code — ils passent par une liste centralisée de constantes préfixées `moteur:*`. Depuis C7 (2026-09-25), la même liste porte une seule étape de la Rédaction, « Premier jet accepté » (`redaction:draft_accepted`, cf. `FR-CER-PARENT-WRITTEN-GATE`). Pour l'utilisateur, cela garantit que **les dots de progression, les bannières de transition et le bandeau du premier jet affichent toujours le même état** quel que soit l'endroit qui a déclenché l'avancement. (Les préfixes `cerveau:*` et les cinq anciennes étapes `redaction:*` ont été retirés 2026-05-13, cf. DRIFT-002.)
 
 **Critères d'acceptation**
 - Toute progression utilisateur Moteur (verrouillage Capitaine, validation Lexique, etc.) émet exactement la constante `moteur:*` correspondante — pas de variante orthographique.
-- Tout consommateur (dots du header, bannière de transition, finalisation gating) lit la même constante — pas de duplication.
+- L'étape « Premier jet accepté » est écrite et lue par sa constante, par l'écran de rédaction, la création d'un enfant, le mode automatique et le rattrapage des cocons.
+- Tout consommateur (dots du header, bannière de transition, finalisation gating, bandeau du premier jet, arbre du cocon) lit la même constante — pas de duplication.
+
+**Statut :** active. **Amendée le 2026-09-25 (C7)** : l'étape de la Rédaction `redaction:draft_accepted` rejoint le catalogue, accordée par la porte du premier jet ; les dots, eux, ne comptent que les six étapes du Moteur.
 
 → Conception : [DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS](./design-registry.md#design-infra-workflow-checks-constants)
 
@@ -3912,12 +4095,12 @@ Une règle de qualité est écrite **une seule fois** et placée à une transiti
 - Une règle donne le même verdict à l'écran, au serveur et dans l'audit : les trois passent par la même évaluation.
 - Un refus renvoie la liste complète des points, dans les mots affichés à l'écran : ce qui est constaté, le risque en clair, l'extrait concerné et, quand l'outil en a, des pistes à la place.
 - Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-HN-LOCK-GATE`, `FR-LEX-METIER-ONLY`, `FR-RED-DRAFT-SINGLE-PASS`, `FR-RED-PUBLISH-GATE`).
-- La porte « accepter le premier jet » ne garde ni étape ni statut : elle juge le texte juste après sa rédaction et ouvre l'alarme s'il ne passe pas, sans rien refuser (cf. `FR-RED-DRAFT-SINGLE-PASS`). Le mode automatique ne la consulte pas.
+- La porte « accepter le premier jet » garde, depuis C7, l'étape « Premier jet accepté » (cf. `FR-CER-PARENT-WRITTEN-GATE`) : elle juge le texte juste après sa rédaction, et à la demande, et ouvre l'alarme s'il ne passe pas. Elle ne refuse ni l'enregistrement ni l'enrichissement du texte ; sans l'étape, seuls les articles enfants ne peuvent pas naître. Le mode automatique la demande et s'arrête sur un refus.
 - Une étape refusée n'est pas enregistrée : la progression de l'article ne bouge pas. Une publication refusée ne change pas le statut de l'article.
 - Les outils automatiques (génération d'article en ligne de commande) subissent la même règle : un refus arrête le run en listant chaque point avec son niveau, et l'outil ne passe jamais outre à la place d'un humain.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C5a)** : la porte « accepter le premier jet » rejoint les portes ; elle alerte sans rien refuser. **Amendée le 2026-09-25 (C6)** : la porte « valider la structure », réservée depuis C2, est livrée ; elle garde l'étape « Structure validée ».
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C5a)** : la porte « accepter le premier jet » rejoint les portes ; elle alerte sans rien refuser. **Amendée le 2026-09-25 (C6)** : la porte « valider la structure », réservée depuis C2, est livrée ; elle garde l'étape « Structure validée ». **Amendée le 2026-09-25 (C7)** : la porte du premier jet garde l'étape « Premier jet accepté » ; la publication juge aussi les résumés des enfants et les liens vers des articles non publiés.
 
 > **En situation.** L'utilisateur contourne l'écran et demande directement au serveur de valider l'étape « Capitaine verrouillé » pour un mot-clé NO-GO jamais mesuré. Le serveur refuse, avec les mêmes points que ceux que l'alarme aurait affichés : « Aucun volume de recherche mesuré », « Le verdict du mot-clé est NO-GO ». Le soir, `npm run verify` signale que le pilier 1013, déjà rédigé, serait refusé à la publication : méta coupée ⛔, capitaine absent du H1 et du meta title 🔴, 15 601 mots 🔴.
 
@@ -3960,29 +4143,29 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 
 | Table                       | AUTHORITY (FR-INFRA)                  | Producteurs FR (métier)                                | Consommateurs FR (métier)                                              | Notes                                                                 |
 | --------------------------- | ------------------------------------- | ------------------------------------------------------ | ---------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| `articles`                  | (schéma initial — pas de FR-INFRA)    | FR-CER-BATCH-CREATE, FR-CER-STEPS-ARTICLE              | FR-DASH-NAV, FR-MOT-PHASES, FR-FIN-*, FR-RED-*                         | Cœur du domaine. 35 mentions PRD.                                     |
+| `articles`                  | (schéma initial — pas de FR-INFRA)    | FR-CER-COCOON-PROGRESSIVE (création unitaire, C7 ; avant : FR-CER-BATCH-CREATE), FR-CER-CHILD-FROM-PILLAR-H2 (`parent_id`, `parent_section`), FR-CER-STEPS-ARTICLE | FR-DASH-NAV, FR-MOT-PHASES, FR-FIN-*, FR-RED-*, FR-INFRA-COCOON-CONTEXT (arbre du cocon), FR-RED-LINKING-MANUAL (famille), FR-RED-PUBLISH-GATE (enfants, cibles non publiées) | Cœur du domaine. Depuis C7 : `parent_id` (clé étrangère `ON DELETE RESTRICT`, jamais soi-même, indexée) et `parent_section` (titre du H2 du parent). |
 | `article_content`           | (schéma initial)                      | FR-RED-EDITOR-PERSIST                                  | FR-RED-EDITOR-LOAD, FR-RED-EXPORT-*                                    | TipTap doc + meta-tags.                                               |
 | `article_keywords`          | (schéma initial)                      | FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-HN-TAB (`hn_structure`, C6) | FR-MOT-PHASES, FR-RED-PROMPT-CONTEXT, FR-FIN-RECAP, FR-LEX-METIER-ONLY (porte du lexique), FR-HN-LOCK-GATE (porte de la structure, C6) | TEXT[] `lexique`, JSONB `hn_structure`, `validation_history`. Un enregistrement sans `hnStructure` garde la structure en base (C6). |
 | `article_micro_contexts`    | **FR-INFRA-MICRO-CONTEXTS**           | FR-CER-MICRO-CONTEXT, FR-CER-WORD-COUNT-RECOMMEND      | NFR-INT-PROMPT-AGNOSTIC (via `buildMicroContextBlock`)                 | 1:1 avec articles.                                                    |
 | `article_strategies`        | **FR-INFRA-ARTICLE-STRATEGIES**       | FR-CER-STEPS-ARTICLE                                   | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA Rédaction                        | Wizard Cerveau article-scoped.                                        |
-| `articles.completed_checks` | **FR-INFRA-WORKFLOW-CHECKS-CONSTANTS**| FR-MOT-PHASES (toutes émissions `MOTEUR_*`)            | FR-MOT-SOFT-GATING, FR-FIN-RECAP, `useFinalisationGating`              | TEXT[] sur `articles`. SSOT (`NFR-INT-COMPLETED-CHECKS-SSOT`).        |
-| `external_api_cache`                 | **FR-INFRA-API-CACHE**                | FR-EXT-DATAFORSEO-CACHE, FR-EXT-PAA-CACHE              | Toutes FR-EXT (lecture before fetch)                                   | TTL court multi-types. Purge horaire (`FR-INFRA-API-CACHE-PURGE`).    |
+| `articles.completed_checks` | **FR-INFRA-WORKFLOW-CHECKS-CONSTANTS**| FR-MOT-PHASES (toutes émissions `MOTEUR_*`), FR-CER-PARENT-WRITTEN-GATE (`redaction:draft_accepted`, C7) | FR-MOT-SOFT-GATING, FR-FIN-RECAP, `useFinalisationGating`, FR-CER-COCOON-PROGRESSIVE (parent rédigé), FR-INFRA-COCOON-CONTEXT | TEXT[] sur `articles`. SSOT (`NFR-INT-COMPLETED-CHECKS-SSOT`).        |
+| `external_api_cache`                 | **FR-INFRA-API-CACHE**                | FR-EXT-DATAFORSEO-CACHE, FR-EXT-PAA-CACHE, FR-CER-KEYWORD-REAL-DATA (`serp-top`, C7) | Toutes FR-EXT (lecture before fetch), FR-CER-KEYWORD-REAL-DATA | TTL court multi-types. Purge horaire (`FR-INFRA-API-CACHE-PURGE`).    |
 | `captain_explorations`      | (FR-CAP-PERSIST décrit la table)      | FR-CAP-PERSIST, FR-RAD-LONGTAIL-PERSIST (via source)   | FR-CAP-LOCK, FR-CAP-CARDS, FR-EXP-COUNTS                               | Renommée depuis `keyword_tests` en migration 010.                     |
 | `cocoons`                   | (schéma initial)                      | FR-CER-STEPS-COCOON, FR-DASH-WORKFLOW-CHOICE           | FR-DASH-NAV, FR-CER-AIGUILLAGE                                         |                                                                       |
 | `cocoon_strategies`         | **FR-INFRA-COCOON-STRATEGIES**        | FR-CER-STEPS-COCOON                                    | FR-CER-CONTEXT-FOR-MOTEUR, prompts IA (via `buildCocoonStrategyBlock`) | Cross-articles du même cocon.                                         |
 | `intent_explorations`       | **FR-INFRA-INTENT-EXPLORATIONS-LEGACY** | aucun (legacy)                                       | aucun (legacy)                                                         | **Supprimée** (ancienne migration 016, archivée) : absente de `schema.sql`. Ligne gardée pour la traçabilité. |
-| `internal_links`            | (FR-RED-INTERNAL-LINKS décrit)        | FR-RED-INTERNAL-LINKS                                  | FR-RED-INTERNAL-LINKS, prompts maillage                                |                                                                       |
+| `internal_links`            | (FR-RED-LINKING-MANUAL décrit ; avant C7 : FR-RED-INTERNAL-LINKING) | FR-RED-LINKING-MANUAL (panneau Maillage), FR-RED-CONTEXTUAL-ACTIONS (action « lien interne », C7) | FR-RED-LINKING-MANUAL, FR-RED-PUBLISH-GATE (liens vers des articles non publiés, C7) | La ligne citait `FR-RED-INTERNAL-LINKS`, ID qui n'a jamais existé. |
 | `keyword_autocomplete`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-RAD-PERSIST (suggestions autocomplete)           | FR-RAD-CARDS, FR-CAP-CARDS                                             | Cross-article. FK → `keyword_metrics`. TTL 1j (30 min si vide).       |
 | `keyword_discoveries`       | **FR-INFRA-KEYWORD-DISCOVERIES**      | FR-DIS-CACHE                                           | FR-DIS-CACHE, FR-DIS-LOAD                                              | TTL applicatif 30j (différent `external_api_cache`).                           |
 | `keyword_intent_analyses`   | (FR-MOT-INTENT-ANALYSIS décrit)       | FR-MOT-INTENT-ANALYSIS                                 | FR-CAP-CARDS, FR-RAD-CARDS                                             | Cross-article permanent.                                              |
-| `keyword_metrics`           | **FR-INFRA-KEYWORD-METRICS**          | FR-EXT-DATAFORSEO-CACHE, FR-MOT-RAW-KPIS               | Toutes FR Capitaine / Radar / Lieutenants (kpis)                       | Cross-article permanent. Freshness 7j.                                |
+| `keyword_metrics`           | **FR-INFRA-KEYWORD-METRICS**          | FR-EXT-DATAFORSEO-CACHE, FR-MOT-RAW-KPIS, FR-CER-KEYWORD-REAL-DATA (candidats mesurés, C7) | Toutes FR Capitaine / Radar / Lieutenants (kpis), FR-CER-KEYWORD-REAL-DATA (mot-clé mesuré exigé à la création) | Cross-article permanent. Freshness 7j.                                |
 | `keyword_paa_questions`     | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-EXT-PAA-CACHE                                    | FR-CAP-CARDS, brief Capitaine                                          | Cross-article. FK → `keyword_metrics`.                                |
-| `keyword_serp_results`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-LIE-SERP-ANALYZE (NFR-INT-SERP-ONCE)             | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP, brief Capitaine                    | URLs Top 10, cross-article. TTL 7j.                                   |
+| `keyword_serp_results`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-LIE-SERP-ANALYZE (NFR-INT-SERP-ONCE) | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP, brief Capitaine, FR-CER-KEYWORD-REAL-DATA (trois premiers résultats, lecture seule) | URLs Top 10, cross-article. TTL 7j. Une analyse n'est relue que si des pages ont été lues (`keyword_serp_scrapes`, C7). Le relevé des candidats du Cerveau va dans `external_api_cache` (`serp-top`), jamais ici. |
 | `keyword_serp_scrapes`      | **NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION** | FR-LIE-SERP-ANALYZE                                 | FR-LEX-TFIDF, FR-LEX-PRECHECK-SERP                                     | HTML scrapé des pages Top 10. FK → `keyword_serp_results`.            |
-| `keywords_seo`              | **FR-INFRA-KEYWORDS-SEO**             | FR-CER-AIGUILLAGE, FR-CER-BATCH-CREATE                 | FR-CAP-CARDS, FR-MOT-PHASES                                            | Cocoon-scoped. Pool dans lequel le Capitaine pioche.                  |
+| `keywords_seo`              | **FR-INFRA-KEYWORDS-SEO**             | FR-CER-AIGUILLAGE, FR-CER-COCOON-PROGRESSIVE (avant C7 : FR-CER-BATCH-CREATE) | FR-CAP-CARDS, FR-MOT-PHASES                                            | Cocoon-scoped. Pool dans lequel le Capitaine pioche.                  |
 | `lexique_explorations`      | (FR-LEX-EXPLORATION décrit)           | FR-LEX-EXPLORATION                                     | FR-LEX-RECOMMEND, FR-EXP-COUNTS                                        |                                                                       |
 | `lieutenant_explorations`   | **FR-INFRA-LIEUTENANT-EXPLORATIONS**  | FR-LIE-PROPOSE, FR-LIE-PERSIST                         | FR-LIE-SELECT, FR-EXP-COUNTS                                           | Renommée depuis `lieutenant_proposals` en migration 010.              |
-| `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP, FR-INFRA-PROMPT-LAYERS (repères de la zone, C4) | Référentiel statique cross-cocon.                                     |
+| `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP, FR-INFRA-PROMPT-LAYERS (repères de la zone, C4 ; triés par la colonne `region` depuis D5) | Référentiel statique cross-cocon. Une entité sans `region` appartient au référentiel par défaut. |
 | `paa_explorations`          | **FR-INFRA-PAA-EXPLORATIONS**         | FR-CAP-PERSIST (PAA testées)                           | FR-CAP-CARDS, FR-EXP-COUNTS                                            | Distinct de `external_api_cache.cache_type='paa'`.                             |
 | `radar_explorations`        | (FR-RAD-PERSIST décrit)               | FR-RAD-PERSIST, FR-RAD-LONGTAIL-PERSIST                | FR-RAD-CARDS, FR-CAP-PERSIST (via source), FR-EXP-COUNTS               | Article-scoped, JSONB `scan_result`.                                  |
 | `silos`                     | (schéma initial)                      | FR-DASH-NAV (CRUD admin)                               | FR-DASH-NAV                                                            | Conteneur de cocoons.                                                 |
@@ -4327,7 +4510,7 @@ Les composants principaux du Moteur (Discovery, Radar, Capitaine, Lieutenants, S
 
 #### NFR-INT-COMPLETED-CHECKS-SSOT — Une seule source pour la progression d'un article
 
-L'avancement d'un article dans le pipeline Moteur (les 6 étapes : Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique — 5 avant C6, 2026-09-25) est stocké dans **un seul endroit** : la colonne `completed_checks` de l'article. Tous les composants qui affichent une progression (dots du dashboard, bannières de transition, panneau de finalisation) **lisent ce même endroit** — aucune copie locale dérivée, pas de cache divergent. (Cerveau et Rédaction ne posent plus de checks workflow depuis 2026-05-13, cf. DRIFT-002.)
+L'avancement d'un article dans le pipeline Moteur (les 6 étapes : Discovery, Radar, Capitaine, Lieutenants, Structure, Lexique — 5 avant C6, 2026-09-25) est stocké dans **un seul endroit** : la colonne `completed_checks` de l'article. Tous les composants qui affichent une progression (dots du dashboard, bannières de transition, panneau de finalisation) **lisent ce même endroit** — aucune copie locale dérivée, pas de cache divergent. (Le Cerveau ne pose plus de checks workflow depuis 2026-05-13, cf. DRIFT-002 ; la Rédaction en pose un seul depuis C7, « Premier jet accepté », dans la même colonne — cf. `FR-CER-PARENT-WRITTEN-GATE`.)
 
 **Critères d'acceptation**
 - L'état de progression d'un article est unique en base et n'a pas de doublon dans une autre table.
@@ -4342,16 +4525,16 @@ L'avancement d'un article dans le pipeline Moteur (les 6 étapes : Discovery, Ra
 
 ---
 
-#### NFR-INT-CHECKS-NAMESPACE — Préfixe `moteur:` pour ranger les checks
+#### NFR-INT-CHECKS-NAMESPACE — Préfixes de workflow pour ranger les checks
 
-Chaque check de progression écrit par l'app est **préfixé `moteur:`**. Le préfixe permet de filtrer les checks Moteur de tout autre payload (et garantit la rétro-compatibilité avec d'éventuels checks legacy `cerveau:*` / `redaction:*` qui auraient été persistés avant le retrait 2026-05-13 — ces valeurs résiduelles sont tolérées en lecture mais plus émises).
+Chaque check de progression écrit par l'app est **préfixé par son workflow** : `moteur:` pour les six étapes du Moteur, `redaction:` pour la seule étape de la Rédaction revenue avec C7, `redaction:draft_accepted` (« Premier jet accepté »). Le préfixe permet de filtrer les checks Moteur de tout autre payload (et garantit la rétro-compatibilité avec d'éventuels checks legacy `cerveau:*` / `redaction:*` qui auraient été persistés avant le retrait 2026-05-13 — ces valeurs résiduelles sont tolérées en lecture mais plus émises).
 
 **Critères d'acceptation**
-- Tous les checks émis par l'app portent le préfixe `moteur:`.
+- Tous les checks émis par l'app portent le préfixe `moteur:`, sauf `redaction:draft_accepted`.
 - Les constantes correspondantes sont définies dans un fichier partagé et **jamais** hardcodées sous forme de string dans les composants.
-- Tout check sans préfixe `moteur:` lu depuis la DB est ignoré côté affichage (pas d'erreur, pas de dot).
+- Tout check sans préfixe `moteur:` lu depuis la DB est ignoré par les dots de progression (pas d'erreur, pas de dot) ; `redaction:draft_accepted` est lu par le bandeau du premier jet et l'arbre du cocon.
 
-**Statut :** active.
+**Statut :** active. **Amendée le 2026-09-25 (C7)** : le préfixe `redaction:` revient pour une seule étape, `redaction:draft_accepted`. Le titre de l'exigence suit (« Préfixe `moteur:` » → « Préfixes de workflow »), ce qui rétablit aussi le lien depuis le registre, qui visait déjà ce titre.
 
 → Conception : [DESIGN-INT-CHECKS-NAMESPACE](./design-registry.md#design-int-checks-namespace)
 
@@ -4365,8 +4548,9 @@ Quand l'utilisateur déclenche un scan SERP sur le Capitaine de son article (ét
 - Le contenu SERP est scrapé au plus une fois pour un mot-clé donné dans la fenêtre de fraîcheur.
 - Le Lexique consomme les données SERP héritées des Lieutenants — il ne déclenche pas un second scraping.
 - L'utilisateur voit dans le Lexique des données concordantes avec ce qu'il a validé dans les Lieutenants.
+- Seule une analyse qui a lu des pages concurrentes compte comme déjà faite : une liste de résultats Google sans aucune page lue (par exemple le relevé fait pour choisir le mot-clé d'un nouvel article au Cerveau) ne dispense pas de l'analyse.
 
-**Statut :** active.
+**Statut :** active. **Précisée le 2026-09-25 (C7)** : un relevé des premiers résultats, sans page lue, ne compte plus comme une analyse. La mesure des mots-clés candidats du Cerveau (cf. `FR-CER-KEYWORD-REAL-DATA`) en écrivait un, pris pour une analyse fraîche : pendant 7 jours, Lieutenants, Structure et Lexique restaient sans pages concurrentes sur le mot-clé choisi.
 
 > **En situation.** L'utilisateur valide ses Lieutenants : 10 résultats Google scrapés, scores affichés, contenu archivé. Il passe au Lexique : le panneau s'ouvre avec déjà les termes TF-IDF extraits des **mêmes 10 pages** — il n'attend pas un deuxième scrape, pas d'appel facturé en double.
 
@@ -5075,7 +5259,7 @@ Bénéfice pour l'utilisateur : sa carte mentale de l'écran reste stable, il ne
 |---|---|---|
 | `silos` | id, name | Conteneurs thématiques |
 | `cocoons` | id, silo_id, nom | Clusters sémantiques |
-| `articles` | id, cocoon_id, titre, type, slug, status, phase, meta_title, meta_description, seo_score, geo_score, completed_checks[] | Master article |
+| `articles` | id, cocoon_id, titre, type, slug, status, phase, meta_title, meta_description, seo_score, geo_score, completed_checks[], parent_id, parent_section | Master article ; depuis C7, le parent dans le cocon et le H2 du parent dont l'article est né |
 | `article_content` | article_id, outline JSONB, content TEXT | Sommaire + contenu généré |
 | `article_strategies` | article_id, data JSONB, completed_steps | 6 étapes Cerveau |
 | `article_micro_contexts` | article_id, angle, tone, directives, target_word_count | Micro-context éditorial |
@@ -5099,7 +5283,7 @@ cocoons, keywords, articles, dataforseo, generate (sub-routes), links, export, i
 
 L'inventaire n'est plus tenu à la main (il citait des prompts disparus : `generate-article.md`, `actions/localize.md`, `discovery-*.md`…). Il est **généré** depuis les prompts eux-mêmes dans `docs/prompts-reference.md` (`npm run docs:prompts`) : pour chaque prompt, son rôle, ses variables, ses blocs facultatifs, les variables globales qu'il cite et les fichiers qui le chargent ; un test échoue si le fichier n'est pas à jour. L'organisation en cinq couches est décrite dans `docs/prompts-architecture.md` (cf. `FR-INFRA-PROMPT-LAYERS`).
 
-Au 2026-09-25 : 37 prompts à la racine de `server/prompts/` (dont `system-propulsite.md`, le prompt système des générations de texte, et, depuis C5b, les cinq passes `enrich-*.md` et `section-rewrite.md`) et 11 actions contextuelles dans `server/prompts/actions/`.
+Au 2026-09-25 : 39 prompts à la racine de `server/prompts/` (dont `system-propulsite.md`, le prompt système des générations de texte ; depuis C5b, les passes `enrich-*.md` et `section-rewrite.md` ; depuis C7, `cocoon-child-keywords.md` et la passe `enrich-resumes.md`) et 11 actions contextuelles dans `server/prompts/actions/`.
 
 ### 12.4 — Liste des FR/NFR introduits ou modifiés depuis le 2026-04-24
 
@@ -5210,6 +5394,22 @@ Au 2026-09-25 : 37 prompts à la racine de `server/prompts/` (dont `system-propu
 | FR-RED-OUTLINE, FR-INFRA-TYPE-RULES-SSOT, FR-CER-WORD-COUNT-RECOMMEND | amendées (sommaire tiré de la structure validée, sans introduction ni conclusion doublées ; « H2 de fond » ; longueur conseillée à la validation de la structure) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
 | FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (la porte de la structure rejoint les portes, rejouée à la publication ; un article sans structure enregistrée n'est pas publiable) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
 | FR-MOT-NO-AUTO-ACTION, FR-MOT-CHECK-RECONCILIATION | précisées (l'onglet Structure relit l'analyse des concurrents à l'ouverture ; il ne réconcilie pas son étape) | epic-qualite-seo-garde-fous (C6) | 2026-09-25 |
+| FR-CER-COCOON-PROGRESSIVE | nouveau (remplace FR-CER-BATCH-CREATE : pilier d'abord, puis un article à la fois sous un parent du niveau juste au-dessus ; parent et section enregistrés ; constructeur de l'arbre réel dans le Cerveau, proposition de plan en carte indicative ; retrait d'un parent refusé ; mode automatique et rattrapage des cocons existants) | epic-qualite-seo-garde-fous (C7, checklist K6) | 2026-09-25 |
+| FR-CER-PARENT-WRITTEN-GATE | nouveau (étape « Premier jet accepté » gardée par la porte du premier jet, redemandable par un bandeau ; pas d'enfant sous un parent qui ne l'a pas — l'alarme s'ouvre sur le parent) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-CHILD-FROM-PILLAR-H2 | nouveau (un enfant naît d'une section libre de son parent ; la section se résume en 150 à 250 mots, 🔴 au-delà à la publication, passe « Résumer ») | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-KEYWORD-REAL-DATA | nouveau (3 à 5 candidats mesurés — volume, difficulté, intention, trois premiers résultats —, base d'abord ; aucun mot-clé enregistré sans mesure) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-INFRA-COCOON-CONTEXT | nouveau (l'état du cocon transmis aux mots-clés candidats, à la structure et au premier jet) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-LINKING-MANUAL | nouveau (remplace FR-RED-INTERNAL-LINKING : famille du cocon proposée d'abord, même non publiée ; lien de la sélection enregistré ; 🟠 lien vers un article non publié à la publication) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-BATCH-CREATE | superseded (par FR-CER-COCOON-PROGRESSIVE) | epic-qualite-seo-garde-fous (C7, checklist K6) | 2026-09-25 |
+| FR-RED-INTERNAL-LINKING | superseded (par FR-RED-LINKING-MANUAL) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | amendée (🔴 section d'un enfant au-delà de 250 mots, 🟠 section d'un enfant disparue, 🟠 lien vers un article non publié ; structure absente 🔴, texte aligné sur P6) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-ENRICH-PASSES | amendée (sixième passe « Résumer » pour les chapitres dont est né un enfant) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS, FR-INFRA-VERIFIER-SHARED, FR-HN-TAB | amendées (la porte du premier jet accorde une étape ; état du cocon dans le premier jet et la structure) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, FR-INFRA-WORKFLOW-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE | amendées (une étape de la Rédaction, `redaction:draft_accepted`, rejoint le catalogue ; les dots restent ceux du Moteur) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-RED-CONTEXTUAL-ACTIONS | amendée (le lien interne posé depuis la sélection est enregistré dans le réseau de liens) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-CER-STEPS-COCOON, FR-CER-AIGUILLAGE, FR-CER-CREATION-HONNETE | amendées (proposition de plan = carte indicative ; parent enregistré et vérifié ; nouveaux refus expliqués, retrait refusé dit et carte gardée) | epic-qualite-seo-garde-fous (C7) | 2026-09-25 |
+| FR-INFRA-PROMPT-LAYERS | amendée (état du cocon dans la couche de contexte ; repères locaux triés selon la zone du client, checklist D5) | epic-qualite-seo-garde-fous (C7, D5 commit `3638d00`) | 2026-09-25 |
+| NFR-INT-SERP-ONCE, FR-EXT-DATAFORSEO-SANDBOX | précisées (un relevé sans page lue ne compte pas comme une analyse ; en bac à sable, les mesures groupées sont rattachées aux mots-clés demandés) | epic-qualite-seo-garde-fous (C7, commits `1062072`, `f16cab5`) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 

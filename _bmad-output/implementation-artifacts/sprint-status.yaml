@@ -950,7 +950,23 @@ development_status:
   # FR-HN-LOCK-GATE versées au PRD et au registre, FR-LIE-HN-STRUCTURE
   # superseded. Restes : M18-M21, P6, U3, D6, T13 ; T2 (describe.skip).
   qualite-seo-c6-onglet-structure-hn: review
-  qualite-seo-c7-cocon-progressif: backlog
+  # C7 (feat/cocon-progressif, 2026-09-25) : en cours, PR à ouvrir. Tech-spec
+  # tech-spec-cocon-progressif.md. Livrés : L1 colonnes articles.parent_id /
+  # parent_section (npm run db:apply) ; L2 étape redaction:draft_accepted (porte
+  # draft, bandeau DraftAcceptance, mode automatique) ; L3 vérificateur
+  # cocoon-hierarchy + POST /cocoons/:id/articles + GET /cocoons/:id/tree,
+  # batch-create supprimé (K6) ; L4 {{cocoon_context}} + candidats mesurés
+  # (POST /cocoons/:id/child-candidates) ; L5 constructeur de l'arbre réel au
+  # Cerveau, carte indicative, retrait d'un parent refusé (409 HAS_CHILDREN) ;
+  # L6 résumés des enfants (publication, passe « Résumer »), maillage manuel ;
+  # L7 rattrapage npm run db:backfill-cocoon. Correctifs f16cab5 (bac à sable)
+  # et 1062072 (relevé des candidats hors keyword_serp_results) ; D5 soldé
+  # (3638d00). L8 : FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE,
+  # FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-KEYWORD-REAL-DATA, FR-INFRA-COCOON-CONTEXT,
+  # FR-RED-LINKING-MANUAL versées au PRD et au registre ; FR-CER-BATCH-CREATE et
+  # FR-RED-INTERNAL-LINKING superseded. Parcours navigateur 2d39345 (T14 soldé).
+  # Découverts : K8, K9 (ouverts) ; D7, T14 (soldés).
+  qualite-seo-c7-cocon-progressif: review
   qualite-seo-c8-recette-reelle: backlog
 
 # ===== Backlog (non livré) =====

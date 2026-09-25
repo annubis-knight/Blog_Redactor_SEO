@@ -1,26 +1,29 @@
 ---
 name: completed-checks
-description: Progression Moteur d'un article — suivi des 6 étapes achevées (5 avant l'onglet Structure, C6) via un tableau TEXT[] de checks préfixés `moteur:*` en PostgreSQL.
+description: Progression d'un article — suivi des 6 étapes Moteur achevées (5 avant l'onglet Structure, C6) et, depuis C7, de la seule étape Rédaction « premier jet accepté », via un tableau TEXT[] de checks en PostgreSQL.
 type: "TEXT[] (PostgreSQL)" 
 last_updated: 2026-09-25
-related_fr: [FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE, FR-HN-TAB, FR-HN-LOCK-GATE, FR-FIN-CHECK]
+related_fr: [FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-MOT-DISPLAY-FROM-STORE, FR-HN-TAB, FR-HN-LOCK-GATE, FR-FIN-CHECK, FR-CER-PARENT-WRITTEN-GATE, FR-INFRA-WORKFLOW-CHECKS-CONSTANTS]
 synced_with: [captain-keyword-locked.md]
 ---
 
 # Data Flow — completed-checks
 
+> **Chantier C7 (2026-09-25)** — une étape Rédaction revient, **une seule** : `redaction:draft_accepted` (`REDACTION_DRAFT_ACCEPTED`, « Premier jet accepté »), gardée par la porte du premier jet (`CHECK_GATES[REDACTION_DRAFT_ACCEPTED] = 'draft'`, [gate.service.ts:60-67](../../server/services/gates/gate.service.ts)). C'est elle qui fait d'un article un **parent rédigé**, capable de donner naissance à ses articles enfants dans le cocon (FR-CER-PARENT-WRITTEN-GATE). Producteurs : `useArticleGeneration.acceptDraft` ([useArticleGeneration.ts:101-111](../../src/composables/article/useArticleGeneration.ts), après la méta, ligne 159), le bandeau [DraftAcceptance.vue](../../src/components/article/DraftAcceptance.vue) (« Valider le premier jet »), la création d'un enfant quand le parent passe sa porte ([cocoon-article.service.ts:129-142](../../server/services/article/cocoon-article.service.ts)), le mode automatique ([scripts/auto-article/phases/redaction.ts:178-182](../../scripts/auto-article/phases/redaction.ts)) et le rattrapage `npm run db:backfill-cocoon` (articles publiés, ou dont le premier jet passe la porte). Consommateurs : le bandeau, `getCocoonTree` (`drafted`), `child-candidates.service` (refus `PARENT_NOT_WRITTEN`). **Pas un dot** : `ProgressDots` ne compte que `MOTEUR_CHECKS`. **Collante** : absente de `CHECK_DEPENDENTS`, rien ne la retire (l'enrichissement éloigne le texte de sa cible sans le rendre « non rédigé »). Écriture : `writeCheckRegex` ([shared/schemas/article-progress.schema.ts:11](../../shared/schemas/article-progress.schema.ts)) n'admet que `moteur:*` et la valeur exacte `redaction:draft_accepted`.
+
 > **Chantier C6 (2026-09-25)** — sixième check `moteur:hn_locked` (« Structure validée », onglet Structure, porte `hn-lock`), entre `lieutenants_locked` et `lexique_validated` ; la Finalisation exige 4 verrous. Les articles d'avant C6 ont `lieutenants_locked` sans `hn_locked` : `npm run db:reconcile-hn` (simulation par défaut, `--apply`) accorde l'étape à ceux dont la structure passe la porte. Les numéros de ligne non datés plus bas sont antérieurs à C6.
 
-> **Description métier :** Colonne `articles.completed_checks` (TEXT[] en PostgreSQL) stocke la progression Moteur d'un article (6 checks préfixés `moteur:*`). Source unique de vérité de la progression Moteur. (Les familles `cerveau:*` et `redaction:*` ont été retirées 2026-05-13, cf. DRIFT-002 — les valeurs legacy éventuellement persistées sont tolérées en lecture mais plus émises.)
+> **Description métier :** Colonne `articles.completed_checks` (TEXT[] en PostgreSQL) stocke la progression d'un article : 6 checks Moteur préfixés `moteur:*`, plus, depuis C7, l'étape Rédaction `redaction:draft_accepted`. Source unique de vérité de la progression. (Les familles `cerveau:*` et `redaction:*` ont été retirées 2026-05-13, cf. DRIFT-002 — les valeurs legacy éventuellement persistées sont tolérées en lecture mais plus émises ; seule `redaction:draft_accepted` est revenue.)
 > **Type/format :** `TEXT[]` — array de strings, ex. `['moteur:discovery_done', 'moteur:radar_done', 'moteur:capitaine_locked']`
 
 ## Producteurs
 
 Qui crée ou met à jour cette donnée :
 
-- **Constantes centralisées** : `shared/constants/workflow-checks.constants.ts` — catalogue Moteur uniquement depuis 2026-05-13 :
+- **Constantes centralisées** : `shared/constants/workflow-checks.constants.ts` — catalogue Moteur uniquement du 2026-05-13 à C7 :
   - `MOTEUR_CHECKS` : `DISCOVERY_DONE`, `RADAR_DONE`, `CAPITAINE_LOCKED`, `LIEUTENANTS_LOCKED`, `HN_LOCKED` (`moteur:hn_locked`, C6), `LEXIQUE_VALIDATED`
-  - Portes : `CHECK_GATES` (`server/services/gates/gate.service.ts:57-62`) — `capitaine_locked`, `lieutenants_locked`, `hn_locked`, `lexique_validated` ne sont écrits par `POST /progress/check` que si leur porte passe (422 `GATE_BLOCKED` sinon).
+  - `REDACTION_CHECKS` (C7) : `REDACTION_DRAFT_ACCEPTED` (`redaction:draft_accepted`) ; `ALL_WORKFLOW_CHECKS = [...MOTEUR_CHECKS, ...REDACTION_CHECKS]`.
+  - Portes : `CHECK_GATES` (`server/services/gates/gate.service.ts:60-67` au commit `fb92b46`) — `capitaine_locked`, `lieutenants_locked`, `hn_locked`, `lexique_validated` et, depuis C7, `redaction:draft_accepted` (porte `draft`) ne sont écrits par `POST /progress/check` que si leur porte passe (422 `GATE_BLOCKED` sinon).
 
 - **Endpoints REST** :
   - `POST /api/articles/:id/progress/check` ([server/routes/articles.routes.ts:341-360](../../server/routes/articles.routes.ts)) — reçoit `{ check: string }`, valide via Zod `addCheckSchema`, appelle `addArticleCheck()`.
@@ -204,7 +207,7 @@ flowchart TD
    - Test avec les quatre, `moteur:hn_locked` compris → retour `true`.
 
 4. **`describe('NFR-INT-CHECKS-NAMESPACE — préfixe moteur:')`** :
-   - Vérifier que les 6 checks Moteur utilisent tous le préfixe `moteur:` (fait : `tests/unit/coherence/completed-checks.test.ts`, dont « refuse "hn_locked" (sans prefixe) »).
+   - Vérifier que les 6 checks Moteur utilisent tous le préfixe `moteur:` (fait : `tests/unit/coherence/completed-checks.test.ts`, dont « refuse "hn_locked" (sans prefixe) »), et que la seule exception est `redaction:draft_accepted` (fait, C7 : « tous les checks suivent le format moteur:snake_case, ou redaction:draft_accepted », « accepte "redaction:draft_accepted", la seule étape Rédaction (C7) », « refuse "redaction:brief_validated" »).
    - Test : tout check sans préfixe `moteur:` lu en DB est ignoré côté affichage.
 
 5. **`describe('article-progress.store — LRU cache eviction')`** (déjà partiellement couvert en [store.test.ts:154-172](../../tests/unit/stores/article-progress.store.test.ts)):

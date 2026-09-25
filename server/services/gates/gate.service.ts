@@ -5,7 +5,10 @@
  *             captain_explorations (candidats explorés), article_content,
  *             article_keywords des autres articles du cocon (getCocoonSiblings),
  *             article_keywords.hn_structure, theme_config (zone du client),
- *             article_micro_contexts.target_word_count.
+ *             article_micro_contexts.target_word_count ; pour la publication
+ *             (publishCocoonLinks, C7) : articles.parent_id / parent_section
+ *             (enfants et leur section), internal_links (liens enregistrés),
+ *             statut des articles liés.
  * WRITES TO: gate_waivers (saveGateWaivers).
  * CONSUMERS: server/routes/gates.routes.ts (évaluation, dérogations),
  *            server/routes/articles.routes.ts (POST /progress/check, PUT /status :
@@ -13,7 +16,9 @@
  *            scripts/verify-content.ts (liste des dérogations).
  * RELATED FR: FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE,
  *             FR-LIE-LOCK-GATE, FR-HN-LOCK-GATE (article_keywords.hn_structure, zone du client), FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock),
- *             FR-RED-DRAFT-SINGLE-PASS (draft : article_micro_contexts.target_word_count)
+ *             FR-RED-DRAFT-SINGLE-PASS (draft : article_micro_contexts.target_word_count),
+ *             FR-CER-PARENT-WRITTEN-GATE (draft sur le parent), FR-CER-CHILD-FROM-PILLAR-H2
+ *             et FR-RED-LINKING-MANUAL (publication : résumés des enfants, liens non publiés)
  *
  * Le serveur est le seul évaluateur : il charge les données, appelle le
  * vérificateur partagé (`shared/verifiers/`) et applique les dérogations

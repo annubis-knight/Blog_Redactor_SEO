@@ -316,7 +316,7 @@ flowchart LR
 
     subgraph API["POST /api/serp/analyze"]
       SRV["serp-analysis.service<br/>(external/)"]:::action
-      CK["Check api_cache (hash)"]:::cache
+      CK["Relecture en base : keyword_serp_results de moins de 7 j<br/>ET au moins une page lue (keyword_serp_scrapes)<br/><i>depuis C7 : un relevé sans page lue n'est pas une analyse</i>"]:::cache
       DFSEO["DataForSEO top N"]:::action
       STORE_DB["Stockage article_explorations<br/>(rawContents bruts)"]:::cache
     end
@@ -780,7 +780,7 @@ La `RadarKeywordCard` bascule via `displayMode: 'kpi' | 'relevance'`. En mode Ca
 | POST | `/api/keywords/intent-scan/radar/scan` | intent-scan | Radar Douleur Intent |
 | POST | `/api/keywords/:keyword/validate` | keyword-validate | Verdict GO/NO-GO Capitaine |
 | POST | `/api/keywords/:keyword/ai-panel` | — | Panel IA Capitaine (SSE) |
-| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn proposée à partir des lieutenants retenus (onglet Structure depuis C6 ; `{{cocoon_articles}}`) |
+| POST | `/api/keywords/:keyword/ai-hn-structure` | — | Structure Hn proposée à partir des lieutenants retenus (onglet Structure depuis C6 ; état du cocon `{{cocoon_context}}` depuis C7, qui remplace `{{cocoon_articles}}`) |
 | POST | `/api/keywords/:keyword/propose-lieutenants` | — | Propositions Lieutenants |
 | GET | `/api/keywords/:keyword/metrics` | keyword-queries | Lecture `keyword_metrics` |
 | POST | `/api/serp/analyze` | serp-analysis | Scraping SERP top N |

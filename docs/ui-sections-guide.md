@@ -135,9 +135,21 @@ Wizard à **6 étapes** (5 Q&A stratégiques + 1 proposition d'articles).
 - Validation impossible si input vide ET suggestion absente.
 - Deepen bloqué si suggestion/deepening/merge en cours.
 
-#### 2.2.5 Étape 6 — Proposition d'articles
+#### 2.2.5 Étape 6 — Construire le cocon, puis la carte indicative
 
-Rendu si `store.currentStep === 5`. Génère 3 types (Pilier, Intermédiaire, Spécialisé) basés sur les 5 étapes validées.
+Rendu si `store.currentStep === 5`. Depuis le chantier C7 (2026-09-25, commit `fb92b46`), l'étape a **deux blocs** ([BrainPhase.vue:464-466](../src/components/production/BrainPhase.vue)) : en haut le **constructeur du cocon**, qui crée les articles un par un dans l'arbre réel ; en dessous la **carte indicative**, la proposition de plan de l'IA, qui guide mais ne crée plus rien.
+
+**Constructeur du cocon** — [CocoonTreeBuilder.vue](../src/components/production/brain/CocoonTreeBuilder.vue) + [CocoonCandidatesPanel.vue](../src/components/production/brain/CocoonCandidatesPanel.vue), logique [useCocoonBuilder.ts](../src/composables/strategy/useCocoonBuilder.ts).
+
+| Sous-section | Composant | Rôle | Déclencheurs | Sorties |
+|---|---|---|---|---|
+| **Arbre réel** (`cocoon-tree`) | `CocoonTreeBuilder` | Chaque pilier puis ses intermédiaires ; badge « Rédigé » / « À rédiger » ; lien « Le rédiger » / « Ouvrir sa rédaction » ; sections (H2 du texte, sinon de la structure) avec l'article né de chacune | Montage, changement de cocon | `GET /cocoons/:cocoonId/tree` |
+| **« Créer le pilier »** (`cocoon-create-pillar`) | `CocoonTreeBuilder` | Seulement quand le cocon n'a pas de pilier | Clic → candidats (appel payant) | `POST /cocoons/:cocoonId/child-candidates` (sans parent) |
+| **« Créer l'article de cette section »** (`tree-section-create`) | `CocoonTreeBuilder` | Sur chaque section libre ; **grisé** tant que le parent n'est pas rédigé, message `tree-node-blocked` « Validez d'abord le premier jet de … » | Clic → candidats (appel payant) | `POST /cocoons/:cocoonId/child-candidates { parentId, parentSection }` |
+| **Candidats mesurés** (`cocoon-candidates-panel`) | `CocoonCandidatesPanel` | 3 à 5 mots-clés avec volume, difficulté, intention, 3 premiers résultats Google ; aide « Comment lire ces chiffres ? » ; candidat « Non mesuré » non sélectionnable ; titre prérempli (3 caractères min.) | Choix + « Créer l'article » | `POST /cocoons/:cocoonId/articles` (derrière la porte du premier jet du parent) → `POST /keywords` → carte (`saveStrategy`) → arbre rechargé |
+| **Articles hors de l'arbre** (`tree-orphans`) | `CocoonTreeBuilder` | Articles sans place dans l'arbre (créés avant la construction progressive), sans action | — | — |
+
+**Carte indicative** — `BrainArticleProposalView` : « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » (`proposal-indicative-note`).
 
 | Sous-section | Composant | Rôle | Déclencheurs | Sorties |
 |---|---|---|---|---|
@@ -145,9 +157,9 @@ Rendu si `store.currentStep === 5`. Génère 3 types (Pilier, Intermédiaire, Sp
 | **TopicSuggestions** | `TopicSuggestions` (collapsible) | Liste de sujets optionnels à cocher + contexte libre | Toggle, checkbox, add, remove, regenerate | `POST /strategy/cocoon/:slug/topics` |
 | **GenerationStepper** | `GenerationStepper` | Barre 3 étapes (Structure / PAA / Spécialisé) | `generationPhase` | Affichage |
 | **3 colonnes d'articles** | `ArticleColumn` x3 + swiper drag-to-scroll | Pilier / Intermédiaire / Spécialisé avec regroupement par parent pour Spécialisés | Scroll, flèches, peek | Navigation UI |
-| **Article proposé (row)** | `ProposedArticleRow` | Édition titre/mot-clé/slug, validation, régénération, rattachement parent, composition warnings | Clic checkmark = accept ; kebab = menu régénération ; expand = édition détaillée | Mutations store + régén API + composition badge |
-| **AddArticleMenu** | `AddArticleMenu` | Ajouter article : vide / complémentaire (smart) / guidé (textarea) | Clic option | POST API dédié (smart/guided) ou push vide |
-| **Warnings + "Tout valider"** | inline | Alertes structurelles (pas de Pilier, composition) + validation globale | `truncationWarning`, `structuralWarnings` | Mute `accepted = true` pour tous |
+| **Article proposé (row)** | `ProposedArticleRow` | Édition titre/mot-clé/slug, régénération, rattachement parent (sur la carte seulement), composition warnings ; badge « Créé » (`proposal-created-badge`) pour un article déjà créé depuis le constructeur. **Plus de bouton « Valider »** depuis C7 | kebab = menu régénération ; expand = édition détaillée ; retirer → `DELETE /articles/:id` pour un article créé (409 `HAS_CHILDREN` : la carte le garde et affiche la raison) | Mutations store + régén API + composition badge |
+| **AddArticleMenu** | `AddArticleMenu` | Ajouter une proposition à la carte : vide / complémentaire (smart) / guidé (textarea) | Clic option | POST API dédié (smart/guided) ou push vide |
+| **Warnings** | inline | Alertes structurelles (pas de Pilier, composition). ~~« Tout valider »~~ retiré par C7 (`brain-validate-all`) : la carte ne crée plus d'articles | `truncationWarning`, `structuralWarnings` | Affichage |
 
 #### 2.2.6 Navigation bas
 
@@ -406,8 +418,9 @@ Dans le bottom-nav de `MoteurView.vue` :
 | Section | Composant | Rôle | Déclencheurs | Sorties | Gate |
 |---|---|---|---|---|---|
 | ~~**Toggle Web Search**~~ | — | Retiré le 2026-09-25 (C5a) : le premier jet n'a pas de recherche web ; seule la passe Sources du panneau Enrichir cherche sur le web | — | — | — |
-| **Barre d'actions article** | `ArticleActions` | Boutons contextuels : Générer / Régénérer / Réduire (si > cible + 15 %) / Humaniser (relit aussi la langue depuis le 2026-09-25) | clic par bouton | `POST /api/generate/article-draft` (premier jet en un appel, stream) + `PUT /articles/:id` + `POST /api/generate/meta` + `PUT /articles/:id` + porte `GET /articles/:id/gates/draft` ; `POST /api/generate/reduce-section` ou `/api/generate/humanize-section` (une section après l'autre) | `isGenerating`/`isReducing`/`isHumanizing` mutex |
+| **Barre d'actions article** | `ArticleActions` | Boutons contextuels : Générer / Régénérer / Réduire (si > cible + 15 %) / Humaniser (relit aussi la langue depuis le 2026-09-25) | clic par bouton | `POST /api/generate/article-draft` (premier jet en un appel, stream) + `PUT /articles/:id` + `POST /api/generate/meta` + `PUT /articles/:id` + étape `POST /articles/:id/progress/check` `redaction:draft_accepted` (porte `draft`, alarme si refus ; depuis C7 — avant : simple consultation `GET /articles/:id/gates/draft`) ; `POST /api/generate/reduce-section` ou `/api/generate/humanize-section` (une section après l'autre) | `isGenerating`/`isReducing`/`isHumanizing` mutex |
 | **Progress section** | inline | "Section X/Y — Titre" + barre remplie (le serveur réémet un début de chapitre à chaque H2 du premier jet) | `isGenerating && sectionProgress` | Affichage live | — |
+| **Bandeau « premier jet accepté »** (C7) | `DraftAcceptance` (`draft-acceptance`) | « ✓ Premier jet accepté : l'article peut donner naissance à ses articles enfants dans le cocon » (`draft-accepted`), sinon « Premier jet pas encore accepté » + bouton « Valider le premier jet » (`draft-accept`) | Montage, changement d'article ; clic | `acceptDraft(id)` → `POST /articles/:id/progress/check` `redaction:draft_accepted` (alarme sur un refus) | Contenu existe (aussi dans la vue Éditeur) |
 | **Message d'erreur** | `ErrorMessage` | Affichage + retry | `editorStore.error && !isGenerating` | Retry call | — |
 | **Meta SEO** | `ArticleMetaDisplay` | Meta title (60 c) + description (160 c) read-only + compteurs + warning si dépassement | Montage ; après génération | Affichage ; compte `meta-count--warning` | — |
 | **OutlineRecap** | `OutlineRecap` | TOC read-only H1/H2/H3 | Outline chargé | Affichage | — |
@@ -440,9 +453,10 @@ Dans le bottom-nav de `MoteurView.vue` :
 #### 4.4.3 Panneau Maillage
 
 **Composant** : `LinkSuggestions`.
-- Première ouverture → `requestSuggestions()` → `POST /api/articles/:id/link-suggestions`.
-- Liste d'articles du cocon avec ancre + raison.
-- Actions : Accepter (insère lien TipTap), Ignorer, Actualiser.
+- Première ouverture → `requestSuggestions()` → `POST /api/links/suggest { articleId, content }` *(corrigé le 2026-09-25 : ce guide citait `/api/articles/:id/link-suggestions`, qui n'existe pas)*.
+- Depuis C7 (FR-RED-LINKING-MANUAL) : **la famille d'abord** — pour un parent, un lien vers chacun de ses enfants (« Article enfant (section « … ») ») ; pour un enfant, vers son parent — même si la cible n'est pas publiée (« pas encore publié : le lien sera cassé tant qu'il n'est pas en ligne ») ; puis les articles déjà rédigés dont le titre recoupe le texte. Dix suggestions au plus ; ancre prise telle quelle dans le texte.
+- Actions : Accepter (insère le lien TipTap `#article-<id>` et l'enregistre, `PUT /api/links`), Ignorer, Actualiser.
+- À la publication, un lien vers un article pas encore publié est signalé 🟠.
 
 #### 4.4.4 Panneau IA Brief
 
@@ -456,7 +470,7 @@ Dans le bottom-nav de `MoteurView.vue` :
 
 | Section | Rôle | Déclencheurs | Sorties | Gate |
 |---|---|---|---|---|
-| **Passes** (`enrich-pass-sources`, `-exemples`, `-tableaux`, `-images`, `-faq`) | Lance une passe : une proposition par chapitre visé, l'un après l'autre | Clic | `POST /api/generate/enrich/:pass` (SSE, un `done` par chapitre) ; message « rien à faire » sans appel quand aucun chapitre n'est visé | Contenu + capitaine verrouillé + aucune génération / réduction / humanisation / passe en cours |
+| **Passes** (`enrich-pass-sources`, `-exemples`, `-tableaux`, `-images`, `-faq`, et depuis C7 `-resumes` « Résumer ») | Lance une passe : une proposition par chapitre visé, l'un après l'autre. « Résumer » ne vise que les chapitres dont est né un article enfant (sections lues par `GET /api/articles/:id/children` au changement d'article) : un résumé de 150 à 250 mots qui annonce l'enfant | Clic | `POST /api/generate/enrich/:pass` (SSE, un `done` par chapitre) ; message « rien à faire » sans appel quand aucun chapitre n'est visé (« Aucun chapitre n'a encore donné naissance à un article : rien à résumer. ») | Contenu + capitaine verrouillé + aucune génération / réduction / humanisation / passe en cours |
 | **Relecture de la langue** (`enrich-pass-langue`) | Humanisation qui corrige aussi anglais, franglais, accords, typographie ; appliquée directement | Clic | `POST /api/generate/humanize-section` × N, puis `PUT /articles/:id` | idem |
 | **Progression** (`enrich-progress`) | « Chapitre n/N — titre » (ou « Relecture n/N ») + « Arrêter » | Passe ou relecture en cours | Abandon (`AbortController`) | — |
 | **Propositions** (`proposal-<index>`) | Statut, alertes 🟠/🔴/⛔, « Sources trouvées », « Comparer avant / après » | Proposition reçue | « Accepter » (grisé si ⛔) → chapitre remplacé + `PUT /articles/:id` ; « Refuser » ; statut « chapitre modifié depuis » si le chapitre a changé | — |
@@ -687,14 +701,17 @@ Monitoring GSC.
 | `/api/generate/article-draft` | POST (SSE) | Premier jet de l'article, en un appel (remplace `/api/generate/article`, retiré le 2026-09-25) |
 | `/api/generate/meta` | POST | Meta title + description |
 | `/articles/:id/gates/draft` | GET | Porte « accepter le premier jet » (alarme graduée) |
+| `/articles/:id/progress/check` | POST | Étape `redaction:draft_accepted` (« premier jet accepté », porte `draft`, C7) — après la méta et par le bandeau |
+| `/articles/:id/children` | GET | Enfants de l'article et section dont chacun est né (passe « Résumer », C7) |
 | `/articles/:id` | PUT | Sauvegarde contenu (+ méta, scores) |
 | `/api/generate/reduce-section` | POST (SSE) | Réduction, une section après l'autre |
 | `/api/generate/humanize-section` | POST (SSE) | Humanisation et relecture de la langue, une section après l'autre |
-| `/api/generate/enrich/:pass` | POST (SSE) | Passe d'enrichissement sur un chapitre (`sources`, `exemples`, `tableaux`, `images`, `faq`) |
+| `/api/generate/enrich/:pass` | POST (SSE) | Passe d'enrichissement sur un chapitre (`sources`, `exemples`, `tableaux`, `images`, `faq`, `resumes` depuis C7) |
 | `/api/generate/section-rewrite` | POST (SSE) | Réécriture d'un chapitre sur consigne |
-| `/api/generate/action` | POST (SSE) | Action contextuelle IA |
+| `/api/generate/action` | POST (SSE) | Action contextuelle IA (« lien interne » : pas d'IA, lien `#article-<id>` enregistré par `PUT /api/links` depuis C7) |
 | `/api/generate/brief-explain` | POST (SSE) | Panel IA brief |
-| `/api/articles/:id/link-suggestions` | POST | Suggestions liens internes |
+| `/api/links/suggest` | POST | Suggestions liens internes (famille du cocon d'abord, C7) *(corrigé : ce tableau citait `/api/articles/:id/link-suggestions`, qui n'existe pas)* |
+| `/api/links` | PUT | Enregistre les liens posés (`internal_links`) |
 | `/articles/:id/status` | PUT | Marquer publié |
 | `/preview/:id` | GET | HTML preview |
 
@@ -1233,11 +1250,13 @@ sequenceDiagram
     Claude-->>API: title + description
     API-->>ES: meta
     ES->>DB: PUT /articles/:id (texte + méta)
-    AV->>API: GET /articles/:id/gates/draft (alarme si la porte ne passe pas)
+    AV->>API: POST /articles/:id/progress/check redaction:draft_accepted (porte draft, alarme si refus — C7)
     ES->>AV: affichage ArticleMetaDisplay + word count
 ```
 
-Ensuite, panneau **Enrichir** (§4.4.5) : pour chaque chapitre visé, `POST /api/generate/enrich/:pass` rend une proposition vérifiée ; rien n'est écrit tant que l'utilisateur n'a pas cliqué « Accepter », qui remplace ce seul chapitre puis `PUT /articles/:id`. La passe Sources lit `theme_config` (zone) pour localiser la recherche web ; aucune route de passe n'écrit en base.
+Depuis C7, l'étape « premier jet accepté » est demandée (et non plus seulement la porte consultée) ; le bandeau `DraftAcceptance` permet de la redemander. Sans elle, l'article ne peut pas donner naissance à ses enfants dans le cocon.
+
+Ensuite, panneau **Enrichir** (§4.4.5) : pour chaque chapitre visé, `POST /api/generate/enrich/:pass` rend une proposition vérifiée ; rien n'est écrit tant que l'utilisateur n'a pas cliqué « Accepter », qui remplace ce seul chapitre puis `PUT /articles/:id`. La passe Sources lit `theme_config` (zone) pour localiser la recherche web ; la passe « Résumer » (C7) lit les enfants de l'article (`articles.parent_id`) ; aucune route de passe n'écrit en base.
 
 ### 11.8 Stratégie de persistance (après Sprints 9-13)
 
@@ -1522,7 +1541,8 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | StrategyStep — saisie + suggestion Claude | `article_strategies.data` (Q&A jsonb) | R + W (merge/enrich) ; `api_cache` C (type=cocoon-strategy, TTL 1 an) |
 | StrategyStep — deepen (sous-question) | `article_strategies.data.subQuestions` | W |
 | Étape 6 — TopicSuggestions | `article_strategies.data.suggestedTopics` | R + W |
-| Étape 6 — Génération articles (Pilier/Inter/Spé) | `article_strategies.data.proposedArticles`, `articles` (créations possibles) | W |
+| Étape 6 — Carte indicative (Pilier/Inter/Spé) | `cocoon_strategies.data.proposedArticles` (plus aucune création d'article depuis C7) ; `articles` (retrait d'un article créé : `cocoon_id`, `parent_id`, `parent_section` à NULL, ou refus 409 s'il a des enfants) | W |
+| Étape 6 — Constructeur du cocon (C7) | R : `articles` (arbre : `parent_id`, `parent_section`, `completed_checks`), `article_content`, `article_keywords.hn_structure`, `cocoon_strategies` ; candidats : `keyword_metrics` (R + W), `keyword_serp_results` (R), `api_cache` `serp-top` (R + C) ; création : `articles` (INSERT un article), `articles.completed_checks` du parent (si sa porte passe), `keywords_seo` (pool), `cocoon_strategies.data.proposedArticles` (carte) | R + W + C |
 | Navigation finale `@next` | `article_strategies.completed_steps = 6` | W |
 
 ### 12.3 Workflow Moteur
@@ -1579,7 +1599,8 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | Bouton "Continuer" (outline validé) | Plus de check workflow émis depuis 2026-05-13 (cf. DRIFT-002). La validation du sommaire persiste l'`article_content.outline` JSONB, sans check `redaction:*`. | W |
 | **Bouton Générer article** (premier jet) | `article_strategies`, `cocoon_strategies`, `article_keywords`, `article_micro_contexts` (R, + W de la cible retenue) ; `article_content.content`, `articles.meta_title`, `meta_description` | R + W (stream + save au fil + save final) |
 | Réduction / Humanisation (relecture de la langue comprise) | `article_content.content` (sections réécrites) | W |
-| **Panneau Enrichir** (passes, réécriture) | `theme_config` (zone, passe Sources, côté serveur) ; `article_content.content` à l'acceptation | R + W (accept) |
+| **Panneau Enrichir** (passes, réécriture) | `theme_config` (zone, passe Sources, côté serveur) ; `articles` (enfants de l'article, passe « Résumer », C7) ; `article_content.content` à l'acceptation | R + W (accept) |
+| **Bandeau « premier jet accepté »** (C7) | `articles.completed_checks` (`redaction:draft_accepted`), `gate_waivers` (porte `draft`) | R + W |
 | `ApiCostBadge` | store `editorStore.lastXxxUsage` (non persisté) | — |
 | **Panneau SEO** — KeywordsTab | `article_keywords`, `article_content.content` (+ calcul dynamique `seoStore.score.lexiqueCoverage`) | R |
 | Panneau SEO — IndicatorsTab | `article_content.content`, `articles.meta_*` | R |
@@ -1597,8 +1618,8 @@ Pour rappel, en plus des tests composants, le projet a aussi :
 | Toolbar — Preview (statut publié) | `articles.status = 'publié'` | W |
 | **ArticleEditor TipTap (3 sections)** | `article_content.content` | W (auto-save 30s) |
 | ActionMenu → ActionResult | `article_content.content` (remplace sélection) | W |
-| ArticlePicker (lien interne) | `articles` (liste pour choix), `internal_links` (création possible) | R + W |
-| **Panneau Enrichir** (passes, relecture, réécriture) | `theme_config` (zone, passe Sources) ; `article_content.content` à l'acceptation | R + W (accept) |
+| ArticlePicker (lien interne) | `articles` (liste pour choix), `internal_links` (le lien posé y est enregistré depuis C7) | R + W |
+| **Panneau Enrichir** (passes, relecture, réécriture) | `theme_config` (zone, passe Sources) ; `articles` (enfants, passe « Résumer », C7) ; `article_content.content` à l'acceptation | R + W (accept) |
 | **Panneau Blocs** — statiques | — (HTML direct) | — |
 | Panneau Blocs — dynamiques (IA) | `api_cache` C (type dédié éventuel) ; `article_content.content` | W + C |
 | **ArticlePreviewView** | `article_content.content`, `articles.meta_*` | R |

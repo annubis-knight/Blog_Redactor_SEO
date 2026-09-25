@@ -1,6 +1,6 @@
 /**
  * AUTHORITY: PostgreSQL `keyword_metrics` (volume, difficulté, CPC, intention)
- *            et `keyword_serp_results` (premiers résultats de la SERP).
+ *            et `external_api_cache` « serp-top » (premiers résultats de la SERP).
  * READS FROM: keyword_metrics, keyword_serp_results (analyse du Moteur, 7 jours),
  *             external_api_cache `serp-top` (relevé, 7 jours) ; DataForSEO pour ce
  *             qui manque (un appel groupé pour les KPI).

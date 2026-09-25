@@ -58,7 +58,7 @@ Lignes grisées = `classifyWithTool` (JSON structuré). Lignes normales = `strea
 | Fonctionnalité | Route | Fichier:ligne | Type appel | Modèle par défaut | Où changer |
 |---|---|---|---|---|---|
 | Propositions lieutenants (stream structuré JSON) | `POST /keywords/:keyword/propose-lieutenants` | [keyword-ai-panel.routes.ts:279](../server/routes/keyword-ai-panel.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
-| Structure HN (stream) | `POST /keywords/:keyword/ai-hn-structure` | [keyword-ai-panel.routes.ts:138](../server/routes/keyword-ai-panel.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
+| Structure HN (stream) — reçoit l'état du cocon (`{{cocoon_context}}`, depuis C7) | `POST /keywords/:keyword/ai-hn-structure` | [keyword-ai-panel.routes.ts:138](../server/routes/keyword-ai-panel.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
 
 ### Moteur — Lexique
 
@@ -77,15 +77,16 @@ Lignes grisées = `classifyWithTool` (JSON structuré). Lignes normales = `strea
 | Deepen (sous-question) | `POST /strategy/cocoon/:slug/deepen` + `/strategy/:id/deepen` | [strategy.routes.ts:485](../server/routes/strategy.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
 | Consolidate | `POST /strategy/cocoon/:slug/consolidate` + `/strategy/:id/consolidate` | [strategy.routes.ts:529](../server/routes/strategy.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
 | Enrich | `POST /strategy/cocoon/:slug/enrich` + `/strategy/:id/enrich` | [strategy.routes.ts:570](../server/routes/strategy.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
+| Mots-clés candidats d'un nouvel article (3 à 5, prompt `cocoon-child-keywords.md`, état du cocon), **puis mesure** de chacun (volumes groupés DataForSEO, base d'abord ; 3 premiers résultats, cache `serp-top` 7 j) — depuis C7, 2026-09-25 | `POST /cocoons/:cocoonId/child-candidates` | [child-candidates.service.ts:98](../server/services/strategy/child-candidates.service.ts) | `collectStreamWithUsage` (sans outil, `maxTokens: 1500`) ; action **payante** derrière un clic (« Créer le pilier », « Créer l'article de cette section ») ; tout refus (ordre du cocon, parent pas rédigé) est dit **avant** l'appel | `CLAUDE_MODEL` env | idem |
 
 ### Rédaction — Génération de contenu
 
 | Fonctionnalité | Route | Fichier:ligne | Type appel | Modèle par défaut | Où changer |
 |---|---|---|---|---|---|
 | Génération outline (sommaire) | `POST /generate/outline` | [generate.routes.ts:191](../server/routes/generate.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
-| Premier jet de l'article, en un appel (remplace la génération section par section depuis le 2026-09-25) | `POST /generate/article-draft` | [article-draft.routes.ts:163](../server/routes/generate/article-draft.routes.ts) | `streamChatCompletion` **sans outil** (pas de recherche web) ; reprise au chapitre coupé, 2 au plus | `CLAUDE_MODEL` env | idem |
-| Passe d'enrichissement sur un chapitre (`sources`, `exemples`, `tableaux`, `images`, `faq`) | `POST /generate/enrich/:pass` | [enrichment.service.ts:96](../server/services/article/enrichment.service.ts) | `collectStreamWithUsage` ; passe `sources` seulement : `webSearchTool(zone)` (France, `Europe/Paris`, ville de la zone, 3 recherches max) → **Claude uniquement**, jamais de repli | `CLAUDE_MODEL` env | idem |
-| Réécriture d'un chapitre sur consigne | `POST /generate/section-rewrite` | [enrichment.service.ts:96](../server/services/article/enrichment.service.ts) | `collectStreamWithUsage` (sans outil) | `CLAUDE_MODEL` env | idem |
+| Premier jet de l'article, en un appel (remplace la génération section par section depuis le 2026-09-25) ; reçoit l'état du cocon (`{{cocoon_context}}`, C7) | `POST /generate/article-draft` | [article-draft.routes.ts:170](../server/routes/generate/article-draft.routes.ts) | `streamChatCompletion` **sans outil** (pas de recherche web) ; reprise au chapitre coupé, 2 au plus | `CLAUDE_MODEL` env | idem |
+| Passe d'enrichissement sur un chapitre (`sources`, `exemples`, `tableaux`, `images`, `faq`, et depuis C7 `resumes` — « Résumer » un chapitre dont est né un article enfant, 150 à 250 mots, `maxTokens: 1200`) | `POST /generate/enrich/:pass` | [enrichment.service.ts:123](../server/services/article/enrichment.service.ts) | `collectStreamWithUsage` ; passe `sources` seulement : `webSearchTool(zone)` (France, `Europe/Paris`, ville de la zone, 3 recherches max) → **Claude uniquement**, jamais de repli ; `resumes` : un chapitre sans enfant est refusé **avant** l'appel | `CLAUDE_MODEL` env | idem |
+| Réécriture d'un chapitre sur consigne | `POST /generate/section-rewrite` | [enrichment.service.ts:123](../server/services/article/enrichment.service.ts) | `collectStreamWithUsage` (sans outil) | `CLAUDE_MODEL` env | idem |
 | Génération meta (title + description) | `POST /generate/meta` | [generate.routes.ts:891](../server/routes/generate.routes.ts) | `streamChatCompletion` (`maxTokens: 1024`) | `CLAUDE_MODEL` env | idem |
 | Réduction de section | `POST /generate/reduce-section` | [generate.routes.ts:676](../server/routes/generate.routes.ts) | `streamChatCompletion` | `CLAUDE_MODEL` env | idem |
 | Humanisation de section (2 essais) — aussi « Relecture de la langue » du panneau Enrichir depuis le 2026-09-25 | `POST /generate/humanize-section` | [generate.routes.ts:773, 804](../server/routes/generate.routes.ts) | `streamChatCompletion` × 2 | `CLAUDE_MODEL` env | idem |
@@ -163,7 +164,8 @@ D'après [claude.service.ts:19-21](../server/services/external/claude.service.ts
 - `radar/generate` avec Haiku : **~$0.003** (1255 input + 584 output tokens)
 - `analyze-discovery` avec Sonnet : **~$0.02-0.04**
 - `generate/article` (pilier complet, rédaction section par section, retirée le 2026-09-25) avec Sonnet : **~$0.10-0.30** — le premier jet (`generate/article-draft`) n'a pas encore de mesure publiée ici
-- Passe `enrich/sources` : chaque recherche web ajoute ~10-15k jetons d'entrée (jusqu'à 3 par chapitre), un appel par chapitre à sourcer — la passe la plus chère ; les autres passes coûtent un appel sans outil par chapitre visé
+- Passe `enrich/sources` : chaque recherche web ajoute ~10-15k jetons d'entrée (jusqu'à 3 par chapitre), un appel par chapitre à sourcer — la passe la plus chère ; les autres passes coûtent un appel sans outil par chapitre visé (`resumes` : un par chapitre dont est né un enfant)
+- Candidats d'un nouvel article (C7) : un appel IA sans outil, puis DataForSEO — un appel groupé pour les volumes et intentions des candidats non mesurés depuis 7 jours, et une SERP par candidat sans relevé ni analyse récents
 
 ---
 
@@ -317,4 +319,4 @@ Désactiver : `AI_PROVIDER_NO_FALLBACK=1` dans `.env`.
 
 ---
 
-**Dernière mise à jour** : 2026-09-25 (rédaction en deux temps : premier jet, passes d'enrichissement, recherche web sans repli ; le reste du document date du 2026-04-23)
+**Dernière mise à jour** : 2026-09-25 (rédaction en deux temps : premier jet, passes d'enrichissement, recherche web sans repli ; cocon né du pilier, C7 : mots-clés candidats mesurés, passe « Résumer », état du cocon dans la structure et le premier jet ; le reste du document date du 2026-04-23)
