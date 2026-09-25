@@ -150,38 +150,42 @@ registerStreamFixture(
 registerStreamFixture(
   'propose-lieutenants',
   ({ userPrompt }) => /Propose les meilleurs lieutenants|propose.*mots-clés.*support/i.test(userPrompt),
-  () => {
+  ({ userPrompt }) => {
+    // Les lieutenants dérivent du capitaine demandé (T4, épopée qualité SEO) :
+    // une proposition figée « plombier » rendait les parcours incohérents et
+    // aveugles aux portes (cannibalisation, lieutenant = capitaine).
+    const captain = (userPrompt.match(/"([^"]+)"/)?.[1] ?? 'mot-clé principal').trim().toLowerCase()
     const json = {
       lieutenants: [
         {
-          keyword: 'plombier urgence toulouse',
+          keyword: `prix ${captain}`,
           level: 'intermediaire',
-          hnTitle: 'Intervention urgente à Toulouse',
+          hnTitle: `Combien coûte ${captain} ?`,
           score: 85,
-          reasoning: 'Forte intention transactionnelle locale, volume 320/mois.',
+          reasoning: 'Question de budget posée avant tout achat : forte intention.',
           priority: 'high',
         },
         {
-          keyword: 'plombier chauffagiste toulouse',
+          keyword: `${captain} avis`,
           level: 'intermediaire',
-          hnTitle: 'Plombier chauffagiste : double expertise',
+          hnTitle: `Ce qu'en disent les clients`,
           score: 78,
-          reasoning: 'Élargit la surface sémantique sur le chauffage.',
+          reasoning: 'Recherche de réassurance, présente dans les questions « Autres questions ».',
           priority: 'high',
         },
         {
-          keyword: 'dépannage fuite eau toulouse',
+          keyword: `comment choisir ${captain}`,
           level: 'specifique',
-          hnTitle: 'Fuite d\'eau : réaction en 30 min',
+          hnTitle: 'Les critères pour bien choisir',
           score: 72,
-          reasoning: 'Longue-traîne niche, forte conversion.',
+          reasoning: 'Longue traîne de décision, titres récurrents chez les concurrents.',
           priority: 'medium',
         },
       ],
       eliminated: [
         {
-          keyword: 'plombier paris',
-          reason: 'Hors zone géographique — cannibalisation impossible.',
+          keyword: `${captain} gratuit`,
+          reason: 'Intention sans valeur commerciale pour ce site.',
         },
       ],
     }

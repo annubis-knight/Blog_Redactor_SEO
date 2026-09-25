@@ -15,8 +15,8 @@ function requireServer() {
 }
 
 describe('Contract /articles/:id/radar-exploration/long-tail', () => {
-  it('POST avec body invalide (radarKeywords vide) → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('POST avec body invalide (radarKeywords vide) → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LT Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LT Article')
@@ -30,8 +30,8 @@ describe('Contract /articles/:id/radar-exploration/long-tail', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST avec articleId non-positif → 400 INVALID_ID', async () => {
-    if (requireServer().skip) return
+  it('POST avec articleId non-positif → 400 INVALID_ID', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/-1/radar-exploration/long-tail', {
       radarKeywords: [{ keyword: 'a' }, { keyword: 'b' }],
       articleTitle: 'T',
@@ -41,8 +41,8 @@ describe('Contract /articles/:id/radar-exploration/long-tail', () => {
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('POST OK en mock → { suggestions[], fromCache:boolean }', async () => {
-    if (requireServer().skip) return
+  it('POST OK en mock → { suggestions[], fromCache:boolean }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     if (process.env.AI_PROVIDER !== 'mock') return // garde-fou : pas d'IA réelle en CI
 
     const silo = await ctx.getSilo()
@@ -68,8 +68,8 @@ describe('Contract /articles/:id/radar-exploration/long-tail', () => {
     expect(typeof res.data?.fromCache).toBe('boolean')
   })
 
-  it('PATCH selection OK → { ok: true, count: N }', async () => {
-    if (requireServer().skip) return
+  it('PATCH selection OK → { ok: true, count: N }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LT Cocon PATCH')
     const article = await ctx.createArticle(cocoon.id, 'LT Article PATCH')
@@ -82,8 +82,8 @@ describe('Contract /articles/:id/radar-exploration/long-tail', () => {
     expect(res.data?.count).toBe(2)
   })
 
-  it('PATCH avec body invalide → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('PATCH avec body invalide → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LT Cocon PATCH 2')
     const article = await ctx.createArticle(cocoon.id, 'LT Article PATCH 2')

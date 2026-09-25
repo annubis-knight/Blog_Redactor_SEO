@@ -15,7 +15,10 @@ const baseInput = {
 describe('computeCombinedScore — mode fallback (sans douleur enrichie)', () => {
   it('calcule un total 0-100', () => {
     const r = computeCombinedScore(baseInput)
-    expect(r.total).toBeGreaterThanOrEqual(0)
+    // Mode fallback : PAA 25, résonance 30 + 35 = 65, opportunité
+    // log10(500 × 0,7) / 5 = 50,9, intent commercial 100, CPC 38,2, douleur 60 :
+    // 25×0,25 + 65×0,15 + 50,9×0,20 + 100×0,10 + 38,2×0,10 + 60×0,20 ≈ 52.
+    expect(r.total).toBe(52)
     expect(r.total).toBeLessThanOrEqual(100)
   })
 

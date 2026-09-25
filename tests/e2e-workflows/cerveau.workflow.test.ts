@@ -25,8 +25,8 @@ function requireServer() {
 // ---------------------------------------------------------------------------
 
 describe('Cerveau Workflow — Phase 1 : ThemeConfig', () => {
-  it('GET /theme/config retourne la config courante', async () => {
-    if (requireServer().skip) return
+  it('GET /theme/config retourne la config courante', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<{ avatar: object; positioning: object; offerings: object }>('/theme/config')
     expect(res.status).toBe(200)
     expect(res.data?.avatar).toBeDefined()
@@ -34,15 +34,15 @@ describe('Cerveau Workflow — Phase 1 : ThemeConfig', () => {
     expect(res.data?.offerings).toBeDefined()
   })
 
-  it('GET /theme retourne le thème global', async () => {
-    if (requireServer().skip) return
+  it('GET /theme retourne le thème global', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<unknown>('/theme')
     expect(res.status).toBe(200)
     expect(res.data).toBeDefined()
   })
 
-  it('POST /theme/config/parse sans text → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /theme/config/parse sans text → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/theme/config/parse', {})
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('VALIDATION_ERROR')
@@ -57,23 +57,23 @@ describe('Cerveau Workflow — Phase 1 : ThemeConfig', () => {
 // ---------------------------------------------------------------------------
 
 describe('Cerveau Workflow — Silos & Cocoons', () => {
-  it('GET /silos retourne la liste des silos', async () => {
-    if (requireServer().skip) return
+  it('GET /silos retourne la liste des silos', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<Array<{ id: number; nom: string }>>('/silos')
     expect(res.status).toBe(200)
     expect(Array.isArray(res.data)).toBe(true)
     expect(res.data?.length ?? 0).toBeGreaterThan(0)
   })
 
-  it('GET /cocoons retourne tous les cocons groupés', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons retourne tous les cocons groupés', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<Array<{ id: number; name: string }>>('/cocoons')
     expect(res.status).toBe(200)
     expect(Array.isArray(res.data)).toBe(true)
   })
 
-  it('POST /silos/:name/cocoons crée un cocon', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /silos/:name/cocoons crée un cocon', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoonName = `[test:${ctx.runId}] Strat Cocoon ${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
     const res = await apiPost<{ id: number; name: string }>(`/silos/${encodeURIComponent(silo.nom)}/cocoons`, {
@@ -90,8 +90,8 @@ describe('Cerveau Workflow — Silos & Cocoons', () => {
 
   it.todo('GET /cocoons/:id/articles utilise un cocoonIndex (position dans la liste), pas un id DB — comportement à vérifier en spec produit')
 
-  it('GET /cocoons/:cocoonName/capitaines avec cocon inexistant → 404 ou data vide', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons/:cocoonName/capitaines avec cocon inexistant → 404 ou data vide', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<unknown>(`/cocoons/test-${ctx.runId}-no-cocoon/capitaines`)
     // Soit 404 soit 200 + vide (à vérifier — comportement actuel à doc)
     expect([200, 404]).toContain(res.status)
@@ -103,15 +103,15 @@ describe('Cerveau Workflow — Silos & Cocoons', () => {
 // ---------------------------------------------------------------------------
 
 describe('Cerveau Workflow — Phase 2 : Stratégie cocon', () => {
-  it('GET /strategy/cocoon/:cocoonSlug retourne null pour cocon inexistant', async () => {
-    if (requireServer().skip) return
+  it('GET /strategy/cocoon/:cocoonSlug retourne null pour cocon inexistant', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet(`/strategy/cocoon/test-${ctx.runId}-no-strategy`)
     expect(res.status).toBe(200)
     // Soit data=null soit data={} selon spec produit
   })
 
-  it('PUT /strategy/cocoon/:cocoonSlug avec payload cocoonStrategySchema complet sauvegarde', { timeout: 10000 }, async () => {
-    if (requireServer().skip) return
+  it('PUT /strategy/cocoon/:cocoonSlug avec payload cocoonStrategySchema complet sauvegarde', { timeout: 10000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const slug = `test-${ctx.runId}-full-strategy`
     const emptyStep = { input: '', suggestion: null as string | null, validated: '', subQuestions: [] as unknown[] }
     const payload = {
@@ -132,15 +132,15 @@ describe('Cerveau Workflow — Phase 2 : Stratégie cocon', () => {
     expect([200, 500]).toContain(res.status)
   })
 
-  it('POST /strategy/cocoon/:cocoonSlug/suggest (stream) avec body invalide → 500 ou 400', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:cocoonSlug/suggest (stream) avec body invalide → 500 ou 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}-suggest/suggest`, {})
     // body schema invalide → 400 ou 500 selon implementation
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /strategy/cocoon/:slug/suggest body valide → 200 + suggestion', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/suggest body valide → 200 + suggestion', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ suggestion: string }>(`/strategy/cocoon/test-${ctx.runId}-strat/suggest`, {
       step: 'cible',
       currentInput: '',
@@ -150,20 +150,20 @@ describe('Cerveau Workflow — Phase 2 : Stratégie cocon', () => {
     expect(typeof res.data?.suggestion).toBe('string')
   })
 
-  it('POST /strategy/cocoon/:slug/deepen body invalide → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/deepen body invalide → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}/deepen`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /strategy/cocoon/:slug/enrich body invalide → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/enrich body invalide → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}/enrich`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('Workflow Q&A : suggestion pour cible + douleur + angle (mock)', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('Workflow Q&A : suggestion pour cible + douleur + angle (mock)', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const slug = `test-${ctx.runId}-qa-flow`
     const ctx2 = { cocoonName: 'test', siloName: 'test' }
 
@@ -188,21 +188,21 @@ describe('Cerveau Workflow — Phase 2 : Stratégie cocon', () => {
 // ---------------------------------------------------------------------------
 
 describe('Cerveau Workflow — Phase 3 : Création articles', () => {
-  it('POST /articles/batch-create avec body invalide → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/batch-create avec body invalide → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/batch-create', {})
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST /articles/batch-create avec articles vide → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/batch-create avec articles vide → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/batch-create', { cocoonName: 'x', articles: [] })
     expect(res.status).toBe(400)
   })
 
-  it('POST /articles/batch-create avec cocoonName + articles[] valides crée en DB', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /articles/batch-create avec cocoonName + articles[] valides crée en DB', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Batch Real Cocon')
 
@@ -224,8 +224,8 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     expect(parseInt(dbRes.rows[0].count, 10)).toBeGreaterThanOrEqual(2)
   })
 
-  it('GET /articles/:id retourne { article, cocoonName }', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id retourne { article, cocoonName }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Detail Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Detail Article')
@@ -239,20 +239,20 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     expect(res.data?.cocoonName).toBeDefined()
   })
 
-  it('GET /articles/:id avec id non-numérique → 400', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id avec id non-numérique → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet('/articles/abc')
     expect(res.status).toBe(400)
   })
 
-  it('GET /articles/:id inexistant → 404', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id inexistant → 404', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet('/articles/9999999')
     expect(res.status).toBe(404)
   })
 
-  it('PATCH /articles/:id renomme + change topic', async () => {
-    if (requireServer().skip) return
+  it('PATCH /articles/:id renomme + change topic', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Patch Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Patch Article')
@@ -264,8 +264,8 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     void res
   })
 
-  it('DELETE /articles/:id détache du cocon (cocoon_id = NULL, ne supprime pas la row)', async () => {
-    if (requireServer().skip) return
+  it('DELETE /articles/:id détache du cocon (cocoon_id = NULL, ne supprime pas la row)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Del Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Del Article')
@@ -282,8 +282,8 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     expect(dbRes.rows[0].cocoon_id).toBeNull()
   })
 
-  it('GET /articles/:id/progress retourne completed_checks', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/progress retourne completed_checks', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Progress Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Progress Article')
@@ -293,36 +293,38 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     expect(res.data).toBeDefined()
   })
 
-  it('POST /articles/:id/progress/check ajoute un check', async () => {
-    if (requireServer().skip) return
+  // Mécanique de progression : une étape non gardée. Les étapes gardées passent
+  // par leur porte (tests/contract-api/gates.contract.test.ts).
+  it('POST /articles/:id/progress/check ajoute un check', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Check Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Check Article')
 
-    const res = await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
+    const res = await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:discovery_done' })
     expect([200, 201]).toContain(res.status)
 
     const dbRes = await query<{ completed_checks: string[] }>(
       `SELECT completed_checks FROM articles WHERE id = $1`,
       [article.id],
     )
-    expect(dbRes.rows[0]?.completed_checks).toContain('moteur:capitaine_locked')
+    expect(dbRes.rows[0]?.completed_checks).toContain('moteur:discovery_done')
   })
 
-  it('POST /articles/:id/progress/uncheck retire un check', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/:id/progress/uncheck retire un check', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Uncheck Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Uncheck Article')
 
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
-    const res = await apiPost(`/articles/${article.id}/progress/uncheck`, { check: 'moteur:capitaine_locked' })
+    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:discovery_done' })
+    const res = await apiPost(`/articles/${article.id}/progress/uncheck`, { check: 'moteur:discovery_done' })
     expect([200, 201]).toContain(res.status)
 
     const dbRes = await query<{ completed_checks: string[] }>(
       `SELECT completed_checks FROM articles WHERE id = $1`,
       [article.id],
     )
-    expect(dbRes.rows[0]?.completed_checks).not.toContain('moteur:capitaine_locked')
+    expect(dbRes.rows[0]?.completed_checks).not.toContain('moteur:discovery_done')
   })
 })

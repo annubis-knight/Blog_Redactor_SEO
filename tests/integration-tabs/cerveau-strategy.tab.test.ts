@@ -13,22 +13,22 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab cerveau/strategy — Lecture', () => {
-  it('GET /strategy/cocoon/:cocoonSlug retourne la stratégie ou null', async () => {
-    if (requireServer().skip) return
+  it('GET /strategy/cocoon/:cocoonSlug retourne la stratégie ou null', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet(`/strategy/cocoon/test-${ctx.runId}-no-strat`)
     expect(res.status).toBe(200)
   })
 })
 
 describe('Tab cerveau/strategy — Suggest (Q&A IA)', () => {
-  it('POST /strategy/cocoon/:slug/suggest sans body → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/suggest sans body → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}/suggest`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /strategy/cocoon/:slug/suggest body valide → 200 + suggestion', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/suggest body valide → 200 + suggestion', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ suggestion: string }>(`/strategy/cocoon/test-${ctx.runId}-st/suggest`, {
       step: 'cible',
       currentInput: '',
@@ -38,8 +38,8 @@ describe('Tab cerveau/strategy — Suggest (Q&A IA)', () => {
     expect(typeof res.data?.suggestion).toBe('string')
   })
 
-  it('POST /suggest avec mergeWith → stream merge', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /suggest avec mergeWith → stream merge', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ suggestion: string }>(`/strategy/cocoon/test-${ctx.runId}-merge/suggest`, {
       step: 'cible',
       currentInput: 'TPE locales Occitanie',
@@ -53,14 +53,14 @@ describe('Tab cerveau/strategy — Suggest (Q&A IA)', () => {
 })
 
 describe('Tab cerveau/strategy — Deepen (sous-questions)', () => {
-  it('POST /strategy/cocoon/:slug/deepen sans body → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/deepen sans body → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}/deepen`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /deepen body valide → stream suggestion', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /deepen body valide → stream suggestion', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ question?: string; suggestion?: string }>(`/strategy/cocoon/test-${ctx.runId}-deep/deepen`, {
       step: 'cible',
       mainQuestion: 'Qui est votre cible ?',
@@ -72,8 +72,8 @@ describe('Tab cerveau/strategy — Deepen (sous-questions)', () => {
     expect([200, 400, 500]).toContain(res.status)
   })
 
-  it('POST /deepen avec step invalide (cta) → 400/500 (schema n\'accepte que cible|douleur|angle|promesse)', async () => {
-    if (requireServer().skip) return
+  it('POST /deepen avec step invalide (cta) → 400/500 (schema n\'accepte que cible|douleur|angle|promesse)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}-step/deepen`, {
       step: 'cta',
       mainQuestion: 'Q',
@@ -86,14 +86,14 @@ describe('Tab cerveau/strategy — Deepen (sous-questions)', () => {
 })
 
 describe('Tab cerveau/strategy — Enrich (fusion sous-question)', () => {
-  it('POST /strategy/cocoon/:slug/enrich sans body → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/enrich sans body → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}/enrich`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /enrich body valide → 200 ou 500', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /enrich body valide → 200 ou 500', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}-en/enrich`, {
       step: 'cible',
       existingValidated: 'TPE locales en Occitanie',
@@ -106,14 +106,14 @@ describe('Tab cerveau/strategy — Enrich (fusion sous-question)', () => {
 })
 
 describe('Tab cerveau/strategy — Consolidate', () => {
-  it('POST /strategy/cocoon/:slug/consolidate sans body → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/consolidate sans body → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}/consolidate`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /consolidate body valide → 200 ou 500', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /consolidate body valide → 200 ou 500', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}-cons/consolidate`, {
       step: 'cible',
       mainAnswer: 'TPE locales',
@@ -128,8 +128,8 @@ describe('Tab cerveau/strategy — Consolidate', () => {
 })
 
 describe('Tab cerveau/strategy — Enchaînement', () => {
-  it('Workflow Q&A : suggest enchaîné sur les 5 steps', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('Workflow Q&A : suggest enchaîné sur les 5 steps', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const slug = `test-${ctx.runId}-qa-chain`
     const steps = ['cible', 'douleur', 'angle', 'promesse', 'cta'] as const
     for (const step of steps) {

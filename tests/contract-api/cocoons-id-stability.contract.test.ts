@@ -21,8 +21,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Contract /cocoons — stabilité des identifiants', () => {
-  it('GET /cocoons renvoie un id qui correspond à cocoons.id en DB', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons renvoie un id qui correspond à cocoons.id en DB', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'IdStable')
 
@@ -33,8 +33,8 @@ describe('Contract /cocoons — stabilité des identifiants', () => {
     expect(found!.id).toBe(cocoon.id)
   })
 
-  it('GET /cocoons/:id/articles résout par id DB et survit à la suppression d\'un cocon antérieur', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons/:id/articles résout par id DB et survit à la suppression d\'un cocon antérieur', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
 
     // Crée un cocon "antérieur" qu'on va supprimer pour faire glisser les
@@ -57,8 +57,8 @@ describe('Contract /cocoons — stabilité des identifiants', () => {
     expect(found, `article ${targetArticle.id} doit être résolu via cocoon ${targetCocoon.id}`).toBeDefined()
   })
 
-  it('GET /cocoons/:id/articles renvoie 404 pour un id inexistant', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons/:id/articles renvoie 404 pour un id inexistant', async ({ skip }) => {
+    if (requireServer().skip) skip()
     // Un id improbablement haut → garantit qu'il n'existe pas en DB
     const res = await apiGet(`/cocoons/2147483646/articles`)
     expect(res.status).toBe(404)

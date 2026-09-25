@@ -29,7 +29,9 @@ describe('seo.store', () => {
       'Meta Description',
     )
     expect(store.score).not.toBeNull()
-    expect(store.score!.global).toBeGreaterThanOrEqual(0)
+    // Densités neutres (50, 50), H1 puis H2 (100), title 10 car. (14),
+    // description 16 car. (7), 8 mots sur 1500 (1) → 42,95 → 43.
+    expect(store.score!.global).toBe(43)
     expect(store.score!.global).toBeLessThanOrEqual(100)
   })
 

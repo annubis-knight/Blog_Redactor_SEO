@@ -13,8 +13,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Target word count — Heuristique seule (pas de SERP)', () => {
-  it('Pilier sans SERP → midpoint 2650 (entre 1800 et 3500)', async () => {
-    if (requireServer().skip) return
+  it('Pilier sans SERP → midpoint 2650 (entre 1800 et 3500)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC P Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC P Article', 'Pilier')
@@ -29,8 +29,8 @@ describe('Target word count — Heuristique seule (pas de SERP)', () => {
     expect(res.data?.breakdown?.aiSuggestion).toBeNull()
   })
 
-  it('Intermédiaire sans SERP → midpoint 1850', async () => {
-    if (requireServer().skip) return
+  it('Intermédiaire sans SERP → midpoint 1850', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC I Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC I Article', 'Intermédiaire')
@@ -42,8 +42,8 @@ describe('Target word count — Heuristique seule (pas de SERP)', () => {
     expect(res.data?.breakdown?.typeBase).toEqual(expect.objectContaining({ min: 1200, max: 2500 }))
   })
 
-  it('Spécialisé sans SERP → midpoint 1150', async () => {
-    if (requireServer().skip) return
+  it('Spécialisé sans SERP → midpoint 1150', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC S Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC S Article', 'Spécialisé')
@@ -57,22 +57,22 @@ describe('Target word count — Heuristique seule (pas de SERP)', () => {
 })
 
 describe('Target word count — Validation', () => {
-  it('POST avec id non-numérique → 400 INVALID_ID', async () => {
-    if (requireServer().skip) return
+  it('POST avec id non-numérique → 400 INVALID_ID', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/abc/recommend-word-count')
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('POST avec id inexistant → 404 NOT_FOUND', async () => {
-    if (requireServer().skip) return
+  it('POST avec id inexistant → 404 NOT_FOUND', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/9999999/recommend-word-count')
     expect(res.error?.code).toBe('NOT_FOUND')
   })
 })
 
 describe('Target word count — Intégration au workflow brief (contentLengthRecommendation)', () => {
-  it('GET /articles/:id/recommend-word-count alimente la reco utilisée par le brief', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/recommend-word-count alimente la reco utilisée par le brief', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'WF Brief Cocon')
     const article = await ctx.createArticle(cocoon.id, 'WF Brief Article', 'Intermédiaire')
@@ -89,8 +89,8 @@ describe('Target word count — Intégration au workflow brief (contentLengthRec
 })
 
 describe('Target word count — Workflow utilisateur (recommande puis sauvegarde dans micro-context)', () => {
-  it('Recommandation → user accepte → PUT micro-context → GET retourne la valeur', async () => {
-    if (requireServer().skip) return
+  it('Recommandation → user accepte → PUT micro-context → GET retourne la valeur', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC Flow Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC Flow Article', 'Pilier')
@@ -111,8 +111,8 @@ describe('Target word count — Workflow utilisateur (recommande puis sauvegarde
     expect(mcRes.data?.targetWordCount).toBe(recommended)
   })
 
-  it('User peut override la recommandation IA avec sa propre valeur', async () => {
-    if (requireServer().skip) return
+  it('User peut override la recommandation IA avec sa propre valeur', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC Override Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC Override Article', 'Pilier')
@@ -127,8 +127,8 @@ describe('Target word count — Workflow utilisateur (recommande puis sauvegarde
     expect(mcRes.data?.targetWordCount).toBe(1900)
   })
 
-  it('Valeur clampée aux bornes du type — refuse < 500', async () => {
-    if (requireServer().skip) return
+  it('Valeur clampée aux bornes du type — refuse < 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC Range Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC Range Article')

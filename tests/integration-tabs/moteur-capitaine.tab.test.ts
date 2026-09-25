@@ -6,25 +6,26 @@ import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
+import { grantCheck } from '../helpers/gates.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab moteur/capitaine — Validate', () => {
-  it('POST /keywords/:kw/validate sans level → 400 MISSING_PARAM', async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:kw/validate sans level → 400 MISSING_PARAM', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, {})
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST /keywords/:kw/validate level invalide → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:kw/validate level invalide → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, { level: 'invalid' })
     expect(res.status).toBe(400)
   })
 
-  it('POST /keywords/:kw/validate retourne 6 KPIs + verdict', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:kw/validate retourne 6 KPIs + verdict', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ kpis: unknown[]; verdict: { level: string; totalKpis: number } }>(
       `/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/scan`,
       { level: 'pilier', articleTitle: 'test' },
@@ -34,8 +35,8 @@ describe('Tab moteur/capitaine — Validate', () => {
     expect(['GO', 'ORANGE', 'NO-GO']).toContain(res.data?.verdict?.level ?? '')
   })
 
-  it('POST /keywords/:kw/validate?articleId persiste captain_explorations', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:kw/validate?articleId persiste captain_explorations', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CapPers Cocon')
     const article = await ctx.createArticle(cocoon.id, 'CapPers Article')
@@ -53,8 +54,8 @@ describe('Tab moteur/capitaine — Validate', () => {
 })
 
 describe('Tab moteur/capitaine — Carousel hydratation', () => {
-  it('GET /articles/:id/explorations renvoie captain[] avec history', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/explorations renvoie captain[] avec history', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CapHistory Cocon')
     const article = await ctx.createArticle(cocoon.id, 'CapHistory Article')
@@ -68,8 +69,8 @@ describe('Tab moteur/capitaine — Carousel hydratation', () => {
     expect(res.data?.captain.some(c => c.keyword === kw)).toBe(true)
   })
 
-  it('GET /articles/:id/captain-explorations route dédiée existe', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/captain-explorations route dédiée existe', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CapDirect Cocon')
     const article = await ctx.createArticle(cocoon.id, 'CapDirect Article')
@@ -86,8 +87,8 @@ describe('Tab moteur/capitaine — KeywordAssistPanel (F3)', () => {
 })
 
 describe('Tab moteur/capitaine — AI Panel + TTL (U5)', () => {
-  it('POST /keywords/:kw/ai-panel (stream) renvoie SSE chunks', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:kw/ai-panel (stream) renvoie SSE chunks', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId)}/ai-panel`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -112,8 +113,8 @@ describe('Tab moteur/capitaine — Root keywords editor (F4)', () => {
 })
 
 describe('Tab moteur/capitaine — Lock + cascade (F5, D3)', () => {
-  it('Lock capitaine via PUT /articles/:id/keywords avec capitaine', async () => {
-    if (requireServer().skip) return
+  it('Lock capitaine via PUT /articles/:id/keywords avec capitaine', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPut } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'CapLock Cocon')
@@ -136,9 +137,9 @@ describe('Tab moteur/capitaine — Lock + cascade (F5, D3)', () => {
     expect(dbRes.rows[0]?.capitaine).toBe(kw)
   })
 
-  it('F5 : unlock capitaine ne réinitialise pas les autres checks', async () => {
-    if (requireServer().skip) return
-    const { apiPost, apiPut, apiGet } = await import('../helpers/api-client.js')
+  it('F5 : unlock capitaine ne réinitialise pas les autres checks', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const { apiPut, apiGet } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'F5 Cocon')
     const article = await ctx.createArticle(cocoon.id, 'F5 Article')
@@ -148,9 +149,10 @@ describe('Tab moteur/capitaine — Lock + cascade (F5, D3)', () => {
       capitaine: `test-${ctx.runId}-f5`, lieutenants: ['lt1'], lexique: ['lex1'],
       rootKeywords: [], hnStructure: [],
     })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    // Étapes gardées : elles passent leur porte, comme pour un utilisateur qui assume.
+    await grantCheck(article.id, 'moteur:capitaine_locked')
+    await grantCheck(article.id, 'moteur:lieutenants_locked')
+    await grantCheck(article.id, 'moteur:lexique_validated')
 
     // Unlock capitaine (simulate via PUT sans capitaine — peut nécessiter spec précise)
     // Pour l'instant on vérifie juste que les checks sont stables

@@ -14,20 +14,20 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab cerveau/proposals — Création batch', () => {
-  it('POST /articles/batch-create sans body → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/batch-create sans body → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/batch-create', {})
     expect(res.status).toBe(400)
   })
 
-  it('POST /articles/batch-create articles=[] → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/batch-create articles=[] → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/batch-create', { cocoonName: 'x', articles: [] })
     expect(res.status).toBe(400)
   })
 
-  it('POST /articles/batch-create crée articles + cascade en DB', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /articles/batch-create crée articles + cascade en DB', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Batch Tab Cocon')
 
@@ -51,8 +51,8 @@ describe('Tab cerveau/proposals — Création batch', () => {
 })
 
 describe('Tab cerveau/proposals — Lecture cocon', () => {
-  it('GET /cocoons/:id/strategy/context retourne strategy ou null', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons/:id/strategy/context retourne strategy ou null', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'StratCtx Cocon')
 
@@ -61,8 +61,8 @@ describe('Tab cerveau/proposals — Lecture cocon', () => {
     // null pour cocon sans stratégie
   })
 
-  it('GET /cocoons/:id/strategy/context avec id non-numérique → 400', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons/:id/strategy/context avec id non-numérique → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet('/cocoons/abc/strategy/context')
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('INVALID_ID')
@@ -70,8 +70,8 @@ describe('Tab cerveau/proposals — Lecture cocon', () => {
 })
 
 describe('Tab cerveau/proposals — Articles CRUD', () => {
-  it('GET /articles/:id retourne { article, cocoonName }', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id retourne { article, cocoonName }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Detail Tab Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Detail Tab Article')
@@ -81,14 +81,14 @@ describe('Tab cerveau/proposals — Articles CRUD', () => {
     expect(res.data?.cocoonName).toBeDefined()
   })
 
-  it('GET /articles/:id inexistant → 404 NOT_FOUND', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id inexistant → 404 NOT_FOUND', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet('/articles/9999999')
     expect(res.error?.code).toBe('NOT_FOUND')
   })
 
-  it('DELETE /articles/:id détache du cocon (cocoon_id NULL)', async () => {
-    if (requireServer().skip) return
+  it('DELETE /articles/:id détache du cocon (cocoon_id NULL)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'DelTab Cocon')
     const article = await ctx.createArticle(cocoon.id, 'DelTab Article')
@@ -104,8 +104,8 @@ describe('Tab cerveau/proposals — Articles CRUD', () => {
 })
 
 describe('Tab cerveau/proposals — Topics & smart-add', () => {
-  it('POST /strategy/cocoon/:slug/topics tolère 200/400/404/500 (endpoint peut-être absent)', async () => {
-    if (requireServer().skip) return
+  it('POST /strategy/cocoon/:slug/topics tolère 200/400/404/500 (endpoint peut-être absent)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost(`/strategy/cocoon/test-${ctx.runId}-p-topics/topics`, {
       context: { cocoonName: 'test', siloName: 'test' },

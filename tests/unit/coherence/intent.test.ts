@@ -147,18 +147,17 @@ describe('FR-EXP-INTENT-ANALYZE — affichage vs calcul intent dans scoring KPI'
 
   it('intent types de différentes précisions mappent correctement', () => {
     // Test des 4 types principaux
+    // Valeur de l'intent × probabilité 0,5 (aucun plafond n'est atteint).
     const testCases: Array<{ intentType: IntentType; expectedScore: number }> = [
-      { intentType: 'informational', expectedScore: 50 },      // 60 * 0.5 * 100 / 100 = 30, mais cap max
-      { intentType: 'transactional_local', expectedScore: 90 }, // 90 * 0.5 * 100 / 100 = 45, mais max
-      { intentType: 'navigational', expectedScore: 20 },       // 40 * 0.5 * 100 / 100 = 20
-      { intentType: 'mixed', expectedScore: 25 },              // 50 * 0.5 * 100 / 100 = 25
+      { intentType: 'informational', expectedScore: 30 },       // 60 × 0,5
+      { intentType: 'transactional_local', expectedScore: 45 }, // 90 × 0,5
+      { intentType: 'navigational', expectedScore: 20 },        // 40 × 0,5
+      { intentType: 'mixed', expectedScore: 25 },               // 50 × 0,5
     ]
 
     for (const testCase of testCases) {
       const score = intentValueToPseudoScore([testCase.intentType as RadarIntentType], 0.5)
-      // Score dépend de la formule exacte, juste vérifier non-zero pour type valide
-      expect(score).toBeGreaterThanOrEqual(0)
-      expect(score).toBeLessThanOrEqual(100)
+      expect(score, testCase.intentType).toBe(testCase.expectedScore)
     }
   })
 })

@@ -5,13 +5,14 @@
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiGet } from '../helpers/api-client.js'
+import { grantCheck } from '../helpers/gates.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab moteur/finalisation — Gates (côté DB : completed_checks)', () => {
-  it('Article neuf n\'a aucun des 3 checks Moteur', async () => {
-    if (requireServer().skip) return
+  it('Article neuf n\'a aucun des 3 checks Moteur', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'FGates Cocon')
     const article = await ctx.createArticle(cocoon.id, 'FGates Article')
@@ -24,16 +25,21 @@ describe('Tab moteur/finalisation — Gates (côté DB : completed_checks)', () 
     expect(list).not.toContain('moteur:lexique_validated')
   })
 
-  it('Après ajout des 3 checks, ils sont bien présents', async () => {
-    if (requireServer().skip) return
-    const { apiPost } = await import('../helpers/api-client.js')
+  it('Après ajout des 3 checks, ils sont bien présents', async ({ skip }) => {
+    if (requireServer().skip) skip()
+
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'FGates2 Cocon')
     const article = await ctx.createArticle(cocoon.id, 'FGates2 Article')
+    const { apiPut } = await import('../helpers/api-client.js')
+    await apiPut(`/articles/${article.id}/keywords`, {
+      capitaine: `test-${ctx.runId}-fgates`, lieutenants: [], lexique: [], rootKeywords: [], hnStructure: [],
+    })
 
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    // Étapes gardées : elles passent leur porte, comme pour un utilisateur qui assume.
+    await grantCheck(article.id, 'moteur:capitaine_locked')
+    await grantCheck(article.id, 'moteur:lieutenants_locked')
+    await grantCheck(article.id, 'moteur:lexique_validated')
 
     const res = await apiGet<{ completed_checks?: string[]; completedChecks?: string[] }>(`/articles/${article.id}/progress`)
     const checks = (res.data as { completedChecks?: string[]; completed_checks?: string[] })
@@ -47,8 +53,8 @@ describe('Tab moteur/finalisation — Gates (côté DB : completed_checks)', () 
 })
 
 describe('Tab moteur/finalisation — Affichage agrégé', () => {
-  it('GET /articles/:id/explorations agrège tous les domaines', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/explorations agrège tous les domaines', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Final Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Final Article')

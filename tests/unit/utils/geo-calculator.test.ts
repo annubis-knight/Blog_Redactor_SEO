@@ -115,7 +115,10 @@ describe('geo-calculator', () => {
     it('returns a score between 0 and 100', () => {
       const html = '<h2>Comment optimiser?</h2><p>Le SEO améliore la visibilité, 42% (Source XYZ).</p>'
       const result = calculateGeoScore(html)
-      expect(result.global).toBeGreaterThanOrEqual(0)
+      // Paragraphe court (100), 1 titre sur 1 en question (100), capsule
+      // présente (100), 1 statistique sourcée sur 3 visées (33) :
+      // 100×0,30 + 100×0,25 + 100×0,25 + 33×0,20 = 86,6 → 87.
+      expect(result.global).toBe(87)
       expect(result.global).toBeLessThanOrEqual(100)
     })
 
@@ -147,7 +150,10 @@ describe('geo-calculator', () => {
 
     it('handles empty content', () => {
       const result = calculateGeoScore('')
-      expect(result.global).toBeGreaterThanOrEqual(0)
+      // Texte vide : extractibilité, questions et capsules neutres (50 chacun),
+      // aucune statistique sourcée (0) → 15 + 12,5 + 12,5 + 0 = 40.
+      expect(result.global).toBe(40)
+      expect(result.sourcedStats.count).toBe(0)
     })
 
     it('includes paragraphAlerts and jargonDetections', () => {

@@ -143,16 +143,23 @@ const SOFT_LIMITS = {
   //   apparus dans les tests de Brain (smart-add, paa-cascade) car certains
   //   scenarii dépendaient de la disponibilité de fixtures PascalCase + de la
   //   fonction `articleTypeToLevel` (supprimée).
-  itSkip: 91,                      // it.skip / test.skip / describe.skip
+  // 2026-09-25 — épopée qualité SEO (C2, T2) : les 46 it.skip de
+  //   captain-validation.test.ts (ancienne mise en page) retirés ; les
+  //   comportements encore valables sont couverts par captain-lock-gate.test.ts.
+  itSkip: 42,                      // it.skip / test.skip / describe.skip
   // 2026-09-24 — épopée qualité SEO (C1, cliquet des faux verts) : trois formes
   // d'assertion qui passent quoi qu'il arrive, figées à leur niveau du jour.
   //   - `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur : toujours vrai ;
   //   - `expect(typeof x).toBe('boolean')` : vérifie le type, jamais la valeur ;
   //   - `if (requireServer().skip) return` : sans serveur, le test sort VERT au
-  //     lieu d'apparaître « ignoré ». À convertir en `it.skipIf` (checklist T7).
-  alwaysTrueGte0: 31,
-  typeofBoolean: 10,
-  silentServerSkip: 362,
+  //     lieu d'apparaître « ignoré ». 2026-09-25 (C2, T7) : les 362 occurrences
+  //     sont devenues `skip()` (contexte du test) — plafond à 0, il ne remonte plus.
+  // 2026-09-25 — épopée qualité SEO (C2, T3) : occurrences de tests/unit réécrites
+  //   en vérifications qui peuvent échouer ; restent celles des tests contre
+  //   serveur/navigateur (31 → 12 pour « >= 0 », 10 → 8 pour le type booléen).
+  alwaysTrueGte0: 12,
+  typeofBoolean: 8,
+  silentServerSkip: 0,
 } as const
 
 // ============================================================================

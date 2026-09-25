@@ -53,7 +53,8 @@ describe('Sprint 17 — Tri Capitaine stable (FR-CAP-SORT-STABLE-ON-ROOT-VARIANT
     const indexOfVoiture = sorted.value.findIndex(
       e => e.originalCard.keyword === 'voiture electrique pas chere',
     )
-    expect(indexOfVoiture).toBeGreaterThanOrEqual(0)
+    // Tri A-Z décroissant : « z keyword », « voiture… », « a meilleur keyword ».
+    expect(indexOfVoiture).toBe(1)
     const positionBefore = indexOfVoiture
 
     // Simulation : utilisateur active une racine — `card` est remplacée par

@@ -85,9 +85,11 @@ describe('moteur:captain-relevance — paaPainAlignmentOverride (Haiku)', () => 
       'commercial',
       null, // ← pas d'override
     )
-    // Le calcul lexical produit une valeur déterministe pour ces inputs
-    expect(result.breakdown!.paaPain.normalized).toBeGreaterThanOrEqual(0)
-    expect(result.breakdown!.paaPain.normalized).toBeLessThanOrEqual(100)
+    // Le calcul lexical produit une valeur déterministe pour ces inputs :
+    // chaque PAA ne partage avec la douleur que « site », « web » et
+    // « toulouse » (par racine) → alignement partiel par racine (50) sur les
+    // deux PAA → moyenne 50.
+    expect(result.breakdown!.paaPain.normalized).toBe(50)
     expect(result.total).not.toBeNull()
   })
 

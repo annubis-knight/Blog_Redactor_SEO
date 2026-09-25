@@ -81,8 +81,9 @@ describe('RadarKeywordCard — displayMode', () => {
     const valueText = ring.find('.score-ring__value').text()
     const parsed = Number(valueText)
     expect(Number.isFinite(parsed)).toBe(true)
-    expect(parsed).toBeGreaterThanOrEqual(0)
-    expect(parsed).toBeLessThanOrEqual(100)
+    // computeKpiScore (intermédiaire) : volume, KD, intent, PAA, autocomplete
+    // verts, CPC neutre → 90 / 0,95 = 94,7 → 95, et non combinedScore (67).
+    expect(parsed).toBe(95)
     expect(ring.find('.score-ring__label').text()).toBe('Score KPI')
   })
 

@@ -18,7 +18,9 @@ describe('geo.store', () => {
     const store = useGeoStore()
     store.recalculate('<h2>Comment optimiser?</h2><p>Le SEO améliore la visibilité.</p>')
     expect(store.score).not.toBeNull()
-    expect(store.score!.global).toBeGreaterThanOrEqual(0)
+    // Paragraphe court (100), titre en question (100), capsule (100), aucune
+    // statistique sourcée (0) → 30 + 25 + 25 + 0 = 80.
+    expect(store.score!.global).toBe(80)
     expect(store.score!.global).toBeLessThanOrEqual(100)
   })
 

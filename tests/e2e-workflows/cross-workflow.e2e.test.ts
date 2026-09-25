@@ -12,6 +12,7 @@ import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, apiPut } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
+import { grantCheck } from '../helpers/gates.js'
 
 const ctx = setupTestContext()
 
@@ -21,8 +22,8 @@ function requireServer() {
 }
 
 describe('Cross-Workflow — Happy path complet', () => {
-  it('Cerveau (silo + cocon + article) → Moteur (validate + persist) → Rédaction (micro-context + content) → Progress', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('Cerveau (silo + cocon + article) → Moteur (validate + persist) → Rédaction (micro-context + content) → Progress', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
 
     // === CERVEAU ===
     // 1. Récupère un silo (existant ou de test)
@@ -80,6 +81,11 @@ describe('Cross-Workflow — Happy path complet', () => {
       articleTitle: article.titre,
       articleId: article.id,
     })
+    // … puis le verrouille, comme l'écran : les décisions partent en base avant
+    // toute étape (la porte du capitaine juge ce qui est enregistré).
+    await apiPut(`/articles/${article.id}/keywords`, {
+      capitaine: captainKw, lieutenants: [], lexique: [], rootKeywords: [], hnStructure: [],
+    })
 
     // === REDACTION ===
     // 8. Onglet Brief : sauvegarde le micro-context
@@ -99,9 +105,10 @@ describe('Cross-Workflow — Happy path complet', () => {
 
     // 10. Progress : check toutes les étapes Moteur (les familles cerveau:* et
     // redaction:* ont été retirées 2026-05-13, cf. DRIFT-002).
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lexique_validated' })
+    // Les étapes gardées passent leur porte, comme pour un utilisateur qui assume.
+    await grantCheck(article.id, 'moteur:capitaine_locked')
+    await grantCheck(article.id, 'moteur:lieutenants_locked')
+    await grantCheck(article.id, 'moteur:lexique_validated')
 
     // === VÉRIFICATIONS DB ===
     // L'article a accumulé toutes les traces
@@ -139,8 +146,8 @@ describe('Cross-Workflow — Happy path complet', () => {
 })
 
 describe('Cross-Workflow — Cache cross-article', () => {
-  it('Même keyword testé sur 2 articles différents : 2ème call utilise keyword_metrics partagé', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('Même keyword testé sur 2 articles différents : 2ème call utilise keyword_metrics partagé', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
 
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Cache Cross Cocon')
@@ -150,24 +157,21 @@ describe('Cross-Workflow — Cache cross-article', () => {
     // Même keyword (slug-stable) testé sur 2 articles
     const sharedKw = `test-${ctx.runId}-shared`
 
-    const t1Start = Date.now()
-    await apiPost(`/keywords/${encodeURIComponent(sharedKw)}/scan`, {
+    const premier = await apiPost<{ fromCache: boolean }>(`/keywords/${encodeURIComponent(sharedKw)}/scan`, {
       level: 'pilier',
       articleTitle: article1.titre,
       articleId: article1.id,
     })
-    const t1Elapsed = Date.now() - t1Start
+    expect(premier.data?.fromCache, 'article 1 : mesuré à la source').toBe(false)
 
-    const t2Start = Date.now()
-    await apiPost(`/keywords/${encodeURIComponent(sharedKw)}/scan`, {
+    const second = await apiPost<{ fromCache: boolean }>(`/keywords/${encodeURIComponent(sharedKw)}/scan`, {
       level: 'pilier',
       articleTitle: article2.titre,
       articleId: article2.id,
     })
-    const t2Elapsed = Date.now() - t2Start
-
-    // Le 2ème appel doit être plus rapide (DB hit) — au moins pas plus de 2x plus lent
-    expect(t2Elapsed).toBeLessThan(t1Elapsed * 2)
+    // T6 (épopée qualité SEO) : on comparait deux durées (`t2 < t1 × 2`), rouge
+    // au hasard. Le partage se prouve directement : l'article 2 relit la base.
+    expect(second.data?.fromCache, 'article 2 : relu dans keyword_metrics partagé').toBe(true)
 
     // Vérifie que les 2 articles ont chacun leur captain_exploration
     const dbRes = await query<{ count: string }>(
@@ -186,8 +190,8 @@ describe('Cross-Workflow — Cache cross-article', () => {
 })
 
 describe('Cross-Workflow — Resilience', () => {
-  it('Refresh navigateur (simulé) : GET /explorations après POST restaure l\'état', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('Refresh navigateur (simulé) : GET /explorations après POST restaure l\'état', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Resilience Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Resilience Article')
@@ -202,8 +206,8 @@ describe('Cross-Workflow — Resilience', () => {
     expect(res.data?.captain.some(c => c.keyword === kw)).toBe(true)
   })
 
-  it('Switch d\'article en vol : les validations sur article A ne polluent pas article B', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('Switch d\'article en vol : les validations sur article A ne polluent pas article B', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Switch Cocon')
     const articleA = await ctx.createArticle(cocoon.id, 'Switch A')
@@ -231,8 +235,8 @@ describe('Cross-Workflow — Resilience', () => {
 })
 
 describe('Cross-Workflow — Provider configuration', () => {
-  it('AI_PROVIDER=mock : getProvider retourne "mock"', async () => {
-    if (requireServer().skip) return
+  it('AI_PROVIDER=mock : getProvider retourne "mock"', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { getProvider, getProviderChain } = await import('../../server/services/external/ai-provider.service.js')
     const provider = getProvider()
     if (provider === 'mock') {

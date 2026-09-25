@@ -10,8 +10,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab cerveau/theme — Lecture', () => {
-  it('GET /theme/config retourne avatar + positioning + offerings', async () => {
-    if (requireServer().skip) return
+  it('GET /theme/config retourne avatar + positioning + offerings', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<{ avatar: object; positioning: object; offerings: object }>('/theme/config')
     expect(res.status).toBe(200)
     expect(res.data?.avatar).toBeDefined()
@@ -19,8 +19,8 @@ describe('Tab cerveau/theme — Lecture', () => {
     expect(res.data?.offerings).toBeDefined()
   })
 
-  it('GET /theme retourne le thème global', async () => {
-    if (requireServer().skip) return
+  it('GET /theme retourne le thème global', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet<unknown>('/theme')
     expect(res.status).toBe(200)
     expect(res.data).toBeDefined()
@@ -28,16 +28,16 @@ describe('Tab cerveau/theme — Lecture', () => {
 })
 
 describe('Tab cerveau/theme — Saisie directe (PUT)', () => {
-  it('PUT /theme/config body invalide → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('PUT /theme/config body invalide → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPut } = await import('../helpers/api-client.js')
     const res = await apiPut('/theme/config', { bogusField: 'x' })
     // Peut être 400 (schema strict) ou 200 (schema permissif). Tolère.
     expect([200, 400]).toContain(res.status)
   })
 
-  it('PUT /theme/config round-trip read-write-read préserve la config', { timeout: 10000 }, async () => {
-    if (requireServer().skip) return
+  it('PUT /theme/config round-trip read-write-read préserve la config', { timeout: 10000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiGet, apiPut } = await import('../helpers/api-client.js')
     const before = await apiGet<Record<string, unknown>>('/theme/config')
     if (before.status !== 200 || !before.data) return
@@ -51,21 +51,21 @@ describe('Tab cerveau/theme — Saisie directe (PUT)', () => {
 })
 
 describe('Tab cerveau/theme — Analyseur IA', () => {
-  it('POST /theme/config/parse sans text → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('POST /theme/config/parse sans text → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/theme/config/parse', {})
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST /theme/config/parse avec text vide → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /theme/config/parse avec text vide → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/theme/config/parse', { text: '' })
     expect(res.status).toBe(400)
   })
 
-  it('POST /theme/config/parse avec text valide → 200 ou 500', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /theme/config/parse avec text valide → 200 ou 500', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost('/theme/config/parse', {
       text: 'Je suis une agence SEO toulousaine spécialisée dans les PME locales. Mon USP : expertise technique + réactivité.',

@@ -13,6 +13,7 @@ import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, apiPut } from '../helpers/api-client.js'
 import { query } from '../../server/db/client.js'
+import { grantCheck } from '../helpers/gates.js'
 
 const ctx = setupTestContext()
 
@@ -26,8 +27,8 @@ function requireServer() {
 // ---------------------------------------------------------------------------
 
 describe('Rédaction Workflow — Étape 1 : Brief', () => {
-  it('GET /articles/:id/micro-context retourne null pour article neuf', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/micro-context retourne null pour article neuf', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MC New Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MC New Article')
@@ -37,8 +38,8 @@ describe('Rédaction Workflow — Étape 1 : Brief', () => {
     // data = null ou {} pour article neuf
   })
 
-  it('PUT /articles/:id/micro-context sans angle → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id/micro-context sans angle → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MC Invalid Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MC Invalid Article')
@@ -48,8 +49,8 @@ describe('Rédaction Workflow — Étape 1 : Brief', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('PUT /articles/:id/micro-context avec angle valide sauvegarde', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id/micro-context avec angle valide sauvegarde', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MC Save Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MC Save Article')
@@ -64,8 +65,8 @@ describe('Rédaction Workflow — Étape 1 : Brief', () => {
     expect(res.data).toBeDefined()
   })
 
-  it('PUT /articles/:id/micro-context avec targetWordCount < 500 → 400', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id/micro-context avec targetWordCount < 500 → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MC Range Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MC Range Article')
@@ -77,20 +78,20 @@ describe('Rédaction Workflow — Étape 1 : Brief', () => {
     expect(res.status).toBe(400)
   })
 
-  it('PUT /articles/:id/micro-context article inexistant → 404', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id/micro-context article inexistant → 404', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPut(`/articles/9999999/micro-context`, { angle: 'test' })
     expect(res.status).toBe(404)
   })
 
-  it('POST /generate/micro-context-suggest sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /generate/micro-context-suggest sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/generate/micro-context-suggest', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /progress/check rejette les checks redaction:* (famille retirée 2026-05-13, cf. DRIFT-002)', async () => {
-    if (requireServer().skip) return
+  it('POST /progress/check rejette les checks redaction:* (famille retirée 2026-05-13, cf. DRIFT-002)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'BriefV Cocon')
     const article = await ctx.createArticle(cocoon.id, 'BriefV Article')
@@ -105,8 +106,8 @@ describe('Rédaction Workflow — Étape 1 : Brief', () => {
 // ---------------------------------------------------------------------------
 
 describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
-  it('GET /articles/:id/content retourne null/vide pour article neuf', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/content retourne null/vide pour article neuf', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Content New Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Content New Article')
@@ -115,8 +116,8 @@ describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
     expect(res.status).toBe(200)
   })
 
-  it('PUT /articles/:id sauvegarde le content HTML', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id sauvegarde le content HTML', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Content Save Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Content Save Article')
@@ -132,8 +133,8 @@ describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
     expect(JSON.stringify(readRes.data)).toContain('Test')
   })
 
-  it('PUT /articles/:id/status met à jour le status', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id/status met à jour le status', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Status Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Status Article')
@@ -145,20 +146,20 @@ describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
     expect(dbRes.rows[0]?.status).toBe('brouillon')
   })
 
-  it('POST /generate/article sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /generate/article sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/generate/article', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /generate/reduce-section sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /generate/reduce-section sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/generate/reduce-section', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST /generate/humanize-section sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /generate/humanize-section sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/generate/humanize-section', {})
     expect([400, 500]).toContain(res.status)
   })
@@ -171,8 +172,8 @@ describe('Rédaction Workflow — Étape 2 : Editor (content)', () => {
 // ---------------------------------------------------------------------------
 
 describe('Rédaction Workflow — Étape 3 : SEO', () => {
-  it('PUT /articles/:id sauvegarde metaTitle + metaDescription', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id sauvegarde metaTitle + metaDescription', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Meta Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Meta Article')
@@ -191,8 +192,8 @@ describe('Rédaction Workflow — Étape 3 : SEO', () => {
     expect(dbRes.rows[0]?.meta_description).toContain('Toulouse')
   })
 
-  it('PUT /articles/:id sauvegarde seo_score + geo_score', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id sauvegarde seo_score + geo_score', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Score Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Score Article')
@@ -211,8 +212,8 @@ describe('Rédaction Workflow — Étape 3 : SEO', () => {
     expect(Number(dbRes.rows[0]?.geo_score)).toBe(72)
   })
 
-  it('POST /generate/meta génère meta title + description (mock)', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /generate/meta génère meta title + description (mock)', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MetaGen Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MetaGen Article')
@@ -237,14 +238,17 @@ describe('Rédaction Workflow — Étape 3 : SEO', () => {
 // ---------------------------------------------------------------------------
 
 describe('Rédaction Workflow — Étape 4 : Progress', () => {
-  it('Cycle complet check / uncheck sur des checks moteur:* (les familles redaction:* / cerveau:* ont été retirées 2026-05-13, cf. DRIFT-002)', async () => {
-    if (requireServer().skip) return
+  it('Cycle complet check / uncheck sur des checks moteur:* (les familles redaction:* / cerveau:* ont été retirées 2026-05-13, cf. DRIFT-002)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Cycle Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Cycle Article')
+    await apiPut(`/articles/${article.id}/keywords`, {
+      capitaine: `test-${ctx.runId}-cycle`, lieutenants: [], lexique: [], rootKeywords: [], hnStructure: [],
+    })
 
-    // check 1
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:capitaine_locked' })
+    // check 1 — étape gardée : elle passe sa porte (FR-CAP-LOCK-GATE)
+    await grantCheck(article.id, 'moteur:capitaine_locked')
     let res = await apiGet<{ completedChecks?: string[] } | { completed_checks?: string[] }>(`/articles/${article.id}/progress`)
     expect(res.status).toBe(200)
     const checks = (res.data as { completedChecks?: string[]; completed_checks?: string[] })
@@ -252,7 +256,7 @@ describe('Rédaction Workflow — Étape 4 : Progress', () => {
     expect(list).toContain('moteur:capitaine_locked')
 
     // check 2
-    await apiPost(`/articles/${article.id}/progress/check`, { check: 'moteur:lieutenants_locked' })
+    await grantCheck(article.id, 'moteur:lieutenants_locked')
     res = await apiGet(`/articles/${article.id}/progress`)
     const checks2 = (res.data as { completedChecks?: string[]; completed_checks?: string[] })
     const list2 = checks2.completedChecks ?? checks2.completed_checks ?? []
@@ -268,19 +272,24 @@ describe('Rédaction Workflow — Étape 4 : Progress', () => {
     expect(list3).toContain('moteur:lieutenants_locked')
   })
 
-  it('PUT /articles/:id/status publié met à jour le statut (pas d\'endpoint /publish dédié)', async () => {
-    if (requireServer().skip) return
+  // FR-RED-PUBLISH-GATE : publier passe une porte. Un article vide est refusé
+  // (⛔), le statut ne bouge pas. La publication réussie est couverte par le
+  // parcours navigateur bout-en-bout.
+  it('PUT /articles/:id/status publié : un article vide est refusé par la porte, le statut ne bouge pas', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Publish Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Publish Article')
 
     const res = await apiPut(`/articles/${article.id}/status`, { status: 'publié' })
-    // Peut être refusé si enum status strict — tolère 200/400
-    expect([200, 400]).toContain(res.status)
+    expect(res.status).toBe(422)
+    expect(res.error?.code).toBe('GATE_BLOCKED')
+    const db = await query<{ status: string }>(`SELECT status FROM articles WHERE id = $1`, [article.id])
+    expect(db.rows[0]?.status).toBe('à rédiger')
   })
 
-  it('GET /export/article/:id → 200/404', async () => {
-    if (requireServer().skip) return
+  it('GET /export/article/:id → 200/404', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Exp Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Exp Article')

@@ -24,14 +24,14 @@ const EXPECTED_SOURCES = ['radar', 'captain', 'lieutenants', 'paa', 'lexique', '
 type CountsResponse = Record<string, number>
 
 describe('Contract GET /articles/:id/explorations/counts', () => {
-  it('id invalide (non-numérique) → 400 INVALID_ID', async () => {
-    if (requireServer().skip) return
+  it('id invalide (non-numérique) → 400 INVALID_ID', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet('/articles/abc/explorations/counts')
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('article fraîchement créé → toutes les sources à 0', async () => {
-    if (requireServer().skip) return
+  it('article fraîchement créé → toutes les sources à 0', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Counts Empty Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Counts Empty Article')
@@ -48,8 +48,8 @@ describe('Contract GET /articles/:id/explorations/counts', () => {
     }
   })
 
-  it('shape stable : counts sont des entiers positifs ou zéro', async () => {
-    if (requireServer().skip) return
+  it('shape stable : counts sont des entiers positifs ou zéro', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Counts Shape Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Counts Shape Article')
@@ -64,8 +64,8 @@ describe('Contract GET /articles/:id/explorations/counts', () => {
     }
   })
 
-  it('multi-articles : chaque article a ses propres counts (pas de fuite)', async () => {
-    if (requireServer().skip) return
+  it('multi-articles : chaque article a ses propres counts (pas de fuite)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Counts Multi Cocon')
     const a1 = await ctx.createArticle(cocoon.id, 'Counts Multi A1')

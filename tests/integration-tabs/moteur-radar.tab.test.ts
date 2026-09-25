@@ -10,8 +10,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab moteur/radar — Génération keywords', () => {
-  it('POST /keywords/radar/generate retourne ~15 kw via mock fixture', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/generate retourne ~15 kw via mock fixture', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ keywords: Array<{ keyword: string; reasoning: string }> }>('/keywords/radar/generate', {
       title: `test-${ctx.runId} title`,
       keyword: 'plombier toulouse',
@@ -21,20 +21,20 @@ describe('Tab moteur/radar — Génération keywords', () => {
     expect(res.data?.keywords.length).toBeGreaterThanOrEqual(10)
   })
 
-  it('POST /keywords/radar/generate sans title → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/generate sans title → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/generate', { keyword: 'x', painPoint: 'y' })
     expect(res.status).toBe(400)
   })
 
-  it('POST /keywords/radar/generate sans keyword → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/generate sans keyword → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/generate', { title: 'x', painPoint: 'y' })
     expect(res.status).toBe(400)
   })
 
-  it('POST /keywords/radar/generate sans painPoint → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/generate sans painPoint → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/generate', { title: 'x', keyword: 'y' })
     expect(res.status).toBe(400)
   })
@@ -44,8 +44,8 @@ describe('Tab moteur/radar — Génération keywords', () => {
 })
 
 describe('Tab moteur/radar — DB-first (Sprint 9)', () => {
-  it('GET /articles/:id/radar-exploration/status retourne exists=false avant scan', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/radar-exploration/status retourne exists=false avant scan', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'RDB Cocon')
     const article = await ctx.createArticle(cocoon.id, 'RDB Article')
@@ -55,8 +55,8 @@ describe('Tab moteur/radar — DB-first (Sprint 9)', () => {
     expect(res.data?.exists).toBe(false)
   })
 
-  it('GET /articles/:id/radar-exploration retourne null avant scan', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/radar-exploration retourne null avant scan', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'RDB2 Cocon')
     const article = await ctx.createArticle(cocoon.id, 'RDB2 Article')
@@ -66,8 +66,8 @@ describe('Tab moteur/radar — DB-first (Sprint 9)', () => {
     expect(res.data).toBeNull()
   })
 
-  it('Mode libre : GET /radar-cache/check?seed=X retourne { cached: bool }', async () => {
-    if (requireServer().skip) return
+  it('Mode libre : GET /radar-cache/check?seed=X retourne { cached: bool }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiGet } = await import('../helpers/api-client.js')
     const res = await apiGet<{ cached: boolean }>(`/radar-cache/check?seed=test-${ctx.runId}-free`)
     expect(res.status).toBe(200)
@@ -78,8 +78,8 @@ describe('Tab moteur/radar — DB-first (Sprint 9)', () => {
 })
 
 describe('Tab moteur/radar — Scan + cards', () => {
-  it('POST /keywords/radar/scan retourne { cards, globalScore, heatLevel }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/scan retourne { cards, globalScore, heatLevel }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ cards: unknown[]; globalScore: number; heatLevel: string }>('/keywords/radar/scan', {
       broadKeyword: 'plombier toulouse',
       specificTopic: `test-${ctx.runId}`,
@@ -90,14 +90,14 @@ describe('Tab moteur/radar — Scan + cards', () => {
     expect(['froide', 'tiede', 'chaude', 'brulante']).toContain(res.data?.heatLevel ?? '')
   })
 
-  it('POST /keywords/radar/scan sans broadKeyword → 400', async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/scan sans broadKeyword → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/scan', { specificTopic: 'x', keywords: [{}] })
     expect(res.status).toBe(400)
   })
 
-  it('POST /keywords/radar/scan depth=2 → 200 (PAA L2)', { timeout: 120000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/radar/scan depth=2 → 200 (PAA L2)', { timeout: 120000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost('/keywords/radar/scan', {
       broadKeyword: 'plombier toulouse',
@@ -110,8 +110,8 @@ describe('Tab moteur/radar — Scan + cards', () => {
 })
 
 describe('Tab moteur/radar — Persistance DB-first', () => {
-  it('POST /articles/:id/radar-exploration upsert idempotent', async () => {
-    if (requireServer().skip) return
+  it('POST /articles/:id/radar-exploration upsert idempotent', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'RUpsert Cocon')
     const article = await ctx.createArticle(cocoon.id, 'RUpsert Article')
@@ -133,8 +133,8 @@ describe('Tab moteur/radar — Persistance DB-first', () => {
     expect(res2.status).toBe(200)
   })
 
-  it('DELETE /articles/:id/radar-exploration → cleared=true', async () => {
-    if (requireServer().skip) return
+  it('DELETE /articles/:id/radar-exploration → cleared=true', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'RDel Cocon')
     const article = await ctx.createArticle(cocoon.id, 'RDel Article')

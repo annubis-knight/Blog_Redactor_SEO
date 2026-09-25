@@ -10,27 +10,27 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Contract /keywords/discover', () => {
-  it('POST sans body → 400 MISSING_PARAM', async () => {
-    if (requireServer().skip) return
+  it('POST sans body → 400 MISSING_PARAM', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/discover', {})
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST sans keyword → 400 MISSING_PARAM', async () => {
-    if (requireServer().skip) return
+  it('POST sans keyword → 400 MISSING_PARAM', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/discover', { options: {} })
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST keyword vide → 400 MISSING_PARAM', async () => {
-    if (requireServer().skip) return
+  it('POST keyword vide → 400 MISSING_PARAM', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/discover', { keyword: '' })
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST avec keyword valide → { data: { seed, keywords[] } }', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST avec keyword valide → { data: { seed, keywords[] } }', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ seed: string; keywords: unknown[] }>('/keywords/discover', {
       keyword: `test-${ctx.runId}-d`,
       options: { maxResults: 3 },
@@ -42,14 +42,14 @@ describe('Contract /keywords/discover', () => {
 })
 
 describe('Contract /keywords/discover-from-site', () => {
-  it('POST sans domain → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans domain → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/discover-from-site', {})
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST OK → { domain, keywords[], total, apiCost }', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → { domain, keywords[], total, apiCost }', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ domain: string; keywords: unknown[] }>('/keywords/discover-from-site', {
       domain: `test-${ctx.runId}.com`,
     })
@@ -59,26 +59,26 @@ describe('Contract /keywords/discover-from-site', () => {
 })
 
 describe('Contract /keywords/relevance-score', () => {
-  it('POST sans seed → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans seed → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/relevance-score', { keywords: ['x'] })
     expect(res.status).toBe(400)
   })
 
-  it('POST sans keywords[] → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans keywords[] → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/relevance-score', { seed: 'x' })
     expect(res.status).toBe(400)
   })
 
-  it('POST keywords=[] → 400', async () => {
-    if (requireServer().skip) return
+  it('POST keywords=[] → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/relevance-score', { seed: 'x', keywords: [] })
     expect(res.status).toBe(400)
   })
 
-  it('POST OK → { scores: Record, fallback: bool }', async () => {
-    if (requireServer().skip) return
+  it('POST OK → { scores: Record, fallback: bool }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ scores: Record<string, number>; fallback: boolean }>('/keywords/relevance-score', {
       seed: `test-${ctx.runId}`, keywords: ['kw1', 'kw2'],
     })
@@ -87,8 +87,8 @@ describe('Contract /keywords/relevance-score', () => {
     expect(typeof res.data?.scores).toBe('object')
   })
 
-  it('POST avec strict=true retourne { scores, fallback }', async () => {
-    if (requireServer().skip) return
+  it('POST avec strict=true retourne { scores, fallback }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ scores: Record<string, number>; fallback: boolean }>('/keywords/relevance-score', {
       seed: `test-${ctx.runId}-s`,
       keywords: ['kw1', 'kw2'],
@@ -100,14 +100,14 @@ describe('Contract /keywords/relevance-score', () => {
 })
 
 describe('Contract /keywords/analyze-discovery', () => {
-  it('POST sans body → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans body → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/analyze-discovery', {})
     expect(res.status).toBe(400)
   })
 
-  it('POST OK → { keywords: [{keyword, reasoning, priority}], summary }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → { keywords: [{keyword, reasoning, priority}], summary }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ keywords: Array<{ priority: string }>; summary: string }>('/keywords/analyze-discovery', {
       seed: `test-${ctx.runId}`,
       wordGroups: [],
@@ -121,14 +121,14 @@ describe('Contract /keywords/analyze-discovery', () => {
 })
 
 describe('Contract /keywords/validate-pain', () => {
-  it('POST sans keywords[] → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans keywords[] → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/validate-pain', {})
     expect(res.status).toBe(400)
   })
 
-  it('POST /keywords/validate-pain avec keywords[] → 200/500 (DataForSEO lent)', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/validate-pain avec keywords[] → 200/500 (DataForSEO lent)', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/validate-pain', {
       keywords: [`test-${ctx.runId}-vp-1`, `test-${ctx.runId}-vp-2`],
     })
@@ -137,20 +137,20 @@ describe('Contract /keywords/validate-pain', () => {
 })
 
 describe('Contract /keywords/:kw/scan', () => {
-  it('POST sans level → 400 MISSING_PARAM', async () => {
-    if (requireServer().skip) return
+  it('POST sans level → 400 MISSING_PARAM', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, {})
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST level invalide → 400', async () => {
-    if (requireServer().skip) return
+  it('POST level invalide → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId)}/scan`, { level: 'xyz' })
     expect(res.status).toBe(400)
   })
 
-  it('POST OK → { keyword, kpis[6], verdict, paaQuestions }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → { keyword, kpis[6], verdict, paaQuestions }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ keyword: string; kpis: unknown[]; verdict: { level: string } }>(
       `/keywords/${encodeURIComponent('test-' + ctx.runId + '-c')}/scan`,
       { level: 'pilier', articleTitle: 'test' },
@@ -162,14 +162,14 @@ describe('Contract /keywords/:kw/scan', () => {
 })
 
 describe('Contract /keywords/:captain/propose-lieutenants', () => {
-  it('POST sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost(`/keywords/${encodeURIComponent('test-' + ctx.runId + '-c')}/propose-lieutenants`, {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST OK → SSE stream', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → SSE stream', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/propose-lieutenants`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -185,8 +185,8 @@ describe('Contract /keywords/:captain/propose-lieutenants', () => {
 })
 
 describe('Contract /keywords/:captain/ai-lexique-upfront', () => {
-  it('POST OK → SSE stream', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → SSE stream', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-cap')}/ai-lexique-upfront`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -201,26 +201,26 @@ describe('Contract /keywords/:captain/ai-lexique-upfront', () => {
 })
 
 describe('Contract /keywords/radar/generate', () => {
-  it('POST sans title → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans title → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/generate', { keyword: 'x', painPoint: 'y' })
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST sans keyword → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans keyword → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/generate', { title: 'x', painPoint: 'y' })
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST sans painPoint → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans painPoint → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/generate', { title: 'x', keyword: 'y' })
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST OK → { keywords[], _apiUsage }', async () => {
-    if (requireServer().skip) return
+  it('POST OK → { keywords[], _apiUsage }', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ keywords: unknown[]; _apiUsage: { model: string } }>('/keywords/radar/generate', {
       title: 'x', keyword: 'y', painPoint: 'z',
     })
@@ -231,26 +231,26 @@ describe('Contract /keywords/radar/generate', () => {
 })
 
 describe('Contract /keywords/radar/scan', () => {
-  it('POST sans broadKeyword → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans broadKeyword → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/scan', { specificTopic: 'x', keywords: [{}] })
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST sans specificTopic → 400', async () => {
-    if (requireServer().skip) return
+  it('POST sans specificTopic → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/scan', { broadKeyword: 'x', keywords: [{}] })
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST keywords=[] → 400', async () => {
-    if (requireServer().skip) return
+  it('POST keywords=[] → 400', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/radar/scan', { broadKeyword: 'x', specificTopic: 'y', keywords: [] })
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('POST OK → { cards[], globalScore, heatLevel, autocomplete }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → { cards[], globalScore, heatLevel, autocomplete }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ cards: unknown[]; globalScore: number; heatLevel: string }>('/keywords/radar/scan', {
       broadKeyword: 'x', specificTopic: 'y', keywords: [{ keyword: 'kw1', reasoning: 'r' }], depth: 1,
     })
@@ -260,8 +260,8 @@ describe('Contract /keywords/radar/scan', () => {
 })
 
 describe('Contract /keywords/intent-scan', () => {
-  it('POST /keywords/intent-scan avec body valide → 200/500', { timeout: 120000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/intent-scan avec body valide → 200/500', { timeout: 120000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/keywords/intent-scan', {
       broadKeyword: 'plombier toulouse',
       specificTopic: `test-${ctx.runId}-is`,

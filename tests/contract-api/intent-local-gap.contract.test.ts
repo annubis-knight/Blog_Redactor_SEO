@@ -10,14 +10,14 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Contract /content-gap/analyze', () => {
-  it('POST sans keyword → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST sans keyword → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/content-gap/analyze', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST OK → { keyword, competitors[], themes[], gaps[] }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → { keyword, competitors[], themes[], gaps[] }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{
       keyword: string
       competitors: unknown[]
@@ -34,8 +34,8 @@ describe('Contract /content-gap/analyze', () => {
     expect(typeof res.data?.averageWordCount).toBe('number')
   })
 
-  it('POST avec currentContent → calcule presentInArticle', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST avec currentContent → calcule presentInArticle', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{
       themes: Array<{ presentInArticle?: boolean; theme: string }>
     }>('/content-gap/analyze', {
@@ -51,14 +51,14 @@ describe('Contract /content-gap/analyze', () => {
 })
 
 describe('Contract /serp/analyze', () => {
-  it('POST sans keyword → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST sans keyword → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/serp/analyze', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST OK → { keyword, competitors[] }', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST OK → { keyword, competitors[] }', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>(
       '/serp/analyze', { keyword: `test-${ctx.runId}-serp` },
     )
@@ -67,8 +67,8 @@ describe('Contract /serp/analyze', () => {
     expect(Array.isArray(res.data?.competitors)).toBe(true)
   })
 
-  it('POST 2ème call < 7j → cache hit DB-first si 1er a réussi', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST 2ème call < 7j → cache hit DB-first si 1er a réussi', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const kw = `test-${ctx.runId}-serp-cache`
     const r1 = await apiPost('/serp/analyze', { keyword: kw })
     if (r1.status !== 200) return // skip si 1er fail
@@ -83,14 +83,14 @@ describe('Contract /serp/analyze', () => {
 })
 
 describe('Contract /serp/tfidf', () => {
-  it('POST sans body → 400 ou 500', async () => {
-    if (requireServer().skip) return
+  it('POST sans body → 400 ou 500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/serp/tfidf', {})
     expect([400, 500]).toContain(res.status)
   })
 
-  it('POST sans body valide → 400/404/500', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('POST sans body valide → 400/404/500', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost<{ keyword?: string; terms?: unknown[]; tfidf?: unknown }>(
       '/serp/tfidf', { keyword: `test-${ctx.runId}-tfidf` },
     )

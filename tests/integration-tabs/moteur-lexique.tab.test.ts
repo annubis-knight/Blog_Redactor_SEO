@@ -10,8 +10,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab moteur/lexique — Lecture DB-first', () => {
-  it('GET /articles/:id/explorations renvoie lexique[] vide pour article neuf', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/explorations renvoie lexique[] vide pour article neuf', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LexEmpty Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LexEmpty Article')
@@ -24,15 +24,15 @@ describe('Tab moteur/lexique — Lecture DB-first', () => {
 })
 
 describe('Tab moteur/lexique — Extraction TF-IDF', () => {
-  it('POST /serp/tfidf sans body → 400/404/500', async () => {
-    if (requireServer().skip) return
+  it('POST /serp/tfidf sans body → 400/404/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost('/serp/tfidf', { keyword: `test-${ctx.runId}-tfidf` })
     expect([200, 400, 404, 500]).toContain(res.status)
   })
 
-  it('POST /serp/tfidf avec articleId tolère 200/404/500', async () => {
-    if (requireServer().skip) return
+  it('POST /serp/tfidf avec articleId tolère 200/404/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TfidfA Cocon')
@@ -49,8 +49,8 @@ describe('Tab moteur/lexique — Extraction TF-IDF', () => {
 })
 
 describe('Tab moteur/lexique — IA upfront (E2 + U5)', () => {
-  it('POST /keywords/:captain/ai-lexique-upfront (stream) renvoie SSE', { timeout: 30000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/:captain/ai-lexique-upfront (stream) renvoie SSE', { timeout: 30000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await fetch(`http://localhost:3400/api/keywords/${encodeURIComponent('test-' + ctx.runId + '-lex')}/ai-lexique-upfront`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -69,8 +69,8 @@ describe('Tab moteur/lexique — IA upfront (E2 + U5)', () => {
 
 describe('Tab moteur/lexique — Multi-keyword (D4)', () => {
   it.todo('Champ "Extraire pour un autre mot-clé" (frontend)')
-  it('Extraction sur kw arbitraire : POST /serp/tfidf avec articleId crée row DB-first', { timeout: 60000 }, async () => {
-    if (requireServer().skip) return
+  it('Extraction sur kw arbitraire : POST /serp/tfidf avec articleId crée row DB-first', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LexArb Cocon')
@@ -92,8 +92,8 @@ describe('Tab moteur/lexique — Multi-keyword (D4)', () => {
 })
 
 describe('Tab moteur/lexique — Validation', () => {
-  it('Validation via PUT /articles/:id/keywords avec lexique[] persiste', async () => {
-    if (requireServer().skip) return
+  it('Validation via PUT /articles/:id/keywords avec lexique[] persiste', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPut } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LexV Cocon')
@@ -109,8 +109,8 @@ describe('Tab moteur/lexique — Validation', () => {
     expect(res.status).toBe(200)
   })
 
-  it('MOTEUR_LEXIQUE_VALIDATED check via /progress/check', async () => {
-    if (requireServer().skip) return
+  it('MOTEUR_LEXIQUE_VALIDATED check via /progress/check', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost, apiGet } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LexC Cocon')

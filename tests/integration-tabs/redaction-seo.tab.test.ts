@@ -11,8 +11,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab redaction/seo — Meta CRUD', () => {
-  it('PUT /articles/:id sauvegarde metaTitle', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id sauvegarde metaTitle', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MetaT Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MetaT Article')
@@ -25,8 +25,8 @@ describe('Tab redaction/seo — Meta CRUD', () => {
     expect(dbRes.rows[0]?.meta_title).toContain('Plombier guide')
   })
 
-  it('PUT /articles/:id sauvegarde metaDescription', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id sauvegarde metaDescription', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MetaD Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MetaD Article')
@@ -41,8 +41,8 @@ describe('Tab redaction/seo — Meta CRUD', () => {
 })
 
 describe('Tab redaction/seo — Score CRUD', () => {
-  it('PUT /articles/:id sauvegarde seoScore + geoScore', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id sauvegarde seoScore + geoScore', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Scores Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Scores Article')
@@ -59,8 +59,8 @@ describe('Tab redaction/seo — Score CRUD', () => {
 })
 
 describe('Tab redaction/seo — Generate meta IA', () => {
-  it('POST /generate/meta avec body valide → metaTitle + metaDescription', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /generate/meta avec body valide → metaTitle + metaDescription', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MetaG Cocon')
@@ -88,8 +88,8 @@ describe('Tab redaction/seo — Score calculé', () => {
 })
 
 describe('Tab redaction/seo — SerpDataTab', () => {
-  it('POST /dataforseo/brief sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /dataforseo/brief sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost('/dataforseo/brief', {})
     expect([400, 500]).toContain(res.status)
@@ -99,8 +99,8 @@ describe('Tab redaction/seo — SerpDataTab', () => {
 })
 
 describe('Tab redaction/seo — Internal linking', () => {
-  it('GET /links/:articleId valide id', async () => {
-    if (requireServer().skip) return
+  it('GET /links/:articleId valide id', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiGet } = await import('../helpers/api-client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Links Cocon')

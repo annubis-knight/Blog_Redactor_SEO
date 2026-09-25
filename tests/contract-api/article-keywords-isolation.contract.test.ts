@@ -33,8 +33,8 @@ interface ArticleKeywordsResponse {
 }
 
 describe('Contract /articles/:id/keywords — isolation par articleId (P1)', () => {
-  it('PUT puis GET sur deux articles distincts ne mélangent pas les Lieutenants', async () => {
-    if (requireServer().skip) return
+  it('PUT puis GET sur deux articles distincts ne mélangent pas les Lieutenants', async ({ skip }) => {
+    if (requireServer().skip) skip()
 
     // Setup : 1 cocon, 2 articles
     const silo = await ctx.getSilo('IsoLieutCo')
@@ -83,8 +83,8 @@ describe('Contract /articles/:id/keywords — isolation par articleId (P1)', () 
     }
   })
 
-  it('mise à jour de A ne contamine pas B (idempotence par articleId)', async () => {
-    if (requireServer().skip) return
+  it('mise à jour de A ne contamine pas B (idempotence par articleId)', async ({ skip }) => {
+    if (requireServer().skip) skip()
 
     const silo = await ctx.getSilo('IsoLieutCo2')
     const cocoon = await ctx.createCocoon(silo.id, 'IsoLieutCo2')
@@ -123,8 +123,8 @@ describe('Contract /articles/:id/keywords — isolation par articleId (P1)', () 
     }
   })
 
-  it('GET sur articleId invalide → 400 INVALID_ID (sanity check)', async () => {
-    if (requireServer().skip) return
+  it('GET sur articleId invalide → 400 INVALID_ID (sanity check)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiGet(`/articles/not-a-number/keywords`)
     expect(res.status).toBe(400)
     expect(res.error?.code).toBe('INVALID_ID')

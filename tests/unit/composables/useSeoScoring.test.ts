@@ -43,7 +43,10 @@ describe('useSeoScoring', () => {
     )
 
     expect(seoStore.score).not.toBeNull()
-    expect(seoStore.score!.global).toBeGreaterThanOrEqual(0)
+    // Densités neutres (50, 50), H1 seul valide (100), title 14 car. sans
+    // mot-clé (28 × 0,7 → 20), description 21 car. (14 × 0,7 → 10), 6 mots
+    // sur 1500 (0) → 12,5 + 7,5 + 20 + 3 + 1 + 0 = 44.
+    expect(seoStore.score!.global).toBe(44)
     // Without articleKeywords, no keyword densities are computed (no fallback)
     expect(seoStore.score!.keywordDensities).toHaveLength(0)
     expect(seoStore.score!.hasArticleKeywords).toBe(false)
@@ -88,7 +91,11 @@ describe('useSeoScoring', () => {
     )
 
     expect(seoStore.score).not.toBeNull()
-    expect(seoStore.score!.global).toBeGreaterThanOrEqual(0)
+    // « design web » 2 fois et « ux design » 1 fois dans 11 mots : densités très
+    // au-dessus de la cible (0 et 0). H1 valide (100), title 21 car. avec le
+    // capitaine (42), description 28 car. avec le capitaine (19), 11 mots sur
+    // 1500 (1) → 0 + 0 + 20 + 6,3 + 1,9 + 0,15 = 28,35 → 28.
+    expect(seoStore.score!.global).toBe(28)
     // Should use capitaine + lieutenants for density
     expect(seoStore.score!.keywordDensities.some(d => d.keyword === 'design web')).toBe(true)
     expect(seoStore.score!.keywordDensities.some(d => d.keyword === 'ux design')).toBe(true)

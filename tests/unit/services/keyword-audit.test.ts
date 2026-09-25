@@ -48,8 +48,11 @@ describe('computeCompositeScore', () => {
       searchVolume: 100000, difficulty: 0, cpc: 50, competition: 0, monthlySearches: [],
     }
     const score = computeCompositeScore(overview)
-    expect(score.total).toBeLessThanOrEqual(100)
-    expect(score.total).toBeGreaterThanOrEqual(0)
+    // Volume 100 000 (log → 125) et CPC 50 € (log → 219) dépassent leur plafond :
+    // chaque composante est ramenée à 100, le total aussi — jamais au-delà.
+    expect(score.volume).toBe(100)
+    expect(score.cpc).toBe(100)
+    expect(score.total).toBe(100)
   })
 })
 

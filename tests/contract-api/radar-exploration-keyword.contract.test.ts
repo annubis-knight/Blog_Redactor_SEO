@@ -27,14 +27,14 @@ interface RadarExplorationResponse {
 }
 
 describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
-  it('id invalide → 400 INVALID_ID', async () => {
-    if (requireServer().skip) return
+  it('id invalide → 400 INVALID_ID', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/abc/radar-exploration/keyword', { keyword: 'foo' })
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('keyword manquant → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('keyword manquant → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Keyword Cocon A')
     const article = await ctx.createArticle(cocoon.id, 'Radar Keyword Article A')
@@ -42,8 +42,8 @@ describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('keyword vide → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('keyword vide → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Keyword Cocon B')
     const article = await ctx.createArticle(cocoon.id, 'Radar Keyword Article B')
@@ -51,8 +51,8 @@ describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('ajout d\'un keyword inédit → 200 + added: true + entry contient le keyword', async () => {
-    if (requireServer().skip) return
+  it('ajout d\'un keyword inédit → 200 + added: true + entry contient le keyword', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Keyword Cocon C')
     const article = await ctx.createArticle(cocoon.id, 'Radar Keyword Article C')
@@ -67,8 +67,8 @@ describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
     expect(res.data?.entry.generatedKeywords[0].keyword).toBe('seo local boulangerie')
   })
 
-  it('ajout idempotent du même keyword → added: false + count inchangé', async () => {
-    if (requireServer().skip) return
+  it('ajout idempotent du même keyword → added: false + count inchangé', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Keyword Cocon D')
     const article = await ctx.createArticle(cocoon.id, 'Radar Keyword Article D')
@@ -82,8 +82,8 @@ describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
     expect(res2.data?.entry.generatedKeywords).toHaveLength(1)
   })
 
-  it('dédup insensible à la casse + trim', async () => {
-    if (requireServer().skip) return
+  it('dédup insensible à la casse + trim', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Keyword Cocon E')
     const article = await ctx.createArticle(cocoon.id, 'Radar Keyword Article E')
@@ -99,14 +99,14 @@ describe('Contract POST /articles/:id/radar-exploration/keyword', () => {
 })
 
 describe('Contract DELETE /articles/:id/radar-exploration/keyword', () => {
-  it('id invalide → 400 INVALID_ID', async () => {
-    if (requireServer().skip) return
+  it('id invalide → 400 INVALID_ID', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiDelete('/articles/abc/radar-exploration/keyword?keyword=foo')
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('query keyword manquant → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('query keyword manquant → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Delete Cocon A')
     const article = await ctx.createArticle(cocoon.id, 'Radar Delete Article A')
@@ -114,8 +114,8 @@ describe('Contract DELETE /articles/:id/radar-exploration/keyword', () => {
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('suppression d\'un keyword existant → entry sans ce keyword', async () => {
-    if (requireServer().skip) return
+  it('suppression d\'un keyword existant → entry sans ce keyword', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Delete Cocon B')
     const article = await ctx.createArticle(cocoon.id, 'Radar Delete Article B')
@@ -131,8 +131,8 @@ describe('Contract DELETE /articles/:id/radar-exploration/keyword', () => {
     expect(res.data?.entry?.generatedKeywords[0].keyword).toBe('kw-b')
   })
 
-  it('suppression d\'un keyword inexistant → no-op, entry inchangée', async () => {
-    if (requireServer().skip) return
+  it('suppression d\'un keyword inexistant → no-op, entry inchangée', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Delete Cocon C')
     const article = await ctx.createArticle(cocoon.id, 'Radar Delete Article C')
@@ -148,14 +148,14 @@ describe('Contract DELETE /articles/:id/radar-exploration/keyword', () => {
 })
 
 describe('Contract POST /articles/:id/radar-exploration/keywords (batch)', () => {
-  it('id invalide → 400 INVALID_ID', async () => {
-    if (requireServer().skip) return
+  it('id invalide → 400 INVALID_ID', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPost('/articles/abc/radar-exploration/keywords', { keywords: [{ keyword: 'a' }] })
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('body sans tableau → 400 VALIDATION_ERROR', async () => {
-    if (requireServer().skip) return
+  it('body sans tableau → 400 VALIDATION_ERROR', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Batch Cocon A')
     const article = await ctx.createArticle(cocoon.id, 'Radar Batch Article A')
@@ -163,8 +163,8 @@ describe('Contract POST /articles/:id/radar-exploration/keywords (batch)', () =>
     expect(res.error?.code).toBe('VALIDATION_ERROR')
   })
 
-  it('batch initial de 3 keywords inédits → added: 3', async () => {
-    if (requireServer().skip) return
+  it('batch initial de 3 keywords inédits → added: 3', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Batch Cocon B')
     const article = await ctx.createArticle(cocoon.id, 'Radar Batch Article B')
@@ -183,8 +183,8 @@ describe('Contract POST /articles/:id/radar-exploration/keywords (batch)', () =>
     expect(res.data?.entry.generatedKeywords).toHaveLength(3)
   })
 
-  it('batch idempotent : re-soumettre les mêmes keywords → added: 0', async () => {
-    if (requireServer().skip) return
+  it('batch idempotent : re-soumettre les mêmes keywords → added: 0', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Batch Cocon C')
     const article = await ctx.createArticle(cocoon.id, 'Radar Batch Article C')
@@ -200,8 +200,8 @@ describe('Contract POST /articles/:id/radar-exploration/keywords (batch)', () =>
     expect(res2.data?.entry.generatedKeywords).toHaveLength(2)
   })
 
-  it('GET après ajouts retourne tous les keywords ajoutés', async () => {
-    if (requireServer().skip) return
+  it('GET après ajouts retourne tous les keywords ajoutés', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Radar Batch Cocon D')
     const article = await ctx.createArticle(cocoon.id, 'Radar Batch Article D')

@@ -10,8 +10,8 @@ const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
 
 describe('Tab redaction/brief — Micro-context CRUD', () => {
-  it('GET /articles/:id/micro-context retourne null/empty pour article neuf', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/micro-context retourne null/empty pour article neuf', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MCBrief Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MCBrief Article')
@@ -20,8 +20,8 @@ describe('Tab redaction/brief — Micro-context CRUD', () => {
     expect(res.status).toBe(200)
   })
 
-  it('PUT sans angle → 400 (angle est requis dans schema)', async () => {
-    if (requireServer().skip) return
+  it('PUT sans angle → 400 (angle est requis dans schema)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MCNoAngle Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MCNoAngle Article')
@@ -30,8 +30,8 @@ describe('Tab redaction/brief — Micro-context CRUD', () => {
     expect(res.status).toBe(400)
   })
 
-  it('PUT avec angle valide sauvegarde + GET retourne le contenu', async () => {
-    if (requireServer().skip) return
+  it('PUT avec angle valide sauvegarde + GET retourne le contenu', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MCFull Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MCFull Article')
@@ -48,8 +48,8 @@ describe('Tab redaction/brief — Micro-context CRUD', () => {
     expect(res.data?.tone).toBe('Direct')
   })
 
-  it('PUT targetWordCount est sauvegardé et lu (bug fixé)', async () => {
-    if (requireServer().skip) return
+  it('PUT targetWordCount est sauvegardé et lu (bug fixé)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'TWC Persist Cocon')
     const article = await ctx.createArticle(cocoon.id, 'TWC Persist Article')
@@ -63,8 +63,8 @@ describe('Tab redaction/brief — Micro-context CRUD', () => {
     expect(res.data?.targetWordCount).toBe(1750)
   })
 
-  it('PUT avec targetWordCount < 500 → 400 (range Zod schema)', async () => {
-    if (requireServer().skip) return
+  it('PUT avec targetWordCount < 500 → 400 (range Zod schema)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'MCRange Cocon')
     const article = await ctx.createArticle(cocoon.id, 'MCRange Article')
@@ -76,16 +76,16 @@ describe('Tab redaction/brief — Micro-context CRUD', () => {
     expect([400, 404]).toContain(res.status)
   })
 
-  it('PUT article inexistant → 404', async () => {
-    if (requireServer().skip) return
+  it('PUT article inexistant → 404', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const res = await apiPut(`/articles/9999999/micro-context`, { angle: 'x' })
     expect(res.status).toBe(404)
   })
 })
 
 describe('Tab redaction/brief — Suggestion IA', () => {
-  it('POST /generate/micro-context-suggest sans body → 400/500', async () => {
-    if (requireServer().skip) return
+  it('POST /generate/micro-context-suggest sans body → 400/500', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
     const res = await apiPost('/generate/micro-context-suggest', {})
     expect([400, 500]).toContain(res.status)
@@ -95,8 +95,8 @@ describe('Tab redaction/brief — Suggestion IA', () => {
 })
 
 describe('Tab redaction/brief — Keywords list', () => {
-  it('GET /articles/:id/keywords renvoie la shape', async () => {
-    if (requireServer().skip) return
+  it('GET /articles/:id/keywords renvoie la shape', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'BriefKw Cocon')
     const article = await ctx.createArticle(cocoon.id, 'BriefKw Article')
@@ -105,8 +105,8 @@ describe('Tab redaction/brief — Keywords list', () => {
     expect(res.status).toBe(200)
   })
 
-  it('PUT /articles/:id/keywords replace total', async () => {
-    if (requireServer().skip) return
+  it('PUT /articles/:id/keywords replace total', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'BriefKwPut Cocon')
     const article = await ctx.createArticle(cocoon.id, 'BriefKwPut Article')
@@ -121,8 +121,8 @@ describe('Tab redaction/brief — Keywords list', () => {
     expect(res.status).toBe(200)
   })
 
-  it('POST /keywords/lexique-suggest renvoie { lexique: string[] }', { timeout: 90000 }, async () => {
-    if (requireServer().skip) return
+  it('POST /keywords/lexique-suggest renvoie { lexique: string[] }', { timeout: 90000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
     // Shape réelle (claude.service) : { lexique: string[] }
     const res = await apiPost<{ lexique: string[] }>('/keywords/lexique-suggest', {
       capitaine: `plombier toulouse`,
@@ -136,8 +136,8 @@ describe('Tab redaction/brief — Keywords list', () => {
 })
 
 describe('Tab redaction/brief — Context recap', () => {
-  it('GET /cocoons/:id/strategy/context retourne strategy ou null (alimente le recap)', async () => {
-    if (requireServer().skip) return
+  it('GET /cocoons/:id/strategy/context retourne strategy ou null (alimente le recap)', async ({ skip }) => {
+    if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'StratRecap Cocon')
 
