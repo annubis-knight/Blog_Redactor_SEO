@@ -18,3 +18,14 @@ export function e2eDatabaseName(env: Env): string {
 export function e2eUsesOwnDatabase(env: Env): boolean {
   return env.PARCOURS_REEL !== '1' && !env.PLAYWRIGHT_NO_SERVER
 }
+
+/**
+ * Garde-fou avant de recréer la base : seule une base jetable (nom en `_test`)
+ * qui n'est pas celle de développement peut l'être. Rend le motif du refus,
+ * ou `null` si la base peut être recréée.
+ */
+export function refuseToRecreate(target: string, devDatabase: string): string | null {
+  if (!target.endsWith('_test')) return `le nom « ${target} » doit finir par _test`
+  if (target === devDatabase) return `« ${target} » est la base de .env`
+  return null
+}

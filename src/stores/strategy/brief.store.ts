@@ -9,7 +9,8 @@
  *            la longueur retenue par la route du premier jet)
  * CONSUMERS: `targetWordCount` → useArticleGeneration (écart, réduction, premier jet),
  *            SeoPanel, useSeoScoring (deux vues de rédaction) ; `briefData` → Brief, Moteur
- * RELATED FR: FR-RED-WORD-COUNT-TARGET, FR-CER-WORD-COUNT-RECOMMEND, FR-RED-DRAFT-SINGLE-PASS
+ * RELATED FR: FR-RED-WORD-COUNT-TARGET, FR-CER-WORD-COUNT-RECOMMEND, FR-RED-DRAFT-SINGLE-PASS,
+ *             FR-RED-BRIEF (données SERP sur le mot-clé de l'article, R13)
  */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'

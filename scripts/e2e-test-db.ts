@@ -18,7 +18,7 @@ import 'dotenv/config'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import pg from 'pg'
-import { e2eDatabaseName, e2eUsesOwnDatabase } from '../tests/browser-e2e/e2e-database.js'
+import { e2eDatabaseName, e2eUsesOwnDatabase, refuseToRecreate } from '../tests/browser-e2e/e2e-database.js'
 
 const connection = {
   host: process.env.PG_HOST ?? 'localhost',
@@ -44,9 +44,8 @@ async function main(): Promise<void> {
   }
   const target = e2eDatabaseName(process.env)
   const devDatabase = process.env.PG_DATABASE ?? 'blog_redactor_seo'
-  if (!target.endsWith('_test') || target === devDatabase) {
-    throw new Error(`[e2e-test-db] refus de recréer « ${target} » : le nom doit finir par _test et différer de la base de .env (${devDatabase}).`)
-  }
+  const refusal = refuseToRecreate(target, devDatabase)
+  if (refusal) throw new Error(`[e2e-test-db] refus de recréer la base : ${refusal}.`)
 
   const started = Date.now()
   await withClient('postgres', async (admin) => {
