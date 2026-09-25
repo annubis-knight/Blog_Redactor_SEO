@@ -5,7 +5,7 @@ import { log } from '@/utils/logger'
 import type { ActionType, ActionContext, Article } from '@shared/types/index.js'
 
 export function useContextualActions() {
-  const { isStreaming, startStream, abort } = useStreaming<{ content: string }>()
+  const { isStreaming, startStream, abort } = useStreaming<{ content: string; removedLinks?: string[] }>()
 
   // Abort streaming on unmount (only when called inside a component)
   if (getCurrentInstance()) {
@@ -15,6 +15,8 @@ export function useContextualActions() {
   const isExecuting = ref(false)
   const streamedResult = ref('')
   const actionError = ref<string | null>(null)
+  /** Avis du serveur sur le résultat (liens absents de la recherche web, retirés). */
+  const actionNotice = ref<string | null>(null)
   const currentAction = ref<ActionType | null>(null)
 
   /** Internal-link: show article picker instead of SSE pipeline */
@@ -49,6 +51,7 @@ export function useContextualActions() {
     isExecuting.value = true
     streamedResult.value = ''
     actionError.value = null
+    actionNotice.value = null
 
     await startStream('/api/generate/action', {
       actionType,
@@ -62,9 +65,17 @@ export function useContextualActions() {
       },
       onDone: (data) => {
         streamedResult.value = data.content
+        const removed = data.removedLinks?.length ?? 0
+        if (removed > 0) {
+          actionNotice.value = removed === 1
+            ? '1 lien absent de la recherche web a été retiré (son texte est gardé).'
+            : `${removed} liens absents de la recherche web ont été retirés (leur texte est gardé).`
+        }
         log.debug(`[contextual-actions] "${actionType}" done (${data.content.length} chars)`)
       },
       onError: (message) => {
+        // Un texte partiel (réponse coupée…) ne doit pas pouvoir remplacer la sélection.
+        streamedResult.value = ''
         actionError.value = message
         log.error(`[contextual-actions] "${actionType}" failed`, { error: message })
       },
@@ -114,6 +125,7 @@ export function useContextualActions() {
   function resetState() {
     streamedResult.value = ''
     actionError.value = null
+    actionNotice.value = null
     currentAction.value = null
     savedFrom = 0
     savedTo = 0
@@ -124,6 +136,7 @@ export function useContextualActions() {
     isStreaming,
     streamedResult,
     actionError,
+    actionNotice,
     currentAction,
     showArticlePicker,
     executeAction,

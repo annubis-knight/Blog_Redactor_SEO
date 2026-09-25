@@ -131,8 +131,6 @@ export function webSearchTool(zone?: string | null, maxUses = 3): Anthropic.Mess
   } as unknown as Anthropic.Messages.ToolUnion
 }
 
-export const WEB_SEARCH_TOOL = webSearchTool()
-
 /** Un résultat réel de la recherche web. */
 export interface WebSourceUsage {
   url: string

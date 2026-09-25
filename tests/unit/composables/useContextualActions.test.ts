@@ -105,6 +105,37 @@ describe('useContextualActions', () => {
     expect(actionError.value).toBe('API error occurred')
   })
 
+  // Suite C5b : après une erreur (réponse coupée…), le texte partiel restait
+  // acceptable et pouvait remplacer la sélection.
+  it('une action en erreur ne laisse rien à accepter', async () => {
+    mockStartStream.mockImplementationOnce(async (_url: string, _body: unknown, callbacks: any) => {
+      callbacks.onChunk('Un texte coupé au milieu')
+      callbacks.onError('La réponse a été coupée avant la fin.')
+    })
+    const { executeAction, acceptResult, streamedResult } = useContextualActions()
+    const editor = createMockEditor()
+
+    await executeAction('reformulate', 'text', { articleId: 1 }, editor as any)
+    expect(streamedResult.value).toBe('')
+    acceptResult(editor as any)
+    expect(editor.chain).not.toHaveBeenCalled()
+  })
+
+  // Suite C5b : les liens absents de la recherche web étaient retirés sans
+  // que l'utilisateur le sache.
+  it('les liens retirés par le serveur sont signalés', async () => {
+    mockStartStream.mockImplementationOnce(async (_url: string, _body: unknown, callbacks: any) => {
+      callbacks.onDone({ content: '<p>Selon une étude…</p>', removedLinks: ['https://invente.example/x'] })
+    })
+    const { executeAction, actionNotice, rejectResult } = useContextualActions()
+
+    await executeAction('sources-chiffrees', 'text', { articleId: 1 }, createMockEditor() as any)
+    expect(actionNotice.value).toMatch(/1 lien/)
+    expect(actionNotice.value).toMatch(/recherche web/)
+    rejectResult()
+    expect(actionNotice.value).toBeNull()
+  })
+
   it('executeAction for internal-link shows article picker instead of SSE', async () => {
     const { executeAction, showArticlePicker } = useContextualActions()
     const editor = createMockEditor()

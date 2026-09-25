@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { IMAGE_TO_PROVIDE_SRC } from '@shared/constants/image-placeholder.js'
 
@@ -9,23 +10,34 @@ const props = defineProps<{
 /** Adresse d'image admise : un fichier du site (`/…`) ou une adresse web. */
 const IMAGE_URL = /^(https?:\/\/|\/(?!\/))\S+$/i
 
+/** Pourquoi la dernière image n'a pas été posée (vide = rien à dire). */
+const imageNotice = ref<string | null>(null)
+
 /**
  * Remplace l'image sélectionnée (la place « à fournir » posée par la passe
  * images, que la publication refuse) ou insère une image avec son texte
- * alternatif (R20).
+ * alternatif (R20). Le texte alternatif se relit et se corrige au remplacement ;
+ * une adresse refusée ou un texte alternatif vide sont dits, pas ignorés.
  */
 function setImage() {
   if (!props.editor) return
-  const selected = props.editor.isActive('image') ? (props.editor.getAttributes('image') as { src?: string }) : null
+  imageNotice.value = null
+  const selected = props.editor.isActive('image') ? (props.editor.getAttributes('image') as { src?: string; alt?: string }) : null
   const current = selected?.src && selected.src !== IMAGE_TO_PROVIDE_SRC ? selected.src : ''
-  const src = prompt('Adresse de l’image (https://… ou /images/…) :', current)?.trim()
-  if (!src || !IMAGE_URL.test(src)) return
-  if (selected) {
-    props.editor.chain().focus().updateAttributes('image', { src }).run()
+  const answer = prompt('Adresse de l’image (https://… ou /images/…) :', current)
+  if (answer === null) return
+  const src = answer.trim()
+  if (!IMAGE_URL.test(src)) {
+    imageNotice.value = 'Adresse refusée : elle doit commencer par https:// ou par / (un fichier du site).'
     return
   }
-  const alt = prompt('Texte alternatif — ce que montre l’image :')?.trim()
-  if (alt) props.editor.chain().focus().setImage({ src, alt }).run()
+  const alt = prompt('Texte alternatif — ce que montre l’image :', selected?.alt ?? '')?.trim()
+  if (!alt) {
+    imageNotice.value = 'Sans texte alternatif, l’image n’est pas posée : décrivez ce qu’elle montre.'
+    return
+  }
+  if (selected) props.editor.chain().focus().updateAttributes('image', { src, alt }).run()
+  else props.editor.chain().focus().setImage({ src, alt }).run()
 }
 
 function toggleLink() {
@@ -128,6 +140,7 @@ function toggleLink() {
     >
       &#128247;
     </button>
+    <span v-if="imageNotice" class="toolbar-notice" data-testid="toolbar-image-notice" role="status">{{ imageNotice }}</span>
 
     <span class="toolbar-divider" />
 
@@ -152,6 +165,13 @@ function toggleLink() {
 </template>
 
 <style scoped>
+.toolbar-notice {
+  align-self: center;
+  margin-left: 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-warning, #b45309);
+}
+
 .editor-toolbar {
   display: flex;
   align-items: center;

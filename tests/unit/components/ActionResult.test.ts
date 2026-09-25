@@ -24,4 +24,16 @@ describe('ActionResult', () => {
     const rejectBtn = wrapper.find('.btn-reject')
     expect((rejectBtn.element as HTMLButtonElement).disabled).toBe(false)
   })
+
+  it('rien à accepter : Accepter désactivé', () => {
+    const wrapper = mount(ActionResult, { props: { result: '', isStreaming: false } })
+    expect((wrapper.find('.btn-accept').element as HTMLButtonElement).disabled).toBe(true)
+  })
+
+  it('affiche l’avis du serveur (liens retirés)', () => {
+    const wrapper = mount(ActionResult, {
+      props: { result: 'Texte', isStreaming: false, notice: '1 lien absent de la recherche web a été retiré.' },
+    })
+    expect(wrapper.get('[data-testid="action-notice"]').text()).toContain('1 lien')
+  })
 })

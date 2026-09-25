@@ -97,3 +97,15 @@ export function describeTypeRules(level: ArticleLevel): string {
       : `- SEO local : au plus ${r.localH2Max} H2 citent la ville ; les autres restent thématiques.`,
   ].join('\n')
 }
+
+/**
+ * Consigne de FAQ quand le type de l'article est inconnu : la fourchette qui
+ * couvre tous les types, annoncée comme telle. Sans elle, le prompt ne donnait
+ * aucun nombre de questions (suite C5b).
+ */
+export function describeUnknownTypeFaq(): string {
+  const all = Object.values(ARTICLE_TYPE_RULES)
+  const min = Math.min(...all.map(r => r.faqMin))
+  const max = Math.max(...all.map(r => r.faqMax))
+  return `Type d’article inconnu : règle la plus large.\n- FAQ : ${min} à ${max} questions, ajoutées par la passe d’enrichissement.`
+}

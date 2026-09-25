@@ -113,9 +113,11 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
     // génération de pilier dure une vingtaine de minutes (FR-RED-GEN-SAUVEGARDE-AU-FIL).
     const target = wordCountTarget.value
     await editorStore.generateArticle(briefStore.briefData, outlineStore.outline, target ?? undefined, id)
-    // Le serveur a retenu cette longueur pour l'article : l'écran la garde, même
-    // si la recommandation change d'ici le prochain chargement (R24).
-    if (!editorStore.error && target) briefStore.setRetainedWordCount(target)
+    // Le serveur a retenu une longueur pour l'article : l'écran garde celle qu'il
+    // a réellement visée (une autre fenêtre a pu en choisir une entre-temps),
+    // même si la recommandation change d'ici le prochain chargement (R24).
+    const retained = editorStore.lastDraftTargetWordCount ?? target
+    if (!editorStore.error && retained) briefStore.setRetainedWordCount(retained)
 
     if (editorStore.content && !editorStore.error) {
       // Save article content immediately — don't lose it if meta generation fails

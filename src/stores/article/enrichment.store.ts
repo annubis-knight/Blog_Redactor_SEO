@@ -40,6 +40,8 @@ export interface EnrichmentItem {
    * n'insère pas à l'aveugle (R23).
    */
   anchor: string
+  /** Pourquoi la proposition n'a pas été appliquée (statut `stale`). */
+  staleReason: string | null
 }
 
 export interface EnrichmentContext {
@@ -107,6 +109,7 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
       key: `${pass}:${c.index}`, pass, chapterIndex: c.index, title: c.title,
       status: 'pending' as const, proposal: null, error: null,
       anchor: pass === 'faq' ? (chapters.find(ch => ch.index === c.index)?.html ?? '') : '',
+      staleReason: null,
     }))
     if (targets.length === 0) return
 
@@ -141,7 +144,7 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     activePass.value = 'reecriture'
     const item: EnrichmentItem = {
       key: `reecriture:${chapterIndex}:${Date.now()}`, pass: 'reecriture', chapterIndex, title: chapter.title,
-      status: 'pending', proposal: null, error: null, anchor: '',
+      status: 'pending', proposal: null, error: null, anchor: '', staleReason: null,
     }
     items.value = [item]
     isRunning.value = true
@@ -165,10 +168,17 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     const editorStore = useEditorStore()
     const current = editorStore.content ?? ''
     if (item.pass === 'faq') {
-      const anchor = listChapters(current).find(c => c.index === item.chapterIndex)?.html ?? ''
-      if (squash(anchor) !== squash(item.anchor) || targetsFor('faq', current).length === 0) {
-        // La conclusion a changé, ou une FAQ existe déjà : on n'insère pas à l'aveugle.
+      // Une FAQ existe déjà, ou le chapitre avant lequel elle s'insère a changé :
+      // on n'insère pas à l'aveugle, et on dit lequel des deux (suite C5b).
+      if (targetsFor('faq', current).length === 0) {
         item.status = 'stale'
+        item.staleReason = 'Une foire aux questions existe déjà dans l’article : celle-ci n’est pas ajoutée.'
+        return
+      }
+      const anchor = listChapters(current).find(c => c.index === item.chapterIndex)?.html ?? ''
+      if (squash(anchor) !== squash(item.anchor)) {
+        item.status = 'stale'
+        item.staleReason = 'Le chapitre avant lequel la FAQ s’insère a changé : relancez la passe pour ne rien écraser.'
         return
       }
       editorStore.setContent(insertChapter(current, item.chapterIndex, proposal.html))
@@ -177,6 +187,7 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
       if (!chapter || squash(chapter.html) !== squash(proposal.before)) {
         // Le chapitre a changé depuis la proposition : on n'écrase pas.
         item.status = 'stale'
+        item.staleReason = 'Le chapitre a changé depuis cette proposition : relancez la passe pour ne rien écraser.'
         return
       }
       editorStore.setContent(replaceChapter(current, item.chapterIndex, proposal.html))

@@ -70,13 +70,48 @@ describe('EditorToolbar — image', () => {
     return { editor, calls }
   }
 
-  it('remplace l’image à fournir sélectionnée par l’adresse donnée', async () => {
+  it('remplace l’image à fournir sélectionnée ; son texte alternatif se relit et se corrige', async () => {
     const { editor, calls } = imageEditor({ src: '/images/image-a-fournir.svg', alt: 'Un atelier' })
-    const ask = vi.spyOn(window, 'prompt').mockReturnValueOnce('https://cdn.example.fr/atelier.jpg')
+    const ask = vi.spyOn(window, 'prompt')
+      .mockReturnValueOnce('https://cdn.example.fr/atelier.jpg')
+      .mockReturnValueOnce('L’atelier de menuiserie, établi au premier plan')
     const wrapper = mount(EditorToolbar, { props: { editor: editor as any } })
     await wrapper.get('[data-testid="toolbar-image"]').trigger('click')
     expect(ask.mock.calls[0]![1], 'la place réservée ne s’affiche pas comme adresse').toBe('')
-    expect(calls).toEqual([['updateAttributes', { src: 'https://cdn.example.fr/atelier.jpg' }]])
+    expect(ask.mock.calls[1]![1], 'le texte alternatif actuel est proposé').toBe('Un atelier')
+    expect(calls).toEqual([['updateAttributes', { src: 'https://cdn.example.fr/atelier.jpg', alt: 'L’atelier de menuiserie, établi au premier plan' }]])
+    ask.mockRestore()
+  })
+
+  // Suite C5b : une adresse refusée ou un texte alternatif vide ne faisaient
+  // rien, sans un mot ; l'utilisateur croyait l'image posée.
+  it('adresse refusée : l’écran le dit', async () => {
+    const { editor, calls } = imageEditor(null)
+    const ask = vi.spyOn(window, 'prompt').mockReturnValueOnce('javascript:alert(1)')
+    const wrapper = mount(EditorToolbar, { props: { editor: editor as any } })
+    await wrapper.get('[data-testid="toolbar-image"]').trigger('click')
+    expect(calls).toEqual([])
+    expect(wrapper.get('[data-testid="toolbar-image-notice"]').text()).toMatch(/adresse/i)
+    ask.mockRestore()
+  })
+
+  it('texte alternatif vide : l’image n’est pas posée, et l’écran dit pourquoi', async () => {
+    const { editor, calls } = imageEditor(null)
+    const ask = vi.spyOn(window, 'prompt').mockReturnValueOnce('/images/devanture.jpg').mockReturnValueOnce('  ')
+    const wrapper = mount(EditorToolbar, { props: { editor: editor as any } })
+    await wrapper.get('[data-testid="toolbar-image"]').trigger('click')
+    expect(calls).toEqual([])
+    expect(wrapper.get('[data-testid="toolbar-image-notice"]').text()).toMatch(/texte alternatif/i)
+    ask.mockRestore()
+  })
+
+  it('annuler ne dit rien', async () => {
+    const { editor, calls } = imageEditor(null)
+    const ask = vi.spyOn(window, 'prompt').mockReturnValueOnce(null)
+    const wrapper = mount(EditorToolbar, { props: { editor: editor as any } })
+    await wrapper.get('[data-testid="toolbar-image"]').trigger('click')
+    expect(calls).toEqual([])
+    expect(wrapper.find('[data-testid="toolbar-image-notice"]').exists()).toBe(false)
     ask.mockRestore()
   })
 

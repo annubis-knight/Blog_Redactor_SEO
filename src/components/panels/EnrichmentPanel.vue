@@ -47,6 +47,12 @@ const keywords = computed(() => keywordsStore.keywords?.lieutenants ?? [])
 const busy = computed(() => store.isRunning || editorStore.isHumanizing || editorStore.isReducing || editorStore.isGenerating)
 const canRun = computed(() => !!props.articleId && !!keyword.value && !!editorStore.content && !busy.value)
 
+/**
+ * Une image acceptée est une place « à fournir » que la publication refuse ; le
+ * bouton qui la remplace est dans l'éditeur (la vue workflow n'en a pas).
+ */
+const imagesToProvide = computed(() => store.items.some(i => i.pass === 'images' && i.status === 'accepted'))
+
 const ranPass = ref<EnrichmentPass | null>(null)
 const emptyMessage = computed(() => {
   if (!ranPass.value || store.isRunning || store.items.length > 0) return ''
@@ -141,6 +147,11 @@ async function rewrite() {
 
     <p v-if="emptyMessage" class="empty" data-testid="enrich-empty">{{ emptyMessage }}</p>
 
+    <p v-if="imagesToProvide" class="panel-warning" data-testid="enrich-images-to-provide" role="status">
+      Chaque image acceptée est une place « image à fournir » : dans l’éditeur, cliquez dessus puis sur le bouton Image 📷
+      pour donner son adresse et son texte alternatif. La publication la refuse tant qu’elle n’est pas remplacée.
+    </p>
+
     <div v-if="store.readyCount > 1" class="bulk">
       <button type="button" class="secondary-btn" data-testid="enrich-accept-clean" @click="acceptAllClean()">
         Accepter celles sans alerte
@@ -161,7 +172,7 @@ async function rewrite() {
         </div>
 
         <p v-if="item.error" class="error">{{ item.error }}</p>
-        <p v-if="item.status === 'stale'" class="error">Le chapitre a changé depuis cette proposition : relancez la passe pour ne rien écraser.</p>
+        <p v-if="item.status === 'stale'" class="error">{{ item.staleReason }}</p>
 
         <ul v-if="item.proposal?.issues.length" class="issues">
           <li v-for="issue in item.proposal.issues" :key="issue.rule" :data-level="issue.level" :data-rule="issue.rule">

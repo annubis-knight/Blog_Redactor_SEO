@@ -56,6 +56,9 @@ router.post('/generate/action', async (req, res) => {
     const tools = needsWebSearch ? [webSearchTool((await loadZoneContext()).zone)] : undefined
     log.debug(`[action] 🔧 tools config`, { actionType, webSearchEnabled: needsWebSearch })
 
+    // Une recherche web peut durer plus que le délai par défaut du socket.
+    if (needsWebSearch) req.socket.setTimeout(0)
+
     // SSE headers — sent AFTER loadPrompt succeeds
     res.writeHead(200, {
       'Content-Type': 'text/event-stream',
@@ -71,11 +74,25 @@ router.post('/generate/action', async (req, res) => {
       streamChatCompletion(systemPrompt, userPrompt, 2048, tools),
       needsWebSearch ? () => {} : writeChunk,
     ).finally(() => { if (keepAlive) clearInterval(keepAlive) })
+    // Coupée avant la fin (plafond de jetons, recherche interrompue) : rien à
+    // insérer. Un texte tronqué remplaçait sinon la sélection.
+    if (usage?.stopReason && usage.stopReason !== 'end') {
+      log.warn(`[action] réponse coupée avant la fin "${actionType}"`, { stopReason: usage.stopReason })
+      res.write(`event: error\ndata: ${JSON.stringify({
+        code: 'ACTION_TRUNCATED',
+        message: 'La réponse a été coupée avant la fin : rien n’est proposé. Sélectionnez un passage plus court, ou relancez.',
+      })}\n\n`)
+      res.end()
+      return
+    }
+
     let fullContent = rawContent
+    let removedLinks: string[] = []
     if (needsWebSearch) {
       const { html, removed } = keepKnownLinks(rawContent, knownSources(selectedText, usage?.webSources))
       if (removed.length) log.warn(`[action] liens absents de la recherche web retirés`, { actionType, removed })
       fullContent = html
+      removedLinks = removed
       writeChunk(fullContent)
     }
 
@@ -89,7 +106,8 @@ router.post('/generate/action', async (req, res) => {
       outputTokens: usage?.outputTokens,
       contentPreview: fullContent.slice(0, 300),
     })
-    res.write(`event: done\ndata: ${JSON.stringify({ content: fullContent, usage })}\n\n`)
+    // Les liens retirés partent avec le résultat : l'écran le dit à l'utilisateur.
+    res.write(`event: done\ndata: ${JSON.stringify({ content: fullContent, usage, ...(removedLinks.length ? { removedLinks } : {}) })}\n\n`)
     res.end()
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erreur lors de l\'action'

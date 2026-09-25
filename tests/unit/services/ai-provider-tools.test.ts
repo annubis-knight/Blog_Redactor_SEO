@@ -34,8 +34,10 @@ import {
   streamChatCompletion,
   AIProviderQuotaError,
   AIProviderUnavailableError,
-  WEB_SEARCH_TOOL,
+  webSearchTool,
 } from '../../../server/services/external/ai-provider.service'
+
+const WEB_SEARCH = webSearchTool()
 
 async function* texte(t: string): AsyncGenerator<string> {
   yield t
@@ -68,7 +70,7 @@ describe('streamChatCompletion avec la recherche web', () => {
     claude.mockImplementation(creditEpuise)
     gemini.mockImplementation(() => texte('texte sans source'))
 
-    await expect(lire(streamChatCompletion('s', 'u', 4096, [WEB_SEARCH_TOOL]))).rejects.toBeInstanceOf(AIProviderQuotaError)
+    await expect(lire(streamChatCompletion('s', 'u', 4096, [WEB_SEARCH]))).rejects.toBeInstanceOf(AIProviderQuotaError)
     expect(gemini).not.toHaveBeenCalled()
     expect(openrouter).not.toHaveBeenCalled()
   })
@@ -77,16 +79,16 @@ describe('streamChatCompletion avec la recherche web', () => {
     vi.stubEnv('AI_PROVIDER', 'gemini')
     claude.mockImplementation(() => texte('texte sourcé'))
 
-    expect(await lire(streamChatCompletion('s', 'u', 4096, [WEB_SEARCH_TOOL]))).toBe('texte sourcé')
+    expect(await lire(streamChatCompletion('s', 'u', 4096, [WEB_SEARCH]))).toBe('texte sourcé')
     expect(gemini).not.toHaveBeenCalled()
-    expect(claude).toHaveBeenCalledWith('s', 'u', 4096, [WEB_SEARCH_TOOL])
+    expect(claude).toHaveBeenCalledWith('s', 'u', 4096, [WEB_SEARCH])
   })
 
   it('aucun fournisseur capable dans la chaîne : erreur qui dit pourquoi', async () => {
     vi.stubEnv('AI_PROVIDER', 'gemini')
     vi.stubEnv('AI_PROVIDER_NO_FALLBACK', '1')
 
-    const err = await lire(streamChatCompletion('s', 'u', 4096, [WEB_SEARCH_TOOL])).catch((e: unknown) => e)
+    const err = await lire(streamChatCompletion('s', 'u', 4096, [WEB_SEARCH])).catch((e: unknown) => e)
     expect(err).toBeInstanceOf(AIProviderUnavailableError)
     expect((err as Error).message).toMatch(/recherche web exige Claude/)
     expect(gemini).not.toHaveBeenCalled()

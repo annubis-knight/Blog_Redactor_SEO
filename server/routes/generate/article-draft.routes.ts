@@ -189,7 +189,9 @@ router.post('/generate/article-draft', async (req, res) => {
     log.info(`Premier jet rédigé pour « ${articleTitle} »`, {
       articleId, chars: finalContent.length, targetWords, stopReason, totalMs: Date.now() - startTotal, cost: `$${totalUsage.estimatedCost.toFixed(4)}`,
     })
-    writeEvent(res, 'done', { content: finalContent, usage: totalUsage })
+    // La longueur réellement visée : l'écran la garde, même si une autre fenêtre
+    // en avait choisi une entre-temps (suite C5b).
+    writeEvent(res, 'done', { content: finalContent, usage: totalUsage, targetWordCount: targetWords })
     res.end()
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Erreur lors de la génération'

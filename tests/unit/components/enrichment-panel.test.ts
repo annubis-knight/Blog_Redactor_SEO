@@ -65,6 +65,45 @@ describe('EnrichmentPanel', () => {
     expect(card.get('[data-testid="proposal-accept"]').attributes('disabled')).toBeDefined()
   })
 
+  // Suite C5b : la passe Images pose une place « à fournir » que la publication
+  // refuse ; le bouton qui la remplace n'est que dans l'éditeur. Le panneau
+  // doit le dire, surtout dans la vue workflow, qui n'a pas d'éditeur.
+  it('une image acceptée : le panneau dit où la fournir', async () => {
+    mockStartStreamOnce.mockImplementation(async (_url: string, body: { chapterIndex: number; chapterHtml: string }) => ({
+      result: { pass: 'images', chapterIndex: body.chapterIndex, before: body.chapterHtml, html: `${body.chapterHtml}<img src="/images/image-a-fournir.svg" alt="Un devis signé">`, issues: [], webSources: [], blocked: false, usage: null },
+      usage: null, errorMessage: null, aborted: false,
+    }))
+    const wrapper = mountPanel()
+    await wrapper.get('[data-testid="enrich-pass-images"]').trigger('click')
+    await flushPromises()
+    expect(wrapper.find('[data-testid="enrich-images-to-provide"]').exists(), 'rien d’accepté, rien à dire').toBe(false)
+
+    await wrapper.get('[data-testid="proposal-0"] [data-testid="proposal-accept"]').trigger('click')
+    const hint = wrapper.get('[data-testid="enrich-images-to-provide"]').text()
+    expect(hint).toMatch(/éditeur/i)
+    expect(hint).toMatch(/Image/)
+    expect(hint).toMatch(/publication/i)
+  })
+
+  // Suite C5b : une FAQ déjà présente donnait « le chapitre a changé » — faux.
+  it('FAQ refusée parce qu’une FAQ existe déjà : le message le dit', async () => {
+    mockStartStreamOnce.mockResolvedValue({
+      result: { pass: 'faq', chapterIndex: 2, before: '', html: '<h2>Questions fréquentes</h2><h3>Combien ça coûte ?</h3><p>Ça dépend.</p>', issues: [], webSources: [], blocked: false, usage: null },
+      usage: null, errorMessage: null, aborted: false,
+    })
+    const wrapper = mountPanel()
+    await wrapper.get('[data-testid="enrich-pass-faq"]').trigger('click')
+    await flushPromises()
+    // Entre-temps, une FAQ a été écrite à la main.
+    useEditorStore().setContent(ARTICLE.replace('<h2>Conclusion</h2>', '<h2>Questions fréquentes</h2><h3>Un délai ?</h3><p>Oui.</p><h2>Conclusion</h2>'))
+    await wrapper.get('[data-testid="proposal-accept"]').trigger('click')
+
+    const card = wrapper.get('li.proposal')
+    expect(card.attributes('data-status')).toBe('stale')
+    expect(card.text()).toMatch(/foire aux questions existe déjà/i)
+    expect(card.text()).not.toMatch(/chapitre a changé/i)
+  })
+
   it('les sources trouvées sont listées, liens ouverts ailleurs', async () => {
     mockStartStreamOnce.mockResolvedValue({
       result: { pass: 'sources', chapterIndex: 0, before: '<h2>Le budget</h2><p>On prévoit.</p>', html: '<h2>Le budget</h2><p>On prévoit (selon l’Insee).</p>', issues: [], webSources: [{ url: 'https://www.insee.fr/a', title: 'Insee', pageAge: null }], blocked: false, usage: null },
