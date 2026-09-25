@@ -127,7 +127,8 @@ Depuis le 2026-09-25, ils écrivent dans **leur propre base**, recréée avant c
 Des services serveur appelés directement (sans HTTP), contre PostgreSQL : schéma, cache SERP, lecture de l'arbre silos → cocons → articles. Ils ont besoin d'une base, mais **jamais de ses données** : chaque fichier pose ses fixtures et les retire.
 
 - `data.service.test.ts` *(épopée qualité SEO, T9, 2026-09-25)* — lecture de l'arbre (`getCocoons`, `getArticlesByCocoon`, `getArticleBySlug`, `getKeywordsByCocoon`, `getTheme`, silos). Il lisait la base de développement (« le premier cocon est Croissance digitale Toulouse ») : ni portable en CI (base vide), ni stable (le contenu éditorial change). Il crée maintenant un silo, un cocon, un pilier, un intermédiaire (en rédaction), un spécialisé et un mot-clé, étiquetés `[test:<runId>]` / `test-<runId>-…` (helpers `tests/helpers/db-fixtures.ts`), et les nettoie en `afterAll`. Il passe sur une base vide.
-- En CI, le job unitaire ne lance que `tests/unit` et `tests/functional` (sans base) ; `data.service.test.ts` est lancé par le **job d'intégration**, qui a la base (`.github/workflows/ci.yml`, avec `tests/contract-api`, `tests/integration-tabs` et `tests/e2e-workflows`). Les autres fichiers de `tests/integration/` ne sont pas lancés en CI.
+- `internal-links-prune.test.ts` *(recette réelle C8, 2026-09-25)* — la matrice du maillage suit le texte (`pruneStaleLinks`, appelé par `saveArticleContent`) : les liens présents dans le texte restent, par identifiant comme par adresse ; un lien retiré du texte sort de `internal_links` ; enregistrer seulement le sommaire ne touche pas à la matrice. Mêmes fixtures étiquetées.
+- En CI, le job unitaire ne lance que `tests/unit` et `tests/functional` (sans base) ; `data.service.test.ts` et `internal-links-prune.test.ts` sont lancés par le **job d'intégration**, qui a la base (`.github/workflows/ci.yml`, avec `tests/contract-api`, `tests/integration-tabs` et `tests/e2e-workflows`). Les autres fichiers de `tests/integration/` ne sont pas lancés en CI.
 - En local : `npx vitest run tests/integration/data.service.test.ts` (PostgreSQL requis ; le serveur de développement, non).
 
 ---
@@ -344,7 +345,7 @@ Depuis le 2026-09-25 (épopée qualité SEO, T10), **`npm run test:browser` n'é
 
 Le nom et la règle vivent à un seul endroit, `tests/browser-e2e/e2e-database.ts` : `e2eDatabaseName` (`E2E_PG_DATABASE` pour choisir un autre nom) et `e2eUsesOwnDatabase`.
 
-**Garde-fou** : le script refuse de recréer une base dont le nom ne finit pas par `_test`, ou qui est celle de `.env` (`PG_DATABASE`). Un `E2E_PG_DATABASE=blog_redactor_seo` mal placé ne peut donc pas effacer la base de développement.
+**Garde-fou** : le script refuse de recréer une base dont le nom ne finit pas par `_test`, ou qui est celle de `.env` (`PG_DATABASE`). Un `E2E_PG_DATABASE=blog_redactor_seo` mal placé ne peut donc pas effacer la base de développement. La règle est une fonction, `refuseToRecreate(target, devDatabase)` (même fichier `e2e-database.ts` ; elle rend le motif du refus, ou `null`), testée par `tests/unit/scripts/e2e-database.test.ts` (depuis le commit `c2449f2`).
 
 **Deux cas gardent la base du serveur visé** (le script ne fait rien) :
 
@@ -356,7 +357,7 @@ Le nom et la règle vivent à un seul endroit, `tests/browser-e2e/e2e-database.t
 **À savoir**
 - La base repart de zéro à chaque passage : rien ne se garde d'un passage à l'autre (ni articles, ni mesures DataForSEO en cache).
 - Vérifié à la livraison (commit `9ac5281`) : 124 tests navigateur verts sur la base dédiée, comptes de la base de développement identiques avant et après.
-- Le garde-fou et `e2eUsesOwnDatabase` n'ont pas de test automatisé.
+- Le garde-fou, le nom par défaut et `e2eUsesOwnDatabase` sont testés (`tests/unit/scripts/e2e-database.test.ts`).
 - Vitest (`npm run test:unit`, `test:check`) n'est pas concerné : ses tests HTTP visent toujours le serveur de développement et sa base, avec le nettoyage des §5.1 à §5.6.
 
 ---
@@ -536,6 +537,30 @@ Au lieu de ça, pose-toi la question :
 - J'ai écrit `expect(verdict.level).toBe('RED' | 'ORANGE' | 'GREEN')` — inventé
 - L'enum réel dans `shared/types/keyword-validate.types.ts` est `'GO' | 'ORANGE' | 'NO-GO'`
 - → corriger **mon attente**, pas le code
+
+### 7.5 Le cliquet des faux verts (`test-quality.test.ts`)
+
+`tests/unit/coherence/test-quality.test.ts` (lancé avec `tests/unit` : `npm run test:unit`, `test:check` et le job unitaire de la CI — pas par `npm run verify`) compte dans tout `tests/` les formes de test qui peuvent passer sans rien prouver. Chaque compte a un **plafond qui ne peut que baisser** : un nouveau faux vert fait échouer la vérification, avec la liste des fichiers en cause.
+
+| Forme | Plafond (2026-09-25) | Pourquoi c'est un faux vert |
+|---|---|---|
+| `expect(true).toBe(true)` (`tautologies`) | **0** (strict) | Toujours vrai |
+| `if (res.status === 200) { expect… }` sans `else` (`conditionalSilent`) | **0** (strict) | Si la condition est fausse, rien n'est vérifié |
+| `if (requireServer().skip) return` (`silentServerSkip`) | **0** | Sans serveur, le test sort vert au lieu d'« ignoré » : utiliser `skip()` |
+| `it.skip` / `test.skip` / `describe.skip` (`itSkip`) | **1** | Un test ignoré ne protège rien |
+| `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur (`alwaysTrueGte0`) | **6** | Un compte est toujours ≥ 0 |
+| `expect(typeof x).toBe('boolean')` (`typeofBoolean`) | **1** | Ne dit pas si la valeur est la bonne |
+| `it.todo` (`itTodo`) | 132 | Rappel, pas un test |
+
+**Épopée qualité SEO, T2 et T3 (commit `8bc3aa1`, 2026-09-25)** :
+- les 40 `skip` ont été triés un à un : les obsolètes (verrouillage par lot, onglets disparus, Export, JSON migrés…) supprimés, les encore valables réécrits sur le code actuel. Un seul reste : `ai-panels-persistence.test.ts:106`, qui attend la correction du panneau IA du brief (checklist U4). Un second, sur « Tester un mot-clé » (FR-LEX-MULTI-KEYWORD), a repris quand le bug a été corrigé (commit `20e4aa9`) — c'est l'usage attendu d'un `skip` ;
+- dans les tests contre serveur (`contract-api`, `integration-tabs`, `e2e-workflows`) et `tests/functional`, les « ≥ 0 » et « est un booléen » sont devenus des valeurs exactes : le test pose ses propres données, puis vérifie ce qu'il en attend. Les 6 « ≥ 0 » et le booléen restants sont dans `tests/browser-e2e` (dont 2 dans des commentaires).
+
+**Règles**
+- Un test qu'on doit ignorer porte, juste au-dessus, `// SKIP: <exigence> <ce qui est cassé>` — il documente un vrai bug du produit, et le plafond baisse quand on le rétablit.
+- Un test privé de son environnement (serveur absent, quota DataForSEO, identifiants manquants) appelle `skip()` : il apparaît **ignoré**, jamais vert. `expectSuccessOrKnownError(res)` (`tests/helpers/api-client.ts`) rend `false` pour une erreur d'environnement connue — le test fait alors `skip()` — et échoue sur toute autre erreur.
+- Baisser un plafond est un geste volontaire : quand un compte descend, abaisser la valeur dans `SOFT_LIMITS` dans le même changement, sinon le gain peut être reperdu en silence.
+- Une fonction du produit se teste **elle-même**, pas une copie locale dans le test : une copie finit par diverger (checklist T11, et T15 pour `tests/functional`).
 
 ---
 
@@ -766,4 +791,4 @@ tests/
 
 ---
 
-**Dernière mise à jour** : 2026-04-23 — après passage à 2836 tests vitest + 45 tests Playwright, 65 todos restants (tous documentés). Revu le 2026-09-25 (épopée qualité SEO) : `tests/integration/data.service.test.ts` avec ses propres fixtures (§2.7, T9), base propre aux tests navigateur (§5.7, T10), 124 tests navigateur.
+**Dernière mise à jour** : 2026-04-23 — après passage à 2836 tests vitest + 45 tests Playwright, 65 todos restants (tous documentés). Revu le 2026-09-25 (épopée qualité SEO) : `tests/integration/data.service.test.ts` avec ses propres fixtures (§2.7, T9), base propre aux tests navigateur (§5.7, T10), 124 tests navigateur ; cliquet des faux verts après T2 / T3 (§7.5) ; `internal-links-prune.test.ts` (§2.7).

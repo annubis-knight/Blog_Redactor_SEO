@@ -711,7 +711,7 @@ Monitoring GSC.
 | `/api/generate/action` | POST (SSE) | Action contextuelle IA (« lien interne » : pas d'IA, lien `#article-<id>` enregistré par `PUT /api/links` depuis C7) |
 | `/api/generate/brief-explain` | POST (SSE) | Panel IA brief |
 | `/api/links/suggest` | POST | Suggestions liens internes (famille du cocon d'abord, C7) *(corrigé : ce tableau citait `/api/articles/:id/link-suggestions`, qui n'existe pas)* |
-| `/api/links` | PUT | Enregistre les liens posés (`internal_links`) |
+| `/api/links` | PUT | Enregistre les liens posés (`internal_links`). Depuis le 2026-09-25 (recette C8), un lien retiré du texte sort de la matrice à l'enregistrement du contenu (`PUT /api/articles/:id` → `pruneStaleLinks`) |
 | `/articles/:id/status` | PUT | Marquer publié |
 | `/preview/:id` | GET | HTML preview |
 

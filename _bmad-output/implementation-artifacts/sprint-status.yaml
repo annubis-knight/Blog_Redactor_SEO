@@ -974,7 +974,17 @@ development_status:
   # FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-CAP-SCORING-BIMODAL, FR-RED-BRIEF,
   # FR-RED-DRAFT-SINGLE-PASS, FR-LEX-METIER-ONLY, NFR-MAIN-TESTS-PLAYWRIGHT,
   # NFR-CFG-PORT-PREFLIGHT. Pas de clé propre : suivi dans l'épopée (§5, §8, §9).
-  qualite-seo-c8-recette-reelle: backlog
+  # Puis T2, T3 soldés (8bc3aa1 ; itSkip 1, alwaysTrueGte0 6, typeofBoolean 1),
+  # FR-LEX-MULTI-KEYWORD corrigée (20e4aa9), garde-fou de la base de test testé
+  # (c2449f2). Ouverts : P7, U4, T15, M22, M23.
+  # C8 (2026-09-25) : recette réelle PASSÉE — `auto:article --mode=real` sur un
+  # serveur dédié (3420), cocon bac à sable 27401 : pilier #1030, porte de
+  # publication sans alerte ni dérogation, verify:content sans erreur, 6 passages.
+  # Correctifs sur fix/restes-qualite-seo (92ca03b, 8d1bac2, 5928401, 37c5ce1,
+  # e67930e, 1388cbf, efb1e40), PR à ouvrir. FR-RED-DRAFT-TO-SOURCE et
+  # FR-RED-LINKING-MANUAL amendées. Reste : scores SEO/GEO non calculés en mode
+  # automatique (P7).
+  qualite-seo-c8-recette-reelle: review
 
 # ===== Backlog (non livré) =====
 #

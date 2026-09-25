@@ -287,7 +287,8 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 | ~~3 checks `cerveau:*`~~ retirés 2026-05-13 — promesse non tenue côté code (jamais émis), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
 | ~~5 checks `redaction:*`~~ retirés 2026-05-13 — promesse partiellement câblée (1 émetteur sur 5), cf. DRIFT-002 | ❌ | décision produit 2026-05-13 |
 | 1 check `redaction:draft_accepted` — « Premier jet accepté », gardé par la porte du premier jet : ce qui fait d'un article un parent rédigé | ✅ 2026-09-25 | épopée qualité SEO (C7) |
-| Cocon né du pilier : création un article à la fois depuis l'arbre réel, parent et section enregistrés, mots-clés candidats mesurés, état du cocon transmis aux générations, proposition de plan en carte indicative | ✅ 2026-09-25 (parcours navigateur en cours) | épopée qualité SEO (C7), tech-spec-cocon-progressif |
+| Cocon né du pilier : création un article à la fois depuis l'arbre réel, parent et section enregistrés, mots-clés candidats mesurés, état du cocon transmis aux générations, proposition de plan en carte indicative | ✅ 2026-09-25 (parcours navigateur « pilier → intermédiaire → spécialisé » vert, commit `2d39345`) | épopée qualité SEO (C7), tech-spec-cocon-progressif |
+| Recette réelle : un pilier produit en mode réel (`npm run auto:article -- --mode=real`) passe la porte de publication sans alerte ni dérogation | ✅ 2026-09-25 (pilier #1030, 6 passages) | épopée qualité SEO (C8) |
 | Enrichissement prompts Cerveau → Moteur (`{{strategy_context}}`) | ✅ | PRD initial |
 | Labo & Explorateur découplés | ✅ | PRD initial |
 | Migration PostgreSQL | ✅ | tech-spec-migration-json-to-postgresql (archivé) |
@@ -2557,6 +2558,9 @@ En complément du Lexique du Capitaine, l'utilisateur peut **tester librement un
 - L'app extrait le Lexique de ce mot-clé et l'affiche dans un nouvel onglet.
 - L'utilisateur peut basculer entre les onglets sans perdre l'état des cases cochées.
 - Plusieurs explorations peuvent coexister par article.
+- Avoir déjà retenu des termes ne ferme pas « Tester un mot-clé » : le champ et le bouton « Extraire » restent actifs ; seule une extraction en cours les grise.
+
+**Statut :** active. **Corrigé le 2026-09-25 (épopée qualité SEO, révélé par le tri des tests ignorés, checklist T2 ; commit `20e4aa9`)** : le champ et « Extraire » se grisaient dès qu'un terme du lexique était retenu — on ne pouvait plus tester un autre mot-clé après avoir coché.
 
 > **En situation.** Le consultant a validé le Lexique du Capitaine « calcul indemnité rupture conventionnelle 2026 ». Curieux, il teste aussi « rupture conventionnelle CDD » (son Lieutenant). Surprise : 8 termes apparaissent en Obligatoires qui n'étaient même pas dans le Lexique du Capitaine (« précarité », « 10% », « bareme »…). Il en intègre 4 dans son brief.
 
@@ -2843,6 +2847,7 @@ Le pilier 1013 avançait des chiffres « de 2024 » sans aucune source. Un chiff
 
 **Critères d'acceptation**
 - Le premier jet n'écrit ni pourcentage, ni prix, ni statistique, ni date d'étude, ni nom de source qu'il ne peut garantir. À la place, il pose un marqueur visible « [à sourcer : ce qu'il faudrait trouver] ».
+- L'outil y veille lui-même : si l'IA écrit malgré tout une phrase chiffrée sans source, le premier jet enregistré la présente comme un passage « à sourcer » — la phrase entière entre crochets, surlignée —, jamais comme un fait. Les titres, les chiffres attribués et les marqueurs déjà posés restent tels quels.
 - Dans l'éditeur, le marqueur reste surligné, y compris après une sauvegarde et un rechargement.
 - Un chiffre sans source hors marqueur déclenche 🔴, au premier jet comme à la publication. Compte comme chiffre : un pourcentage, un montant en euros, un multiplicateur (« 3 fois plus »), un nombre de millions ou de milliards. Un chiffre attribué dans sa phrase (« selon… », « d'après… », « source : ») ou placé dans un marqueur ne compte pas ; un nombre ordinaire (« 3 étapes », « en 2026 ») non plus.
 - Chaque chiffre sans source est une alerte distincte.
@@ -2852,10 +2857,11 @@ Le pilier 1013 avançait des chiffres « de 2024 » sans aucune source. Un chiff
 - La passe Sources remplace chaque marqueur par une donnée datée avec son lien (cf. `FR-RED-ENRICH-SOURCES`, depuis le 2026-09-25) ; un marqueur qu'elle ne sait pas sourcer reste, à remplacer à la main. Les passes Exemples, Tableaux et FAQ peuvent en poser de nouveaux plutôt qu'inventer un chiffre.
 - Les chiffres sont reconnus à leur forme : une statistique écrite en toutes lettres (« la moitié des artisans ») ou une année seule n'est pas repérée.
 - Une attribution vague suffit à faire taire l'alerte (« selon les experts, 60 %… ») : l'outil ne vérifie pas la source.
+- Le filet ne vaut que pour le premier jet : un chiffre sans source ajouté ensuite, à la main ou par une passe, reste un chiffre sans source, signalé 🔴 à la publication.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Complétée le 2026-09-25 (C5b)** : la passe Sources remplace les marqueurs ; à la publication, chaque marqueur compte une fois.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Complétée le 2026-09-25 (C5b)** : la passe Sources remplace les marqueurs ; à la publication, chaque marqueur compte une fois. **Amendée le 2026-09-25 (recette réelle C8, commit `8d1bac2`)** : la consigne ne suffisait pas — le premier jet du pilier de la recette affirmait « 95 % des clients… » ; le serveur transforme désormais toute phrase chiffrée sans source du premier jet en passage « à sourcer ».
 
-> **En situation.** Dans le premier jet de son pilier, l'utilisateur lit : « Beaucoup d'artisans [à sourcer : part des artisans sans site web] n'ont pas encore de site. » Le passage est surligné, et le reste après sa sauvegarde. Plus bas, une phrase qu'il a ajoutée annonce « 76 % des clients consultent les avis avant d'appeler », sans source : à la publication, elle est signalée (🔴), comme le marqueur qu'il n'a pas encore remplacé.
+> **En situation.** Dans le premier jet de son pilier, l'utilisateur lit : « Beaucoup d'artisans [à sourcer : part des artisans sans site web] n'ont pas encore de site. » Le passage est surligné, et le reste après sa sauvegarde. Plus bas, une phrase qu'il a ajoutée annonce « 76 % des clients consultent les avis avant d'appeler », sans source : à la publication, elle est signalée (🔴), comme le marqueur qu'il n'a pas encore remplacé. Si c'était l'IA qui l'avait écrite dans le premier jet, il l'aurait trouvée d'emblée entre crochets, surlignée : « [à sourcer : 76 % des clients consultent les avis avant d'appeler.] ».
 
 → Conception : [DESIGN-RED-DRAFT-TO-SOURCE](./design-registry.md#design-red-draft-to-source)
 
@@ -3076,7 +3082,7 @@ Le score SEO et le score GEO sont calculés à l'écran pendant la rédaction (c
 - À l'ouverture d'un article dans la rédaction guidée, le score recalculé sur le texte intact rejoint la base.
 - L'audit du projet (`npm run verify`) affiche les scores enregistrés de chaque article, « — » quand ils sont inconnus.
 
-**Limites connues :** dans l'éditeur libre, le score d'un article qu'on vient d'ouvrir ne rejoint la base qu'à la sauvegarde suivante. Aucun écran ne lit encore le score enregistré. La liste des articles et la porte de publication pourront s'en servir dans un chantier suivant ; en attendant, la valeur est visible dans l'audit.
+**Limites connues :** dans l'éditeur libre, le score d'un article qu'on vient d'ouvrir ne rejoint la base qu'à la sauvegarde suivante. Aucun écran ne lit encore le score enregistré. La liste des articles et la porte de publication pourront s'en servir dans un chantier suivant ; en attendant, la valeur est visible dans l'audit. Le mode automatique (`npm run auto:article`) ne calcule aucun score : un article qu'il produit porte « — » en SEO comme en GEO, puisque les calculs vivent à l'écran (constaté à la recette réelle C8, 2026-09-25 ; checklist P7).
 
 **Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P1), réservée par C0, livrée par C2. **Amendée à la livraison :** l'épopée prévoyait un recalcul par le serveur ; les calculs vivent à l'écran, c'est donc le score affiché qui est enregistré avec son texte.
 
@@ -3143,12 +3149,13 @@ Des liens posés au jugé, sur des mots qui se ressemblent, ne suivent pas la lo
 - L'utilisateur applique ou rejette chaque suggestion ; appliquer pose le lien dans l'éditeur et l'enregistre dans le réseau de liens du cocon.
 - Le lien posé depuis la sélection (action « lien interne », cf. `FR-RED-CONTEXTUAL-ACTIONS`) est le même que celui du panneau et il est enregistré de la même façon.
 - À la publication, chaque lien vers un article pas encore publié — posé dans le texte ou enregistré dans le réseau de liens — est signalé 🟠 : tant que la cible n'est pas en ligne, le lien est cassé pour le lecteur (cf. `FR-RED-PUBLISH-GATE`).
+- Le réseau de liens suit le texte : chaque fois que le texte de l'article est enregistré, un lien qui n'y figure plus en sort. Un lien retiré dans l'éditeur ne reste donc ni dans la matrice du maillage ni dans les alertes de la publication. Enregistrer seulement le sommaire ne touche pas au réseau.
 
 **Limites connues**
 - Un parent ne propose un lien vers un enfant que si le titre ou le mot-clé de l'enfant apparaît dans son texte. Le résumé de la passe « Résumer » se termine par une phrase qui cite l'enfant, ce qui rend l'ancre possible (cf. `FR-RED-ENRICH-PASSES`).
-- Retirer un lien de l'éditeur ne le retire pas du réseau de liens : la publication peut encore signaler un lien vers un article non publié qui n'est plus dans le texte.
+- ~~Retirer un lien de l'éditeur ne le retire pas du réseau de liens : la publication peut encore signaler un lien vers un article non publié qui n'est plus dans le texte.~~ Soldé le 2026-09-25 (commit `1388cbf`, révélé par la recette réelle C8) : le réseau suit le texte enregistré.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-INTERNAL-LINKING`. **Source :** épopée qualité SEO, réservée par C0, non livrée par C5b, livrée par C7. **Amendée à la livraison :** la famille est proposée pour tout parent et tout enfant, pas seulement pour le pilier ; l'ancre est prise dans le texte (titre ou mot-clé de l'enfant), la section n'étant citée que dans la raison ; les suggestions par mots communs restent, après la famille.
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-INTERNAL-LINKING`. **Source :** épopée qualité SEO, réservée par C0, non livrée par C5b, livrée par C7. **Amendée à la livraison :** la famille est proposée pour tout parent et tout enfant, pas seulement pour le pilier ; l'ancre est prise dans le texte (titre ou mot-clé de l'enfant), la section n'étant citée que dans la raison ; les suggestions par mots communs restent, après la famille. **Amendée le 2026-09-25 (recette réelle C8, commit `1388cbf`)** : le réseau de liens suit le texte enregistré — la publication du pilier de la recette signalait un « lien vers un article non publié » disparu du texte depuis longtemps.
 
 > **En situation.** L'intermédiaire « Auditer son site web » vient d'être publié. Arnaud ouvre le pilier et clique « Suggérer des liens » : en tête, « Article enfant (section « Audit de site ») », ancre « auditer son site web », prise dans la dernière phrase du résumé. Il l'applique. Un second enfant, « Choisir son hébergeur », est aussi proposé, avec la mention « pas encore publié » : s'il pose ce lien, la publication du pilier le lui rappellera (🟠).
 
@@ -3365,6 +3372,7 @@ Dans la vue workflow guidée (la version assistée de la rédaction), un panneau
 Endpoint `POST /api/content-gap/analyze`. Scrape top 10 → identifie topics manquants → suggestions de gaps. Stockage `keyword_metrics.content_gap_analysis`.
 **Consommée par** : `LieutenantsPanel.vue`, `LieutenantCard.vue`, `LieutenantProposals.vue`, `ContentGapPanel.vue` (Moteur).
 **Source :** `server/routes/content-gap.routes.ts` — `server/services/article/content-gap.service.ts`.
+**Limite, choix produit à trancher** *(relevé par T3, 2026-09-25 ; checklist M22)* : un thème ne compte « présent dans l'article » que si son libellé entier y figure tel quel, casse ignorée (`presentInArticle`, `content-gap.service.ts:185,210`) — un texte qui parle de tarifs et de devis séparément ne couvre pas le thème « tarifs et devis ». Reconnaître un thème à ses mots, ou par l'IA, reste à décider.
 
 #### ~~FR-EXP-AUDIT~~ — DEPRECATED 2026-05-10
 ~~Audit batch keywords d'un cocon via `POST /api/keywords/audit`. Composants `KeywordAuditTable.vue`, `KeywordComparison.vue`.~~ La route subsiste côté backend (utilisée par `EnginePhase.vue` orphelin) mais n'est plus appelée par aucun composant Vue actif. Dette à nettoyer dans un chantier ultérieur de retrait des composants `production/`.
@@ -4231,6 +4239,11 @@ Deuxième invariant essentiel pour l'utilisateur : **les panels IA sont visibles
 - Une fois le résultat affiché, l'utilisateur peut relancer l'IA via un bouton de régénération qui réutilise le même mécanisme de confirmation/streaming.
 - L'aspect et le comportement de ces panels restent cohérents entre onglets : refactor d'un comportement de panel dans un onglet ne doit pas casser la cohérence du même comportement dans les autres.
 
+**Limites connues**
+- Le panneau d'analyse du brief de la Rédaction guidée (cf. `FR-RED-IA-BRIEF`) ne suit pas encore ce modèle : il est fait à part, sans la structure commune, et n'a pas d'état « erreur » — une analyse qui échoue ne le dit pas dans le panneau (épopée qualité SEO, relevé par T2, checklist U4). Les panels des cinq onglets du Moteur, eux, sont vérifiés.
+
+**Statut :** active. **Précisée le 2026-09-25 (épopée qualité SEO, T2)** : écart de la Rédaction consigné ; son test reste ignoré tant que le panneau n'est pas refait.
+
 > **En situation.** L'utilisateur ouvre l'onglet Lexique d'un article fraîchement promu en phase Moteur, sans avoir encore extrait son lexique. Le panel IA est là, visible, mais son bouton « Extraire les termes » est grisé avec le message « Verrouille d'abord ton Capitaine pour extraire le lexique ». L'utilisateur comprend instantanément la dépendance — il revient sur le Capitaine, verrouille, et le bouton du panel Lexique devient cliquable sans qu'il ait à recharger ou à passer par une animation d'apparition. Plus tard, sur le même article, il bascule sur le panel IA Lieutenants : même structure (titre, bouton de déclenchement, état, zone de rendu), même rythme d'interaction. Pas besoin de réapprendre, l'IA Moteur parle un langage cohérent partout. Si un développeur ajoute demain un 7ᵉ panel IA dans le Moteur, l'utilisateur doit pouvoir le manipuler sans manuel d'utilisation, simplement parce qu'il a déjà manipulé les 6 autres.
 
 → Conception : [DESIGN-UI-AI-PANELS-PATTERN](./design-registry.md#design-ui-ai-panels-pattern)
@@ -4869,7 +4882,7 @@ Un test qui ne tente jamais l'action interdite ne prouve pas qu'elle est interdi
 - Les parcours varient leurs choix : pas toujours la première option ; décocher, recharger, revenir en arrière, panne d'un service.
 - En mode réel, le parcours passe le texte produit dans les mêmes vérificateurs que la vérification du projet.
 
-**Statut :** active, livrée en partie. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0 ; les deux premiers critères sont livrés par C2, les deux derniers suivront avec les chantiers C5 à C8.
+**Statut :** active, livrée en partie. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0 ; les deux premiers critères sont livrés par C2, les deux derniers suivront avec les chantiers C5 à C8. **Le 2026-09-25 (checklists T2, T3, commit `8bc3aa1`)** : le deuxième critère est resserré — des 40 tests ignorés, il n'en reste qu'un, qui nomme le défaut qu'il attend (`FR-UI-AI-PANELS-PATTERN`) ; les assertions toujours vraies des tests contre serveur et des tests fonctionnels sont devenues des valeurs exactes ; celles qui restent (6 « ≥ 0 », 1 « est un booléen ») sont dans les tests navigateur. **Le 2026-09-25 (recette réelle C8)** : le texte d'un pilier produit en mode réel a été passé dans la porte de publication (0 alerte, 0 dérogation) et dans l'audit de contenu (`npm run verify:content`, 0 erreur) ; c'était un contrôle de recette, pas encore une étape d'un parcours automatique.
 
 > **En situation.** Le test tente de verrouiller un capitaine que personne ne cherche. L'alarme 🔴 s'ouvre. Il écrit « trop court » : le bouton reste grisé et le compteur affiche « 10 / 20 ». Il écrit une vraie raison : le capitaine se verrouille et la raison est enregistrée. Il change ensuite les données du mot-clé et verrouille à nouveau : l'alarme revient, car l'ancienne dérogation ne couvre plus ces données.
 
@@ -5435,6 +5448,11 @@ Au 2026-09-25 : 39 prompts à la racine de `server/prompts/` (dont `system-propu
 | FR-RED-DRAFT-SINGLE-PASS | amendée (les paragraphes ne sont plus fusionnés ; limite retirée) | epic-qualite-seo-garde-fous (checklist R14, commit `3238a5f`) | 2026-09-25 |
 | FR-LEX-METIER-ONLY | amendée (les explorations enregistrées avant la règle sont filtrées à la relecture) | epic-qualite-seo-garde-fous (checklist M16, commit `e490437`) | 2026-09-25 |
 | NFR-MAIN-TESTS-PLAYWRIGHT, NFR-CFG-PORT-PREFLIGHT | amendées (base propre aux tests navigateur, recréée avant chaque passage) | epic-qualite-seo-garde-fous (checklist T10, commit `9ac5281`) | 2026-09-25 |
+| FR-RED-DRAFT-TO-SOURCE | amendée (le serveur transforme toute phrase chiffrée sans source du premier jet en passage « à sourcer ») | epic-qualite-seo-garde-fous (recette C8, commit `8d1bac2`) | 2026-09-25 |
+| FR-RED-LINKING-MANUAL | amendée (le réseau de liens suit le texte enregistré ; limite retirée) | epic-qualite-seo-garde-fous (recette C8, commit `1388cbf`) | 2026-09-25 |
+| FR-LEX-MULTI-KEYWORD | corrigée (« Tester un mot-clé » reste ouvert quand des termes sont retenus) | epic-qualite-seo-garde-fous (T2, commit `20e4aa9`) | 2026-09-25 |
+| FR-UI-AI-PANELS-PATTERN, FR-RED-SEO-SCORE-PERSIST | précisées (panneau IA du brief hors modèle, U4 ; mode automatique sans score, P7) | epic-qualite-seo-garde-fous (T2, recette C8) | 2026-09-25 |
+| NFR-TEST-BEHAVIORAL | avancée (T2, T3 : un seul test ignoré, assertions exactes côté serveur ; recette C8 : texte réel passé dans les vérificateurs) | epic-qualite-seo-garde-fous (commit `8bc3aa1`, recette C8) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 
