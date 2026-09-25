@@ -37,6 +37,8 @@ export interface LocalEntity {
   name: string
   type: LocalEntityType
   aliases?: string[]
+  /** La zone que l'entité décrit ; absente : celle du référentiel par défaut (ses entités « region »). */
+  region?: string
 }
 
 export interface EntityMatch {

@@ -19,9 +19,13 @@ vi.mock('../../../server/services/strategy/theme-config.service', () => ({
   getThemeConfig: async () => ({ avatar: { location: 'Bordeaux, France' } }),
 }))
 vi.mock('../../../server/services/infra/local-entities.service', () => ({
+  // Le référentiel décrit Bordeaux ; un quartier toulousain rattaché à sa
+  // région ne doit pas passer (D5).
   getEntities: async () => [
+    { name: 'Bordeaux', type: 'region', aliases: [] },
     { name: 'Chartrons', type: 'quartier', aliases: [] },
     { name: 'Gironde', type: 'region', aliases: [] },
+    { name: 'Blagnac', type: 'quartier', aliases: [], region: 'Toulouse' },
   ],
 }))
 

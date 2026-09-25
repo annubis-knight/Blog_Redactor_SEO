@@ -143,6 +143,7 @@ describe('loadPrompt — variables globales (couche contexte)', () => {
   it('fournit la zone depuis la configuration et les repères depuis local_entities', async () => {
     mockGetThemeConfig.mockResolvedValueOnce({ avatar: { location: 'Bordeaux, France' } })
     mockGetEntities.mockResolvedValueOnce([
+      { name: 'Bordeaux', type: 'region', aliases: [] },
       { name: 'Chartrons', type: 'quartier', aliases: [] },
       { name: 'Gironde', type: 'region', aliases: [] },
       { name: 'Miroir d’eau', type: 'lieu', aliases: [] },
