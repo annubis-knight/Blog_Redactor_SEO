@@ -212,7 +212,7 @@ export async function* streamChatCompletionMock(
   }
 
   // Sentinel final (même format que Claude/Gemini/OpenRouter)
-  const usage = makeUsage(Math.floor(text.length / 4), Math.floor(text.length / 4))
+  const usage = { ...makeUsage(Math.floor(text.length / 4), Math.floor(text.length / 4)), stopReason: 'end' as const }
   yield `${USAGE_SENTINEL_LOCAL}${JSON.stringify(usage)}`
 }
 

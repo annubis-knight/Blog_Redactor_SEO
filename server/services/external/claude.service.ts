@@ -20,7 +20,14 @@ export interface ApiUsage {
   cacheCreationTokens: number
   model: string
   estimatedCost: number
+  /**
+   * Pourquoi le modèle s'est arrêté (flux seulement) : `max_tokens` = coupé au
+   * plafond, le texte est incomplet (FR-RED-DRAFT-SINGLE-PASS).
+   */
+  stopReason?: StopReason
 }
+
+export type StopReason = 'end' | 'max_tokens' | 'other'
 
 // Pricing per million tokens
 const PRICING: Record<string, { input: number; output: number }> = {
@@ -123,6 +130,13 @@ export const WEB_SEARCH_TOOL = {
  *   are yielded; server tool blocks (web_search_tool_result) stay server-side
  *   but Claude's synthesized text response is streamed normally.
  */
+/** Raison d'arrêt de Claude, ramenée aux trois cas utiles. */
+function toStopReason(reason: string | null | undefined): StopReason {
+  if (reason === 'max_tokens') return 'max_tokens'
+  if (reason === 'end_turn' || reason === 'stop_sequence') return 'end'
+  return 'other'
+}
+
 export async function* streamChatCompletion(
   systemPrompt: string,
   userPrompt: string,
@@ -187,12 +201,14 @@ export async function* streamChatCompletion(
     cacheCreationTokens,
     model,
     estimatedCost: calculateCost(model, finalMessage.usage.input_tokens, finalMessage.usage.output_tokens, cacheReadTokens, cacheCreationTokens),
+    stopReason: toStopReason(finalMessage.stop_reason),
   }
   log.info(`Claude API stream done`, {
     ms: Date.now() - start, chunkCount,
     inputTokens: usage.inputTokens, outputTokens: usage.outputTokens,
     cacheRead: cacheReadTokens, cacheCreation: cacheCreationTokens,
     cost: `$${usage.estimatedCost.toFixed(4)}`,
+    stopReason: usage.stopReason,
   })
   yield `${USAGE_SENTINEL}${JSON.stringify(usage)}`
 }

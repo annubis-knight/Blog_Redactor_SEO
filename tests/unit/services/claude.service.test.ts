@@ -13,7 +13,7 @@ vi.mock('@anthropic-ai/sdk', () => ({
 
 import { streamChatCompletion } from '../../../server/services/external/claude.service'
 
-function createMockStream(events: unknown[]) {
+function createMockStream(events: unknown[], stopReason = 'end_turn') {
   return {
     async *[Symbol.asyncIterator]() {
       for (const event of events) {
@@ -22,8 +22,15 @@ function createMockStream(events: unknown[]) {
     },
     finalMessage: vi.fn().mockResolvedValue({
       usage: { input_tokens: 150, output_tokens: 250 },
+      stop_reason: stopReason,
     }),
   }
+}
+
+async function usageOf(stream: AsyncGenerator<string>): Promise<Record<string, unknown>> {
+  let usage = ''
+  for await (const chunk of stream) if (chunk.startsWith('__USAGE__')) usage = chunk.slice('__USAGE__'.length)
+  return JSON.parse(usage) as Record<string, unknown>
 }
 
 beforeEach(() => {
@@ -31,6 +38,15 @@ beforeEach(() => {
 })
 
 describe('claude.service — streamChatCompletion', () => {
+  // FR-RED-DRAFT-SINGLE-PASS — une coupure au plafond de jetons se voyait
+  // seulement après coup (bloc tronqué) : la raison d'arrêt est désormais lue.
+  it('remonte la raison d’arrêt : fin normale ou plafond de jetons', async () => {
+    mockStreamFn.mockReturnValueOnce(createMockStream([]))
+    expect((await usageOf(streamChatCompletion('s', 'u'))).stopReason).toBe('end')
+    mockStreamFn.mockReturnValueOnce(createMockStream([], 'max_tokens'))
+    expect((await usageOf(streamChatCompletion('s', 'u'))).stopReason).toBe('max_tokens')
+  })
+
   it('yields text chunks from Claude stream events', async () => {
     mockStreamFn.mockReturnValueOnce(createMockStream([
       { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Hello' } },
