@@ -514,7 +514,6 @@ defineExpose({ hydrateFromDb, mergeFromDb })
         v-if="displayedTabId === '__custom__'"
         :custom-keyword-input="customKeywordInput"
         :is-loading="isLoading"
-        :is-locked="isLocked"
         @update:custom-keyword="(v) => customKeywordInput = v"
         @extract-custom="extractCustomKeyword"
       />

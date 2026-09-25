@@ -152,7 +152,9 @@ const SOFT_LIMITS = {
   //   obsolètes retirés (verrouillage par lot, onglets du journal des coûts,
   //   Export, JSON migrés…), valables réécrits sur le code actuel. Restent 2
   //   bugs réels, ignorés avec `// SKIP: <exigence>` (40 → 2).
-  itSkip: 2,                       // it.skip / test.skip / describe.skip
+  // 2026-09-25 — FR-LEX-MULTI-KEYWORD corrigé (« Tester un mot-clé » ne se
+  //   grise plus quand des termes sont retenus) : son test reprend (2 → 1).
+  itSkip: 1,                       // it.skip / test.skip / describe.skip
   // 2026-09-24 — épopée qualité SEO (C1, cliquet des faux verts) : trois formes
   // d'assertion qui passent quoi qu'il arrive, figées à leur niveau du jour.
   //   - `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur : toujours vrai ;

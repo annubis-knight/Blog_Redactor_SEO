@@ -246,8 +246,7 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
 
   // 2026-09-25 (épopée qualité SEO, C2 · T2) : réécrit dans le sens de
   // l'exigence (le test d'origine attendait un champ bloqué par le verrou).
-  // SKIP: FR-LEX-MULTI-KEYWORD LexiqueCustomKeywordInput.vue désactive le champ et « Extraire » dès qu'un terme est retenu (`isLoading || isLocked`) : on ne peut plus tester un autre mot-clé après avoir coché — bug du code produit, retirer le skip une fois corrigé.
-  it.skip('« Tester un mot-clé » reste ouvert quand des termes sont déjà retenus (FR-LEX-MULTI-KEYWORD)', async () => {
+  it('« Tester un mot-clé » reste ouvert quand des termes sont déjà retenus (FR-LEX-MULTI-KEYWORD)', async () => {
     mockKeywords.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['garantie'] }
     const wrapper = mountLexique()
     await flushPromises()
