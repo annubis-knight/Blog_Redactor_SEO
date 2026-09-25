@@ -114,10 +114,12 @@ describe('Variables de prompt', () => {
   })
 
   it('les actions contextuelles attendent toutes selectedText et keywordInstruction, rien d’autre', () => {
+    // Hors variables globales ({{year}}…), fournies par le chargeur lui-même.
     const dir = join(ROOT, 'server/prompts/actions')
     for (const file of readdirSync(dir).filter(f => f.endsWith('.md'))) {
       const { variables } = templateKeys(readFileSync(join(dir, file), 'utf8'))
-      expect(variables.sort(), file).toEqual(['keywordInstruction', 'selectedText'])
+      const own = variables.filter(k => !(PROMPT_GLOBALS as readonly string[]).includes(k))
+      expect(own.sort(), file).toEqual(['keywordInstruction', 'selectedText'])
     }
   })
 })

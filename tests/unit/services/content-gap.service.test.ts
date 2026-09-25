@@ -13,6 +13,11 @@ vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({
   isKeywordMetricsFresh: (...args: unknown[]) => mockIsFresh(...args),
 }))
 
+// Zone du client (theme_config) : pas de base en test unitaire.
+vi.mock('../../../server/services/strategy/prompt-context.service', () => ({
+  loadZoneContext: async () => ({ zone: 'Nantes, France', landmarks: '' }),
+}))
+
 vi.mock('../../../server/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))

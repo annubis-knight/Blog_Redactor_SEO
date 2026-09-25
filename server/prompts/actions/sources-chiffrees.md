@@ -8,7 +8,7 @@ Tu dois GÉNÉRER un bloc HTML "Sources chiffrées" qui appuie avec des chiffres
 {{keywordInstruction}}
 
 ## Ta mission
-1. Utilise l'outil `web_search` pour trouver **2 à 3 sources récentes (2023-2026)** qui contiennent des statistiques, chiffres ou données vérifiables en lien direct avec le contexte ci-dessus.
+1. Utilise l'outil `web_search` pour trouver **2 à 3 sources récentes (publiées en {{year}} ou dans les trois années précédentes)** qui contiennent des statistiques, chiffres ou données vérifiables en lien direct avec le contexte ci-dessus.
 2. Privilégie des sources de qualité : instituts (INSEE, Eurostat, OCDE), études sectorielles (McKinsey, BCG, Deloitte), baromètres reconnus (HubSpot, Statista, Semrush), médias économiques sérieux.
 3. Extrait les chiffres les plus pertinents qui **viennent valider quantitativement** ce que dit le paragraphe.
 4. Pour CHAQUE source, garde l'URL exacte retournée par la recherche web.

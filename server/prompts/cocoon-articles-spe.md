@@ -111,7 +111,7 @@ Le champ `painPoint` doit décrire le **problème concret** que le lecteur cherc
 Choisis exactement **une** des 4 valeurs suivantes selon le type de réponse que l'article doit apporter :
 
 - `"informational"` : article qui explique, guide, éduque (« Comment faire X », « Guide débutant Y », « Comprendre Z »). C'est le défaut pour la plupart des Spécialisés.
-- `"commercial"` : comparatif, sélection, recommandation (« Meilleur X 2026 », « Comparatif X vs Y », « Top 10 Z »).
+- `"commercial"` : comparatif, sélection, recommandation (« Meilleur X {{year}} », « Comparatif X vs Y », « Top 10 Z »).
 - `"transactional"` : pousse directement à l'action ou la conversion (« Acheter X », « Réserver X », « Tarifs X »). Très rare en Spécialisé éditorial.
 - `"navigational"` : page produit/marque précise. Quasi inexistant pour les Spécialisés.
 

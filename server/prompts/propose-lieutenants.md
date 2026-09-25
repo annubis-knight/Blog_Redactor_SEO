@@ -35,7 +35,7 @@ NOTE : Si aucun heading n'atteint une recurrence elevee, cela signifie que les c
 {{hn_recurrence}}
 
 ### B. Donnees SERP des mots-cles racine (POIDS REDUIT — intention potentiellement differente)
-Ces donnees proviennent de l'analyse SERP de variantes plus courtes du Capitaine (ex: "creation site web" au lieu de "creation site web entreprise toulouse").
+Ces donnees proviennent de l'analyse SERP de variantes plus courtes du Capitaine (ex: "creation site web" au lieu de "creation site web entreprise [ville]").
 **ATTENTION** : Ces mots-cles racine etant plus generiques, ils peuvent exprimer une intention de recherche differente. Les donnees ci-dessous doivent etre PONDEREES A LA BAISSE :
 - Un heading recurrent sur un mot-cle racine ne vaut PAS autant qu'un heading recurrent sur le Capitaine
 - Une PAA de mot-cle racine est utile comme signal complementaire, mais pas comme source principale
@@ -69,21 +69,21 @@ Veille a proposer un mix equilibre de lieutenants couvrant differentes intention
 Ne force pas ce mix — si les donnees SERP ne soutiennent qu'un type d'intention, c'est OK.
 
 #### SEO Local — Regle de l'Entonnoir geographique (CRITIQUE)
-Si le mot-cle Capitaine contient un nom de ville/region (ex: "Toulouse", "Lyon", "Bordeaux"), applique la REGLE DE L'ENTONNOIR : plus le niveau d'article descend (Pilier → Intermediaire → Specifique), plus les lieutenants doivent etre EPURES des mentions geographiques directes.
+Si le mot-cle Capitaine contient un nom de ville/region (ex: "[ville]", "[region]"), applique la REGLE DE L'ENTONNOIR : plus le niveau d'article descend (Pilier → Intermediaire → Specifique), plus les lieutenants doivent etre EPURES des mentions geographiques directes.
 
 **INTERDIT** : Proposer 3+ lieutenants qui contiennent tous le meme nom de ville. C'est du bourrage de mots-cles qui cree de la cannibalisation interne et des titres H2 lourds et repetitifs.
 
 **Par niveau d'article :**
-- **Pilier (N2)** : Maximum 1-2 lieutenants sur le pool total peuvent contenir le nom de ville. Les autres doivent couvrir des THEMATIQUES (services, methodes, benefices) sans repetition geographique. Prefere des entites larges ("Haute-Garonne", "Occitanie", "Sud-Ouest") plutot que de repeter la ville.
+- **Pilier (N2)** : Pas plus de lieutenants avec le nom de ville que de H2 autorises a le citer (voir les regles du type). Les autres doivent couvrir des THEMATIQUES (services, methodes, benefices) sans repetition geographique. Prefere des entites larges (le departement, la region) plutot que de repeter la ville.
 - **Intermediaire (N3)** : ZERO mention directe de la ville dans les lieutenants. L'article herite du poids local du Pilier via le maillage interne. Utilise des termes de methodologie, comparaison, ou benefices sans localisation. Si un ancrage est utile, prefere "local", "proximite", "bassin [region]".
 - **Specifique (N4)** : ZERO localisation dans les lieutenants. L'ancrage local sera assure dans le CORPS du texte par des references hyper-locales (quartiers, zones economiques, evenements locaux), PAS dans les mots-cles eux-memes.
 
 **Signaux locaux subtils (prefere ces approches a la repetition brute) :**
 - Citer des quartiers ou zones economiques specifiques (au lieu de repeter la ville)
-- Utiliser le vocabulaire metier local ("artisans du bassin toulousain" au lieu de "artisans Toulouse")
+- Utiliser le vocabulaire metier local ("artisans du bassin [ville]" au lieu de "artisans [ville]")
 - Mentionner des enjeux locaux concrets au lieu d'un simple adjectif geographique
 
-**Scoring** : Un lieutenant qui ne fait qu'ajouter un nom de ville a un terme generique (ex: "prix site web Toulouse" quand le capitaine est "creation site web Toulouse") doit recevoir un malus de score (-15 a -25 points) car il cannibalise le capitaine sans apporter d'angle distinct.
+**Scoring** : Un lieutenant qui ne fait qu'ajouter un nom de ville a un terme generique (ex: "prix site web [ville]" quand le capitaine est "creation site web [ville]") doit recevoir un malus de score (-15 a -25 points) car il cannibalise le capitaine sans apporter d'angle distinct.
 
 #### Formulation naturelle
 Chaque lieutenant doit etre formule comme une requete que quelqu'un taperait reellement sur Google (2-5 mots, langage naturel). Utilise les termes que l'audience cible emploie reellement dans ses recherches — pas du jargon administratif ou technique qu'elle n'utilise pas.
