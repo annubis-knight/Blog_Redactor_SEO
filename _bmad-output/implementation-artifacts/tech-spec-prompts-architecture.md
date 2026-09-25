@@ -1,13 +1,13 @@
 ---
 name: tech-spec-prompts-architecture
 type: tech-spec
-status: in-progress
-version: 0.1.0
+status: done
+version: 1.0.0
 last_updated: 2026-09-25
 synced_with:
   - _bmad-output/implementation-artifacts/epic-qualite-seo-garde-fous.md (chantier C4 ; K5, K7, R11, M10, D1-D3, M14, M15, M17, T11)
-  - _bmad-output/planning-artifacts/prd.md (FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT, FR-INFRA-PROMPT-LOADER)
-  - _bmad-output/planning-artifacts/design-registry.md (DESIGN-INFRA-PROMPT-LOADER, DESIGN-INFRA-PROMPT-LAYERS, DESIGN-INFRA-TYPE-RULES-SSOT)
+  - _bmad-output/planning-artifacts/prd.md (FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT ; amendées : FR-INFRA-PROMPT-LOADER, FR-LEX-METIER-ONLY, FR-RED-CONTEXTUAL-ACTIONS)
+  - _bmad-output/planning-artifacts/design-registry.md (DESIGN-INFRA-PROMPT-LOADER, DESIGN-INFRA-PROMPT-LAYERS, DESIGN-INFRA-TYPE-RULES-SSOT, DESIGN-LEX-METIER-ONLY)
   - docs/prompts-reference.md (généré), docs/prompts-architecture.md, docs/testing-guide.md
 ---
 
@@ -122,3 +122,47 @@ Test Red (`tests/unit/coherence/prompts-no-hardcoded.test.ts`) : aucun `20\d\d` 
 ## Vérification
 
 `npm run verify`, `npm run test:check`, `npm run test:browser` sur Cerveau / Moteur / Rédaction (les fixtures simulées reconnaissent les prompts à des phrases : toute phrase retouchée doit rester reconnue).
+
+## Livré (2026-09-25)
+
+Branche `refactor/prompts-architecture`, PR à ouvrir. Exigences versées au PRD et au registre : `FR-INFRA-PROMPT-LAYERS`, `FR-INFRA-TYPE-RULES-SSOT` ; amendées : `FR-INFRA-PROMPT-LOADER`, `FR-LEX-METIER-ONLY`, `FR-RED-CONTEXTUAL-ACTIONS`.
+
+### Commits par lot
+
+| Lot | Commit | Contenu |
+|---|---|---|
+| L1 + L2 | `e2f7fb3` refactor(prompts): chaque prompt reçoit exactement les variables qu'il attend | Chargeur strict, variables globales, `strategy-prompts.service.ts`, corrections au passage, trois prompts morts supprimés ; cette tech-spec |
+| L3 | `3c4e1f8` refactor(regles): une seule définition du pilier, de l'intermédiaire et du spécialisé | `article-type-rules.ts` seule table, `{{type_rules}}`, consommateurs branchés ; tech-spec complétée |
+| L4 | `17d8efd` fix(prompts): ni année ni lieu écrits en dur, des exemples qu'on ne peut pas recopier | `{{today}}`, `{{year}}`, `{{zone}}`, `{{zone_landmarks}}` ; exemples d'un autre métier |
+| L5 | `d21a65a` docs(prompts): la référence des prompts est générée et vérifiée | `npm run docs:prompts`, `docs/prompts-architecture.md`, `testing-guide.md` §4 |
+| L6 | `16e481a` fix(lexique,pertinence): les restes du lexique et du scoring rattachés à C4 | M15, M14, T11, M17 (requalifiée), en-têtes `AUTHORITY:` |
+
+CI GitHub verte sur L1-L3 (commit `3c4e1f8`). Suite unitaire et fonctionnelle complète verte en local (397 fichiers).
+
+### Tests
+
+- `tests/unit/utils/prompt-template.test.ts` (L1) — rendu en une passe, mode strict, globales.
+- `tests/unit/architecture/prompt-variables.test.ts` (L1-L2) — chaque appel `loadPrompt` du serveur fournit exactement les repères de son `.md`.
+- `tests/unit/services/strategy-prompts.service.test.ts` (L2) — chaque modèle du Cerveau rendu avec les vraies variables de sa route.
+- `tests/unit/coherence/type-rules-ssot.test.ts` (L3).
+- `tests/unit/coherence/prompts-no-hardcoded.test.ts` (L4).
+- `tests/unit/architecture/prompts-reference.test.ts` (L5).
+- `tests/unit/components/article-keywords-panel-lexique.test.ts`, `tests/unit/routes/lexique-suggest.routes.test.ts` (M15) ; `tests/unit/coherence/intent.test.ts` (T11) ; `tests/unit/services/captain-relevance-haiku-override.service.test.ts` (M14).
+
+### Écarts avec le plan
+
+- **M17 requalifiée** : seule la copie exacte `src/constants/french-nlp.ts` est supprimée (ses lecteurs lisent `shared/utils/keyword-roots.ts`). Les autres listes de mots vides servent un autre but : le filtre du lexique écarte « créer », « comment », « combien », qui sont du bruit dans un lexique mais du sens dans un mot-clé. Les aligner sur `generic-terms.ts` aurait dégradé les racines du Radar et la couverture SEO.
+- **Pas d'`escapeKeys` sur le texte des réponses de stratégie** : c'est le texte de l'utilisateur lui-même, et le rendu en une passe ferme déjà les deux trous (`{{…}}` réinterprété, motifs `$`). Le texte de l'article envoyé à la méta, lui, est échappé.
+- **Pas de règle de nombre de FAQ** : aucune n'existe dans le code ; elle viendra avec la passe FAQ (C5). Le critère « FAQ » de `FR-INFRA-TYPE-RULES-SSOT` est amendé en ce sens.
+- **`{{cocoon_context}}` (état du cocon) reporté en C7**, avec `FR-INFRA-COCOON-CONTEXT` et son service.
+- **`strategy-merge.md` non modifié** : la section `{{#articleTitle}}` prévue en L2 n'a pas été nécessaire ; le modèle affiche « Sujet », le nom du cocon y est à sa place (test « fusion au niveau cocon : le sujet est le cocon »).
+- **Tests de L1** : écrits dans `tests/unit/utils/prompt-template.test.ts` (et non `prompt-loader.test.ts`, seulement ajusté).
+- **M15 sans porte** : la Rédaction filtre les termes génériques à l'ajout et dans la suggestion, mais n'évalue pas la porte `lexique-lock` (elle n'a pas d'étape « Lexique validé ») ; la publication la rejoue.
+- **R1 en partie** : le budget de la section est transmis au prompt (`{{sectionBudgetHint}}`) ; la rédaction section par section elle-même est revue en C5.
+
+### Découvert en documentant
+
+- Le registre affirmait que `loadPrompt` traitait déjà les blocs `{{#conditional}}` (il ne faisait qu'un `replaceAll` par variable), et plaçait `buildMicroContextBlock` et `buildThemeContextBlock` dans `prompt-loader.ts` (ils sont dans `server/routes/generate/_helpers.ts` et `server/services/strategy/strategy-prompts.service.ts`) ; `DESIGN-CER-THEME-CONFIG` disait que les prompts relisaient `theme_config` en base, alors que le Cerveau reçoit une copie envoyée par l'écran. Corrigé dans le registre.
+- `FR-RED-CONTEXTUAL-ACTIONS` listait encore l'action « localiser », sortie de l'éditeur le 2026-04-16 : amendée (11 actions).
+- Des consignes restent écrites dans le code, hors `.md` (`keywords.routes.ts`, `content-gap.service.ts`, `target-word-count.service.ts`…) : consigné comme limite dans `DESIGN-INFRA-PROMPT-LAYERS`.
+- **`{{zone_landmarks}}` n'est pas trié par zone** : `loadZoneContext` renvoie tout le référentiel `local_entities`, qui décrit Toulouse. Un client à Bordeaux reçoit la bonne zone mais des repères toulousains ; le test « client à Bordeaux » simule les entités et ne le voit pas. L'« En situation » de `FR-INFRA-PROMPT-LAYERS` est réécrite pour rester vraie ; limite consignée au PRD, au registre et en checklist (D5).

@@ -310,18 +310,18 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Refs code**
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — endpoints `GET / PUT /api/articles/:id/micro-context`.
-- [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — helper `buildMicroContextBlock()` qui injecte le micro-contexte dans les prompts via `{{microContext}}`.
+- [server/routes/generate/_helpers.ts:338](../../server/routes/generate/_helpers.ts) — helper `buildMicroContextBlock(microCtx)` qui met en forme le micro-contexte pour `{{microContext}}` (rédaction, `article.routes.ts:86-87`) ; le sommaire et l'explication du brief construisent le même bloc en ligne, sans la longueur cible (`outline.routes.ts:52-54`, `brief-explain.routes.ts:34`). *(Corrigé le 2026-09-25, C4 : ce registre plaçait le helper dans `server/utils/prompt-loader.ts`.)*
 
 **Persistance**
 - Table `article_micro_contexts(article_id PK FK articles, angle, tone, directives, target_word_count)` — cf. `DESIGN-INFRA-MICRO-CONTEXTS`.
 - 1 ligne par article, optionnelle.
 
 **Consommateurs des prompts**
-- Rédaction : `generate-outline.md`, `generate-article-section.md`, `generate-meta.md`.
+- Rédaction : `generate-outline.md`, `generate-article-section.md`, `brief-ia-panel.md` (repère `{{microContext}}` ; `generate-meta.md` ne le cite pas — corrigé le 2026-09-25 d'après la référence générée des prompts).
 
 **Flux DB**
 
-*Lecture* : à l'ouverture du panneau « Brief & Structure » de la Rédaction, fetch direct de la ligne `article_micro_contexts` correspondante. La valeur est aussi relue côté backend lors de chaque appel de prompt IA via `loadPrompt()` — `buildMicroContextBlock()` la substitue à `{{microContext}}` au moment du run.
+*Lecture* : à l'ouverture du panneau « Brief & Structure » de la Rédaction, fetch direct de la ligne `article_micro_contexts` correspondante. La valeur est aussi relue côté backend à chaque génération : la route lit la ligne (`loadArticleMicroContext(articleId)`), met en forme le bloc, puis le passe à `loadPrompt()` comme variable `microContext`.
 
 *Écriture* : chaque champ (angle / tone / directives / targetWordCount) est sauvegardé au `@blur` via `PUT /api/articles/:id/micro-context` — un upsert qui crée la ligne si absente. Le `LieutenantsPanel` du Moteur peut aussi écrire la `directive` quand l'IA propose une consigne contextuelle.
 
@@ -331,7 +331,7 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Watchers & réactivité**
 - Aucun watcher Vue actif côté front — le formulaire pousse au blur, ne réagit pas à des événements externes.
-- *Effet réactif côté backend* : à chaque appel de prompt qui inclut `{{microContext}}`, `buildMicroContextBlock()` relit la table — la dernière valeur sauvegardée est donc utilisée sans cache front, garantissant que toute modification est prise en compte au prochain run IA.
+- *Effet réactif côté backend* : chaque route qui remplit `{{microContext}}` relit la table (`loadArticleMicroContext`) — la dernière valeur sauvegardée est donc utilisée sans cache front, garantissant que toute modification est prise en compte au prochain run IA.
 
 **Voir aussi**
 - `DESIGN-CER-WORD-COUNT-RECOMMEND` (alimente le champ `targetWordCount`).
@@ -347,18 +347,21 @@ Response : { created: Article[], failed: { index, error }[] }
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — endpoint `POST /api/articles/:id/recommend-word-count`.
 - [server/services/article/target-word-count.service.ts](../../server/services/article/target-word-count.service.ts) — combinaison des 3 signaux (type base + concurrents avg + IA).
 
-**Fourchettes par niveau (statu quo)**
-- Pilier : **1800–3500** mots.
-- Intermédiaire : **1200–2500** mots.
-- Spécifique : **800–1500** mots.
+**Fourchettes et longueur visée par niveau** — lues dans `ARTICLE_TYPE_RULES` (`wordsMin`, `wordsMax`, `targetWords`), source unique depuis C4 (cf. `DESIGN-INFRA-TYPE-RULES-SSOT`) :
+- Pilier : **1800–3500** mots, visée 2500.
+- Intermédiaire : **1200–2500** mots, visée 1800.
+- Spécifique : **800–1500** mots, visée 1200.
+
+Sans données concurrentes, la base de la recommandation est la longueur visée (`computeHeuristicTarget`), et non plus le milieu des bornes (2650 / 1850 / 1150 avant C4, pour 2500 / 1800 / 1200 rédigés).
 
 **Format de réponse**
 ```
 {
   recommended: number,
-  breakdown: { typeBase, competitorsAvg, aiSuggestion, finalRecommendation, reasoning }
+  breakdown: { typeBase: { min, max, target }, competitorsAvg, aiSuggestion, finalRecommendation, reasoning }
 }
 ```
+(`typeBase.target` s'appelait `midpoint` avant C4.)
 
 **Flux DB**
 
@@ -386,7 +389,8 @@ Response : { created: Article[], failed: { index, error }[] }
 **Refs code**
 - [server/routes/strategy.routes.ts](../../server/routes/strategy.routes.ts) — endpoints `GET / PUT /api/theme-config`.
 - [src/stores/strategy/theme-config.store.ts](../../src/stores/strategy/theme-config.store.ts) — store Pinia singleton.
-- [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — helper `buildThemeContextBlock()` qui produit `{{themeContext}}`.
+- [server/services/strategy/strategy-prompts.service.ts:52](../../server/services/strategy/strategy-prompts.service.ts) — helper privé `buildThemeContextBlock(tc)` qui met en forme `{{themeContext}}` / `{{themeContextBlock}}` / `{{contextBlock}}` des prompts du Cerveau à partir du `context.themeContext` **envoyé par l'écran** (`buildThemeContext()` dans [src/components/production/BrainPhase.vue](../../src/components/production/BrainPhase.vue), construit depuis `useThemeConfigStore`). *(Corrigé le 2026-09-25, C4 : ce registre le plaçait dans `server/utils/prompt-loader.ts` et le disait relire la table ; il était dans `strategy.routes.ts` avant C4.)*
+- [server/services/strategy/prompt-context.service.ts](../../server/services/strategy/prompt-context.service.ts) — `loadZoneContext()` lit `theme_config.avatar.location` en base à chaque prompt qui cite `{{zone}}` / `{{zone_landmarks}}` (C4, cf. `DESIGN-INFRA-PROMPT-LAYERS`).
 
 **Persistance**
 - Table `theme_config(id PK = 1, data JSONB)` — singleton applicatif (1 seule ligne, ID forcé à 1).
@@ -399,7 +403,7 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Flux DB**
 
-*Lecture* : `GET /api/theme/config` lit la ligne unique de `theme_config` (id=1). Côté front, le store hydrate une fois au mount du composant configuration. Côté backend, `buildThemeContextBlock()` relit la table à chaque appel de prompt IA pour produire `{{themeContext}}` — pas de cache, la dernière valeur sauvegardée est toujours utilisée.
+*Lecture* : `GET /api/theme/config` lit la ligne unique de `theme_config` (id=1). Côté front, le store hydrate une fois au mount du composant configuration ; les prompts du Cerveau reçoivent la copie du store envoyée dans la requête (`context.themeContext`), mise en forme par `buildThemeContextBlock()`. Côté backend, seule la zone est relue en base, à chaque prompt qui cite `{{zone}}` (`loadZoneContext`, sans cache).
 
 *Écriture* : `PUT /api/theme/config` réécrit le `data` JSONB complet (le payload est mutable bloc par bloc côté front, mais persisté en une seule transaction). Pas de versionnage : la dernière sauvegarde écrase la précédente.
 
@@ -408,7 +412,7 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Watchers & réactivité**
 - Aucun watcher actif — le store est statique entre deux interactions utilisateur. La réactivité du `config` Vue suffit pour propager les modifications aux formulaires.
-- *Effet réactif côté backend* : comme pour le micro-contexte, chaque prompt IA qui inclut `{{themeContext}}` relit la DB. Toute modification de la config par l'utilisateur est donc immédiatement visible au prochain run IA, sans invalidation de cache manuelle.
+- *Effet réactif* : `{{themeContext}}` suit l'état du store au moment de la requête ; `{{zone}}` suit la base (relue à chaque prompt qui la cite). Une modification enregistrée de la config est donc visible au prochain run IA, sans invalidation de cache manuelle.
 
 **Voir aussi**
 - `DESIGN-INFRA-PROMPT-LOADER` (mécanique d'injection).
@@ -2815,7 +2819,7 @@ Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_exploration
 **Réf PRD :** [FR-LIE-GEOFUNNEL-RULE](./prd.md#fr-lie-geofunnel-rule)
 
 **Refs code**
-- [server/prompts/propose-lieutenants.md](../../server/prompts/propose-lieutenants.md) — règle textuelle dans le prompt (Pilier max 1-2 villes, autres ZÉRO).
+- [server/prompts/propose-lieutenants.md](../../server/prompts/propose-lieutenants.md) — règle textuelle dans le prompt (lignes 72-86 : pilier, pas plus de lieutenants avec la ville que de H2 autorisés à la citer ; intermédiaire, zéro). Depuis C4, le nombre de H2 qui peuvent citer la ville vient de `{{type_rules}}` (`localH2Max` : 2 pour un pilier, 0 sinon, cf. `DESIGN-INFRA-TYPE-RULES-SSOT`), et les exemples remplacent Toulouse par `[ville]`.
 
 **Flux DB** : aucun — règle de scoring intégrée au prompt IA.
 
@@ -3126,6 +3130,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - [src/components/moteur/LexiquePanel.vue](../../src/components/moteur/LexiquePanel.vue) — porte côté écran, sur le modèle des Lieutenants : `lexiqueGateBlocked` (ref `GateEvaluation | null`) ; `syncLexiqueGate` (`articleKeywordsStore.saveDecisions(id)` **puis** `useGateAlarmStore().evaluate(id, 'lexique-lock')`, verdict **silencieux**) ; `requestLexiqueGate` (sérialise les vérifications : deux cases cochées vite ne doublent pas l'étape) ; `reviewLexiqueGate` (bouton du bandeau → `ensure` → alarme) ; `requestLexiqueCheck` / `withdrawLexiqueCheck` (`check-completed` / `check-removed`, drapeau local `lexiqueCheckRequested`) ; `lexiqueGateBannerText` (première raison + « (+n autres) ») ; bandeau `data-testid="lexique-gate-banner"`, bouton `lexique-gate-review` « Voir pourquoi / décider ».
 - [src/composables/moteur/useMoteurArticleSync.ts](../../src/composables/moteur/useMoteurArticleSync.ts) — `emitCheckCompleted` passe par `gateAlarm.runThroughGate` : si le serveur refuse malgré tout (422), l'alarme « Avant de valider le lexique » (`GATE_LABELS['lexique-lock']`) s'ouvre.
 - [scripts/auto-article/heuristics/pick-lexique.ts](../../scripts/auto-article/heuristics/pick-lexique.ts) — `keep` écarte aussi tout terme `isGenericTerm` : le mode automatique ne retient jamais un terme que la porte refuserait. [scripts/auto-article/phases/moteur-valider.ts](../../scripts/auto-article/phases/moteur-valider.ts) enregistre le lexique avant de demander l'étape (`saveThenEmit`, livré en C2).
+- **Lexique de la Rédaction** *(C4, checklist M15)* : [shared/utils/generic-terms.ts:83](../../shared/utils/generic-terms.ts) `splitGenericTerms(terms)` → `{ kept, rejected }` (termes nettoyés des espaces, dédoublonnés sur `normalizeTerm`, triés par `isGenericTerm`). [src/components/keywords/ArticleKeywordsPanel.vue](../../src/components/keywords/ArticleKeywordsPanel.vue) (section « Mots-clés » de `BriefStructureStep.vue`) : `handleAddLexique` (ligne 53) refuse un terme générique sans l'ajouter et l'explique dans `lexiqueNotice` (ligne 19, `<p class="lexique-notice" role="status">` ligne 172) ; `handleSuggestLexique` (ligne 71) affiche les termes écartés. [server/routes/keywords.routes.ts](../../server/routes/keywords.routes.ts) `POST /keywords/lexique-suggest` (lignes 507-513) filtre la réponse de l'IA par `splitGenericTerms` et renvoie `{ lexique, rejected, usage }`. [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) `suggestLexique` (ligne 271) remplace le lexique par les termes gardés et renvoie `rejected`.
 
 **Règles**
 
@@ -3160,8 +3165,8 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - **Pas de n-grammes** : le TF-IDF ne propose que des mots isolés.
 - **Textes déjà enregistrés** : `getTextContent` lit `keyword_serp_scrapes.text_content` quel que soit son âge ; un nouveau scrape (avec `extractTextContent` nettoyé) n'a lieu que par `fetchAndPersist`, quand la SERP a plus de 7 jours ou n'existe pas. D'ici là, les anciens textes gardent leur décor ; le filtre du TF-IDF écarte de toute façon les mots de décor de la liste.
 - **Explorations enregistrées avant C3** : une proposition restaurée depuis `lexique_explorations.tfidf_terms` (`hydrateFromDb`, `selectExploration`) n'est pas refiltrée et peut encore montrer des mots vides ; la porte les refuse s'ils sont cochés (checklist C3 · M16).
-- **Lexique édité depuis la Rédaction** : [src/components/keywords/ArticleKeywordsPanel.vue](../../src/components/keywords/ArticleKeywordsPanel.vue) (section « Mots-clés » de `BriefStructureStep.vue`) permet l'ajout manuel, la suggestion IA (`suggestLexique` → `POST /keywords/lexique-suggest`, qui remplace le lexique du store) et l'enregistrement (`saveDecisions`) sans filtre `isGenericTerm` ni porte : seule la publication rattrape un terme générique entré par ce chemin (checklist C4 · M15).
-- **Listes de mots vides encore dispersées** : `keyword-roots`, `keyword-matcher`, `word-groups`, `long-tail`, `intent-scan`, `linking`, `seo-validators` — entre autres (`scripts/auto-article/text.ts`, `src/constants/french-nlp.ts`, `pain-point-jaccard`…) — gardent leurs propres listes, non alignées sur `generic-terms.ts` (checklist C4 · M17).
+- **Lexique édité depuis la Rédaction : filtre, pas de porte** *(limite levée en partie par C4, checklist M15)* : l'ajout manuel et la suggestion de l'IA passent désormais par `splitGenericTerms` (cf. Refs code). La Rédaction n'a pas d'étape « Lexique validé » : la porte `lexique-lock` n'y est pas évaluée, et un terme générique déjà présent dans le lexique (enregistré avant C3, par exemple) n'est rattrapé qu'à la publication.
+- **Autres listes de mots vides, volontairement distinctes** *(checklist M17, requalifiée en C4)* : la seule copie exacte, `src/constants/french-nlp.ts` (même liste que `shared/utils/keyword-roots.ts`), est supprimée ; ses lecteurs (`src/components/intent/KeywordWords.vue`, `src/composables/intent/useMultiSourceVerdict.ts`) lisent `FRENCH_STOPWORDS` de `keyword-roots`. Les autres listes (`keyword-roots`, `keyword-matcher`, `word-groups`, `long-tail`, `intent-scan`, `linking`, `seo-validators`, `scripts/auto-article/text.ts`, `pain-point-jaccard`…) servent un autre but que le filtre du lexique : celui-ci écarte « créer », « comment », « combien », qui sont du bruit dans un lexique mais portent le sens d'un mot-clé. Les aligner sur `generic-terms.ts` dégraderait les racines du Radar et la couverture SEO.
 
 **Critères d'acceptation techniques**
 - AC.LEXMETIER.1 : `isGenericTerm` — mots vides avec ou sans accent ni majuscule (« Être », « etre », « vos », « permet »…), décor de page (« Cookie », « légales »…), vocabulaire métier non générique (« laine soufflée », « site internet », « combles »…), terme de plusieurs mots générique seulement si tous ses mots le sont, nombres, mots de moins de 3 lettres et terme vide génériques ; `normalizeTerm` ignore casse et accents. *(test : `tests/unit/shared/generic-terms.test.ts`, dans `npm run verify`)*
@@ -3172,10 +3177,12 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - AC.LEXMETIER.6 : aucune case cochée après le TF-IDF ni après l'IA, compteur à 0, rien d'enregistré, aucune étape émise ; au navigateur, un terme coché valide l'étape, en passant par le bandeau puis l'alarme si la porte la retient. *(tests : `tests/unit/components/lexique-extraction.test.ts`, `tests/browser-e2e/parcours/lexique.parcours.test.ts` étape ⑧, helper `validerLexique` de `tests/browser-e2e/helpers/moteur-ui.ts`)*
 - AC.LEXMETIER.8 : mot vide retenu → aucune étape, bandeau avec la raison ; lexique enregistré avant la vérification ; lexique de métier → étape demandée une seule fois, sans bandeau ; mot vide ajouté après coup → étape retirée (`check-removed`) et bandeau ; bandeau → alarme (`ensure`) → dérogation → étape. *(test : `tests/unit/components/lexique-gate.test.ts`)*
 - AC.LEXMETIER.7 : `pickLexique` n'emporte ni mot vide accentué ni décor de page. *(test : `tests/unit/scripts/auto-article/pick-lexique.test.ts`, dans `npm run verify`)*
+- AC.LEXMETIER.9 *(C4, M15)* : `splitGenericTerms` sépare les termes du métier des mots génériques, nettoie les espaces et dédoublonne sans tenir compte des accents ni de la casse *(test : `tests/unit/shared/generic-terms.test.ts`, dans `npm run verify`)* ; `lexique-suggest` ne renvoie que des termes du métier et liste ceux qu'il a écartés *(test : `tests/unit/routes/lexique-suggest.routes.test.ts`)* ; le store rend les termes écartés *(test : `tests/unit/stores/article-keywords.store.test.ts`)* ; la Rédaction refuse « vos » avec sa raison, ajoute « pare-vapeur » sans message, et dit quels termes la suggestion a écartés *(test : `tests/unit/components/article-keywords-panel-lexique.test.ts`)*.
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C3, checklist M4, M5, M11).
 - 2026-09-25 — `lexique-empty` passe de ⛔ à 🔴 ; porte revérifiée à chaque changement du lexique (bandeau, alarme à la demande, étape retirée par un terme générique).
+- 2026-09-25 — C4 : le lexique modifié depuis la Rédaction passe par le filtre (M15) ; `src/constants/french-nlp.ts` supprimé, les autres listes de mots vides restent distinctes (M17 requalifiée).
 
 **Voir aussi** : `DESIGN-LEX-TFIDF`, `DESIGN-LEX-PRECHECK-PERSISTE`, `DESIGN-LEX-CHECK`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-SCRAPE-CORPUS-NEUTRE`.
 
@@ -3627,7 +3634,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Refs code**
 - [server/routes/generate/outline.routes.ts](../../server/routes/generate/outline.routes.ts) — endpoint `POST /api/generate/outline`, streaming SSE. Output `{ outline: { sections: [{ id, level, title, annotation, status }] }, usage }`.
-- [server/prompts/generate-outline.md](../../server/prompts/generate-outline.md) — prompt système, variables `{{articleTitle}}`, `{{articleType}}`, `{{keyword}}`, `{{secondaryKeywords}}` (lieutenants), `{{cocoonName}}`, `{{theme}}`, `{{paaQuestions}}`, `{{strategyContext}}`, `{{keywordContext}}`, `{{microContext}}`.
+- [server/prompts/generate-outline.md](../../server/prompts/generate-outline.md) — prompt système, variables `{{articleTitle}}`, `{{articleType}}`, `{{keyword}}`, `{{secondaryKeywords}}` (lieutenants), `{{cocoonName}}`, `{{theme}}`, `{{paaQuestions}}`, `{{strategyContext}}`, `{{keywordContext}}`, `{{microContext}}`, `{{competitorStructure}}`, et depuis C4 `{{type_rules}}` (nombre de H2 et de H3 du type, `outline.routes.ts:74`, cf. `DESIGN-INFRA-TYPE-RULES-SSOT`).
 - [server/routes/generate/_helpers.ts](../../server/routes/generate/_helpers.ts) — fonction `parseOutlineFromText(fullContent)` qui transforme la sortie JSON brute du LLM en `Outline` typé.
 - [src/stores/article/outline.store.ts](../../src/stores/article/outline.store.ts) — store Pinia `useOutlineStore` : actions `generateOutline(briefData)`, `updateSection`, `moveSection`, `addSection`, `removeSection`, `undo`, `redo`, `setValidated`. État `outline`, `isGenerating`, `isValidated`, `undoStack`, `redoStack`.
 - [src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue) — composant qui déclenche la génération et expose l'édition du sommaire. (N'émet plus de check workflow depuis 2026-05-13 — la validation du sommaire ne pose plus de check `redaction:*`, cf. DRIFT-002.)
@@ -3686,7 +3693,8 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Constantes / paramètres**
 - `INTER_SECTION_DELAY_MS` (défaut 15s) — délai inter-sections pour éviter le rate-limiting agressif côté Anthropic.
 - `RATE_LIMIT_MAX_RETRIES` / `RATE_LIMIT_DEFAULT_WAIT` — backoff exponentiel sur 429.
-- `DEFAULT_TARGET_WORDS_BY_TYPE` / `DEFAULT_TARGET_WORDS_FALLBACK` — fallbacks si pas de target client ni de micro-contexte.
+- `targetWordsFor(articleType)` ([shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts)) — longueur visée du type, ou `DEFAULT_TARGET_WORDS_FALLBACK` (2000) si le type est inconnu : repli si pas de target client ni de micro-contexte. Remplace `DEFAULT_TARGET_WORDS_BY_TYPE` de `_helpers.ts`, supprimé en C4 (cf. `DESIGN-INFRA-TYPE-RULES-SSOT`).
+- `sectionBudgetHint` — budget de la section (`computeSectionBudget`), transmis à `generate-article-section.md` depuis C4 ; il était calculé mais jamais cité par le prompt (checklist R1, en partie).
 
 **Tables consommées**
 - `article_strategies` (lecture via `getStrategy`) — strategy context.
@@ -3715,7 +3723,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - **Section-by-section vs single shot** : un article long (2000-3000 mots) en un seul appel dépasse les budgets de cohérence du LLM et le rend long à débugger. Le découpage par H2 permet un cost-tracking par section, une reprise partielle en cas d'erreur, et un rendu UX progressif.
 - **Save intermédiaire avant la méta** : le composable `useArticleGeneration` sauvegarde le content **avant** d'appeler la méta. Si la méta plante (429, network), l'article complet est déjà persisté. Pas de perte de 5 minutes de génération.
 - **Inter-section delay configurable** : 15s par défaut, ajustable via env. Sur des comptes Anthropic à quotas serrés, monter à 30s évite les retries 429 systématiques.
-- **`targetWordCount` cascade** : `parsed.data.targetWordCount ?? microCtx?.targetWordCount ?? DEFAULT_TARGET_WORDS_BY_TYPE[type] ?? DEFAULT_TARGET_WORDS_FALLBACK`. La cliente envoie sa valeur (vue brief) → fallback micro-contexte → fallback type → fallback dur. Cohérent avec ce qu'affiche `ArticleWordCountBar`.
+- **`targetWordCount` cascade** : `parsed.data.targetWordCount ?? microCtx?.targetWordCount ?? targetWordsFor(parsed.data.articleType)` (`article.routes.ts:91-94` ; `targetWordsFor` rend `DEFAULT_TARGET_WORDS_FALLBACK` pour un type inconnu). La cliente envoie sa valeur (vue brief) → fallback micro-contexte → fallback type → fallback dur. Cohérent avec ce qu'affiche `ArticleWordCountBar`.
 
 **Voir aussi**
 - `DESIGN-RED-OUTLINE` — producteur de l'outline en entrée.
@@ -3946,9 +3954,9 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Refs code**
 - [src/composables/editor/useContextualActions.ts](../../src/composables/editor/useContextualActions.ts) — composable principal : `executeAction(actionType, selectedText, context, editor)` → ouvre stream SSE vers `/api/generate/action` → accumule `streamedResult` → `acceptResult(editor)` remplace la sélection, `rejectResult()` annule. Cas spécial `actionType === 'internal-link'` : bypass SSE, ouvre `showArticlePicker` pour `applyInternalLink(article)`.
-- [src/components/editor/EditorBubbleMenu.vue](../../src/components/editor/EditorBubbleMenu.vue) — UI de la mini-barre TipTap qui présente les 12 actions au-dessus de la sélection.
+- [src/components/editor/EditorBubbleMenu.vue](../../src/components/editor/EditorBubbleMenu.vue) — UI de la mini-barre TipTap au-dessus de la sélection ; elle émet `open-actions`, qui ouvre le menu [src/components/actions/ActionMenu.vue](../../src/components/actions/ActionMenu.vue) (monté par [src/components/article/ArticleEditorActionOverlays.vue](../../src/components/article/ArticleEditorActionOverlays.vue) ; 8 actions IA + « Lien interne » au 2026-09-25) ; `sources-chiffrees`, `exemples-reels` et `ce-quil-faut-retenir` sont proposées comme blocs dynamiques ([src/components/panels/BlocksPanel.vue](../../src/components/panels/BlocksPanel.vue)).
 - [server/routes/generate/action.routes.ts](../../server/routes/generate/action.routes.ts) — endpoint `POST /api/generate/action`, SSE. Charge `system-propulsite.md` (système) + `actions/<actionType>.md` (user prompt avec variables `selectedText`, `keywordInstruction`). Web search activé pour `sources-chiffrees` et `exemples-reels` uniquement (`needsWebSearch`).
-- [server/prompts/actions/](../../server/prompts/actions/) — 12 prompts `.md` : `reformulate`, `simplify`, `convert-list`, `pme-example`, `keyword-optimize`, `add-statistic`, `answer-capsule`, `question-heading`, `localize`, `sources-chiffrees`, `exemples-reels`, `ce-quil-faut-retenir`. **Vérifié 2026-05-12 par `ls server/prompts/actions/` : exactement 12 fichiers.**
+- [server/prompts/actions/](../../server/prompts/actions/) — 11 prompts `.md` : `reformulate`, `simplify`, `convert-list`, `pme-example`, `keyword-optimize`, `add-statistic`, `answer-capsule`, `question-heading`, `sources-chiffrees`, `exemples-reels`, `ce-quil-faut-retenir` — les 11 valeurs IA de `ActionType` ([shared/types/action.types.ts](../../shared/types/action.types.ts)). **Vérifié 2026-09-25 par `ls server/prompts/actions/` : 11 fichiers.** `localize.md` est supprimé en C4 (checklist D1) : l'action avait quitté l'éditeur et `ActionType` le 2026-04-16 (commit `d3f5fa2`), plus rien ne chargeait son prompt.
 
 **Endpoints**
 - `POST /api/generate/action` — SSE.
@@ -3970,8 +3978,8 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - `onUnmounted` (uniquement si appelé dans un composant) : `abort()` annule le stream en cours pour éviter les warnings de mémoire.
 
 **Décisions d'architecture**
-- **12 actions = 12 fichiers `.md`** : prompts isolés, chargés dynamiquement via `loadPrompt('actions/' + actionType)`. Ajouter une 13ᵉ action = créer un nouveau `.md` + valeur dans l'enum `ActionType` côté types. Pas de logique en dur dans le code.
-- **Action `internal-link` bypass total** : cette action ne va pas du tout sur l'IA, c'est un UX pattern différent (picker d'article). Elle est exposée dans le même composant pour cohérence d'UX (le bubble menu propose 13 boutons dont 12 IA + 1 picker), mais le code la traite à part — pas de prompt `internal-link.md`.
+- **11 actions = 11 fichiers `.md`** : prompts isolés, chargés dynamiquement via `loadPrompt('actions/' + actionType)`. Ajouter une 12ᵉ action = créer un nouveau `.md` + valeur dans l'enum `ActionType` côté types. Pas de logique en dur dans le code. Chaque action attend exactement `selectedText` et `keywordInstruction` (hors variables globales comme `{{year}}`), garde `tests/unit/architecture/prompt-variables.test.ts`.
+- **Action `internal-link` bypass total** : cette action ne va pas du tout sur l'IA, c'est un UX pattern différent (picker d'article). Elle est exposée avec les actions IA pour cohérence d'UX, mais le code la traite à part — pas de prompt `internal-link.md`.
 - **Web search opt-in par action** : seulement `sources-chiffrees` et `exemples-reels` autorisent le web search (`WEB_SEARCH_TOOL`). Les autres restent en pur LLM pour éviter le coût.
 - **`reformulate.md` x2 références au prompt** : un même prompt est utilisé pour l'action "reformuler" sur sélection ; ne pas confondre avec d'éventuels usages côté Moteur — c'est bien le même fichier mais avec des `selectedText` différents.
 
@@ -4116,14 +4124,14 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - [src/components/article/ArticleWordCountBar.vue](../../src/components/article/ArticleWordCountBar.vue) — composant UI affichant `actual | target | delta signé`.
 - [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — expose `wordCountTarget` (= `briefStore.briefData?.contentLengthRecommendation`), `wordCountDeltaDisplay` (= `editorStore.wordCountDelta(target)`), `canReduce` (= delta > 15 %).
 - [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — `wordCount` computed (SSOT G5), `wordCountDelta(target)` helper signé.
-- [src/stores/strategy/brief.store.ts](../../src/stores/strategy/brief.store.ts) — `briefData.contentLengthRecommendation` calculée via `fetchContentLengthRecommendation(articleId, articleType)` (appel à `/api/articles/:id/recommend-word-count` + fallback heuristique `baseByType`).
+- [src/stores/strategy/brief.store.ts](../../src/stores/strategy/brief.store.ts) — `briefData.contentLengthRecommendation` calculée via `fetchContentLengthRecommendation(articleId, articleType)` (appel à `/api/articles/:id/recommend-word-count` + fallback heuristique `calculateContentLength` = `targetWordsFor`, la longueur visée du type depuis C4).
 - [server/services/article/target-word-count.service.ts](../../server/services/article/target-word-count.service.ts) — service backend pour la recommandation IA + heuristique.
 
 **Endpoints**
 - `POST /api/articles/:id/recommend-word-count` — produit la recommandation contextuelle (SERP avg + sommaire HN + type d'article).
 
 **Tables consommées**
-- **Lecture** : `article_micro_contexts.target_word_count` (priorité 2 après le client explicite), `articles.type` (priorité 3 pour fallback `DEFAULT_TARGET_WORDS_BY_TYPE`).
+- **Lecture** : `article_micro_contexts.target_word_count` (priorité 2 après le client explicite), `articles.type` (priorité 3 pour fallback `targetWordsFor`, cf. `DESIGN-INFRA-TYPE-RULES-SSOT`).
 - **Écriture** : aucune par cette FR. La cible est calculée à la volée et stockée dans `briefStore.briefData` côté front + `article_micro_contexts.target_word_count` quand l'utilisateur la valide en amont (cf. FR-CER-MICRO-CONTEXT).
 
 **Flux DB**
@@ -4933,18 +4941,147 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Réf PRD :** [FR-INFRA-PROMPT-LOADER](./prd.md#fr-infra-prompt-loader--prompts-ia-agnostiques--injection-sécurisée)
 
 **Refs code**
-- [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — `loadPrompt(filename, variables?, options?)` lit depuis `server/prompts/`, substitue `{{variable}}` et blocs conditionnels `{{#conditional}}…{{/conditional}}`.
-- Helpers de construction de contexte : `buildCocoonStrategyBlock(strategy)` (lignes 54-70), `buildMicroContextBlock`, `buildKeywordContext`, `buildThemeContextBlock`. Disposés dans le même fichier ou des modules `*-context.ts` voisins.
-- Hardening prompt injection : `escapePromptContent(raw)` (lignes 43-52) — neutralise `\n\nHuman:`, `<system>`, `</system>`, `<user-content>`, `</user-content>`, `{{`, `}}` puis enveloppe le résultat dans `<user-content>...</user-content>`. Tableau `INSTRUCTION_SEQUENCES` (lignes 32-41).
+- [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — `loadPrompt(name, variables?, { cocoonSlug?, escapeKeys? })` (lignes 179-218) lit `server/prompts/<name>.md` et le rend par `renderPromptTemplate` (lignes 126-146) : sections `{{#clé}}…{{/clé}}` gardées sans leurs marqueurs si la valeur (après `trim`) n'est pas vide, retirées sinon (sections imbriquées : jusqu'à 5 passes) ; puis `{{clé}}` remplacé **par fonction**, en une seule passe (aucun motif `$` interprété, une valeur n'est jamais relue). `templateKeys(template)` (lignes 108-116) liste les variables et les sections citées. Détail du mode strict et des variables globales : `DESIGN-INFRA-PROMPT-LAYERS`.
+- Mode strict (lignes 199-208) : clés citées non fournies = « manquantes », clés fournies non citées = « inutilisées » (hors `PROMPT_GLOBALS`), clé d'`escapeKeys` non fournie = inutilisée → `PromptTemplateError` (lignes 97-105) hors `NODE_ENV=production`, `log.error` et rendu (repère absent → vide) en production.
+- Stratégie du cocon : `buildCocoonStrategyBlock(strategy)` (lignes 56-71) et `loadCocoonStrategyBlock(cocoonSlug)` (lignes 74-83, `''` si la stratégie est absente ou illisible) → globale `{{strategy_context}}` ; ajoutée en fin de prompt si le `.md` ne la cite pas (lignes 210-214).
+- Blocs de contexte construits **par les appelants**, pas par le chargeur : `buildKeywordContext` ([server/routes/generate/_helpers.ts:109](../../server/routes/generate/_helpers.ts)), `buildMicroContextBlock` ([server/routes/generate/_helpers.ts:338](../../server/routes/generate/_helpers.ts), appelé par `article.routes.ts:87` ; le sommaire et l'explication du brief construisent le même bloc en ligne, `outline.routes.ts:52-54`, `brief-explain.routes.ts:34`), `pickStrategyContext` (`_helpers.ts:66`) et `buildStrategyContext` (`_helpers.ts:79`), `buildThemeContextBlock` ([server/services/strategy/strategy-prompts.service.ts:52](../../server/services/strategy/strategy-prompts.service.ts), privée : met en forme le `context.themeContext` envoyé par l'écran du Cerveau, sans lire la base).
+- Hardening prompt injection : `escapePromptContent(raw)` (lignes 44-53) — neutralise `\n\nHuman:`, `\n\nAssistant:`, `<system>`, `</system>`, `<user-content>`, `</user-content>`, `{{`, `}}` puis enveloppe le résultat dans `<user-content>...</user-content>`. Tableau `INSTRUCTION_SEQUENCES` (lignes 33-42). Une valeur vide n'est pas enveloppée (lignes 187-197) : l'enveloppe garderait à tort la section `{{#clé}}` qui dépend d'elle.
 - Header explicite « WARNING — Prompt injection hardening » (lignes 1-10) interdit `loadPrompt` sur contenu utilisateur sans `options.escapeKeys`.
 
 **Décisions d'architecture**
-- **Prompt = .md agnostique** : aucune logique conditionnelle, aucun import. Les `.md` restent éditables par un rédacteur non-développeur.
-- **Helpers de contexte coopératifs** : si une donnée est absente (cocoon sans stratégie, article sans micro-contexte), le helper retourne `''` plutôt que d'injecter un placeholder ambigu — la variable substituée disparaît, le prompt reste lisible.
+- **Prompt = .md agnostique** : aucun import, aucune condition autre qu'une section `{{#clé}}…{{/clé}}` affichée ou non selon que la valeur est vide. Une section « drapeau » (clé citée seulement en section, valeur `'oui'` ou `''`) sert à choisir un bloc par niveau d'article (`cocoon-add-article.md` : `isPilier`, `isIntermediaire`, `isSpecialise`). Les `.md` restent éditables par un rédacteur non-développeur.
+- **Helpers de contexte coopératifs** : si une donnée est absente (cocon sans stratégie, article sans micro-contexte), le helper retourne `''` ; la section qui l'encadre disparaît avec son titre, le prompt reste lisible.
 - **Escape one-way** : `escapePromptContent` encode les séquences sensibles en `\u00XX` ; pas de désencodage côté Claude, le texte reste lisible mais inoffensif.
+- **Texte de l'utilisateur au Cerveau non enveloppé** *(C4)* : les réponses de stratégie (`userInput`, `currentInput`…) ne passent pas par `escapeKeys` — c'est le texte de l'utilisateur lui-même, et le rendu en une passe ferme déjà les deux trous (`{{…}}` réinterprété, motifs `$`). Le texte de l'article envoyé à la méta, lui, est échappé (`meta.routes.ts:38-42`, `escapeKeys: ['articleContent']`).
+
+**Critères d'acceptation techniques**
+- AC.LOADER.1 : chaque variable est remplacée à toutes ses occurrences ; `$&` / `$1` insérés restent tels quels ; une valeur qui contient `{{autre}}` n'est pas réinterprétée ; section pleine gardée sans marqueurs, section vide ou faite d'espaces retirée ; sections imbriquées et sections drapeau. *(test : `tests/unit/utils/prompt-template.test.ts`)*
+- AC.LOADER.2 : variable manquante, variable inutilisée, clé d'`escapeKeys` non fournie → `PromptTemplateError` nommée ; en production, pas d'erreur, repère rendu vide et journalisé. *(test : idem)*
+- AC.LOADER.3 : le contenu fourni par l'utilisateur (`selectedText`, `sectionHtml`, `articleHtml`, `articleContent`) est toujours échappé ; chaque appel `loadPrompt` du serveur fournit exactement les repères de son `.md`. *(test : `tests/unit/architecture/prompt-variables.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — chargeur strict et rendu en une passe (épopée qualité SEO, C4, checklist D2, K5). Corrigé au passage : ce registre affirmait que `loadPrompt` traitait déjà les blocs `{{#conditional}}` — il ne faisait qu'un `replaceAll` par variable, et seules quelques routes du Cerveau retiraient ces blocs à la main ; il plaçait aussi `buildMicroContextBlock` et `buildThemeContextBlock` dans `prompt-loader.ts`, où ils n'ont jamais été.
 
 **Voir aussi**
+- `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-INFRA-TYPE-RULES-SSOT`.
 - `NFR-SEC-PROMPT-INJECTION`, `NFR-INT-PROMPT-AGNOSTIC`, `NFR-INT-STRATEGY-OPTIONAL`.
+
+---
+
+### DESIGN-INFRA-PROMPT-LAYERS
+
+**Réf PRD :** [FR-INFRA-PROMPT-LAYERS](./prd.md#fr-infra-prompt-layers--des-consignes-dia-organisées-en-couches-sans-rien-décrit-en-dur)
+
+**Refs code**
+- [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — `PROMPT_GLOBALS = ['strategy_context', 'today', 'year', 'zone', 'zone_landmarks']` (ligne 90) ; `loadGlobals(template, cocoonSlug)` (lignes 148-164) : `strategy_context` toujours posé (vide sans `cocoonSlug`), `today` / `year` lus seulement si le modèle cite l'un d'eux, `zone` / `zone_landmarks` seulement si le modèle cite l'un d'eux. Les globales ne sont jamais « inutilisées » ; celles que l'appelant fournit l'emportent (ligne 201). Mode strict et rendu : `DESIGN-INFRA-PROMPT-LOADER`.
+- [server/services/strategy/prompt-context.service.ts](../../server/services/strategy/prompt-context.service.ts) — header `AUTHORITY:`. `formatFrenchDate(date)` (« 25 septembre 2026 », `fr-FR`, `Europe/Paris`) et `currentYear(date)` ; `loadZoneContext()` : `zone` = `theme_config.avatar.location` (via `getThemeConfig`), `landmarks` = `local_entities` des types `region` (« Autres noms de la zone »), `quartier` (« Quartiers et communes »), `lieu` (« Lieux connus ») ; les entreprises sont exclues ; base illisible → valeurs vides et `log.warn`.
+- [server/services/strategy/strategy-prompts.service.ts](../../server/services/strategy/strategy-prompts.service.ts) — les six routes de [server/routes/strategy.routes.ts](../../server/routes/strategy.routes.ts) délèguent ici (`articleStrategyPrompt` ligne 155, `cocoonStrategyPrompt` ligne 214, `deepenPrompt` ligne 271, `consolidatePrompt` ligne 287, `enrichPrompt` ligne 298 ; appels `strategy.routes.ts:104,161,192,216,232`) : chaque modèle est chargé par `loadPrompt` avec exactement ses variables. Fin des `readFile` + `.replace` (qui ne remplaçaient que la première occurrence et interprétaient les `$`). `cocoonTemplateFor(step)` (ligne 185) : une étape = un modèle.
+- [server/services/strategy/cocoon-add-article-prompt.ts](../../server/services/strategy/cocoon-add-article-prompt.ts) — `addArticlePromptVariables(input)` (ligne 19) ne rend plus rien : il produit les variables (`articleType`, `existingArticles`, `userInput`, drapeaux `isPilier` / `isIntermediaire` / `isSpecialise`).
+- [server/routes/silos.routes.ts](../../server/routes/silos.routes.ts) — `theme-parse` passe par `loadPrompt` (ligne 125).
+- [server/routes/generate/micro-context-suggest.routes.ts](../../server/routes/generate/micro-context-suggest.routes.ts) — la stratégie du cocon n'arrive plus qu'une fois, lue en base par `{{strategy_context}}` (`cocoonSlug`, lignes 23-37) ; l'écran ne l'envoie plus ([src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue)).
+- [server/services/keyword/long-tail-suggest.service.ts](../../server/services/keyword/long-tail-suggest.service.ts) — la stratégie de la longue traîne n'est plus toujours vide : le service lit le cocon de l'article (`getArticleById(articleId)?.cocoonName`, lignes 111-122) et le passe en `cocoonSlug`.
+- [server/routes/generate/article.routes.ts](../../server/routes/generate/article.routes.ts) — `generate-article-section` reçoit enfin le budget de sa section, `sectionBudgetHint` (lignes 158-166, cité par `generate-article-section.md:20`) ; `sectionPosition`, jamais cité, n'est plus envoyé (checklist R1, en partie).
+- [server/prompts/system-propulsite.md](../../server/prompts/system-propulsite.md) — identité : `{{today}}` (ligne 7), `{{zone}}` (lignes 5, 34, 44), `{{zone_landmarks}}` (ligne 48), `{{year}}` (ligne 57) ; plus aucune année ni quartier écrit en dur (checklist R11). Les exemples de citation datés (« selon HubSpot, 2024 »…) sont aussi retirés de `actions/add-statistic.md` et `reduce-section.md` ; `actions/sources-chiffrees.md` date ses sources par rapport à `{{year}}`.
+- [server/prompts/cocoon-articles.md](../../server/prompts/cocoon-articles.md) — exemples d'un autre métier (chauffagiste) avec `[ville]` et consigne « Ne recopie jamais un exemple » (ligne 42) ; l'exemple du pilier 1013 a disparu (checklist K7). « Meilleur X {{year}} » au lieu d'une année écrite, là et dans `cocoon-articles-spe.md`, `cocoon-add-article.md`. `propose-lieutenants.md` : exemples avec `[ville]` au lieu de Toulouse.
+- [server/services/article/content-gap.service.ts](../../server/services/article/content-gap.service.ts) — le prompt en ligne de l'analyse d'écart cherche les lieux de la zone configurée (`loadZoneContext`, lignes 91-93) au lieu de « Toulouse/Occitanie ».
+- [scripts/prompts-reference.ts](../../scripts/prompts-reference.ts) — `npm run docs:prompts` génère [docs/prompts-reference.md](../../docs/prompts-reference.md) : variables, sections et globales lues dans chaque `.md` (`templateKeys`), fichiers de `server/` qui le chargent ; seul le rôle est écrit à la main (`ROLES`) et un prompt sans rôle arrête la génération (checklist D3).
+- [docs/prompts-architecture.md](../../docs/prompts-architecture.md) — les cinq couches et où chacune vit ; [docs/testing-guide.md](../../docs/testing-guide.md) §4 — fixtures simulées à jour.
+- Supprimés (checklist D1) : `server/prompts/generate-article.md`, `server/prompts/pain-translate.md`, `server/prompts/actions/localize.md` (plus rien ne les chargeait) et la fixture simulée `translate-pain` (`server/services/external/mock-fixtures/streams.ts`).
+
+**Les cinq couches**
+
+| Couche | Où elle vit |
+|---|---|
+| 1. Identité | `system-propulsite.md` (générations de texte) ; première phrase des prompts d'analyse |
+| 2. Contexte | Globales du chargeur (`{{today}}`, `{{year}}`, `{{zone}}`, `{{zone_landmarks}}`, `{{strategy_context}}`) ; blocs des appelants (`{{strategyContext}}`, `{{keywordContext}}`, `{{microContext}}`, `{{themeContext}}`…) |
+| 3. Règles par type | `{{type_rules}}` (cf. `DESIGN-INFRA-TYPE-RULES-SSOT`) |
+| 4. Tâche | Corps du `.md` |
+| 5. Contrat de sortie | Section « Format de sortie » du `.md` ; contrats (`shared/contracts/`) ; vérificateurs (`shared/verifiers/`) |
+
+**Corrigés au passage** (tous par le rendu strict ou la délégation à `loadPrompt`)
+- Marqueurs envoyés bruts à l'IA : `{{#stepDescription}}` (`strategy-suggest.md`, toujours) et `{{#topicSuggestions}}` (`cocoon-articles.md`, étape `articles`).
+- Pistes thématiques (étape `articles-structure`) et questions PAA (étape `articles-spe`) qui perdaient leur titre.
+- Texte de l'article non échappé dans la méta (`meta.routes.ts`).
+- `strategy-merge.md` au niveau cocon : le modèle affiche « **Sujet** », le nom du cocon y est donc à sa place (test « fusion au niveau cocon : le sujet est le cocon ») ; la section `{{#articleTitle}}` prévue par la tech-spec n'a pas été nécessaire.
+
+**Décisions d'architecture**
+- **Globales chargées à la demande** : le chargeur ne lit la configuration et `local_entities` que si le modèle cite `zone` ou `zone_landmarks` (test « ne lit ni la configuration ni les entités si le prompt ne cite pas la zone »).
+- **Zone vide = section retirée** : `system-propulsite.md` encadre les mentions de la zone dans `{{#zone}}…{{/zone}}` ; une base indisponible ne lève pas d'erreur.
+- **Entreprises exclues des repères** : un exemple qui les cite inviterait l'IA à leur prêter des faits qu'elle ne connaît pas.
+- **Pas d'enveloppe sur les réponses de stratégie** : cf. `DESIGN-INFRA-PROMPT-LOADER`.
+- **Identité de marque** : « Propulsite » reste écrit dans `system-propulsite.md` (hors périmètre C4).
+
+**Limites connues**
+- **Repères non triés par zone** : `loadZoneContext` renvoie toutes les `local_entities` des types `region` / `quartier` / `lieu`, sans filtre sur la zone (la colonne `region` n'est pas lue). Le référentiel est unique pour l'outil et décrit Toulouse (sauvegarde du 2026-09-20 : Saint-Cyprien, Balma, Blagnac…) ; `FR-INFRA-LOCAL-ENTITIES` le déclare non modifiable par l'utilisateur. Un client d'une autre ville reçoit donc la bonne `{{zone}}` mais des `{{zone_landmarks}}` toulousains. Le test « client à Bordeaux » simule les entités (`Chartrons`) et ne voit pas ce cas.
+- **État du cocon** : pas encore de `{{cocoon_context}}` ; il arrive avec `FR-INFRA-COCOON-CONTEXT` (épopée qualité SEO, C7).
+- **Blocs de contexte encore construits à trois endroits** pour le micro-contexte (`buildMicroContextBlock` pour la rédaction, blocs en ligne pour le sommaire et l'explication du brief ; seul le premier ajoute la longueur cible).
+- **Consignes encore écrites dans le code, hors `.md`** : ni chargeur strict ni référence générée pour elles — filtre de pertinence et analyse Discovery ([server/routes/keywords.routes.ts:744,754,862](../../server/routes/keywords.routes.ts)), analyse d'écart ([server/services/article/content-gap.service.ts:97](../../server/services/article/content-gap.service.ts), zone désormais lue dans la configuration), conseil de longueur ([server/services/article/target-word-count.service.ts:103-116](../../server/services/article/target-word-count.service.ts), bornes lues dans la source des règles par type), lignes système de [keyword-radar.service.ts:66](../../server/services/keyword/keyword-radar.service.ts) et [captain-paa-judge.service.ts:127](../../server/services/keyword/captain-paa-judge.service.ts).
+
+**Critères d'acceptation techniques**
+- AC.LAYERS.1 : `today` et `year` à la date du jour, en français ; zone lue dans la configuration et repères dans `local_entities` ; ni configuration ni entités lues si le prompt ne cite pas la zone ; zone inconnue → section retirée, pas d'erreur ; `PROMPT_GLOBALS` liste les globales. *(test : `tests/unit/utils/prompt-template.test.ts`)*
+- AC.LAYERS.2 : chaque modèle du Cerveau rendu avec les vraies variables de sa route, sans aucun `{{` restant ; description de l'étape sans ses marqueurs ; blocs facultatifs retirés quand ils sont vides ; texte de l'utilisateur recopié tel quel, `$` compris ; étape `articles` sans pistes, `articles-structure` et `articles-spe` avec leur titre ; `add-article` avec les seules règles du niveau demandé. *(test : `tests/unit/services/strategy-prompts.service.test.ts`, vrais modèles)*
+- AC.LAYERS.3 : aucune année (`20\d\d`) ni aucun lieu dans `server/prompts/**` ; l'analyse d'écart ne cite pas de région ; client à Bordeaux (configuration et entités simulées) → l'identité parle de Bordeaux, jamais de Toulouse, et seulement de l'année en cours ; l'exemple du pilier 1013 a disparu du prompt de structure. *(test : `tests/unit/coherence/prompts-no-hardcoded.test.ts`)*
+- AC.LAYERS.4 : `docs/prompts-reference.md` égal à la sortie du générateur ; chaque prompt y a au moins un appelant. *(test : `tests/unit/architecture/prompts-reference.test.ts`, dans `npm run verify`)*
+- AC.LAYERS.5 : chaque appel `loadPrompt` du serveur fournit exactement les repères de son `.md` ; les actions contextuelles attendent toutes `selectedText` et `keywordInstruction`, rien d'autre (hors globales). *(test : `tests/unit/architecture/prompt-variables.test.ts`, dans `npm run verify`)*
+- AC.LAYERS.6 : la longue traîne demande au chargeur la stratégie du cocon de l'article. *(test : `tests/unit/services/long-tail-suggest.service.test.ts`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C4, checklist K5, K7, R11, D1, D2, D3 ; R1 en partie).
+
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LOADER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-CER-THEME-CONFIG`, `DESIGN-INFRA-LOCAL-ENTITIES`, `DESIGN-INFRA-COCOON-STRATEGIES`, `DESIGN-RED-ARTICLE`.
+
+---
+
+### DESIGN-INFRA-TYPE-RULES-SSOT
+
+**Réf PRD :** [FR-INFRA-TYPE-RULES-SSOT](./prd.md#fr-infra-type-rules-ssot--une-seule-définition-de-ce-quest-un-pilier-un-intermédiaire-un-spécialisé)
+
+**Refs code**
+- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — **la seule table**. `ArticleTypeRules` : `label`, `targetWords`, `wordsMin`, `wordsMax`, `wordsFloor`, `h2Min`, `h2Max`, `h2Floor`, `h3PerH2Min`, `h3PerH2Max`, `minLieutenants`, `maxLieutenants`, `lieutenantCandidatesMin`, `lieutenantCandidatesMax`, `localH2Max`. `ARTICLE_TYPE_RULES` (lignes 44-66), `DEFAULT_TARGET_WORDS_FALLBACK = 2000` (ligne 69, type inconnu), `targetWordsFor(level)` (lignes 72-76), `describeTypeRules(level)` (lignes 84-95) → texte injecté par `{{type_rules}}`.
+
+| Type | Mots (cible [min–max], plancher) | H2 (min–max, plancher) | H3 par H2 | Lieutenants (candidats, min–max retenus) | H2 citant la ville |
+|---|---|---|---|---|---|
+| `pilier` | 2 500 [1 800–3 500], 1 500 | 6–8, 5 | 2–3 | 8–12, 3–5 | 2 au plus |
+| `intermediaire` | 1 800 [1 200–2 500], 900 | 4–6, 3 | 2–3 | 6–10, 2–5 | 0 |
+| `specifique` | 1 200 [800–1 500], 500 | 3–5, 2 | 2–3 | 4–8, 1–4 | 0 |
+
+**Consommateurs**
+
+| Consommateur | Lit | Avant C4 |
+|---|---|---|
+| Prompts `generate-outline.md` (ligne 54), `propose-lieutenants.md` (ligne 13), `lieutenants-hn-structure.md` (ligne 11) | `{{type_rules}}` : [server/routes/generate/outline.routes.ts:74](../../server/routes/generate/outline.routes.ts), [server/routes/keyword-ai-panel.routes.ts:18-21,148,273](../../server/routes/keyword-ai-panel.routes.ts) (vide si le niveau est inconnu) | Fourchettes écrites en dur, contradictoires |
+| Budget de rédaction — [server/routes/generate/article.routes.ts:91-94](../../server/routes/generate/article.routes.ts) | `targetWordsFor` (client > micro-contexte > type) | `DEFAULT_TARGET_WORDS_BY_TYPE` dans `_helpers.ts` |
+| Recommandation de longueur — [server/services/article/target-word-count.service.ts:50-53](../../server/services/article/target-word-count.service.ts) | `typeBase` = `{ min: wordsMin, max: wordsMax, target: targetWords }` ; sans SERP, la base est `targetWords` (ligne 68) | `TYPE_BASE` local ; base = milieu des bornes (2 650 pour un pilier) ; champ `breakdown.typeBase.midpoint` |
+| Repli du brief — [src/stores/strategy/brief.store.ts:15-17](../../src/stores/strategy/brief.store.ts) | `calculateContentLength` = `targetWordsFor` | Milieux 2 650 / 1 850 / 1 150 |
+| [src/components/panels/SeoPanel.vue:33](../../src/components/panels/SeoPanel.vue) | `DEFAULT_TARGET_WORDS_FALLBACK` | `?? 1500` |
+| Alertes SEO — [shared/seo-validators.ts:47-48](../../shared/seo-validators.ts) | `wordsFloor` (`seo-thin-content`), `h2Floor` (`seo-too-few-sections`) | `MIN_WORDS`, `MIN_H2` locaux (mêmes valeurs) |
+| Filtre des lieutenants de l'IA — [server/routes/keyword-ai-panel.routes.ts:178](../../server/routes/keyword-ai-panel.routes.ts) | `maxLieutenants` | `MAX_SELECTED` local |
+| Mode automatique — [scripts/auto-article/heuristics/pick-lieutenants.ts:23](../../scripts/auto-article/heuristics/pick-lieutenants.ts) | `maxLieutenants` (5 / 5 / 4) | `LIEUTENANT_MAX` 8 / 5 / 3 |
+| Vérificateurs — [shared/verifiers/lieutenants.ts:42](../../shared/verifiers/lieutenants.ts), [shared/verifiers/publish.ts:102](../../shared/verifiers/publish.ts) | `minLieutenants` ; `wordsMax` (plafond), `targetWords` (message) | Déjà branchés en C2 |
+
+**Endpoints**
+- `POST /api/articles/:id/recommend-word-count` — `breakdown.typeBase` devient `{ min, max, target }` (le champ `midpoint` est renommé `target` : la valeur n'est plus un milieu).
+
+**Flux DB** : aucun. La table est une constante partagée ; la longueur retenue par l'utilisateur reste enregistrée dans `article_micro_contexts.target_word_count` (cf. `DESIGN-INFRA-MICRO-CONTEXTS`).
+
+**Décisions d'architecture**
+- **Plancher d'alerte ≠ borne basse de la cible** : `wordsFloor` / `h2Floor` déclenchent « contenu mince » / « trop peu de chapitres » ; `wordsMin` / `h2Min` bornent ce qu'on vise. Les fusionner aurait durci l'alerte sans décision : deux notions, une source.
+- **La valeur affichée est la valeur rédigée** : sans données concurrentes, recommandation, repli du brief et budget de rédaction rendent tous `targetWords` (cohérence affichage / calcul, `.claude/CLAUDE.md` §2.0).
+- **Le mode automatique suit l'écran** : il gardait 8 lieutenants pour un pilier quand l'écran en garde 5.
+- **Tables par type qui ne sont pas des règles d'article**, exclues du test : profondeur dans le cocon (`linking.service.ts`), poids de l'intention par type (`keyword-scan.service.ts`), taille du balayage Radar du mode automatique (`pick-radar-candidates.ts`).
+- **Pas de règle de FAQ** : aucune n'existe ; elle viendra avec la passe FAQ (C5).
+
+**Critères d'acceptation techniques**
+- AC.TYPERULES.1 : aucun prompt n'écrit de fourchette de mots, de H2 ou de candidats sur une ligne qui nomme un type ; `describeTypeRules` rend chaque valeur de la source. *(test : `tests/unit/coherence/type-rules-ssot.test.ts`)*
+- AC.TYPERULES.2 : pour chaque type, `calculateContentLength`, `targetWordsFor` et `computeHeuristicTarget` sans SERP rendent `targetWords` ; type inconnu → `DEFAULT_TARGET_WORDS_FALLBACK` ; `seo-thin-content` se déclenche sous `wordsFloor` et pas au-dessus ; `pickLieutenants` retient au plus `maxLieutenants`. *(test : idem)*
+- AC.TYPERULES.3 : aucune autre table associant un nombre non nul à `pilier` / `intermediaire` / `specifique` dans `server/`, `src/`, `shared/`, `scripts/` (hors exceptions motivées). *(test : idem)*
+- AC.TYPERULES.4 : `recommend-word-count` sans SERP renvoie la longueur visée (2 500 / 1 800 / 1 200) et `typeBase = { min, max, target }` *(test : `tests/e2e-workflows/target-word-count.workflow.test.ts`, serveur requis)* ; repli du brief = longueur visée *(test : `tests/unit/stores/brief.store.test.ts`)* ; le mode automatique retient 5 / 5 / 4 lieutenants *(test : `tests/unit/scripts/auto-article/pick-lieutenants.test.ts`, dans `npm run verify`)* ; le tri des lieutenants garde `maxLieutenants` *(test : `tests/unit/coherence/lieutenants.test.ts`)*.
+
+**Historique**
+- 2026-09-25 — table créée pour les vérificateurs (C2, `DESIGN-INFRA-VERIFIER-SHARED`).
+- 2026-09-25 — source unique : prompts, calculs, écran et mode automatique branchés (épopée qualité SEO, C4, checklist M10).
+
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-RED-ARTICLE`, `DESIGN-LIE-GEOFUNNEL-RULE`.
 
 ---
 
@@ -5541,7 +5678,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - Routes : [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) lignes 189-240 (`GET/POST /api/articles/:id/micro-context`).
 
 **Flux DB**
-*Lecture* : 1/ Cerveau micro-context step → store hydrate. 2/ Prompt IA Rédaction → `loadPrompt` → `buildMicroContextBlock(getMicroContext(articleId))` → injecté dans `{{micro_context}}`.
+*Lecture* : 1/ Cerveau micro-context step → store hydrate. 2/ Prompt IA Rédaction → la route lit `loadArticleMicroContext(articleId)` → `buildMicroContextBlock(microCtx)` ([server/routes/generate/_helpers.ts:338](../../server/routes/generate/_helpers.ts), rédaction ; bloc construit en ligne pour le sommaire et l'explication du brief) → `loadPrompt(…, { microContext })` → repère `{{microContext}}`. *(Corrigé le 2026-09-25 : ce registre citait `getMicroContext` et `{{micro_context}}`, qui n'existent pas.)*
 *Écriture* : validation du step micro-context (Cerveau) → endpoint → UPSERT.
 
 **Décisions d'architecture**
@@ -5552,7 +5689,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Voir aussi**
 - `DESIGN-CER-MICRO-CONTEXT` (§8.1) — flux côté Cerveau.
 - `DESIGN-CER-WORD-COUNT-RECOMMEND` (§8.1).
-- `DESIGN-INFRA-PROMPT-LOADER` — chaîne `buildMicroContextBlock` → `loadPrompt`.
+- `DESIGN-INFRA-PROMPT-LOADER` — chaîne `loadArticleMicroContext` → `buildMicroContextBlock` → `loadPrompt`.
 
 ---
 
@@ -5589,7 +5726,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Refs code**
 - [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — noyau pur (aucune I/O) : types `GateLevel` (`attention` | `risque` | `technique`), `GateIssue` (`rule`, `level`, `message`, `risk?`, `excerpt?`, `alternatives?`), `GateResult`, `GateEvaluation` (`gateId`, `issues`, `inputHash`, `passed`, `blocking`, `waived`) ; `GATE_IDS` (`captain-lock`, `lieutenants-lock`, `lexique-lock`, `hn-lock`, `draft`, `publish`), `GATE_LABELS` (« verrouiller le capitaine », « valider les lieutenants », « publier »…), `evaluateGate(gateId, issues, waivers, inputHash)`, `hashGateInput(input)`, `worstLevel(issues)`.
 - Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique` (`DESIGN-LEX-METIER-ONLY`, C3), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
-- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES` : pilier 2 500 mots [1 800–3 500], 6–8 H2, 3 lieutenants ; intermédiaire 1 800 [1 200–2 500], 4–6, 2 ; spécialisé 1 200 [800–1 500], 3–5, 1. Lu par `verifyLieutenants` (`minLieutenants`) et `verifyPublish` (`wordsMax`). Premier pas de `FR-INFRA-TYPE-RULES-SSOT` (réservée C4) : prompts et calculs de longueur n'y sont pas encore branchés.
+- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES` : pilier 2 500 mots [1 800–3 500], 6–8 H2, 3 lieutenants ; intermédiaire 1 800 [1 200–2 500], 4–6, 2 ; spécialisé 1 200 [800–1 500], 3–5, 1. Lu par `verifyLieutenants` (`minLieutenants`) et `verifyPublish` (`wordsMax`). Devenue la source unique des règles par type en C4 (prompts, calculs de longueur, alertes SEO, mode automatique) : cf. `DESIGN-INFRA-TYPE-RULES-SSOT`.
 - [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `lexiqueGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` (exporté, lu par `articles.routes.ts`) : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`, `MOTEUR_LEXIQUE_VALIDATED` → `lexique-lock` (C3).
 - [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — évaluation et dérogations (Zod : `z.enum(GATE_IDS)`), monté sous `/api` dans [server/index.ts](../../server/index.ts).
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `respondGateBlocked(res, evaluation, message)` ; points de passage gardés : `POST /articles/:id/progress/check` (check présent dans `CHECK_GATES`) et `PUT /articles/:id/status` vers `publié`.

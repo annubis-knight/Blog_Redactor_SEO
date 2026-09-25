@@ -90,7 +90,7 @@ Si non précisé, la valeur par défaut est : `Statut: active`, `Depuis: 2026-03
 
 1. **Cerveau** — stratégie de cocon sémantique (cible, douleur, angle, promesse, CTA, hiérarchisation des articles).
 2. **Moteur** — validation de mots-clés sur 6 onglets en 3 phases visuelles (Phase ① Explorer : Discovery / Radar — Phase ② Valider : Capitaine / Lieutenants / Lexique — Phase ③ Finalisation).
-3. **Rédaction** — brief enrichi, sommaire et article streamés en SSE, éditeur TipTap avec scoring SEO live et 12 actions contextuelles.
+3. **Rédaction** — brief enrichi, sommaire et article streamés en SSE, éditeur TipTap avec scoring SEO live et 11 actions contextuelles.
 
 L'objectif est de passer de « j'ai un cocon à remplir » à « article publié avec mots-clés validés » rapidement, sans se noyer dans la complexité.
 
@@ -180,7 +180,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 5. **Moteur — Phase ② Valider — Lieutenants** → Bouton « Analyser SERP » → scraping top 10 via DataForSEO. Hn concurrents, PAA associés, groupes croisés. Filtre auto post-IA (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4). Sélection (check `moteur:lieutenants_locked`).
 6. **Moteur — Phase ② Valider — Lexique** → TF-IDF extrait des données SERP déjà scrapées (zéro requête supplémentaire). 3 niveaux : Obligatoire / Différenciateur / Optionnel. Tri configurable (A-Z / densité / alignement douleur Jaccard). Panel IA upfront. (check `moteur:lexique_validated`).
 7. **Moteur — Phase ③ Finalisation** → Récap read-only des 3 verrouillages. Bouton « Passer à la rédaction ».
-8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Article streamé section par section avec rate-limit 429 backoff (`generate-article-section.md`) → Meta titre + description (`generate-meta.md`) → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 12 actions contextuelles sur sélection.
+8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Article streamé section par section avec rate-limit 429 backoff (`generate-article-section.md`) → Meta titre + description (`generate-meta.md`) → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 11 actions contextuelles sur sélection.
 9. **Résultat** → Article rédigé, mots-clés validés, export HTML.
 
 ### ~~Journey 2 — Vérification au Labo~~ — **REMOVED 2026-05-10**
@@ -2257,10 +2257,11 @@ Le lexique dit à la rédaction quels mots du métier l'article doit employer. C
 - La porte juge le lexique enregistré, qu'elle soit sollicitée par l'écran, par l'outil automatique ou par un appel direct au serveur.
 - La porte est rejouée à la publication (cf. `FR-RED-PUBLISH-GATE`) : un terme générique encore présent, ou un lexique vide, y revient en 🔴 tant qu'aucune dérogation ne le couvre.
 - Le mode automatique ne retient jamais un terme que la porte refuserait.
+- Le lexique modifié depuis la Rédaction passe par le même filtre : un terme générique ajouté à la main est refusé, et l'écran dit pourquoi ; les termes génériques d'une suggestion de l'IA en sont écartés, et l'écran dit lesquels. La Rédaction n'a pas d'étape « Lexique validé » : c'est la publication qui rejoue la porte.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C3 (checklist M4, M5, M11).
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C3 (checklist M4, M5, M11). **Amendée le 2026-09-25** (C4, checklist M15) : le lexique modifié depuis la Rédaction passe aussi par le filtre des mots génériques.
 
-> **En situation.** Sur « isolation combles perdus », l'utilisateur extrait son lexique. La liste propose « laine », « soufflée », « pare-vapeur », « combles »… — des mots isolés : « laine soufflée » n'y figure pas d'un seul tenant — et jamais « vos », « nos », « être » ni « cookies », même si toutes les pages concurrentes les emploient. Aucune case n'est cochée ; un badge signale les termes que l'IA recommande. Il coche « pare-vapeur », « laine » et « soufflée » : l'étape « Lexique validé » est accordée. Dans l'onglet d'une ancienne exploration, restée telle qu'avant la règle, il coche encore « être » : l'étape est retirée, et un bandeau s'affiche — « Étape non validée. « être » n'est pas un mot du métier. » Il décoche ce terme : le bandeau disparaît et l'étape revient. Sur un article rédigé sans lexique, la publication s'arrête sur 🔴 « Aucun terme retenu : le lexique est vide. » ; il revient choisir ses termes, ou assume en écrivant pourquoi.
+> **En situation.** Sur « isolation combles perdus », l'utilisateur extrait son lexique. La liste propose « laine », « soufflée », « pare-vapeur », « combles »… — des mots isolés : « laine soufflée » n'y figure pas d'un seul tenant — et jamais « vos », « nos », « être » ni « cookies », même si toutes les pages concurrentes les emploient. Aucune case n'est cochée ; un badge signale les termes que l'IA recommande. Il coche « pare-vapeur », « laine » et « soufflée » : l'étape « Lexique validé » est accordée. Dans l'onglet d'une ancienne exploration, restée telle qu'avant la règle, il coche encore « être » : l'étape est retirée, et un bandeau s'affiche — « Étape non validée. « être » n'est pas un mot du métier. » Il décoche ce terme : le bandeau disparaît et l'étape revient. Sur un article rédigé sans lexique, la publication s'arrête sur 🔴 « Aucun terme retenu : le lexique est vide. » ; il revient choisir ses termes, ou assume en écrivant pourquoi. Plus tard, dans la Rédaction, il tape « vos » dans la section « Mots-clés » : le terme n'est pas ajouté, et un message explique que c'est un mot générique.
 
 → Conception : [DESIGN-LEX-METIER-ONLY](./design-registry.md#design-lex-metier-only)
 
@@ -2646,17 +2647,19 @@ Le score SEO et le score GEO sont calculés à l'écran pendant la rédaction (c
 
 ---
 
-#### FR-RED-CONTEXTUAL-ACTIONS — 12 actions IA contextuelles sur sélection de texte
+#### FR-RED-CONTEXTUAL-ACTIONS — 11 actions IA contextuelles sur sélection de texte
 
-Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 12 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, localiser, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
+Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 11 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
 
 **Critères d'acceptation**
 - Une barre d'actions apparaît au-dessus de toute sélection de texte non vide dans l'éditeur.
-- Les 12 actions disponibles sont, dans le code source : reformuler, simplifier, convertir en liste, exemple PME, optimiser mot-clé, ajouter statistique, capsule de réponse, transformer en question, localiser, sources chiffrées, exemples réels, ce qu'il faut retenir. (L'action « lien interne » s'ajoute en treizième mais bypasse le pipeline IA — elle ouvre un sélecteur d'article.)
+- Les 11 actions disponibles sont, dans le code source : reformuler, simplifier, convertir en liste, exemple PME, optimiser mot-clé, ajouter statistique, capsule de réponse, transformer en question, sources chiffrées, exemples réels, ce qu'il faut retenir. (L'action « lien interne » s'ajoute en douzième mais bypasse le pipeline IA — elle ouvre un sélecteur d'article.)
 - Le résultat de chaque action apparaît progressivement à l'écran pendant la génération (pas de fenêtre figée).
 - Deux boutons permettent à l'utilisateur d'accepter (remplace la sélection par le résultat) ou de rejeter (annule, sélection conservée intacte).
 - L'action « lien interne » n'envoie pas de requête à l'IA — elle ouvre un sélecteur d'articles du même cocon ; le clic sur un article ajoute un lien sur la sélection.
 - Les actions « sources chiffrées » et « exemples réels » autorisent l'IA à consulter le web pour ramener des données fraîches (les autres actions travaillent uniquement sur le texte fourni).
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4, checklist D1) : l'action « localiser » est retirée de la liste. Elle avait quitté l'éditeur le 2026-04-16 ; son prompt, que plus rien n'appelait, a été supprimé.
 
 > **En situation.** L'utilisateur sélectionne le paragraphe : *« L'indemnité légale dépend de l'ancienneté du salarié. »* Il clique sur l'action « ajouter une statistique ». L'IA recompose en quelques secondes : *« L'indemnité légale dépend de l'ancienneté du salarié : pour 5 ans d'ancienneté à 2 500 € brut/mois, elle s'élève à ≈ 3 100 €. »* Il accepte. La phrase remplace l'originale, le scoring SEO se met à jour automatiquement.
 
@@ -3199,10 +3202,58 @@ Les prompts envoyés à Claude / Gemini sont stockés en fichiers `.md` **sans l
 2. Le contenu utilisateur injecté (par exemple le titre d'un article ou un texte sélectionné dans l'éditeur) est **échappé** avant injection — un utilisateur ne peut pas, par mégarde, casser le comportement de l'IA en collant un texte qui ressemble à une instruction.
 
 **Critères d'acceptation**
-- Aucun prompt `.md` ne contient de logique conditionnelle ou de référence à un état utilisateur — tout passe par variables `{{...}}`.
+- Aucun prompt `.md` ne contient de référence à un état utilisateur — tout passe par variables `{{...}}`.
+- La seule logique permise dans un prompt est d'afficher ou non un bloc selon qu'une valeur est vide : un bloc « contexte enrichi » disparaît, titre compris, quand il n'y a pas de contexte. Aucune autre condition.
+- Chaque prompt reçoit exactement les variables qu'il attend : une variable attendue mais absente, ou fournie mais inutilisée, est une erreur visible en développement et en test (cf. `FR-INFRA-PROMPT-LAYERS`).
+- Un texte inséré arrive tel quel : une suite de caractères qui ressemble à une variable (`{{…}}`) ou à un motif de remplacement (`$1`, `$&`) n'est ni interprétée ni perdue.
 - Le contenu utilisateur qui ressemble à une instruction (`\n\nHuman:`, `<system>`, etc.) est neutralisé avant injection dans le prompt.
 
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4) : le chargeur devient strict (variables exactes, rendu en une passe) ; le critère « aucune logique conditionnelle » devient « un bloc affiché ou non selon qu'une valeur est vide » — de tels blocs existaient déjà dans les prompts du Cerveau, mais rien ne les traitait et deux d'entre eux partaient bruts chez l'IA.
+
 → Conception : [DESIGN-INFRA-PROMPT-LOADER](./design-registry.md#design-infra-prompt-loader)
+
+---
+
+#### FR-INFRA-PROMPT-LAYERS — Des consignes d'IA organisées en couches, sans rien d'écrit en dur
+
+Une consigne d'IA (un « prompt ») ressemble au brief qu'un chef donne à un pigiste : qui il est, ce qu'il doit savoir, les règles de la maison, ce qu'on attend de lui et sous quelle forme le rendre. Le pilier 1013 (2026-09-24) a montré ce qui arrive quand ce brief est écrit n'importe comment : le budget de mots de chaque section était calculé puis perdu en route, sans que rien ne le signale ; des années passées et des quartiers de Toulouse étaient écrits en dur dans les consignes, quel que soit le client ; et l'IA du Cerveau a recopié deux fois l'exemple de sa consigne, jusqu'à l'adresse de page du pilier. Désormais chaque consigne suit les mêmes couches, reçoit exactement les informations qu'elle attend, et tire la date et la zone du contexte.
+
+**Critères d'acceptation**
+- Chaque consigne se compose de cinq couches : l'identité (qui écrit, pour qui, avec quel ton), le contexte (date, zone, stratégie, article, mots-clés), les règles du type d'article (cf. `FR-INFRA-TYPE-RULES-SSOT`), la tâche, et le contrat de sortie (la forme attendue, et ce qui la vérifie).
+- Une information attendue par une consigne mais absente, ou fournie mais inutilisée, est une erreur qui arrête l'appel en développement et en test ; en production, l'écart est journalisé et l'appel continue.
+- Un bloc facultatif disparaît, titre compris, quand l'information qu'il annonce est vide : l'IA ne reçoit jamais un repère brut ni un titre sans contenu.
+- Aucune année ni aucun lieu n'est écrit en dur dans les consignes : la date du jour, l'année, la zone du client (celle de sa configuration) et ses repères locaux (autres noms de la zone, quartiers et communes, lieux connus) viennent du contexte. Les entreprises du référentiel local ne sont pas proposées comme repères : l'IA leur prêterait des faits qu'elle ne connaît pas.
+- Les exemples des consignes sont fictifs, pris dans un autre métier, avec « [ville] » à la place du lieu ; la consigne interdit de recopier un exemple.
+- La stratégie validée du cocon arrive une seule fois dans une consigne, lue dans ce qui est enregistré.
+- La liste des consignes, avec les informations que chacune attend et ce qui l'appelle, est produite à partir des consignes elles-mêmes ; un test échoue si elle n'est pas à jour.
+- L'état du cocon (articles, capitaines, structures, statut de rédaction) n'est pas encore une couche de contexte : il arrivera avec le cocon né du pilier (épopée qualité SEO, C7).
+- Limite connue : le référentiel des repères locaux est unique pour tout l'outil et n'est pas trié selon la zone du client. Il décrit aujourd'hui Toulouse : pour un client d'une autre ville, la consigne reçoit la bonne zone mais des repères toulousains, tant que ce référentiel n'est pas remplacé.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist K5, K7, R11, D1, D2, D3), réservée par C0, livrée par C4.
+
+> **En situation.** Arnaud crée un cocon pour un client à Bordeaux et renseigne la zone dans la configuration. La consigne de rédaction annonce la date du jour et dit que la zone du client est Bordeaux : aucune consigne n'écrit plus Toulouse ni une année en dur, et aucun texte n'annonce « en 2024 ». Les repères locaux, eux, restent ceux du référentiel de l'outil (Toulouse) : pour que l'IA cite des quartiers de Bordeaux, il faudra remplacer ce référentiel, ce qu'aucun écran ne permet aujourd'hui. Au Cerveau, l'IA propose des titres pour son métier à lui : l'exemple de la consigne, celui d'un chauffagiste, ne se retrouve pas dans le plan. Le lendemain, un développeur transmet une nouvelle information au sommaire sans l'ajouter à la consigne : `npm run verify` échoue et nomme l'information inutilisée.
+
+→ Conception : [DESIGN-INFRA-PROMPT-LAYERS](./design-registry.md#design-infra-prompt-layers)
+
+---
+
+#### FR-INFRA-TYPE-RULES-SSOT — Une seule définition de ce qu'est un pilier, un intermédiaire, un spécialisé
+
+Le type d'un article décide de sa longueur, de son nombre de chapitres et de lieutenants. Avant l'épopée qualité SEO, ces règles vivaient en plusieurs exemplaires qui se contredisaient : un intermédiaire faisait « 1 000 à 1 500 mots » dans deux consignes d'IA, 1 800 mots dans la rédaction et 1 850 à l'écran ; un pilier était annoncé à 2 650 mots dans le brief et rédigé pour 2 500 ; le mode automatique gardait 8 lieutenants pour un pilier quand l'écran en garde 5. Désormais une seule table définit chaque type, et tout le monde la lit.
+
+**Critères d'acceptation**
+- Une seule source définit, pour chaque type : la longueur visée, la fourchette de longueur admise, le seuil de contenu trop mince, le nombre de H2 (fourchette et seuil d'alerte), le nombre de H3 par H2, le nombre de lieutenants (candidats proposés, minimum et maximum retenus) et le nombre de H2 qui peuvent citer la ville.
+- Les consignes d'IA (sommaire, lieutenants, structure Hn), la recommandation de longueur, la valeur affichée dans le brief, le budget de rédaction, les alertes SEO, les vérificateurs (lieutenants, publication) et le mode automatique lisent cette source ; aucune consigne ne recopie un nombre par type.
+- Sans données concurrentes, la longueur recommandée est la longueur visée du type : celle qui s'affiche est celle que la rédaction vise.
+- Un seuil d'alerte (« contenu trop mince », « trop peu de chapitres ») n'est pas la borne basse de la cible : ce sont deux valeurs distinctes, dans la même source.
+- Un test échoue si une consigne recopie une règle par type, si un calcul ne rend pas la valeur de la source, ou si une autre table de nombres par type apparaît dans le code.
+- Le nombre de questions de FAQ n'est pas encore une règle par type : aucune n'existe aujourd'hui ; elle arrivera avec la passe FAQ (épopée qualité SEO, C5).
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist M10), réservée par C0, livrée par C4.
+
+> **En situation.** Arnaud décide qu'un pilier vise 3 000 mots au lieu de 2 500. Il change cette seule valeur : la longueur affichée dans le brief, celle que la rédaction vise par défaut et les règles que l'IA reçoit pour le sommaire disent toutes 3 000. S'il relève aussi le plafond du pilier, la porte de publication suit. Aucune consigne n'est à retoucher.
+
+→ Conception : [DESIGN-INFRA-TYPE-RULES-SSOT](./design-registry.md#design-infra-type-rules-ssot)
 
 ---
 
@@ -3610,11 +3661,11 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 | `keywords_seo`              | **FR-INFRA-KEYWORDS-SEO**             | FR-CER-AIGUILLAGE, FR-CER-BATCH-CREATE                 | FR-CAP-CARDS, FR-MOT-PHASES                                            | Cocoon-scoped. Pool dans lequel le Capitaine pioche.                  |
 | `lexique_explorations`      | (FR-LEX-EXPLORATION décrit)           | FR-LEX-EXPLORATION                                     | FR-LEX-RECOMMEND, FR-EXP-COUNTS                                        |                                                                       |
 | `lieutenant_explorations`   | **FR-INFRA-LIEUTENANT-EXPLORATIONS**  | FR-LIE-PROPOSE, FR-LIE-PERSIST                         | FR-LIE-SELECT, FR-EXP-COUNTS                                           | Renommée depuis `lieutenant_proposals` en migration 010.              |
-| `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP                             | Référentiel statique cross-cocon.                                     |
+| `local_entities`            | **FR-INFRA-LOCAL-ENTITIES**           | seed migration uniquement                              | FR-CAP-LOCAL-ANCHORING, FR-RED-CONTENT-GAP, FR-INFRA-PROMPT-LAYERS (repères de la zone, C4) | Référentiel statique cross-cocon.                                     |
 | `paa_explorations`          | **FR-INFRA-PAA-EXPLORATIONS**         | FR-CAP-PERSIST (PAA testées)                           | FR-CAP-CARDS, FR-EXP-COUNTS                                            | Distinct de `external_api_cache.cache_type='paa'`.                             |
 | `radar_explorations`        | (FR-RAD-PERSIST décrit)               | FR-RAD-PERSIST, FR-RAD-LONGTAIL-PERSIST                | FR-RAD-CARDS, FR-CAP-PERSIST (via source), FR-EXP-COUNTS               | Article-scoped, JSONB `scan_result`.                                  |
 | `silos`                     | (schéma initial)                      | FR-DASH-NAV (CRUD admin)                               | FR-DASH-NAV                                                            | Conteneur de cocoons.                                                 |
-| `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`)                 | Singleton (`id=1`).                                                   |
+| `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`, sur la copie envoyée par l'écran), FR-INFRA-PROMPT-LAYERS (zone du client, lue en base, C4) | Singleton (`id=1`).                                                   |
 | `gate_waivers`              | **FR-INFRA-GATE-WAIVER**              | FR-INFRA-GATE-WAIVER (alarme graduée : dérogation 🟠 / 🔴) | FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-LEX-METIER-ONLY, FR-RED-PUBLISH-GATE (réaffichage) | Épopée qualité SEO (C2, porte du lexique en C3). `ON DELETE CASCADE` sur articles. |
 
 > **Lecture de la matrice :**
@@ -4723,15 +4774,9 @@ cocoons, keywords, articles, dataforseo, generate (sub-routes), links, export, i
 
 ### 12.3 — Prompts `.md` (`server/prompts/`)
 
-Stratégie article : `strategy-suggest.md`, `strategy-deepen.md`, `strategy-consolidate.md`.
+L'inventaire n'est plus tenu à la main (il citait des prompts disparus : `generate-article.md`, `actions/localize.md`, `discovery-*.md`…). Il est **généré** depuis les prompts eux-mêmes dans `docs/prompts-reference.md` (`npm run docs:prompts`) : pour chaque prompt, son rôle, ses variables, ses blocs facultatifs, les variables globales qu'il cite et les fichiers qui le chargent ; un test échoue si le fichier n'est pas à jour. L'organisation en cinq couches est décrite dans `docs/prompts-architecture.md` (cf. `FR-INFRA-PROMPT-LAYERS`).
 
-Stratégie cocon : `cocoon-brainstorm.md`, `cocoon-articles.md`, `cocoon-articles-topics.md`, `cocoon-paa-queries.md`, `cocoon-articles-spe.md`.
-
-Moteur : `discovery-*.md`, `radar-*.md`, `painpoint-translate.md`, `capitaine-ai-panel.md`, `propose-lieutenants.md`, `lieutenants-hn-structure.md`, `lexique-suggest.md`, `lexique-analysis-upfront.md`, `lexique-ai-panel.md`.
-
-Rédaction : `brief-ia-panel.md`, `generate-outline.md`, `generate-article.md`, `generate-article-section.md`, `generate-meta.md`.
-
-Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `actions/convert-list.md`, `actions/pme-example.md`, `actions/keyword-optimize.md`, `actions/add-statistic.md`, `actions/answer-capsule.md`, `actions/question-heading.md`, `actions/localize.md`, `actions/sources-chiffrees.md`, `actions/exemples-reels.md`, `actions/ce-quil-faut-retenir.md`.
+Au 2026-09-25 : 31 prompts à la racine de `server/prompts/` (dont `system-propulsite.md`, le prompt système des générations de texte) et 11 actions contextuelles dans `server/prompts/actions/`.
 
 ### 12.4 — Liste des FR/NFR introduits ou modifiés depuis le 2026-04-24
 
@@ -4809,6 +4854,11 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | FR-LEX-PRECHECK-PERSISTE | amendée (plus aucun terme coché d'office ; chaque geste est enregistré ; l'écran suit toujours le lexique enregistré, rechargement compris ; l'étape passe par la porte du lexique) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
 | FR-LEX-SELECT, FR-LEX-CHECK, FR-LEX-CHECKBOX-LOCK-IMMEDIATE | amendées (fin du pré-cochage des Obligatoires ; l'étape passe par la porte du lexique) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
 | FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (la porte du lexique rejoint les portes, rejouée à la publication) | epic-qualite-seo-garde-fous (C3) | 2026-09-25 |
+| FR-INFRA-PROMPT-LAYERS | nouveau (cinq couches ; variables exactes ; date, zone et repères locaux tirés du contexte — repères pas encore triés par zone ; exemples non recopiables ; référence des prompts générée) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-INFRA-TYPE-RULES-SSOT | nouveau (une seule table des règles par type, lue par les prompts, les calculs et les vérificateurs ; pas encore de règle de FAQ) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-INFRA-PROMPT-LOADER | amendée (chargeur strict ; seule logique permise : un bloc affiché ou non selon qu'une valeur est vide ; texte inséré jamais réinterprété) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-LEX-METIER-ONLY | amendée (le lexique modifié depuis la Rédaction passe par le filtre des mots génériques) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-RED-CONTEXTUAL-ACTIONS | amendée (11 actions : « localiser », sortie de l'éditeur en avril, n'est plus listée ; son prompt est supprimé) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 

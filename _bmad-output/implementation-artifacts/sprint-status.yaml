@@ -916,7 +916,12 @@ development_status:
   # lexique-lock (🔴 vide, 🔴 terme générique) rejouée à la publication.
   # FR-LEX-METIER-ONLY versée au PRD et au registre ; FR-LEX-PRECHECK-PERSISTE amendée.
   qualite-seo-c3-lexique-metier: review
-  qualite-seo-c4-prompts-architecture: backlog
+  # C4 (branche refactor/prompts-architecture, 2026-09-25) : code livré, PR à ouvrir.
+  # Chargeur strict (variables exactes, rendu en une passe), date / zone / repères
+  # tirés du contexte, règles par type en une seule table ({{type_rules}}),
+  # référence des prompts générée ; restes M14, M15, T11 soldés, M17 requalifiée.
+  # FR-INFRA-PROMPT-LAYERS et FR-INFRA-TYPE-RULES-SSOT versées au PRD et au registre.
+  qualite-seo-c4-prompts-architecture: review
   qualite-seo-c5-redaction-deux-temps: backlog
   qualite-seo-c6-onglet-structure-hn: backlog
   qualite-seo-c7-cocon-progressif: backlog
