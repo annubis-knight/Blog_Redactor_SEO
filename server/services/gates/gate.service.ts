@@ -9,7 +9,8 @@
  *            server/routes/articles.routes.ts (POST /progress/check, PUT /status),
  *            scripts/verify-content.ts (liste des dérogations).
  * RELATED FR: FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE,
- *             FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock)
+ *             FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock),
+ *             FR-RED-DRAFT-SINGLE-PASS (draft : article_micro_contexts.target_word_count)
  *
  * Le serveur est le seul évaluateur : il charge les données, appelle le
  * vérificateur partagé (`shared/verifiers/`) et applique les dérogations
@@ -18,7 +19,7 @@
  */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
-import { getArticleById, getArticleKeywords } from '../infra/data.service.js'
+import { getArticleById, getArticleKeywords, loadArticleMicroContext } from '../infra/data.service.js'
 import { getKeywordMetrics } from '../keyword/keyword-metrics.service.js'
 import { captainKpisFromMetricsRow } from '../keyword/captain-kpis.js'
 import { getArticleContent } from '../article/article-content.service.js'
@@ -40,6 +41,8 @@ import { verifyCaptain, type CaptainGateInput } from '../../../shared/verifiers/
 import { verifyLieutenants, normalizeKeyword, type CocoonKeywordClaim } from '../../../shared/verifiers/lieutenants.js'
 import { verifyPublish } from '../../../shared/verifiers/publish.js'
 import { verifyLexique } from '../../../shared/verifiers/lexique.js'
+import { verifyDraft } from '../../../shared/verifiers/draft.js'
+import { targetWordsFor } from '../../../shared/constants/article-type-rules.js'
 import { normalizeTerm } from '../../../shared/utils/generic-terms.js'
 import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_LEXIQUE_VALIDATED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
@@ -198,6 +201,31 @@ async function lexiqueGate(articleId: number): Promise<{ issues: GateIssue[]; ha
   }
 }
 
+/**
+ * Premier jet (FR-RED-DRAFT-SINGLE-PASS) : le texte enregistré, jugé contre la
+ * longueur visée (micro-contexte, sinon règle du type) et le sommaire validé.
+ */
+async function draftGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
+  const found = await getArticleById(articleId)
+  if (!found) throw new Error(`Article ${articleId} introuvable`)
+  const { article } = found
+  const [content, { data: kw }, micro] = await Promise.all([
+    getArticleContent(articleId),
+    getArticleKeywords(articleId),
+    loadArticleMicroContext(articleId),
+  ])
+  // Le sommaire enregistré peut être une chaîne JSON ou un objet.
+  const outline = (typeof content.outline === 'string' ? JSON.parse(content.outline) : content.outline) as
+    { sections?: Array<{ level: number }> } | null
+  const input = {
+    content: content.content ?? '',
+    captain: kw?.capitaine ?? article.captainKeywordLocked ?? null,
+    targetWords: micro?.targetWordCount ?? targetWordsFor(article.type),
+    outlineH2Count: outline?.sections?.filter(s => s.level === 2).length ?? 0,
+  }
+  return { issues: verifyDraft(input), hashInput: input }
+}
+
 async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
   const found = await getArticleById(articleId)
   if (!found) throw new Error(`Article ${articleId} introuvable`)
@@ -251,9 +279,10 @@ export async function evaluateArticleGate(
     case 'captain-lock': built = await captainGate(articleId, opts.keyword); break
     case 'lieutenants-lock': built = await lieutenantsGate(articleId); break
     case 'lexique-lock': built = await lexiqueGate(articleId); break
+    case 'draft': built = await draftGate(articleId); break
     case 'publish': built = await publishGate(articleId); break
     default:
-      // Portes livrées par les chantiers suivants (structure C6, premier jet C5).
+      // Porte livrée par un chantier suivant (structure, C6).
       built = { issues: [], hashInput: {} }
   }
   const inputHash = hashGateInput(built.hashInput)

@@ -17,6 +17,7 @@ import { validateArticleContent, validateArticleMeta, type ContentIssue } from '
 import { validateArticleSeo, type SeoInput } from '../seo-validators.js'
 import type { GateIssue, GateLevel, GateWaiver } from './gate.js'
 import { ARTICLE_TYPE_RULES } from '../constants/article-type-rules.js'
+import { detectNonFrenchSentences, detectRepeatedParagraphs, detectUnsourcedFigures } from '../text-quality.js'
 
 /** Règles tolérées à la publication : l'export les corrige lui-même. */
 const TOLERATED_AT_PUBLISH = new Set(['hn-h1-in-body'])
@@ -41,7 +42,7 @@ const GATE_LABELS: Record<string, string> = {
   'draft': 'premier jet',
 }
 
-function fromContentIssue(issue: ContentIssue, errorLevel: GateLevel): GateIssue | null {
+export function fromContentIssue(issue: ContentIssue, errorLevel: GateLevel): GateIssue | null {
   if (TOLERATED_AT_PUBLISH.has(issue.rule)) return null
   const level: GateLevel = issue.severity === 'error'
     ? errorLevel
@@ -55,7 +56,7 @@ function fromContentIssue(issue: ContentIssue, errorLevel: GateLevel): GateIssue
  * de l'extrait visé, pour qu'une dérogation n'en couvre qu'une seule
  * (FR-INFRA-GATE-WAIVER) et que l'écran les affiche toutes.
  */
-function distinctRules(issues: GateIssue[]): GateIssue[] {
+export function distinctRules(issues: GateIssue[]): GateIssue[] {
   const counts = new Map<string, number>()
   for (const issue of issues) counts.set(issue.rule, (counts.get(issue.rule) ?? 0) + 1)
   const used = new Set<string>()
@@ -95,6 +96,17 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
   validateArticleMeta({ metaTitle: input.metaTitle, metaDescription: input.metaDescription })
     .forEach(i => collect(fromContentIssue(i, 'technique')))
   validateArticleSeo(input).forEach(i => collect(fromContentIssue(i, 'risque')))
+  // Qualité du texte (FR-RED-DRAFT-SINGLE-PASS) : déjà jugée au premier jet,
+  // rejugée ici parce que le texte a pu changer depuis (retouches, passes).
+  for (const sentence of detectUnsourcedFigures(input.content)) {
+    collect({ rule: 'unsourced-figure', level: 'risque', message: `Chiffre sans source : « ${sentence.slice(0, 120)} ».`, risk: 'Un chiffre sans source peut être inventé ; il fragilise la confiance du lecteur, et celle de Google.', excerpt: sentence })
+  }
+  for (const sentence of detectNonFrenchSentences(input.content)) {
+    collect({ rule: 'non-french-sentence', level: 'risque', message: `Phrase qui n’est pas en français : « ${sentence.slice(0, 120)} ».`, risk: 'Un passage en anglais trahit un texte recopié et perd le lecteur.', excerpt: sentence })
+  }
+  for (const paragraph of detectRepeatedParagraphs(input.content)) {
+    collect({ rule: 'repeated-paragraph', level: 'risque', message: `Paragraphe répété : « ${paragraph}… ».`, risk: 'Un texte qui se répète lasse le lecteur et ressemble à du remplissage.', excerpt: paragraph })
+  }
   distinctRules(found).forEach(push)
 
   // Le plancher de longueur est déjà vérifié (`seo-thin-content`) ; le plafond

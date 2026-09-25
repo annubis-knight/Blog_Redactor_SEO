@@ -143,6 +143,31 @@ describe('Porte « valider le lexique » (FR-LEX-METIER-ONLY)', () => {
   })
 })
 
+describe('Porte « accepter le premier jet » (FR-RED-DRAFT-SINGLE-PASS)', () => {
+  const outline = { sections: [
+    { id: 'h1', level: 1, title: 'Titre', annotation: null, status: 'accepted' },
+    { id: 'a', level: 2, title: 'Premier chapitre', annotation: null, status: 'accepted' },
+    { id: 'b', level: 2, title: 'Second chapitre', annotation: null, status: 'accepted' },
+  ] }
+
+  it('⛔ un premier jet sans H1 ; 🔴 un chiffre sans source — jugés sur le texte enregistré', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle('Spécialisé')
+    const capitaine = `premier jet ${ctx.runId}`
+    await apiPut(`/articles/${article.id}/keywords`, { capitaine, lieutenants: [], lexique: [] })
+
+    await apiPut(`/articles/${article.id}`, { outline, content: `<p>Texte sur ${capitaine}.</p><h2>Premier chapitre</h2><p>Un paragraphe.</p><h2>Second chapitre</h2><p>Un autre.</p>` })
+    const sansH1 = await apiGet<Evaluation>(`/articles/${article.id}/gates/draft`)
+    expect(sansH1.data?.passed).toBe(false)
+    expect(sansH1.data?.blocking.map(i => `${i.level}:${i.rule}`)).toContain('technique:draft-h1-missing')
+
+    await apiPut(`/articles/${article.id}`, { outline, content: `<h1>Guide ${capitaine}</h1><p>Tout sur ${capitaine}.</p><h2>Premier chapitre</h2><p>Un site coûte 3 000 € en moyenne.</p><h2>Second chapitre</h2><p>Un autre paragraphe.</p>` })
+    const chiffre = await apiGet<Evaluation>(`/articles/${article.id}/gates/draft`)
+    expect(chiffre.data?.blocking.map(i => `${i.level}:${i.rule}`)).toContain('risque:draft-unsourced-figure')
+    expect(chiffre.data?.blocking.map(i => i.rule)).not.toContain('draft-h1-missing')
+  })
+})
+
 describe('Porte « publier »', () => {
   it('⛔ un article sans contenu ne se publie pas, même avec une raison', async ({ skip }) => {
     if (!ctx.serverOk) skip()

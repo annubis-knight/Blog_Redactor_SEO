@@ -31,6 +31,12 @@ describe('verifyPublish — le pilier 1013 est rejeté', () => {
   const byRule = (rule: string) => issues.find(i => i.rule === rule)
   const result = evaluateGate('publish', issues, [], hashGateInput(pilier1013))
 
+  it('relève ses chiffres sans source (rejugés à la publication, FR-RED-DRAFT-SINGLE-PASS)', () => {
+    const unsourced = issues.filter(i => i.rule.startsWith('unsourced-figure'))
+    expect(unsourced.length).toBeGreaterThan(0)
+    expect(unsourced.every(i => i.level === 'risque')).toBe(true)
+  })
+
   it('la porte ne passe pas', () => {
     expect(result.passed).toBe(false)
   })
