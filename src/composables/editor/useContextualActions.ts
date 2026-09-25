@@ -1,6 +1,7 @@
 import { ref, getCurrentInstance, onUnmounted } from 'vue'
 import type { Editor } from '@tiptap/core'
 import { useStreaming } from '@/composables/editor/useStreaming'
+import { useLinkingStore } from '@/stores/keyword/linking.store'
 import { log } from '@/utils/logger'
 import type { ActionType, ActionContext, Article } from '@shared/types/index.js'
 
@@ -22,6 +23,8 @@ export function useContextualActions() {
   /** Internal-link: show article picker instead of SSE pipeline */
   const showArticlePicker = ref(false)
   let pendingLinkEditor: Editor | null = null
+  /** L'article d'où part le lien : il entre dans la matrice de maillage. */
+  let pendingSourceId: number | null = null
 
   /** Saved selection range — preserved so we can restore after streaming */
   let savedFrom = 0
@@ -44,6 +47,7 @@ export function useContextualActions() {
     // Internal-link: bypass SSE pipeline, show article picker
     if (actionType === 'internal-link') {
       pendingLinkEditor = editor
+      pendingSourceId = context.articleId ?? null
       showArticlePicker.value = true
       return
     }
@@ -84,17 +88,28 @@ export function useContextualActions() {
     isExecuting.value = false
   }
 
-  /** Apply internal link mark on the saved selection */
+  /**
+   * Pose le lien interne sur la sélection — le même que le panneau de maillage
+   * (`#article-<id>`, résolu à l'export) — et l'enregistre dans la matrice
+   * (`internal_links`). Avant C7, ce chemin posait `/<slug>` sans rien
+   * enregistrer : la matrice et la publication ignoraient ces liens.
+   */
   function applyInternalLink(article: Article) {
     if (!pendingLinkEditor) return
-    log.debug(`[contextual-actions] applying internal link to "${article.slug}"`)
+    log.debug(`[contextual-actions] applying internal link to article #${article.id}`)
+    const doc = pendingLinkEditor.state.doc
+    const anchorText = doc.textBetween(savedFrom, savedTo, ' ')
+    const position = `char-${doc.textBetween(0, savedFrom, '').length}`
 
     pendingLinkEditor
       .chain()
       .focus()
       .setTextSelection({ from: savedFrom, to: savedTo })
-      .setMark('internalLink', { slug: article.slug, href: `/${article.slug}` })
+      .setMark('internalLink', { targetId: article.id, href: `#article-${article.id}` })
       .run()
+    if (pendingSourceId !== null && anchorText.trim()) {
+      void useLinkingStore().saveLinks([{ sourceId: pendingSourceId, targetId: article.id, anchorText, position }])
+    }
     cancelLink()
   }
 
@@ -102,6 +117,7 @@ export function useContextualActions() {
   function cancelLink() {
     showArticlePicker.value = false
     pendingLinkEditor = null
+    pendingSourceId = null
     resetState()
   }
 

@@ -10,6 +10,7 @@ import type {
   CrossCocoonOpportunity,
 } from '../../../shared/types/linking.types.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
+import type { Article } from '../../../shared/types/index.js'
 
 const _DEFAULT_MATRIX: LinkingMatrix = {
   links: [],
@@ -154,6 +155,44 @@ export function bestContiguousAnchor(title: string, content: string): string | n
   return null
 }
 
+/**
+ * Le maillage de la famille (C7, FR-RED-LINKING-MANUAL) : un parent propose un
+ * lien vers chacun de ses enfants — la section qui l'annonce doit y renvoyer —
+ * et un enfant, vers son parent. Proposé même si la cible n'est pas encore
+ * publiée : la raison le signale (la publication le rappellera, 🟠).
+ * L'ancre est prise telle quelle dans le texte ; sans elle, pas de suggestion.
+ */
+export function familySuggestions(
+  source: Article,
+  articles: Article[],
+  content: string,
+  existingTargets: Set<number>,
+): LinkSuggestion[] {
+  const out: LinkSuggestion[] = []
+  const relatives: Array<{ target: Article; relation: 'enfant' | 'parent' }> = [
+    ...articles.filter(a => a.parentId === source.id).map(target => ({ target, relation: 'enfant' as const })),
+    ...articles.filter(a => a.id === source.parentId).map(target => ({ target, relation: 'parent' as const })),
+  ]
+  for (const { target, relation } of relatives) {
+    if (target.id === source.id || existingTargets.has(target.id)) continue
+    const keyword = target.captainKeywordLocked ?? target.suggestedKeyword
+    const anchor = bestContiguousAnchor(target.title, content)
+      ?? (keyword && content.toLowerCase().includes(keyword.toLowerCase()) ? keyword : null)
+    if (!anchor) continue
+    const section = relation === 'enfant' ? target.parentSection : source.parentSection
+    const where = section ? ` (section « ${section} »)` : ''
+    const unpublished = target.status !== 'publié' ? ' — pas encore publié : le lien sera cassé tant qu’il n’est pas en ligne' : ''
+    out.push({
+      targetId: target.id,
+      targetTitle: target.title,
+      targetType: target.type,
+      suggestedAnchor: anchor,
+      reason: `${relation === 'enfant' ? 'Article enfant' : 'Article parent'}${where}${unpublished}`,
+    })
+  }
+  return out
+}
+
 /** Suggest internal links for an article based on content analysis */
 export async function suggestLinks(articleId: number, content: string): Promise<LinkSuggestion[]> {
   log.info(`Suggesting links for article ${articleId}`)
@@ -163,11 +202,15 @@ export async function suggestLinks(articleId: number, content: string): Promise<
   // Find source article and its cocoon
   let sourceCocoonName: string | null = null
   let sourceType: ArticleLevel | null = null
+  let source: Article | null = null
+  let sourceCocoonArticles: Article[] = []
   for (const cocoon of cocoons) {
     const found = cocoon.articles.find((a) => a.id === articleId)
     if (found) {
       sourceCocoonName = cocoon.name
       sourceType = found.type
+      source = found
+      sourceCocoonArticles = cocoon.articles
       break
     }
   }
@@ -184,6 +227,10 @@ export async function suggestLinks(articleId: number, content: string): Promise<
   const written = await loadWrittenArticleIds()
 
   const contentLower = content.toLowerCase()
+
+  // La famille d'abord (C7) : parent et enfants, même pas encore rédigés.
+  const family = source ? familySuggestions(source, sourceCocoonArticles, content, existingTargets) : []
+  for (const f of family) existingTargets.add(f.targetId)
 
   // Look for potential link targets in the same cocoon first, then others
   for (const cocoon of cocoons) {
@@ -227,7 +274,7 @@ export async function suggestLinks(articleId: number, content: string): Promise<
     return aIntra - bIntra
   })
 
-  return suggestions.slice(0, 10)
+  return [...family, ...suggestions].slice(0, 10)
 }
 
 /** Detect orphan articles (no incoming links) */

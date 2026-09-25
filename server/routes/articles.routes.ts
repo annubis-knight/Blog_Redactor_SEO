@@ -1,6 +1,6 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleById, getArticleBySlug, updateArticleStatus, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleChecks, getArticleKeywords } from '../services/infra/data.service.js'
+import { getArticleById, getArticleBySlug, updateArticleStatus, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleChecks, getArticleKeywords, getArticleChildren } from '../services/infra/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article/article-content.service.js'
 import { updateArticleContentSchema, updateArticleStatusSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
@@ -184,6 +184,25 @@ router.delete('/articles/:id', async (req, res) => {
   } catch (err) {
     log.error(`DELETE /api/articles/${id} — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to delete article' } })
+  }
+})
+
+/**
+ * GET /api/articles/:id/children — les articles nés des sections de celui-ci
+ * (C7) : section du parent, mot-clé, statut. La passe « Résumer » et le
+ * maillage s'en servent.
+ */
+router.get('/articles/:id/children', async (req, res) => {
+  const id = parseInt(req.params.id, 10)
+  if (isNaN(id)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Article ID must be a number' } })
+    return
+  }
+  try {
+    res.json({ data: await getArticleChildren(id) })
+  } catch (err) {
+    log.error(`GET /api/articles/${id}/children — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to load children' } })
   }
 })
 

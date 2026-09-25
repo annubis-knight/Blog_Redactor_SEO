@@ -81,6 +81,17 @@ describe('proposeChapter — passes simulées', () => {
   })
 
   // R22 — le nombre de questions vient des règles du type, plus d'un « 3 à 6 » écrit dans le prompt.
+  // C7 — la section dont est né un enfant devient un résumé de 150 à 250 mots qui l'annonce.
+  it('résumer : le H2 reste, les H3 partent, 150 à 250 mots qui annoncent l’article enfant', async () => {
+    const p = await proposeChapter(input('resumes', { child: { title: 'Isoler ses combles', keyword: 'isolation combles' } }))
+    const prompt = streamSpy.mock.calls[0]![1] as string
+    expect(prompt).toContain('« Isoler ses combles »')
+    expect(prompt).toContain('150 à 250 mots')
+    expect(headingsOf(p.html)).toEqual(['<h2>Le budget d’un site</h2>'])
+    expect(p.html).toContain('Isoler ses combles')
+    expect(p.issues.filter(i => i.level !== 'attention')).toEqual([])
+  })
+
   it('FAQ : un chapitre « Questions fréquentes », autant de questions que le type en demande', async () => {
     const p = await proposeChapter(input('faq', { chapterHtml: '', chapterIndex: 1, articleType: 'pilier' }))
     expect(streamSpy.mock.calls[0]![1]).toContain('FAQ : 4 à 6 questions')

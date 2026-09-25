@@ -466,6 +466,26 @@ export async function addCocoonToSilo(siloName: string, cocoonName: string): Pro
 }
 
 /**
+ * Les enfants d'un article dans le cocon : la section du parent dont chacun est
+ * né, et son mot-clé (capitaine, sinon mot-clé suggéré). Pour la passe
+ * « Résumer » et les suggestions de maillage (C7).
+ */
+export async function getArticleChildren(
+  articleId: number,
+): Promise<Array<{ id: number; title: string; parentSection: string | null; keyword: string | null; status: ArticleStatus }>> {
+  const res = await pool.query(`
+    SELECT a.id, a.titre, a.parent_section, a.status,
+           COALESCE(NULLIF(TRIM(ak.capitaine), ''), a.captain_keyword_locked, a.suggested_keyword) AS keyword
+    FROM articles a
+    LEFT JOIN article_keywords ak ON ak.article_id = a.id
+    WHERE a.parent_id = $1
+    ORDER BY a.id
+  `, [articleId])
+  return (res.rows as Array<{ id: number; titre: string; parent_section: string | null; keyword: string | null; status: ArticleStatus }>)
+    .map(r => ({ id: r.id, title: r.titre, parentSection: r.parent_section, keyword: r.keyword, status: r.status }))
+}
+
+/**
  * Insère UN article dans un cocon (seul chemin d'écriture, cf.
  * `cocoon-article.service.ts`, qui vérifie la hiérarchie avant). Renvoie
  * `'slug-taken'` si l'adresse est déjà prise : l'appelant le dit à l'utilisateur.

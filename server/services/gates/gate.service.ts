@@ -274,6 +274,38 @@ async function draftGate(articleId: number): Promise<{ issues: GateIssue[]; hash
   return { issues: verifyDraft(input), hashInput: input }
 }
 
+/**
+ * Ce que la publication sait du cocon (C7) : les enfants de l'article et la
+ * section dont chacun est né (le parent les résume), et les articles vers
+ * lesquels le texte renvoie sans qu'ils soient publiés (FR-RED-LINKING-MANUAL).
+ * Liens lus dans `internal_links` et dans le texte (`#article-<id>`, `/<slug>`).
+ */
+async function publishCocoonLinks(articleId: number, html: string): Promise<{
+  children: Array<{ id: number; title: string; section: string }>
+  unpublishedLinks: Array<{ id: number; title: string }>
+}> {
+  const children = await pool.query(
+    `SELECT id, titre, parent_section FROM articles WHERE parent_id = $1 AND parent_section IS NOT NULL ORDER BY id`,
+    [articleId],
+  )
+  const ids = new Set<number>()
+  for (const m of html.matchAll(/href="#article-(\d+)"/g)) ids.add(Number(m[1]))
+  const slugs = [...html.matchAll(/href="\/([a-z0-9-]+)"/g)].map(m => m[1]!)
+  const stored = await pool.query(`SELECT DISTINCT target_id FROM internal_links WHERE source_id = $1`, [articleId])
+  for (const row of stored.rows as Array<{ target_id: number }>) ids.add(row.target_id)
+  ids.delete(articleId)
+  const targets = await pool.query(
+    `SELECT id, titre FROM articles
+     WHERE (id = ANY($1::int[]) OR slug = ANY($2::text[])) AND id <> $3 AND status IS DISTINCT FROM 'publié'
+     ORDER BY id`,
+    [[...ids], slugs, articleId],
+  )
+  return {
+    children: (children.rows as Array<{ id: number; titre: string; parent_section: string }>).map(r => ({ id: r.id, title: r.titre, section: r.parent_section })),
+    unpublishedLinks: (targets.rows as Array<{ id: number; titre: string }>).map(r => ({ id: r.id, title: r.titre })),
+  }
+}
+
 async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; hashInput: unknown }> {
   const found = await getArticleById(articleId)
   if (!found) throw new Error(`Article ${articleId} introuvable`)
@@ -293,6 +325,7 @@ async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; ha
     await evaluateArticleGate(articleId, 'lexique-lock'),
   ]
   const existingWaivers = standingWaivers(upstream.flatMap(e => e.waived.map(w => w.waiver)), {})
+  const cocoonLinks = await publishCocoonLinks(articleId, html)
   const upstreamBlocking: GateIssue[] = upstream.flatMap(e => e.blocking.map(i => ({ ...i, rule: `${e.gateId}:${i.rule}` })))
   const input = {
     title: h1 || article.title,
@@ -304,6 +337,7 @@ async function publishGate(articleId: number): Promise<{ issues: GateIssue[]; ha
     capitaine: kw?.capitaine ?? article.captainKeywordLocked ?? null,
     lieutenants: kw?.lieutenants ?? [],
     existingWaivers,
+    ...cocoonLinks,
   }
   const { existingWaivers: _waivers, ...rest } = input
   // L'empreinte des portes amont et leurs dérogations debout entrent dans celle

@@ -7,9 +7,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockPropose, mockGetArticle } = vi.hoisted(() => ({ mockPropose: vi.fn(), mockGetArticle: vi.fn() }))
+const { mockPropose, mockGetArticle, mockChildren } = vi.hoisted(() => ({ mockPropose: vi.fn(), mockGetArticle: vi.fn(), mockChildren: vi.fn() }))
 vi.mock('../../../server/services/article/enrichment.service', () => ({ proposeChapter: mockPropose }))
-vi.mock('../../../server/services/infra/data.service', () => ({ getArticleById: mockGetArticle }))
+vi.mock('../../../server/services/infra/data.service', () => ({ getArticleById: mockGetArticle, getArticleChildren: mockChildren }))
 vi.mock('../../../server/services/strategy/strategy.service', () => ({ getStrategy: async () => null }))
 vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({
   getCocoonStrategy: async () => ({ cible: { validated: 'Artisans toulousains pressés' } }),
@@ -50,6 +50,8 @@ beforeEach(() => {
   mockPropose.mockReset()
   mockGetArticle.mockReset()
   mockGetArticle.mockResolvedValue({ article: { id: 7, type: 'pilier' }, cocoonName: 'Sites vitrines' })
+  mockChildren.mockReset()
+  mockChildren.mockResolvedValue([])
 })
 
 describe('POST /generate/enrich/:pass', () => {
@@ -74,7 +76,7 @@ describe('POST /generate/enrich/:pass', () => {
 
   it('400 sur une passe inconnue', async () => {
     const res = mockRes()
-    await enrich(req(body, 'resume'), res as unknown as Response)
+    await enrich(req(body, 'inconnue'), res as unknown as Response)
     expect(res.status).toHaveBeenCalledWith(400)
     expect(mockPropose).not.toHaveBeenCalled()
   })
@@ -124,3 +126,28 @@ describe('POST /generate/section-rewrite', () => {
     expect(events(res)[0]!.event).toBe('done')
   })
 })
+
+// C7 — passe Résumer : seul un chapitre dont est né un article enfant se résume,
+// et la passe connaît cet enfant (titre, mot-clé).
+describe('POST /generate/enrich/resumes', () => {
+  it('le chapitre dont est né un enfant : la passe reçoit cet enfant', async () => {
+    mockChildren.mockResolvedValueOnce([{ id: 11, title: 'Isoler ses combles', parentSection: 'isoler les combles', keyword: 'isolation combles' }])
+    mockPropose.mockResolvedValueOnce({ pass: 'resumes', html: '<h2>Isoler les combles</h2><p>Résumé.</p>', issues: [], webSources: [] })
+    const res = mockRes()
+    await enrich(req({ ...body, chapterHtml: '<h2>Isoler les combles</h2><p>Long.</p>' }, 'resumes'), res as unknown as Response)
+    expect(mockChildren).toHaveBeenCalledWith(7)
+    expect(mockPropose).toHaveBeenCalledWith(expect.objectContaining({ pass: 'resumes', child: { title: 'Isoler ses combles', keyword: 'isolation combles' } }))
+    expect(events(res).map(e => e.event)).toEqual(['done'])
+  })
+
+  it('un chapitre sans enfant : erreur explicite, l’IA n’est pas appelée', async () => {
+    mockChildren.mockResolvedValueOnce([{ id: 11, title: 'Isoler ses combles', parentSection: 'Isoler les combles', keyword: null }])
+    const res = mockRes()
+    await enrich(req({ ...body, chapterHtml: '<h2>Changer les fenêtres</h2><p>Long.</p>' }, 'resumes'), res as unknown as Response)
+    expect(mockPropose).not.toHaveBeenCalled()
+    const [err] = events(res)
+    expect(err?.event).toBe('error')
+    expect(String(err?.data.message)).toMatch(/aucun article enfant/i)
+  })
+})
+

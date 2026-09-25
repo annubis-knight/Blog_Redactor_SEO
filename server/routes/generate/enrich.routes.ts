@@ -7,7 +7,8 @@ import {
 import { ENRICHMENT_PASSES, type EnrichmentPass } from '../../../shared/verifiers/enrichment.js'
 import { proposeChapter, type ProposalInput } from '../../services/article/enrichment.service.js'
 import { SSE_HEADERS, pickStrategyContext } from './_helpers.js'
-import { getArticleById } from '../../services/infra/data.service.js'
+import { getArticleById, getArticleChildren } from '../../services/infra/data.service.js'
+import { listChapters, sectionKey } from '../../../shared/chapters.js'
 import { getStrategy } from '../../services/strategy/strategy.service.js'
 import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.service.js'
 import { parseArticleLevel } from '../../../shared/utils/article-level.js'
@@ -40,8 +41,17 @@ async function streamProposal(req: Request, res: Response, input: ProposalInput)
       getStrategy(input.articleId).catch(() => null),
       getCocoonStrategy(found.cocoonName).catch(() => null),
     ])
+    // Passe « Résumer » (C7) : le chapitre doit avoir donné naissance à un article.
+    let child: ProposalInput['child']
+    if (input.pass === 'resumes') {
+      const title = listChapters(input.chapterHtml)[0]?.title ?? ''
+      const born = (await getArticleChildren(input.articleId)).find(c => c.parentSection && sectionKey(c.parentSection) === sectionKey(title))
+      if (!born) throw new Error(`Le chapitre « ${title} » n’a aucun article enfant : rien à résumer.`)
+      child = { title: born.title, keyword: born.keyword }
+    }
     const proposal = await proposeChapter({
       ...input,
+      ...(child ? { child } : {}),
       articleType: parseArticleLevel(found.article.type),
       strategyContext: pickStrategyContext(strategy, cocoonStrategy),
     })

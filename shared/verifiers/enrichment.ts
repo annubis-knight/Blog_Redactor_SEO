@@ -14,14 +14,18 @@
  *   🟠 marqueur « à sourcer » encore présent après la passe Sources, proposition
  *      identique au texte d'origine, nombre de questions de FAQ hors de la
  *      fourchette du type.
+ *
+ * Passe « Résumer » (C7) : la section dont est né un article enfant devient un
+ * résumé de 150 à 250 mots (🔴 hors de la fourchette) ; ses H3 peuvent partir, un
+ * bloc perdu n'y est qu'une attention (🟠).
  */
 import { detectNonFrenchSentences, detectUnsourcedFigures } from '../text-quality.js'
 import { distinctRules } from './publish.js'
 import type { GateIssue } from './gate.js'
-import { ARTICLE_TYPE_RULES } from '../constants/article-type-rules.js'
+import { ARTICLE_TYPE_RULES, CHILD_SUMMARY_WORDS } from '../constants/article-type-rules.js'
 import type { ArticleLevel } from '../types/keyword-validate.types.js'
 
-export const ENRICHMENT_PASSES = ['sources', 'exemples', 'tableaux', 'images', 'faq'] as const
+export const ENRICHMENT_PASSES = ['sources', 'exemples', 'tableaux', 'images', 'faq', 'resumes'] as const
 export type EnrichmentPass = (typeof ENRICHMENT_PASSES)[number]
 
 /** Un résultat réel de la recherche web (URL, titre, âge de la page). */
@@ -129,9 +133,10 @@ export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
   }
 
   // La FAQ ajoute ses propres titres ; une réécriture peut revoir ses H3, pas son
-  // H2 ; le H1 (dans le chapeau) ne change jamais (R17).
+  // H2 ; un résumé quitte ses H3 (le détail vit dans l'article enfant) ; le H1
+  // (dans le chapeau) ne change jamais (R17).
   if (pass !== 'faq') {
-    const levels = pass === 'reecriture' ? '12' : '123'
+    const levels = pass === 'reecriture' || pass === 'resumes' ? '12' : '123'
     if (headings(after, levels).join('|') !== headings(before, levels).join('|')) {
       issues.push({
         rule: 'enrich-headings-changed',
@@ -144,12 +149,30 @@ export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
 
   const lost = lostElements(before, after)
   if (lost.length) {
+    // Un résumé laisse le détail à l'article enfant : perdre un bloc y est attendu,
+    // l'utilisateur vérifie seulement qu'il a sa place dans l'enfant (C7).
     issues.push({
       rule: 'enrich-block-lost',
-      level: 'technique',
+      level: pass === 'resumes' ? 'attention' : 'technique',
       message: `La proposition perd ${lost.length > 1 ? `${lost.length} blocs ou liens` : 'un bloc ou un lien'} du chapitre : ${lost.join(', ')}.`,
-      risk: 'Blocs (valeur, rappel, capsule) et liens sont posés à la main : une passe ne les retire pas.',
+      risk: pass === 'resumes'
+        ? 'Vérifiez que ce contenu a sa place dans l’article enfant avant d’accepter le résumé.'
+        : 'Blocs (valeur, rappel, capsule) et liens sont posés à la main : une passe ne les retire pas.',
     })
+  }
+
+  if (pass === 'resumes') {
+    const count = plain(after.replace(/<h2\b[^>]*>[\s\S]*?<\/h2>/gi, '')).split(' ').filter(Boolean).length
+    if (count < CHILD_SUMMARY_WORDS.min || count > CHILD_SUMMARY_WORDS.max) {
+      issues.push({
+        rule: 'enrich-summary-length',
+        level: 'risque',
+        message: `Le résumé compte ${count} mots : ${CHILD_SUMMARY_WORDS.min} à ${CHILD_SUMMARY_WORDS.max} attendus.`,
+        risk: count > CHILD_SUMMARY_WORDS.max
+          ? 'Trop long, la section développe encore ce que l’article enfant doit dire.'
+          : 'Trop court, la section n’annonce plus assez le sujet pour donner envie de lire l’article enfant.',
+      })
+    }
   }
 
   const { removed } = keepKnownLinks(after, knownSources(before, input.webSources))

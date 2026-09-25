@@ -10,7 +10,8 @@ import { setActivePinia, createPinia } from 'pinia'
 const { mockStartStreamOnce } = vi.hoisted(() => ({ mockStartStreamOnce: vi.fn() }))
 vi.mock('../../../src/composables/editor/useStreaming', () => ({ startStreamOnce: mockStartStreamOnce, useStreaming: vi.fn() }))
 const { mockApiPut } = vi.hoisted(() => ({ mockApiPut: vi.fn() }))
-vi.mock('../../../src/services/api.service', () => ({ apiPost: vi.fn(), apiPut: mockApiPut, apiGet: vi.fn() }))
+const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }))
+vi.mock('../../../src/services/api.service', () => ({ apiPost: vi.fn(), apiPut: mockApiPut, apiGet: mockApiGet }))
 
 import EnrichmentPanel from '../../../src/components/panels/EnrichmentPanel.vue'
 import { useEditorStore } from '../../../src/stores/article/editor.store'
@@ -28,6 +29,8 @@ beforeEach(() => {
   mockStartStreamOnce.mockReset()
   useEditorStore().setContent(ARTICLE)
   useArticleKeywordsStore().keywords = { capitaine: 'site vitrine', lieutenants: ['artisan'] } as never
+  mockApiGet.mockReset()
+  mockApiGet.mockResolvedValue([])
 })
 
 describe('EnrichmentPanel', () => {
@@ -102,6 +105,29 @@ describe('EnrichmentPanel', () => {
     expect(card.attributes('data-status')).toBe('stale')
     expect(card.text()).toMatch(/foire aux questions existe déjà/i)
     expect(card.text()).not.toMatch(/chapitre a changé/i)
+  })
+
+  // C7 — passe Résumer : un chapitre dont est né un article devient un résumé.
+  it('résumer : seul le chapitre dont est né un article est proposé ; sans enfant, le panneau le dit', async () => {
+    mockApiGet.mockResolvedValue([{ id: 11, title: 'Les étapes en détail', parentSection: 'Les étapes', keyword: null, status: 'à rédiger' }])
+    mockStartStreamOnce.mockImplementation(async (_url: string, body: { chapterIndex: number; chapterHtml: string }) => ({
+      result: { pass: 'resumes', chapterIndex: body.chapterIndex, before: body.chapterHtml, html: '<h2>Les étapes</h2><p>Résumé.</p>', issues: [], webSources: [], blocked: false, usage: null },
+      usage: null, errorMessage: null, aborted: false,
+    }))
+    const wrapper = mountPanel()
+    await flushPromises()
+    await wrapper.get('[data-testid="enrich-pass-resumes"]').trigger('click')
+    await flushPromises()
+    expect(mockStartStreamOnce).toHaveBeenCalledTimes(1)
+    expect(mockStartStreamOnce.mock.calls[0]![0]).toBe('/api/generate/enrich/resumes')
+    expect(wrapper.findAll('li.proposal').map(li => li.find('.proposal-title').text())).toEqual(['Les étapes'])
+
+    mockApiGet.mockResolvedValue([])
+    const sansEnfant = mountPanel()
+    await flushPromises()
+    await sansEnfant.get('[data-testid="enrich-pass-resumes"]').trigger('click')
+    await flushPromises()
+    expect(sansEnfant.get('[data-testid="enrich-empty"]').text()).toMatch(/aucun chapitre n’a encore donné naissance/i)
   })
 
   it('les sources trouvées sont listées, liens ouverts ailleurs', async () => {

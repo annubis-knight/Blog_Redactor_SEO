@@ -116,3 +116,27 @@ describe('verifyEnrichment — FAQ', () => {
     expect(rules(verifyEnrichment({ pass: 'faq', before: '', after: '<h3>Le délai ?</h3><p>Quelques semaines.</p>' }))).toContain('technique:enrich-faq-malformed')
   })
 })
+
+// C7 — FR-CER-CHILD-FROM-PILLAR-H2 : une section dont est né un enfant se
+// résume en 150 à 250 mots ; le détail (ses H3) vit dans l'article enfant.
+describe('verifyEnrichment — passe Résumer', () => {
+  const words = (n: number) => 'mot '.repeat(n).trim()
+  const LONGUE = `<h2>Isoler les combles</h2><p>${words(300)}</p><h3>La laine soufflée</h3><p>${words(200)}</p><div data-block="valeur"><p>Un bloc de valeur.</p></div>`
+
+  it('un résumé de 200 mots qui garde le H2 et quitte ses H3 : rien de bloquant', () => {
+    const issues = verifyEnrichment({ pass: 'resumes', before: LONGUE, after: `<h2>Isoler les combles</h2><p>${words(200)}</p>` })
+    expect(issues.filter(i => i.level !== 'attention')).toEqual([])
+  })
+
+  it('🔴 un résumé hors de 150 à 250 mots', () => {
+    expect(rules(verifyEnrichment({ pass: 'resumes', before: LONGUE, after: `<h2>Isoler les combles</h2><p>${words(400)}</p>` }))).toContain('risque:enrich-summary-length')
+    expect(rules(verifyEnrichment({ pass: 'resumes', before: LONGUE, after: `<h2>Isoler les combles</h2><p>${words(60)}</p>` }))).toContain('risque:enrich-summary-length')
+  })
+
+  it('⛔ le H2 change ; un bloc retiré n’est qu’une attention (il a sa place dans l’enfant)', () => {
+    expect(rules(verifyEnrichment({ pass: 'resumes', before: LONGUE, after: `<h2>Autre titre</h2><p>${words(200)}</p>` }))).toContain('technique:enrich-headings-changed')
+    const perdu = verifyEnrichment({ pass: 'resumes', before: LONGUE, after: `<h2>Isoler les combles</h2><p>${words(200)}</p>` }).find(i => i.rule === 'enrich-block-lost')
+    expect(perdu?.level).toBe('attention')
+  })
+})
+

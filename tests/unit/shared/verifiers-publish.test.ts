@@ -132,3 +132,48 @@ describe('verifyPublish — règles propres à la publication', () => {
     expect(verifyPublish(sain).map(i => i.rule)).not.toContain('hn-h1-in-body')
   })
 })
+
+// C7 — FR-CER-CHILD-FROM-PILLAR-H2 : la section dont un enfant est né le résume
+// (150 à 250 mots) et y renvoie. FR-RED-LINKING-MANUAL : un lien vers un article
+// pas encore publié mènerait le lecteur nulle part.
+describe('verifyPublish — un parent résume ses enfants', () => {
+  const words = (n: number) => 'mot '.repeat(n).trim()
+  const pilier = (combles: number): PublishGateInput => ({
+    title: 'Rénovation énergétique : le guide',
+    slug: 'renovation-energetique',
+    level: 'pilier',
+    content: `<h1>Rénovation énergétique : le guide</h1><h2>Isoler les combles</h2><p>${words(combles)}</p><h2>Changer les fenêtres</h2><p>${words(300)}</p>`,
+    metaTitle: 'Rénovation énergétique : le guide complet',
+    metaDescription: 'Rénovation énergétique : isoler, changer les fenêtres, financer les travaux. Tout ce qu’il faut savoir pour réussir sa rénovation.',
+    capitaine: 'rénovation énergétique',
+    lieutenants: [],
+    existingWaivers: [],
+    children: [{ id: 11, title: 'Isoler ses combles', section: 'Isoler les combles' }],
+  })
+
+  it('🔴 une section qui développe, au-delà de 250 mots, le sujet d’un enfant', () => {
+    const issue = verifyPublish(pilier(600)).find(i => i.rule === 'child-section-too-long:11')
+    expect(issue?.level).toBe('risque')
+    expect(issue?.message).toContain('Isoler ses combles')
+    expect(issue?.message).toMatch(/600 mots/)
+  })
+
+  it('une section de 200 mots : rien à dire ; une section sans enfant peut être longue', () => {
+    const issues = verifyPublish(pilier(200)).map(i => i.rule)
+    expect(issues.some(r => r.startsWith('child-section'))).toBe(false)
+  })
+
+  it('🟠 la section dont est né un enfant a disparu', () => {
+    const issue = verifyPublish({ ...pilier(200), children: [{ id: 12, title: 'Le chauffage au bois', section: 'Le bois' }] })
+      .find(i => i.rule === 'child-section-missing:12')
+    expect(issue?.level).toBe('attention')
+  })
+
+  it('🟠 un lien vers un article pas encore publié', () => {
+    const issue = verifyPublish({ ...pilier(200), unpublishedLinks: [{ id: 11, title: 'Isoler ses combles' }] })
+      .find(i => i.rule === 'link-to-unpublished:11')
+    expect(issue?.level).toBe('attention')
+    expect(issue?.message).toContain('Isoler ses combles')
+  })
+})
+

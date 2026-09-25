@@ -17,7 +17,8 @@ vi.mock('../../../src/composables/editor/useStreaming', () => ({
   startStreamOnce: mockStartStreamOnce,
   useStreaming: vi.fn(),
 }))
-vi.mock('../../../src/services/api.service', () => ({ apiPost: vi.fn(), apiPut: vi.fn(), apiGet: vi.fn() }))
+const { mockApiGet } = vi.hoisted(() => ({ mockApiGet: vi.fn() }))
+vi.mock('../../../src/services/api.service', () => ({ apiPost: vi.fn(), apiPut: vi.fn(), apiGet: mockApiGet }))
 
 import { useEnrichmentStore } from '../../../src/stores/article/enrichment.store'
 import { useEditorStore } from '../../../src/stores/article/editor.store'
@@ -63,6 +64,19 @@ describe('chapitres visés par une passe', () => {
 
   it('exemples, tableaux, images : les chapitres H2, hors conclusion', () => {
     expect(store.targetsFor('exemples', ARTICLE).map(c => c.title)).toEqual(['Le budget', 'Les étapes'])
+  })
+
+  // C7 — passe Résumer : seulement les chapitres dont est né un article enfant.
+  it('résumer : les chapitres dont est né un article, et eux seuls', () => {
+    expect(store.targetsFor('resumes', ARTICLE)).toEqual([])
+    expect(store.targetsFor('resumes', ARTICLE, ['les étapes', 'Un chapitre disparu']).map(c => c.title)).toEqual(['Les étapes'])
+  })
+
+  it('les sections nées d’un enfant se chargent depuis le serveur', async () => {
+    mockApiGet.mockResolvedValueOnce([{ id: 11, title: 'Les étapes en détail', parentSection: 'Les étapes', keyword: null, status: 'à rédiger' }])
+    await store.loadChildSections(7)
+    expect(mockApiGet).toHaveBeenCalledWith('/articles/7/children')
+    expect(store.childSections).toEqual(['Les étapes'])
   })
 
   it('FAQ : une seule, et aucune si l’article en a déjà une', () => {

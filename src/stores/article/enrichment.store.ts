@@ -3,10 +3,13 @@
  *            une proposition acceptée passe par `editorStore.setContent`, puis
  *            la sauvegarde habituelle (PUT /articles/:id → `article_content.content`).
  * READS FROM: `editorStore.content` (chapitres de l'article) ;
- *             POST /generate/enrich/:pass, POST /generate/section-rewrite
+ *             POST /generate/enrich/:pass, POST /generate/section-rewrite ;
+ *             GET /articles/:id/children (sections dont est né un article enfant,
+ *             visées par la passe « Résumer » — C7)
  * WRITES TO: `editorStore.content` (replaceChapter / insertChapter)
  * CONSUMERS: EnrichmentPanel (panneau « Enrichir » des vues de rédaction)
- * RELATED FR: FR-RED-ENRICH-PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE
+ * RELATED FR: FR-RED-ENRICH-PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE,
+ *             FR-CER-CHILD-FROM-PILLAR-H2 (passe « Résumer »)
  *
  * Second temps de la rédaction : chaque passe propose, chapitre par chapitre,
  * une version enrichie déjà vérifiée par le serveur ; l'utilisateur accepte ou
@@ -16,9 +19,10 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { startStreamOnce } from '@/composables/editor/useStreaming'
+import { apiGet } from '@/services/api.service'
 import { useEditorStore } from '@/stores/article/editor.store'
 import { log } from '@/utils/logger'
-import { listChapters, replaceChapter, insertChapter, faqInsertIndex, type Chapter } from '@shared/chapters.js'
+import { listChapters, replaceChapter, insertChapter, faqInsertIndex, sectionKey, type Chapter } from '@shared/chapters.js'
 import { countToSourceMarkers } from '@shared/verifiers/publish.js'
 import { detectUnsourcedFigures } from '@shared/text-quality.js'
 import type { EnrichmentPass } from '@shared/verifiers/enrichment.js'
@@ -63,10 +67,28 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
   let abortController: AbortController | null = null
 
   const readyCount = computed(() => items.value.filter(i => i.status === 'ready').length)
+  /** Sections de l'article dont est né un article enfant (passe « Résumer »). */
+  const childSections = ref<string[]>([])
+
+  /** Relit les sections dont est né un article enfant (C7). */
+  async function loadChildSections(articleId: number): Promise<void> {
+    try {
+      const children = await apiGet<Array<{ parentSection: string | null }>>(`/articles/${articleId}/children`)
+      childSections.value = (children ?? []).map(c => c.parentSection).filter((s): s is string => !!s)
+    } catch (err) {
+      childSections.value = []
+      log.warn('[enrichment] enfants de l’article illisibles', { articleId, error: (err as Error).message })
+    }
+  }
 
   /** Chapitres qu'une passe vaut la peine de travailler. */
-  function targetsFor(pass: EnrichmentPass, html: string): Chapter[] {
+  function targetsFor(pass: EnrichmentPass, html: string, sections: string[] = childSections.value): Chapter[] {
     const chapters = listChapters(html)
+    if (pass === 'resumes') {
+      // Seuls les chapitres dont est né un article enfant se résument (C7).
+      const keys = new Set(sections.map(sectionKey))
+      return chapters.filter(c => c.index >= 0 && keys.has(sectionKey(c.title)))
+    }
     if (pass === 'faq') {
       if (chapters.some(c => FAQ_TITLE.test(c.title))) return []
       return [{ index: faqInsertIndex(html), title: 'Questions fréquentes', html: '' }]
@@ -218,7 +240,7 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
   }
 
   return {
-    items, activePass, isRunning, progress, readyCount,
-    targetsFor, runPass, rewriteChapter, accept, refuse, acceptAllClean, abort, reset,
+    items, activePass, isRunning, progress, readyCount, childSections,
+    loadChildSections, targetsFor, runPass, rewriteChapter, accept, refuse, acceptAllClean, abort, reset,
   }
 })

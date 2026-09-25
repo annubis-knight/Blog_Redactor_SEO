@@ -17,8 +17,9 @@
 import { validateArticleContent, validateArticleMeta, type ContentIssue } from '../content-validators.js'
 import { validateArticleSeo, type SeoInput } from '../seo-validators.js'
 import type { GateIssue, GateLevel, GateWaiver } from './gate.js'
-import { ARTICLE_TYPE_RULES } from '../constants/article-type-rules.js'
-import { detectNonFrenchSentences, detectRepeatedParagraphs, detectUnsourcedFigures } from '../text-quality.js'
+import { ARTICLE_TYPE_RULES, CHILD_SUMMARY_WORDS } from '../constants/article-type-rules.js'
+import { countWordsHtml, detectNonFrenchSentences, detectRepeatedParagraphs, detectUnsourcedFigures } from '../text-quality.js'
+import { listChapters, sectionKey } from '../chapters.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../constants/image-placeholder.js'
 
 /** Règles tolérées à la publication : l'export les corrige lui-même. */
@@ -34,6 +35,10 @@ const RISKY_CONTENT_WARNINGS = new Set(['unverifiable-claim', 'seo-capitaine-not
 export interface PublishGateInput extends SeoInput {
   /** Dérogations déjà posées sur l'article, aux autres portes. */
   existingWaivers: GateWaiver[]
+  /** Les enfants de l'article dans le cocon, et la section dont chacun est né (C7). */
+  children?: Array<{ id: number; title: string; section: string }>
+  /** Articles vers lesquels le texte renvoie et qui ne sont pas encore publiés (C7). */
+  unpublishedLinks?: Array<{ id: number; title: string }>
 }
 
 const GATE_LABELS: Record<string, string> = {
@@ -158,6 +163,8 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
     })
   }
 
+  issues.push(...childSummaryIssues(input), ...unpublishedLinkIssues(input))
+
   for (const waiver of input.existingWaivers.filter(w => w.gateId !== 'publish')) {
     issues.push({
       rule: `waiver-reconfirm:${waiver.gateId}:${waiver.rule}`,
@@ -168,3 +175,47 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
   }
   return issues
 }
+
+/**
+ * Un parent résume chacun de ses enfants dans la section dont il est né, en
+ * 150 à 250 mots, et y renvoie (FR-CER-CHILD-FROM-PILLAR-H2). Au-delà, il
+ * développe ce que l'enfant doit dire : 🔴. Section disparue : 🟠, le lecteur ne
+ * trouvera plus le chemin vers l'enfant.
+ */
+function childSummaryIssues(input: PublishGateInput): GateIssue[] {
+  const chapters = listChapters(input.content).filter(c => c.index >= 0)
+  const issues: GateIssue[] = []
+  for (const child of input.children ?? []) {
+    const chapter = chapters.find(c => sectionKey(c.title) === sectionKey(child.section))
+    if (!chapter) {
+      issues.push({
+        rule: `child-section-missing:${child.id}`,
+        level: 'attention',
+        message: `La section « ${child.section} », dont est né « ${child.title} », n’est plus dans l’article.`,
+        risk: 'Sans elle, le lecteur ne trouve plus le chemin vers cet article du cocon.',
+      })
+      continue
+    }
+    const words = countWordsHtml(chapter.html.replace(/^\s*<h2\b[^>]*>[\s\S]*?<\/h2>/i, ''))
+    if (words > CHILD_SUMMARY_WORDS.max) {
+      issues.push({
+        rule: `child-section-too-long:${child.id}`,
+        level: 'risque',
+        message: `La section « ${child.section} » compte ${words.toLocaleString('fr-FR')} mots alors que l’article « ${child.title} » traite ce sujet : résumez-la en ${CHILD_SUMMARY_WORDS.min} à ${CHILD_SUMMARY_WORDS.max} mots (passe « Résumer ») et renvoyez vers lui.`,
+        risk: 'Deux pages qui développent le même sujet se concurrencent dans Google (cannibalisation).',
+      })
+    }
+  }
+  return issues
+}
+
+/** Un lien vers un article pas encore publié mène le lecteur nulle part (FR-RED-LINKING-MANUAL). */
+function unpublishedLinkIssues(input: PublishGateInput): GateIssue[] {
+  return (input.unpublishedLinks ?? []).map(target => ({
+    rule: `link-to-unpublished:${target.id}`,
+    level: 'attention' as const,
+    message: `Le lien vers « ${target.title} » mène à un article pas encore publié.`,
+    risk: 'Tant que cet article n’est pas en ligne, le lien est cassé pour le lecteur.',
+  }))
+}
+

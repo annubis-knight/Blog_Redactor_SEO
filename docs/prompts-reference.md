@@ -4,7 +4,7 @@
 > Un test (`tests/unit/architecture/prompts-reference.test.ts`) vérifie qu’il est à jour.
 > Architecture (couches, chargeur strict, variables globales) : [`prompts-architecture.md`](./prompts-architecture.md).
 
-49 prompts. Variables globales, fournies par le chargeur quand un prompt les cite : `strategy_context`, `today`, `year`, `zone`, `zone_landmarks`.
+50 prompts. Variables globales, fournies par le chargeur quand un prompt les cite : `strategy_context`, `today`, `year`, `zone`, `zone_landmarks`.
 
 Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur refuse une variable manquante ou en trop) ; **Sections** = blocs `{{#clé}}…{{/clé}}` gardés si la valeur n’est pas vide.
 
@@ -54,6 +54,7 @@ Colonnes : **Variables** = à fournir par l’appelant, exactement (le chargeur 
 | `enrich-exemples.md` | Passe exemples : ajoute un exemple en situation à un chapitre | `articleText`, `chapterHtml`, `keyword`, `keywords`, `strategyContext` | `strategyContext`, `zone`, `zone_landmarks` | `zone`, `zone_landmarks` | `server/services/article/enrichment.service.ts` |
 | `enrich-faq.md` | Passe FAQ : écrit le chapitre « Questions fréquentes » de l’article | `articleText`, `keyword`, `keywords`, `strategyContext`, `type_rules` | `strategyContext` | — | `server/services/article/enrichment.service.ts` |
 | `enrich-images.md` | Passe images : place une image à fournir et son texte alternatif | `articleText`, `chapterHtml`, `imageSrc`, `keyword`, `keywords`, `strategyContext` | `strategyContext` | — | `server/services/article/enrichment.service.ts` |
+| `enrich-resumes.md` | Passe « Résumer » : une section devenue article enfant, résumée en 150 à 250 mots (C7) | `articleText`, `chapterHtml`, `childKeyword`, `childTitle`, `keyword`, `keywords`, `strategyContext`, `summaryMax`, `summaryMin` | `childKeyword`, `strategyContext` | — | `server/services/article/enrichment.service.ts` |
 | `enrich-sources.md` | Passe sources : remplace les « à sourcer » d’un chapitre par des données trouvées par la recherche web, liens réels | `articleText`, `chapterHtml`, `keyword`, `keywords`, `strategyContext` | `strategyContext`, `zone` | `today`, `zone` | `server/services/article/enrichment.service.ts` |
 | `enrich-tableaux.md` | Passe tableaux : ajoute un tableau quand le chapitre compare ou énumère | `articleText`, `chapterHtml`, `keyword`, `keywords`, `strategyContext` | `strategyContext` | — | `server/services/article/enrichment.service.ts` |
 | `generate-article-draft.md` | Premier jet de l’article entier en un appel, sans recherche web ; chiffres posés « à sourcer » | `articleTitle`, `articleType`, `cocoonName`, `cocoon_context`, `continuation`, `keyword`, `keywordContext`, `microContext`, `outlinePlan`, `previousText`, `secondaryKeywords`, `strategyContext`, `type_rules`, `wordCountBudget` | `cocoon_context`, `continuation` | — | `server/routes/generate/article-draft.routes.ts` |

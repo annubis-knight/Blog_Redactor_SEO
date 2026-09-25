@@ -14,23 +14,31 @@ vi.mock('../../../src/composables/editor/useStreaming', () => ({
   })),
 }))
 
+const { mockSaveLinks } = vi.hoisted(() => ({ mockSaveLinks: vi.fn() }))
+vi.mock('../../../src/stores/keyword/linking.store', () => ({
+  useLinkingStore: () => ({ saveLinks: mockSaveLinks }),
+}))
+
 import { useContextualActions } from '../../../src/composables/editor/useContextualActions'
 
 function createMockEditor() {
   const run = vi.fn()
+  const setMark = vi.fn(() => ({ run }))
   return {
     state: {
       selection: { from: 10, to: 25 },
+      doc: { textBetween: (from: number, to: number) => (from === 0 ? 'x'.repeat(to - 1) : 'isolation des combles') },
     },
     chain: vi.fn(() => ({
       focus: vi.fn(() => ({
         setTextSelection: vi.fn(() => ({
           insertContent: vi.fn(() => ({ run })),
-          setMark: vi.fn(() => ({ run })),
+          setMark,
         })),
       })),
     })),
     _run: run,
+    _setMark: setMark,
   }
 }
 
@@ -153,10 +161,14 @@ describe('useContextualActions', () => {
     await executeAction('internal-link', 'selected text', { articleId: 1 }, editor as any)
     expect(showArticlePicker.value).toBe(true)
 
-    applyInternalLink({ title: 'Article Test', slug: 'article-test', type: 'Pilier', topic: null, status: 'brouillon' })
+    applyInternalLink({ id: 42, title: 'Article Test', slug: 'article-test', type: 'Pilier', topic: null, status: 'brouillon' } as any)
 
     expect(editor.chain).toHaveBeenCalled()
     expect(editor._run).toHaveBeenCalled()
     expect(showArticlePicker.value).toBe(false)
+    // C7 (FR-RED-LINKING-MANUAL) : même lien que le panneau de maillage — `#article-<id>`,
+    // et enregistré dans la matrice (sinon la publication et la matrice l'ignoraient).
+    expect(editor._setMark).toHaveBeenCalledWith('internalLink', { targetId: 42, href: '#article-42' })
+    expect(mockSaveLinks).toHaveBeenCalledWith([{ sourceId: 1, targetId: 42, anchorText: 'isolation des combles', position: 'char-9' }])
   })
 })

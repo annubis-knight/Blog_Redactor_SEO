@@ -68,6 +68,13 @@ export const ARTICLE_TYPE_RULES: Record<ArticleLevel, ArticleTypeRules> = {
   },
 }
 
+/**
+ * La section d'un parent dont un enfant est né le résume, en ce nombre de mots,
+ * et renvoie vers lui (FR-CER-CHILD-FROM-PILLAR-H2) : au-delà, le parent
+ * développe ce que l'enfant doit dire, et les deux pages se concurrencent.
+ */
+export const CHILD_SUMMARY_WORDS = { min: 150, max: 250 } as const
+
 /** Longueur par défaut quand le type est inconnu. */
 export const DEFAULT_TARGET_WORDS_FALLBACK = 2000
 

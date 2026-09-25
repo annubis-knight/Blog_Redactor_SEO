@@ -55,6 +55,7 @@ const ROLES: Record<string, { domain: Domain; role: string }> = {
   'enrich-tableaux': { domain: 'Rédaction', role: 'Passe tableaux : ajoute un tableau quand le chapitre compare ou énumère' },
   'enrich-images': { domain: 'Rédaction', role: 'Passe images : place une image à fournir et son texte alternatif' },
   'enrich-faq': { domain: 'Rédaction', role: 'Passe FAQ : écrit le chapitre « Questions fréquentes » de l’article' },
+  'enrich-resumes': { domain: 'Rédaction', role: 'Passe « Résumer » : une section devenue article enfant, résumée en 150 à 250 mots (C7)' },
   'section-rewrite': { domain: 'Rédaction', role: 'Réécrit un chapitre selon une consigne, en voyant l’article entier' },
   'actions/reformulate': { domain: 'Actions contextuelles', role: 'Reformuler la sélection' },
   'actions/simplify': { domain: 'Actions contextuelles', role: 'Simplifier le vocabulaire' },

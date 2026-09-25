@@ -20,6 +20,9 @@
 import type { ArticleLevel } from '../types/keyword-validate.types.js'
 import type { GateIssue } from './gate.js'
 import { isIntroOrConclusion, structureHeadings } from './structure.js'
+import { sectionKey } from '../chapters.js'
+
+export { sectionKey }
 
 export interface HierarchyArticleRef {
   id: number
@@ -54,11 +57,6 @@ const PARENT_LEVEL: Record<ArticleLevel, ArticleLevel | null> = {
 const LEVEL_LABEL: Record<ArticleLevel, string> = { pilier: 'pilier', intermediaire: 'intermédiaire', specifique: 'spécialisé' }
 
 const FAQ_TITLE = /questions fr[ée]quentes|\bfaq\b/i
-
-/** Titre comparable : casse, espaces et ponctuation finale ignorés. */
-export function sectionKey(title: string): string {
-  return title.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').replace(/[\s?!.:;…]+$/u, '').trim()
-}
 
 function plain(html: string): string {
   return html

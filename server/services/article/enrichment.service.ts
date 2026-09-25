@@ -20,7 +20,7 @@ import { loadZoneContext } from '../strategy/prompt-context.service.js'
 import { articlePlainText } from '../../../shared/chapters.js'
 import { verifyEnrichment, keepKnownLinks, knownSources, type EnrichmentPass } from '../../../shared/verifiers/enrichment.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder.js'
-import { describeTypeRules, describeUnknownTypeFaq } from '../../../shared/constants/article-type-rules.js'
+import { describeTypeRules, describeUnknownTypeFaq, CHILD_SUMMARY_WORDS } from '../../../shared/constants/article-type-rules.js'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type { EnrichmentProposal } from '../../../shared/types/enrichment.types.js'
 
@@ -40,6 +40,8 @@ export interface ProposalInput {
   articleType?: ArticleLevel | null
   /** Stratégie de l'article, sinon celle du cocon (cible, douleur, promesse). */
   strategyContext?: string
+  /** Passe « Résumer » (C7) : l'article enfant né de ce chapitre. */
+  child?: { title: string; keyword: string | null }
 }
 
 /**
@@ -54,12 +56,15 @@ const PROMPT_OF: Record<ProposalKind, string> = {
   tableaux: 'enrich-tableaux',
   images: 'enrich-images',
   faq: 'enrich-faq',
+  resumes: 'enrich-resumes',
   reecriture: 'section-rewrite',
 }
 
 /** Plafond de jetons : le chapitre réécrit, plus la marge de ce qu'on y ajoute. */
 export function proposalMaxTokens(pass: ProposalKind, chapterHtml: string): number {
   if (pass === 'faq') return 3000
+  // Un résumé de 250 mots au plus : ~500 jetons, avec de la marge.
+  if (pass === 'resumes') return 1200
   const chapterTokens = Math.ceil(chapterHtml.length / 3)
   return Math.min(8192, Math.max(1500, Math.ceil(chapterTokens * 1.5) + 800))
 }
@@ -75,6 +80,13 @@ async function buildUserPrompt(input: ProposalInput): Promise<string> {
   if (input.pass !== 'faq') variables.chapterHtml = input.chapterHtml
   if (input.pass === 'images') variables.imageSrc = IMAGE_TO_PROVIDE_SRC
   if (input.pass === 'reecriture') variables.instruction = input.instruction ?? ''
+  if (input.pass === 'resumes') {
+    if (!input.child) throw new Error('La passe « Résumer » vise un chapitre dont est né un article enfant.')
+    variables.childTitle = input.child.title
+    variables.childKeyword = input.child.keyword ?? ''
+    variables.summaryMin = String(CHILD_SUMMARY_WORDS.min)
+    variables.summaryMax = String(CHILD_SUMMARY_WORDS.max)
+  }
   // Article, chapitre et consigne viennent de l'utilisateur : toujours échappés.
   return loadPrompt(PROMPT_OF[input.pass], variables, {
     escapeKeys: ['articleText', 'chapterHtml', 'instruction'].filter(key => key in variables),

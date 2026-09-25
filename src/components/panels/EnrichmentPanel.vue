@@ -8,7 +8,7 @@
  * vérifiée par le serveur ; rien ne change dans l'article sans « Accepter ».
  * La relecture de la langue réutilise l'humanisation, section par section.
  */
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useEnrichmentStore, type ProposalStatus } from '@/stores/article/enrichment.store'
 import { useEditorStore } from '@/stores/article/editor.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -28,6 +28,7 @@ const PASSES: Array<{ id: EnrichmentPass; label: string; hint: string; empty: st
   { id: 'tableaux', label: 'Tableaux', hint: 'Quand un chapitre compare ou énumère', empty: 'Aucun chapitre à enrichir.' },
   { id: 'images', label: 'Images', hint: 'Où placer une image, et ce qu’elle montre', empty: 'Aucun chapitre à enrichir.' },
   { id: 'faq', label: 'FAQ', hint: 'Les questions qui restent après la lecture', empty: 'L’article a déjà sa foire aux questions.' },
+  { id: 'resumes', label: 'Résumer', hint: 'Les chapitres devenus des articles : un résumé de 150 à 250 mots qui y renvoie', empty: 'Aucun chapitre n’a encore donné naissance à un article : rien à résumer.' },
 ]
 
 const STATUS_LABELS: Record<ProposalStatus, string> = {
@@ -52,6 +53,9 @@ const canRun = computed(() => !!props.articleId && !!keyword.value && !!editorSt
  * bouton qui la remplace est dans l'éditeur (la vue workflow n'en a pas).
  */
 const imagesToProvide = computed(() => store.items.some(i => i.pass === 'images' && i.status === 'accepted'))
+
+// Les chapitres dont est né un article enfant : la passe « Résumer » les vise (C7).
+watch(() => props.articleId, (id) => { if (id) void store.loadChildSections(id) }, { immediate: true })
 
 const ranPass = ref<EnrichmentPass | null>(null)
 const emptyMessage = computed(() => {

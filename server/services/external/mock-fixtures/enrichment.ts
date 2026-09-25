@@ -17,7 +17,7 @@
 import { registerStreamFixture, type MockWebSource } from '../mock-registry.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../../shared/constants/image-placeholder.js'
 
-const PASS = /^# Passe d'enrichissement — (sources|exemples|tableaux|images|FAQ)$/m
+const PASS = /^# Passe d'enrichissement — (sources|exemples|tableaux|images|FAQ|résumé)$/m
 const REWRITE = /^# Réécriture d'un chapitre$/m
 
 /** Résultats simulés de la recherche web (domaines réels, pages de simulation). */
@@ -96,6 +96,20 @@ function faq(keyword: string, prompt: string): string {
   return ['<h2>Questions fréquentes</h2>', ...qa.slice(0, Math.min(qa.length, Math.max(1, wanted))).map(([q, a]) => `<h3>${q}</h3>\n<p>${a}</p>`)].join('\n')
 }
 
+/**
+ * Passe « Résumer » (C7) : le H2 gardé, un résumé d'environ 190 mots tiré du
+ * chapitre (ses H3 partent), et une phrase qui annonce l'article enfant.
+ */
+function summary(chapter: string, prompt: string): string {
+  const child = /L'article qui développe ce sujet\*\* : « ([^»]+) »/.exec(prompt)?.[1]?.trim() ?? 'l’article dédié'
+  const h2 = /<h2\b[^>]*>[\s\S]*?<\/h2>/i.exec(chapter)?.[0] ?? `<h2>${titleOf(chapter)}</h2>`
+  const words = chapter.replace(/<h[23]\b[^>]*>[\s\S]*?<\/h[23]>/gi, ' ').replace(/<[^>]*>/g, ' ').split(/\s+/).filter(Boolean)
+  const source = words.length > 0 ? words : ['Ce', 'sujet', 'mérite', 'qu’on', 's’y', 'arrête.']
+  const body: string[] = []
+  while (body.length < 170) body.push(...source.slice(0, 170 - body.length))
+  return `${h2}\n<p>${body.join(' ')}</p>\n<p>Pour aller au bout du sujet, lisez notre article « ${child} » : il détaille chaque étape.</p>`
+}
+
 function rewrite(chapter: string): string {
   return chapter.replace(/<p>([\s\S]*?)<\/p>/i, (_m, text: string) => `<p>Allons droit au but. ${text}</p>`)
 }
@@ -108,6 +122,7 @@ registerStreamFixture(
     const pass = PASS.exec(userPrompt)![1]!
     const keyword = keywordOf(userPrompt)
     if (pass === 'FAQ') return faq(keyword, userPrompt)
+    if (pass === 'résumé') return summary(userContent(userPrompt, /^## Le chapitre à résumer$/m), userPrompt)
     const chapter = userContent(userPrompt, /^## Le chapitre à enrichir$/m)
     if (pass === 'sources') return sources(chapter)
     if (pass === 'exemples') return example(chapter, keyword)

@@ -2,7 +2,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon, mockRemoveArticleChecks } = vi.hoisted(() => ({
+const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon, mockRemoveArticleChecks, mockGetChildren } = vi.hoisted(() => ({
+  mockGetChildren: vi.fn(),
   mockGetArticleBySlug: vi.fn(),
   mockSaveArticleContent: vi.fn(),
   mockGetArticleContent: vi.fn(),
@@ -14,6 +15,7 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleBySlug: mockGetArticleBySlug,
   removeArticleFromCocoon: mockRemoveArticleFromCocoon,
   removeArticleChecks: mockRemoveArticleChecks,
+  getArticleChildren: mockGetChildren,
 }))
 
 vi.mock('../../../server/services/article/article-content.service', () => ({
@@ -194,3 +196,23 @@ describe('POST /articles/:id/progress/uncheck', () => {
     expect(mockRemoveArticleChecks).toHaveBeenCalledWith(4, ['moteur:lexique_validated'])
   })
 })
+
+// C7 : les articles nés des sections d'un article (passe « Résumer », maillage).
+describe('GET /articles/:id/children', () => {
+  const handler = findHandler('get', '/articles/:id/children')
+
+  it('renvoie les enfants', async () => {
+    mockGetChildren.mockResolvedValueOnce([{ id: 11, title: 'Isoler ses combles', parentSection: 'Isoler les combles', keyword: 'isolation combles', status: 'à rédiger' }])
+    const res = createMockRes()
+    await handler({ params: { id: '10' } } as unknown as Request, res)
+    expect(mockGetChildren).toHaveBeenCalledWith(10)
+    expect(res.json).toHaveBeenCalledWith({ data: [expect.objectContaining({ id: 11, parentSection: 'Isoler les combles' })] })
+  })
+
+  it('identifiant invalide : 400', async () => {
+    const res = createMockRes()
+    await handler({ params: { id: 'x' } } as unknown as Request, res)
+    expect(res.status).toHaveBeenCalledWith(400)
+  })
+})
+

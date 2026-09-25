@@ -12,6 +12,7 @@
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiGet, apiPost, apiPut } from '../helpers/api-client.js'
+import { createTestCocoonArticle } from '../helpers/db-fixtures.js'
 
 const ctx = setupTestContext()
 
@@ -290,6 +291,28 @@ describe('Porte « publier »', () => {
     const publication = await apiGet<Evaluation>(`/articles/${pilier.id}/gates/publish`)
     const cannibale = publication.data!.blocking.find(i => i.rule.startsWith('lieutenants-lock:lieutenant-cannibalization:'))
     expect(cannibale?.level).toBe('risque')
+  })
+
+  // C7 (FR-CER-CHILD-FROM-PILLAR-H2, FR-RED-LINKING-MANUAL) : le pilier résume
+  // ses enfants et ne renvoie pas vers un article encore hors ligne.
+  it('publier un pilier : section trop longue pour un enfant 🔴, lien vers un article non publié 🟠', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const silo = await ctx.getSilo()
+    const cocoon = await ctx.createCocoon(silo.id, 'Pilier résumé')
+    const pilier = await ctx.createArticle(cocoon.id, 'Pilier résumé', 'Pilier')
+    const enfant = await createTestCocoonArticle(ctx.runId, cocoon.id, {
+      base: 'Isoler ses combles', type: 'Intermédiaire', slug: `test-${ctx.runId}-enfant-resume`,
+      parentId: pilier.id, parentSection: 'Isoler les combles',
+    })
+    const longue = 'Les combles perdent beaucoup de chaleur en hiver. '.repeat(60)
+    await apiPut(`/articles/${pilier.id}`, {
+      content: `<h1>Rénovation</h1><h2>Isoler les combles</h2><p>${longue}</p><p>Voir <a href="#article-${enfant.id}">l’isolation des combles</a>.</p>`,
+    })
+
+    const publication = await apiGet<Evaluation>(`/articles/${pilier.id}/gates/publish`)
+    const rules = new Map(publication.data!.issues.map(i => [i.rule, i.level]))
+    expect(rules.get(`child-section-too-long:${enfant.id}`)).toBe('risque')
+    expect(rules.get(`link-to-unpublished:${enfant.id}`)).toBe('attention')
   })
 
   it('un changement de statut autre que la publication n’est pas gardé', async ({ skip }) => {

@@ -14,6 +14,11 @@ export interface Chapter {
   html: string
 }
 
+/** Titre de chapitre comparable : casse, espaces et ponctuation finale ignorés. */
+export function sectionKey(title: string): string {
+  return title.normalize('NFC').toLowerCase().replace(/\s+/g, ' ').replace(/[\s?!.:;…]+$/u, '').trim()
+}
+
 export function listChapters(html: string): Chapter[] {
   const { intro, sections } = splitByH2Regex(html)
   const chapters: Chapter[] = intro ? [{ index: -1, title: 'Introduction', html: intro }] : []
