@@ -8,11 +8,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockCreate, mockTree } = vi.hoisted(() => ({ mockCreate: vi.fn(), mockTree: vi.fn() }))
+const { mockCreate, mockTree, mockAttach } = vi.hoisted(() => ({ mockCreate: vi.fn(), mockTree: vi.fn(), mockAttach: vi.fn() }))
 
 vi.mock('../../../server/services/article/cocoon-article.service', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../../../server/services/article/cocoon-article.service')>()
-  return { ...actual, createCocoonArticle: mockCreate, getCocoonTree: mockTree }
+  return { ...actual, createCocoonArticle: mockCreate, getCocoonTree: mockTree, attachCocoonArticle: mockAttach }
 })
 vi.mock('../../../server/services/infra/data.service', () => ({
   getCocoons: vi.fn(), getArticlesByCocoon: vi.fn(), getArticleKeywordsByCocoon: vi.fn(),
@@ -78,6 +78,40 @@ describe('POST /cocoons/:cocoonId/articles', () => {
     mockCreate.mockRejectedValue(new Error('base indisponible'))
     const r = await call({ cocoonId: '3' }, { title: 'Guide complet', type: 'pilier' })
     expect(r.status).toHaveBeenCalledWith(500)
+  })
+})
+
+// K8 : rattacher un article existant (d'avant l'arbre, ou mal placé).
+describe('PUT /cocoons/:cocoonId/articles/:articleId/parent', () => {
+  const attach = (router as any).stack.find((l: any) => l.route?.path === '/cocoons/:cocoonId/articles/:articleId/parent' && l.route?.methods.put)?.route?.stack[0]?.handle
+  const put = async (params: Record<string, string>, body: unknown) => {
+    const r = res()
+    await attach({ params, body } as unknown as Request, r)
+    return r
+  }
+
+  it('rattache l’article : 200 { data }', async () => {
+    mockAttach.mockResolvedValue({ id: 21, parentId: 10, parentSection: 'Isoler les combles' })
+    const r = await put({ cocoonId: '3', articleId: '21' }, { parentId: 10, parentSection: 'Isoler les combles' })
+    expect(mockAttach).toHaveBeenCalledWith(3, 21, { parentId: 10, parentSection: 'Isoler les combles' })
+    expect(r.json).toHaveBeenCalledWith({ data: { id: 21, parentId: 10, parentSection: 'Isoler les combles' } })
+  })
+
+  it.each([
+    ['identifiant d’article invalide', { cocoonId: '3', articleId: 'x' }, { parentId: 10, parentSection: 'A' }],
+    ['sans parent', { cocoonId: '3', articleId: '21' }, { parentSection: 'A' }],
+    ['section vide', { cocoonId: '3', articleId: '21' }, { parentId: 10, parentSection: '  ' }],
+  ])('400 : %s', async (_label, params, body) => {
+    const r = await put(params, body)
+    expect(r.status).toHaveBeenCalledWith(400)
+    expect(mockAttach).not.toHaveBeenCalled()
+  })
+
+  it('refus du service : son code et son message', async () => {
+    mockAttach.mockRejectedValue(new CocoonArticleError(409, 'HIERARCHY_VIOLATION', 'section prise'))
+    const r = await put({ cocoonId: '3', articleId: '21' }, { parentId: 10, parentSection: 'Isoler les combles' })
+    expect(r.status).toHaveBeenCalledWith(409)
+    expect(r.json).toHaveBeenCalledWith({ error: { code: 'HIERARCHY_VIOLATION', message: 'section prise', details: undefined } })
   })
 })
 

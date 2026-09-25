@@ -5,7 +5,7 @@
  * article par section (H2) d'un parent rédigé, son mot-clé choisi parmi des
  * candidats mesurés. C'est lui — pas la carte indicative — qui crée les articles.
  */
-import { watch } from 'vue'
+import { ref, watch } from 'vue'
 import CocoonCandidatesPanel from '@/components/production/brain/CocoonCandidatesPanel.vue'
 import { useCocoonBuilder, childLevelOf } from '@/composables/strategy/useCocoonBuilder'
 import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
@@ -36,6 +36,10 @@ const {
   proposeCandidates,
   closeCandidates,
   createFromCandidate,
+  isAttaching,
+  attachError,
+  attachTargets,
+  attachOrphan,
 } = useCocoonBuilder({
   cocoonId: () => props.cocoonId,
   cocoonName: () => props.cocoonName,
@@ -83,6 +87,26 @@ function retry(): void {
 
 function create(candidate: ChildCandidate, title: string): void {
   void createFromCandidate(candidate, title)
+}
+
+// --- Rattacher un article hors de l'arbre (K8) ---
+const attachingId = ref<number | null>(null)
+const attachChoice = ref('')
+
+function targetKey(t: { parentId: number; section: string }): string {
+  return `${t.parentId}::${t.section}`
+}
+
+function openAttach(node: CocoonTreeNode): void {
+  attachingId.value = node.id
+  attachChoice.value = ''
+  attachError.value = null
+}
+
+async function confirmAttach(node: CocoonTreeNode): Promise<void> {
+  const choice = attachTargets(node.level).find(t => targetKey(t) === attachChoice.value)
+  if (!choice) return
+  if (await attachOrphan(node.id, choice.parentId, choice.section)) attachingId.value = null
 }
 
 function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): string {
@@ -216,13 +240,49 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
       <h4 id="tree-orphans-title" class="orphans-title">Articles hors de l’arbre</h4>
       <p class="orphans-desc">
         Créés avant la construction progressive, ils n’ont pas de parent dans ce cocon.
-        Ils restent consultables, mais aucun article ne naît d’eux ici.
+        Rattachez chacun à la section d’un parent rédigé qui annonce son sujet : il rejoint l’arbre,
+        et le parent pourra le résumer et renvoyer vers lui.
       </p>
       <ul class="orphans-list">
         <li v-for="node in orphans" :key="node.id" class="orphan-item" :data-testid="`tree-orphan-${node.id}`">
-          <span class="level-badge" :class="`level-badge--${node.level}`">{{ levelLabel(node) }}</span>
-          <RouterLink :to="articleLink(node.id)" class="section-child-link">{{ node.title }}</RouterLink>
-          <span class="section-child-state">{{ node.drafted ? 'Rédigé' : 'À rédiger' }}</span>
+          <div class="orphan-row">
+            <span class="level-badge" :class="`level-badge--${node.level}`">{{ levelLabel(node) }}</span>
+            <RouterLink :to="articleLink(node.id)" class="section-child-link">{{ node.title }}</RouterLink>
+            <span class="section-child-state">{{ node.drafted ? 'Rédigé' : 'À rédiger' }}</span>
+            <button
+              v-if="node.level !== 'pilier' && attachingId !== node.id"
+              type="button"
+              class="btn-link"
+              data-testid="tree-orphan-attach"
+              :disabled="attachTargets(node.level).length === 0 || isAttaching"
+              :title="attachTargets(node.level).length === 0 ? 'Aucune section libre d’un parent rédigé du bon niveau' : undefined"
+              @click="openAttach(node)"
+            >
+              Rattacher
+            </button>
+          </div>
+          <div v-if="attachingId === node.id" class="attach-form" data-testid="tree-orphan-attach-form">
+            <label :for="`attach-${node.id}`" class="attach-label">Section qui annonce son sujet</label>
+            <select :id="`attach-${node.id}`" v-model="attachChoice" class="attach-select" data-testid="tree-orphan-attach-select">
+              <option value="" disabled>Choisir une section…</option>
+              <option v-for="t in attachTargets(node.level)" :key="targetKey(t)" :value="targetKey(t)">
+                « {{ t.section }} » — {{ t.parentTitle }}
+              </option>
+            </select>
+            <div class="attach-actions">
+              <button
+                type="button"
+                class="btn-primary"
+                data-testid="tree-orphan-attach-confirm"
+                :disabled="!attachChoice || isAttaching"
+                @click="confirmAttach(node)"
+              >
+                {{ isAttaching ? 'Rattachement…' : 'Rattacher ici' }}
+              </button>
+              <button type="button" class="btn-link" @click="attachingId = null">Annuler</button>
+            </div>
+            <p v-if="attachError" class="tree-error" role="alert" data-testid="tree-orphan-attach-error">{{ attachError }}</p>
+          </div>
         </li>
       </ul>
     </section>
@@ -451,9 +511,42 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
 
 .orphan-item {
   display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+}
+.orphan-row {
+  display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
+}
+.attach-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.375rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: 6px;
+  background: var(--color-surface);
+}
+.attach-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--color-text);
+}
+.attach-select {
+  max-width: 100%;
+  padding: 0.375rem 0.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: 4px;
+  font-size: 0.875rem;
+  background: var(--color-background);
+  color: var(--color-text);
+}
+.attach-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
 }
 
 .btn-primary,

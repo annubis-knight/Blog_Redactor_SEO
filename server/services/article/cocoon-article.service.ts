@@ -4,10 +4,11 @@
  * READS FROM: articles du cocon (getArticlesByCocoon), texte et structure du
  *             parent (article_content.content, article_keywords.hn_structure),
  *             keyword_metrics (mot-clé mesuré), porte `draft` du parent.
- * WRITES TO: articles (insertCocoonArticle) ; étape `redaction:draft_accepted`
- *            du parent quand sa porte passe.
- * CONSUMERS: POST /api/cocoons/:cocoonId/articles et GET /api/cocoons/:cocoonId/tree
- *            (cocoons.routes.ts) — écran du Cerveau, mode automatique.
+ * WRITES TO: articles (insertCocoonArticle ; setArticleParent pour un rattachement,
+ *            K8) ; étape `redaction:draft_accepted` du parent quand sa porte passe.
+ * CONSUMERS: POST /api/cocoons/:cocoonId/articles, PUT .../articles/:articleId/parent
+ *            et GET /api/cocoons/:cocoonId/tree (cocoons.routes.ts) — écran du
+ *            Cerveau, mode automatique.
  * RELATED FR: FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE,
  *             FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-KEYWORD-REAL-DATA
  *
@@ -15,7 +16,7 @@
  * pilier d'abord, puis chaque enfant depuis une section de son parent, une fois
  * le parent rédigé ; un mot-clé fourni doit avoir été mesuré.
  */
-import { getArticlesByCocoon, getArticleKeywords, insertCocoonArticle, addArticleCheck } from '../infra/data.service.js'
+import { getArticlesByCocoon, getArticleKeywords, insertCocoonArticle, addArticleCheck, setArticleParent } from '../infra/data.service.js'
 import { getArticleContent } from './article-content.service.js'
 import { evaluateArticleGate } from '../gates/gate.service.js'
 import { getKeywordMetrics } from '../keyword/keyword-metrics.service.js'
@@ -42,7 +43,7 @@ interface CreateCocoonArticleInput {
 export class CocoonArticleError extends Error {
   constructor(
     readonly status: number,
-    readonly code: 'COCOON_NOT_FOUND' | 'HIERARCHY_VIOLATION' | 'GATE_BLOCKED' | 'KEYWORD_NOT_MEASURED' | 'SLUG_TAKEN',
+    readonly code: 'COCOON_NOT_FOUND' | 'ARTICLE_NOT_FOUND' | 'HIERARCHY_VIOLATION' | 'GATE_BLOCKED' | 'KEYWORD_NOT_MEASURED' | 'SLUG_TAKEN',
     message: string,
     readonly details?: unknown,
   ) {
@@ -97,37 +98,48 @@ function slugFromTitle(title: string): string {
     .replace(/^-|-$/g, '')
 }
 
-export async function createCocoonArticle(cocoonId: number, input: CreateCocoonArticleInput): Promise<Article> {
-  const articles = await getArticlesByCocoon(cocoonId)
-  if (!articles) throw new CocoonArticleError(404, 'COCOON_NOT_FOUND', `Cocon ${cocoonId} introuvable.`)
+type CocoonArticles = NonNullable<Awaited<ReturnType<typeof getArticlesByCocoon>>>
 
-  const parentId = input.parentId ?? null
-  const parentSection = input.parentSection?.trim() || null
-  const parent = parentId !== null ? articles.find(a => a.id === parentId) ?? null : null
+interface Placement {
+  level: ArticleLevel
+  parentId: number | null
+  parentSection: string | null
+  /** L'article qu'on déplace : sa propre section ne compte pas comme prise. */
+  movingId?: number
+}
 
-  // 1. La hiérarchie : pilier d'abord, parent du bon niveau, section pas déjà prise.
-  //    La section, elle, n'est jugée qu'après la porte du parent (étape 4) : un
-  //    parent sans texte n'a pas de section, et la vraie cause est qu'il n'est
-  //    pas rédigé.
-  const hierarchy = {
-    level: input.type,
-    parentId,
-    parentSection,
-    cocoonArticles: articles.map(a => ({ id: a.id, title: a.title, level: a.type, parentId: a.parentId ?? null, parentSection: a.parentSection ?? null })),
+function hierarchyInput(articles: CocoonArticles, p: Placement) {
+  return {
+    level: p.level,
+    parentId: p.parentId,
+    parentSection: p.parentSection,
+    cocoonArticles: articles
+      .filter(a => a.id !== p.movingId)
+      .map(a => ({ id: a.id, title: a.title, level: a.type, parentId: a.parentId ?? null, parentSection: a.parentSection ?? null })),
   }
-  const issues = verifyCocoonHierarchy({ ...hierarchy, parentSections: null })
+}
+
+/**
+ * Pilier d'abord, parent du bon niveau, section pas déjà prise. La section,
+ * elle, n'est jugée qu'après la porte du parent (`assertParentReady`) : un
+ * parent sans texte n'a pas de section, et la vraie cause est qu'il n'est pas
+ * rédigé.
+ */
+function assertHierarchy(articles: CocoonArticles, p: Placement): void {
+  const issues = verifyCocoonHierarchy({ ...hierarchyInput(articles, p), parentSections: null })
   if (issues.length > 0) {
     throw new CocoonArticleError(409, 'HIERARCHY_VIOLATION', issues.map(i => i.message).join(' '), { issues })
   }
+}
 
-  // 2. Aucun mot-clé enregistré sans avoir été mesuré (FR-CER-KEYWORD-REAL-DATA).
-  const keyword = input.suggestedKeyword?.trim() || null
-  if (keyword && !(await getKeywordMetrics(keyword))) {
-    throw new CocoonArticleError(422, 'KEYWORD_NOT_MEASURED', `Le mot-clé « ${keyword} » n’a jamais été mesuré : choisissez-le parmi les candidats mesurés.`)
-  }
-
-  // 3. Un enfant ne naît que d'un parent rédigé : premier jet accepté par sa porte.
-  if (parent && !parent.completedChecks.includes(REDACTION_DRAFT_ACCEPTED)) {
+/**
+ * Un article ne rejoint que la section d'un parent rédigé (premier jet accepté
+ * par sa porte), et une section qui existe dans son texte (sinon sa structure).
+ */
+async function assertParentReady(articles: CocoonArticles, p: Placement): Promise<void> {
+  const parent = p.parentId !== null ? articles.find(a => a.id === p.parentId) ?? null : null
+  if (!parent) return
+  if (!parent.completedChecks.includes(REDACTION_DRAFT_ACCEPTED)) {
     const evaluation = await evaluateArticleGate(parent.id, 'draft')
     if (!evaluation.passed) {
       throw new CocoonArticleError(
@@ -138,17 +150,34 @@ export async function createCocoonArticle(cocoonId: number, input: CreateCocoonA
       )
     }
     await addArticleCheck(parent.id, REDACTION_DRAFT_ACCEPTED)
-    log.info('[cocoon-article] premier jet du parent accepté à la création d’un enfant', { parentId: parent.id })
+    log.info('[cocoon-article] premier jet du parent accepté', { parentId: parent.id })
+  }
+  const [content, { data: kw }] = await Promise.all([getArticleContent(parent.id), getArticleKeywords(parent.id)])
+  const sectionIssues = verifyCocoonHierarchy({ ...hierarchyInput(articles, p), parentSections: parentSectionsOf(content.content, kw?.hnStructure ?? []) })
+  if (sectionIssues.length > 0) {
+    throw new CocoonArticleError(409, 'HIERARCHY_VIOLATION', sectionIssues.map(i => i.message).join(' '), { issues: sectionIssues })
+  }
+}
+
+export async function createCocoonArticle(cocoonId: number, input: CreateCocoonArticleInput): Promise<Article> {
+  const articles = await getArticlesByCocoon(cocoonId)
+  if (!articles) throw new CocoonArticleError(404, 'COCOON_NOT_FOUND', `Cocon ${cocoonId} introuvable.`)
+
+  const parentId = input.parentId ?? null
+  const parentSection = input.parentSection?.trim() || null
+  const placement: Placement = { level: input.type, parentId, parentSection }
+
+  // 1. La hiérarchie.
+  assertHierarchy(articles, placement)
+
+  // 2. Aucun mot-clé enregistré sans avoir été mesuré (FR-CER-KEYWORD-REAL-DATA).
+  const keyword = input.suggestedKeyword?.trim() || null
+  if (keyword && !(await getKeywordMetrics(keyword))) {
+    throw new CocoonArticleError(422, 'KEYWORD_NOT_MEASURED', `Le mot-clé « ${keyword} » n’a jamais été mesuré : choisissez-le parmi les candidats mesurés.`)
   }
 
-  // 4. La section existe dans le parent (son texte, sinon sa structure).
-  if (parent) {
-    const [content, { data: kw }] = await Promise.all([getArticleContent(parent.id), getArticleKeywords(parent.id)])
-    const sectionIssues = verifyCocoonHierarchy({ ...hierarchy, parentSections: parentSectionsOf(content.content, kw?.hnStructure ?? []) })
-    if (sectionIssues.length > 0) {
-      throw new CocoonArticleError(409, 'HIERARCHY_VIOLATION', sectionIssues.map(i => i.message).join(' '), { issues: sectionIssues })
-    }
-  }
+  // 3. Un enfant ne naît que d'un parent rédigé, dans une section qui existe.
+  await assertParentReady(articles, placement)
 
   const slug = input.slug?.trim() || slugFromTitle(input.title)
   const created = await insertCocoonArticle(cocoonId, {
@@ -166,4 +195,29 @@ export async function createCocoonArticle(cocoonId: number, input: CreateCocoonA
   }
   log.info('[cocoon-article] article créé', { cocoonId, articleId: created.id, type: input.type, parentId })
   return created
+}
+
+/**
+ * Rattache un article existant à la section d'un parent (K8) : un article
+ * d'avant l'arbre, ou mal placé. Mêmes règles qu'une création — hiérarchie,
+ * parent rédigé, section connue et libre.
+ */
+export async function attachCocoonArticle(
+  cocoonId: number,
+  articleId: number,
+  target: { parentId: number; parentSection: string },
+): Promise<{ id: number; parentId: number; parentSection: string }> {
+  const articles = await getArticlesByCocoon(cocoonId)
+  if (!articles) throw new CocoonArticleError(404, 'COCOON_NOT_FOUND', `Cocon ${cocoonId} introuvable.`)
+  const article = articles.find(a => a.id === articleId)
+  if (!article) throw new CocoonArticleError(404, 'ARTICLE_NOT_FOUND', `L’article ${articleId} n’est pas dans ce cocon.`)
+
+  const parentSection = target.parentSection.trim()
+  const placement: Placement = { level: article.type, parentId: target.parentId, parentSection, movingId: articleId }
+  assertHierarchy(articles, placement)
+  await assertParentReady(articles, placement)
+
+  await setArticleParent(articleId, target.parentId, parentSection)
+  log.info('[cocoon-article] article rattaché', { cocoonId, articleId, parentId: target.parentId, parentSection })
+  return { id: articleId, parentId: target.parentId, parentSection }
 }

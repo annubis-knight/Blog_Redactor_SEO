@@ -11,12 +11,13 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const apiGet = vi.fn()
 const apiPost = vi.fn()
+const apiPut = vi.fn()
 
 vi.mock('../../../src/services/api.service', async (importOriginal) => ({
   ApiRequestError: (await importOriginal<typeof import('../../../src/services/api.service')>()).ApiRequestError,
   apiGet: (...args: unknown[]) => apiGet(...args),
   apiPost: (...args: unknown[]) => apiPost(...args),
-  apiPut: vi.fn(),
+  apiPut: (...args: unknown[]) => apiPut(...args),
   apiPatch: vi.fn(),
   apiDelete: vi.fn(),
 }))
@@ -56,6 +57,7 @@ function candidate(overrides: Partial<ChildCandidate> = {}): ChildCandidate {
     title: 'Refonte de site internet à Toulouse',
     rationale: 'La section annonce ce sujet.',
     painPoint: null,
+    painIntentExpected: null,
     metrics: { searchVolume: 320, keywordDifficulty: 18, cpc: 2.1, intent: 'commercial' },
     serp: [
       { position: 1, title: 'Refonte de site : le guide', domain: 'agence-un.fr', url: 'https://agence-un.fr/refonte' },
@@ -158,7 +160,7 @@ describe('CocoonTreeBuilder — l’arbre', () => {
     expect(wrapper.find('[data-testid="tree-node-11"]').exists(), 'l’intermédiaire a son propre bloc').toBe(true)
   })
 
-  it('liste à part les articles sans parent, sans action', async () => {
+  it('liste à part les articles sans parent ; sans section libre d’un parent rédigé, « Rattacher » est grisé', async () => {
     const wrapper = await mountBuilder([
       node({ id: 10, title: 'Pilier', level: 'pilier', drafted: true }),
       node({ id: 20, title: 'Ancien article', level: 'intermediaire' }),
@@ -166,8 +168,30 @@ describe('CocoonTreeBuilder — l’arbre', () => {
 
     const aPart = wrapper.get('[data-testid="tree-orphans"]')
     expect(aPart.text()).toContain('Ancien article')
-    expect(aPart.find('button').exists()).toBe(false)
+    expect(aPart.get('[data-testid="tree-orphan-attach"]').attributes('disabled')).toBeDefined()
     expect(wrapper.find('[data-testid="tree-node-20"]').exists()).toBe(false)
+  })
+
+  // K8 : un article d'avant l'arbre se rattache depuis l'écran, sans SQL.
+  it('rattacher : choisir la section libre d’un parent rédigé, puis confirmer', async () => {
+    const wrapper = await mountBuilder([
+      node({ id: 10, title: 'Pilier', level: 'pilier', drafted: true, sections: [{ title: 'La refonte', childId: null, childTitle: null }] }),
+      node({ id: 20, title: 'Ancien article', level: 'intermediaire' }),
+    ])
+    apiPut.mockResolvedValue({ id: 20, parentId: 10, parentSection: 'La refonte' })
+
+    await wrapper.get('[data-testid="tree-orphan-attach"]').trigger('click')
+    const choix = wrapper.get('[data-testid="tree-orphan-attach-select"]')
+    expect(choix.findAll('option').map(o => o.text())).toContain('« La refonte » — Pilier')
+    const confirmer = wrapper.get('[data-testid="tree-orphan-attach-confirm"]')
+    expect(confirmer.attributes('disabled'), 'rien de choisi').toBeDefined()
+
+    await choix.setValue('10::La refonte')
+    await confirmer.trigger('click')
+    await flushPromises()
+
+    expect(apiPut).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/articles/20/parent`, { parentId: 10, parentSection: 'La refonte' })
+    expect(apiGet.mock.calls.filter(c => c[0] === `/cocoons/${COCOON_ID}/tree`), 'l’arbre est rechargé').toHaveLength(2)
   })
 })
 

@@ -11,6 +11,7 @@ const m = vi.hoisted(() => ({
   getArticleKeywords: vi.fn(),
   insertCocoonArticle: vi.fn(),
   addArticleCheck: vi.fn(),
+  setArticleParent: vi.fn(),
   getArticleContent: vi.fn(),
   evaluateArticleGate: vi.fn(),
   getKeywordMetrics: vi.fn(),
@@ -21,12 +22,13 @@ vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleKeywords: m.getArticleKeywords,
   insertCocoonArticle: m.insertCocoonArticle,
   addArticleCheck: m.addArticleCheck,
+  setArticleParent: m.setArticleParent,
 }))
 vi.mock('../../../server/services/article/article-content.service', () => ({ getArticleContent: m.getArticleContent }))
 vi.mock('../../../server/services/gates/gate.service', () => ({ evaluateArticleGate: m.evaluateArticleGate }))
 vi.mock('../../../server/services/keyword/keyword-metrics.service', () => ({ getKeywordMetrics: m.getKeywordMetrics }))
 
-import { createCocoonArticle, CocoonArticleError, getCocoonTree } from '../../../server/services/article/cocoon-article.service'
+import { createCocoonArticle, attachCocoonArticle, CocoonArticleError, getCocoonTree } from '../../../server/services/article/cocoon-article.service'
 
 const PILIER = {
   id: 10, title: 'Rénovation énergétique : le guide', type: 'pilier', slug: 'renovation', parentId: null, parentSection: null,
@@ -138,6 +140,62 @@ describe('createCocoonArticle', () => {
     expect(err.status).toBe(409)
     expect(err.code).toBe('SLUG_TAKEN')
     expect(err.message).toContain('/renovation')
+  })
+})
+
+// K8 : un article d'avant l'arbre (ou mal placé) se rattache depuis l'outil, aux
+// mêmes règles qu'une création — il ne restait « hors de l'arbre » qu'en SQL.
+describe('attachCocoonArticle', () => {
+  const ORPHELIN = { id: 21, title: 'Isoler ses combles', type: 'intermediaire', slug: 'isoler', parentId: null, parentSection: null, completedChecks: [] }
+
+  beforeEach(() => {
+    m.getArticlesByCocoon.mockResolvedValue([PILIER, ORPHELIN])
+    m.setArticleParent.mockResolvedValue(undefined)
+  })
+
+  it('un orphelin rejoint une section libre d’un parent rédigé', async () => {
+    const placed = await attachCocoonArticle(3, 21, { parentId: 10, parentSection: 'Isoler les combles' })
+    expect(m.setArticleParent).toHaveBeenCalledWith(21, 10, 'Isoler les combles')
+    expect(placed).toEqual({ id: 21, parentId: 10, parentSection: 'Isoler les combles' })
+  })
+
+  it('une section déjà prise par un autre article : 409, rien ne change', async () => {
+    m.getArticlesByCocoon.mockResolvedValue([PILIER, ORPHELIN, { ...ORPHELIN, id: 22, title: 'Autre', parentId: 10, parentSection: 'Isoler les combles' }])
+    const err = await refus(attachCocoonArticle(3, 21, { parentId: 10, parentSection: 'Isoler les combles' }))
+    expect(err.code).toBe('HIERARCHY_VIOLATION')
+    expect(m.setArticleParent).not.toHaveBeenCalled()
+  })
+
+  it('déplacer un article : sa propre section ne compte pas comme prise', async () => {
+    m.getArticlesByCocoon.mockResolvedValue([PILIER, { ...ORPHELIN, parentId: 10, parentSection: 'Isoler les combles' }])
+    await attachCocoonArticle(3, 21, { parentId: 10, parentSection: 'Isoler les combles' })
+    expect(m.setArticleParent).toHaveBeenCalledWith(21, 10, 'Isoler les combles')
+  })
+
+  it('une section inconnue du parent : 409', async () => {
+    const err = await refus(attachCocoonArticle(3, 21, { parentId: 10, parentSection: 'Les aides' }))
+    expect(err.code).toBe('HIERARCHY_VIOLATION')
+    expect(m.setArticleParent).not.toHaveBeenCalled()
+  })
+
+  it('un pilier n’a pas de parent : 409', async () => {
+    m.getArticlesByCocoon.mockResolvedValue([PILIER, { ...PILIER, id: 11, title: 'Autre pilier' }])
+    const err = await refus(attachCocoonArticle(3, 11, { parentId: 10, parentSection: 'Isoler les combles' }))
+    expect(err.status).toBe(409)
+    expect(m.setArticleParent).not.toHaveBeenCalled()
+  })
+
+  it('parent pas rédigé et sa porte refuse : 409 GATE_BLOCKED, rien ne change', async () => {
+    m.getArticlesByCocoon.mockResolvedValue([{ ...PILIER, completedChecks: [] }, ORPHELIN])
+    m.evaluateArticleGate.mockResolvedValue({ passed: false, issues: [], blocking: [] })
+    const err = await refus(attachCocoonArticle(3, 21, { parentId: 10, parentSection: 'Isoler les combles' }))
+    expect(err.code).toBe('GATE_BLOCKED')
+    expect(m.setArticleParent).not.toHaveBeenCalled()
+  })
+
+  it('article absent du cocon : 404', async () => {
+    const err = await refus(attachCocoonArticle(3, 99, { parentId: 10, parentSection: 'Isoler les combles' }))
+    expect(err.status).toBe(404)
   })
 })
 

@@ -11,6 +11,7 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const apiGet = vi.fn()
 const apiPost = vi.fn()
+const apiPut = vi.fn()
 const notifyError = vi.fn()
 const notifyWarning = vi.fn()
 const notifySuccess = vi.fn()
@@ -20,7 +21,7 @@ vi.mock('../../../src/services/api.service', async (importOriginal) => ({
   ApiRequestError: (await importOriginal<typeof import('../../../src/services/api.service')>()).ApiRequestError,
   apiGet: (...args: unknown[]) => apiGet(...args),
   apiPost: (...args: unknown[]) => apiPost(...args),
-  apiPut: vi.fn(),
+  apiPut: (...args: unknown[]) => apiPut(...args),
   apiPatch: vi.fn(),
   apiDelete: vi.fn(),
 }))
@@ -422,5 +423,48 @@ describe('useCocoonBuilder — créer l’article choisi', () => {
     expect(store.strategy!.proposedArticles[0]).toMatchObject({ createdInDb: true, dbId: 1013 })
     expect(notifyWarning).toHaveBeenCalledTimes(1)
     expect(String(notifyWarning.mock.calls[0]![0])).toContain('Croissance digitale Toulouse')
+  })
+})
+
+// K8 : un article d'avant l'arbre se rattache à la section libre d'un parent
+// rédigé du bon niveau — sans SQL, et la carte du cocon suit.
+describe('useCocoonBuilder — rattacher un article hors de l’arbre', () => {
+  it('propose les sections libres des parents rédigés du bon niveau', async () => {
+    routeApi([PILIER, INTER_SEO, INTER_HEBERGEMENT, ANCIEN])
+    const { builder } = setup()
+    await builder.loadTree()
+
+    expect(builder.attachTargets('intermediaire')).toEqual([{ parentId: 10, parentTitle: PILIER.title, section: 'La refonte' }])
+    expect(builder.attachTargets('specifique'), 'les intermédiaires ne sont pas rédigés').toEqual([])
+    expect(builder.attachTargets('pilier'), 'un pilier n’a pas de parent').toEqual([])
+  })
+
+  it('rattache, recharge l’arbre et met la carte à jour', async () => {
+    routeApi([PILIER, ANCIEN])
+    apiPut.mockResolvedValue({ id: 20, parentId: 10, parentSection: 'La refonte' })
+    const { store, builder } = setup([proposition({ id: 'carte-20', title: ANCIEN.title, createdInDb: true, dbId: 20 })])
+    await builder.loadTree()
+
+    const ok = await builder.attachOrphan(20, 10, 'La refonte')
+
+    expect(ok).toBe(true)
+    expect(runThroughGate).toHaveBeenCalledWith(10, expect.any(Function))
+    expect(apiPut).toHaveBeenCalledWith(`/cocoons/${COCOON_ID}/articles/20/parent`, { parentId: 10, parentSection: 'La refonte' })
+    expect(apiGet.mock.calls.filter(c => c[0] === `/cocoons/${COCOON_ID}/tree`), 'l’arbre est rechargé').toHaveLength(2)
+    expect(store.strategy!.proposedArticles[0]).toMatchObject({ parentTitle: PILIER.title, parentSection: 'La refonte' })
+    expect(store.saveStrategy).toHaveBeenCalled()
+  })
+
+  it('un refus du serveur est dit, rien n’est annoncé rattaché', async () => {
+    routeApi([PILIER, ANCIEN])
+    apiPut.mockRejectedValue(new ApiRequestError('La section « La refonte » a déjà donné un article.', 409, 'HIERARCHY_VIOLATION'))
+    const { builder } = setup()
+    await builder.loadTree()
+
+    const ok = await builder.attachOrphan(20, 10, 'La refonte')
+
+    expect(ok).toBe(false)
+    expect(builder.attachError.value).toContain('a déjà donné un article')
+    expect(notifySuccess).not.toHaveBeenCalled()
   })
 })

@@ -560,6 +560,15 @@ export async function insertCocoonArticle(
   throw new Error(`insertCocoonArticle — aucun identifiant libre après 5 essais (${article.slug})`)
 }
 
+/**
+ * Place un article existant sous un parent, dans une section (K8). La
+ * hiérarchie est vérifiée avant par `cocoon-article.service.ts`.
+ */
+export async function setArticleParent(id: number, parentId: number, parentSection: string): Promise<void> {
+  await pool.query(`UPDATE articles SET parent_id = $1, parent_section = $2 WHERE id = $3`, [parentId, parentSection, id])
+  log.info('setArticleParent', { id, parentId, parentSection })
+}
+
 export async function getKeywordsByCocoon(cocoonName: string): Promise<Keyword[] | null> {
   const res = await pool.query(
     `SELECT mot_clef, cocoon_name, type_mot_clef, statut FROM keywords_seo WHERE cocoon_name = $1`,

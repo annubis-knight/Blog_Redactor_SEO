@@ -2,8 +2,8 @@ import { Router } from 'express'
 import { log } from '../utils/logger.js'
 import { getCocoons, getArticlesByCocoon, getArticleKeywordsByCocoon } from '../services/infra/data.service.js'
 import { getCocoonStrategy } from '../services/strategy/cocoon-strategy.service.js'
-import { createCocoonArticle, CocoonArticleError, getCocoonTree } from '../services/article/cocoon-article.service.js'
-import { createCocoonArticleSchema, childCandidatesSchema } from '../../shared/schemas/article.schema.js'
+import { createCocoonArticle, attachCocoonArticle, CocoonArticleError, getCocoonTree } from '../services/article/cocoon-article.service.js'
+import { createCocoonArticleSchema, attachCocoonArticleSchema, childCandidatesSchema } from '../../shared/schemas/article.schema.js'
 import { proposeChildCandidates, ChildCandidatesError } from '../services/strategy/child-candidates.service.js'
 
 const router = Router()
@@ -93,6 +93,35 @@ router.post('/cocoons/:cocoonId/articles', async (req, res) => {
     }
     log.error(`POST /api/cocoons/${cocoonId}/articles — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to create article' } })
+  }
+})
+
+/**
+ * PUT /api/cocoons/:cocoonId/articles/:articleId/parent — rattache un article
+ * existant à la section d'un parent (K8) : un article d'avant l'arbre, ou mal
+ * placé. Mêmes refus qu'une création (409 HIERARCHY_VIOLATION / GATE_BLOCKED).
+ */
+router.put('/cocoons/:cocoonId/articles/:articleId/parent', async (req, res) => {
+  const cocoonId = parseInt(req.params.cocoonId, 10)
+  const articleId = parseInt(req.params.articleId, 10)
+  if (isNaN(cocoonId) || isNaN(articleId)) {
+    res.status(400).json({ error: { code: 'INVALID_ID', message: 'Cocoon and article IDs must be numbers' } })
+    return
+  }
+  const parsed = attachCocoonArticleSchema.safeParse(req.body)
+  if (!parsed.success) {
+    res.status(400).json({ error: { code: 'VALIDATION_ERROR', message: parsed.error.message } })
+    return
+  }
+  try {
+    res.json({ data: await attachCocoonArticle(cocoonId, articleId, parsed.data) })
+  } catch (err) {
+    if (err instanceof CocoonArticleError) {
+      res.status(err.status).json({ error: { code: err.code, message: err.message, details: err.details } })
+      return
+    }
+    log.error(`PUT /api/cocoons/${cocoonId}/articles/${articleId}/parent — ${(err as Error).message}`)
+    res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to attach article' } })
   }
 })
 

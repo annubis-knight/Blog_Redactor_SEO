@@ -82,6 +82,12 @@ export const createCocoonArticleSchema = z.object({
 })
 
 
+/** Rattacher un article existant à la section d'un parent (K8). */
+export const attachCocoonArticleSchema = z.object({
+  parentId: z.number().int().positive(),
+  parentSection: z.string().trim().min(1).max(300),
+})
+
 /** Candidats mots-clés d'un nouvel article : sans parent = le pilier d'un cocon vide. */
 export const childCandidatesSchema = z.object({
   parentId: z.number().int().positive().nullable().optional(),

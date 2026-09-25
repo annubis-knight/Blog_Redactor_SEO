@@ -4,7 +4,8 @@
  *            de ce qui peut naître ; ce composable ne fait que le montrer et le demander.
  * READS FROM: GET /cocoons/:cocoonId/tree (arbre : articles, sections, enfant né de chacune),
  *             POST /cocoons/:cocoonId/child-candidates (mots-clés candidats mesurés, PAYANT : sur un clic).
- * WRITES TO: POST /cocoons/:cocoonId/articles (un article à la fois, derrière la porte du
+ * WRITES TO: PUT /cocoons/:cocoonId/articles/:articleId/parent (rattacher un article hors
+ *            de l'arbre, K8), POST /cocoons/:cocoonId/articles (un article à la fois, derrière la porte du
  *            premier jet du parent via useGateAlarmStore.runThroughGate), POST /keywords
  *            (pool du cocon), `cocoon_strategies.data.proposedArticles` via saveStrategy
  *            (l'article créé y est inscrit : le Moteur liste ses articles depuis la stratégie).
@@ -20,7 +21,7 @@
  * aucun article n'est annoncé créé s'il ne l'est pas.
  */
 import { computed, ref, toValue, type MaybeRefOrGetter } from 'vue'
-import { apiGet, apiPost } from '@/services/api.service'
+import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
@@ -318,6 +319,60 @@ export function useCocoonBuilder(params: {
     }
   }
 
+  // --- Rattacher un article hors de l'arbre (K8) ---
+  const isAttaching = ref(false)
+  const attachError = ref<string | null>(null)
+
+  /** Les sections libres où un article de ce niveau peut se rattacher : parents rédigés du bon niveau. */
+  function attachTargets(level: ArticleLevel): Array<{ parentId: number; parentTitle: string; section: string }> {
+    const parentLevel = (Object.keys(CHILD_LEVEL) as ArticleLevel[]).find(l => CHILD_LEVEL[l] === level)
+    if (!parentLevel) return []
+    return tree.value
+      .filter(n => n.level === parentLevel && n.drafted)
+      .flatMap(n => n.sections
+        .filter(s => s.childId === null && s.title)
+        .map(s => ({ parentId: n.id, parentTitle: n.title, section: s.title })))
+  }
+
+  /**
+   * Place un article existant dans la section d'un parent, aux mêmes règles
+   * qu'une création (le serveur juge). La carte du cocon suit.
+   */
+  async function attachOrphan(articleId: number, parentId: number, parentSection: string): Promise<boolean> {
+    if (isAttaching.value) return false
+    const cocoonId = toValue(params.cocoonId)
+    const parentTitle = nodeById.value.get(parentId)?.title ?? null
+    isAttaching.value = true
+    attachError.value = null
+    try {
+      let outcome: { ok: boolean }
+      try {
+        outcome = await useGateAlarmStore().runThroughGate(parentId, () =>
+          apiPut(`/cocoons/${cocoonId}/articles/${articleId}/parent`, { parentId, parentSection }))
+      } catch (err) {
+        attachError.value = `L’article n’a pas été rattaché : ${refusalOf(err)}`
+        log.warn('[cocoon-builder] rattachement refusé', { cocoonId, articleId, parentId, error: (err as Error).message })
+        return false
+      }
+      if (!outcome.ok) {
+        attachError.value = `L’article n’a pas été rattaché : « ${parentTitle ?? 'le parent'} » doit d’abord être rédigé.`
+        return false
+      }
+      const proposal = strategyStore.strategy?.proposedArticles.find(p => p.dbId === articleId)
+      if (proposal) {
+        proposal.parentTitle = parentTitle
+        proposal.parentSection = parentSection
+        await strategyStore.saveStrategy(toValue(params.cocoonSlug))
+      }
+      log.info('[cocoon-builder] article rattaché', { cocoonId, articleId, parentId, parentSection })
+      notify.success(`L’article est rattaché à la section « ${parentSection} ».`)
+      await loadTree()
+      return true
+    } finally {
+      isAttaching.value = false
+    }
+  }
+
   return {
     tree,
     isLoadingTree,
@@ -337,5 +392,9 @@ export function useCocoonBuilder(params: {
     proposeCandidates,
     closeCandidates,
     createFromCandidate,
+    isAttaching,
+    attachError,
+    attachTargets,
+    attachOrphan,
   }
 }

@@ -263,6 +263,38 @@ describe('Cerveau Workflow — Phase 3 : Création articles', () => {
     ])
   })
 
+  // K8 : un article d'avant l'arbre se rattache à la section d'un parent rédigé,
+  // aux mêmes règles qu'une création.
+  it('un article hors de l’arbre se rattache à une section libre ; une section prise est refusée', { timeout: 60000 }, async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const silo = await ctx.getSilo()
+    const cocoon = await ctx.createCocoon(silo.id, 'Progressif Rattachement')
+    const pilier = await apiPost<{ id: number }>(`/cocoons/${cocoon.id}/articles`, {
+      title: `[test:${ctx.runId}] Pilier rattachement`, type: 'pilier', slug: `test-${ctx.runId}-pilier-rattachement`,
+    })
+    const pilierId = pilier.data!.id
+    await apiPut(`/articles/${pilierId}`, {
+      content: '<h1>Rénovation énergétique</h1><p>Chapeau.</p><h2>Isoler les combles</h2><p>Les combles perdent de la chaleur.</p><h2>Changer les fenêtres</h2><p>Le double vitrage.</p>',
+    })
+    expect((await grantCheck(pilierId, 'redaction:draft_accepted')).status).toBe(200)
+    // Un intermédiaire d'avant l'arbre : aucun parent en base.
+    const orphelin = await ctx.createArticle(cocoon.id, 'Orphelin combles', 'Intermédiaire')
+    const occupant = await apiPost<{ id: number }>(`/cocoons/${cocoon.id}/articles`, {
+      title: `[test:${ctx.runId}] Changer ses fenêtres`, type: 'intermediaire', slug: `test-${ctx.runId}-fenetres`,
+      parentId: pilierId, parentSection: 'Changer les fenêtres',
+    })
+    expect(occupant.status).toBe(201)
+
+    const prise = await apiPut<unknown>(`/cocoons/${cocoon.id}/articles/${orphelin.id}/parent`, { parentId: pilierId, parentSection: 'Changer les fenêtres' })
+    expect(prise.status).toBe(409)
+    expect(prise.error?.code).toBe('HIERARCHY_VIOLATION')
+
+    const ok = await apiPut<{ id: number; parentId: number; parentSection: string }>(`/cocoons/${cocoon.id}/articles/${orphelin.id}/parent`, { parentId: pilierId, parentSection: 'Isoler les combles' })
+    expect(ok.status).toBe(200)
+    const row = await query<{ parent_id: number | null; parent_section: string | null }>(`SELECT parent_id, parent_section FROM articles WHERE id = $1`, [orphelin.id])
+    expect(row.rows[0]).toEqual({ parent_id: pilierId, parent_section: 'Isoler les combles' })
+  })
+
   it('un mot-clé jamais mesuré n’est pas enregistré → 422', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
