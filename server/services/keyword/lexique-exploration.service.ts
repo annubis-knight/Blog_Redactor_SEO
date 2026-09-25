@@ -1,5 +1,6 @@
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
+import { isGenericTerm } from '../../../shared/utils/generic-terms.js'
 import type {
   LexiqueAnalysisResult,
   LexiqueExploration,
@@ -21,15 +22,30 @@ interface LexiqueRow {
   explored_at: Date
 }
 
+const TFIDF_LEVELS = ['obligatoire', 'differenciateur', 'optionnel'] as const
+
+/**
+ * Les explorations enregistrées avant le filtre du lexique (C3) gardent leurs
+ * mots génériques (« être », « cookies ») : on les écarte à la relecture, comme
+ * toute nouvelle analyse (M16, FR-LEX-METIER-ONLY).
+ */
+function withoutGenericTerms(tfidf: TfidfResult): TfidfResult {
+  const out = { ...tfidf }
+  for (const level of TFIDF_LEVELS) {
+    if (Array.isArray(tfidf[level])) out[level] = tfidf[level].filter(t => !isGenericTerm(t.term))
+  }
+  return out
+}
+
 function rowToExploration(row: LexiqueRow): LexiqueExploration {
   const tfidf = row.tfidf_terms
   const hasTfidf = tfidf && typeof (tfidf as unknown as { keyword?: unknown }).keyword === 'string'
   return {
     articleId: row.article_id,
     sourceKeyword: row.source_keyword,
-    tfidfTerms: hasTfidf ? tfidf : null,
-    aiRecommendations: row.ai_recommendations ?? [],
-    aiMissingTerms: row.ai_missing_terms ?? [],
+    tfidfTerms: hasTfidf ? withoutGenericTerms(tfidf) : null,
+    aiRecommendations: (row.ai_recommendations ?? []).filter(r => !isGenericTerm(r.term)),
+    aiMissingTerms: (row.ai_missing_terms ?? []).filter(t => !isGenericTerm(t)),
     aiSummary: row.ai_summary,
     exploredAt: row.explored_at.toISOString(),
   }
