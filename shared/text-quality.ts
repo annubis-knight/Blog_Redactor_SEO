@@ -81,11 +81,7 @@ export function detectRepeatedParagraphs(html: string): string[] {
 const FIGURE = /\d+(?:[.,]\d+)?\s?%|\d[\d\s.,]*\s?(?:€|euros?\b)|\b\d+(?:[.,]\d+)?\s?(?:millions?|milliards?)\b|\b\d+(?:[.,]\d+)?\s?fois\b/i
 const ATTRIBUTION = /\b(?:selon|d['’]après|source\s*:)/i
 
-/**
- * Phrases qui avancent un chiffre (pourcentage, prix, multiplicateur, million)
- * sans l'attribuer à une source. Un chiffre posé dans un marqueur « à sourcer »
- * (`<mark data-a-sourcer>`) est en attente de source : il ne compte pas ici.
- */
+/** Un marqueur « à sourcer » posé par le premier jet (FR-RED-DRAFT-TO-SOURCE). */
 const SOURCER_MARK = /<mark\b[^>]*data-a-sourcer[^>]*>[\s\S]*?<\/mark>/gi
 
 /**
@@ -115,6 +111,11 @@ export function markUnsourcedFigures(html: string): string {
   })
 }
 
+/**
+ * Phrases qui avancent un chiffre (pourcentage, prix, multiplicateur, million)
+ * sans l'attribuer à une source. Un chiffre posé dans un marqueur « à sourcer »
+ * (`<mark data-a-sourcer>`) est en attente de source : il ne compte pas ici.
+ */
 export function detectUnsourcedFigures(html: string): string[] {
   // Le texte « [à sourcer : …] » compte aussi comme marqueur : l'éditeur peut
   // perdre la balise `<mark>` et ne garder que ce texte.

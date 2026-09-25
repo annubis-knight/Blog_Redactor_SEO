@@ -1,3 +1,14 @@
+/**
+ * AUTHORITY: PostgreSQL `article_content` (sommaire, texte) et les champs méta de
+ *            `articles` (meta_title, meta_description, seo_score, geo_score, phase).
+ * READS FROM: article_content, articles.
+ * WRITES TO: article_content, articles (méta, scores notés à l'écran, phase qui ne
+ *            recule jamais) ; internal_links via linking.pruneStaleLinks (la
+ *            matrice suit le texte enregistré).
+ * CONSUMERS: routes articles (PUT /articles/:id, GET /articles/:id/content), route
+ *            du premier jet, portes (draft, publish), mode automatique.
+ * RELATED FR: FR-RED-SEO-SCORE-PERSIST, FR-RED-LINKING-MANUAL, FR-RED-DRAFT-SINGLE-PASS
+ */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import type { ArticleContent } from '../../../shared/types/index.js'

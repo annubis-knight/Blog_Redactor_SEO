@@ -3,7 +3,9 @@
  * READS FROM: internal_links, articles (loadArticlesDb : titres, slugs, cocons,
  *             parent_id / parent_section pour la famille d'un article, C7).
  * WRITES TO: internal_links (upsertLinks : PUT /api/links ; l'action contextuelle
- *            « lien interne » de l'éditeur y enregistre aussi ses liens).
+ *            « lien interne » de l'éditeur y enregistre aussi ses liens ;
+ *            pruneStaleLinks retire les liens absents du texte enregistré,
+ *            appelé par article-content.service.saveArticleContent).
  * CONSUMERS: server/routes/links.routes.ts (matrice, suggestions, orphelins),
  *            gate.service.publishCocoonLinks (liens vers des articles non publiés),
  *            useLinkingStore (panneau de maillage, useContextualActions).

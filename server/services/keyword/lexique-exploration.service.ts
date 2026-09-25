@@ -1,3 +1,14 @@
+/**
+ * AUTHORITY: PostgreSQL `lexique_explorations` (une ligne par article × mot-clé
+ *            source : termes TF-IDF, recommandations et manques de l'IA).
+ * READS FROM: lexique_explorations (les mots génériques sont écartés à la
+ *             relecture, y compris dans les lignes d'avant C3 — M16).
+ * WRITES TO: lexique_explorations (saveLexiqueTfidf : lexique-analysis.service ;
+ *            saveLexiqueAi : keyword-ai-panel.routes).
+ * CONSUMERS: article-explorations.routes (GET /articles/:id/explorations),
+ *            keyword-queries.service, panneau Lexique.
+ * RELATED FR: FR-LEX-METIER-ONLY
+ */
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import { isGenericTerm } from '../../../shared/utils/generic-terms.js'

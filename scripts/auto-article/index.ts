@@ -28,7 +28,7 @@ import { buildTree, renderTree } from './tree.js'
 import { COLOR_TREE_THEME } from './tree-theme.js'
 import { makeMoteurPhase } from './phases/moteur.js'
 import { makeRedactionPhase } from './phases/redaction.js'
-import { runInternalLinking } from './phases/linking.js'
+import { runInternalLinking, unlinkUnpublished } from './phases/linking.js'
 import type { AutoRunConfig, InitialInput, PhaseName, RuntimeMode } from './types.js'
 
 const HELP = `
@@ -135,6 +135,7 @@ async function main(): Promise<void> {
     const relinkReport = new RunReport()
     logger.phase(`Maillage interne — article #${flags.relink}`)
     await runInternalLinking({ client, logger, report: relinkReport }, flags.relink)
+    await unlinkUnpublished({ client, logger, report: relinkReport }, flags.relink)
     logger.info('\n' + relinkReport.render())
     return
   }
