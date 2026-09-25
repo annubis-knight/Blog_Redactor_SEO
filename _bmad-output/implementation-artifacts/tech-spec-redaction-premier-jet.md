@@ -110,6 +110,7 @@ Suite unitaire complète verte ; 25 tests navigateur verts (bout-en-bout, édite
 - **R15** — la branche 429 de `meta.routes.ts` n'est jamais atteinte : `ai-provider.service.ts` convertit un 429 en `AIProviderQuotaError` sans `status`. L'ancienne boucle de la rédaction avait le même défaut.
 - **R16** — le premier jet vise `contentLengthRecommendation` (envoyée par l'écran, affichée par la barre de mots), la porte juge contre le micro-contexte, sinon le type : un premier jet conforme peut être signalé hors cible.
 - **U1** — jetons CSS `--color-warning-bg`, `-text`, `-border`, `-soft` utilisés (dix fois, avec des couleurs de repli en dur) mais jamais définis.
+- *R14, R15 et U1 soldés le 2026-09-25 sur `fix/restes-qualite-seo` (commits `3238a5f` : paragraphes plus fusionnés, boucle 429 retirée ; `7a98d68` : jetons définis, cliquet `css-tokens.test.ts`). R16 et U2 : soldés dans C5a / C5b (cf. épopée).*
 - **U2** — le titre de l'alarme donne « Avant de accepter le premier jet ».
 - `WEB_SEARCH_ENABLED` n'avait aucun effet même avant C5a (la valeur de la requête, `true` par défaut, passait avant) ; `.env.example` la documente encore.
 - `FR-RED-GEN-SAUVEGARDE-AU-FIL`, citée par le code et un test, n'a jamais été écrite au PRD (dette `LEGACY_ORPHANS`) : son critère est porté par `FR-RED-DRAFT-SINGLE-PASS` ; écrire l'ID lui-même demandera de le retirer du cliquet dans le même changement.

@@ -6,6 +6,7 @@
 > **2026-09-25** : rédaction en deux temps (épopée qualité SEO, C5) — premier jet en un appel (`POST /api/generate/article-draft`, remplace `/api/generate/article`), puis passes d'enrichissement proposées chapitre par chapitre (`POST /api/generate/enrich/:pass`, `POST /api/generate/section-rewrite`). Passages concernés mis à jour (§3.1, §3.2, §3.3, §7, §10, annexes) ; le reste du document n'a pas été revu.
 > **2026-09-25** : cocon né du pilier (épopée qualité SEO, C7) — un article naît seul (`POST /api/cocoons/:cocoonId/articles`, remplace `POST /api/articles/batch-create`), pilier d'abord, puis chaque enfant depuis une section (H2) de son parent **rédigé** (`articles.parent_id`, `parent_section`) ; mot-clé choisi parmi des candidats mesurés (`POST /api/cocoons/:cocoonId/child-candidates`) ; arbre réel `GET /api/cocoons/:cocoonId/tree`, constructeur `CocoonTreeBuilder` au Cerveau, la proposition de plan devient une carte indicative ; étape `redaction:draft_accepted` (« premier jet accepté », porte `draft`) ; `{{cocoon_context}}` dans la structure et le premier jet ; passe « Résumer » ; maillage : famille proposée d'office, lien de la sélection enregistré ; publication : résumés des enfants et liens vers des articles non publiés. Passages concernés mis à jour (§3.1, §3.2, §7, §10).
 > **2026-09-25** : onglet Structure (épopée qualité SEO, C6) — 7 onglets, la structure H1/H2/H3 naît des lieutenants retenus dans `StructureHnPanel` (plus dans l'onglet Lieutenants), 6 checks Moteur (`moteur:hn_locked`, porte `hn-lock` rejouée à la publication), Finalisation à 4 verrous. Passages Moteur concernés mis à jour (routes, parcours, phase ②, checks, arbre des composants).
+> **2026-09-25** : restes de la checklist qualité SEO (`fix/restes-qualite-seo`) — rattacher un article hors de l'arbre (`PUT /api/cocoons/:cocoonId/articles/:articleId/parent`, K8) ; intention éditoriale portée par chaque candidat (K9) ; données SERP du brief sur le mot-clé de l'article (R13) ; domaine « analyse d'intention » retiré (`intentData`, groupe et compteur `intent`, route `intent-for-article` ; table `keyword_intent_analyses` conservée, plus lue ni écrite, M3). Passages concernés : `brief.store`, `intent.store`, tableau des routes.
 
 ---
 
@@ -337,8 +338,8 @@ sequenceDiagram
 #### brief.store (strategy/)
 | Action | Input | Output | API |
 |--------|-------|--------|-----|
-| `fetchBrief(articleId)` | string | briefData (article + kw + SERP) | GET multi-parallel |
-| `refreshDataForSeo()` | — | SERP rafraîchi | POST forceRefresh |
+| `fetchBrief(articleId)` | string | briefData (article + kw + SERP du mot-clé **de l'article** : capitaine verrouillé, sinon mot-clé suggéré ; aucune sans mot-clé — R13, 2026-09-25) | GET article + GET `/api/keywords/:cocoon`, puis POST `/api/dataforseo/brief` |
+| `refreshDataForSeo()` | — | SERP rafraîchi (même mot-clé, `serpKeyword`) | POST `/api/dataforseo/brief` `forceRefresh` |
 
 #### outline.store (article/)
 | Action | Input | Output | API |
@@ -363,9 +364,12 @@ sequenceDiagram
 | `accept(key)` / `refuse(key)` / `acceptAllClean()` | clé | chapitre remplacé (ou FAQ insérée) dans `editorStore.content` ; `stale` si le chapitre a changé | — (le panneau enregistre ensuite : PUT `/api/articles/:id`) |
 
 #### intent.store (keyword/) — **simplifié 2026-05-10**
-Plus d'actions network. Refs (`intentData`, `comparisonData`, `autocompleteData`,
-`localComparisons`) hydratées par `useArticleResults` depuis
-`/articles/:id/explorations` et `/articles/:id/external-cache`. `reset()` clear-all.
+Plus d'actions network. Refs (`comparisonData`, `autocompleteData`, `localComparisons`)
+hydratées par `useArticleResults` depuis `/articles/:id/explorations`
+(`local.capitaine.comparison`) et `/articles/:id/external-cache` (autocomplete).
+`reset()` clear-all. **Plus de `intentData` depuis le 2026-09-25** (épopée qualité SEO,
+M3) : il relisait `keyword_intent_analyses`, table sans producteur, et aucun écran ne le
+lisait ; le groupe `intent` des explorations est supprimé.
 
 #### keyword-discovery.store (keyword/)
 | Action | Input | Output | API |
@@ -1227,7 +1231,8 @@ graph TB
 | GET | `/api/cocoons/:id/capitaines` | — | Map capitaines du cocon (cannibalization) |
 | GET | `/api/cocoons/:cocoonId/tree` | useCocoonBuilder | Arbre réel du cocon : articles, rédigés ou non, sections et enfant né de chacune (C7) — `server/routes/cocoons.routes.ts` |
 | POST | `/api/cocoons/:cocoonId/articles` | useCocoonBuilder | Crée **un** article (pilier d'abord, enfant depuis une section d'un parent rédigé, mot-clé mesuré) ; 409 `HIERARCHY_VIOLATION` / `GATE_BLOCKED` / `SLUG_TAKEN`, 422 `KEYWORD_NOT_MEASURED` (C7) ; remplace `POST /api/articles/batch-create` (supprimée) |
-| POST | `/api/cocoons/:cocoonId/child-candidates` | useCocoonBuilder | 3 à 5 mots-clés candidats mesurés pour un nouvel article (IA + DataForSEO, payant) (C7) |
+| POST | `/api/cocoons/:cocoonId/child-candidates` | useCocoonBuilder | 3 à 5 mots-clés candidats mesurés pour un nouvel article (IA + DataForSEO, payant) (C7) ; chacun porte son intention éditoriale `painIntentExpected` (K9) |
+| PUT | `/api/cocoons/:cocoonId/articles/:articleId/parent` | useCocoonBuilder | Rattache un article existant (hors de l'arbre) à la section libre d'un parent rédigé, aux règles d'une création ; 404 `ARTICLE_NOT_FOUND`, 409 `HIERARCHY_VIOLATION` / `GATE_BLOCKED` (checklist K8, 2026-09-25) |
 | GET | `/api/articles?cocoon=id` | articles | Articles d'un cocon |
 | GET | `/api/articles/:id` | brief | Détail article |
 | PUT | `/api/articles/:id` | editor | Sauvegarde article |
@@ -1258,7 +1263,6 @@ graph TB
 | POST | `/api/keywords/:keyword/propose-lieutenants` | — | Propositions Lieutenants |
 | GET | `/api/keywords/:keyword/usage` | — | Usage du mot-clé |
 | GET | `/api/keywords/:keyword/metrics` | — | Métriques (keyword_metrics) |
-| POST | `/api/keywords/:keyword/intent-for-article` | — | Intent contextualisé article |
 | POST | `/api/keywords/intent-scan` | — | Radar intent |
 | POST | `/api/keywords/intent-scan/radar/generate` | — | Génération radar |
 | POST | `/api/keywords/intent-scan/radar/scan` | — | Scan radar |
@@ -1281,8 +1285,9 @@ graph TB
 | GET | `/api/discovery-cache/*` | — | Cache Discovery (check/load/save) |
 | GET | `/api/radar-cache/*` | — | Cache Radar (check/load/save) |
 | GET | `/api/radar-exploration/*` | — | Exploration Radar |
-| GET | `/api/articles/:id/explorations` | — | Explorations d'un article |
-| GET | `/api/dataforseo/brief` | brief | Données SERP DataForSEO |
+| GET | `/api/articles/:id/explorations` | — | Explorations d'un article (radar, capitaine, lieutenants, lexique, analyses locale et de contenu manquant ; plus de groupe `intent` depuis M3, 2026-09-25) |
+| GET | `/api/articles/:id/explorations/counts` | TabCachePanel | 7 compteurs : radar, captain, lieutenants, paa, lexique, local, contentGap (plus de compteur `intent` depuis M3) |
+| POST | `/api/dataforseo/brief` | brief | Données SERP DataForSEO du mot-clé de l'article (R13 ; la route est un POST) |
 | GET | `/api/dataforseo/cost-status` | cost-log | Statut quota DataForSEO |
 
 ---

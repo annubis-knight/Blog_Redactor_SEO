@@ -120,6 +120,16 @@ Tests qui nécessitent un vrai navigateur : modals, mutex UI, drag/drop, navigat
 - `finalisation-gate.browser.test.ts`, `article-editor.browser.test.ts`, `editor-actions.browser.test.ts`
 - `linking-matrix.browser.test.ts`
 
+Depuis le 2026-09-25, ils écrivent dans **leur propre base**, recréée avant chaque passage (cf. [§5.7](#57-base-propre-aux-tests-navigateur-t10)).
+
+### 2.7 `tests/integration/` — Services contre une vraie base
+
+Des services serveur appelés directement (sans HTTP), contre PostgreSQL : schéma, cache SERP, lecture de l'arbre silos → cocons → articles. Ils ont besoin d'une base, mais **jamais de ses données** : chaque fichier pose ses fixtures et les retire.
+
+- `data.service.test.ts` *(épopée qualité SEO, T9, 2026-09-25)* — lecture de l'arbre (`getCocoons`, `getArticlesByCocoon`, `getArticleBySlug`, `getKeywordsByCocoon`, `getTheme`, silos). Il lisait la base de développement (« le premier cocon est Croissance digitale Toulouse ») : ni portable en CI (base vide), ni stable (le contenu éditorial change). Il crée maintenant un silo, un cocon, un pilier, un intermédiaire (en rédaction), un spécialisé et un mot-clé, étiquetés `[test:<runId>]` / `test-<runId>-…` (helpers `tests/helpers/db-fixtures.ts`), et les nettoie en `afterAll`. Il passe sur une base vide.
+- En CI, le job unitaire ne lance que `tests/unit` et `tests/functional` (sans base) ; `data.service.test.ts` est lancé par le **job d'intégration**, qui a la base (`.github/workflows/ci.yml`, avec `tests/contract-api`, `tests/integration-tabs` et `tests/e2e-workflows`). Les autres fichiers de `tests/integration/` ne sont pas lancés en CI.
+- En local : `npx vitest run tests/integration/data.service.test.ts` (PostgreSQL requis ; le serveur de développement, non).
+
 ---
 
 ## 3. Priorisation : le parcours utilisateur d'abord
@@ -295,7 +305,9 @@ Tout ce qui est créé par `ctx.create*` est tagué :
 
 Le cleanup utilise `LIKE '[test:<runId>]%'` pour ne supprimer que les rows de **ce runId**.
 
-### 5.5 Tables cross-article (keyword_metrics, keyword_intent_analyses)
+### 5.5 Tables cross-article (keyword_metrics, keywords_seo…)
+
+*(`keyword_intent_analyses` n'est plus concernée : depuis le 2026-09-25 (épopée qualité SEO, M3), plus aucun code ne la lit ni ne l'écrit.)*
 
 Ces tables sont partagées entre articles → **ne peuvent pas être purgées par runId**. On filtre par `keyword LIKE '%test-<runId>-%'` donc **toujours préfixer les keywords de test** :
 
@@ -319,6 +331,33 @@ DELETE FROM silos WHERE nom LIKE '[test:%';
 ```
 
 Ou relance n'importe quel test : `beforeAll::cleanupOrphanedFixtures` purge automatiquement tout ce qui date de > 1h.
+
+### 5.7 Base propre aux tests navigateur (T10)
+
+Depuis le 2026-09-25 (épopée qualité SEO, T10), **`npm run test:browser` n'écrit plus dans la base de développement**. Avant, ses fixtures `[test:…]` y vivaient pendant tout le passage (et y restaient quand un test plantait), et les caches permanents (`keyword_metrics`) se remplissaient des mesures factices du bac à sable DataForSEO.
+
+**Comment ça marche**
+
+1. `pretest:browser` libère les ports 3410 / 5410, puis lance `tsx scripts/e2e-test-db.ts`.
+2. Le script recrée la base **`blog_redactor_seo_test`** : il coupe les connexions restées ouvertes (un serveur de test d'un passage précédent), la supprime, la recrée, y joue `server/db/bootstrap.sql` (le même schéma qu'en CI), puis ajoute le silo « Stratégie & Visibilité » que les tests attendent. Le temps pris s'affiche (`[e2e-test-db] base « … » recréée depuis bootstrap.sql (… ms)`).
+3. `playwright.config.ts` pose `PG_DATABASE=blog_redactor_seo_test` : le serveur de test (3410) y écrit, et les helpers qui lisent la base directement (fixtures `ctx.createArticle`, vérifications en base des parcours) y lisent.
+
+Le nom et la règle vivent à un seul endroit, `tests/browser-e2e/e2e-database.ts` : `e2eDatabaseName` (`E2E_PG_DATABASE` pour choisir un autre nom) et `e2eUsesOwnDatabase`.
+
+**Garde-fou** : le script refuse de recréer une base dont le nom ne finit pas par `_test`, ou qui est celle de `.env` (`PG_DATABASE`). Un `E2E_PG_DATABASE=blog_redactor_seo` mal placé ne peut donc pas effacer la base de développement.
+
+**Deux cas gardent la base du serveur visé** (le script ne fait rien) :
+
+| Cas | Pourquoi |
+|---|---|
+| `PARCOURS_REEL=1 npm run test:browser` (passage réel) | Ses données sont faites pour être relues après coup |
+| `PLAYWRIGHT_NO_SERVER=1` (tests contre un serveur déjà lancé) | C'est la base de ce serveur-là, choisie par l'appelant |
+
+**À savoir**
+- La base repart de zéro à chaque passage : rien ne se garde d'un passage à l'autre (ni articles, ni mesures DataForSEO en cache).
+- Vérifié à la livraison (commit `9ac5281`) : 124 tests navigateur verts sur la base dédiée, comptes de la base de développement identiques avant et après.
+- Le garde-fou et `e2eUsesOwnDatabase` n'ont pas de test automatisé.
+- Vitest (`npm run test:unit`, `test:check`) n'est pas concerné : ses tests HTTP visent toujours le serveur de développement et sa base, avec le nettoyage des §5.1 à §5.6.
 
 ---
 
@@ -346,9 +385,13 @@ npm run dev
 > SEO, T8). `pretest:browser` libère 3410 / 5410, plus jamais 3400 / 5400.
 > Si un test vise quand même un serveur forcé en mode réel, `setMockMode('mock')`
 > refuse de le basculer et le dit.
-> **Limite** : ce serveur de test utilise la même base PostgreSQL que le serveur de
+> ~~**Limite** : ce serveur de test utilise la même base PostgreSQL que le serveur de
 > développement. Les données de test sont préfixées `[test:…]` et nettoyées en fin
-> d'exécution, mais présentes pendant qu'elle tourne (checklist T10).
+> d'exécution, mais présentes pendant qu'elle tourne (checklist T10).~~
+> **Sa propre base aussi, depuis le 2026-09-25 (T10)** : `pretest:browser` recrée
+> `blog_redactor_seo_test`, et le serveur de test y écrit (cf. §5.7). La base de
+> développement n'est plus touchée, sauf en passage réel (`PARCOURS_REEL=1`) ou avec
+> `PLAYWRIGHT_NO_SERVER`.
 >
 > **Vitest (`npm run test:unit`, `test:check`)** vise, lui, le serveur de
 > développement pour les tests HTTP. Depuis le 2026-09-25 il ne touche plus à un
@@ -538,7 +581,7 @@ it('mon test long', { timeout: 60000 }, async () => { ... })
 
 **Cause** : tu as lancé les tests contre la DB de prod (erreur `.env`).
 
-**Solution** : utiliser une DB dédiée aux tests (future amélioration — actuellement tests = DB dev).
+**Solution** : utiliser une DB dédiée aux tests. C'est fait pour les tests navigateur depuis le 2026-09-25 (`blog_redactor_seo_test`, §5.7) ; les tests Vitest HTTP (`contract-api`, `integration-tabs`, `e2e-workflows`) visent toujours le serveur de développement et sa base.
 Purge manuelle :
 ```sql
 DELETE FROM articles WHERE titre LIKE '[test:%';
@@ -675,6 +718,7 @@ tests/
 │   └── test-context.ts       # setupTestContext() — le helper principal
 ├── unit/                     # Tests unitaires (shared, utils)
 ├── functional/               # Logique métier sans I/O
+├── integration/              # Services contre une vraie base, fixtures propres (§2.7)
 ├── contract-api/             # Un endpoint HTTP isolé
 │   ├── keywords.contract.test.ts
 │   ├── articles.contract.test.ts
@@ -703,6 +747,7 @@ tests/
 │   ├── cross-workflow.e2e.test.ts  # Parcours cross-workflow (CRITIQUE)
 │   └── target-word-count.workflow.test.ts
 └── browser-e2e/              # Playwright (DOM + navigation réelle)
+    ├── e2e-database.ts              # Nom et règle de la base propre aux tests navigateur (§5.7)
     ├── helpers/test-fixtures.ts     # Extension `test` avec ctx.createArticle DB
     ├── _sanity.browser.test.ts
     ├── dashboard.browser.test.ts
@@ -721,4 +766,4 @@ tests/
 
 ---
 
-**Dernière mise à jour** : 2026-04-23 — après passage à 2836 tests vitest + 45 tests Playwright, 65 todos restants (tous documentés).
+**Dernière mise à jour** : 2026-04-23 — après passage à 2836 tests vitest + 45 tests Playwright, 65 todos restants (tous documentés). Revu le 2026-09-25 (épopée qualité SEO) : `tests/integration/data.service.test.ts` avec ses propres fixtures (§2.7, T9), base propre aux tests navigateur (§5.7, T10), 124 tests navigateur.

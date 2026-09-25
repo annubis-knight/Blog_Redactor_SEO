@@ -144,6 +144,7 @@ if (isNaN(id)) {
 | `/cocoons/:cocoonId/articles` | POST | `cocoons.routes.ts` | `createCocoonArticle(cocoonId, input)` — crée **un** article ; `parentId` est l'`id` du parent (C7) |
 | `/cocoons/:cocoonId/tree` | GET | `cocoons.routes.ts` | `getCocoonTree(cocoonId)` — arbre réel, par `id` (C7) |
 | `/cocoons/:cocoonId/child-candidates` | POST | `cocoons.routes.ts` | `proposeChildCandidates(cocoonId, { parentId, parentSection })` (C7) |
+| `/cocoons/:cocoonId/articles/:articleId/parent` | PUT | `cocoons.routes.ts` | `attachCocoonArticle(cocoonId, articleId, { parentId, parentSection })` — rattache un article existant ; `articleId` et `parentId` sont des `id` (checklist K8, 2026-09-25) |
 | `/articles/:id/micro-context` | GET/PUT | `articles.routes.ts` | `loadArticleMicroContext` / `saveArticleMicroContext` |
 | `/articles/:id/keywords` | GET | `keywords.routes.ts` | `getArticleKeywords(id)` |
 | `/articles/:id/keywords` | PUT | `keywords.routes.ts` | `saveArticleKeywords(id, data)` |

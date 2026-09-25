@@ -105,7 +105,9 @@ Le détail de la pondération vit dans [docs/scoring-kpi-vs-relevance.md](./scor
 Activé depuis 2026-05-06. Croise deux valeurs typées `commercial | transactional | informational | navigational` :
 
 - **Côté keyword (SERP)** : `keyword_metrics.intent_label`, label renvoyé par DataForSEO `search_intent.keyword_intent.label`. Persisté via la migration **017**.
-- **Côté article (éditorial)** : `articles.pain_intent_expected`, valeur typée définie au moment de la création de l'article (généré par les prompts IA `cocoon-articles*.md`, corrigeable manuellement via dropdown radio dans [src/components/strategy/ProposedArticleRow.vue](../src/components/strategy/ProposedArticleRow.vue)).
+- **Côté article (éditorial)** : `articles.pain_intent_expected`, valeur typée définie au moment de la création de l'article (généré par les prompts IA `cocoon-articles*.md`, corrigeable manuellement via dropdown radio dans [src/components/strategy/ProposedArticleRow.vue](../src/components/strategy/ProposedArticleRow.vue)). Depuis le 2026-09-25 (épopée qualité SEO, K9), un article né du constructeur du cocon reçoit l'intention proposée avec son mot-clé candidat (`cocoon-child-keywords.md`), sauf si la carte en propose une pour le même titre.
+
+**Scan et rechargement** : depuis le 2026-09-25 (M2), le scan d'un mot-clé (`POST /keywords/:keyword/scan`) lit les mêmes deux valeurs que le rechargement (`captain-relevance.service.ts`) — avant, il ne transmettait ni l'une ni l'autre, et le 5ᵉ signal y restait neutre (50).
 
 **Comportement** :
 - Match parfait → score 100, pas de malus

@@ -967,6 +967,13 @@ development_status:
   # FR-RED-INTERNAL-LINKING superseded. Parcours navigateur 2d39345 (T14 soldé).
   # Découverts : K8, K9 (ouverts) ; D7, T14 (soldés).
   qualite-seo-c7-cocon-progressif: review
+  # Restes de la checklist (fix/restes-qualite-seo, empilée sur feat/cocon-progressif,
+  # 2026-09-25, PR à ouvrir) : U1, R14, R15, M16, M2, K9, K8, R13, T9, M3, T10 soldés
+  # (un commit chacun, 7a98d68 → 9ac5281) ; T2, T3 en cours. Amendées au PRD et au
+  # registre : FR-CER-COCOON-PROGRESSIVE, FR-CER-KEYWORD-REAL-DATA, FR-PIE-AI-GENERATION,
+  # FR-CAP-RELEVANCE-INTENT-SIGNAL, FR-CAP-SCORING-BIMODAL, FR-RED-BRIEF,
+  # FR-RED-DRAFT-SINGLE-PASS, FR-LEX-METIER-ONLY, NFR-MAIN-TESTS-PLAYWRIGHT,
+  # NFR-CFG-PORT-PREFLIGHT. Pas de clé propre : suivi dans l'épopée (§5, §8, §9).
   qualite-seo-c8-recette-reelle: backlog
 
 # ===== Backlog (non livré) =====

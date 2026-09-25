@@ -1,12 +1,26 @@
 ---
 name: intent
-description: Analyses d'intention SERP et signaux SERP (modules détectés, PAA, local pack, featured snippet, autocomplete) — table keyword_intent_analyses cross-article + données Radar (PAA+autocomplete+scoring de résonance) + historique Explorateur.
+description: "RETIRÉE (épopée qualité SEO, M3, 2026-09-25) — ancienne chaîne d'analyse d'intention SERP (POST /api/intent/analyze → keyword_intent_analyses → useIntentStore.intentData → écrans de l'Explorateur). La table reste en base, plus lue ni écrite. L'intention SERP qui sert aujourd'hui vit dans keyword_metrics (intent_raw, intent_label). Le reste du document est historique."
 type: "{ keyword, modules: SerpModule[], scores: IntentScore[], dominantIntent: IntentType, classification, recommendations, topOrganicResults, paaQuestions, cachedAt }"
-last_updated: 2026-05-04
-related_fr: [FR-DIS-INTENT-SCAN, FR-DIS-AI-PANEL, FR-RAD-GENERATE, FR-RAD-SCAN-2PASS, FR-EXP-INTENT-ANALYZE, FR-EXT-DATAFORSEO, FR-CAP-VALIDATE]
+last_updated: 2026-09-25
+related_fr: [FR-DIS-INTENT-SCAN, FR-DIS-AI-PANEL, FR-RAD-GENERATE, FR-RAD-SCAN-2PASS, FR-EXP-INTENT-ANALYZE, FR-EXT-DATAFORSEO, FR-CAP-VALIDATE, FR-CAP-RELEVANCE-INTENT-SIGNAL]
 ---
 
 # Data Flow — intent
+
+> **⚠️ Chaîne retirée — document historique (2026-09-25, épopée qualité SEO, checklist M3, commit `f59e675`).**
+>
+> **Ce qui a disparu**, en deux temps :
+> - le **2026-05-10**, avec l'Explorateur : `POST /api/intent/analyze` (`intent.routes.ts`), `analyzeIntent()` (`intent.service.ts`), `POST /api/keywords/autocomplete`, les actions réseau de `useIntentStore` (`analyzeIntent`, `compareLocalNational`, `validateAutocomplete`, `exploreKeyword`), `explorationHistory`, et les écrans `IntentStep.vue`, `ExplorationVerdict.vue`, `ExplorationInput.vue`, `LocalComparisonStep.vue`. Depuis, **rien n'écrivait plus** dans `keyword_intent_analyses` ;
+> - le **2026-09-25** (M3), ce qui relisait encore ces lignes figées : `server/services/intent/keyword-intent-analysis.service.ts` ; le groupe `intent` de `GET /api/articles/:id/explorations` et son compteur dans `/explorations/counts` (7 compteurs au lieu de 8) ; `GET /api/keywords/:keyword/intent-for-article/:articleId` et `getKeywordIntentForArticle` ; le champ `intentAnalysis` de `GET /api/cocoons/:id/keyword-metrics` ; la ref `intentData` de `useIntentStore`, que `useArticleResults` remplissait et que personne ne lisait.
+>
+> **Ce qui reste :**
+> - la table **`keyword_intent_analyses`**, conservée dans `server/db/schema.sql` mais **plus lue ni écrite** : `tests/unit/coherence/db-tables-coverage.test.ts` casse si un fichier de `server/`, `src/` ou `shared/` la relit ou l'écrit (la réactiver demande un producteur et une décision) ;
+> - l'**intention de la SERP** telle qu'elle sert aujourd'hui : `keyword_metrics.intent_raw` (probabilité) et `intent_label` (une des 4 valeurs), mesurés par `fetchSearchIntentBatch` et enregistrés par `upsertKeywordKpis` (scan du capitaine `POST /api/keywords/:keyword/scan`, mesure des candidats du Cerveau `keyword-measure.service.ts`). Elle entre dans le Score Marché et, croisée avec `articles.pain_intent_expected`, dans le 5ᵉ signal du Score Pertinence — au scan comme au rechargement depuis M2 (cf. `FR-CAP-RELEVANCE-INTENT-SIGNAL`, [keyword-metrics.md](./keyword-metrics.md)) ;
+> - le **scan d'intention du Radar** (`POST /api/keywords/intent-scan`, `/api/keywords/radar/generate`, `/api/keywords/radar/scan` → `intent-scan.service.ts`, `keyword-radar.service.ts`) : résonance autocomplete + PAA, résultat éphémère ou enregistré dans `radar_explorations`, jamais dans `keyword_intent_analyses` ;
+> - **`useIntentStore`** réduit à `comparisonData` (comparaison locale, lue dans `local.capitaine.comparison` des explorations), `autocompleteData` (`/articles/:id/external-cache`) et `localComparisons`, hydratés par `useArticleResults`.
+>
+> Tout ce qui suit décrit l'état du 2026-05-04 et **ne fait plus foi** (cf. `.claude/CLAUDE.md` §1 : le code l'emporte).
 
 > **Description métier :** Classification SERP avancée (modules présents, PAA détecté, local pack, featured snippet, vidéos, shopping) combinée à analyse d'intention (informational / transactional_local / navigational / mixed) via Claude + scoring de résonance (autocomplete + PAA alignés au topic spécifique). Croise DataForSEO Advanced SERP + Claude classification + PAA crawling multi-niveaux + autocomplete fuzzy matching + embedding sémantique. Persistance cross-article en DB (analyses partagées entre articles testant le même mot-clé).
 > **Type/format :** `{ keyword, modules: SerpModule[], dominantIntent: IntentType, paaQuestions: string[], classification: { type, confidence, reasoning }, recommendations: IntentRecommendation[], topOrganicResults, scores }`

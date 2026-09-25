@@ -417,7 +417,7 @@ export const useXxxStore = defineStore('xxx', () => {
 |---------|----------|
 | `keyword/` | autocomplete, keyword-assignment, keyword-discovery, keyword-discovery-db, keyword-metrics, keyword-radar, keyword-validate, lexique-exploration, suggest, tfidf, word-groups |
 | `external/` | ai-provider, claude, dataforseo, dataforseo-cost-guard, embedding, gemini, gsc, mock (+ mock-fixtures), openrouter, serp-analysis |
-| `intent/` | community-discussions, intent, intent-scan, keyword-intent-analysis |
+| `intent/` | community-discussions, intent-scan *(`intent` retiré avec l'Explorateur, 2026-05-10 ; `keyword-intent-analysis` retiré le 2026-09-25, épopée qualité SEO M3 : la table `keyword_intent_analyses` reste en base, plus lue ni écrite)* |
 | `article/` | article-content, content-gap, export, linking, target-word-count |
 | `strategy/` | cocoon-strategy, local-seo, strategy, theme-config |
 | `infra/` | data, discovery-cache, paa-cache, radar-cache, radar-exploration, local-entities |
@@ -661,7 +661,7 @@ Blog_Redactor_SEO_rebirth/
 │   ├── services/                 # 42 services en 7 domaines
 │   │   ├── keyword/              # autocomplete, keyword-assignment, keyword-discovery, keyword-discovery-db, keyword-metrics, keyword-radar, keyword-validate, lexique-exploration, suggest, tfidf, word-groups
 │   │   ├── external/             # ai-provider, claude, dataforseo, dataforseo-cost-guard, embedding, gemini, gsc, mock (+ mock-fixtures/), openrouter, serp-analysis
-│   │   ├── intent/               # community-discussions, intent, intent-scan, keyword-intent-analysis
+│   │   ├── intent/               # community-discussions, intent-scan (M3, 2026-09-25)
 │   │   ├── article/              # article-content, content-gap, export, linking, target-word-count
 │   │   ├── strategy/             # cocoon-strategy, local-seo, strategy, theme-config
 │   │   ├── infra/                # data, discovery-cache, paa-cache, radar-cache, radar-exploration, local-entities

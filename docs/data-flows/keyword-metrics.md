@@ -1,8 +1,8 @@
 ---
 name: keyword-metrics
 description: Table PostgreSQL cross-article permanente stockant les KPIs numériques d'un mot-clé (Volume, KeywordDifficulty, CPC, Intent, PAA[], Autocomplete[], analyses locales/gap). Les artefacts SERP (URLs Top 10, scrapes HTML, PAA, autocomplete) sont désormais dans 4 tables filles dédiées (`keyword_serp_*`) — voir keyword-serp.service.ts. Partagée par tous les articles utilisant le même mot-clé — une seule requête DataForSEO par mot-clé, jamais par article.
-type: "{ keyword: TEXT PK, lang: TEXT, country: TEXT, search_volume: int, keyword_difficulty: int, cpc: numeric, competition: numeric, intent_raw: numeric, autocomplete_suggestions: JSONB[], autocomplete_source: TEXT, paa_questions: JSONB[], local_analysis: JSONB, content_gap_analysis: JSONB, local_comparison: JSONB, fetched_at: TIMESTAMPTZ }"
-last_updated: 2026-05-09
+type: "{ keyword: TEXT PK, lang: TEXT, country: TEXT, search_volume: int, keyword_difficulty: int, cpc: numeric, competition: numeric, intent_raw: numeric, intent_label: TEXT, autocomplete_suggestions: JSONB[], autocomplete_source: TEXT, paa_questions: JSONB[], local_analysis: JSONB, content_gap_analysis: JSONB, local_comparison: JSONB, fetched_at: TIMESTAMPTZ }"
+last_updated: 2026-09-25
 related_fr: [FR-INFRA-KEYWORD-METRICS, FR-MOT-CACHE-CASCADE, NFR-COST-CACHE-FIRST, NFR-INT-SERP-ONCE, NFR-MOT-SCHEMA-KEYWORD-DECOMPOSITION, FR-CAP-VALIDATE, FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE]
 ---
 
@@ -27,7 +27,7 @@ Qui crée ou met à jour cette donnée :
 - **Service Content Gap** `analyzeCachedCompetitors()` → `upsertKeywordContentGap()` ([server/services/article/content-gap.service.ts:215](../../server/services/article/content-gap.service.ts)) — colonne `content_gap_analysis JSONB`.
 - **Service Local SEO** `analyzeMapsCompetitors()` → `upsertKeywordLocalAnalysis()` / `upsertKeywordLocalComparison()` ([server/services/strategy/local-seo.service.ts:122](../../server/services/strategy/local-seo.service.ts)) — colonnes `local_analysis` + `local_comparison JSONB`.
 - **Service PAA Cache** `paa-cache.service.ts` → `upsertKeywordPaa()` ([server/services/infra/paa-cache.service.ts:45](../../server/services/infra/paa-cache.service.ts)) — remplissage hiérarchique PAA (level 0/1/2).
-- **Endpoints Intent & Radar** appelant parallèlement `fetchSearchIntentBatch()` → pas d'upsert direct (données intent stockées dans `keyword_intent_analyses`, table séparée).
+- **Intention de la SERP** (`fetchSearchIntentBatch()`) : le scan du capitaine (`POST /api/keywords/:keyword/scan`) et la mesure des mots-clés candidats du Cerveau (`keyword-measure.service.ts`) l'enregistrent **ici**, par `upsertKeywordKpis` — `intent_raw` (probabilité) et `intent_label` (une des 4 valeurs). Le Radar (`keyword-radar.service.ts`) la calcule pour ses cartes sans l'écrire ici (elle part dans `radar_explorations.scan_result`). *(Corrigé le 2026-09-25 : ce document la disait rangée dans `keyword_intent_analyses` ; cette table n'a plus de producteur depuis le 2026-05-10, et plus aucun lecteur depuis l'épopée qualité SEO, M3 — elle reste en base, plus lue ni écrite, cf. [intent.md](./intent.md).)* Depuis M2, le scan relit aussi `intent_label` en base pour le Score Marché et le 5ᵉ signal du Score Pertinence, comme le rechargement (`captain-relevance.service.ts`).
 
 ## Persistance
 

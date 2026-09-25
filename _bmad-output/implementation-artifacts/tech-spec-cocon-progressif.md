@@ -5,7 +5,7 @@ status: done
 version: 1.0.0
 last_updated: 2026-09-25
 synced_with:
-  - _bmad-output/implementation-artifacts/epic-qualite-seo-garde-fous.md (chantier C7 ; K6 soldée, D5 soldée ; découverts en documentant : K8, K9 ouverts ; D7, T14 soldés)
+  - _bmad-output/implementation-artifacts/epic-qualite-seo-garde-fous.md (chantier C7 ; K6 soldée, D5 soldée ; découverts en documentant : K8, K9 ouverts — soldés depuis sur `fix/restes-qualite-seo` ; D7, T14 soldés)
   - _bmad-output/planning-artifacts/prd.md (FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-KEYWORD-REAL-DATA, FR-INFRA-COCOON-CONTEXT, FR-RED-LINKING-MANUAL versées ; FR-CER-BATCH-CREATE et FR-RED-INTERNAL-LINKING superseded ; amendées : FR-RED-PUBLISH-GATE, FR-RED-ENRICH-PASSES, FR-RED-DRAFT-SINGLE-PASS, FR-RED-CONTEXTUAL-ACTIONS, FR-INFRA-VERIFIER-SHARED, FR-HN-TAB, FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, FR-INFRA-WORKFLOW-CHECKS-CONSTANTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, FR-CER-STEPS-COCOON, FR-CER-AIGUILLAGE, FR-CER-CREATION-HONNETE, FR-INFRA-PROMPT-LAYERS, NFR-INT-SERP-ONCE, FR-EXT-DATAFORSEO-SANDBOX)
   - _bmad-output/planning-artifacts/design-registry.md (DESIGN-CER-COCOON-PROGRESSIVE, DESIGN-CER-PARENT-WRITTEN-GATE, DESIGN-CER-CHILD-FROM-PILLAR-H2, DESIGN-CER-KEYWORD-REAL-DATA, DESIGN-INFRA-COCOON-CONTEXT, DESIGN-RED-LINKING-MANUAL ; DESIGN-CER-BATCH-CREATE et DESIGN-RED-INTERNAL-LINKING superseded)
   - _bmad-output/implementation-artifacts/sprint-status.yaml (qualite-seo-c7-cocon-progressif)
@@ -122,4 +122,6 @@ du client).
   entre-temps, et au mode automatique (qui s'arrête).
 - **Découverts** : K8 (le parent d'un article existant ne se change pas), K9 (l'intention
   éditoriale n'est plus proposée avec les candidats), D7 (en-têtes `AUTHORITY:`), T14 (deux
-  parcours navigateur attendent encore `batch-create`) — cf. épopée, checklist.
+  parcours navigateur attendent encore `batch-create`) — cf. épopée, checklist. *K8 et K9
+  soldés le 2026-09-25 sur `fix/restes-qualite-seo` (commits `1cbc921` : rattacher un article
+  hors de l'arbre ; `f2ec990` : intention éditoriale de chaque candidat).*

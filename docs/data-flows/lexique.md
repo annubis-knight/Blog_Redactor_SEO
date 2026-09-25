@@ -114,7 +114,7 @@ articles.completed_checks              (étape « Lexique validé »)
 | Deux cases cochées très vite | — | deux `PUT` | Faible : vérifications sérialisées, une seule demande d'étape. |
 | Lexique édité depuis la Rédaction (section « Mots-clés ») | store | `PUT /articles/:id/keywords` | **Modéré** : ni filtre des mots génériques ni porte à ce moment ; la publication les rattrape. |
 | Rechargement de la page | `GET /articles/:id/keywords`, `GET /articles/:id/explorations` | aucune | Faible depuis le 2026-09-25 : le watcher sur `lockedTerms` recoche les termes enregistrés même quand le TF-IDF est restauré depuis la base, et le compteur est juste. Avant, ils s'affichaient décochés et cliquer l'un d'eux le retirait de la base (défaut antérieur à C3). Réconciliation de l'étape au montage : lexique non vide sans étape → vérification. |
-| Explorations enregistrées avant C3 | `lexique_explorations.tfidf_terms` | aucune | **Modéré** : une proposition restaurée depuis la base n'est pas refiltrée ; elle peut encore montrer « être » ou « vos ». La porte les refuse s'ils sont cochés. |
+| Explorations enregistrées avant C3 | `lexique_explorations.tfidf_terms`, `ai_recommendations`, `ai_missing_terms` | aucune | **Faible depuis le 2026-09-25** (checklist M16, commit `e490437`) : `lexique-exploration.service.ts` les filtre à la relecture (`withoutGenericTerms`, `isGenericTerm`) — plus de « être » ni de « vos » restaurés. Les lignes en base ne sont pas réécrites ; la porte refuse toujours un terme générique retenu avant C3. |
 | Scrape déjà en base, antérieur au 2026-09-25 | `keyword_serp_scrapes.text_content` | aucune | **Modéré** : le texte garde menus et bandeaux jusqu'au prochain scrape (SERP de plus de 7 jours via `fetchAndPersist`) ; le TF-IDF écarte de toute façon les mots de décor de la liste. |
 | Article rédigé sans lexique | `article_keywords.lexique` vide | aucune | **À connaître** : la publication s'arrête sur 🔴 `lexique-lock:lexique-empty` (assumable par écrit) et `verify:content` avertit (`publish-gate-refused`) tant qu'aucune dérogation ne le couvre. |
 | Mode automatique | TF-IDF | `saveThenEmit` | Faible : `pickLexique` n'emporte aucun terme générique ; s'il ne reste rien, la porte refuse (🔴 lexique vide) et le run s'arrête — `auto:article` ne déroge jamais. |
@@ -207,7 +207,7 @@ Déjà écrits :
 
 À écrire :
 1. Rédaction : `ArticleKeywordsPanel` « suggérer » puis « Enregistrer » ne doit pas faire entrer de terme générique sans alerte (checklist C4 · M15).
-2. Explorations enregistrées avant C3 : une proposition restaurée ne devrait plus afficher de mot vide (checklist C3 · M16).
+2. ~~Explorations enregistrées avant C3 : une proposition restaurée ne devrait plus afficher de mot vide (checklist C3 · M16).~~ **Écrit** (M16) : `tests/unit/services/lexique-exploration.service.test.ts`, « une exploration relue ne rend jamais de mot générique ».
 
 ---
 
