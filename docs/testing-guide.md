@@ -656,7 +656,9 @@ Supprimer un test signifie dire « ce comportement n'a pas à être testé ». T
 
 ### Q. Mon test IA utilise le mock. C'est fiable en prod ?
 
-Le mock teste **l'orchestration** (routes, parsing, persistance), pas la qualité de la réponse IA. Pour tester la qualité IA, il faudrait des tests manuels ou une validation semi-automatique (qui n'existe pas encore).
+Le mock teste **l'orchestration** (routes, parsing, persistance), pas la qualité de la réponse IA. Pour la qualité, deux outils existent depuis le 2026-09-25 :
+- la **recette réelle** : `npm run auto:article -- --mode=real`, puis `npm run verify:content`. Les vérificateurs jugent un vrai texte (recette C8 : pilier #1030) ;
+- la **recette manuelle** : [`docs/recette-manuelle.md`](recette-manuelle.md), un parcours pas à pas de 10 étapes, tiré des tests navigateur. Elle indique ce qui ne se voit qu'en mode réel.
 
 **La règle pragmatique** : le mock couvre 95% des régressions possibles (mauvais parsing JSON, mauvais dispatcher, mauvais appel DB après stream). Les 5% restants (réponse IA qualitativement mauvaise) se voient à l'usage.
 
