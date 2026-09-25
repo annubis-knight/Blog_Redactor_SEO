@@ -160,6 +160,8 @@ export interface ResumePlan {
   skipCerveau: boolean
   skipMoteur: boolean
   skipRedaction: boolean
+  /** Premier jet déjà écrit : gardé, seule la suite de la Rédaction est rejouée. */
+  skipDraft: boolean
 }
 
 /** Mot-clé semence pour le scan Radar (forme attendue par l'API : objet). */

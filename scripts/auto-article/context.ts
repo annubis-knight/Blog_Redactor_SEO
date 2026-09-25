@@ -30,6 +30,6 @@ export function createContext(config: AutoRunConfig, input: InitialInput): AutoR
     metaTitle: null,
     metaDescription: null,
     exportPath: null,
-    resume: { active: false, skipCerveau: false, skipMoteur: false, skipRedaction: false },
+    resume: { active: false, skipCerveau: false, skipMoteur: false, skipRedaction: false, skipDraft: false },
   }
 }

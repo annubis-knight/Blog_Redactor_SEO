@@ -192,7 +192,7 @@ async function main(): Promise<void> {
       logger.phase(`Reprise de l'article #${config.resumeArticleId}`)
       await hydrateResume(client, ctx)
       logger.success(
-        `État chargé : « ${ctx.articleTitle} » — skip Cerveau=${ctx.resume.skipCerveau} · Moteur=${ctx.resume.skipMoteur} · Rédaction=${ctx.resume.skipRedaction}`,
+        `État chargé : « ${ctx.articleTitle} » — skip Cerveau=${ctx.resume.skipCerveau} · Moteur=${ctx.resume.skipMoteur} · Rédaction=${ctx.resume.skipRedaction} (premier jet gardé=${ctx.resume.skipDraft})`,
       )
     } else if (!input.topic) {
       logger.error('Sujet vide — abandon.')

@@ -23,6 +23,7 @@ import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
 import { runInternalLinking } from './linking.js'
 import { fitChapterBudgets, sourcePassages } from './redaction-passes.js'
+import { markUnsourcedFigures } from '../../../shared/text-quality.js'
 import { emitCheck } from '../checks.js'
 import { REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
 import {
@@ -96,7 +97,7 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     logger.phase('Phase 3 — Rédaction')
     if (ctx.articleId == null) throw new Error('Rédaction : articleId manquant')
     if (ctx.resume.skipRedaction) {
-      logger.dim('reprise : contenu déjà présent — export seul')
+      logger.dim('reprise : premier jet déjà accepté — export seul')
       await exportArticle(deps, ctx)
       return
     }
@@ -117,50 +118,59 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       topic: null as string | null,
     }
 
-    // 1. Sommaire — la structure validée au Moteur, comme à l'écran (FR-HN-TAB) ;
-    //    à défaut, un sommaire généré, ancré sur la structure des concurrents.
-    let outline: unknown
-    if (ctx.articleStructure.length > 0) {
-      logger.step('Sommaire — tiré de la structure validée au Moteur')
-      outline = structureToOutline(ctx.articleStructure, ctx.articleTitle)
+    if (ctx.resume.skipDraft) {
+      // Reprise d'un premier jet déjà écrit mais pas accepté (recette C8) : il
+      // est gardé — pas de nouvel appel payant — et passe par le même filet que
+      // la route du premier jet (chiffre sans source → « à sourcer »).
+      logger.dim('reprise : premier jet déjà écrit — corrections, acceptation et sources seulement')
+      const stored = await client.apiGet<{ content?: string | null }>(`/articles/${ctx.articleId}/content`)
+      ctx.articleContent = markUnsourcedFigures(stored.content ?? '')
     } else {
-      logger.step(
-        `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
-      )
-      const outlineDone = await collectSse(deps, '/generate/outline', {
-        ...base,
-        competitorStructure: ctx.hnStructureBrief,
-      })
-      outline = outlineDone.outline
-      report.addUsage(outlineDone.usage as ApiUsageLike | null)
-    }
-    await client.apiPut(`/articles/${ctx.articleId}`, { outline })
-    const sectionCount = Array.isArray((outline as { sections?: unknown[] })?.sections)
-      ? (outline as { sections: unknown[] }).sections.length
-      : 0
-    report.addStep(`Rédaction · Sommaire (${sectionCount} sections)`)
+      // 1. Sommaire — la structure validée au Moteur, comme à l'écran (FR-HN-TAB) ;
+      //    à défaut, un sommaire généré, ancré sur la structure des concurrents.
+      let outline: unknown
+      if (ctx.articleStructure.length > 0) {
+        logger.step('Sommaire — tiré de la structure validée au Moteur')
+        outline = structureToOutline(ctx.articleStructure, ctx.articleTitle)
+      } else {
+        logger.step(
+          `Sommaire — génération…${ctx.serpPaa.length > 0 ? ` (${ctx.serpPaa.length} PAA)` : ''}${ctx.hnStructure.length > 0 ? ` (${ctx.hnStructure.length} chapitres concurrents)` : ''}`,
+        )
+        const outlineDone = await collectSse(deps, '/generate/outline', {
+          ...base,
+          competitorStructure: ctx.hnStructureBrief,
+        })
+        outline = outlineDone.outline
+        report.addUsage(outlineDone.usage as ApiUsageLike | null)
+      }
+      await client.apiPut(`/articles/${ctx.articleId}`, { outline })
+      const sectionCount = Array.isArray((outline as { sections?: unknown[] })?.sections)
+        ? (outline as { sections: unknown[] }).sections.length
+        : 0
+      report.addStep(`Rédaction · Sommaire (${sectionCount} sections)`)
 
-    // 2. Premier jet, en un appel et sans recherche web : un chiffre à sourcer
-    //    est posé dans un marqueur, la passe « sources » le traitera.
-    logger.step('Article — premier jet en un appel…')
-    const { paa: _paa, topic: _topic, ...draftBase } = base
-    const articleDone = await collectSse(
-      deps,
-      '/generate/article-draft',
-      { ...draftBase, outline },
-      (ev) => {
-        if (ev.event === 'section-start') {
-          const d = ev.data as { index: number; total: number; title: string }
-          logger.dim(`  chapitre ${d.index + 1}/${d.total} — ${d.title}`)
-        } else if (ev.event === 'continuation') {
-          const d = ev.data as { fromIndex: number; attempt: number }
-          logger.dim(`  coupé au plafond : reprise au chapitre ${d.fromIndex + 1} (${d.attempt}/2)`)
-        }
-      },
-    )
-    ctx.articleContent = String(articleDone.content ?? '')
-    report.addUsage(articleDone.usage as ApiUsageLike | null)
-    report.addStep(`Rédaction · Article (${ctx.articleContent.length} caractères)`)
+      // 2. Premier jet, en un appel et sans recherche web : un chiffre à sourcer
+      //    est posé dans un marqueur, la passe « sources » le traitera.
+      logger.step('Article — premier jet en un appel…')
+      const { paa: _paa, topic: _topic, ...draftBase } = base
+      const articleDone = await collectSse(
+        deps,
+        '/generate/article-draft',
+        { ...draftBase, outline },
+        (ev) => {
+          if (ev.event === 'section-start') {
+            const d = ev.data as { index: number; total: number; title: string }
+            logger.dim(`  chapitre ${d.index + 1}/${d.total} — ${d.title}`)
+          } else if (ev.event === 'continuation') {
+            const d = ev.data as { fromIndex: number; attempt: number }
+            logger.dim(`  coupé au plafond : reprise au chapitre ${d.fromIndex + 1} (${d.attempt}/2)`)
+          }
+        },
+      )
+      ctx.articleContent = String(articleDone.content ?? '')
+      report.addUsage(articleDone.usage as ApiUsageLike | null)
+      report.addStep(`Rédaction · Article (${ctx.articleContent.length} caractères)`)
+    }
 
     // 2 bis. Un chapitre hors de son budget est réécrit à sa longueur, comme
     //        l'utilisateur le ferait avant d'accepter le premier jet (recette C8).

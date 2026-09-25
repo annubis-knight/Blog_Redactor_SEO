@@ -4,7 +4,7 @@
  * string en dur) comme marqueur de complétion du Moteur.
  */
 
-import { MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED } from '../../shared/constants/workflow-checks.constants.js'
+import { MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED, REDACTION_DRAFT_ACCEPTED } from '../../shared/constants/workflow-checks.constants.js'
 
 export interface ResumeState {
   checks: string[]
@@ -17,6 +17,8 @@ export interface ResumeSkips {
   skipCerveau: boolean
   skipMoteur: boolean
   skipRedaction: boolean
+  /** Le premier jet est déjà écrit : on ne le réécrit pas, on rejoue la suite. */
+  skipDraft: boolean
 }
 
 export function planResume(s: ResumeState): ResumeSkips {
@@ -25,7 +27,11 @@ export function planResume(s: ResumeState): ResumeSkips {
     // Le Moteur est fini quand la structure ET le lexique sont validés (FR-HN-TAB) :
     // un article d'avant C6, sans structure validée, repasse par le Moteur.
     skipMoteur: s.checks.includes(MOTEUR_HN_LOCKED) && s.checks.includes(MOTEUR_LEXIQUE_VALIDATED) && !!s.capitaine,
-    skipRedaction: s.hasContent,
+    // La Rédaction est finie quand le premier jet est ACCEPTÉ par sa porte (C7) :
+    // un premier jet refusé est gardé (pas de nouvel appel payant) et la suite
+    // — corrections, acceptation, sources — est rejouée (recette C8).
+    skipRedaction: s.hasContent && s.checks.includes(REDACTION_DRAFT_ACCEPTED),
+    skipDraft: s.hasContent,
   }
 }
 
@@ -43,5 +49,5 @@ export function applyForcedCapitaine(
   if (!forced) return skips
   const same = (stored ?? '').trim().toLowerCase() === forced.trim().toLowerCase()
   if (same) return skips
-  return { ...skips, skipMoteur: false, skipRedaction: false }
+  return { ...skips, skipMoteur: false, skipRedaction: false, skipDraft: false }
 }
