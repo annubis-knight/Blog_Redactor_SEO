@@ -3,10 +3,13 @@
  * READS FROM: articles (type, slug, titre, pain_intent_expected, cocoon_id),
  *             article_keywords (capitaine, lieutenants), keyword_metrics,
  *             captain_explorations (candidats explorés), article_content,
- *             article_keywords des autres articles du cocon.
+ *             article_keywords des autres articles du cocon (getCocoonSiblings),
+ *             article_keywords.hn_structure, theme_config (zone du client),
+ *             article_micro_contexts.target_word_count.
  * WRITES TO: gate_waivers (saveGateWaivers).
  * CONSUMERS: server/routes/gates.routes.ts (évaluation, dérogations),
- *            server/routes/articles.routes.ts (POST /progress/check, PUT /status),
+ *            server/routes/articles.routes.ts (POST /progress/check, PUT /status :
+ *            la publication rejoue les portes amont, structure comprise),
  *            scripts/verify-content.ts (liste des dérogations).
  * RELATED FR: FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE,
  *             FR-LIE-LOCK-GATE, FR-HN-LOCK-GATE (article_keywords.hn_structure, zone du client), FR-RED-PUBLISH-GATE, FR-LEX-METIER-ONLY (lexique-lock),

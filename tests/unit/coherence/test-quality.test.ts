@@ -146,7 +146,9 @@ const SOFT_LIMITS = {
   // 2026-09-25 — épopée qualité SEO (C2, T2) : les 46 it.skip de
   //   captain-validation.test.ts (ancienne mise en page) retirés ; les
   //   comportements encore valables sont couverts par captain-lock-gate.test.ts.
-  itSkip: 42,                      // it.skip / test.skip / describe.skip
+  // 2026-09-25 — C6 (T13) : deux it.skip Lieutenants/structure supprimés avec
+  //   l'onglet Structure ; le plafond suit (42 → 40).
+  itSkip: 40,                      // it.skip / test.skip / describe.skip
   // 2026-09-24 — épopée qualité SEO (C1, cliquet des faux verts) : trois formes
   // d'assertion qui passent quoi qu'il arrive, figées à leur niveau du jour.
   //   - `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur : toujours vrai ;

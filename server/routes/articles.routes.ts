@@ -1,11 +1,12 @@
 import { Router } from 'express'
 import { log } from '../utils/logger.js'
-import { getArticleById, getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleCheck, getArticleKeywords } from '../services/infra/data.service.js'
+import { getArticleById, getArticleBySlug, updateArticleStatus, addArticlesToCocoon, removeArticleFromCocoon, updateArticleInCocoon, loadArticleMicroContext, saveArticleMicroContext, getArticleProgress, saveArticleProgress, addArticleCheck, removeArticleChecks, getArticleKeywords } from '../services/infra/data.service.js'
 import { saveArticleContent, getArticleContent } from '../services/article/article-content.service.js'
 import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArticlesSchema, patchArticleSchema } from '../../shared/schemas/article.schema.js'
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
 import { articleProgressSchema, addCheckSchema } from '../../shared/schemas/article-progress.schema.js'
 import { flattenHnStructure } from '../../shared/utils/hn-structure.js'
+import { checksRemovedWith } from '../../shared/constants/workflow-checks.constants.js'
 import { CHECK_GATES, evaluateArticleGate, type GateEvaluation } from '../services/gates/gate.service.js'
 
 /**
@@ -418,7 +419,8 @@ router.post('/articles/:id/progress/uncheck', async (req, res) => {
     return
   }
   try {
-    const progress = await removeArticleCheck(id, parsed.data.check)
+    // Les étapes bâties sur celle-ci tombent avec elle (M19).
+    const progress = await removeArticleChecks(id, checksRemovedWith(parsed.data.check))
     res.json({ data: progress })
   } catch (err) {
     log.error(`POST /api/articles/${id}/progress/uncheck — ${(err as Error).message}`)

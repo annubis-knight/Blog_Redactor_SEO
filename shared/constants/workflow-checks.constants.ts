@@ -34,6 +34,23 @@ export const MOTEUR_CHECKS = [
   MOTEUR_LEXIQUE_VALIDATED,
 ] as const
 
+/**
+ * Étapes bâties sur les données d'une autre : retirer celle-ci les retire
+ * aussi. La structure est construite sur le capitaine et les lieutenants
+ * retenus ; s'ils changent, elle est à revalider. Avant cela, l'étape
+ * Structure restait accordée sur des données périmées, et seule la
+ * publication le voyait (M19).
+ */
+const CHECK_DEPENDENTS: Readonly<Record<string, readonly string[]>> = {
+  [MOTEUR_CAPITAINE_LOCKED]: [MOTEUR_HN_LOCKED],
+  [MOTEUR_LIEUTENANTS_LOCKED]: [MOTEUR_HN_LOCKED],
+}
+
+/** L'étape retirée, suivie des étapes qui en dépendent. */
+export function checksRemovedWith(check: string): string[] {
+  return [check, ...(CHECK_DEPENDENTS[check] ?? [])]
+}
+
 // --- Aggregate ---
 export const ALL_WORKFLOW_CHECKS = [...MOTEUR_CHECKS] as const
 

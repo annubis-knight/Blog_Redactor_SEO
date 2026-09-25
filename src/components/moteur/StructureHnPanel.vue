@@ -43,7 +43,7 @@ const articleKeywordsStore = useArticleKeywordsStore()
 
 const {
   structure, dirty, lockedLieutenants,
-  serpResultsByKeyword, recurrence, isLoadingCompetitors, competitorsError,
+  serpResultsByKeyword, recurrence, isLoadingCompetitors, competitorsError, competitorsMissing,
   isGenerating, generateError, isSaving, saved,
   restore, loadCompetitors, generate, save, prepareValidation,
 } = useStructureHn({
@@ -82,7 +82,9 @@ async function handleSave(): Promise<void> {
 }
 
 async function handleGenerate(lockedHeadings: ProposeLieutenantsHnNode[]): Promise<void> {
-  if (recurrence.value.length === 0) await loadCompetitors()
+  // Un clic : l'analyse des concurrents peut partir si aucune n'est chargée.
+  // Une analyse en base sans titre récurrent n'est pas refaite.
+  if (serpResultsByKeyword.value.size === 0) await loadCompetitors({ fetchIfMissing: true })
   await generate(lockedHeadings)
 }
 
@@ -144,6 +146,9 @@ onMounted(() => {
 
     <p v-if="competitorsError" class="status status--warn">{{ competitorsError }}</p>
     <p v-else-if="isLoadingCompetitors" class="hint">Lecture de la structure des concurrents…</p>
+    <p v-else-if="competitorsMissing" class="hint" data-testid="structure-competitors-missing">
+      Les concurrents n’ont pas encore été analysés : l’analyse partira avec « Générer la structure ».
+    </p>
 
     <LieutenantH2Structure
       :hn-structure="structure"

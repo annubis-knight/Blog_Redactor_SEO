@@ -19,7 +19,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { mount, flushPromises, enableAutoUnmount } from '@vue/test-utils'
 import { ref } from 'vue'
 import LieutenantsPanel from '../../../src/components/moteur/LieutenantsPanel.vue'
-import { MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants'
+import { MOTEUR_HN_LOCKED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants'
 import type { SelectedArticle } from '../../../shared/types/index'
 import type { RichLieutenant } from '../../../shared/types/keyword.types'
 import type { GateEvaluation } from '../../../shared/verifiers/gate'
@@ -331,5 +331,31 @@ describe('LieutenantsPanel — porte « valider les lieutenants »', () => {
     await flushPromises()
     expect(checkEmissions(wrapper, 'check-removed')).toBe(1)
     expect(wrapper.find('[data-testid="lieutenants-gate-banner"]').exists()).toBe(true)
+  })
+
+  // M19 : la structure a été construite sur les lieutenants retenus. Un
+  // lieutenant ajouté ou retiré après sa validation la rend caduque ; l'étape
+  // Structure restait pourtant accordée, et seule la publication le voyait.
+  it('un lieutenant changé après la validation de la structure : l’étape Structure est retirée', async () => {
+    mockEvaluate.mockResolvedValue(PASSED)
+    completedChecks.value = [MOTEUR_LIEUTENANTS_LOCKED, MOTEUR_HN_LOCKED]
+    const wrapper = mountPanel()
+    await flushPromises()
+    const hnRemovals = () => (wrapper.emitted('check-removed') ?? []).filter(args => args[0] === MOTEUR_HN_LOCKED).length
+    expect(hnRemovals(), 'rien ne change au montage').toBe(0)
+
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...TROIS_LIEUTENANTS] }
+    await flushPromises()
+    expect(hnRemovals()).toBe(1)
+  })
+
+  it('sans structure validée, un lieutenant changé ne retire rien d’autre', async () => {
+    mockEvaluate.mockResolvedValue(PASSED)
+    completedChecks.value = [MOTEUR_LIEUTENANTS_LOCKED]
+    const wrapper = mountPanel()
+    await flushPromises()
+    mockStoreKeywords.value = { ...mockStoreKeywords.value!, richLieutenants: [...TROIS_LIEUTENANTS] }
+    await flushPromises()
+    expect((wrapper.emitted('check-removed') ?? []).filter(args => args[0] === MOTEUR_HN_LOCKED)).toHaveLength(0)
   })
 })

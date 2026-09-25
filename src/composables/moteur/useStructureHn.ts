@@ -2,7 +2,10 @@
  * AUTHORITY: PostgreSQL `article_keywords.hn_structure` (via `articleKeywordsStore.saveStructure`)
  *            + `article_content.outline` (sommaire de la Rédaction, écrit à la validation).
  * READS FROM: articleKeywordsStore (capitaine, lieutenants retenus, structure enregistrée) ;
- *             POST /serp/analyze (SERP du capitaine, cache 7 jours : récurrence des titres concurrents).
+ *             POST /serp/analyze (SERP du capitaine : base seulement à l'ouverture,
+ *             analyse payante seulement sur « Proposer », M18) ;
+ *             GET /articles/:id/content (sommaire actuel, pour ne pas écraser
+ *             un sommaire retouché dans la Rédaction, M20).
  * WRITES TO: PUT /articles/:id/keywords (structure), PUT /articles/:id { outline },
  *            PUT /articles/:id/micro-context (longueur conseillée si aucune n'est choisie),
  *            POST /keywords/:keyword/ai-hn-structure (proposition de structure).
@@ -18,7 +21,7 @@ import { apiGet, apiPost, apiPut } from '@/services/api.service'
 import { useStreaming } from '@/composables/editor/useStreaming'
 import { hnToOutline } from '@/stores/article/outline.store'
 import { log } from '@/utils/logger'
-import { serpAnalysisContract } from '@shared/contracts/serp.contract.js'
+import { serpAnalysisContract, serpAnalysisStoredContract } from '@shared/contracts/serp.contract.js'
 import { hnOutlineContract, type HnOutlineResult } from '@shared/contracts/lieutenants.contract.js'
 import { computeHnRecurrence, recurringHeadings } from '@shared/utils/hn-structure.js'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -34,6 +37,11 @@ export interface StructureHnDeps {
   cocoonSlug: Ref<string>
   articleKeywordsStore: ReturnType<typeof useArticleKeywordsStore>
   activityLog: ReturnType<typeof useCostLogStore>
+  /**
+   * Le sommaire de la Rédaction a été retouché depuis la dernière structure
+   * validée : le remplacer ? (par défaut, une confirmation du navigateur).
+   */
+  confirmReplaceOutline?: () => boolean
 }
 
 export interface StructureHnApi {
@@ -48,6 +56,8 @@ export interface StructureHnApi {
   recurrence: Ref<HnRecurrenceItem[]>
   isLoadingCompetitors: Ref<boolean>
   competitorsError: Ref<string | null>
+  /** Aucune analyse des concurrents en base : elle partira avec « Proposer ». */
+  competitorsMissing: Ref<boolean>
   isGenerating: Ref<boolean>
   generateError: Ref<string | null>
   isSaving: Ref<boolean>
@@ -55,29 +65,44 @@ export interface StructureHnApi {
   saved: Ref<boolean>
   /** Recharge la structure enregistrée dans la copie de travail. */
   restore: () => void
-  /** Lit la SERP du capitaine (cache) et calcule la récurrence des titres. */
-  loadCompetitors: () => Promise<void>
+  /**
+   * Lit la SERP du capitaine et calcule la récurrence des titres. Par défaut,
+   * la base seulement ; `fetchIfMissing` autorise l'analyse payante (sur un clic).
+   */
+  loadCompetitors: (opts?: { fetchIfMissing?: boolean }) => Promise<void>
   /** Propose une structure à partir des lieutenants retenus ; les titres verrouillés restent. */
   generate: (lockedHeadings: ProposeLieutenantsHnNode[]) => Promise<void>
   /** Enregistre la structure (sans la valider). */
   save: () => Promise<boolean>
   /**
    * Prépare la validation : structure enregistrée, sommaire de la Rédaction
-   * écrit, longueur conseillée recalculée. Faux si l'enregistrement échoue.
+   * écrit (sauf sommaire retouché que l'utilisateur garde), longueur conseillée
+   * recalculée. Faux si la structure ou le sommaire ne sont pas enregistrés.
    */
   prepareValidation: () => Promise<boolean>
 }
 
 const sameStructure = (a: unknown, b: unknown): boolean => JSON.stringify(a ?? []) === JSON.stringify(b ?? [])
 
+type OutlineLike = { sections?: Array<{ level: number; title: string }> } | null | undefined
+
+/** Un sommaire réduit à ses titres : les identifiants changent à chaque construction. */
+const outlineKey = (outline: OutlineLike): string =>
+  (outline?.sections ?? []).map(s => `${s.level}:${s.title.trim()}`).join('|')
+
+const confirmInBrowser = (): boolean =>
+  window.confirm('Le sommaire de la Rédaction a été retouché depuis la dernière structure validée. Le remplacer par cette structure ?')
+
 export function useStructureHn(deps: StructureHnDeps): StructureHnApi {
   const { selectedArticle, captainKeyword, articleLevel, cocoonSlug, articleKeywordsStore, activityLog } = deps
+  const confirmReplaceOutline = deps.confirmReplaceOutline ?? confirmInBrowser
 
   const structure = ref<ProposeLieutenantsHnNode[]>([])
   const serpResultsByKeyword = ref<Map<string, SerpAnalysisResult>>(new Map())
   const recurrence = ref<HnRecurrenceItem[]>([])
   const isLoadingCompetitors = ref(false)
   const competitorsError = ref<string | null>(null)
+  const competitorsMissing = ref(false)
   const isSaving = ref(false)
   const saved = ref(false)
   const generateError = ref<string | null>(null)
@@ -95,18 +120,28 @@ export function useStructureHn(deps: StructureHnDeps): StructureHnApi {
     structure.value = [...savedStructure.value]
   }
 
-  async function loadCompetitors(): Promise<void> {
+  async function loadCompetitors(opts: { fetchIfMissing?: boolean } = {}): Promise<void> {
     const captain = captainKeyword.value
     if (!captain || isLoadingCompetitors.value) return
     isLoadingCompetitors.value = true
     competitorsError.value = null
     try {
-      const result = await apiPost<SerpAnalysisResult>('/serp/analyze', {
+      // Sans clic, la base seulement : ouvrir l'onglet ne paie aucune analyse (M18).
+      const body = {
         keyword: captain,
         topN: 10,
         articleLevel: articleLevel.value ?? 'intermediaire',
         articleId: selectedArticle.value?.id ?? undefined,
-      }, { contract: serpAnalysisContract })
+      }
+      const result = opts.fetchIfMissing
+        ? await apiPost<SerpAnalysisResult>('/serp/analyze', body, { contract: serpAnalysisContract })
+        : await apiPost<SerpAnalysisResult | null>('/serp/analyze', { ...body, cacheOnly: true }, { contract: serpAnalysisStoredContract })
+      competitorsMissing.value = result === null
+      if (result === null) {
+        serpResultsByKeyword.value = new Map()
+        recurrence.value = []
+        return
+      }
       serpResultsByKeyword.value = new Map([[captain, result]])
       recurrence.value = computeHnRecurrence(result.competitors)
     } catch (err) {
@@ -191,22 +226,52 @@ export function useStructureHn(deps: StructureHnDeps): StructureHnApi {
     }
   }
 
+  /**
+   * Le sommaire enregistré a été retouché dans la Rédaction : il n'est ni celui
+   * de la structure validée précédemment, ni celui de la nouvelle.
+   */
+  async function outlineRetouched(id: number, title: string, previous: ProposeLieutenantsHnNode[], next: string): Promise<boolean> {
+    try {
+      const content = await apiGet<{ outline: OutlineLike | string }>(`/articles/${id}/content`)
+      const stored = typeof content?.outline === 'string' ? JSON.parse(content.outline) as OutlineLike : content?.outline
+      const current = outlineKey(stored)
+      if (!current) return false
+      return current !== next && (previous.length === 0 || current !== outlineKey(hnToOutline(previous, title)))
+    } catch (err) {
+      log.warn(`[useStructureHn] sommaire actuel illisible : ${(err as Error).message}`)
+      return false
+    }
+  }
+
   async function prepareValidation(): Promise<boolean> {
     const id = selectedArticle.value?.id
     const title = selectedArticle.value?.title
     if (!id || !title || structure.value.length === 0) return false
+    const previous = [...savedStructure.value]
     if (!(await save())) return false
+
     // La porte lit la base : le sommaire et la longueur partent AVANT l'étape.
-    await apiPut(`/articles/${id}`, { outline: hnToOutline(structure.value, title) }).catch((err) => {
-      log.warn(`[useStructureHn] sommaire non enregistré : ${(err as Error).message}`)
-    })
-    void recommendWordCount(id)
+    const outline = hnToOutline(structure.value, title)
+    if (await outlineRetouched(id, title, previous, outlineKey(outline)) && !confirmReplaceOutline()) {
+      // Le sommaire retouché à la main est gardé (M20) : il était écrasé sans prévenir.
+      activityLog.addMessage('info', 'Sommaire de la Rédaction conservé', 'Retouché depuis la dernière structure validée : il n’a pas été remplacé.')
+    } else {
+      try {
+        await apiPut(`/articles/${id}`, { outline })
+      } catch (err) {
+        // Sans sommaire, la Rédaction suivrait un autre plan que la structure validée (M20).
+        log.warn(`[useStructureHn] sommaire non enregistré : ${(err as Error).message}`)
+        generateError.value = 'Le sommaire de la Rédaction n’a pas pu être enregistré : la structure n’est pas validée.'
+        return false
+      }
+    }
+    await recommendWordCount(id)
     return true
   }
 
   return {
     structure, dirty, lockedLieutenants,
-    serpResultsByKeyword, recurrence, isLoadingCompetitors, competitorsError,
+    serpResultsByKeyword, recurrence, isLoadingCompetitors, competitorsError, competitorsMissing,
     isGenerating, generateError, isSaving, saved,
     restore, loadCompetitors, generate, save, prepareValidation,
   }

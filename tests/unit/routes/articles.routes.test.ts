@@ -2,16 +2,18 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon } = vi.hoisted(() => ({
+const { mockGetArticleBySlug, mockSaveArticleContent, mockGetArticleContent, mockRemoveArticleFromCocoon, mockRemoveArticleChecks } = vi.hoisted(() => ({
   mockGetArticleBySlug: vi.fn(),
   mockSaveArticleContent: vi.fn(),
   mockGetArticleContent: vi.fn(),
   mockRemoveArticleFromCocoon: vi.fn(),
+  mockRemoveArticleChecks: vi.fn(),
 }))
 
 vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleBySlug: mockGetArticleBySlug,
   removeArticleFromCocoon: mockRemoveArticleFromCocoon,
+  removeArticleChecks: mockRemoveArticleChecks,
 }))
 
 vi.mock('../../../server/services/article/article-content.service', () => ({
@@ -166,5 +168,29 @@ describe('DELETE /articles/:id', () => {
         error: expect.objectContaining({ code: 'INTERNAL_ERROR' }),
       }),
     )
+  })
+})
+
+// M19 : la structure est construite sur le capitaine et les lieutenants
+// retenus. Retirer l'une de ces étapes laissait l'étape Structure validée sur
+// des données qui avaient changé ; seule la publication le voyait.
+describe('POST /articles/:id/progress/uncheck', () => {
+  const handler = findHandler('post', '/articles/:id/progress/uncheck')
+
+  it.each([
+    ['moteur:capitaine_locked'],
+    ['moteur:lieutenants_locked'],
+  ])('retirer %s retire aussi l’étape Structure', async (check) => {
+    mockRemoveArticleChecks.mockResolvedValueOnce({ phase: 'moteur', completedChecks: [], checkTimestamps: {} })
+    const res = createMockRes()
+    await handler({ params: { id: '4' }, body: { check } } as unknown as Request, res)
+    expect(mockRemoveArticleChecks).toHaveBeenCalledWith(4, [check, 'moteur:hn_locked'])
+    expect(res.json).toHaveBeenCalledWith({ data: expect.objectContaining({ completedChecks: [] }) })
+  })
+
+  it('retirer l’étape Lexique ne touche à rien d’autre', async () => {
+    mockRemoveArticleChecks.mockResolvedValueOnce({ phase: 'moteur', completedChecks: [], checkTimestamps: {} })
+    await handler({ params: { id: '4' }, body: { check: 'moteur:lexique_validated' } } as unknown as Request, createMockRes())
+    expect(mockRemoveArticleChecks).toHaveBeenCalledWith(4, ['moteur:lexique_validated'])
   })
 })

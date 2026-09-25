@@ -241,7 +241,7 @@ const STORED_HN_STRUCTURE: ProposeLieutenantsHnNode[] = [
   { level: 2, text: 'Solutions SEO' },
 ]
 
-const HN_SECTION_TITLES = ['Structure Hn concurrents', 'Structure Hn recommandee (IA)']
+const HN_SECTION_TITLES = ['Structure Hn concurrents', 'Structure Hn recommandée (IA)']
 
 // --- LieutenantCard stub ---
 const LieutenantCardStub = {
@@ -1114,7 +1114,7 @@ describe('LieutenantsPanel', () => {
       expect(w.findAll('[data-testid="lt-card-stub"]')).toHaveLength(MOCK_CARDS.length)
       // … sans structure Hn à côté.
       const titles = w.findAllComponents({ name: 'CollapsableSection' }).map(s => s.props('title'))
-      expect(titles).not.toContain('Structure Hn recommandee (IA)')
+      expect(titles).not.toContain('Structure Hn recommandée (IA)')
       expect(w.find('[data-testid="hn-structure-empty"]').exists()).toBe(false)
       expect(w.findAll('.hn-structure-item')).toHaveLength(0)
     })

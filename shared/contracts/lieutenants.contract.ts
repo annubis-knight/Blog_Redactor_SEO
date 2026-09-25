@@ -17,8 +17,8 @@
  * READS FROM: POST /keywords/:keyword/propose-lieutenants (SSE),
  *             POST /keywords/:keyword/ai-hn-structure (SSE), GET /articles/:id/keywords
  * CONSUMERS: useLieutenantsIa, article-keywords.store, LieutenantCard,
- *            LieutenantProposals, LieutenantH2Structure, useLieutenantsHn
- * RELATED FR: NFR-INT-DISPLAY-CONTRACTS, FR-LIE-AI-FRONTIER, FR-MOT-HN-REGEN-LOCKED
+ *            LieutenantProposals, LieutenantH2Structure, useStructureHn (onglet Structure)
+ * RELATED FR: NFR-INT-DISPLAY-CONTRACTS, FR-LIE-AI-FRONTIER, FR-MOT-HN-REGEN-LOCKED, FR-HN-TAB
  */
 import { z } from 'zod'
 import { count, defineContract, oneOf, requiredList, signal, text, toKpiValue, tolerantArray, withFallback } from './core.js'

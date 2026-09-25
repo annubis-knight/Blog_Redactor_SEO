@@ -83,6 +83,22 @@ describe('StructureHnPanel', () => {
     expect(wrapper.emitted('check-removed')).toEqual([[MOTEUR_HN_LOCKED]])
   })
 
+  // M18 (FR-MOT-NO-AUTO-ACTION) : ouvrir l'onglet ne paie rien ; l'analyse
+  // des concurrents ne part que sur « Générer la structure ».
+  it('à l’ouverture, la base seulement ; l’analyse part sur « Générer »', async () => {
+    mockApiPost.mockResolvedValue(null)
+    const wrapper = mountPanel()
+    await flushPromises()
+    expect(mockApiPost.mock.calls.map(([, body]) => (body as { cacheOnly?: boolean }).cacheOnly)).toEqual([true])
+    expect(wrapper.find('[data-testid="structure-competitors-missing"]').exists()).toBe(true)
+
+    const editor = wrapper.findComponent({ name: 'LieutenantH2Structure' })
+    await editor.vm.$emit('regenerate-hn', [])
+    await flushPromises()
+    expect(mockApiPost.mock.calls).toHaveLength(2)
+    expect(mockApiPost.mock.calls[1]![1]).not.toHaveProperty('cacheOnly')
+  })
+
   it('mode libre : pas de bouton de validation, aucune étape', async () => {
     const wrapper = mountPanel({ saved: STRUCTURE, mode: 'libre' })
     await flushPromises()

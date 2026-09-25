@@ -9,11 +9,13 @@
  *            POST /articles/:id/captain-explorations (saveCaptainExplorationEntry).
  *            POST /articles/:id/lieutenant-explorations (saveLieutenantExplorationEntries).
  * CONSUMERS: CaptainPanel, LieutenantsPanel, LexiquePanel, FinalisationPanel,
+ *            StructureHnPanel + useStructureHn (hnStructure : copie de travail,
+ *            « modifiée » tant qu'elle diffère de la structure enregistrée),
  *            useFinalisationGating, MoteurContextRecap, tab-cache-entries.ts
  *            (validatedLexiqueCount = lexique.length, lockedLieutenantsCount =
  *            richLieutenants.filter(status='locked').length, isCaptaineLocked =
  *            richCaptain?.status === 'locked').
- * RELATED FR: FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-LEX-SELECT,
+ * RELATED FR: FR-CAP-PERSIST, FR-LIE-PERSIST, FR-LEX-PERSIST, FR-LEX-SELECT, FR-HN-TAB,
  *             FR-MOT-CACHE-PANEL-COUNT (lexique.length / lieutenants.length pilotent
  *             le compteur DB du TabCachePanel pour Capitaine/Lieutenants/Lexique).
  */
@@ -247,7 +249,6 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
   async function saveStructure(id: number, structure: ProposeLieutenantsHnNode[]): Promise<boolean> {
     if (!keywords.value) ensureKeywords(id)
     const kw = keywords.value!
-    kw.hnStructure = structure
     isSaving.value = true
     error.value = null
     try {
@@ -258,6 +259,9 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         rootKeywords: kw.rootKeywords ?? [],
         hnStructure: structure,
       })
+      // La mémoire suit la base, une fois la base à jour : l'écran ne doit pas
+      // se croire enregistré sur une structure que le serveur a refusée (M21).
+      kw.hnStructure = structure
       log.debug(`[article-keywords] structure saved for article ${id}`, { nodes: structure.length })
       return true
     } catch (err) {

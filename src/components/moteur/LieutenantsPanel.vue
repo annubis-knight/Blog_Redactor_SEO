@@ -9,7 +9,7 @@ import { useLieutenantsIa } from '@/composables/moteur/useLieutenantsIa'
 import { log } from '@/utils/logger'
 import { shouldRegenerate } from '@/utils/ttl-freshness'
 import { useCostLogStore } from '@/stores/ui/cost-log.store'
-import { MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
+import { MOTEUR_HN_LOCKED, MOTEUR_LIEUTENANTS_LOCKED } from '@shared/constants/workflow-checks.constants.js'
 import LieutenantSerpAnalysis from '@/components/moteur/LieutenantSerpAnalysis.vue'
 import KeywordAssistPanel from '@/components/moteur/KeywordAssistPanel.vue'
 import { useRadarExplorationStore } from '@/stores/article/radar-exploration.store'
@@ -315,6 +315,7 @@ const lockedLieutenantsSignature = computed(() =>
  */
 async function verifyLockedLieutenants(saveFirst: boolean): Promise<void> {
   transitionSettled = false
+  let structureInvalidated = false
   try {
     let signature = lockedLieutenantsSignature.value
     let save = saveFirst
@@ -326,6 +327,7 @@ async function verifyLockedLieutenants(saveFirst: boolean): Promise<void> {
         log.warn('[LieutenantsPanel] lieutenants non enregistrés : étape non demandée', { articleId: id })
         return
       }
+      if (save && !structureInvalidated) structureInvalidated = invalidateValidatedStructure(id)
       await requestLieutenantsGate()
       if (lockedLieutenantsSignature.value === signature) return
       signature = lockedLieutenantsSignature.value
@@ -334,6 +336,25 @@ async function verifyLockedLieutenants(saveFirst: boolean): Promise<void> {
   } finally {
     transitionSettled = true
   }
+}
+
+/**
+ * Les lieutenants retenus ont changé : la structure validée a été construite
+ * sans eux, son étape est retirée et se revalide dans l'onglet Structure (M19).
+ * Vrai si l'étape a été retirée.
+ */
+function invalidateValidatedStructure(id: number): boolean {
+  if (props.mode === 'libre') return false
+  let validated = false
+  try {
+    validated = useArticleProgressStore().getProgress(id)?.completedChecks.includes(MOTEUR_HN_LOCKED) ?? false
+  } catch {
+    // Hors contexte Pinia (panneau monté seul) : aucune étape connue.
+  }
+  if (!validated) return false
+  log.info('[LieutenantsPanel] lieutenants changés : la structure est à revalider', { articleId: id })
+  emit('check-removed', MOTEUR_HN_LOCKED)
+  return true
 }
 
 /**

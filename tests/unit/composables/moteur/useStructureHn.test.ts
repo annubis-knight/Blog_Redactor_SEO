@@ -25,7 +25,7 @@ const STRUCTURE: ProposeLieutenantsHnNode[] = [
   { level: 2, text: 'Les étapes' },
 ]
 
-function setup() {
+function setup(confirmReplaceOutline: () => boolean = () => true) {
   const store = useArticleKeywordsStore()
   store.keywords = {
     articleId: 7, capitaine: 'site vitrine artisan', lieutenants: ['prix site vitrine'], lexique: [], rootKeywords: [],
@@ -43,6 +43,7 @@ function setup() {
     cocoonSlug: ref('sites'),
     articleKeywordsStore: store,
     activityLog: activityLog as never,
+    confirmReplaceOutline,
   })
   return { api, store, activityLog }
 }
@@ -62,8 +63,9 @@ describe('useStructureHn', () => {
         { position: 2, title: 'B', url: 'https://b.fr', domain: 'b.fr', headings: [{ level: 2, text: 'Le prix' }], wordCount: 0, fetchError: null },
       ], paaQuestions: [], maxScraped: 2, cachedAt: '', fromCache: true,
     })
-    await api.loadCompetitors()
+    await api.loadCompetitors({ fetchIfMissing: true })
     expect(mockApiPost).toHaveBeenCalledWith('/serp/analyze', expect.objectContaining({ keyword: 'site vitrine artisan', articleId: 7 }), expect.anything())
+    expect(mockApiPost.mock.calls[0]![1]).not.toHaveProperty('cacheOnly')
     expect(api.recurrence.value[0]).toMatchObject({ text: 'Le prix', count: 2 })
 
     mockStartStream.mockImplementationOnce(async (_url: string, _body: unknown, callbacks: { onDone: (d: { hnStructure: ProposeLieutenantsHnNode[] }) => void }) => {
@@ -89,7 +91,7 @@ describe('useStructureHn', () => {
   it('valider : la structure, puis le sommaire de la Rédaction, sont enregistrés', async () => {
     const { api } = setup()
     mockApiPost.mockResolvedValue({ recommended: 2400, breakdown: { reasoning: 'r' } })
-    mockApiGet.mockResolvedValue({ targetWordCount: 2000 })
+    mockApiGet.mockImplementation(async (path: string) => path.endsWith('/content') ? { outline: null } : { targetWordCount: 2000 })
     api.structure.value = STRUCTURE
     expect(await api.prepareValidation()).toBe(true)
     expect(mockApiPut.mock.calls[0]).toEqual(['/articles/7/keywords', expect.objectContaining({ hnStructure: STRUCTURE })])
@@ -111,10 +113,83 @@ describe('useStructureHn', () => {
   it('la longueur conseillée n’écrase pas une longueur déjà choisie', async () => {
     const { api, activityLog } = setup()
     mockApiPost.mockResolvedValue({ recommended: 2400, breakdown: { reasoning: 'r' } })
-    mockApiGet.mockResolvedValue({ targetWordCount: 3000, angle: 'a' })
+    mockApiGet.mockImplementation(async (path: string) => path.endsWith('/content') ? { outline: null } : { targetWordCount: 3000, angle: 'a' })
     api.structure.value = STRUCTURE
     await api.prepareValidation()
-    await vi.waitFor(() => expect(activityLog.addMessage).toHaveBeenCalled())
+    // M20 : la longueur est recalculée AVANT de rendre la main (plus de tâche lancée sans l'attendre).
+    expect(activityLog.addMessage).toHaveBeenCalled()
     expect(mockApiPut.mock.calls.some(([path]) => path === '/articles/7/micro-context')).toBe(false)
+  })
+
+  // M20 : un sommaire non enregistré était seulement journalisé, et l'étape
+  // demandée quand même — la Rédaction suivait alors un autre sommaire.
+  it('sommaire refusé par le serveur : la validation s’arrête', async () => {
+    const { api } = setup()
+    mockApiGet.mockResolvedValue({ outline: null })
+    mockApiPut.mockResolvedValueOnce({}).mockRejectedValueOnce(new Error('réseau'))
+    api.structure.value = STRUCTURE
+    expect(await api.prepareValidation()).toBe(false)
+  })
+
+  // M20 : valider écrasait un sommaire retouché dans la Rédaction.
+  describe('sommaire retouché dans la Rédaction', () => {
+    const RETOUCHE = { sections: [
+      { id: 'a', level: 1, title: 'Site vitrine pour artisan : le guide' },
+      { id: 'b', level: 2, title: 'Mon chapitre ajouté à la main' },
+    ] }
+
+    it('l’utilisateur refuse de le remplacer : il est gardé, la structure est validée', async () => {
+      const confirm = vi.fn(() => false)
+      const { api, activityLog } = setup(confirm)
+      mockApiPost.mockResolvedValue({ recommended: 2400, breakdown: { reasoning: 'r' } })
+      mockApiGet.mockImplementation(async (path: string) => path.endsWith('/content') ? { outline: JSON.stringify(RETOUCHE) } : null)
+      api.structure.value = STRUCTURE
+      expect(await api.prepareValidation()).toBe(true)
+      expect(confirm).toHaveBeenCalledTimes(1)
+      expect(mockApiPut.mock.calls.some(([path]) => path === '/articles/7')).toBe(false)
+      expect(activityLog.addMessage).toHaveBeenCalledWith('info', expect.stringMatching(/sommaire.*conservé/i), expect.any(String))
+    })
+
+    it('l’utilisateur accepte : il est remplacé par la structure', async () => {
+      const confirm = vi.fn(() => true)
+      const { api } = setup(confirm)
+      mockApiPost.mockResolvedValue({ recommended: 2400, breakdown: { reasoning: 'r' } })
+      mockApiGet.mockImplementation(async (path: string) => path.endsWith('/content') ? { outline: RETOUCHE } : null)
+      api.structure.value = STRUCTURE
+      expect(await api.prepareValidation()).toBe(true)
+      expect(mockApiPut.mock.calls.some(([path]) => path === '/articles/7')).toBe(true)
+    })
+
+    it('le sommaire est celui de la structure précédente : remplacé sans rien demander', async () => {
+      const confirm = vi.fn(() => false)
+      const { api, store } = setup(confirm)
+      store.keywords!.hnStructure = STRUCTURE.slice(0, 2)
+      const precedent = { sections: [
+        { id: 'x', level: 1, title: 'Site vitrine pour artisan : le guide' },
+        { id: 'y', level: 2, title: 'Introduction' },
+        { id: 'z', level: 2, title: 'Le prix d’un site vitrine' },
+        { id: 'w', level: 3, title: 'Les postes' },
+        { id: 'v', level: 2, title: 'Conclusion' },
+      ] }
+      mockApiPost.mockResolvedValue({ recommended: 2400, breakdown: { reasoning: 'r' } })
+      mockApiGet.mockImplementation(async (path: string) => path.endsWith('/content') ? { outline: precedent } : null)
+      api.structure.value = STRUCTURE
+      expect(await api.prepareValidation()).toBe(true)
+      expect(confirm).not.toHaveBeenCalled()
+      expect(mockApiPut.mock.calls.some(([path]) => path === '/articles/7')).toBe(true)
+    })
+  })
+
+  // M18 (FR-MOT-NO-AUTO-ACTION) : ouvrir l'onglet ne paie aucune analyse.
+  describe('structure des concurrents', () => {
+    it('par défaut, lecture de la base seulement', async () => {
+      const { api } = setup()
+      mockApiPost.mockResolvedValueOnce(null)
+      await api.loadCompetitors()
+      expect(mockApiPost.mock.calls[0]![1]).toMatchObject({ cacheOnly: true })
+      expect(api.competitorsMissing.value).toBe(true)
+      expect(api.competitorsError.value).toBeNull()
+      expect(api.recurrence.value).toEqual([])
+    })
   })
 })

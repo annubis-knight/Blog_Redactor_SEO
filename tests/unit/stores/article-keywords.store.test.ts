@@ -381,6 +381,21 @@ describe('article-keywords.store — structure Hn (FR-HN-TAB)', () => {
     expect(store.isSaving).toBe(false)
   })
 
+  // M21 : la mémoire était mise à jour avant la réponse, sans retour arrière.
+  // L'écran se croyait alors « enregistré » (plus rien de modifié) sur une
+  // structure que la base n'avait pas.
+  it('saveStructure refusée : la structure en mémoire reste celle de la base', async () => {
+    mockApiPut.mockRejectedValue(new Error('Save failed'))
+    const store = useArticleKeywordsStore()
+    store.initEmpty(1)
+    const enBase = [{ level: 1, text: 'Ancienne structure' }]
+    store.keywords!.hnStructure = enBase
+
+    await store.saveStructure(1, STRUCTURE)
+
+    expect(store.keywords!.hnStructure).toEqual(enBase)
+  })
+
   it('saveStructure initialise le store s’il est vide', async () => {
     mockApiPut.mockResolvedValue(undefined as never)
     const store = useArticleKeywordsStore()

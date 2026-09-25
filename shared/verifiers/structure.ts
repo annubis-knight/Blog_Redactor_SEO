@@ -5,8 +5,10 @@
  * retrouve dans l'article. Le pilier 1013 avait un H1 sans son mot-clé et quinze
  * chapitres pour un article qui en demandait huit.
  *
- *   ⛔ structure vide, H1 absent, titre vide, H3 sans H2 au-dessus ;
- *   🔴 capitaine absent du H1, nombre de H2 de fond hors des règles du type,
+ *   ⛔ structure sans aucun H2, H1 absent, titre vide, H3 sans H2 au-dessus ;
+ *   🔴 aucune structure du tout (article rédigé sans l'onglet Structure :
+ *      assumable, la publication rejoue cette porte), capitaine absent du H1,
+ *      nombre de H2 de fond hors des règles du type,
  *      trop de H2 qui citent la ville, pour un pilier un H2 qui développe
  *      (H3) un sujet déjà traité par un autre article du cocon ;
  *   🟠 lieutenant retenu absent des titres, H2 qui recoupe un article du cocon,
@@ -85,6 +87,19 @@ export function verifyStructure(input: StructureGateInput): GateIssue[] {
   const rules = ARTICLE_TYPE_RULES[input.level]
   const headings = structureHeadings(input.structure)
   const issues: GateIssue[] = []
+
+  // Aucune structure du tout : l'article n'est pas passé par l'onglet Structure
+  // (ancien article, sommaire écrit à la Rédaction). La publication rejoue cette
+  // porte : un ⛔ l'aurait bloqué pour toujours ; comme le lexique vide, c'est
+  // un risque que l'utilisateur peut assumer (P6).
+  if (headings.length === 0) {
+    return [{
+      rule: 'hn-missing',
+      level: 'risque',
+      message: 'Aucune structure enregistrée pour cet article.',
+      risk: 'Sans structure validée, rien ne garantit le H1 avec le capitaine ni le nombre de chapitres attendu pour ce type d’article.',
+    }]
+  }
 
   if (!headings.some(h => h.level === 2 && h.text)) {
     return [{

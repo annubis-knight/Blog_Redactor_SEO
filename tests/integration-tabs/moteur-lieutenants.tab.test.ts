@@ -205,19 +205,22 @@ describe('Tab moteur/lieutenants — Lock + outline', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'HnStruct Cocon')
     const article = await ctx.createArticle(cocoon.id, 'HnStruct Article')
 
-    const hn = [{ level: 'H2', title: 'Section A' }, { level: 'H2', title: 'Section B' }]
-    await apiPut(`/articles/${article.id}/keywords`, {
+    const hn = [{ level: 2, text: 'Section A' }, { level: 2, text: 'Section B' }]
+    const res = await apiPut(`/articles/${article.id}/keywords`, {
       capitaine: `test-${ctx.runId}-hn`,
       lieutenants: [],
       lexique: [],
       rootKeywords: [],
       hnStructure: hn,
     })
+    expect(res.status).toBe(200)
     const dbRes = await query<{ hn_structure: unknown }>(
       `SELECT hn_structure FROM article_keywords WHERE article_id = $1`,
       [article.id],
     )
-    expect(dbRes.rows[0]?.hn_structure).toBeDefined()
+    expect(dbRes.rows[0]?.hn_structure).toEqual(hn)
+    const content = await query<{ outline: unknown }>(`SELECT outline FROM article_content WHERE article_id = $1`, [article.id])
+    expect(content.rows[0]?.outline ?? null, 'le sommaire n’est écrit qu’à la validation de la structure').toBeNull()
   })
 })
 

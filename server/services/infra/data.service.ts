@@ -359,15 +359,16 @@ export async function addArticleCheck(id: number, check: string): Promise<Articl
   return (await getArticleProgress(id)) ?? { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
 }
 
-export async function removeArticleCheck(id: number, check: string): Promise<ArticleProgress> {
+/** Retire des étapes en une fois (l'étape demandée et celles qui en dépendent). */
+export async function removeArticleChecks(id: number, checks: string[]): Promise<ArticleProgress> {
   await pool.query(`
     UPDATE articles
     SET
-      completed_checks = array_remove(completed_checks, $1),
-      check_timestamps = check_timestamps - $1
+      completed_checks = ARRAY(SELECT c FROM unnest(completed_checks) AS c WHERE c <> ALL($1::text[])),
+      check_timestamps = check_timestamps - $1::text[]
     WHERE id = $2
-  `, [check, id])
-  log.debug(`removeArticleCheck: removed "${check}" for ${id}`)
+  `, [checks, id])
+  log.debug(`removeArticleChecks: removed ${JSON.stringify(checks)} for ${id}`)
   return (await getArticleProgress(id)) ?? { phase: 'proposed', completedChecks: [], checkTimestamps: {} }
 }
 

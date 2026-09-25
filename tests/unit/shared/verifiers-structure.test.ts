@@ -36,6 +36,17 @@ describe('verifyStructure — une bonne structure passe', () => {
   })
 })
 
+// P6 : la publication rejoue cette porte. Un article rédigé sans passer par
+// l'onglet Structure (ancien article, sommaire écrit à la Rédaction) était
+// bloqué pour toujours par un ⛔ ; comme le lexique vide, c'est un 🔴 assumable.
+describe('verifyStructure — structure absente', () => {
+  it('aucune structure enregistrée : 🔴 assumable, pas ⛔', () => {
+    const issues = verifyStructure({ ...sain, structure: [] })
+    expect(rules(issues)).toEqual(['risque:hn-missing'])
+    expect(issues[0]!.message).toMatch(/aucune structure/i)
+  })
+})
+
 describe('verifyStructure — ⛔ défauts techniques', () => {
   it('aucun H2', () => {
     expect(rules(verifyStructure({ ...sain, structure: [{ level: 1, text: 'Titre' }] }))).toEqual(['technique:hn-empty'])
