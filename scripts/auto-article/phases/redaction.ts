@@ -4,8 +4,10 @@
  *   1. Sommaire : la structure validée au Moteur (FR-HN-TAB), sinon
  *      POST /generate/outline (SSE) ; persisté via PUT /articles/:id
  *   2. POST /generate/article-draft (SSE) → premier jet en un appel (FR-RED-DRAFT-SINGLE-PASS)
+ *      2 bis. chapitre hors budget → POST /generate/section-rewrite (redaction-passes.ts)
  *   3. POST /generate/meta               → metaTitle + metaDescription
- *   4. PUT  /articles/:id                → save content + meta
+ *   4. PUT  /articles/:id                → save content + meta, puis étape « premier
+ *      jet accepté » ; 4 ter. passe « sources » → POST /generate/enrich/sources
  *   5. PUT  /articles/:id/status         → brouillon
  *   6. POST /export/:id                  → HTML PropulSite, écrit sur disque
  */
@@ -20,6 +22,7 @@ import { structureToOutline } from '../../../shared/structure-outline.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
 import { runInternalLinking } from './linking.js'
+import { fitChapterBudgets, sourcePassages } from './redaction-passes.js'
 import { emitCheck } from '../checks.js'
 import { REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
 import {
@@ -159,6 +162,13 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     report.addUsage(articleDone.usage as ApiUsageLike | null)
     report.addStep(`Rédaction · Article (${ctx.articleContent.length} caractères)`)
 
+    // 2 bis. Un chapitre hors de son budget est réécrit à sa longueur, comme
+    //        l'utilisateur le ferait avant d'accepter le premier jet (recette C8).
+    //        La porte juge la base : le texte y est d'abord enregistré.
+    const passes = { articleId: ctx.articleId, keyword: ctx.capitaine, keywords }
+    await client.apiPut(`/articles/${ctx.articleId}`, { content: ctx.articleContent })
+    ctx.articleContent = await fitChapterBudgets(deps, passes, ctx.articleContent)
+
     // 3. Meta
     logger.step('Meta — title + description…')
     const meta = await client.apiPost<{ metaTitle: string; metaDescription: string; usage?: ApiUsageLike | null }>(
@@ -180,6 +190,13 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
     // le run — le script ne déroge jamais à la place d'un humain.
     await emitCheck(client, ctx.articleId, REDACTION_DRAFT_ACCEPTED)
     report.addStep('Rédaction · premier jet accepté par sa porte')
+    // 4 ter. Passe « sources » : chaque passage « à sourcer » est sourcé par la
+    //        recherche web, ou reste marqué — la publication le signalera.
+    const sourced = await sourcePassages(deps, passes, ctx.articleContent)
+    if (sourced !== ctx.articleContent) {
+      ctx.articleContent = sourced
+      await client.apiPut(`/articles/${ctx.articleId}`, { content: ctx.articleContent })
+    }
     // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens.
     await runInternalLinking(deps, ctx.articleId)
 
