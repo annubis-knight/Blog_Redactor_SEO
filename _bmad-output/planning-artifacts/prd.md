@@ -10,7 +10,7 @@ inputDocuments:
   - '_bmad-output/implementation-artifacts/tech-spec-kpi-types-nullable.md'
 workflowType: 'prd'
 completedAt: '2026-03-31'
-lastUpdated: '2026-09-24T00:00:00Z'
+lastUpdated: '2026-09-25T00:00:00Z'
 updateReason: 'Refonte complète post-audit : préfixage des FR/NFR par domaine (FR-DIS, FR-RAD, FR-CAP, FR-LIE, FR-LEX, FR-FIN, FR-MOT, FR-CER, FR-RED, FR-LAB, FR-EXP, FR-DASH, FR-EXT, FR-INFRA, NFR-PERF, NFR-COST, NFR-INT, NFR-MAIN, NFR-SEC, NFR-OBS, NFR-RT, NFR-CFG), versioning par exigence (statut + date + remplaçant), rattrapage des 4 sprints livrés post 2026-04-24 (score-pertinence, longue traîne radar, painPoint, stabilisation codebase) et documentation des capacités jamais formalisées (GSC OAuth, cost-guard DataForSEO, content gap, micro-context, internal linking, batch creation, theme config, PAA cache, multi-provider IA, embeddings HuggingFace, contextual actions). Suppression de la numérotation séquentielle FR1-FR60 historique, remplacée par identifiants stables. Verdict Capitaine devenu informatif (FR-CAP-LOCK supersede FR-CAP-VERDICT-GATING). Ajout 2026-05-04 (delta vague 1 monstres Vue) : FR-LIE-AI-FRONTIER formalise la frontière sémantique containers principaux ↔ panel IA (rôle long terme du PRD pour préserver l''invariant historiquement protégé par le verrou Sprint C-1). Ajout 2026-05-04 (delta vague 3 composables) : FR-MOT-SOFT-GATING formalise le gating souple Phase ②/③ — la consultation reste libre, seules les écritures sont conditionnées par les checks workflow. Cette FR documente l''invariant porté par useMoteurSoftGating (composable extrait de MoteurView). Ajout 2026-05-04 (delta vague 5 — audit FRs post-refactor V1-V5) : 10 FRs formalisant des fonctionnalités utilisateur visibles mais jamais documentées au PRD (cache 30j Discovery, filtre pertinence sémantique, score ring SVG + tooltip 4 messages contextuels Pertinence absent, arbre PAA récursif parent→children, payload cross-tab Discovery→Lexique, détection cannibalisation Capitaine cocon, counts DB explorations TabCachePanel, bouton vider cache external api_cache, architecture panels toolbar+ResizablePanel partagée Workflow/Editor, panel IA Brief markdown stream). Ces FRs ne créent aucune nouvelle fonctionnalité — elles documentent l''existant pour que les futurs refactors préservent l''intent utilisateur sans se baser uniquement sur le code. Ajout 2026-05-04 (delta vague 5 bis — réorganisation FRs par composants macro partagés) : nouvelle §8.15 "Composants UI partagés (FR-UI)" avec 4 FRs (FR-UI-RADAR-CARD, FR-UI-AI-PANELS-PATTERN, FR-UI-ARTICLE-SHARED, FR-UI-MOTEUR-SHARED) qui formalisent les invariants partagés cross-onglets de composants macro consommés à plusieurs endroits (RadarKeywordCard sur 3 contextes, infrastructure AiPanel sur 6 panels, sous-composants article partagés Workflow/Editor, briques Moteur cross-onglets). Ces FRs ne dupliquent pas les FR métier des §8.4-§8.10 mais référencent celles-ci via "voir aussi" — elles capturent uniquement le fait qu''un composant est partagé et que sa cohérence cross-contextes est un invariant en soi (motivation : le chantier vague 1-5 a montré que les FR par onglet ne suffisent pas pour valider la non-régression d''un composant macro touché par un refactor). Ajout 2026-05-05 (chantier KPI nullable) : 4 nouvelles FRs §8.14 (FR-INFRA-KPI-NULLABLE, FR-INFRA-KPI-DISPLAY-DASH, FR-INFRA-KPI-CONSISTENCY, FR-INFRA-KPI-SCORING-NULLSAFE) qui formalisent la migration des types KPI marché (KeywordOverview, LocationMetrics, RadarKeywordKpis, ValidatePainResult.dataforseo, KeywordAuditResult) vers number | null de bout en bout. Chaque FR porte des AC testables Vitest (pas seulement narratives). Extension FR-INFRA-NO-SCORE-FALLBACK (ajout Difficulty/Cpc/Competition au scope ESLint), FR-INFRA-SCORE-MODULE (ajout helpers formatVolume/Cpc/Kd/Percent), FR-MOT-RAW-KPIS (placeholder "—" quand KPI absent). Source : tech-spec-kpi-types-nullable. Ajout 2026-05-05 (chantier fetch-to-wrapper-migration) : FR-INFRA-API-WRAPPER affiné (périmètre clarifié, dette résorbée, critère mesurable via audit), FR-INFRA-API-STREAM nouveau (wrapper SSE unifié pour POST → ReadableStream avec mêmes garanties cost-log + KNOWN_ERROR_CODES que apiPost), NFR-INT-API-WRAPPER affiné (critère d''acceptation = 0 violation audit), NFR-OBS-EXTERNAL-API-OPT-OUT nouveau (commentaire `// External API call — bypass wrapper by design` obligatoire sur les 14 fetch externes côté server/services/external/*). Section §12.5 dette technique : ligne `fetch() directs résiduels` marquée résorbée. Source : tech-spec-fetch-to-wrapper-migration. Ajout 2026-05-05 (chantier audit couverture DB) : 9 nouvelles FR-INFRA §8.14 formalisant les tables PostgreSQL jusqu''ici fantômes ou sous-couvertes au PRD (FR-INFRA-PAA-EXPLORATIONS, FR-INFRA-INTENT-EXPLORATIONS-LEGACY, FR-INFRA-KEYWORDS-SEO, FR-INFRA-LOCAL-ENTITIES, FR-INFRA-LIEUTENANT-EXPLORATIONS, FR-INFRA-KEYWORD-DISCOVERIES, FR-INFRA-ARTICLE-STRATEGIES, FR-INFRA-COCOON-STRATEGIES, FR-INFRA-MICRO-CONTEXTS). Chaque FR documente le schéma + producteurs + consommateurs avec lignes de code source. Vérification DB live (psql) confirme 20 tables actives (vs 22 dans les CREATE TABLE — 2 renommées via migration 010, 1 jamais matérialisée : `intent_explorations`). Ajout d''une §8.14.bis Matrice de couverture tables ↔ FR (vue inverse FR↔table) qui répond aux questions opérationnelles : impact d''un changement schéma, impact d''un changement FR, détection de tables sans FR. Règle de maintenance : toute migration créant/modifiant une table doit ajouter/maj une ligne dans la matrice. Migration 2026-05-12 (chantier docs/prd-split-spec-design) : §8.10 Rédaction (13 FRs FR-RED-*) réécrites en langage utilisateur avec critères d''acceptation observables et bloc "En situation" narratif. Détails techniques (refs code, endpoints, flux DB, stores Pinia, watchers, décisions d''architecture) déplacés vers le design-registry §8.10 (13 entrées DESIGN-RED-*). Stores vérifiés : useEditorStore, useOutlineStore, useSeoStore, useGeoStore, useBriefStore, useLinkingStore, useArticleProgressStore. DRIFT-015 consigné (`internal_links.position` est une string offset caractère, pas une position ProseMirror stable — non bloquant tant que la matrice cocon n''a pas besoin de jumper précisément vers le mark). Migration 2026-05-12 (chantier docs/prd-split-spec-design suite) : §9.1 Performance (7 NFRs NFR-PERF-*), §9.2 Coût (6 NFRs NFR-COST-*), §9.3 Intégration (10 NFRs NFR-INT-* + NFR-OBS-EXTERNAL-API-OPT-OUT), §9.4 Maintenabilité (10 NFRs NFR-MAIN-*) réécrites au format utilisateur avec critères observables et exemples "En situation" succincts. Conception déportée vers design-registry §9.1-§9.4 (entrées DESIGN-PERF-*, DESIGN-COST-*, DESIGN-INT-*, DESIGN-MAIN-*, DESIGN-OBS-EXTERNAL-API-OPT-OUT). Drifts consignés : DRIFT-021 (NFR-MAIN-FILE-SIZE listait CaptainValidation.vue 1507L et KeywordDiscoveryTab.vue 1419L qui n''existent plus — refactorisés depuis ; BrainPhase.vue ramené de 1066L à 575L ; nouveaux offenders identifiés : CaptainPanel.vue 1509L, data.service.ts 1052L), DRIFT-022 (NFR-COST-DATAFORSEO-BUDGET citait env vars `DATAFORSEO_COST_BUDGET` / `DATAFORSEO_COST_WINDOW_MINUTES` ; les vraies sont `DATAFORSEO_COST_BUDGET_USD` / `DATAFORSEO_COST_WINDOW_MIN`), DRIFT-023 (NFR-MAIN-ORG-COMPOSABLES citait 5 domaines mais le code en a 8 : article, editor, intent, keyword, lexique, moteur, seo, ui).'
 synced_with:
   - '_bmad-output/planning-artifacts/architecture.md'
@@ -99,13 +99,13 @@ L'objectif est de passer de « j'ai un cocon à remplir » à « article publié
 Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** dans le mot-clé et la structure **avant** de rédiger. Le Moteur est conçu pour donner cette confiance via :
 
 - un scoring **bimodal** (Score Marché objectif + Score Pertinence subjectif lié à la douleur de l'article),
-- un verdict **informatif** (l'utilisateur garde le libre arbitre, peut verrouiller même un NO-GO),
+- un verdict qui **alerte sans décider à sa place** (l'utilisateur garde le libre arbitre : depuis le 2026-09-25, il peut verrouiller un NO-GO en écrivant pourquoi — cf. FR-CAP-LOCK-GATE, FR-INFRA-GATE-WAIVER),
 - des **panels IA contextuels** en streaming SSE qui enrichissent sans imposer,
 - du **cache cross-article** qui élimine les appels redondants.
 
 ### Ce qui rend ce produit unique
 
-1. **Verdict bimodal qui donne confiance** — Score Marché (Volume / KD / CPC / PAA / Intent / Autocomplete) ET Score Pertinence (Pain alignment / PAA×douleur / Autocomplete×douleur / Racines / Intent×douleur) calculés et affichés séparément. Verdicts informatifs, l'utilisateur lock librement.
+1. **Verdict bimodal qui donne confiance** — Score Marché (Volume / KD / CPC / PAA / Intent / Autocomplete) ET Score Pertinence (Pain alignment / PAA×douleur / Autocomplete×douleur / Racines / Intent×douleur) calculés et affichés séparément. L'utilisateur verrouille en connaissance de cause : un mot-clé risqué déclenche l'alarme graduée, qu'il peut dépasser en assumant son choix par écrit (FR-CAP-LOCK-GATE, depuis le 2026-09-25).
 
 2. **Sophistication invisible** — Cache à 3 niveaux (`external_api_cache` TTL, `keyword_metrics` cross-article permanent, cache PAA hiérarchique adossé à `keyword_metrics.paa_questions`). Cost-guard sliding-window sur DataForSEO. Multi-provider IA (Claude / Gemini / OpenRouter / Mock) avec fallback automatique 429/503. Progression cochée silencieusement via `articles.completed_checks` TEXT[].
 
@@ -228,7 +228,7 @@ Injection automatique du contexte stratégique (cible, douleur, angle, promesse,
 
 ### 5.4 Scoring bimodal et verdict informatif
 
-Score Marché (objectif, 6 KPIs, poids Vol 30 / KD 20 / Intent 15 / PAA 10 / AC 10 / CPC 10) et Score Pertinence (subjectif, lié à la douleur de l'article, poids Pain 30 / PAA×douleur 25 / AC×douleur 15 / Racines 20 / Intent×douleur 10) coexistent. Le verdict reste informatif, le lock est indépendant.
+Score Marché (objectif, 6 KPIs, poids Vol 30 / KD 20 / Intent 15 / PAA 10 / AC 10 / CPC 10) et Score Pertinence (subjectif, lié à la douleur de l'article, poids Pain 30 / PAA×douleur 25 / AC×douleur 15 / Racines 20 / Intent×douleur 10) coexistent. Le verdict n'est plus purement informatif depuis le 2026-09-25 : un verrouillage risqué (NO-GO, volume inconnu, intention contraire à l'article) passe par l'alarme graduée, et l'utilisateur garde la main par une dérogation motivée (FR-CAP-LOCK-GATE).
 
 ### 5.5 Multi-provider IA avec fallback
 
@@ -1684,7 +1684,13 @@ Un article a **exactement zéro ou un** mot-clé Capitaine verrouillé. Verrouil
 
 ---
 
-#### FR-CAP-VERDICT-INFORMATIVE — Verdict GO / NO-GO purement informatif
+#### FR-CAP-VERDICT-INFORMATIVE — Verdict GO / NO-GO purement informatif *(superseded 2026-09-25 par FR-CAP-LOCK-GATE)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-CAP-LOCK-GATE`. **Source :** épopée qualité SEO, chantier C2.
+>
+> **Ce qui change.** Le verdict reste affiché sur chaque carte et le bouton « Verrouiller » reste actif, mais le verdict n'est plus *purement* informatif : verrouiller un mot-clé NO-GO, jamais mesuré, sans volume ou dont la SERP contredit l'intention de l'article passe désormais par la **porte du capitaine**, qui ouvre l'alarme graduée. L'utilisateur garde la main — il peut passer outre en choisissant une catégorie et en écrivant sa raison (dérogation motivée, cf. `FR-INFRA-GATE-WAIVER`) — mais il ne passe plus sans avoir vu le risque. **Pourquoi :** le pilier 1013 a été verrouillé sur un mot-clé sans volume mesuré, que Google ne suggérait pas et dont la SERP ne montrait que des agences : rien n'a alerté.
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 Chaque mot-clé Capitaine affiche un **verdict synthétique** (GO vert / ORANGE / NO-GO rouge / GRAY si données insuffisantes) calculé à partir des KPI marché et de la douleur. Ce verdict est **purement informatif** : l'utilisateur peut toujours verrouiller un mot-clé, même si le verdict est NO-GO. Le verdict aide à décider, il ne décide pas à la place de l'utilisateur.
 
@@ -1701,9 +1707,33 @@ Chaque mot-clé Capitaine affiche un **verdict synthétique** (GO vert / ORANGE 
 
 #### FR-CAP-VERDICT-GATING — *(deprecated 2026-04-28)*
 
-**Statut : deprecated.** Historiquement, le bouton « Valider Capitaine » était désactivé tant que le verdict n'était pas GO. Cette logique a été retirée le 2026-04-28 — remplacée par `FR-CAP-VERDICT-INFORMATIVE` qui rend le verdict purement informatif. L'utilisateur a désormais toujours la main, peu importe le verdict.
+**Statut : deprecated.** Historiquement, le bouton « Valider Capitaine » était désactivé tant que le verdict n'était pas GO. Cette logique a été retirée le 2026-04-28 — remplacée par `FR-CAP-VERDICT-INFORMATIVE` qui rend le verdict purement informatif. L'utilisateur a désormais toujours la main, peu importe le verdict. *(`FR-CAP-VERDICT-INFORMATIVE` est elle-même remplacée le 2026-09-25 par `FR-CAP-LOCK-GATE` : on ne revient pas au bouton grisé — le verrou reste possible, mais un choix risqué s'assume par écrit.)*
 
 → Conception : [DESIGN-CAP-VERDICT-GATING](./design-registry.md#design-cap-verdict-gating)
+
+---
+
+#### FR-CAP-LOCK-GATE — Verrouiller un capitaine risqué déclenche l'alarme
+
+Choisir le capitaine engage tout l'article : les lieutenants, le lexique, la structure et la rédaction partent de lui. Le verdict GO / NO-GO aidait à décider mais n'arrêtait personne. Désormais, le verrouillage passe par une **porte** : si le mot-clé est risqué, l'alarme graduée (cf. `FR-INFRA-GATE-WAIVER`) explique le risque en clair et propose d'autres candidats déjà mesurés. L'utilisateur revient corriger, ou passe outre en écrivant pourquoi.
+
+**Critères d'acceptation**
+- 🔴 Le volume de recherche du mot-clé est inconnu (jamais mesuré) ou nul.
+- 🔴 Le verdict du mot-clé est NO-GO.
+- 🔴 Google traite la requête comme commerciale ou transactionnelle (pages de service, comparatifs) alors que l'article vise une intention informationnelle (un guide). Tout autre écart entre l'intention de la SERP et celle de l'article donne 🟠.
+- L'intention attendue est celle précisée au Cerveau ; à défaut, un pilier est traité comme un guide (informationnel). Quand l'intention de la SERP est inconnue, aucune alerte d'intention n'est levée : l'outil ne devine pas.
+- 🟠 Google ne suggère pas la requête quand on commence à la taper (autocomplétion vide).
+- L'alarme propose à la place les autres candidats explorés pour cet article qui ont un volume mesuré, du plus recherché au moins recherché (cinq au plus).
+- La porte est vérifiée **avant** tout changement : si l'utilisateur revient corriger, rien n'est verrouillé ni enregistré, l'étape « Capitaine verrouillé » n'est pas validée, et le capitaine précédent reste verrouillé.
+- Si la vérification est impossible (serveur injoignable), le mot-clé n'est pas verrouillé et un message le dit.
+- L'étape « Capitaine verrouillé » n'est accordée que si le capitaine a bien été enregistré et que la porte passe, d'emblée ou après dérogation. Le serveur la refuse sinon, d'où que vienne la demande (écran, outil automatique, appel direct).
+- Explorer un nouveau candidat ne fait pas tomber une dérogation posée sur le capitaine choisi ; changer de capitaine, si.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-CAP-VERDICT-INFORMATIVE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+
+> **En situation.** Pour son pilier, l'utilisateur clique « Verrouiller » sur « stratégie digitale entreprises Toulouse » : volume jamais mesuré, aucune suggestion Google, et une SERP de neuf agences sur neuf. L'alarme « Avant de verrouiller le capitaine » affiche deux points 🔴 — « Aucun volume de recherche mesuré », et « Google traite cette requête comme commerciale, alors que l'article vise une intention informationnelle : Google classe des pages de service, pas des guides » — et un point 🟠 sur l'autocomplétion vide. En dessous, « À la place : » liste les candidats qu'il avait déjà explorés, avec leur volume. Il clique « Revenir corriger » : son ancien capitaine reste verrouillé, rien n'a bougé, et il verrouille l'un des candidats proposés.
+
+→ Conception : [DESIGN-CAP-LOCK-GATE](./design-registry.md#design-cap-lock-gate)
 
 ---
 
@@ -1714,7 +1744,7 @@ Quand un mot-clé n'a **aucun signal marché vert** (volume nul, autocomplete vi
 **Critères d'acceptation**
 - Si les 6 KPI marché sont tous au rouge (ou vides), le verdict est forcé à NO-GO.
 - Le tooltip explique « aucun signal détecté — ce mot-clé n'apparaît pas dans la donnée marché ».
-- L'utilisateur reste libre de verrouiller (cf. `FR-CAP-VERDICT-INFORMATIVE`).
+- L'utilisateur reste libre de verrouiller, mais pas sans le voir : un NO-GO déclenche l'alarme 🔴 de la porte du capitaine, qu'il franchit en écrivant pourquoi (cf. `FR-CAP-LOCK-GATE`, qui remplace `FR-CAP-VERDICT-INFORMATIVE` depuis le 2026-09-25).
 
 > **En situation.** L'utilisateur teste un mot-clé très niche jamais cherché sur Google : « comment refuser indemnité supra légale rupture conventionnelle senior 2026 ». La carte affiche NO-GO automatique avec « aucun signal détecté ». Il comprend tout de suite que ce mot-clé n'a pas de marché — il l'écarte sans hésiter.
 
@@ -1761,6 +1791,9 @@ Au moment où l'utilisateur verrouille un mot-clé Capitaine pour un article, l'
 - L'étape `moteur:capitaine_locked` est posée dès qu'un Capitaine est verrouillé sur l'article.
 - L'étape est retirée si l'utilisateur déverrouille (le Capitaine repasse à vide).
 - À l'ouverture de l'onglet, l'étape est réconciliée avec l'état réel (cf. `FR-MOT-CHECK-RECONCILIATION`).
+- L'étape n'est posée que si la porte du capitaine passe, d'emblée ou après dérogation (cf. `FR-CAP-LOCK-GATE`).
+
+**Statut :** amendée le 2026-09-25 (porte du capitaine, épopée qualité SEO C2).
 
 > **En situation.** L'utilisateur clique « Verrouiller » sur « calcul indemnité rupture conventionnelle 2026 ». Le 3ᵉ dot de progression de l'article passe de `○` à `●` au dashboard. Aucune autre action.
 
@@ -2105,10 +2138,36 @@ Quand l'utilisateur a coché au moins un Lieutenant **et** que la structure Hn d
 - L'étape `moteur:lieutenants_locked` est posée dès que **les deux conditions** sont remplies (≥ 1 Lieutenant verrouillé + structure Hn non vide).
 - Si l'utilisateur décoche tous les Lieutenants ou efface la structure Hn, l'étape est retirée automatiquement.
 - À l'ouverture de l'onglet, si la base contient une étape franchie mais qu'une des deux conditions n'est plus vraie, l'app retire l'étape (réconciliation défensive).
+- Les deux conditions sont nécessaires mais plus suffisantes : l'étape n'est posée que si la porte des lieutenants passe (cf. `FR-LIE-LOCK-GATE`).
+
+**Statut :** amendée le 2026-09-25 (porte des lieutenants, épopée qualité SEO C2).
 
 > **En situation.** Le consultant verrouille son 1ᵉʳ Lieutenant : l'étape ne s'inscrit pas tout de suite — la structure Hn est encore vide. Il déclenche la recommandation IA structure Hn, l'IA propose un plan, il valide. Au moment où la structure Hn devient non-vide, le 4ᵉ dot de l'article passe de `○` à `●` au dashboard.
 
 → Conception : [DESIGN-LIE-CHECK](./design-registry.md#design-lie-check)
+
+---
+
+#### FR-LIE-LOCK-GATE — Des lieutenants en nombre suffisant et sans cannibalisation
+
+Les lieutenants donnent à l'article sa couverture des recherches voisines. Trop peu, et l'article ne se positionne que sur son capitaine. Un lieutenant qui est déjà le mot-clé principal d'un autre article du cocon, et les deux pages se font concurrence dans Google (cannibalisation). La validation de l'étape « Lieutenants verrouillés » passe donc par une **porte**. Pour ne pas interrompre l'utilisateur à chaque case cochée, la vérification est **silencieuse** : tant que la porte retient l'étape, un bandeau le dit, et l'alarme graduée (cf. `FR-INFRA-GATE-WAIVER`) ne s'ouvre qu'à sa demande.
+
+**Critères d'acceptation**
+- 🔴 Moins de lieutenants que le minimum du type d'article : 3 pour un pilier, 2 pour un intermédiaire, 1 pour un spécialisé. Ce minimum est distinct de la fourchette conseillée par le compteur (cf. `FR-LIE-CHECKBOX-COUNT`).
+- 🔴 Un lieutenant est le capitaine d'un autre article du cocon.
+- 🟠 Un lieutenant est aussi lieutenant d'un autre article du cocon : c'est courant, il suffit de l'aborder sous un autre angle.
+- 🟠 Un lieutenant est identique au capitaine de l'article.
+- Chaque lieutenant en conflit se déroge séparément : une raison donnée pour l'un ne couvre pas les autres.
+- Les lieutenants cochés sont enregistrés avant la vérification : la porte juge ce qui est sauvegardé, pas seulement ce que montre l'écran.
+- Tant que la porte refuse, l'étape n'est pas accordée et un bandeau « Étape non validée » donne la première raison, avec un bouton « Voir pourquoi / décider » qui ouvre l'alarme.
+- Ajouter ou retirer un lieutenant relance la vérification : l'étape est accordée dès que la porte passe, et retirée si elle refuse après un changement.
+- Les conditions de `FR-LIE-CHECK` (au moins un lieutenant, une structure Hn) restent nécessaires : la porte s'y ajoute.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+
+> **En situation.** L'utilisateur coche un seul lieutenant pour son pilier et valide la structure Hn. Le dot ne passe pas au vert ; un bandeau s'affiche : « Étape non validée. 1 lieutenant pour un article Pilier : le minimum conseillé est 3. » Il coche deux autres lieutenants : la vérification repart d'elle-même, le bandeau disparaît et l'étape est accordée. Plus tard, il ajoute « audit site web », qui est déjà le capitaine de l'intermédiaire « Auditer son site » : l'étape est retirée, et le bandeau signale que les deux pages se feraient concurrence. Il décoche ce lieutenant, et l'étape revient.
+
+→ Conception : [DESIGN-LIE-LOCK-GATE](./design-registry.md#design-lie-lock-gate)
 
 ---
 
@@ -2529,6 +2588,28 @@ Pendant que l'utilisateur écrit ou édite son article, un **score SEO** est cal
 
 ---
 
+#### FR-RED-SEO-SCORE-PERSIST — Le score enregistré est celui affiché pour ce texte
+
+Le score SEO et le score GEO sont calculés à l'écran pendant la rédaction (cf. `FR-RED-SEO-LIVE`), mais ils n'étaient jamais enregistrés : le pilier 1013 a été publié sans aucune trace de score. Désormais, chaque score part en base **avec le texte qu'il note**. Le calcul reste fait dans l'éditeur, parce qu'il dépend de données chargées à l'écran : le refaire ailleurs aurait produit un chiffre différent de celui que l'utilisateur voit.
+
+**Critères d'acceptation**
+- Le score enregistré est exactement celui affiché pour le texte enregistré : contenu, meta title et meta description pour le score SEO ; contenu seul pour le score GEO.
+- Un score calculé sur une autre version du texte n'est jamais enregistré. La base porte alors « inconnu », affiché « — » : jamais un chiffre faux, jamais un zéro.
+- Retoucher la méta rend le score SEO inconnu jusqu'au prochain calcul, sans toucher au score GEO.
+- Un score calculé juste après une sauvegarde, sur le texte enregistré, est enregistré aussitôt, sans attendre la sauvegarde suivante. Le même score n'est pas renvoyé deux fois.
+- À l'ouverture d'un article dans la rédaction guidée, le score recalculé sur le texte intact rejoint la base.
+- L'audit du projet (`npm run verify`) affiche les scores enregistrés de chaque article, « — » quand ils sont inconnus.
+
+**Limites connues :** dans l'éditeur libre, le score d'un article qu'on vient d'ouvrir ne rejoint la base qu'à la sauvegarde suivante. Aucun écran ne lit encore le score enregistré. La liste des articles et la porte de publication pourront s'en servir dans un chantier suivant ; en attendant, la valeur est visible dans l'audit.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P1), réservée par C0, livrée par C2. **Amendée à la livraison :** l'épopée prévoyait un recalcul par le serveur ; les calculs vivent à l'écran, c'est donc le score affiché qui est enregistré avec son texte.
+
+> **En situation.** L'utilisateur voit « SEO 72 » dans l'éditeur, puis la sauvegarde automatique passe. Le soir, `npm run verify` affiche pour cet article « Scores enregistrés : SEO 72 · GEO — » : aucun score GEO n'a été calculé sur ce texte, et l'outil n'en invente pas. Le lendemain, il retouche le meta title et ferme l'onglet avant la fin du calcul : la base porte « — » pour le SEO, pas l'ancien 72, qui notait une autre méta. Quand il rouvre l'article dans la rédaction guidée, le score recalculé sur le texte intact reprend sa place.
+
+→ Conception : [DESIGN-RED-SEO-SCORE-PERSIST](./design-registry.md#design-red-seo-score-persist)
+
+---
+
 #### FR-RED-CONTEXTUAL-ACTIONS — 12 actions IA contextuelles sur sélection de texte
 
 Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 12 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, localiser, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
@@ -2630,6 +2711,32 @@ L'outil suit pour chaque article une **phase éditoriale** qui reflète où il e
 > **En situation.** L'utilisateur a validé le brief la veille (phase = brief), puis le sommaire ce matin (phase = outline), puis a généré l'article (phase = writing). Sur le dashboard, le dot d'avancement « Rédaction » de cet article est passé en bleu progressif au fil des étapes. Quand il valide le SEO en fin d'après-midi (phase = seo), le 4ᵉ dot rédaction se remplit, et la carte article gagne le badge *« Prêt à publier »*.
 
 → Conception : [DESIGN-RED-PROGRESS](./design-registry.md#design-red-progress)
+
+---
+
+#### FR-RED-PUBLISH-GATE — On ne publie pas un article qu'un expert refuserait
+
+Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publié » avec une description coupée, un H1 sans son capitaine et un texte six fois plus long que visé : la publication ne vérifiait rien. Elle passe désormais par une **porte** qui rejoue les contrôles de contenu, de méta et de SEO **avant** de marquer l'article publié et avant de télécharger le fichier. L'alarme graduée (cf. `FR-INFRA-GATE-WAIVER`) montre chaque point.
+
+**Critères d'acceptation**
+- ⛔ Défauts objectifs du texte : contenu vide, bloc tronqué, monologue d'IA, texte hors balise, restes de mise en forme, balise interdite, titre vide, saut de niveau de titre, plusieurs H1 dans le corps.
+- ⛔ Défauts de la méta : meta title ou meta description absents, trop longs ou coupés.
+- 🔴 Le capitaine ne figure pas **en entier** dans le H1 ni dans le meta title (retrouver les trois quarts de ses mots ne suffit plus ; l'absence dans le meta title n'était qu'un avertissement).
+- 🔴 Autres écarts SEO : capitaine absent, capitaine visant une offre non vendue, texte trop court, adresse de page mal formée, chiffre invérifiable.
+- 🔴 Texte au-delà du plafond de son type : 3 500 mots pour un pilier, 2 500 pour un intermédiaire, 1 500 pour un spécialisé.
+- 🔴 Des marqueurs « à sourcer » restent dans le texte.
+- 🟠 Les autres avertissements (capitaine absent de l'introduction, lieutenants peu couverts…).
+- 🟠 Chaque dérogation posée en amont (capitaine, lieutenants) est réaffichée et doit être reconfirmée.
+- Un H1 laissé dans le corps est toléré : l'export le retire.
+- Si la porte refuse, l'article n'est ni marqué « publié » ni téléchargé, et un message « Publication annulée » l'explique. Après dérogation, la publication reprend d'elle-même.
+- Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
+- L'audit du projet (`npm run verify`) signale tout article déjà rédigé que cette porte refuserait.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2.
+
+> **En situation.** L'utilisateur clique « Exporter » sur le pilier 1013. L'alarme « Avant de publier » s'ouvre : la meta description est coupée en plein vol (⛔), « stratégie » manque au H1 et au meta title (🔴 deux fois), et le texte fait 15 601 mots pour un pilier plafonné à 3 500 (🔴). Le bouton affiche « Correction nécessaire » et reste grisé : un défaut ⛔ ne se déroge pas. Il revient corriger ; sous la barre d'aperçu, un message indique « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'a été marqué publié, aucun fichier n'a été téléchargé.
+
+→ Conception : [DESIGN-RED-PUBLISH-GATE](./design-registry.md#design-red-publish-gate)
 
 ---
 
@@ -3389,6 +3496,50 @@ Au lieu d'avoir une table de cache dédiée par fournisseur ou par type d'appel,
 
 ---
 
+#### FR-INFRA-VERIFIER-SHARED — Un même contrôle à l'écran, au serveur et dans l'audit
+
+Une règle de qualité est écrite **une seule fois** et placée à une transition du parcours — une **porte** : verrouiller le capitaine, valider les lieutenants, publier. Le serveur est le seul à l'évaluer. L'écran affiche son verdict au moment du geste et explique chaque point ; le serveur refuse l'étape ou la publication qui ne passe pas, même quand la demande ne vient pas de l'écran ; l'audit du projet rejoue la même évaluation après coup. Les trois ne peuvent donc pas se contredire.
+
+**Critères d'acceptation**
+- Une règle donne le même verdict à l'écran, au serveur et dans l'audit : les trois passent par la même évaluation.
+- Un refus renvoie la liste complète des points, dans les mots affichés à l'écran : ce qui est constaté, le risque en clair, l'extrait concerné et, quand l'outil en a, des pistes à la place.
+- Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-RED-PUBLISH-GATE`).
+- Une étape refusée n'est pas enregistrée : la progression de l'article ne bouge pas. Une publication refusée ne change pas le statut de l'article.
+- Les outils automatiques (génération d'article en ligne de commande) subissent la même règle : un refus arrête le run en listant chaque point avec son niveau, et l'outil ne passe jamais outre à la place d'un humain.
+- L'audit du projet (`npm run verify`) signale tout article déjà rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+
+> **En situation.** L'utilisateur contourne l'écran et demande directement au serveur de valider l'étape « Capitaine verrouillé » pour un mot-clé NO-GO jamais mesuré. Le serveur refuse, avec les mêmes points que ceux que l'alarme aurait affichés : « Aucun volume de recherche mesuré », « Le verdict du mot-clé est NO-GO ». Le soir, `npm run verify` signale que le pilier 1013, déjà rédigé, serait refusé à la publication : méta coupée ⛔, capitaine absent du H1 et du meta title 🔴, 15 601 mots 🔴.
+
+→ Conception : [DESIGN-INFRA-VERIFIER-SHARED](./design-registry.md#design-infra-verifier-shared)
+
+---
+
+#### FR-INFRA-GATE-WAIVER — Passer outre en prenant sa responsabilité, par écrit
+
+Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe : il peut savoir quelque chose que l'outil ne voit pas (des demandes reçues par téléphone, une donnée absente de l'outil, un mot-clé de marque). Il peut alors passer outre — c'est une **dérogation** — mais par écrit, point par point, et seulement pour les données qu'il a sous les yeux. C'est l'**alarme graduée**, commune à toutes les portes.
+
+**Critères d'acceptation**
+- 🟠 Attention : cocher « J'ai lu » suffit ; l'accusé de lecture est enregistré.
+- 🔴 Risque : il faut choisir une catégorie — longue traîne assumée, donnée manquante dans l'outil, mot-clé de marque, autre — et écrire une raison d'au moins 20 caractères. Un compteur montre la progression (« 3 / 20 ») et le bouton reste grisé tant que chaque point n'a pas sa réponse.
+- ⛔ Technique : aucune dérogation possible, même avec une raison ; le bouton affiche « Correction nécessaire » et reste grisé.
+- Le libellé du bouton dit ce qu'on fait : « J'ai lu, je continue » quand il n'y a que des 🟠, « Je prends la responsabilité et je continue » dès qu'il y a un 🔴. « Revenir corriger » n'enregistre rien.
+- Le serveur revérifie chaque dérogation et refuse, avec son motif affiché sous le point, celle qui n'est pas recevable (raison trop courte, alerte qui n'existe plus parce que les données ont changé).
+- Chaque dérogation est enregistrée : quand, à quelle porte, pour quel point, avec quelle catégorie et quelle raison. L'outil est mono-utilisateur : l'auteur n'est pas enregistré.
+- Une dérogation ne couvre qu'un point, et seulement pour les données vérifiées à ce moment : dès qu'elles changent (autre capitaine, lieutenants modifiés, texte ou méta retouchés), elle tombe et l'alarme revient.
+- Quand un même point peut viser plusieurs éléments (plusieurs lieutenants en conflit), chaque élément se déroge séparément.
+- Les dérogations qui couvrent déjà des points de la porte sont rappelées dans l'alarme sous un badge 🛡.
+- À la publication, chaque dérogation posée en amont est réaffichée et doit être reconfirmée ; l'audit du projet (`npm run verify`) les liste article par article, avec leur catégorie et leur raison.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+
+> **En situation.** L'utilisateur verrouille « rénovation grange pierre Gers », que l'outil n'a jamais mesuré. L'alarme 🔴 dit : « Aucun volume de recherche mesuré ». Il tape « peu » : le compteur affiche 3 / 20 et le bouton reste grisé. Il choisit « Longue traîne assumée » et écrit « demandes réelles reçues par téléphone chaque mois » : le capitaine est verrouillé. Trois semaines plus tard, à la publication, l'alarme lui remontre cette dérogation ; il coche « J'ai lu » et publie. S'il avait changé de capitaine entre-temps, la dérogation serait tombée et l'alarme serait revenue au verrouillage.
+
+→ Conception : [DESIGN-INFRA-GATE-WAIVER](./design-registry.md#design-infra-gate-waiver)
+
+---
+
 ### 8.14.bis — Matrice de couverture tables ↔ FR
 
 > **Pourquoi cette matrice ?**
@@ -3427,6 +3578,7 @@ Au lieu d'avoir une table de cache dédiée par fournisseur ou par type d'appel,
 | `radar_explorations`        | (FR-RAD-PERSIST décrit)               | FR-RAD-PERSIST, FR-RAD-LONGTAIL-PERSIST                | FR-RAD-CARDS, FR-CAP-PERSIST (via source), FR-EXP-COUNTS               | Article-scoped, JSONB `scan_result`.                                  |
 | `silos`                     | (schéma initial)                      | FR-DASH-NAV (CRUD admin)                               | FR-DASH-NAV                                                            | Conteneur de cocoons.                                                 |
 | `theme_config`              | (FR-CER-THEME-CONFIG décrit)          | FR-CER-THEME-CONFIG                                    | NFR-INT-PROMPT-AGNOSTIC (via `buildThemeContextBlock`)                 | Singleton (`id=1`).                                                   |
+| `gate_waivers`              | **FR-INFRA-GATE-WAIVER**              | FR-INFRA-GATE-WAIVER (alarme graduée : dérogation 🟠 / 🔴) | FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE (réaffichage) | Épopée qualité SEO (C2). `ON DELETE CASCADE` sur articles.            |
 
 > **Lecture de la matrice :**
 > - Une cellule **Producteurs / Consommateurs FR** vide signifie que la table est lue/écrite uniquement via une FR-INFRA (pas de FR métier identifiée). C'est attendu pour les tables d'infra (cache, telemetry).
@@ -4094,6 +4246,24 @@ Un test qui cite une exigence (`FR-…`, `NFR-…`, `DESIGN-…`) promet de prot
 
 ---
 
+#### NFR-TEST-BEHAVIORAL — Les tests se comportent comme un utilisateur, y compris quand il se trompe
+
+Un test qui ne tente jamais l'action interdite ne prouve pas qu'elle est interdite. Et un test qui sort vert faute de pouvoir s'exécuter laisse croire que tout va bien. Les tests reproduisent donc aussi les erreurs d'un utilisateur, et un test qui n'a rien vérifié le dit.
+
+**Critères d'acceptation**
+- Chaque porte de qualité a son test négatif, à l'écran comme au serveur : l'action interdite déclenche l'alarme et ne passe pas ; une raison trop courte laisse le passage fermé ; une vraie raison fait passer et reste enregistrée ; une dérogation tombe quand les données changent ; un défaut technique ne se déroge jamais.
+- Aucune assertion ne peut passer quoi qu'il arrive : un test privé de ce dont il a besoin (un serveur, par exemple) apparaît « ignoré », jamais « réussi ». Les formes connues d'assertion toujours vraie sont comptées, et leur nombre ne peut que baisser.
+- Les parcours varient leurs choix : pas toujours la première option ; décocher, recharger, revenir en arrière, panne d'un service.
+- En mode réel, le parcours passe le texte produit dans les mêmes vérificateurs que la vérification du projet.
+
+**Statut :** active, livrée en partie. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0 ; les deux premiers critères sont livrés par C2, les deux derniers suivront avec les chantiers C5 à C8.
+
+> **En situation.** Le test tente de verrouiller un capitaine que personne ne cherche. L'alarme 🔴 s'ouvre. Il écrit « trop court » : le bouton reste grisé et le compteur affiche « 10 / 20 ». Il écrit une vraie raison : le capitaine se verrouille et la raison est enregistrée. Il change ensuite les données du mot-clé et verrouille à nouveau : l'alarme revient, car l'ancienne dérogation ne couvre plus ces données.
+
+→ Conception : [DESIGN-TEST-BEHAVIORAL](./design-registry.md#design-test-behavioral)
+
+---
+
 ### 9.5 — Sécurité et robustesse (NFR-SEC)
 
 > **Pourquoi cette section ?**
@@ -4508,6 +4678,7 @@ Bénéfice pour l'utilisateur : sa carte mentale de l'écran reste stable, il ne
 | `captain_explorations` | article_id, keyword, source, validation JSONB | Persistance Capitaine |
 | `lexique_explorations` | article_id, source_keyword, tfidfTerms, aiRecommendations, aiMissingTerms, aiSummary | Persistance Lexique multi-keyword |
 | `keyword_intent_analyses` | keyword, analysis JSONB | Cache intent Explorateur |
+| `gate_waivers` | article_id, gate_id, rule, level, category, reason, input_hash | Dérogations aux portes de qualité (alarme graduée) |
 
 ### 12.2 — Routes Express enregistrées (24 fichiers)
 
@@ -4585,6 +4756,18 @@ Actions contextuelles (12) : `actions/reformulate.md`, `actions/simplify.md`, `a
 | NFR-CFG-APP-PORTS | nouveau (ports figés 3400 back / 5400 front) | chantier-ports-3400-5400 | 2026-05-05 |
 | NFR-CFG-PORT-PREFLIGHT | nouveau (kill-port preflight idempotent) | chantier-ports-3400-5400 | 2026-05-05 |
 | NFR-MAIN-REQUIREMENTS-TRACE | nouveau (cliquet des IDs cités par les tests) | epic-qualite-seo-garde-fous (C0) | 2026-09-24 |
+| FR-CER-CREATION-HONNETE | nouveau (un article annoncé créé existe vraiment ; un refus 409 nomme le cocon) | epic-qualite-seo-garde-fous (C1) | 2026-09-24 |
+| FR-CER-TYPE-TOLERANT | nouveau (le niveau d'un article est compris quel que soit son format) | epic-qualite-seo-garde-fous (C1) | 2026-09-24 |
+| FR-RED-META-CAPTAIN | nouveau (méta, sommaire et rédaction construits sur le capitaine verrouillé) | epic-qualite-seo-garde-fous (C1) | 2026-09-24 |
+| FR-INFRA-VERIFIER-SHARED | nouveau (portes de qualité : un seul évaluateur pour l'écran, le serveur et l'audit) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-INFRA-GATE-WAIVER | nouveau (alarme graduée 🟠 / 🔴 / ⛔, dérogation motivée qui tombe si les données changent) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-CAP-LOCK-GATE | nouveau (remplace FR-CAP-VERDICT-INFORMATIVE) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-CAP-VERDICT-INFORMATIVE | superseded (par FR-CAP-LOCK-GATE) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-LIE-LOCK-GATE | nouveau (minimum de lieutenants par type, cannibalisation dans le cocon) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | nouveau (publication contrôlée, reconfirmation des dérogations) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-RED-SEO-SCORE-PERSIST | nouveau (amendé à la livraison : score affiché enregistré avec son texte, pas recalculé par le serveur) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| FR-CAP-CHECK, FR-LIE-CHECK, FR-CAP-AUTO-NOGO | amendées (l'étape passe par la porte ; un NO-GO se verrouille par dérogation) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
+| NFR-TEST-BEHAVIORAL | nouveau (livré en partie : tests négatifs des portes, plus aucun test vert faute de serveur) | epic-qualite-seo-garde-fous (C2) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 

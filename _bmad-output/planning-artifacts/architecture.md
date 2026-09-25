@@ -9,8 +9,8 @@ date: '2026-03-31'
 lastStep: 8
 status: 'complete'
 completedAt: '2026-03-30'
-lastUpdated: '2026-04-24'
-updateReason: 'Mise à jour majeure reflétant l''état réel : 3 phases / 6 onglets dans Moteur (pas 2 phases / 3 sous-onglets), migration PostgreSQL complète, réorganisation stores (5 domaines) / composables (5 domaines) / services (7 domaines), ajout Finalisation, cache multi-niveau (api_cache + keyword_metrics cross-article)'
+lastUpdated: '2026-09-25'
+updateReason: 'Mise à jour majeure reflétant l''état réel : 3 phases / 6 onglets dans Moteur (pas 2 phases / 3 sous-onglets), migration PostgreSQL complète, réorganisation stores (5 domaines) / composables (5 domaines) / services (7 domaines), ajout Finalisation, cache multi-niveau (api_cache + keyword_metrics cross-article). Ajout 2026-09-25 (épopée qualité SEO, C2) : décision « Portes de qualité » (serveur seul évaluateur, vérificateurs purs partagés, refus 422 GATE_BLOCKED, dérogations gate_waivers, alarme globale unique).'
 ---
 
 # Architecture Decision Document — Blog Redactor SEO
@@ -142,13 +142,14 @@ npm run dev  # concurrently: vite (front) + node --watch server/index.ts (back)
 8. ✅ Cache multi-niveau : `api_cache` (TTL) + `keyword_metrics` (permanent cross-article)
 9. ✅ Extraction Intention/Audit/Local vers Dashboard et Explorateur
 10. ✅ Labo (`/labo`) avec composants en mode `libre`
+11. ✅ Portes de qualité et alarme graduée (2026-09-25, épopée qualité SEO C2) — cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)
 
 **Décisions différées (vision) :**
 
-11. Batch processing multi-articles
-12. Boucle GSC post-publication (store présent, usage à étendre)
-13. Score de complémentarité Capitaine ↔ Lieutenants
-14. Suggestions proactives de cocons
+12. Batch processing multi-articles
+13. Boucle GSC post-publication (store présent, usage à étendre)
+14. Score de complémentarité Capitaine ↔ Lieutenants
+15. Suggestions proactives de cocons
 
 ### Data Architecture
 
@@ -214,7 +215,7 @@ Pour les métriques mot-clé : consultation `keyword_metrics` AVANT DataForSEO (
 
 - Prefix : `/api/`
 - Format succès : `{ data: T }`
-- Format erreur : `{ error: { code: string, message: string } }`
+- Format erreur : `{ error: { code: string, message: string, details?: unknown } }` — `details` porte l'évaluation complète d'une porte refusée (422 `GATE_BLOCKED`, cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)) ; côté client, `ApiRequestError` expose `status`, `code` et `details`
 - Streaming : SSE pour génération (outline, article, reduce-section, AI panels)
 - Proxy Vite : `/api` → `http://localhost:3400` (frontend dev sur `:5400` — NFR-CFG-APP-PORTS)
 
@@ -322,6 +323,23 @@ Scraping top N résultats (curseur 3-10, défaut 10, DataForSEO)
               ├──→ differenciateur[] (30-70%)
               └──→ optionnel[] (<30%)
 ```
+
+### Portes de qualité — alarme graduée
+
+**Décision (2026-09-25, épopée qualité SEO C2 — FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER).** Chaque transition sensible du parcours (verrouiller le capitaine, valider les lieutenants, publier) passe par une **porte** qui vérifie ce qui passe. Contexte : le pilier 1013 a été verrouillé, rédigé et publié sans qu'aucune transition ne contrôle quoi que ce soit.
+
+| Choix | Détail | Pourquoi |
+|---|---|---|
+| **Serveur seul évaluateur** | `server/services/gates/gate.service.ts` : `evaluateArticleGate(articleId, gateId, { keyword? })` charge les données, appelle le vérificateur, calcule l'empreinte, applique les dérogations. L'écran n'évalue jamais une porte : il affiche le verdict du serveur. | Un seul verdict possible ; aucune empreinte ne peut diverger entre navigateur et serveur. |
+| **Vérificateurs purs partagés** | `shared/verifiers/` (`gate.ts`, `captain.ts`, `lieutenants.ts`, `publish.ts`), sans I/O, règles par type dans `shared/constants/article-type-rules.ts`. Utilisés par le serveur, par l'écran (activation du bouton de l'alarme : `waiverDraftsFrom`, `worstLevel`) et par `npm run verify:content`, qui rejoue la porte de publication avec le code du serveur. | Une règle écrite une fois, testable sans base ; l'audit ne peut pas dire autre chose que le serveur. |
+| **Refus = 422 `GATE_BLOCKED`** | `POST /articles/:id/progress/check` (checks listés dans `CHECK_GATES` : capitaine, lieutenants) et `PUT /articles/:id/status` vers `publié` répondent `422 { error: { code: 'GATE_BLOCKED', message, details: GateEvaluation } }`. Évaluation seule : `GET /api/articles/:id/gates/:gateId`. | L'écran ouvre l'alarme sans redemander le verdict ; `auto:article` liste les points et s'arrête. La porte garde l'**étape** et le **statut**, pas l'écriture des décisions (`article_keywords` reste libre). |
+| **Trois niveaux** | 🟠 attention (accusé « J'ai lu »), 🔴 risque (catégorie + raison ≥ 20 caractères), ⛔ technique (jamais dérogeable). | Alarme graduée plutôt que blocage binaire : l'utilisateur garde la main, par écrit. |
+| **Dérogations liées à une empreinte** | Table `gate_waivers` (article, porte, règle, niveau, catégorie, raison, `input_hash`, date ; UNIQUE `(article_id, gate_id, rule, input_hash)`, CASCADE sur `articles`). `hashGateInput` = FNV-1a 32 bits sur JSON à clés triées. Une règle multi-éléments embarque l'élément dans son identifiant (`lieutenant-cannibalization:<mot>`). | Une dérogation tombe dès que les données vérifiées changent, et ne couvre qu'un point. |
+| **Alarme globale unique** | `src/stores/ui/gate-alarm.store.ts` (`evaluate`, `ensure`, `open`, `submit`, `cancel`, `runThroughGate` qui rejoue l'action une fois après dérogation) + `src/components/shared/GateAlarm.vue`, monté une seule fois dans `App.vue`. | Le geste a lieu dans n'importe quel panneau, l'alarme s'affiche au-dessus de tout, une seule à la fois. |
+
+**Portes livrées** : `captain-lock`, `lieutenants-lock`, `publish`. **Réservées** (acceptées par la route, sans alerte tant que leur chantier n'est pas livré) : `lexique-lock` (C3), `draft` (C5), `hn-lock` (C6).
+
+**Invariants** : aucune dérogation automatique (les scripts s'arrêtent) ; tout nouveau vérificateur est pur et vit dans `shared/verifiers/` ; tout nouveau point de passage gardé passe par `evaluateArticleGate`. Détails : `design-registry.md` (`DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`).
 
 ### Frontend Architecture
 
@@ -873,6 +891,8 @@ Dots mapping :
 
 Phase ③ Finalisation débloquée quand les 3 checks Phase ② sont présents.
 ```
+
+Depuis le 2026-09-25, `moteur:capitaine_locked` et `moteur:lieutenants_locked` sont gardés par une porte de qualité : le serveur peut refuser le check en 422 `GATE_BLOCKED`, et l'émission passe par `useGateAlarmStore.runThroughGate` (cf. [Portes de qualité](#portes-de-qualité--alarme-graduée)).
 
 ### Data Flow — Cascade SERP (Lieutenants → Lexique)
 

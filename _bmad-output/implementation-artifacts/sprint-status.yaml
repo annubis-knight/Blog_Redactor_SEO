@@ -904,7 +904,11 @@ development_status:
   # pilier 1013 doit être rejetée dès C2 ; un pilier réel passe sans dérogation en C8.
   qualite-seo-c0-tracabilite: review
   qualite-seo-c1-correctifs-rapides: review
-  qualite-seo-c2-verificateurs-alarme: backlog
+  # C2 (branche feat/verificateurs-alarme, 2026-09-25) : code livré, PR à ouvrir.
+  # Portes capitaine / lieutenants / publication, alarme graduée, dérogations
+  # (table gate_waivers), scores SEO/GEO enregistrés. 6 FR versées au PRD et au
+  # registre ; NFR-TEST-BEHAVIORAL finalisée après les tests navigateur.
+  qualite-seo-c2-verificateurs-alarme: in-progress
   qualite-seo-c3-lexique-metier: backlog
   qualite-seo-c4-prompts-architecture: backlog
   qualite-seo-c5-redaction-deux-temps: backlog

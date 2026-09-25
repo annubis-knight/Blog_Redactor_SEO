@@ -2,8 +2,8 @@
 name: epic-qualite-seo-garde-fous
 type: epic
 status: in-progress
-version: 1.0.0
-last_updated: 2026-09-24
+version: 1.1.0
+last_updated: 2026-09-25
 synced_with:
   - _bmad-output/planning-artifacts/prd.md (exigences réservées ici, versées au PRD dans la PR qui les livre ; NFR-MAIN-REQUIREMENTS-TRACE livrée par C0)
   - _bmad-output/planning-artifacts/design-registry.md (une entrée DESIGN par FR livrée)
@@ -79,7 +79,7 @@ Règles communes à tous les chantiers :
 |---|---|---|---|---|---|
 | C0 | Traçabilité : épopée, modèle de PR, cliquet des IDs, dédoublonnage LEX | `chore/tracabilite-programme` | S | NFR-MAIN-REQUIREMENTS-TRACE | en revue |
 | C1 | Correctifs rapides (checklist §8) + cliquet des faux tests | `fix/cerveau-mots-cles`, `fix/moteur-intention-hn`, `fix/redaction-meta-contexte`, `test/hygiene-parcours` | S × 4 | FR-RED-META-CAPTAIN | en revue (4/4 PR) |
-| C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | à faire |
+| C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | en cours (PR à ouvrir) |
 | C3 | Lexique métier | `fix/lexique-metier` | M | FR-LEX-METIER-ONLY | à faire |
 | C4 | Architecture des prompts | `refactor/prompts-architecture` | M | FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT | à faire |
 | C5 | Rédaction en deux temps | `feat/redaction-premier-jet`, `feat/redaction-enrichissement` | L | FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE, FR-RED-SECTION-REWRITE, FR-RED-ENRICH-SOURCES, FR-RED-ENRICH-PASSES, FR-RED-LANG-REVIEW, FR-RED-LINKING-MANUAL | à faire |
@@ -113,7 +113,7 @@ Un test qui cite une exigence doit pointer vers un texte réel. Sinon, on ne sai
 - En mode réel, le parcours passe le texte produit dans les mêmes vérificateurs que `npm run verify`.
 > **En situation.** Le parcours tente de verrouiller un capitaine sans volume. Le test attend l'alarme 🔴, essaie une raison de 5 caractères (refusée), puis une vraie raison (acceptée, badge 🛡).
 
-**Statut** : réservée — C2, puis chaque chantier.
+**Statut** : active — versée au PRD par C2, **livrée en partie** : tests négatifs des portes (navigateur, contrat, composants) et fin des faux verts faute de serveur. Les parcours qui varient leurs choix et le mode réel repassé dans les vérificateurs suivent avec C5 à C8.
 
 ### Vérificateurs et alarme (C2)
 
@@ -125,7 +125,7 @@ Une règle de qualité est écrite une seule fois. L'écran s'en sert pour grise
 - Chaque règle porte un niveau (attention, risque, technique) et l'exigence qu'elle protège.
 > **En situation.** Arnaud contourne l'écran par un appel direct à l'API pour verrouiller un capitaine en NO-GO : le serveur refuse avec les mêmes raisons que l'alarme.
 
-**Statut** : réservée — C2.
+**Statut** : active — versée au PRD par C2 (2026-09-25). Texte amendé à la livraison, le PRD fait foi : le serveur est le seul évaluateur (l'écran affiche son verdict au moment du geste, il ne grise pas le bouton à l'avance) ; un `GateIssue` porte un niveau et un nom de règle stable, le rattachement à l'exigence se fait par vérificateur.
 
 #### FR-INFRA-GATE-WAIVER — Passer outre en prenant sa responsabilité, par écrit
 **Critères d'acceptation**
@@ -135,7 +135,7 @@ Une règle de qualité est écrite une seule fois. L'écran s'en sert pour grise
 - Toutes les dérogations d'un article sont réaffichées à la publication et listées par `npm run verify`.
 > **En situation.** Arnaud verrouille « rénovation grange pierre Gers » sans volume mesuré : « Longue traîne assumée : demandes réelles reçues par téléphone ». Trois semaines plus tard, à la publication, l'outil lui remontre cette dérogation, et il confirme.
 
-**Statut** : réservée — C2.
+**Statut** : active — versée au PRD par C2 (2026-09-25). Texte amendé à la livraison, le PRD fait foi : pas d'auteur enregistré (outil mono-utilisateur) ; badge 🛡 dans l'alarme et dans `npm run verify`, pas encore sur la carte ni dans le récap.
 
 #### FR-CAP-LOCK-GATE — Verrouiller un capitaine déclenche l'alarme quand il est risqué
 Elle remplace FR-CAP-VERDICT-INFORMATIVE.
@@ -145,7 +145,7 @@ Elle remplace FR-CAP-VERDICT-INFORMATIVE.
 - L'alarme propose d'autres candidats avec un volume mesuré quand il y en a.
 > **En situation.** Le pilier « stratégie digitale entreprises Toulouse » : volume inconnu, 9 pages d'agences sur 9. L'alarme explique que Google attend une page de service et propose deux requêtes informationnelles mesurées.
 
-**Statut** : réservée — C2.
+**Statut** : active — versée au PRD par C2 (2026-09-25) ; FR-CAP-VERDICT-INFORMATIVE passée superseded. Texte amendé à la livraison, le PRD fait foi : 🔴 seulement pour un article informationnel face à une SERP commerciale ou transactionnelle, 🟠 pour les autres écarts d'intention ; les alternatives sont les autres candidats explorés pour l'article qui ont un volume mesuré (pas forcément informationnels).
 
 #### FR-LIE-LOCK-GATE — Des lieutenants en nombre suffisant et sans cannibalisation
 **Critères d'acceptation**
@@ -153,7 +153,7 @@ Elle remplace FR-CAP-VERDICT-INFORMATIVE.
 - 🔴 : un lieutenant déjà capitaine ou lieutenant d'un autre article du cocon.
 > **En situation.** Arnaud coche un seul lieutenant pour un pilier. L'alarme indique que le minimum est de 3 et montre les autres candidats de la SERP.
 
-**Statut** : réservée — C2.
+**Statut** : active — versée au PRD par C2 (2026-09-25). Texte amendé à la livraison, le PRD fait foi : un lieutenant déjà *lieutenant* d'un autre article est 🟠 (seul le capitaine d'un autre article est 🔴) ; vérification silencieuse avec bandeau ; les candidats non retenus ne sont pas encore transmis à l'alarme.
 
 #### FR-RED-PUBLISH-GATE — On ne publie pas un article qu'un expert refuserait
 **Critères d'acceptation**
@@ -164,7 +164,7 @@ Elle remplace FR-CAP-VERDICT-INFORMATIVE.
 - Le récap des dérogations de l'article doit être reconfirmé.
 > **En situation.** Le pilier 1013 est rejeté : capitaine absent du H1 (⛔), méta tronquée (⛔), longueur six fois supérieure à la cible (🔴).
 
-**Statut** : réservée — C2.
+**Statut** : active — versée au PRD par C2 (2026-09-25). Texte amendé à la livraison, le PRD fait foi : capitaine absent du H1 = 🔴 (erreur SEO), pas ⛔ ; un H1 absent n'est pas contrôlé (le titre sert de H1), plusieurs H1 dans le corps = ⛔.
 
 #### FR-RED-SEO-SCORE-PERSIST — Le score SEO affiché est enregistré
 **Critères d'acceptation**
@@ -172,7 +172,7 @@ Elle remplace FR-CAP-VERDICT-INFORMATIVE.
 - La liste des articles et la porte de publication lisent la même valeur que celle affichée.
 > **En situation.** Arnaud voit « SEO 72 » dans l'éditeur ; la liste du cocon affiche 72, pas « — ».
 
-**Statut** : réservée — C2.
+**Statut** : active — versée au PRD par C2 (2026-09-25). **Amendée à la livraison**, le PRD fait foi : les scores ne sont pas recalculés par le serveur (les calculateurs vivent à l'écran et dépendent de données chargées dans l'éditeur) ; le score affiché est enregistré avec le texte exact qu'il note, « — » sinon. Aucun écran ne lit encore le score enregistré : `npm run verify` l'affiche.
 
 ### Lexique (C3)
 
@@ -355,7 +355,8 @@ Il remplace FR-CER-BATCH-CREATE.
 
 | Exigence | Devient | Par | Chantier |
 |---|---|---|---|
-| FR-CAP-VERDICT-INFORMATIVE | superseded | FR-CAP-LOCK-GATE | C2 |
+| FR-CAP-VERDICT-INFORMATIVE | superseded ✅ (PRD et registre, 2026-09-25) | FR-CAP-LOCK-GATE | C2 |
+| FR-CAP-CHECK, FR-LIE-CHECK, FR-CAP-AUTO-NOGO | amendées ✅ (l'étape passe par la porte ; un NO-GO se verrouille par dérogation) | — | C2 |
 | FR-RED-ARTICLE | superseded | FR-RED-DRAFT-SINGLE-PASS | C5 |
 | FR-RED-INTERNAL-LINKING | superseded | FR-RED-LINKING-MANUAL | C5 |
 | FR-LIE-HN-STRUCTURE | superseded | FR-HN-TAB | C6 |
@@ -378,7 +379,7 @@ Il remplace FR-CER-BATCH-CREATE.
 
 **Moteur**
 - [x] C1 · M1 — *(PR `fix/moteur-intention-hn`)* Bug de casse `intentMap.get(keyword)` (`keyword-scan.routes.ts:116`).
-- [ ] C2 · M2 — `intentTypes: []` et `painIntentExpected` jamais envoyé (`keyword-scan.routes.ts:185,260-266`).
+- [ ] C2 · M2 — `intentTypes: []` et `painIntentExpected` jamais envoyé (`keyword-scan.routes.ts:185,260-266`). *(Toujours ouvert pour le scan. La porte capitaine, elle, compare déjà l'intention de la SERP à l'intention attendue de l'article — règle `captain-intent-mismatch`, lue dans `articles.pain_intent_expected`.)*
 - [ ] C2 · M3 — `keyword_intent_analyses` n'a plus de producteur : à réactiver ou à supprimer.
 - [ ] C3 · M4 — Mots vides incomplets, `'etre'` sans accent (`tfidf.service.ts:5-13`).
 - [ ] C3 · M5 — Menus et pieds de page aspirés (`scrape-corpus.service.ts:173-188`).
@@ -388,6 +389,8 @@ Il remplace FR-CER-BATCH-CREATE.
 - [x] C1 · M9 — *(PR `fix/moteur-intention-hn`)* `recommend-word-count` attend `{level:'H1', title}`, alors que la base stocke `{level:number, text}` (`articles.routes.ts:266-270`).
 - [ ] C4 · M10 — Cibles de mots et nombres de H2 contradictoires entre le code et les prompts.
 - [ ] C3 · M11 — Le lexique se valide seul (`useLexiqueLocking.ts:59-80`).
+- [x] C2 · M12 — *(branche `feat/verificateurs-alarme`)* `MoteurView.vue` `articleLevelForLieutenants` indexait une table `{ Pilier, Cluster, Support }` qui ne reconnaissait aucun niveau réel : tous les piliers recevaient des lieutenants « intermédiaire ». Corrigé par `parseArticleLevel` ; garde `tests/unit/architecture/article-level-names.test.ts`.
+- [x] C2 · M13 — *(branche `feat/verificateurs-alarme`)* `CaptainPanel.vue` : `lockedKeyword` et `carousel` étaient déclarés après des watchers `immediate` qui les lisent. Ouvert sur un capitaine déjà verrouillé, le panneau levait « Cannot access 'lockedKeyword' before initialization », masqué en production par le gestionnaire d'erreurs de Vue. Déclarations remontées ; couvert par `tests/unit/components/captain-lock-gate.test.ts`.
 
 **Rédaction**
 - [ ] C5 · R1 — `sectionBudgetHint` et `sectionPosition` jamais utilisés ; `wordCountBudget` contient le total de l'article (`article.routes.ts:153-158`).
@@ -405,11 +408,11 @@ Il remplace FR-CER-BATCH-CREATE.
 - [ ] C5 · R13 — La brief récupère les questions PAA du mot-clé **pilier du cocon** (`brief.store.ts:77`), pas du capitaine de l'article : un intermédiaire est rédigé avec les questions du pilier.
 
 **Publication et score**
-- [ ] C2 · P1 — Scores SEO et GEO jamais enregistrés (`editor.store.ts:252-256`).
+- [x] C2 · P1 — *(branche `feat/verificateurs-alarme`, FR-RED-SEO-SCORE-PERSIST)* Scores SEO et GEO jamais enregistrés (`editor.store.ts:252-256`). Désormais enregistrés avec le texte exact qu'ils notent, « — » sinon.
 - [x] C1 · P2 — *(PR `fix/redaction-meta-contexte`)* `phase` jamais mise à jour, car `saveProgress` n'est jamais appelé (`article-progress.store.ts:36`).
-- [ ] C2 · P3 — Publication sans contrôle (`articles.routes.ts:90-113`).
+- [x] C2 · P3 — *(branche `feat/verificateurs-alarme`, FR-RED-PUBLISH-GATE)* Publication sans contrôle (`articles.routes.ts:90-113`). Le passage au statut « publié » est refusé en 422 `GATE_BLOCKED` tant que la porte ne passe pas ; l'aperçu publie avant de télécharger.
 - [x] C1 · P4 — *(PR `fix/redaction-meta-contexte`)* `seo.store.ts:52` passe `String(articleId)` à la place du slug.
-- [ ] C2 · P5 — Capitaine absent du meta title : simple avertissement (`seo-validators.ts:124-126`).
+- [x] C2 · P5 — *(branche `feat/verificateurs-alarme`)* Capitaine absent du meta title : simple avertissement (`seo-validators.ts:124-126`). Il devient 🔴 à la publication, et le capitaine doit figurer en entier (couverture 1 au lieu de 0,75) dans le H1 et le meta title.
 
 **Prompts et docs**
 - [ ] C4 · D1 — Prompts morts : `generate-article.md`, `pain-translate.md`.
@@ -428,14 +431,16 @@ Il remplace FR-CER-BATCH-CREATE.
 
 **Tests**
 - [x] C1 · T1 — *(PR `test/hygiene-parcours`, finalisé dans `ci/reparer-pipeline` : la retouche est effacée par double-clic sur le mot ajouté ; parcours bout-en-bout 12/12 sur les ports dédiés le 2026-09-25)* Le parcours tape « Relu. » dans l'introduction réelle (`bout-en-bout.parcours.test.ts:298-301`).
-- [ ] C2 · T2 — 46 `it.skip` (`captain-validation.test.ts`), plus des `describe.skip` sur le verrouillage des lieutenants et du lexique.
-- [ ] C2 · T3 — Assertions toujours vraies et 15 `return` anticipés. *Plafonnées par le cliquet depuis `test/hygiene-parcours` : 31 `toBeGreaterThanOrEqual(0)`, 10 `typeof … 'boolean'`.*
-- [ ] C2 · T7 — **362 tests** de contrat et de parcours API commencent par `if (requireServer().skip) return` : sans serveur, ils sortent **verts** sans rien vérifier au lieu d'apparaître ignorés. À convertir en `it.skipIf(!serverOk)`. Plafonné à 362 par le cliquet (`test-quality.test.ts`).
+- [ ] C2 · T2 — 46 `it.skip` (`captain-validation.test.ts`), plus des `describe.skip` sur le verrouillage des lieutenants et du lexique. *2026-09-25 : les 46 `it.skip` du capitaine sont retirés (ils visaient une mise en page disparue) ; le verrou et le déverrouillage sont couverts par `captain-lock-gate.test.ts` ; cliquet `itSkip` 91 → 42. Restent les `describe.skip` Lieutenants/Lexique, à réécrire avec C6 (onglet Structure).*
+- [ ] C2 · T3 — Assertions toujours vraies et 15 `return` anticipés. *Plafonnées par le cliquet depuis `test/hygiene-parcours` : 31 `toBeGreaterThanOrEqual(0)`, 10 `typeof … 'boolean'`.* *2026-09-25 : les 21 occurrences de `tests/unit` réécrites en valeurs exactes calculées depuis le code (cliquet 31 → 12 et 10 → 8). Restent celles des tests contre serveur ou navigateur, et les assertions conditionnelles (`if (score >= 70) expect…`, cliquet `conditionalSilent`).*
+- [ ] C3 · M14 — `server/services/keyword/captain-relevance.service.ts:86-92` (`painPointToWords`) garde la ponctuation : « toulouse. » ne correspond jamais à « toulouse ». Le signal PAA × douleur en est sous-évalué (50 au lieu de 60 dans `captain-relevance-haiku-override.service.test.ts`, figé tel quel). Trouvé par T3.
+- [ ] C4 · T11 — `tests/unit/coherence/intent.test.ts:84-98` vérifie une **copie locale** de `intentValueToPseudoScore` qui diverge du vrai code (`shared/scoring-kpi.ts` : autre échelle, autres valeurs, autres types) : le fichier ne prouve rien sur la production. À brancher sur la fonction réelle (l'exporter). Trouvé par T3.
+- [x] C2 · T7 — **362 tests** de contrat et de parcours API commencent par `if (requireServer().skip) return` : sans serveur, ils sortent **verts** sans rien vérifier au lieu d'apparaître ignorés. *Fait le 2026-09-25 : les 362 deviennent `skip()` (contexte du test Vitest — `it.skipIf` était impossible, le serveur n'étant connu qu'au `beforeAll`) ; cliquet à 0.*
 - [x] C2 · T8 — *(branche `ci/reparer-pipeline` : ports dédiés 3410 / 5410, `pretest:browser` ne coupe plus le serveur de dev, `setMockMode` refuse de basculer un serveur forcé en réel)* Les tests navigateur **réutilisaient le serveur de développement** (`reuseExistingServer`) et changent son **mode global** (simulé ou réel). Vu le 2026-09-24 : un mode réel posé pendant un parcours simulé l'a fait appeler la vraie IA (~0,02 $). L'inverse est aussi possible : un utilisateur qui travaille en parallèle voit apparaître des données simulées. À corriger : ports dédiés aux tests, ou refus de démarrer si le mode du serveur est forcé.
-- [ ] C2 · T4 — La simulation `propose-lieutenants` renvoie toujours « plombier ».
+- [x] C2 · T4 — La simulation `propose-lieutenants` renvoie toujours « plombier ». *Fait le 2026-09-25 : les lieutenants simulés dérivent du capitaine demandé (garde `tests/unit/services/mock-propose-lieutenants.test.ts`). Les parcours retiennent désormais le minimum de lieutenants du type, pas seulement le premier.*
 - [x] C1 · T5 — *(PR `test/hygiene-parcours`, test d'architecture `moteur-tabs-helper`)* Le helper `MOTEUR_TABS` liste 5 onglets sur 6 (`moteur-ui.ts:81`).
 - [ ] Dette figée par C0 : 29 IDs cités par des tests mais absents du PRD (`requirements-trace.test.ts`, `LEGACY_ORPHANS`). **27** après `fix/cerveau-mots-cles` (FR-CER-CREATION-HONNETE et FR-CER-TYPE-TOLERANT écrites).
-- [ ] C2 · T6 — `tests/e2e-workflows/moteur.workflow.test.ts` « U5 TTL » compare deux durées (`e2 < e1 × 1,5`) : rouge au hasard (vu le 2026-09-24, vert 3 fois sur 3 en relance). Un test de cache doit vérifier qu'aucun appel externe n'est refait, pas un chronomètre. Même défaut dans `tests/e2e-workflows/cross-workflow.e2e.test.ts` « Cache cross-article » (`t2 < t1 × 2`), rouge une fois le 2026-09-24, vert 3 fois sur 3 en relance.
+- [x] C2 · T6 — `tests/e2e-workflows/moteur.workflow.test.ts` « U5 TTL » compare deux durées (`e2 < e1 × 1,5`) : rouge au hasard (vu le 2026-09-24, vert 3 fois sur 3 en relance). Un test de cache doit vérifier qu'aucun appel externe n'est refait, pas un chronomètre. Même défaut dans `tests/e2e-workflows/cross-workflow.e2e.test.ts` « Cache cross-article » (`t2 < t1 × 2`), rouge une fois le 2026-09-24, vert 3 fois sur 3 en relance. *Fait le 2026-09-25 : les deux tests prouvent le cache par la réponse (`fromCache` faux puis vrai) et, pour U5, par une date de mesure inchangée en base ; plus aucun chronomètre.*
 
 ## 9. Journal
 
@@ -449,3 +454,6 @@ Il remplace FR-CER-BATCH-CREATE.
 | 2026-09-24 | C1 | `test/hygiene-parcours` : T1 (la retouche du parcours est annulée et vérifiée absente en base ; validation finale en CI), T5 (test d'architecture onglets), cliquet étendu à trois faux verts ; T7 et T8 découverts |
 | 2026-09-25 | CI | `ci/reparer-pipeline` : la CI, rouge depuis mai, est réparée (Node 24, bootstrap.sql, PostgreSQL 18, ports) ; tests navigateur isolés du serveur de développement (T8) ; T9 découvert |
 | 2026-09-24 | — | Pendant une exécution passée en mode réel, l'IA du Cerveau a **de nouveau** recopié l'exemple de `cocoon-articles.md` (« Stratégie digitale pour entreprises toulousaines », slug `strategie-digitale-entreprises-toulouse`, déjà pris par le 1013) : le pilier n'a pas pu être créé. Nouvelle preuve pour K7 (C4) |
+| 2026-09-25 | C2 | `feat/verificateurs-alarme` (PR à ouvrir) : portes de qualité et alarme graduée. Vérificateurs purs partagés (`shared/verifiers/` : capitaine, lieutenants, publication ; règles par type dans `shared/constants/article-type-rules.ts`) ; serveur seul évaluateur (`gate.service.ts`), refus 422 `GATE_BLOCKED` sur les étapes capitaine / lieutenants et la publication ; dérogations motivées en table `gate_waivers`, liées à une empreinte des données ; alarme globale unique (`GateAlarm.vue`). Scores SEO/GEO enregistrés avec le texte qu'ils notent. `verify:content` rejoue la porte de publication (le vrai 1013 est refusé) et liste dérogations et scores ; `auto:article` s'arrête sur un refus sans jamais déroger. P1, P3, P5 soldés ; M12 et M13 corrigés au passage. **Versées au PRD et au registre** : FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST (amendée : pas de recalcul serveur) ; FR-CAP-VERDICT-INFORMATIVE superseded ; FR-CAP-CHECK, FR-LIE-CHECK, FR-CAP-AUTO-NOGO amendées. NFR-TEST-BEHAVIORAL versée ensuite (livrée en partie) |
+| 2026-09-25 | C2 | Tests : un test négatif navigateur par porte (`gates.browser.test.ts` : alarme, raison trop courte refusée, dérogation qui tombe, ⛔ non dérogeable) ; parcours qui répondent à l'alarme comme un utilisateur qui assume (`helpers/gate-alarm.ts`) ; T2 (capitaine), T4, T7 soldés ; **NFR-TEST-BEHAVIORAL versée au PRD** (livrée en partie). Revue de la doc : une dérogation tombée n'est plus réaffichée à la publication (`standingWaivers`) |
+| 2026-09-25 | C2 | Revue du diff par un agent, corrections : la publication rejoue les portes capitaine et lieutenants (une dérogation tombée fait revenir l'alerte au lieu de la faire disparaître) ; empreinte des lieutenants limitée aux mots-clés qui recoupent ; un identifiant par occurrence d'alerte (deux chiffres invérifiables = deux dérogations) ; `PUT /progress` ne contourne plus les portes ; 404 au lieu de 500 ; alarme fermée au changement de page et `lockEntry` protégé contre un changement d'article, retour à l'état d'avant si l'enregistrement échoue ; alarme accessible (fond inerte, focus gardé et rendu, champs nommés) ; une seule vérification quand le lieutenant qui active l'étape est coché ; score calculé pendant une sauvegarde envoyé à la fin ; `auto:article` enregistre chaque décision avant de demander l'étape (sinon la porte jugeait un capitaine absent) |

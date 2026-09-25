@@ -1,7 +1,7 @@
 ---
 purpose: 'Registre de conception — détails d''implémentation des exigences PRD'
 companion: '_bmad-output/planning-artifacts/prd.md'
-lastUpdated: '2026-09-22T00:00:00Z'
+lastUpdated: '2026-09-25T00:00:00Z'
 updateReason: 'Création initiale — extraction des détails techniques hors PRD (chantier docs/prd-split-spec-design). Premier lot : §8.2 Dashboard. Lot §8.9 Finalisation (3 entrées DESIGN-FIN-RECAP / DESIGN-FIN-LINK-REDACTION / DESIGN-FIN-CHECK). Tranché au passage : le check `moteur:finalisation_completed` mentionné en suspens dans le PRD n''existe pas dans le code — l''onglet Finalisation est read-only, le Moteur reste à 5 checks (Discovery, Radar, Capitaine, Lieutenants, Lexique). Lot §8.15 Composants UI partagés (DESIGN-UI-RADAR-CARD / DESIGN-UI-AI-PANELS-PATTERN / DESIGN-UI-ARTICLE-SHARED / DESIGN-UI-MOTEUR-SHARED) — 4 entrées formalisant les invariants de cohérence cross-contextes. Constats : `BasketStrip.vue` listé dans le PRD a été supprimé 2026-05-11 (cf. DRIFT-011), `LaboView` et `KeywordRadarTab` mentionnés dans le PRD historique n''existent pas dans le code (cf. DRIFT-012), `ArticleWordCountBar` réellement consommé par `ArticleWorkflowView` et non `ArticleEditorView` (cf. DRIFT-013). Lot §8.4 Moteur — Discovery (6 entrées DESIGN-DIS-SOURCES / DESIGN-DIS-RELEVANCE-FILTER / DESIGN-DIS-AI-ANALYSIS / DESIGN-DIS-CACHE / DESIGN-DIS-SEND-TO-RADAR / DESIGN-DIS-CHECK). Recadrages au passage : (1) PRD initial citait `FR-DIS-INTENT-SCAN` sur Discovery alors que `/api/keywords/intent-scan` est exclusivement consommé par Radar via `useResonanceScore` (DRIFT-008) ; (2) Discovery utilise 7 sources parallèles (4 angles Google Suggest + IA Claude + DataForSEO + courte-traîne IA), filtre relevance 2-passes conditionnel `STRICT_PASS_TRIGGER_RATIO = 0.10` cap LRU 500, cache DB-first 30 j sur `keyword_discoveries(seed, lang)` avec auto-save au repos, envoi au Radar via UPSERT direct `radar_explorations.generated_keywords` (basket mémoire supprimé 2026-05-11), check `MOTEUR_DISCOVERY_DONE` émis exclusivement depuis `useMoteurCrossTabState.handleSendToRadar` (pas depuis `DiscoveryPanel.vue`) ; (3) refonte 2026-05-11 a aussi supprimé `DiscoveryAiPanel.vue` + `useDiscoveryRanking.ts` au profit d''un usage direct de `<AiPanel>` + curation backend. Lot §8.3 Moteur règles transversales (24 entrées DESIGN-MOT-* couvrant les phases, gating souple, sélection article, recap publié, mode bimodal, checks, transitions, KPIs bruts, cache cascade, injection painPoint/strategy, cross-tab payload, cannibalisation, compteurs DB, réconciliation, cache externe, basket déprécié, NFR découplage Lieutenants/Lexique, NFR décomposition keyword_metrics). Tranchés au passage : (a) `DELETE /progress/check` n''existe pas — c''est `POST /articles/:id/progress/uncheck` (cf. DRIFT-008) ; (b) `getOrFetch` n''est pas un helper centralisé exporté par `cache-helpers.ts` mais un pattern réimplémenté localement par service (cf. DRIFT-009) ; (c) migration `020_normalize_completed_checks.sql` est dans `migrations/_archive/`, donc historique appliqué, pas source de vérité courante (cf. DRIFT-010). Lot §8.10 Rédaction (13 entrées DESIGN-RED-* couvrant brief IA, outline, génération article section-by-section, méta, éditeur TipTap, scoring SEO live, 12 actions contextuelles, internal linking, reduce-section, humanize-section, word count target, progress, checks, panels layout, IA Brief). Stores Pinia vérifiés : `useEditorStore`, `useOutlineStore`, `useSeoStore`, `useGeoStore`, `useBriefStore`, `useLinkingStore`, `useArticleProgressStore` — tous présents et conformes (cf. exports `defineStore` dans `src/stores/article/`). Constat : `useInternalLinking` consomme `useLinkingStore` (kebab-case dans `src/stores/keyword/linking.store.ts`), pas un store dédié article — cohérent avec la matrice cocon globale. Surprise consignée DRIFT-015 (référence ProseMirror position dans `internal_links.position` flottante après remaniement lourd, problème connu mais non bloquant). Lot §8.13 Intégrations externes (12 entrées DESIGN-EXT-* : DATAFORSEO, DATAFORSEO-COSTGUARD, DATAFORSEO-SANDBOX, GSC-OAUTH, GSC-PERFORMANCE, GSC-KEYWORD-GAP, AI-MULTI-PROVIDER, AI-FALLBACK, CLAUDE, GEMINI, EMBEDDINGS, AUTOCOMPLETE-GOOGLE). Stores Pinia vérifiés via grep `export const use` sur `src/stores/external/` et `src/stores/ui/` : `useGscStore`, `useLocalStore`, `useCaptainTriggerStore`, `useCostLogStore`, `useNotificationStore`, `useRuntimeModeStore`, `useWorkflowNavStore` — tous présents et conformes. Constats : (1) toggle navbar mock/real unique pilote à la fois DataForSEO sandbox ET provider IA (cohérence UX assumée) ; (2) GSC token persisté en fichier JSON `data/gsc-token.json`, pas en DB — décision historique outil solo ; (3) embedding multilingue local Xenova/multilingual-e5-small, dégradation gracieuse si non chargeable (60s lazy-load au premier usage) ; (4) `autocomplete.service.ts` localisé dans `services/keyword/`, pas `services/external/` — drift historique consigné DRIFT-016. Lot §8.14 Infrastructure transversale (28 entrées DESIGN-INFRA-* couvrant caches courts/permanents `external_api_cache`/`keyword_metrics`/`paa-cache`/`keyword_discoveries`, wrapper API `apiGet/Post/Put/Patch/Delete/Stream`, validation Zod, prompt loader + escape hardening, constantes workflow `MOTEUR_*`/`CERVEAU_*`/`REDACTION_*`, module score unifié + ESLint no-fallback + KPI nullable/display-dash/consistency/scoring-nullsafe, check:health + dependency-cruiser, runtime-mode toggle mock/réel, scrape-corpus neutre, logger structuré, error handler central, health-check + DB connection check, cost-log store, tables persistées `paa_explorations`/`intent_explorations` legacy/`keywords_seo`/`local_entities`/`lieutenant_explorations`/`keyword_discoveries`/`article_strategies`/`cocoon_strategies`/`article_micro_contexts`). Stores Pinia vérifiés : `useCostLogStore`, `useRuntimeModeStore`, `useArticleKeywordsStore`, `useRadarExplorationStore`, `useKeywordDiscoveryStore`, `useArticleStrategyStore` — tous présents conformes. Surprises consignées : DRIFT-017 (`shared/schemas/` contient 13 fichiers, pas 41 comme annoncé PRD pré-migration), DRIFT-018 (`paa-cache.service.ts` lit/écrit `keyword_metrics.paa_questions` avec freshness 1j, pas une table `paa_cache` dédiée 90j comme annoncé PRD), DRIFT-019 (règle ESLint `no-restricted-syntax` couvre uniquement `Score`, pas `Density/Volume/Difficulty/Cpc/Competition` annoncés PRD), DRIFT-020 (`lieutenant_explorations.locked_at` mentionné PRD pré-migration mais absent du schéma snapshot courant).'
 synced_with:
   - '_bmad-output/planning-artifacts/prd.md'
@@ -2317,9 +2317,11 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 ---
 
-### DESIGN-CAP-VERDICT-INFORMATIVE
+### DESIGN-CAP-VERDICT-INFORMATIVE — *(superseded 2026-09-25)*
 
 **Réf PRD :** [FR-CAP-VERDICT-INFORMATIVE](./prd.md#fr-cap-verdict-informative)
+
+**Statut** : superseded le 2026-09-25 par [`DESIGN-CAP-LOCK-GATE`](#design-cap-lock-gate) (épopée qualité SEO, C2). Le verdict (`computeVerdict`) et le bouton « Verrouiller » toujours actif restent en place ; ce qui change : `CaptainPanel.lockEntry` interroge la porte `captain-lock` **avant** de verrouiller, et le serveur refuse l'étape `moteur:capitaine_locked` en 422 `GATE_BLOCKED` tant que la porte ne passe pas. Un NO-GO devient une alerte 🔴 `captain-verdict-nogo`, franchissable par dérogation motivée (`DESIGN-INFRA-GATE-WAIVER`). Le verdict de la porte est calculé côté serveur avec les mêmes fonctions que la carte. Contenu historique ci-dessous.
 
 **Refs code**
 - [shared/kpi-scoring.ts](../../shared/kpi-scoring.ts) — `computeVerdict()` (GO / ORANGE / NO-GO / GRAY).
@@ -2337,7 +2339,66 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 **Réf PRD :** [FR-CAP-VERDICT-GATING](./prd.md#fr-cap-verdict-gating)
 
-**Statut** : deprecated 2026-04-28. Remplacée par `DESIGN-CAP-VERDICT-INFORMATIVE`. Historiquement, le bouton « Valider Capitaine » était disabled tant que le verdict n'était pas GO. Logique supprimée pour rendre le verdict purement informatif.
+**Statut** : deprecated 2026-04-28. Remplacée par `DESIGN-CAP-VERDICT-INFORMATIVE`. Historiquement, le bouton « Valider Capitaine » était disabled tant que le verdict n'était pas GO. Logique supprimée pour rendre le verdict purement informatif. *(Elle-même remplacée le 2026-09-25 par `DESIGN-CAP-LOCK-GATE` : pas de retour au bouton grisé, une porte serveur avec dérogation.)*
+
+---
+
+### DESIGN-CAP-LOCK-GATE
+
+**Réf PRD :** [FR-CAP-LOCK-GATE](./prd.md#fr-cap-lock-gate--verrouiller-un-capitaine-risqué-déclenche-lalarme)
+
+**Refs code**
+- [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) — vérificateur pur `verifyCaptain(input: CaptainGateInput): GateIssue[]` ; `expectedCaptainIntent(level, expected)` (intention du Cerveau, sinon `informational` pour un pilier, sinon `null`).
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `captainGate(articleId, keywordOverride?)` (privée) appelée par `evaluateArticleGate(id, 'captain-lock', { keyword })`.
+- [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — `lockEntry(idx)` : en mode workflow, `gateAlarm.ensure(articleId, 'captain-lock', { keyword: newKw })` **avant** tout changement. Refus ou « Revenir corriger » → `return` (ni `lockCaptain`, ni `saveKeywords`, ni `emit('check-completed')`, `lockedKeyword` inchangé). Erreur réseau → `notify.error('Vérification du capitaine impossible : …')` et pas de verrou. Passage → `lockCaptain` → `saveKeywords` ; si elle renvoie `false`, `notify.error` et **pas** d'étape (le serveur évaluerait l'ancien capitaine) ; sinon check `MOTEUR_CAPITAINE_LOCKED`.
+- [src/stores/article/article-keywords.store.ts](../../src/stores/article/article-keywords.store.ts) — `saveDecisions` / `saveKeywords` renvoient `Promise<boolean>` (plus d'erreur avalée pour les étapes gardées).
+- [src/composables/moteur/useMoteurArticleSync.ts](../../src/composables/moteur/useMoteurArticleSync.ts) — `emitCheckCompleted` passe par `gateAlarm.runThroughGate(id, addCheck)` (filet : réconciliations au montage, chemins qui n'appellent pas `ensure`) ; `refreshCapitainesMap` / `refreshExplorationCounts` dans le `finally`, après la réponse du serveur. [src/views/MoteurView.vue](../../src/views/MoteurView.vue) injecte `gateAlarm: useGateAlarmStore()`.
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `POST /articles/:id/progress/check` : `CHECK_GATES[MOTEUR_CAPITAINE_LOCKED] = 'captain-lock'` → 422 `GATE_BLOCKED` si refus.
+- [scripts/auto-article/checks.ts](../../scripts/auto-article/checks.ts) — `emitCheck` : refus lisible, arrêt du run (cf. `DESIGN-INFRA-VERIFIER-SHARED`).
+
+**Règles**
+
+| Règle (`GateIssue.rule`) | Niveau | Condition |
+|---|---|---|
+| `captain-missing` | ⛔ | Aucun capitaine (ni `keyword` en requête, ni `article_keywords.capitaine`, ni `articles.captain_keyword_locked`) — levée par le service. |
+| `captain-volume-unknown` | 🔴 | `volume === null` (jamais mesuré ou absent de `keyword_metrics`). |
+| `captain-volume-zero` | 🔴 | `volume === 0`. |
+| `captain-verdict-nogo` | 🔴 | Verdict `NO-GO`. |
+| `captain-intent-mismatch` | 🔴 / 🟠 | Intention SERP ≠ intention attendue. 🔴 si attendue `informational` et SERP `commercial` ou `transactional` ; 🟠 sinon. Aucune alerte si l'une des deux est `null`. |
+| `captain-autocomplete-empty` | 🟠 | `autocompleteCount === 0` (`null` = suggestions jamais récupérées → pas d'alerte). |
+
+Alternatives (🔴 volume, NO-GO, intention) : candidats de `captain_explorations` de l'article joints à `keyword_metrics` avec `search_volume IS NOT NULL`, volume > 0, hors mot-clé examiné, triés par volume décroissant, 5 au plus, formatés « mot-clé (N recherches/mois) ».
+
+**Flux DB**
+
+*Lecture* (`captainGate`) : `getArticleById` (type, `pain_intent_expected`, `captain_keyword_locked`, titre) → `getArticleKeywords` (`article_keywords.capitaine`) → `getKeywordMetrics(keyword)` (`keyword_metrics`) → verdict = `computeVerdict(summaries.map(s => scoreKpi(s.name, s.rawValue, getThresholds(article.type))))` sur `captainKpisFromMetricsRow(...)` — mêmes fonctions que la carte (`shared/kpi-scoring.ts`) ; `serpIntent` = `metrics.intentLabel` ; `autocompleteCount` = nombre de suggestions si `autocompleteSource` renseigné, sinon `null` → `exploredCandidates(articleId)` (`captain_explorations ⨝ keyword_metrics`).
+
+*Écriture* : aucune par la porte. Les dérogations passent par `saveGateWaivers` (cf. `DESIGN-INFRA-GATE-WAIVER`).
+
+*Séquence d'un verrouillage* : clic « Verrouiller » → `GET /api/articles/:id/gates/captain-lock?keyword=<candidat>` → (alarme, dérogation `POST …/gates/captain-lock/waivers` avec le même `keyword`) → `lockCaptain` + `PUT` des décisions → `emit('check-completed')` → `POST /progress/check` → le serveur réévalue sur le capitaine **enregistré** : même empreinte (mot-clé normalisé, mêmes métriques), donc la dérogation posée pendant l'alarme couvre l'étape.
+
+**Stores Pinia**
+- `useGateAlarmStore` — `ensure` (verdict + alarme), `runThroughGate` (check refusé en 422 → alarme → rejeu unique).
+- `useArticleKeywordsStore` — `lockCaptain`, `saveKeywords` (booléen).
+
+**Décisions d'architecture**
+- **Vérifier avant de toucher** : l'ancien flux verrouillait puis émettait l'étape. Désormais, la porte est consultée avec le candidat (`keyword` en requête) avant toute mutation ; un refus laisse le capitaine précédent verrouillé.
+- **Empreinte sans alternatives** : `hashInput = { keyword: normalizeKeyword(keyword), level, volume, autocompleteCount, verdict, serpIntent, expectedIntent }`. Explorer un nouveau candidat ne fait pas tomber une dérogation ; changer de capitaine ou voir ses métriques changer, si.
+- **Pilier = guide par défaut** : `expectedCaptainIntent` suppose `informational` pour un pilier sans intention précisée au Cerveau (le 1013 visait un guide sur une SERP d'agences).
+- **Mode `libre`** non gardé (aucun appelant ne le passe depuis le retrait du Labo).
+- **Checklist M2 non soldée** : le scan (`keyword-scan.routes.ts`) n'envoie toujours ni `intentTypes` ni `painIntentExpected` ; la porte, elle, lit directement `articles.pain_intent_expected` et compare l'intention SERP à l'intention attendue (`captain-intent-mismatch`).
+- **M13 corrigé au passage** : `carousel`, `carouselEntries` et `lockedKeyword` sont déclarés avant les watchers `immediate: true` qui les lisent ; ouvert sur un capitaine déjà verrouillé, le panneau levait « Cannot access 'lockedKeyword' before initialization » (masqué en production par le gestionnaire d'erreurs de Vue).
+
+**Critères d'acceptation techniques**
+- AC.CAPGATE.1 : cas du 1013 — 🔴 volume inconnu, 🔴 SERP commerciale pour un pilier, 🟠 autocomplétion vide, alternatives mesurées triées sans le mot-clé lui-même ; pas de NO-GO inventé sur un ORANGE. *(test : `tests/unit/shared/verifiers-captain.test.ts`, dans `npm run verify`)*
+- AC.CAPGATE.2 : écart d'intention hors guide/vente → 🟠 ; intention inconnue → aucune alerte ; pilier sans intention = informationnel. *(même fichier)*
+- AC.CAPGATE.3 : porte refusée → ni verrou, ni enregistrement, ni étape ; le précédent reste verrouillé ; vérification impossible → pas de verrou + message ; porte franchie → verrou, enregistrement puis étape, dans cet ordre ; enregistrement raté → pas d'étape. Le montage sur un capitaine déjà verrouillé couvre M13. *(test : `tests/unit/components/captain-lock-gate.test.ts`)*
+- AC.CAPGATE.4 : ⛔ sans capitaine → 422 avec l'évaluation complète ; 🔴 capitaine jamais mesuré : raison trop courte refusée, vraie raison acceptée, puis l'étape passe ; la dérogation tombe quand le capitaine change. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C2) ; remplace `DESIGN-CAP-VERDICT-INFORMATIVE`.
+
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-CHECK`, `DESIGN-CAP-AUTO-NOGO`, `DESIGN-CAP-RELEVANCE-INTENT-SIGNAL`.
 
 ---
 
@@ -2397,9 +2458,9 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - [shared/constants/workflow-checks.constants.ts](../../shared/constants/workflow-checks.constants.ts) — constante `MOTEUR_CAPITAINE_LOCKED`.
 - [src/components/moteur/CaptainPanel.vue](../../src/components/moteur/CaptainPanel.vue) — émission au lock.
 
-**Flux DB** : POST `/articles/:id/progress/check` (ou `/uncheck`) → mise à jour `articles.completed_checks`.
+**Flux DB** : POST `/articles/:id/progress/check` (ou `/uncheck`) → mise à jour `articles.completed_checks`. Depuis le 2026-09-25, le check est gardé par la porte `captain-lock` (`CHECK_GATES`) : refus en 422 `GATE_BLOCKED`, `completed_checks` inchangé (cf. `DESIGN-CAP-LOCK-GATE`).
 
-**Watchers & réactivité** : réconciliation défensive au mount (cf. `DESIGN-MOT-CHECK-RECONCILIATION`).
+**Watchers & réactivité** : réconciliation défensive au mount (cf. `DESIGN-MOT-CHECK-RECONCILIATION`) ; l'émission passe par `useGateAlarmStore.runThroughGate` (`useMoteurArticleSync.emitCheckCompleted`).
 
 ---
 
@@ -2876,8 +2937,74 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 **Décisions d'architecture**
 - Règle de gating duale — éviter qu'un check Lieutenants soit posé alors que la Rédaction n'a pas la structure Hn dont elle a besoin.
+- Depuis le 2026-09-25, la règle duale ne fait que **déclencher** la vérification : c'est la porte `lieutenants-lock` qui accorde ou retire le check (cf. `DESIGN-LIE-LOCK-GATE`). Le composant réel est `src/components/moteur/LieutenantsPanel.vue` (`LieutenantsSelection.vue`, cité plus haut, n'existe plus).
 
-**Voir aussi** : `DESIGN-MOT-WORKFLOW-GATING-DUAL`, `DESIGN-MOT-CHECK-RECONCILIATION`.
+**Voir aussi** : `DESIGN-MOT-WORKFLOW-GATING-DUAL`, `DESIGN-MOT-CHECK-RECONCILIATION`, `DESIGN-LIE-LOCK-GATE`.
+
+---
+
+### DESIGN-LIE-LOCK-GATE
+
+**Réf PRD :** [FR-LIE-LOCK-GATE](./prd.md#fr-lie-lock-gate--des-lieutenants-en-nombre-suffisant-et-sans-cannibalisation)
+
+**Refs code**
+- [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) — vérificateur pur `verifyLieutenants(input: LieutenantsGateInput): GateIssue[]` ; `normalizeKeyword` (trim, minuscules, accents retirés, espaces réduits) ; types `CocoonKeywordClaim`, `LieutenantsGateInput`.
+- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES[level].minLieutenants` : pilier 3, intermédiaire 2, spécialisé 1.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `lieutenantsGate(articleId)` (privée) appelée par `evaluateArticleGate(id, 'lieutenants-lock')`.
+- [src/components/moteur/LieutenantsPanel.vue](../../src/components/moteur/LieutenantsPanel.vue) — `lieutenantsGateBlocked` (ref `GateEvaluation | null`), `syncLieutenantsGate` (verdict **silencieux** via `useGateAlarmStore().evaluate`), `requestLieutenantsGate` (sérialise les vérifications : deux cases cochées vite ne doublent pas l'étape), `reviewLieutenantsGate` (bouton du bandeau → `ensure` → alarme), `gateBannerText` (première raison + « (+n autres) »), bandeau `data-testid="lieutenants-gate-banner"`.
+- [src/views/MoteurView.vue](../../src/views/MoteurView.vue) — `articleLevelForLieutenants` = `parseArticleLevel(selectedArticle.type)` ([shared/utils/article-level.ts](../../shared/utils/article-level.ts)) : correctif M12.
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `CHECK_GATES[MOTEUR_LIEUTENANTS_LOCKED] = 'lieutenants-lock'` → 422 `GATE_BLOCKED`.
+
+**Règles**
+
+| Règle (`GateIssue.rule`) | Niveau | Condition |
+|---|---|---|
+| `lieutenants-too-few` | 🔴 | Moins de lieutenants (non vides) que `minLieutenants` du type. Alternatives : `unselectedCandidates` (5 au plus). |
+| `lieutenant-is-captain:<mot normalisé>` | 🟠 | Le lieutenant est le capitaine de l'article. |
+| `lieutenant-cannibalization:<mot normalisé>` | 🔴 | Le lieutenant est le **capitaine** d'un autre article du cocon. |
+| `lieutenant-shared:<mot normalisé>` | 🟠 | Le lieutenant est **lieutenant** d'un autre article du cocon (et capitaine d'aucun). |
+
+L'élément fait partie de l'identifiant de règle : chaque conflit se déroge séparément (`DESIGN-INFRA-GATE-WAIVER`).
+
+**Flux DB**
+
+*Lecture* (`lieutenantsGate`) : `getArticleById` (type) → `loadArticleRow` (`articles.cocoon_id`) → `getArticleKeywords` (`article_keywords.capitaine`, `lieutenants`) → revendications du cocon : `SELECT a.titre, ak.capitaine, ak.lieutenants FROM articles a JOIN article_keywords ak ON ak.article_id = a.id WHERE a.cocoon_id = $1 AND a.id <> $2`.
+
+*Écriture* : les décisions (`article_keywords`) sont enregistrées par le panneau **avant** la vérification (`saveDecisions` ; `false` → pas de vérification, pas d'étape) ; l'étape passe par `POST /progress/check` / `/uncheck` via `emit('check-completed' | 'check-removed')`.
+
+**Watchers & réactivité**
+- Watcher `lieutenantsCheckActive` (règle duale de `DESIGN-LIE-CHECK`), transition `false → true` : `lieutenants-updated` → `saveDecisions` → sommaire (`hnToOutline`) + recommandation de longueur → `requestLieutenantsGate()`. Plus d'émission directe du check.
+- Réconciliation au montage : règle remplie mais check absent → `requestLieutenantsGate()` (la porte décide) ; check présent mais règle non remplie → retrait (inchangé).
+- Watcher `lockedLieutenantsSignature` (lieutenants verrouillés, minuscules, triés) : un ajout ou un retrait alors que la règle duale est déjà remplie → `saveDecisions` → `requestLieutenantsGate()` (la transition `false → true` reste traitée par le watcher précédent).
+- Au montage, un check déjà présent avec une règle duale remplie n'est pas revérifié (`noop`).
+- `syncLieutenantsGate` : porte passée → bandeau effacé et `check-completed` si absent ; porte refusée → bandeau et `check-removed` si présent. Ignore un verdict arrivé après un changement d'article ou une règle duale redevenue fausse.
+- Transition `true → false` : bandeau effacé, `check-removed` (inchangé).
+
+**Stores Pinia**
+- `useGateAlarmStore` — lu **à la demande** dans les fonctions (pas au `setup`) : les tests qui montent le panneau sans Pinia ne tombent pas au montage.
+- `useArticleKeywordsStore` — `saveDecisions` (booléen), `lockedLieutenants`.
+- `useArticleProgressStore` — `getProgress(id).completedChecks` (le check est-il déjà présent ?).
+
+**Décisions d'architecture**
+- **Vérification silencieuse** : une alarme modale à chaque case cochée rendrait l'onglet inutilisable (le minimum n'est atteint qu'après plusieurs clics). Le bandeau informe, l'alarme s'ouvre à la demande.
+- **La porte lit la base** : décisions enregistrées d'abord, sinon le serveur jugerait un état périmé.
+- **Empreinte** : `{ level, captain normalisé, lieutenants normalisés triés, claims "rôle:mot" triés }`. Un changement dans les autres articles du cocon fait aussi tomber les dérogations.
+- **Minimum ≠ fourchette conseillée** : `minLieutenants` (3 / 2 / 1) est un plancher de porte ; le compteur de `DESIGN-LIE-CHECKBOX-COUNT` garde sa fourchette.
+- **M12 corrigé au passage** : `articleLevelForLieutenants` indexait une table `{ Pilier, Cluster, Support }` qui ne reconnaissait aucun niveau réel : tous les piliers recevaient des lieutenants « intermédiaire ». Garde : `tests/unit/architecture/article-level-names.test.ts`.
+
+**Limite connue**
+- `unselectedCandidates` est toujours `[]` côté service : l'alerte `lieutenants-too-few` n'affiche pas de pistes, bien que le vérificateur sache les montrer (les candidats restent visibles dans l'onglet).
+
+**Critères d'acceptation techniques**
+- AC.LIEGATE.1 : 🔴 un seul lieutenant pour un pilier, pistes = candidats non retenus ; minimum atteint → passe ; 🔴 cannibalisation ; 🟠 partage ; 🟠 identique au capitaine ; une alerte par lieutenant. *(test : `tests/unit/shared/verifiers-lieutenants.test.ts`, dans `npm run verify`)*
+- AC.LIEGATE.2 : porte refusée → aucune étape, bandeau ; décisions enregistrées avant le verdict ; bandeau → alarme → dérogation → étape ; « Revenir corriger » → étape non validée ; porte passée → étape émise une fois, sans bandeau ; lieutenant ajouté → porte relancée → étape ; étape retirée si la porte refuse après un changement. *(test : `tests/unit/components/lieutenants-gate.test.ts`)*
+- AC.LIEGATE.3 : 🔴 pilier avec un seul lieutenant refusé par le serveur. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.LIEGATE.4 : aucune table de traduction `Cluster` / `Support` vers un niveau. *(test : `tests/unit/architecture/article-level-names.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C2).
+
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-LIE-CHECK`, `DESIGN-LIE-CHECKBOX-COUNT`, `DESIGN-MOT-CANNIBALIZATION`.
 
 ---
 
@@ -3648,7 +3775,7 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 
 *Lecture* : aucune (calcul pur sur données déjà en mémoire).
 
-*Écriture* : aucune **directement**. Le `seo_score` final est persisté dans `articles.seo_score` (NUMERIC) à la sauvegarde de l'article — mais c'est `editorStore.saveArticle` (cf. `DESIGN-RED-EDITOR-TIPTAP`) qui pousse, pas `useSeoScoring`. Lors d'un futur chantier, `seoStore.score?.global` pourrait être inclus dans le payload de save pour figer la valeur côté DB.
+*Écriture* : aucune **directement** par `useSeoScoring`. Depuis le 2026-09-25, `seoStore.recalculate` remet chaque score à `editorStore.recordScore('seo', global, seoScoreKey(...))`, et c'est `editorStore.saveArticle` qui l'envoie dans `articles.seo_score` — uniquement s'il a été calculé sur le texte enregistré (cf. `DESIGN-RED-SEO-SCORE-PERSIST`). *(Avant cette date, le score n'était jamais envoyé : `articles.seo_score` restait vide.)*
 
 **Stores Pinia**
 - `useSeoStore` — héberge `score: SeoScore | null` + `isCalculating` + `scoreLevel` (computed) + `hasIssues` (computed). Délègue `wordCount` à `editorStore` pour rester SSOT.
@@ -3669,6 +3796,63 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - `DESIGN-RED-EDITOR-TIPTAP` — source de `content` watchée.
 - `DESIGN-RED-WORD-COUNT-TARGET` — SSOT word count partagé.
 - `DESIGN-RED-PANELS-LAYOUT` — toggle UI du panel SEO.
+- `DESIGN-RED-SEO-SCORE-PERSIST` — enregistrement du score avec le texte qu'il note.
+
+---
+
+### DESIGN-RED-SEO-SCORE-PERSIST
+
+**Réf PRD :** [FR-RED-SEO-SCORE-PERSIST](./prd.md#fr-red-seo-score-persist--le-score-enregistré-est-celui-affiché-pour-ce-texte)
+
+**Refs code**
+- [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — header `AUTHORITY:` (`article_content.content`, `articles.meta_*`, `seo_score`, `geo_score`). État **non réactif** : `scoreSnapshots: Record<'seo' | 'geo', { value, key } | null>` (dernier score calculé et empreinte du texte noté) et `lastSaved: { articleId, keys, persisted } | null` (empreintes et scores du dernier texte en base). Fonctions : `currentScoreKeys()`, `freshScore(kind, keys)` (le score si son empreinte = celle du texte courant, sinon `null`), `recordScore(kind, value, key)` (exposée), `saveArticle` (envoie `seoScore` / `geoScore` = `freshScore(...)`), `loadExistingContent({ …, articleId?, seoScore?, geoScore? })` (initialise `lastSaved` sur le texte chargé), `resetEditor` (vide les deux).
+- [src/utils/score-key.ts](../../src/utils/score-key.ts) — `seoScoreKey(content, metaTitle, metaDescription)` = `content \0 metaTitle \0 metaDescription`. L'empreinte GEO est le contenu seul.
+- [src/stores/article/seo.store.ts](../../src/stores/article/seo.store.ts) — `recalculate` → `useEditorStore().recordScore('seo', score.global, seoScoreKey(content, metaTitle, metaDescription))`.
+- [src/stores/article/geo.store.ts](../../src/stores/article/geo.store.ts) — `recalculate` → `useEditorStore().recordScore('geo', score.global, content)`.
+- [src/views/ArticleWorkflowView.vue](../../src/views/ArticleWorkflowView.vue) — `onMounted` : `loadExistingContent({ content, metaTitle, metaDescription, articleId: id, seoScore, geoScore })`.
+- [shared/schemas/article.schema.ts](../../shared/schemas/article.schema.ts) — `seoScore` / `geoScore` : `z.number().nullable().optional()`.
+- [server/services/article/article-content.service.ts](../../server/services/article/article-content.service.ts) — écrit `articles.seo_score` / `geo_score` quand le champ est présent (même `null`) ; les relit pour `GET /articles/:id/content`.
+- [scripts/verify-content-gates.ts](../../scripts/verify-content-gates.ts) — `describeScores(seo, geo)` → « Scores enregistrés : SEO 72 · GEO — » ; [scripts/verify-content.ts](../../scripts/verify-content.ts) lit `a.seo_score, a.geo_score`.
+
+**Endpoints**
+- `PUT /api/articles/:id` — `{ content, metaTitle, metaDescription, seoScore, geoScore }` (sauvegarde) ou `{ seoScore }` / `{ geoScore }` seul (`recordScore`).
+- `GET /api/articles/:id/content` — renvoie `seoScore`, `geoScore`.
+
+**Tables consommées** : `articles.seo_score` (NUMERIC), `articles.geo_score` (NUMERIC).
+
+**Flux DB**
+
+*Écriture, cas 1 (score prêt avant la sauvegarde)* : frappe → `useSeoScoring` (debounce 300 ms + idle) → `seoStore.recalculate` → `recordScore('seo', v, key)` mémorise `{ v, key }` → autosave → `saveArticle` : `freshScore` compare `key` à l'empreinte du texte envoyé → `seoScore: v` (sinon `null`) → `PUT` → `lastSaved` = empreintes + scores envoyés.
+
+*Écriture, cas 2 (score calculé juste après la sauvegarde)* : `recordScore` voit que `key` = `lastSaved.keys.seo` et que `v` ≠ `lastSaved.persisted.seo` → `PUT { seoScore: v }` seul ; en cas d'échec, `persisted` revient à la valeur précédente (log WARN).
+
+*Écriture, cas 3 (ouverture d'un article)* : `loadExistingContent` pose `lastSaved` sur le texte chargé avec les scores en base → le premier calcul sur ce texte intact tombe dans le cas 2 et rejoint la base s'il diffère.
+
+*Lecture* : aucun écran ne lit encore `seo_score` / `geo_score` ; seul `npm run verify:content` les affiche.
+
+**Stores Pinia**
+- `useEditorStore` — autorité : décide de ce qui part en base.
+- `useSeoStore`, `useGeoStore` — producteurs : remettent chaque score calculé à `recordScore`.
+
+**Décisions d'architecture**
+- **Pas de recalcul serveur** (écart assumé avec l'épopée) : `calculateSeoScore` / `calculateGeoScore` vivent côté client (`src/utils/`) et dépendent de données chargées à l'écran (mots-clés, lexique, slug, cible de longueur). Un recalcul serveur aurait produit une valeur différente de celle affichée.
+- **Empreinte = texte noté** : le score SEO dépend du contenu **et** de la méta ; le GEO du contenu seul. Retoucher la méta périme le SEO, pas le GEO.
+- **« Inconnu » plutôt qu'un chiffre faux** : un score d'une autre version n'est jamais envoyé ; la base porte `null` (affiché « — »), conformément à `FR-INFRA-NO-SCORE-FALLBACK`.
+- **Pas d'état réactif** : les empreintes ne s'affichent pas ; elles ne décident que de ce qui part en base.
+- **Pas de doublon** : un score identique à `lastSaved.persisted` n'est pas renvoyé.
+
+**Limites connues**
+- La liste des articles et la porte de publication ne lisent pas encore `seo_score` (l'épopée le prévoyait) : à brancher dans un chantier suivant.
+- Seule `ArticleWorkflowView` appelle `loadExistingContent` avec `articleId` ; `ArticleEditorView` hydrate par `setContent` + `markClean` : `lastSaved` y reste `null`, le premier score calculé après ouverture n'est envoyé qu'à la sauvegarde suivante.
+
+**Critères d'acceptation techniques**
+- AC.SCORE.1 : un score calculé sur le texte enregistré part avec lui ; un score d'une autre version n'est jamais enregistré (`null`) ; une méta modifiée périme le SEO, pas le GEO ; un score calculé après la sauvegarde, sur le texte enregistré, est enregistré seul ; un score d'un texte pas encore enregistré n'envoie rien ; le même score n'est pas renvoyé deux fois. *(test : `tests/unit/stores/editor-score-persist.test.ts`)*
+- AC.SCORE.2 : un score inconnu s'affiche « — » dans l'audit, jamais 0. *(test : `tests/unit/scripts/verify-content-gates.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C2, checklist P1).
+
+**Voir aussi** : `DESIGN-RED-SEO-LIVE`, `DESIGN-RED-EDITOR-TIPTAP`, `DESIGN-INFRA-NO-SCORE-FALLBACK`, `DESIGN-RED-PUBLISH-GATE`.
 
 ---
 
@@ -3928,6 +4112,70 @@ Avant la correction du 12 mai 2026, un early-return `if (res.rows.length === 0) 
 - ~~`DESIGN-RED-CHECKS`~~ — retirée 2026-05-13 (plus de checks workflow Rédaction, cf. DRIFT-002).
 - `DESIGN-DASH-PROGRESS` — consommateur dashboard.
 - `DESIGN-INFRA-WORKFLOW-CHECKS-CONSTANTS` — catalogue des constantes.
+
+---
+
+### DESIGN-RED-PUBLISH-GATE
+
+**Réf PRD :** [FR-RED-PUBLISH-GATE](./prd.md#fr-red-publish-gate--on-ne-publie-pas-un-article-quun-expert-refuserait)
+
+**Refs code**
+- [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — vérificateur pur `verifyPublish(input: PublishGateInput): GateIssue[]` (`PublishGateInput` = `SeoInput` + `existingWaivers`) ; `countToSourceMarkers(html)` (`data-a-sourcer` ou `[à sourcer`) ; constantes `TOLERATED_AT_PUBLISH` (`hn-h1-in-body`), `RISKY_CONTENT_WARNINGS` (`unverifiable-claim`, `seo-capitaine-not-in-meta-title`).
+- [shared/content-validators.ts](../../shared/content-validators.ts) — `validateArticleContent`, `validateArticleMeta` (rejoués tels quels).
+- [shared/seo-validators.ts](../../shared/seo-validators.ts) — `validateArticleSeo` ; `checkCapitaine` exige désormais une couverture **1** (capitaine entier, variantes grammaticales admises par `tokensMatch`) dans le titre (H1) et le meta title, au lieu de 0,75 : « stratégie » manquait au H1 du 1013 sans alerte.
+- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES[level].wordsMax` : pilier 3 500, intermédiaire 2 500, spécialisé 1 500.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `publishGate(articleId)` (privée), via `evaluateArticleGate(id, 'publish')`.
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `PUT /articles/:id/status` : si `status === 'publié'`, évaluation ; refus → `respondGateBlocked` (422 `GATE_BLOCKED`, « Publication refusée : n point(s) à traiter avant de publier. »). Les autres statuts ne sont pas gardés.
+- [src/views/ArticlePreviewView.vue](../../src/views/ArticlePreviewView.vue) — `handleExport` : `gateAlarm.runThroughGate(id, () => apiPut('/articles/:id/status', { status: 'publié' }))` **avant** `downloadHtml()`. `{ ok: false }` → `exportNotice` « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » (`data-testid="preview-export-notice"`) ; autre erreur → « Publication impossible : … ».
+- [scripts/verify-content.ts](../../scripts/verify-content.ts) — rejoue `evaluateArticleGate(a.id, 'publish')` pour chaque article rédigé (cf. `DESIGN-INFRA-VERIFIER-SHARED`).
+
+**Conversion des niveaux**
+
+| Source | Niveau |
+|---|---|
+| Erreur de `validateArticleContent` (`content-empty`, `truncated-block`, `ai-monologue`, `orphan-text`, `markdown-residue`, `forbidden-tag`, `hn-empty`, `hn-level-jump`, `hn-multiple-h1`) | ⛔ |
+| Erreur de `validateArticleMeta` (`meta-*-missing`, `meta-*-length`, `meta-*-truncated`) | ⛔ |
+| Erreur de `validateArticleSeo` (`seo-capitaine-missing`, `seo-off-offer`, `seo-capitaine-not-in-title`, `seo-thin-content`, `seo-slug-format`) | 🔴 |
+| Avertissements `unverifiable-claim`, `seo-capitaine-not-in-meta-title` (P5) | 🔴 |
+| Autres avertissements | 🟠 |
+| `hn-h1-in-body` | ignoré (l'export le retire) |
+| `article-too-long` : mots visibles > `wordsMax` du type | 🔴 |
+| `draft-to-source-remaining` : marqueurs « à sourcer » | 🔴 |
+| `waiver-reconfirm:<porte>:<règle>` : une par dérogation **encore debout** d'une porte amont (`standingWaivers`) | 🟠 |
+| `captain-lock:<règle>`, `lieutenants-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication | niveau d'origine |
+| Une même règle visant plusieurs endroits (deux chiffres invérifiables…) | un identifiant par occurrence, suffixé par l'extrait (`distinctRules`) |
+
+**Flux DB**
+
+*Lecture* (`publishGate`) : `evaluateArticleGate(id, 'captain-lock')` et `evaluateArticleGate(id, 'lieutenants-lock')` (portes amont rejouées sur les données du jour) → `getArticleById` (titre, slug, type, `captain_keyword_locked`) → `getArticleContent` (`article_content.content`, `articles.meta_title`, `meta_description`) → `getArticleKeywords` (capitaine, lieutenants). H1 vérifié = premier `<h1>` du contenu, sinon `articles.titre`.
+
+*Écriture* : `articles.status = 'publié'` seulement si la porte passe (`updateArticleStatus`). Dérogations de publication (reconfirmations 🟠, risques 🔴) via `saveGateWaivers`.
+
+**Stores Pinia** : `useGateAlarmStore` (`runThroughGate` : 422 → alarme → rejeu unique de la publication).
+
+**Décisions d'architecture**
+- **Publier avant de télécharger** : l'ancien `handleExport` téléchargeait puis marquait publié (erreur avalée). Désormais le fichier n'est produit que si le statut a été accepté.
+- **Rejouer, pas réécrire** : la porte ne duplique aucune règle ; elle convertit les verdicts des valideurs existants en niveaux.
+- **Rejouer les portes amont** *(revue du 2026-09-25)* : une dérogation tombée ne doit pas faire disparaître l'alerte qu'elle couvrait. La publication rejoue donc les portes capitaine et lieutenants : une dérogation encore debout est réaffichée (🟠 reconfirmation), une alerte non couverte remonte à son niveau d'origine (`captain-lock:captain-volume-zero` 🔴, par exemple) et se traite là, dans l'alarme de publication.
+- **Empreinte** : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, upstream, waivers }` où `upstream` = `gateId:inputHash` des portes amont et `waivers` = `gateId:rule:inputHash` des dérogations debout (triées). Un changement en amont rouvre la décision ; les dérogations de la publication elle-même sont exclues (sinon en enregistrer une changerait l'empreinte et l'annulerait aussitôt).
+- **Écarts avec l'épopée (le code fait foi)** : le capitaine absent du H1 est 🔴 (erreur SEO), pas ⛔ ; un H1 absent du corps n'est pas une alerte (le titre de l'article sert de H1) ; plusieurs H1 dans le corps sont ⛔ (`hn-multiple-h1`).
+
+**Limites connues**
+- Le score SEO enregistré (`DESIGN-RED-SEO-SCORE-PERSIST`) n'est pas encore lu par la porte.
+- Les portes lexique et structure (C3, C6) ne sont pas encore rejouées à la publication.
+
+**Tests** : `tests/unit/shared/verifiers-publish.test.ts` (1013 rejeté, `article-too-long`, identifiants distincts par occurrence), `tests/contract-api/gates.contract.test.ts` (dérogation tombée non réaffichée et alerte revenue ; cannibalisation apparue après coup remontée à la publication), `tests/browser-e2e/gates.browser.test.ts` (⛔ sans champ, ni statut ni fichier).
+
+**Critères d'acceptation techniques**
+- AC.PUBGATE.1 : la fixture réelle du pilier 1013 (`tests/fixtures/articles/1013-pilier.html`) est rejetée — ⛔ meta description coupée, 🔴 capitaine absent du titre et du meta title, 🔴 pilier six fois trop long ; aucune dérogation ne couvre un ⛔. *(test : `tests/unit/shared/verifiers-publish.test.ts`, dans `npm run verify`)*
+- AC.PUBGATE.2 : 🔴 marqueurs « à sourcer » ; 🟠 chaque dérogation réaffichée ; article dans sa fourchette → pas d'`article-too-long` ; H1 dans le corps toléré. *(même fichier)*
+- AC.PUBGATE.3 : ⛔ un article sans contenu ne se publie pas, même avec une raison ; un changement de statut autre que « publié » n'est pas gardé. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.PUBGATE.4 : capitaine en entier exigé dans le titre et le meta title — le H1 et le meta title du 1013, qui ne contiennent pas « stratégie », lèvent chacun un 🔴. *(test : `tests/unit/shared/verifiers-publish.test.ts` ; règles de base dans `tests/unit/shared/seo-validators.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C2, checklist P3 et P5).
+
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`.
 
 ---
 
@@ -5248,6 +5496,114 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 ---
 
+### DESIGN-INFRA-VERIFIER-SHARED
+
+**Réf PRD :** [FR-INFRA-VERIFIER-SHARED](./prd.md#fr-infra-verifier-shared--un-même-contrôle-à-lécran-au-serveur-et-dans-laudit)
+
+**Refs code**
+- [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — noyau pur (aucune I/O) : types `GateLevel` (`attention` | `risque` | `technique`), `GateIssue` (`rule`, `level`, `message`, `risk?`, `excerpt?`, `alternatives?`), `GateResult`, `GateEvaluation` (`gateId`, `issues`, `inputHash`, `passed`, `blocking`, `waived`) ; `GATE_IDS` (`captain-lock`, `lieutenants-lock`, `lexique-lock`, `hn-lock`, `draft`, `publish`), `GATE_LABELS` (« verrouiller le capitaine », « valider les lieutenants », « publier »…), `evaluateGate(gateId, issues, waivers, inputHash)`, `hashGateInput(input)`, `worstLevel(issues)`.
+- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
+- [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES` : pilier 2 500 mots [1 800–3 500], 6–8 H2, 3 lieutenants ; intermédiaire 1 800 [1 200–2 500], 4–6, 2 ; spécialisé 1 200 [800–1 500], 3–5, 1. Lu par `verifyLieutenants` (`minLieutenants`) et `verifyPublish` (`wordsMax`). Premier pas de `FR-INFRA-TYPE-RULES-SSOT` (réservée C4) : prompts et calculs de longueur n'y sont pas encore branchés.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`.
+- [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — évaluation et dérogations (Zod : `z.enum(GATE_IDS)`), monté sous `/api` dans [server/index.ts](../../server/index.ts).
+- [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `respondGateBlocked(res, evaluation, message)` ; points de passage gardés : `POST /articles/:id/progress/check` (check présent dans `CHECK_GATES`) et `PUT /articles/:id/status` vers `publié`.
+- [src/services/api.service.ts](../../src/services/api.service.ts) — `ApiRequestError` (`status`, `code`, `details`) levée par `handleApiError` : le refus arrive à l'écran avec l'évaluation.
+- [src/stores/ui/gate-alarm.store.ts](../../src/stores/ui/gate-alarm.store.ts) — `evaluate` (verdict sans affichage), `ensure` (verdict + alarme), `open`, `runThroughGate(articleId, action)` (action refusée en 422 → alarme → rejeu **une** fois), `isGateBlocked(err)` (reconnaît un refus à sa forme `{ code: 'GATE_BLOCKED', details: { gateId, blocking[] } }`, pas à sa classe).
+- [src/components/shared/GateAlarm.vue](../../src/components/shared/GateAlarm.vue) — alarme unique, montée une fois dans [src/App.vue](../../src/App.vue) (cf. `DESIGN-INFRA-GATE-WAIVER`).
+- [scripts/verify-content.ts](../../scripts/verify-content.ts) + [scripts/verify-content-gates.ts](../../scripts/verify-content-gates.ts) — `publishGateIssues(await evaluateArticleGate(a.id, 'publish'))` → avertissement `publish-gate-refused` (« La porte de publication refuserait cet article : n point(s) (⛔ a 🔴 b) ») ; `logsConfig.level = 'WARN'` pendant l'audit ; `pool.end()` en sortie.
+- [scripts/auto-article/checks.ts](../../scripts/auto-article/checks.ts) — `emitCheck` : un `ApiError` de code `GATE_BLOCKED` est relancé avec `describeGateRefusal(check, details)` (une ligne par point, icône de niveau, « Décidez dans le Moteur… puis relancez le run ») ; [scripts/auto-article/http-client.ts](../../scripts/auto-article/http-client.ts) : `ApiError.details`.
+
+**Endpoints**
+- `GET /api/articles/:id/gates/:gateId?keyword=` → `{ data: GateEvaluation }` ; 400 `VALIDATION_ERROR` (id ou porte invalide), 404 `GATE_ERROR` (article introuvable).
+- `POST /api/articles/:id/progress/check` et `PUT /api/articles/:id/status` (`publié`) → **422** `{ error: { code: 'GATE_BLOCKED', message, details: GateEvaluation } }` quand la porte refuse.
+- Dérogations : cf. `DESIGN-INFRA-GATE-WAIVER`.
+
+**Flux**
+1. Geste à l'écran (verrouiller, valider, publier) → `useGateAlarmStore` : `ensure` / `evaluate` (`GET …/gates/:gateId`) ou `runThroughGate` (l'action gardée elle-même).
+2. Serveur : `evaluateArticleGate` → lecture PostgreSQL → vérificateur pur → empreinte → `gate_waivers` de la porte → `evaluateGate`.
+3. Refus → `GateAlarm.vue` affiche `blocking` (niveau, message, risque, extrait, alternatives) et rappelle `waived` (🛡).
+4. Audit : `npm run verify` (via `verify:content`) rejoue la porte de publication de chaque article rédigé avec le même service.
+
+**Décisions d'architecture**
+- **Serveur seul évaluateur** : l'écran n'évalue jamais une porte et ne calcule aucune empreinte ; il affiche le verdict du serveur. Même verdict aux trois endroits par construction. Seul code partagé exécuté dans le navigateur : `waiverDraftsFrom` / `worstLevel` / `MIN_WAIVER_REASON_LENGTH` pour activer le bouton de l'alarme — le serveur revérifie tout (`waiverProblem`).
+- **Vérificateurs purs** dans `shared/verifiers/` : testables sans base ni serveur, rejoués à l'identique par l'audit.
+- **Refus = 422 avec l'évaluation en `details`** : l'écran n'a pas à redemander le verdict pour ouvrir l'alarme ; les outils en ligne de commande l'affichent tel quel.
+- **La porte garde l'étape et le statut, pas l'écriture des décisions** : l'enregistrement de `article_keywords` (autosave, cases cochées) reste libre ; c'est l'étape (`articles.completed_checks`) — qui ouvre la Finalisation et la Rédaction — et le statut `publié` qui sont gardés.
+- **Rattachement aux exigences** par module (`verifyCaptain` ↔ `FR-CAP-LOCK-GATE`…) et par les en-têtes de fichiers : `GateIssue` ne porte pas l'ID d'exigence, mais un `rule` stable.
+- **Portes réservées** (`lexique-lock` C3, `hn-lock` C6, `draft` C5) : acceptées par la route, évaluées sans alerte tant que leur chantier n'est pas livré.
+- **Audit tolérant** : un article déjà rédigé que la porte refuserait donne un avertissement (`publish-gate-refused`), pas une erreur — ses défauts sont déjà comptés par les validateurs.
+- **Aucune dérogation automatique** : le script `auto:article` s'arrête sur un refus ; seul un humain déroge.
+
+**Critères d'acceptation techniques**
+- AC.VERIF.1 : `evaluateGate` passe sans alerte, bloque toute alerte non couverte ; empreinte stable quel que soit l'ordre des clés, et qui change dès qu'une valeur change ; `worstLevel`. *(test : `tests/unit/shared/verifiers-gate.test.ts`, dans `npm run verify`)*
+- AC.VERIF.2 : refus en 422 avec l'évaluation complète ; porte inconnue → 400. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.VERIF.3 : `runThroughGate` ouvre l'alarme sur un 422 `GATE_BLOCKED` puis rejoue l'action une fois ; laisse passer les autres erreurs ; `isGateBlocked` reconnaît un refus à sa forme ; une nouvelle alarme annule la précédente. *(test : `tests/unit/stores/gate-alarm.store.test.ts`)*
+- AC.VERIF.4 : l'audit transforme une porte refusée en avertissement qui compte chaque niveau, et reste muet quand elle passe. *(test : `tests/unit/scripts/verify-content-gates.test.ts`, dans `npm run verify`)*
+- AC.VERIF.5 : un refus de porte arrête `auto:article` avec chaque point et son niveau ; les autres erreurs passent telles quelles. *(test : `tests/unit/scripts/auto-article/checks.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C2).
+
+**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
+
+---
+
+### DESIGN-INFRA-GATE-WAIVER
+
+**Réf PRD :** [FR-INFRA-GATE-WAIVER](./prd.md#fr-infra-gate-waiver--passer-outre-en-prenant-sa-responsabilité-par-écrit)
+
+**Refs code**
+- [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — `WAIVER_CATEGORIES` (`longue-traine`, `donnee-manquante`, `marque`, `autre`) et `WAIVER_CATEGORY_LABELS` (« Longue traîne assumée », « Donnée manquante dans l'outil », « Mot-clé de marque », « Autre ») ; `MIN_WAIVER_REASON_LENGTH = 20` ; `waiverProblem(issue, waiver)` (motif du refus, ou `null`) ; `waiverDraftsFrom(blocking, answers)` → `{ drafts, missing }` ; types `GateWaiver`, `WaiverDraft`, `WaiverAnswer`, `WaiverRefusal`. `evaluateGate` : une dérogation couvre une alerte si même porte, même `rule`, même `inputHash`, recevable (`waiverProblem === null`) et niveau ≠ `technique`. `hashGateInput` : FNV-1a 32 bits sur un JSON à clés triées par code de caractère (pas `localeCompare`), identique navigateur / serveur ; ce n'est pas une signature de sécurité.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `saveGateWaivers(articleId, gateId, drafts, { keyword? })` : réévalue, refuse (`WaiverRefusal`) un brouillon sans alerte correspondante (« Cette alerte n'existe plus : les données ont changé… ») ou irrecevable, enregistre les autres avec l'empreinte **courante**, renvoie `{ evaluation, refused }` ; `listArticleWaivers(articleId)` (ordre `created_at`).
+- [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — `waiversBodySchema` (Zod) : `keyword?` (1–200), `waivers` 1–50 × `{ rule (1–300), category? (enum | null), reason? (≤ 2000 | null) }`.
+- [server/db/changes/2026-09-25-gate-waivers.sql](../../server/db/changes/2026-09-25-gate-waivers.sql) — migration idempotente, capturée par `npm run db:snapshot` dans [server/db/schema.sql](../../server/db/schema.sql) et [server/db/bootstrap.sql](../../server/db/bootstrap.sql).
+- [src/components/shared/GateAlarm.vue](../../src/components/shared/GateAlarm.vue) — titre « Avant de <porte> » ; par point : icône et libellé de niveau, message, « Le risque : … », extrait, « À la place : » (alternatives) ; ⛔ « Ce point doit être corrigé : il ne se déroge pas. » ; 🟠 case « J'ai lu » ; 🔴 liste de catégories + raison + compteur « n / 20 » ; motif de refus du serveur sous le point ; `<details>` « 🛡 n dérogation(s) déjà posée(s) » ; boutons « Revenir corriger » et « J'ai lu, je continue » / « Je prends la responsabilité et je continue » / « Correction nécessaire » (grisé si ⛔). `role="alertdialog"`, focus à l'ouverture, Échap et clic sur le fond = « Revenir corriger ». Réponses remises à zéro à chaque nouvelle empreinte.
+- [src/stores/ui/gate-alarm.store.ts](../../src/stores/ui/gate-alarm.store.ts) — `submit(drafts)` → `POST …/waivers` avec le `keyword` de la requête ; porte passée → l'alarme se ferme et la promesse de `ensure` / `open` se résout à `true` ; sinon `refused` + nouvelle évaluation ; `cancel()` → `false`, rien d'enregistré.
+- [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — `waiver-reconfirm:<porte>:<règle>` 🟠 : reconfirmation à la publication.
+- [scripts/verify-content-gates.ts](../../scripts/verify-content-gates.ts) — `describeWaivers(waivers)` : « 🛡 [captain-lock · captain-volume-zero] verrouiller le capitaine : Longue traîne assumée — « raison » » (« lu » pour un accusé 🟠).
+
+**Endpoints**
+- `POST /api/articles/:id/gates/:gateId/waivers` → `{ data: { evaluation: GateEvaluation, refused: WaiverRefusal[] } }`.
+- `GET /api/articles/:id/waivers` → `{ data: GateWaiver[] }`.
+
+**Tables consommées** : `gate_waivers` (`id` SERIAL, `article_id` INTEGER NOT NULL → `articles(id)` ON DELETE CASCADE, `gate_id` TEXT, `rule` TEXT, `level` TEXT CHECK `attention` | `risque`, `category` TEXT CHECK NULL | `longue-traine` | `donnee-manquante` | `marque` | `autre`, `reason` TEXT, `input_hash` TEXT NOT NULL, `created_at` TIMESTAMPTZ DEFAULT `now()`, UNIQUE `(article_id, gate_id, rule, input_hash)`, index `idx_gate_waivers_article`). Ligne dans la matrice PRD §8.14.bis.
+
+**Flux DB**
+
+*Écriture* : réponses dans l'alarme → `waiverDraftsFrom` (bouton actif quand `missing` est vide) → `submit` → `POST …/waivers` → `saveGateWaivers` → `INSERT … ON CONFLICT (article_id, gate_id, rule, input_hash) DO UPDATE SET level, category, reason, created_at = now()` → réévaluation → alarme fermée si la porte passe, sinon motifs affichés.
+
+*Lecture* : `evaluateArticleGate` (dérogations de la porte) ; `publishGate` (toutes, pour la reconfirmation et l'empreinte) ; `GET /waivers` ; `npm run verify:content` (`listArticleWaivers`).
+
+**Empreinte par porte** (`hashInput`)
+- `captain-lock` : `{ keyword normalisé, level, volume, autocompleteCount, verdict, serpIntent, expectedIntent }` — alternatives exclues.
+- `lieutenants-lock` : `{ level, captain normalisé, lieutenants normalisés triés, revendications du cocon triées }`.
+- `publish` : `{ title, slug, level, content, metaTitle, metaDescription, capitaine, lieutenants, waivers des autres portes }` — dérogations de publication exclues.
+
+**Décisions d'architecture**
+- **Une dérogation = un point × des données** : clé `(article, porte, règle, empreinte)`. Dès que les données changent, l'empreinte change et l'ancienne ligne ne couvre plus rien (elle reste en base comme historique).
+- **Un élément par règle** : pour les règles multi-éléments, l'élément fait partie de `rule` (`lieutenant-cannibalization:<mot>`) ; une raison ne couvre jamais tous les conflits d'un coup.
+- **🟠 = accusé de lecture** : ligne avec `category` et `reason` à `NULL`.
+- **Le serveur revérifie** : le client ne peut ni forger une dérogation ⛔, ni contourner les 20 caractères.
+- **Pas de colonne « auteur »** : outil local mono-utilisateur, sans authentification (cf. `architecture.md`). Écart assumé avec l'épopée, qui citait « qui ».
+- **Badge 🛡 dans l'alarme et l'audit uniquement** : l'épopée prévoyait aussi un badge sur la carte du capitaine et dans le récapitulatif ; non livré.
+- **Alarme globale unique** : une seule instance dans `App.vue`, une seule requête à la fois (une nouvelle alarme résout la précédente à `false`).
+
+**Empreinte des lieutenants** *(revue du 2026-09-25)* : seuls les mots-clés du cocon qui recoupent le capitaine ou un lieutenant de l'article y entrent. Un voisin sans rapport, créé plus tard, ne fait donc pas tomber une dérogation ; un voisin qui prend un de nos lieutenants pour capitaine, si.
+
+**Critères d'acceptation techniques**
+- AC.WAIVER.1 : 🟠 un accusé suffit ; 🔴 exige catégorie + 20 caractères ; ⛔ jamais dérogeable, même avec une raison ; une dérogation tombe quand les données vérifiées changent ; elle ne vaut que pour sa porte et sa règle ; `waiverProblem` dit combien de caractères manquent ; `waiverDraftsFrom` laisse manquants les 🔴 trop courts et tous les ⛔. *(test : `tests/unit/shared/verifiers-gate.test.ts`, dans `npm run verify`)*
+- AC.WAIVER.2 : alarme invisible sans refus ; risque et alternatives d'un 🔴 affichés ; bouton grisé sous 20 caractères ; 🟠 case « J'ai lu » ; ⛔ sans champ, bouton jamais actif ; envoi puis fermeture quand le serveur laisse passer ; « Revenir corriger » n'enregistre rien ; motif du refus affiché. *(test : `tests/unit/components/GateAlarm.test.ts`)*
+- AC.WAIVER.3 : un refus du serveur garde l'alarme ouverte avec son motif ; les dérogations acceptées résolvent à `true` avec le mot-clé examiné. *(test : `tests/unit/stores/gate-alarm.store.test.ts`)*
+- AC.WAIVER.4 : raison trop courte refusée par le serveur puis vraie raison acceptée ; dérogation qui tombe quand le capitaine change ; ⛔ publication d'un article vide refusée même avec une raison ; dérogations relues. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.WAIVER.5 : chaque dérogation listée par l'audit avec sa porte, sa catégorie et sa raison. *(test : `tests/unit/scripts/verify-content-gates.test.ts`, dans `npm run verify`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C2) ; table `gate_waivers` (migration `2026-09-25-gate-waivers.sql`).
+
+**Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`.
+
+---
+
 ## §8.15 — Composants UI partagés (DESIGN-UI)
 
 ### DESIGN-UI-RADAR-CARD
@@ -6302,6 +6658,42 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Voir aussi**
 - `DESIGN-MAIN-CHECK-HEALTH` — santé globale.
+
+---
+
+#### DESIGN-TEST-BEHAVIORAL
+
+**Réf PRD :** [NFR-TEST-BEHAVIORAL](./prd.md#nfr-test-behavioral--les-tests-se-comportent-comme-un-utilisateur-y-compris-quand-il-se-trompe)
+
+**Refs code — tests négatifs des portes**
+- [tests/browser-e2e/gates.browser.test.ts](../../tests/browser-e2e/gates.browser.test.ts) — un test navigateur par porte. Les défauts sont posés en base pour ne pas dépendre du hasard des données simulées :
+  - capitaine : volume passé à 0 dans `keyword_metrics` après le scan ;
+  - lieutenants : un seul lieutenant verrouillé sur un pilier, via `PUT /articles/:id/keywords` et `POST /articles/:id/lieutenant-explorations` ;
+  - publication : meta description coupée.
+  Le test vérifie : alarme → « Revenir corriger » sans effet → raison de 10 caractères refusée (bouton grisé, compteur « 10 / 20 ») → vraie raison acceptée et enregistrée → données changées, l'alarme revient → ⛔ sans champ de dérogation, ni statut « publié » ni fichier.
+- [tests/contract-api/gates.contract.test.ts](../../tests/contract-api/gates.contract.test.ts) — les mêmes refus au niveau de l'API : 422 `GATE_BLOCKED`, raison trop courte dans `refused`, dérogation qui tombe au changement de capitaine, ⛔ non dérogeable, dérogation tombée non réaffichée à la publication.
+- [tests/unit/components/GateAlarm.test.ts](../../tests/unit/components/GateAlarm.test.ts), [captain-lock-gate.test.ts](../../tests/unit/components/captain-lock-gate.test.ts), [lieutenants-gate.test.ts](../../tests/unit/components/lieutenants-gate.test.ts) — les mêmes comportements, composant par composant.
+- [tests/browser-e2e/helpers/gate-alarm.ts](../../tests/browser-e2e/helpers/gate-alarm.ts) — gestes d'un utilisateur qui assume, pour les tests dont le sujet n'est pas la porte. `passThroughGate` attend la réponse du serveur plutôt qu'un délai ; `publishThroughGate` attend le 422 de la publication ; un ⛔ fait échouer le test.
+
+**Refs code — plus de faux verts**
+- [tests/unit/coherence/test-quality.test.ts](../../tests/unit/coherence/test-quality.test.ts) — cliquets qui ne peuvent que baisser :
+  - `silentServerSkip` à 0 : les 362 `if (requireServer().skip) return` sont devenus `skip()` (contexte du test Vitest). Sans serveur, le test apparaît « ignoré » ;
+  - `itSkip` à 42 : les 46 `it.skip` de `captain-validation.test.ts` visaient une mise en page disparue et ont été retirés ;
+  - `alwaysTrueGte0`, `typeofBoolean` : assertions toujours vraies, réécrites au fil de l'eau.
+- [server/services/external/mock-fixtures/streams.ts](../../server/services/external/mock-fixtures/streams.ts) — la simulation `propose-lieutenants` dérive ses lieutenants du capitaine demandé ; auparavant, elle répondait « plombier » à tout (T4). Garde : [tests/unit/services/mock-propose-lieutenants.test.ts](../../tests/unit/services/mock-propose-lieutenants.test.ts).
+
+**Décisions d'architecture**
+- **Défauts posés en base, pas espérés** : un test négatif qui compterait sur une réponse simulée imparfaite deviendrait vert le jour où la simulation s'améliorerait. On écrit le défaut, puis on agit à l'écran.
+- **Répondre à l'alarme n'est pas la contourner** : les tests de parcours y répondent avec une raison réelle, que la porte revérifie ; seul un ⛔ les arrête.
+- **Ignoré plutôt que vert** : `skip()` du contexte Vitest remplace le `return` anticipé ; le rapport distingue « rien vérifié » de « vérifié ».
+
+**Critères d'acceptation techniques**
+- AC.TESTB.1 : chaque porte livrée a au moins un test négatif navigateur et un test de contrat.
+- AC.TESTB.2 : `silentServerSkip` reste à 0 ; `itSkip`, `alwaysTrueGte0` et `typeofBoolean` ne remontent pas.
+- AC.TESTB.3 : une simulation d'IA répond au sujet demandé (garde `mock-propose-lieutenants`).
+
+**Limite connue**
+- Les critères « parcours qui varient leurs choix » et « mode réel repassé dans les vérificateurs » sont pour C5 à C8.
 
 ---
 
