@@ -38,7 +38,8 @@ export interface CocoonBackfillPlan {
 }
 
 const PARENT_LEVEL: Record<ArticleLevel, ArticleLevel | null> = { pilier: null, intermediaire: 'pilier', specifique: 'intermediaire' }
-const LEVEL_ORDER: Record<ArticleLevel, number> = { pilier: 0, intermediaire: 1, specifique: 2 }
+/** Du haut de l'arbre vers le bas : les parents sont traités avant leurs enfants. */
+const TOP_DOWN: ArticleLevel[] = ['pilier', 'intermediaire', 'specifique']
 const STOP = new Set(['les', 'des', 'une', 'pour', 'dans', 'avec', 'sur', 'par', 'son', 'ses', 'sa', 'aux', 'du', 'de', 'la', 'le', 'et', 'ou', 'un', 'vos', 'votre', 'nos', 'notre', 'comment', 'quoi', 'quel', 'quelle'])
 /** Part des mots propres à une section retrouvés dans le sujet de l'article, au-delà de laquelle on rattache. */
 const MIN_AFFINITY = 0.5
@@ -76,7 +77,7 @@ export function planCocoonBackfill(
 
   const orphans = articles
     .filter(a => a.level !== 'pilier' && a.parentId === null)
-    .sort((x, y) => LEVEL_ORDER[x.level] - LEVEL_ORDER[y.level] || x.id - y.id)
+    .sort((x, y) => TOP_DOWN.indexOf(x.level) - TOP_DOWN.indexOf(y.level) || x.id - y.id)
 
   // 1. Le parent de chaque orphelin.
   const parentOf = new Map<number, PlanArticle>()
