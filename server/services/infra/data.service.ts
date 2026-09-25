@@ -407,11 +407,26 @@ export async function updateArticleInCocoon(
   return (res.rowCount ?? 0) > 0
 }
 
-export async function removeArticleFromCocoon(id: number): Promise<boolean> {
-  // Set cocoon_id to NULL — article stays in DB
-  const res = await pool.query(`UPDATE articles SET cocoon_id = NULL WHERE id = $1`, [id])
+/**
+ * Détache un article de son cocon : il reste en base (`cocoon_id` NULL). Un
+ * article dont des enfants sont encore dans le cocon est refusé — ils perdraient
+ * leur parent (C7). Détaché, un enfant quitte l'arbre et libère sa section.
+ */
+export async function removeArticleFromCocoon(id: number): Promise<'removed' | 'not-found' | 'has-children'> {
+  const children = await pool.query<{ n: number }>(
+    `SELECT count(*)::int AS n FROM articles WHERE parent_id = $1 AND cocoon_id IS NOT NULL`,
+    [id],
+  )
+  if (Number(children.rows[0]?.n) > 0) {
+    log.info('removeArticleFromCocoon refusé : enfants dans le cocon', { id, children: children.rows[0]?.n })
+    return 'has-children'
+  }
+  const res = await pool.query(
+    `UPDATE articles SET cocoon_id = NULL, parent_id = NULL, parent_section = NULL WHERE id = $1`,
+    [id],
+  )
   log.info('removeArticleFromCocoon', { id })
-  return (res.rowCount ?? 0) > 0
+  return (res.rowCount ?? 0) > 0 ? 'removed' : 'not-found'
 }
 
 /**

@@ -69,7 +69,7 @@ const proposedArticleRowStub = {
   name: 'ProposedArticleRow',
   template: '<div class="proposed-article-row-stub" />',
   props: ['article', 'index', 'compositionResult', 'structuralWarnings'],
-  emits: ['regenerate-title', 'regenerate-keyword', 'select-keyword', 'select-title', 'toggle-accept', 'remove'],
+  emits: ['regenerate-title', 'regenerate-keyword', 'select-keyword', 'select-title', 'remove'],
 }
 
 const strategyStepStub = {

@@ -129,7 +129,7 @@ describe('DELETE /articles/:id', () => {
   const handler = findHandler('delete', '/articles/:id')
 
   it('deletes article and returns success', async () => {
-    mockRemoveArticleFromCocoon.mockResolvedValueOnce(true)
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce('removed')
 
     const req = { params: { id: '1' } } as unknown as Request
     const res = createMockRes()
@@ -140,8 +140,23 @@ describe('DELETE /articles/:id', () => {
     expect(res.json).toHaveBeenCalledWith({ data: { id: 1, removed: true } })
   })
 
+  // C7 : un parent détaché laisserait ses enfants sans parent dans le cocon.
+  it('refuse (409 HAS_CHILDREN) de détacher un article qui a encore des enfants', async () => {
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce('has-children')
+
+    const req = { params: { id: '7' } } as unknown as Request
+    const res = createMockRes()
+
+    await handler(req, res)
+
+    expect(res.status).toHaveBeenCalledWith(409)
+    expect(res.json).toHaveBeenCalledWith({
+      error: expect.objectContaining({ code: 'HAS_CHILDREN', message: expect.stringMatching(/enfant|sections/i) }),
+    })
+  })
+
   it('returns 404 when article not found', async () => {
-    mockRemoveArticleFromCocoon.mockResolvedValueOnce(false)
+    mockRemoveArticleFromCocoon.mockResolvedValueOnce('not-found')
 
     const req = { params: { id: '99' } } as unknown as Request
     const res = createMockRes()

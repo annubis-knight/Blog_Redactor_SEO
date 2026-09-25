@@ -175,9 +175,16 @@ router.delete('/articles/:id', async (req, res) => {
   }
 
   try {
-    const removed = await removeArticleFromCocoon(id)
-    if (!removed) {
+    const outcome = await removeArticleFromCocoon(id)
+    if (outcome === 'not-found') {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article ${id} not found` } })
+      return
+    }
+    if (outcome === 'has-children') {
+      res.status(409).json({ error: {
+        code: 'HAS_CHILDREN',
+        message: 'Des articles sont nés de ses sections : retirez-les d’abord du cocon, sinon ils perdraient leur parent.',
+      } })
       return
     }
     res.json({ data: { id, removed: true } })

@@ -1,26 +1,24 @@
 /**
- * AUTHORITY: PostgreSQL `cocoon_strategies.data.proposedArticles` (JSONB, état de
- *            travail des propositions), puis `articles` et `keywords_seo` une fois
- *            une proposition acceptée.
+ * AUTHORITY: PostgreSQL `cocoon_strategies.data.proposedArticles` (JSONB) — la carte
+ *            indicative du cocon. Elle ne crée aucun article : la création passe par
+ *            l'arbre réel (useCocoonBuilder, C7), qui y inscrit l'article créé.
  * READS FROM: useCocoonStrategyStore.strategy (hydraté par le Cerveau).
- * WRITES TO: saveStrategy (proposedArticles), POST /cocoons/:cocoonId/articles
- *            (un article à la fois, hiérarchie vérifiée par le serveur — C7),
- *            POST /keywords (pool du cocon, type KeywordType), PATCH/DELETE /articles/:id.
- * CONSUMERS: BrainArticleProposalView (grille des propositions), useCocoonsStore
- *            (dashboard, liste du Moteur).
+ * WRITES TO: saveStrategy (proposedArticles) ; PATCH /articles/:id (titre, intention
+ *            d'un article déjà créé) ; DELETE /articles/:id (détache un article créé de
+ *            son cocon ; refusé, 409 HAS_CHILDREN, s'il a encore des enfants : la carte le garde).
+ * CONSUMERS: BrainArticleProposalView (grille des propositions), MoteurView
+ *            (buildRecapArticles), useCocoonBuilder (inscription d'un article créé).
  * RELATED FR: FR-CER-COCOON-PROGRESSIVE (remplace FR-CER-BATCH-CREATE),
- *             FR-CER-CREATION-HONNETE, FR-CER-TYPE-TOLERANT, FR-INFRA-KEYWORDS-SEO.
+ *             FR-CER-TYPE-TOLERANT, FR-PIE-CERVEAU-OVERRIDE.
  */
 import { ref, watch, type Ref } from 'vue'
 import { useCocoonStrategyStore } from '@/stores/strategy/cocoon-strategy.store'
 import { useCocoonsStore } from '@/stores/strategy/cocoons.store'
-import type { ProposedArticle, CocoonSuggestRequest } from '@shared/types/index.js'
+import type { CocoonSuggestRequest } from '@shared/types/index.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
-import { apiPost, apiDelete, apiPatch, ApiRequestError } from '@/services/api.service'
-import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
-import { log } from '@/utils/logger'
+import { apiDelete, apiPatch } from '@/services/api.service'
 import { useNotify } from '@/composables/ui/useNotify'
-import { articleLevelToDisplayLabel } from '@shared/utils/article-level.js'
+import { log } from '@/utils/logger'
 
 import type { ArticleLevel } from './article-proposals/types'
 import {
@@ -40,13 +38,13 @@ import { createTopicsManager } from './article-proposals/topics'
  * Responsabilités assemblées ici uniquement (les helpers vivent dans
  * `./article-proposals/`):
  *  - migration / hydratation des `proposedArticles` au chargement (watcher)
- *  - CRUD article (ajout vide, ajout intelligent via IA, suppression, accept)
- *  - persistance DB via `apiPost('/cocoons/:cocoonId/articles')` / `apiPatch` / `apiDelete`
+ *  - CRUD de la carte (ajout vide, ajout intelligent via IA, suppression)
+ *  - synchronisation d'un article déjà créé via `apiPatch` / `apiDelete`
  *  - édition manuelle (titre, mot-clé, slug, parent)
  *  - sujets éditoriaux (suggestedTopics) + auto-generation à l'arrivée à l'étape
  *
- * La signature publique de `useArticleProposals` est inchangée vis-à-vis de
- * la version monolithique : tout le retour reste identique.
+ * La carte est indicative (C7) : on n'y « accepte » plus rien. Un article naît
+ * de l'arbre réel du cocon (useCocoonBuilder), puis s'y inscrit.
  */
 export function useArticleProposals(params: {
   cocoonSlug: Ref<string>
@@ -54,9 +52,9 @@ export function useArticleProposals(params: {
   getSuggestContext: () => CocoonSuggestRequest['context']
 }) {
   const { cocoonSlug, cocoonName, getSuggestContext } = params
-  const notify = useNotify()
   const store = useCocoonStrategyStore()
   const cocoonsStore = useCocoonsStore()
+  const notify = useNotify()
 
   const truncationWarning = ref<string | null>(null)
   const generationPhase = ref<'idle' | 'structure' | 'paa-queries' | 'paa-fetch' | 'specialises' | 'done' | 'error'>('idle')
@@ -163,88 +161,24 @@ export function useArticleProposals(params: {
     if (article.createdInDb && article.dbId) {
       try {
         await apiDelete(`/articles/${article.dbId}`)
-        log.info('Article deleted from DB', { articleId: article.dbId })
-      } catch {
-        log.warn('Article delete failed (may already be removed)', { articleId: article.dbId })
+        log.info('Article détaché du cocon', { articleId: article.dbId })
+      } catch (err) {
+        // Déjà absent de la base (404) : la carte suit. Tout autre refus (des
+        // enfants y sont nés, serveur injoignable) : la carte garde l'article,
+        // sinon il resterait en base sans plus apparaître ni ici ni au Moteur.
+        if ((err as { status?: unknown }).status !== 404) {
+          const cause = err instanceof Error && err.message ? err.message : 'le serveur n’a pas répondu'
+          log.warn('Retrait refusé', { articleId: article.dbId, error: cause })
+          notify.error(`« ${article.title} » n’a pas été retiré : ${cause}`)
+          return
+        }
+        log.info('Article déjà absent de la base', { articleId: article.dbId })
       }
     }
 
     store.strategy.proposedArticles.splice(index, 1)
     store.saveStrategy(cocoonSlug.value)
     await cocoonsStore.fetchCocoons()
-  }
-
-  /**
-   * Crée l'article en base, un à la fois (FR-CER-COCOON-PROGRESSIVE). Le serveur
-   * vérifie la hiérarchie : pilier d'abord, puis chaque enfant depuis une section
-   * de son parent rédigé. Un parent pas encore rédigé ouvre l'alarme de sa porte
-   * du premier jet ; les autres refus sont dits tels quels.
-   */
-  async function createArticleInDb(article: ProposedArticle): Promise<void> {
-    if (article.createdInDb || !article.title.trim()) return
-    const cocoon = cocoonsStore.cocoons.find(c => c.name === cocoonName.value)
-    if (!cocoon) {
-      notify.error(`Cocon « ${cocoonName.value} » introuvable : rechargez la page.`)
-      return
-    }
-    const parent = article.parentTitle
-      ? store.strategy?.proposedArticles.find(p => normalizeTitle(p.title) === normalizeTitle(article.parentTitle!))
-      : null
-    const parentId = parent?.dbId || null
-    const create = () => apiPost<{ id: number; slug: string }>(`/cocoons/${cocoon.id}/articles`, {
-      title: article.title,
-      type: article.type,
-      parentId,
-      parentSection: article.parentSection?.trim() || null,
-      slug: article.suggestedSlug || undefined,
-      suggestedKeyword: article.suggestedKeyword?.trim() || null,
-      painPoint: article.painPoint?.trim() || null,
-      painIntentExpected: article.painIntentExpected ?? null,
-    })
-    try {
-      // Parent pas encore rédigé : l'alarme s'ouvre sur SA porte du premier jet,
-      // puis la création est rejouée si l'utilisateur assume (FR-CER-PARENT-WRITTEN-GATE).
-      const outcome = parentId !== null ? await useGateAlarmStore().runThroughGate(parentId, create) : { ok: true as const, value: await create() }
-      if (!outcome.ok) return
-      const id = outcome.value.id
-      article.dbId = id
-      // L'article existe en base : il est créé, même si son mot-clé est refusé
-      // ensuite. Sinon un second clic tombait sur « adresse déjà prise » (K1).
-      article.createdInDb = true
-      log.info('Article created in DB', { title: article.title, articleId: article.dbId })
-      if (article.suggestedKeyword.trim()) {
-        try {
-          await apiPost('/keywords', {
-            keyword: article.suggestedKeyword,
-            cocoonName: cocoonName.value,
-            // Le pool attend un KeywordType (« Pilier »), pas le niveau canonique (K2).
-            type: articleLevelToDisplayLabel(article.type),
-          })
-        } catch (err) {
-          log.warn('createArticleInDb: mot-clé refusé par le pool', { title: article.title, error: (err as Error).message })
-          // Le serveur formule la cause (doublon : quel cocon, et pourquoi c'est un risque).
-          notify.warning(`« ${article.title} » est créé, mais son mot-clé n'a pas rejoint le pool du cocon : ${(err as Error).message}`)
-        }
-      }
-    } catch (err) {
-      log.error('createArticleInDb failed', { title: article.title, error: (err as Error).message })
-      // FR-CER-CREATION-HONNETE : un refus (ordre du cocon, adresse prise, mot-clé
-      // jamais mesuré) est dit, jamais maquillé en article créé.
-      notify.error(err instanceof ApiRequestError ? `« ${article.title} » n'a pas été créé : ${err.message}` : `« ${article.title} » n'a pas été créé.`)
-    }
-  }
-
-  async function toggleAccept(index: number) {
-    if (!store.strategy) return
-    const article = store.strategy.proposedArticles[index]
-    if (!article) return
-    const nowAccepted = !article.accepted
-    store.strategy.proposedArticles[index] = { ...article, accepted: nowAccepted }
-    if (nowAccepted && !article.createdInDb) {
-      await createArticleInDb(store.strategy.proposedArticles[index])
-      store.saveStrategy(cocoonSlug.value)
-      await cocoonsStore.fetchCocoons()
-    }
   }
 
   // --- Regeneration (factory) ---
@@ -348,19 +282,6 @@ export function useArticleProposals(params: {
     getTopicEnrichedContext,
   })
 
-  async function validateArticles() {
-    if (!store.strategy) return
-    store.strategy.proposedArticles = store.strategy.proposedArticles.map(a => ({ ...a, accepted: true }))
-    const toCreate = store.strategy.proposedArticles.filter(a => !a.createdInDb)
-    for (const article of toCreate) {
-      await createArticleInDb(article)
-    }
-    if (toCreate.length > 0) {
-      store.saveStrategy(cocoonSlug.value)
-      await cocoonsStore.fetchCocoons()
-    }
-  }
-
   // --- Topic Suggestions (factory) ---
   const topics = createTopicsManager({ store, cocoonSlug, getSuggestContext })
 
@@ -386,7 +307,6 @@ export function useArticleProposals(params: {
     addEmptyArticle,
     addSmartArticle,
     removeProposedArticle,
-    toggleAccept,
     regenerateTitle: regenerationActions.regenerateTitle,
     selectTitle: regenerationActions.selectTitle,
     regenerateKeyword: regenerationActions.regenerateKeyword,
@@ -399,7 +319,6 @@ export function useArticleProposals(params: {
     editSlug,
     updatePainIntent,
     generateArticleProposals,
-    validateArticles,
     // Topic actions
     generateTopics: topics.generateTopics,
     toggleTopic: topics.toggleTopic,

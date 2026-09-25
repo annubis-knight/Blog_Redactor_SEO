@@ -5,6 +5,8 @@
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
 import { apiPost, apiGet, apiPut, apiDelete } from '../helpers/api-client.js'
+import { createTestCocoonArticle } from '../helpers/db-fixtures.js'
+import { query } from '../../server/db/client.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -47,6 +49,30 @@ describe('Contract /articles', () => {
 
     const res = await apiDelete(`/articles/${article.id}`)
     expect([200, 204]).toContain(res.status)
+  })
+
+  // C7 : un parent détaché laisserait ses enfants sans parent ; un enfant
+  // détaché quitte l'arbre et libère la section de son parent.
+  it('DELETE /articles/:id d’un parent qui a des enfants → 409 HAS_CHILDREN ; l’enfant se détache', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const silo = await ctx.getSilo()
+    const cocoon = await ctx.createCocoon(silo.id, 'Del Arbre Cocon')
+    const pilier = await ctx.createArticle(cocoon.id, 'Del Arbre Pilier', 'Pilier')
+    const enfant = await createTestCocoonArticle(ctx.runId, cocoon.id, {
+      base: 'Del Arbre Enfant', type: 'Intermédiaire', slug: `test-${ctx.runId}-del-arbre-enfant`,
+      parentId: pilier.id, parentSection: 'Une section du pilier',
+    })
+
+    const refus = await apiDelete(`/articles/${pilier.id}`)
+    expect(refus.status).toBe(409)
+    expect(refus.error?.code).toBe('HAS_CHILDREN')
+
+    expect((await apiDelete(`/articles/${enfant.id}`)).status).toBe(200)
+    const row = await query<{ cocoon_id: number | null; parent_id: number | null; parent_section: string | null }>(
+      `SELECT cocoon_id, parent_id, parent_section FROM articles WHERE id = $1`, [enfant.id])
+    expect(row.rows[0]).toEqual({ cocoon_id: null, parent_id: null, parent_section: null })
+
+    expect((await apiDelete(`/articles/${pilier.id}`)).status, 'sans enfant, le pilier se détache').toBe(200)
   })
 
   it('DELETE /articles/:id inexistant → 404', async ({ skip }) => {

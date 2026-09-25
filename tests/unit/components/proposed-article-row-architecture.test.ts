@@ -3,7 +3,8 @@
  *
  * Référence FR PRD : FR-CER-STEPS-ARTICLE (Cerveau étape 6 affiche des
  * propositions d'articles avec sliders titre/keyword/slug + actions
- * accept/regenerate/delete + composition badge — voir prd.md §8.1).
+ * regenerate/delete + composition badge — voir prd.md §8.1). Depuis C7, la
+ * carte est indicative : plus d'action « accepter ».
  *
  * Ces tests verrouillent la POSITION DOM des sous-composants après
  * factorisation Vague 2 :
@@ -55,8 +56,8 @@ const stubs = {
   ProposedArticleActions: {
     name: 'ProposedArticleActions',
     template: '<div data-testid="proposed-actions" :data-position="position"></div>',
-    props: ['position', 'accepted', 'actionsMenuOpen', 'hasParents'],
-    emits: ['toggle-accept', 'remove', 'toggle-actions-menu', 'toggle-parent-menu', 'regenerate-title', 'regenerate-keyword', 'regenerate-slug'],
+    props: ['position', 'actionsMenuOpen', 'hasParents'],
+    emits: ['remove', 'toggle-actions-menu', 'toggle-parent-menu', 'regenerate-title', 'regenerate-keyword', 'regenerate-slug'],
   },
 }
 

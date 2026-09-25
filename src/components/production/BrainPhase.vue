@@ -10,6 +10,7 @@ import type { NavItem } from '@/components/shared/WorkflowNav.vue'
 import StrategyStep from '@/components/strategy/StrategyStep.vue'
 import ContextRecap from '@/components/strategy/ContextRecap.vue'
 import BrainArticleProposalView from '@/components/production/brain/BrainArticleProposalView.vue'
+import CocoonTreeBuilder from '@/components/production/brain/CocoonTreeBuilder.vue'
 import { useArticleProposals } from '@/composables/editor/useArticleProposals'
 import { provideRecapRadioGroup } from '@/composables/ui/useRecapRadioGroup'
 
@@ -345,7 +346,6 @@ const {
   addEmptyArticle,
   addSmartArticle,
   removeProposedArticle,
-  toggleAccept,
   regenerateTitle,
   selectTitle,
   regenerateKeyword,
@@ -358,7 +358,6 @@ const {
   editSlug,
   updatePainIntent,
   generateArticleProposals,
-  validateArticles,
   topicsLoading,
   topicsError,
   generateTopics,
@@ -459,47 +458,48 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
         @request-sub-merge="handleSubMerge" @delete-sub-question="handleDeleteSubQuestion"
         @request-enrich="handleSubEnrich" />
 
-      <!-- Step 6: Article proposal -->
-      <BrainArticleProposalView
-        v-else
-        :article-columns="articleColumns"
-        :grouped-spec-articles="groupedSpecArticles"
-        :composition-results="compositionResults"
-        :article-warnings="articleWarnings"
-        :intermediate-titles="intermediateTitles"
-        :global-warnings="globalWarnings"
-        :truncation-warning="truncationWarning"
-        :generation-warning="generationWarning"
-        :generation-phase="generationPhase"
-        :adding-article-level="addingArticleLevel"
-        :topics-loading="topicsLoading"
-        :topics-error="topicsError"
-        :proposed-articles-count="store.strategy.proposedArticles.length"
-        :suggested-topics="store.strategy?.suggestedTopics ?? []"
-        :topics-user-context="store.strategy?.topicsUserContext ?? ''"
-        @generate-proposals="generateArticleProposals"
-        @validate-articles="validateArticles"
-        @toggle-topic="toggleTopic"
-        @remove-topic="removeTopic"
-        @add-topic="addTopic"
-        @regenerate-topics="generateTopics"
-        @update:user-context="updateUserContext"
-        @add-empty="addEmptyArticle"
-        @add-smart="(type, hint) => addSmartArticle(type, hint)"
-        @remove-proposed="removeProposedArticle"
-        @toggle-accept="toggleAccept"
-        @regenerate-title="regenerateTitle"
-        @select-title="selectTitle"
-        @regenerate-keyword="regenerateKeyword"
-        @select-keyword="selectKeyword"
-        @regenerate-slug="regenerateSlug"
-        @select-slug="selectSlug"
-        @change-parent="changeParent"
-        @edit-title="editTitle"
-        @edit-keyword="editKeyword"
-        @edit-slug="editSlug"
-        @update-pain-intent="updatePainIntent"
-      />
+      <!-- Step 6: le constructeur crée les articles (arbre réel) ; la proposition
+           de plan n'est plus qu'une carte indicative (FR-CER-COCOON-PROGRESSIVE). -->
+      <template v-else>
+        <CocoonTreeBuilder :cocoon-id="props.cocoonId" :cocoon-name="props.cocoonName" :cocoon-slug="cocoonSlug" />
+
+        <BrainArticleProposalView
+          :article-columns="articleColumns"
+          :grouped-spec-articles="groupedSpecArticles"
+          :composition-results="compositionResults"
+          :article-warnings="articleWarnings"
+          :intermediate-titles="intermediateTitles"
+          :global-warnings="globalWarnings"
+          :truncation-warning="truncationWarning"
+          :generation-warning="generationWarning"
+          :generation-phase="generationPhase"
+          :adding-article-level="addingArticleLevel"
+          :topics-loading="topicsLoading"
+          :topics-error="topicsError"
+          :suggested-topics="store.strategy?.suggestedTopics ?? []"
+          :topics-user-context="store.strategy?.topicsUserContext ?? ''"
+          @generate-proposals="generateArticleProposals"
+          @toggle-topic="toggleTopic"
+          @remove-topic="removeTopic"
+          @add-topic="addTopic"
+          @regenerate-topics="generateTopics"
+          @update:user-context="updateUserContext"
+          @add-empty="addEmptyArticle"
+          @add-smart="(type, hint) => addSmartArticle(type, hint)"
+          @remove-proposed="removeProposedArticle"
+          @regenerate-title="regenerateTitle"
+          @select-title="selectTitle"
+          @regenerate-keyword="regenerateKeyword"
+          @select-keyword="selectKeyword"
+          @regenerate-slug="regenerateSlug"
+          @select-slug="selectSlug"
+          @change-parent="changeParent"
+          @edit-title="editTitle"
+          @edit-keyword="editKeyword"
+          @edit-slug="editSlug"
+          @update-pain-intent="updatePainIntent"
+        />
+      </template>
 
       <!-- Navigation -->
       <div class="wizard-nav">

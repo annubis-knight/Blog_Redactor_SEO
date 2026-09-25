@@ -2,7 +2,7 @@
 import { ref, computed, nextTick } from 'vue'
 import type { ProposedArticle, CompositionCheckResult } from '@shared/types/index.js'
 import type { PainIntentExpected } from '@shared/types/scoring.types.js'
-import { IconEdit } from '@/components/shared/icons'
+import { IconCheck, IconEdit } from '@/components/shared/icons'
 import ProposedArticleSliderNav from '@/components/strategy/proposed/ProposedArticleSliderNav.vue'
 import ProposedArticleCompositionTooltip from '@/components/strategy/proposed/ProposedArticleCompositionTooltip.vue'
 import ProposedArticleActions from '@/components/strategy/proposed/ProposedArticleActions.vue'
@@ -22,7 +22,6 @@ const emit = defineEmits<{
   (e: 'select-keyword', index: number, keywordIndex: number): void
   (e: 'select-title', index: number, titleIndex: number): void
   (e: 'select-slug', index: number, slugIndex: number): void
-  (e: 'toggle-accept', index: number): void
   (e: 'remove', index: number): void
   (e: 'change-parent', index: number, parentTitle: string): void
   (e: 'edit-title', index: number, value: string): void
@@ -132,9 +131,8 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
   <div
     class="proposal-item"
     data-testid="proposal-item"
-    :data-accepted="article.accepted ? 'true' : 'false'"
     :data-created="article.createdInDb ? 'true' : 'false'"
-    :class="{ expanded, accepted: article.accepted }"
+    :class="{ expanded, created: article.createdInDb }"
     @click="expanded = !expanded"
   >
     <!-- Header row -->
@@ -160,6 +158,14 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
           {{ article.title || 'Sans titre' }}
         </span>
       </div>
+
+      <!-- Article déjà créé (depuis le constructeur du cocon) : la carte le montre. -->
+      <span
+        v-if="article.createdInDb"
+        class="created-badge"
+        data-testid="proposal-created-badge"
+        title="Cet article existe : il a été créé depuis l'arbre du cocon"
+      ><IconCheck :size="10" /> Créé</span>
 
       <!-- Composition badge (between title and slider nav) -->
       <span
@@ -195,10 +201,8 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
       <ProposedArticleActions
         v-if="!expanded"
         position="header"
-        :accepted="!!article.accepted"
         :actions-menu-open="actionsMenuOpen"
         :has-parents="!!availableParents?.length"
-        @toggle-accept="emit('toggle-accept', index)"
         @remove="emit('remove', index)"
         @toggle-actions-menu="actionsMenuOpen = !actionsMenuOpen"
         @toggle-parent-menu="parentMenuOpen = !parentMenuOpen"
@@ -320,10 +324,8 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
 
       <ProposedArticleActions
         position="bottom"
-        :accepted="!!article.accepted"
         :actions-menu-open="actionsMenuOpen"
         :has-parents="!!availableParents?.length"
-        @toggle-accept="emit('toggle-accept', index)"
         @remove="emit('remove', index)"
         @toggle-actions-menu="actionsMenuOpen = !actionsMenuOpen"
         @toggle-parent-menu="parentMenuOpen = !parentMenuOpen"
@@ -344,8 +346,21 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
   cursor: pointer;
 }
 
-.proposal-item.accepted {
+.proposal-item.created {
   border-color: var(--color-badge-green-text);
+}
+
+.created-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1875rem;
+  flex-shrink: 0;
+  padding: 0.0625rem 0.375rem;
+  border-radius: 9999px;
+  font-size: 0.625rem;
+  font-weight: 600;
+  background: var(--color-badge-green-bg);
+  color: var(--color-badge-green-text);
 }
 
 .proposal-item:hover {
