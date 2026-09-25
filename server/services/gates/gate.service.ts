@@ -51,17 +51,19 @@ import { loadZoneContext } from '../strategy/prompt-context.service.js'
 import { getCocoonSiblings } from '../queries/cocoon-siblings.service.js'
 import { targetWordsFor } from '../../../shared/constants/article-type-rules.js'
 import { normalizeTerm } from '../../../shared/utils/generic-terms.js'
-import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED, MOTEUR_LIEUTENANTS_LOCKED } from '../../../shared/constants/workflow-checks.constants.js'
+import { MOTEUR_CAPITAINE_LOCKED, MOTEUR_HN_LOCKED, MOTEUR_LEXIQUE_VALIDATED, MOTEUR_LIEUTENANTS_LOCKED, REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
 import type { PainIntentExpected } from '../../../shared/types/scoring.types.js'
 
 export type { GateEvaluation }
 
-/** Checks du Moteur gardés par une porte : le check n'est accordé que si la porte passe. */
+/** Étapes gardées par une porte : l'étape n'est accordée que si la porte passe. */
 export const CHECK_GATES: Record<string, GateId> = {
   [MOTEUR_CAPITAINE_LOCKED]: 'captain-lock',
   [MOTEUR_LIEUTENANTS_LOCKED]: 'lieutenants-lock',
   [MOTEUR_HN_LOCKED]: 'hn-lock',
   [MOTEUR_LEXIQUE_VALIDATED]: 'lexique-lock',
+  // C7 : « rédigé » = premier jet accepté par sa porte (FR-CER-PARENT-WRITTEN-GATE).
+  [REDACTION_DRAFT_ACCEPTED]: 'draft',
 }
 
 interface ArticleRow {

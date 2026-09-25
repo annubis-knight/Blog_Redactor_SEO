@@ -22,6 +22,19 @@ vi.mock('../../../src/utils/logger', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
+// C7 (FR-CER-PARENT-WRITTEN-GATE) : l'étape « premier jet accepté » passe par
+// la porte du premier jet ; l'alarme décide, puis l'action est rejouée.
+const { mockRunThroughGate, mockAddCheck } = vi.hoisted(() => ({
+  mockRunThroughGate: vi.fn(async (_id: number, action: () => Promise<unknown>) => ({ ok: true, value: await action() })),
+  mockAddCheck: vi.fn(async () => undefined),
+}))
+vi.mock('../../../src/stores/ui/gate-alarm.store', () => ({
+  useGateAlarmStore: () => ({ runThroughGate: mockRunThroughGate }),
+}))
+vi.mock('../../../src/stores/article/article-progress.store', () => ({
+  useArticleProgressStore: () => ({ addCheck: mockAddCheck }),
+}))
+
 import { useArticleGeneration } from '../../../src/composables/article/useArticleGeneration'
 
 function makeEditorStore(overrides: Record<string, unknown> = {}) {
@@ -162,6 +175,27 @@ describe('useArticleGeneration — FR-RED-ARTICLE/META/REDUCE/HUMANIZE', () => {
       const { api, briefStore } = setup({ target: 2400, editorOverrides: { lastDraftTargetWordCount: 3000 } })
       await api.handleGenerateArticle()
       expect((briefStore as unknown as { setRetainedWordCount: ReturnType<typeof vi.fn> }).setRetainedWordCount).toHaveBeenCalledWith(3000)
+    })
+
+    // C7 : un article n'est « rédigé » (et ne peut donner naissance à ses
+    // enfants dans le cocon) qu'une fois son premier jet accepté par la porte.
+    it('après le premier jet, l’étape « premier jet accepté » est demandée à la porte', async () => {
+      const { api } = setup()
+      await api.handleGenerateArticle()
+      await vi.waitFor(() => expect(mockRunThroughGate).toHaveBeenCalledWith(7, expect.any(Function)))
+      expect(mockAddCheck).toHaveBeenCalledWith(7, 'redaction:draft_accepted')
+    })
+
+    it('premier jet en erreur : aucune étape demandée', async () => {
+      const { api } = setup({ editorOverrides: { error: 'IA indisponible' } })
+      await api.handleGenerateArticle()
+      expect(mockRunThroughGate).not.toHaveBeenCalled()
+    })
+
+    it('acceptDraft : refusée à l’alarme → faux, aucune étape', async () => {
+      mockRunThroughGate.mockResolvedValueOnce({ ok: false } as never)
+      const { api } = setup()
+      expect(await api.acceptDraft(7)).toBe(false)
     })
 
     it('utilise pilierKeyword.keyword pour meta (pas article.title)', async () => {

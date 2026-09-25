@@ -5,13 +5,17 @@ import type { useBriefStore } from '@/stores/strategy/brief.store'
 import type { useOutlineStore } from '@/stores/article/outline.store'
 import type { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
+import { useArticleProgressStore } from '@/stores/article/article-progress.store'
+import { REDACTION_DRAFT_ACCEPTED } from '@shared/constants/workflow-checks.constants.js'
 
 /**
  * AUTHORITY: PostgreSQL `article_content` (contenu, méta) via editorStore.saveArticle
  * READS FROM: briefStore (cible de mots), outlineStore (sommaire), articleKeywordsStore (capitaine)
- * WRITES TO: PUT /articles/:id (après le premier jet, puis après la méta)
- * CONSUMERS: ArticleWorkflowView, ArticleEditorView ; porte « accepter le premier jet » (gate-alarm)
- * RELATED FR: FR-RED-DRAFT-SINGLE-PASS, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL
+ * WRITES TO: PUT /articles/:id (après le premier jet, puis après la méta) ;
+ *            POST /articles/:id/progress/check `redaction:draft_accepted` (via la
+ *            porte « accepter le premier jet », alarme si refusée — C7)
+ * CONSUMERS: ArticleWorkflowView, ArticleEditorView (bandeau DraftAcceptance) ; porte « accepter le premier jet » (gate-alarm)
+ * RELATED FR: FR-RED-DRAFT-SINGLE-PASS, FR-RED-META-CAPTAIN, FR-RED-GEN-SAUVEGARDE-AU-FIL, FR-CER-PARENT-WRITTEN-GATE
  *
  * Vague 4 — Composable extrait de ArticleWorkflowView et ArticleEditorView.
  *
@@ -55,6 +59,8 @@ export interface ArticleGenerationApi {
    * intermédiaire après l'article pour ne pas perdre le contenu si meta plante).
    */
   handleGenerateArticle: () => Promise<void>
+  /** Demande l'étape « premier jet accepté » à sa porte ; vrai si elle est posée (C7). */
+  acceptDraft: (id: number) => Promise<boolean>
   /** Lance reduce + save (no-op si pas de target). */
   handleReduce: () => Promise<void>
   /** Lance humanize + save. */
@@ -86,12 +92,20 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
     briefStore.briefData?.keywords.map(kw => kw.keyword) ?? [],
   )
 
-  /** Soumet le premier jet à sa porte, sans bloquer la suite (l'utilisateur décide dans l'alarme). */
-  async function reviewDraft(id: number): Promise<void> {
+  /**
+   * Demande l'étape « premier jet accepté » (FR-CER-PARENT-WRITTEN-GATE) : la
+   * porte du premier jet l'accorde, ou l'alarme s'ouvre et l'utilisateur décide.
+   * Accordée, l'article compte comme rédigé : il peut donner naissance à ses
+   * enfants dans le cocon. Vrai si l'étape est posée.
+   */
+  async function acceptDraft(id: number): Promise<boolean> {
     try {
-      await useGateAlarmStore().ensure(id, 'draft')
+      const progress = useArticleProgressStore()
+      const res = await useGateAlarmStore().runThroughGate(id, () => progress.addCheck(id, REDACTION_DRAFT_ACCEPTED))
+      return res.ok
     } catch (err) {
-      log.warn('[useArticleGeneration] porte du premier jet indisponible', { articleId: id, error: (err as Error).message })
+      log.warn('[useArticleGeneration] étape « premier jet accepté » non posée', { articleId: id, error: (err as Error).message })
+      return false
     }
   }
 
@@ -141,7 +155,8 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
         await editorStore.saveArticle(id)
         // Porte « accepter le premier jet » (FR-RED-DRAFT-SINGLE-PASS) : jugée
         // sur le texte enregistré ; l'alarme s'ouvre s'il ne la passe pas.
-        void reviewDraft(id)
+        // Accordée, elle devient l'étape qui fait de l'article un parent rédigé (C7).
+        void acceptDraft(id)
       } else {
         log.warn('[useArticleGeneration] Meta generation failed — article content was already saved', {
           error: editorStore.error,
@@ -186,6 +201,7 @@ export function useArticleGeneration(deps: ArticleGenerationDeps): ArticleGenera
     currentKeyword,
     allKeywords,
     handleGenerateArticle,
+    acceptDraft,
     handleReduce,
     handleHumanize,
     handleAbortReduce,

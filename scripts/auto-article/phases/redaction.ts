@@ -20,6 +20,8 @@ import { structureToOutline } from '../../../shared/structure-outline.js'
 import { toCanonicalType } from '../canonical.js'
 import { slugify } from '../slug.js'
 import { runInternalLinking } from './linking.js'
+import { emitCheck } from '../checks.js'
+import { REDACTION_DRAFT_ACCEPTED } from '../../../shared/constants/workflow-checks.constants.js'
 import {
   checkContentBeforeExport,
   detectUnverifiableClaims,
@@ -173,6 +175,11 @@ export function makeRedactionPhase(deps: PhaseDeps): PhaseFn {
       metaTitle: ctx.metaTitle,
       metaDescription: ctx.metaDescription,
     })
+    // 4 bis. Premier jet accepté par sa porte (C7, FR-CER-PARENT-WRITTEN-GATE) :
+    // c'est cette étape qui fait de l'article un parent rédigé. Un refus arrête
+    // le run — le script ne déroge jamais à la place d'un humain.
+    await emitCheck(client, ctx.articleId, REDACTION_DRAFT_ACCEPTED)
+    report.addStep('Rédaction · premier jet accepté par sa porte')
     // 5. Maillage interne — avant l'export, pour que le HTML exporté porte les liens.
     await runInternalLinking(deps, ctx.articleId)
 

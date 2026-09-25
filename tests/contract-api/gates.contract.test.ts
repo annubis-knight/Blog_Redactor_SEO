@@ -161,6 +161,29 @@ describe('Porte « valider la structure » (FR-HN-LOCK-GATE)', () => {
   })
 })
 
+// C7 : « rédigé » = premier jet accepté par sa porte, et enregistré comme étape.
+// C'est elle qui autorise un parent à donner naissance à ses enfants.
+describe('Étape « premier jet accepté » (FR-CER-PARENT-WRITTEN-GATE)', () => {
+  it('⛔ sans texte, la porte du premier jet refuse l’étape', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle('Spécialisé')
+    const check = await apiPost<unknown>(`/articles/${article.id}/progress/check`, { check: 'redaction:draft_accepted' })
+    expect(check.status).toBe(422)
+    const details = (check.raw as { error: { details: Evaluation } }).error.details
+    expect(details.gateId).toBe('draft')
+    expect(details.blocking.find(i => i.rule === 'content-empty')?.level).toBe('technique')
+    const progress = await apiGet<{ completedChecks: string[] }>(`/articles/${article.id}/progress`)
+    expect(progress.data?.completedChecks ?? []).not.toContain('redaction:draft_accepted')
+  })
+
+  it('une autre étape « redaction:* » est refusée à l’écriture', async ({ skip }) => {
+    if (!ctx.serverOk) skip()
+    const article = await nouvelArticle('Spécialisé')
+    const check = await apiPost<unknown>(`/articles/${article.id}/progress/check`, { check: 'redaction:brief_validated' })
+    expect(check.status).toBe(400)
+  })
+})
+
 describe('Porte « valider le lexique » (FR-LEX-METIER-ONLY)', () => {
   it('🔴 un mot vide dans le lexique retient l’étape ; un lexique de métier passe', async ({ skip }) => {
     if (!ctx.serverOk) skip()

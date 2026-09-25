@@ -16,6 +16,7 @@ import { useArticleGeneration } from '@/composables/article/useArticleGeneration
 import ArticlePanelsToolbar from '@/components/article/ArticlePanelsToolbar.vue'
 import ArticlePanelsResizable from '@/components/article/ArticlePanelsResizable.vue'
 import SectionProgressBar from '@/components/article/SectionProgressBar.vue'
+import DraftAcceptance from '@/components/article/DraftAcceptance.vue'
 import { useArticlesStore } from '@/stores/article/articles.store'
 import { useKeywordsStore } from '@/stores/keyword/keywords.store'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
@@ -89,6 +90,7 @@ const {
   canReduce,
   wordCountDeltaDisplay,
   handleGenerateArticle,
+  acceptDraft,
   handleReduce,
   handleHumanize,
   handleAbortReduce,
@@ -456,6 +458,12 @@ onMounted(async () => {
             @abort-humanize="handleAbortHumanize()"
           />
         </div>
+        <DraftAcceptance
+          :article-id="articleId"
+          :has-content="!!editorStore.content && !editorStore.isGenerating"
+          :busy="editorStore.isSaving"
+          @accept="articleId && acceptDraft(articleId)"
+        />
         <EditorToolbar :editor="articleEditorRef?.editor" />
 
         <EditorBubbleMenu

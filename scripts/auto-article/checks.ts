@@ -24,10 +24,12 @@ export function describeGateRefusal(check: string, details: unknown): string {
   const lines = (refusal.blocking ?? []).map(issue =>
     `  ${LEVEL_ICONS[issue.level ?? ''] ?? '•'} ${issue.message ?? issue.rule ?? 'point non décrit'}`,
   )
+  // L'étape « premier jet accepté » (C7) se décide dans la Rédaction, les autres au Moteur.
+  const where = check.startsWith('redaction:') ? 'la Rédaction' : 'le Moteur'
   return [
     `Étape « ${check} » refusée par la porte${refusal.gateId ? ` ${refusal.gateId}` : ''} :`,
     ...lines,
-    'Décidez dans le Moteur (corriger, ou déroger en expliquant pourquoi), puis relancez le run.',
+    `Décidez dans ${where} (corriger, ou déroger en expliquant pourquoi), puis relancez le run.`,
   ].join('\n')
 }
 

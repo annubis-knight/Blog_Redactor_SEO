@@ -35,6 +35,17 @@ describe('auto:checks — emitCheck face à une porte', () => {
     expect(error.message).toContain('Décidez dans le Moteur')
   })
 
+  // C7 : l'étape « premier jet accepté » se décide dans la Rédaction, pas au Moteur.
+  it('refus du premier jet : le message renvoie à la Rédaction', () => {
+    const message = describeGateRefusal('redaction:draft_accepted', {
+      gateId: 'draft',
+      blocking: [{ rule: 'draft-length', level: 'risque', message: '15 601 mots pour 2 500 visés.' }],
+    })
+    expect(message).toContain('🔴 15 601 mots pour 2 500 visés.')
+    expect(message).toContain('Décidez dans la Rédaction')
+    expect(message).not.toContain('Moteur')
+  })
+
   it('les autres erreurs passent telles quelles', async () => {
     const other = new ApiError('Article introuvable', 'NOT_FOUND', 404)
     await expect(emitCheck(clientRejecting(other), 1, 'moteur:radar_done')).rejects.toBe(other)

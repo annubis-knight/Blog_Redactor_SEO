@@ -24,6 +24,7 @@ import AsyncContent from '@/components/shared/AsyncContent.vue'
 import BriefStructureStep from '@/components/workflow/BriefStructureStep.vue'
 import ArticleActions from '@/components/article/ArticleActions.vue'
 import ArticleStreamDisplay from '@/components/article/ArticleStreamDisplay.vue'
+import DraftAcceptance from '@/components/article/DraftAcceptance.vue'
 import ArticleMetaDisplay from '@/components/article/ArticleMetaDisplay.vue'
 import OutlineRecap from '@/components/article/OutlineRecap.vue'
 import ArticleCostBadges from '@/components/article/ArticleCostBadges.vue'
@@ -159,6 +160,7 @@ const {
   canReduce,
   wordCountDeltaDisplay,
   handleGenerateArticle,
+  acceptDraft,
   handleReduce,
   handleHumanize,
   handleAbortReduce,
@@ -456,6 +458,13 @@ onBeforeUnmount(() => { workflowNavStore.clearWorkflowNav() })
                 v-if="editorStore.content"
                 :word-count="editorStore.wordCount"
                 :target="wordCountTarget"
+              />
+
+              <DraftAcceptance
+                :article-id="articleId"
+                :has-content="!!editorStore.content && !editorStore.isGenerating"
+                :busy="editorStore.isSaving"
+                @accept="articleId && acceptDraft(articleId)"
               />
 
               <RouterLink

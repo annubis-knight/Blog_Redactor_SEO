@@ -12,6 +12,10 @@
  *
  * FR-HN-TAB (chantier C6) : 6e check Moteur `moteur:hn_locked` (structure
  * H1/H2/H3 validee a l'onglet Structure), entre Lieutenants et Lexique.
+ *
+ * FR-CER-PARENT-WRITTEN-GATE (chantier C7) : une seule etape Redaction revient,
+ * `redaction:draft_accepted` (premier jet accepte par sa porte) — c'est elle
+ * qui dit qu'un parent est « redige ». Aucune autre valeur `redaction:*`.
  */
 import { describe, it, expect } from 'vitest'
 import { readFileSync, readdirSync, statSync } from 'node:fs'
@@ -25,6 +29,8 @@ import {
   MOTEUR_LIEUTENANTS_LOCKED,
   MOTEUR_HN_LOCKED,
   MOTEUR_LEXIQUE_VALIDATED,
+  REDACTION_CHECKS,
+  REDACTION_DRAFT_ACCEPTED,
 } from '../../../shared/constants/workflow-checks.constants.js'
 import { addCheckSchema } from '../../../shared/schemas/article-progress.schema.js'
 
@@ -56,9 +62,9 @@ describe('FR-MOT-CHECKS — namespace Moteur', () => {
     ])
   })
 
-  it('ALL_WORKFLOW_CHECKS = MOTEUR_CHECKS depuis 2026-05-13 (cf. DRIFT-002)', () => {
-    expect(ALL_WORKFLOW_CHECKS.length).toBe(MOTEUR_CHECKS.length)
-    expect([...ALL_WORKFLOW_CHECKS]).toEqual([...MOTEUR_CHECKS])
+  it('ALL_WORKFLOW_CHECKS = les 6 étapes Moteur + la seule étape Rédaction (C7)', () => {
+    expect([...REDACTION_CHECKS]).toEqual([REDACTION_DRAFT_ACCEPTED])
+    expect([...ALL_WORKFLOW_CHECKS]).toEqual([...MOTEUR_CHECKS, REDACTION_DRAFT_ACCEPTED])
   })
 })
 
@@ -90,6 +96,10 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
   it('MOTEUR_LEXIQUE_VALIDATED = "moteur:lexique_validated"', () => {
     expect(MOTEUR_LEXIQUE_VALIDATED).toBe('moteur:lexique_validated')
   })
+
+  it('REDACTION_DRAFT_ACCEPTED = "redaction:draft_accepted" (FR-CER-PARENT-WRITTEN-GATE)', () => {
+    expect(REDACTION_DRAFT_ACCEPTED).toBe('redaction:draft_accepted')
+  })
 })
 
 // =====================================================
@@ -97,11 +107,10 @@ describe('FR-MOT-CHECKS-CONSTANTS — valeurs canoniques attendues', () => {
 // =====================================================
 
 describe('NFR-INT-COMPLETED-CHECKS-SSOT — TEXT[] unique flat', () => {
-  it('tous les checks suivent le format moteur:snake_case', () => {
+  it('tous les checks suivent le format moteur:snake_case, ou redaction:draft_accepted', () => {
     const all: readonly string[] = ALL_WORKFLOW_CHECKS
     all.forEach(check => {
-      expect(typeof check).toBe('string')
-      expect(check).toMatch(/^moteur:[a-z_]+$/)
+      expect(check).toMatch(/^(moteur:[a-z_]+|redaction:draft_accepted)$/)
     })
   })
 
@@ -142,6 +151,10 @@ describe('FR-MOT-CHECKS-CONSTANTS — schema Zod accepte uniquement moteur:*', (
   it('refuse "cerveau:strategy_defined" (famille retiree 2026-05-13, cf. DRIFT-002)', () => {
     const result = addCheckSchema.safeParse({ check: 'cerveau:strategy_defined' })
     expect(result.success).toBe(false)
+  })
+
+  it('accepte "redaction:draft_accepted", la seule étape Rédaction (C7)', () => {
+    expect(addCheckSchema.safeParse({ check: 'redaction:draft_accepted' }).success).toBe(true)
   })
 
   it('refuse "redaction:brief_validated" (famille retiree 2026-05-13, cf. DRIFT-002)', () => {
