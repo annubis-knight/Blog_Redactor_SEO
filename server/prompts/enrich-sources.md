@@ -10,6 +10,10 @@ Tu enrichis **un chapitre** d'un article de blog déjà rédigé : chaque passag
 {{#zone}}- **Zone du client** : {{zone}} — une source locale vaut mieux qu'une source nationale, une source française vaut mieux qu'une source étrangère.
 {{/zone}}
 
+{{#strategyContext}}
+{{strategyContext}}
+{{/strategyContext}}
+
 ## L'article entier, pour le contexte (ne le réécris pas)
 
 {{articleText}}

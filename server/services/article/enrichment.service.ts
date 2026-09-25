@@ -13,19 +13,22 @@
  * Seule la passe « sources » cherche sur le web — localisée dans la zone du
  * client, à la date du jour — et ses URL réelles décident des liens gardés.
  */
-import { webSearchTool } from '../external/claude.service.js'
+import { webSearchTool } from '../external/ai-provider.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { collectStreamWithUsage } from '../../utils/stream-usage.js'
 import { loadZoneContext } from '../strategy/prompt-context.service.js'
 import { articlePlainText } from '../../../shared/chapters.js'
 import { verifyEnrichment, keepKnownLinks, knownSources, type EnrichmentPass } from '../../../shared/verifiers/enrichment.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../shared/constants/image-placeholder.js'
+import { describeTypeRules } from '../../../shared/constants/article-type-rules.js'
+import type { ArticleLevel } from '../../../shared/types/keyword-validate.types.js'
 import type { EnrichmentProposal } from '../../../shared/types/enrichment.types.js'
 
 export type ProposalKind = EnrichmentPass | 'reecriture'
 
 export interface ProposalInput {
   pass: ProposalKind
+  articleId: number
   chapterIndex: number
   chapterHtml: string
   articleHtml: string
@@ -33,7 +36,17 @@ export interface ProposalInput {
   keywords: string[]
   /** Consigne de l'auteur (réécriture seulement). */
   instruction?: string
+  /** Type de l'article : règles de la FAQ, contrôle du nombre de questions. */
+  articleType?: ArticleLevel | null
+  /** Stratégie de l'article, sinon celle du cocon (cible, douleur, promesse). */
+  strategyContext?: string
 }
+
+/**
+ * Contexte de l'article envoyé à chaque passe : un pilier de 3 500 mots tient
+ * en ~22 000 caractères. À 12 000, la fin de l'article n'arrivait jamais (R18).
+ */
+export const ARTICLE_CONTEXT_MAX_CHARS = 30_000
 
 const PROMPT_OF: Record<ProposalKind, string> = {
   sources: 'enrich-sources',
@@ -55,8 +68,10 @@ async function buildUserPrompt(input: ProposalInput): Promise<string> {
   const variables: Record<string, string> = {
     keyword: input.keyword,
     keywords: input.keywords.join(', ') || '—',
-    articleText: articlePlainText(input.articleHtml),
+    articleText: articlePlainText(input.articleHtml, ARTICLE_CONTEXT_MAX_CHARS),
+    strategyContext: input.strategyContext ?? '',
   }
+  if (input.pass === 'faq') variables.type_rules = input.articleType ? describeTypeRules(input.articleType) : ''
   if (input.pass !== 'faq') variables.chapterHtml = input.chapterHtml
   if (input.pass === 'images') variables.imageSrc = IMAGE_TO_PROVIDE_SRC
   if (input.pass === 'reecriture') variables.instruction = input.instruction ?? ''
@@ -103,7 +118,10 @@ export async function proposeChapter(input: ProposalInput): Promise<EnrichmentPr
     before: input.chapterHtml,
     after,
     webSources,
-    truncated: usage?.stopReason === 'max_tokens',
+    // Plafond atteint, recherche web interrompue, arrêt par sécurité : tout arrêt
+    // autre qu'une fin normale laisse une proposition incomplète (R19).
+    truncated: usage?.stopReason !== undefined && usage.stopReason !== 'end',
+    level: input.articleType ?? undefined,
   })
 
   return {

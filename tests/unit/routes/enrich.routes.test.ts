@@ -7,8 +7,16 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 
-const { mockPropose } = vi.hoisted(() => ({ mockPropose: vi.fn() }))
+const { mockPropose, mockGetArticle } = vi.hoisted(() => ({ mockPropose: vi.fn(), mockGetArticle: vi.fn() }))
 vi.mock('../../../server/services/article/enrichment.service', () => ({ proposeChapter: mockPropose }))
+vi.mock('../../../server/services/infra/data.service', () => ({ getArticleById: mockGetArticle }))
+vi.mock('../../../server/services/strategy/strategy.service', () => ({ getStrategy: async () => null }))
+vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({
+  getCocoonStrategy: async () => ({ cible: { validated: 'Artisans toulousains pressés' } }),
+}))
+vi.mock('../../../server/utils/prompt-loader', () => ({
+  buildCocoonStrategyBlock: (s: { cible?: { validated?: string } }) => `## Stratégie du cocon\nCible : ${s.cible?.validated ?? ''}`,
+}))
 
 import router from '../../../server/routes/generate/enrich.routes'
 
@@ -38,9 +46,32 @@ const body = { articleId: 7, chapterIndex: 0, chapterHtml: '<h2>A</h2><p>B</p>',
 const enrich = handlerOf('/generate/enrich/:pass')
 const rewrite = handlerOf('/generate/section-rewrite')
 
-beforeEach(() => mockPropose.mockReset())
+beforeEach(() => {
+  mockPropose.mockReset()
+  mockGetArticle.mockReset()
+  mockGetArticle.mockResolvedValue({ article: { id: 7, type: 'pilier' }, cocoonName: 'Sites vitrines' })
+})
 
 describe('POST /generate/enrich/:pass', () => {
+  it('404 sur un article inconnu, sans appeler l’IA', async () => {
+    mockGetArticle.mockResolvedValueOnce(null)
+    const res = mockRes()
+    await enrich(req(body, 'exemples'), res as unknown as Response)
+    expect(res.status).toHaveBeenCalledWith(404)
+    expect(mockPropose).not.toHaveBeenCalled()
+  })
+
+  // R18, R22 — la passe connaît le type de l'article et sa stratégie (celle du cocon à défaut).
+  it('transmet le type de l’article et sa stratégie', async () => {
+    mockPropose.mockResolvedValueOnce({ pass: 'exemples', html: '<h2>A</h2>', issues: [], webSources: [] })
+    await enrich(req(body, 'exemples'), mockRes() as unknown as Response)
+    expect(mockPropose).toHaveBeenCalledWith(expect.objectContaining({
+      articleId: 7,
+      articleType: 'pilier',
+      strategyContext: expect.stringContaining('Artisans toulousains pressés'),
+    }))
+  })
+
   it('400 sur une passe inconnue', async () => {
     const res = mockRes()
     await enrich(req(body, 'resume'), res as unknown as Response)

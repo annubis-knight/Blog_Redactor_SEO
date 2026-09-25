@@ -1,7 +1,9 @@
 import { Router } from 'express'
 import { log } from '../../utils/logger.js'
 import { generateActionRequestSchema } from '../../../shared/schemas/generate.schema.js'
-import { streamChatCompletion, WEB_SEARCH_TOOL } from '../../services/external/ai-provider.service.js'
+import { streamChatCompletion, webSearchTool } from '../../services/external/ai-provider.service.js'
+import { loadZoneContext } from '../../services/strategy/prompt-context.service.js'
+import { keepKnownLinks, knownSources } from '../../../shared/verifiers/enrichment.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { consumeStream } from './_helpers.js'
 
@@ -46,9 +48,12 @@ router.post('/generate/action', async (req, res) => {
       userPromptPreview: userPrompt.slice(0, 300),
     })
 
-    // Web search enabled for actions that need grounded sources
+    // Recherche web pour les actions qui citent des sources : localisée dans la
+    // zone du client, et ses liens rapprochés des résultats réels (R21). Leur
+    // texte est donc accumulé et vérifié avant de partir : un lien inventé ne
+    // doit pas atteindre l'éditeur, même au fil du flux.
     const needsWebSearch = actionType === 'sources-chiffrees' || actionType === 'exemples-reels'
-    const tools = needsWebSearch ? [WEB_SEARCH_TOOL] : undefined
+    const tools = needsWebSearch ? [webSearchTool((await loadZoneContext()).zone)] : undefined
     log.debug(`[action] 🔧 tools config`, { actionType, webSearchEnabled: needsWebSearch })
 
     // SSE headers — sent AFTER loadPrompt succeeds
@@ -59,10 +64,20 @@ router.post('/generate/action', async (req, res) => {
     })
 
     const startAi = Date.now()
-    const { fullContent, usage, chunkCount } = await consumeStream(
+    const writeChunk = (content: string) => res.write(`event: chunk\ndata: ${JSON.stringify({ content })}\n\n`)
+    // Rien ne part pendant la recherche : un commentaire SSE garde la connexion ouverte.
+    const keepAlive = needsWebSearch ? setInterval(() => res.write(': en cours\n\n'), 15_000) : null
+    const { fullContent: rawContent, usage, chunkCount } = await consumeStream(
       streamChatCompletion(systemPrompt, userPrompt, 2048, tools),
-      (chunk) => res.write(`event: chunk\ndata: ${JSON.stringify({ content: chunk })}\n\n`),
-    )
+      needsWebSearch ? () => {} : writeChunk,
+    ).finally(() => { if (keepAlive) clearInterval(keepAlive) })
+    let fullContent = rawContent
+    if (needsWebSearch) {
+      const { html, removed } = keepKnownLinks(rawContent, knownSources(selectedText, usage?.webSources))
+      if (removed.length) log.warn(`[action] liens absents de la recherche web retirés`, { actionType, removed })
+      fullContent = html
+      writeChunk(fullContent)
+    }
 
     log.info(`✅ [action] OUTGOING "${actionType}"`, {
       contentChars: fullContent.length,

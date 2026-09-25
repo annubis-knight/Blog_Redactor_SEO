@@ -101,6 +101,19 @@ describe('runPass', () => {
     expect(listChapters(editor.content!).map(c => c.title)).toEqual(['Introduction', 'Le budget', 'Les étapes', 'Questions fréquentes', 'Conclusion'])
   })
 
+  // R23 — la FAQ s'insérait sans vérifier que l'article n'avait pas bougé depuis la proposition.
+  it('FAQ : pas d’insertion si la conclusion a changé depuis la proposition', async () => {
+    mockStartStreamOnce.mockResolvedValue({
+      result: proposal({ pass: 'faq', chapterIndex: 2, html: '<h2>Questions fréquentes</h2><h3>Combien ?</h3><p>Cela dépend.</p>' }),
+      usage: null, errorMessage: null, aborted: false,
+    })
+    await store.runPass('faq', ctx)
+    editor.setContent(ARTICLE.replace('Passez à l’action.', 'Conclusion réécrite à la main.'))
+    store.accept(store.items[0]!.key)
+    expect(editor.content).not.toContain('Questions fréquentes')
+    expect(store.items[0]!.status).toBe('stale')
+  })
+
   it('une erreur du serveur est montrée sur le chapitre, la passe continue', async () => {
     mockStartStreamOnce
       .mockResolvedValueOnce({ result: null, usage: null, errorMessage: 'La recherche web exige Claude', aborted: false })

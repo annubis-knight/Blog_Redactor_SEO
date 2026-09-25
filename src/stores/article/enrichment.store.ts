@@ -34,6 +34,12 @@ export interface EnrichmentItem {
   status: ProposalStatus
   proposal: EnrichmentProposal | null
   error: string | null
+  /**
+   * FAQ : le chapitre avant lequel elle s'insère, tel qu'il était à la
+   * proposition (vide pour une insertion en fin d'article). S'il a changé, on
+   * n'insère pas à l'aveugle (R23).
+   */
+  anchor: string
 }
 
 export interface EnrichmentContext {
@@ -95,10 +101,12 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     if (isRunning.value || !articleHtml.trim()) return
 
     const targets = targetsFor(pass, articleHtml)
+    const chapters = listChapters(articleHtml)
     activePass.value = pass
     items.value = targets.map(c => ({
       key: `${pass}:${c.index}`, pass, chapterIndex: c.index, title: c.title,
       status: 'pending' as const, proposal: null, error: null,
+      anchor: pass === 'faq' ? (chapters.find(ch => ch.index === c.index)?.html ?? '') : '',
     }))
     if (targets.length === 0) return
 
@@ -133,7 +141,7 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     activePass.value = 'reecriture'
     const item: EnrichmentItem = {
       key: `reecriture:${chapterIndex}:${Date.now()}`, pass: 'reecriture', chapterIndex, title: chapter.title,
-      status: 'pending', proposal: null, error: null,
+      status: 'pending', proposal: null, error: null, anchor: '',
     }
     items.value = [item]
     isRunning.value = true
@@ -157,6 +165,12 @@ export const useEnrichmentStore = defineStore('enrichment', () => {
     const editorStore = useEditorStore()
     const current = editorStore.content ?? ''
     if (item.pass === 'faq') {
+      const anchor = listChapters(current).find(c => c.index === item.chapterIndex)?.html ?? ''
+      if (squash(anchor) !== squash(item.anchor) || targetsFor('faq', current).length === 0) {
+        // La conclusion a changé, ou une FAQ existe déjà : on n'insère pas à l'aveugle.
+        item.status = 'stale'
+        return
+      }
       editorStore.setContent(insertChapter(current, item.chapterIndex, proposal.html))
     } else {
       const chapter = listChapters(current).find(c => c.index === item.chapterIndex)

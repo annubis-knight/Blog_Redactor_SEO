@@ -18,10 +18,15 @@ vi.mock('../../../server/services/external/ai-provider.service', () => ({
   streamChatCompletion: mockStreamChatCompletion,
   USAGE_SENTINEL: '__USAGE__',
   WEB_SEARCH_TOOL: { type: 'web_search_20250305', name: 'web_search', max_uses: 3 },
+  webSearchTool: (zone?: string | null) => ({ type: 'web_search_20250305', name: 'web_search', max_uses: 3, user_location: { type: 'approximate', country: 'FR', city: zone?.split(',')[0]?.trim() } }),
 }))
 
 vi.mock('../../../server/utils/prompt-loader', () => ({
   loadPrompt: mockLoadPrompt,
+}))
+
+vi.mock('../../../server/services/strategy/prompt-context.service', () => ({
+  loadZoneContext: async () => ({ zone: 'Toulouse, Occitanie', landmarks: '' }),
 }))
 
 vi.mock('../../../server/services/strategy/strategy.service', () => ({
@@ -323,6 +328,26 @@ describe('POST /generate/action', () => {
         error: expect.objectContaining({ code: 'VALIDATION_ERROR' }),
       }),
     )
+  })
+
+  // R21 — les actions qui cherchent sur le web partaient sans lieu, et leurs
+  // liens n'étaient jamais rapprochés des résultats réels de la recherche.
+  it('sources chiffrées : recherche localisée, lien inventé retiré avant d’atteindre l’écran', async () => {
+    const webSources = [{ url: 'https://www.insee.fr/a', title: 'Insee', pageAge: null }]
+    mockStreamChatCompletion.mockReturnValueOnce((async function* () {
+      yield '<p>Selon <a href="https://www.insee.fr/a">l’Insee</a> et <a href="https://invente.example/x">une étude</a>, 38 % des TPE…</p>'
+      yield `__USAGE__${JSON.stringify({ ...fakeUsage, webSources })}`
+    })())
+    const res = createMockRes()
+
+    await handler({ body: { ...validActionBody, actionType: 'sources-chiffrees' } } as unknown as Request, res)
+
+    const tools = mockStreamChatCompletion.mock.calls[0]![3] as Array<{ user_location?: { city?: string } }>
+    expect(tools[0]!.user_location?.city).toBe('Toulouse')
+    const written = res.write.mock.calls.map(([raw]: [string]) => raw).join('')
+    expect(written).toContain('https://www.insee.fr/a')
+    expect(written, 'le lien inventé ne part pas, même au fil du flux').not.toContain('invente.example')
+    expect(written).toContain('une étude')
   })
 
   it('streams SSE response correctly', async () => {

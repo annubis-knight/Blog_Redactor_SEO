@@ -56,6 +56,7 @@ describe('les prompts citent les règles, ils ne les recopient pas', () => {
     expect(text).toContain(`${r.h3PerH2Min} à ${r.h3PerH2Max} H3`)
     expect(text).toContain(`${r.lieutenantCandidatesMin} à ${r.lieutenantCandidatesMax} candidats`)
     expect(text).toContain(`${r.minLieutenants} au minimum et ${r.maxLieutenants} au maximum`)
+    expect(text).toContain(`FAQ : ${r.faqMin} à ${r.faqMax} questions`)
     expect(text).toContain(r.localH2Max === 0 ? 'aucun H2 ne cite la ville' : `au plus ${r.localH2Max} H2 citent la ville`)
   })
 })

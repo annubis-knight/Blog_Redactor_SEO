@@ -11,7 +11,8 @@
  *   - exemples, tableaux, images : un ajout propre au chapitre (jamais le même
  *     d'un chapitre à l'autre, sinon la porte de publication verrait un
  *     paragraphe répété) ;
- *   - FAQ : trois vraies questions ; réécriture : le premier paragraphe revu.
+ *   - FAQ : autant de vraies questions que le type en demande ; réécriture : le
+ *     premier paragraphe revu.
  */
 import { registerStreamFixture, type MockWebSource } from '../mock-registry.js'
 import { IMAGE_TO_PROVIDE_SRC } from '../../../../shared/constants/image-placeholder.js'
@@ -81,13 +82,18 @@ function image(chapter: string): string {
   return afterFirstParagraph(chapter, `<img src="${IMAGE_TO_PROVIDE_SRC}" alt="Un artisan montre à un client, sur une tablette, ce que change ${title}">`)
 }
 
-function faq(keyword: string): string {
+function faq(keyword: string, prompt: string): string {
+  // Autant de questions que le fixent les règles du type citées par le prompt.
+  const wanted = Number(/FAQ : (\d+) à \d+ questions/.exec(prompt)?.[1] ?? 3)
   const qa: Array<[string, string]> = [
     [`Par où commencer avec ${keyword} ?`, 'Commencez par écrire en une phrase ce que vos clients doivent comprendre en arrivant chez vous. Tout le reste en découle : les pages, les textes, les photos. Une base claire évite de refaire le travail deux fois et vous fait gagner des semaines.'],
     [`Combien de temps faut-il pour voir les effets de ${keyword} ?`, 'Les premiers signes arrivent quand vos pages répondent vraiment aux questions de vos clients : des appels mieux préparés, des demandes plus précises. Pour Google, la confiance se construit sur plusieurs mois, au rythme de vos publications et des avis reçus.'],
     [`Faut-il se faire accompagner pour ${keyword} ?`, 'Vous pouvez avancer seul sur les fondations, surtout si vous connaissez bien vos clients. Un accompagnement devient utile pour structurer le message, éviter les erreurs techniques et gagner du temps sur ce qui ne relève pas de votre métier.'],
+    ['Quelles pages prévoir en premier ?', 'Une page d’accueil qui dit clairement ce que vous faites, une page par service important et une page de contact simple. Le reste viendra ensuite, quand vous saurez ce que vos visiteurs cherchent vraiment en arrivant chez vous.'],
+    ['Comment savoir si le site fonctionne ?', 'Regardez les demandes qu’il vous apporte : leur nombre, mais surtout leur qualité. Un site qui marche attire des clients qui ont déjà compris votre offre, posent moins de questions de base et signent plus facilement.'],
+    ['Que faire si les visiteurs repartent vite ?', 'Relisez le haut de vos pages avec les yeux d’un client pressé : comprend-il en quelques secondes ce que vous proposez et comment vous joindre ? Clarifier ce premier écran suffit souvent à retenir l’attention.'],
   ]
-  return ['<h2>Questions fréquentes</h2>', ...qa.map(([q, a]) => `<h3>${q}</h3>\n<p>${a}</p>`)].join('\n')
+  return ['<h2>Questions fréquentes</h2>', ...qa.slice(0, Math.min(qa.length, Math.max(1, wanted))).map(([q, a]) => `<h3>${q}</h3>\n<p>${a}</p>`)].join('\n')
 }
 
 function rewrite(chapter: string): string {
@@ -101,7 +107,7 @@ registerStreamFixture(
     if (REWRITE.test(userPrompt)) return rewrite(userContent(userPrompt, /^## Le chapitre à réécrire$/m))
     const pass = PASS.exec(userPrompt)![1]!
     const keyword = keywordOf(userPrompt)
-    if (pass === 'FAQ') return faq(keyword)
+    if (pass === 'FAQ') return faq(keyword, userPrompt)
     const chapter = userContent(userPrompt, /^## Le chapitre à enrichir$/m)
     if (pass === 'sources') return sources(chapter)
     if (pass === 'exemples') return example(chapter, keyword)

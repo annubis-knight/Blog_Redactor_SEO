@@ -12,6 +12,10 @@ Repères locaux utilisables dans un exemple :
 {{zone_landmarks}}
 {{/zone_landmarks}}
 
+{{#strategyContext}}
+{{strategyContext}}
+{{/strategyContext}}
+
 ## L'article entier, pour le contexte (ne le réécris pas)
 
 {{articleText}}

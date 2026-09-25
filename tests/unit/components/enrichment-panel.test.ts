@@ -98,6 +98,19 @@ describe('EnrichmentPanel', () => {
     expect(submit.attributes('disabled')).toBeUndefined()
   })
 
+  // T12 — la relecture de la langue relit l'article section par section, puis l'enregistre.
+  it('relecture de la langue : humanisation avec le capitaine et les lieutenants, puis enregistrement', async () => {
+    const editor = useEditorStore()
+    const relire = vi.spyOn(editor, 'humanizeArticle').mockImplementation(async () => {
+      editor.setContent(ARTICLE.replace('On prévoit.', 'On anticipe.'))
+    })
+    const wrapper = mountPanel()
+    await wrapper.get('[data-testid="enrich-pass-langue"]').trigger('click')
+    await flushPromises()
+    expect(relire).toHaveBeenCalledWith(7, 'site vitrine', ['artisan'])
+    expect(mockApiPut).toHaveBeenCalledWith('/articles/7', expect.objectContaining({ content: expect.stringContaining('On anticipe.') }))
+  })
+
   it('sans capitaine verrouillé, les passes restent grisées', () => {
     useArticleKeywordsStore().keywords = null
     const wrapper = mountPanel()

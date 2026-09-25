@@ -84,7 +84,8 @@ describe('Variables de prompt', () => {
         // aussi l'objet `variables` du fichier quand l'appel le référence.
         const scope = /loadPrompt\([^,]+,\s*variables\b/.test(call) ? variablesScope(source) : call
         for (const key of USER_CONTENT_KEYS) {
-          const passed = new RegExp(`\\b${key}\\b\\s*[,:}\\n]`).test(scope)
+          // Une clé de l'objet (`chapterHtml:` ou `chapterHtml,`), pas la lecture d'une propriété (`input.articleHtml,`).
+          const passed = new RegExp(`(?<![.\\w])${key}\\b\\s*[,:}\\n]`).test(scope)
           const escaped = new RegExp(`escapeKeys:\\s*\\[[^\\]]*'${key}'`).test(call)
           if (passed && !escaped) violations.push(`${relative(ROOT, file)} — ${key}`)
         }

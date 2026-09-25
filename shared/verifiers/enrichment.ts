@@ -15,6 +15,8 @@
 import { detectNonFrenchSentences, detectUnsourcedFigures } from '../text-quality.js'
 import { distinctRules } from './publish.js'
 import type { GateIssue } from './gate.js'
+import { ARTICLE_TYPE_RULES } from '../constants/article-type-rules.js'
+import type { ArticleLevel } from '../types/keyword-validate.types.js'
 
 export const ENRICHMENT_PASSES = ['sources', 'exemples', 'tableaux', 'images', 'faq'] as const
 export type EnrichmentPass = (typeof ENRICHMENT_PASSES)[number]
@@ -32,8 +34,10 @@ export interface EnrichmentInput {
   after: string
   /** Résultats de la recherche web (passe Sources). */
   webSources?: WebSource[]
-  /** Le modèle s'est arrêté au plafond de jetons : la proposition est coupée. */
+  /** Le modèle s'est arrêté avant la fin (plafond, recherche interrompue…) : la proposition est coupée. */
   truncated?: boolean
+  /** Type de l'article : nombre de questions attendu dans la FAQ. */
+  level?: ArticleLevel
 }
 
 const plain = (html: string): string => html.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').trim()
@@ -121,9 +125,10 @@ export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
     issues.push({ rule: 'enrich-unchanged', level: 'attention', message: 'La proposition ne change rien à ce chapitre.' })
   }
 
-  // La FAQ ajoute ses propres titres ; une réécriture peut revoir ses H3, pas son H2.
+  // La FAQ ajoute ses propres titres ; une réécriture peut revoir ses H3, pas son
+  // H2 ; le H1 (dans le chapeau) ne change jamais (R17).
   if (pass !== 'faq') {
-    const levels = pass === 'reecriture' ? '2' : '23'
+    const levels = pass === 'reecriture' ? '12' : '123'
     if (headings(after, levels).join('|') !== headings(before, levels).join('|')) {
       issues.push({
         rule: 'enrich-headings-changed',
@@ -181,7 +186,12 @@ export function verifyEnrichment(input: EnrichmentInput): GateIssue[] {
     if (!/<h2\b/i.test(after) || !/<h3\b/i.test(after)) {
       issues.push({ rule: 'enrich-faq-malformed', level: 'technique', message: 'La FAQ doit commencer par un titre H2 et poser ses questions en H3.', risk: 'Sans H2, la FAQ se fondrait dans le chapitre précédent ; sans H3, Google n’y voit aucune question.' })
     }
-    for (const question of headings(after, '3').map(h => h.slice(3))) {
+    const questions = headings(after, '3')
+    const rules = input.level ? ARTICLE_TYPE_RULES[input.level] : null
+    if (rules && questions.length > 0 && (questions.length < rules.faqMin || questions.length > rules.faqMax)) {
+      issues.push({ rule: 'enrich-faq-count', level: 'attention', message: `${questions.length} questions : ${rules.faqMin} à ${rules.faqMax} pour un ${rules.label.toLowerCase()}.` })
+    }
+    for (const question of questions.map(h => h.slice(3))) {
       if (!question.endsWith('?')) {
         issues.push({ rule: 'enrich-faq-not-question', level: 'risque', message: `« ${question} » n’est pas formulé en question.`, excerpt: question })
       }

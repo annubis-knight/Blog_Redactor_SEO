@@ -18,6 +18,7 @@ import {
   calculateCost as calcCostClaude,
   USAGE_SENTINEL,
   WEB_SEARCH_TOOL,
+  webSearchTool,
   type ApiUsage,
 } from './claude.service.js'
 import {
@@ -40,7 +41,7 @@ import { getRuntimeMode } from '../infra/runtime-mode.service.js'
 
 export type AIProvider = 'claude' | 'gemini' | 'openrouter' | 'mock'
 
-export { USAGE_SENTINEL, WEB_SEARCH_TOOL }
+export { USAGE_SENTINEL, WEB_SEARCH_TOOL, webSearchTool }
 export type { ApiUsage }
 
 /**

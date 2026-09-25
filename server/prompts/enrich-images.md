@@ -7,6 +7,10 @@ Tu enrichis **un chapitre** d'un article de blog déjà rédigé : tu indiques o
 - **Mot-clé pilier** : {{keyword}}
 - **Mots-clés secondaires** : {{keywords}}
 
+{{#strategyContext}}
+{{strategyContext}}
+{{/strategyContext}}
+
 ## L'article entier, pour le contexte (ne le réécris pas)
 
 {{articleText}}

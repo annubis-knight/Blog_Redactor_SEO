@@ -34,7 +34,7 @@ const CHAPTER = '<h2>Le budget d’un site</h2><p>Beaucoup d’artisans <mark da
 const ARTICLE = `<h1>Créer un site vitrine</h1><p>Un chapeau qui accroche.</p>${CHAPTER}<h2>Conclusion</h2><p>Passez à l’action.</p>`
 
 const input = (pass: ProposalInput['pass'], extra: Partial<ProposalInput> = {}): ProposalInput => ({
-  pass, chapterIndex: 0, chapterHtml: CHAPTER, articleHtml: ARTICLE, keyword: 'site vitrine', keywords: ['artisan'], ...extra,
+  pass, articleId: 7, chapterIndex: 0, chapterHtml: CHAPTER, articleHtml: ARTICLE, keyword: 'site vitrine', keywords: ['artisan'], ...extra,
 })
 
 const headingsOf = (html: string) => html.match(/<h[23][^>]*>[\s\S]*?<\/h[23]>/gi)
@@ -80,11 +80,31 @@ describe('proposeChapter — passes simulées', () => {
     expect(p.issues).toEqual([])
   })
 
-  it('FAQ : un chapitre « Questions fréquentes » de vraies questions', async () => {
-    const p = await proposeChapter(input('faq', { chapterHtml: '', chapterIndex: 1 }))
+  // R22 — le nombre de questions vient des règles du type, plus d'un « 3 à 6 » écrit dans le prompt.
+  it('FAQ : un chapitre « Questions fréquentes », autant de questions que le type en demande', async () => {
+    const p = await proposeChapter(input('faq', { chapterHtml: '', chapterIndex: 1, articleType: 'pilier' }))
+    expect(streamSpy.mock.calls[0]![1]).toContain('FAQ : 4 à 6 questions')
     expect(listChapters(p.html).map(c => c.title)).toEqual(['Questions fréquentes'])
-    expect(p.html.match(/<h3>[^<]+\?<\/h3>/g)).toHaveLength(3)
+    expect(p.html.match(/<h3>[^<]+\?<\/h3>/g)).toHaveLength(4)
     expect(p.issues).toEqual([])
+  })
+
+  it('FAQ hors de la fourchette du type : 🟠', async () => {
+    streamSpy.mockImplementationOnce(async function* () {
+      yield '<h2>Questions fréquentes</h2><h3>Pourquoi ?</h3><p>Parce que.</p>'
+      yield `__USAGE__${JSON.stringify({ inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0, model: 'm', estimatedCost: 0, stopReason: 'end' })}`
+    })
+    const p = await proposeChapter(input('faq', { chapterHtml: '', chapterIndex: 1, articleType: 'pilier' }))
+    expect(p.issues.map(i => `${i.level}:${i.rule}`)).toContain('attention:enrich-faq-count')
+  })
+
+  // R18 — les passes écrivaient sans la stratégie, et sans la fin d'un long article.
+  it('la stratégie de l’article et l’article entier arrivent dans le prompt', async () => {
+    const long = `${ARTICLE}<h2>Annexe</h2><p>${'Un paragraphe de contexte. '.repeat(700)}FIN-DE-L-ARTICLE</p>`
+    await proposeChapter(input('exemples', { articleHtml: long, strategyContext: '## Stratégie\nCible : artisans pressés' }))
+    const prompt = streamSpy.mock.calls[0]![1] as string
+    expect(prompt).toContain('Cible : artisans pressés')
+    expect(prompt).toContain('FIN-DE-L-ARTICLE')
   })
 
   it('réécriture : la consigne arrive échappée, le titre H2 reste', async () => {
@@ -114,6 +134,18 @@ describe('proposeChapter — une proposition fautive', () => {
       yield `__USAGE__${JSON.stringify({ inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0, model: 'm', estimatedCost: 0, stopReason: 'max_tokens' })}`
     })
     const p = await proposeChapter(input('exemples'))
+    expect(p.blocked).toBe(true)
+  })
+
+  // R19 — une recherche web interrompue (« pause ») ou un arrêt par sécurité laisse
+  // aussi une proposition incomplète : seul un arrêt normal compte comme fin.
+  it('arrêtée pour une autre raison qu’une fin normale : ⛔ bloquée', async () => {
+    streamSpy.mockImplementationOnce(async function* () {
+      yield '<h2>Le budget d’un site</h2><p>Selon</p>'
+      yield `__USAGE__${JSON.stringify({ inputTokens: 1, outputTokens: 1, cacheReadTokens: 0, cacheCreationTokens: 0, model: 'm', estimatedCost: 0, stopReason: 'other' })}`
+    })
+    const p = await proposeChapter(input('sources'))
+    expect(p.issues.map(i => i.rule)).toContain('enrich-truncated')
     expect(p.blocked).toBe(true)
   })
 })

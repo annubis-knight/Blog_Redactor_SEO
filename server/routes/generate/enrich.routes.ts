@@ -6,7 +6,11 @@ import {
 } from '../../../shared/schemas/generate.schema.js'
 import { ENRICHMENT_PASSES, type EnrichmentPass } from '../../../shared/verifiers/enrichment.js'
 import { proposeChapter, type ProposalInput } from '../../services/article/enrichment.service.js'
-import { SSE_HEADERS } from './_helpers.js'
+import { SSE_HEADERS, pickStrategyContext } from './_helpers.js'
+import { getArticleById } from '../../services/infra/data.service.js'
+import { getStrategy } from '../../services/strategy/strategy.service.js'
+import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.service.js'
+import { parseArticleLevel } from '../../../shared/utils/article-level.js'
 
 const router = Router()
 
@@ -21,11 +25,26 @@ const isPass = (value: string): value is EnrichmentPass => (ENRICHMENT_PASSES as
  * pour la passe sources, quota…) part en événement `error`, avec son message.
  */
 async function streamProposal(req: Request, res: Response, input: ProposalInput): Promise<void> {
+  const found = await getArticleById(input.articleId)
+  if (!found) {
+    res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article ${input.articleId} introuvable` } })
+    return
+  }
   req.socket.setTimeout(0)
   res.writeHead(200, SSE_HEADERS)
   const keepAlive = setInterval(() => res.write(': en cours\n\n'), KEEP_ALIVE_MS)
   try {
-    const proposal = await proposeChapter(input)
+    // Type et stratégie de l'article : la FAQ suit les règles du type, et chaque
+    // passe écrit pour la cible et la douleur de l'article (R18, R22).
+    const [strategy, cocoonStrategy] = await Promise.all([
+      getStrategy(input.articleId).catch(() => null),
+      getCocoonStrategy(found.cocoonName).catch(() => null),
+    ])
+    const proposal = await proposeChapter({
+      ...input,
+      articleType: parseArticleLevel(found.article.type),
+      strategyContext: pickStrategyContext(strategy, cocoonStrategy),
+    })
     log.info(`[enrich] ${input.pass} chapitre ${input.chapterIndex}`, {
       issues: proposal.issues.map(i => `${i.level}:${i.rule}`),
       webSources: proposal.webSources.length,

@@ -81,6 +81,14 @@ describe('verifyEnrichment — toutes les passes', () => {
     expect(verifyEnrichment({ pass: 'exemples', before: sourced, after })).toEqual([])
   })
 
+  // R17 — le chapeau (chapitre -1) porte le H1 : ni une passe ni une réécriture ne le change.
+  it('⛔ le H1 du chapeau modifié, par une passe comme par une réécriture', () => {
+    const chapeau = '<h1>Créer un site vitrine à Toulouse</h1><p>Un chapeau.</p>'
+    const after = chapeau.replace('Créer un site vitrine à Toulouse', 'Un site qui rapporte')
+    expect(rules(verifyEnrichment({ pass: 'sources', before: chapeau, after }))).toContain('technique:enrich-headings-changed')
+    expect(rules(verifyEnrichment({ pass: 'reecriture', before: chapeau, after }))).toContain('technique:enrich-headings-changed')
+  })
+
   it('⛔ un bloc ou un lien posé à la main qui disparaît', () => {
     const withBlocks = '<h2>Le budget</h2><div class="content-valeur"><p>Notre promesse.</p></div><p>Voir <a class="internal-link" data-slug="audit" href="/blog/audit">l’audit</a>.</p>'
     const lostBlock = withBlocks.replace('<div class="content-valeur"><p>Notre promesse.</p></div>', '<p>Notre promesse.</p>')

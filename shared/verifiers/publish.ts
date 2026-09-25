@@ -154,7 +154,7 @@ export function verifyPublish(input: PublishGateInput): GateIssue[] {
       rule: 'image-to-provide',
       level: 'technique',
       message: `${toProvide} image${toProvide > 1 ? 's' : ''} encore à fournir (place réservée par la passe images).`,
-      risk: 'Le lecteur verrait « Image à fournir » : remplacez l’image ou retirez-la.',
+      risk: 'Le lecteur verrait « Image à fournir » : remplacez l’image (bouton Image de la barre d’outils) ou retirez-la.',
     })
   }
 

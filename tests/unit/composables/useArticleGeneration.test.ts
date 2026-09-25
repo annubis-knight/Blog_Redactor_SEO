@@ -44,6 +44,7 @@ function makeEditorStore(overrides: Record<string, unknown> = {}) {
 function makeBriefStore(target: number | null = 1500, retained: number | null = null) {
   return {
     targetWordCount: retained ?? target,
+    setRetainedWordCount: vi.fn(),
     briefData: {
       contentLengthRecommendation: target,
       article: { title: 'Le SEO local pour les artisans' },
@@ -146,6 +147,13 @@ describe('useArticleGeneration — FR-RED-ARTICLE/META/REDUCE/HUMANIZE', () => {
       expect(editorStore.generateArticle).toHaveBeenCalledOnce()
       expect(editorStore.saveArticle).toHaveBeenCalledTimes(2)
       expect(editorStore.generateMeta).toHaveBeenCalledOnce()
+    })
+
+    // R24 — la longueur retenue par le premier jet reste celle de l'écran jusqu'au prochain chargement.
+    it('après le premier jet, l’écran garde la longueur qu’il a demandée', async () => {
+      const { api, briefStore } = setup({ target: 2400 })
+      await api.handleGenerateArticle()
+      expect((briefStore as unknown as { setRetainedWordCount: ReturnType<typeof vi.fn> }).setRetainedWordCount).toHaveBeenCalledWith(2400)
     })
 
     it('utilise pilierKeyword.keyword pour meta (pas article.title)', async () => {

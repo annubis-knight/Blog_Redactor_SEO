@@ -1,9 +1,32 @@
 <script setup lang="ts">
 import type { Editor } from '@tiptap/core'
+import { IMAGE_TO_PROVIDE_SRC } from '@shared/constants/image-placeholder.js'
 
 const props = defineProps<{
   editor: Editor | undefined
 }>()
+
+/** Adresse d'image admise : un fichier du site (`/…`) ou une adresse web. */
+const IMAGE_URL = /^(https?:\/\/|\/(?!\/))\S+$/i
+
+/**
+ * Remplace l'image sélectionnée (la place « à fournir » posée par la passe
+ * images, que la publication refuse) ou insère une image avec son texte
+ * alternatif (R20).
+ */
+function setImage() {
+  if (!props.editor) return
+  const selected = props.editor.isActive('image') ? (props.editor.getAttributes('image') as { src?: string }) : null
+  const current = selected?.src && selected.src !== IMAGE_TO_PROVIDE_SRC ? selected.src : ''
+  const src = prompt('Adresse de l’image (https://… ou /images/…) :', current)?.trim()
+  if (!src || !IMAGE_URL.test(src)) return
+  if (selected) {
+    props.editor.chain().focus().updateAttributes('image', { src }).run()
+    return
+  }
+  const alt = prompt('Texte alternatif — ce que montre l’image :')?.trim()
+  if (alt) props.editor.chain().focus().setImage({ src, alt }).run()
+}
 
 function toggleLink() {
   if (!props.editor) return
@@ -94,6 +117,16 @@ function toggleLink() {
       @click="toggleLink()"
     >
       &#128279;
+    </button>
+
+    <button
+      class="toolbar-btn"
+      data-testid="toolbar-image"
+      :class="{ active: editor.isActive('image') }"
+      :title="editor.isActive('image') ? 'Remplacer l’image' : 'Insérer une image'"
+      @click="setImage()"
+    >
+      &#128247;
     </button>
 
     <span class="toolbar-divider" />
