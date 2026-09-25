@@ -340,6 +340,19 @@ describe('article-keywords.store — suggestLexique', () => {
     expect(store.error).toBeNull()
   })
 
+  // M15 — le serveur écarte les mots génériques ; le store les rend à l'écran.
+  it('renvoie les termes génériques écartés par le serveur', async () => {
+    mockApiPost.mockResolvedValue({ lexique: ['garantie décennale'], rejected: ['être', 'vos'] })
+    const store = useArticleKeywordsStore()
+    store.initEmpty('design-emotionnel')
+    store.setCapitaine('design émotionnel')
+
+    const rejected = await store.suggestLexique('design-emotionnel', 'Title', 'Cocoon')
+
+    expect(rejected).toEqual(['être', 'vos'])
+    expect(store.keywords!.lexique).toEqual(['garantie décennale'])
+  })
+
   it('sets error on suggest failure', async () => {
     mockApiPost.mockRejectedValue(new Error('Claude error'))
     const store = useArticleKeywordsStore()

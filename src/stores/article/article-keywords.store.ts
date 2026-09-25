@@ -267,14 +267,15 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
 
   // ---- Misc ----
 
-  async function suggestLexique(articleId: number, articleTitle: string, cocoonName: string) {
-    if (!keywords.value?.capitaine) return
+  /** Remplace le lexique par la suggestion ; renvoie les termes génériques que le serveur a écartés (M15). */
+  async function suggestLexique(articleId: number, articleTitle: string, cocoonName: string): Promise<string[]> {
+    if (!keywords.value?.capitaine) return []
     log.info(`[article-keywords] suggesting lexique for article ${articleId}`)
     isSuggestingLexique.value = true
     error.value = null
     try {
       // S2 — articleId transmis pour que le backend récupère le painPoint et l'injecte dans le prompt.
-      const result = await apiPost<{ lexique: string[] }>('/keywords/lexique-suggest', {
+      const result = await apiPost<{ lexique: string[]; rejected?: string[] }>('/keywords/lexique-suggest', {
         capitaine: keywords.value.capitaine,
         articleTitle,
         cocoonName,
@@ -284,9 +285,11 @@ export const useArticleKeywordsStore = defineStore('article-keywords', () => {
         keywords.value.lexique = result.lexique
         log.debug(`[article-keywords] lexique suggested: ${result.lexique.length} terms`)
       }
+      return result.rejected ?? []
     } catch (err) {
       error.value = err instanceof Error ? err.message : 'Erreur de suggestion'
       log.error(`[article-keywords] suggestLexique failed`, { articleId, error: error.value })
+      return []
     } finally {
       isSuggestingLexique.value = false
     }

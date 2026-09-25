@@ -10,7 +10,7 @@
 import { describe, it, expect } from 'vitest'
 import { __test__ } from '../../../server/services/keyword/captain-relevance.service'
 
-const { computeRelevanceForSingleKeyword } = __test__
+const { computeRelevanceForSingleKeyword, painPointToWords } = __test__
 
 // --- Helper : fabrique un metrics minimal valide pour le calcul ---
 function makeMetrics(): import('../../../server/services/keyword/keyword-metrics.service').KeywordMetrics {
@@ -86,10 +86,10 @@ describe('moteur:captain-relevance — paaPainAlignmentOverride (Haiku)', () => 
       null, // ← pas d'override
     )
     // Le calcul lexical produit une valeur déterministe pour ces inputs :
-    // chaque PAA ne partage avec la douleur que « site », « web » et
-    // « toulouse » (par racine) → alignement partiel par racine (50) sur les
-    // deux PAA → moyenne 50.
-    expect(result.breakdown!.paaPain.normalized).toBe(50)
+    // chaque PAA partage avec la douleur « site », « web » et « toulouse ».
+    // Avant M14, la douleur finit par « Toulouse. » : le mot gardait son point
+    // et ne correspondait jamais → 50 au lieu de 60.
+    expect(result.breakdown!.paaPain.normalized).toBe(60)
     expect(result.total).not.toBeNull()
   })
 
@@ -195,5 +195,18 @@ describe('moteur:captain-relevance — paaPainAlignmentOverride (Haiku)', () => 
     )
     expect(result.total).toBeNull()
     expect(result.unavailableReason).toBe('no-pain')
+  })
+})
+
+// M14 — la ponctuation colle aux mots : « Toulouse. » ne correspondait pas à
+// « toulouse », et le signal PAA × douleur en était sous-évalué.
+describe('moteur:captain-relevance — mots de la douleur', () => {
+  it('retire la ponctuation autour des mots', () => {
+    expect(painPointToWords('Un site qui convertit, pas juste joli, à Toulouse.'))
+      .toEqual(['site', 'qui', 'convertit', 'pas', 'juste', 'joli', 'toulouse'])
+  })
+
+  it('coupe sur l’apostrophe et garde les accents', () => {
+    expect(painPointToWords('L’entreprise n’a pas de visibilité !')).toEqual(['entreprise', 'pas', 'visibilité'])
   })
 })

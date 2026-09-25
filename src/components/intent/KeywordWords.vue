@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { FRENCH_STOPWORDS } from '@/constants/french-nlp'
+import { FRENCH_STOPWORDS } from '@shared/utils/keyword-roots.js'
 import type { ModifierKind } from '@shared/utils/keyword-modifiers'
 
 /**

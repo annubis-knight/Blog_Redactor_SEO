@@ -80,14 +80,15 @@ export interface CaptainTabRelevanceResult {
 }
 
 /**
- * Tokenise un painPoint en mots significatifs pour les calculs lexicaux.
- * Utilise une logique simple (split + filter mots ≥ 3 chars).
+ * Tokenise un painPoint en mots significatifs pour les calculs lexicaux :
+ * coupe sur tout ce qui n'est ni lettre ni chiffre (espaces, ponctuation,
+ * apostrophes), garde les mots de 3 caractères ou plus. La ponctuation restait
+ * collée aux mots (« toulouse. ») et les empêchait de correspondre (M14).
  */
 function painPointToWords(painPoint: string): string[] {
   return painPoint
     .toLowerCase()
-    .split(/\s+/)
-    .map(w => w.trim())
+    .split(/[^\p{L}\p{N}]+/u)
     .filter(w => w.length >= 3)
 }
 

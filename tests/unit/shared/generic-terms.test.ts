@@ -8,7 +8,7 @@
  * apportaient aussi leurs menus et bandeaux cookies.
  */
 import { describe, it, expect } from 'vitest'
-import { isGenericTerm, normalizeTerm } from '../../../shared/utils/generic-terms.js'
+import { isGenericTerm, normalizeTerm, splitGenericTerms } from '../../../shared/utils/generic-terms.js'
 
 describe('isGenericTerm — mots vides et bruit de page, avec ou sans accent', () => {
   it.each(['être', 'Être', 'etre', 'même', 'très', 'vos', 'nos', 'votre', 'chaque', 'comment', 'voir', 'cela', 'permet', 'faut'])(
@@ -43,5 +43,19 @@ describe('isGenericTerm — mots vides et bruit de page, avec ou sans accent', (
   it('normalizeTerm ignore la casse et les accents', () => {
     expect(normalizeTerm('  Être  ')).toBe('etre')
     expect(normalizeTerm('Soufflée')).toBe('soufflee')
+  })
+})
+
+// M15 — un lexique qui entre sans passer par le Moteur (suggestion de l'IA,
+// ajout depuis la Rédaction) est trié par la même source.
+describe('splitGenericTerms', () => {
+  it('sépare les termes du métier des mots génériques', () => {
+    expect(splitGenericTerms(['garantie décennale', 'être', 'vos', 'isolation des combles', 'cookies']))
+      .toEqual({ kept: ['garantie décennale', 'isolation des combles'], rejected: ['être', 'vos', 'cookies'] })
+  })
+
+  it('nettoie les espaces et dédoublonne sans tenir compte des accents ni de la casse', () => {
+    expect(splitGenericTerms(['  Isolation   combles ', 'isolation combles', 'ÊTRE', 'etre', '']))
+      .toEqual({ kept: ['Isolation combles'], rejected: ['ÊTRE'] })
   })
 })

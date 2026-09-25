@@ -28,6 +28,7 @@ import { hasSerpScrape } from '../services/keyword/keyword-serp.service.js'
 import type { ArticleKeywordAssignment } from '../services/keyword/keyword-assignment.service.js'
 import type { Keyword, KeywordStatus } from '../../shared/types/index.js'
 import type { ProposeLieutenantsHnNode } from '../../shared/types/serp-analysis.types.js'
+import { splitGenericTerms } from '../../shared/utils/generic-terms.js'
 
 const router = Router()
 
@@ -503,10 +504,13 @@ router.post('/keywords/lexique-suggest', async (req, res) => {
 
     // Parse JSON array from response
     const cleaned = content.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
-    const lexique = JSON.parse(cleaned) as string[]
+    // Même filtre que le Moteur (M15, FR-LEX-METIER-ONLY) : la suggestion
+    // remplace le lexique, un mot vide y entrait sans filtre ni porte.
+    const { kept: lexique, rejected } = splitGenericTerms(JSON.parse(cleaned) as string[])
+    if (rejected.length) log.info('[lexique-suggest] termes génériques écartés', { capitaine, rejected })
 
     // usage remonté au front pour alimenter la pile d'activité
-    res.json({ data: { lexique, usage } })
+    res.json({ data: { lexique, rejected, usage } })
   } catch (err) {
     log.error(`POST /api/keywords/lexique-suggest — ${(err as Error).message}`)
     res.status(500).json({ error: { code: 'SUGGESTION_ERROR', message: 'Failed to suggest lexique' } })

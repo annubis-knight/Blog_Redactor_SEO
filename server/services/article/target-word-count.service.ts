@@ -1,16 +1,20 @@
 /**
+ * AUTHORITY: `shared/constants/article-type-rules.ts` (longueur visée et bornes par type)
+ * READS FROM: moyenne SERP des concurrents, sommaire, IA (conseil contextualisé)
+ * WRITES TO: rien (la valeur retenue est enregistrée par le micro-contexte)
+ * CONSUMERS: POST /articles/:id/recommend-word-count → brief (contentLengthRecommendation),
+ *            LieutenantsPanel ; même valeur par défaut que la rédaction (targetWordsFor)
+ * RELATED FR: FR-INFRA-TYPE-RULES-SSOT, FR-CER-WORD-COUNT-RECOMMEND
+ *
  * Service de calcul du targetWordCount conseillé pour un article.
  *
  * Logique :
  *   1. Récupère la moyenne SERP des concurrents (depuis content-gap.service ou keyword_metrics)
- *   2. Applique une base par type d'article (Pilier > Intermédiaire > Spécialisé)
+ *   2. Applique la longueur visée du type d'article (source unique)
  *   3. Passe SERP avg + base type + structure HN à une petite IA pour conseil contextualisé
  *   4. Retourne { recommended, breakdown } — l'utilisateur peut toujours override
  *
- * Bornes :
- *   - Pilier : 1800-3500
- *   - Intermédiaire : 1200-2500
- *   - Spécialisé : 800-1500
+ * Bornes : `wordsMin` / `wordsMax` de ARTICLE_TYPE_RULES (plus aucune copie ici).
  */
 import { log } from '../../utils/logger.js'
 import { classifyWithTool } from '../external/ai-provider.service.js'

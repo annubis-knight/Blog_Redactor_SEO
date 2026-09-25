@@ -74,3 +74,22 @@ export function isGenericTerm(term: string): boolean {
   // Un terme vide n'a aucun mot : `every` renvoie vrai, il est générique.
   return words.every(isGenericWord)
 }
+
+/**
+ * Sépare les termes du métier des termes génériques (M15). Sert partout où un
+ * lexique entre sans passer par le Moteur : suggestion de l'IA, ajout manuel
+ * depuis la Rédaction. Les termes gardés sont nettoyés (espaces) et dédoublonnés.
+ */
+export function splitGenericTerms(terms: readonly string[]): { kept: string[]; rejected: string[] } {
+  const kept: string[] = []
+  const rejected: string[] = []
+  const seen = new Set<string>()
+  for (const raw of terms) {
+    const term = raw.trim().replace(/\s+/g, ' ')
+    const key = normalizeTerm(term)
+    if (!key || seen.has(key)) continue
+    seen.add(key)
+    ;(isGenericTerm(term) ? rejected : kept).push(term)
+  }
+  return { kept, rejected }
+}

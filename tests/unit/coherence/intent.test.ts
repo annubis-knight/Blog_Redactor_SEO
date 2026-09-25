@@ -13,6 +13,7 @@
 
 import { describe, it, expect } from 'vitest'
 import type { IntentAnalysis, SerpModule, RadarIntentType } from '@shared/types/index.js'
+import { intentValueToPseudoScore } from '@shared/scoring-kpi.js'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Helpers
@@ -81,21 +82,10 @@ function makeMockIntentAnalysis(overrides?: Partial<IntentAnalysis>): IntentAnal
   }
 }
 
-// Mock intent types mapping (from shared/scoring-kpi.ts)
-const INTENT_VALUES: Record<RadarIntentType, number> = {
-  informational: 60,
-  commercial: 80,
-  transactional_local: 90,
-  navigational: 40,
-  mixed: 50,
-}
-
-function intentValueToPseudoScore(intentTypes: RadarIntentType[], prob: number | null): number {
-  if (!intentTypes.length) return 0
-  const maxVal = Math.max(...intentTypes.map(t => INTENT_VALUES[t] ?? 0))
-  const score = Math.round((maxVal / 100) * (prob ?? 0.5) * 100)
-  return Math.min(100, Math.max(0, score))
-}
+// T11 — la VRAIE fonction de shared/scoring-kpi.ts. Le test en vérifiait une
+// copie locale qui divergeait (échelle 0-100 au lieu de 0-1, autres valeurs,
+// types `transactional_local` / `mixed` inconnus du Radar) : il ne prouvait
+// rien sur le code réel.
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Tests
@@ -124,7 +114,7 @@ describe('FR-EXP-INTENT-ANALYZE — affichage vs calcul intent dans scoring KPI'
     // Assert
     expect(displayedLabel).toBe('Informationnel')
     expect(intentTypes[0]).toBe(analysis.dominantIntent)
-    expect(pseudoScore).toBeGreaterThan(0)
+    expect(pseudoScore).toBeCloseTo(0.5 * 0.85) // informationnel = 0,5 × probabilité
   })
 
   it('intent null → affichage "—", scoring KPI = 0 (pas fallback silencieux)', () => {
@@ -145,20 +135,20 @@ describe('FR-EXP-INTENT-ANALYZE — affichage vs calcul intent dans scoring KPI'
     expect(pseudoScore).toBe(0)
   })
 
-  it('intent types de différentes précisions mappent correctement', () => {
-    // Test des 4 types principaux
-    // Valeur de l'intent × probabilité 0,5 (aucun plafond n'est atteint).
-    const testCases: Array<{ intentType: IntentType; expectedScore: number }> = [
-      { intentType: 'informational', expectedScore: 30 },       // 60 × 0,5
-      { intentType: 'transactional_local', expectedScore: 45 }, // 90 × 0,5
-      { intentType: 'navigational', expectedScore: 20 },        // 40 × 0,5
-      { intentType: 'mixed', expectedScore: 25 },               // 50 × 0,5
+  it('les 4 intentions du Radar valent leur poids × la probabilité', () => {
+    const cases: Array<{ intentType: RadarIntentType; expected: number }> = [
+      { intentType: 'commercial', expected: 0.5 },     // 1,0 × 0,5
+      { intentType: 'transactional', expected: 0.4 },  // 0,8 × 0,5
+      { intentType: 'informational', expected: 0.25 }, // 0,5 × 0,5
+      { intentType: 'navigational', expected: 0.1 },   // 0,2 × 0,5
     ]
-
-    for (const testCase of testCases) {
-      const score = intentValueToPseudoScore([testCase.intentType as RadarIntentType], 0.5)
-      expect(score, testCase.intentType).toBe(testCase.expectedScore)
+    for (const { intentType, expected } of cases) {
+      expect(intentValueToPseudoScore([intentType], 0.5), intentType).toBeCloseTo(expected)
     }
+  })
+
+  it('plusieurs intentions : la plus forte l’emporte ; sans probabilité, elle compte pleinement', () => {
+    expect(intentValueToPseudoScore(['informational', 'commercial'], null)).toBe(1)
   })
 })
 
@@ -363,9 +353,3 @@ describe('FR-DIS-INTENT-SCAN — intent scoring cohérence', () => {
 describe('FR-EXP-INTENT-ANALYZE — fallback Claude handling', () => {
   it.todo('Fallback Claude (confidence=0.3) → affichage label "Estimation par défaut"')
 })
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Types (local)
-// ─────────────────────────────────────────────────────────────────────────────
-
-type IntentType = 'informational' | 'transactional_local' | 'navigational' | 'mixed'

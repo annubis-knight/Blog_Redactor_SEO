@@ -1,3 +1,10 @@
+/**
+ * AUTHORITY: PostgreSQL `keyword_metrics` (analyse d'écart de contenu, cross-article)
+ * READS FROM: keyword_metrics (fraîcheur), Tavily (pages concurrentes), IA, zone du client (theme_config)
+ * WRITES TO: keyword_metrics via upsertKeywordContentGap
+ * CONSUMERS: POST /content-gap, moyenne SERP de la recommandation de longueur
+ * RELATED FR: FR-INFRA-PROMPT-LAYERS (zone lue dans la configuration, plus écrite en dur)
+ */
 import { log } from '../../utils/logger.js'
 import {
   getKeywordMetrics,

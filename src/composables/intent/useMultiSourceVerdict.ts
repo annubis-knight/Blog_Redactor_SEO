@@ -6,7 +6,7 @@ import type {
   CommunitySignal,
   AutocompleteSignal,
 } from '@shared/types/intent.types.js'
-import { FRENCH_STOPWORDS } from '@/constants/french-nlp'
+import { FRENCH_STOPWORDS } from '@shared/utils/keyword-roots.js'
 
 // --- Weights ---
 const WEIGHTS_NO_NLP = { dataforseo: 0.4375, community: 0.375, autocomplete: 0.1875 }

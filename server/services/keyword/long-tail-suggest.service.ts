@@ -1,4 +1,10 @@
 /**
+ * AUTHORITY: PostgreSQL `radar_explorations.scan_result.longTailSuggestions` (+ cache `api_cache`)
+ * READS FROM: api_cache (clé = sha256 des entrées), articles → cocon (stratégie injectée par loadPrompt)
+ * WRITES TO: radar_explorations (persistLongTailSuggestions), api_cache (TTL 7 j)
+ * CONSUMERS: POST /articles/:id/radar-exploration/long-tail, onglet Radar (useLongTailSuggestions)
+ * RELATED FR: FR-INFRA-PROMPT-LAYERS (stratégie du cocon enfin transmise au prompt)
+ *
  * Service de generation de longues-traines pour l'onglet Radar.
  *
  * Pipeline :

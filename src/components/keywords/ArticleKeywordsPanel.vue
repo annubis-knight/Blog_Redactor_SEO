@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useArticleKeywordsStore } from '@/stores/article/article-keywords.store'
 import KeywordLevelBadge from './KeywordLevelBadge.vue'
+import { splitGenericTerms } from '@shared/utils/generic-terms.js'
 
 const props = defineProps<{
   articleId: number
@@ -14,6 +15,8 @@ const store = useArticleKeywordsStore()
 
 const newLieutenant = ref('')
 const newLexiqueTerm = ref('')
+/** Ce que le filtre des mots génériques a refusé (M15), dit à l'utilisateur. */
+const lexiqueNotice = ref('')
 
 // Collapsable sub-sections
 const showCapitaine = ref(true)
@@ -48,10 +51,17 @@ function handleAddLieutenant() {
 }
 
 function handleAddLexique() {
-  if (newLexiqueTerm.value.trim()) {
-    store.addLexiqueTerm(newLexiqueTerm.value.trim())
-    newLexiqueTerm.value = ''
+  const term = newLexiqueTerm.value.trim()
+  if (!term) return
+  // Même filtre que le Moteur (M15, FR-LEX-METIER-ONLY) : un mot générique
+  // n'entre pas au lexique, et l'utilisateur sait pourquoi.
+  if (splitGenericTerms([term]).rejected.length) {
+    lexiqueNotice.value = `« ${term} » est un mot générique : il n'aide pas le référencement, il n'est pas ajouté.`
+    return
   }
+  lexiqueNotice.value = ''
+  store.addLexiqueTerm(term)
+  newLexiqueTerm.value = ''
 }
 
 async function handleSave() {
@@ -59,7 +69,8 @@ async function handleSave() {
 }
 
 async function handleSuggestLexique() {
-  await store.suggestLexique(props.articleId, props.articleTitle, props.cocoonName)
+  const rejected = await store.suggestLexique(props.articleId, props.articleTitle, props.cocoonName)
+  lexiqueNotice.value = rejected.length ? `Termes génériques écartés de la suggestion : ${rejected.join(', ')}.` : ''
 }
 
 onMounted(() => {
@@ -158,6 +169,7 @@ onMounted(() => {
             />
             <button class="btn-add" :disabled="!newLexiqueTerm.trim()" @click="handleAddLexique">+</button>
           </div>
+          <p v-if="lexiqueNotice" class="lexique-notice" role="status">{{ lexiqueNotice }}</p>
           <button
             class="btn-suggest-lexique"
             :disabled="store.isSuggestingLexique || !store.keywords.capitaine"
@@ -338,6 +350,12 @@ onMounted(() => {
 .btn-add:disabled {
   opacity: 0.4;
   cursor: not-allowed;
+}
+
+.lexique-notice {
+  margin: 0.25rem 0 0.5rem;
+  font-size: 0.8rem;
+  color: var(--color-warning-text);
 }
 
 .btn-suggest-lexique {

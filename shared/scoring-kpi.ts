@@ -47,7 +47,8 @@ function normalizeFromColor(color: KpiScoreComponent['color']): number {
   return 50
 }
 
-function intentValueToPseudoScore(intentTypes: RadarIntentType[], prob: number | null): number {
+/** Pseudo-score d'intention (0 à 1) : la valeur de l'intention la plus forte × sa probabilité. */
+export function intentValueToPseudoScore(intentTypes: RadarIntentType[], prob: number | null): number {
   if (!intentTypes.length) return 0
   const INTENT_VALUES: Record<RadarIntentType, number> = {
     commercial:    1.0,
