@@ -4,7 +4,7 @@
 -- ⚠️  Fichier généré par `npm run db:bootstrap` (ou db:snapshot).
 -- NE PAS éditer à la main. Sert à créer une base vide (CI).
 -- Usage : psql -v ON_ERROR_STOP=1 -d <base> -f server/db/bootstrap.sql
--- Empreinte schéma (schema.sql) : sha256:fe699ca76c0a21435de69501734017665a03fa1502f41bf772590fa4a1f48f88
+-- Empreinte schéma (schema.sql) : sha256:7d3aa1ce6d1b615714e1d27875e9a48dd763d93f73552282792b175c22cecbfe
 -- ============================================================
 --
 -- PostgreSQL database dump
@@ -202,6 +202,42 @@ CREATE SEQUENCE public.cocoons_id_seq
 --
 
 ALTER SEQUENCE public.cocoons_id_seq OWNED BY public.cocoons.id;
+
+--
+-- Name: gate_waivers; Type: TABLE; Schema: public; Owner: -
+--
+
+CREATE TABLE public.gate_waivers (
+    id integer NOT NULL,
+    article_id integer NOT NULL,
+    gate_id text NOT NULL,
+    rule text NOT NULL,
+    level text NOT NULL,
+    category text,
+    reason text,
+    input_hash text NOT NULL,
+    created_at timestamp with time zone DEFAULT now() NOT NULL,
+    CONSTRAINT gate_waivers_category_check CHECK (((category IS NULL) OR (category = ANY (ARRAY['longue-traine'::text, 'donnee-manquante'::text, 'marque'::text, 'autre'::text])))),
+    CONSTRAINT gate_waivers_level_check CHECK ((level = ANY (ARRAY['attention'::text, 'risque'::text])))
+);
+
+--
+-- Name: gate_waivers_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.gate_waivers_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: gate_waivers_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.gate_waivers_id_seq OWNED BY public.gate_waivers.id;
 
 --
 -- Name: internal_links; Type: TABLE; Schema: public; Owner: -
@@ -639,6 +675,12 @@ ALTER TABLE ONLY public.cocoons ALTER COLUMN id SET DEFAULT nextval('public.coco
 ALTER TABLE ONLY public.external_api_cache ALTER COLUMN id SET DEFAULT nextval('public.api_cache_id_seq'::regclass);
 
 --
+-- Name: gate_waivers id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gate_waivers ALTER COLUMN id SET DEFAULT nextval('public.gate_waivers_id_seq'::regclass);
+
+--
 -- Name: internal_links id; Type: DEFAULT; Schema: public; Owner: -
 --
 
@@ -775,6 +817,20 @@ ALTER TABLE ONLY public.cocoon_strategies
 
 ALTER TABLE ONLY public.cocoons
     ADD CONSTRAINT cocoons_pkey PRIMARY KEY (id);
+
+--
+-- Name: gate_waivers gate_waivers_pkey; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gate_waivers
+    ADD CONSTRAINT gate_waivers_pkey PRIMARY KEY (id);
+
+--
+-- Name: gate_waivers gate_waivers_unique; Type: CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gate_waivers
+    ADD CONSTRAINT gate_waivers_unique UNIQUE (article_id, gate_id, rule, input_hash);
 
 --
 -- Name: internal_links internal_links_pkey; Type: CONSTRAINT; Schema: public; Owner: -
@@ -960,6 +1016,12 @@ CREATE INDEX idx_external_api_cache_expires ON public.external_api_cache USING b
 CREATE INDEX idx_external_api_cache_key_type ON public.external_api_cache USING btree (cache_key, cache_type);
 
 --
+-- Name: idx_gate_waivers_article; Type: INDEX; Schema: public; Owner: -
+--
+
+CREATE INDEX idx_gate_waivers_article ON public.gate_waivers USING btree (article_id);
+
+--
 -- Name: idx_internal_links_source; Type: INDEX; Schema: public; Owner: -
 --
 
@@ -1121,6 +1183,13 @@ ALTER TABLE ONLY public.cocoon_strategies
 
 ALTER TABLE ONLY public.cocoons
     ADD CONSTRAINT cocoons_silo_id_fkey FOREIGN KEY (silo_id) REFERENCES public.silos(id) ON DELETE CASCADE;
+
+--
+-- Name: gate_waivers gate_waivers_article_id_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.gate_waivers
+    ADD CONSTRAINT gate_waivers_article_id_fkey FOREIGN KEY (article_id) REFERENCES public.articles(id) ON DELETE CASCADE;
 
 --
 -- Name: keyword_autocomplete keyword_autocomplete_keyword_lang_country_fkey; Type: FK CONSTRAINT; Schema: public; Owner: -

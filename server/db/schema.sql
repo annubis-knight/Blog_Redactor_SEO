@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-09-24T22:47:12.319Z
--- Commit git       : 1269dbe (ci/reparer-pipeline)
--- Sujet commit     : test(parcours): la retouche du parcours ne laisse aucune trace, et les faux verts sont plafonnés
+-- Généré le        : 2026-09-24T22:52:03.571Z
+-- Commit git       : 462c884 (feat/verificateurs-alarme)
+-- Sujet commit     : ci: vérifier chaque branche dès qu'elle est poussée
 -- Working tree     : ⚠️  NON (modifs non commitées)
--- Tables           : 25
--- Empreinte schéma : sha256:fe699ca76c0a21435de69501734017665a03fa1502f41bf772590fa4a1f48f88
+-- Tables           : 26
+-- Empreinte schéma : sha256:7d3aa1ce6d1b615714e1d27875e9a48dd763d93f73552282792b175c22cecbfe
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -127,6 +127,23 @@ CREATE TABLE "external_api_cache" (
   "expires_at" TIMESTAMPTZ NOT NULL,
   CONSTRAINT "api_cache_pkey" PRIMARY KEY (id),
   CONSTRAINT "api_cache_cache_key_cache_type_key" UNIQUE (cache_key, cache_type)
+);
+
+CREATE TABLE "gate_waivers" (
+  "id" INTEGER NOT NULL DEFAULT nextval('gate_waivers_id_seq'::regclass),
+  "article_id" INTEGER NOT NULL,
+  "gate_id" TEXT NOT NULL,
+  "rule" TEXT NOT NULL,
+  "level" TEXT NOT NULL,
+  "category" TEXT,
+  "reason" TEXT,
+  "input_hash" TEXT NOT NULL,
+  "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+  CONSTRAINT "gate_waivers_category_check" CHECK (((category IS NULL) OR (category = ANY (ARRAY['longue-traine'::text, 'donnee-manquante'::text, 'marque'::text, 'autre'::text])))),
+  CONSTRAINT "gate_waivers_level_check" CHECK ((level = ANY (ARRAY['attention'::text, 'risque'::text]))),
+  CONSTRAINT "gate_waivers_article_id_fkey" FOREIGN KEY (article_id) REFERENCES articles(id) ON DELETE CASCADE,
+  CONSTRAINT "gate_waivers_pkey" PRIMARY KEY (id),
+  CONSTRAINT "gate_waivers_unique" UNIQUE (article_id, gate_id, rule, input_hash)
 );
 
 CREATE TABLE "internal_links" (
@@ -346,6 +363,8 @@ CREATE INDEX idx_external_api_cache_expires ON public.external_api_cache USING b
 
 CREATE INDEX idx_external_api_cache_key_type ON public.external_api_cache USING btree (cache_key, cache_type);
 
+CREATE INDEX idx_gate_waivers_article ON public.gate_waivers USING btree (article_id);
+
 CREATE INDEX idx_internal_links_source ON public.internal_links USING btree (source_id);
 
 CREATE INDEX idx_internal_links_target ON public.internal_links USING btree (target_id);
@@ -377,6 +396,8 @@ CREATE INDEX idx_radar_explorations_scanned ON public.radar_explorations USING b
 -- (auto-créée par SERIAL/IDENTITY) "api_cache_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "cocoons_id_seq"
+
+-- (auto-créée par SERIAL/IDENTITY) "gate_waivers_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "internal_links_id_seq"
 

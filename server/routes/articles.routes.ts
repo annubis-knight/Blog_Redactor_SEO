@@ -6,6 +6,15 @@ import { updateArticleContentSchema, updateArticleStatusSchema, batchCreateArtic
 import { updateMicroContextSchema } from '../../shared/schemas/article-micro-context.schema.js'
 import { articleProgressSchema, addCheckSchema } from '../../shared/schemas/article-progress.schema.js'
 import { flattenHnStructure } from '../../shared/utils/hn-structure.js'
+import { CHECK_GATES, evaluateArticleGate, type GateEvaluation } from '../services/gates/gate.service.js'
+
+/**
+ * Refus d'une porte de qualité (FR-INFRA-VERIFIER-SHARED) : 422 avec l'évaluation
+ * complète, que l'écran affiche dans l'alarme graduée.
+ */
+function respondGateBlocked(res: import('express').Response, evaluation: GateEvaluation, message: string): void {
+  res.status(422).json({ error: { code: 'GATE_BLOCKED', message, details: evaluation } })
+}
 
 const router = Router()
 
@@ -108,6 +117,15 @@ router.put('/articles/:id/status', async (req, res) => {
     if (!result) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: `Article ${id} not found` } })
       return
+    }
+
+    // FR-RED-PUBLISH-GATE — on ne publie pas un article qu'un expert refuserait.
+    if (parsed.data.status === 'publié') {
+      const evaluation = await evaluateArticleGate(id, 'publish')
+      if (!evaluation.passed) {
+        respondGateBlocked(res, evaluation, `Publication refusée : ${evaluation.blocking.length} point(s) à traiter avant de publier.`)
+        return
+      }
     }
 
     await updateArticleStatus(id, parsed.data.status)
@@ -325,10 +343,28 @@ router.put('/articles/:id/progress', async (req, res) => {
     return
   }
   try {
+    // Écrire la progression en bloc ne doit pas contourner les portes : une
+    // étape gardée qui n'était pas encore accordée passe par sa porte.
+    const current = await getArticleProgress(id)
+    const added = parsed.data.completedChecks.filter(c => !(current?.completedChecks ?? []).includes(c))
+    for (const check of added) {
+      const gateId = CHECK_GATES[check]
+      if (!gateId) continue
+      const evaluation = await evaluateArticleGate(id, gateId)
+      if (!evaluation.passed) {
+        respondGateBlocked(res, evaluation, `Étape « ${check} » non validée : ${evaluation.blocking.length} point(s) à traiter.`)
+        return
+      }
+    }
     const progress = await saveArticleProgress(id, parsed.data)
     res.json({ data: progress })
   } catch (err) {
-    log.error(`PUT /api/articles/${id}/progress — ${(err as Error).message}`)
+    const message = (err as Error).message
+    log.error(`PUT /api/articles/${id}/progress — ${message}`)
+    if (message.includes('introuvable')) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message } })
+      return
+    }
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to save progress' } })
   }
 })
@@ -346,10 +382,25 @@ router.post('/articles/:id/progress/check', async (req, res) => {
     return
   }
   try {
+    // Une étape du Moteur gardée par une porte n'est accordée que si la porte passe
+    // (FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE) : l'écran reçoit alors l'alarme graduée.
+    const gateId = CHECK_GATES[parsed.data.check]
+    if (gateId) {
+      const evaluation = await evaluateArticleGate(id, gateId)
+      if (!evaluation.passed) {
+        respondGateBlocked(res, evaluation, `Étape non validée : ${evaluation.blocking.length} point(s) à traiter.`)
+        return
+      }
+    }
     const progress = await addArticleCheck(id, parsed.data.check)
     res.json({ data: progress })
   } catch (err) {
-    log.error(`POST /api/articles/${id}/progress/check — ${(err as Error).message}`)
+    const message = (err as Error).message
+    log.error(`POST /api/articles/${id}/progress/check — ${message}`)
+    if (message.includes('introuvable')) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message } })
+      return
+    }
     res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Failed to add check' } })
   }
 })

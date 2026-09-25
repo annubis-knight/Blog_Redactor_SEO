@@ -118,10 +118,14 @@ function checkCapitaine(input: SeoInput): ContentIssue[] {
     issues.push(issue('seo-off-offer', 'error', `Le Capitaine vise « ${offTerm} », une offre que PropulSite ne vend pas.`, capitaine))
   }
 
-  if (keywordCoverage(capitaine, input.title) < 0.75) {
-    issues.push(issue('seo-capitaine-not-in-title', 'error', 'Le Capitaine n\'apparaît pas dans le titre (H1).', capitaine))
+  // Titre et meta title : le Capitaine EN ENTIER (variantes grammaticales
+  // admises par tokensMatch). À 75 %, un capitaine de 4 mots pouvait perdre sa
+  // tête de requête : « stratégie » manquait au H1 du pilier 1013 sans alerte
+  // (épopée qualité SEO, C2).
+  if (keywordCoverage(capitaine, input.title) < 1) {
+    issues.push(issue('seo-capitaine-not-in-title', 'error', 'Le Capitaine n\'apparaît pas en entier dans le titre (H1).', capitaine))
   }
-  if (input.metaTitle && keywordCoverage(capitaine, input.metaTitle) < 0.75) {
+  if (input.metaTitle && keywordCoverage(capitaine, input.metaTitle) < 1) {
     issues.push(issue('seo-capitaine-not-in-meta-title', 'warning', 'Le Capitaine n\'apparaît pas dans le titre affiché par Google.', input.metaTitle))
   }
   if (keywordCoverage(capitaine, introText(input.content)) < 0.75) {

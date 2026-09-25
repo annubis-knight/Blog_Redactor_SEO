@@ -27,6 +27,7 @@ import keywordAiPanelRoutes from './routes/keyword-ai-panel.routes.js'
 import serpAnalysisRoutes from './routes/serp-analysis.routes.js'
 import paaRoutes from './routes/paa.routes.js'
 import runtimeModeRoutes from './routes/runtime-mode.routes.js'
+import gatesRoutes from './routes/gates.routes.js'
 import costStatusRoutes from './routes/cost-status.routes.js'
 import { setContractReporter } from '../shared/contracts/core.js'
 
@@ -87,6 +88,7 @@ app.use('/api', keywordAiPanelRoutes)
 app.use('/api', serpAnalysisRoutes)
 app.use('/api', paaRoutes)
 app.use('/api', runtimeModeRoutes)
+app.use('/api', gatesRoutes)
 
 // Global error handler
 app.use(errorHandler)
