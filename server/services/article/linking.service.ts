@@ -113,6 +113,27 @@ export async function upsertLinks(newLinks: InternalLink[]): Promise<LinkingMatr
   return getMatrix()
 }
 
+/**
+ * La matrice suit le texte : une fois le contenu de `sourceId` enregistré, un
+ * lien qui n'y figure plus (ni `#article-<id>`, ni `/<slug>`) sort de
+ * `internal_links`. Sans cela, un lien retiré de l'éditeur restait dans la
+ * matrice, et la publication le signalait encore (recette réelle C8).
+ */
+export async function pruneStaleLinks(sourceId: number, html: string): Promise<number> {
+  const ids = [...html.matchAll(/href="#article-(\d+)"/g)].map(m => Number(m[1]))
+  const slugs = [...html.matchAll(/href="\/([a-z0-9-]+)"/g)].map(m => m[1]!)
+  const res = await pool.query(
+    `DELETE FROM internal_links l
+      WHERE l.source_id = $1
+        AND NOT (l.target_id = ANY($2::int[]))
+        AND NOT EXISTS (SELECT 1 FROM articles a WHERE a.id = l.target_id AND a.slug = ANY($3::text[]))`,
+    [sourceId, ids, slugs],
+  )
+  const removed = res.rowCount ?? 0
+  if (removed > 0) log.info('[linking] liens retirés du texte : sortis de la matrice', { sourceId, removed })
+  return removed
+}
+
 /** Get links for a specific article (as source or target) */
 export function getLinksForArticle(
   matrix: LinkingMatrix,

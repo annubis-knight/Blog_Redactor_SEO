@@ -10,6 +10,11 @@ vi.mock('../../../server/utils/logger', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }))
 
+const mockPruneStaleLinks = vi.fn()
+vi.mock('../../../server/services/article/linking.service', () => ({
+  pruneStaleLinks: (...args: unknown[]) => mockPruneStaleLinks(...args),
+}))
+
 import { getArticleContent, saveArticleContent } from '../../../server/services/article/article-content.service'
 
 beforeEach(() => {
@@ -82,6 +87,8 @@ describe('article-content.service', () => {
 
       expect(result.content).toBe('<p>New</p>')
       expect(mockQuery.mock.calls[0][0]).toContain('article_content')
+      // La matrice du maillage suit le texte enregistré (recette C8).
+      expect(mockPruneStaleLinks).toHaveBeenCalledWith(1, '<p>New</p>')
     })
 
     it('updates meta fields in articles table', async () => {

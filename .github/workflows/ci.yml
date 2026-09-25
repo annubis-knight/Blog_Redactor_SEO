@@ -142,7 +142,7 @@ jobs:
           exit 1
 
       - name: Tests contract + integration + e2e
-        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows tests/integration/data.service.test.ts --reporter=dot
+        run: npx vitest run tests/contract-api tests/integration-tabs tests/e2e-workflows tests/integration/data.service.test.ts tests/integration/internal-links-prune.test.ts --reporter=dot
         env:
           AI_PROVIDER: mock
           TEST_BASE_URL: http://localhost:3400/api

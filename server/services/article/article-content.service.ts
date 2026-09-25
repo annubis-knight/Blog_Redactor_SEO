@@ -2,6 +2,7 @@ import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import type { ArticleContent } from '../../../shared/types/index.js'
 import { nextArticlePhase } from '../../../shared/utils/article-phase.js'
+import { pruneStaleLinks } from './linking.service.js'
 
 const DEFAULT_CONTENT: ArticleContent = {
   outline: null,
@@ -67,6 +68,11 @@ export async function saveArticleContent(
         outline = COALESCE(EXCLUDED.outline, article_content.outline),
         content = COALESCE(EXCLUDED.content, article_content.content)
     `, [id, updates.outline ? JSON.stringify(updates.outline) : null, updates.content ?? null])
+  }
+
+  // La matrice du maillage suit le texte : un lien retiré sort d'internal_links.
+  if (updates.content !== undefined && updates.content !== null) {
+    await pruneStaleLinks(id, updates.content)
   }
 
   // Du contenu enregistré fait entrer l'article en rédaction ; la phase ne
