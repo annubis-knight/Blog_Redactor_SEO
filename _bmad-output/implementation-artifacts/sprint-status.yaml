@@ -922,7 +922,16 @@ development_status:
   # référence des prompts générée ; restes M14, M15, T11 soldés, M17 requalifiée.
   # FR-INFRA-PROMPT-LAYERS et FR-INFRA-TYPE-RULES-SSOT versées au PRD et au registre.
   qualite-seo-c4-prompts-architecture: review
-  qualite-seo-c5-redaction-deux-temps: backlog
+  # C5 en deux branches. C5a (feat/redaction-premier-jet, 2026-09-25) : code
+  # livré, en revue, PR à ouvrir. Premier jet en un appel sans recherche web
+  # (POST /generate/article-draft), reprise au chapitre coupé, porte « accepter
+  # le premier jet » (alerte sans bloquer), chiffres sans source / langue /
+  # répétitions 🔴 à la publication ; l'ancienne rédaction section par section
+  # est retirée. FR-RED-DRAFT-SINGLE-PASS et FR-RED-DRAFT-TO-SOURCE versées au
+  # PRD et au registre, FR-RED-ARTICLE superseded. Restes : R14-R16, U1, U2.
+  # C5b (feat/redaction-enrichissement) : à faire — réécriture d'une section,
+  # passes d'enrichissement, relecture de la langue, maillage manuel.
+  qualite-seo-c5-redaction-deux-temps: in-progress
   qualite-seo-c6-onglet-structure-hn: backlog
   qualite-seo-c7-cocon-progressif: backlog
   qualite-seo-c8-recette-reelle: backlog

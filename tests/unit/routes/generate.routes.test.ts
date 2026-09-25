@@ -4,7 +4,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import type { Request, Response } from 'express'
 import { draftMaxTokens, MAX_DRAFT_CONTINUATIONS } from '../../../server/routes/generate/article-draft.routes'
 
-const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext, mockValidateHtmlStructurePreserved } = vi.hoisted(() => ({
+const { mockStreamChatCompletion, mockLoadPrompt, mockGetStrategy, mockGetArticleKeywords, mockLoadArticleMicroContext, mockRetainTargetWordCount, mockValidateHtmlStructurePreserved } = vi.hoisted(() => ({
+  mockRetainTargetWordCount: vi.fn(),
   mockStreamChatCompletion: vi.fn(),
   mockLoadPrompt: vi.fn(),
   mockGetStrategy: vi.fn(),
@@ -35,6 +36,7 @@ vi.mock('../../../server/services/strategy/cocoon-strategy.service', () => ({
 vi.mock('../../../server/services/infra/data.service', () => ({
   getArticleKeywords: mockGetArticleKeywords,
   loadArticleMicroContext: mockLoadArticleMicroContext,
+  retainTargetWordCount: mockRetainTargetWordCount,
 }))
 
 vi.mock('../../../shared/html-utils', async (importOriginal) => {
@@ -1027,6 +1029,22 @@ describe('POST /generate/article-draft', () => {
       continuation: '',
       previousText: '',
     }))
+  })
+
+  // R16 — le premier jet visait la recommandation du brief, la porte jugeait
+  // contre le micro-contexte : un jet fidèle à sa consigne sortait « hors cible ».
+  it('la cible choisie par l’utilisateur (micro-contexte) l’emporte sur la recommandation envoyée', async () => {
+    mockLoadArticleMicroContext.mockResolvedValueOnce({ targetWordCount: 3000 })
+    mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>a</p>'], 'end'))
+    await handler(req({ ...validDraftBody, targetWordCount: 2400 }), createMockRes())
+    expect(mockLoadPrompt).toHaveBeenCalledWith('generate-article-draft', expect.objectContaining({ wordCountBudget: '3000' }))
+    expect(mockRetainTargetWordCount).not.toHaveBeenCalled()
+  })
+
+  it('sans cible choisie, la cible retenue est enregistrée : la porte jugera contre elle', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>a</p>'], 'end'))
+    await handler(req({ ...validDraftBody, targetWordCount: 2400 }), createMockRes())
+    expect(mockRetainTargetWordCount).toHaveBeenCalledWith(validDraftBody.articleId, 2400)
   })
 
   it('réémet la progression chapitre par chapitre, puis le texte réparé', async () => {

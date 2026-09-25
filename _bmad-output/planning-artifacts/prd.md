@@ -180,7 +180,7 @@ Le problème n'est pas de générer du contenu — c'est d'avoir **confiance** d
 5. **Moteur — Phase ② Valider — Lieutenants** → Bouton « Analyser SERP » → scraping top 10 via DataForSEO. Hn concurrents, PAA associés, groupes croisés. Filtre auto post-IA (cap par level : Pilier 5 / Intermédiaire 5 / Spécifique 4). Sélection (check `moteur:lieutenants_locked`).
 6. **Moteur — Phase ② Valider — Lexique** → TF-IDF extrait des données SERP déjà scrapées (zéro requête supplémentaire). 3 niveaux : Obligatoire / Différenciateur / Optionnel. Tri configurable (A-Z / densité / alignement douleur Jaccard). Panel IA upfront. (check `moteur:lexique_validated`).
 7. **Moteur — Phase ③ Finalisation** → Récap read-only des 3 verrouillages. Bouton « Passer à la rédaction ».
-8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Article streamé section par section avec rate-limit 429 backoff (`generate-article-section.md`) → Meta titre + description (`generate-meta.md`) → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 11 actions contextuelles sur sélection.
+8. **Rédaction** → Brief enrichi (analyse markdown) → Sommaire streamé via SSE (`generate-outline.md`) → Premier jet rédigé en un seul appel, sans recherche web, affiché chapitre par chapitre (`generate-article-draft.md`, depuis le 2026-09-25) → Meta titre + description (`generate-meta.md`) → porte « accepter le premier jet » (alarme graduée si le texte ne passe pas) → Éditeur TipTap avec scoring SEO live (300ms debounce + `requestIdleCallback`) et 11 actions contextuelles sur sélection.
 9. **Résultat** → Article rédigé, mots-clés validés, export HTML.
 
 ### ~~Journey 2 — Vérification au Labo~~ — **REMOVED 2026-05-10**
@@ -260,7 +260,7 @@ SPA Vue 3 + backend Express 5, usage local/desktop, utilisateur unique. Pas de d
 - Frontend : Vue 3.5 + Vue Router 5 + Pinia 3 (22 stores en 5 domaines) + TipTap 3
 - Backend : Express 5.2, port 3400 (configurable via `PORT`), CORS localhost only
 - Frontend dev : Vite, port 5400 (configurable via `VITE_PORT`)
-- Communication : REST API + SSE streaming (Claude tokens, génération article par section, panels IA)
+- Communication : REST API + SSE streaming (Claude tokens, premier jet de l'article affiché chapitre par chapitre, panels IA)
 - Validation : Zod 4 schémas partagés front/back (`shared/schemas/`)
 - Data : PostgreSQL (pg 8.20) — articles, keywords, cocoons, strategies, external_api_cache, keyword_metrics, article_explorations, captain_explorations, radar_explorations, theme_config, internal_links…
 - APIs externes : Anthropic Claude, Google GenAI, OpenRouter, HuggingFace Transformers (embeddings), DataForSEO, Google Autocomplete, Google Search Console
@@ -463,7 +463,7 @@ Pour aider l'utilisateur à fixer une longueur d'article réaliste et compétiti
 - L'utilisateur peut demander une recommandation à tout moment, à partir du moment où un mot-clé est verrouillé.
 - La réponse contient une longueur finale recommandée et un détail expliquant les 3 signaux (fourchette par type, moyenne concurrents, suggestion IA).
 - L'utilisateur peut accepter la recommandation ou saisir une autre valeur.
-- La longueur retenue alimente le micro-contexte (cf. `FR-CER-MICRO-CONTEXT`) et drive l'allocation de tokens par section côté Rédaction.
+- La longueur retenue alimente le micro-contexte (cf. `FR-CER-MICRO-CONTEXT`) et fixe, côté Rédaction, la part de chaque chapitre du premier jet et la longueur que sa porte vérifie (cf. `FR-RED-DRAFT-SINGLE-PASS` ; libellé mis à jour le 2026-09-25, C5a).
 - La recommandation tient compte du sommaire verrouillé au Moteur (nombre et profondeur des H2/H3).
 
 **Statut :** durci le 2026-09-24. **Pourquoi :** le sommaire, stocké au format du Moteur, n'était jamais lu : la longueur était conseillée sans lui (épopée qualité SEO, M9).
@@ -2525,7 +2525,13 @@ Une fois le brief consolidé, l'utilisateur déclenche la **génération du somm
 
 ---
 
-#### FR-RED-ARTICLE — Génération de l'article section par section
+#### FR-RED-ARTICLE — Génération de l'article section par section *(superseded 2026-09-25 par FR-RED-DRAFT-SINGLE-PASS)*
+
+> **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-RED-DRAFT-SINGLE-PASS`. **Source :** épopée qualité SEO, chantier C5 (premier temps, C5a).
+>
+> **Ce qui change.** L'article n'est plus écrit un chapitre après l'autre, par autant d'appels à l'IA qui ne voyaient chacun que la fin du précédent : un **premier jet** est rédigé en un seul appel, qui voit tout le plan (cf. `FR-RED-DRAFT-SINGLE-PASS`). Restent en place : le bouton « Générer l'article » réservé à un sommaire valide, la progression chapitre par chapitre, le texte qui apparaît au fil de l'écriture, la sauvegarde avant la méta, la stratégie du cocon transmise, les modèles d'IA enregistrés dans l'ordre. Disparaissent : la case « Recherche web » (le premier jet n'en a pas ; les sources viendront d'une passe dédiée), l'attente propre à la rédaction quand l'IA est saturée (remplacée par les réessais et la bascule de fournisseur communs à toutes les générations, cf. `FR-EXT-AI-FALLBACK`) et la pause de 15 secondes entre deux sections (cf. `NFR-PERF-INTER-SECTION-DELAY`). **Pourquoi :** le pilier 1013 a été écrit en 15 appels, la recherche web imposée : 15 601 mots, une conclusion par section, des phrases en anglais, des chiffres de 2024 sans source.
+>
+> Le texte ci-dessous est conservé pour l'historique.
 
 À partir du sommaire validé, l'utilisateur lance la **génération de l'article entier**. L'IA n'écrit pas l'article d'un seul bloc : elle traite chaque grande section H2 indépendamment, ce qui permet à l'utilisateur de voir l'article se construire progressivement (introduction d'abord, puis chaque chapitre, enfin la conclusion). Une barre de progression indique à tout moment quelle section est en cours et combien il en reste. La répartition de la longueur cible entre les sections est calculée automatiquement (l'introduction et la conclusion plus courtes, les sections corps plus denses). Si l'IA est temporairement saturée par trop de requêtes, l'outil attend automatiquement quelques secondes et réessaye sans que l'utilisateur ait à intervenir.
 
@@ -2545,6 +2551,69 @@ Une fois le brief consolidé, l'utilisateur déclenche la **génération du somm
 > **En situation.** L'utilisateur clique sur « Générer l'article » à 10h12 sur son article de 2 200 mots. La barre de progression affiche *« 1/6 — Introduction »*, le texte commence à apparaître à l'écran. À 10h13 elle bascule sur *« 2/6 — Quelle indemnité minimale ? »*. À 10h14, une section met plus de temps — il voit dans la console *« attente avant réessai (saturation IA) »* puis la génération reprend automatiquement. À 10h17, l'article est complet, l'éditeur affiche les 6 sections enchaînées et propres, le contenu est déjà sauvegardé.
 
 → Conception : [DESIGN-RED-ARTICLE](./design-registry.md#design-red-article)
+
+---
+
+#### FR-RED-DRAFT-SINGLE-PASS — Le premier jet s'écrit d'un seul tenant
+
+Le pilier 1013 (2026-09-24) avait été rédigé en 15 appels à l'IA, un par chapitre : chacun ne voyait que les dernières lignes du précédent, visait sa part de longueur sans savoir où en était le reste et concluait pour son compte. Résultat : 15 601 mots, six fois la cible, une conclusion par section, des paragraphes recopiés d'un chapitre à l'autre. Désormais l'article naît d'un **premier jet** écrit d'un seul tenant : l'IA reçoit une seule fois tout le plan, la part de chaque chapitre, la stratégie, les mots-clés et les règles du type d'article. Ce premier jet est jugé dès sa rédaction, avant les passes d'enrichissement (sources, exemples, tableaux, FAQ) qui viendront ensuite.
+
+**Critères d'acceptation**
+- L'article est rédigé en un seul appel à l'IA, qui reçoit tout le sommaire validé (chapitres, sous-titres et leurs intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut, celle du cocon), les mots-clés et les règles du type d'article (cf. `FR-INFRA-TYPE-RULES-SSOT`).
+- La longueur visée est celle affichée dans la rédaction (la recommandation du brief) ; à défaut, celle précisée pour l'article, sinon celle de son type. L'introduction en reçoit environ 15 %, la conclusion 10 %, les autres chapitres se partagent le reste à parts égales ; le chapeau placé sous le titre compte dans le premier chapitre.
+- Le premier jet n'a pas de recherche web : il n'invente aucun chiffre et pose « à sourcer » ceux qui seraient utiles (cf. `FR-RED-DRAFT-TO-SOURCE`).
+- La progression reste visible chapitre par chapitre (titre du chapitre en cours, rang / total) et le texte apparaît au fil de l'écriture. Il n'y a plus d'attente entre deux chapitres.
+- Le texte déjà écrit est enregistré au fil des chapitres, sans attendre la fin : un onglet fermé ou une connexion perdue ne fait pas tout perdre. Le texte final, nettoyé, remplace ces enregistrements ; la méta est générée ensuite.
+- Si la réponse de l'IA est coupée parce qu'elle a atteint sa longueur maximale, la rédaction reprend au début du chapitre interrompu, qu'elle réécrit en entier sans refaire les précédents ; deux reprises au plus.
+- Si l'IA est saturée ou indisponible avant d'écrire, l'outil réessaie, puis passe au fournisseur suivant (cf. `FR-EXT-AI-FALLBACK`). Une panne en cours d'écriture arrête le premier jet avec un message ; ce qui a déjà été enregistré au fil reste en base.
+- On sait quel modèle a écrit le premier jet : chaque modèle utilisé, reprises comprises, figure dans la pile d'activité avec le coût, dans l'ordre d'apparition.
+- Une fois le premier jet et sa méta enregistrés, le texte passe la porte « accepter le premier jet ». Si elle ne passe pas, l'alarme graduée s'ouvre (cf. `FR-INFRA-GATE-WAIVER`). Elle ne bloque rien : le texte reste enregistré, l'utilisateur corrige ou assume par écrit.
+- La porte signale :
+  - ⛔ un texte vide, un bloc coupé en pleine phrase, du texte hors paragraphe, l'IA qui parle d'elle-même, du Markdown resté dans le texte, une balise interdite, un titre vide, un saut de niveau de titre, plusieurs H1, ou l'absence de H1 ;
+  - 🔴 un H1 qui ne contient pas le capitaine en entier ;
+  - 🔴 une introduction qui ne reprend pas au moins les trois quarts des mots du capitaine ;
+  - 🔴 une longueur totale qui s'écarte de plus de 15 % de la cible, dans un sens ou dans l'autre ;
+  - 🔴 un chapitre sous la moitié ou au-delà d'une fois et demie de sa part, nommé dans l'alerte ;
+  - 🔴 chaque phrase où l'anglais domine, chaque paragraphe qui en répète un autre, chaque chiffre sans source (cf. `FR-RED-DRAFT-TO-SOURCE`) et chaque preuve sociale invérifiable (« nous avons accompagné plus de 200 PME ») : une alerte par occurrence, dérogée séparément.
+- La porte n'est pas rejouée à la publication : sa règle de longueur n'a plus de sens une fois l'article enrichi. La publication rejuge elle-même la langue, les répétitions et les chiffres sans source (cf. `FR-RED-PUBLISH-GATE`).
+
+**Limites connues**
+- La porte n'est consultée qu'une fois, juste après la rédaction : aucun geste ne la relance après correction. Elle ne l'est pas quand la génération de la méta échoue (le texte est enregistré, l'alarme ne s'ouvre pas), ni par le mode automatique en ligne de commande.
+- La longueur visée par le premier jet est celle que l'utilisateur a choisie pour l'article, sinon la recommandation affichée, sinon celle du type ; elle est retenue pour l'article, et la porte mesure contre elle. Reste un écart d'affichage : quand l'utilisateur a choisi une autre longueur que la recommandation, la barre de mots montre encore la recommandation (épopée qualité SEO, checklist R16, à aligner avec les passes d'enrichissement).
+- Passer la porte ne débloque encore aucune étape : elle servira à reconnaître un parent « rédigé » quand le cocon naîtra du pilier (épopée qualité SEO, C7).
+- Pendant une reprise après coupure, le texte qui défile à l'écran, et ce qui est enregistré au fil, garde le début du chapitre interrompu avant sa réécriture ; seul le texte final est propre.
+- Les dérogations posées au premier jet ne sont pas réaffichées à la publication ; l'audit du projet (`npm run verify`) les liste avec les autres.
+- La rédaction fusionne les paragraphes qui se suivent en un seul, séparés par des retours à la ligne : la structure du texte s'en trouve appauvrie (épopée qualité SEO, checklist R14).
+
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-ARTICLE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Amendée à la livraison :** un H1 sans le capitaine est 🔴 et non ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme à la publication) ; seul un H1 absent est ⛔. La sauvegarde au fil reste faite par l'écran, pas par le serveur.
+
+> **En situation.** L'utilisateur lance la rédaction de son pilier : 2 500 mots visés, 7 chapitres. La barre affiche « 1/7 — Introduction », puis chaque chapitre à son tour, sans les 15 secondes d'attente d'avant ; le texte arrive au fil, la méta suit. Puis l'alarme de la porte s'ouvre : le chapitre « Coûts » fait 610 mots pour environ 375 prévus (🔴), et une phrase est restée en anglais (🔴). Il clique « Revenir corriger », traduit la phrase et resserre le chapitre dans l'éditeur. S'il avait laissé la phrase anglaise, la porte de publication la lui aurait remontrée.
+
+→ Conception : [DESIGN-RED-DRAFT-SINGLE-PASS](./design-registry.md#design-red-draft-single-pass)
+
+---
+
+#### FR-RED-DRAFT-TO-SOURCE — Le premier jet n'invente aucun chiffre
+
+Le pilier 1013 avançait des chiffres « de 2024 » sans aucune source. Un chiffre inventé ruine la confiance du lecteur, et celle de Google. Le premier jet n'a pas de recherche web : il n'écrit donc aucun chiffre qu'il ne peut garantir. Là où une donnée renforcerait le propos, il pose un **marqueur « à sourcer »** qui dit quoi chercher ; une passe dédiée le remplacera par une donnée vérifiée.
+
+**Critères d'acceptation**
+- Le premier jet n'écrit ni pourcentage, ni prix, ni statistique, ni date d'étude, ni nom de source qu'il ne peut garantir. À la place, il pose un marqueur visible « [à sourcer : ce qu'il faudrait trouver] ».
+- Dans l'éditeur, le marqueur reste surligné, y compris après une sauvegarde et un rechargement.
+- Un chiffre sans source hors marqueur déclenche 🔴, au premier jet comme à la publication. Compte comme chiffre : un pourcentage, un montant en euros, un multiplicateur (« 3 fois plus »), un nombre de millions ou de milliards. Un chiffre attribué dans sa phrase (« selon… », « d'après… », « source : ») ou placé dans un marqueur ne compte pas ; un nombre ordinaire (« 3 étapes », « en 2026 ») non plus.
+- Chaque chiffre sans source est une alerte distincte.
+- À la publication, les marqueurs restants déclenchent 🔴 (cf. `FR-RED-PUBLISH-GATE`).
+
+**Limites connues**
+- La passe « sources », qui remplacera chaque marqueur par une donnée datée avec son lien, n'existe pas encore (épopée qualité SEO, C5b) : d'ici là, l'utilisateur remplace les marqueurs à la main.
+- Les chiffres sont reconnus à leur forme : une statistique écrite en toutes lettres (« la moitié des artisans ») ou une année seule n'est pas repérée.
+- Une attribution vague suffit à faire taire l'alerte (« selon les experts, 60 %… ») : l'outil ne vérifie pas la source.
+
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a.
+
+> **En situation.** Dans le premier jet de son pilier, l'utilisateur lit : « Beaucoup d'artisans [à sourcer : part des artisans sans site web] n'ont pas encore de site. » Le passage est surligné, et le reste après sa sauvegarde. Plus bas, une phrase qu'il a ajoutée annonce « 76 % des clients consultent les avis avant d'appeler », sans source : à la publication, elle est signalée (🔴), comme le marqueur qu'il n'a pas encore remplacé.
+
+→ Conception : [DESIGN-RED-DRAFT-TO-SOURCE](./design-registry.md#design-red-draft-to-source)
 
 ---
 
@@ -2764,6 +2833,7 @@ Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publ
 - 🔴 Autres écarts SEO : capitaine absent, capitaine visant une offre non vendue, texte trop court, adresse de page mal formée, chiffre invérifiable.
 - 🔴 Texte au-delà du plafond de son type : 3 500 mots pour un pilier, 2 500 pour un intermédiaire, 1 500 pour un spécialisé.
 - 🔴 Des marqueurs « à sourcer » restent dans le texte.
+- 🔴 Qualité du texte, rejugée sur le texte du jour : chaque chiffre sans source hors marqueur, chaque phrase où l'anglais domine, chaque paragraphe qui en répète un autre (cf. `FR-RED-DRAFT-TO-SOURCE`, `FR-RED-DRAFT-SINGLE-PASS`). La porte du premier jet, elle, n'est pas rejouée : sa règle de longueur ne vaut que pour le premier jet.
 - 🟠 Les autres avertissements (capitaine absent de l'introduction, lieutenants peu couverts…).
 - 🟠 Chaque dérogation posée en amont (capitaine, lieutenants, lexique) est réaffichée et doit être reconfirmée.
 - Les portes amont — capitaine, lieutenants, lexique — sont rejouées sur les données du jour : une alerte qu'aucune dérogation ne couvre plus revient à son niveau d'origine. Un terme générique resté dans le lexique, ou un lexique vide, donne donc 🔴 (cf. `FR-LEX-METIER-ONLY`).
@@ -2772,7 +2842,7 @@ Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publ
 - Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que cette porte refuserait.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication. **Amendée le 2026-09-25 (C5a)** : trois règles de qualité du texte (chiffre sans source, phrase non française, paragraphe répété) rejoignent la publication, parce que le texte a pu changer depuis le premier jet ; le pilier 1013 est désormais refusé aussi pour ses chiffres sans source.
 
 > **En situation.** L'utilisateur clique « Exporter » sur le pilier 1013. L'alarme « Avant de publier » s'ouvre : la meta description est coupée en plein vol (⛔), « stratégie » manque au H1 et au meta title (🔴 deux fois), et le texte fait 15 601 mots pour un pilier plafonné à 3 500 (🔴). Le bouton affiche « Correction nécessaire » et reste grisé : un défaut ⛔ ne se déroge pas. Il revient corriger ; sous la barre d'aperçu, un message indique « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'a été marqué publié, aucun fichier n'a été téléchargé.
 
@@ -3586,17 +3656,18 @@ Au lieu d'avoir une table de cache dédiée par fournisseur ou par type d'appel,
 
 #### FR-INFRA-VERIFIER-SHARED — Un même contrôle à l'écran, au serveur et dans l'audit
 
-Une règle de qualité est écrite **une seule fois** et placée à une transition du parcours — une **porte** : verrouiller le capitaine, valider les lieutenants, valider le lexique, publier. Le serveur est le seul à l'évaluer. L'écran affiche son verdict au moment du geste et explique chaque point ; le serveur refuse l'étape ou la publication qui ne passe pas, même quand la demande ne vient pas de l'écran ; l'audit du projet rejoue la même évaluation après coup. Les trois ne peuvent donc pas se contredire.
+Une règle de qualité est écrite **une seule fois** et placée à une transition du parcours — une **porte** : verrouiller le capitaine, valider les lieutenants, valider le lexique, accepter le premier jet, publier. Le serveur est le seul à l'évaluer. L'écran affiche son verdict au moment du geste et explique chaque point ; le serveur refuse l'étape ou la publication qui ne passe pas, même quand la demande ne vient pas de l'écran ; l'audit du projet rejoue la même évaluation après coup. Les trois ne peuvent donc pas se contredire.
 
 **Critères d'acceptation**
 - Une règle donne le même verdict à l'écran, au serveur et dans l'audit : les trois passent par la même évaluation.
 - Un refus renvoie la liste complète des points, dans les mots affichés à l'écran : ce qui est constaté, le risque en clair, l'extrait concerné et, quand l'outil en a, des pistes à la place.
-- Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-LEX-METIER-ONLY`, `FR-RED-PUBLISH-GATE`).
+- Chaque point porte un niveau — 🟠 attention, 🔴 risque, ⛔ technique — et un nom stable. Chaque contrôle est rattaché à l'exigence qu'il protège (`FR-CAP-LOCK-GATE`, `FR-LIE-LOCK-GATE`, `FR-LEX-METIER-ONLY`, `FR-RED-DRAFT-SINGLE-PASS`, `FR-RED-PUBLISH-GATE`).
+- La porte « accepter le premier jet » ne garde ni étape ni statut : elle juge le texte juste après sa rédaction et ouvre l'alarme s'il ne passe pas, sans rien refuser (cf. `FR-RED-DRAFT-SINGLE-PASS`). Le mode automatique ne la consulte pas.
 - Une étape refusée n'est pas enregistrée : la progression de l'article ne bouge pas. Une publication refusée ne change pas le statut de l'article.
 - Les outils automatiques (génération d'article en ligne de commande) subissent la même règle : un refus arrête le run en listant chaque point avec son niveau, et l'outil ne passe jamais outre à la place d'un humain.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C5a)** : la porte « accepter le premier jet » rejoint les portes ; elle alerte sans rien refuser.
 
 > **En situation.** L'utilisateur contourne l'écran et demande directement au serveur de valider l'étape « Capitaine verrouillé » pour un mot-clé NO-GO jamais mesuré. Le serveur refuse, avec les mêmes points que ceux que l'alarme aurait affichés : « Aucun volume de recherche mesuré », « Le verdict du mot-clé est NO-GO ». Le soir, `npm run verify` signale que le pilier 1013, déjà rédigé, serait refusé à la publication : méta coupée ⛔, capitaine absent du H1 et du meta title 🔴, 15 601 mots 🔴.
 
@@ -3618,9 +3689,9 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 - Une dérogation ne couvre qu'un point, et seulement pour les données vérifiées à ce moment : dès qu'elles changent (autre capitaine, lieutenants modifiés, lexique modifié, texte ou méta retouchés), elle tombe et l'alarme revient.
 - Quand un même point peut viser plusieurs éléments (plusieurs lieutenants en conflit, plusieurs termes génériques dans le lexique), chaque élément se déroge séparément.
 - Les dérogations qui couvrent déjà des points de la porte sont rappelées dans l'alarme sous un badge 🛡.
-- À la publication, chaque dérogation posée en amont est réaffichée et doit être reconfirmée ; l'audit du projet (`npm run verify`) les liste article par article, avec leur catégorie et leur raison.
+- À la publication, chaque dérogation posée en amont (capitaine, lieutenants, lexique) est réaffichée et doit être reconfirmée ; celles du premier jet ne le sont pas, car la publication rejuge elle-même la qualité du texte (cf. `FR-RED-PUBLISH-GATE`). L'audit du projet (`npm run verify`) les liste toutes, article par article, avec leur catégorie et leur raison.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C2. **Amendée le 2026-09-25 (C5a)** : les dérogations du premier jet ne sont pas réaffichées à la publication.
 
 > **En situation.** L'utilisateur verrouille « rénovation grange pierre Gers », que l'outil n'a jamais mesuré. L'alarme 🔴 dit : « Aucun volume de recherche mesuré ». Il tape « peu » : le compteur affiche 3 / 20 et le bouton reste grisé. Il choisit « Longue traîne assumée » et écrit « demandes réelles reçues par téléphone chaque mois » : le capitaine est verrouillé. Trois semaines plus tard, à la publication, l'alarme lui remontre cette dérogation ; il coche « J'ai lu » et publie. S'il avait changé de capitaine entre-temps, la dérogation serait tombée et l'alarme serait revenue au verrouillage.
 
@@ -3721,7 +3792,7 @@ Deuxième invariant essentiel pour l'utilisateur : **les panels IA sont visibles
 
 L'utilisateur peut produire un article par **deux entrées différentes** : la vue Workflow (intégrée au pipeline Moteur → Rédaction, avec brief IA, outline généré, sections enchaînées) ou la vue Editor (édition libre TipTap d'un article existant). Ces deux vues partagent un cœur d'**éléments d'éditeur réutilisés à l'identique** : la barre d'outils des panneaux annexes (SEO, GEO, Maillage, Blocs), la zone de panneaux redimensionnable, la barre de progression de section, les badges de coût IA, le compteur de mots, les overlays d'erreurs d'actions. Quand l'utilisateur passe d'une vue à l'autre, ces blocs lui apparaissent identiques — c'est le même outil d'édition d'article, vu sous deux modes d'entrée.
 
-Le cœur de génération d'article (orchestration du streaming IA section par section, persistance, log de coût) est **factorisé en composable partagé** : les deux vues délèguent à la même implémentation, garantissant qu'une régression côté générateur affecte de la même façon les deux entrées plutôt que d'en privilégier une.
+Le cœur de génération d'article (premier jet streamé et affiché chapitre par chapitre, persistance, log de coût, porte « accepter le premier jet ») est **factorisé en composable partagé** : les deux vues délèguent à la même implémentation, garantissant qu'une régression côté générateur affecte de la même façon les deux entrées plutôt que d'en privilégier une.
 
 **Critères d'acceptation**
 - Les éléments d'édition partagés (toolbar panneaux, container redimensionnable, barre de progression, badges coût, compteur mots, overlays d'erreur) ont la même apparence et le même comportement quel que soit le mode d'entrée (Workflow ou Editor).
@@ -3757,7 +3828,7 @@ Les onglets du Moteur (Discovery, Radar, Capitaine, Lieutenants, Lexique, Finali
 ### 9.1 — Performance (NFR-PERF)
 
 > **Pourquoi cette section ?**
-> L'utilisateur travaille toute la journée dans l'outil : il enchaîne les recherches de mots-clés, valide des cartes, déclenche des analyses IA, génère des articles section par section. La perception de fluidité de l'app n'est pas un luxe — c'est ce qui fait la différence entre un outil dans lequel on rentre avec entrain et un outil qu'on subit. Cette section formalise les attentes de **réactivité** que l'utilisateur doit pouvoir percevoir, et la façon dont l'app évite les ralentissements inutiles (debounce, cache, purge, streaming).
+> L'utilisateur travaille toute la journée dans l'outil : il enchaîne les recherches de mots-clés, valide des cartes, déclenche des analyses IA, génère des premiers jets d'articles. La perception de fluidité de l'app n'est pas un luxe — c'est ce qui fait la différence entre un outil dans lequel on rentre avec entrain et un outil qu'on subit. Cette section formalise les attentes de **réactivité** que l'utilisateur doit pouvoir percevoir, et la façon dont l'app évite les ralentissements inutiles (debounce, cache, purge, streaming).
 
 #### NFR-PERF-API-LOCAL — Réactivité des actions locales
 
@@ -3778,7 +3849,7 @@ Quand l'utilisateur déclenche une action qui **ne dépend pas d'une API externe
 
 #### NFR-PERF-SSE-FIRST-TOKEN — Premier mot d'IA visible rapidement
 
-Pour les actions IA qui *streament* leur réponse (rédaction d'article section par section, suggestions de mots-clés long-tail, brief IA, analyses contextuelles), l'utilisateur voit le **premier mot apparaître à l'écran en moins de 2 secondes** après le clic. Il sait que l'IA travaille, il peut commencer à lire en même temps qu'elle écrit, plutôt que de fixer un spinner pendant 30 secondes.
+Pour les actions IA qui *streament* leur réponse (premier jet de l'article, suggestions de mots-clés long-tail, brief IA, analyses contextuelles), l'utilisateur voit le **premier mot apparaître à l'écran en moins de 2 secondes** après le clic. Il sait que l'IA travaille, il peut commencer à lire en même temps qu'elle écrit, plutôt que de fixer un spinner pendant 30 secondes.
 
 **Critères d'acceptation**
 - Toute action IA en mode streaming affiche un premier caractère perceptible en moins de 2 secondes.
@@ -3861,7 +3932,9 @@ Quand l'utilisateur écrit un article, le **score SEO et les indicateurs de pert
 
 ---
 
-#### NFR-PERF-INTER-SECTION-DELAY — Pause entre sections pour fiabiliser la génération
+#### NFR-PERF-INTER-SECTION-DELAY — Pause entre sections pour fiabiliser la génération *(deprecated 2026-09-25)*
+
+> **Statut :** deprecated. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, chantier C5a (`FR-RED-DRAFT-SINGLE-PASS`). Le premier jet est rédigé en un seul appel : il n'y a plus de sections successives à espacer. La pause, sa variable de configuration et l'état d'attente associé ont disparu ; une saturation de l'IA est absorbée par les réessais et la bascule de fournisseur communs à toutes les générations (cf. `FR-EXT-AI-FALLBACK`). Texte conservé pour l'historique.
 
 Lors de la génération d'un article section par section, l'app **temporise volontairement entre chaque section** (15 secondes par défaut) pour respecter les limites de débit de Claude. L'utilisateur préfère attendre quelques secondes par section plutôt que de voir la génération s'interrompre à mi-parcours avec une erreur « rate-limit ».
 
@@ -3870,7 +3943,7 @@ Lors de la génération d'un article section par section, l'app **temporise volo
 - Le délai est ajustable via configuration (`INTER_SECTION_DELAY` env var) — 0 pour les tests, plus si l'utilisateur veut être plus prudent.
 - L'utilisateur voit un compte à rebours ou un état d'attente clair entre deux sections, pas un silence anxiogène.
 
-**Statut :** active.
+**Statut (historique) :** active jusqu'au 2026-09-25.
 
 > **En situation.** L'utilisateur lance la génération complète d'un article de 6 sections. La section 1 s'écrit en stream. À la fin, une indication « Section 2 dans 15 s... » apparaît. Pendant ce temps, il peut relire et corriger la section 1. La pause se termine, la section 2 s'écrit. Le flow naturel — lire/corriger/laisser-couler — épouse la cadence de l'IA plutôt que de la combattre.
 
@@ -4575,7 +4648,7 @@ Quand une erreur a une cause connue (budget DataForSEO dépassé, provider IA sa
 > Les **comportements** que ces variables pilotent (basculement mock/réel, plafond budget DataForSEO, configuration du délai inter-section, ports applicatifs figés) sont déjà couverts par les NFRs et FRs métier ailleurs dans ce PRD :
 > - Mode bac à sable DataForSEO → `FR-EXT-DATAFORSEO-SANDBOX`
 > - Budget DataForSEO configurable → `NFR-COST-DATAFORSEO-BUDGET`
-> - Délai inter-section → `NFR-PERF-INTER-SECTION-DELAY`
+> - ~~Délai inter-section → `NFR-PERF-INTER-SECTION-DELAY`~~ (deprecated 2026-09-25 : le premier jet s'écrit en un appel)
 > - Mode développement gratuit (IA mock) → `NFR-COST-AI-MOCK`
 > - Bascule provider IA / OAuth GSC → `FR-EXT-AI-MULTI-PROVIDER`, `FR-EXT-GSC-OAUTH`
 > - Ports applicatifs figés (`3400` back / `5400` front) → règle d'infrastructure documentée dans [`architecture.md`](./architecture.md).
@@ -4628,8 +4701,8 @@ Variable `AI_PROVIDER` switch entre `claude` / `gemini` / `openrouter` / `mock`.
 #### NFR-CFG-DATAFORSEO-REFRESH
 Refresh delay configurable (`DATAFORSEO_REFRESH_DELAY_MS`).
 
-#### NFR-CFG-WEB-SEARCH
-`WEB_SEARCH_ENABLED=1` active web search dans actions et génération article.
+#### NFR-CFG-WEB-SEARCH *(deprecated 2026-09-25)*
+~~`WEB_SEARCH_ENABLED=1` active web search dans actions et génération article.~~ Seule la rédaction section par section la lisait, et sans effet : la valeur envoyée par l'écran (ou `true` par défaut, fixé par la validation de la requête) passait toujours avant elle ; les actions contextuelles ne l'ont jamais lue. Le premier jet n'a pas de recherche web (`FR-RED-DRAFT-SINGLE-PASS`) : plus aucun code ne la lit depuis le 2026-09-25 (épopée qualité SEO, C5a), mais `.env.example` la documente encore.
 
 #### NFR-CFG-PG-CONN
 Variables d'env PostgreSQL (`PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_DATABASE`).
@@ -4637,8 +4710,8 @@ Variables d'env PostgreSQL (`PG_HOST`, `PG_PORT`, `PG_USER`, `PG_PASSWORD`, `PG_
 #### NFR-CFG-GSC-OAUTH
 `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GSC_TOKEN_PATH`.
 
-#### NFR-CFG-INTER-SECTION-DELAY
-`INTER_SECTION_DELAY_MS` configurable (défaut 15s).
+#### NFR-CFG-INTER-SECTION-DELAY *(deprecated 2026-09-25)*
+~~`INTER_SECTION_DELAY_MS` configurable (défaut 15s).~~ La variable lue était `INTER_SECTION_DELAY` (la constante du code s'appelait `INTER_SECTION_DELAY_MS`). Retirée avec la rédaction section par section (cf. `NFR-PERF-INTER-SECTION-DELAY`, épopée qualité SEO, C5a).
 
 #### NFR-CFG-APP-PORTS
 **Ports applicatifs figés.** Le projet utilise deux ports applicatifs uniques sur la machine de dev :
@@ -4859,6 +4932,13 @@ Au 2026-09-25 : 31 prompts à la racine de `server/prompts/` (dont `system-propu
 | FR-INFRA-PROMPT-LOADER | amendée (chargeur strict ; seule logique permise : un bloc affiché ou non selon qu'une valeur est vide ; texte inséré jamais réinterprété) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
 | FR-LEX-METIER-ONLY | amendée (le lexique modifié depuis la Rédaction passe par le filtre des mots génériques) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
 | FR-RED-CONTEXTUAL-ACTIONS | amendée (11 actions : « localiser », sortie de l'éditeur en avril, n'est plus listée ; son prompt est supprimé) | epic-qualite-seo-garde-fous (C4) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS | nouveau (remplace FR-RED-ARTICLE : premier jet en un appel sans recherche web, progression chapitre par chapitre, reprise après coupure, porte « accepter le premier jet » qui alerte sans refuser ; H1 sans capitaine 🔴, H1 absent ⛔) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-DRAFT-TO-SOURCE | nouveau (aucun chiffre inventé : marqueur « à sourcer » surligné dans l'éditeur, chiffre sans source 🔴 au premier jet et à la publication) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-ARTICLE | superseded (par FR-RED-DRAFT-SINGLE-PASS) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-RED-PUBLISH-GATE | amendée (chiffre sans source, phrase non française, paragraphe répété 🔴 ; la porte du premier jet n'est pas rejouée) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées (porte du premier jet, qui ne refuse rien ; ses dérogations ne sont pas réaffichées à la publication) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| NFR-PERF-INTER-SECTION-DELAY, NFR-CFG-INTER-SECTION-DELAY, NFR-CFG-WEB-SEARCH | deprecated (plus de pause entre sections ; plus de recherche web à la rédaction) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
+| FR-UI-ARTICLE-SHARED, NFR-PERF-SSE-FIRST-TOKEN, FR-CER-WORD-COUNT-RECOMMEND | libellé mis à jour (premier jet au lieu de la rédaction section par section) | epic-qualite-seo-garde-fous (C5a) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 

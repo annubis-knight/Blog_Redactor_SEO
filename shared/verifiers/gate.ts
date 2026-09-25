@@ -33,6 +33,12 @@ export const GATE_LABELS: Record<GateId, string> = {
   'publish': 'publier',
 }
 
+/** Titre de l'alarme : « Avant de publier », « Avant d’accepter le premier jet ». */
+export function gateTitle(gateId: GateId): string {
+  const label = GATE_LABELS[gateId]
+  return /^[aeéèêiîoôuh]/i.test(label) ? `Avant d’${label}` : `Avant de ${label}`
+}
+
 export interface GateIssue {
   /**
    * Identifiant stable de l'alerte (ex. `captain-volume-unknown`). Quand une

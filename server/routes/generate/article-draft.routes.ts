@@ -21,7 +21,7 @@ import type { ApiUsage } from '../../services/external/claude.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
 import { getStrategy } from '../../services/strategy/strategy.service.js'
 import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.service.js'
-import { getArticleKeywords, loadArticleMicroContext } from '../../services/infra/data.service.js'
+import { getArticleKeywords, loadArticleMicroContext, retainTargetWordCount } from '../../services/infra/data.service.js'
 import type { Outline } from '../../../shared/types/index.js'
 import { mergeConsecutiveElements } from '../../../shared/html-utils.js'
 import { stripAiPreamble } from '../../../shared/ai-text.js'
@@ -114,8 +114,11 @@ router.post('/generate/article-draft', async (req, res) => {
     ])
     const { data: articleKw } = await getArticleKeywords(articleId)
     const microCtx = await loadArticleMicroContext(articleId)
-    // Longueur visée : client > micro-contexte > règle du type (FR-INFRA-TYPE-RULES-SSOT).
-    const targetWords = parsed.data.targetWordCount ?? microCtx?.targetWordCount ?? targetWordsFor(articleType)
+    // Longueur visée : choix de l'utilisateur (micro-contexte) > recommandation
+    // envoyée par l'écran > règle du type (FR-INFRA-TYPE-RULES-SSOT). La cible
+    // retenue est enregistrée : la porte du premier jet juge contre elle (R16).
+    const targetWords = microCtx?.targetWordCount ?? parsed.data.targetWordCount ?? targetWordsFor(articleType)
+    if (microCtx?.targetWordCount == null) await retainTargetWordCount(articleId, targetWords)
 
     const outline: Outline = typeof outlineRaw === 'string' ? JSON.parse(outlineRaw) : outlineRaw as unknown as Outline
     const groups = splitOutlineIntoGroups(outline)

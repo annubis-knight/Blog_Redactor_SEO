@@ -10,6 +10,7 @@
 import { describe, it, expect } from 'vitest'
 import {
   evaluateGate,
+  gateTitle,
   hashGateInput,
   waiverProblem,
   waiverDraftsFrom,
@@ -167,5 +168,13 @@ describe('standingWaivers — seules les dérogations encore valables sont réaf
 
   it('les dérogations de la publication elle-même sont écartées', () => {
     expect(standingWaivers([{ ...base, gateId: 'publish', rule: 'article-too-long', inputHash: 'x' }], {})).toEqual([])
+  })
+})
+
+describe('gateTitle', () => {
+  it('élide devant une voyelle : « Avant d’accepter », pas « Avant de accepter »', () => {
+    expect(gateTitle('draft')).toBe('Avant d’accepter le premier jet')
+    expect(gateTitle('publish')).toBe('Avant de publier')
+    expect(gateTitle('captain-lock')).toBe('Avant de verrouiller le capitaine')
   })
 })

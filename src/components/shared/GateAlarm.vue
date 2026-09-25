@@ -22,7 +22,7 @@ import { computed, nextTick, reactive, ref, watch } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useGateAlarmStore } from '@/stores/ui/gate-alarm.store'
 import {
-  GATE_LABELS,
+  gateTitle,
   MIN_WAIVER_REASON_LENGTH,
   WAIVER_CATEGORIES,
   WAIVER_CATEGORY_LABELS,
@@ -55,7 +55,7 @@ const onlyAttention = computed(() => worst.value === 'attention')
 const drafts = computed(() => waiverDraftsFrom(blocking.value, answers))
 const ready = computed(() => blocking.value.length > 0 && drafts.value.missing.length === 0)
 
-const title = computed(() => current.value ? `Avant de ${GATE_LABELS[current.value.gateId]}` : '')
+const title = computed(() => (current.value ? gateTitle(current.value.gateId) : ''))
 const intro = computed(() => {
   const n = blocking.value.length
   const points = `${n} point${n > 1 ? 's' : ''} à regarder`

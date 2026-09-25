@@ -310,14 +310,14 @@ Response : { created: Article[], failed: { index, error }[] }
 
 **Refs code**
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — endpoints `GET / PUT /api/articles/:id/micro-context`.
-- [server/routes/generate/_helpers.ts:338](../../server/routes/generate/_helpers.ts) — helper `buildMicroContextBlock(microCtx)` qui met en forme le micro-contexte pour `{{microContext}}` (rédaction, `article.routes.ts:86-87`) ; le sommaire et l'explication du brief construisent le même bloc en ligne, sans la longueur cible (`outline.routes.ts:52-54`, `brief-explain.routes.ts:34`). *(Corrigé le 2026-09-25, C4 : ce registre plaçait le helper dans `server/utils/prompt-loader.ts`.)*
+- [server/routes/generate/_helpers.ts:233](../../server/routes/generate/_helpers.ts) — helper `buildMicroContextBlock(microCtx)` qui met en forme le micro-contexte pour `{{microContext}}` (premier jet, `article-draft.routes.ts:136` ; avant C5a, `article.routes.ts`) ; le sommaire et l'explication du brief construisent le même bloc en ligne, sans la longueur cible (`outline.routes.ts:52-54`, `brief-explain.routes.ts:34`). *(Corrigé le 2026-09-25, C4 : ce registre plaçait le helper dans `server/utils/prompt-loader.ts`.)*
 
 **Persistance**
 - Table `article_micro_contexts(article_id PK FK articles, angle, tone, directives, target_word_count)` — cf. `DESIGN-INFRA-MICRO-CONTEXTS`.
 - 1 ligne par article, optionnelle.
 
 **Consommateurs des prompts**
-- Rédaction : `generate-outline.md`, `generate-article-section.md`, `brief-ia-panel.md` (repère `{{microContext}}` ; `generate-meta.md` ne le cite pas — corrigé le 2026-09-25 d'après la référence générée des prompts).
+- Rédaction : `generate-outline.md`, `generate-article-draft.md` (depuis C5a, à la place de `generate-article-section.md`, supprimé), `brief-ia-panel.md` (repère `{{microContext}}` ; `generate-meta.md` ne le cite pas — corrigé le 2026-09-25 d'après la référence générée des prompts).
 
 **Flux DB**
 
@@ -378,7 +378,7 @@ Sans données concurrentes, la base de la recommandation est la longueur visée 
 
 **Voir aussi**
 - `DESIGN-CER-AIGUILLAGE` (niveau utilisé pour la fourchette).
-- `DESIGN-RED-ARTICLE` (la longueur drive `computeSectionBudget`).
+- `DESIGN-RED-DRAFT-SINGLE-PASS` (la longueur fixe la part de chaque chapitre, `sectionBudgets`, et le plafond de jetons du premier jet ; `computeSectionBudget` de `DESIGN-RED-ARTICLE` est retiré depuis C5a).
 
 ---
 
@@ -3670,15 +3670,17 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - **Niveaux H4+ exclus** : helper `hnToOutline` (utilisé quand on importe une structure HN du Moteur) clampe `level` à `[2, 3]`. Le prompt `generate-outline.md` est aussi instruit de se limiter à H1/H2/H3.
 
 **Voir aussi**
-- `DESIGN-RED-ARTICLE` — consommateur direct de l'outline (split en groupes H2 puis stream par section).
+- `DESIGN-RED-DRAFT-SINGLE-PASS` — consommateur direct de l'outline (groupes H2 envoyés en un seul plan, avec leur budget ; avant C5a, `DESIGN-RED-ARTICLE` : un appel par groupe).
 - `DESIGN-LIE-HN-STRUCTURE` (à créer §8.7) — passerelle Moteur → Rédaction via `hnToOutline()`.
 - ~~`DESIGN-RED-CHECKS`~~ — retirée 2026-05-13 (la validation du sommaire ne pose plus de check workflow, cf. DRIFT-002).
 
 ---
 
-### DESIGN-RED-ARTICLE
+### DESIGN-RED-ARTICLE — *(superseded 2026-09-25)*
 
 **Réf PRD :** [FR-RED-ARTICLE](./prd.md#fr-red-article)
+
+**Statut** : superseded le 2026-09-25 par [`DESIGN-RED-DRAFT-SINGLE-PASS`](#design-red-draft-single-pass) (épopée qualité SEO, C5a, commit `bef3f3f`). **Plus rien de ce qui suit n'existe dans le code** : `server/routes/generate/article.routes.ts` (`POST /api/generate/article`), `server/prompts/generate-article-section.md`, les aides `computeSectionBudget`, `sectionMaxTokens`, `getPositionDirectives`, `formatSectionOutline`, `formatFullOutline` et la constante `INTER_SECTION_DELAY_MS` de `_helpers.ts`, le schéma `generateArticleRequestSchema`, les fixtures simulées `generate-article-section` et `auto-section-priority`, `editorStore.webSearchEnabled` et la case « Recherche web » des deux vues de rédaction, les événements SSE `rate-limit` et `section-delay`. Restent, réutilisés par le premier jet : `splitOutlineIntoGroups`, `consumeStream`, `aggregateUsage`, `describeModelsUsed`, `pickStrategyContext`, `buildKeywordContext`, `buildMicroContextBlock`, `repairHtmlTail`, `stripCodeFences` (`_helpers.ts`), `mergeConsecutiveElements` (`shared/html-utils.ts`), les événements `chunk` / `section-start` / `section-done` / `done` / `error`, la sauvegarde au fil et l'enchaînement `useArticleGeneration`. `isRateLimitError` / `getRetryAfterSeconds` / `RATE_LIMIT_*` ne servent plus qu'à `meta.routes.ts`, où la branche 429 n'est jamais atteinte (checklist R15). Contenu historique ci-dessous.
 
 **Refs code**
 - [server/routes/generate/article.routes.ts](../../server/routes/generate/article.routes.ts) — endpoint `POST /api/generate/article`, streaming SSE par section. Split outline → groupes H2 via `splitOutlineIntoGroups(outline)`, boucle sur chaque groupe.
@@ -3734,6 +3736,143 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 ---
 
+### DESIGN-RED-DRAFT-SINGLE-PASS
+
+**Réf PRD :** [FR-RED-DRAFT-SINGLE-PASS](./prd.md#fr-red-draft-single-pass--le-premier-jet-sécrit-dun-seul-tenant)
+
+**Refs code** (commits `7900d08`, `c56a0cc`, `bef3f3f`)
+- [server/routes/generate/article-draft.routes.ts](../../server/routes/generate/article-draft.routes.ts) — `POST /api/generate/article-draft` (ligne 96), monté par [server/routes/generate/index.ts](../../server/routes/generate/index.ts) à la place de `article.routes.ts`. Validation `generateArticleDraftRequestSchema` (97) ; lecture de `getStrategy(articleId)` et `getCocoonStrategy(cocoonName)` (108-114, stratégie du cocon illisible → `log.warn` et premier jet sans elle), `getArticleKeywords`, `loadArticleMicroContext` ; cible `parsed.data.targetWordCount ?? microCtx?.targetWordCount ?? targetWordsFor(articleType)` (118) ; `splitOutlineIntoGroups` (121), 400 si le sommaire n'a aucun H2 (122-125). Variables du prompt (128-140) : `articleTitle`, `articleType` (libellé du type), `keyword`, `secondaryKeywords`, `cocoonName`, `strategyContext` (`pickStrategyContext`), `keywordContext`, `microContext`, `type_rules` (`describeTypeRules`, vide si le type est inconnu), `wordCountBudget`, `outlinePlan` ; puis `continuation` et `previousText` à chaque appel (155-159). `streamChatCompletion(systemPrompt, prompt, maxTokens)` **sans outil** (160) : pas de recherche web.
+  - `MAX_DRAFT_CONTINUATIONS = 2` (49) ; `draftMaxTokens(targetWords)` = `min(16000, max(8000, ceil(cible × 2,2)))` (52-54) ; `formatDraftPlan(groups, targetWords)` (57-65) : une ligne « - H2: titre [annotation: …] (≈ n mots) » par chapitre, puis ses « - H3: … ».
+  - Continuation (154-180) : si `usage.stopReason === 'max_tokens'`, `cutAtLastChapter` (89-94) coupe le texte au début de son dernier `<h2>` ; le prompt est rechargé avec `continuation` = titre de ce chapitre et `previousText` = les 1 500 derniers caractères en texte brut ; nouveau `createH2Tracker(titles, restartIndex)` dont le `start()` n'est pas réémis (chapitre déjà ouvert à l'écran) ; événement SSE `continuation { fromIndex, attempt }` (179).
+  - Post-traitement : chaque réponse passe par `stripAiPreamble(stripCodeFences(…))` (167), le tout par `repairStructure(repairHtmlTail(mergeConsecutiveElements(content)))` (183 ; `repairStructure` 68-72 = `stripOrphanBlockText` + `trimTruncatedBlocks` + paragraphes vides retirés), comme l'ancienne route.
+  - Usage : `aggregateUsage` par appel, `describeModelsUsed(models)` (184, un modèle par appel, reprises comprises), `stopReason` du dernier appel (185) ; événement `done { content, usage }` (189). Erreur avant les en-têtes → 500 `CLAUDE_API_ERROR` ; après → événement `error` (191-200).
+- [server/prompts/generate-article-draft.md](../../server/prompts/generate-article-draft.md) — contexte (lignes 1-15), plan et budgets (17-21), bloc facultatif `{{#continuation}}` (23-31 : « Rédige UNIQUEMENT les chapitres à partir de … »), consignes du premier jet (33-43 : H1 qui intègre le mot-clé, chapeau qui le cite, chaque H2 du plan dans l'ordre à 15 % près de son budget, une seule conclusion, aucun chiffre inventé, 100 % français, pas de répétition), format de sortie (45-47, sans `<a>`, `<table>` ni `<img>` : checklist R10). Chargé par `loadPrompt`, `system-propulsite.md` en système ; rôle et variables dans [docs/prompts-reference.md](../../docs/prompts-reference.md) (généré).
+- [shared/section-budget.ts](../../shared/section-budget.ts) — `sectionBudgets(totalGroups, targetWords)` (17-32) : 1 chapitre = toute la cible ; 2 = 40 % / 60 % ; 3 et plus = 15 % pour le premier, 10 % pour le dernier, 75 % partagés entre les autres, arrondis au supérieur. Source unique du prompt (`formatDraftPlan`) et de la porte. Remplace `computeSectionBudget` (`_helpers.ts`, retiré).
+- [shared/html-stream.ts](../../shared/html-stream.ts) — `createH2Tracker(outlineTitles, offset = 0)` (34-75) : `start()` ouvre le chapitre `offset` ; `push(chunk)` cherche chaque `<h2…>` dans le texte cumulé à partir de la dernière balise trouvée (`scanFrom`), si bien qu'une balise coupée entre deux paquets n'est comptée qu'une fois ; à partir du deuxième H2, émet `section-done` puis `section-start` ; `finish()` clôt une seule fois ; `h2Seen()`. Titre et total viennent du sommaire, l'index de l'ordre des H2 dans le texte.
+- `ApiUsage.stopReason?: 'end' | 'max_tokens' | 'other'` (commit `c56a0cc`) — [shared/types/api.types.ts](../../shared/types/api.types.ts) (40-43) et son double serveur [server/services/external/claude.service.ts](../../server/services/external/claude.service.ts) (27-30) ; Claude : `toStopReason(finalMessage.stop_reason)` (134-138, 204 : `max_tokens` → `max_tokens`, `end_turn` / `stop_sequence` → `end`) ; Gemini : `finishReason` (`MAX_TOKENS` / `STOP`, [gemini.service.ts:158](../../server/services/external/gemini.service.ts)) ; OpenRouter : `finish_reason` (`length` / `stop`, [openrouter.service.ts:205](../../server/services/external/openrouter.service.ts)) ; simulation : toujours `end` ([mock.service.ts:215](../../server/services/external/mock.service.ts)). *(Lignes relevées au commit `bef3f3f`.)*
+- [shared/schemas/generate.schema.ts](../../shared/schemas/generate.schema.ts) — `generateArticleDraftRequestSchema` : `articleId`, `outline` (objet ou JSON), `keyword`, `keywords`, `articleType`, `articleTitle`, `cocoonName`, `targetWordCount?` ; ni `paa`, ni `topic`, ni `webSearchEnabled` (l'ancienne route recevait les PAA sans jamais les citer).
+- [shared/verifiers/draft.ts](../../shared/verifiers/draft.ts) — porte `draft` : `DraftGateInput { content, captain, targetWords, outlineH2Count }` (25-32) ; `DRAFT_LENGTH_TOLERANCE = 0.15`, `SECTION_MIN_RATIO = 0.5`, `SECTION_MAX_RATIO = 1.5` (34-38) ; `verifyDraft(input)` (55-133) ; `introText` = texte avant le premier H2, sans le H1, à défaut les 100 premiers mots (47-53) ; budgets `sectionBudgets(max(outlineH2Count, H2 du texte), targetWords)`, le chapeau compté dans le premier chapitre (98-114). Réutilise `validateArticleContent`, `keywordCoverage`, `splitByH2Regex`, `fromContentIssue` et `distinctRules` (exportés de `publish.ts` pour l'occasion).
+- [shared/text-quality.ts](../../shared/text-quality.ts) — détecteurs purs : `countWordsHtml` (17-19, même comptage que la porte de publication) ; `detectNonFrenchSentences` (41-49 : phrases de 6 mots ou plus où l'on compte au moins 3 mots-outils anglais, et plus que de mots-outils français ; listes `EN_FUNCTION` / `FR_FUNCTION` 31-38) ; `detectRepeatedParagraphs` (67-79 : blocs `<p>` et `<li>`, un `<br>` séparant aussi deux paragraphes, 12 mots distincts ou plus, Jaccard ≥ 0,8 avec un bloc précédent ; renvoie les 80 premiers caractères de la répétition). Chiffres sans source : cf. `DESIGN-RED-DRAFT-TO-SOURCE`.
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `draftGate(articleId)` (208-227) : texte et sommaire enregistrés (`getArticleContent`, sommaire en chaîne JSON ou en objet), capitaine `article_keywords.capitaine ?? articles.captain_keyword_locked` (222), cible `article_micro_contexts.target_word_count ?? targetWordsFor(articles.type)` (223), nombre de H2 du sommaire (224) ; l'entrée entière fait l'empreinte. Branchée dans `evaluateArticleGate` (282). `publishGate` ne la rejoue pas (241-245 : capitaine, lieutenants, lexique).
+- [src/stores/article/editor.store.ts](../../src/stores/article/editor.store.ts) — `generateArticle(briefData, outline, targetWordCount?, articleIdPourSauvegarde?)` (111-193) : corps sans `paa`, `topic` ni `webSearchEnabled` (135-144) ; `startStream('/api/generate/article-draft', …)` (148) ; `onSectionStart` → `sectionProgress` (162-165) ; `onSectionDone` → `saveContenuPartiel(articleId, streamedText)` (243-253, sauvegarde au fil : `PUT /articles/:id { content }`, sans méta, sans toucher à l'état « modifié ») et chapitres du sommaire marqués `generated`. `webSearchEnabled` retiré du store. L'événement `continuation` n'est écouté nulle part côté écran ([src/services/api.service.ts:300-304](../../src/services/api.service.ts) ne traite que `section-start`, `section-done`, `done`, `error` et les paquets).
+- [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — header `AUTHORITY:` ; `wordCountTarget` = `briefData.contentLengthRecommendation` (69) ; `handleGenerateArticle` (98-150) : `generateArticle(…, wordCountTarget, id)` (114) → `saveArticle` (122) → `generateMeta` (128) → `saveArticle` (135) → `void reviewDraft(id)` (138) ; `reviewDraft` (90-96) = `useGateAlarmStore().ensure(id, 'draft')`, une panne est journalisée sans bloquer.
+- [scripts/auto-article/phases/redaction.ts](../../scripts/auto-article/phases/redaction.ts) — `collectSse(deps, '/generate/article-draft', …)` (152-165) : corps sans `paa` ni `topic`, chapitres et reprises (`continuation`) journalisés. Le mode automatique ne consulte pas la porte du premier jet.
+- [server/services/external/mock-fixtures/article-draft.ts](../../server/services/external/mock-fixtures/article-draft.ts) — simulation, importée **en premier** par `mock-fixtures/index.ts` (le prompt du premier jet contient la stratégie du cocon et déclenchait d'autres fixtures) ; reconnue au titre « ## Premier jet — article complet » (`MARKER`, 19). `buildDraftChunks(prompt)` (66-100) : H1 = titre s'il contient le capitaine en entier, sinon « Capitaine : titre » ; chapeau qui cite le capitaine ; un H2 par ligne du plan (`parsePlan` 54-64, lu dans `{{outlinePlan}}`), H3 compris, paragraphes variés (`paragraph` 43-52) calés sur le budget ; aucun chiffre ni marqueur ; en reprise, ni H1 ni chapeau, chapitres à partir du chapitre coupé ; paquets de 180 caractères, qui coupent des `<h2`. Fixture `article-draft-priority` (102-106). Remplace `generate-article-section` (`generate.ts`) et `auto-section-priority.ts`, qui écrivaient le même texte à chaque section sous le titre du premier H2.
+- [src/utils/api-label.ts](../../src/utils/api-label.ts) — libellé « Premier jet » dans la pile d'activité.
+
+**Endpoints**
+- `POST /api/generate/article-draft` — SSE : `section-start { index, total, title }`, `chunk { content }`, `section-done { index }`, `continuation { fromIndex, attempt }`, `done { content, usage }`, `error { code, message }`. Remplace `POST /api/generate/article`.
+- `GET /api/articles/:id/gates/draft` — évaluation de la porte ; `POST /api/articles/:id/gates/draft/waivers` — dérogations (cf. `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`).
+
+**Porte `draft` — règles**
+
+| Règle | Niveau | Condition |
+|---|---|---|
+| Erreurs de `validateArticleContent` (`content-empty`, `truncated-block`, `ai-monologue`, `orphan-text`, `markdown-residue`, `forbidden-tag`, `hn-empty`, `hn-level-jump`, `hn-multiple-h1`) | ⛔ | Mêmes règles qu'à la publication (`fromContentIssue(i, 'technique')`) ; `hn-h1-in-body` ignoré |
+| `unverifiable-claim` | 🔴 | Avertissement promu (`RISKY_CONTENT_WARNINGS`), comme à la publication |
+| `draft-h1-missing` | ⛔ | Aucun `<h1>` |
+| `draft-captain-not-in-h1` | 🔴 | `keywordCoverage(capitaine, H1) < 1` |
+| `draft-captain-not-in-intro` | 🔴 | `keywordCoverage(capitaine, introduction) < 0,75` |
+| `draft-length-off-target` | 🔴 | \|mots − cible\| > 15 % de la cible |
+| `draft-section-off-budget` | 🔴 | Chapitre < 0,5 × ou > 1,5 × son budget ; titre en extrait |
+| `draft-non-french` | 🔴 | Une par phrase détectée |
+| `draft-repeated-paragraph` | 🔴 | Une par répétition |
+| `draft-unsourced-figure` | 🔴 | Une par phrase (cf. `DESIGN-RED-DRAFT-TO-SOURCE`) |
+
+Une règle qui vise plusieurs endroits reçoit un identifiant par occurrence (`distinctRules`).
+
+**Flux DB**
+
+*Lecture (rédaction)* : `article_strategies` (`getStrategy`), `cocoon_strategies` (`getCocoonStrategy`), `article_keywords`, `article_micro_contexts`. Le serveur n'écrit rien.
+
+*Écriture (écran)* : à chaque `section-done`, `PUT /articles/:id { content }` avec le texte reçu jusque-là ; à la fin, `saveArticle` (texte final, puis texte + méta + scores).
+
+*Porte* : `GET …/gates/draft` → `draftGate` lit `articles`, `article_content` (texte, sommaire), `article_keywords`, `article_micro_contexts` → `verifyDraft` → dérogations `gate_waivers` (`gate_id = 'draft'`).
+
+**Stores Pinia**
+- `useEditorStore` — `content`, `streamedText`, `sectionProgress`, `lastArticleUsage` (usage de `done`, modèles et `stopReason` compris) ; plus de `webSearchEnabled`.
+- `useOutlineStore` — sommaire en entrée, chapitres marqués `generated` au fil des `section-done`.
+- `useGateAlarmStore` — `ensure(id, 'draft')` : verdict du serveur, alarme si la porte ne passe pas.
+- `useBriefStore` — `contentLengthRecommendation`, la cible envoyée par l'écran.
+
+**Décisions d'architecture**
+- **Un seul appel, sans recherche web** (décision d'Arnaud, 2026-09-24) : tout le plan et tout le contexte partent une fois ; les sources viendront de passes d'enrichissement séparées (C5b). Pas d'outil passé à `streamChatCompletion`, donc pas de recherche web perdue en cas de repli de fournisseur pour la rédaction (R9 ne vaut plus que pour les actions contextuelles).
+- **Écran inchangé** : le serveur réémet `section-start` / `section-done` en suivant les `<h2>` du flux ; composants, progression et sauvegarde au fil restent ceux de la rédaction section par section.
+- **Sauvegarde au fil côté écran** : le serveur ne sauvegarde pas de premier jet partiel ; le filet reste `saveContenuPartiel` à chaque `section-done` (test : `tests/unit/stores/editor-sauvegarde-au-fil.test.ts`). Son exigence, `FR-RED-GEN-SAUVEGARDE-AU-FIL`, est citée par le code et ce test mais n'a jamais été écrite au PRD : elle fait partie de la dette figée `LEGACY_ORPHANS` de `tests/unit/architecture/requirements-trace.test.ts`. Le critère correspondant est porté par `FR-RED-DRAFT-SINGLE-PASS` ; écrire l'ID lui-même au PRD ou dans l'épopée exige de le retirer de cette liste dans le même changement (le cliquet l'impose).
+- **Reprise au chapitre incomplet, réécrit en entier** plutôt qu'un raccord en pleine phrase : le texte coupé est jeté à partir de son dernier `<h2>`, le modèle reçoit la fin du texte gardé pour enchaîner. Deux reprises au plus, pour borner le coût.
+- **Plafond de jetons** : ~2,2 jetons par mot (français et balises), borné entre 8 000 et 16 000.
+- **Saturation** : disparaissent la pause de 15 s entre sections, le réessai unique d'une section en échec et la boucle d'attente sur 429 (événement `rate-limit`, 60 s puis 120 s puis 180 s) — boucle qui n'était de toute façon jamais atteinte, pour la même raison que celle de la méta (checklist R15). Restent les réessais (3 tentatives, attente exponentielle plafonnée à 8 s) et la bascule de fournisseur de [ai-provider.service.ts](../../server/services/external/ai-provider.service.ts) (`withRetry` 183-205, `withFallbackChain` 212-233), qui n'agissent qu'avant le premier paquet reçu.
+- **Budgets partagés** : le prompt et la porte lisent la même répartition (`sectionBudgets`).
+- **Porte non bloquante, jugée sur le texte enregistré** : évaluée après la méta, elle ouvre l'alarme sans empêcher quoi que ce soit ; elle ne garde encore aucune étape.
+- **Porte non rejouée à la publication** : ±15 % de la cible n'a plus de sens après les passes d'enrichissement ; la publication rejuge la langue, les répétitions et les chiffres sans source avec ses propres règles (cf. `DESIGN-RED-PUBLISH-GATE`).
+- **Écart assumé avec l'épopée et la tech-spec** : un H1 sans le capitaine est 🔴, pas ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme `seo-capitaine-not-in-title` à la publication) ; seul un H1 absent est ⛔.
+
+**Limites connues**
+- **Une seule cible pour la rédaction et sa porte** (checklist R16, soldée côté serveur) : la route prend `article_micro_contexts.target_word_count` (choix de l'utilisateur), sinon `targetWordCount` envoyé par l'écran (`contentLengthRecommendation`), sinon `targetWordsFor(type)` ([article-draft.routes.ts:120](../../server/routes/generate/article-draft.routes.ts)) ; sans choix enregistré, elle **enregistre la cible retenue** (`retainTargetWordCount`, `data.service.ts`, `COALESCE` : jamais d'écrasement). La porte (`gate.service.ts:223`, micro-contexte > type) juge donc contre la valeur qui a guidé la rédaction. Limite restante : la barre de mots (`ArticleWordCountBar`) et la réduction lisent encore la recommandation du brief, même quand l'utilisateur a choisi une autre cible (C5b).
+- **Porte consultée une fois** : seul `reviewDraft` appelle `ensure(id, 'draft')`, juste après la méta ; rien ne la relance après correction ; pas d'appel si la méta échoue ; le mode automatique ne la consulte pas.
+- **Reprise visible à l'écran** : l'événement `continuation` n'est pas écouté ; `streamedText` (et donc la sauvegarde au fil) garde le début du chapitre coupé suivi de sa réécriture jusqu'à `done`, dont le texte final remplace tout.
+- **Onglet fermé** : la route ne vérifie plus `req.socket.destroyed` (l'ancienne boucle s'arrêtait entre deux sections) ; l'appel à l'IA va à son terme, sans rien enregistrer côté serveur.
+- **Panne en cours de flux** : après le premier paquet, une erreur du fournisseur n'est ni réessayée ni reprise ; le premier jet s'arrête (événement `error`).
+- **Paragraphes fusionnés** (checklist R14) : `mergeConsecutiveElements` ([shared/html-utils.ts:176](../../shared/html-utils.ts)) joint les `<p>` consécutifs en un seul `<p>` séparé par des `<br>`, ici (ligne 183) comme dans l'éditeur au chargement ([ArticleEditor.vue:39](../../src/components/editor/ArticleEditor.vue)) et dans l'affichage du flux ([ArticleStreamDisplay.vue:18](../../src/components/article/ArticleStreamDisplay.vue)). `detectRepeatedParagraphs` en tient compte (`<br>` = séparation).
+- **La simulation ne coupe jamais** (`stopReason: 'end'`) et ne pose aucun marqueur : la reprise n'est testée que sur la route, avec un fournisseur simulé à la main.
+- **Titre de l'alarme** : « Avant de » + `GATE_LABELS.draft` donne « Avant de accepter le premier jet » (checklist U2).
+
+**Critères d'acceptation techniques**
+- AC.DRAFT.1 : un seul appel, sans outil, au plafond `draftMaxTokens(2500)` ; le plan transmis porte chaque H2 avec son annotation et son budget, et les règles du type. *(test : `tests/unit/routes/generate.routes.test.ts`, « POST /generate/article-draft »)*
+- AC.DRAFT.2 : la progression est réémise chapitre par chapitre (`section-start` / `section-done` 0 à 2), puis `done` porte le texte réparé et `stopReason: 'end'`. *(même fichier)*
+- AC.DRAFT.3 : coupé au plafond, la rédaction reprend au chapitre coupé sans le dupliquer (`continuation { fromIndex: 1, attempt: 1 }`, `previousText` fourni, texte coupé jeté) ; au plus `1 + MAX_DRAFT_CONTINUATIONS` appels ; 400 sur un corps invalide ou un sommaire sans H2 ; une erreur après l'envoi des en-têtes part en événement `error`. *(même fichier)*
+- AC.DRAFT.4 : suivi des H2 : chapeau dans le premier chapitre, `<h2` coupé compté une fois, titres du sommaire, plus de H2 que prévu, dernier chapitre clos une seule fois, reprise avec les bons index. *(test : `tests/unit/shared/html-stream.test.ts`)*
+- AC.DRAFT.5 : Claude remonte `stopReason` `end` ou `max_tokens`. *(test : `tests/unit/services/claude.service.test.ts`)*
+- AC.DRAFT.6 : `verifyDraft` : un premier jet propre passe sans alerte ; la fixture réelle du 1013 est refusée (longueur, chapitres, capitaine) ; ⛔ sans H1 ; 🔴 H1 sans capitaine ; 🔴 longueur hors ±15 % ; 🔴 chapitre vide ou démesuré, nommé ; 🔴 phrase anglaise, paragraphe répété, chiffre sans source. *(test : `tests/unit/shared/verifiers-draft.test.ts`)* Détecteurs : *(test : `tests/unit/shared/text-quality.test.ts`)*
+- AC.DRAFT.7 : le serveur juge le texte enregistré : ⛔ `draft-h1-missing`, puis 🔴 `draft-unsourced-figure` une fois le H1 posé. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
+- AC.DRAFT.8 : l'écran soumet le premier jet enregistré à la porte, et pas quand la génération échoue *(test : `tests/unit/composables/article/useArticleGeneration.test.ts`)* ; le corps envoyé n'a ni `webSearchEnabled`, ni `paa`, ni `topic`, vers `/api/generate/article-draft` *(test : `tests/unit/stores/editor.store.test.ts`)*.
+- AC.DRAFT.9 : la simulation d'un pilier, d'un intermédiaire et d'un spécialisé passe la porte sans alerte, avant et après fusion des paragraphes ; le H1 intègre le capitaine ; les `<h2>` arrivent en plusieurs paquets ; une reprise ne réécrit que la suite. *(test : `tests/unit/services/mock-article-draft.test.ts`, sur le vrai prompt)*
+- Routes migrées dans les tests de contrat et de parcours : `tests/contract-api/generate.contract.test.ts`, `tests/e2e-workflows/redaction.workflow.test.ts`, `tests/integration-tabs/redaction-editor.tab.test.ts`.
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C5a ; remplace `DESIGN-RED-ARTICLE` ; checklist R1, R7 soldées).
+
+**Voir aussi** : `DESIGN-RED-DRAFT-TO-SOURCE`, `DESIGN-RED-ARTICLE` (superseded), `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-EXT-AI-FALLBACK`.
+
+---
+
+### DESIGN-RED-DRAFT-TO-SOURCE
+
+**Réf PRD :** [FR-RED-DRAFT-TO-SOURCE](./prd.md#fr-red-draft-to-source--le-premier-jet-ninvente-aucun-chiffre)
+
+**Refs code**
+- [server/prompts/generate-article-draft.md](../../server/prompts/generate-article-draft.md) — consigne 5 « Aucun chiffre inventé » (ligne 41) : pas de recherche web, aucun pourcentage, prix, statistique, date d'étude ni nom de source non garanti ; à la place `<mark data-a-sourcer>[à sourcer : ce qu'il faudrait trouver]</mark>` ; balise admise en sortie (47).
+- [shared/text-quality.ts](../../shared/text-quality.ts) — `FIGURE` (81) : pourcentage (`\d+ %`), montant (`€`, `euro(s)`), `\d+ million(s)` / `milliard(s)`, `\d+ fois` ; `ATTRIBUTION` (82) : `selon`, `d'après`, `source :` ; `detectUnsourcedFigures(html)` (89-96) : retire les `<mark … data-a-sourcer …>…</mark>` et le texte `[à sourcer …]` (l'éditeur pouvait perdre la balise), découpe en phrases, garde celles qui portent un chiffre sans attribution.
+- [shared/verifiers/draft.ts](../../shared/verifiers/draft.ts) — `draft-unsourced-figure` 🔴, une alerte par phrase (122-130).
+- [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — `unsourced-figure` 🔴 (101-103, depuis C5a) ; `countToSourceMarkers` (84-87 : `data-a-sourcer` ou `[à sourcer`) et `draft-to-source-remaining` 🔴 (125-133, depuis C2).
+- [shared/content-validators.ts](../../shared/content-validators.ts) — `mark` figure dans `ALLOWED_TAGS` (43-47) : le marqueur n'est pas une balise interdite.
+- [src/components/editor/tiptap/extensions/to-source.ts](../../src/components/editor/tiptap/extensions/to-source.ts) — marque TipTap `toSource` : lit `mark[data-a-sourcer]`, rend `<mark data-a-sourcer class="to-source">` ; branchée dans [ArticleEditor.vue](../../src/components/editor/ArticleEditor.vue) (import ligne 12, extensions ligne 56). Sans elle, TipTap perdait la balise et ne gardait que le texte : plus de surlignage, et la porte de publication ne reconnaissait le marqueur qu'à son texte.
+- [src/assets/styles/editor.css](../../src/assets/styles/editor.css) — `.to-source` (104-109) : fond `--color-block-warning-bg`, texte `--color-warning`, jetons définis dans `variables.css`.
+
+**Flux** : premier jet → marqueur dans `article_content.content` → éditeur (`toSource`) → sauvegarde qui garde `<mark data-a-sourcer class="to-source">` → portes `draft` (le marqueur ne compte pas comme chiffre) et `publish` (marqueurs restants 🔴, chiffres hors marqueur 🔴).
+
+**Décisions d'architecture**
+- **Marqueur dans le texte, pas en base à part** : il voyage avec le HTML, se voit dans l'éditeur et se compte par une simple recherche ; la passe « sources » (C5b) le remplacera sur place.
+- **Deux formes reconnues** : la balise, et son texte `[à sourcer …]` au cas où un outil perdrait la balise.
+- **Reconnaissance par la forme** : un chiffre compte s'il a une unité qui en fait une donnée (%, €, fois, millions) ; une année ou une quantité ordinaire (« 3 étapes », « en 2026 ») ne compte pas.
+
+**Limites connues**
+- La passe « sources » n'existe pas encore (C5b) : les marqueurs se remplacent à la main.
+- Une statistique en toutes lettres ou une année seule échappe au détecteur ; une attribution vague (« selon les experts ») suffit à le faire taire.
+- Aucun test ne couvre le surlignage dans l'éditeur (marque `toSource`) ; la simulation ne pose aucun marqueur.
+
+**Critères d'acceptation techniques**
+- AC.TOSOURCE.1 : pourcentage, prix et multiplicateur sans source repérés ; chiffre attribué (« Selon l'Insee », « d'après BrightLocal ») accepté ; chiffre dans un marqueur, balise ou texte seul, accepté ; « 3 étapes… en 2026 » ignoré. *(test : `tests/unit/shared/text-quality.test.ts`, « detectUnsourcedFigures »)*
+- AC.TOSOURCE.2 : un chiffre posé « à sourcer » n'est pas une alerte du premier jet ; un chiffre sans source l'est. *(test : `tests/unit/shared/verifiers-draft.test.ts`)*
+- AC.TOSOURCE.3 : la porte de publication relève les chiffres sans source du 1013, tous 🔴. *(test : `tests/unit/shared/verifiers-publish.test.ts`)*
+
+**Historique**
+- 2026-09-25 — créée (épopée qualité SEO, C5a).
+
+**Voir aussi** : `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-RED-EDITOR-TIPTAP`.
+
+---
+
 ### DESIGN-RED-META
 
 **Réf PRD :** [FR-RED-META](./prd.md#fr-red-meta)
@@ -3768,7 +3907,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - **Décorrélation Méta/Article** : Méta est une opération distincte qui peut être relancée seule. Si elle plante, l'article reste sauvegardé.
 
 **Voir aussi**
-- `DESIGN-RED-ARTICLE` — étape précédente qui produit `content`.
+- `DESIGN-RED-DRAFT-SINGLE-PASS` — étape précédente qui produit `content` (avant C5a : `DESIGN-RED-ARTICLE`).
 - `DESIGN-RED-EDITOR-TIPTAP` — édition manuelle des méta après génération.
 
 ---
@@ -4067,11 +4206,11 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Décisions d'architecture**
 - **Seuil 15 % pour `canReduce`** : décision UX dans `useArticleGeneration.ts` (lignes 64-70). Sous 15 % de dépassement, la compression IA coûte plus en cohérence qu'elle ne gagne en concision — l'utilisateur peut toujours raccourcir manuellement.
-- **Section-by-section comme la génération** : même approche que `DESIGN-RED-ARTICLE`. Cohérent côté UX (l'utilisateur reconnaît le pattern), cohérent côté coût (granularité 429-retry par section).
+- **Section-by-section comme la génération** : même approche que `DESIGN-RED-ARTICLE`. Cohérent côté UX (l'utilisateur reconnaît le pattern), cohérent côté coût (granularité 429-retry par section). *(Depuis C5a, 2026-09-25, la génération initiale ne l'est plus : le premier jet s'écrit en un appel, `DESIGN-RED-DRAFT-SINGLE-PASS`. La compression, elle, reste section par section.)*
 - **Pas de retry automatique sur échec d'une section** : à la différence de la génération initiale, un échec de compression ne fait pas réessayer — on garde la section originale (pas de troncature brutale). Évite de cramer des tokens sur une section qui résiste.
 
 **Voir aussi**
-- `DESIGN-RED-ARTICLE` — pattern section-by-section partagé.
+- `DESIGN-RED-ARTICLE` (superseded) — pattern section-by-section d'origine ; `DESIGN-RED-DRAFT-SINGLE-PASS` — le premier jet qui l'a remplacé.
 - `DESIGN-RED-WORD-COUNT-TARGET` — source du `targetWordCount` lu pour calculer le delta.
 
 ---
@@ -4111,7 +4250,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - **`escapeKeys: ['sectionHtml']`** : protection anti-prompt-injection. Si le contenu inclut du `{{...}}` ou des balises markdown, ils ne sont pas interprétés au load du prompt.
 
 **Voir aussi**
-- `DESIGN-RED-ARTICLE` — autre consommateur du même découpage H2.
+- `DESIGN-RED-DRAFT-SINGLE-PASS` — autre consommateur du même découpage H2 (`splitOutlineIntoGroups`, un seul appel ; avant C5a : `DESIGN-RED-ARTICLE`).
 - `DESIGN-RED-REDUCE-SECTION` — parallèle pattern, séquentiel celui-là.
 
 ---
@@ -4150,13 +4289,13 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - `canReduce` est un `computed` qui dérive `delta > 15 % de target` → contrôle l'activation du bouton « Réduire ».
 
 **Décisions d'architecture**
-- **Cible client = cible serveur** : la même valeur (`wordCountTarget` dans `useArticleGeneration`) est passée à `editorStore.generateArticle(targetWordCount)` ET à `editorStore.reduceArticle(targetWordCount)`. Pas de divergence affichage vs calcul (cohérence affichage/calcul, cf. CLAUDE.md §2.0).
-- **Cascade 4 niveaux** : client > microCtx > type default > hard fallback (cf. `DESIGN-RED-ARTICLE`). Le client reste autoritatif pour permettre de forcer une cible à la volée si besoin.
+- **Cible client = cible serveur** : la même valeur (`wordCountTarget` dans `useArticleGeneration`) est passée à `editorStore.generateArticle(targetWordCount)` ET à `editorStore.reduceArticle(targetWordCount)`. Pas de divergence affichage vs calcul (cohérence affichage/calcul, cf. CLAUDE.md §2.0). *(Exception relevée le 2026-09-25, C5a, checklist R16 : quand l'utilisateur a choisi une cible dans le micro-contexte, la rédaction et sa porte la suivent, mais l'écran affiche et réduit encore contre la recommandation du brief — à aligner en C5b. Sans cible choisie, la route enregistre celle qu'elle a reçue : rédaction, porte et écran s'accordent.)*
+- **Cascade 4 niveaux** : client > microCtx > type default > hard fallback (cf. `DESIGN-RED-DRAFT-SINGLE-PASS`, `article-draft.routes.ts:118` ; avant C5a `DESIGN-RED-ARTICLE`). Le client reste autoritatif pour permettre de forcer une cible à la volée si besoin.
 - **Affichage signé** : `wordCountDelta` retourne `wordCount - target`, donc positif si trop long, négatif si trop court. Aligne avec l'UX dashboard / SERP scoring.
 
 **Voir aussi**
 - `DESIGN-RED-EDITOR-TIPTAP` — source `editorStore.wordCount`.
-- `DESIGN-RED-ARTICLE` — consommateur du target pour `computeSectionBudget`.
+- `DESIGN-RED-DRAFT-SINGLE-PASS` — consommateur du target : budgets des chapitres (`sectionBudgets`) et plafond de jetons ; une cible choisie dans le micro-contexte passe avant celle de l'écran, et la cible retenue est enregistrée pour la porte du premier jet (checklist R16). Avant C5a : `computeSectionBudget` (`DESIGN-RED-ARTICLE`).
 - `DESIGN-RED-REDUCE-SECTION` — consommateur du target pour le seuil 15 %.
 - `DESIGN-CER-WORD-COUNT-RECOMMEND` — endpoint qui calcule la cible.
 - `DESIGN-UI-ARTICLE-SHARED` (§8.15) — `ArticleWordCountBar` consommé par `ArticleWorkflowView` (cf. `DRIFT-013`).
@@ -4214,6 +4353,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Refs code**
 - [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — vérificateur pur `verifyPublish(input: PublishGateInput): GateIssue[]` (`PublishGateInput` = `SeoInput` + `existingWaivers`) ; `countToSourceMarkers(html)` (`data-a-sourcer` ou `[à sourcer`) ; constantes `TOLERATED_AT_PUBLISH` (`hn-h1-in-body`), `RISKY_CONTENT_WARNINGS` (`unverifiable-claim`, `seo-capitaine-not-in-meta-title`).
 - [shared/content-validators.ts](../../shared/content-validators.ts) — `validateArticleContent`, `validateArticleMeta` (rejoués tels quels).
+- [shared/text-quality.ts](../../shared/text-quality.ts) — depuis C5a (commit `7900d08`), `verifyPublish` appelle `detectUnsourcedFigures`, `detectNonFrenchSentences` et `detectRepeatedParagraphs` sur le texte du jour ([shared/verifiers/publish.ts:99-109](../../shared/verifiers/publish.ts)) : le texte a pu changer depuis le premier jet (retouches, passes). Mêmes détecteurs que la porte `draft` (`DESIGN-RED-DRAFT-SINGLE-PASS`), autres noms de règles.
 - [shared/seo-validators.ts](../../shared/seo-validators.ts) — `validateArticleSeo` ; `checkCapitaine` exige désormais une couverture **1** (capitaine entier, variantes grammaticales admises par `tokensMatch`) dans le titre (H1) et le meta title, au lieu de 0,75 : « stratégie » manquait au H1 du 1013 sans alerte.
 - [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES[level].wordsMax` : pilier 3 500, intermédiaire 2 500, spécialisé 1 500.
 - [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `publishGate(articleId)` (privée), via `evaluateArticleGate(id, 'publish')`.
@@ -4233,6 +4373,10 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 | `hn-h1-in-body` | ignoré (l'export le retire) |
 | `article-too-long` : mots visibles > `wordsMax` du type | 🔴 |
 | `draft-to-source-remaining` : marqueurs « à sourcer » | 🔴 |
+| `unsourced-figure` : phrase avec un chiffre (%, €, fois, millions) sans attribution, hors marqueur (C5a) | 🔴 |
+| `non-french-sentence` : phrase où l'anglais domine (C5a) | 🔴 |
+| `repeated-paragraph` : paragraphe qui en répète un autre (C5a) | 🔴 |
+| Porte `draft` (premier jet) | **non rejouée** : sa règle ±15 % ne vaut que pour le premier jet |
 | `waiver-reconfirm:<porte>:<règle>` : une par dérogation **encore debout** d'une porte amont (`standingWaivers`) | 🟠 |
 | `captain-lock:<règle>`, `lieutenants-lock:<règle>`, `lexique-lock:<règle>` : alerte encore bloquante des portes amont, rejouées à la publication (`lexique-lock:lexique-empty` 🔴, `lexique-lock:lexique-generic-term:<terme>` 🔴 depuis C3) | niveau d'origine |
 | Une même règle visant plusieurs endroits (deux chiffres invérifiables…) | un identifiant par occurrence, suffixé par l'extrait (`distinctRules`) |
@@ -4255,18 +4399,21 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Limites connues**
 - Le score SEO enregistré (`DESIGN-RED-SEO-SCORE-PERSIST`) n'est pas encore lu par la porte.
 - La porte structure (C6) n'est pas encore rejouée à la publication (la porte lexique l'est depuis C3).
+- La porte du premier jet n'est pas rejouée (choix, cf. `DESIGN-RED-DRAFT-SINGLE-PASS`) : ses dérogations ne sont ni réaffichées ni reconfirmées (`existingWaivers` ne lit que les portes amont, `gate.service.ts:241-246`) ; `verify:content` les liste avec les autres.
 
-**Tests** : `tests/unit/shared/verifiers-publish.test.ts` (1013 rejeté, `article-too-long`, identifiants distincts par occurrence), `tests/contract-api/gates.contract.test.ts` (dérogation tombée non réaffichée et alerte revenue ; cannibalisation apparue après coup remontée à la publication), `tests/browser-e2e/gates.browser.test.ts` (⛔ sans champ, ni statut ni fichier).
+**Tests** : `tests/unit/shared/verifiers-publish.test.ts` (1013 rejeté, `article-too-long`, identifiants distincts par occurrence, chiffres sans source du 1013 relevés en 🔴 depuis C5a), `tests/contract-api/gates.contract.test.ts` (dérogation tombée non réaffichée et alerte revenue ; cannibalisation apparue après coup remontée à la publication), `tests/browser-e2e/gates.browser.test.ts` (⛔ sans champ, ni statut ni fichier).
 
 **Critères d'acceptation techniques**
 - AC.PUBGATE.1 : la fixture réelle du pilier 1013 (`tests/fixtures/articles/1013-pilier.html`) est rejetée — ⛔ meta description coupée, 🔴 capitaine absent du titre et du meta title, 🔴 pilier six fois trop long ; aucune dérogation ne couvre un ⛔. *(test : `tests/unit/shared/verifiers-publish.test.ts`, dans `npm run verify`)*
 - AC.PUBGATE.2 : 🔴 marqueurs « à sourcer » ; 🟠 chaque dérogation réaffichée ; article dans sa fourchette → pas d'`article-too-long` ; H1 dans le corps toléré. *(même fichier)*
 - AC.PUBGATE.3 : ⛔ un article sans contenu ne se publie pas, même avec une raison ; un changement de statut autre que « publié » n'est pas gardé. *(test : `tests/contract-api/gates.contract.test.ts`, serveur requis)*
 - AC.PUBGATE.4 : capitaine en entier exigé dans le titre et le meta title — le H1 et le meta title du 1013, qui ne contiennent pas « stratégie », lèvent chacun un 🔴. *(test : `tests/unit/shared/verifiers-publish.test.ts` ; règles de base dans `tests/unit/shared/seo-validators.test.ts`, dans `npm run verify`)*
+- AC.PUBGATE.5 : les chiffres sans source du 1013 sont relevés, tous 🔴 (`unsourced-figure`). *(test : `tests/unit/shared/verifiers-publish.test.ts` ; détecteurs dans `tests/unit/shared/text-quality.test.ts`)*
 
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2, checklist P3 et P5).
 - 2026-09-25 — la porte `lexique-lock` est rejouée à la publication (C3, `DESIGN-LEX-METIER-ONLY`).
+- 2026-09-25 — `unsourced-figure`, `non-french-sentence`, `repeated-paragraph` 🔴 (C5a, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-DRAFT-TO-SOURCE`) ; la porte du premier jet n'est pas rejouée.
 
 **Voir aussi** : `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-RED-META-CAPTAIN`, `DESIGN-RED-PROGRESS`, `DESIGN-RED-SEO-SCORE-PERSIST`, `DESIGN-LEX-METIER-ONLY`.
 
@@ -4899,7 +5046,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Endpoints consommateurs SSE**
 - `/api/generate/action` (actions IA contextuelles éditeur).
-- `/api/generate/article` (génération full d'un article section par section).
+- `/api/generate/article-draft` (premier jet en un appel, progression chapitre par chapitre ; remplace `/api/generate/article` depuis C5a).
 - `/api/generate/outline` (génération d'outline).
 - `/api/keywords/:kw/ai-panel` (panel IA Capitaine).
 - Et autres routes `generate/*` du Moteur (RadarAiPanel, LexiqueAiPanel, LieutenantsAiPanel).
@@ -4913,7 +5060,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 
 **Voir aussi**
 - `DESIGN-INFRA-API-WRAPPER` — équivalent non-streaming.
-- `DESIGN-RED-ARTICLE` (§8.10) — consommateur principal du stream `/api/generate/article`.
+- `DESIGN-RED-DRAFT-SINGLE-PASS` (§8.10) — consommateur principal du stream `/api/generate/article-draft` (avant C5a : `DESIGN-RED-ARTICLE`, `/api/generate/article`).
 
 ---
 
@@ -4944,7 +5091,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - [server/utils/prompt-loader.ts](../../server/utils/prompt-loader.ts) — `loadPrompt(name, variables?, { cocoonSlug?, escapeKeys? })` (lignes 179-218) lit `server/prompts/<name>.md` et le rend par `renderPromptTemplate` (lignes 126-146) : sections `{{#clé}}…{{/clé}}` gardées sans leurs marqueurs si la valeur (après `trim`) n'est pas vide, retirées sinon (sections imbriquées : jusqu'à 5 passes) ; puis `{{clé}}` remplacé **par fonction**, en une seule passe (aucun motif `$` interprété, une valeur n'est jamais relue). `templateKeys(template)` (lignes 108-116) liste les variables et les sections citées. Détail du mode strict et des variables globales : `DESIGN-INFRA-PROMPT-LAYERS`.
 - Mode strict (lignes 199-208) : clés citées non fournies = « manquantes », clés fournies non citées = « inutilisées » (hors `PROMPT_GLOBALS`), clé d'`escapeKeys` non fournie = inutilisée → `PromptTemplateError` (lignes 97-105) hors `NODE_ENV=production`, `log.error` et rendu (repère absent → vide) en production.
 - Stratégie du cocon : `buildCocoonStrategyBlock(strategy)` (lignes 56-71) et `loadCocoonStrategyBlock(cocoonSlug)` (lignes 74-83, `''` si la stratégie est absente ou illisible) → globale `{{strategy_context}}` ; ajoutée en fin de prompt si le `.md` ne la cite pas (lignes 210-214).
-- Blocs de contexte construits **par les appelants**, pas par le chargeur : `buildKeywordContext` ([server/routes/generate/_helpers.ts:109](../../server/routes/generate/_helpers.ts)), `buildMicroContextBlock` ([server/routes/generate/_helpers.ts:338](../../server/routes/generate/_helpers.ts), appelé par `article.routes.ts:87` ; le sommaire et l'explication du brief construisent le même bloc en ligne, `outline.routes.ts:52-54`, `brief-explain.routes.ts:34`), `pickStrategyContext` (`_helpers.ts:66`) et `buildStrategyContext` (`_helpers.ts:79`), `buildThemeContextBlock` ([server/services/strategy/strategy-prompts.service.ts:52](../../server/services/strategy/strategy-prompts.service.ts), privée : met en forme le `context.themeContext` envoyé par l'écran du Cerveau, sans lire la base).
+- Blocs de contexte construits **par les appelants**, pas par le chargeur : `buildKeywordContext` ([server/routes/generate/_helpers.ts:107](../../server/routes/generate/_helpers.ts)), `buildMicroContextBlock` ([server/routes/generate/_helpers.ts:233](../../server/routes/generate/_helpers.ts), appelé par `article-draft.routes.ts:136` depuis C5a ; le sommaire et l'explication du brief construisent le même bloc en ligne, `outline.routes.ts:52-54`, `brief-explain.routes.ts:34`), `pickStrategyContext` (`_helpers.ts:64`) et `buildStrategyContext` (`_helpers.ts:77`) *(lignes mises à jour après C5a)*, `buildThemeContextBlock` ([server/services/strategy/strategy-prompts.service.ts:52](../../server/services/strategy/strategy-prompts.service.ts), privée : met en forme le `context.themeContext` envoyé par l'écran du Cerveau, sans lire la base).
 - Hardening prompt injection : `escapePromptContent(raw)` (lignes 44-53) — neutralise `\n\nHuman:`, `\n\nAssistant:`, `<system>`, `</system>`, `<user-content>`, `</user-content>`, `{{`, `}}` puis enveloppe le résultat dans `<user-content>...</user-content>`. Tableau `INSTRUCTION_SEQUENCES` (lignes 33-42). Une valeur vide n'est pas enveloppée (lignes 187-197) : l'enveloppe garderait à tort la section `{{#clé}}` qui dépend d'elle.
 - Header explicite « WARNING — Prompt injection hardening » (lignes 1-10) interdit `loadPrompt` sur contenu utilisateur sans `options.escapeKeys`.
 
@@ -4980,7 +5127,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - [server/routes/silos.routes.ts](../../server/routes/silos.routes.ts) — `theme-parse` passe par `loadPrompt` (ligne 125).
 - [server/routes/generate/micro-context-suggest.routes.ts](../../server/routes/generate/micro-context-suggest.routes.ts) — la stratégie du cocon n'arrive plus qu'une fois, lue en base par `{{strategy_context}}` (`cocoonSlug`, lignes 23-37) ; l'écran ne l'envoie plus ([src/components/workflow/BriefStructureStep.vue](../../src/components/workflow/BriefStructureStep.vue)).
 - [server/services/keyword/long-tail-suggest.service.ts](../../server/services/keyword/long-tail-suggest.service.ts) — la stratégie de la longue traîne n'est plus toujours vide : le service lit le cocon de l'article (`getArticleById(articleId)?.cocoonName`, lignes 111-122) et le passe en `cocoonSlug`.
-- [server/routes/generate/article.routes.ts](../../server/routes/generate/article.routes.ts) — `generate-article-section` reçoit enfin le budget de sa section, `sectionBudgetHint` (lignes 158-166, cité par `generate-article-section.md:20`) ; `sectionPosition`, jamais cité, n'est plus envoyé (checklist R1, en partie).
+- ~~[server/routes/generate/article.routes.ts](../../server/routes/generate/article.routes.ts) — `generate-article-section` reçoit enfin le budget de sa section, `sectionBudgetHint` (lignes 158-166, cité par `generate-article-section.md:20`) ; `sectionPosition`, jamais cité, n'est plus envoyé (checklist R1, en partie).~~ Route et prompt supprimés par C5a (2026-09-25) : le premier jet reçoit le budget de chaque chapitre dans `{{outlinePlan}}` et les règles du type dans `{{type_rules}}` ([server/prompts/generate-article-draft.md](../../server/prompts/generate-article-draft.md), lignes 15-21 ; cf. `DESIGN-RED-DRAFT-SINGLE-PASS`) — R1 soldée.
 - [server/prompts/system-propulsite.md](../../server/prompts/system-propulsite.md) — identité : `{{today}}` (ligne 7), `{{zone}}` (lignes 5, 34, 44), `{{zone_landmarks}}` (ligne 48), `{{year}}` (ligne 57) ; plus aucune année ni quartier écrit en dur (checklist R11). Les exemples de citation datés (« selon HubSpot, 2024 »…) sont aussi retirés de `actions/add-statistic.md` et `reduce-section.md` ; `actions/sources-chiffrees.md` date ses sources par rapport à `{{year}}`.
 - [server/prompts/cocoon-articles.md](../../server/prompts/cocoon-articles.md) — exemples d'un autre métier (chauffagiste) avec `[ville]` et consigne « Ne recopie jamais un exemple » (ligne 42) ; l'exemple du pilier 1013 a disparu (checklist K7). « Meilleur X {{year}} » au lieu d'une année écrite, là et dans `cocoon-articles-spe.md`, `cocoon-add-article.md`. `propose-lieutenants.md` : exemples avec `[ville]` au lieu de Toulouse.
 - [server/services/article/content-gap.service.ts](../../server/services/article/content-gap.service.ts) — le prompt en ligne de l'analyse d'écart cherche les lieux de la zone configurée (`loadZoneContext`, lignes 91-93) au lieu de « Toulouse/Occitanie ».
@@ -5028,7 +5175,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C4, checklist K5, K7, R11, D1, D2, D3 ; R1 en partie).
 
-**Voir aussi** : `DESIGN-INFRA-PROMPT-LOADER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-CER-THEME-CONFIG`, `DESIGN-INFRA-LOCAL-ENTITIES`, `DESIGN-INFRA-COCOON-STRATEGIES`, `DESIGN-RED-ARTICLE`.
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LOADER`, `DESIGN-INFRA-TYPE-RULES-SSOT`, `DESIGN-CER-THEME-CONFIG`, `DESIGN-INFRA-LOCAL-ENTITIES`, `DESIGN-INFRA-COCOON-STRATEGIES`, `DESIGN-RED-DRAFT-SINGLE-PASS` (avant C5a : `DESIGN-RED-ARTICLE`).
 
 ---
 
@@ -5050,14 +5197,16 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 | Consommateur | Lit | Avant C4 |
 |---|---|---|
 | Prompts `generate-outline.md` (ligne 54), `propose-lieutenants.md` (ligne 13), `lieutenants-hn-structure.md` (ligne 11) | `{{type_rules}}` : [server/routes/generate/outline.routes.ts:74](../../server/routes/generate/outline.routes.ts), [server/routes/keyword-ai-panel.routes.ts:18-21,148,273](../../server/routes/keyword-ai-panel.routes.ts) (vide si le niveau est inconnu) | Fourchettes écrites en dur, contradictoires |
-| Budget de rédaction — [server/routes/generate/article.routes.ts:91-94](../../server/routes/generate/article.routes.ts) | `targetWordsFor` (client > micro-contexte > type) | `DEFAULT_TARGET_WORDS_BY_TYPE` dans `_helpers.ts` |
+| Budget de rédaction — [server/routes/generate/article-draft.routes.ts:118](../../server/routes/generate/article-draft.routes.ts) (avant C5a : `article.routes.ts:91-94`) | `targetWordsFor` (client > micro-contexte > type) | `DEFAULT_TARGET_WORDS_BY_TYPE` dans `_helpers.ts` |
+| Prompt du premier jet — `generate-article-draft.md` (ligne 15) | `{{type_rules}}` : [article-draft.routes.ts:137](../../server/routes/generate/article-draft.routes.ts) (vide si le type est inconnu) ; `label` du type (130) | — (C5a) |
+| Porte du premier jet — [server/services/gates/gate.service.ts:223](../../server/services/gates/gate.service.ts) | `targetWordsFor` (micro-contexte > type ; le micro-contexte reçoit la cible retenue par le premier jet, checklist R16) | — (C5a) |
 | Recommandation de longueur — [server/services/article/target-word-count.service.ts:50-53](../../server/services/article/target-word-count.service.ts) | `typeBase` = `{ min: wordsMin, max: wordsMax, target: targetWords }` ; sans SERP, la base est `targetWords` (ligne 68) | `TYPE_BASE` local ; base = milieu des bornes (2 650 pour un pilier) ; champ `breakdown.typeBase.midpoint` |
 | Repli du brief — [src/stores/strategy/brief.store.ts:15-17](../../src/stores/strategy/brief.store.ts) | `calculateContentLength` = `targetWordsFor` | Milieux 2 650 / 1 850 / 1 150 |
 | [src/components/panels/SeoPanel.vue:33](../../src/components/panels/SeoPanel.vue) | `DEFAULT_TARGET_WORDS_FALLBACK` | `?? 1500` |
 | Alertes SEO — [shared/seo-validators.ts:47-48](../../shared/seo-validators.ts) | `wordsFloor` (`seo-thin-content`), `h2Floor` (`seo-too-few-sections`) | `MIN_WORDS`, `MIN_H2` locaux (mêmes valeurs) |
 | Filtre des lieutenants de l'IA — [server/routes/keyword-ai-panel.routes.ts:178](../../server/routes/keyword-ai-panel.routes.ts) | `maxLieutenants` | `MAX_SELECTED` local |
 | Mode automatique — [scripts/auto-article/heuristics/pick-lieutenants.ts:23](../../scripts/auto-article/heuristics/pick-lieutenants.ts) | `maxLieutenants` (5 / 5 / 4) | `LIEUTENANT_MAX` 8 / 5 / 3 |
-| Vérificateurs — [shared/verifiers/lieutenants.ts:42](../../shared/verifiers/lieutenants.ts), [shared/verifiers/publish.ts:102](../../shared/verifiers/publish.ts) | `minLieutenants` ; `wordsMax` (plafond), `targetWords` (message) | Déjà branchés en C2 |
+| Vérificateurs — [shared/verifiers/lieutenants.ts:42](../../shared/verifiers/lieutenants.ts), [shared/verifiers/publish.ts:114](../../shared/verifiers/publish.ts) (ligne 102 avant C5a) | `minLieutenants` ; `wordsMax` (plafond), `targetWords` (message) | Déjà branchés en C2 |
 
 **Endpoints**
 - `POST /api/articles/:id/recommend-word-count` — `breakdown.typeBase` devient `{ min, max, target }` (le champ `midpoint` est renommé `target` : la valeur n'est plus un milieu).
@@ -5081,7 +5230,7 @@ L'élément fait partie de l'identifiant de règle : chaque conflit se déroge s
 - 2026-09-25 — table créée pour les vérificateurs (C2, `DESIGN-INFRA-VERIFIER-SHARED`).
 - 2026-09-25 — source unique : prompts, calculs, écran et mode automatique branchés (épopée qualité SEO, C4, checklist M10).
 
-**Voir aussi** : `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-RED-ARTICLE`, `DESIGN-LIE-GEOFUNNEL-RULE`.
+**Voir aussi** : `DESIGN-INFRA-PROMPT-LAYERS`, `DESIGN-INFRA-VERIFIER-SHARED`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-CER-WORD-COUNT-RECOMMEND`, `DESIGN-RED-WORD-COUNT-TARGET`, `DESIGN-RED-DRAFT-SINGLE-PASS` (avant C5a : `DESIGN-RED-ARTICLE`), `DESIGN-LIE-GEOFUNNEL-RULE`.
 
 ---
 
@@ -5725,9 +5874,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 **Refs code**
 - [shared/verifiers/gate.ts](../../shared/verifiers/gate.ts) — noyau pur (aucune I/O) : types `GateLevel` (`attention` | `risque` | `technique`), `GateIssue` (`rule`, `level`, `message`, `risk?`, `excerpt?`, `alternatives?`), `GateResult`, `GateEvaluation` (`gateId`, `issues`, `inputHash`, `passed`, `blocking`, `waived`) ; `GATE_IDS` (`captain-lock`, `lieutenants-lock`, `lexique-lock`, `hn-lock`, `draft`, `publish`), `GATE_LABELS` (« verrouiller le capitaine », « valider les lieutenants », « publier »…), `evaluateGate(gateId, issues, waivers, inputHash)`, `hashGateInput(input)`, `worstLevel(issues)`.
-- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique` (`DESIGN-LEX-METIER-ONLY`, C3), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
+- Vérificateurs purs par porte : [shared/verifiers/captain.ts](../../shared/verifiers/captain.ts) `verifyCaptain` (`DESIGN-CAP-LOCK-GATE`), [shared/verifiers/lieutenants.ts](../../shared/verifiers/lieutenants.ts) `verifyLieutenants` (`DESIGN-LIE-LOCK-GATE`), [shared/verifiers/lexique.ts](../../shared/verifiers/lexique.ts) `verifyLexique` (`DESIGN-LEX-METIER-ONLY`, C3), [shared/verifiers/draft.ts](../../shared/verifiers/draft.ts) `verifyDraft` (`DESIGN-RED-DRAFT-SINGLE-PASS`, C5a), [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) `verifyPublish` (`DESIGN-RED-PUBLISH-GATE`).
 - [shared/constants/article-type-rules.ts](../../shared/constants/article-type-rules.ts) — `ARTICLE_TYPE_RULES` : pilier 2 500 mots [1 800–3 500], 6–8 H2, 3 lieutenants ; intermédiaire 1 800 [1 200–2 500], 4–6, 2 ; spécialisé 1 200 [800–1 500], 3–5, 1. Lu par `verifyLieutenants` (`minLieutenants`) et `verifyPublish` (`wordsMax`). Devenue la source unique des règles par type en C4 (prompts, calculs de longueur, alertes SEO, mode automatique) : cf. `DESIGN-INFRA-TYPE-RULES-SSOT`.
-- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `lexiqueGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` (exporté, lu par `articles.routes.ts`) : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`, `MOTEUR_LEXIQUE_VALIDATED` → `lexique-lock` (C3).
+- [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — **seul évaluateur**, header `AUTHORITY:`. `evaluateArticleGate(articleId, gateId, { keyword? })` : charge les données (`captainGate` / `lieutenantsGate` / `lexiqueGate` / `draftGate` / `publishGate`), appelle le vérificateur, calcule `hashGateInput(hashInput)`, lit les dérogations de la porte, applique `evaluateGate`, journalise `[gate] évaluation`. `CHECK_GATES` (exporté, lu par `articles.routes.ts`) : `MOTEUR_CAPITAINE_LOCKED` → `captain-lock`, `MOTEUR_LIEUTENANTS_LOCKED` → `lieutenants-lock`, `MOTEUR_LEXIQUE_VALIDATED` → `lexique-lock` (C3).
 - [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — évaluation et dérogations (Zod : `z.enum(GATE_IDS)`), monté sous `/api` dans [server/index.ts](../../server/index.ts).
 - [server/routes/articles.routes.ts](../../server/routes/articles.routes.ts) — `respondGateBlocked(res, evaluation, message)` ; points de passage gardés : `POST /articles/:id/progress/check` (check présent dans `CHECK_GATES`) et `PUT /articles/:id/status` vers `publié`.
 - [src/services/api.service.ts](../../src/services/api.service.ts) — `ApiRequestError` (`status`, `code`, `details`) levée par `handleApiError` : le refus arrive à l'écran avec l'évaluation.
@@ -5753,7 +5902,8 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - **Refus = 422 avec l'évaluation en `details`** : l'écran n'a pas à redemander le verdict pour ouvrir l'alarme ; les outils en ligne de commande l'affichent tel quel.
 - **La porte garde l'étape et le statut, pas l'écriture des décisions** : l'enregistrement de `article_keywords` (autosave, cases cochées) reste libre ; c'est l'étape (`articles.completed_checks`) — qui ouvre la Finalisation et la Rédaction — et le statut `publié` qui sont gardés.
 - **Rattachement aux exigences** par module (`verifyCaptain` ↔ `FR-CAP-LOCK-GATE`…) et par les en-têtes de fichiers : `GateIssue` ne porte pas l'ID d'exigence, mais un `rule` stable.
-- **Portes réservées** (`hn-lock` C6, `draft` C5) : acceptées par la route, évaluées sans alerte tant que leur chantier n'est pas livré. `lexique-lock` est livrée par C3 (2026-09-25).
+- **Porte réservée** (`hn-lock`, C6) : acceptée par la route, évaluée sans alerte tant que son chantier n'est pas livré. `lexique-lock` est livrée par C3, `draft` par C5a (2026-09-25).
+- **Une porte qui alerte sans garder** : `draft` n'est dans `CHECK_GATES` ni n'est rejouée par `publishGate` ; l'écran la consulte (`ensure`) juste après la rédaction et sa méta, l'alarme s'ouvre si elle ne passe pas, rien n'est refusé. `auto:article` ne la consulte pas.
 - **Audit tolérant** : un article déjà rédigé que la porte refuserait donne un avertissement (`publish-gate-refused`), pas une erreur — ses défauts sont déjà comptés par les validateurs.
 - **Aucune dérogation automatique** : le script `auto:article` s'arrête sur un refus ; seul un humain déroge.
 
@@ -5767,8 +5917,9 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Historique**
 - 2026-09-25 — créée (épopée qualité SEO, C2).
 - 2026-09-25 — porte `lexique-lock` livrée (C3) : `verifyLexique`, `lexiqueGate`, `CHECK_GATES[MOTEUR_LEXIQUE_VALIDATED]`, rejouée par `publishGate`.
+- 2026-09-25 — porte `draft` livrée (C5a) : `verifyDraft`, `draftGate` ; ni étape gardée ni rejeu à la publication.
 
-**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
+**Voir aussi** : `DESIGN-INFRA-GATE-WAIVER`, `DESIGN-CAP-LOCK-GATE`, `DESIGN-LIE-LOCK-GATE`, `DESIGN-LEX-METIER-ONLY`, `DESIGN-RED-DRAFT-SINGLE-PASS`, `DESIGN-RED-PUBLISH-GATE`, `DESIGN-INFRA-ZOD-SHARED`, `DESIGN-INFRA-API-WRAPPER`.
 
 ---
 
@@ -5781,7 +5932,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - [server/services/gates/gate.service.ts](../../server/services/gates/gate.service.ts) — `saveGateWaivers(articleId, gateId, drafts, { keyword? })` : réévalue, refuse (`WaiverRefusal`) un brouillon sans alerte correspondante (« Cette alerte n'existe plus : les données ont changé… ») ou irrecevable, enregistre les autres avec l'empreinte **courante**, renvoie `{ evaluation, refused }` ; `listArticleWaivers(articleId)` (ordre `created_at`).
 - [server/routes/gates.routes.ts](../../server/routes/gates.routes.ts) — `waiversBodySchema` (Zod) : `keyword?` (1–200), `waivers` 1–50 × `{ rule (1–300), category? (enum | null), reason? (≤ 2000 | null) }`.
 - [server/db/changes/2026-09-25-gate-waivers.sql](../../server/db/changes/2026-09-25-gate-waivers.sql) — migration idempotente, capturée par `npm run db:snapshot` dans [server/db/schema.sql](../../server/db/schema.sql) et [server/db/bootstrap.sql](../../server/db/bootstrap.sql).
-- [src/components/shared/GateAlarm.vue](../../src/components/shared/GateAlarm.vue) — titre « Avant de <porte> » ; par point : icône et libellé de niveau, message, « Le risque : … », extrait, « À la place : » (alternatives) ; ⛔ « Ce point doit être corrigé : il ne se déroge pas. » ; 🟠 case « J'ai lu » ; 🔴 liste de catégories + raison + compteur « n / 20 » ; motif de refus du serveur sous le point ; `<details>` « 🛡 n dérogation(s) déjà posée(s) » ; boutons « Revenir corriger » et « J'ai lu, je continue » / « Je prends la responsabilité et je continue » / « Correction nécessaire » (grisé si ⛔). `role="alertdialog"`, focus à l'ouverture, Échap et clic sur le fond = « Revenir corriger ». Réponses remises à zéro à chaque nouvelle empreinte.
+- [src/components/shared/GateAlarm.vue](../../src/components/shared/GateAlarm.vue) — titre « Avant de <porte> » (ligne 58 ; sans élision : « Avant de accepter le premier jet » pour la porte `draft`, checklist U2) ; par point : icône et libellé de niveau, message, « Le risque : … », extrait, « À la place : » (alternatives) ; ⛔ « Ce point doit être corrigé : il ne se déroge pas. » ; 🟠 case « J'ai lu » ; 🔴 liste de catégories + raison + compteur « n / 20 » ; motif de refus du serveur sous le point ; `<details>` « 🛡 n dérogation(s) déjà posée(s) » ; boutons « Revenir corriger » et « J'ai lu, je continue » / « Je prends la responsabilité et je continue » / « Correction nécessaire » (grisé si ⛔). `role="alertdialog"`, focus à l'ouverture, Échap et clic sur le fond = « Revenir corriger ». Réponses remises à zéro à chaque nouvelle empreinte.
 - [src/stores/ui/gate-alarm.store.ts](../../src/stores/ui/gate-alarm.store.ts) — `submit(drafts)` → `POST …/waivers` avec le `keyword` de la requête ; porte passée → l'alarme se ferme et la promesse de `ensure` / `open` se résout à `true` ; sinon `refused` + nouvelle évaluation ; `cancel()` → `false`, rien d'enregistré.
 - [shared/verifiers/publish.ts](../../shared/verifiers/publish.ts) — `waiver-reconfirm:<porte>:<règle>` 🟠 : reconfirmation à la publication.
 - [scripts/verify-content-gates.ts](../../scripts/verify-content-gates.ts) — `describeWaivers(waivers)` : « 🛡 [captain-lock · captain-volume-zero] verrouiller le capitaine : Longue traîne assumée — « raison » » (« lu » pour un accusé 🟠).
@@ -5796,7 +5947,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 *Écriture* : réponses dans l'alarme → `waiverDraftsFrom` (bouton actif quand `missing` est vide) → `submit` → `POST …/waivers` → `saveGateWaivers` → `INSERT … ON CONFLICT (article_id, gate_id, rule, input_hash) DO UPDATE SET level, category, reason, created_at = now()` → réévaluation → alarme fermée si la porte passe, sinon motifs affichés.
 
-*Lecture* : `evaluateArticleGate` (dérogations de la porte) ; `publishGate` (toutes, pour la reconfirmation et l'empreinte) ; `GET /waivers` ; `npm run verify:content` (`listArticleWaivers`).
+*Lecture* : `evaluateArticleGate` (dérogations de la porte) ; `publishGate` (celles encore debout des portes amont rejouées — capitaine, lieutenants, lexique —, pour la reconfirmation et l'empreinte ; pas celles de la porte `draft`, qui n'est pas rejouée : *précisé le 2026-09-25, C5a*) ; `GET /waivers` ; `npm run verify:content` (`listArticleWaivers`).
 
 **Empreinte par porte** (`hashInput`)
 - `captain-lock` : `{ keyword normalisé, level, volume, autocompleteCount, verdict, serpIntent, expectedIntent }` — alternatives exclues.
@@ -5945,7 +6096,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 | `ArticleEditorActionOverlays` | [src/components/article/ArticleEditorActionOverlays.vue](../../src/components/article/ArticleEditorActionOverlays.vue) | `ArticleEditorView` uniquement |
 
 **Composable partagé**
-- [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — orchestre génération article (SSE stream section par section + persistance `article_content.content` + cost log). Appelé par **`ArticleEditorView` ET `ArticleWorkflowView`** (vérifié grep).
+- [src/composables/article/useArticleGeneration.ts](../../src/composables/article/useArticleGeneration.ts) — orchestre génération article (premier jet en un appel, SSE réémis chapitre par chapitre depuis C5a + persistance `article_content.content` + cost log + porte « accepter le premier jet », cf. `DESIGN-RED-DRAFT-SINGLE-PASS`). Appelé par **`ArticleEditorView` ET `ArticleWorkflowView`** (vérifié grep).
 
 **Vues consommatrices**
 - [src/views/ArticleEditorView.vue](../../src/views/ArticleEditorView.vue) — édition libre TipTap d'un article existant (entrée directe depuis dashboard, route `/article/:articleId/editor`).
@@ -6058,7 +6209,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 **Réf PRD :** [NFR-PERF-SSE-FIRST-TOKEN](./prd.md#nfr-perf-sse-first-token--premier-mot-dia-visible-rapidement)
 
 **Refs code**
-- [server/routes/generate/article.routes.ts](../../server/routes/generate/article.routes.ts) — orchestration SSE de la génération article section par section.
+- [server/routes/generate/article-draft.routes.ts](../../server/routes/generate/article-draft.routes.ts) — orchestration SSE du premier jet : un appel, premier paquet réémis dès qu'il arrive, progression chapitre par chapitre (avant C5a : `article.routes.ts`, un appel par section).
 - [server/services/external/claude.service.ts](../../server/services/external/claude.service.ts) — wrapper streaming SDK Anthropic.
 - [src/services/api.service.ts](../../src/services/api.service.ts) (`apiStream`) — wrapper front qui consomme la `ReadableStream` POST.
 - [src/composables/editor/useStreaming.ts](../../src/composables/editor/useStreaming.ts) — composable consommateur côté éditeur.
@@ -6175,9 +6326,11 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 
 ---
 
-#### DESIGN-PERF-INTER-SECTION-DELAY
+#### DESIGN-PERF-INTER-SECTION-DELAY — *(deprecated 2026-09-25)*
 
 **Réf PRD :** [NFR-PERF-INTER-SECTION-DELAY](./prd.md#nfr-perf-inter-section-delay--pause-entre-sections-pour-fiabiliser-la-génération)
+
+**Statut** : deprecated le 2026-09-25 (épopée qualité SEO, C5a, commit `bef3f3f`). `INTER_SECTION_DELAY_MS` et la pause entre sections sont retirés avec `article.routes.ts` : le premier jet s'écrit en un appel (`DESIGN-RED-DRAFT-SINGLE-PASS`). Aucun code ne lit plus `INTER_SECTION_DELAY`. Contenu historique ci-dessous (la décision « c'est `claude.service.ts` qui gère le retry » était déjà inexacte : les réessais vivent dans `ai-provider.service.ts`, `withRetry`).
 
 **Refs code**
 - [server/routes/generate/_helpers.ts](../../server/routes/generate/_helpers.ts):35-36 — `export const INTER_SECTION_DELAY_MS = Number(process.env.INTER_SECTION_DELAY ?? 15_000)`.
@@ -6515,7 +6668,7 @@ Plus l'agrégat `MOTEUR_CHECKS` et le type `WorkflowCheck = typeof MOTEUR_CHECKS
 - **Pas de blocage UI** : aucune action IA n'est désactivée parce que la stratégie est vide. Seules les actions qui dépendent d'un check Moteur sont gatées (cf. `FR-MOT-SOFT-GATING`).
 
 **Critères d'acceptation techniques**
-- AC.INTSO.1 : un appel `POST /generate/article-section` avec un article sans `article_strategies` row ne crashe pas — la prompt expansion remplace `{{strategy_context}}` par chaîne vide.
+- AC.INTSO.1 : un appel `POST /generate/article-draft` avec un article sans `article_strategies` row ne crashe pas — `pickStrategyContext` retombe sur la stratégie du cocon, sinon sur une chaîne vide ; une stratégie du cocon illisible est journalisée et ignorée (`article-draft.routes.ts:110-113`). *(Corrigé le 2026-09-25, C5a : l'AC citait `POST /generate/article-section`, route qui n'a jamais existé ; la rédaction passait par `/generate/article`, remplacée par `/generate/article-draft`.)*
 - AC.INTSO.2 : un appel sans `painPoint` substitue par `(non défini)`.
 
 **Voir aussi**

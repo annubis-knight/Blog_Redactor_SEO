@@ -1142,6 +1142,20 @@ export async function saveArticleMicroContext(id: number, data: Omit<ArticleMicr
   return { id, ...data }
 }
 
+/**
+ * Enregistre la longueur visée par le premier jet quand l'utilisateur n'en a
+ * choisi aucune : la porte du premier jet juge ensuite contre cette même valeur
+ * (R16). Un choix déjà fait n'est jamais écrasé.
+ */
+export async function retainTargetWordCount(id: number, words: number): Promise<void> {
+  await pool.query(`
+    INSERT INTO article_micro_contexts (article_id, target_word_count)
+    VALUES ($1, $2)
+    ON CONFLICT (article_id) DO UPDATE
+    SET target_word_count = COALESCE(article_micro_contexts.target_word_count, EXCLUDED.target_word_count)
+  `, [id, words])
+}
+
 /** Reset caches (no-op for PG — kept for compatibility) */
 export function resetCache(): void {
   log.debug('resetCache() — no-op in PG mode')

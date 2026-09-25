@@ -2,7 +2,7 @@
 name: epic-qualite-seo-garde-fous
 type: epic
 status: in-progress
-version: 1.3.0
+version: 1.4.0
 last_updated: 2026-09-25
 synced_with:
   - _bmad-output/planning-artifacts/prd.md (exigences réservées ici, versées au PRD dans la PR qui les livre ; NFR-MAIN-REQUIREMENTS-TRACE livrée par C0)
@@ -46,7 +46,7 @@ Le constat de fond : **aucune transition ne vérifie ce qui passe**, les étapes
 |---|---|
 | Garde-fous | **Alarme graduée + responsabilité** (§4) |
 | Cocon | **Carte née du pilier** : chaque H2 du pilier est un enfant candidat, créé un par un ; le parent doit être rédigé avant |
-| Rédaction | **Premier jet en un seul appel**, sans recherche web, puis passes d'enrichissement séquentielles. La route par section ne sert plus qu'à réécrire une section |
+| Rédaction | **Premier jet en un seul appel**, sans recherche web, puis passes d'enrichissement séquentielles. La route par section ne sert plus qu'à réécrire une section *(C5a l'a retirée plutôt que gardée : la réécriture d'une section viendra par une route dédiée, C5b)* |
 | Maillage interne | **Manuel**, après la rédaction |
 | Onglets Moteur | Lieutenants et Structure Hn **séparés** |
 | Exigences | **Épopée d'abord, PRD à la livraison** : une FR n'entre dans `prd.md` que dans la PR qui la livre (pas d'écart doc ↔ code) |
@@ -82,7 +82,7 @@ Règles communes à tous les chantiers :
 | C2 | Vérificateurs + alarme graduée + publication contrôlée | `feat/verificateurs-alarme` | L | FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-RED-PUBLISH-GATE, FR-RED-SEO-SCORE-PERSIST, NFR-TEST-BEHAVIORAL | en revue |
 | C3 | Lexique métier | `fix/lexique-metier` | M | FR-LEX-METIER-ONLY | en revue |
 | C4 | Architecture des prompts | `refactor/prompts-architecture` | M | FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT | en revue (PR à ouvrir) |
-| C5 | Rédaction en deux temps | `feat/redaction-premier-jet`, `feat/redaction-enrichissement` | L | FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE, FR-RED-SECTION-REWRITE, FR-RED-ENRICH-SOURCES, FR-RED-ENRICH-PASSES, FR-RED-LANG-REVIEW, FR-RED-LINKING-MANUAL | à faire |
+| C5 | Rédaction en deux temps | `feat/redaction-premier-jet`, `feat/redaction-enrichissement` | L | FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE, FR-RED-SECTION-REWRITE, FR-RED-ENRICH-SOURCES, FR-RED-ENRICH-PASSES, FR-RED-LANG-REVIEW, FR-RED-LINKING-MANUAL | en cours (C5a `feat/redaction-premier-jet` en revue, PR à ouvrir ; C5b `feat/redaction-enrichissement` à faire) |
 | C6 | Onglet Structure Hn | `feat/onglet-structure-hn` | M-L | FR-HN-TAB, FR-HN-LOCK-GATE | à faire |
 | C7 | Cocon né du pilier | `feat/cocon-progressif` | L | FR-CER-COCOON-PROGRESSIVE, FR-CER-PARENT-WRITTEN-GATE, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-KEYWORD-REAL-DATA, FR-INFRA-COCOON-CONTEXT | à faire |
 | C8 | Recette réelle | — | S | — | à faire |
@@ -230,7 +230,7 @@ Il remplace FR-RED-ARTICLE.
   - les répétitions.
 > **En situation.** Pilier de 2 650 mots : le premier jet en fait 2 700, sans répétition, avec une seule conclusion et un seul appel à l'action.
 
-**Statut** : réservée — C5.
+**Statut** : livrée par C5a (versée au PRD et au registre, 2026-09-25) ; FR-RED-ARTICLE passée superseded. Texte amendé à la livraison, le PRD fait foi : un H1 sans le capitaine est 🔴 (un titre peut reformuler le mot-clé, comme à la publication), seul un H1 absent est ⛔ ; la reprise après coupure réécrit le chapitre interrompu en entier (deux reprises au plus) et la sauvegarde au fil reste faite par l'écran, pas par le serveur ; le « contexte du cocon » se limite à la stratégie (l'état du cocon arrive avec FR-INFRA-COCOON-CONTEXT, C7) ; la porte alerte sans rien refuser, une seule fois après la rédaction et la méta, et n'est pas rejouée à la publication (sa règle ±15 % ne vaut que pour le premier jet ; la publication rejuge langue, répétitions et chiffres). Elle contrôle aussi le budget de chaque chapitre (0,5× à 1,5×) et les défauts techniques du texte. Limite : la porte ne juge pas la longueur contre la même cible que la rédaction (R16).
 
 #### FR-RED-DRAFT-TO-SOURCE — Le premier jet n'invente aucun chiffre
 **Critères d'acceptation**
@@ -238,7 +238,7 @@ Il remplace FR-RED-ARTICLE.
 - Un chiffre sans source hors marqueur déclenche 🔴.
 > **En situation.** « [à sourcer : part des recherches locales sur mobile] » apparaît surligné dans l'éditeur, en attendant la passe Sources.
 
-**Statut** : réservée — C5.
+**Statut** : livrée par C5a (versée au PRD et au registre, 2026-09-25). Précisé à la livraison, le PRD fait foi : un « chiffre » est un pourcentage, un montant en euros, un multiplicateur ou un nombre de millions / milliards ; une attribution dans la phrase (« selon », « d'après », « source : ») suffit ; le chiffre sans source est 🔴 au premier jet **et** à la publication ; le marqueur reste surligné après sauvegarde (marque TipTap dédiée). Limites : une statistique en toutes lettres ou une année seule n'est pas repérée ; la passe Sources (FR-RED-ENRICH-SOURCES) reste à faire.
 
 #### FR-RED-ENRICH-SOURCES — Des sources françaises, datées, avec leur lien
 **Critères d'acceptation**
@@ -247,7 +247,7 @@ Il remplace FR-RED-ARTICLE.
 - Si le fournisseur capable de chercher sur le web est indisponible, la passe échoue en le disant, au lieu de produire du texte sans source.
 > **En situation.** Le marqueur devient une phrase du type « X % des recherches locales se font sur mobile (nom de l'organisme, 2026) », avec le lien vers l'étude. Aucune phrase en anglais n'a été recopiée.
 
-**Statut** : réservée — C5.
+**Statut** : réservée — C5b.
 
 #### FR-RED-ENRICH-PASSES — Enrichir l'article par passes successives
 **Critères d'acceptation**
@@ -256,7 +256,7 @@ Il remplace FR-RED-ARTICLE.
 - L'éditeur accepte les tableaux et les images.
 > **En situation.** La passe Tableaux transforme la comparaison agence/indépendant en tableau ; Arnaud l'accepte, puis refuse la FAQ proposée.
 
-**Statut** : réservée — C5.
+**Statut** : réservée — C5b.
 
 #### FR-RED-SECTION-REWRITE — Réécrire une section en voyant tout l'article
 **Critères d'acceptation**
@@ -264,7 +264,7 @@ Il remplace FR-RED-ARTICLE.
 - La génération complète section par section est archivée.
 > **En situation.** La section « Coûts » est trop longue : Arnaud la réécrit seule, et elle ne répète pas ce que dit déjà la section « Audit ».
 
-**Statut** : réservée — C5.
+**Statut** : réservée — C5b. Note C5a (2026-09-25) : la génération section par section n'a pas été archivée mais **retirée** (route, prompt, aides, fixtures) ; la réécriture d'une section se fera par une route neuve (`/generate/section-rewrite` dans la tech-spec C5a, hors périmètre).
 
 #### FR-RED-LANG-REVIEW — Une relecture de la langue avant publication
 **Critères d'acceptation**
@@ -272,7 +272,7 @@ Il remplace FR-RED-ARTICLE.
 - Une phrase non française restante déclenche 🔴 à la publication.
 > **En situation.** « Donc you must focus » est signalée et réécrite en « Concentrez-vous donc sur un canal ».
 
-**Statut** : réservée — C5.
+**Statut** : réservée — C5b. Note C5a (2026-09-25) : le second critère est déjà tenu — une phrase où l'anglais domine est 🔴 à la publication (`non-french-sentence`, FR-RED-PUBLISH-GATE amendée) ; restent la passe de relecture elle-même, le franglais et les accords. « Donc you must focus » (4 mots) est trop courte pour le détecteur, qui juge les phrases de 6 mots ou plus.
 
 #### FR-RED-LINKING-MANUAL — Le maillage interne se pose à la main, après la rédaction
 Il remplace FR-RED-INTERNAL-LINKING.
@@ -282,7 +282,7 @@ Il remplace FR-RED-INTERNAL-LINKING.
 - Les liens vers des articles non publiés sont signalés.
 > **En situation.** L'intermédiaire « audit de site » vient d'être publié. Arnaud ouvre le pilier, et l'outil propose de relier son résumé « Audit » à ce nouvel article.
 
-**Statut** : réservée — C5.
+**Statut** : réservée — C5b.
 
 ### Structure Hn (C6)
 
@@ -360,7 +360,11 @@ Il remplace FR-CER-BATCH-CREATE.
 | FR-LEX-PRECHECK-PERSISTE | amendée ✅ (PRD et registre, 2026-09-25 : plus aucun terme coché d'office, chaque geste enregistré, l'étape passe par la porte du lexique) | FR-LEX-METIER-ONLY | C3 |
 | FR-LEX-SELECT, FR-LEX-CHECK, FR-LEX-CHECKBOX-LOCK-IMMEDIATE | amendées ✅ (fin du pré-cochage des Obligatoires ; l'étape passe par la porte du lexique) | — | C3 |
 | FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées ✅ (la porte du lexique rejoint les portes, rejouée à la publication) | — | C3 |
-| FR-RED-ARTICLE | superseded | FR-RED-DRAFT-SINGLE-PASS | C5 |
+| FR-RED-ARTICLE | superseded ✅ (PRD et registre, 2026-09-25) | FR-RED-DRAFT-SINGLE-PASS | C5a |
+| FR-RED-PUBLISH-GATE | amendée ✅ (PRD et registre, 2026-09-25 : chiffre sans source, phrase non française, paragraphe répété 🔴 ; la porte du premier jet n'est pas rejouée) | FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE | C5a |
+| FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER | amendées ✅ (porte du premier jet, qui alerte sans refuser ; ses dérogations ne sont pas réaffichées à la publication) | — | C5a |
+| NFR-PERF-INTER-SECTION-DELAY, NFR-CFG-INTER-SECTION-DELAY, NFR-CFG-WEB-SEARCH | deprecated ✅ (plus de pause entre sections ; plus de recherche web à la rédaction ; `WEB_SEARCH_ENABLED` n'avait déjà aucun effet) | FR-RED-DRAFT-SINGLE-PASS | C5a |
+| FR-UI-ARTICLE-SHARED, NFR-PERF-SSE-FIRST-TOKEN, FR-CER-WORD-COUNT-RECOMMEND | libellé mis à jour ✅ (premier jet au lieu de la rédaction section par section) | — | C5a |
 | FR-RED-INTERNAL-LINKING | superseded | FR-RED-LINKING-MANUAL | C5 |
 | FR-LIE-HN-STRUCTURE | superseded | FR-HN-TAB | C6 |
 | FR-CER-BATCH-CREATE | superseded | FR-CER-COCOON-PROGRESSIVE | C7 |
@@ -401,19 +405,26 @@ Il remplace FR-CER-BATCH-CREATE.
 - [x] C4 · M17 — Aligner les autres listes de mots vides du code sur `shared/utils/generic-terms.ts` (keyword-roots, french-nlp, keyword-matcher, word-groups, long-tail-combinator, intent-scan, linking, seo-validators, `scripts/auto-article/text.ts`, pain-point-jaccard). *(**Requalifiée** — C4, 2026-09-25 : seule la copie exacte `src/constants/french-nlp.ts` est supprimée, ses lecteurs lisent `shared/utils/keyword-roots.ts`. Les autres listes servent un autre but : le filtre du lexique écarte « créer », « comment », « combien », du bruit dans un lexique mais du sens dans un mot-clé ; les aligner dégraderait les racines du Radar et la couverture SEO. Elles restent distinctes, décision consignée dans `DESIGN-LEX-METIER-ONLY`.)*
 
 **Rédaction**
-- [ ] C5 · R1 — `sectionBudgetHint` et `sectionPosition` jamais utilisés ; `wordCountBudget` contient le total de l'article (`article.routes.ts:153-158`). *En partie (budget de section transmis au prompt, C4, 2026-09-25) : `generate-article-section.md` cite `{{sectionBudgetHint}}` et annonce `{{wordCountBudget}}` comme la cible de l'article complet ; `sectionPosition`, jamais cité, n'est plus envoyé. La rédaction section par section elle-même est revue en C5.*
+- [x] C5 · R1 — `sectionBudgetHint` et `sectionPosition` jamais utilisés ; `wordCountBudget` contient le total de l'article (`article.routes.ts:153-158`). *En partie (budget de section transmis au prompt, C4, 2026-09-25) : `generate-article-section.md` cite `{{sectionBudgetHint}}` et annonce `{{wordCountBudget}}` comme la cible de l'article complet ; `sectionPosition`, jamais cité, n'est plus envoyé.* *(C5a, 2026-09-25 : le budget de chaque chapitre est dans le plan du premier jet, `{{outlinePlan}}` = « - H2: titre (≈ n mots) » (`formatDraftPlan`, `article-draft.routes.ts:57-65`, budgets de `shared/section-budget.ts`) ; `{{wordCountBudget}}` y est annoncé explicitement comme la cible de l'article complet (`generate-article-draft.md:19`). La porte `draft` vérifie chaque chapitre (0,5× à 1,5× de son budget). Tests : `generate.routes.test.ts` (« POST /generate/article-draft »), `verifiers-draft.test.ts`.)*
 - [x] C1 · R2 — *(PR `fix/redaction-meta-contexte`)* `microContext` passé au sommaire mais inutilisé (`outline.routes.ts:62`).
 - [x] C1 · R3 — *(PR `fix/redaction-meta-contexte`)* Méta construite sur le titre au lieu du capitaine (`useArticleGeneration.ts:108-109`, `editor.store.ts:117-123`).
 - [x] C1 · R4 — *(PR `fix/redaction-meta-contexte`)* Méta coupée avec « ... » (`meta.routes.ts:86-88`), alors que le valideur classe ce cas en erreur.
 - [x] C1 · R5 — *(PR `fix/redaction-meta-contexte`)* `strategy_context` vide en rédaction : `cocoon_strategies` n'est jamais lu (`article.routes.ts:76,107`).
-- [ ] C5 · R6 — Recherche web sans lieu ni date, citations jetées (`claude.service.ts:111-115`, `claude-stream.ts:66`).
-- [ ] C5 · R7 — `generate-article-section.md:44` impose la recherche web, même quand elle est désactivée.
-- [x] C1 · R8 — *(PR `fix/redaction-meta-contexte`)* Seul le modèle de la dernière section est enregistré (`article.routes.ts:221`).
-- [ ] C5 · R9 — Recherche web perdue lors d'un repli vers un autre fournisseur (`ai-provider.service.ts:264-270`).
-- [ ] C5 · R10 — Format autorisé sans `<a>`, `<table>` ni `<img>` ; TipTap sans extension Table ni Image.
+- [ ] C5 · R6 — Recherche web sans lieu ni date, citations jetées (`claude.service.ts:111-115`, `claude-stream.ts:66`). *(C5a, 2026-09-25 : la rédaction n'a plus de recherche web. Reste vrai pour les actions `sources-chiffrees` et `exemples-reels` (`action.routes.ts:50-51`) : à traiter avec la passe Sources, C5b.)*
+- [x] C5 · R7 — `generate-article-section.md:44` impose la recherche web, même quand elle est désactivée. *(C5a, 2026-09-25 : prompt supprimé avec la rédaction section par section ; le premier jet n'a pas de recherche web — aucun outil passé à `streamChatCompletion` (`article-draft.routes.ts:160`), consigne « tu n'as pas de recherche web » (`generate-article-draft.md:41`) ; case « Recherche web » et `editorStore.webSearchEnabled` retirés. Test : `generate.routes.test.ts` (« un seul appel, sans recherche web »), `editor.store.test.ts`.)*
+- [x] C1 · R8 — *(PR `fix/redaction-meta-contexte`)* Seul le modèle de la dernière section est enregistré (`article.routes.ts:221`). *(Vérifié après C5a, 2026-09-25 : toujours tenu. Le premier jet note le modèle de chaque appel, reprises comprises (`article-draft.routes.ts:165,184`, `describeModelsUsed`) ; il voyage dans l'usage de l'événement `done`, jusqu'à la pile d'activité — il n'est pas enregistré en base.)*
+- [ ] C5 · R9 — Recherche web perdue lors d'un repli vers un autre fournisseur (`ai-provider.service.ts:264-270`). *(C5a, 2026-09-25 : ne concerne plus la rédaction, qui ne passe aucun outil. Reste vrai pour les actions `sources-chiffrees` / `exemples-reels` : C5b, avec FR-RED-ENRICH-SOURCES (« la passe échoue en le disant »).)*
+- [ ] C5 · R10 — Format autorisé sans `<a>`, `<table>` ni `<img>` ; TipTap sans extension Table ni Image. *(Toujours vrai après C5a : le format de sortie du premier jet (`generate-article-draft.md:47`) n'ajoute que `<mark data-a-sourcer>`, et TipTap la seule marque `toSource`. C5b.)*
 - [x] C4 · R11 — Dates et quartiers écrits en dur (`system-propulsite.md:5,22,31,32,41,49`). *(C4, 2026-09-25 : `{{today}}`, `{{year}}`, `{{zone}}` (`theme_config.avatar.location`), `{{zone_landmarks}}` (`local_entities`, entreprises exclues), fournis par le chargeur ; années et lieux retirés aussi des actions, de la réduction, du cocon, des lieutenants et de l'analyse d'écart. Test : `prompts-no-hardcoded.test.ts` (client à Bordeaux → jamais Toulouse).)*
 - [x] C1 · R12 — *(PR `fix/redaction-meta-contexte`)* `selectedText` non échappé (`action.routes.ts:41`).
 - [ ] C5 · R13 — La brief récupère les questions PAA du mot-clé **pilier du cocon** (`brief.store.ts:77`), pas du capitaine de l'article : un intermédiaire est rédigé avec les questions du pilier.
+- [ ] R14 — *(découvert pendant C5a, 2026-09-25, non corrigé)* `mergeConsecutiveElements` (`shared/html-utils.ts:176`) fusionne les `<p>` consécutifs (et les `<blockquote>`) en un seul élément, joints par `<br>`. Appliqué par la rédaction (`article-draft.routes.ts:183`, comme l'ancienne route), par l'éditeur au chargement (`ArticleEditor.vue:39`) et par l'affichage du flux (`ArticleStreamDisplay.vue:18`) : la structure HTML s'appauvrit (un « paragraphe » géant pour Google et les lecteurs d'écran). `detectRepeatedParagraphs` compense en traitant `<br>` comme une séparation. Chantier à choisir (C5b, qui touche l'éditeur).
+- [ ] R15 — *(découvert pendant C5a, 2026-09-25, non corrigé)* La branche « 429 » de `meta.routes.ts` (boucle 48-70, test ligne 60 : `isRateLimitError`, attente puis nouvel essai) n'est jamais atteinte : `ai-provider.service.ts` convertit un 429 en `AIProviderQuotaError` (`mapToKnownError`, 149-165 ; classe 87-94), sans `status` et avec un message « Quota … » ; `isRateLimitError` (`_helpers.ts:7-12`) attend `status === 429` ou un message qui commence par « 429 ». L'ancienne boucle de la rédaction section par section avait le même défaut. Les vrais réessais sont ceux de `withRetry` / `withFallbackChain` (`ai-provider.service.ts:183-233`) : supprimer la branche morte, ou la brancher sur `AIProviderQuotaError`.
+- [x] R16 — *(découvert en documentant C5a, 2026-09-25 ; **soldé côté serveur dans C5a** : la route du premier jet prend d'abord la cible choisie par l'utilisateur (micro-contexte), sinon celle de l'écran, sinon celle du type, et **enregistre la cible retenue** dans `article_micro_contexts.target_word_count` quand aucune n'était choisie (`retainTargetWordCount`, jamais d'écrasement) : la porte juge donc contre la valeur qui a guidé la rédaction. **Reste pour C5b** : la barre de mots, l'écart affiché et la réduction lisent encore la recommandation du brief même quand l'utilisateur a choisi une autre cible)* **Le premier jet et sa porte ne visaient pas la même longueur.** L'écran envoie `briefData.contentLengthRecommendation` (`useArticleGeneration.ts:69,114`, recommandation calculée à l'ouverture du brief et jamais enregistrée), que la route prend en priorité (`article-draft.routes.ts:118`) et que la barre de mots affiche ; la porte juge contre `article_micro_contexts.target_word_count`, sinon la règle du type (`gate.service.ts:223`). Quand elles diffèrent, un premier jet conforme à sa consigne reçoit `draft-length-off-target` et des `draft-section-off-budget`. Violation de la règle « même expression pour l'affichage et le calcul » (`.claude/CLAUDE.md` §2.0). À trancher : enregistrer la cible utilisée avec le premier jet, ou la faire lire à la porte.
+
+**Interface**
+- [ ] U1 — *(découvert pendant C5a, 2026-09-25, non corrigé)* Jetons CSS utilisés mais jamais définis : `--color-warning-bg`, `--color-warning-text`, `--color-warning-border`, `--color-warning-soft` (`src/assets/styles/variables.css` ne définit que `--color-warning` ligne 22 et `--color-block-warning-bg` / `-border` lignes 49-50). Dix usages, tous avec une couleur de repli codée en dur, donc hors charte : `AlertsCard.vue:183-184`, `SeoPanel.vue:152-154`, `KeywordsTab.vue:157-159`, `KeywordMigrationPreview.vue:91,99`. Le seul usage sans repli (`ArticleKeywordsPanel.vue`, dont le texte prenait alors la couleur du parent) a été corrigé en C5a (`--color-warning`).
+- [x] U2 — *(découvert en documentant C5a, 2026-09-25 ; soldé dans C5a : `gateTitle()` dans `shared/verifiers/gate.ts` élide devant une voyelle, « Avant d’accepter le premier jet » ; test `verifiers-gate.test.ts`)* Le titre de l'alarme est « Avant de » + le nom de la porte (`GateAlarm.vue:58`) : pour la porte du premier jet (`GATE_LABELS.draft` = « accepter le premier jet », `shared/verifiers/gate.ts:32`), l'écran affiche « Avant de accepter le premier jet », sans élision.
 
 **Publication et score**
 - [x] C2 · P1 — *(branche `feat/verificateurs-alarme`, FR-RED-SEO-SCORE-PERSIST)* Scores SEO et GEO jamais enregistrés (`editor.store.ts:252-256`). Désormais enregistrés avec le texte exact qu'ils notent, « — » sinon.
@@ -471,3 +482,4 @@ Il remplace FR-CER-BATCH-CREATE.
 | 2026-09-25 | C3 | Corrections après revue de la documentation : `lexique-empty` passe de ⛔ à 🔴 (un lexique vide s'assume avec une raison, à l'étape comme à la publication) ; la porte du lexique est revérifiée à **chaque** changement du lexique, sur le modèle des lieutenants (`LexiquePanel.vue` : enregistrement puis vérification silencieuse, bandeau « Étape non validée » et bouton « Voir pourquoi / décider », un terme générique ajouté après coup retire l'étape, vérifications sérialisées) — test `lexique-gate.test.ts` ; l'écran suit toujours le lexique enregistré (watcher sur `lockedTerms`) : au rechargement, les termes enregistrés ne s'affichent plus décochés et un clic ne les retire plus par erreur (défaut antérieur à C3) ; le helper navigateur `validerLexique` et l'étape ⑧ du parcours Lexique répondent au bandeau puis à l'alarme. PRD, registre et `docs/data-flows/lexique.md` alignés ; restes consignés en checklist : M15, M16, M17 |
 | 2026-09-25 | CI | Premiers passages de la CI réparée : lock régénéré sous Linux (`ci/reparer-pipeline`) ; tests dépendants de l'environnement du poste ou de DataForSEO rendus honnêtes, course de `assumeGate` corrigée (`feat/verificateurs-alarme`, CI1 (6)-(9)) ; CI3 ouvert (secrets DataForSEO, action d'Arnaud) |
 | 2026-09-25 | C4 | `refactor/prompts-architecture` (PR à ouvrir) : architecture des prompts, en six lots. **L1** chargeur strict (`renderPromptTemplate` en une passe, sections `{{#clé}}` gardées si la valeur n'est pas vide, `PromptTemplateError` sur variable absente ou inutilisée hors production ; globales `today`, `year`, `zone`, `zone_landmarks`, `strategy_context`, lues seulement si le prompt les cite). **L2** tous les prompts par le chargeur : les six routes de stratégie délèguent à `strategy-prompts.service.ts` (K5) ; corrigés au passage : deux marqueurs `{{#…}}` envoyés bruts, pistes et questions PAA sans titre, stratégie doublée au micro-contexte, stratégie vide à la longue traîne, texte de l'article non échappé dans la méta, budget de section enfin transmis (R1 en partie) ; trois prompts morts supprimés (D1). **L3** règles par type en une seule table, `{{type_rules}}` dans les prompts, calculs, écran et mode automatique branchés (M10). **L4** ni année ni lieu en dur, exemples d'un autre métier (R11, K7). **L5** référence des prompts générée et vérifiée, `docs/prompts-architecture.md` (D2, D3). **L6** restes : M15 (lexique de la Rédaction filtré), M14, T11 ; M17 requalifiée (seule la copie exacte `french-nlp.ts` est supprimée). **Versées au PRD et au registre** : FR-INFRA-PROMPT-LAYERS, FR-INFRA-TYPE-RULES-SSOT ; FR-INFRA-PROMPT-LOADER, FR-LEX-METIER-ONLY, FR-RED-CONTEXTUAL-ACTIONS amendées. Corrigé dans le registre au passage : `buildMicroContextBlock` et `buildThemeContextBlock` n'ont jamais été dans `prompt-loader.ts`, qui ne traitait pas les blocs `{{#…}}` avant C4. Découvert en documentant : D5 (les repères locaux ne sont pas triés par zone, le référentiel décrit Toulouse). CI verte sur L1-L3 (commit `3c4e1f8`) ; suite unitaire et fonctionnelle complète verte en local (397 fichiers) |
+| 2026-09-25 | C5a | `feat/redaction-premier-jet` (PR à ouvrir) : premier temps de la rédaction en deux temps, en trois commits. **`7900d08`** porte « accepter le premier jet » (`shared/verifiers/draft.ts`, `draftGate`) : ⛔ défauts techniques et H1 absent ; 🔴 capitaine absent du H1 (couverture < 1) ou de l'introduction (< 0,75), longueur hors ±15 %, chapitre hors 0,5×-1,5× de son budget, phrase non française, paragraphe répété, chiffre sans source ; détecteurs `shared/text-quality.ts`, budgets `shared/section-budget.ts` ; la publication gagne `unsourced-figure`, `non-french-sentence`, `repeated-paragraph` 🔴 (le 1013 est aussi refusé pour ses chiffres sans source). **`c56a0cc`** `ApiUsage.stopReason` pour Claude, Gemini, OpenRouter et la simulation. **`bef3f3f`** `POST /generate/article-draft` + `generate-article-draft.md` : un appel sans outil, plan avec budget par chapitre, `{{type_rules}}`, progression réémise (`shared/html-stream.ts`), reprise au chapitre coupé (2 au plus) ; porte évaluée par l'écran après la méta, sans bloquer, non rejouée à la publication ; marque TipTap `toSource` ; `auto:article` migré ; simulation réaliste (parcours bout-en-bout 5 min → 1 min 30). **Retirés** : `/generate/article`, `generate-article-section.md`, `computeSectionBudget`, `sectionMaxTokens`, `getPositionDirectives`, `formatSectionOutline`, `formatFullOutline`, `INTER_SECTION_DELAY_MS`, fixtures `generate-article-section` et `auto-section-priority`, `generateArticleRequestSchema`, case « Recherche web » et `webSearchEnabled`. R1, R7 soldées ; R8 revérifiée ; R6, R9 ne valent plus que pour les actions (C5b). **Versées au PRD et au registre** : FR-RED-DRAFT-SINGLE-PASS (écart : H1 sans capitaine 🔴, pas ⛔), FR-RED-DRAFT-TO-SOURCE ; FR-RED-ARTICLE superseded ; FR-RED-PUBLISH-GATE, FR-INFRA-VERIFIER-SHARED, FR-INFRA-GATE-WAIVER amendées ; NFR-PERF-INTER-SECTION-DELAY, NFR-CFG-INTER-SECTION-DELAY, NFR-CFG-WEB-SEARCH deprecated. Découverts en chemin ou en documentant, non corrigés : R14 (paragraphes fusionnés), R15 (branche 429 morte de la méta), U1 (jetons CSS non définis). Soldés dans un quatrième commit : R16 côté serveur (la cible choisie passe avant celle de l'écran, la cible retenue est enregistrée pour la porte ; reste l'affichage, C5b) et U2 (« Avant d’accepter »). Aussi relevé : `WEB_SEARCH_ENABLED` n'avait aucun effet (la valeur de la requête passait avant), `.env.example` la documente encore ; la génération section par section a été retirée et non archivée comme le prévoyait FR-RED-SECTION-REWRITE. Suite unitaire complète verte, 25 tests navigateur verts (bout-en-bout, éditeur, actions, portes) |
