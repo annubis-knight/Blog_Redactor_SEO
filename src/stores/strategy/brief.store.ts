@@ -1,3 +1,15 @@
+/**
+ * AUTHORITY: aucune persistance propre — assemble le brief d'un article ;
+ *            longueur visée : PostgreSQL `article_micro_contexts.target_word_count`,
+ *            sinon recommandation calculée à l'ouverture (non enregistrée).
+ * READS FROM: GET /articles/:id, GET /keywords/:cocoon, POST /dataforseo/brief,
+ *             POST /articles/:id/recommend-word-count, GET /articles/:id/micro-context
+ * WRITES TO: rien (la longueur choisie est enregistrée par BriefStructureStep,
+ *            la longueur retenue par la route du premier jet)
+ * CONSUMERS: `targetWordCount` → useArticleGeneration (écart, réduction, premier jet),
+ *            SeoPanel, useSeoScoring (deux vues de rédaction) ; `briefData` → Brief, Moteur
+ * RELATED FR: FR-RED-WORD-COUNT-TARGET, FR-CER-WORD-COUNT-RECOMMEND, FR-RED-DRAFT-SINGLE-PASS
+ */
 import { ref, computed } from 'vue'
 import { defineStore } from 'pinia'
 import { log } from '@/utils/logger'

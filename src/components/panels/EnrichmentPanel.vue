@@ -63,11 +63,27 @@ async function run(pass: EnrichmentPass) {
   await store.runPass(pass, context())
 }
 
+/** Comme après l'humanisation : ce qui est accepté est enregistré aussitôt (la vue « workflow » n'a pas d'enregistrement automatique). */
+async function save() {
+  if (props.articleId && editorStore.isDirty && !editorStore.isSaving) await editorStore.saveArticle(props.articleId)
+}
+
+async function accept(key: string) {
+  store.accept(key)
+  await save()
+}
+
+async function acceptAllClean() {
+  store.acceptAllClean()
+  await save()
+}
+
 async function reviewLanguage() {
   if (!canRun.value) return
   ranPass.value = null
   store.reset()
   await editorStore.humanizeArticle(props.articleId!, keyword.value, keywords.value)
+  if (!editorStore.error) await save()
 }
 
 // --- Réécrire un chapitre ---
@@ -126,7 +142,7 @@ async function rewrite() {
     <p v-if="emptyMessage" class="empty" data-testid="enrich-empty">{{ emptyMessage }}</p>
 
     <div v-if="store.readyCount > 1" class="bulk">
-      <button type="button" class="secondary-btn" data-testid="enrich-accept-clean" @click="store.acceptAllClean()">
+      <button type="button" class="secondary-btn" data-testid="enrich-accept-clean" @click="acceptAllClean()">
         Accepter celles sans alerte
       </button>
     </div>
@@ -186,7 +202,7 @@ async function rewrite() {
             data-testid="proposal-accept"
             :disabled="item.proposal?.blocked"
             :title="item.proposal?.blocked ? 'Un défaut ⛔ empêche d’accepter cette proposition.' : undefined"
-            @click="store.accept(item.key)"
+            @click="accept(item.key)"
           >
             Accepter
           </button>

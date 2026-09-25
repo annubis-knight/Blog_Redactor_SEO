@@ -9,7 +9,8 @@ import { setActivePinia, createPinia } from 'pinia'
 
 const { mockStartStreamOnce } = vi.hoisted(() => ({ mockStartStreamOnce: vi.fn() }))
 vi.mock('../../../src/composables/editor/useStreaming', () => ({ startStreamOnce: mockStartStreamOnce, useStreaming: vi.fn() }))
-vi.mock('../../../src/services/api.service', () => ({ apiPost: vi.fn(), apiPut: vi.fn(), apiGet: vi.fn() }))
+const { mockApiPut } = vi.hoisted(() => ({ mockApiPut: vi.fn() }))
+vi.mock('../../../src/services/api.service', () => ({ apiPost: vi.fn(), apiPut: mockApiPut, apiGet: vi.fn() }))
 
 import EnrichmentPanel from '../../../src/components/panels/EnrichmentPanel.vue'
 import { useEditorStore } from '../../../src/stores/article/editor.store'
@@ -46,6 +47,8 @@ describe('EnrichmentPanel', () => {
     expect(useEditorStore().content).toContain('Prenons un menuisier 0.')
     expect(useEditorStore().content).not.toContain('Prenons un menuisier 1.')
     expect(wrapper.get('[data-testid="proposal-0"]').attributes('data-status')).toBe('accepted')
+    await flushPromises()
+    expect(mockApiPut, 'accepté = enregistré, même sans enregistrement automatique').toHaveBeenCalledWith('/articles/7', expect.objectContaining({ content: expect.stringContaining('Prenons un menuisier 0.') }))
   })
 
   it('⛔ une proposition bloquée : bouton grisé, défaut affiché', async () => {
