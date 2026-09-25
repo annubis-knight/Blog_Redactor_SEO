@@ -50,8 +50,8 @@ export function detectNonFrenchSentences(html: string): string[] {
 
 /**
  * Paragraphes et éléments de liste, en texte. Un `<br>` sépare aussi deux
- * paragraphes : la rédaction fusionne les `<p>` consécutifs en un seul, joints
- * par `<br>` (`mergeConsecutiveElements`).
+ * paragraphes : jusqu'au 2026-09-25 (R14), la rédaction fusionnait les `<p>`
+ * consécutifs en un seul, joints par `<br>`, et des articles l'ont gardé.
  */
 function blocks(html: string): string[] {
   return [...html.matchAll(/<(p|li)\b[^>]*>([\s\S]*?)<\/\1>/gi)]

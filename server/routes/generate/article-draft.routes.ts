@@ -24,7 +24,6 @@ import { getCocoonStrategy } from '../../services/strategy/cocoon-strategy.servi
 import { cocoonContextForArticle } from '../../services/strategy/cocoon-context.service.js'
 import { getArticleKeywords, loadArticleMicroContext, retainTargetWordCount } from '../../services/infra/data.service.js'
 import type { Outline } from '../../../shared/types/index.js'
-import { mergeConsecutiveElements } from '../../../shared/html-utils.js'
 import { stripAiPreamble } from '../../../shared/ai-text.js'
 import { stripOrphanBlockText, trimTruncatedBlocks } from '../../../shared/content-repair.js'
 import { targetWordsFor, describeTypeRules, ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules.js'
@@ -190,7 +189,9 @@ router.post('/generate/article-draft', async (req, res) => {
     }
     writeChapterEvents(res, tracker.finish())
 
-    const finalContent = repairStructure(repairHtmlTail(mergeConsecutiveElements(content)))
+    // Les paragraphes restent des paragraphes (R14 : ils étaient fusionnés en un
+    // seul <p> joint par des <br>).
+    const finalContent = repairStructure(repairHtmlTail(content))
     totalUsage.model = describeModelsUsed(models)
     totalUsage.stopReason = stopReason
     log.info(`Premier jet rédigé pour « ${articleTitle} »`, {

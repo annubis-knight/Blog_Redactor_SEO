@@ -15,7 +15,6 @@ import { formatDraftPlan } from '../../../server/routes/generate/article-draft.r
 import { splitOutlineIntoGroups } from '../../../server/routes/generate/_helpers'
 import { renderPromptTemplate } from '../../../server/utils/prompt-loader'
 import { verifyDraft } from '../../../shared/verifiers/draft'
-import { mergeConsecutiveElements } from '../../../shared/html-utils'
 import { describeTypeRules, ARTICLE_TYPE_RULES } from '../../../shared/constants/article-type-rules'
 import type { Outline } from '../../../shared/types/index'
 import type { ArticleLevel } from '../../../shared/types/keyword-validate.types'
@@ -51,11 +50,9 @@ describe('simulation du premier jet', () => {
     ['specifique', H2.slice(0, 4)],
   ])('%s : passe la porte « premier jet » sans alerte', (level, h2) => {
     const html = buildDraftChunks(prompt(level, 'Guide de la création de site web pour artisan', 'création site web artisan', h2)).join('')
-    // Jugé aussi comme la route l'enregistre : paragraphes consécutifs fusionnés par <br>.
-    for (const content of [html, mergeConsecutiveElements(html)]) {
-      const issues = verifyDraft({ content, captain: 'création site web artisan', targetWords: ARTICLE_TYPE_RULES[level].targetWords, outlineH2Count: h2.length })
-      expect(issues, issues.map(i => `${i.rule} — ${i.message}`).join('\n')).toEqual([])
-    }
+    // La route enregistre le texte tel quel : les paragraphes restent séparés (R14).
+    const issues = verifyDraft({ content: html, captain: 'création site web artisan', targetWords: ARTICLE_TYPE_RULES[level].targetWords, outlineH2Count: h2.length })
+    expect(issues, issues.map(i => `${i.rule} — ${i.message}`).join('\n')).toEqual([])
   })
 
   it('un titre sans le capitaine : le H1 l’intègre', () => {

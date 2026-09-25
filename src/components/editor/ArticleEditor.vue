@@ -15,7 +15,7 @@ import { ToSource } from './tiptap/extensions/to-source'
 import { DragHandle } from './tiptap/extensions/drag-handle'
 import { DynamicBlock } from './tiptap/extensions/dynamic-block'
 import { DynamicBlockDrop } from './tiptap/extensions/dynamic-block-drop'
-import { mergeConsecutiveElements, removeEmptyElements, splitArticleSections } from '@shared/html-utils'
+import { removeEmptyElements, splitArticleSections } from '@shared/html-utils'
 import CollapsableSection from '@/components/shared/CollapsableSection.vue'
 import { log } from '@/utils/logger'
 
@@ -36,11 +36,9 @@ const emit = defineEmits<{
   'update:content': [html: string]
 }>()
 
-// --- Pre-process: merge consecutive elements, clean empties, then split ---
+// --- Pre-process: clean empties, then split (paragraphs stay paragraphs, R14) ---
 function processAndSplit(html: string) {
-  const merged = mergeConsecutiveElements(html)
-  const cleaned = removeEmptyElements(merged)
-  return splitArticleSections(cleaned)
+  return splitArticleSections(removeEmptyElements(html))
 }
 
 const initialSections = processAndSplit(props.content)

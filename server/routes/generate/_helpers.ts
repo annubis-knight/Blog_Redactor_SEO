@@ -3,36 +3,8 @@ import type { ApiUsage } from '../../services/external/claude.service.js'
 import type { ArticleStrategy, ArticleKeywords, CocoonStrategy, Outline, OutlineSection } from '../../../shared/types/index.js'
 import { buildCocoonStrategyBlock } from '../../utils/prompt-loader.js'
 
-/** Detect if an error is a 429 rate-limit error from the Anthropic API */
-export function isRateLimitError(err: unknown): boolean {
-  if (err && typeof err === 'object' && 'status' in err) {
-    return (err as { status: number }).status === 429
-  }
-  return err instanceof Error && err.message.startsWith('429')
-}
-
-/** Extract retry-after seconds from an Anthropic SDK error, or return a default */
-export function getRetryAfterSeconds(err: unknown, defaultSeconds: number): number {
-  if (err && typeof err === 'object' && 'headers' in err) {
-    const headers = (err as { headers: Record<string, string> }).headers
-    const retryAfter = headers?.['retry-after']
-    if (retryAfter) {
-      const parsed = Number(retryAfter)
-      if (!isNaN(parsed) && parsed > 0) return Math.ceil(parsed)
-    }
-  }
-  return defaultSeconds
-}
-
-/** Sleep for a given number of milliseconds */
-export function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms))
-}
-
-/** Max retry attempts specifically for rate limit errors */
-export const RATE_LIMIT_MAX_RETRIES = 4
-/** Default wait time on first 429 (seconds) */
-export const RATE_LIMIT_DEFAULT_WAIT = 60
+// Pas de réessai ici : ils vivent dans ai-provider (withRetry / withFallbackChain).
+// La boucle « 429 » des routes n'était jamais atteinte (R15, épopée qualité SEO).
 
 /** Consume the async generator, separating content chunks from the usage sentinel */
 export async function consumeStream(

@@ -308,6 +308,23 @@ describe('POST /generate/meta', () => {
       }),
     )
   })
+
+  // R15 : les réessais vivent dans ai-provider (withRetry / withFallbackChain).
+  // La route avait sa propre boucle « 429 », jamais atteinte en vrai (le
+  // fournisseur convertit un 429 en erreur de quota) et qui, atteinte, aurait
+  // attendu une minute par essai.
+  it('un refus du fournisseur n’est pas réessayé par la route', async () => {
+    mockStreamChatCompletion.mockImplementationOnce(async function* () {
+      if (false) yield ''
+      throw Object.assign(new Error('429 Too Many Requests'), { status: 429 })
+    })
+
+    const res = createMockRes()
+    await handler({ body: validMetaBody } as unknown as Request, res)
+
+    expect(mockStreamChatCompletion).toHaveBeenCalledTimes(1)
+    expect(res.status).toHaveBeenCalledWith(500)
+  })
 })
 
 const validActionBody = {
@@ -1102,6 +1119,17 @@ describe('POST /generate/article-draft', () => {
     const written = res.write.mock.calls.map(([raw]: [string]) => raw).join('')
     const done = written.split('event: done\ndata: ')[1]!.split('\n\n')[0]!
     expect(JSON.parse(done).targetWordCount).toBe(3000)
+  })
+
+  // R14 : les paragraphes consécutifs étaient fusionnés en un seul <p> joint
+  // par des <br> — un « paragraphe » géant pour Google et les lecteurs d'écran.
+  it('les paragraphes du premier jet restent des paragraphes', async () => {
+    mockStreamChatCompletion.mockReturnValueOnce(usageStream(['<h2>Introduction</h2><p>Premier paragraphe.</p><p>Deuxième paragraphe.</p>'], 'end'))
+    const res = createMockRes()
+    await handler(req(validDraftBody), res)
+    const done = sseEvents(res).find(e => e.event === 'done')
+    expect(done?.data.content).toContain('<p>Premier paragraphe.</p><p>Deuxième paragraphe.</p>')
+    expect(done?.data.content).not.toContain('<br>')
   })
 
   it('sans cible choisie, la cible retenue est enregistrée : la porte jugera contre elle', async () => {

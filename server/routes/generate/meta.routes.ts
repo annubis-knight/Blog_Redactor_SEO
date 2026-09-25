@@ -4,14 +4,7 @@ import { generateMetaRequestSchema } from '../../../shared/schemas/generate.sche
 import { streamChatCompletion } from '../../services/external/ai-provider.service.js'
 import type { ApiUsage } from '../../services/external/claude.service.js'
 import { loadPrompt } from '../../utils/prompt-loader.js'
-import {
-  RATE_LIMIT_DEFAULT_WAIT,
-  RATE_LIMIT_MAX_RETRIES,
-  consumeStream,
-  getRetryAfterSeconds,
-  isRateLimitError,
-  sleep,
-} from './_helpers.js'
+import { consumeStream } from './_helpers.js'
 import { fitMetaText } from '../../../shared/utils/meta-fit.js'
 
 const router = Router()
@@ -42,32 +35,16 @@ router.post('/generate/meta', async (req, res) => {
     }, { escapeKeys: ['articleContent'] })
     log.debug('meta prompts built', { systemChars: systemPrompt.length, userChars: userPrompt.length })
 
-    // Retry loop with backoff on 429 rate-limit
-    let fullContent = ''
-    let usage: ApiUsage | null = null
-    for (let attempt = 0; attempt < RATE_LIMIT_MAX_RETRIES; attempt++) {
-      try {
-        const startAi = Date.now()
-        const result = await consumeStream(
-          streamChatCompletion(systemPrompt, userPrompt, 1024),
-          () => {}, // no SSE chunks for meta
-        )
-        fullContent = result.fullContent
-        usage = result.usage
-        log.debug('meta stream complete', { chunkCount: result.chunkCount, contentChars: fullContent.length, ms: Date.now() - startAi })
-        break
-      } catch (metaErr) {
-        if (isRateLimitError(metaErr) && attempt < RATE_LIMIT_MAX_RETRIES - 1) {
-          const waitSeconds = getRetryAfterSeconds(metaErr, RATE_LIMIT_DEFAULT_WAIT * (attempt + 1))
-          log.warn(`Meta generation hit rate limit (429), waiting ${waitSeconds}s before retry ${attempt + 1}/${RATE_LIMIT_MAX_RETRIES - 1}`, {
-            error: (metaErr as Error).message, waitSeconds,
-          })
-          await sleep(waitSeconds * 1000)
-          continue
-        }
-        throw metaErr
-      }
-    }
+    // Les réessais (quota, surcharge) vivent dans ai-provider (withRetry /
+    // withFallbackChain) : la route ne réessaie pas (épopée qualité SEO, R15).
+    const startAi = Date.now()
+    const result = await consumeStream(
+      streamChatCompletion(systemPrompt, userPrompt, 1024),
+      () => {}, // no SSE chunks for meta
+    )
+    const fullContent = result.fullContent
+    const usage: ApiUsage | null = result.usage
+    log.debug('meta stream complete', { chunkCount: result.chunkCount, contentChars: fullContent.length, ms: Date.now() - startAi })
 
     // Parse JSON response from Claude
     const cleaned = fullContent.replace(/```json\s*/g, '').replace(/```\s*/g, '').trim()
