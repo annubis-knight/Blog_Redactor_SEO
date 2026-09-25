@@ -39,14 +39,17 @@ describe('Tab cerveau/theme — Saisie directe (PUT)', () => {
   it('PUT /theme/config round-trip read-write-read préserve la config', { timeout: 10000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
     const { apiGet, apiPut } = await import('../helpers/api-client.js')
+    // 2026-09-25 (C2 · T3) : GET renvoie toujours une config (défauts compris) —
+    // le `return` silencieux et le « 200 ou 400 » ne vérifiaient rien.
     const before = await apiGet<Record<string, unknown>>('/theme/config')
-    if (before.status !== 200 || !before.data) return
+    expect(before.status).toBe(200)
 
     const res = await apiPut('/theme/config', before.data)
-    expect([200, 400]).toContain(res.status)
+    expect(res.status).toBe(200)
 
     const after = await apiGet<Record<string, unknown>>('/theme/config')
     expect(after.status).toBe(200)
+    expect(after.data, 'la config est préservée').toEqual(before.data)
   })
 })
 

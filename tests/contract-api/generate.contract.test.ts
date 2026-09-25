@@ -92,7 +92,7 @@ describe('Contract /generate/meta', () => {
       articleContent: 'Lorsque vous recherchez un plombier à Toulouse, plusieurs critères doivent guider votre choix : les certifications, les avis clients, la réactivité en cas d\'urgence, et la transparence des tarifs. Cet article vous guide pour éviter les mauvaises surprises et trouver un artisan fiable.',
     })
     // 200 si IA répond en JSON, sinon doit être une erreur env tolérée
-    if (!expectSuccessOrKnownError(res)) return
+    if (!expectSuccessOrKnownError(res)) skip()
     expect(res.data?.metaTitle).toBeDefined()
     expect(res.data?.metaDescription).toBeDefined()
     expect((res.data?.metaTitle ?? '').length).toBeLessThanOrEqual(70)
@@ -134,23 +134,7 @@ describe('Contract /generate/brief-explain', () => {
     expect([400, 500]).toContain(res.status)
   })
 })
-
-describe.skip('Contract endpoints non implémentés', () => {
-  it('POST /generate/structure → 404 (endpoint inexistant)', async ({ skip }) => {
-    if (requireServer().skip) skip()
-    const res = await apiPost('/generate/structure', {})
-    expect(res.status).toBe(404)
-  })
-
-  it('POST /generate/paa-queries → 404 (endpoint inexistant)', async ({ skip }) => {
-    if (requireServer().skip) skip()
-    const res = await apiPost('/generate/paa-queries', {})
-    expect(res.status).toBe(404)
-  })
-
-  it('POST /generate/specialises → 404 (endpoint inexistant)', async ({ skip }) => {
-    if (requireServer().skip) skip()
-    const res = await apiPost('/generate/specialises', {})
-    expect(res.status).toBe(404)
-  })
-})
+// 2026-09-25 (épopée qualité SEO, C2 · T2) : le bloc ignoré « endpoints non
+// implémentés » (structure, paa-queries, specialises → 404) est retiré : ces
+// routes n'ont jamais existé, la proposition d'articles passe par les étapes
+// de /strategy (voir l'en-tête du fichier).

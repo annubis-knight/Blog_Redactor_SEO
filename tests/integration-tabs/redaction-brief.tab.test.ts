@@ -130,7 +130,7 @@ describe('Tab redaction/brief — Keywords list', () => {
       existingTerms: [],
     })
     // 200 si IA répond OK, sinon doit être un code d'erreur env tolérée
-    if (!expectSuccessOrKnownError(res)) return
+    if (!expectSuccessOrKnownError(res)) skip()
     expect(Array.isArray(res.data?.lexique)).toBe(true)
   })
 })

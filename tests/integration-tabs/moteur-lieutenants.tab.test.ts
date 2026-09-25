@@ -27,7 +27,7 @@ describe('Tab moteur/lieutenants — SERP analysis', () => {
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-l-serp`,
     })
-    if (!expectSuccessOrKnownError(res)) return
+    if (!expectSuccessOrKnownError(res)) skip()
     expect(res.data?.keyword).toBeDefined()
     expect(Array.isArray(res.data?.competitors)).toBe(true)
   })

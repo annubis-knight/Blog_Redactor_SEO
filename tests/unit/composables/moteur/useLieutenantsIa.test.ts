@@ -56,7 +56,6 @@ function buildDeps(overrides: Partial<Parameters<typeof useLieutenantsIa>[0]> = 
     resolvedRootKeywords: ref<string[]>([]),
     wordGroups: ref([]),
     cocoonSlug: ref(''),
-    isLocked: ref(false),
     articleKeywordsStore: useArticleKeywordsStore(),
     computeHnRecurrenceFrom: vi.fn(() => []),
     hnRecurrence: ref([]),
@@ -88,18 +87,6 @@ describe('useLieutenantsIa', () => {
     // Toggle à nouveau → retire
     api.toggleLieutenant(lt)
     expect(api.selectedCards.value.has('agence')).toBe(false)
-  })
-
-  it.skip('AC.J.7.bis — toggleLieutenant ne fait rien si isLocked = true (Sprint 17 — comportement inversé : toggleLieutenant doit toujours répondre pour FR-LIE-CHECKBOX-LOCK-IMMEDIATE)', () => {
-    const onLieutenantsUpdated = vi.fn()
-    const api = useLieutenantsIa(buildDeps({
-      isLocked: ref(true),
-      onLieutenantsUpdated,
-    }))
-
-    api.toggleLieutenant(makeLt('agence'))
-    expect(api.selectedCards.value.size).toBe(0)
-    expect(onLieutenantsUpdated).not.toHaveBeenCalled()
   })
 
   it('AC.J.8 — handleAssistAdd ajoute un keyword absent à lieutenantCards', () => {

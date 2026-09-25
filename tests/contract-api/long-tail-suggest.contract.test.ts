@@ -41,31 +41,37 @@ describe('Contract /articles/:id/radar-exploration/long-tail', () => {
     expect(res.error?.code).toBe('INVALID_ID')
   })
 
-  it('POST OK en mock → { suggestions[], fromCache:boolean }', async ({ skip }) => {
+  // 2026-09-25 (épopée qualité SEO, C2 · T3) : « fromCache est un booléen »
+  // passait quoi qu'il arrive, et le garde `AI_PROVIDER` (lu côté tests) faisait
+  // sortir le test vert sans rien vérifier. Le titre propre au run rend le
+  // premier appel neuf (fromCache = false) et le second servi par le cache.
+  it('POST OK en mode simulé → suggestions, puis la même demande vient du cache', async ({ skip }) => {
     if (requireServer().skip) skip()
-    if (process.env.AI_PROVIDER !== 'mock') return // garde-fou : pas d'IA réelle en CI
+    if (ctx.modeReel) skip() // pas d'IA réelle : le mode simulé suffit au contrat
 
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LT Cocon OK')
     const article = await ctx.createArticle(cocoon.id, 'LT Article OK')
+    const url = `/articles/${article.id}/radar-exploration/long-tail`
+    const body = {
+      radarKeywords: [
+        { keyword: 'copywriting email' },
+        { keyword: 'pme industriel' },
+        { keyword: 'taux conversion' },
+      ],
+      articleTitle: `Copywriting B2B ${ctx.runId}`,
+      articlePainPoint: 'Mes emails sont ignorés par les prospects',
+      strategyContext: '',
+    }
 
-    const res = await apiPost<{ suggestions: unknown[]; fromCache: boolean }>(
-      `/articles/${article.id}/radar-exploration/long-tail`,
-      {
-        radarKeywords: [
-          { keyword: 'copywriting email' },
-          { keyword: 'pme industriel' },
-          { keyword: 'taux conversion' },
-        ],
-        articleTitle: 'Copywriting B2B',
-        articlePainPoint: 'Mes emails sont ignorés par les prospects',
-        strategyContext: '',
-      },
-    )
+    const first = await apiPost<{ suggestions: unknown[]; fromCache: boolean }>(url, body)
+    expect(first.status).toBe(200)
+    expect(Array.isArray(first.data?.suggestions)).toBe(true)
+    expect(first.data?.fromCache, 'demande propre à ce run : jamais servie').toBe(false)
 
-    expect(res.status).toBeLessThan(400)
-    expect(Array.isArray(res.data?.suggestions)).toBe(true)
-    expect(typeof res.data?.fromCache).toBe('boolean')
+    const again = await apiPost<{ suggestions: unknown[]; fromCache: boolean }>(url, body)
+    expect(again.data?.fromCache, 'même demande : servie par le cache').toBe(true)
+    expect(again.data?.suggestions).toEqual(first.data?.suggestions)
   })
 
   it('PATCH selection OK → { ok: true, count: N }', async ({ skip }) => {

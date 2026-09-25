@@ -78,14 +78,18 @@ describe('Contract /keywords/relevance-score', () => {
     expect(res.status).toBe(400)
   })
 
-  it('POST OK → { scores: Record, fallback: bool }', async ({ skip }) => {
+  // 2026-09-25 (épopée qualité SEO, C2 · T3) : « fallback est un booléen »
+  // passait quoi qu'il arrive. Une classification réussie n'est pas un repli,
+  // et chaque mot-clé demandé reçoit un score 0 (hors sujet) ou 1 (pertinent).
+  it('POST OK → { scores: 0|1 par mot-clé demandé, fallback: false }', async ({ skip }) => {
     if (requireServer().skip) skip()
     const res = await apiPost<{ scores: Record<string, number>; fallback: boolean }>('/keywords/relevance-score', {
-      seed: `test-${ctx.runId}`, keywords: ['kw1', 'kw2'],
+      seed: `test-${ctx.runId}`, keywords: ['kw1', 'KW2'],
     })
     expect(res.status).toBe(200)
-    expect(typeof res.data?.fallback).toBe('boolean')
-    expect(typeof res.data?.scores).toBe('object')
+    expect(res.data?.fallback).toBe(false)
+    expect(Object.keys(res.data!.scores).sort(), 'clés en minuscules, une par mot-clé').toEqual(['kw1', 'kw2'])
+    for (const score of Object.values(res.data!.scores)) expect([0, 1]).toContain(score)
   })
 
   it('POST avec strict=true retourne { scores, fallback }', async ({ skip }) => {
@@ -115,9 +119,13 @@ describe('Contract /keywords/analyze-discovery', () => {
       keywords: [{ keyword: 'kw1', sources: ['suggest'] }],
     })
     expect(res.status).toBe(200)
-    if ((res.data?.keywords ?? []).length > 0) {
-      expect(['high', 'medium', 'low']).toContain(res.data!.keywords[0].priority)
-    }
+    // 2026-09-25 (C2 · T3) : sans liste, l'assertion sur la priorité ne tournait
+    // pas. Une liste vide échoue désormais ; en mode simulé, la fixture
+    // (curate_keywords) retient chaque mot-clé, les 8 premiers en priorité haute.
+    const keywords = res.data?.keywords ?? []
+    expect(keywords.length, 'au moins un mot-clé retenu').toBeGreaterThan(0)
+    for (const k of keywords) expect(['high', 'medium', 'low']).toContain(k.priority)
+    if (!ctx.modeReel) expect(keywords.map(k => [k.keyword, k.priority])).toEqual([['kw1', 'high']])
   })
 })
 

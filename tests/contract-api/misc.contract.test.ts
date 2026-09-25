@@ -4,7 +4,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiPost, apiGet } from '../helpers/api-client.js'
+import { apiPost, apiGet, apiDelete, expectSuccessOrKnownError } from '../helpers/api-client.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -77,22 +77,24 @@ describe('Contract /dataforseo', () => {
     expect([200, 400, 500]).toContain(res.status)
   })
 
-  it('POST /dataforseo/brief forceRefresh=true skip cache (timing)', { timeout: 60000 }, async ({ skip }) => {
+  // 2026-09-25 (épopée qualité SEO, C2 · T3) : la durée mesurée (« >= 0 »)
+  // ne prouvait rien ; le drapeau `fromCache` de la réponse dit si le cache a
+  // servi. Deux appels DataForSEO (le 2ᵉ est lu en cache).
+  it('POST /dataforseo/brief forceRefresh=true contourne le cache', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
     const kw = `test-${ctx.runId}-df-refresh`
     const base = { keyword: kw, cocoonName: 'test', articleType: 'Pilier' }
 
-    const t1 = Date.now()
-    await apiPost('/dataforseo/brief', base)
-    const e1 = Date.now() - t1
+    const first = await apiPost<{ fromCache: boolean }>('/dataforseo/brief', base)
+    if (!expectSuccessOrKnownError(first)) skip()
+    expect(first.data?.fromCache, 'mot-clé propre à ce run : jamais demandé').toBe(false)
 
-    const t2 = Date.now()
-    await apiPost('/dataforseo/brief', { ...base, forceRefresh: true })
-    const e2 = Date.now() - t2
+    const cachedRes = await apiPost<{ fromCache: boolean }>('/dataforseo/brief', base)
+    expect(cachedRes.data?.fromCache, 'même demande : servie par le cache').toBe(true)
 
-    // forceRefresh doit être au moins aussi long (pas de cache hit)
-    expect(e2).toBeGreaterThanOrEqual(0)
-    void e1
+    const forced = await apiPost<{ fromCache: boolean }>('/dataforseo/brief', { ...base, forceRefresh: true })
+    if (!expectSuccessOrKnownError(forced)) skip()
+    expect(forced.data?.fromCache, 'forceRefresh : pas de cache').toBe(false)
   })
 })
 
@@ -103,11 +105,11 @@ describe('Contract /discovery-cache', () => {
     expect(res.status).toBe(400)
   })
 
-  it('GET /discovery-cache/check avec seed → { cached: bool }', async ({ skip }) => {
+  it('GET /discovery-cache/check avec seed jamais enregistré → { cached: false }', async ({ skip }) => {
     if (requireServer().skip) skip()
     const res = await apiGet<{ cached: boolean }>(`/discovery-cache/check?seed=test-${ctx.runId}`)
     expect(res.status).toBe(200)
-    expect(typeof res.data?.cached).toBe('boolean')
+    expect(res.data).toEqual({ cached: false })
   })
 
   it('GET /discovery-cache/load sans seed → 400', async ({ skip }) => {
@@ -139,11 +141,31 @@ describe('Contract /radar-cache', () => {
     expect([400, 500]).toContain(res.status)
   })
 
-  it('GET /radar-cache/check avec seed → { cached: bool }', async ({ skip }) => {
+  it('GET /radar-cache/check avec seed jamais enregistré → { cached: false }', async ({ skip }) => {
     if (requireServer().skip) skip()
     const res = await apiGet<{ cached: boolean }>(`/radar-cache/check?seed=test-${ctx.runId}`)
     expect(res.status).toBe(200)
-    expect(typeof res.data?.cached).toBe('boolean')
+    expect(res.data).toEqual({ cached: false })
+  })
+
+  it('GET /radar-cache/check après enregistrement → { cached: true, keywordCount }', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const seed = `test-${ctx.runId}-radar-saved`
+    const saved = await apiPost('/radar-cache/save', {
+      seed,
+      context: { broadKeyword: seed, specificTopic: '', painPoint: '' },
+      generatedKeywords: [{ keyword: 'mot un', reasoning: '' }, { keyword: 'mot deux', reasoning: '' }],
+      scanResult: { globalScore: 42, heatLevel: 'warm', cards: [] },
+    })
+    expect(saved.status).toBe(200)
+    try {
+      const res = await apiGet<{ cached: boolean; keywordCount: number; globalScore: number; heatLevel: string }>(
+        `/radar-cache/check?seed=${encodeURIComponent(seed)}`,
+      )
+      expect(res.data).toMatchObject({ cached: true, keywordCount: 2, globalScore: 42, heatLevel: 'warm' })
+    } finally {
+      await apiDelete(`/radar-cache?seed=${encodeURIComponent(seed)}`)
+    }
   })
 
   it('GET /radar-cache/load avec seed inconnu → null', async ({ skip }) => {

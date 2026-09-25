@@ -47,20 +47,16 @@ vi.mock('../../../src/stores/strategy/theme-config.store', () => ({
 }))
 
 import { apiPost, apiGet, apiPut } from '../../../src/services/api.service'
+import { useWorkflowNavStore } from '../../../src/stores/ui/workflow-nav.store'
 const mockApiPost = vi.mocked(apiPost)
 const mockApiGet = vi.mocked(apiGet)
-const _mockApiPut = vi.mocked(apiPut)
+const mockApiPut = vi.mocked(apiPut)
 
 const strategyStepStub = {
   name: 'StrategyStep',
   template: '<div class="strategy-step-stub" />',
   props: ['title', 'description', 'stepData', 'isSuggesting'],
   emits: ['update:stepData', 'request-suggestion'],
-}
-
-const progressBarStub = {
-  template: '<div class="progress-bar-stub" />',
-  props: ['percent', 'color'],
 }
 
 const keywordBadgeStub = { template: '<span class="keyword-badge-stub" />', props: ['keyword'] }
@@ -85,6 +81,8 @@ describe('BrainPhase', () => {
   async function mountBrainPhase(existingStrategy: any = null) {
     // Mock GET /strategy/cocoon/:slug
     mockApiGet.mockResolvedValueOnce(existingStrategy)
+    // PUT /strategy/cocoon/:slug renvoie la stratégie enregistrée (saveStrategy la reprend)
+    mockApiPut.mockImplementation((_url, body) => Promise.resolve(body))
 
     const { default: BrainPhase } = await import('../../../src/components/production/BrainPhase.vue')
     const wrapper = mount(BrainPhase, {
@@ -96,8 +94,8 @@ describe('BrainPhase', () => {
       global: {
         stubs: {
           StrategyStep: strategyStepStub,
-          ProgressBar: progressBarStub,
           ContextRecap: { template: '<div class="context-recap-stub" />' },
+          CocoonTreeBuilder: { template: '<div class="cocoon-tree-stub" />', props: ['cocoonId', 'cocoonName', 'cocoonSlug'] },
           ProposedArticleRow: { template: '<div class="proposed-article-row-stub" />' },
         },
       },
@@ -113,24 +111,24 @@ describe('BrainPhase', () => {
     expect(mockApiGet).toHaveBeenCalledWith('/strategy/cocoon/refonte-de-site-web')
   })
 
-  // SKIP 2026-05-01 : header "Brainstorm stratégique" + wizard stepper retirés
-  // de BrainPhase (cf. commentaires dans BrainPhase.vue : "moved into AppNavbar
-  // via workflow-nav store"). Tests à réécrire pour la nouvelle nav contextuelle.
-  it.skip('displays the brainstorm title and description', async () => {
-    const wrapper = await mountBrainPhase()
+  // 2026-09-25 (épopée qualité SEO, C2 · T2) : l'en-tête « Brainstorm
+  // stratégique » et la barre de progression ont quitté BrainPhase (tests
+  // retirés) ; le stepper des 6 étapes vit dans la barre du haut
+  // (workflow-nav store) : les tests qui le visaient passent par lui.
+  it('publie les 6 étapes du Cerveau dans la barre de navigation', async () => {
+    await mountBrainPhase()
 
-    expect(wrapper.text()).toContain('Brainstorm stratégique')
-    expect(wrapper.text()).toContain('Refonte de site web')
-    expect(wrapper.text()).toContain('direction stratégique')
-  })
-
-  it.skip('displays a 6-step wizard stepper', async () => {
-    const wrapper = await mountBrainPhase()
-
-    const stepBtns = wrapper.findAll('.wizard-step-btn')
-    expect(stepBtns).toHaveLength(6)
-    expect(stepBtns[0]!.text()).toContain('1')
-    expect(stepBtns[5]!.text()).toContain('6')
+    const nav = useWorkflowNavStore().state
+    expect(nav?.workflow).toBe('cerveau')
+    expect(nav?.activeId).toBe('cible')
+    expect(nav?.steps?.map(s => [s.id, s.number, s.done, s.locked])).toEqual([
+      ['cible', 1, false, false],
+      ['douleur', 2, false, true],
+      ['angle', 3, false, true],
+      ['promesse', 4, false, true],
+      ['cta', 5, false, true],
+      ['articles', 6, false, true],
+    ])
   })
 
   it('shows StrategyStep for steps 1-5', async () => {
@@ -142,45 +140,61 @@ describe('BrainPhase', () => {
     expect(strategyStep.props('description')).toContain('persona du lecteur idéal')
   })
 
-  it.skip('navigating to step 6 shows article proposal section', async () => {
+  it('l’étape Articles, atteinte depuis la barre, montre la carte en 3 colonnes', async () => {
     const wrapper = await mountBrainPhase()
 
-    // Click the 6th step button (index 5)
-    const stepBtns = wrapper.findAll('.wizard-step-btn')
-    await stepBtns[5]!.trigger('click')
+    useWorkflowNavStore().navigate('articles')
+    await flushPromises()
 
-    expect(wrapper.text()).toContain("Proposition d'articles")
-    expect(wrapper.text()).toContain('Générer avec Claude')
+    expect(wrapper.findComponent(strategyStepStub).exists()).toBe(false)
+    expect(wrapper.find('.step-title').text()).toBe("Proposition d'articles")
+    expect(wrapper.get('[data-testid="brain-generate-articles"]').text()).toBe('Générer avec Claude')
+    expect(wrapper.findAll('.article-column')).toHaveLength(3)
+    expect(wrapper.findAll('.add-article-placeholder')).toHaveLength(3)
+    expect(useWorkflowNavStore().state?.activeId).toBe('articles')
   })
 
-  it.skip('shows "Suivant" button for steps 1-5 and "Terminer" for step 6', async () => {
+  it('shows "Suivant" button for steps 1-5 and "Terminer" for step 6', async () => {
     const wrapper = await mountBrainPhase()
 
-    // Step 1: should show "Suivant"
-    expect(wrapper.find('.btn-next').text()).toBe('Suivant')
+    expect(wrapper.get('[data-testid="brain-next"]').text()).toBe('Suivant')
 
-    // Navigate to step 6
-    const stepBtns = wrapper.findAll('.wizard-step-btn')
-    await stepBtns[5]!.trigger('click')
+    useWorkflowNavStore().navigate('articles')
+    await flushPromises()
 
-    expect(wrapper.find('.btn-next').text()).toBe('Terminer le brainstorm')
+    expect(wrapper.get('[data-testid="brain-next"]').text()).toBe('Terminer le brainstorm')
   })
 
-  it.skip('shows ProgressBar', async () => {
+  it('« Suivant » avance d’une étape sans quitter le Cerveau', async () => {
     const wrapper = await mountBrainPhase()
 
-    expect(wrapper.find('.progress-bar-stub').exists()).toBe(true)
+    await wrapper.get('[data-testid="brain-next"]').trigger('click')
+    await flushPromises()
+
+    expect(wrapper.emitted('next')).toBeUndefined()
+    expect(wrapper.findComponent(strategyStepStub).props('title')).toBe('Quelle douleur adressez-vous ?')
+    expect(mockApiPut).toHaveBeenCalledWith(
+      '/strategy/cocoon/refonte-de-site-web',
+      expect.objectContaining({ completedSteps: 1 }),
+    )
   })
 
-  it.skip('emits next when clicking continue button', async () => {
+  it('emits next when clicking « Terminer le brainstorm » (stratégie marquée complète)', async () => {
     const wrapper = await mountBrainPhase()
+    useWorkflowNavStore().navigate('articles')
+    await flushPromises()
 
-    const btn = wrapper.find('.btn-primary.btn-sm')
-    await btn.trigger('click')
+    await wrapper.get('[data-testid="brain-next"]').trigger('click')
+    await flushPromises()
+
     expect(wrapper.emitted('next')).toHaveLength(1)
+    expect(mockApiPut).toHaveBeenCalledWith(
+      '/strategy/cocoon/refonte-de-site-web',
+      expect.objectContaining({ completedSteps: 6 }),
+    )
   })
 
-  it.skip('loads existing strategy and resumes from last step', async () => {
+  it('loads existing strategy and resumes from last step', async () => {
     const existingStrategy = {
       cocoonSlug: 'refonte-de-site-web',
       cible: { input: 'PME BTP', suggestion: null, validated: 'PME du BTP' },
@@ -195,29 +209,18 @@ describe('BrainPhase', () => {
 
     const wrapper = await mountBrainPhase(existingStrategy)
 
-    // Should resume at step 1 (completedSteps = 1, so currentStep = min(1, 5) = 1)
-    const stepBtns = wrapper.findAll('.wizard-step-btn')
-    expect(stepBtns[1]!.classes()).toContain('active')
+    // completedSteps = 1 → reprise à l'étape 2 (« douleur »), « cible » faite.
+    expect(wrapper.findComponent(strategyStepStub).props('title')).toBe('Quelle douleur adressez-vous ?')
+    const nav = useWorkflowNavStore().state
+    expect(nav?.activeId).toBe('douleur')
+    expect(nav?.steps?.slice(0, 3).map(s => [s.id, s.done, s.locked])).toEqual([
+      ['cible', true, false],
+      ['douleur', false, false],
+      ['angle', false, true],
+    ])
   })
 
-  it.skip('shows 3-column grid and add buttons in step 6', async () => {
-    const wrapper = await mountBrainPhase()
-
-    // Navigate to step 6
-    const stepBtns = wrapper.findAll('.wizard-step-btn')
-    await stepBtns[5]!.trigger('click')
-
-    // Should show the 3-column article grid
-    expect(wrapper.find('.article-columns').exists()).toBe(true)
-    const columns = wrapper.findAll('.article-column')
-    expect(columns).toHaveLength(3)
-
-    // Each column should have an add-article button
-    const addBtns = wrapper.findAll('.add-article-placeholder')
-    expect(addBtns.length).toBeGreaterThanOrEqual(3)
-  })
-
-  it.skip('handles fetch failure gracefully', async () => {
+  it('handles fetch failure gracefully', async () => {
     mockApiGet.mockReset()
     mockApiGet.mockRejectedValueOnce(new Error('Network error'))
 
@@ -231,7 +234,6 @@ describe('BrainPhase', () => {
       global: {
         stubs: {
           StrategyStep: strategyStepStub,
-          ProgressBar: progressBarStub,
           ContextRecap: { template: '<div class="context-recap-stub" />' },
           ProposedArticleRow: { template: '<div class="proposed-article-row-stub" />' },
         },
@@ -240,8 +242,10 @@ describe('BrainPhase', () => {
 
     await flushPromises()
 
-    // Should still show wizard (initEmpty called as fallback)
-    expect(wrapper.findAll('.wizard-step-btn')).toHaveLength(6)
+    // Repli : stratégie vide, questionnaire ouvert à la première étape.
+    expect(wrapper.findComponent(strategyStepStub).props('title')).toBe('À qui parlez-vous ?')
+    expect(wrapper.find('[data-testid="brain-prev"]').exists()).toBe(false)
+    expect(useWorkflowNavStore().state?.activeId).toBe('cible')
   })
 })
 

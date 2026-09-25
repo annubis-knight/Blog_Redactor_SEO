@@ -45,25 +45,44 @@ describe('Moteur Workflow — Onglet Discovery', () => {
     expect(res.error?.code).toBe('MISSING_PARAM')
   })
 
-  it('POST /keywords/discover : vérification table keyword_discoveries (Sprint 15.6 peut ne pas être livré)', { timeout: 90000 }, async ({ skip }) => {
+  // 2026-09-25 (épopée qualité SEO, C2 · T3) : « count >= 0 » passait quoi
+  // qu'il arrive. POST /keywords/discover n'écrit pas dans keyword_discoveries :
+  // c'est l'enregistrement de la découverte (POST /discovery-cache/save) qui le
+  // fait. Le test l'enregistre lui-même (écriture en base, sans appel externe).
+  it('une découverte enregistrée arrive dans keyword_discoveries et se relit', async ({ skip }) => {
     if (requireServer().skip) skip()
     const seed = `test-${ctx.runId}-persist-disc`
-    await apiPost('/keywords/discover', { keyword: seed, options: { maxResults: 3 } })
+    const kw = (keyword: string) => ({ keyword, source: 'suggest-alphabet' as const })
+    const saved = await apiPost('/discovery-cache/save', {
+      seed,
+      context: { cocoonName: 'Test', seedKeyword: seed },
+      suggestAlphabet: [kw('plombier a'), kw('plombier b')],
+      suggestQuestions: [kw('Plombier A')], // même mot-clé, autre casse : compté une fois
+      suggestIntents: [],
+      suggestPrepositions: [],
+      aiKeywords: [],
+      dataforseoKeywords: [],
+      relevanceScores: {},
+      wordGroups: [],
+      analysisResult: null,
+    })
+    expect(saved.status).toBe(200)
 
-    // Si Sprint 15.6 est livré, row doit exister — sinon count = 0
     const dbRes = await query<{ count: string }>(
-      `SELECT COUNT(*) AS count FROM keyword_discoveries WHERE seed LIKE $1`,
-      [`%${ctx.runId}%`],
+      `SELECT COUNT(*) AS count FROM keyword_discoveries WHERE seed = $1`,
+      [seed],
     )
-    // Test tolérant : 0 si sprint non livré, >=1 si livré
-    expect(parseInt(dbRes.rows[0].count, 10)).toBeGreaterThanOrEqual(0)
+    expect(dbRes.rows[0].count).toBe('1')
+
+    const status = await apiGet(`/discovery-cache/check?seed=${encodeURIComponent(seed)}`)
+    expect(status.data).toMatchObject({ cached: true, keywordCount: 2, hasAnalysis: false })
   })
 
-  it('GET /discovery-cache/check?seed=X retourne { cached: bool }', async ({ skip }) => {
+  it('GET /discovery-cache/check?seed=X jamais enregistré → { cached: false }', async ({ skip }) => {
     if (requireServer().skip) skip()
     const res = await apiGet<{ cached: boolean }>(`/discovery-cache/check?seed=test-${ctx.runId}-plombier`)
     expect(res.status).toBe(200)
-    expect(typeof res.data?.cached).toBe('boolean')
+    expect(res.data).toEqual({ cached: false })
   })
 
   it('GET /discovery-cache/load?seed=X retourne null pour cache vide', async ({ skip }) => {
@@ -109,9 +128,17 @@ describe('Moteur Workflow — Onglet Discovery', () => {
     })
     expect(res.status).toBe(200)
     expect(res.data?.summary).toBeDefined()
-    expect(Array.isArray(res.data?.keywords)).toBe(true)
-    if (res.data && res.data.keywords.length > 0) {
-      expect(['high', 'medium', 'low']).toContain(res.data.keywords[0].priority)
+    // 2026-09-25 (C2 · T3) : sans liste, l'assertion sur la priorité ne tournait
+    // pas. Une liste vide échoue désormais ; en mode simulé, la fixture
+    // (curate_keywords) retient chaque mot-clé, les 8 premiers en priorité haute.
+    const keywords = res.data?.keywords ?? []
+    expect(keywords.length, 'au moins un mot-clé retenu').toBeGreaterThan(0)
+    for (const k of keywords) expect(['high', 'medium', 'low']).toContain(k.priority)
+    if (!ctx.modeReel) {
+      expect(keywords.map(k => [k.keyword, k.priority])).toEqual([
+        ['plombier urgence toulouse', 'high'],
+        ['plombier chauffagiste toulouse', 'high'],
+      ])
     }
   })
 
@@ -418,12 +445,11 @@ describe('Moteur Workflow — Onglet Lieutenants', () => {
     const cocoon = await ctx.createCocoon(silo.id, 'Lieut Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Lieut Article')
 
-    const res = await apiGet<{ lieutenants: unknown[] } | unknown[]>(`/articles/${article.id}/lieutenant-explorations`)
+    const res = await apiGet<unknown[]>(`/articles/${article.id}/lieutenant-explorations`)
     expect(res.status).toBe(200)
-    // Shape peut être { lieutenants: [] } ou directement []
-    if (Array.isArray(res.data)) {
-      expect(res.data.length).toBe(0)
-    }
+    // 2026-09-25 (C2 · T3) : la forme est un tableau (data = liste) ; le test
+    // tolérait une autre forme et sortait alors vert sans rien vérifier.
+    expect(res.data).toEqual([])
   })
 
   it('POST /serp/analyze renvoie { keyword, competitors[] }', { timeout: 60000 }, async ({ skip }) => {
@@ -432,7 +458,7 @@ describe('Moteur Workflow — Onglet Lieutenants', () => {
     const res = await apiPost<{ keyword: string; competitors: unknown[] }>('/serp/analyze', {
       keyword: `test-${ctx.runId}-serp`,
     })
-    if (!expectSuccessOrKnownError(res)) return
+    if (!expectSuccessOrKnownError(res)) skip()
     expect(res.data?.keyword).toBeDefined()
     expect(Array.isArray(res.data?.competitors)).toBe(true)
   })

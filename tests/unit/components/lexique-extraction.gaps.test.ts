@@ -244,11 +244,18 @@ describe('LexiquePanel — extractCustomKeyword (D4)', () => {
     expect((input.element as HTMLInputElement).value).toBe('')
   })
 
-  it.skip('input désactivé si isLocked=true (Sprint 17 — sémantique inversée : l\'utilisateur peut étendre sa sélection même avec des termes déjà cochés)', async () => {
-    const wrapper = mountLexique({ initialLocked: true })
-    await nextTick()
-    const input = wrapper.find('.custom-keyword-input')
-    expect((input.element as HTMLInputElement).disabled).toBe(true)
+  // 2026-09-25 (épopée qualité SEO, C2 · T2) : réécrit dans le sens de
+  // l'exigence (le test d'origine attendait un champ bloqué par le verrou).
+  // SKIP: FR-LEX-MULTI-KEYWORD LexiqueCustomKeywordInput.vue désactive le champ et « Extraire » dès qu'un terme est retenu (`isLoading || isLocked`) : on ne peut plus tester un autre mot-clé après avoir coché — bug du code produit, retirer le skip une fois corrigé.
+  it.skip('« Tester un mot-clé » reste ouvert quand des termes sont déjà retenus (FR-LEX-MULTI-KEYWORD)', async () => {
+    mockKeywords.value = { articleId: 1, capitaine: 'seo', lieutenants: [], lexique: ['garantie'] }
+    const wrapper = mountLexique()
+    await flushPromises()
+
+    const input = wrapper.get('.custom-keyword-input')
+    expect((input.element as HTMLInputElement).disabled).toBe(false)
+    await input.setValue('autre keyword')
+    expect((wrapper.get('.btn-secondary').element as HTMLButtonElement).disabled).toBe(false)
   })
 })
 
@@ -446,13 +453,8 @@ describe('LexiquePanel — hasEverValidated (F5 soft gate)', () => {
     const btn = wrapper.find('[data-testid="btn-extract"]')
     expect((btn.element as HTMLButtonElement).disabled).toBe(true)
   })
-
-  it.skip('canExtract=false si déjà locked (Sprint 17 — sémantique inversée : extraction reste possible pour étendre la sélection, FR-LEX-CHECKBOX-LOCK-IMMEDIATE)', async () => {
-    const wrapper = mountLexique({ initialLocked: true })
-    await nextTick()
-    const btn = wrapper.find('[data-testid="btn-extract"]')
-    expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-  })
+  // 2026-09-25 (C2 · T2) : « canExtract=false si déjà locked » retiré — l'extraction
+  // reste possible avec des termes retenus (test « F5 soft gate » ci-dessus).
 })
 
 // MOCK_IA_RECS doit être déclaré ici en bas pour éviter une référence en avant

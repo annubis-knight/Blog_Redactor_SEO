@@ -15,7 +15,7 @@
  */
 import { describe, it, expect } from 'vitest'
 import { setupTestContext } from '../helpers/test-context.js'
-import { apiGet } from '../helpers/api-client.js'
+import { apiGet, apiPost } from '../helpers/api-client.js'
 
 const ctx = setupTestContext()
 function requireServer() { return ctx.serverOk ? { skip: false } : { skip: true } as const }
@@ -52,20 +52,23 @@ describe('Contract GET /articles/:id/explorations/counts', () => {
     expect(Object.keys(res.data!).sort()).toEqual([...EXPECTED_SOURCES].sort())
   })
 
-  it('shape stable : counts sont des entiers positifs ou zéro', async ({ skip }) => {
+  // 2026-09-25 (épopée qualité SEO, C2 · T3) : « counts >= 0 » passait quoi
+  // qu'il arrive ; le test pose ses propres mots-clés Radar (écriture en base,
+  // sans appel externe) pour affirmer des comptes exacts.
+  it('les comptes suivent les données posées : 2 mots-clés Radar → radar = 2, le reste à 0', async ({ skip }) => {
     if (requireServer().skip) skip()
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'Counts Shape Cocon')
     const article = await ctx.createArticle(cocoon.id, 'Counts Shape Article')
 
-    const res = await apiGet<CountsResponse>(`/articles/${article.id}/explorations/counts`)
-    expect(res.data).toBeDefined()
+    const added = await apiPost(`/articles/${article.id}/radar-exploration/keywords`, {
+      keywords: [{ keyword: `counts-${ctx.runId}-a` }, { keyword: `counts-${ctx.runId}-b` }],
+    })
+    expect(added.status).toBe(200)
 
-    for (const [, count] of Object.entries(res.data!)) {
-      expect(typeof count).toBe('number')
-      expect(Number.isInteger(count)).toBe(true)
-      expect(count).toBeGreaterThanOrEqual(0)
-    }
+    const res = await apiGet<CountsResponse>(`/articles/${article.id}/explorations/counts`)
+    expect(res.error, 'pas d’erreur').toBeNull()
+    expect(res.data).toEqual({ radar: 2, captain: 0, lieutenants: 0, paa: 0, lexique: 0, local: 0, contentGap: 0 })
   })
 
   it('multi-articles : chaque article a ses propres counts (pas de fuite)', async ({ skip }) => {
@@ -75,17 +78,18 @@ describe('Contract GET /articles/:id/explorations/counts', () => {
     const a1 = await ctx.createArticle(cocoon.id, 'Counts Multi A1')
     const a2 = await ctx.createArticle(cocoon.id, 'Counts Multi A2')
 
+    // Seul A1 reçoit un mot-clé Radar : A2 doit rester à 0 (pas de fuite).
+    const added = await apiPost(`/articles/${a1.id}/radar-exploration/keywords`, {
+      keywords: [{ keyword: `counts-${ctx.runId}-multi` }],
+    })
+    expect(added.status).toBe(200)
+
     const r1 = await apiGet<CountsResponse>(`/articles/${a1.id}/explorations/counts`)
     const r2 = await apiGet<CountsResponse>(`/articles/${a2.id}/explorations/counts`)
 
-    expect(r1.data).toBeDefined()
-    expect(r2.data).toBeDefined()
-    // Articles vides distincts → tous 0 chacun de leur côté.
-    // Le test garantit surtout que l'endpoint accepte des ids différents
-    // et ne renvoie pas une réponse partagée/cachée.
+    expect(r1.data?.radar).toBe(1)
     for (const source of EXPECTED_SOURCES) {
-      expect(r1.data![source]).toBe(0)
-      expect(r2.data![source]).toBe(0)
+      expect(r2.data![source], `A2 · ${source}`).toBe(0)
     }
   })
 })

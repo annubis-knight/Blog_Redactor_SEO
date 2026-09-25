@@ -120,13 +120,6 @@ describe('LieutenantsResultsLayout — architecture FR-LIE-AI-FRONTIER (Vague 3 
     expect(wrapper.find('.serp-results').exists()).toBe(false)
   })
 
-  it.skip('AC.J.21 — lieutenant-lock est rendu quand bloc visible (Sprint 17 — bouton batch supprimé : checkbox = lock immédiat)', () => {
-    const wrapper = mount(LieutenantsResultsLayout, {
-      props: baseProps,
-      global: { stubs },
-    })
-
-    expect(wrapper.find('[data-testid="lieutenant-lock"]').exists()).toBe(true)
-    expect(wrapper.find('[data-testid="lock-btn"]').exists()).toBe(true)
-  })
+  // 2026-09-25 (C2 · T2) : AC.J.21 (bloc « lieutenant-lock » et bouton de
+  // verrouillage par lot) retiré — chaque case verrouille son lieutenant.
 })

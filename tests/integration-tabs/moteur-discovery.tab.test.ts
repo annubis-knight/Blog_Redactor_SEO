@@ -85,8 +85,14 @@ describe('Tab moteur/discovery — Analyse IA (curate)', () => {
     })
     expect(res.status).toBe(200)
     expect(res.data?.summary).toBeDefined()
-    if (res.data && res.data.keywords.length > 0) {
-      expect(['high', 'medium', 'low']).toContain(res.data.keywords[0].priority)
+    // 2026-09-25 (C2 · T3) : sans liste, l'assertion sur la priorité ne tournait
+    // pas. Une liste vide échoue désormais ; en mode simulé, la fixture
+    // (curate_keywords) retient chaque mot-clé, les 8 premiers en priorité haute.
+    const keywords = res.data?.keywords ?? []
+    expect(keywords.length, 'au moins un mot-clé retenu').toBeGreaterThan(0)
+    for (const k of keywords) expect(['high', 'medium', 'low']).toContain(k.priority)
+    if (!ctx.modeReel) {
+      expect(keywords.map(k => [k.keyword, k.priority])).toEqual([['kw1', 'high'], ['kw2', 'high']])
     }
   })
 
@@ -107,11 +113,11 @@ describe('Tab moteur/discovery — Validate-pain (legacy)', () => {
 })
 
 describe('Tab moteur/discovery — Cache discovery', () => {
-  it('GET /discovery-cache/check?seed=X répond { cached: bool }', async ({ skip }) => {
+  it('GET /discovery-cache/check?seed=X jamais enregistré → { cached: false }', async ({ skip }) => {
     if (requireServer().skip) skip()
     const res = await apiGet<{ cached: boolean }>(`/discovery-cache/check?seed=test-${ctx.runId}`)
     expect(res.status).toBe(200)
-    expect(typeof res.data?.cached).toBe('boolean')
+    expect(res.data).toEqual({ cached: false })
   })
 
   it('GET /discovery-cache/load?seed=X répond null pour seed inconnu', async ({ skip }) => {

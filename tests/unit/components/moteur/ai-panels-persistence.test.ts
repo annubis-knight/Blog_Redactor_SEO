@@ -9,16 +9,15 @@
  *   - Aucun `v-if` racine sur `<AiPanel>` ou sur la coque équivalente dans le
  *     template, qui ferait disparaître le panel selon une action utilisateur.
  *
- * Panels auditables au 2026-05-11 :
+ * Panels audités :
  *   - Discovery (usage direct de `<AiPanel>` dans DiscoveryPanel.vue, refonte 2026-05-11)
+ *   - Radar (RadarAiPanel.vue — coque `<section>` + AiPanelHeader, ajouté 2026-09-25)
+ *   - Capitaine (`<AiPanel variant="advice">` dans CaptainSidePanel.vue, ajouté 2026-09-25)
  *   - Lexique (LexiqueAiPanel.vue)
  *   - Lieutenants (LieutenantsAiPanel.vue — refonte Sprint 1 2026-05-04)
  *
- * Panels NON auditables (TODO chantiers ultérieurs) :
- *   - Radar (RadarAiPanel.vue — selection locale potentiellement redondante,
- *     cf. analyse 2026-05-11)
- *   - Capitaine (CaptainSidePanel.vue — variant 'advice', sidepanel droit)
- *   - Rédaction (ArticleWorkflowIaBrief.vue — variant 'advice')
+ * Rédaction (ArticleWorkflowIaBrief.vue) : test écrit mais ignoré, le panneau
+ * ne suit pas le pattern (voir le bloc en fin de fichier).
  */
 import { describe, it, expect } from 'vitest'
 import { promises as fs } from 'node:fs'
@@ -37,6 +36,17 @@ const AUDITED_PANELS: AuditEntry[] = [
   {
     name: 'Discovery',
     file: 'src/components/moteur/DiscoveryPanel.vue',
+    aiPanelImportPattern: /import\s+AiPanel\s+from\s+['"]@\/components\/moteur\/ai-panel\/AiPanel\.vue['"]/,
+  },
+  {
+    name: 'Radar',
+    file: 'src/components/moteur/RadarAiPanel.vue',
+    // Coque <section> rendue sans condition, en-tête AiPanelHeader.
+    aiPanelImportPattern: /import\s+AiPanelHeader\s+from\s+['"][^'"]*ai-panel\/AiPanelHeader\.vue['"]/,
+  },
+  {
+    name: 'Capitaine',
+    file: 'src/components/moteur/CaptainSidePanel.vue',
     aiPanelImportPattern: /import\s+AiPanel\s+from\s+['"]@\/components\/moteur\/ai-panel\/AiPanel\.vue['"]/,
   },
   {
@@ -89,8 +99,12 @@ describe('FR-UI-AI-PANELS-PATTERN — invariants transversaux', () => {
   }
 })
 
-describe('FR-UI-AI-PANELS-PATTERN — panels en dette (à auditer ultérieurement)', () => {
-  it.skip('Radar : RadarAiPanel.vue à auditer (selection locale potentiellement redondante)', () => {})
-  it.skip('Capitaine : CaptainSidePanel.vue à auditer (variant advice sidepanel)', () => {})
-  it.skip('Rédaction : ArticleWorkflowIaBrief.vue à auditer (variant advice)', () => {})
+// 2026-09-25 (épopée qualité SEO, C2 · T2) : les trois « à auditer » vides sont
+// tranchés — Radar et Capitaine rejoignent AUDITED_PANELS ; la Rédaction échoue.
+describe('FR-UI-AI-PANELS-PATTERN — panel IA de la Rédaction', () => {
+  // SKIP: FR-UI-AI-PANELS-PATTERN ArticleWorkflowIaBrief.vue est un panneau fait main (ni AiPanel ni AiPanelHeader, pas d'état « erreur ») alors que le PRD veut la même structure que les panels du Moteur — à corriger dans le code produit, puis retirer le skip.
+  it.skip('Rédaction : ArticleWorkflowIaBrief.vue importe AiPanel (ou AiPanelHeader)', async () => {
+    const src = await readFile('src/components/article/ArticleWorkflowIaBrief.vue')
+    expect(src).toMatch(/import\s+AiPanel(Header)?\s+from\s+['"][^'"]*ai-panel\/AiPanel(Header)?\.vue['"]/)
+  })
 })

@@ -74,7 +74,7 @@ describe('Tab redaction/seo — Generate meta IA', () => {
       articleContent: 'Lorsque vous cherchez un plombier à Toulouse, plusieurs critères comptent : certifications, avis, réactivité et tarifs transparents. Ce guide vous aide à éviter les arnaques.',
     })
     // 200 si IA répond JSON, sinon doit être un code d'erreur env tolérée
-    if (!expectSuccessOrKnownError(res)) return
+    if (!expectSuccessOrKnownError(res)) skip()
     expect(res.data?.metaTitle).toBeDefined()
     expect(res.data?.metaDescription).toBeDefined()
   })

@@ -262,16 +262,18 @@ describe('Lieutenant tab — functional E2E pipeline', () => {
       expect(hnRecurrence.length).toBeGreaterThan(0)
     })
 
+    // 2026-09-25 (épopée qualité SEO, C2 · T3) : les bornes « >= 0 / <= 100 »
+    // passaient quoi qu'il arrive ; les 4 concurrents synthétiques (a, b, c
+    // pour le capitaine, d pour la racine) donnent une récurrence exacte.
     it('should have items with correct structure', () => {
-      for (const item of hnRecurrence.slice(0, 5)) {
-        expect(item.level).toBeGreaterThanOrEqual(1)
-        expect(item.level).toBeLessThanOrEqual(6)
-        expect(typeof item.text).toBe('string')
-        expect(item.count).toBeGreaterThanOrEqual(1)
-        expect(item.total).toBeGreaterThan(0)
-        expect(item.percent).toBeGreaterThanOrEqual(0)
-        expect(item.percent).toBeLessThanOrEqual(100)
-      }
+      expect(hnRecurrence.map(h => [h.level, h.text, h.count, h.total, h.percent])).toEqual([
+        [2, 'Nos services', 3, 4, 75],
+        [2, 'Pourquoi choisir nous', 2, 4, 50],
+        [1, 'Création de site web', 1, 4, 25],
+        [1, 'Agence web', 1, 4, 25],
+        [1, 'Développement web', 1, 4, 25],
+        [1, 'Création site', 1, 4, 25],
+      ])
     })
 
     it('should report ≥10% recurrence threshold headings', () => {

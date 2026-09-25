@@ -114,17 +114,6 @@ describe('editor.css — block colors use tokens', () => {
   })
 })
 
-// ExportButton and ExportPreview were removed — tests skipped
-describe.skip('ExportButton — token-based colors', () => {
-  it('uses --color-success instead of hardcoded green', () => {})
-  it('uses --color-error instead of hardcoded red', () => {})
-})
-
-describe.skip('ExportPreview — token-based colors', () => {
-  it('uses --color-bg-elevated for background', () => {})
-  it('uses --color-success for download button', () => {})
-})
-
 describe('DashboardView — token-based colors', () => {
   const vue = readFileSync(
     resolve(__dirname, '../../../src/views/DashboardView.vue'),

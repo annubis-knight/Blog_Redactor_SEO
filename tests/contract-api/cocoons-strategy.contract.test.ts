@@ -154,12 +154,15 @@ describe('Contract /theme', () => {
 
   it('PUT /theme/config sauvegarde (round-trip read-modify-write-read)', { timeout: 10000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
-    // Lit la config existante, la renvoie telle quelle (round-trip safe)
+    // Lit la config existante, la renvoie telle quelle (round-trip safe).
+    // 2026-09-25 (C2 · T3) : GET renvoie toujours une config (défauts compris) —
+    // le `return` silencieux et le « 200 ou 400 » ne vérifiaient rien.
     const existing = await apiGet<Record<string, unknown>>('/theme/config')
-    if (existing.status !== 200 || !existing.data) return
+    expect(existing.status).toBe(200)
 
-    const res = await apiPut('/theme/config', existing.data)
-    expect([200, 400]).toContain(res.status)
+    const res = await apiPut<Record<string, unknown>>('/theme/config', existing.data)
+    expect(res.status).toBe(200)
+    expect(res.data, 'la config relue se réenregistre à l’identique').toEqual(existing.data)
   })
 
   it('POST /theme/config/parse avec texte valide → 200 ou 500', { timeout: 90000 }, async ({ skip }) => {

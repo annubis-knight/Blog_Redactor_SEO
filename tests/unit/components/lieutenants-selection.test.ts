@@ -945,20 +945,6 @@ describe('LieutenantsPanel', () => {
       expect((w.vm as any).selectedCards.size).toBe(0)
     })
 
-    it.skip('resets isLocked when article changes (Sprint 17 — bouton batch supprimé, isLocked computed dérivé)', async () => {
-      const w = await mountWithCards()
-      // Lock
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect((w.vm as any).isLocked).toBe(true)
-
-      await w.setProps({
-        selectedArticle: { ...ARTICLE, id: 2 },
-      })
-      await nextTick()
-      expect((w.vm as any).isLocked).toBe(false)
-    })
-
     it('calls abort when article changes', async () => {
       const w = await mountWithCards()
       iaStreaming.abort.mockClear()
@@ -982,126 +968,12 @@ describe('LieutenantsPanel', () => {
     })
   })
 
-  // --- Lock/unlock ---
-  // Sprint 17 — Bouton "Verrouiller les Lieutenants" en bloc supprimé du template.
-  // La checkbox de chaque LieutenantCard fait le lock immédiat (FR-LIE-CHECKBOX-LOCK-IMMEDIATE).
-  // Ces tests testaient le bouton batch obsolète — skippés.
-  // Les tests "Checkbox selection" plus haut couvrent désormais le nouveau flow.
-  describe.skip('Lock/unlock Lieutenants (batch — supprimé Sprint 17)', () => {
-    it('shows lock button after analysis with cards', async () => {
-      const w = await mountWithCards()
-      expect(w.find('[data-testid="lock-btn"]').exists()).toBe(true)
-    })
-
-    it('lock button is disabled when no cards selected', async () => {
-      const w = await mountWithCards()
-      ;(w.vm as any).selectedCards = new Map()
-      await nextTick()
-      const btn = w.find('[data-testid="lock-btn"]')
-      expect((btn.element as HTMLButtonElement).disabled).toBe(true)
-    })
-
-    it('lock button is enabled when cards are selected', async () => {
-      const w = await mountWithCards()
-      const btn = w.find('[data-testid="lock-btn"]')
-      expect((btn.element as HTMLButtonElement).disabled).toBe(false)
-    })
-
-    it('calls saveDecisions on the store when locking', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(mockSaveDecisions).toHaveBeenCalledWith(1)
-    })
-
-    it('writes lieutenants to store keywords before saving', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      // setRichLieutenants is called with selected and eliminated proposals
-      expect(mockSetRichLieutenants).toHaveBeenCalled()
-      const [selected] = mockSetRichLieutenants.mock.calls[0]
-      expect(selected.some((s: any) => s.keyword === 'causes seo')).toBe(true)
-    })
-
-    it('emits check-completed with lieutenants_locked on lock', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.emitted('check-completed')).toBeTruthy()
-      expect(w.emitted('check-completed')![0][0]).toBe('moteur:lieutenants_locked')
-    })
-
-    it('shows locked state after locking', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.find('[data-testid="locked-state"]').exists()).toBe(true)
-      expect(w.find('.locked-badge').text()).toBe('Lieutenants verrouillés')
-    })
-
-    it('shows unlock button in locked state', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.find('[data-testid="unlock-btn"]').exists()).toBe(true)
-    })
-
-    it('emits check-removed with lieutenants_locked on unlock', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      await w.find('[data-testid="unlock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.emitted('check-removed')).toBeTruthy()
-      expect(w.emitted('check-removed')![0][0]).toBe('moteur:lieutenants_locked')
-    })
-
-    it('unlocks after clicking unlock button', async () => {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      await w.find('[data-testid="unlock-btn"]').trigger('click')
-      await nextTick()
-      expect(w.find('[data-testid="lock-btn"]').exists()).toBe(true)
-      expect(w.find('[data-testid="locked-state"]').exists()).toBe(false)
-    })
-
-    it.skip('OBSOLETE 2026-05-08 : initialLocked prop sets locked state immediately', async () => {
-      // Test SUPPRIME : la computed `isLocked` au niveau panel + le data-testid
-      // `locked-state` ont ete elimines. Plus de notion "panel locked" : le
-      // verrouillage est par checkbox individuelle. Cf. FR-LIE-CHECKBOX-LOCK-IMMEDIATE
-      // etendu (suppression du concept "batch lock panel").
-    })
-  })
-
-  // --- Locked state behavior ---
-  describe('Locked state behavior', () => {
-    async function mountLocked() {
-      const w = await mountWithCards()
-      await w.find('[data-testid="lock-btn"]').trigger('click')
-      await nextTick()
-      return w
-    }
-
-    it.skip('passes disabled=true to LieutenantCard when locked (Sprint 17 — comportement inversé : checkbox active pour lock/unlock immédiat)', async () => {
-      const w = await mountLocked()
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      for (const stub of stubs) {
-        expect(stub.props('disabled')).toBe(true)
-      }
-    })
-
-    it.skip('toggleLieutenant is a no-op when locked (Sprint 17 — toggleLieutenant fonctionne maintenant pour FR-LIE-CHECKBOX-LOCK-IMMEDIATE)', async () => {
-      const w = await mountLocked()
-      const sizeBefore = (w.vm as any).selectedCards.size
-      // Try to toggle a card via the component
-      const stubs = w.findAllComponents({ name: 'LieutenantCard' })
-      stubs[0].vm.$emit('update:checked', false)
-      await nextTick()
-      expect((w.vm as any).selectedCards.size).toBe(sizeBefore)
-    })
-  })
+  // --- Verrouillage ---
+  // 2026-09-25 (épopée qualité SEO, C2 · T2) : les tests du verrouillage par lot
+  // (bouton « Verrouiller les Lieutenants », état « panel locked », cartes
+  // désactivées) sont retirés : ce verrouillage n'existe plus. Chaque case verrouille
+  // son lieutenant (FR-LIE-CHECKBOX-LOCK-IMMEDIATE) ; la porte et l'étape sont
+  // couvertes par lieutenants-gate.test.ts.
 
   // --- Hn Structure : partie dans l'onglet Structure (FR-HN-TAB, M7) ---
   // FR-MOT-HN-EMPTY-VISIBLE (section « Structure Hn recommandée (IA) » avec

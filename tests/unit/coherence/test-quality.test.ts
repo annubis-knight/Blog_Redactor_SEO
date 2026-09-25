@@ -148,7 +148,11 @@ const SOFT_LIMITS = {
   //   comportements encore valables sont couverts par captain-lock-gate.test.ts.
   // 2026-09-25 — C6 (T13) : deux it.skip Lieutenants/structure supprimés avec
   //   l'onglet Structure ; le plafond suit (42 → 40).
-  itSkip: 40,                      // it.skip / test.skip / describe.skip
+  // 2026-09-25 — épopée qualité SEO (C2, T2) : les 40 skip triés un à un —
+  //   obsolètes retirés (verrouillage par lot, onglets du journal des coûts,
+  //   Export, JSON migrés…), valables réécrits sur le code actuel. Restent 2
+  //   bugs réels, ignorés avec `// SKIP: <exigence>` (40 → 2).
+  itSkip: 2,                       // it.skip / test.skip / describe.skip
   // 2026-09-24 — épopée qualité SEO (C1, cliquet des faux verts) : trois formes
   // d'assertion qui passent quoi qu'il arrive, figées à leur niveau du jour.
   //   - `toBeGreaterThanOrEqual(0)` sur un compte ou une longueur : toujours vrai ;
@@ -159,8 +163,12 @@ const SOFT_LIMITS = {
   // 2026-09-25 — épopée qualité SEO (C2, T3) : occurrences de tests/unit réécrites
   //   en vérifications qui peuvent échouer ; restent celles des tests contre
   //   serveur/navigateur (31 → 12 pour « >= 0 », 10 → 8 pour le type booléen).
-  alwaysTrueGte0: 12,
-  typeofBoolean: 8,
+  // 2026-09-25 — épopée qualité SEO (C2, T3) : celles des tests contre serveur
+  //   et de tests/functional réécrites (valeur exacte, forme stricte, ou données
+  //   posées par le test) ; ne restent que celles de tests/browser-e2e, dont 2
+  //   dans des commentaires (12 → 6 pour « >= 0 », 8 → 1 pour le type booléen).
+  alwaysTrueGte0: 6,
+  typeofBoolean: 1,
   silentServerSkip: 0,
 } as const
 

@@ -250,12 +250,17 @@ describe('Workflow ③ — Full Pipeline: Capitaine → Lieutenants → Lexique'
 
     it('computes Hn recurrence from merged competitors', () => {
       hnRecurrence = computeHnRecurrence(mergedResult.competitors)
-      expect(hnRecurrence.length).toBeGreaterThan(0)
-
-      for (const item of hnRecurrence.slice(0, 3)) {
-        expect(item.percent).toBeGreaterThanOrEqual(0)
-        expect(item.percent).toBeLessThanOrEqual(100)
-      }
+      // 2026-09-25 (épopée qualité SEO, C2 · T3) : les bornes « >= 0 / <= 100 »
+      // passaient quoi qu'il arrive ; les 4 concurrents synthétiques donnent
+      // une récurrence exacte (tri : pourcentage décroissant, puis niveau).
+      expect(hnRecurrence.map(h => [h.level, h.text, h.percent])).toEqual([
+        [2, 'Nos services', 75],
+        [2, 'Pourquoi choisir nous', 50],
+        [1, 'Création de site web', 25],
+        [1, 'Agence web', 25],
+        [1, 'Développement web', 25],
+        [1, 'Création site', 25],
+      ])
     })
 
     it('builds propose-lieutenants prompt with all cross-tab data', async () => {

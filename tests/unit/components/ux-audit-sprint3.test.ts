@@ -83,14 +83,6 @@ describe('LoadingSpinner — accessibility', () => {
   })
 })
 
-// ExportPreview was removed — tests skipped
-describe.skip('ExportPreview — ARIA attributes', () => {
-  it('has role="dialog" on the container', () => {})
-  it('has aria-label on the dialog', () => {})
-  it('has aria-label on the close button', () => {})
-  it('has title attribute on the iframe', () => {})
-})
-
 // ─── 2.4 — ARIA : ActionMenu ─────────────────────────────────────────────
 
 describe('ActionMenu — ARIA attributes', () => {

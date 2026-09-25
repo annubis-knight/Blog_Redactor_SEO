@@ -31,11 +31,10 @@ vi.mock('@/utils/logger', () => ({
   log: { debug: vi.fn(), info: vi.fn(), warn: vi.fn(), error: vi.fn() },
 }))
 
-// NOTE 2026-05-01 : tests de régression écrits AVANT l'implémentation de la dédup.
-// La dédup n'est pas (encore) présente dans useExploredKeywords.addEntry/restoreFromHistory.
-// Skipped pour ne pas masquer la todo : à réactiver dès qu'un fix code-side ajoute
-// un guard `if (entries.value.some(e => e.originalCard.keyword === keyword)) return`.
-describe.skip('useExploredKeywords — dédup contre doublons', () => {
+// 2026-09-25 (épopée qualité SEO, C2 · T2) : écrits avant la dédup, ces tests
+// étaient ignorés ; la dédup existe (addEntry rafraîchit l'entrée existante,
+// restoreFromHistory filtre les doublons) : ils sont réactivés.
+describe('useExploredKeywords — dédup contre doublons', () => {
   let carousel: ReturnType<typeof useExploredKeywords>
 
   beforeEach(() => {
@@ -44,9 +43,10 @@ describe.skip('useExploredKeywords — dédup contre doublons', () => {
 
   it('addEntry du même keyword 2 fois ne crée qu\'une seule entry', async () => {
     await carousel.addEntry('seo local', 'pilier')
-    await carousel.addEntry('seo local', 'pilier')
+    await carousel.addEntry('SEO Local ', 'pilier')
     expect(carousel.entries.value.length).toBe(1)
-    expect(carousel.entries.value[0]!.originalCard.keyword).toBe('seo local')
+    expect(carousel.entries.value[0]!.validation?.verdict.level).toBe('GO')
+    expect(carousel.currentIndex.value).toBe(0)
   })
 
   it('addEntry de 2 keywords différents crée bien 2 entries', async () => {

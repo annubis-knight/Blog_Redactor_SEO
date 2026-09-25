@@ -69,23 +69,62 @@ describe('Tab moteur/lexique — IA upfront (E2 + U5)', () => {
 
 describe('Tab moteur/lexique — Multi-keyword (D4)', () => {
   it.todo('Champ "Extraire pour un autre mot-clé" (frontend)')
+  // 2026-09-25 (épopée qualité SEO, C2 · T3) : « count >= 0 » passait quoi
+  // qu'il arrive (0 si l'extraction échouait faute de corpus). Le test pose
+  // lui-même un corpus SERP scrappé pour son mot-clé (en base, sans appel
+  // externe ; nettoyé avec les fixtures via keyword_metrics) et affirme
+  // l'enregistrement exact.
   it('Extraction sur kw arbitraire : POST /serp/tfidf avec articleId crée row DB-first', { timeout: 60000 }, async ({ skip }) => {
     if (requireServer().skip) skip()
     const { apiPost } = await import('../helpers/api-client.js')
+    const { query } = await import('../../server/db/client.js')
     const silo = await ctx.getSilo()
     const cocoon = await ctx.createCocoon(silo.id, 'LexArb Cocon')
     const article = await ctx.createArticle(cocoon.id, 'LexArb Article')
 
     const kw = `test-${ctx.runId}-lex-arb`
-    await apiPost('/serp/tfidf', { keyword: kw, articleId: article.id })
-    // Si le row a été créé, vérifier qu'il est dans lexique_explorations
+    const pages = [
+      'plomberie chauffage devis intervention urgence artisan',
+      'plomberie fuite réparation devis artisan toulouse',
+      'chauffage entretien chaudière plomberie devis',
+    ]
+    await query(`INSERT INTO keyword_metrics (keyword) VALUES ($1)`, [kw])
+    for (const [i, text] of pages.entries()) {
+      const url = `https://t3-lexique.example/${i + 1}`
+      await query(`INSERT INTO keyword_serp_results (keyword, position, url) VALUES ($1, $2, $3)`, [kw, i + 1, url])
+      await query(
+        `INSERT INTO keyword_serp_scrapes (keyword, position, url, text_content) VALUES ($1, $2, $3, $4)`,
+        [kw, i + 1, url, text],
+      )
+    }
+
+    const res = await apiPost<{ totalCompetitors: number }>('/serp/tfidf', { keyword: kw, articleId: article.id })
+    expect(res.status).toBe(200)
+    expect(res.data?.totalCompetitors, 'une page du corpus = un concurrent').toBe(3)
+
+    const dbRes = await query<{ source_keyword: string }>(
+      `SELECT source_keyword FROM lexique_explorations WHERE article_id = $1`,
+      [article.id],
+    )
+    expect(dbRes.rows.map(r => r.source_keyword)).toEqual([kw])
+  })
+
+  it('Extraction sans corpus scrappé → 404 NOT_FOUND, rien d’enregistré', async ({ skip }) => {
+    if (requireServer().skip) skip()
+    const { apiPost } = await import('../helpers/api-client.js')
     const { query } = await import('../../server/db/client.js')
+    const silo = await ctx.getSilo()
+    const cocoon = await ctx.createCocoon(silo.id, 'LexNone Cocon')
+    const article = await ctx.createArticle(cocoon.id, 'LexNone Article')
+
+    const res = await apiPost('/serp/tfidf', { keyword: `test-${ctx.runId}-lex-none`, articleId: article.id })
+    expect(res.status).toBe(404)
+    expect(res.error?.code).toBe('NOT_FOUND')
     const dbRes = await query<{ count: string }>(
       `SELECT COUNT(*) AS count FROM lexique_explorations WHERE article_id = $1`,
       [article.id],
     )
-    // 0 si TFIDF a fail silencieusement (SERP indispo), >=1 sinon
-    expect(parseInt(dbRes.rows[0].count, 10)).toBeGreaterThanOrEqual(0)
+    expect(dbRes.rows[0].count).toBe('0')
   })
 
   it.todo('Chips d\'explorations passées (frontend — Playwright)')

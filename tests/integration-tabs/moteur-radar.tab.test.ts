@@ -66,12 +66,12 @@ describe('Tab moteur/radar — DB-first (Sprint 9)', () => {
     expect(res.data).toBeNull()
   })
 
-  it('Mode libre : GET /radar-cache/check?seed=X retourne { cached: bool }', async ({ skip }) => {
+  it('Mode libre : GET /radar-cache/check?seed=X jamais enregistré → { cached: false }', async ({ skip }) => {
     if (requireServer().skip) skip()
     const { apiGet } = await import('../helpers/api-client.js')
     const res = await apiGet<{ cached: boolean }>(`/radar-cache/check?seed=test-${ctx.runId}-free`)
     expect(res.status).toBe(200)
-    expect(typeof res.data?.cached).toBe('boolean')
+    expect(res.data).toEqual({ cached: false })
   })
 
   it.todo('Si stale > 7j, badge UI affiché (frontend — Playwright)')
