@@ -2579,13 +2579,13 @@ Le pilier 1013 (2026-09-24) avait été rédigé en 15 appels à l'IA, un par ch
 
 **Limites connues**
 - La porte n'est consultée qu'une fois, juste après la rédaction : aucun geste ne la relance après correction. Elle ne l'est pas quand la génération de la méta échoue (le texte est enregistré, l'alarme ne s'ouvre pas), ni par le mode automatique en ligne de commande.
-- La longueur visée est retenue pour l'article quand l'utilisateur n'en avait choisi aucune, et la porte mesure contre elle ; depuis le 2026-09-25 (C5b), la barre de mots, l'écart, la réduction et le score SEO lisent la même (épopée qualité SEO, checklist R16, soldée). Reste un cas limite : cette longueur retenue n'est relue par l'écran qu'au chargement suivant de l'article ; si la recommandation de l'IA arrive après le lancement du premier jet, la barre affiche entre-temps cette nouvelle recommandation.
+- La longueur visée est retenue pour l'article quand l'utilisateur n'en avait choisi aucune, et la porte mesure contre elle ; depuis le 2026-09-25 (C5b), la barre de mots, l'écart, la réduction et le score SEO lisent la même, et l'écran la garde dès la fin du premier jet, même si la recommandation de l'IA change ensuite (épopée qualité SEO, checklist R16 et R24, soldées).
 - Passer la porte ne débloque encore aucune étape : elle servira à reconnaître un parent « rédigé » quand le cocon naîtra du pilier (épopée qualité SEO, C7).
 - Pendant une reprise après coupure, le texte qui défile à l'écran, et ce qui est enregistré au fil, garde le début du chapitre interrompu avant sa réécriture ; seul le texte final est propre.
 - Les dérogations posées au premier jet ne sont pas réaffichées à la publication ; l'audit du projet (`npm run verify`) les liste avec les autres.
 - La rédaction fusionne les paragraphes qui se suivent en un seul, séparés par des retours à la ligne : la structure du texte s'en trouve appauvrie (épopée qualité SEO, checklist R14).
 
-**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-ARTICLE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Amendée à la livraison :** un H1 sans le capitaine est 🔴 et non ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme à la publication) ; seul un H1 absent est ⛔. La sauvegarde au fil reste faite par l'écran, pas par le serveur. **Amendée le 2026-09-25 (C5b)** : la longueur visée est aussi celle de l'écran (R16 soldée).
+**Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-RED-ARTICLE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C5a. **Amendée à la livraison :** un H1 sans le capitaine est 🔴 et non ⛔ (un titre peut intégrer le mot-clé sans le reprendre mot pour mot, comme à la publication) ; seul un H1 absent est ⛔. La sauvegarde au fil reste faite par l'écran, pas par le serveur. **Amendée le 2026-09-25 (C5b)** : la longueur visée est aussi celle de l'écran (R16 soldée), qui la garde dès la fin du premier jet (R24 soldée).
 
 > **En situation.** L'utilisateur lance la rédaction de son pilier : 2 500 mots visés, 7 chapitres. La barre affiche « 1/7 — Introduction », puis chaque chapitre à son tour, sans les 15 secondes d'attente d'avant ; le texte arrive au fil, la méta suit. Puis l'alarme de la porte s'ouvre : le chapitre « Coûts » fait 610 mots pour environ 375 prévus (🔴), et une phrase est restée en anglais (🔴). Il clique « Revenir corriger », traduit la phrase et resserre le chapitre dans l'éditeur. S'il avait laissé la phrase anglaise, la porte de publication la lui aurait remontrée.
 
@@ -2625,32 +2625,31 @@ Le premier jet est écrit d'un seul tenant, sans recherche web, sans tableau ni 
 - Un panneau « Enrichir », dans les deux vues de rédaction, propose cinq passes : Sources (cf. `FR-RED-ENRICH-SOURCES`), Exemples, Tableaux, Images et FAQ ; il donne aussi la relecture de la langue (cf. `FR-RED-LANG-REVIEW`) et la réécriture d'un chapitre (cf. `FR-RED-SECTION-REWRITE`). Il n'est utilisable qu'une fois le premier jet écrit et le capitaine verrouillé.
 - L'utilisateur lance les passes une à une, dans l'ordre qu'il veut. Une passe traite ses chapitres l'un après l'autre ; la progression s'affiche (« Chapitre 2/5 — titre ») et un bouton « Arrêter » l'interrompt.
 - Chaque passe ne vise que les chapitres où elle a un sens : Exemples, Tableaux et Images travaillent le corps de l'article (ni le chapeau, ni la conclusion, ni la FAQ) ; Sources, les chapitres qui en ont besoin ; la FAQ ajoute un seul chapitre « Questions fréquentes », placé avant la conclusion (à la fin si l'article a moins de deux chapitres), et rien si l'article a déjà sa FAQ. Quand il n'y a rien à faire, le panneau le dit sans appeler l'IA.
-- Chaque passe voit l'article entier pour le contexte et reçoit sa propre consigne :
+- Chaque passe voit l'article entier pour le contexte (jusqu'à 30 000 caractères de texte, de quoi contenir un pilier de 3 500 mots) et la stratégie de l'article — cible, douleur, angle —, à défaut celle du cocon ; elle reçoit sa propre consigne :
   - Exemples : un exemple en situation, fictif et présenté comme tel, de 40 à 90 mots, sans aucun chiffre ;
   - Tableaux : un tableau seulement quand le chapitre compare ou énumère, avec une ligne d'en-tête, 2 à 4 colonnes et aucun chiffre nouveau ;
   - Images : l'emplacement d'une image, entre deux paragraphes, et son texte alternatif (8 à 16 mots) ;
-  - FAQ : 3 à 6 vraies questions, au moins une avec le mot-clé principal, des réponses directes de 40 à 80 mots, sans chiffre.
+  - FAQ : autant de vraies questions que le fixe le type de l'article — 4 à 6 pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé (cf. `FR-INFRA-TYPE-RULES-SSOT`) —, au moins une avec le mot-clé principal, des réponses directes de 40 à 80 mots, sans chiffre.
 
   Une passe qui n'a rien d'utile à ajouter rend le chapitre inchangé ; une valeur qui manque s'écrit « à sourcer ».
 - Chaque proposition est vérifiée avant d'être montrée :
-  - ⛔ proposition vide ou coupée, titres du chapitre modifiés, bloc ou lien posé à la main qui disparaît, tableau sans ligne d'en-tête, image sans texte alternatif, FAQ sans titre ou sans questions en sous-titres : la proposition ne peut pas être acceptée ;
+  - ⛔ proposition vide ou coupée (l'IA s'est arrêtée avant une fin normale : longueur maximale atteinte, recherche web interrompue, arrêt de sécurité), titres du chapitre modifiés — le titre principal (H1), placé dans le chapeau, compris —, bloc ou lien posé à la main qui disparaît, tableau sans ligne d'en-tête, image sans texte alternatif, FAQ sans titre ou sans questions en sous-titres : la proposition ne peut pas être acceptée ;
   - 🔴 lien absent des résultats de la recherche (retiré, son texte gardé), chiffre sans source ajouté, phrase non française ajoutée, question de FAQ sans point d'interrogation ;
-  - 🟠 passage « à sourcer » qui reste après la passe Sources, proposition identique au texte d'origine.
+  - 🟠 passage « à sourcer » qui reste après la passe Sources, proposition identique au texte d'origine, FAQ dont le nombre de questions sort de la fourchette du type.
 - Pour chaque chapitre, l'utilisateur voit les alertes et peut comparer avant et après, puis accepte ou refuse. Accepter remplace ce seul chapitre et enregistre l'article aussitôt ; refuser ne touche à rien. « Accepter celles sans alerte » accepte d'un coup les propositions qui n'ont aucune alerte.
-- Un chapitre modifié depuis la proposition n'est jamais écrasé : la proposition passe « chapitre modifié depuis » et se relance.
-- Une image proposée n'est pas une photo : une image neutre « à fournir » tient sa place, avec le texte alternatif qui dit ce qu'elle doit montrer. Tant qu'une de ces places reste, la publication est refusée (⛔, cf. `FR-RED-PUBLISH-GATE`).
+- Un chapitre modifié depuis la proposition n'est jamais écrasé : la proposition passe « chapitre modifié depuis » et se relance. De même, la FAQ ne s'insère pas si le chapitre avant lequel elle devait se placer (la conclusion) a changé depuis la proposition, ni si l'article a entre-temps reçu une FAQ.
+- Une image proposée n'est pas une photo : une image neutre « à fournir » tient sa place, avec le texte alternatif qui dit ce qu'elle doit montrer. Tant qu'une de ces places reste, la publication est refusée (⛔, cf. `FR-RED-PUBLISH-GATE`). Dans l'éditeur, le bouton « Image » de la barre d'outils remplace l'image sélectionnée par la vraie photo, désignée par son adresse (un fichier du site, « /… », ou une adresse web, « https://… ») ; il insère aussi une nouvelle image, dont il exige le texte alternatif (cf. `FR-RED-EDITOR-TIPTAP`).
 - L'éditeur garde les tableaux (ligne d'en-tête comprise) et les images acceptés, y compris après enregistrement et rechargement.
 - Si un chapitre échoue (IA indisponible…), l'erreur s'affiche sur ce chapitre et la passe continue avec les suivants.
 
 **Limites connues**
 - Lancer une passe remplace la liste des propositions : celles de la passe précédente qui n'ont été ni acceptées ni refusées disparaissent. Rien ne retient qu'une passe a déjà été faite : la relancer repropose les mêmes chapitres.
-- Le contexte de l'article envoyé à chaque passe est coupé après environ 12 000 caractères (autour de 2 000 mots) : la fin d'un long pilier n'est pas vue. La stratégie de l'article (cible, douleur, angle) n'est pas transmise aux passes.
-- Le titre principal (H1), placé dans le chapeau, n'est pas protégé : la passe Sources, qui peut travailler le chapeau, pourrait le modifier sans alerte.
+- Au-delà de 30 000 caractères de texte (environ 4 500 mots), la fin de l'article n'est pas vue par les passes.
 - Les passes Exemples, Tableaux et FAQ peuvent poser de nouveaux « à sourcer » : chacun compte à la publication (🔴) jusqu'à une nouvelle passe Sources.
-- L'outil ne permet pas encore de fournir la photo d'une image « à fournir », ni d'insérer un tableau ou une image à la main : pour publier, il faut supprimer la place dans l'éditeur.
-- Insérer la FAQ ne vérifie pas que l'article a changé depuis la proposition.
+- La photo se fournit par son adresse : l'éditeur n'envoie pas de fichier depuis l'ordinateur. Remplacer une image garde le texte alternatif proposé par la passe, que le bouton ne permet pas de modifier. Le bouton « Image » n'existe que dans l'éditeur, pas dans la rédaction guidée. Aucun tableau ne s'insère à la main.
+- Une FAQ placée à la fin de l'article (moins de deux chapitres) ne vérifie, à l'insertion, que l'absence d'une autre FAQ.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** une passe propose chapitre par chapitre (un appel par chapitre visé), pas l'article d'un bloc ; l'image proposée est une place « à fournir » que la publication refuse ; « Accepter celles sans alerte » et la protection « chapitre modifié depuis » s'ajoutent.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** une passe propose chapitre par chapitre (un appel par chapitre visé), pas l'article d'un bloc ; l'image proposée est une place « à fournir » que la publication refuse ; « Accepter celles sans alerte » et la protection « chapitre modifié depuis » s'ajoutent. **Amendée le 2026-09-25 (C5b, checklist R17 à R20, R22, R23)** : les limites relevées à la livraison sont levées — les passes voient l'article entier et sa stratégie ; le titre principal est protégé ; tout arrêt anormal de l'IA rend la proposition « coupée » ; le nombre de questions de FAQ suit le type, et la FAQ ne s'insère plus si la conclusion a changé ; le bouton « Image » permet de fournir la photo.
 
 > **En situation.** L'utilisateur ouvre « Enrichir » sur son pilier fraîchement rédigé. Il lance « Tableaux » : quatre chapitres du corps sont proposés à tour de rôle ; « Agence ou indépendant ? » reçoit un tableau à deux colonnes, les trois autres reviennent inchangés (🟠 « ne change rien »). Il compare, accepte le tableau : le chapitre est remplacé et l'article enregistré. Il lance ensuite « FAQ » : un chapitre « Questions fréquentes » est proposé avant la conclusion ; une des questions ne finit pas par un point d'interrogation (🔴). Il refuse la FAQ.
 
@@ -2667,17 +2666,19 @@ Le pilier 1013 citait « la Vendée » pour un client toulousain et des chiffres
 - La recherche part de France, à l'heure de Paris, et depuis la ville de la zone du client quand elle est configurée. La consigne donne la date du jour et fait préférer une source locale à une source nationale, une source française à une source étrangère (organismes publics, études reconnues, presse économique), la plus récente, toujours avec son année.
 - Chaque marqueur sourcé devient une phrase naturelle qui cite la source, son année et un lien vers la page trouvée. Sans source fiable, le marqueur reste tel quel (🟠 « un passage à sourcer reste ») : un passage à sourcer vaut mieux qu'un chiffre inventé. Un chiffre déjà présent sans source est sourcé de la même façon, ou retiré.
 - Chaque lien est comparé aux résultats réels de la recherche : un lien absent est retiré, son texte gardé, et signalé 🔴. Les liens que le chapitre citait déjà sont conservés.
+- Une recherche interrompue avant la fin rend la proposition « coupée » (⛔) : elle ne s'accepte pas ; il faut relancer la passe.
 - Les sources trouvées sont listées sous la proposition, et s'ouvrent dans un nouvel onglet.
 - Chaque proposition est acceptée ou refusée par l'utilisateur, chapitre par chapitre (cf. `FR-RED-ENRICH-PASSES`).
 - Seul Claude sait chercher et citer ses sources. Une demande avec recherche web n'est jamais confiée à Gemini ni à OpenRouter, qui rendraient un texte sans source : si Claude est indisponible (crédit épuisé, quota), la passe échoue sur ce chapitre avec le message du fournisseur ; si aucun fournisseur configuré ne sait chercher, le message dit « La recherche web exige Claude ». La même règle vaut pour les actions contextuelles « sources chiffrées » et « exemples réels ».
+- Ces deux actions cherchent comme la passe (France, heure de Paris, ville du client) ; leurs liens absents des résultats de la recherche sont retirés, texte gardé, avant d'arriver dans l'éditeur (cf. `FR-RED-CONTEXTUAL-ACTIONS`).
 
 **Limites connues**
 - L'outil garantit que le lien figure dans les résultats de la recherche, pas que la page dise ce que la phrase lui fait dire, ni que l'étude date de l'année citée.
-- Les actions contextuelles « sources chiffrées » et « exemples réels » cherchent depuis la France, mais sans la ville du client, et leurs liens ne sont pas comparés aux résultats de la recherche.
-- Mêmes limites de contexte que les autres passes : article coupé après environ 12 000 caractères, pas de stratégie transmise.
+- Pour les actions contextuelles, un lien retiré n'est pas signalé à l'utilisateur, contrairement à la passe (🔴).
+- Mêmes limites de contexte que les autres passes : au-delà de 30 000 caractères de texte, la fin de l'article n'est pas vue.
 - En mode simulé, la recherche renvoie deux sources fictives (Insee, France Num) : rien n'est cherché.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la passe travaille chapitre par chapitre ; un marqueur sans source trouvée est gardé (🟠) au lieu d'être forcé ; la ville vient de la zone configurée du client.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la passe travaille chapitre par chapitre ; un marqueur sans source trouvée est gardé (🟠) au lieu d'être forcé ; la ville vient de la zone configurée du client. **Amendée le 2026-09-25 (C5b, checklist R18, R19, R21)** : la passe reçoit l'article entier et sa stratégie ; une recherche interrompue bloque la proposition ; les actions « sources chiffrées » et « exemples réels » cherchent dans la ville du client et vérifient leurs liens.
 
 > **En situation.** L'utilisateur lance « Sources » sur son pilier : deux chapitres portent un « à sourcer », seuls ceux-là sont traités. Pour « Le budget », la proposition devient « … (selon l'Insee, 2025) », avec le lien vers la page de l'Insee ; dessous, « Sources trouvées : Insee — Le numérique dans les TPE ». Un second lien, vers un site que la recherche n'avait pas renvoyé, a été retiré (🔴). Il accepte. Le lendemain, son crédit Claude est épuisé : la passe s'arrête sur un message d'erreur au lieu d'écrire, avec Gemini, un texte sans aucune source.
 
@@ -2691,17 +2692,16 @@ Un chapitre trop long, trop vague, ou qui répète le voisin se corrige seul, sa
 
 **Critères d'acceptation**
 - Dans le panneau « Enrichir », l'utilisateur choisit un chapitre (le chapeau compris) et écrit une consigne de 5 à 600 caractères, par exemple « deux fois plus court » ou « plus concret, avec l'exemple d'un plombier ».
-- La réécriture voit l'article entier. Elle garde le titre du chapitre (ses sous-titres peuvent changer si la consigne le demande), vise la longueur actuelle à 20 % près sauf consigne contraire, conserve blocs, liens et marqueurs « à sourcer », et n'invente aucun chiffre.
-- La réécriture est une proposition, vérifiée comme celles des passes (⛔ titre du chapitre modifié, bloc ou lien perdu, proposition vide ou coupée ; 🔴 chiffre sans source ou phrase non française ajoutés, lien inventé retiré ; 🟠 rien de changé). Rien ne change avant « Accepter » ; accepter remplace ce seul chapitre et enregistre l'article.
+- La réécriture voit l'article entier (jusqu'à 30 000 caractères de texte) et la stratégie de l'article, à défaut celle du cocon. Elle garde le titre du chapitre, et pour le chapeau le titre principal (H1) ; ses sous-titres peuvent changer si la consigne le demande. Elle vise la longueur actuelle à 20 % près sauf consigne contraire, conserve blocs, liens et marqueurs « à sourcer », et n'invente aucun chiffre.
+- La réécriture est une proposition, vérifiée comme celles des passes (⛔ titre du chapitre ou titre principal modifié, bloc ou lien perdu, proposition vide ou coupée ; 🔴 chiffre sans source ou phrase non française ajoutés, lien inventé retiré ; 🟠 rien de changé). Rien ne change avant « Accepter » ; accepter remplace ce seul chapitre et enregistre l'article.
 - La consigne est traitée comme du texte : elle ne peut ni changer le rôle de l'IA ni la faire sortir du chapitre.
 - La génération complète section par section n'existe plus (retirée avec le premier jet, cf. `FR-RED-DRAFT-SINGLE-PASS`).
 
 **Limites connues**
-- Mêmes limites de contexte que les passes : article coupé après environ 12 000 caractères, pas de stratégie transmise.
-- Le titre principal (H1), placé dans le chapeau, n'est pas protégé : réécrire le chapeau peut le modifier sans alerte.
+- Mêmes limites de contexte que les passes : au-delà de 30 000 caractères de texte, la fin de l'article n'est pas vue.
 - Une seule réécriture à la fois ; lancer une passe efface la proposition de réécriture non traitée.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la réécriture suit une consigne libre de l'utilisateur ; la génération section par section a été retirée (C5a), pas archivée.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la réécriture suit une consigne libre de l'utilisateur ; la génération section par section a été retirée (C5a), pas archivée. **Amendée le 2026-09-25 (C5b, checklist R17, R18)** : la réécriture reçoit l'article entier et sa stratégie ; réécrire le chapeau ne peut plus changer le titre principal.
 
 > **En situation.** Le chapitre « Coûts » est trop long. L'utilisateur le choisit et écrit « deux fois plus court, sans répéter l'audit ». La proposition garde le titre « Coûts » et ne reprend pas ce que dit déjà le chapitre « Audit », que l'IA a vu. Il compare avant et après, accepte : seul « Coûts » change, et l'article est enregistré.
 
@@ -2723,9 +2723,9 @@ Le pilier 1013 contenait des phrases en anglais. Un texte d'IA laisse aussi pass
 **Limites connues**
 - La relecture corrige sans dire ce qu'elle a changé : ni liste des corrections, ni comparaison avant / après, ni refus section par section.
 - À la publication, seules les phrases d'au moins six mots où l'anglais domine sont repérées : « Donc you must focus » échappe au contrôle ; le franglais et les fautes d'accord ne sont pas détectés, seulement corrigés par la relecture.
-- Aucun test automatique ne vérifie encore la relecture de la langue elle-même.
+- Contrairement aux passes, la relecture ne reçoit pas la stratégie de l'article.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la relecture n'est pas une passe qui signale puis propose : c'est l'humanisation, dont la consigne corrige aussi la langue, appliquée directement. Le second critère de l'épopée (🔴 à la publication) était tenu depuis C5a.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO, réservée par C0, livrée par C5b. **Amendée à la livraison :** la relecture n'est pas une passe qui signale puis propose : c'est l'humanisation, dont la consigne corrige aussi la langue, appliquée directement. Le second critère de l'épopée (🔴 à la publication) était tenu depuis C5a. **Complétée le 2026-09-25 (C5b, checklist T12)** : la consigne de relecture, sa simulation et le bouton du panneau sont désormais vérifiés par des tests automatiques.
 
 > **En situation.** Le premier jet de l'utilisateur contient « Pour générer des leads, soignez votre call-to-action » et « les demandes reçu ». Il lance « Relecture de la langue » : chaque section passe à son tour, puis l'article est enregistré. Il lit désormais « Pour attirer des prospects, soignez votre appel à l'action » et « les demandes reçues » ; les titres, les liens et le marqueur « à sourcer » n'ont pas bougé.
 
@@ -2782,9 +2782,12 @@ Une fois l'article généré, l'utilisateur travaille dans un **éditeur de text
 - Toute modification déclenche une sauvegarde automatique en arrière-plan ; l'utilisateur voit un indicateur « enregistré il y a Xs ».
 - Une combinaison clavier (Ctrl+S) déclenche une sauvegarde manuelle immédiate.
 - Si la sauvegarde échoue, l'éditeur prévient l'utilisateur et garde le contenu marqué comme « non sauvegardé » jusqu'à succès.
-- Les tableaux (ligne d'en-tête comprise) et les images (avec leur texte alternatif) posés par les passes d'enrichissement restent intacts dans l'éditeur, à l'enregistrement et au rechargement (cf. `FR-RED-ENRICH-PASSES`). L'éditeur ne permet pas encore d'en insérer à la main, ni de remplacer une image.
+- Les tableaux (ligne d'en-tête comprise) et les images (avec leur texte alternatif) posés par les passes d'enrichissement restent intacts dans l'éditeur, à l'enregistrement et au rechargement (cf. `FR-RED-ENRICH-PASSES`).
+- Un bouton « Image » de la barre d'outils remplace l'image sélectionnée — une place « à fournir », par exemple — par l'adresse de la vraie photo, ou insère une nouvelle image après avoir demandé son texte alternatif. L'adresse est celle d'un fichier du site (« /… ») ou une adresse web (« https://… ») ; toute autre saisie, ou une image sans texte alternatif, n'est pas insérée.
 
-**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R10) : l'éditeur perdait tout tableau et toute image au premier affichage ; il les garde désormais.
+**Limites connues :** aucun tableau ne s'insère encore à la main ; une image se désigne par son adresse, pas par l'envoi d'un fichier ; remplacer une image garde son texte alternatif ; une adresse refusée ou un texte alternatif manquant n'affiche aucun message.
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R10) : l'éditeur perdait tout tableau et toute image au premier affichage ; il les garde désormais. **Amendée le 2026-09-25 (C5b, checklist R20)** : bouton « Image » pour remplacer ou insérer une image.
 
 > **En situation.** L'utilisateur relit la section H2 *« Quelle indemnité minimale ? »* et trouve une formulation trop scolaire. Il sélectionne la phrase, la réécrit dans le ton de la marque. Pendant qu'il tape, le compteur de mots descend de 2 240 à 2 215. Dès qu'il arrête de taper, un petit indicateur en bas de l'éditeur passe de « modifié » à « enregistré il y a 2s ». Il continue sereinement sa relecture.
 
@@ -2837,17 +2840,20 @@ Le score SEO et le score GEO sont calculés à l'écran pendant la rédaction (c
 
 #### FR-RED-CONTEXTUAL-ACTIONS — 11 actions IA contextuelles sur sélection de texte
 
-Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 11 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
+Quand l'utilisateur sélectionne un fragment de texte dans l'éditeur, une **mini-barre d'actions IA** s'affiche au-dessus de la sélection. Elle propose 11 actions courtes pour retravailler le passage sélectionné : reformuler, simplifier, convertir en liste, ajouter un exemple PME, optimiser le mot-clé, ajouter une statistique, transformer en capsule de réponse (featured snippet), transformer un titre en question, sourcer avec des chiffres frais (avec recherche web), insérer des exemples réels (avec recherche web), résumer en « ce qu'il faut retenir », ou ajouter un lien interne vers un autre article du cocon. La réécriture proposée par l'IA s'affiche au fil de l'eau (d'un bloc pour les deux actions qui cherchent sur le web, dont les liens sont vérifiés avant l'affichage) ; l'utilisateur l'accepte (remplace la sélection) ou la rejette (garde l'original). L'action « lien interne » ouvre à la place une recherche d'article — pas de réécriture.
 
 **Critères d'acceptation**
 - Une barre d'actions apparaît au-dessus de toute sélection de texte non vide dans l'éditeur.
 - Les 11 actions disponibles sont, dans le code source : reformuler, simplifier, convertir en liste, exemple PME, optimiser mot-clé, ajouter statistique, capsule de réponse, transformer en question, sources chiffrées, exemples réels, ce qu'il faut retenir. (L'action « lien interne » s'ajoute en douzième mais bypasse le pipeline IA — elle ouvre un sélecteur d'article.)
-- Le résultat de chaque action apparaît progressivement à l'écran pendant la génération (pas de fenêtre figée).
+- Le résultat de chaque action apparaît progressivement à l'écran pendant la génération (pas de fenêtre figée), sauf pour « sources chiffrées » et « exemples réels » : leur résultat arrive d'un bloc, une fois ses liens vérifiés.
 - Deux boutons permettent à l'utilisateur d'accepter (remplace la sélection par le résultat) ou de rejeter (annule, sélection conservée intacte).
 - L'action « lien interne » n'envoie pas de requête à l'IA — elle ouvre un sélecteur d'articles du même cocon ; le clic sur un article ajoute un lien sur la sélection.
-- Les actions « sources chiffrées » et « exemples réels » autorisent l'IA à consulter le web pour ramener des données fraîches (les autres actions travaillent uniquement sur le texte fourni). La recherche part de France, à l'heure de Paris, et seul Claude la fait : si Claude est indisponible, l'action échoue en le disant au lieu de répondre sans recherche (cf. `FR-RED-ENRICH-SOURCES`).
+- Les actions « sources chiffrées » et « exemples réels » autorisent l'IA à consulter le web pour ramener des données fraîches (les autres actions travaillent uniquement sur le texte fourni). La recherche part de France, à l'heure de Paris et, quand la zone du client est configurée, de sa ville ; seul Claude la fait : si Claude est indisponible, l'action échoue en le disant au lieu de répondre sans recherche (cf. `FR-RED-ENRICH-SOURCES`).
+- Pour ces deux actions, chaque lien du résultat est comparé aux résultats réels de la recherche : un lien absent est retiré, son texte gardé, avant d'arriver à l'écran. Pendant la recherche, la connexion reste ouverte même si rien ne s'affiche.
 
-**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4, checklist D1) : l'action « localiser » est retirée de la liste. Elle avait quitté l'éditeur le 2026-04-16 ; son prompt, que plus rien n'appelait, a été supprimé. **Amendée le 2026-09-25 (C5b, checklist R6, R9)** : recherche web localisée en France, sans repli silencieux vers un fournisseur qui ne sait pas chercher. Limite : les liens rendus par ces deux actions ne sont pas comparés aux résultats de la recherche (seule la passe Sources le fait).
+**Limites connues :** l'utilisateur n'est pas averti qu'un lien a été retiré du résultat d'une action (la passe Sources, elle, le signale 🔴).
+
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C4, checklist D1) : l'action « localiser » est retirée de la liste. Elle avait quitté l'éditeur le 2026-04-16 ; son prompt, que plus rien n'appelait, a été supprimé. **Amendée le 2026-09-25 (C5b, checklist R6, R9)** : recherche web localisée en France, sans repli silencieux vers un fournisseur qui ne sait pas chercher. **Amendée le 2026-09-25 (C5b, checklist R21)** : ces deux actions cherchent aussi dans la ville du client et vérifient leurs liens ; leur résultat n'arrive donc plus au fil de l'écriture.
 
 > **En situation.** L'utilisateur sélectionne le paragraphe : *« L'indemnité légale dépend de l'ancienneté du salarié. »* Il clique sur l'action « ajouter une statistique ». L'IA recompose en quelques secondes : *« L'indemnité légale dépend de l'ancienneté du salarié : pour 5 ans d'ancienneté à 2 500 € brut/mois, elle s'élève à ≈ 3 100 €. »* Il accepte. La phrase remplace l'originale, le scoring SEO se met à jour automatiquement.
 
@@ -2923,7 +2929,7 @@ Chaque article porte une **longueur cible en mots**, calculée en amont à parti
 - La cible utilisée pour générer l'article est cohérente avec celle affichée — le réducteur tape sur la même valeur.
 - La cible est la longueur choisie pour l'article quand l'utilisateur en a choisi une, sinon la recommandation : la barre, l'écart, la réduction, le score SEO, le premier jet et sa porte lisent la même valeur. Changer la longueur choisie au brief est suivi aussitôt.
 
-**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R16) : la barre, l'écart, la réduction et le score SEO lisaient la recommandation même quand l'utilisateur avait choisi une autre longueur, que suivaient la rédaction et sa porte. Cas limite restant : cf. `FR-RED-DRAFT-SINGLE-PASS`, limites connues.
+**Statut :** active. **Amendée le 2026-09-25** (épopée qualité SEO, C5b, checklist R16) : la barre, l'écart, la réduction et le score SEO lisaient la recommandation même quand l'utilisateur avait choisi une autre longueur, que suivaient la rédaction et sa porte. **Amendée le 2026-09-25 (C5b, checklist R24)** : après le premier jet, l'écran garde la longueur retenue pour l'article, même si une nouvelle recommandation arrive.
 
 > **En situation.** L'utilisateur passe de l'éditeur à la barre de progression. Affichage : *2 845 mots / cible 2 200 (+645)*. L'écart est clair, le signe immédiat. Il choisit la compression. À la fin : *2 280 / 2 200 (+80)*. L'écart résiduel est sous le seuil de 15 % — il garde tel quel, sans toucher manuellement.
 
@@ -2954,7 +2960,7 @@ Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publ
 **Critères d'acceptation**
 - ⛔ Défauts objectifs du texte : contenu vide, bloc tronqué, monologue d'IA, texte hors balise, restes de mise en forme, balise interdite, titre vide, saut de niveau de titre, plusieurs H1 dans le corps.
 - ⛔ Défauts de la méta : meta title ou meta description absents, trop longs ou coupés.
-- ⛔ Une image dont la place a été réservée par la passe Images reste « à fournir » (cf. `FR-RED-ENRICH-PASSES`) : le lecteur verrait l'image neutre.
+- ⛔ Une image dont la place a été réservée par la passe Images reste « à fournir » (cf. `FR-RED-ENRICH-PASSES`) : le lecteur verrait l'image neutre. Le message invite à la remplacer par le bouton « Image » de la barre d'outils de l'éditeur, ou à la retirer.
 - 🔴 Le capitaine ne figure pas **en entier** dans le H1 ni dans le meta title (retrouver les trois quarts de ses mots ne suffit plus ; l'absence dans le meta title n'était qu'un avertissement).
 - 🔴 Autres écarts SEO : capitaine absent, capitaine visant une offre non vendue, texte trop court, adresse de page mal formée, chiffre invérifiable.
 - 🔴 Texte au-delà du plafond de son type : 3 500 mots pour un pilier, 2 500 pour un intermédiaire, 1 500 pour un spécialisé.
@@ -2968,7 +2974,7 @@ Publier, c'est déclarer l'article prêt. Le pilier 1013 a été marqué « publ
 - Changer le statut d'un article vers autre chose que « publié » n'est pas contrôlé.
 - L'audit du projet (`npm run verify`) signale tout article déjà rédigé que cette porte refuserait.
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication. **Amendée le 2026-09-25 (C5a)** : trois règles de qualité du texte (chiffre sans source, phrase non française, paragraphe répété) rejoignent la publication, parce que le texte a pu changer depuis le premier jet ; le pilier 1013 est désormais refusé aussi pour ses chiffres sans source. **Amendée le 2026-09-25 (C5b)** : ⛔ une image encore « à fournir » ; un marqueur « à sourcer » balisé n'est plus compté deux fois (sa balise et son texte). Limite : l'outil ne permet pas encore de fournir la photo, seulement de retirer la place dans l'éditeur.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist P3, P5), réservée par C0, livrée par C2. **Amendée le 2026-09-25** (C3) : la porte du lexique rejoint les portes amont rejouées à la publication. **Amendée le 2026-09-25 (C5a)** : trois règles de qualité du texte (chiffre sans source, phrase non française, paragraphe répété) rejoignent la publication, parce que le texte a pu changer depuis le premier jet ; le pilier 1013 est désormais refusé aussi pour ses chiffres sans source. **Amendée le 2026-09-25 (C5b)** : ⛔ une image encore « à fournir » ; un marqueur « à sourcer » balisé n'est plus compté deux fois (sa balise et son texte). **Amendée le 2026-09-25 (C5b, checklist R20)** : la photo se fournit par le bouton « Image » de l'éditeur, que le message de la porte cite.
 
 > **En situation.** L'utilisateur clique « Exporter » sur le pilier 1013. L'alarme « Avant de publier » s'ouvre : la meta description est coupée en plein vol (⛔), « stratégie » manque au H1 et au meta title (🔴 deux fois), et le texte fait 15 601 mots pour un pilier plafonné à 3 500 (🔴). Le bouton affiche « Correction nécessaire » et reste grisé : un défaut ⛔ ne se déroge pas. Il revient corriger ; sous la barre d'aperçu, un message indique « Publication annulée : corrigez les points signalés, puis exportez à nouveau. » Rien n'a été marqué publié, aucun fichier n'a été téléchargé.
 
@@ -3441,17 +3447,17 @@ Une consigne d'IA (un « prompt ») ressemble au brief qu'un chef donne à un pi
 
 #### FR-INFRA-TYPE-RULES-SSOT — Une seule définition de ce qu'est un pilier, un intermédiaire, un spécialisé
 
-Le type d'un article décide de sa longueur, de son nombre de chapitres et de lieutenants. Avant l'épopée qualité SEO, ces règles vivaient en plusieurs exemplaires qui se contredisaient : un intermédiaire faisait « 1 000 à 1 500 mots » dans deux consignes d'IA, 1 800 mots dans la rédaction et 1 850 à l'écran ; un pilier était annoncé à 2 650 mots dans le brief et rédigé pour 2 500 ; le mode automatique gardait 8 lieutenants pour un pilier quand l'écran en garde 5. Désormais une seule table définit chaque type, et tout le monde la lit.
+Le type d'un article décide de sa longueur, de son nombre de chapitres, de lieutenants et de questions de FAQ. Avant l'épopée qualité SEO, ces règles vivaient en plusieurs exemplaires qui se contredisaient : un intermédiaire faisait « 1 000 à 1 500 mots » dans deux consignes d'IA, 1 800 mots dans la rédaction et 1 850 à l'écran ; un pilier était annoncé à 2 650 mots dans le brief et rédigé pour 2 500 ; le mode automatique gardait 8 lieutenants pour un pilier quand l'écran en garde 5. Désormais une seule table définit chaque type, et tout le monde la lit.
 
 **Critères d'acceptation**
-- Une seule source définit, pour chaque type : la longueur visée, la fourchette de longueur admise, le seuil de contenu trop mince, le nombre de H2 (fourchette et seuil d'alerte), le nombre de H3 par H2, le nombre de lieutenants (candidats proposés, minimum et maximum retenus) et le nombre de H2 qui peuvent citer la ville.
-- Les consignes d'IA (sommaire, lieutenants, structure Hn), la recommandation de longueur, la valeur affichée dans le brief, le budget de rédaction, les alertes SEO, les vérificateurs (lieutenants, publication) et le mode automatique lisent cette source ; aucune consigne ne recopie un nombre par type.
+- Une seule source définit, pour chaque type : la longueur visée, la fourchette de longueur admise, le seuil de contenu trop mince, le nombre de H2 (fourchette et seuil d'alerte), le nombre de H3 par H2, le nombre de lieutenants (candidats proposés, minimum et maximum retenus), le nombre de questions de la FAQ et le nombre de H2 qui peuvent citer la ville.
+- Les consignes d'IA (sommaire, lieutenants, structure Hn, premier jet, FAQ), la recommandation de longueur, la valeur affichée dans le brief, le budget de rédaction, les alertes SEO, les vérificateurs (lieutenants, publication, propositions de FAQ) et le mode automatique lisent cette source ; aucune consigne ne recopie un nombre par type.
 - Sans données concurrentes, la longueur recommandée est la longueur visée du type : celle qui s'affiche est celle que la rédaction vise.
 - Un seuil d'alerte (« contenu trop mince », « trop peu de chapitres ») n'est pas la borne basse de la cible : ce sont deux valeurs distinctes, dans la même source.
 - Un test échoue si une consigne recopie une règle par type, si un calcul ne rend pas la valeur de la source, ou si une autre table de nombres par type apparaît dans le code.
-- Le nombre de questions de FAQ n'est pas une règle par type : la passe FAQ, livrée le 2026-09-25 (C5b), demande 3 à 6 questions quel que soit le type, dans sa propre consigne. En faire une règle par type reste à faire.
+- La FAQ ajoutée par la passe d'enrichissement compte 4 à 6 questions pour un pilier, 3 à 5 pour un intermédiaire, 3 à 4 pour un spécialisé : la consigne de la passe FAQ cite cette règle, et une FAQ proposée hors de la fourchette est signalée 🟠 (cf. `FR-RED-ENRICH-PASSES`).
 
-**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist M10), réservée par C0, livrée par C4.
+**Statut :** active. **Depuis :** 2026-09-25. **Source :** épopée qualité SEO (checklist M10), réservée par C0, livrée par C4. **Amendée le 2026-09-25 (C5b, checklist R22)** : le nombre de questions de FAQ devient une règle par type ; la passe FAQ, livrée le même jour, demandait 3 à 6 questions quel que soit le type, dans sa propre consigne.
 
 > **En situation.** Arnaud décide qu'un pilier vise 3 000 mots au lieu de 2 500. Il change cette seule valeur : la longueur affichée dans le brief, celle que la rédaction vise par défaut et les règles que l'IA reçoit pour le sommaire disent toutes 3 000. S'il relève aussi le plafond du pilier, la porte de publication suit. Aucune consigne n'est à retoucher.
 
@@ -5078,6 +5084,12 @@ Au 2026-09-25 : 37 prompts à la racine de `server/prompts/` (dont `system-propu
 | FR-RED-PUBLISH-GATE | amendée (⛔ image encore « à fournir » ; chaque marqueur « à sourcer » compté une fois) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
 | FR-RED-DRAFT-SINGLE-PASS, FR-RED-WORD-COUNT-TARGET | amendées (R16 soldée : barre de mots, écart, réduction et score SEO lisent la longueur choisie pour l'article, comme le premier jet et sa porte) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
 | FR-RED-DRAFT-TO-SOURCE, FR-RED-EDITOR-TIPTAP, FR-RED-HUMANIZE-SECTION, FR-RED-PANELS-LAYOUT, FR-RED-CONTEXTUAL-ACTIONS, FR-EXT-AI-FALLBACK | amendées (passe Sources ; tableaux et images dans l'éditeur ; relecture de la langue, arrêt = article d'avant ; bouton « Enrichir » ; recherche web localisée, jamais confiée à un fournisseur qui ne sait pas chercher) | epic-qualite-seo-garde-fous (C5b) | 2026-09-25 |
+| FR-INFRA-TYPE-RULES-SSOT | amendée (nombre de questions de FAQ par type — 4 à 6, 3 à 5, 3 à 4 —, cité par la passe FAQ, 🟠 hors fourchette) | epic-qualite-seo-garde-fous (C5b, checklist R22) | 2026-09-25 |
+| FR-RED-ENRICH-PASSES, FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE | amendées (article entier jusqu'à 30 000 caractères et stratégie de l'article, sinon du cocon ; titre principal protégé ; tout arrêt anormal de l'IA rend une proposition « coupée » ; FAQ par type, non insérée si la conclusion a changé ; bouton « Image » pour fournir la photo) | epic-qualite-seo-garde-fous (C5b, checklist R17 à R20, R22, R23) | 2026-09-25 |
+| FR-RED-CONTEXTUAL-ACTIONS | amendée (« sources chiffrées » et « exemples réels » : recherche dans la ville du client, liens vérifiés avant l'affichage, résultat d'un bloc) | epic-qualite-seo-garde-fous (C5b, checklist R21) | 2026-09-25 |
+| FR-RED-EDITOR-TIPTAP, FR-RED-PUBLISH-GATE | amendées (bouton « Image » : remplacer une place « à fournir » ou insérer une image avec son texte alternatif ; le message de la porte le cite) | epic-qualite-seo-garde-fous (C5b, checklist R20) | 2026-09-25 |
+| FR-RED-DRAFT-SINGLE-PASS, FR-RED-WORD-COUNT-TARGET | amendées (l'écran garde la longueur retenue dès la fin du premier jet) | epic-qualite-seo-garde-fous (C5b, checklist R24) | 2026-09-25 |
+| FR-RED-LANG-REVIEW | complétée (consigne de relecture, simulation et bouton vérifiés par des tests ; limite « aucun test » retirée) | epic-qualite-seo-garde-fous (C5b, checklist T12) | 2026-09-25 |
 
 ### 12.5 — Dette technique identifiée
 
