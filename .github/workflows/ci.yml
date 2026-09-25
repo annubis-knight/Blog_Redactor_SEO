@@ -21,8 +21,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # .nvmrc (24) : le lock est écrit par npm 11, que npm 10 (Node 20 / 22)
-          # refuse (« Missing: @emnapi/runtime… from lock file »).
+          # .nvmrc (24) : le lock est écrit par npm 11. Il doit aussi être complet
+          # pour Linux : écrit sous Windows, il omettait @emnapi/runtime et
+          # @emnapi/core (« Missing: … from lock file » à npm ci). Pour le
+          # régénérer comme la CI le lit :
+          #   docker run --rm -v <dépôt>:/w -w /w node:24 npm install --package-lock-only --ignore-scripts
           node-version-file: .nvmrc
           cache: npm
 
@@ -69,8 +72,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # .nvmrc (24) : le lock est écrit par npm 11, que npm 10 (Node 20 / 22)
-          # refuse (« Missing: @emnapi/runtime… from lock file »).
+          # .nvmrc (24) : le lock est écrit par npm 11. Il doit aussi être complet
+          # pour Linux : écrit sous Windows, il omettait @emnapi/runtime et
+          # @emnapi/core (« Missing: … from lock file » à npm ci). Pour le
+          # régénérer comme la CI le lit :
+          #   docker run --rm -v <dépôt>:/w -w /w node:24 npm install --package-lock-only --ignore-scripts
           node-version-file: .nvmrc
           cache: npm
 
@@ -175,8 +181,11 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          # .nvmrc (24) : le lock est écrit par npm 11, que npm 10 (Node 20 / 22)
-          # refuse (« Missing: @emnapi/runtime… from lock file »).
+          # .nvmrc (24) : le lock est écrit par npm 11. Il doit aussi être complet
+          # pour Linux : écrit sous Windows, il omettait @emnapi/runtime et
+          # @emnapi/core (« Missing: … from lock file » à npm ci). Pour le
+          # régénérer comme la CI le lit :
+          #   docker run --rm -v <dépôt>:/w -w /w node:24 npm install --package-lock-only --ignore-scripts
           node-version-file: .nvmrc
           cache: npm
 
