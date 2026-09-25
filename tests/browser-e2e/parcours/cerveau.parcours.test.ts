@@ -7,8 +7,9 @@
  *
  *   ① les cinq étapes de questionnement (cible → douleur → angle → promesse → CTA),
  *     saisie libre, suggestion IA, et les trois façons de valider ;
- *   ② l'étape « Articles » : sujets proposés, génération, acceptation ;
- *   ③ la persistance : la stratégie du cocon et les articles en base.
+ *   ② l'étape « Articles » : la carte indicative (proposer ne crée rien), puis
+ *     le pilier créé depuis le constructeur du cocon (C7) ;
+ *   ③ la persistance : la stratégie du cocon et le pilier en base.
  *
  * Sources simulées par défaut (gratuit). Le même fichier sert au passage réel
  * via `useCerveau('real')`.
@@ -16,6 +17,7 @@
 import { test, expect, type Page } from '@playwright/test'
 import { query } from '../../../server/db/client.js'
 import { ETAPES_STRATEGIE, REPONSES, useCerveau } from '../helpers/cerveau-fixtures'
+import { createPillar, openCocoonTree } from '../helpers/cocoon-builder-ui'
 
 test.describe.configure({ mode: 'serial' })
 
@@ -120,7 +122,19 @@ test('Cerveau — la suggestion IA se demande et se valide', async ({ page }) =>
   await expect(fusionner, 'l’option « Fusionner les deux » est proposée').toBeVisible({ timeout: 10000 })
 })
 
-test('Cerveau — l’étape Articles propose, génère et crée en base', async ({ page }) => {
+/** Nombre d'articles du cocon en base. */
+async function articlesEnBase(): Promise<number> {
+  const r = await query<{ n: string }>(
+    `SELECT count(*) n FROM articles a JOIN cocoons c ON c.id = a.cocoon_id WHERE c.nom = $1`,
+    [cerveau.cocoonName],
+  )
+  return Number(r.rows[0].n)
+}
+
+// FR-CER-COCOON-PROGRESSIVE : la proposition de plan est une carte indicative.
+// Avant C7, « accepter » une ligne ou « Tout valider » créait les articles en
+// lot, dans n'importe quel ordre et sans parent.
+test('Cerveau — l’étape Articles : la carte indicative guide, elle ne crée rien', async ({ page }) => {
   test.setTimeout(420_000)
   await page.goto(cerveau.cerveauUrl())
   await page.waitForLoadState('networkidle', { timeout: 20000 })
@@ -129,56 +143,47 @@ test('Cerveau — l’étape Articles propose, génère et crée en base', async
   const generer = page.locator('[data-testid="brain-generate-articles"]')
   await expect(generer, 'le bouton de génération est là').toBeVisible({ timeout: 30000 })
   await expect(generer).toBeEnabled({ timeout: 60000 })
-
   await generer.click()
 
-  // La génération passe par quatre phases annoncées à l'écran.
   const lignes = page.locator('[data-testid="proposal-item"]')
   await expect(lignes.first(), 'des articles sont proposés').toBeVisible({ timeout: 300000 })
+  await expect(generer, 'la génération doit être terminée').toBeEnabled({ timeout: 300000 })
 
-  const proposes = await lignes.count()
-  expect(proposes, 'au moins un article proposé').toBeGreaterThan(0)
-
-  // Accepter le premier : c'est ce geste qui crée la ligne en base.
-  const accepter = lignes.first().locator('[data-testid="proposal-accept-header"]')
-  await Promise.all([
-    page.waitForResponse(r => r.url().endsWith('/articles/batch-create') && r.request().method() === 'POST', { timeout: 60000 }),
-    accepter.click(),
-  ])
-  await expect(lignes.first(), 'la ligne passe à l’état accepté')
-    .toHaveAttribute('data-accepted', 'true', { timeout: 15000 })
-
-  // Puis tout valider.
-  const toutValider = page.locator('[data-testid="brain-validate-all"]')
-  await expect(toutValider).toBeVisible({ timeout: 15000 })
-  await toutValider.click()
-
-  await expect
-    .poll(async () => {
-      const r = await query<{ n: string }>(
-        `SELECT count(*) n FROM articles a JOIN cocoons c ON c.id = a.cocoon_id WHERE c.nom = $1`,
-        [cerveau.cocoonName],
-      )
-      return Number(r.rows[0].n)
-    }, { timeout: 120000, message: 'les articles acceptés doivent arriver en base' })
-    .toBeGreaterThan(0)
+  await expect(page.locator('[data-testid="proposal-indicative-note"]'), 'la carte se dit indicative').toBeVisible()
+  await expect(page.locator('[data-testid="brain-validate-all"]'), 'plus de « Tout valider »').toHaveCount(0)
+  await expect(lignes.first().locator('[data-testid="proposal-accept-header"]'), 'plus d’« accepter » par ligne').toHaveCount(0)
+  expect(await articlesEnBase(), 'proposer n’a créé aucun article').toBe(0)
 })
 
-test('Cerveau — les articles créés portent leur type et leur mot-clé', async () => {
-  const res = await query<{ titre: string; type: string; suggested_keyword: string | null; pain_point: string | null }>(
-    `SELECT a.titre, a.type, a.suggested_keyword, a.pain_point
-     FROM articles a JOIN cocoons c ON c.id = a.cocoon_id
-     WHERE c.nom = $1 ORDER BY a.id`,
-    [cerveau.cocoonName],
-  )
-  expect(res.rows.length, 'des articles existent').toBeGreaterThan(0)
+test('Cerveau — le pilier naît du constructeur, avec un mot-clé mesuré', async ({ page }) => {
+  test.setTimeout(240_000)
+  const tree = await openCocoonTree(page, cerveau.cerveauUrl())
 
-  for (const article of res.rows) {
-    expect(article.titre?.trim(), 'un titre non vide').toBeTruthy()
-    expect(['Pilier', 'Intermédiaire', 'Spécialisé'], `type connu pour « ${article.titre} »`)
-      .toContain(article.type)
-  }
+  await expect(tree.locator('[data-testid="tree-section-create"]'), 'un cocon vide n’offre que le pilier').toHaveCount(0)
+  const pilier = await createPillar(page, tree)
 
-  // Le cocon doit avoir au moins un pilier : c'est la tête du cocon.
-  expect(res.rows.some(a => a.type === 'Pilier'), 'un article pilier a été créé').toBe(true)
+  const res = await query<{ titre: string; type: string; parent_id: number | null; suggested_keyword: string | null; pain_point: string | null }>(
+    `SELECT titre, type, parent_id, suggested_keyword, pain_point FROM articles WHERE id = $1`, [pilier.id])
+  expect(res.rows[0], 'le pilier est en base').toBeTruthy()
+  expect(res.rows[0]!.type).toBe('Pilier')
+  expect(res.rows[0]!.parent_id, 'un pilier n’a pas de parent').toBeNull()
+  expect(res.rows[0]!.suggested_keyword, 'le mot-clé est le candidat choisi').toBe(pilier.keyword)
+  expect(res.rows[0]!.titre.trim(), 'un titre non vide').toBeTruthy()
+
+  // Le pilier créé : plus de « Créer le pilier », et il attend d'être rédigé
+  // avant que ses sections puissent donner naissance à des articles.
+  await expect(tree.locator('[data-testid="cocoon-create-pillar"]')).toHaveCount(0)
+  await expect(tree.locator(`[data-testid="tree-node-${pilier.id}"] [data-testid="tree-node-state"]`)).toHaveText('À rédiger')
+  expect(await articlesEnBase(), 'un seul article, le pilier').toBe(1)
+
+  // La carte indicative l'a inscrit : le Moteur en tire sa liste.
+  await expect.poll(async () => {
+    const r = await query<{ n: string }>(
+      `SELECT count(*) n FROM cocoon_strategies cs JOIN cocoons c ON c.id = cs.cocoon_id,
+         jsonb_array_elements(cs.data->'proposedArticles') p
+       WHERE c.nom = $1 AND (p->>'dbId')::int = $2`,
+      [cerveau.cocoonName, pilier.id],
+    )
+    return Number(r.rows[0]?.n)
+  }, { timeout: 30000, message: 'le pilier est inscrit sur la carte du cocon' }).toBe(1)
 })

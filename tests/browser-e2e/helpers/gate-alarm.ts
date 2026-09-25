@@ -58,6 +58,24 @@ export async function passThroughGate(page: Page, gateId: GateId, gesture: () =>
 }
 
 /**
+ * Le premier jet accepté (C7, `redaction:draft_accepted`) : l'écran le demande
+ * de lui-même après la génération, ou sur « Accepter le premier jet ». La
+ * demande part d'abord ; un refus arrive en 422 `GATE_BLOCKED` et ouvre
+ * l'alarme, à laquelle on répond. Renvoie les règles rencontrées.
+ */
+export async function acceptDraftThroughGate(page: Page, gesture: () => Promise<void>, timeout = 60_000): Promise<string[]> {
+  const requested = page.waitForResponse(
+    r => r.request().method() === 'POST' && /\/api\/articles\/\d+\/progress\/check$/.test(r.url())
+      && (r.request().postData() ?? '').includes('redaction:draft_accepted'),
+    { timeout },
+  )
+  await gesture()
+  const response = await requested
+  if (response.status() !== 422) return []
+  return answerGateAlarm(page)
+}
+
+/**
  * Publie (clic sur « Exporter ») : la publication part d'abord, et un refus
  * arrive en 422 `GATE_BLOCKED` (FR-RED-PUBLISH-GATE). Si la porte refuse, on
  * répond à l'alarme ; l'écran rejoue alors la publication.
