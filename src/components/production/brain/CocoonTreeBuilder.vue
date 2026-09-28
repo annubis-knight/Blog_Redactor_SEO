@@ -76,23 +76,7 @@ function proposePillar(): void {
 }
 
 // Le pilier peut naître : arbre chargé, sans erreur, et pas encore de pilier.
-// Même condition pour le bouton « Créer le pilier » et pour le menu
-// « Générer avec Claude » de la carte (U7).
 const canStartPillar = computed(() => !isLoadingTree.value && !treeError.value && !hasPillar.value)
-
-const root = ref<HTMLElement | null>(null)
-
-/**
- * Entrée du menu « Générer avec Claude » (U7) : amène le constructeur à
- * l'écran, puis ouvre la même proposition que « Créer le pilier ».
- */
-function startPillar(): void {
-  if (typeof root.value?.scrollIntoView === 'function') root.value.scrollIntoView({ behavior: 'smooth', block: 'start' })
-  // Comme le bouton du haut, désactivé pendant une proposition ou une création.
-  if (canStartPillar.value && !isProposing.value && !isCreating.value) proposePillar()
-}
-
-defineExpose({ startPillar, canStartPillar, hasPillar })
 
 function proposeForSection(node: CocoonTreeNode, section: CocoonTreeSection): void {
   const level = childLevelOf(node.level)
@@ -136,7 +120,7 @@ function sectionTargetLabel(node: CocoonTreeNode, section: CocoonTreeSection): s
 </script>
 
 <template>
-  <section ref="root" class="cocoon-tree" data-testid="cocoon-tree" aria-labelledby="cocoon-tree-title">
+  <section class="cocoon-tree" data-testid="cocoon-tree" aria-labelledby="cocoon-tree-title">
     <header class="tree-header">
       <h3 id="cocoon-tree-title" class="tree-title">Construire le cocon</h3>
       <p class="tree-desc">

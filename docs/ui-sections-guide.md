@@ -149,9 +149,13 @@ Rendu si `store.currentStep === 5`. Depuis le chantier C7 (2026-09-25, commit `f
 | **Candidats mesurés** (`cocoon-candidates-panel`) | `CocoonCandidatesPanel` | 3 à 5 mots-clés avec volume, difficulté, intention, 3 premiers résultats Google ; aide « Comment lire ces chiffres ? » ; candidat « Non mesuré » non sélectionnable ; titre prérempli (3 caractères min.) | Choix + « Créer l'article » | `POST /cocoons/:cocoonId/articles` (derrière la porte du premier jet du parent) → `POST /keywords` → carte (`saveStrategy`) → arbre rechargé |
 | **Articles hors de l'arbre** (`tree-orphans`) | `CocoonTreeBuilder` | Articles sans place dans l'arbre (créés avant la construction progressive). Depuis le 2026-09-25 (K8), chacun se rattache à la section d'un parent : liste des sections libres des parents rédigés du bon niveau (`tree-orphan-attach-select`, « « section » — parent ») ; la carte suit ; un refus s'affiche sous le formulaire (`tree-orphan-attach-error`) | Clic « Rattacher » (`tree-orphan-attach`, absent pour un pilier, grisé sans section libre d'un parent rédigé du bon niveau) → choix de la section → « Rattacher ici » (`tree-orphan-attach-confirm`) | `PUT /api/cocoons/:cocoonId/articles/:articleId/parent` (derrière la porte `draft` du parent), puis rechargement de l'arbre |
 
-**Carte indicative** — `BrainArticleProposalView`, titre « Carte indicative du cocon » : « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » (`proposal-indicative-note`). Son menu « Générer avec Claude ▾ » (`GenerateCocoonMenu`, U7) propose deux choix :
-- « Le pilier, puis un article à la fois » : les candidats du constructeur, comme « Créer le pilier » ;
-- « La carte complète du cocon » : la carte, qui ne crée aucun article.
+**Carte indicative** — `BrainArticleProposalView`, titre « Carte indicative du cocon » : « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » (`proposal-indicative-note`). Son menu « Générer avec Claude ▾ » (`GenerateCocoonMenu`, U7 révisé) fait grandir la carte. Il ne crée aucun article, et le dit en tête : « Sur la carte seulement : aucun article n'est créé. » Un choix n'apparaît que si le parent est sur la carte :
+- « Le pilier » (`brain-generate-pillar`) : grisé une fois le pilier posé ;
+- « 1 article intermédiaire » (`brain-generate-intermediate`) : dès que la carte a un pilier ;
+- « 1 article spécialisé » (`brain-generate-specialized`) : dès que la carte a un intermédiaire ;
+- « La carte complète du cocon » (`brain-generate-articles`) : tous les articles d'un coup, à la place de la carte actuelle.
+
+Les trois premiers choix passent par `addSmartArticle` (étape `add-article`), comme « + Ajouter … › Article complémentaire ».
 
 | Sous-section | Composant | Rôle | Déclencheurs | Sorties |
 |---|---|---|---|---|

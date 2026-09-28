@@ -14,7 +14,6 @@
  * possible si quelqu'un fusionne les deux par erreur).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { defineComponent, h } from 'vue'
 import { mount, flushPromises } from '@vue/test-utils'
 import { setActivePinia, createPinia } from 'pinia'
 
@@ -197,57 +196,106 @@ describe('BrainPhase — étape Articles : l’arbre crée, la carte guide (C7)'
 })
 
 /**
- * U7 (recette d'Arnaud, 2026-09-25) — « Générer avec Claude » est un menu : le
- * choix « pilier » passe par le constructeur, le même chemin que « Créer le
- * pilier ». La carte n'est plus le seul geste proposé.
+ * U7 révisé (recette d'Arnaud, 2026-09-25, constat R1) — « Générer avec
+ * Claude » fait grandir la carte indicative, un article à la fois, et ne
+ * touche pas au constructeur. Le menu lit la carte pour savoir quel parent
+ * existe déjà.
  */
-describe('BrainPhase — le menu « Générer avec Claude » relie la carte au constructeur (U7)', () => {
-  function mountWithTree(exposed: { canStartPillar: boolean; hasPillar: boolean }) {
-    const startPillar = vi.fn()
-    const TreeStub = defineComponent({
-      name: 'CocoonTreeBuilder',
-      props: ['cocoonId', 'cocoonName', 'cocoonSlug'],
-      setup(_props, { expose }) {
-        expose({ startPillar, ...exposed })
-        return () => h('div', { 'data-testid': 'cocoon-tree' })
-      },
-    })
+describe('BrainPhase — le menu « Générer avec Claude » fait grandir la carte (U7 révisé)', () => {
+  function proposed(type: 'pilier' | 'intermediaire' | 'specifique', title: string, parentTitle: string | null = null) {
+    return {
+      id: `p-${type}-${title}`, title, suggestedTitles: [], type, parentTitle, rationale: '', painPoint: '',
+      painIntentExpected: null, suggestedKeyword: 'un mot cle', suggestedKeywords: [], suggestedSlug: 'un-slug', suggestedSlugs: [],
+      validatedSearchQuery: null, keywordValidated: false, searchQueryValidated: false, titleValidated: false,
+      accepted: false, createdInDb: false, dbId: 0,
+    }
+  }
+
+  function mountWithMap(articles: ReturnType<typeof proposed>[], reponseIA: object) {
     const store = useCocoonStrategyStore()
-    store.strategy = buildEmptyStrategy(5) as never
+    const strategy = buildEmptyStrategy(5)
+    strategy.proposedArticles = articles as never
+    store.strategy = strategy as never
     store.currentStep = 5
     store.isLoading = false
     // Le montage recharge la stratégie : sans réponse d'API, l'étape repartirait à zéro.
     store.fetchStrategy = vi.fn(async () => {})
+    store.saveStrategy = vi.fn(async () => {})
+    const requestSuggestion = vi.fn(async () => JSON.stringify(reponseIA))
+    store.requestSuggestion = requestSuggestion as never
     const wrapper = mount(BrainPhase, {
       props: { cocoonName: 'cocoon-test', siloName: 'silo-test', cocoonId: 1 },
-      global: { stubs: { StrategyStep: stubs.StrategyStep, ContextRecap: stubs.ContextRecap, CocoonTreeBuilder: TreeStub } },
+      global: {
+        stubs: {
+          StrategyStep: stubs.StrategyStep,
+          ContextRecap: stubs.ContextRecap,
+          CocoonTreeBuilder: stubs.CocoonTreeBuilder,
+          ProposedArticleRow: { template: '<div class="proposed-article-row-stub" />', props: ['article', 'index', 'compositionResult', 'structuralWarnings', 'availableParents'] },
+        },
+      },
       attachTo: document.body,
     })
-    return { wrapper, startPillar }
+    return { wrapper, store, requestSuggestion }
   }
 
-  it('« Le pilier, puis un article à la fois » demande au constructeur de créer le pilier', async () => {
-    const { wrapper, startPillar } = mountWithTree({ canStartPillar: true, hasPillar: false })
+  it('carte vide : « Le pilier » demande à Claude un seul article, le pilier, et l’ajoute à la carte', async () => {
+    const { wrapper, store, requestSuggestion } = mountWithMap([], { title: 'Le pilier du cocon', type: 'Pilier', parentTitle: null, suggestedKeyword: 'pilier cocon toulouse' })
     await flushPromises()
 
     await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
+    expect(wrapper.find('[data-testid="brain-generate-intermediate"]').exists(), 'pas de parent : pas d’intermédiaire').toBe(false)
     await wrapper.get('[data-testid="brain-generate-pillar"]').trigger('click')
+    await flushPromises()
 
-    expect(startPillar).toHaveBeenCalledTimes(1)
+    expect(requestSuggestion).toHaveBeenCalledTimes(1)
+    const [, request] = requestSuggestion.mock.calls[0] as unknown as [string, { step: string; currentInput: string }]
+    expect(request.step).toBe('add-article')
+    expect(JSON.parse(request.currentInput).articleType).toBe('pilier')
+    expect(store.strategy!.proposedArticles.map(a => [a.type, a.title])).toEqual([['pilier', 'Le pilier du cocon']])
     wrapper.unmount()
   })
 
-  it('le menu lit l’état du constructeur : pilier existant, choix désactivé', async () => {
-    const { wrapper, startPillar } = mountWithTree({ canStartPillar: false, hasPillar: true })
+  it('pilier sur la carte : « Le pilier » grisé, « 1 article intermédiaire » ajoute un intermédiaire', async () => {
+    const { wrapper, store, requestSuggestion } = mountWithMap(
+      [proposed('pilier', 'Le pilier du cocon')],
+      { title: 'Un intermédiaire', type: 'Intermédiaire', parentTitle: 'Le pilier du cocon', suggestedKeyword: 'facette cocon' },
+    )
     await flushPromises()
 
     await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
-    const pilier = wrapper.get('[data-testid="brain-generate-pillar"]')
-    expect(pilier.attributes('disabled')).toBeDefined()
-    expect(pilier.text()).toContain('Le pilier existe déjà')
-    await pilier.trigger('click')
+    expect(wrapper.get('[data-testid="brain-generate-pillar"]').attributes('disabled')).toBeDefined()
+    expect(wrapper.find('[data-testid="brain-generate-specialized"]').exists(), 'pas encore d’intermédiaire').toBe(false)
+    await wrapper.get('[data-testid="brain-generate-intermediate"]').trigger('click')
+    await flushPromises()
 
-    expect(startPillar).not.toHaveBeenCalled()
+    const [, request] = requestSuggestion.mock.calls[0] as unknown as [string, { currentInput: string }]
+    expect(JSON.parse(request.currentInput).articleType).toBe('intermediaire')
+    expect(store.strategy!.proposedArticles.map(a => [a.type, a.parentTitle])).toEqual([
+      ['pilier', null],
+      ['intermediaire', 'Le pilier du cocon'],
+    ])
+    wrapper.unmount()
+  })
+
+  it('intermédiaire sur la carte : « 1 article spécialisé » est proposé', async () => {
+    const { wrapper } = mountWithMap(
+      [proposed('pilier', 'Le pilier du cocon'), proposed('intermediaire', 'Un intermédiaire', 'Le pilier du cocon')],
+      {},
+    )
+    await flushPromises()
+
+    await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
+    expect(wrapper.find('[data-testid="brain-generate-specialized"]').exists()).toBe(true)
+    wrapper.unmount()
+  })
+
+  it('un pilier sans titre ne compte pas : Claude n’aurait rien à quoi rattacher un enfant', async () => {
+    const { wrapper } = mountWithMap([proposed('pilier', '  ')], {})
+    await flushPromises()
+
+    await wrapper.get('[data-testid="brain-generate-menu"]').trigger('click')
+    expect(wrapper.get('[data-testid="brain-generate-pillar"]').attributes('disabled')).toBeUndefined()
+    expect(wrapper.find('[data-testid="brain-generate-intermediate"]').exists()).toBe(false)
     wrapper.unmount()
   })
 })

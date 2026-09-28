@@ -53,7 +53,8 @@ Couche humaine H1, intégrant le mot-clé naturellement.
 
 {{#isPilier}}
 ### Règles — Article Pilier
-- Tu génères un Pilier complémentaire qui couvre un **angle différent** du sujet, non couvert par les Piliers existants.
+- Si la liste ci-dessus ne contient encore aucun Pilier, tu génères le **Pilier fondateur** du cocon : l'article qui couvre le sujet principal du cocon de manière large et experte.
+- Sinon, tu génères un Pilier complémentaire qui couvre un **angle différent** du sujet, non couvert par les Piliers existants.
 - `"parentTitle"` : `null`
 - **Mot-clé** : 3-4 mots nominatifs, inclure la cible ET la localisation (ville/région/adjectif géo).
 - **Titre** : ton d'expert, ancrage local naturel.

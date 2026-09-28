@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import ProposedArticleRow from '@/components/strategy/ProposedArticleRow.vue'
 import AddArticleMenu from '@/components/production/AddArticleMenu.vue'
 import ArticleColumn from '@/components/production/ArticleColumn.vue'
@@ -28,7 +28,7 @@ interface ArticleWarning {
   message: string
 }
 
-defineProps<{
+const props = defineProps<{
   articleColumns: ArticleColumnInfo[]
   groupedSpecArticles: SpecGroup[]
   compositionResults: Map<number, CompositionCheckResult>
@@ -43,15 +43,10 @@ defineProps<{
   topicsError: string | null
   suggestedTopics: SuggestedTopic[]
   topicsUserContext: string
-  /** Le constructeur du cocon peut faire naître le pilier (U7). */
-  canStartPillar: boolean
-  /** Le cocon a déjà son pilier (U7). */
-  hasPillar: boolean
 }>()
 
 const emit = defineEmits<{
   (e: 'generate-proposals'): void
-  (e: 'start-pillar'): void
   (e: 'toggle-topic', index: number): void
   (e: 'remove-topic', index: number): void
   (e: 'add-topic', topic: string): void
@@ -72,6 +67,14 @@ const emit = defineEmits<{
   (e: 'edit-slug', index: number, value: string): void
   (e: 'update-pain-intent', index: number, value: PainIntentExpected | null): void
 }>()
+
+// Le menu « Générer avec Claude » n'ajoute un article que sous un parent déjà
+// sur la carte (U7 révisé). Même règle que `intermediateTitles` : une ligne
+// sans titre ne compte pas, Claude ne pourrait pas y rattacher d'enfant.
+const mapHasPillar = computed(() =>
+  props.articleColumns.some(col => col.articles.some(a => a.type === 'pilier' && a.title.trim() !== '')),
+)
+const mapHasIntermediate = computed(() => props.intermediateTitles.length > 0)
 
 const articleSlide = ref(0)
 const columnsTrackRef = ref<HTMLElement>()
@@ -153,10 +156,10 @@ function isProcessing(phase: GenerationPhase): boolean {
         </div>
         <div class="step-header-actions">
           <GenerateCocoonMenu
-            :is-generating="isProcessing(generationPhase)"
-            :can-start-pillar="canStartPillar"
-            :has-pillar="hasPillar"
-            @pillar="emit('start-pillar')"
+            :is-generating="isProcessing(generationPhase) || addingArticleLevel !== null"
+            :has-pillar="mapHasPillar"
+            :has-intermediate="mapHasIntermediate"
+            @add="(level: ArticleLevel) => emit('add-smart', level)"
             @map="emit('generate-proposals')"
           />
           <div class="swiper-nav">

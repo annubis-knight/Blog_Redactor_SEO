@@ -2,37 +2,44 @@
 /**
  * « Générer avec Claude », à l'étape Articles du Cerveau (U7, FR-CER-COCOON-PROGRESSIVE).
  *
- * Un menu plutôt qu'un bouton : la recette d'Arnaud du 2026-09-25 a montré
- * qu'un bouton unique, qui dessinait la carte entière du cocon, passait pour
- * le créateur d'articles. Le menu donne les deux chemins et dit lequel crée
- * de vrais articles : le pilier puis un article à la fois (le constructeur),
- * ou la carte complète, un aperçu qui ne crée rien.
+ * Le menu fait grandir la carte indicative, un article à la fois : le pilier
+ * seul d'abord, puis un intermédiaire, puis un spécialisé. Un article ne
+ * s'ajoute que si son parent est déjà sur la carte (recette d'Arnaud du
+ * 2026-09-25, constat R1). La carte complète reste proposée. Aucun choix ne
+ * crée d'article en base : seul « Construire le cocon » le fait.
  */
-import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, useId, watch } from 'vue'
+import type { ArticleLevel } from '@shared/types/keyword-validate.types.js'
 
 const props = defineProps<{
-  /** La carte complète est en cours de génération. */
+  /** Une génération est en cours : la carte complète, ou un article ajouté. */
   isGenerating: boolean
-  /** Le constructeur peut faire naître le pilier (arbre chargé, sans pilier). */
-  canStartPillar: boolean
-  /** Le cocon a déjà son pilier. */
+  /** La carte a son pilier. */
   hasPillar: boolean
+  /** La carte a au moins un intermédiaire. */
+  hasIntermediate: boolean
 }>()
 
 const emit = defineEmits<{
-  (e: 'pillar'): void
+  (e: 'add', level: ArticleLevel): void
   (e: 'map'): void
 }>()
 
 const open = ref(false)
 const root = ref<HTMLElement | null>(null)
 const toggleButton = ref<HTMLButtonElement | null>(null)
+const noteId = useId()
 
-const pillarHint = computed(() => {
-  if (props.canStartPillar) return 'Crée de vrais articles, en commençant par le pilier (recommandé).'
-  if (props.hasPillar) return 'Le pilier existe déjà : chaque article suivant naît d’une section, dans « Construire le cocon ».'
-  return 'L’arbre du cocon n’est pas encore prêt : voyez « Construire le cocon », plus haut.'
-})
+const pillarHint = computed(() => props.hasPillar
+  ? 'Déjà sur la carte : un seul pilier par cocon.'
+  : 'Claude pose le pilier seul sur la carte. Les articles suivants s’ajoutent ensuite, un par un.')
+
+/** Le parent de chaque niveau est-il sur la carte ? */
+function canAdd(level: ArticleLevel): boolean {
+  if (level === 'pilier') return !props.hasPillar
+  if (level === 'intermediaire') return props.hasPillar
+  return props.hasIntermediate
+}
 
 function toggle(): void {
   if (props.isGenerating) return
@@ -49,11 +56,15 @@ function close(): void {
   void nextTick(() => toggleButton.value?.focus())
 }
 
-function choose(choice: 'pillar' | 'map'): void {
-  if (choice === 'pillar' && !props.canStartPillar) return
+function add(level: ArticleLevel): void {
+  if (!canAdd(level)) return
   open.value = false
-  if (choice === 'pillar') emit('pillar')
-  else emit('map')
+  emit('add', level)
+}
+
+function chooseMap(): void {
+  open.value = false
+  emit('map')
 }
 
 function onDocumentMouseDown(event: MouseEvent): void {
@@ -85,34 +96,53 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentMouseD
       <template v-else>Générer avec Claude <span aria-hidden="true">▾</span></template>
     </button>
 
-    <div
-      v-if="open"
-      class="generate-options"
-      role="menu"
-      aria-label="Que générer avec Claude ?"
-      data-testid="brain-generate-options"
-    >
-      <button
-        type="button"
-        role="menuitem"
-        class="generate-option"
-        data-testid="brain-generate-pillar"
-        :disabled="!canStartPillar"
-        @click="choose('pillar')"
-      >
-        <span class="option-title">Le pilier, puis un article à la fois</span>
-        <span class="option-hint">{{ pillarHint }}</span>
-      </button>
-      <button
-        type="button"
-        role="menuitem"
-        class="generate-option"
-        data-testid="brain-generate-articles"
-        @click="choose('map')"
-      >
-        <span class="option-title">La carte complète du cocon</span>
-        <span class="option-hint">Un aperçu de tous les articles possibles : n’en crée aucun.</span>
-      </button>
+    <div v-if="open" class="generate-options" data-testid="brain-generate-options">
+      <p :id="noteId" class="generate-note">Sur la carte seulement : aucun article n’est créé.</p>
+      <div role="menu" class="generate-list" aria-label="Que générer avec Claude ?" :aria-describedby="noteId">
+        <button
+          type="button"
+          role="menuitem"
+          class="generate-option"
+          data-testid="brain-generate-pillar"
+          :disabled="!canAdd('pilier')"
+          @click="add('pilier')"
+        >
+          <span class="option-title">Le pilier</span>
+          <span class="option-hint">{{ pillarHint }}</span>
+        </button>
+        <button
+          v-if="canAdd('intermediaire')"
+          type="button"
+          role="menuitem"
+          class="generate-option"
+          data-testid="brain-generate-intermediate"
+          @click="add('intermediaire')"
+        >
+          <span class="option-title">1 article intermédiaire</span>
+          <span class="option-hint">Claude en ajoute un sous le pilier.</span>
+        </button>
+        <button
+          v-if="canAdd('specifique')"
+          type="button"
+          role="menuitem"
+          class="generate-option"
+          data-testid="brain-generate-specialized"
+          @click="add('specifique')"
+        >
+          <span class="option-title">1 article spécialisé</span>
+          <span class="option-hint">Claude en ajoute un sous l’intermédiaire qui en a le plus besoin.</span>
+        </button>
+        <button
+          type="button"
+          role="menuitem"
+          class="generate-option"
+          data-testid="brain-generate-articles"
+          @click="chooseMap"
+        >
+          <span class="option-title">La carte complète du cocon</span>
+          <span class="option-hint">Tous les articles d’un coup, à la place de la carte actuelle.</span>
+        </button>
+      </div>
     </div>
   </div>
 </template>
@@ -154,15 +184,25 @@ onBeforeUnmount(() => document.removeEventListener('mousedown', onDocumentMouseD
   top: calc(100% + 4px);
   right: 0;
   z-index: 20;
-  display: flex;
-  flex-direction: column;
-  gap: 0.125rem;
   width: min(22rem, 90vw);
   padding: 0.25rem;
   border: 1px solid var(--color-border);
   border-radius: 8px;
   background: var(--color-surface);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.generate-note {
+  margin: 0;
+  padding: 0.375rem 0.625rem 0.25rem;
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
+.generate-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
 }
 
 .generate-option {

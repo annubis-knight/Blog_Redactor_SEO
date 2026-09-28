@@ -7,8 +7,9 @@
  *
  *   ① les cinq étapes de questionnement (cible → douleur → angle → promesse → CTA),
  *     saisie libre, suggestion IA, et les trois façons de valider ;
- *   ② l'étape « Articles » : la carte indicative (proposer ne crée rien), puis
- *     le pilier créé depuis le constructeur du cocon (C7) ;
+ *   ② l'étape « Articles » : la carte indicative, qui grandit un article à la
+ *     fois ou d'un coup sans rien créer (U7), puis le pilier créé depuis le
+ *     constructeur du cocon (C7) ;
  *   ③ la persistance : la stratégie du cocon et le pilier en base.
  *
  * Sources simulées par défaut (gratuit). Le même fichier sert au passage réel
@@ -131,6 +132,74 @@ async function articlesEnBase(): Promise<number> {
   return Number(r.rows[0].n)
 }
 
+/** La carte indicative enregistrée avec la stratégie du cocon, dans son ordre. */
+async function carteEnregistree(): Promise<Array<{ type: string; titre: string; parent: string | null }>> {
+  const r = await query<{ type: string; titre: string; parent: string | null }>(
+    `SELECT p.item->>'type' AS type, p.item->>'title' AS titre, p.item->>'parentTitle' AS parent
+       FROM cocoon_strategies cs JOIN cocoons c ON c.id = cs.cocoon_id,
+            jsonb_array_elements(cs.data->'proposedArticles') WITH ORDINALITY AS p(item, n)
+      WHERE c.nom = $1
+      ORDER BY p.n`,
+    [cerveau.cocoonName],
+  )
+  return r.rows
+}
+
+// U7 révisé (recette d'Arnaud, constat R1) : « Générer avec Claude » fait
+// grandir la carte un article à la fois. Un article ne s'y ajoute que sous un
+// parent déjà posé, et rien n'est créé en base.
+test('Cerveau — le menu pose le pilier, puis un article à la fois, sur la carte seulement', async ({ page }) => {
+  test.setTimeout(420_000)
+  await page.goto(cerveau.cerveauUrl())
+  await page.waitForLoadState('networkidle', { timeout: 20000 })
+  await page.locator('[data-testid="wf-step-articles"]').click()
+
+  const menu = page.locator('[data-testid="brain-generate-menu"]')
+  await expect(menu, 'le menu de génération est là').toBeVisible({ timeout: 30000 })
+  await expect(menu).toBeEnabled({ timeout: 60000 })
+  const lignes = page.locator('[data-testid="proposal-item"]')
+  await expect(lignes, 'la carte est vide au départ').toHaveCount(0)
+
+  const choixPilier = page.locator('[data-testid="brain-generate-pillar"]')
+  const choixInter = page.locator('[data-testid="brain-generate-intermediate"]')
+  const choixSpe = page.locator('[data-testid="brain-generate-specialized"]')
+
+  /** Choisit dans le menu, puis attend la ligne ajoutée et la fin de l'appel. */
+  async function ajouter(choix: typeof choixPilier, attendu: number): Promise<void> {
+    await menu.click()
+    await choix.click()
+    await expect(lignes, `${attendu} article(s) sur la carte`).toHaveCount(attendu, { timeout: 120000 })
+    await expect(menu, 'l’ajout est terminé').toBeEnabled({ timeout: 120000 })
+  }
+
+  await menu.click()
+  await expect(choixPilier, 'carte vide : le pilier d’abord').toBeEnabled()
+  await expect(choixInter, 'pas de pilier : pas d’intermédiaire').toHaveCount(0)
+  await expect(choixSpe, 'pas d’intermédiaire : pas de spécialisé').toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await ajouter(choixPilier, 1)
+
+  await menu.click()
+  await expect(choixPilier, 'un seul pilier par carte').toBeDisabled()
+  await expect(choixPilier).toContainText('Déjà sur la carte')
+  await expect(choixSpe, 'pas encore d’intermédiaire').toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  await ajouter(choixInter, 2)
+  await ajouter(choixSpe, 3)
+
+  // La carte enregistrée garde la hiérarchie : chaque ajout sous son parent.
+  await expect.poll(async () => (await carteEnregistree()).map(a => a.type), {
+    timeout: 30000, message: 'la carte enregistrée : un pilier, un intermédiaire, un spécialisé',
+  }).toEqual(['pilier', 'intermediaire', 'specifique'])
+  const [pilier, inter, spe] = await carteEnregistree()
+  expect(pilier!.parent, 'le pilier n’a pas de parent').toBeNull()
+  expect(inter!.parent, 'l’intermédiaire est sous le pilier').toBe(pilier!.titre)
+  expect(spe!.parent, 'le spécialisé est sous l’intermédiaire').toBe(inter!.titre)
+  expect(await articlesEnBase(), 'la carte ne crée aucun article').toBe(0)
+})
+
 // FR-CER-COCOON-PROGRESSIVE : la proposition de plan est une carte indicative.
 // Avant C7, « accepter » une ligne ou « Tout valider » créait les articles en
 // lot, dans n'importe quel ordre et sans parent.
@@ -140,14 +209,15 @@ test('Cerveau — l’étape Articles : la carte indicative guide, elle ne crée
   await page.waitForLoadState('networkidle', { timeout: 20000 })
   await page.locator('[data-testid="wf-step-articles"]').click()
 
-  // U7 : « Générer avec Claude » est un menu. Il propose le pilier (de vrais
-  // articles) ou la carte complète (un aperçu) ; ici, la carte.
+  // U7 : « Générer avec Claude » est un menu ; ici, la carte complète. Elle
+  // remplace la carte que le test précédent a fait grandir.
   const menu = page.locator('[data-testid="brain-generate-menu"]')
   await expect(menu, 'le menu de génération est là').toBeVisible({ timeout: 30000 })
   await expect(menu).toBeEnabled({ timeout: 60000 })
   await menu.click()
-  await expect(page.locator('[data-testid="brain-generate-pillar"]'), 'cocon vide : le pilier peut naître').toBeEnabled()
-  await page.locator('[data-testid="brain-generate-articles"]').click()
+  const carteComplete = page.locator('[data-testid="brain-generate-articles"]')
+  await expect(carteComplete, 'le menu prévient qu’elle remplace la carte').toContainText('à la place de la carte actuelle')
+  await carteComplete.click()
 
   const lignes = page.locator('[data-testid="proposal-item"]')
   await expect(lignes.first(), 'des articles sont proposés').toBeVisible({ timeout: 300000 })
@@ -159,14 +229,12 @@ test('Cerveau — l’étape Articles : la carte indicative guide, elle ne crée
   expect(await articlesEnBase(), 'proposer n’a créé aucun article').toBe(0)
 })
 
-// Le bouton « Créer le pilier » est parcouru par bout-en-bout.parcours ; ici,
-// le pilier naît par le menu « Générer avec Claude » (U7) : même chemin.
 test('Cerveau — le pilier naît du constructeur, avec un mot-clé mesuré', async ({ page }) => {
   test.setTimeout(240_000)
   const tree = await openCocoonTree(page, cerveau.cerveauUrl())
 
   await expect(tree.locator('[data-testid="tree-section-create"]'), 'un cocon vide n’offre que le pilier').toHaveCount(0)
-  const pilier = await createPillar(page, tree, 120_000, 'menu')
+  const pilier = await createPillar(page, tree)
 
   const res = await query<{ titre: string; type: string; parent_id: number | null; suggested_keyword: string | null; pain_point: string | null }>(
     `SELECT titre, type, parent_id, suggested_keyword, pain_point FROM articles WHERE id = $1`, [pilier.id])
@@ -181,13 +249,6 @@ test('Cerveau — le pilier naît du constructeur, avec un mot-clé mesuré', as
   await expect(tree.locator('[data-testid="cocoon-create-pillar"]')).toHaveCount(0)
   await expect(tree.locator(`[data-testid="tree-node-${pilier.id}"] [data-testid="tree-node-state"]`)).toHaveText('À rédiger')
   expect(await articlesEnBase(), 'un seul article, le pilier').toBe(1)
-
-  // Le menu le sait aussi : plus de second pilier, et il dit où continuer.
-  await page.locator('[data-testid="brain-generate-menu"]').click()
-  const choixPilier = page.locator('[data-testid="brain-generate-pillar"]')
-  await expect(choixPilier, 'un seul pilier par cocon').toBeDisabled()
-  await expect(choixPilier).toContainText('Le pilier existe déjà')
-  await page.keyboard.press('Escape')
 
   // La carte indicative l'a inscrit : le Moteur en tire sa liste.
   await expect.poll(async () => {

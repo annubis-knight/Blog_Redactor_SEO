@@ -1,6 +1,6 @@
 ---
 title: Recette manuelle — Blog Redactor SEO
-version: 1.1.0
+version: 1.2.0
 last_updated: 2026-09-25
 synced_with:
   - docs/testing-guide.md
@@ -67,21 +67,25 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
    - **en haut, « Construire le cocon »** : c'est lui qui crée les vrais articles. Il dit « Ce cocon n'a pas encore de pilier. Commencez par lui… » ;
    - **en dessous, « Carte indicative du cocon »** : un aperçu, qui ne crée rien.
 
-   Clique **« Créer le pilier »** en haut. Ou bien, dans la carte, ouvre le menu **« Générer avec Claude ▾ »** et choisis **« Le pilier, puis un article à la fois »** : c'est le même chemin.
-7. Dans le panneau « Le pilier du cocon » :
+   *(Facultatif, pour voir la carte grandir.)* Dans la carte, ouvre le menu **« Générer avec Claude ▾ »** et choisis **« Le pilier »**. Rouvre-le, puis choisis **« 1 article intermédiaire »**, et enfin **« 1 article spécialisé »**.
+7. En haut, clique **« Créer le pilier »**. Dans le panneau « Le pilier du cocon » :
    - attends la fin de « Recherche de mots-clés candidats, puis mesure de leurs données réelles… » ;
    - choisis un mot-clé dans la liste ;
    - vérifie le titre, puis clique **« Créer l'article »**.
 
 **Tu dois voir :**
 - tant que le pilier n'existe pas, **un seul** bouton de création dans « Construire le cocon » : « Créer le pilier » ;
-- dans le menu « Générer avec Claude ▾ », deux choix. « La carte complète du cocon » dessine l'aperçu de tout le cocon, mais **ne crée aucun article** ;
-- une fois le pilier créé, le choix « Le pilier, puis un article à la fois » est **grisé** et dit « Le pilier existe déjà : chaque article suivant naît d'une section, dans « Construire le cocon ». » ;
-- ensuite, le pilier avec le badge « Pilier », l'état « À rédiger », et « Pas encore de section : elles apparaissent quand sa structure est validée ou son texte rédigé ».
+- le menu « Générer avec Claude ▾ » commence par « Sur la carte seulement : aucun article n'est créé. ». Sur une carte vide, il ne propose que « Le pilier » et « La carte complète du cocon » ;
+- après « Le pilier », une ligne dans la colonne Pilier de la carte. Dans le menu, « Le pilier » est **grisé** (« Déjà sur la carte : un seul pilier par cocon. »), et « 1 article intermédiaire » apparaît ;
+- après un intermédiaire, « 1 article spécialisé » apparaît. Chaque article ajouté se range sous son parent ;
+- après « Créer l'article », dans « Construire le cocon » : le pilier avec le badge « Pilier », l'état « À rédiger », et « Pas encore de section : elles apparaissent quand sa structure est validée ou son texte rédigé ».
+
+> La carte et l'arbre sont deux listes. Si le vrai pilier n'a pas le même titre que celui posé sur la carte, la carte montre ensuite deux piliers. C'est connu, pas un bug.
 
 **C'est un bug si :**
 - on peut créer un autre article avant le pilier ;
-- « La carte complète du cocon » fait apparaître des articles dans « Construire le cocon » ;
+- un choix du menu « Générer avec Claude ▾ » fait apparaître un article dans « Construire le cocon » ;
+- le menu propose un intermédiaire alors que la carte n'a pas de pilier, ou un spécialisé alors qu'elle n'a pas d'intermédiaire ;
 - un candidat « Non mesuré » peut être choisi.
 
 ### Étape 2 — L'ordre des onglets du Moteur

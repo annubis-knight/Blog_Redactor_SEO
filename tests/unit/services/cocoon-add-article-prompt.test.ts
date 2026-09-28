@@ -73,6 +73,16 @@ describe('addArticlePromptVariables — les règles du niveau demandé arrivent 
     expect(prompt).toContain('Existants : [{"title":"A"}]')
   })
 
+  // U7 révisé (recette R1) : le menu « Générer avec Claude » pose le pilier
+  // seul sur une carte vide. Ce pilier est celui du cocon, pas un pilier
+  // « complémentaire » d'un angle différent.
+  it('niveau Pilier : demande le pilier fondateur quand la carte n’en a pas encore', () => {
+    const vrai = readFileSync(join(__dirname, '..', '..', '..', 'server', 'prompts', 'cocoon-add-article.md'), 'utf8')
+    const prompt = buildAddArticlePrompt(vrai, { ...base, articleType: 'pilier' })
+    expect(prompt).toContain('ne contient encore aucun Pilier')
+    expect(prompt).toContain('**Pilier fondateur** du cocon')
+  })
+
   it('ne laisse aucun repère de ce prompt dans le vrai modèle, quel que soit le niveau', () => {
     const vrai = readFileSync(join(__dirname, '..', '..', '..', 'server', 'prompts', 'cocoon-add-article.md'), 'utf8')
     for (const articleType of ['pilier', 'intermediaire', 'specifique']) {

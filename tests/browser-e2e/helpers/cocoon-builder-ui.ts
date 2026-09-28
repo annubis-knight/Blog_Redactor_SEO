@@ -54,24 +54,12 @@ async function createFromCandidates(page: Page, panel: Locator, timeout: number)
 }
 
 /**
- * Crée le pilier d'un cocon qui n'en a pas. Deux portes d'entrée, un seul
- * chemin : le bouton « Créer le pilier » du constructeur, ou le choix « Le
- * pilier, puis un article à la fois » du menu « Générer avec Claude » (U7).
+ * Crée le pilier d'un cocon qui n'en a pas, par le bouton « Créer le pilier »
+ * du constructeur : le seul geste qui crée un vrai article. Le menu « Générer
+ * avec Claude » ne touche qu'à la carte indicative (U7 révisé).
  */
-export async function createPillar(
-  page: Page,
-  tree: Locator,
-  timeout = 120_000,
-  via: 'bouton' | 'menu' = 'bouton',
-): Promise<CreatedArticle> {
-  if (via === 'menu') {
-    await page.locator('[data-testid="brain-generate-menu"]').click()
-    const choix = page.locator('[data-testid="brain-generate-pillar"]')
-    await expect(choix, 'le menu propose de commencer par le pilier').toBeEnabled({ timeout: 15_000 })
-    await choix.click()
-  } else {
-    await tree.locator('[data-testid="cocoon-create-pillar"]').click()
-  }
+export async function createPillar(page: Page, tree: Locator, timeout = 120_000): Promise<CreatedArticle> {
+  await tree.locator('[data-testid="cocoon-create-pillar"]').click()
   const panel = tree.locator('[data-testid="cocoon-candidates-panel"]')
   await expect(panel, 'les candidats du pilier sont proposés').toBeVisible({ timeout: 15_000 })
   return { ...(await createFromCandidates(page, panel, timeout)), section: null }
