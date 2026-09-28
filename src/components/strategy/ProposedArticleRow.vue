@@ -368,6 +368,14 @@ function commitEdit(field: 'title' | 'keyword' | 'slug') {
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
+/* Les actions de la carte repliée (« Plus d'actions », « Supprimer ») sont
+   discrètes : la carte les révèle au survol et quand le focus clavier y entre.
+   La règle vit ici, car c'est la carte qui porte ces états (NFR-UX-ACTIONS-VISIBLE). */
+.proposal-item:hover :deep(.proposal-action-btn),
+.proposal-item:focus-within :deep(.proposal-action-btn) {
+  opacity: 1;
+}
+
 /* --- Header --- */
 .proposal-header {
   position: relative;

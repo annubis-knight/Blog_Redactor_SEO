@@ -2505,3 +2505,10 @@ Les zones d'action d'un écran du Moteur (panneaux d'IA, boutons principaux, sec
 Tout texte fixe de l'interface doit s'afficher en français lisible, accents compris : jamais un code technique à la place d'une lettre (« th\\u00e9matique » au lieu de « thématique »).
 - Aucun texte fixe d'un écran ne contient de séquence d'échappement : les accents sont écrits directement.
 - La vérification rapide du projet échoue sur un texte fautif, en nommant le fichier et la ligne.
+
+### NFR-UX-ACTIONS-VISIBLE — Un bouton utilisable est visible
+**Statut :** active
+Un bouton que l'utilisateur peut déclencher doit être visible au moment où il peut l'utiliser. Un bouton discret, révélé seulement au survol de son bloc, doit aussi apparaître quand on l'atteint au clavier.
+- Sur la carte indicative du cocon, les boutons « Plus d'actions » et « Supprimer » d'une carte repliée apparaissent au survol de la carte et quand le focus clavier est dans la carte.
+- Aucun style ne cache un bouton en attendant un état (survol, sélection) qu'il ne peut pas détecter.
+- La vérification rapide du projet échoue sur un style qui ne peut jamais s'appliquer, en nommant le fichier et la ligne.

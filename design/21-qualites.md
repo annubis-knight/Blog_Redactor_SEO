@@ -188,6 +188,13 @@ Flux d'une requête type : composant Vue → `apiGet/apiPost/…` ([`src/service
 - **Code :** [`tests/unit/architecture/screen-text-no-escape.test.ts`](../tests/unit/architecture/screen-text-no-escape.test.ts), dans `verify` — parcourt le `<template>` de chaque `.vue` de `src/` et refuse une séquence d'échappement Unicode (antislash, `u`, quatre chiffres hexadécimaux) dans le **texte fixe** : texte des balises et attributs statiques. Les interpolations `{{ … }}` et les attributs liés (`:attr`, `v-…`, `@…`) sont écartés (`staticText`), car ce sont des expressions JavaScript, où la séquence est interprétée.
 - **Règles et décisions :** dans un template, le texte fixe n'est pas une chaîne JavaScript : une séquence d'échappement s'y affiche telle quelle. On écrit l'accent directement (fichiers en UTF-8). Le motif du test est construit à partir du code de l'antislash (`String.fromCharCode(92)`), pour qu'aucun outil d'écriture ne le transforme en lettre.
 
+## Boutons visibles
+*Exigences : NFR-UX-ACTIONS-VISIBLE*
+
+- **Code :** [`src/components/strategy/ProposedArticleRow.vue`](../src/components/strategy/ProposedArticleRow.vue) — `.proposal-item:hover :deep(.proposal-action-btn)` et `.proposal-item:focus-within :deep(.proposal-action-btn)` révèlent les actions de la carte repliée ; [`ProposedArticleActions.vue`](../src/components/strategy/proposed/ProposedArticleActions.vue) les laisse à `opacity: 0` par défaut et les révèle aussi en `:focus-visible`.
+- **Garde :** [`tests/unit/architecture/actions-visible.test.ts`](../tests/unit/architecture/actions-visible.test.ts), dans `verify` — (1) aucun sélecteur d'un style `scoped` de `src/` ne commence par `:deep(` ; (2) le CSS compilé de `ProposedArticleRow.vue` (`@vue/compiler-sfc`, `compileStyle`) révèle `.proposal-action-btn` en `:hover` et en `:focus-within`.
+- **Règles et décisions :** un `:deep(.x)` en tête de sélecteur compile en `[data-v-…] .x …` : il ne vise que ce qui est **dans** le composant. Il ne peut donc pas réagir à l'état d'un parent. Les actions de la carte restaient invisibles pour cette raison : la règle de survol était écrite dans le composant enfant. Une règle qui dépend de l'état d'un bloc vit dans le composant qui porte ce bloc : `.parent:hover :deep(.enfant)`.
+
 ## Organisation du code
 *Exigences : NFR-MAIN-ORG-STORES, NFR-MAIN-ORG-COMPOSABLES, NFR-MAIN-ORG-SERVICES, NFR-MAIN-FILE-SIZE, NFR-INT-MOTEUR-BIMODAL, NFR-INT-API-WRAPPER, NFR-OBS-EXTERNAL-API-OPT-OUT · Design : DESIGN-MAIN-ORG-*, DESIGN-MAIN-FILE-SIZE, DESIGN-INT-MOTEUR-BIMODAL, DESIGN-INT-API-WRAPPER, DESIGN-OBS-EXTERNAL-API-OPT-OUT*
 

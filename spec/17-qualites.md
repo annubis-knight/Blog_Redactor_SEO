@@ -175,6 +175,11 @@ Le panneau d'IA du brief, en Rédaction, ne suit pas encore ce modèle (pas d'é
 
 Tout texte fixe de l'écran s'affiche en français lisible, accents compris. Un code technique à la place d'une lettre accentuée est un défaut : la vérification rapide du projet le refuse, en nommant le fichier et la ligne.
 
+## Boutons visibles
+*Exigences : NFR-UX-ACTIONS-VISIBLE*
+
+Un bouton qu'on peut utiliser se voit. Certains boutons restent discrets tant qu'on ne vise pas leur bloc : sur la carte indicative du cocon, « Plus d'actions » et « Supprimer » d'une carte repliée apparaissent quand la souris passe sur la carte, et aussi quand on y entre au clavier. La vérification rapide du projet refuse un style qui cacherait un bouton sans jamais pouvoir le révéler.
+
 ## Journaux techniques
 *Exigences : NFR-OBS-LOGGER, NFR-OBS-CONFIG, NFR-OBS-HEALTH, NFR-OBS-DB-CHECK*
 

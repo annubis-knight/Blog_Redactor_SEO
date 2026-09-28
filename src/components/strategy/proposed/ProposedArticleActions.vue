@@ -144,8 +144,10 @@ defineEmits<{
   opacity: 0;
 }
 
-/* Show on parent item hover (passes via deep selector below) */
-:deep(.proposal-item:hover) .proposal-action-btn {
+/* Discrets tant qu'on ne vise pas la carte. La carte (ProposedArticleRow), qui
+   porte l'état :hover et :focus-within, les révèle : une règle écrite ici ne
+   pourrait pas voir l'état d'un parent (NFR-UX-ACTIONS-VISIBLE). */
+.proposal-action-btn:focus-visible {
   opacity: 1;
 }
 
@@ -157,14 +159,6 @@ defineEmits<{
 .proposal-action-delete:hover {
   background: var(--color-danger-soft, #fde8e8);
   color: var(--color-danger, #e53e3e);
-}
-
-.proposal-action-kebab {
-  opacity: 0;
-}
-
-:deep(.proposal-item:hover) .proposal-action-kebab {
-  opacity: 1;
 }
 
 .proposal-actions--bottom {
