@@ -1,6 +1,6 @@
 // @vitest-environment node
 /**
- * D3 — docs/prompts-reference.md est généré, et reste à jour.
+ * D3 — design/05-prompts-reference.md est généré, et reste à jour.
  *
  * L'ancienne référence, écrite à la main, citait `generate-reduce.md`,
  * `/keywords/translate-pain` et `actions/localize.md` : aucun n'existait ou
@@ -15,7 +15,7 @@ const ROOT = join(__dirname, '..', '..', '..')
 
 describe('référence des prompts', () => {
   it('le fichier commité est la sortie du générateur (sinon : npm run docs:prompts)', () => {
-    const committed = readFileSync(join(ROOT, 'docs/prompts-reference.md'), 'utf8').replaceAll('\r\n', '\n')
+    const committed = readFileSync(join(ROOT, 'design/05-prompts-reference.md'), 'utf8').replaceAll('\r\n', '\n')
     expect(committed).toBe(buildPromptsReference(ROOT))
   })
 

@@ -8,7 +8,7 @@
  * dans `articles.completed_checks` ; les familles `cerveau:*` et `redaction:*`
  * ont ete retirees par decision produit.
  *
- * Voir docs/data-flows/completed-checks.md pour la cartographie complete.
+ * Voir design/data-flows/completed-checks.md pour la cartographie complete.
  *
  * FR-HN-TAB (chantier C6) : 6e check Moteur `moteur:hn_locked` (structure
  * H1/H2/H3 validee a l'onglet Structure), entre Lieutenants et Lexique.

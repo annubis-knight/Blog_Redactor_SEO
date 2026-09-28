@@ -4,7 +4,7 @@
  * Verifie l'invariant SERP-ONCE, la classification 3 niveaux,
  * et la coherence du tri pondere par alignement douleur.
  *
- * Voir docs/data-flows/lexique.md pour la cartographie complete.
+ * Voir design/data-flows/lexique.md pour la cartographie complete.
  */
 import { describe, it, expect } from 'vitest'
 

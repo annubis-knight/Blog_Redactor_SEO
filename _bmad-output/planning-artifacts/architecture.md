@@ -15,6 +15,12 @@ updateReason: 'Mise à jour majeure reflétant l''état réel : 3 phases / 6 ong
 
 # Architecture Decision Document — Blog Redactor SEO
 
+> **⚠️ Ce document n'est plus la référence (2026-09-28), et il est largement périmé** (six onglets au lieu
+> de sept, 24 routes au lieu de 25, Labo et Explorateur encore décrits, tables et variables inventées).
+> L'architecture qui fait foi est dans [`design/01-architecture.md`](../../design/01-architecture.md) (vue d'ensemble, stack,
+> couches, modèle de données, routes, prompts, décisions encore valides). Ce document reste pour l'historique
+> des décisions de mars 2026.
+
 **Auteur :** Utilisateur + Claude (Architect)
 **Date :** 2026-03-30 — mis à jour 2026-04-24
 

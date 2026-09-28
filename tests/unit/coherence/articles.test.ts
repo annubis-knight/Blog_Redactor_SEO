@@ -24,7 +24,7 @@ import { useWorkflowNavStore } from '@/stores/ui/workflow-nav.store'
  * - UI display (Vue components)
  * - Workflow progression (checks, phase, status)
  *
- * References: docs/data-flows/articles.md
+ * References: design/data-flows/articles.md
  */
 
 // --- Mock article factory ---

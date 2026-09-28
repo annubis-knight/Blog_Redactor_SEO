@@ -18,7 +18,7 @@ export interface KpiScoreBreakdown {
 }
 
 /**
- * Pondération du Score KPI / Marché (cf. docs/scoring-kpi-vs-relevance.md).
+ * Pondération du Score KPI / Marché (cf. design/14-radar-capitaine.md).
  *
  *   Volume       30 %   ← cœur du marché
  *   KD           20 %   ← filtre de difficulté SEO

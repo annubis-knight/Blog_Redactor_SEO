@@ -518,7 +518,7 @@ function handleHistoryClick(index: number) {
 // L'item verrouillé reste TOUJOURS en tête, peu importe le critère choisi.
 // Score Pertinence STRICT (relevanceScore.total), cohérent avec l'affichage.
 // Items sans relevanceScore → null → en bas du tri.
-// Voir docs/scoring-kpi-vs-relevance.md.
+// Voir design/14-radar-capitaine.md.
 const captainSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },
   { key: 'score', label: 'Score Pertinence' },

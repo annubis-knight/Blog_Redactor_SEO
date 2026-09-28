@@ -353,7 +353,7 @@ flowchart TD
 pures (même entrée, même sortie, aucun appel extérieur). C'est pour ça qu'ils sont
 très testés — et c'est là qu'il faut aller pour changer une règle de décision.
 
-Détail complet dans [docs/auto-article-cli.md](docs/auto-article-cli.md).
+Détail complet dans [design/06-mode-automatique.md](design/06-mode-automatique.md).
 
 ---
 

@@ -241,7 +241,7 @@ function handleSelectArticle(article: SelectedArticle | null) {
     loadCachedResults(article.id)
 
     // au sélection d'article. Discovery est exclu (modèle seed-based,
-    // cf. docs/moteur-data-flow.md §8bis). L'utilisateur garde le bouton
+    // cf. design/data-flows/moteur.md, « Discovery — phase Générer »). L'utilisateur garde le bouton
     // manuel via TabLoadPrompt en filet de secours.
     // Le radarRef peut être null au tout premier mount avant que Vue n'ait
     // résolu le ref : on attend un nextTick pour être sûr.

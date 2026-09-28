@@ -1,7 +1,7 @@
 /**
  * 2026-05-02 — Tests de la séparation stricte KPI / Pertinence sur
  * `RadarKeywordCard`. Verrouille les invariants documentés dans
- * docs/scoring-kpi-vs-relevance.md.
+ * design/14-radar-capitaine.md.
  *
  * Règles testées :
  *   - Mode `kpi` (Radar)  → `displayedScore` = `computeKpiScore(kpis, level).total`

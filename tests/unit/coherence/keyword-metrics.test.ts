@@ -3,7 +3,7 @@
  * Tests de cohérence pour keyword-metrics data flow.
  * Vérifie les invariants cross-article et freshness check.
  *
- * Voir docs/data-flows/keyword-metrics.md pour la cartographie complète.
+ * Voir design/data-flows/keyword-metrics.md pour la cartographie complète.
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 

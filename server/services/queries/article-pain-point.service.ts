@@ -5,7 +5,7 @@
  * hn-structure, lexique-ai, lexique-upfront) pour injecter le painPoint dans
  * leurs prompts respectifs.
  *
- * Voir docs/pain-point-editorial-backbone.md.
+ * Voir design/11-cerveau.md.
  */
 import { query } from '../../db/client.js'
 import { log } from '../../utils/logger.js'

@@ -30,6 +30,13 @@ classification:
 
 # Product Requirements Document — Blog Redactor SEO
 
+> **⚠️ Ce document n'est plus la référence (2026-09-28).** Les exigences qui font foi sont dans
+> [`spec/requirements.md`](../../spec/requirements.md), et le comportement actuel dans
+> [les chapitres de `spec/`](../../spec/README.md), réécrits d'après le code. Tous les identifiants
+> `FR-…` / `NFR-…` d'ici s'y retrouvent (actifs, non tenus ou retirés). Ce PRD reste pour l'historique et
+> les « En situation » ; il n'est plus mis à jour, et il contient des écarts connus avec le code
+> (liste : [`_archive/drift-consolidation-2026-09-28.md`](./_archive/drift-consolidation-2026-09-28.md)).
+
 **Auteur :** Utilisateur
 **Date initiale :** 2026-03-30
 **Dernière refonte :** 2026-05-04
@@ -341,10 +348,10 @@ Avant de produire des articles individuels, l'utilisateur peut poser une **strat
 
 **Critères d'acceptation**
 - Les 6 étapes principales sont franchies dans le même esprit que les étapes article (suggestion IA → ajustement → consolidation → validation).
-- À l'issue des 6 étapes principales, l'utilisateur peut faire générer une proposition de structure du cocon (un Pilier + N Intermédiaires + M Spécifiques).
+- À l'issue des 6 étapes principales, l'utilisateur peut faire générer une proposition de structure du cocon (un Pilier + N Intermédiaires + M Spécifiques), d'un coup ou un article à la fois (cf. `FR-CER-COCOON-PROGRESSIVE`).
 - Les 4 étapes annexes sont optionnelles mais accessibles à tout moment.
 - La stratégie cocon est consultable en lecture depuis n'importe quel article du cocon (cf. `FR-CER-CONTEXT-FOR-MOTEUR`).
-- La proposition de structure du cocon est une **carte indicative**, en lecture seule : elle montre où va le cocon, mais ne crée aucun article. Les articles naissent un par un, à partir du pilier (cf. `FR-CER-COCOON-PROGRESSIVE`).
+- La proposition de structure du cocon est une **carte indicative** : elle montre où va le cocon et se retouche (titre, mot-clé, adresse, parent, intention), mais ne crée aucun article. Les articles naissent un par un, à partir du pilier (cf. `FR-CER-COCOON-PROGRESSIVE`).
 
 **Statut :** active. **Amendée le 2026-09-25 (C7)** : la proposition de structure ne sert plus à créer les articles en lot (cf. `FR-CER-BATCH-CREATE`, superseded) ; elle devient une carte indicative.
 
@@ -377,7 +384,7 @@ L'étape Aiguillage place l'article dans la hiérarchie du cocon en lui attribua
 
 > **Statut :** superseded. **Depuis :** 2026-09-25. **Remplacée par :** `FR-CER-COCOON-PROGRESSIVE` (avec `FR-CER-PARENT-WRITTEN-GATE`, `FR-CER-CHILD-FROM-PILLAR-H2` et `FR-CER-KEYWORD-REAL-DATA`). **Source :** épopée qualité SEO, chantier C7 (checklist K6).
 >
-> **Ce qui change.** Les articles ne se créent plus en lot. La création en bloc acceptait n'importe quel ordre : un intermédiaire naissait avant son pilier, sans parent ni section, et les doublons n'étaient repérés que sur une adresse identique. Le cocon se construit désormais un article à la fois, à partir du pilier ; chaque enfant naît d'une section de son parent rédigé, sur un mot-clé mesuré. La proposition de plan complet de l'IA reste affichée, en lecture seule, comme carte indicative. Restent en place : le titre, le niveau, le mot-clé, la douleur et l'intention éditoriale posés à la création ; un refus qui s'explique (cf. `FR-CER-CREATION-HONNETE`).
+> **Ce qui change.** Les articles ne se créent plus en lot. La création en bloc acceptait n'importe quel ordre : un intermédiaire naissait avant son pilier, sans parent ni section, et les doublons n'étaient repérés que sur une adresse identique. Le cocon se construit désormais un article à la fois, à partir du pilier ; chaque enfant naît d'une section de son parent rédigé, sur un mot-clé mesuré. La proposition de plan complet de l'IA reste affichée comme carte indicative : elle se retouche, mais ne crée plus aucun article. Restent en place : le titre, le niveau, le mot-clé, la douleur et l'intention éditoriale posés à la création ; un refus qui s'explique (cf. `FR-CER-CREATION-HONNETE`).
 >
 > Le texte ci-dessous est conservé pour l'historique.
 
@@ -408,13 +415,13 @@ Jusqu'ici, tous les articles d'un cocon naissaient d'un seul clic, à partir de 
 - La création en lot a disparu. À l'étape Articles du Cerveau, un constructeur montre l'arbre réel du cocon — chaque pilier puis ses intermédiaires, leur état (« Rédigé » / « À rédiger »), leurs sections et l'article né de chacune — et c'est lui qui crée : « Créer le pilier » tant que le cocon n'en a pas, puis « Créer l'article de cette section » sur chaque section libre d'un parent. Ce bouton reste grisé tant que le parent n'est pas rédigé, et un message invite à valider d'abord son premier jet ; un lien ouvre sa rédaction.
 - Créer un article passe par le choix de son mot-clé parmi des candidats mesurés (cf. `FR-CER-KEYWORD-REAL-DATA`) et d'un titre (prérempli par le candidat, 3 caractères au moins). L'article créé rejoint la carte du cocon, d'où le Moteur tire sa liste d'articles, et son mot-clé rejoint le pool du cocon ; un refus du pool est dit sans annuler l'article (cf. `FR-CER-CREATION-HONNETE`).
 - La proposition de plan complet de l'IA reste affichée sous le constructeur, comme une **carte indicative** : « Carte indicative du cocon », avec « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. » On peut encore la générer et la retoucher, mais plus rien ne s'y « valide » ; un article déjà créé y porte la marque « Créé ».
-- « Générer avec Claude » est un **menu** qui fait grandir la carte, soit un article à la fois, soit d'un coup. Il le dit en tête : « Sur la carte seulement : aucun article n'est créé. » Un article ne s'ajoute que si son parent est déjà sur la carte :
-  - « Le pilier » : Claude pose le pilier seul. Une fois le pilier posé, ce choix est grisé (« Déjà sur la carte : un seul pilier par cocon. ») ;
-  - « 1 article intermédiaire », proposé dès que la carte a son pilier : Claude en ajoute un sous le pilier ;
-  - « 1 article spécialisé », proposé dès que la carte a un intermédiaire : Claude en ajoute un sous l'intermédiaire qui en a le plus besoin ;
-  - « La carte complète du cocon » : tous les articles d'un coup, à la place de la carte actuelle.
+- « Générer avec Claude » est un **menu** qui fait grandir la carte, soit un article à la fois, soit d'un coup. Il le dit en tête : « Sur la carte seulement : aucun article n'est créé. » Un article ne s'ajoute que si son parent est déjà sur la carte, avec un titre :
+  - « Le pilier », toujours proposé : Claude pose le pilier seul, celui qui couvre le sujet principal du cocon. Une fois le pilier posé, ce choix est grisé (« Déjà sur la carte : un seul pilier par cocon. ») ;
+  - « 1 article intermédiaire », proposé seulement quand la carte a son pilier : Claude en ajoute un sous le pilier ;
+  - « 1 article spécialisé », proposé seulement quand la carte a un intermédiaire : Claude en ajoute un sous l'intermédiaire qui en a le plus besoin, c'est-à-dire celui qui a le moins d'articles spécialisés, ou dont un angle reste à couvrir ;
+  - « La carte complète du cocon », toujours proposée : tous les articles d'un coup, à la place de la carte actuelle.
 
-  Chaque article ajouté suit les règles de la carte complète : un mot-clé proposé par Claude, qui n'est pas mesuré.
+  Chaque article ajouté suit les règles de mot-clé de la carte complète, niveau par niveau (le pilier cite la cible et la localisation, l'intermédiaire n'en cite aucune, le spécialisé vise une longue traîne). Ce mot-clé est proposé par Claude et n'est pas mesuré. Si Claude échoue, une ligne vide s'ajoute à la carte, sans message (limite connue).
 - Les articles sans place dans l'arbre (créés avant la construction progressive) sont listés à part, « Articles hors de l'arbre ». Chacun, sauf un pilier, se **rattache** à une section d'un parent : « Rattacher » propose les sections libres des parents rédigés du niveau juste au-dessus (« « Financer ses travaux » — Rénovation énergétique maison »), et « Rattacher ici » confirme. Les règles sont celles d'une création : parent du bon niveau et rédigé, section qu'il a vraiment et qu'aucun autre article n'a prise ; un refus est dit, et rien ne change. L'article rejoint alors l'arbre (son parent pourra le résumer et renvoyer vers lui), et la carte du cocon suit. Sans aucune section libre d'un parent rédigé du bon niveau, le bouton est grisé et dit pourquoi.
 - Le mode automatique suit les mêmes règles : il crée l'article dans la section libre de son parent dont le titre parle le plus de son sujet (à égalité, sous un parent déjà rédigé) ; si aucun parent du bon niveau n'existe ou si toutes ses sections ont déjà leur article, il s'arrête en le disant ; si le parent n'est pas rédigé, il s'arrête sans déroger.
 - Les cocons d'avant ce changement sont rattachés par un rattrapage, en simulation par défaut : chaque article sans parent est rapproché du parent que désigne la carte de stratégie (à défaut, pour un intermédiaire, du pilier unique du cocon), puis de la section de ce parent qui parle de son sujet — au moins deux mots propres à la section, et au moins la moitié d'entre eux, les mots du sujet du parent ne comptant pas. Ce qui ne se rapproche pas sûrement est listé, jamais deviné.
@@ -422,6 +429,7 @@ Jusqu'ici, tous les articles d'un cocon naissaient d'un seul clic, à partir de 
 **Limites connues**
 - ~~Le parent ou la section d'un article existant ne se changent pas depuis l'outil : un article que le rattrapage n'a pas su placer reste « hors de l'arbre ».~~ Soldé le 2026-09-25 (checklist K8) : un article hors de l'arbre se rattache depuis le constructeur. Reste : un article **déjà placé** ne change pas de parent depuis l'écran (l'outil l'accepterait, aux mêmes règles, mais aucun bouton ne le propose).
 - La carte indicative et l'arbre réel sont deux listes : retoucher une proposition de la carte (titre, parent) ne change rien à l'arbre.
+- « La carte complète du cocon » remplace toute la carte, y compris les articles déjà créés : ils restent dans l'arbre et en base, mais quittent la carte, et donc la liste d'articles du Moteur (défaut connu, relevé à la consolidation du 2026-09-28).
 
 **Statut :** active. **Depuis :** 2026-09-25. **Remplace :** `FR-CER-BATCH-CREATE`. **Source :** épopée qualité SEO, réservée par C0, livrée par C7 (checklist K6). **Amendée à la livraison :** s'ajoutent l'enregistrement du parent et de sa section, le constructeur de l'arbre réel (c'est lui qui crée), le mode automatique, le rattrapage des cocons existants et le refus de retirer un parent ; la carte indicative n'est pas en lecture seule au sens strict (elle se retouche), elle ne crée simplement plus rien. **Corrigé à la livraison** : retirer un article de la carte avalait jusque-là tout refus du serveur — l'article disparaissait de la carte et du Moteur en restant en base. **Amendée le 2026-09-25 (checklist K8, commit `1cbc921`)** : un article hors de l'arbre se rattache à la section libre d'un parent rédigé, aux règles d'une création ; avant, seul un passage direct en base pouvait le placer. **Amendée le 2026-09-25 (U7, recette manuelle d'Arnaud)** : « Générer avec Claude » devient un menu à deux choix. Le bouton unique dessinait la carte entière, et il passait pour le créateur d'articles. **Revue le même jour (recette, constat R1)** : le choix « pilier » ouvrait les candidats du constructeur. Il pose désormais le pilier seul sur la carte, puis le menu y ajoute un article à la fois, toujours sous un parent déjà posé.
 
@@ -4170,7 +4178,7 @@ Quand une porte signale un point, l'utilisateur n'est pas bloqué par principe :
 > **Pourquoi cette matrice ?**
 > Les FR métier (§8.1 → §8.13) décrivent **ce que fait** chaque workflow ; les FR-INFRA (§8.14) décrivent **comment** la persistance est structurée. Il manquait une **vue inverse** : pour une table donnée, quelles FR la produisent / consomment ? Cette matrice répond à 3 questions opérationnelles : (1) si je modifie le schéma d'une table, quelles FR dois-je relire ? (2) si une FR change, quelles tables sont touchées ? (3) y a-t-il des tables sans FR (zone aveugle) ?
 >
-> **Règle de maintenance :** toute migration créant ou modifiant une table doit ajouter / mettre à jour une ligne dans cette matrice. Le test `tests/unit/coherence/prd-tables-matrix.test.ts` compare les `CREATE TABLE` de `server/db/schema.sql` à cette matrice et échoue sur toute table non documentée.
+> **Matrice déplacée le 2026-09-28.** La matrice qui fait foi est désormais dans [`design/02-donnees.md`](../../design/02-donnees.md) (« Matrice tables ↔ exigences »), où l'ancienne citait une vingtaine d'identifiants inexistants. Le test `tests/unit/coherence/design-tables-matrix.test.ts` (ex-`prd-tables-matrix`) compare les `CREATE TABLE` de `server/db/schema.sql` à celle-là. La table ci-dessous reste pour l'historique.
 >
 > **Convention :** la colonne **AUTHORITY** indique la FR-INFRA qui définit la table (schéma + producteurs + consommateurs). Les colonnes **Producteurs FR** / **Consommateurs FR** listent les FR métier qui écrivent / lisent.
 
@@ -5462,6 +5470,8 @@ Au 2026-09-25 : 39 prompts à la racine de `server/prompts/` (dont `system-propu
 | FR-LEX-MULTI-KEYWORD | corrigée (« Tester un mot-clé » reste ouvert quand des termes sont retenus) | epic-qualite-seo-garde-fous (T2, commit `20e4aa9`) | 2026-09-25 |
 | FR-UI-AI-PANELS-PATTERN, FR-RED-SEO-SCORE-PERSIST | précisées (panneau IA du brief hors modèle, U4 ; mode automatique sans score, P7) | epic-qualite-seo-garde-fous (T2, recette C8) | 2026-09-25 |
 | NFR-TEST-BEHAVIORAL | avancée (T2, T3 : un seul test ignoré, assertions exactes côté serveur ; recette C8 : texte réel passé dans les vérificateurs) | epic-qualite-seo-garde-fous (commit `8bc3aa1`, recette C8) | 2026-09-25 |
+| FR-CER-COCOON-PROGRESSIVE | amendée (« Générer avec Claude » devient un menu qui fait grandir la carte indicative : le pilier seul, puis un article à la fois sous un parent déjà posé, ou la carte complète ; rien n'est créé en base) | epic-qualite-seo-garde-fous (U7 et recette manuelle R1, commits `0f16e87`, `60b9818`) | 2026-09-25 |
+| FR-CER-STEPS-COCOON | précisée (la carte indicative se retouche ; elle n'était pas « en lecture seule ») | consolidation de la documentation | 2026-09-28 |
 
 ### 12.5 — Dette technique identifiée
 

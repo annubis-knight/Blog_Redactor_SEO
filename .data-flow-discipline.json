@@ -8,7 +8,7 @@
   "fileSizeLimit": 400,
   "frRegex": "FR-[A-Z]+-[A-Z-]+|FR\\d+",
   "apiWrapperFunctions": ["apiGet", "apiPost", "apiPut", "apiDelete"],
-  "dataFlowsDir": "docs/data-flows",
+  "dataFlowsDir": "design/data-flows",
   "brandedTypesPath": "shared/types/branded.ts",
   "coherenceTestsDir": "tests/unit/coherence",
   "scanRoots": ["src", "server", "shared"],

@@ -40,7 +40,7 @@ describe('RadarKeywordCard — displayMode', () => {
   it('mode "relevance" affiche `relevanceScore.total` et le label "Score Pertinence"', () => {
     // Sprint 2026-05 — fin du fallback combinedScore en mode relevance.
     // Le score affiché provient strictement de `card.relevanceScore.total`
-    // (cf. docs/scoring-kpi-vs-relevance.md). Si absent → "—".
+    // (cf. design/14-radar-capitaine.md). Si absent → "—".
     const card = makeCard({
       combinedScore: 67, // legacy ignoré en mode relevance
       relevanceScore: {

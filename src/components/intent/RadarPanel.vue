@@ -93,7 +93,7 @@ const checkedKeywords = ref(new Set<string>())
 const cpcFilter = ref<CpcFilter>(null)
 
 // Tri unifié radar cards : score = computeKpiScore (front, cohérent affichage).
-// Voir docs/scoring-kpi-vs-relevance.md.
+// Voir design/14-radar-capitaine.md.
 const radarCards = computed<RadarCard[]>(() => scanResult.value?.cards ?? [])
 const radarSortOptions: SortOption[] = [
   { key: 'az', label: 'A-Z' },

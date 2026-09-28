@@ -65,7 +65,7 @@ export interface CaptainScanEntry {
   /**
    * Live computation (FR-CAP-RELEVANCE-COMPUTED-LIVE) :
    * marketScore du radar snapshot, relevanceScore calculé volée (jamais persisté).
-   * Voir docs/data-flows/relevance-score-live-computation.md.
+   * Voir design/data-flows/relevance-score-live-computation.md.
    */
   marketScore?: MarketScoreResult | null
   relevanceScore?: RelevanceScoreResult | null
@@ -78,7 +78,7 @@ export interface CaptainScanEntry {
    * Jugement Haiku des PAA × douleur (FR-CAP-PAA-JUDGE-HAIKU).
    * Calculé à la volée à chaque mount Capitaine, jamais persisté.
    * Null si painPoint absent, paaQuestions vide, ou appel Haiku échoué.
-   * Voir docs/data-flows/captain-relevance.md.
+   * Voir design/data-flows/captain-relevance.md.
    */
   paaJudgment?: PaaJudgmentBlock | null
 }

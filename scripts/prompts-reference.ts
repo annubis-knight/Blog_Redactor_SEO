@@ -1,5 +1,5 @@
 /**
- * Génère docs/prompts-reference.md depuis les prompts eux-mêmes (D3).
+ * Génère design/05-prompts-reference.md depuis les prompts eux-mêmes (D3).
  *
  * La référence écrite à la main citait des routes et des fichiers disparus
  * (`generate-reduce.md`, `/keywords/translate-pain`). Elle est désormais
@@ -115,7 +115,7 @@ export function buildPromptsReference(root: string): string {
     '',
     '> **Fichier généré** par `npm run docs:prompts` (`scripts/prompts-reference.ts`) : ne pas l’éditer à la main.',
     '> Un test (`tests/unit/architecture/prompts-reference.test.ts`) vérifie qu’il est à jour.',
-    '> Architecture (couches, chargeur strict, variables globales) : [`prompts-architecture.md`](./prompts-architecture.md).',
+    '> Architecture (couches, chargeur strict, variables globales) : [IA et prompts](./04-ia-et-prompts.md).',
     '',
     `${names.length} prompts. Variables globales, fournies par le chargeur quand un prompt les cite : ${code([...PROMPT_GLOBALS])}.`,
     '',
@@ -137,7 +137,7 @@ export function buildPromptsReference(root: string): string {
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1]) {
   const root = join(fileURLToPath(import.meta.url), '..', '..')
-  const target = join(root, 'docs', 'prompts-reference.md')
+  const target = join(root, 'design', '05-prompts-reference.md')
   writeFileSync(target, buildPromptsReference(root), 'utf8')
-  console.log(`docs/prompts-reference.md régénéré`)
+  console.log(`design/05-prompts-reference.md régénéré`)
 }

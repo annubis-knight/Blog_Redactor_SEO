@@ -1,12 +1,14 @@
 ---
 purpose: 'Suivi des écarts détectés entre le code et la documentation au fil des migrations'
-companion: '_bmad-output/planning-artifacts/prd.md, _bmad-output/planning-artifacts/design-registry.md'
-lastUpdated: '2026-05-13T00:00:00Z'
+companion: 'spec/README.md, spec/requirements.md, design/README.md'
+lastUpdated: '2026-09-28T00:00:00Z'
 ---
 
 # Drift code vs doc — liste vivante
 
-> Au fil des migrations de doc, des sous-agents peuvent découvrir des **divergences entre ce que dit la doc et ce que fait réellement le code**. Au lieu d'alourdir le PRD ou le registry avec ces notes en plein chantier, on les consigne ici pour traitement groupé en fin de chantier.
+> Au fil des migrations de doc, des sous-agents peuvent découvrir des **divergences entre ce que dit la doc et ce que fait réellement le code**. Au lieu d'alourdir les documents de référence avec ces notes en plein chantier, on les consigne ici pour traitement groupé en fin de chantier.
+
+**État au 2026-09-28** : aucun drift ouvert. La consolidation de la documentation dans [`spec/`](../../spec/README.md) (dont [`requirements.md`](../../spec/requirements.md)) et [`design/`](../../design/README.md) a relevé et tranché 315 écarts ; cf. archive [drift-consolidation-2026-09-28.md](./_archive/drift-consolidation-2026-09-28.md). Les écarts où le code est en défaut (groupe C) ne sont pas suivis ici : ce sont les exigences au statut « non tenue » de `spec/requirements.md`.
 
 **État au 2026-05-13** : aucun drift ouvert. Les 23 drifts détectés pendant la refonte `docs/prd-split-spec-design` ont tous été soldés ; cf. archive [drift-code-vs-doc-2026-05-13.md](./_archive/drift-code-vs-doc-2026-05-13.md) pour le détail narratif et les décisions associées.
 

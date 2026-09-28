@@ -4,7 +4,7 @@
  * `relevanceScore` du backend étaient perdus lors de l'hydratation, forçant
  * l'UI Capitaine à fallback sur `combinedScore` (legacy hybride) et brisant
  * la séparation KPI / Pertinence documentée dans
- * docs/scoring-kpi-vs-relevance.md.
+ * design/14-radar-capitaine.md.
  */
 import { describe, it, expect } from 'vitest'
 import { hydrateCardFromValidation } from '../../../src/composables/keyword/useExploredKeywords'

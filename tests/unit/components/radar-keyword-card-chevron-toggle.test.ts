@@ -1,7 +1,7 @@
 /**
  * FR-RAD-CARD-CHEVRON-TOGGLE — toggle PAA UNIQUEMENT sur le chevron.
  *
- * Décision figée 2026-05-05 — voir docs/data-flows/relevance-score-live-computation.md.
+ * Décision figée 2026-05-05 — voir design/data-flows/relevance-score-live-computation.md.
  *
  * AVANT (Sprint 3, 2026-05-04) :
  *   @click.stop sur tout le header → toggle PAA sur tout le header,

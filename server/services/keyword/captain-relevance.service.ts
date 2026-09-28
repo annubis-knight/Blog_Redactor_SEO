@@ -17,7 +17,7 @@
  *             FR-CAP-RELEVANCE-INTENT-SIGNAL (5e signal Intent SERP × Intent éditorial),
  *             FR-CAP-PAA-JUDGE-HAIKU (signal 2 produit par Haiku au lieu de lexical)
  *
- * Architecture (cf. docs/data-flows/relevance-score-live-computation.md §2) :
+ * Architecture (cf. design/data-flows/relevance-score-live-computation.md §2) :
  *   PHASE 1 — lecture DB parallèle (painPoint + painIntentExpected + métriques keyword)
  *   PHASE 2A — calcul des racines uniques avec mémoïsation Map<rootKeyword, score>
  *   PHASE 2B — calcul des cards complètes en lisant la Map mémoïsée
@@ -209,7 +209,7 @@ function makeUnavailableResult(reason: RelevanceUnavailableReason): RelevanceSco
  * Calcule le Score Pertinence pour TOUS les keywords Capitaine d'un article,
  * à la volée, avec mémoïsation des racines partagées.
  *
- * Cf. docs/data-flows/relevance-score-live-computation.md §2 pour le schéma complet.
+ * Cf. design/data-flows/relevance-score-live-computation.md §2 pour le schéma complet.
  *
  * Garanties :
  *   - Aucune écriture DB pendant le calcul (FR-CAP-RELEVANCE-NO-DB-WRITE)

@@ -3,7 +3,7 @@
  * Vérifie que les décisions Capitaine / Lieutenants / Lexique sont persistées et
  * restituées de manière cohérente (affichage = calcul = tri).
  *
- * Voir docs/data-flows/keywords.md pour la cartographie complète.
+ * Voir design/data-flows/keywords.md pour la cartographie complète.
  */
 import { describe, it, expect } from 'vitest'
 
