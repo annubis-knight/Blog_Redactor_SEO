@@ -27,7 +27,7 @@ const columns = computed(() => [
 
 <template>
   <div v-if="articles.length === 0" class="article-list-empty">
-    <p>Aucun article dans cette th\u00e9matique.</p>
+    <p>Aucun article dans cette thématique.</p>
   </div>
   <div v-else class="article-columns">
     <div

@@ -170,6 +170,11 @@ Dans le Moteur, l'écran ne se construit pas au fil des clics : il est complet d
 
 Le panneau d'IA du brief, en Rédaction, ne suit pas encore ce modèle (pas d'état « erreur ») ; voir [Composants d'interface partagés](15-interface.md).
 
+## Textes lisibles
+*Exigences : NFR-UX-SCREEN-TEXT*
+
+Tout texte fixe de l'écran s'affiche en français lisible, accents compris. Un code technique à la place d'une lettre accentuée est un défaut : la vérification rapide du projet le refuse, en nommant le fichier et la ligne.
+
 ## Journaux techniques
 *Exigences : NFR-OBS-LOGGER, NFR-OBS-CONFIG, NFR-OBS-HEALTH, NFR-OBS-DB-CHECK*
 

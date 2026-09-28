@@ -2499,3 +2499,9 @@ Les zones d'action d'un écran du Moteur (panneaux d'IA, boutons principaux, sec
 - Aucun panneau n'apparaît ou ne disparaît selon un état passager de l'utilisateur.
 - Une zone inactive dit ce qu'il faut faire pour l'activer.
 - Une zone lourde repliée peut n'être construite qu'au dépli, avec une silhouette de même taille.
+
+### NFR-UX-SCREEN-TEXT — Un texte d'écran s'affiche tel qu'il est écrit
+**Statut :** active
+Tout texte fixe de l'interface doit s'afficher en français lisible, accents compris : jamais un code technique à la place d'une lettre (« th\\u00e9matique » au lieu de « thématique »).
+- Aucun texte fixe d'un écran ne contient de séquence d'échappement : les accents sont écrits directement.
+- La vérification rapide du projet échoue sur un texte fautif, en nommant le fichier et la ligne.

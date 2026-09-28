@@ -182,6 +182,12 @@ Flux d'une requête type : composant Vue → `apiGet/apiPost/…` ([`src/service
 - **Code :** [`src/components/moteur/ai-panel/`](../src/components/moteur/ai-panel/) — `AiPanel.vue`, `AiPanelHeader.vue`, `AiPanelSkeleton.vue`, `AiTriggerButton.vue`… Panneaux conformes : `DiscoveryPanel.vue`, `RadarAiPanel.vue`, `CaptainSidePanel.vue`, `LexiqueAiPanel.vue`, `LieutenantsAiPanel.vue`.
 - **Règles et décisions :** garde statique [`tests/unit/components/moteur/ai-panels-persistence.test.ts`](../tests/unit/components/moteur/ai-panels-persistence.test.ts) (lit le source : import d'`AiPanel`/`AiPanelHeader`, pas de `v-if` racine sur un état passager) ; le test de `ArticleWorkflowIaBrief.vue` est ignoré (`SKIP: FR-UI-AI-PANELS-PATTERN`). Détail : [Composants d'interface partagés](19-interface.md).
 
+## Textes lisibles
+*Exigences : NFR-UX-SCREEN-TEXT*
+
+- **Code :** [`tests/unit/architecture/screen-text-no-escape.test.ts`](../tests/unit/architecture/screen-text-no-escape.test.ts), dans `verify` — parcourt le `<template>` de chaque `.vue` de `src/` et refuse une séquence d'échappement Unicode (antislash, `u`, quatre chiffres hexadécimaux) dans le **texte fixe** : texte des balises et attributs statiques. Les interpolations `{{ … }}` et les attributs liés (`:attr`, `v-…`, `@…`) sont écartés (`staticText`), car ce sont des expressions JavaScript, où la séquence est interprétée.
+- **Règles et décisions :** dans un template, le texte fixe n'est pas une chaîne JavaScript : une séquence d'échappement s'y affiche telle quelle. On écrit l'accent directement (fichiers en UTF-8). Le motif du test est construit à partir du code de l'antislash (`String.fromCharCode(92)`), pour qu'aucun outil d'écriture ne le transforme en lettre.
+
 ## Organisation du code
 *Exigences : NFR-MAIN-ORG-STORES, NFR-MAIN-ORG-COMPOSABLES, NFR-MAIN-ORG-SERVICES, NFR-MAIN-FILE-SIZE, NFR-INT-MOTEUR-BIMODAL, NFR-INT-API-WRAPPER, NFR-OBS-EXTERNAL-API-OPT-OUT · Design : DESIGN-MAIN-ORG-*, DESIGN-MAIN-FILE-SIZE, DESIGN-INT-MOTEUR-BIMODAL, DESIGN-INT-API-WRAPPER, DESIGN-OBS-EXTERNAL-API-OPT-OUT*
 
