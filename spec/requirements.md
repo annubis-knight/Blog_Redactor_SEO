@@ -2316,6 +2316,15 @@ Les tests doivent reproduire aussi les erreurs d'un utilisateur, et un test qui 
 - Les parcours varient leurs choix : pas toujours la première option, décocher, recharger, revenir en arrière, panne d'un service.
 - En mode réel, le texte produit passe dans les mêmes vérificateurs que la vérification du projet.
 
+### NFR-TEST-RECETTE-COVERAGE — La recette manuelle couvre chaque exigence fonctionnelle
+**Statut :** active
+La recette manuelle doit vérifier à l'écran chaque exigence fonctionnelle, ou dire pourquoi elle ne se vérifie pas à l'écran. Une exigence nouvelle ne peut pas y être oubliée.
+- Chaque exigence fonctionnelle active, non tenue ou prévue est citée par au moins une vérification de la recette, ou listée « hors recette » avec sa raison. Jamais les deux.
+- Une vérification qui porte sur une exigence non tenue la marque « ⚠ » et décrit le défaut attendu. Une exigence redevenue active perd sa marque.
+- Une exigence prévue (pas encore livrée) ne se vérifie pas : elle est listée hors recette.
+- Tout identifiant cité par la recette existe dans les exigences.
+- Un oubli fait échouer la vérification rapide du projet, en nommant l'exigence et ce qu'il faut faire.
+
 ---
 
 ## 24. Sécurité (NFR-SEC)

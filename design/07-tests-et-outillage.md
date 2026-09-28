@@ -105,6 +105,7 @@ Ils lisent le code source et refusent une forme interdite. Tous tournent dans `v
 | Test | Garde |
 |---|---|
 | `requirements-trace` | Tout identifiant d'exigence cité par un test existe par écrit (cliquet, ci-dessous) |
+| `recette-coverage` | La recette manuelle vérifie ou exclut, avec sa raison, chaque exigence fonctionnelle (`NFR-TEST-RECETTE-COVERAGE`, ci-dessous) |
 | `display-contracts-coverage` | Toute réponse affichée par le Moteur passe un contrat d'affichage, client et serveur |
 | `db-bootstrap-sync` | `bootstrap.sql` porte l'empreinte de `schema.sql`, mêmes tables, aucune commande `\restrict` |
 | `prompts-reference` | [`05-prompts-reference.md`](05-prompts-reference.md) est la sortie exacte du générateur |
@@ -423,11 +424,12 @@ défaut du produit. Le seul aujourd'hui est dans
 
 ## Les tests qui lisent la documentation
 
-Quatre tests lisent des documents. Renommer un titre, déplacer un fichier ou retirer un identifiant peut
+Cinq tests lisent des documents. Renommer un titre, déplacer un fichier ou retirer un identifiant peut
 donc faire échouer la suite.
 
 | Test | Lit | Vérifie |
 |---|---|---|
+| `recette-coverage.test.ts` (dans `verify`) | `spec/requirements.md` : les titres `### FR-… — …` et leur ligne `**Statut :**` ; [`18-recette-manuelle.md`](../spec/18-recette-manuelle.md) et tous les modules `spec/recette/*.md` : les lignes `**Exigences :**` de chaque bloc `### …`, les lignes `**⚠ Défaut connu :**` et les lignes de tableau des sections `## Hors recette`. Les blocs de code sont ignorés | Chaque `FR-` active, non tenue ou prévue est vérifiée ou exclue, jamais les deux ; les identifiants cités existent ; `⚠` suit le statut (non tenue ⇒ `⚠`, active ⇒ sans, prévue ⇒ hors recette) ; une vérification `⚠` décrit son défaut ; une exclusion a une raison de 15 caractères au moins ; sentinelles : plus de 150 exigences et 50 vérifications lues |
 | `requirements-trace.test.ts` (dans `verify`) | `spec/requirements.md` pour les `FR-` / `NFR-` ; **tous** les `.md` de `design/`, sous-dossiers compris, pour les `DESIGN-` ; puis, pour l'historique, `prd.md`, `design-registry.md` et l'épopée `epic-qualite-seo-garde-fous.md` (qui réserve les identifiants pas encore livrés) | Tout identifiant cité dans `tests/` (fichiers `.ts`, `.js`, `.vue`) existe comme mot entier ; plus de 100 identifiants trouvés (sentinelle) |
 | `design-tables-matrix.test.ts` | [`02-donnees.md`](02-donnees.md), du titre `## Matrice tables ↔ exigences` au titre suivant ; les lignes du tableau dont la première cellule est un nom de table entre accents graves | Chaque table de `schema.sql` y figure ; aucune table absente du schéma (sauf `intent_explorations`, admise comme ancienne) ; au moins 20 tables |
 | `prompts-reference.test.ts` (dans `verify`) | [`05-prompts-reference.md`](05-prompts-reference.md) | Le fichier est la sortie de `buildPromptsReference` ; plus de 40 prompts, chacun avec un appelant. En cas d'échec : `npm run docs:prompts` |
