@@ -2,8 +2,8 @@
 name: articles
 description: La fiche d'un article (table articles) — identité, niveau, place dans l'arbre du cocon (parent, section), statut et phase — et les copies qu'en gardent l'écran et les calculs.
 type: "PostgreSQL articles (snake_case) → Article (camelCase, rowToArticle) ; GET /api/cocoons → Cocoon { articles[], publishedArticles[], stats } ; GET /api/cocoons/:id/tree → CocoonTreeNode[]"
-last_updated: 2026-09-28
-related_fr: [FR-DASH-NAV, FR-DASH-PROGRESS, FR-MOT-ARTICLE-SELECTION, FR-MOT-RECAP-PUBLISHED, FR-CER-COCOON-PROGRESSIVE, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-AIGUILLAGE, FR-CER-KEYWORD-REAL-DATA, FR-CER-PARENT-WRITTEN-GATE, FR-CER-CREATION-HONNETE, FR-PIE-CERVEAU-OVERRIDE, FR-RED-PROGRESS, FR-RED-META, FR-RED-PUBLISH-GATE, FR-RED-LINKING-MANUAL, FR-INFRA-COCOON-CONTEXT]
+last_updated: 2026-09-29
+related_fr: [FR-DASH-NAV, FR-DASH-PROGRESS, FR-MOT-ARTICLE-SELECTION, FR-MOT-RECAP-PUBLISHED, FR-CER-COCOON-PROGRESSIVE, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-AIGUILLAGE, FR-CER-KEYWORD-REAL-DATA, FR-CER-PARENT-WRITTEN-GATE, FR-CER-CREATION-HONNETE, FR-PIE-CERVEAU-OVERRIDE, FR-RED-PROGRESS, FR-RED-META, FR-RED-PUBLISH-GATE, FR-RED-LINKING-MANUAL, FR-INFRA-COCOON-CONTEXT, NFR-INT-ARTICLE-ID-NEVER-REUSED]
 ---
 
 # Data Flow — articles
@@ -23,7 +23,7 @@ related_fr: [FR-DASH-NAV, FR-DASH-PROGRESS, FR-MOT-ARTICLE-SELECTION, FR-MOT-REC
 1. hiérarchie jugée sans les sections (`verifyCocoonHierarchy`, [`shared/verifiers/cocoon-hierarchy.ts`](../../shared/verifiers/cocoon-hierarchy.ts)) : pilier d'abord, un seul pilier, parent du niveau juste au-dessus et du même cocon → sinon 409 `HIERARCHY_VIOLATION` ;
 2. mot-clé fourni présent dans `keyword_metrics` → sinon 422 `KEYWORD_NOT_MEASURED` ;
 3. parent rédigé (`assertParentReady`) : sans l'étape `redaction:draft_accepted`, sa porte `draft` est jouée ; refus → 409 `GATE_BLOCKED`, accord → étape posée sur le parent ; puis section connue du parent (H2 du texte, sinon de sa structure) et libre ;
-4. `insertCocoonArticle` : `id = MAX(id)+1` repris jusqu'à 5 fois sur conflit de clé, `status = 'à rédiger'`, `phase = 'proposed'`, adresse = `slug` fourni ou tirée du titre ; adresse prise → 409 `SLUG_TAKEN`.
+4. `insertCocoonArticle` : `id` tiré de la séquence `articles_id_seq` (jamais le numéro d'un article effacé, NFR-INT-ARTICLE-ID-NEVER-REUSED), `status = 'à rédiger'`, `phase = 'proposed'`, adresse = `slug` fourni ou tirée du titre ; adresse prise → 409 `SLUG_TAKEN`.
 
 Appelants : le constructeur de l'étape Articles du Cerveau ([`useCocoonBuilder.createFromCandidate`](../../src/composables/strategy/useCocoonBuilder.ts), [`CocoonTreeBuilder.vue`](../../src/components/production/brain/CocoonTreeBuilder.vue), [`CocoonCandidatesPanel.vue`](../../src/components/production/brain/CocoonCandidatesPanel.vue)) et le mode automatique ([`scripts/auto-article/phases/cerveau.ts`](../../scripts/auto-article/phases/cerveau.ts), section choisie par `pickParentSection`). Après la 201, l'écran inscrit l'article au pool de mots-clés (`POST /api/keywords`) et sur la carte `proposedArticles` (cf. [strategy.md](./strategy.md)), puis relit l'arbre et `GET /api/cocoons`.
 
@@ -47,7 +47,7 @@ Appelants : le constructeur de l'étape Articles du Cerveau ([`useCocoonBuilder.
 ## Persistance
 
 **Autorité : la table `articles`** ([`server/db/schema.sql`](../../server/db/schema.sql)).
-- `id INTEGER` sans séquence ; `slug` unique ; `type` sous `CHECK` Pilier / Intermédiaire / Spécialisé.
+- `id INTEGER` par défaut `nextval('articles_id_seq')` : une séquence ne recule jamais, un numéro effacé n'est pas redonné ; `slug` unique ; `type` sous `CHECK` Pilier / Intermédiaire / Spécialisé.
 - `cocoon_id` → `cocoons` `ON DELETE SET NULL`.
 - `parent_id` → `articles` `ON DELETE RESTRICT`, jamais soi-même (`articles_parent_not_self`), index `idx_articles_parent_id` ; `parent_section` = titre du H2 du parent, comparé par `sectionKey` ([`shared/chapters.ts`](../../shared/chapters.ts), sans casse ni ponctuation finale).
 - Tables filles 1:1 en `ON DELETE CASCADE` : `article_content`, `article_keywords`, `article_strategies`, `article_micro_contexts`, `gate_waivers`.
@@ -98,7 +98,8 @@ Appelants : le constructeur de l'étape Articles du Cerveau ([`useCocoonBuilder.
 | **Après la 201, pool ou carte en échec** | — | article créé ; `POST /keywords` ou `saveStrategy` refusés | L'article existe (avertissement seulement, FR-CER-CREATION-HONNETE). Sans la ligne de carte, le Moteur ne le liste pas avant un nouvel enregistrement de la carte. |
 | **Chapitre du parent renommé** | `parent_section` ↔ H2 du parent | aucune | L'enfant apparaît sous « section retirée » dans l'arbre ; 🟠 `child-section-missing` à la publication du parent. |
 | **Retrait d'un article** | enfants dans le cocon ? | détachement, ou 409 `HAS_CHILDREN` | La ligne reste en base avec son adresse : un nouvel article au même titre reçoit `SLUG_TAKEN`. |
-| **Deux créations simultanées** | `MAX(id)` | `INSERT` | Collision de clé reprise jusqu'à 5 fois. |
+| **Deux créations simultanées** | — | `INSERT` (numéro par `nextval`) | Couvert : deux numéros différents, sans nouvel essai. |
+| **Écriture en retard pour un article effacé** (scan du Capitaine fini après l'effacement, typiquement entre deux tests) | — | `captain_explorations` et autres tables filles | Couvert : refusée par la clé étrangère (journal « persist failed ») ; le numéro n'étant jamais redonné, elle ne tombe sur aucun autre article. Jusqu'au 2026-09-29 (« plus grand + 1 »), elle atterrissait sur l'article suivant. |
 | **Publier, puis ouvrir la Rédaction ou le Moteur sans recharger** | `useCocoonsStore` déjà rempli | statut et phase changés en base | Les barres du haut gardent l'ancien état jusqu'au rechargement ; la liste `ArticleList` de la Rédaction, relue au montage, est à jour. |
 | **Texte enregistré (phase `redaction`)** | `publishedArticles` | `phase` | L'article passe dans « Articles publiés » du Moteur, mais reste aussi dans « suggérés » (lignes de la carte, sans filtre de phase). |
 
@@ -113,7 +114,7 @@ Appelants : le constructeur de l'étape Articles du Cerveau ([`useCocoonBuilder.
 ## Tests de cohérence
 
 - [`tests/unit/coherence/articles.test.ts`](../../tests/unit/coherence/articles.test.ts) — FR-MOT-ARTICLE-SELECTION : onglets verrouillés sans article, `computeSmartTab` selon les étapes (vrai `useMoteurTabs`). Les blocs FR-DASH-NAV, FR-DASH-PROGRESS, FR-CER-AIGUILLAGE, « batch-create » et « store / DB » manipulent des objets construits dans le test sans appeler le code : ils ne gardent rien.
-- Ce qui garde réellement le flux, hors du dossier `coherence/` : [`cocoon-article.service.test.ts`](../../tests/unit/services/cocoon-article.service.test.ts) (pilier seul dans un cocon vide, enfant né d'une section d'un parent rédigé, étape posée sur le parent, `SLUG_TAKEN`, `KEYWORD_NOT_MEASURED`), [`verifiers-cocoon-hierarchy.test.ts`](../../tests/unit/shared/verifiers-cocoon-hierarchy.test.ts), [`cocoon-articles.routes.test.ts`](../../tests/unit/routes/cocoon-articles.routes.test.ts), [`articles.contract.test.ts`](../../tests/contract-api/articles.contract.test.ts) (`batch-create` → 404, `HAS_CHILDREN`), [`backfill-cocoon-plan.test.ts`](../../tests/unit/scripts/backfill-cocoon-plan.test.ts), [`recap-articles.test.ts`](../../tests/unit/utils/recap-articles.test.ts), [`article-phase.test.ts`](../../tests/unit/shared/article-phase.test.ts), [`tests/integration/data.service.test.ts`](../../tests/integration/data.service.test.ts) (`publishedArticles`).
+- Ce qui garde réellement le flux, hors du dossier `coherence/` : [`cocoon-article.service.test.ts`](../../tests/unit/services/cocoon-article.service.test.ts) (pilier seul dans un cocon vide, enfant né d'une section d'un parent rédigé, étape posée sur le parent, `SLUG_TAKEN`, `KEYWORD_NOT_MEASURED`), [`verifiers-cocoon-hierarchy.test.ts`](../../tests/unit/shared/verifiers-cocoon-hierarchy.test.ts), [`cocoon-articles.routes.test.ts`](../../tests/unit/routes/cocoon-articles.routes.test.ts), [`articles.contract.test.ts`](../../tests/contract-api/articles.contract.test.ts) (`batch-create` → 404, `HAS_CHILDREN`), [`backfill-cocoon-plan.test.ts`](../../tests/unit/scripts/backfill-cocoon-plan.test.ts), [`recap-articles.test.ts`](../../tests/unit/utils/recap-articles.test.ts), [`article-phase.test.ts`](../../tests/unit/shared/article-phase.test.ts), [`tests/integration/data.service.test.ts`](../../tests/integration/data.service.test.ts) (`publishedArticles` ; numéro jamais redonné, écriture en retard refusée, créations simultanées), [`article-id-sequence.test.ts`](../../tests/unit/architecture/article-id-sequence.test.ts) (séquence dans les deux schémas, aucun calcul de numéro dans le code).
 - À écrire : un test qui monte la barre de la Rédaction et celle du Moteur sur les mêmes articles et vérifie qu'un article n'est « publié » que selon une seule règle.
 
 ---

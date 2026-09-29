@@ -94,7 +94,7 @@ La pile d'activité « Coûts API » (coûts d'IA, opérations en base rapporté
 - Un panneau qui plante affiche « Une erreur est survenue dans ce panneau. » et « Réessayer » ; après trois essais, « Erreur persistante — rechargez la page. ».
 
 ## Ce qui s'affiche est fiable
-*Exigences : NFR-INT-DISPLAY-CONTRACTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, NFR-INT-SCORING-CONFIGURABLE, NFR-MAIN-NO-SCORE-FALLBACK*
+*Exigences : NFR-INT-DISPLAY-CONTRACTS, NFR-INT-COMPLETED-CHECKS-SSOT, NFR-INT-CHECKS-NAMESPACE, NFR-INT-SCORING-CONFIGURABLE, NFR-MAIN-NO-SCORE-FALLBACK, NFR-INT-ARTICLE-ID-NEVER-REUSED*
 
 **Donnée absente = « — ».** Tout résultat du Moteur (réponse d'IA, de DataForSEO, de Google, calcul local ou relecture en base) est remis en forme avant d'arriver à l'écran.
 - Un indicateur inconnu s'affiche « — », jamais 0. Il est ignoré dans les moyennes et classé en bas des tris.
@@ -106,6 +106,8 @@ La pile d'activité « Coûts API » (coûts d'IA, opérations en base rapporté
 **Progression d'un article.** Un article a une seule liste d'étapes franchies : les six étapes du Moteur (Discovery faite, Radar fait, Capitaine verrouillé, Lieutenants verrouillés, Structure validée, Lexique validé) et « Premier jet accepté » en Rédaction. Tous les indicateurs (points de progression, bandeaux, panneau de finalisation, arbre du cocon) lisent cette liste. Une étape cochée ou retirée se voit partout dès que le serveur l'a enregistrée. Retirer le Capitaine ou les Lieutenants retire aussi la Structure, bâtie sur eux.
 
 **Seuils.** Les seuils de couleur et de classement des indicateurs sont les mêmes pour l'affichage, le tri et les filtres.
+
+**Numéro d'un article.** Chaque article reçoit un numéro (celui de son adresse dans l'outil) qu'aucun autre n'a porté. Retirer un article du cocon ne l'efface pas. Si un article est effacé de la base (nettoyage des tests, script), son numéro n'est jamais redonné : une analyse qui se termine après l'effacement ne s'affiche sur aucun autre article.
 
 > **En situation.** DataForSEO ne connaît pas la difficulté de « création site web Toulouse ». La carte affiche « KD — », pas un « KD 0 » vert trompeur. Le lendemain, la carte relue en base affiche la même chose.
 

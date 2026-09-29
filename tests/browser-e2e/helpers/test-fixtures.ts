@@ -167,32 +167,27 @@ export const test = base.extend<{ ctx: BrowserCtx }>({
         const titre = tagged(b)
         const slug = `browser-${runId}-${b.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`
         const suggestedKeyword = opts.withKeyword === false ? null : `test-${runId}-kw ${slug}`
-        for (let attempt = 0; attempt < 5; attempt++) {
-          const maxRes = await query<{ max: number | null }>(`SELECT COALESCE(MAX(id), 0) AS max FROM articles`)
-          const nextId = (maxRes.rows[0].max ?? 0) + 1 + attempt
-          try {
-            await query(
-              `INSERT INTO articles (id, titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps)
-               VALUES ($1, $2, $3, $4, $5, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb)`,
-              [nextId, titre, cocoonDbId, slug, type],
-            )
-            const article: TestArticle = {
-              id: nextId,
-              titre,
-              cocoonId: await resolveCocoonIndex(),
-              cocoonDbId,
-              slug,
-              type,
-              suggestedKeyword,
-            }
-            created.push(article)
-            await syncStrategy()
-            return article
-          } catch (err) {
-            if (!/articles_pkey|articles_slug_key/.test((err as Error).message)) throw err
-          }
+        // Le numéro vient de la séquence de la base : jamais celui de l'article
+        // d'un test précédent, dont un scan en retard peut encore s'écrire
+        // (NFR-INT-ARTICLE-ID-NEVER-REUSED).
+        const res = await query<{ id: number }>(
+          `INSERT INTO articles (titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps)
+           VALUES ($1, $2, $3, $4, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb)
+           RETURNING id`,
+          [titre, cocoonDbId, slug, type],
+        )
+        const article: TestArticle = {
+          id: res.rows[0].id,
+          titre,
+          cocoonId: await resolveCocoonIndex(),
+          cocoonDbId,
+          slug,
+          type,
+          suggestedKeyword,
         }
-        throw new Error('createArticle failed after 5 retries')
+        created.push(article)
+        await syncStrategy()
+        return article
       },
     }
 

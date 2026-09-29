@@ -114,7 +114,7 @@ sequenceDiagram
   - [`shared/verifiers/cocoon-hierarchy.ts`](../shared/verifiers/cocoon-hierarchy.ts) — `verifyCocoonHierarchy` (règles `hierarchy-one-pillar`, `-pillar-has-parent`, `-pillar-first`, `-parent-missing`, `-parent-elsewhere`, `-parent-level`, `-section-missing`, `-section-unknown`, `-section-taken`, toutes de niveau `technique` ⛔), `parentSectionsOf` (H2 du texte, sinon de `hn_structure`, sans intro, conclusion ni FAQ), `PARENT_LEVEL`.
   - [`shared/chapters.ts`](../shared/chapters.ts) — `sectionKey`.
   - [`server/services/infra/data.service.ts`](../server/services/infra/data.service.ts) :
-    - `insertCocoonArticle` : `id = MAX(id)+1`, repris jusqu'à 5 fois sur un conflit de clé primaire ; `ON CONFLICT (slug) DO NOTHING` → `'slug-taken'` ; type converti par `articleLevelToDbType` ;
+    - `insertCocoonArticle` : `id` tiré de la séquence `articles_id_seq` (NFR-INT-ARTICLE-ID-NEVER-REUSED) ; `ON CONFLICT (slug) DO NOTHING` → `'slug-taken'` ; type converti par `articleLevelToDbType` ;
     - `setArticleParent` ;
     - `removeArticleFromCocoon` : `'has-children'` si un enfant est encore dans un cocon, sinon `cocoon_id`, `parent_id` et `parent_section` à `NULL` ;
     - `getArticleChildren`, `rowToArticle`.
