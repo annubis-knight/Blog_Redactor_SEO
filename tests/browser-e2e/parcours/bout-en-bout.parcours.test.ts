@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-01, PU-02, PU-05 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Parcours de bout en bout — un cocon vide devient trois articles rédigés,
  * chacun né d'une section de son parent (C7, FR-CER-COCOON-PROGRESSIVE).

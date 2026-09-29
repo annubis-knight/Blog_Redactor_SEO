@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-05 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Browser E2E — passes d'enrichissement (FR-RED-ENRICH-PASSES,
  * FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE), en mode simulé.

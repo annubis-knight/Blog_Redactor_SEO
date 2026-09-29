@@ -226,6 +226,7 @@ L'outil doit permettre de poser une fois, pour tout le cocon, une stratégie com
 - Aux cinq premières étapes : une réponse libre, une suggestion de l'IA sur demande, et une validation au choix (« Mon texte », « La suggestion », « Fusionner les deux »). Le texte validé reste modifiable.
 - Une étape s'approfondit par des sous-questions de l'IA ; chaque sous-réponse validée enrichit le texte validé de l'étape.
 - « Terminer le brainstorm », à l'étape Articles, marque le Cerveau du cocon comme terminé.
+- Le Cerveau d'un cocon rouvre sur la dernière étape atteinte.
 - À l'étape Articles, l'IA propose une carte indicative du cocon (un pilier, des intermédiaires, des spécialisés), d'un coup ou un article à la fois ; la carte se retouche et ne crée aucun article (cf. FR-CER-COCOON-PROGRESSIVE).
 
 ### FR-CER-SAISIE-PRESERVEE — La saisie en cours survit au chargement
@@ -252,7 +253,7 @@ L'outil doit donner à chaque article un niveau parmi trois — Pilier (la tête
 - Sur la carte indicative, une carte sans pilier est signalée : « Aucun article Pilier dans la liste. »
 
 ### FR-CER-COCOON-PROGRESSIVE — Le cocon se construit article par article
-**Statut :** non tenue (« La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur ; « Régénérer › Titre » sur une ligne « Créé » ne change le titre que sur la carte, sans l'enregistrer : le Moteur montre alors un autre titre que l'arbre et la Rédaction)
+**Statut :** non tenue (« La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur ; « Régénérer › Titre » sur une ligne « Créé » ne change le titre que sur la carte, sans l'enregistrer : le Moteur montre alors un autre titre que l'arbre et la Rédaction ; un article créé par le mode automatique n'est inscrit ni sur la carte du cocon ni dans le pool de mots-clés : il manque dans « Articles suggérés » du Moteur)
 L'outil doit faire naître un cocon à partir de son pilier, un article à la fois, chaque enfant depuis une section de son parent. La proposition de plan de l'IA reste une carte qui guide, sans rien créer.
 - Dans un cocon vide, seul le pilier se crée ; un cocon n'a qu'un pilier ; un enfant naît d'une section libre d'un parent du niveau juste au-dessus, dans le même cocon. Ces règles ne se dérogent pas (⛔), et chaque refus dit ce qui manque.
 - Créer un article passe par le choix d'un mot-clé mesuré et d'un titre de 3 caractères au moins. L'article créé rejoint la carte du cocon, d'où le Moteur tire sa liste d'articles, avec la marque « Créé ».
@@ -321,7 +322,7 @@ L'outil doit recommander une longueur d'article réaliste, tirée du niveau, de 
 - Dans la Rédaction, la longueur visée s'ajuste par pas de 100 mots (de 500 à 10 000) et revient à la recommandation par « Reinitialiser ». La valeur retenue alimente le micro-contexte et le premier jet.
 
 ### FR-CER-THEME-CONFIG — Configuration du thème, saisie une fois
-**Statut :** non tenue (hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client ; au Cerveau, la configuration n'est envoyée que si l'audience, la promesse, le secteur ou le style est rempli)
+**Statut :** non tenue (hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client ; au Cerveau, la configuration n'est envoyée que si l'audience, la promesse, le secteur ou le style est rempli ; le mode automatique ne la lit pas pour le brief et l'emplacement : il redemande un « Contexte business » à chaque run ; dans la rédaction guidée, « Contexte envoyé à Claude » affiche toute la configuration alors que le sommaire et le premier jet ne la reçoivent pas)
 L'outil doit garder une configuration unique du thème — client type, positionnement, offres, ton —, saisie une fois et reprise par les consignes de l'IA.
 - Une seule configuration existe pour tout l'outil ; elle se crée et se modifie depuis « Configuration du Thème », enregistrée d'elle-même après chaque saisie ou par « Sauvegarder ».
 - « Remplir les champs avec Claude » remplit les champs à partir d'une description libre, puis enregistre.
@@ -625,7 +626,7 @@ L'outil doit proposer, sur demande, une sélection de 20 à 30 candidats pertine
 - L'analyse réussie est sauvegardée avec la découverte.
 
 ### FR-DIS-CACHE — Reprendre une découverte déjà faite
-**Statut :** non tenue (une sauvegarde n'expire jamais, et la section Courte-traîne n'est ni sauvegardée ni restaurée ; pendant le chargement d'une sauvegarde, « Charger » n'affiche pas « Chargement... » et reste cliquable)
+**Statut :** non tenue (une sauvegarde n'expire jamais, et la section Courte-traîne n'est ni sauvegardée ni restaurée ; pendant le chargement d'une sauvegarde, « Charger » n'affiche pas « Chargement... » et reste cliquable ; après un rechargement, la racine préremplie ne fait pas apparaître le bandeau de reprise tant qu'on ne la retape pas)
 L'outil doit sauvegarder automatiquement chaque découverte par mot-clé racine et proposer de la recharger sans nouvel appel.
 - Moins d'une seconde après la saisie d'un mot-clé racine déjà exploré, un bandeau affiche la date, le nombre de mots-clés et la présence d'une analyse IA.
 - « Charger » restaure les sections, les jugements de pertinence, les groupes de mots et l'analyse IA sans appel externe.
@@ -1308,7 +1309,7 @@ L'outil doit montrer, dans un seul onglet et sans permettre de les modifier, le 
 - Aucun contrôle ne modifie une valeur : seuls le repli des sections et le bouton vers la Rédaction sont actionnables.
 
 ### FR-FIN-LINK-REDACTION — Passer à la Rédaction
-**Statut :** active
+**Statut :** non tenue (« Aller à la Rédaction → » transmet l'article choisi, mais la page Rédaction l'ignore : on arrive sur la liste du cocon, pas sur l'article)
 L'outil doit offrir le passage à la Rédaction de l'article, depuis l'onglet Finalisation et depuis le bas du Moteur, sous la même condition.
 - « Aller à la Rédaction → » (Finalisation) et « Continuer vers la Rédaction → » (bas du dernier onglet) sont désactivés tant qu'un des quatre verrous manque.
 - Désactivés, ils listent les étapes manquantes (« Étapes restantes : Structure à valider, Lexique à valider »).
@@ -1338,13 +1339,13 @@ La Rédaction transforme un article préparé au Moteur (capitaine, lieutenants,
 Une **porte** est un contrôle qualité qui juge l'article avant une étape. Chaque alerte a un niveau : ⛔ défaut technique (à corriger, jamais dérogeable), 🔴 risque (dérogeable avec une raison écrite), 🟠 attention (un accusé de lecture suffit). Le mécanisme des portes et des dérogations relève du § 19. Infrastructure transversale (`FR-INFRA-GATE-WAIVER`, `FR-INFRA-VERIFIER-SHARED`).
 
 ### FR-RED-BRIEF — Analyse IA du brief avant écriture
-**Statut :** active
+**Statut :** non tenue (l'analyse n'est pas enregistrée : un rechargement la perd, et la revoir la fait repayer)
 L'outil doit produire, dans la rédaction guidée, une analyse stratégique du brief qui s'affiche au fil de l'écriture : intention de recherche, structure, contenu par section, points d'attention.
 - L'analyse se lance d'elle-même à la première ouverture du panneau « IA Brief » de la page ; « Relancer l'analyse » en redemande une nouvelle.
 - Le texte apparaît progressivement, mis en forme (titres, listes, gras).
 - L'analyse reçoit le titre, le mot-clé principal, les lieutenants, le lexique, la structure H1/H2/H3, l'angle éditorial de l'article, les questions « Autres questions posées » et les cinq premiers résultats de Google, et les titres des autres articles du cocon.
 - Les données de Google portent sur le mot-clé de l'article (capitaine verrouillé, à défaut mot-clé suggéré), jamais sur le mot-clé pilier du cocon ; sans mot-clé, l'article n'en reçoit aucune.
-- L'analyse n'est pas enregistrée : un rechargement de page la perd.
+- L'analyse est enregistrée avec l'article : elle réapparaît à la réouverture, sans nouvel appel. « Relancer l'analyse » en demande une nouvelle. (Décision d'Arnaud du 2026-09-29 : ne pas repayer une analyse déjà obtenue.)
 
 ### FR-RED-IA-BRIEF — Panneau « IA Brief »
 **Statut :** active
@@ -1412,6 +1413,13 @@ L'outil doit remplacer les passages « à sourcer » par des données citées av
 - Chaque lien absent des résultats réels de la recherche est retiré (texte gardé) et signalé 🔴 ; un marqueur qui reste est 🟠.
 - Seul Claude fait la recherche : sans lui, la passe échoue avec le message du fournisseur ou « La recherche web exige Claude… », jamais un texte sans source d'un autre fournisseur.
 - Les sources trouvées sont listées sous la proposition et s'ouvrent dans un nouvel onglet.
+
+### FR-RED-REAL-CLAIMS-PROVEN — Tout chiffre ou exemple réel est prouvé
+**Statut :** non tenue (« Statistique sourcée » fait écrire un chiffre attribué à une source sans aucune recherche, et le contrôle de publication le croit sourcé ; « Exemple PME » cite la stratégie d'une grande marque nommée sans rien vérifier)
+Tout ce qui ajoute à un article un chiffre, une donnée ou un exemple présenté comme réel (entreprise, marque, étude, événement) doit venir d'une vraie recherche, avec le lien de sa source. Sinon, le passage est marqué « [à sourcer : …] » et la publication le signale. (Décision d'Arnaud du 2026-09-29 : « tout ce qui a pour but d'enrichir avec des exemples ou des chiffres réels doit être vérifié et sourcé, tout doit être prouvé ».)
+- Une action ou une passe qui ajoute un chiffre ou un exemple réel cherche sur le web et garde le lien de chaque source ; un lien absent des résultats réels est retiré.
+- Une source nommée sans lien ne suffit pas : pour le contrôle de publication, le chiffre reste « à sourcer ».
+- Un exemple inventé pour illustrer est présenté comme tel (« imaginons… »), sans chiffre.
 
 ### FR-RED-SECTION-REWRITE — Réécrire un chapitre en voyant tout l'article
 **Statut :** non tenue (le champ « Consigne » accepte plus de 600 caractères ; au-delà, la carte affiche un message technique en anglais au lieu de dire la limite)
@@ -1528,12 +1536,13 @@ L'outil doit donner accès, à côté du texte, à des panneaux d'analyse exclus
 - La largeur de la zone se règle à la souris (240 px au moins) et reste mémorisée par le navigateur.
 
 ### FR-RED-PROGRESS — La phase de l'article suit les événements réels
-**Statut :** active
+**Statut :** non tenue (rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure »)
 L'outil doit tenir la phase de chaque article dans un ensemble fermé qui n'avance qu'avec des événements réels et ne recule jamais.
 - Les phases sont : proposé, Moteur, rédaction, publié.
 - Un texte non vide enregistré fait passer l'article en rédaction ; la publication le fait passer en publié.
 - La phase ne recule jamais.
 - La phase est enregistrée et survit aux rechargements.
+- Rouvrir la rédaction d'un article dont le texte existe mène à l'étape Article, pas à « Brief & Structure ».
 
 ### FR-RED-PUBLISH-GATE — On ne publie pas un article qu'un expert refuserait
 **Statut :** active
@@ -1818,7 +1827,7 @@ Tous les appels de l'interface vers le serveur de l'outil doivent passer par un 
 - Un refus de porte arrive à l'écran avec le détail complet de l'évaluation.
 
 ### FR-INFRA-API-STREAM — Texte de l'IA affiché au fil de l'eau
-**Statut :** non tenue (quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture)
+**Statut :** non tenue (quand l'utilisateur annule, l'écran s'arrête mais le serveur continue la génération jusqu'au bout et la facture ; un rechargement de la page pendant le premier jet fait aussi payer un texte dont la suite n'est plus enregistrée)
 Les générations longues (premier jet, sommaire, panneaux d'avis IA, actions contextuelles) doivent s'afficher au fil de l'eau, avec les mêmes garanties que les autres appels : erreurs lisibles, coût dans la pile, annulation propre.
 - Toutes les générations au fil de l'eau passent par le même point d'entrée de l'interface.
 - Le coût final d'une génération entre dans la pile d'activité à la fin du flux.
@@ -1924,7 +1933,7 @@ Des règles d'architecture doivent interdire les imports qui dégraderaient la s
 - Un cycle d'import est une erreur.
 
 ### FR-INFRA-RUNTIME-MODE — Bascule globale « simulé / réel »
-**Statut :** non tenue (la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration)
+**Statut :** non tenue (la resynchronisation n'a lieu qu'au chargement de la page : après un redémarrage du serveur en cours de session, le badge garde « MOCK » alors que le serveur est revenu à sa configuration ; le mode automatique, et son option « --relink » qui repasse le serveur en simulé, désynchronisent aussi le bouton de l'application)
 Un bouton de la barre de navigation doit basculer toutes les sources coûteuses en simulation (IA : réponses simulées ; DataForSEO : bac à sable gratuit), et revenir au réel en un clic. Le choix survit au rechargement de la page.
 - En « MOCK », aucun appel IA ni DataForSEO n'est facturé.
 - Le badge affiché et le mode appliqué par le serveur sont toujours les mêmes.
@@ -2334,6 +2343,14 @@ La recette manuelle doit vérifier à l'écran chaque exigence fonctionnelle, ou
 - Une exigence prévue (pas encore livrée) ne se vérifie pas : elle est listée hors recette.
 - Tout identifiant cité par la recette existe dans les exigences.
 - Un oubli fait échouer la vérification rapide du projet, en nommant l'exigence et ce qu'il faut faire.
+
+### NFR-TEST-PARCOURS-TRACE — Les parcours utilisateur restent reliés aux exigences, à la recette et aux tests
+**Statut :** active
+Les parcours utilisateur doivent décrire, chacun, un but réel de l'utilisateur et le chemin qu'il suit pour l'atteindre, y compris ce qui peut mal tourner. Chaque étape s'appuie sur des exigences écrites, et chaque parcours dit ce qui le vérifie.
+- Chaque étape et chaque situation d'un parcours cite au moins une exigence, et toute exigence citée existe.
+- « ⚠ » suit le statut : une exigence non tenue le porte, une active non ; une exigence prévue n'est pas une étape. Chaque exigence non tenue citée figure dans la liste des défauts connus du parcours.
+- Chaque parcours dit quelle partie de la recette le couvre, et s'il a un test automatique. Un parcours suivi par un test automatique est cité par ce test ; un parcours sans test le dit (« aucun »).
+- Un écart fait échouer la vérification rapide du projet, en nommant le parcours et ce qu'il faut faire.
 
 ---
 

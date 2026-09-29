@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-04, PU-05 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Portes de qualité — un test NÉGATIF navigateur par porte (NFR-TEST-BEHAVIORAL).
  *

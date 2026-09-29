@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-04 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Interactions internes — les panneaux « résumé IA » (tech-spec-parcours-8-temps).
  *

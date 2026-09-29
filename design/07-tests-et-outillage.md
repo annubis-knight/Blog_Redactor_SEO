@@ -106,6 +106,7 @@ Ils lisent le code source et refusent une forme interdite. Tous tournent dans `v
 |---|---|
 | `requirements-trace` | Tout identifiant d'exigence cité par un test existe par écrit (cliquet, ci-dessous) |
 | `recette-coverage` | La recette manuelle vérifie ou exclut, avec sa raison, chaque exigence fonctionnelle (`NFR-TEST-RECETTE-COVERAGE`, ci-dessous) |
+| `parcours-trace` | Chaque parcours utilisateur (`spec/parcours/PU-0N-*.md`) cite des exigences existantes, marque ⚠ les non tenues et les liste, et dit vrai sur son test automatique (`NFR-TEST-PARCOURS-TRACE`, ci-dessous) |
 | `display-contracts-coverage` | Toute réponse affichée par le Moteur passe un contrat d'affichage, client et serveur |
 | `db-bootstrap-sync` | `bootstrap.sql` porte l'empreinte de `schema.sql`, mêmes tables, aucune commande `\restrict` |
 | `prompts-reference` | [`05-prompts-reference.md`](05-prompts-reference.md) est la sortie exacte du générateur |
@@ -441,11 +442,14 @@ défaut du produit. Le seul aujourd'hui est dans
 
 ## Les tests qui lisent la documentation
 
-Cinq tests lisent des documents. Renommer un titre, déplacer un fichier ou retirer un identifiant peut
-donc faire échouer la suite.
+Six tests lisent des documents. Renommer un titre, déplacer un fichier ou retirer un identifiant peut
+donc faire échouer la suite. `recette-coverage` et `parcours-trace` lisent les exigences par la même aide,
+[`tests/helpers/spec-requirements.ts`](../tests/helpers/spec-requirements.ts) (`readRequirementStatuses`,
+`idsOfRequirementsLine`, `warningMismatch`).
 
 | Test | Lit | Vérifie |
 |---|---|---|
+| `parcours-trace.test.ts` (dans `verify`) | Les fichiers `spec/parcours/PU-0N-*.md` : le `id` du front-matter, le titre `# PU-0N — …`, les lignes d'en-tête (But, Quand, Départ, Arrivée, Recette, Test automatique), la ligne `**Exigences :**` de chaque `### …` des sections « Les étapes » et « Ce qui peut mal tourner », les puces de « Défauts connus sur ce parcours » ; et tous les fichiers `.ts` / `.js` de `tests/`, pour y trouver les identifiants `PU-0N` cités. Les blocs de code sont ignorés | Identifiants concordants ; en-tête complet ; une seule ligne Exigences par section, avec des identifiants existants ; `⚠` suit le statut ; chaque non tenue citée est dans les défauts connus ; « Test automatique : aucun… » si et seulement si aucun test ne cite le parcours ; sentinelles : 5 parcours au moins, 5 sections chacun |
 | `recette-coverage.test.ts` (dans `verify`) | `spec/requirements.md` : les titres `### FR-… — …` et leur ligne `**Statut :**` ; [`18-recette-manuelle.md`](../spec/18-recette-manuelle.md) et tous les modules `spec/recette/*.md` : les lignes `**Exigences :**` de chaque bloc `### …`, les lignes `**⚠ Défaut connu :**` et les lignes de tableau des sections `## Hors recette`. Les blocs de code sont ignorés | Chaque `FR-` active, non tenue ou prévue est vérifiée ou exclue, jamais les deux ; les identifiants cités existent ; `⚠` suit le statut (non tenue ⇒ `⚠`, active ⇒ sans, prévue ⇒ hors recette) ; une vérification `⚠` décrit son défaut ; une exclusion a une raison de 15 caractères au moins ; sentinelles : plus de 150 exigences et 50 vérifications lues |
 | `requirements-trace.test.ts` (dans `verify`) | `spec/requirements.md` pour les `FR-` / `NFR-` ; **tous** les `.md` de `design/`, sous-dossiers compris, pour les `DESIGN-` ; puis, pour l'historique, `prd.md`, `design-registry.md` et l'épopée `epic-qualite-seo-garde-fous.md` (qui réserve les identifiants pas encore livrés) | Tout identifiant cité dans `tests/` (fichiers `.ts`, `.js`, `.vue`) existe comme mot entier ; plus de 100 identifiants trouvés (sentinelle) |
 | `design-tables-matrix.test.ts` | [`02-donnees.md`](02-donnees.md), du titre `## Matrice tables ↔ exigences` au titre suivant ; les lignes du tableau dont la première cellule est un nom de table entre accents graves | Chaque table de `schema.sql` y figure ; aucune table absente du schéma (sauf `intent_explorations`, admise comme ancienne) ; au moins 20 tables |

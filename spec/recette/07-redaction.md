@@ -17,7 +17,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 ## Vérifications
 
 ### RED-1 — Un article sans texte : ce qui est grisé, ce qui reste ouvert
-**Exigences :** FR-RED-PANELS-LAYOUT, FR-RED-IA-BRIEF, FR-RED-BRIEF
+**Exigences :** FR-RED-PANELS-LAYOUT, FR-RED-IA-BRIEF, FR-RED-BRIEF ⚠
 
 **Gestes :**
 1. Ouvre la page du cocon et recharge-la (F5) : on part d'un écran propre.
@@ -41,6 +41,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - un bouton grisé ouvre quand même son panneau ;
 - « IA Brief » est grisé, ou l'analyse ne part pas à la première ouverture ;
 - un texte ou un sommaire s'affiche : cet article n'en a pas.
+
+**⚠ Défaut connu :** FR-RED-BRIEF — l'analyse n'est pas enregistrée : un rechargement la perd, et la revoir la fait repayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-2 — Le même article dans l'éditeur
 **Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-PANELS-LAYOUT
@@ -104,7 +106,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **⚠ Défaut connu :** seule la barre de navigation est verrouillée : « Valider le sommaire » et « Continuer vers l'Article » ouvrent l'étape Article sans vérifier le Cerveau. Ce pilier n'a pas de sommaire, donc ces boutons n'apparaissent pas ici ; pour le voir, il faut un article au sommaire validé dans un cocon au Cerveau inachevé. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-5 — Le micro-contexte et l'analyse IA du brief
-**Exigences :** FR-RED-BRIEF, FR-RED-IA-BRIEF
+**Exigences :** FR-RED-BRIEF ⚠, FR-RED-IA-BRIEF
 
 **Gestes :**
 1. Page du cocon « Recette <date> », recharge (F5), puis **« Rédaction »** → carte du pilier. Étape « Brief & Structure ».
@@ -128,6 +130,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - « Annuler » modifie un champ ;
 - après F5, un champ que tu as vu enregistré (« Sauvegarde ») a perdu son texte ;
 - l'analyse d'avant le rechargement est encore affichée.
+
+**⚠ Défaut connu :** FR-RED-BRIEF — l'analyse n'est pas enregistrée : un rechargement la perd, et la revoir la fait repayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-6 — Une seule longueur visée, partout
 **Exigences :** FR-RED-WORD-COUNT-TARGET
@@ -563,7 +567,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **⚠ Défaut connu :** le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte. Au geste 5, le H1 n'a pas « — recette » ; le texte du lien vers l'enfant est là, sans lien (ici c'est normal, l'enfant n'étant pas rédigé ; le défaut touche aussi les liens vers un article rédigé). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-24 — La phase de l'article suit ce qui s'est passé
-**Exigences :** FR-RED-PROGRESS
+**Exigences :** FR-RED-PROGRESS ⚠
 
 **Gestes :**
 1. Page du cocon → **« Moteur »** : ouvre « Articles publiés (N) ».
@@ -580,6 +584,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - le pilier sort de « Articles publiés » ;
 - l'enfant y entre alors qu'il n'a pas de texte ;
 - le statut « Publié » disparaît.
+
+**⚠ Défaut connu :** FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-25 — Réduire un article trop long
 **Exigences :** FR-RED-REDUCE-SECTION, FR-RED-WORD-COUNT-TARGET
@@ -606,7 +612,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - après la réduction, une section a perdu son titre, une liste ou un lien, ou affiche un texte d'essai.
 
 ### RED-26 — Supprimer le contenu, puis recharger
-**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-META ⚠, FR-RED-PROGRESS
+**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-META ⚠, FR-RED-PROGRESS ⚠
 
 **Gestes :**
 1. Éditeur du pilier : **« Supprimer le contenu »**. À la question, clique Annuler.
@@ -630,6 +636,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **⚠ Défaut connu :** la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article. Ici, aucun champ ni bouton ne rend la méta : seul « Régénérer l'article » la refait (RED-27). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RED-PROGRESS — rouvrir la rédaction guidée d'un article déjà rédigé ramène toujours à « Brief & Structure ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-27 — Régénérer l'article : premier jet, méta, capitaine
 **Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-META ⚠, FR-RED-META-CAPTAIN
@@ -753,7 +761,7 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **⚠ Défaut connu :** aucune note ne signale les sections revenues à leur texte d'origine. Compare avant / après : une section restée identique n'est signalée nulle part. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-R5 — L'analyse du brief, en vrai, sur l'article enfant
-**Exigences :** FR-RED-BRIEF
+**Exigences :** FR-RED-BRIEF ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Rédaction guidée de l'article enfant : remplis « Angle differenciant », puis clique ailleurs.
@@ -768,6 +776,30 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **C'est un bug si :**
 - l'analyse porte sur le mot-clé du pilier ;
 - le texte arrive d'un bloc, à la fin seulement.
+
+**⚠ Défaut connu :** FR-RED-BRIEF — l'analyse n'est pas enregistrée : un rechargement la perd, et la revoir la fait repayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+### RED-R6 — Un chiffre ou un exemple réel ajouté est prouvé
+**Exigences :** FR-RED-REAL-CLAIMS-PROVEN ⚠
+**Mode :** RÉEL (payant)
+
+Décision d'Arnaud du 2026-09-29 : tout chiffre ou exemple présenté comme réel doit être vérifié et porter le lien de sa source.
+
+**Gestes :**
+1. Dans l'éditeur, sélectionne une phrase qui avance une idée, sans chiffre. **« ✦ »**, **« Statistique sourcée »**. Lis le résultat, puis **« Accepter »**.
+2. Sélectionne une autre phrase. **« ✦ »**, **« Exemple PME »**. Lis le résultat, puis **« Accepter »**.
+3. Clique **« Visualiser l'article »**, puis **« Exporter HTML »** : regarde l'alarme « Avant de publier ». Termine par **« Revenir corriger »**.
+
+**Tu dois voir :**
+- au geste 1, un chiffre accompagné du **lien** de sa source, ou, faute de source trouvée, un passage marqué « [à sourcer : …] » ;
+- au geste 2, une marque ou une entreprise citée avec le lien qui prouve son exemple, ou un exemple présenté comme inventé (« imaginons… ») ;
+- au geste 3, tout chiffre sans lien signalé par la porte de publication.
+
+**C'est un bug si :**
+- un chiffre attribué à une source (« selon … ») passe sans lien, et sans que la publication le signale ;
+- un exemple de marque réelle est affirmé sans rien pour le prouver.
+
+**⚠ Défaut connu :** FR-RED-REAL-CLAIMS-PROVEN — « Statistique sourcée » fait écrire un chiffre attribué à une source sans aucune recherche, et le contrôle de publication le croit sourcé ; « Exemple PME » cite la stratégie d'une grande marque nommée sans rien vérifier. Aujourd'hui, les gestes 1 et 2 montrent donc ce défaut. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

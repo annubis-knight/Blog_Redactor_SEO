@@ -1,3 +1,4 @@
+// Parcours utilisateur suivis : PU-03, PU-04 (spec/parcours/, NFR-TEST-PARCOURS-TRACE).
 /**
  * Parcours « 8 temps » — sous-phase Capitaine (tech-spec-parcours-8-temps).
  *

@@ -12,8 +12,10 @@ code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 pour Google (le SEO, l'art d'être bien classé dans les résultats de recherche).
 
 **Pour qui.** Un seul utilisateur : un consultant SEO qui produit les articles d'un blog d'entreprise.
-L'identité du site (nom, zone, offre, promesse) se règle dans la configuration du thème ; les
-articles produits aujourd'hui sont ceux du blog de PropulSite, à Toulouse.
+L'outil sert le blog de PropulSite, à Toulouse : l'identité de celui qui écrit (PropulSite, son ton)
+est écrite une fois pour toutes dans les consignes de l'IA. La configuration du thème précise la
+cible, la zone, l'offre et la promesse. (Choix d'Arnaud du 2026-09-29 : l'outil ne sert pas à des sites
+de clients.)
 
 **Le problème.** Générer du texte est facile. Ce qui est difficile, c'est d'avoir **confiance** avant
 d'écrire : le bon mot-clé, un plan qui couvre ce que Google attend, un article qui trouve sa place
@@ -72,6 +74,8 @@ La barre du haut porte, sur chaque écran sauf l'aperçu : le nom du site, la na
 en cours, le bouton du mode (« MOCK » ou « RÉEL ») et l'accès à la configuration.
 
 ## Le parcours de bout en bout
+
+Ce qui suit est la vue d'ensemble du chemin idéal. Les parcours détaillés, avec leurs étapes, leurs exigences et ce qui peut mal tourner, sont dans [`parcours/`](parcours/README.md) : PU-01 à PU-08 (reprendre un article, choisir un mot-clé, quand ça coince…).
 
 ### 1. Choisir le cocon
 

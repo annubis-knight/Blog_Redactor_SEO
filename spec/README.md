@@ -48,5 +48,6 @@ C'est aussi la liste de travail : les exigences « non tenues » sont les défau
 | [15 — Interface partagée](15-interface.md) | Les panneaux et composants communs |
 | [16 — Règles transverses](16-infrastructure.md) | Portes et dérogations, étapes, règles par type d'article, contexte donné à l'IA, erreurs |
 | [17 — Qualités transverses](17-qualites.md) | Performance, coût, sécurité, fiabilité, configuration |
+| [parcours/](parcours/README.md) — les parcours utilisateur | Huit buts réels de l'utilisateur, et le chemin qu'il suit pour chacun, étape par étape, reliés aux exigences, à la recette et aux tests (PU-01 à PU-08) |
 | [18 — Recette manuelle](18-recette-manuelle.md) | Le parcours express à dérouler à la main avant de fusionner un chantier, et le sommaire des modules |
 | [recette/](recette/) — les modules de la recette | Un module par domaine (01 Dashboard et interface … 09 Règles transverses) : chaque exigence fonctionnelle y est vérifiée à l'écran, ou listée « hors recette » avec sa raison |
