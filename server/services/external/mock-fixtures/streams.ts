@@ -50,16 +50,19 @@ registerStreamFixture(
 // ---------------------------------------------------------------------------
 registerStreamFixture(
   'captain-ai-panel',
-  // Calé sur le prompt système : le prompt utilisateur d'une rédaction de
-  // section contient lui aussi le mot « capitaine » (le mot-clé de l'article y
-  // est injecté), ce qui détournait toutes les générations d'article vers cette
-  // fixture — l'article obtenu tenait alors en dix caractères.
-  ({ userPrompt }) =>
-    /capitaine|panel.*analyse|6 KPI|verdict/i.test(userPrompt)
-    // Le gabarit de rédaction d'une section contient lui aussi le mot
-    // « capitaine » (le mot-clé de l'article y est injecté) et arrivait ici en
-    // premier : l'article généré tenait alors en dix caractères.
-    && !/Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt),
+  // Le conseil du Capitaine (`capitaine-ai-panel.md`) se reconnaît à sa consigne
+  // système : son message utilisateur dit seulement « Analyse le mot-clé "…" pour
+  // un article de niveau … », sans « capitaine » ni « verdict ». Sans ce critère,
+  // l'écran recevait la réponse par défaut (NFR-COST-AI-MOCK).
+  ({ systemPrompt, userPrompt }) =>
+    /analyser un mot-cl[eé] candidat pour un article de blog/i.test(systemPrompt)
+    || (
+      /capitaine|panel.*analyse|6 KPI|verdict/i.test(userPrompt)
+      // Le gabarit de rédaction d'une section contient lui aussi le mot
+      // « capitaine » (le mot-clé de l'article y est injecté) et arrivait ici en
+      // premier : l'article généré tenait alors en dix caractères.
+      && !/Section [aà] r[eé]diger|Sommaire complet de l'article/i.test(userPrompt)
+    ),
   ({ userPrompt }) => {
     const kwMatch = userPrompt.match(/["«]([^"»]{3,60})["»]/)
     const kw = kwMatch?.[1] ?? 'mot-clé'
