@@ -42,7 +42,7 @@ Un nom déjà pris dans le même silo est refusé, et rien n'est créé.
 ## La page d'un silo
 *Exigences : FR-DASH-NAV*
 
-- En tête : le fil d'Ariane (Dashboard › silo), le nom et la description du silo.
+- En tête : le fil d'Ariane (Dashboard / silo), le nom et la description du silo.
 - Des compteurs : « Cocons », « Articles », « Par type » (« N Pilier », « N Inter. », « N Spéc. »), « Par statut » (« N À rédiger », « N Brouillon », « N Publié »), « Progression ».
 - Sous « Cocons sémantiques », une ligne par cocon : son nom, « N articles », une barre et son pourcentage. Un clic ouvre la page du cocon.
 - Un silo inconnu affiche « Silo introuvable. » et « ← Retour au dashboard ».
@@ -50,7 +50,7 @@ Un nom déjà pris dans le même silo est refusé, et rien n'est créé.
 ## La page d'un cocon : trois cartes
 *Exigences : FR-DASH-WORKFLOW-CHOICE, FR-DASH-NAV*
 
-En tête : le fil d'Ariane (Dashboard › silo › cocon), le nom du cocon, « N articles · P % complété ». Puis « Choisissez une phase de travail : » et trois cartes.
+En tête : le fil d'Ariane (Dashboard / silo / cocon), le nom du cocon, « N articles · P % complété ». Puis « Choisissez une phase de travail : » et trois cartes.
 
 | Carte | Texte | Repère | Ouvre |
 |---|---|---|---|

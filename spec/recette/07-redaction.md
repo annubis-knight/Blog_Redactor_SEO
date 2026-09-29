@@ -43,7 +43,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - un texte ou un sommaire s'affiche : cet article n'en a pas.
 
 ### RED-2 — Le même article dans l'éditeur
-**Exigences :** FR-RED-EDITOR-TIPTAP, FR-RED-PANELS-LAYOUT
+**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-PANELS-LAYOUT
 
 **Gestes :**
 1. Reviens à l'accueil, clique **« Maillage »**, puis recharge la page (F5).
@@ -60,8 +60,10 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - « IA Brief » existe dans l'éditeur ;
 - un texte, une « Meta SEO » ou une « Table des matières » s'affiche.
 
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### RED-3 — Passer d'un article à l'autre sans recharger
-**Exigences :** FR-RED-PANELS-LAYOUT, FR-RED-EDITOR-TIPTAP
+**Exigences :** FR-RED-PANELS-LAYOUT, FR-RED-EDITOR-TIPTAP ⚠
 
 **Gestes :**
 1. Page du cocon → **« Rédaction »** → carte du pilier. Il s'ouvre sur « Brief & Structure », avec son sommaire.
@@ -76,6 +78,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 
 **C'est un bug si :**
 - l'enfant affiche le sommaire ou le texte du pilier, ou des boutons de panneau actifs. Dans ce cas, ne tape rien et ne clique ni « Sauvegarder » ni « Valider le premier jet » : un enregistrement pourrait copier le texte du pilier dans l'enfant. Recharge (F5) et note-le.
+
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-4 — L'étape « Article » attend un Cerveau terminé
 **Exigences :** FR-RED-GEN-UNLOCK ⚠
@@ -199,7 +203,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - « IA Brief » apparaît dans l'éditeur, ou « Blocs » dans la rédaction guidée.
 
 ### RED-9 — L'éditeur : trois zones et la barre d'outils
-**Exigences :** FR-RED-EDITOR-TIPTAP
+**Exigences :** FR-RED-EDITOR-TIPTAP ⚠
 
 **Gestes :**
 1. Dans l'éditeur du pilier, regarde l'en-tête et les blocs repliés au-dessus du texte.
@@ -221,8 +225,10 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - une mise en forme touche une autre zone que celle du curseur ;
 - ↩ reste grisé après une modification.
 
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### RED-10 — Le bouton Image : adresse et texte alternatif obligatoires
-**Exigences :** FR-RED-EDITOR-TIPTAP
+**Exigences :** FR-RED-EDITOR-TIPTAP ⚠
 
 **Gestes :**
 1. Clique dans un paragraphe du corps (pas sur une image), puis sur **« 📷 »** (infobulle « Insérer une image »).
@@ -243,8 +249,10 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - une image se pose sans texte alternatif, ou avec une adresse refusée ;
 - un refus se fait sans message.
 
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### RED-11 — Enregistrer : indicateur, Ctrl+S, enregistrement automatique, rechargement
-**Exigences :** FR-RED-EDITOR-TIPTAP
+**Exigences :** FR-RED-EDITOR-TIPTAP ⚠
 
 **Gestes :**
 1. Tape un mot dans le corps.
@@ -263,6 +271,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - un mot enregistré disparaît après F5 ;
 - « ✓ Sauvegardé » s'affiche, mais F5 montre l'ancien texte ;
 - l'enregistrement automatique ne part jamais.
+
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-12 — Le score SEO en direct et son détail
 **Exigences :** FR-RED-SEO-LIVE
@@ -352,7 +362,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 **⚠ Défaut connu :** l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui. Invisible en MOCK ; en RÉEL, « Optimiser mot-clé » rend une phrase sans le capitaine (RED-R3). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-16 — Le panneau « Blocs »
-**Exigences :** FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-RED-EDITOR-TIPTAP
+**Exigences :** FR-RED-CONTEXTUAL-ACTIONS ⚠, FR-RED-EDITOR-TIPTAP ⚠
 
 **Gestes :**
 1. Éditeur du pilier, panneau **« Blocs »**.
@@ -374,6 +384,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - un bloc disparaît après F5.
 
 **⚠ Défaut connu :** l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions du menu « ✦ » travaillent sans lui (ces blocs, eux, le reçoivent). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-17 — Le maillage : suggestions, appliquer, ignorer
 **Exigences :** FR-RED-LINKING-MANUAL ⚠
@@ -449,7 +461,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - une question sans « ? » passe sans alerte.
 
 ### RED-20 — Sources sans rien à chercher, et réécrire un chapitre
-**Exigences :** FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE
+**Exigences :** FR-RED-ENRICH-SOURCES, FR-RED-SECTION-REWRITE ⚠
 
 **Gestes :**
 1. Clique **« Sources »**.
@@ -473,6 +485,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - le bouton de réécriture est actif sous 5 caractères ;
 - la réécriture change le titre du chapitre, ou touche un autre chapitre ;
 - au geste 7, le bouton reste actif et la carte affiche un message technique illisible au lieu d'expliquer la limite de 600 caractères.
+
+**⚠ Défaut connu :** FR-RED-SECTION-REWRITE — le champ « Consigne » accepte plus de 600 caractères ; au-delà, la carte affiche un message technique en anglais au lieu de dire la limite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-21 — Relire la langue, humaniser, et annuler
 **Exigences :** FR-RED-LANG-REVIEW, FR-RED-HUMANIZE-SECTION ⚠
@@ -568,7 +582,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - le statut « Publié » disparaît.
 
 ### RED-25 — Réduire un article trop long
-**Exigences :** FR-RED-REDUCE-SECTION, FR-RED-WORD-COUNT-TARGET
+**Exigences :** FR-RED-REDUCE-SECTION ⚠, FR-RED-WORD-COUNT-TARGET
 
 **Gestes :**
 1. Rédaction guidée du pilier, étape « Article » : note « X mots / N cible », et regarde le bouton de réduction.
@@ -590,8 +604,10 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - après « Annuler réduction », une partie du texte reste réduite ;
 - une autre opération reste possible pendant la réduction.
 
+**⚠ Défaut connu :** FR-RED-REDUCE-SECTION — en mode simulé, la réduction ne reconnaît pas sa consigne : chaque section devient un texte générique, sans ses titres, et l'article est enregistré ainsi. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### RED-26 — Supprimer le contenu, puis recharger
-**Exigences :** FR-RED-EDITOR-TIPTAP, FR-RED-META ⚠, FR-RED-PROGRESS
+**Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-META ⚠, FR-RED-PROGRESS
 
 **Gestes :**
 1. Éditeur du pilier : **« Supprimer le contenu »**. À la question, clique Annuler.
@@ -613,6 +629,8 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - après F5, le texte revient alors que la méta, elle, est partie (la spec le signale déjà comme écart : note-le quand même).
 
 **⚠ Défaut connu :** la méta ne se modifie pas à la main et ne se relance pas seule : réessayer relance tout l'article. Ici, aucun champ ni bouton ne rend la méta : seul « Régénérer l'article » la refait (RED-27). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RED-EDITOR-TIPTAP — un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-27 — Régénérer l'article : premier jet, méta, capitaine
 **Exigences :** FR-RED-DRAFT-SINGLE-PASS ⚠, FR-RED-META ⚠, FR-RED-META-CAPTAIN
@@ -716,7 +734,7 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **⚠ Défaut connu :** l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui. Au geste 1, le résultat n'intègre pas le capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-R4 — Réduire, relire et humaniser, en vrai
-**Exigences :** FR-RED-REDUCE-SECTION, FR-RED-LANG-REVIEW, FR-RED-HUMANIZE-SECTION ⚠
+**Exigences :** FR-RED-REDUCE-SECTION ⚠, FR-RED-LANG-REVIEW, FR-RED-HUMANIZE-SECTION ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Refais RED-25 (cible abaissée, **« Réduire (-N mots) »**) jusqu'au bout, puis **« Reinitialiser »** la cible.
@@ -734,6 +752,8 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 - une section est coupée en plein milieu.
 
 **⚠ Défaut connu :** aucune note ne signale les sections revenues à leur texte d'origine. Compare avant / après : une section restée identique n'est signalée nulle part. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RED-REDUCE-SECTION — en mode simulé, la réduction ne reconnaît pas sa consigne : chaque section devient un texte générique, sans ses titres, et l'article est enregistré ainsi. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-R5 — L'analyse du brief, en vrai, sur l'article enfant
 **Exigences :** FR-RED-BRIEF

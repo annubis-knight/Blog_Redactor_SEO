@@ -19,7 +19,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 ## Vérifications
 
 ### LIE-1 — Sans capitaine verrouillé, l'onglet Lieutenants attend
-**Exigences :** FR-LIE-SERP-ANALYZE
+**Exigences :** FR-LIE-SERP-ANALYZE ⚠
 
 **Gestes :**
 1. Crée le nouvel enfant. Page du cocon → carte **« Cerveau »** → étape « Articles ». Dans « Construire le cocon », sous une section du pilier qui n'a pas encore d'article, clique **« Créer l'article de cette section »**. Choisis le **premier** mot-clé mesuré de la liste (la formulation la plus large), puis clique **« Créer l'article »**.
@@ -34,6 +34,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **C'est un bug si :**
 - « Analyser SERP » est cliquable ;
 - une analyse part toute seule.
+
+**⚠ Défaut connu :** FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### HN-1 — Sans lieutenant retenu, pas de structure
 **Exigences :** FR-HN-TAB ⚠
@@ -57,7 +59,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **⚠ Défaut connu :** un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit (tu le verras en HN-8). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-1 — Sans capitaine verrouillé, le Lexique attend
-**Exigences :** FR-LEX-PRECHECK-SERP
+**Exigences :** FR-LEX-PRECHECK-SERP ⚠
 
 **Gestes :**
 1. Clique **Lexique**. Ne clique rien d'autre.
@@ -71,6 +73,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 **C'est un bug si :**
 - une extraction ou une analyse de l'IA démarre sans clic ;
 - une analyse payante part à l'ouverture de l'onglet.
+
+**⚠ Défaut connu :** FR-LEX-PRECHECK-SERP — pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### FIN-1 — Le récapitulatif vide dit ce qui manque
 **Exigences :** FR-FIN-RECAP, FR-FIN-CHECK, FR-FIN-LINK-REDACTION
@@ -98,7 +102,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 > - *Coûts API* : la pastille en bas à gauche de l'écran (un montant · « N appels ») s'ouvre sur le panneau « Coûts API », qui liste aussi les messages de l'outil.
 
 ### LEX-2 — Le Lexique marche sans les Lieutenants et annonce l'analyse payante
-**Exigences :** FR-LEX-PRECHECK-SERP, FR-LEX-SCRAPE-DEDIE
+**Exigences :** FR-LEX-PRECHECK-SERP ⚠, FR-LEX-SCRAPE-DEDIE
 
 **Gestes :**
 1. Onglet **Capitaine** : tape le mot-clé du nouvel enfant dans « Tester un mot-clé capitaine… », appuie sur Entrée, attends la fin de « Validation… », puis clique le cadenas de la carte (infobulle « Verrouiller »). Si l'alarme s'ouvre, coche « J’ai lu » et continue.
@@ -117,6 +121,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - l'extraction exige l'onglet Lieutenants (message « Lancez d'abord l'analyse SERP dans l'onglet Lieutenants »).
 
 > Si « Extraire le Lexique » s'affiche dès le geste 2, les pages de ce mot-clé avaient déjà été lues : l'extraction part seule, sans rien payer. Note-le ; la fenêtre de coût se reverra en RÉEL, sur un nouveau cocon.
+
+**⚠ Défaut connu :** FR-LEX-PRECHECK-SERP — pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-3 — Trois listes de mots du métier
 **Exigences :** FR-LEX-TFIDF, FR-LEX-METIER-ONLY
@@ -167,7 +173,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 > En MOCK, l'IA simulée ne donne aucun avis par terme : ni badge « IA recommandé », ni « Termes manquants », et le panneau reste « à lancer ». Le résumé affiché est « Le lexique actuel est complet sur l'intention mais manque les termes de réassurance (garanties, certifications). » Les badges se vérifient en RÉEL (LEX-R1).
 
 ### LEX-5 — Trois tris, appliqués aux trois listes
-**Exigences :** FR-LEX-SORT
+**Exigences :** FR-LEX-SORT ⚠
 
 **Gestes :**
 1. Regarde la barre de tri au-dessus des listes.
@@ -189,6 +195,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - le tri survit au rechargement, ou se perd en changeant d'article.
 
 > Si les listes sont vides en MOCK, passe cette vérification.
+
+**⚠ Défaut connu :** FR-LEX-SORT — le premier clic sur « A-Z » range de Z à A. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-6 — Cocher un terme l'enregistre aussitôt
 **Exigences :** FR-LEX-SELECT, FR-LEX-CHECKBOX-LOCK-IMMEDIATE, FR-LEX-PRECHECK-PERSISTE, FR-LEX-CHECK
@@ -217,7 +225,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 > **Parade si les listes sont vides (MOCK).** Page du cocon → **« Rédaction »** → carte du nouvel enfant → section « Mots-cles » → « Lexique semantique » : tape un terme du métier dans « Ajouter un terme... », clique **« + »**, puis **« Sauvegarder »**. De retour dans l'onglet Lexique, l'étape est demandée d'elle-même. Dans ce cas, saute les gestes 2 et 3 de FIN-3.
 
 ### LEX-7 — Tester un autre mot-clé : un onglet par exploration
-**Exigences :** FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS, FR-LEX-LECTURE-VS-VERROUILLAGE, FR-LEX-PRECHECK-PERSISTE
+**Exigences :** FR-LEX-MULTI-KEYWORD, FR-LEX-MULTI-KEYWORD-TABS ⚠, FR-LEX-LECTURE-VS-VERROUILLAGE, FR-LEX-PRECHECK-PERSISTE
 
 **Gestes :**
 1. Clique l'onglet **« + Tester un mot-clé »**.
@@ -242,8 +250,10 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 > En MOCK, « Analyse IA en cours... » peut repartir à chaque changement d'onglet : l'IA simulée enregistre un avis vide, que l'écran redemande (écart signalé). L'absence d'appel se vérifie en RÉEL (LEX-R2). « Tester un mot-clé » n'affiche pas de fenêtre de coût : c'est une limite connue.
 
+**⚠ Défaut connu :** FR-LEX-MULTI-KEYWORD-TABS — l'extraction du capitaine n'ajoute son onglet qu'au rechargement ; entre-temps, « Tester un mot-clé » paraît sélectionné au-dessus des listes du capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### LIE-2 — Un échec d'analyse se lit et se répare
-**Exigences :** FR-LIE-SERP-ECHEC-EXPLIQUE
+**Exigences :** FR-LIE-SERP-ECHEC-EXPLIQUE ⚠
 
 **Gestes :**
 1. Onglet **Lieutenants** du nouvel enfant. Coupe internet (Wi-Fi ou câble).
@@ -262,8 +272,10 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 
 > Si l'analyse aboutit malgré la coupure, tous les mots-clés étaient déjà en base : note-le et passe. Les messages « mot-clé trop étroit » et « budget atteint » ne se provoquent pas à la main.
 
+**⚠ Défaut connu :** FR-LIE-SERP-ECHEC-EXPLIQUE — le serveur remplace toute cause (aucun résultat, source muette) par « SERP analysis failed », affiché entre parenthèses ; une coupure réseau n'est pas reconnue ; le plafond de dépense invite à changer de mot-clé, et un quota épuisé à attendre au lieu de recharger les crédits. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### LIE-3 — Analyser les concurrents en réutilisant les pages déjà lues
-**Exigences :** FR-LIE-SERP-ANALYZE, FR-LIE-SCRAPE-DEDIE
+**Exigences :** FR-LIE-SERP-ANALYZE ⚠, FR-LIE-SCRAPE-DEDIE
 
 **Gestes :**
 1. Internet rebranché, clique **« Analyser SERP »**.
@@ -285,6 +297,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un mot-clé a plus de 10 lignes ;
 - le capitaine n'est pas marqué « (cache) » alors que le Lexique l'a analysé ;
 - l'analyse réclame l'onglet Lexique.
+
+**⚠ Défaut connu :** FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LIE-4 — L'IA propose sans cocher, à part des décisions
 **Exigences :** FR-LIE-PROPOSE-AI, FR-LIE-AI-FRONTIER
@@ -411,7 +425,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - l'alarme s'ouvre à chaque case.
 
 ### LIE-10 — Relancer sans perdre ses choix
-**Exigences :** FR-LIE-PROPOSE-AI, FR-LIE-SERP-ANALYZE, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠
+**Exigences :** FR-LIE-PROPOSE-AI, FR-LIE-SERP-ANALYZE ⚠, FR-LIE-CHECKBOX-LOCK-IMMEDIATE ⚠
 
 **Gestes :**
 1. Clique **« Analyser SERP »**.
@@ -431,6 +445,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un bouton de relance est grisé ou absent parce que des lieutenants sont retenus.
 
 **⚠ Défaut connu :** relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LIE-11 — Un lieutenant déjà pris dans le cocon
 **Exigences :** FR-LIE-LOCK-GATE
@@ -661,7 +677,7 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - un verrou manque au retour.
 
 ### FIN-4 — Un verrou retiré ailleurs se voit aussitôt
-**Exigences :** FR-FIN-RECAP, FR-FIN-CHECK, FR-HN-TAB ⚠, FR-LIE-SERP-ANALYZE
+**Exigences :** FR-FIN-RECAP, FR-FIN-CHECK, FR-HN-TAB ⚠, FR-LIE-SERP-ANALYZE ⚠
 
 **Gestes :**
 1. Onglet Capitaine : clique **« Déverrouiller »**. Dans « Déverrouiller le Capitaine ? », clique **« Les garder »**.
@@ -680,6 +696,8 @@ Ce module vérifie les onglets Lieutenants, Structure, Lexique et Finalisation d
 - il faut recharger pour voir le changement.
 
 **⚠ Défaut connu :** un refus d'enregistrement de la structure arrête la validation sans aucun message à l'écran ; seul le refus du sommaire est dit. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-LIE-SERP-ANALYZE — la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### HN-8 — (Facultatif) Un enregistrement refusé devrait se dire
 **Exigences :** FR-HN-TAB ⚠
@@ -787,7 +805,7 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 **⚠ Défaut connu :** l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-R2 — Changer d'onglet ne rappelle pas l'IA
-**Exigences :** FR-LEX-MULTI-KEYWORD-TABS, FR-LEX-LECTURE-VS-VERROUILLAGE
+**Exigences :** FR-LEX-MULTI-KEYWORD-TABS ⚠, FR-LEX-LECTURE-VS-VERROUILLAGE
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. **« + Tester un mot-clé »** : extrais un autre mot-clé. Cette analyse peut être payée sans annonce (limite connue).
@@ -801,6 +819,8 @@ Sur le cocon du parcours express refait en RÉEL (étapes 1 à 6), bouton sur **
 
 **C'est un bug si :**
 - un changement d'onglet relance l'IA ou ajoute une dépense.
+
+**⚠ Défaut connu :** FR-LEX-MULTI-KEYWORD-TABS — l'extraction du capitaine n'ajoute son onglet qu'au rechargement ; entre-temps, « Tester un mot-clé » paraît sélectionné au-dessus des listes du capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### LEX-R3 — La suggestion de Claude passe le même filtre
 **Exigences :** FR-LEX-METIER-ONLY

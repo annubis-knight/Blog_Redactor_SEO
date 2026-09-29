@@ -101,7 +101,7 @@ Le chapeau (le texte sous le H1, avant le premier H2) compte dans le premier cha
 
 **Pannes.** Avant le premier morceau de texte, l'outil réessaie puis passe au fournisseur d'IA suivant. Une panne en cours d'écriture arrête le premier jet ; ce qui a été enregistré au fil reste. **Écart connu :** aucune des deux vues n'affiche le message d'erreur.
 
-**Le texte dans la rédaction guidée** s'affiche en lecture seule, avec le rappel du sommaire (« Contenu généré » sur les chapitres écrits), la méta, les coûts et la barre de mots. « Éditer l'article » ouvre l'éditeur ; « Revoir le Brief » revient à l'étape 1.
+**Le texte dans la rédaction guidée** s'affiche en lecture seule, avec le rappel du sommaire (ses titres seulement), la méta, les coûts et la barre de mots. « Éditer l'article » ouvre l'éditeur ; « Revoir le Brief » revient à l'étape 1.
 
 ### La porte « accepter le premier jet »
 *Exigences : FR-RED-DRAFT-SINGLE-PASS, FR-RED-DRAFT-TO-SOURCE*
@@ -257,7 +257,7 @@ L'ordre des suggestions, dix au plus :
 
 Un article déjà relié n'est pas reproposé. L'ancre est un passage qui existe tel quel dans le texte : le plus long groupe de deux à six mots du titre de la cible, sans mot vide au début ni à la fin ; à défaut, le mot-clé de la cible ; sinon, pas de suggestion.
 
-Appliquer pose le lien sur l'ancre et l'enregistre dans le réseau de liens. **Écarts connus :** dans la rédaction guidée, « Appliquer » ne fait rien (pas d'éditeur) ; dans l'éditeur, l'ancre n'est cherchée que dans la zone où se trouve le curseur, et la suggestion disparaît même si le lien n'a pas pu être posé.
+Appliquer pose le lien sur l'ancre et l'enregistre dans le réseau de liens. **Écarts connus :** dans la rédaction guidée, « Appliquer » ne fait rien (pas d'éditeur) ; dans l'éditeur, l'ancre n'est cherchée que dans la zone où se trouve le curseur : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée.
 
 Le réseau de liens suit le texte : à chaque enregistrement du texte, un lien qui n'y figure plus en sort. Enregistrer seulement le sommaire n'y touche pas. Un lien écrit sous une autre forme qu'un lien d'article de l'outil n'est pas reconnu. Le bouton 🔗 de la barre ne retire pas un lien interne : il faut effacer le texte lié.
 

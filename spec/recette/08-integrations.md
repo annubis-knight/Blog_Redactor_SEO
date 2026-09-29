@@ -16,7 +16,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 ## Vérifications
 
 ### EXT-1 — Le bouton MOCK / RÉEL et la pile d'activité disent la même chose
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-DATAFORSEO-COSTGUARD, NFR-COST-AI-MOCK, NFR-OBS-COST-LOG
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-AI-MOCK ⚠, NFR-OBS-COST-LOG
 
 **Gestes :**
 1. Va sur l'accueil : rien n'y part tout seul, tu peux basculer sans rien payer.
@@ -40,12 +40,18 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - le rechargement de la page change le mode ;
 - la dépense DataForSEO augmente alors que tu n'as fait que basculer.
 
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » ; plusieurs réponses simulées n'ont pas le format attendu : avis du Capitaine (chiffres figés), avis du Lexique et proposition des Lieutenants (champs manquants), « Remplir les champs avec Claude » (échec), « Sujets suggérés » (liste vide), suggestions, fusions et régénérations du Cerveau (texte générique). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### EXT-2 — Au Radar, en MOCK, chaque mot-clé reçoit une mesure factice et gratuite
-**Exigences :** FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-AUTOCOMPLETE-GOOGLE
+**Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE
 
 **Gestes :**
 1. Page du cocon, carte **« Moteur »**. Ouvre « Articles suggérés » et clique sur le titre de l'**article enfant**, puis sur l'onglet **Radar**.
-   - Si l'onglet dit « Les onglets Discovery et Radar sont verrouillés car des mots-clés sont déjà validés pour cet article. », prends un autre article. Au besoin, crée un autre enfant depuis une section du pilier (étape 7 du parcours express).
+   - Si l'onglet refuse de s'ouvrir, c'est un bug (voir le module 03) : prends un autre article. Au besoin, crée un autre enfant depuis une section du pilier (étape 7 du parcours express).
 2. Dans « Ajouter un mot-clé à scanner… », ajoute deux mots-clés différents avec **« + Ajouter »**, par exemple `devis plombier` et `plombier urgence nuit`.
 3. Déplie la pile d'activité et note la dépense DataForSEO.
 4. Clique sur **« Lancer le scan »** et attends la fin.
@@ -63,6 +69,8 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - en MOCK, une carte n'a aucune mesure (« — » partout) ;
 - la dépense DataForSEO augmente en MOCK ;
 - « Autocomplete (0) » alors que Google propose des suggestions pour ce sujet et que tu as internet.
+
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-3 — Au Radar, la proximité de sens de chaque question
 **Exigences :** FR-EXT-EMBEDDINGS
@@ -82,7 +90,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - un pourcentage dépasse 100 %.
 
 ### EXT-4 — Au Capitaine, l'IA simulée signe ses réponses
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX, FR-EXT-AUTOCOMPLETE-GOOGLE
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE
 
 **Gestes :**
 1. Moteur, sélectionne le **pilier**, onglet **Capitaine**. Clique sur la carte du capitaine verrouillé : le panneau « Capitaine » s'ouvre à droite.
@@ -103,8 +111,10 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - en MOCK, la ligne de la pile nomme un modèle Claude, Gemini ou OpenRouter, ou affiche un coût supérieur à « < $0.001 » ;
 - l'absence de suggestion Google fait apparaître un message d'erreur.
 
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-SANDBOX — les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### EXT-5 — Une mesure déjà faite est resservie, « Rafraîchir » la refait
-**Exigences :** FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST
+**Exigences :** FR-EXT-DATAFORSEO ⚠, NFR-COST-CACHE-FIRST ⚠
 
 **Gestes :**
 1. Moteur, pilier, onglet **Lieutenants**. Clique sur **« Analyser SERP »**.
@@ -127,8 +137,10 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 
 **⚠ Défaut connu :** les mesures demandées en groupe (Radar) et la fiche « SERP Data » taisent un échec du fournisseur, même un refus du plafond de dépense : les valeurs restent vides (« — »), sans message. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### EXT-6 — Sans internet, l'IA simulée et les mesures déjà faites continuent
-**Exigences :** FR-EXT-AI-MULTI-PROVIDER, NFR-COST-AI-MOCK, NFR-COST-CACHE-FIRST
+**Exigences :** FR-EXT-AI-MULTI-PROVIDER, NFR-COST-AI-MOCK ⚠, NFR-COST-CACHE-FIRST ⚠
 
 **Gestes :**
 1. Reste en MOCK. Coupe internet (Wi-Fi ou câble). L'outil tourne sur ton ordinateur : il reste ouvert.
@@ -143,6 +155,10 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 **C'est un bug si :**
 - l'avis échoue sans internet en MOCK : la simulation ferait un appel réseau ;
 - les Lieutenants affichent une erreur alors que ces mots-clés ont été analysés il y a moins de 7 jours.
+
+**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » ; plusieurs réponses simulées n'ont pas le format attendu : avis du Capitaine (chiffres figés), avis du Lexique et proposition des Lieutenants (champs manquants), « Remplir les champs avec Claude » (échec), « Sujets suggérés » (liste vide), suggestions, fusions et régénérations du Cerveau (texte générique). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-7 — Sans internet, une nouvelle mesure échoue : ce que dit l'écran
 **Exigences :** FR-EXT-DATAFORSEO ⚠
@@ -244,7 +260,7 @@ Passe le bouton sur **RÉEL** avant ces vérifications, et repasse sur **MOCK** 
 - l'avis arrive sans ligne dans la pile.
 
 ### EXT-R2 — Une mesure payée une fois, puis resservie sans frais
-**Exigences :** FR-EXT-DATAFORSEO ⚠, FR-EXT-DATAFORSEO-COSTGUARD, NFR-COST-DATAFORSEO-BUDGET, NFR-COST-CACHE-FIRST
+**Exigences :** FR-EXT-DATAFORSEO ⚠, FR-EXT-DATAFORSEO-COSTGUARD ⚠, NFR-COST-DATAFORSEO-BUDGET, NFR-COST-CACHE-FIRST ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Coût estimé : ~0,10 $ (mesures, plus un avis IA qui part seul pour chaque nouveau mot-clé).
@@ -269,8 +285,12 @@ Passe le bouton sur **RÉEL** avant ces vérifications, et repasse sur **MOCK** 
 
 **⚠ Défaut connu :** les mesures demandées en groupe (Radar) et la fiche « SERP Data » taisent un échec du fournisseur, même un refus du plafond de dépense : les valeurs restent vides (« — »), sans message. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### EXT-R3 — Le plafond refuse la dépense avant qu'elle parte
-**Exigences :** FR-EXT-DATAFORSEO-COSTGUARD, FR-EXT-DATAFORSEO ⚠, NFR-COST-DATAFORSEO-RESERVE
+**Exigences :** FR-EXT-DATAFORSEO-COSTGUARD ⚠, FR-EXT-DATAFORSEO ⚠, NFR-COST-DATAFORSEO-RESERVE
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Coût estimé : ~0,05 $.
@@ -295,6 +315,8 @@ Passe le bouton sur **RÉEL** avant ces vérifications, et repasse sur **MOCK** 
 - le message de refus ne donne pas la dépense, le plafond et la durée de la fenêtre.
 
 **⚠ Défaut connu :** les mesures demandées en groupe (Radar) et la fiche « SERP Data » taisent un échec du fournisseur, même un refus du plafond de dépense : les valeurs restent vides (« — »), sans message. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-R4 — Claude hors service : un autre fournisseur prend le relais
 **Exigences :** FR-EXT-AI-FALLBACK ⚠, FR-EXT-GEMINI ⚠

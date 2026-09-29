@@ -31,7 +31,7 @@ Structure commune (Discovery, Lexique, Capitaine) :
 - Déplié, il montre l'un des quatre états : au repos (phrase d'invitation), en cours (squelette ou texte qui s'écrit), résultat, erreur (« Une erreur est survenue pendant l'analyse. » ou le message reçu).
 - Il se déplie seul pendant une analyse ou en cas d'erreur, et ne se replie pas seul ensuite.
 - En pied, un bouton « Analyser avec l'IA » (libellé propre à chaque onglet), désactivé tant que le préalable manque. Après un résultat, il devient « Régénérer » et demande confirmation (« … Cela consommera un appel Claude. »).
-- Un résultat ancien peut afficher « Ces résultats commencent à dater — pense à régénérer. ».
+- Aucun panneau ne signale l'âge d'un résultat : un résultat ancien s'affiche comme un neuf.
 
 | Onglet | Panneau | Présence | Particularités |
 |---|---|---|---|

@@ -36,7 +36,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-2 — Tester un mot-clé à la main
-**Exigences :** FR-CAP-INPUT, FR-CAP-LOCK-INTEGRITY
+**Exigences :** FR-CAP-INPUT ⚠, FR-CAP-LOCK-INTEGRITY ⚠
 
 **Gestes :**
 1. Efface le champ « Tester un mot-clé capitaine… » et appuie sur Entrée. Tape trois espaces et appuie encore sur Entrée.
@@ -57,6 +57,10 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - un champ vide, ou fait d'espaces, lance une étude ;
 - Entrée et « Analyser » ne font pas la même chose ;
 - un mot-clé déjà présent crée une deuxième carte.
+
+**⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-3 — La carte montre le Score Pertinence, jamais le Score Marché
 **Exigences :** FR-CAP-SCORING-BIMODAL ⚠
@@ -102,7 +106,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** le jugement de l'IA est calculé mais ni ses pastilles ni la note qu'il corrige n'atteignent la liste du Capitaine : tu vois les badges lexicaux du Radar (« Exact », « Match », « Partiel exact », « Partiel », « Hors sujet ») et « PAA » en « pts » ; la pastille de l'IA n'existe que dans l'ancien mode libre. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-5 — Le panneau de détail s'ouvre, se règle et se ferme
-**Exigences :** FR-CAP-LIST-SIDEPANEL
+**Exigences :** FR-CAP-LIST-SIDEPANEL ⚠
 
 **Gestes :**
 1. Clique sur la ligne d'indicateurs (« vol », « KD »…) d'une carte. Sur un mot-clé de 3 mots ou plus, un clic sur les mots ne sélectionne pas : ils ont leur propre rôle (CAP-9).
@@ -124,6 +128,8 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - le panneau ne s'ouvre pas, ou se ferme quand tu cliques une autre carte ;
 - sa largeur ne se règle pas ;
 - un clic sur l'anneau ou le triangle sélectionne la carte.
+
+**⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-6 — Les indicateurs marché du panneau, en lecture seule
 **Exigences :** FR-CAP-KPIS-READONLY ⚠
@@ -196,7 +202,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-9 — Mots cliquables et racines d'un mot-clé long
-**Exigences :** FR-CAP-ROOTS
+**Exigences :** FR-CAP-ROOTS ⚠
 
 **Gestes :**
 1. Sur la carte `création site internet toulouse`, survole « création », « site », puis « toulouse ».
@@ -221,6 +227,8 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - une combinaison ne montre pas ses propres indicateurs, ou reste sur « Validation… » ;
 - la « Moyenne » ne correspond pas aux anneaux des racines notées (une racine « — » ne compte pas) ;
 - afficher une combinaison ajoute une carte à la liste, ou remet des notes à « — ».
+
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-10 — Verrouiller passe d'abord par la porte
 **Exigences :** FR-CAP-LOCK-GATE
@@ -269,7 +277,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** déverrouiller le Capitaine retire l'étape même quand l'enregistrement du déverrouillage a échoué. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-12 — Trier la liste ; le Capitaine reste en tête
-**Exigences :** FR-CAP-LIST-SIDEPANEL, FR-CAP-SCORING-BIMODAL ⚠
+**Exigences :** FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-SCORING-BIMODAL ⚠
 
 **Gestes :**
 1. Au-dessus de la liste, clique **« Score Pertinence »** trois fois, en regardant l'ordre après chaque clic.
@@ -290,8 +298,10 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 
 **⚠ Défaut connu :** à la réouverture, un mot-clé étudié hors du Radar n'a plus de Score Marché, y compris dans l'avis de l'IA. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CAP-13 — Le verrou vise le mot-clé d'origine, même quand une racine est affichée
-**Exigences :** FR-CAP-LOCK-INTEGRITY
+**Exigences :** FR-CAP-LOCK-INTEGRITY ⚠
 
 **Gestes :**
 1. Trie par **« Score Pertinence »** ↓ et repère la place de `création site internet toulouse`.
@@ -313,8 +323,10 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - la racine est verrouillée à la place du mot-clé ;
 - une deuxième carte `création site internet toulouse` apparaît.
 
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CAP-14 — Rouvrir l'article : tout est retrouvé, sans doublon
-**Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL ⚠, FR-CAP-LIST-SIDEPANEL, FR-CAP-LOCK-INTEGRITY
+**Exigences :** FR-CAP-PERSIST ⚠, FR-CAP-AI-PANEL ⚠, FR-CAP-LIST-SIDEPANEL ⚠, FR-CAP-LOCK-INTEGRITY ⚠
 
 **Gestes :**
 1. Note le nombre de cartes, la carte verrouillée, et « vol », « KD », « CPC » de deux cartes. Sélectionne une carte (panneau ouvert).
@@ -337,8 +349,12 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 
 **⚠ Défaut connu :** la provenance radar / longue traîne / saisie n'est pas enregistrée ; un écran dont les mots-clés ne sont pas encore chargés peut envoyer un Capitaine vide et des listes vides, qui effacent les décisions enregistrées (défaut latent) ; déverrouiller en archivant les lieutenants envoie deux enregistrements concurrents. Et l'avis de l'IA n'est jamais enregistré : il est redemandé pour chaque candidat à chaque réouverture (une ligne « Analyse IA capitaine » par carte), sans la stratégie du cocon. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CAP-15 — Les racines après réouverture
-**Exigences :** FR-CAP-ROOTS
+**Exigences :** FR-CAP-ROOTS ⚠
 
 **Gestes :**
 1. Ouvre le panneau de `création site internet toulouse` : section « Racines ».
@@ -353,6 +369,8 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **C'est un bug si :**
 - les racines n'ont plus de note (« — » partout) et « Moyenne » a disparu ;
 - une racine mesurée à la CAP-9 s'affiche avec « — » partout et un verdict « GRAY ».
+
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-16 — Le Score Pertinence ne change pas entre l'étude et la réouverture
 **Exigences :** FR-CAP-RELEVANCE-LIVE ⚠, FR-CAP-RELEVANCE-INPUTS, FR-CAP-RELEVANCE-INTENT-SIGNAL
@@ -395,7 +413,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 **⚠ Défaut connu :** l'échec de l'IA de jugement n'est jamais signalé ; une longue traîne est présentée comme « aucune question PAA » ; l'écran devine encore une raison quand le serveur n'en donne pas (tu le verras sur les cartes reçues du Radar, CAP-19). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-18 — Un mot-clé retapé dans une autre casse
-**Exigences :** FR-CAP-INPUT, FR-CAP-LOCK-INTEGRITY
+**Exigences :** FR-CAP-INPUT ⚠, FR-CAP-LOCK-INTEGRITY ⚠
 
 **Gestes :**
 1. Note la note de la carte `agence web`.
@@ -412,8 +430,12 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - la carte, ou d'autres, perdent leur note (« — ») ;
 - le Capitaine verrouillé perd son cadenas vert.
 
+**⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CAP-LOCK-INTEGRITY — afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CAP-19 — Des candidats envoyés par le Radar
-**Exigences :** FR-CAP-LIST-SIDEPANEL
+**Exigences :** FR-CAP-LIST-SIDEPANEL ⚠
 
 **Gestes :**
 1. Sur l'article enfant, ouvre l'onglet **Radar**. Dans « Ajouter un mot-clé à scanner… », ajoute `site vitrine artisan`, puis `prix site vitrine` (bouton **« + Ajouter »**).
@@ -433,8 +455,10 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - un mot-clé reçu disparaît de la liste avant le rechargement ;
 - une carte apparaît deux fois.
 
+**⚠ Défaut connu :** FR-CAP-LIST-SIDEPANEL — après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CAP-20 — Hors connexion : une étude qui échoue, des mesures récentes réutilisées
-**Exigences :** FR-CAP-SCAN ⚠, FR-CAP-ROOTS
+**Exigences :** FR-CAP-SCAN ⚠, FR-CAP-ROOTS ⚠
 
 **Gestes :**
 1. Coupe ta connexion internet (Wi-Fi ou câble). L'outil tourne sur ton poste : l'écran reste utilisable.
@@ -455,6 +479,8 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 - après l'étape 5, la carte reste sur « Erreur : … ».
 
 **⚠ Défaut connu :** dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-21 — Un article sans point de douleur
 **Exigences :** FR-CAP-PAINPOINT-FALLBACK ⚠
@@ -502,7 +528,7 @@ Ce module vérifie tout l'onglet Capitaine du Moteur : l'étude d'un mot-clé (i
 Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et repasse en **MOCK** à la fin. Attention : au Capitaine, contrairement au reste de l'outil, aucun bouton n'annonce son coût avant l'appel ; la dépense se lit après, dans « Coûts API ». Chaque étude interroge DataForSEO (chaque racine étudiée d'office compte comme une étude), et chaque candidat déclenche un avis payant de l'IA, redemandé à chaque sélection de l'article, même si tu restes sur un autre onglet : garde peu de candidats.
 
 ### CAP-R1 — Un mot-clé sans demande : verdict NO-GO et alarme 🔴
-**Exigences :** FR-CAP-AUTO-NOGO, FR-CAP-LOCK-GATE
+**Exigences :** FR-CAP-AUTO-NOGO ⚠, FR-CAP-LOCK-GATE
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Étudie deux ou trois mots-clés très rares mais réels, par exemple `plombier chauffagiste bourg madame nuit`.
@@ -522,6 +548,8 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 - un NO-GO « Aucun signal détecté » alors que le volume affiche « — » ;
 - « À la place : » dans le désordre, ou avec un mot-clé à 0 recherche ;
 - un mot-clé à 0 recherche se verrouille sans alarme.
+
+**⚠ Défaut connu :** FR-CAP-AUTO-NOGO — dans la bannière de l'avis, le libellé du NO-GO s'affiche deux fois de suite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-R2 — Des mesures récentes ne sont pas repayées
 **Exigences :** FR-CAP-SCAN ⚠
@@ -564,7 +592,7 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 **⚠ Défaut connu :** l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture (une ligne payante par carte) ; la stratégie du cocon n'est pas transmise (l'avis n'en parle jamais). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CAP-R4 — Les racines d'un mot-clé peu cherché sont étudiées d'office
-**Exigences :** FR-CAP-ROOTS
+**Exigences :** FR-CAP-ROOTS ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Étudie `création site vitrine artisan plombier toulouse`.
@@ -577,6 +605,8 @@ Passe le bouton en **RÉEL**, travaille sur l'article enfant (sauf mention), et 
 **C'est un bug si :**
 - aucune racine alors que le volume est sous le seuil ;
 - une racine n'est pas un début du mot-clé, ou plus de 5 racines.
+
+**⚠ Défaut connu :** FR-CAP-ROOTS — à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

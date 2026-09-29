@@ -1,6 +1,6 @@
 ---
 title: Journal de recette manuelle
-last_updated: 2026-09-28
+last_updated: 2026-09-29
 synced_with:
   - spec/18-recette-manuelle.md
   - _bmad-output/implementation-artifacts/tech-spec-cerveau-generer-au-choix.md
@@ -64,136 +64,85 @@ synced_with:
 
 ---
 
-## Écarts relevés à la lecture du code — 2026-09-28, à confirmer à l'écran
+## Tri des écarts — 2026-09-29
 
-Ces écarts ont été relevés en écrivant la recette exhaustive (modules `spec/recette/`) : neuf agents ont lu, chacun pour son domaine, la spec, les exigences et le code. **Aucun n'a encore été vu à l'écran.** Pendant la recette, un écart confirmé devient un constat R2, R3…, et son exigence passe « non tenue ». Le code de la vérification qui le montre est indiqué entre crochets, quand il existe.
+Les ~90 écarts relevés en écrivant la recette exhaustive (2026-09-28) ont été revérifiés dans le code : cinq agents, un par domaine, environ 120 lignes une fois découpés. Arnaud a délégué les décisions faciles (« je pense que tu connais assez bien le projet pour pouvoir juger »).
 
-**Rien n'est corrigé.** Le tri se fait avec Arnaud.
+| Résultat | Nombre | Où c'est écrit |
+|---|---|---|
+| Le code a tort : exigence passée « non tenue » | 41 | `spec/requirements.md` (statut, avec ce qui manque) |
+| Le code a tort : complément à une exigence déjà « non tenue » | 33 | idem |
+| La doc avait tort : phrase corrigée | 25 | `spec/`, `design/` |
+| Faux écarts, ou déjà écrits | 6 | écartés |
+| Décisions produit prises par Claude | 13 | ci-dessous |
+| Choix laissés à Arnaud | 3 | ci-dessous |
 
-### A. Bugs probables
+La recette suit : 109 vérifications portent désormais « ⚠ » et leur « Défaut connu » (garde-fou `NFR-TEST-RECETTE-COVERAGE`). **La liste de travail des défauts, ce sont les exigences « non tenue » de `spec/requirements.md`.** Rien n'est corrigé dans le code.
 
-1. **Un article sans texte affiche le texte de l'article ouvert juste avant.** La sauvegarde automatique risquerait alors de le recopier dans le nouvel article. Code : `ArticleWorkflowView.vue:278-291`, `ArticleEditorView.vue:173-186`. Les remises à zéro n'ont aucun appelant (`editor.store.ts:678`, `outline.store.ts:199`). [RED-3]
-2. **L'export télécharge l'aperçu chargé à l'ouverture de l'onglet**, pas le texte corrigé depuis (`ArticlePreviewView.vue:44-55`, `95-103`). [RED-23 ; le parcours express, étape 10, fait fermer puis rouvrir l'aperçu]
-3. **La Rédaction n'affiche aucun message d'erreur.** `ErrorMessage` est utilisé sans import (`ArticleWorkflowView.vue:428-432`) ; ni l'éditeur ni l'enrichissement n'affichent l'erreur.
-4. **Des mesures déjà payées sont rachetées.**
-   - Le Radar rachète les volumes à chaque scan (`keyword-radar.service.ts:240-250`).
-   - Un mot-clé à qui il manque une mesure est remesuré à chaque étude (`keyword-scan.routes.ts:92-99`). [CAP-R2]
-5. **Les mesures du bac à sable sont gardées comme de vraies mesures.** Le cache est rangé par mot-clé seul (`dataforseo/cache.ts:13,17`). En RÉEL, un mot-clé mesuré en MOCK depuis moins de 7 jours affiche donc des chiffres factices.
-6. **Capitaine :**
-   - les racines sont vidées à la réouverture (`data.service.ts:704-708`) [CAP-15] ;
-   - un mot-clé retapé reste en erreur (`useExploredKeywords.ts:247-270`) [CAP-20] ;
-   - la liste se reconstruit et les notes passent à « — » (`CaptainPanel.vue:768`) [CAP-13, CAP-18] ;
-   - un envoi depuis le Radar casse l'affichage du verrou (`CaptainPanel.vue:726-738`) [CAP-19] ;
-   - un article neuf ne reçoit pas d'avis d'office (`CaptainPanel.vue:801-802`) [CAP-7].
-7. **Cerveau :**
-   - la saisie affichée peut être perdue au « Suivant » (`cocoon-strategy.store.ts:57`, `150-153`) [CER-5] ;
-   - le bouton « + » (approfondir) de l'étape CTA provoque une erreur 500 sans message (`strategy.schema.ts:172,183`) ;
-   - aucune erreur d'IA ne s'affiche au Cerveau.
-8. **La chaîne de secours de l'IA s'arrête sur un fournisseur sans clé**, au lieu de passer au suivant : le message « sans clé » n'est pas reconnu (`gemini.service.ts:37`, `openrouter.service.ts:33`, `ai-provider.service.ts:174-176`).
-9. **Une dérogation est acceptée sur le seul nom de sa règle.** Elle est enregistrée pour les données du moment, qui peuvent ne jamais avoir été montrées (`gate.service.ts:395-405`).
-10. **Lieutenants :**
-    - un échec d'analyse s'affiche en anglais et sans explication, « SERP analysis failed » (`serp-analysis.routes.ts:67-70`, `useLieutenantsSerp.ts:76-92`) ;
-    - après un rechargement, le compte des propositions n'est pas restauré et le bouton de relance ne fait rien (`useLieutenantsIa.ts:157-223`).
-11. **Lexique :**
-    - le bouton payant reste actif sans Capitaine verrouillé, et pendant l'analyse (`LexiquePanel.vue:245-250`, `461-477`) ;
-    - le tri « A-Z » commence de Z à A (`useSortableList.ts:88-101`) ;
-    - l'avis de l'IA disparaît au rechargement (`LexiquePanel.vue:549-554`).
-12. **Moteur :**
-    - « Continuer vers … → » reste actif sans article choisi (`MoteurView.vue:655-673`) ;
-    - un article choisi dans « Articles publiés » perd sa douleur (`MoteurContextRecap.vue:69-79`) ;
-    - à l'ouverture du Capitaine, l'avis de l'IA, qui est payant, part tout seul (`CaptainPanel.vue:797-811`).
-13. **Discovery :**
-    - la courte-traîne générée avant « Découvrir » n'est pas filtrée (`useDiscoveryPanel.ts:435-467`) ;
-    - une réponse vide des longues traînes est gardée 7 jours, sans bouton pour réessayer (`long-tail-suggest.service.ts:83-96`).
-14. **Le statut « brouillon » n'est jamais posé** (`ArticlePreviewView.vue:70`). L'avancement du Dashboard ne compte donc que les articles publiés.
-15. **Un « Rafraîchir » raté marque la mesure comme fraîche** et écrase le cache par une fiche vide (`keyword-metrics.service.ts:171`, `brief.ts:107`). Une erreur dans « SERP Data » remplace toute la page Rédaction (`brief.store.ts:169-170`).
-16. **« Tout réinitialiser » annoncerait « 0 lieutenant(s) archivé(s) »** : le compte est relu après l'archivage (`CaptainPanel.vue:485-487`). [INFRA-18]
+### Décisions prises (réversibles)
 
-### B. En MOCK, des réponses simulées qui ne suivent pas le format attendu
+1. **Discovery et Radar ne se ferment plus.** L'ancien verrou (« mot-clé plus au stade suggéré ») ne pouvait se déclencher depuis aucun écran. `FR-MOT-FREE-NAV` est réécrite ; le code du verrou est à retirer.
+2. **Pas d'annonce de coût généralisée.** Seule l'analyse SERP du Lexique annonce « ~$0.003 » ; pour le reste, la pile « Coûts API » fait foi (`spec/05-moteur.md`).
+3. **L'avis IA du Capitaine se demande au clic**, pas d'office : c'est ce que veut déjà `FR-MOT-NO-AUTO-ACTION`.
+4. **Le jugement IA des questions PAA est à suspendre** tant que son résultat n'atteint pas l'écran : il est payé sans rien montrer (`FR-CAP-PAA-JUDGE-HAIKU`).
+5. **« Tout relancer (SERP + IA) » devient « Recharger l'analyse ».** Il ne relance rien sous 7 jours, et le reste gratuit (`FR-LIE-SERP-ANALYZE`).
+6. **Au Lexique, « Lancer l'analyse SERP » se grise tant que le Capitaine n'est pas verrouillé**, comme l'extraction (`FR-MOT-SOFT-GATING`).
+7. **Le tri « A-Z » range de A à Z au premier clic** (`FR-LEX-SORT` ; la barre de tri est commune au Radar, au Capitaine, aux Lieutenants et au Lexique).
+8. **Un article passe « brouillon » quand son premier jet est accepté.** Sans cela, l'avancement du Dashboard ne compte que les publiés (`FR-DASH-NAV`).
+9. **Dans le fil d'Ariane, le silo devient un lien**, comme sur l'accueil (`FR-DASH-NAV`).
+10. **Un texte sans accent est un défaut** (`NFR-UX-SCREEN-TEXT`).
+11. **L'alerte « Données KPI indisponibles » et l'audit du cocon sont retirés** : aucun écran ne les montre (code mort). Critère retiré de `FR-INFRA-KPI-SCORING-NULLSAFE` et de `FR-INFRA-API-CACHE`.
+12. **Cocher un mot-clé dans Discovery garde sa pré-analyse Capitaine**, payante en réel : c'est documenté et annulable (`FR-DIS-CAPTAIN-PRESCAN`).
+13. **La confirmation « Cela consommera un appel Claude » doit suivre le mode et le fournisseur** (`FR-CAP-AI-PANEL`).
 
-Elles faussent la recette en MOCK : l'écran montre un état vide ou un texte générique, là où le RÉEL montrerait un résultat. À corriger avant de conclure sur les vérifications concernées.
+### Les 3 choix qui reviennent à Arnaud
 
-- **Avis Capitaine** : la réponse préparée ne se déclenche jamais (`streams.ts:57-62`), l'écran affiche « [Mock provider] Réponse simulée… ».
-- **Avis du Lexique** : mauvais champs (`streams.ts:185-206` contre `lexique.contract.ts:32-48`). Toutes les recommandations sont écartées, et l'analyse repart à chaque ouverture.
-- **Avis des Lieutenants** : pas de `sources`, `suggestedHnLevel` ni `contentGapInsights` (`streams.ts:136-180`).
-- **Longues traînes du Radar** : la réponse cherche les mots-clés au mauvais endroit de la demande (`long-tail-suggest.ts:18-31`), la liste revient vide. Le test navigateur `interactions-radar.parcours.test.ts:170` attend une classe `.longtail-error` qui n'existe pas (`lt-error`).
-- **Micro-contexte** : les consignes arrivent en liste au lieu d'un texte (`generate.ts:74-78`), et l'enregistrement est refusé sans message.
-- **Cerveau** :
-  - les sujets suggérés affichent « Aucun sujet retourné. » ;
-  - « Remplir les champs avec Claude » renvoie une erreur 500 en anglais ;
-  - la suggestion, la fusion et la régénération de la carte affichent le texte générique (`strategy.ts:25`, `60-76`, `streams.ts:16-46`).
-- **Réduction** : elle recevrait la réponse générique (`generate.ts:145`), à confirmer.
-- **Filtre de pertinence de Discovery** : il écarte tout mot-clé qui contient « recette » (`discovery.ts:26`), alors que le cocon de test s'appelle « Recette <date> ».
+- **Capitaine : une racine étudiée devient-elle un candidat de l'article ?**
+  - Aujourd'hui, elle le devient seulement à la réouverture, et cela casse la liste (`FR-CAP-LOCK-INTEGRITY`, `FR-CAP-LIST-SIDEPANEL`).
+  - A (recommandé) : non, elle reste sous sa carte, et la liste reste stable (M).
+  - B : oui, dès l'étude, soit jusqu'à 5 cartes de plus par mot-clé long (S).
+- **Discovery : « Courte-traîne IA » fait exactement le même appel que « IA Claude ».**
+  - A : lui donner sa propre demande (M).
+  - B (recommandé, sauf si tu t'en sers) : retirer la section (S).
+- **« Articles publiés », au Moteur et à la Rédaction : la phase ou le statut ?**
+  - A (recommandé) : la phase partout, libellé « Articles rédigés ou publiés ».
+  - B : le statut « publié » partout ; le Moteur ne montre plus comme verrouillés les articles rédigés et pas encore publiés.
+  - Voir `FR-MOT-RECAP-PUBLISHED`.
 
-### C. Exigences marquées « active » que le code semble contredire
+### Ordre de correction recommandé
 
-À passer « non tenue » une fois l'écart confirmé à l'écran, puis à marquer ⚠ dans la recette : le garde-fou le demandera.
+Taille : XS < 15 min, S < 1 h, M ≈ demi-journée, L = plus.
 
-- **Contredites par le code :**
-  - FR-API-VOCABULAIRE-SCAN : « Aucun mot-clé à valider… », « Validation en cours... », « Validation Capitaine dans Ns » [MOT-18] ;
-  - FR-MOT-CROSS-TAB-PAYLOAD : aucun bouton Capitaine → Lieutenants en mode guidé ;
-  - FR-CAP-ROOTS ;
-  - FR-LIE-SERP-ECHEC-EXPLIQUE ;
-  - FR-RED-EDITOR-TIPTAP : « Supprimer le contenu » laisse le texte en base ;
-  - FR-RED-SEO-LIVE : la jauge affiche 0 avant le premier calcul ;
-  - FR-INFRA-TYPE-RULES-SSOT : la fourchette de longueur est calculée à ±20 %, avec des nombres écrits en dur ;
-  - FR-INFRA-PAA-EXPLORATIONS : le jugement des questions est refait à chaque chargement ;
-  - NFR-UX-STABLE-SKELETON ;
-  - NFR-COST-CACHE-FIRST.
-- **Invérifiables à l'écran :**
-  - FR-UI-VOCABULAIRE-VERROUILLER : « Verrouiller ce mot-clé » n'est affiché nulle part ;
-  - FR-MOT-FREE-NAV : son bandeau est inatteignable ;
-  - FR-INFRA-KPI-SCORING-NULLSAFE : l'alerte « Données KPI indisponibles » n'est montée par aucun écran.
-- **Statuts « non tenue » incomplets** : FR-UI-AI-PANELS-PATTERN (panneau des Lieutenants), FR-MOT-NO-AUTO-ACTION (avis automatique au Capitaine), FR-RED-HUMANIZE-SECTION (message jamais affiché), FR-RED-CONTEXTUAL-ACTIONS (liens retirés non annoncés par le panneau Blocs).
-- **Deux exigences se contredisent** : NFR-COST-AI-MOCK (« active » : le choix MOCK / RÉEL survit au redémarrage) et FR-INFRA-RUNTIME-MODE (« non tenue » sur ce même point).
+1. **Données fausses ou perdues sans que l'utilisateur le voie :**
+   - l'état de l'article ouvert juste avant est recopié dans le nouvel article : texte, méta, sommaire, score (`FR-RED-EDITOR-TIPTAP`, `FR-RED-OUTLINE`, `FR-RED-SEO-SCORE-PERSIST`) — S, un seul correctif ;
+   - la saisie du Cerveau est effacée au « Suivant » (`FR-CER-SAISIE-PRESERVEE`) — S ;
+   - deux cocons de noms proches partagent une stratégie (`FR-DASH-COCOON-CREATE`) — S ;
+   - après un redémarrage du serveur, le bouton affiche « MOCK » alors que le serveur est revenu à sa configuration, qui peut être payante (`NFR-COST-AI-MOCK`) — S ;
+   - une dérogation peut couvrir des données jamais vues (`FR-INFRA-GATE-WAIVER`) — S ;
+   - le fichier exporté peut être périmé (`FR-RED-EXPORT-HTML`) — XS ;
+   - en réel, des chiffres factices du bac à sable sont servis comme vrais (`FR-EXT-DATAFORSEO-SANDBOX`) — L.
+2. **Dépenses payées en double :**
+   - le Radar et le Capitaine rachètent des mesures déjà en base (`FR-INFRA-KEYWORD-METRICS`, `NFR-COST-CACHE-FIRST`, `FR-MOT-CACHE-CASCADE`, `FR-CAP-SCAN`) — M ;
+   - l'avis IA du Capitaine est redemandé à chaque ouverture (`FR-MOT-NO-AUTO-ACTION`) — S ;
+   - le jugement des questions PAA est à suspendre (décision 4) — XS ;
+   - au Lexique, une analyse payante part sans Capitaine verrouillé, ou deux fois sur un double clic (`FR-MOT-SOFT-GATING`, `FR-LEX-PRECHECK-SERP`) — S.
+3. **Une recette MOCK fiable :** les réponses simulées sont hors format (`NFR-COST-AI-MOCK`, `FR-RAD-LONGTAIL-GENERATE`, `FR-RED-REDUCE-SECTION`, `FR-CER-MICRO-CONTEXT`), et le test navigateur `interactions-radar` cherche `.longtail-error`, qui n'existe pas — M en tout.
+4. **Erreurs muettes ou en anglais :**
+   - le Cerveau est muet, et le bouton « + » de l'étape CTA échoue (`NFR-OBS-KNOWN-ERRORS`, `FR-CER-STEPS-COCOON`) ;
+   - `ErrorMessage` n'est pas importé en Rédaction (`FR-RED-DRAFT-SINGLE-PASS`, `FR-RED-HUMANIZE-SECTION`) ;
+   - « SERP analysis failed » (`FR-LIE-SERP-ECHEC-EXPLIQUE`) ;
+   - la chaîne de secours de l'IA (`FR-EXT-AI-FALLBACK`) ;
+   - Search Console (`FR-EXT-GSC-OAUTH`) ;
+   - la consigne de réécriture trop longue (`FR-RED-SECTION-REWRITE`).
 
-### D. Documentation à corriger
+   M en tout.
+5. **La liste du Capitaine qui se défait** (`FR-CAP-INPUT`, `FR-CAP-ROOTS`, `FR-CAP-LIST-SIDEPANEL`, `FR-CAP-LOCK-INTEGRITY`) — M, après le premier choix d'Arnaud.
+6. **Textes et finitions :**
+   - les accents, l'anglais et les codes techniques affichés (`NFR-UX-SCREEN-TEXT`, `FR-API-VOCABULAIRE-SCAN`, `FR-UI-VOCABULAIRE-VERROUILLER`) ;
+   - les décisions 5 à 9 et 13 ;
+   - des défauts XS isolés : jauges à 0, info-bulle 50/100, badge sans couleur, compteurs…
 
-- **spec/14** : « $0.00 » alors que l'écran écrit « < $0.001 ».
-- **spec/05** : « Vider le cache » et le chiffre « C » apparaissent dès qu'un scan est connu.
-- **spec/13** : pas de « Contenu généré » dans le rappel du sommaire.
-- **spec/04** :
-  - la configuration du thème n'est envoyée que si l'audience, la promesse, le secteur ou le style est rempli ;
-  - « Articles du cocon » n'inclut pas la carte, et ses groupes tombent tous dans « Autre ».
-- **spec/08** :
-  - l'avis n'est pas demandé d'office ;
-  - le CPC s'écrit avec un point ;
-  - « À la place : » s'affiche aussi sous un 🟠.
-- **spec/07** : « jamais racheté » est faux.
-- **spec/11** : l'avis enregistré n'est pas réaffiché.
-- **spec/15** : le message « Ces résultats commencent à dater… » n'est jamais affiché.
-- **design/08** : la limite connue « séquence d'échappement » est périmée, réglée par `92facc7`.
-- **design/09** : le rechargement du Radar se fait sans contrat côté écran.
+   M en tout.
+7. **Code mort à retirer :** le verrou Discovery/Radar, l'audit du cocon et son alerte, le bouton « Envoyer aux Lieutenants » jamais affiché — S.
 
-### E. Textes à l'écran
-
-- **Sans accents :**
-  - « Deverrouiller », « Rafraichir » ;
-  - `KeywordDiscoveryCacheBar.vue`, `BriefStructureStep.vue`, `LieutenantProposals.vue`, `LieutenantSerpAnalysis.vue`, `RadarKeywordCard.vue:472`, `ContentRecommendation.vue`.
-- **En anglais :**
-  - « SERP analysis failed », « Keyword validation failed » ;
-  - les messages de l'aperçu refusé ;
-  - « Discovered via suggest-alphabet » ;
-  - l'intention d'une carte venue du Radar ;
-  - l'erreur brute de Search Console sans identifiants.
-- **Codes internes affichés :**
-  - « (parentTitle manquant) » ;
-  - « (« lieutenants-too-few ») » ;
-  - les niveaux « PILIER / INTERMEDIAIRE / SPECIFIQUE » ;
-  - « (type intermediaire) ».
-- **Divers :**
-  - « 1 articles » ;
-  - le badge « specifique » sans couleur ;
-  - le fil d'Ariane avec « / », où le silo n'est pas un lien ;
-  - le titre d'accueil vide sans silo ;
-  - « Proposé depuis votre panier » ;
-  - un nom de cocon en double refusé selon la casse ;
-  - le texte du NO-GO affiché deux fois ;
-  - « Vider le cache » sans retour à l'écran ;
-  - le plafond arrondi au centime ;
-  - « Scraping ~N URLs via DataForSEO » même servi par la base ;
-  - « Autocomplete N matches » qui affiche un rang ;
-  - « Cela consommera un appel Claude. » en MOCK ;
-  - le vert du top 10 de Search Console jamais affiché ;
-  - l'infobulle de l'anneau qui affiche « 50/100 » pour une donnée absente ;
-  - « Dérogation posée au valider les lieutenants ».
+**Hors exigence :** le vert du top 10 de Search Console ne s'affiche jamais, parce que la classe orange passe par-dessus. Correctif XS, aucune exigence en jeu.
