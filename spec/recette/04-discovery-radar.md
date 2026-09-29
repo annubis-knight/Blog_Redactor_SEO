@@ -500,7 +500,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 
 **⚠ Défaut connu :** « Marquer comme candidats Capitaine » n'a aucun effet, à part décocher : rien n'arrive au Capitaine. Si tu y vois arriver les deux mots-clés, le défaut a peut-être disparu : note-le.
 
-### RAD-12 — Les longues traînes en MOCK : la section et son message
+### RAD-12 — Les longues traînes en MOCK : la section et ses suggestions
 **Exigences :** FR-RAD-LONGTAIL-GENERATE ⚠
 
 **Gestes :**
@@ -511,14 +511,14 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **Tu dois voir :**
 - dès 2 cartes : le titre « Suggestions longue-traine », le sous-titre « Combinaisons IA generees a partir des mots-cles Radar. Coche celles a envoyer au Capitaine. » et **« ✨ Suggerer des combinaisons »** ;
 - pendant la génération : « L'IA genere les suggestions… » ;
-- en MOCK : « L'IA n'a propose aucune combinaison pertinente cette fois. ». Le texte préparé du MOCK ne lit pas les mots-clés du Radar : la liste revient toujours vide (limite du MOCK, relevée à la lecture du code). Aucun bouton ne reste alors pour réessayer. La vérification complète se fait en RÉEL (RAD-R2) ;
+- en MOCK : une liste de combinaisons des mots-clés du Radar (7 au plus), chacune avec « N/10 », sa justification et ses mots-clés d'origine, les 5 mieux notées pré-cochées. Si une recette précédente a gardé une réponse vide pour ces mêmes cartes (gardée 7 jours), « L'IA n'a propose aucune combinaison pertinente cette fois. » revient sans nouvel appel, et aucun bouton ne reste pour réessayer (défaut connu) : ajoute ou retire une carte pour obtenir la liste. La qualité des combinaisons se juge en RÉEL (RAD-R2) ;
 - geste facultatif : avec une seule carte, pas de section « Suggestions longue-traine ».
 
 **C'est un bug si :**
 - la section apparaît avec moins de 2 cartes ;
 - le bouton ne donne ni liste, ni message, ni « Erreur : … » avec **« Reessayer »**.
 
-**⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — en mode simulé, la réponse préparée ne trouve pas les mots-clés envoyés et renvoie toujours une liste vide ; une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-13 — Relancer le scan : questions relues, étape sans doublon
 **Exigences :** FR-RAD-SCAN-2PASS, FR-RAD-PAA-TREE, FR-RAD-CHECK
@@ -582,7 +582,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 ## En mode RÉEL (payant)
 
 Passe le bouton en **RÉEL**. Trois précautions avant de commencer :
-- **Le MOCK a laissé des traces relues en RÉEL** : la découverte sauvegardée (bandeau « Derniere analyse… »), les suggestions DataForSEO de la racine (gardées 24 h), les questions PAA des mots-clés scannés (gardées 1 jour) et la réponse vide des longues traînes (gardée 7 jours pour les mêmes mots-clés). Prends donc une **autre racine** et des **mots-clés jamais scannés aujourd'hui**.
+- **Le MOCK a laissé des traces relues en RÉEL** : la découverte sauvegardée (bandeau « Derniere analyse… »), les suggestions DataForSEO de la racine (gardées 24 h), les questions PAA des mots-clés scannés (gardées 1 jour) et les longues traînes simulées (gardées 7 jours pour les mêmes mots-clés). Prends donc une **autre racine** et des **mots-clés jamais scannés aujourd'hui**.
 - **Chaque case cochée à l'unité dans Discovery lance, 5 s plus tard, une étude Capitaine payante.** Clique « Annuler » dans la notification si tu n'en veux pas, ou coche par « Tout ».
 - **Aucun geste de ce module n'annonce son coût avant de partir.** Suis la dépense dans la pastille des coûts, en bas à gauche : dépliée, elle montre « Coûts API », la ligne « DataForSEO » marquée « PROD » (dépense / plafond sur 30 min) et une ligne par appel d'IA. Garde 3 ou 4 mots-clés au Radar : chacun coûte une page de résultats Google, plus une par question PAA.
 
@@ -663,7 +663,7 @@ Repasse en **MOCK** à la fin.
 
 **⚠ Défaut connu :** la provenance (Radar, longue traîne, saisie) n'est pas enregistrée ; elle n'est affichée nulle part. Si elle apparaît quelque part, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — en mode simulé, la réponse préparée ne trouve pas les mots-clés envoyés et renvoie toujours une liste vide ; une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-R3 — Le niveau de l'article change la note, pas les données
 **Exigences :** FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-AUTOCOMPLETE-PER-KEYWORD ⚠

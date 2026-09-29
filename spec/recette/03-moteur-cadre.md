@@ -329,7 +329,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 4. Ouvre **Structure**, puis **Lexique**.
 
 **Tu dois voir :**
-- l'analyse part du Capitaine verrouillé : le premier onglet de résultats porte son mot-clé. En MOCK, les propositions en dérivent (« prix … », « … avis », « comment choisir … ») ;
+- l'analyse part du Capitaine verrouillé : le premier onglet de résultats porte son mot-clé. En MOCK, les propositions viennent des questions « Autres questions » reçues (factices en MOCK), puis du capitaine (« prix … », « … avis », « comment choisir … ») ;
 - le badge de niveau « intermediaire » à côté de « Lieutenants proposes par l'IA » ;
 - avec une seule case : le bandeau « Étape non validée. 1 lieutenant pour un article Intermédiaire : le minimum conseillé est 2. », avec « Voir pourquoi / décider ». Le point « Lieutenants » reste vide ;
 - avec deux cases : le bandeau disparaît et le point « Lieutenants » se remplit ;

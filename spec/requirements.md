@@ -304,7 +304,7 @@ L'outil doit comprendre le niveau d'un article dans tous ses formats d'écriture
 - Un niveau inconnu est refusé explicitement plutôt que remplacé.
 
 ### FR-CER-MICRO-CONTEXT — Micro-contexte éditorial par article
-**Statut :** non tenue (le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; en mode simulé, « Suggerer par IA » remplit les consignes avec une liste, et le micro-contexte ne s'enregistre plus tant qu'on ne retouche pas les consignes ; un échec d'enregistrement n'est jamais signalé)
+**Statut :** non tenue (le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; un échec d'enregistrement n'est jamais signalé)
 L'outil doit permettre d'attacher à un article un micro-contexte — angle, ton, consignes, longueur visée — repris par les générations de la Rédaction.
 - Le micro-contexte se renseigne et se modifie dans la Rédaction, à l'étape « Brief & Structure » ; chaque champ s'enregistre quand on le quitte.
 - Il est optionnel : sans lui, l'article se génère avec les valeurs par défaut.
@@ -750,7 +750,7 @@ Une carte dépliée doit montrer ses questions PAA en arbre à deux niveaux.
 - Une carte sans question affiche « Aucune PAA trouvee ».
 
 ### FR-RAD-LONGTAIL-GENERATE — Proposer des longues traînes à partir des mots-clés scannés
-**Statut :** non tenue (en mode simulé, la réponse préparée ne trouve pas les mots-clés envoyés et renvoie toujours une liste vide ; une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer)
+**Statut :** non tenue (une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer)
 Dès que le scan a produit au moins 2 cartes, l'utilisateur doit pouvoir demander à l'IA des longues traînes (requêtes plus longues et plus précises) dérivées de ces mots-clés.
 - La section « Suggestions longue-traine » apparaît à partir de 2 cartes scannées.
 - L'IA propose au plus 10 suggestions, chacune avec une note de préférence de 1 à 10, une justification et ses mots-clés sources.
@@ -1437,7 +1437,7 @@ L'outil doit reformuler l'article section par section pour retirer les tics d'é
 - Le résultat est enregistré aussitôt.
 
 ### FR-RED-REDUCE-SECTION — Réduire un article trop long
-**Statut :** non tenue (en mode simulé, la réduction ne reconnaît pas sa consigne : chaque section devient un texte générique, sans ses titres, et l'article est enregistré ainsi)
+**Statut :** active
 L'outil doit condenser un article qui dépasse sa longueur visée, section par section.
 - « Réduire » n'est actif que si l'article dépasse la longueur visée de plus de 15 %.
 - Chaque section (chapeau compris) reçoit une cible proportionnelle à son poids dans l'article ; la progression s'affiche.
@@ -2150,10 +2150,11 @@ Avant chaque appel DataForSEO, l'outil doit estimer son coût et refuser l'appel
 - Les appels redeviennent possibles dès que la fenêtre glisse, sans intervention.
 
 ### NFR-COST-AI-MOCK — Mode simulé gratuit
-**Statut :** non tenue (après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » ; plusieurs réponses simulées n'ont pas le format attendu : avis du Capitaine (chiffres figés), avis du Lexique et proposition des Lieutenants (champs manquants), « Remplir les champs avec Claude » (échec), « Sujets suggérés » (liste vide), suggestions, fusions et régénérations du Cerveau (texte générique))
+**Statut :** non tenue (après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK »)
 L'outil doit offrir un mode simulé où ni l'IA ni DataForSEO ne coûtent rien, activable par configuration ou par un bouton toujours visible.
 - En mode simulé, les réponses d'IA viennent de réponses préparées, identiques d'un appel à l'autre, sans réseau.
-- Chaque réponse préparée reconnaît l'appel qu'elle sert d'après sa consigne réelle : le conseil IA du Capitaine reçoit un avis rédigé sur son mot-clé, jamais la réponse par défaut.
+- Chaque réponse préparée reconnaît l'appel qu'elle sert d'après sa consigne réelle, même quand le texte saisi parle d'autre chose : le conseil IA du Capitaine reçoit un avis rédigé sur son mot-clé, jamais la réponse par défaut.
+- Chaque réponse préparée a la forme que l'écran attend, et part de la demande (mot-clé, niveau, termes, texte saisi) : aucun panneau ne reste vide ni n'affiche un texte hors sujet à cause de la simulation.
 - En mode simulé, DataForSEO est interrogé en bac à sable.
 - Le bouton de la barre de navigation affiche le mode actif et bascule d'un clic.
 - Le choix fait par le bouton survit à un redémarrage du serveur.

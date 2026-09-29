@@ -61,7 +61,7 @@ une instance Pinia neuve (`setActivePinia(createPinia())`). La base est simulée
 | Sous-dossier | Fichiers | Contenu |
 |---|---|---|
 | `components/` | 128 | Composants Vue ; deux tests visuels par instantané (`__snapshots__/`) |
-| `services/` | 61 | Services du serveur, dont les tests `mock-*.test.ts` de la simulation d'IA |
+| `services/` | 65 | Services du serveur, dont les tests `mock-*.test.ts` de la simulation d'IA |
 | `composables/` | 52 | Composables Vue |
 | `shared/` | 45 | Code partagé : scores, vérificateurs, validateurs de contenu et de SEO |
 | `stores/` | 33 | Stores Pinia |
@@ -278,17 +278,34 @@ L'interrupteur est un état global du serveur (`GET|POST /api/runtime-mode`, dé
 
 - Les fixtures vivent dans `server/services/external/mock-fixtures/` (une par domaine : `discovery`,
   `radar`, `intent`, `content-gap`, `captain-paa-judge`, `long-tail-suggest`, `article-draft`,
-  `enrichment`, `generate`, `strategy`, `streams`, `cocoon-child`, `auto-*`). `registerToolFixture` répond
-  aux appels à outil (JSON) par nom d'outil ; `registerStreamFixture` répond aux flux de texte.
-- Une fixture de flux reconnaît son appel à des **phrases du prompt**. Retoucher ces phrases dans un
-  `.md` impose de mettre la fixture à jour. Un reconnaisseur doit être restrictif : trop large, il capture
-  les appels d'autres routes.
-- Une fixture copie le format du bloc d'exemple du prompt, pas le type TypeScript. Une réponse simulée
-  doit ressembler à une bonne réponse, sinon les parcours simulés ne vérifient rien. Les six tests
-  `tests/unit/services/mock-*.test.ts` rendent la fixture sur le **vrai** prompt ou la vraie phrase de la
-  route : le premier jet et la structure Hn passent leur porte sans alerte ; les lieutenants dérivent du
-  capitaine demandé ; la relecture garde la structure de la section ; l'ajout d'article rend le niveau
-  demandé ; les candidats d'un article enfant viennent de la section du parent.
+  `enrichment`, `reduce-section`, `generate`, `contexte`, `cerveau`, `strategy`, `streams`, `cocoon-child`,
+  `auto-*`).
+  `registerToolFixture` répond aux appels à outil (JSON) par nom d'outil ; `registerStreamFixture` répond
+  aux flux de texte. `prompt-fields.ts` (qui n'est pas une fixture) lit dans une consigne rendue ses lignes
+  « - **Libellé** : valeur » et ses sections « ## Titre ».
+- Une fixture de flux reconnaît son appel à des **phrases du prompt**, de préférence à la consigne
+  (`systemPrompt`) : le message utilisateur est souvent un texte saisi, qui peut citer « radar » ou
+  « lexique ». Retoucher ces phrases dans un `.md` impose de mettre la fixture à jour. Un reconnaisseur doit
+  être restrictif : trop large, il capture les appels d'autres routes. L'ordre d'import de
+  `mock-fixtures/index.ts` compte (la première qui répond est servie) : d'abord les fixtures dont la demande
+  embarque un texte saisi ou un article (premier jet, enrichissement, réduction, configuration du thème et
+  micro-contexte dans `contexte`, étapes du Cerveau dans `cerveau`, carte dans `strategy`), ensuite
+  `streams` et `generate`, dont certains reconnaisseurs lisent un mot du message.
+- Une fixture copie le format du bloc d'exemple du prompt et la forme que le code applique à la réponse
+  (contrat `shared/contracts/*`, schéma Zod, parseur de l'écran), pas le type TypeScript ; elle part de la
+  demande (mot-clé, niveau, termes, texte saisi). Une réponse simulée doit ressembler à une bonne réponse,
+  sinon les parcours simulés ne vérifient rien. Les tests `tests/unit/services/mock-*.test.ts` rendent la
+  fixture sur le **vrai** prompt ou la vraie phrase de la route, vérifient que c'est **elle** qui répond
+  (première fixture qui reconnaît l'appel), puis passent sa réponse au vrai contrat ou parseur : le premier
+  jet et la structure Hn passent leur porte sans alerte ; les lieutenants dérivent du capitaine demandé ; la
+  relecture garde la structure de la section ; l'ajout d'article rend le niveau demandé ; les candidats d'un
+  article enfant viennent de la section du parent. Cinq fichiers tournent dans `npm run verify` :
+  `mock-captain-ai-panel` (avis du Capitaine en trois parties), `mock-moteur-panneaux` (avis du Lexique
+  sous le contrat `lexique-ai`, Lieutenants sous `propose-lieutenants-ai`, longues traînes sous le schéma du
+  service), `mock-propose-lieutenants`, `mock-redaction` (micro-contexte accepté par
+  `updateMicroContextSchema`, réduction qui garde titres, listes et liens) et `mock-cerveau` (configuration
+  du thème sous `themeConfigSchema`, suggestions, fusions, sous-questions, enrichissement, consolidation,
+  sujets suggérés lus par `parseTopicsFromSuggestion`, régénération d'une ligne de la carte).
 - Le mode simulé valide l'orchestration (routes, lecture des réponses, persistance), pas la qualité du texte
   de l'IA. Pour cela : la recette réelle (`npm run auto:article -- --mode=real`, puis
   `npm run verify:content`) et la [recette manuelle](../spec/18-recette-manuelle.md).
@@ -360,7 +377,7 @@ serveur ni navigateur, mais PostgreSQL.
 |---|---|
 | `verify:lint` | `oxlint .` |
 | `verify:types` | `vue-tsc --build` et `tsc -p tsconfig.auto-scripts.json` (le robot) |
-| `verify:unit` | Vitest avec [`../vitest.verify.config.ts`](../vitest.verify.config.ts) : environnement `node`, `tests/unit/shared`, `tests/unit/scripts`, `tests/unit/architecture`, cinq tests de services purs et `test-fixtures-cleanup` ; une dizaine de secondes |
+| `verify:unit` | Vitest avec [`../vitest.verify.config.ts`](../vitest.verify.config.ts) : environnement `node`, `tests/unit/shared`, `tests/unit/scripts`, `tests/unit/architecture`, dix tests de services purs (dont cinq sur les réponses simulées, `mock-*.test.ts`, voir « Le mode simulé des tests ») et `test-fixtures-cleanup` ; une dizaine de secondes |
 | `verify:content` | [`../scripts/verify-content.ts`](../scripts/verify-content.ts) : chaque article rédigé (propreté, méta, liens, SEO, porte de publication rejouée), les articles entre eux (cannibalisation, ordre du cocon), les pages exportées, l'hygiène du dépôt (articles de test restés, sauvegarde de plus de 14 jours, référence des tests de plus de 30 jours, fichiers `.bak`, clés du `.env`). Les avertissements n'échouent pas |
 | `db:check` | L'empreinte de la base vivante est celle de `schema.sql` ; échec aussi si la base est injoignable |
 

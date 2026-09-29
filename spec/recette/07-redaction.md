@@ -119,7 +119,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - après chaque sortie de champ, « Sauvegarde » (avec une coche) pendant deux secondes ;
 - pendant la suggestion, « Suggestion en cours... » ; puis, les champs étant remplis, un encadré « Suggestion IA » : Angle, Ton, Consignes, l'ancien texte barré → le nouveau, avec « Appliquer » et « Annuler » ;
 - « Annuler » ne change rien ; « Appliquer » remplace les trois champs ;
-- en MOCK, après « Appliquer », les consignes s'affichent séparées par des virgules et « Sauvegarde » n'apparaît pas : la réponse simulée les donne en liste, que l'enregistrement refuse sans rien dire. C'est pourquoi le geste 5 retouche ce champ ;
+- en MOCK, après « Appliquer », les trois champs prennent un texte préparé propre au pilier (un angle qui cite son mot-clé, un ton, des consignes rédigées en phrases), et « Sauvegarde » s'affiche ;
 - après F5, les champs tels que tu les as laissés ;
 - l'analyse : « Analyse en cours... » grisé pendant l'écriture, un texte qui s'affiche au fil, puis « Relancer l'analyse » de nouveau actif ; la nouvelle analyse remplace l'ancienne ;
 - après F5, l'ancienne analyse a disparu : une nouvelle part à l'ouverture du panneau.
@@ -582,7 +582,7 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - le statut « Publié » disparaît.
 
 ### RED-25 — Réduire un article trop long
-**Exigences :** FR-RED-REDUCE-SECTION ⚠, FR-RED-WORD-COUNT-TARGET
+**Exigences :** FR-RED-REDUCE-SECTION, FR-RED-WORD-COUNT-TARGET
 
 **Gestes :**
 1. Rédaction guidée du pilier, étape « Article » : note « X mots / N cible », et regarde le bouton de réduction.
@@ -597,14 +597,13 @@ Ce module vérifie tout ce que le parcours express ne fait que traverser dans la
 - pendant la réduction : « Réduction n/N — … » (l'« Introduction » d'abord, puis chaque chapitre) et le bouton rouge « Annuler réduction » ; « Régénérer l'article » et « Humaniser l'article » grisés ;
 - après « Annuler réduction » : l'article d'avant, en entier (en MOCK tout va vite : recommence si la réduction a fini avant ton clic) ;
 - à la fin : le texte remplacé et enregistré, et le badge de coût « Réduction » ;
-- en MOCK, le texte réduit est une réponse simulée : des sections peuvent devenir un texte d'essai, titres compris. Ne juge que le mécanisme ; RED-27 refait le texte, et la qualité se juge en RÉEL (RED-R4).
+- en MOCK, chaque section garde ses titres, listes et liens ; les transitions creuses (« Il est important de noter que », « En effet, »…) disparaissent et chaque paragraphe sans lien perd environ la moitié de ses phrases. La qualité de la réduction se juge en RÉEL (RED-R4).
 
 **C'est un bug si :**
 - « Réduire » est actif sans dépassement de plus de 15 % ;
 - après « Annuler réduction », une partie du texte reste réduite ;
-- une autre opération reste possible pendant la réduction.
-
-**⚠ Défaut connu :** FR-RED-REDUCE-SECTION — en mode simulé, la réduction ne reconnaît pas sa consigne : chaque section devient un texte générique, sans ses titres, et l'article est enregistré ainsi. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+- une autre opération reste possible pendant la réduction ;
+- après la réduction, une section a perdu son titre, une liste ou un lien, ou affiche un texte d'essai.
 
 ### RED-26 — Supprimer le contenu, puis recharger
 **Exigences :** FR-RED-EDITOR-TIPTAP ⚠, FR-RED-META ⚠, FR-RED-PROGRESS
@@ -734,7 +733,7 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 **⚠ Défaut connu :** l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui. Au geste 1, le résultat n'intègre pas le capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-R4 — Réduire, relire et humaniser, en vrai
-**Exigences :** FR-RED-REDUCE-SECTION ⚠, FR-RED-LANG-REVIEW, FR-RED-HUMANIZE-SECTION ⚠
+**Exigences :** FR-RED-REDUCE-SECTION, FR-RED-LANG-REVIEW, FR-RED-HUMANIZE-SECTION ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Refais RED-25 (cible abaissée, **« Réduire (-N mots) »**) jusqu'au bout, puis **« Reinitialiser »** la cible.
@@ -752,8 +751,6 @@ Passe le bouton en **RÉEL** pour ces vérifications, fais-les sur le cocon de r
 - une section est coupée en plein milieu.
 
 **⚠ Défaut connu :** aucune note ne signale les sections revenues à leur texte d'origine. Compare avant / après : une section restée identique n'est signalée nulle part. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
-
-**⚠ Défaut connu :** FR-RED-REDUCE-SECTION — en mode simulé, la réduction ne reconnaît pas sa consigne : chaque section devient un texte générique, sans ses titres, et l'article est enregistré ainsi. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RED-R5 — L'analyse du brief, en vrai, sur l'article enfant
 **Exigences :** FR-RED-BRIEF

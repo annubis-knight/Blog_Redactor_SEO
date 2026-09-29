@@ -57,11 +57,13 @@ test('Lieutenants — une carte montre son score, son niveau Hn et ses sources',
   const niveau = (await carte.locator('.lt-card__hn-tag').innerText()).trim()
   expect(niveau, 'le niveau proposé est H2 ou H3').toMatch(/^H[23]$/)
 
+  // La proposition simulée cite désormais ses sources (NFR-COST-AI-MOCK) : la
+  // pastille est vérifiée sans condition. Le style l'affiche en capitales
+  // (« SERP ») : on lit son texte, pas son rendu.
   const sources = carte.locator('.lt-source')
-  if (await sources.count() > 0) {
-    const libellé = (await sources.first().innerText()).trim()
-    expect(['paa', 'serp', 'group', 'root', 'content-gap'], 'une source connue').toContain(libellé)
-  }
+  expect(await sources.count(), 'la proposition cite au moins une source').toBeGreaterThan(0)
+  const libellé = ((await sources.first().textContent()) ?? '').trim()
+  expect(['paa', 'serp', 'group', 'root', 'content-gap'], 'une source connue').toContain(libellé)
 
   // Cocher verrouille, décocher libère — sans rechargement.
   const caseÀCocher = carte.locator('[data-testid="lt-card-checkbox"]')

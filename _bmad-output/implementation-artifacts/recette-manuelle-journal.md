@@ -126,7 +126,16 @@ Taille : XS < 15 min, S < 1 h, M ≈ demi-journée, L = plus.
    - l'avis IA du Capitaine est redemandé à chaque ouverture (`FR-MOT-NO-AUTO-ACTION`) — S ;
    - le jugement des questions PAA est à suspendre (décision 4) — XS ;
    - au Lexique, une analyse payante part sans Capitaine verrouillé, ou deux fois sur un double clic (`FR-MOT-SOFT-GATING`, `FR-LEX-PRECHECK-SERP`) — S.
-3. **Une recette MOCK fiable :** les réponses simulées sont hors format (`NFR-COST-AI-MOCK`, `FR-RAD-LONGTAIL-GENERATE`, `FR-RED-REDUCE-SECTION`, `FR-CER-MICRO-CONTEXT`), et le test navigateur `interactions-radar` cherche `.longtail-error`, qui n'existe pas — M en tout.
+3. **Une recette MOCK fiable :** les réponses simulées sont hors format (`NFR-COST-AI-MOCK`, `FR-RAD-LONGTAIL-GENERATE`, `FR-RED-REDUCE-SECTION`, `FR-CER-MICRO-CONTEXT`), et le test navigateur `interactions-radar` cherche `.longtail-error`, qui n'existe pas — M en tout. — corrigé sur `fix/reponses-simulees` :
+   - avis IA du Capitaine : trois parties (potentiel éditorial, opportunités et risques, recommandation) tirées du mot-clé, du niveau, de la douleur et des scores, sans chiffre figé ;
+   - avis IA du Lexique : une décision `aiRecommended` et une raison par terme reçu, `missingTerms`, résumé ;
+   - proposition de Lieutenants : `sources`, `suggestedHnLevel`, `contentGapInsights`, candidats tirés des PAA et groupes de la consigne, en nombre fixé par le type (plus de liste `eliminated`) ;
+   - longues traînes du Radar : les mots-clés sont lus dans la consigne, la liste n'est plus vide ;
+   - micro-contexte : consignes en texte, l'enregistrement les accepte ;
+   - réduction d'article : la consigne est reconnue, la section garde ses titres, listes et liens ;
+   - Cerveau : « Remplir les champs avec Claude » (configuration conforme au schéma, tirée de la description), « Sujets suggérés » (tableau de textes), suggestions, sous-questions, fusions, enrichissement, consolidation et « Régénérer › Titre / Mot-clé / Slug » ont chacun leur réponse, reconnue à sa consigne même quand le texte saisi cite « radar » ou « lexique » ;
+   - test navigateur `interactions-radar` : sélecteurs `.lt-error` / `.lt-empty`, cite `FR-RAD-LONGTAIL-GENERATE`.
+   Gardé par `tests/unit/services/mock-*.test.ts` dans `npm run verify`. Reste de `NFR-COST-AI-MOCK` : le bouton « MOCK » après un redémarrage du serveur (point 1).
 4. **Erreurs muettes ou en anglais :**
    - le Cerveau est muet, et le bouton « + » de l'étape CTA échoue (`NFR-OBS-KNOWN-ERRORS`, `FR-CER-STEPS-COCOON`) ;
    - `ErrorMessage` n'est pas importé en Rédaction (`FR-RED-DRAFT-SINGLE-PASS`, `FR-RED-HUMANIZE-SECTION`) ;

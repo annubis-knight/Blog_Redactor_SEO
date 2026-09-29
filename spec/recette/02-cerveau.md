@@ -54,7 +54,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - à l'étape 3, « Chargement... » sur le bouton et « Valider ▾ » grisé pendant l'appel, puis un bloc « Suggestion Claude : » avec un crayon (« Modifier la suggestion ») et des flèches (« Régénérer la suggestion ») ; le bouton de suggestion disparaît ;
 - à l'étape 4, trois choix : « Mon texte », « La suggestion », « Fusionner les deux ». Après le clic, le texte validé s'affiche au-dessus de la carte, avec une coche et un crayon ; la carte se replie sous « Modifier ma réponse » ;
 - à l'étape 5, le texte validé remplacé par la fusion ;
-- en MOCK, suggestion et fusion sont des textes simulés qui commencent par « [Mock provider] Réponse simulée. » : seul le geste compte ici (le contenu se juge en CER-R2).
+- en MOCK, la suggestion est un texte préparé de deux ou trois phrases, propre à l'étape, qui reprend ta réponse et le nom du cocon (« Votre piste « Artisans du bâtiment en Haute-Garonne » est une bonne base. Pour « <cocon> », visez… ») ; la fusion garde le texte validé et y ajoute ta réponse. Le fond se juge en CER-R2.
 
 **C'est un bug si :**
 - « Valider ▾ » est actif sans réponse ni suggestion ;
@@ -69,15 +69,15 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **Gestes :**
 1. Toujours à « Cible », clique le crayon **« Modifier le texte validé »**, remplace le texte par `Artisans du bâtiment en Haute-Garonne, 1 à 10 salariés.`, puis clique la coche (« Sauvegarder »).
 2. Clique le bouton rond **« + »** sous la carte (infobulle « Approfondir »).
-3. Dans la sous-question apparue, tape `Ils comptent seulement les appels reçus.` dans « Votre réponse... », puis **« Valider ▾ »** › **« Mon texte »**. En MOCK, n'utilise pas « Suggestion Claude » dans une sous-question : la réponse simulée n'y est pas une suggestion (à essayer en CER-R2).
+3. Dans la sous-question apparue, tape `Ils comptent seulement les appels reçus.` dans « Votre réponse... », puis **« Valider ▾ »** › **« Mon texte »**.
 4. Clique encore **« + »**, puis supprime cette seconde sous-question avec sa croix (« Supprimer cette sous-question »).
 5. Déplie **« Contexte envoyé à Claude »**.
 
 **Tu dois voir :**
 - à l'étape 1, ton texte devient le texte validé ;
-- à l'étape 2, le « + » grisé pendant la génération, puis une carte de sous-question sous la carte principale : sa question, son explication, son champ, « Suggestion Claude », « Valider ▾ ». En MOCK, la question est « Quels indicateurs concrets utilisez-vous aujourd'hui pour mesurer la rentabilité de votre présence en ligne ? » ;
-- à l'étape 3, le texte validé de « Cible » change : l'IA y intègre la sous-réponse (en MOCK, il devient « Réponse enrichie via mock : pas de contexte fourni. ») ;
-- à l'étape 4, la seconde sous-question s'ajoute sous la première (en MOCK, avec la même question), puis disparaît ; la première reste ;
+- à l'étape 2, le « + » grisé pendant la génération, puis une carte de sous-question sous la carte principale : sa question, son explication, son champ, « Suggestion Claude », « Valider ▾ ». En MOCK, la première question de « Cible » est « Qui prend la décision d’achat chez ce lecteur, et qui l’influence ? » ;
+- à l'étape 3, le texte validé de « Cible » change : l'IA y intègre la sous-réponse (en MOCK, elle s'ajoute à la fin : « Artisans du bâtiment en Haute-Garonne, 1 à 10 salariés. Ils comptent seulement les appels reçus. ») ;
+- à l'étape 4, la seconde sous-question s'ajoute sous la première, avec une autre question (en MOCK, « Où ce lecteur cherche-t-il de l’information avant de contacter un prestataire ? »), puis disparaît ; la première reste ;
 - à l'étape 5, sous « Étapes validées », la ligne « Cible » : le texte validé, suivi de « — Détails: » et de ta sous-réponse.
 
 **C'est un bug si :**
@@ -146,7 +146,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - à « CTA », une sous-question qui apparaît, comme aux autres étapes ;
 - en haut, « Construire le cocon » : « Ce cocon n'a pas encore de pilier. Commencez par lui : les autres articles naîtront de ses sections. » et le seul bouton « Créer le pilier » ;
 - en dessous, « Carte indicative du cocon », la note « Carte indicative : elle guide les articles à créer, elle n'en crée aucun. … », l'alerte « Aucun article Pilier dans la liste. », et trois colonnes vides : « Pilier », « Intermédiaire », « Spécialisé » ;
-- « Sujets suggérés » se génère de lui-même (« Génération des sujets… ») ; en MOCK, il finit sur « Aucun sujet retourné. Réessayez. » : la réponse simulée ne contient pas de sujets ;
+- « Sujets suggérés » se génère de lui-même (« Génération des sujets… ») ; en MOCK, six sujets cochés qui reprennent le nom du cocon (« <Cocon> : les bases à connaître », « <Cocon> : budget et prix »…) ;
 - le menu commence par « Sur la carte seulement : aucun article n'est créé. » et ne propose que « Le pilier » et « La carte complète du cocon » ; Échap et le clic à côté le referment ;
 - pendant chaque ajout, le bouton affiche « Génération... » et reste grisé ;
 - après « Le pilier », une ligne dans « Pilier » (en MOCK, « Création de site internet à Toulouse : le guide pour les TPE ») ; l'alerte « Aucun article Pilier dans la liste. » disparaît ; dans le menu, « Le pilier » est grisé (« Déjà sur la carte : un seul pilier par cocon. ») et « 1 article intermédiaire » apparaît ;
@@ -434,7 +434,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - ligne dépliée : « Titre », « Mot-clé suggéré », « Slug », chacun avec un crayon ; « Douleur » en simple texte ; « Intention éditoriale » avec « Non défini » et les quatre intentions ; la raison ; en bas, « Régénérer ▾ » et « Supprimer » (« Lien » seulement sur un spécialisé) ;
 - le sélecteur s'ouvre sans replier la ligne ; le choix s'enregistre sans bouton : après rechargement, « Transactionnelle (achat, conversion) ». Pour un article créé, il part aussi sur l'article (cela se voit à la porte du Capitaine, dans son module) ;
 - après le renommage, l'arbre montre A sous son nouveau titre ;
-- « Régénérer › Titre » : un nouveau titre, et un compteur « 2/2 » entre deux flèches ; la flèche gauche revient au titre d'origine (« 1/2 »). En MOCK, le nouveau titre est un texte simulé : seul le geste compte ;
+- « Régénérer › Titre » : un nouveau titre, et un compteur « 2/2 » entre deux flèches ; la flèche gauche revient au titre d'origine (« 1/2 »). En MOCK, le nouveau titre part du mot-clé suggéré de la ligne (« <Mot-clé> : ce qui fait vraiment la différence ») ; « Régénérer › Mot-clé » et « › Slug » donnent de même un mot-clé et une adresse nouveaux, jamais un texte d'erreur ni la carte entière ;
 - « Supprimer » retire la ligne de la carte, sans toucher à l'arbre.
 
 **C'est un bug si :**
@@ -497,7 +497,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - en quittant un champ, « Sauvegarde » un instant ; après rechargement, `Direct, sans jargon` est toujours là ;
 - « Suggestion en cours... », puis un aperçu « Suggestion IA » : pour chaque champ déjà rempli, l'ancienne valeur → la nouvelle, avec « Appliquer » et « Annuler » ;
 - « Annuler » : rien ne change ;
-- « Appliquer » : les trois champs prennent la suggestion (en MOCK, l'angle « Approche pratique avec mini-cas concrets et checklist actionnable en fin d'article. »), « Sauvegarde » s'affiche, et les valeurs restent après rechargement ;
+- « Appliquer » : les trois champs prennent la suggestion (en MOCK, l'angle « Traiter « <mot-clé> » par les situations réelles du lecteur : … », un ton propre au niveau de A, et des consignes rédigées en phrases), « Sauvegarde » s'affiche, et les valeurs restent après rechargement ;
 - aucune génération ne part : l'étape « Article » ne change pas, et la pile « Coûts API » n'ajoute que la suggestion.
 
 **C'est un bug si :**
@@ -653,7 +653,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - `recette-test` en pastille, toujours là après rechargement, puis absent après la croix et le rechargement ;
 - « Sauvegarde... » un instant sur le bouton ;
 - au Cerveau, dans « Contexte envoyé à Claude », le bloc « Communication » : « Ton » finit par « (recette) » ;
-- en MOCK, n'utilise pas « Remplir les champs avec Claude » : la réponse simulée ne remplit pas les champs (voir CER-R1).
+- en MOCK, « Remplir les champs avec Claude » remplit les champs d'après le texte libre (métier, ville, services, clientèle), mais il remplace toute la configuration : ne l'essaie qu'après une sauvegarde de la base, comme en CER-R1.
 
 **C'est un bug si :**
 - une saisie est perdue au rechargement ;

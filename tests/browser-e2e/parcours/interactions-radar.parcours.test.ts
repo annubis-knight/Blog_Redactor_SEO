@@ -153,7 +153,8 @@ test('Radar — cocher, tout cocher, trier et filtrer par CPC', async ({ page })
   }
 })
 
-test('Radar — les suggestions longue traîne se génèrent et se cochent', async ({ page }) => {
+// FR-RAD-LONGTAIL-GENERATE (génération), FR-RAD-LONGTAIL-UI (cases à cocher).
+test('Radar — les suggestions longue traîne se génèrent et se cochent (FR-RAD-LONGTAIL-GENERATE)', async ({ page }) => {
   test.setTimeout(300_000)
   await radarAvecScan(page, 'specifique')
 
@@ -167,8 +168,11 @@ test('Radar — les suggestions longue traîne se génèrent et se cochent', asy
   await bouton.click()
 
   const liste = section.locator('[data-testid="longtail-list"]')
-  const erreur = section.locator('.longtail-error')
-  await expect(liste.or(erreur).first(), 'une liste ou un message d’erreur, jamais rien').toBeVisible({ timeout: 120000 })
+  // Classes de RadarLongTailSuggestions.vue : `lt-error` (échec) et `lt-empty`
+  // (aucune suggestion). L'ancien sélecteur `.longtail-error` n'existait pas :
+  // sans liste, le test attendait deux minutes pour rien.
+  const message = section.locator('.lt-error, .lt-empty')
+  await expect(liste.or(message).first(), 'une liste ou un message (échec, aucune suggestion), jamais rien').toBeVisible({ timeout: 120000 })
 
   if (await liste.count() > 0) {
     const cases = liste.locator('input[type="checkbox"]')

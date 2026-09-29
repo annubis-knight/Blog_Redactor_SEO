@@ -44,7 +44,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 
 **⚠ Défaut connu :** FR-EXT-DATAFORSEO-COSTGUARD — le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
-**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » ; plusieurs réponses simulées n'ont pas le format attendu : avis du Capitaine (chiffres figés), avis du Lexique et proposition des Lieutenants (champs manquants), « Remplir les champs avec Claude » (échec), « Sujets suggérés » (liste vide), suggestions, fusions et régénérations du Cerveau (texte générique). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### EXT-2 — Au Radar, en MOCK, chaque mot-clé reçoit une mesure factice et gratuite
 **Exigences :** FR-EXT-DATAFORSEO-SANDBOX ⚠, FR-EXT-AUTOCOMPLETE-GOOGLE
@@ -102,7 +102,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 
 **Tu dois voir :**
 - la question « Régénérer l'avis expert IA ? Cela consommera un appel Claude. ». En MOCK, aucun appel Claude ne part malgré ce texte ;
-- un avis qui arrive presque aussitôt : un texte préparé à l'avance (par exemple « [Mock provider] Réponse simulée. … »), le même aux gestes 3 et 4 ;
+- un avis qui arrive presque aussitôt : un texte préparé à partir de la demande (trois parties, « 1. Potentiel éditorial »…, qui citent le capitaine), le même aux gestes 3 et 4 ;
 - dans la pile, une ligne « Analyse IA capitaine » par avis, avec le modèle « mock-provider-v1 » et le coût « < $0.001 » ;
 - dans « KPIs marché » : « Volume » en « rech/m », « Difficulté », « CPC » en €. Ce sont des valeurs factices du bac à sable, souvent les mêmes d'un mot-clé à l'autre, même pour le mot-clé absurde ;
 - pour le mot-clé absurde, « Autocomplete » à « 0 matches » : Google ne le suggère pas. Aucun message d'erreur. Ce chiffre est le rang du mot-clé dans les suggestions Google, 0 s'il n'y figure pas.
@@ -156,7 +156,7 @@ Ce module vérifie ce que tu vois des services extérieurs : le bouton MOCK / R�
 - l'avis échoue sans internet en MOCK : la simulation ferait un appel réseau ;
 - les Lieutenants affichent une erreur alors que ces mots-clés ont été analysés il y a moins de 7 jours.
 
-**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » ; plusieurs réponses simulées n'ont pas le format attendu : avis du Capitaine (chiffres figés), avis du Lexique et proposition des Lieutenants (champs manquants), « Remplir les champs avec Claude » (échec), « Sujets suggérés » (liste vide), suggestions, fusions et régénérations du Cerveau (texte générique). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+**⚠ Défaut connu :** NFR-COST-AI-MOCK — après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 

@@ -27,7 +27,13 @@ export default mergeConfig(
         'tests/unit/services/linking.service.test.ts',
         'tests/unit/services/linking-anchor.test.ts',
         'tests/unit/services/cocoon-add-article-prompt.test.ts',
+        // Réponses simulées (NFR-COST-AI-MOCK) : consigne réelle, bon choix de
+        // réponse, forme acceptée par le contrat ou le parseur consommateur.
         'tests/unit/services/mock-captain-ai-panel.test.ts',
+        'tests/unit/services/mock-moteur-panneaux.test.ts',
+        'tests/unit/services/mock-propose-lieutenants.test.ts',
+        'tests/unit/services/mock-redaction.test.ts',
+        'tests/unit/services/mock-cerveau.test.ts',
         'tests/unit/infra/test-fixtures-cleanup.test.ts',
       ],
       root: fileURLToPath(new URL('./', import.meta.url)),
