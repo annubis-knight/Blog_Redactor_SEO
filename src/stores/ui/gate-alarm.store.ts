@@ -121,16 +121,25 @@ export const useGateAlarmStore = defineStore('gate-alarm', () => {
    * Joue une action gardée par le serveur (check du Moteur, publication). Si elle
    * est refusée en 422 `GATE_BLOCKED`, montre l'alarme ; après dérogation, la
    * rejoue une fois. Les autres erreurs remontent telles quelles.
+   *
+   * `stillWanted` : l'action est-elle encore voulue quand le refus arrive ? Un
+   * capitaine déverrouillé pendant que son étape s'enregistrait est jugé vide
+   * par le serveur ; ce refus ne concerne plus rien, il n'ouvre pas d'alarme
+   * (FR-CAP-CHECK).
    */
   async function runThroughGate<T>(
     articleId: number,
     action: () => Promise<T>,
-    opts: GateOptions = {},
+    opts: GateOptions & { stillWanted?: () => boolean } = {},
   ): Promise<{ ok: true; value: T } | { ok: false }> {
     try {
       return { ok: true, value: await action() }
     } catch (err) {
       if (!isGateBlocked(err)) throw err
+      if (opts.stillWanted && !opts.stillWanted()) {
+        log.info('[gate-alarm] refus sans objet : l’action n’est plus demandée', { articleId, gateId: err.details.gateId })
+        return { ok: false }
+      }
       const passed = await open(articleId, err.details.gateId, err.details, opts)
       if (!passed) return { ok: false }
       return { ok: true, value: await action() }

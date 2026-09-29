@@ -941,6 +941,7 @@ Verrouiller le Capitaine doit valider l'étape Moteur « Capitaine verrouillé �
 - Déverrouiller retire l'étape.
 - À l'ouverture de l'onglet, l'étape est réconciliée avec l'état réel du verrou.
 - L'étape n'est accordée que si la porte passe (cf. FR-CAP-LOCK-GATE).
+- Un refus de la porte qui arrive après que l'utilisateur a déverrouillé ce Capitaine n'ouvre pas d'alarme : l'étape n'est plus demandée, rien n'est à décider.
 
 ### FR-CAP-RELEVANCE-LIVE — Score Pertinence recalculé, jamais enregistré
 **Statut :** non tenue (juste après une étude, la note affichée vient d'un autre calcul que celle de la réouverture : sans racines, avec les anciens signaux du Radar)
@@ -2152,6 +2153,7 @@ Avant chaque appel DataForSEO, l'outil doit estimer son coût et refuser l'appel
 **Statut :** active
 L'outil doit offrir un mode simulé où ni l'IA ni DataForSEO ne coûtent rien, activable par configuration ou par un bouton toujours visible.
 - En mode simulé, les réponses d'IA viennent de réponses préparées, identiques d'un appel à l'autre, sans réseau.
+- Chaque réponse préparée reconnaît l'appel qu'elle sert d'après sa consigne réelle : le conseil IA du Capitaine reçoit un avis rédigé sur son mot-clé, jamais la réponse par défaut.
 - En mode simulé, DataForSEO est interrogé en bac à sable.
 - Le bouton de la barre de navigation affiche le mode actif et bascule d'un clic.
 - Le choix fait par le bouton survit à un redémarrage du serveur.

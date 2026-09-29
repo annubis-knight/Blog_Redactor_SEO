@@ -15,7 +15,8 @@ import { MOTEUR_CAPITAINE_LOCKED } from '@shared/constants/workflow-checks.const
  * WRITES TO: POST /articles/:id/progress/check et /uncheck (addCheck / removeCheck),
  *            DELETE /articles/:id/external-cache.
  * CONSUMERS: MoteurView (capitainesMap, explorationCounts, emitCheckCompleted, handleCheckRemoved).
- * RELATED FR: FR-MOT-CHECKS, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-MOT-RECAP-LOCK-SYNC
+ * RELATED FR: FR-MOT-CHECKS, FR-CAP-LOCK-GATE, FR-LIE-LOCK-GATE, FR-MOT-RECAP-LOCK-SYNC,
+ *             FR-CAP-CHECK (un refus d'une demande d'étape dépassée n'ouvre pas d'alarme)
  *
  * Vague 5 — Composable extrait de MoteurView.
  *
@@ -115,12 +116,27 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
     { immediate: true },
   )
 
+  // Dernière intention par article et par étape : une demande d'étape dont la
+  // réponse arrive après une demande plus récente (déverrouiller pendant que le
+  // verrouillage s'enregistre) est dépassée. Son refus éventuel n'ouvre pas
+  // d'alarme : le serveur a jugé un état qui n'existe plus (FR-CAP-CHECK).
+  const latestIntent = new Map<string, number>()
+
+  /** Enregistre une nouvelle intention ; renvoie « est-elle toujours la dernière ? ». */
+  function recordIntent(id: number, check: string): () => boolean {
+    const key = `${id}:${check}`
+    const generation = (latestIntent.get(key) ?? 0) + 1
+    latestIntent.set(key, generation)
+    return () => latestIntent.get(key) === generation
+  }
+
   function emitCheckCompleted(check: string): void {
     const id = selectedArticle.value?.id
     if (!id) return
+    const stillWanted = recordIntent(id, check)
     const addCheck = () => articleProgressStore.addCheck(id, check)
     const attempt = gateAlarm
-      ? gateAlarm.runThroughGate(id, addCheck)
+      ? gateAlarm.runThroughGate(id, addCheck, { stillWanted })
       : addCheck().then(() => ({ ok: true as const }))
     attempt
       .then((res) => {
@@ -146,6 +162,7 @@ export function useMoteurArticleSync(deps: MoteurArticleSyncDeps): MoteurArticle
   function handleCheckRemoved(check: string): void {
     const id = selectedArticle.value?.id
     if (!id) return
+    recordIntent(id, check)
     articleProgressStore.removeCheck(id, check).catch(err =>
       log.warn('[useMoteurArticleSync] removeCheck failed', { articleId: id, check, error: err }),
     )

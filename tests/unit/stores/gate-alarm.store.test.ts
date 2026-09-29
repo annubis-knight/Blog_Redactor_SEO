@@ -104,6 +104,17 @@ describe('gate-alarm store', () => {
     expect(action).toHaveBeenCalledTimes(2)
   })
 
+  it('runThroughGate : un refus devenu sans objet n’ouvre pas l’alarme (FR-CAP-CHECK)', async () => {
+    // Verrouillé puis déverrouillé pendant que l'étape s'enregistrait : le serveur
+    // juge alors un capitaine vide et refuse. Ce refus ne concerne plus rien.
+    const blocked = Object.assign(new Error('Étape non validée'), { status: 422, code: 'GATE_BLOCKED', details: evaluation(false) })
+    const action = vi.fn().mockRejectedValueOnce(blocked)
+    const store = useGateAlarmStore()
+    await expect(store.runThroughGate(12, action, { stillWanted: () => false })).resolves.toEqual({ ok: false })
+    expect(store.current, 'aucune alarme ouverte').toBeNull()
+    expect(action).toHaveBeenCalledTimes(1)
+  })
+
   it('runThroughGate laisse passer les autres erreurs', async () => {
     const store = useGateAlarmStore()
     await expect(store.runThroughGate(12, () => Promise.reject(new Error('réseau')))).rejects.toThrow('réseau')

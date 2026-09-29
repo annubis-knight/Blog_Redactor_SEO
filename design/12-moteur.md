@@ -48,6 +48,7 @@ sequenceDiagram
   - Le `$reset` avant la relecture évite d'afficher le Capitaine de l'article précédent.
   - La progression n'est **pas** relue à la sélection : `MoteurContextRecap` la charge une fois par article, si elle manque dans `progressMap`.
   - Un article de la stratégie sans ligne en base a l'id 0 : `emitCheckCompleted` et `radarExplorationStore.setArticle` l'ignorent.
+  - Demande d'étape dépassée (FR-CAP-CHECK) : [`useMoteurArticleSync.ts`](../src/composables/moteur/useMoteurArticleSync.ts) garde la dernière intention par article et par étape (`latestIntent`, `recordIntent`). `emitCheckCompleted` passe `stillWanted` à `runThroughGate` ([`gate-alarm.store.ts`](../src/stores/ui/gate-alarm.store.ts)) ; `handleCheckRemoved` enregistre une intention plus récente. Un 422 `GATE_BLOCKED` arrivé après un retrait n'ouvre donc pas d'alarme. Raison : `POST /articles/:id/progress/check` juge la porte sur le capitaine **enregistré au moment où la requête arrive** (`evaluateArticleGate(id, gateId)`, sans mot-clé) ; déverrouiller pendant l'enregistrement du verrou lui faisait juger un capitaine vide. Tests : `tests/unit/composables/useMoteurArticleSync.test.ts`, `tests/unit/stores/gate-alarm.store.test.ts`.
   - `checkCacheForSeed` appelé ici agit sur l'instance de `useDiscoveryPanel` propre à la vue, pas sur celle du panneau Discovery (voir [Moteur — Discovery](13-discovery.md), conflit 36).
   - Risque suspecté (conflit 6) : `LieutenantsPanel` monté + `$reset` du store → `withdrawCheck` et `saveDecisions` sur un store vide.
 

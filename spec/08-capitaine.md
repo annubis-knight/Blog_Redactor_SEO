@@ -176,6 +176,8 @@ Le cadenas d'une carte verrouille son mot-clé d'origine (jamais la racine affic
 
 **Déverrouiller** (cadenas de la carte verrouillée) vide le Capitaine et retire l'étape. Si des Lieutenants sont verrouillés, une fenêtre propose « Les garder » ou « Tout réinitialiser » (ils sont archivés) ; un clic à côté ou Échap annule.
 
+Déverrouiller aussitôt après avoir verrouillé, pendant que l'étape s'enregistre encore, est sans risque : si le serveur refuse cette étape parce que le Capitaine n'est plus là, aucune alarme ne s'ouvre, puisque l'étape n'est plus demandée.
+
 À l'ouverture de l'onglet, l'étape est réconciliée : ajoutée si un Capitaine est verrouillé sans elle, retirée dans le cas inverse.
 
 > **En situation.** Pour son pilier, l'utilisateur verrouille « stratégie digitale entreprises Toulouse » : volume jamais mesuré, aucune suggestion, SERP d'agences. L'alarme montre deux points 🔴 et un 🟠, puis trois candidats mesurés. Il clique « Revenir corriger » ; son ancien Capitaine reste en place, il verrouille l'un des candidats proposés.
