@@ -18,7 +18,7 @@ On y entre par la carte « Cerveau » de la page du cocon. Deux réglages d'arti
 - **La barre d'étapes**, en haut de l'application : « Cible », « Douleur », « Angle », « Promesse », « CTA », « Articles ».
   - Une étape déjà atteinte se rouvre d'un clic ; les suivantes restent fermées.
   - Une étape passée par « Suivant » est marquée faite.
-- **« Contexte envoyé à Claude »**, un encadré repliable. Il montre tout ce que l'IA reçoit : thème, silo, cocon, configuration du thème, réponses déjà validées. Un second encadré, « Articles du cocon (N) », liste les articles existants et ceux de la carte.
+- **« Contexte envoyé à Claude »**, un encadré repliable. Il montre tout ce que l'IA reçoit : thème, silo, cocon, configuration du thème, réponses déjà validées. Un second encadré, « Articles du cocon (N) », liste les articles déjà créés du cocon, rangés par niveau ; les propositions de la carte indicative n'y figurent pas.
 - **En bas** : « Précédent », puis « Suivant ». À l'étape Articles, « Suivant » devient « Terminer le brainstorm ».
 - **Messages** : « Chargement de la stratégie... » pendant le chargement ; « Cocon introuvable. » pour un cocon inconnu.
 
@@ -68,7 +68,7 @@ Chaque étape pose une question, accompagnée d'une courte explication :
 **Ce que l'IA reçoit.** À chaque suggestion, fusion, sous-question ou enrichissement, l'IA reçoit :
 - le cocon, le silo, les réponses déjà validées ;
 - la configuration du thème ;
-- la liste des articles du cocon et de la carte.
+- la liste des articles déjà créés du cocon ; les propositions de la carte n'y figurent pas.
 
 ## L'étape Articles : construire le cocon, et sa carte indicative
 *Exigences : FR-CER-COCOON-PROGRESSIVE, FR-CER-STEPS-COCOON*

@@ -148,7 +148,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **⚠ Défaut connu :** aucun écran affiché ne permet de remplacer, de changer le statut ni de supprimer un mot-clé du pool : l'écran qui le faisait n'est plus monté ; le pool ne s'alimente qu'à la création d'un article. Et le remplacement d'un mot-clé ne vérifie pas qu'un autre cocon l'utilise déjà ; seul l'ajout le refuse. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-7 — Les règles du type d'article sont les mêmes partout
-**Exigences :** FR-INFRA-TYPE-RULES-SSOT
+**Exigences :** FR-INFRA-TYPE-RULES-SSOT ⚠
 
 **Gestes :**
 1. Cerveau du cocon de recette, étape « Articles » : sous l'enfant, clique « Le rédiger ». Regarde « Recommandation de contenu ».
@@ -163,6 +163,8 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **C'est un bug si :**
 - l'enfant affiche une autre base que 1 800 mots ;
 - la « Cible » et l'objectif du panneau SEO diffèrent.
+
+**⚠ Défaut connu :** FR-INFRA-TYPE-RULES-SSOT — la fourchette « min – max mots » de la recommandation de contenu est calculée à ±20 % de la cible au lieu de reprendre celle du type : un pilier affiche « 2 000 – 3 000 » alors que la rédaction vise 1 800 à 3 500. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-8 — Le micro-contexte d'un article est gardé
 **Exigences :** FR-INFRA-MICRO-CONTEXTS
@@ -317,7 +319,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - après le rechargement, la pastille « Lieutenants » est pleine.
 
 ### INFRA-15 — Déroger par écrit, pour les seules données examinées
-**Exigences :** FR-INFRA-GATE-WAIVER
+**Exigences :** FR-INFRA-GATE-WAIVER ⚠
 
 **Gestes :**
 1. Rouvre l'alarme (« Voir pourquoi / décider »). Dans « Votre raison », tape une vingtaine d'espaces.
@@ -340,6 +342,8 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - le bouton s'active sous 20 caractères, ou sans catégorie ;
 - la dérogation posée pour A couvre B ;
 - A redemande une dérogation au geste 5.
+
+**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-16 — Les propositions de lieutenants survivent au rechargement
 **Exigences :** FR-INFRA-LIEUTENANT-EXPLORATIONS ⚠, FR-INFRA-KPI-CONSISTENCY
@@ -402,7 +406,7 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 **⚠ Défaut connu :** « Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-19 — À la publication, la reconfirmation suit les données
-**Exigences :** FR-INFRA-GATE-WAIVER, FR-INFRA-VERIFIER-SHARED
+**Exigences :** FR-INFRA-GATE-WAIVER ⚠, FR-INFRA-VERIFIER-SHARED
 
 **Gestes :**
 1. Rédaction du pilier : **« Éditer l'article »**, puis **« Visualiser l'article »**. Dans l'onglet d'aperçu, clique **« Exporter HTML »**.
@@ -420,6 +424,8 @@ Ce module vérifie ce qui se passe « sous » tous les écrans : la bascule MOCK
 - une alarme s'ouvre au geste 1 alors que tu n'as rien changé au pilier depuis l'étape 10 ;
 - aucune alarme au geste 2 ;
 - un fichier se télécharge au geste 3.
+
+**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-20 — Une erreur du serveur s'affiche en clair, sans trace technique
 **Exigences :** FR-INFRA-ERROR-HANDLER ⚠, NFR-OBS-KNOWN-ERRORS ⚠
@@ -449,7 +455,7 @@ Ces vérifications coûtent de quelques centimes à quelques dizaines de centime
 
 ### INFRA-R1 — Une même mesure n'est payée qu'une fois
 **Mode :** RÉEL (payant)
-**Exigences :** FR-INFRA-API-CACHE, FR-INFRA-GET-OR-FETCH, FR-INFRA-PAA-CACHE, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST
+**Exigences :** FR-INFRA-API-CACHE, FR-INFRA-GET-OR-FETCH, FR-INFRA-PAA-CACHE, FR-INFRA-KEYWORD-METRICS ⚠, NFR-COST-CACHE-FIRST ⚠
 
 **Gestes :**
 1. Passe en RÉEL. Déplie la pile et note le montant « DataForSEO PROD $x / $y (30min) ». Les lignes d'IA peuvent s'ajouter : seul ce montant compte ici.
@@ -470,6 +476,8 @@ Ces vérifications coûtent de quelques centimes à quelques dizaines de centime
 > Avant « Rafraîchir », l'onglet « SERP Data » du pilier montre les chiffres mesurés en MOCK : c'est l'effet de l'avertissement ci-dessus.
 
 **⚠ Défaut connu :** tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie : si le geste 2 affiche « KD — » et « CPC — », le geste 3 fait monter le montant. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** NFR-COST-CACHE-FIRST — le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### INFRA-R2 — Le plafond de dépense bloque l'appel avant de l'envoyer
 **Mode :** RÉEL (payant)

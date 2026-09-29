@@ -39,7 +39,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** les résultats et les cases cochées de Discovery survivent au changement d'article : seul le mot-clé racine change (tu le verras en MOT-9). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-2 — Les trois blocs repliables et la liste des articles
-**Exigences :** FR-MOT-CHECKS, FR-MOT-RECAP-LOCK-SYNC, FR-MOT-RECAP-PUBLISHED ⚠
+**Exigences :** FR-MOT-CHECKS, FR-MOT-RECAP-LOCK-SYNC ⚠, FR-MOT-RECAP-PUBLISHED ⚠
 
 **Gestes :**
 1. Clique **« Contexte stratégique »**.
@@ -64,6 +64,8 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - le mot-clé du pilier est en pointillé alors que son Capitaine est verrouillé.
 
 **⚠ Défaut connu :** la liste « Articles suggérés » reprend toutes les propositions de la stratégie du cocon, sans regarder leur phase : un article entré en rédaction, comme le pilier, figure dans les deux listes. La barre de la Rédaction range aussi les articles selon un statut « publié » calculé à l'écran, pas selon la phase donnée par le serveur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-MOT-RECAP-LOCK-SYNC — pour un article de « Articles publiés », l'aspect plein ou pointillé du mot-clé ne suit pas un verrouillage fait pendant la visite : il faut recharger la page. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-3 — Choisir, puis désélectionner un article
 **Exigences :** FR-MOT-ARTICLE-SELECTION ⚠, FR-MOT-PHASES
@@ -130,16 +132,15 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - l'onglet ouvert est surligné en bleu, et son groupe est encadré ;
 - un titre de groupe ouvre son premier onglet : Finalisation, Discovery, puis Capitaine ;
 - le texte tapé au Capitaine est toujours là à ton retour : un onglet garde son état ;
-- Discovery et Radar restent cliquables, pour l'enfant comme pour le pilier. Ils ne se ferment que si le mot-clé de l'article n'est plus « suggéré » dans le cocon, et aucun écran ne le fait aujourd'hui ;
-- *(facultatif)* pour le pilier, Discovery et Radar estompés, avec un cadenas et l'infobulle « Mots-clés déjà validés — onglet verrouillé » ; les autres onglets restent ouverts. Le bandeau « Les onglets Discovery et Radar sont verrouillés car des mots-clés sont déjà validés pour cet article. » et son bouton « Voir le Capitaine → » ne peuvent pas apparaître : on ne peut ni cliquer un onglet grisé, ni y arriver en choisissant l'article. Note-le à part : c'est un écart signalé.
+- Discovery et Radar restent cliquables, pour l'enfant comme pour le pilier, même Capitaine verrouillé : explorer ne fige rien.
 
 **C'est un bug si :**
-- un onglet refuse de s'ouvrir alors qu'un article est choisi (hors le cas facultatif) ;
+- un onglet refuse de s'ouvrir alors qu'un article est choisi ;
 - le Moteur change d'onglet sans que tu aies cliqué ;
 - le contenu d'un onglet est perdu quand tu en changes.
 
 ### MOT-6 — Les écritures attendent les étapes précédentes
-**Exigences :** FR-MOT-SOFT-GATING
+**Exigences :** FR-MOT-SOFT-GATING ⚠
 
 **Gestes :**
 1. Sur l'enfant, dont le Capitaine n'est pas verrouillé, ouvre **Lexique**.
@@ -160,6 +161,8 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - « Prêt pour la Rédaction » s'affiche alors qu'un verrou manque ;
 - un bouton vers la Rédaction est actif pour l'enfant ;
 - un bouton du Lexique agit alors que le bandeau est affiché. Par exemple, si « Le scrape SERP n'est pas encore disponible pour ce mot-clé. » s'affiche, son bouton « Lancer l'analyse SERP (~$0.003 DataForSEO) » reste actif : écart repéré en écrivant cette recette.
+
+**⚠ Défaut connu :** FR-MOT-SOFT-GATING — à l'onglet Lexique, Capitaine non verrouillé, « Lancer l'analyse SERP » reste actif malgré le bandeau : l'analyse payante part, et ses termes peuvent ensuite être retenus. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-7 — « Continuer vers … » nomme l'onglet suivant, sans jamais naviguer seul
 **Exigences :** FR-MOT-PHASE-TRANSITION
@@ -235,7 +238,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** après un déverrouillage, l'en-tête du Lexique affiche un vide au lieu de « — » (tu le verras en MOT-14). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-10 — Rechargement : le Radar revient, sans panier ; le bouton « Vider le cache »
-**Exigences :** FR-MOT-BASKET-DEPRECATED, FR-MOT-EXTERNAL-CACHE-CLEAR ⚠
+**Exigences :** FR-MOT-BASKET-DEPRECATED ⚠, FR-MOT-EXTERNAL-CACHE-CLEAR ⚠
 
 **Gestes :**
 1. Choisis le pilier. Regarde l'en-tête de la barre « Résultats déjà calculés ».
@@ -255,8 +258,10 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 
 **⚠ Défaut connu :** le bouton n'apparaît que si un scan Radar non sauvegardé est en mémoire, et la purge vise des types de cache que l'outil n'écrit plus : aucun nouvel appel n'est forcé. En pratique, il apparaît dès qu'un scan Radar est connu pour l'article, même enregistré (la puce Radar affiche alors « C 1 »), et jamais pour le pilier, qui n'a pas de Radar. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-MOT-BASKET-DEPRECATED — un lieutenant ajouté depuis « 💡 Suggestions pour vos Lieutenants » porte la raison « Proposé depuis votre panier », un panier qui n'existe plus. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### MOT-11 — Cannibalisation : deux articles sur le même Capitaine
-**Exigences :** FR-MOT-CANNIBALIZATION ⚠, FR-MOT-RECAP-LOCK-SYNC
+**Exigences :** FR-MOT-CANNIBALIZATION ⚠, FR-MOT-RECAP-LOCK-SYNC ⚠
 
 **Gestes :**
 1. Note le mot-clé Capitaine du pilier : sur sa ligne dans la liste, ou dans le bloc « Capitaine » de son onglet Finalisation.
@@ -282,8 +287,10 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 
 **⚠ Défaut connu :** l'alerte n'existe que sur les lignes de la barre des articles, sans nommer l'article concurrent ; les cartes du Radar et du Capitaine n'ont pas de badge. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-MOT-RECAP-LOCK-SYNC — pour un article de « Articles publiés », l'aspect plein ou pointillé du mot-clé ne suit pas un verrouillage fait pendant la visite : il faut recharger la page. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### MOT-12 — Verrouiller le Capitaine : tout suit, sans rechargement
-**Exigences :** FR-MOT-CHECKS, FR-MOT-RECAP-LOCK-SYNC, FR-MOT-DISPLAY-FROM-STORE ⚠, FR-MOT-SOFT-GATING, FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT
+**Exigences :** FR-MOT-CHECKS, FR-MOT-RECAP-LOCK-SYNC ⚠, FR-MOT-DISPLAY-FROM-STORE ⚠, FR-MOT-SOFT-GATING ⚠, FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT ⚠
 
 **Gestes :**
 1. Au Capitaine de l'enfant, verrouille cette fois son mot-clé suggéré (la carte étudiée à l'ouverture, en MOT-4). Si elle n'est plus dans la liste, retape-le dans « Tester un mot-clé capitaine… ». Réponds à l'alarme comme en MOT-11.
@@ -305,6 +312,12 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - la puce Capitaine compte 1 ou 0 alors que plusieurs mots-clés ont été testés.
 
 **⚠ Défaut connu :** après un déverrouillage, l'en-tête du Lexique affiche un vide au lieu de « — » (tu le verras en MOT-14). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-MOT-RECAP-LOCK-SYNC — pour un article de « Articles publiés », l'aspect plein ou pointillé du mot-clé ne suit pas un verrouillage fait pendant la visite : il faut recharger la page. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-MOT-SOFT-GATING — à l'onglet Lexique, Capitaine non verrouillé, « Lancer l'analyse SERP » reste actif malgré le bandeau : l'analyse payante part, et ses termes peuvent ensuite être retenus. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-MOT-CACHE-PANEL-COUNT — la puce Radar affiche « C 1 » dès qu'un scan est connu, même enregistré, et le bouton « C 1 » de l'invite ne recharge rien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-13 — Lieutenants : le seuil dépend du niveau, l'étape suit les cases
 **Exigences :** FR-MOT-WORKFLOW-GATING-DUAL, FR-MOT-CHECKS, FR-MOT-CROSS-TAB-PAYLOAD, FR-MOT-MODE-BIMODAL ⚠
@@ -331,7 +344,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** le panneau Lexique n'a pas de mode libre, et aucun écran n'utilise le mode libre : seul le mode guidé d'un article se vérifie ici. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-14 — Déverrouiller le Capitaine retire aussi « Structure validée »
-**Exigences :** FR-MOT-CHECKS, FR-MOT-RECAP-LOCK-SYNC, FR-MOT-DISPLAY-FROM-STORE ⚠, FR-MOT-LOCK-DERIVED
+**Exigences :** FR-MOT-CHECKS, FR-MOT-RECAP-LOCK-SYNC ⚠, FR-MOT-DISPLAY-FROM-STORE ⚠, FR-MOT-LOCK-DERIVED
 
 **Gestes :**
 1. Onglet **Structure** : clique **« Générer la structure »**, puis **« Valider la structure »**. Si l'alarme « Avant de valider la structure » s'ouvre, réponds-y comme en MOT-11.
@@ -355,6 +368,8 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - un écran montre encore le Capitaine comme verrouillé après le déverrouillage.
 
 **⚠ Défaut connu :** après un déverrouillage, l'en-tête du Lexique affiche un vide au lieu de « — ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-MOT-RECAP-LOCK-SYNC — pour un article de « Articles publiés », l'aspect plein ou pointillé du mot-clé ne suit pas un verrouillage fait pendant la visite : il faut recharger la page. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-15 — Plus aucun lieutenant, puis rechargement : l'étape se corrige seule
 **Exigences :** FR-MOT-WORKFLOW-GATING-DUAL, FR-MOT-CHECK-RECONCILIATION, FR-MOT-CHECKS, FR-MOT-EXPLORATIONS-HYDRATATION, FR-MOT-PHASES
@@ -380,7 +395,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - le bandeau ne revient pas alors qu'un seul lieutenant est retenu.
 
 ### MOT-16 — La barre « Résultats déjà calculés » et l'invite « Charger »
-**Exigences :** FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT, FR-MOT-EXPLORATIONS-HYDRATATION
+**Exigences :** FR-MOT-EXPLORATION-COUNTS, FR-MOT-CACHE-PANEL-COUNT ⚠, FR-MOT-EXPLORATIONS-HYDRATATION
 
 **Gestes :**
 1. Sur l'enfant, survole les quatre puces de la barre du bas.
@@ -403,6 +418,8 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 - la puce Capitaine ne compte que le mot-clé verrouillé ;
 - « Charger » crée des doublons ;
 - les chiffres restent ceux de l'article précédent.
+
+**⚠ Défaut connu :** FR-MOT-CACHE-PANEL-COUNT — la puce Radar affiche « C 1 » dès qu'un scan est connu, même enregistré, et le bouton « C 1 » de l'invite ne recharge rien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-17 — Rouvrir un article déjà travaillé : ce qui repart seul, ce qui est resservi
 **Exigences :** FR-MOT-PHASES, FR-MOT-NO-AUTO-ACTION ⚠, FR-MOT-CACHE-CASCADE ⚠
@@ -427,7 +444,7 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 **⚠ Défaut connu :** les appels d'IA de Discovery (génération, filtre de pertinence, analyse) ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans difficulté ni coût par clic est remesuré, et repayé, à chaque étude. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### MOT-18 — Les mots : on « scanne » un mot-clé, on « valide » une douleur
-**Exigences :** FR-API-VOCABULAIRE-SCAN
+**Exigences :** FR-API-VOCABULAIRE-SCAN ⚠
 
 **Gestes :**
 1. Au Capitaine de l'enfant, tape un nouveau mot-clé dans « Tester un mot-clé capitaine… », puis clique **« Analyser »**. Lis la carte pendant son étude.
@@ -439,6 +456,8 @@ Ce module vérifie ce qui est commun aux sept onglets du Moteur : la liste des a
 
 **C'est un bug si :**
 - un libellé parle de « valider » ou de « validation » pour l'étude d'un mot-clé. En écrivant cette recette, trois le font : « Validation en cours... » (carte du Capitaine pendant l'étude), « Aucun mot-clé à valider pour cet article. » (liste vide) et « Validation Capitaine dans 5s » (encart de Discovery).
+
+**⚠ Défaut connu :** FR-API-VOCABULAIRE-SCAN — l'étude d'un mot-clé s'appelle encore « validation » à l'écran : « Aucun mot-clé à valider pour cet article. », « Validation en cours... », « Validation Capitaine dans Ns », « KPIs insuffisants pour valider ce mot-clé. ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## En mode RÉEL (payant)
 
@@ -463,7 +482,7 @@ Passe le bouton en **RÉEL** au début de chaque vérification, et repasse-le en
 - « 0 € » ou « 0 % » apparaît pour une valeur inconnue.
 
 ### MOT-R2 — La douleur de l'article et la stratégie du cocon nourrissent l'IA
-**Exigences :** FR-MOT-PAINPOINT-INJECTION, FR-MOT-STRATEGY-INJECTION ⚠
+**Exigences :** FR-MOT-PAINPOINT-INJECTION ⚠, FR-MOT-STRATEGY-INJECTION ⚠
 
 **Mode :** RÉEL (payant)
 **Gestes :**
@@ -482,6 +501,8 @@ Passe le bouton en **RÉEL** au début de chaque vérification, et repasse-le en
 - les propositions de Lieutenants ignorent tout de la cible et de l'angle du cocon.
 
 **⚠ Défaut connu :** l'avis IA sur un candidat Capitaine et tout l'onglet Discovery travaillent sans la stratégie du cocon : l'avis du Capitaine peut donc ignorer la cible et l'angle. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-MOT-PAINPOINT-INJECTION — un article choisi dans « Articles publiés » arrive sans sa douleur : Discovery ne l'affiche ni ne l'utilise, et le Score Pertinence du Capitaine est calculé sans elle. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

@@ -168,7 +168,7 @@ Le cadenas d'une carte verrouille son mot-clé d'origine (jamais la racine affic
 | aucune suggestion Google | 🟠 | « Google ne suggère pas cette requête quand on commence à la taper. » |
 
    - L'intention attendue est celle de l'article ; à défaut, un pilier est traité comme un guide (informationnel). Une intention inconnue ne lève rien.
-   - Sous les points 🔴, « À la place : » propose jusqu'à 5 autres candidats de l'article, avec leur volume (« mot-clé (n recherches/mois) »), du plus recherché au moins recherché.
+   - Sous les points 🔴 et sous l'écart d'intention 🟠, « À la place : » propose jusqu'à 5 autres candidats de l'article, avec leur volume (« mot-clé (n recherches/mois) »), du plus recherché au moins recherché.
 3. « Revenir corriger » : rien ne change, l'ancien Capitaine reste verrouillé. Passer outre exige une dérogation écrite.
 4. Si la vérification échoue (serveur injoignable) : « Vérification du capitaine impossible : … », rien n'est verrouillé.
 5. Porte franchie : le Capitaine est enregistré (il remplace l'ancien), puis l'étape « Capitaine verrouillé » est demandée. Si l'enregistrement échoue : « Le capitaine n'a pas pu être enregistré : l'étape n'est pas validée. Réessayez. », et l'écran revient à l'état d'avant.

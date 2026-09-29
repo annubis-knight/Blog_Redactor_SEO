@@ -99,7 +99,6 @@ Règles :
 - Une moyenne ignore les valeurs absentes : la moyenne de 10, absent et 30 vaut 20. Sans aucune valeur, la moyenne est absente.
 - Le score composite d'un mot-clé (volume, difficulté, CPC, concurrence) se calcule sur les indicateurs connus, leurs poids étant répartis entre eux. Sans aucun indicateur, il est absent.
 - Sans volume, ni PAA, ni suggestion Google, le verdict du Capitaine est « GRAY » (« Données insuffisantes »), pas « NO-GO ». « NO-GO » (« Aucun signal détecté ») exige des mesures qui valent toutes zéro.
-- Un volume absent produit l'alerte d'information « Données KPI indisponibles — DataForSEO n'a renvoyé aucun signal pour ce mot-clé », pas l'alerte rouge « Aucun volume de recherche ».
 - La validation d'une douleur sans aucune source exploitable classe le mot-clé « incertaine », pas « froide ».
 - Écart connu : le tableau des mots-clés associés du brief de rédaction et l'audit du cocon reçoivent encore 0 quand DataForSEO ne dit rien.
 

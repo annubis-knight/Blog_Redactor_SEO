@@ -13,7 +13,7 @@ Le Moteur est la deuxième étape du parcours d'un cocon (un groupe d'articles l
 
 De haut en bas :
 
-1. Un fil d'Ariane : « Dashboard › {silo} › {cocon} › Moteur ».
+1. Un fil d'Ariane : « Dashboard / {silo} / {cocon} / Moteur » ; « Dashboard » et le cocon sont des liens.
 2. « Contexte stratégique » (repliable), si le Cerveau en a posé un : Cible, Douleur, Angle, Promesse, CTA.
 3. « Articles suggérés (N) » (repliable) : les articles proposés par la stratégie du cocon, groupés par niveau (pilier, intermédiaire, spécialisé ; le badge affiche « PILIER », « INTERMEDIAIRE », « SPECIFIQUE »).
 4. « Articles publiés (N) » (repliable, avec un cadenas) : les articles du cocon entrés en rédaction ou publiés.
@@ -84,14 +84,13 @@ Un onglet est désactivé dans deux cas seulement :
 | Cas | Onglets | Infobulle |
 |---|---|---|
 | Aucun article choisi | tous | « Sélectionnez un article ci-dessus » |
-| Le mot-clé de l'article n'est plus « suggéré » au niveau du cocon (validé ou rejeté) | Discovery, Radar | « Mots-clés déjà validés — onglet verrouillé » |
 
-Si l'onglet Discovery ou Radar est affiché alors qu'il est verrouillé, un bandeau dit « Les onglets Discovery et Radar sont verrouillés car des mots-clés sont déjà validés pour cet article. », avec un bouton « Voir le Capitaine → ».
+Discovery et Radar restent ouverts à tout moment : explorer ne fige rien.
 
 **Verrouillage doux.** On peut toujours ouvrir un onglet. Ce sont les gestes qui figent un choix qui attendent les étapes précédentes :
 - onglet Lexique : tant que le Capitaine n'est pas verrouillé, un bandeau dit « Verrouillez d'abord le Capitaine pour débloquer les actions Lexique. » ;
 - onglet Structure : il invite à retenir un Lieutenant d'abord (voir [Moteur — Structure](10-structure.md)) ;
-- Rédaction : fermée tant qu'un des quatre verrous manque (voir [Moteur — Finalisation](12-finalisation.md)).
+- boutons du Moteur vers la Rédaction : grisés tant qu'un des quatre verrous manque (voir [Moteur — Finalisation](12-finalisation.md)).
 
 ## Les étapes de progression
 *Exigences : FR-MOT-CHECKS, FR-MOT-CHECKS-CONSTANTS, FR-MOT-WORKFLOW-GATING-DUAL, FR-MOT-CHECK-RECONCILIATION, FR-MOT-LOCK-DERIVED, FR-DIS-CHECK, FR-FIN-CHECK*
@@ -141,7 +140,7 @@ L'outil ne change jamais d'onglet tout seul, sauf après un bouton « Envoyer au
 |---|---|---|---|
 | Discovery | « Envoyer au Radar → » | les mots-clés cochés, avec leur raison si l'IA en a donné une | Radar |
 | Radar | envoi au Capitaine | les cartes cochées, sans doublon | Capitaine |
-| Capitaine | envoi aux Lieutenants | les mots-clés racines | Lieutenants |
+| Capitaine | — (le verrouillage suffit) | le Capitaine verrouillé et ses mots-clés racines, relus en base | — |
 | Lieutenants | — | les Lieutenants retenus nourrissent la Structure et le Lexique | — |
 
 Il n'y a pas de panier en mémoire : les mots-clés envoyés au Radar sont enregistrés sur l'article et reviennent au rechargement.
@@ -154,6 +153,8 @@ Choisir un article ou ouvrir un onglet relit la base : progression, décisions, 
 **Une exception.** Ouvrir l'onglet Capitaine lance le jugement par l'IA des questions « Autres questions posées » (PAA, les questions que Google affiche sous ses résultats). Il porte sur chaque mot-clé exploré qui a des questions, si la douleur de l'article fait au moins 10 caractères. Le résultat est gardé en mémoire pour la session : revenir sur l'article ne relance rien, un rechargement de la page si.
 
 Toutes les autres actions payantes partent d'un geste : « Découvrir », « Courte-traîne IA », l'analyse IA, le scan Radar, et la case d'un mot-clé en Discovery (voir « Pré-analyse Capitaine »).
+
+Seule l'analyse SERP du Lexique annonce son coût avant de partir (« ~$0.003 »). Pour les autres, la dépense se lit après coup dans la pile « Coûts API » (décision du 2026-09-29 : pas d'annonce généralisée).
 
 **Limite actuelle.** Ouvrir l'onglet Lexique, Capitaine verrouillé, relit en base l'extraction du lexique. Si elle manque mais que les pages concurrentes sont déjà lues, l'outil recalcule l'extraction sur place. Dès qu'une extraction est affichée sans recommandations enregistrées, l'analyse IA du lexique part seule, et elle est payante (détail : [Moteur — Lexique](11-lexique.md)).
 
@@ -204,12 +205,12 @@ Dans les onglets Radar, Capitaine, Lieutenants et Lexique, si la puce de l'ongle
 
 Les candidats Capitaine et les Lieutenants déjà explorés reviennent à la réouverture, même sans verrou. Les candidats Capitaine reviennent en « suggéré ».
 
-Un bouton « Vider le cache » apparaît dans la barre quand un scan Radar non sauvegardé est en mémoire. Il supprime des réponses externes liées au Capitaine de l'article, sans toucher aux explorations ni aux décisions. **Limite actuelle :** les types de réponses visés ne sont plus produits par l'outil ; le clic ne force aucun nouvel appel.
+Un bouton « Vider le cache » apparaît dans la barre dès que l'article a un scan Radar connu, relu en base ou tout juste fait. Il supprime des réponses externes liées au Capitaine de l'article, sans toucher aux explorations ni aux décisions. **Limite actuelle :** les types de réponses visés ne sont plus produits par l'outil ; le clic ne force aucun nouvel appel.
 
 ## Vocabulaire et modes
 *Exigences : FR-UI-VOCABULAIRE-VERROUILLER, FR-MOT-MODE-BIMODAL, NFR-MOT-LEXIQUE-DECOUPLAGE*
 
-- Le geste qui fige le Capitaine s'appelle « Verrouiller ce mot-clé ». Lieutenants et termes du Lexique se retiennent en cochant. La Structure se valide par « Valider la structure ».
+- Le geste qui fige le Capitaine est le cadenas de sa carte, infobulle « Verrouiller » (« Déverrouiller » pour l'inverse). Lieutenants et termes du Lexique se retiennent en cochant. La Structure se valide par « Valider la structure ».
 - Le Moteur ne fonctionne aujourd'hui qu'en mode guidé, sur un article. Aucun écran d'exploration libre n'existe.
 - Lexique et Lieutenants se lancent dans n'importe quel ordre.
 

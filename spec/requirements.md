@@ -176,7 +176,7 @@ sont listées avec leur domaine. Celles-ci restent ici pour garder leur identifi
 L'accueil montre le plan éditorial : les silos (les grands thèmes du site), leurs cocons (un cocon est un groupe d'articles liés autour d'un même sujet) et leur avancement. La page d'un cocon ouvre ses trois ateliers : Cerveau, Moteur, Rédaction.
 
 ### FR-DASH-NAV — Naviguer du silo au cocon, puis à l'article
-**Statut :** active
+**Statut :** non tenue (à l'écran, rien ne met un article au statut « brouillon » : l'avancement ne compte que les articles publiés, seul le mode automatique pose « brouillon » ; sans silo ni thème nommé, le titre de l'accueil est vide au lieu de « Plan Éditorial » ; dans le fil d'Ariane, le silo n'est pas un lien)
 L'outil doit montrer le plan éditorial par niveaux (silo, cocon, article), avec le nombre d'articles et l'avancement de chaque silo et de chaque cocon, pour choisir où reprendre sans ouvrir chaque élément.
 - L'accueil affiche quatre compteurs (silos, cocons, articles, progression), puis chaque silo avec son nombre de cocons, son nombre d'articles, son avancement et les cartes de ses cocons.
 - Chaque carte de cocon donne son nombre d'articles, leur répartition par niveau et son avancement ; un clic ouvre la page du cocon.
@@ -185,7 +185,7 @@ L'outil doit montrer le plan éditorial par niveaux (silo, cocon, article), avec
 - Un article s'ouvre depuis les listes d'articles d'un cocon (Rédaction, arbre du Cerveau) et mène à son écran de production.
 
 ### FR-DASH-COCOON-CREATE — Créer un cocon depuis l'accueil
-**Statut :** active
+**Statut :** non tenue (un nom qui ne diffère d'un cocon existant que par les majuscules ou les accents, ou le même nom dans un autre silo, est accepté ; les deux cocons partagent alors la même stratégie au Cerveau et au Moteur)
 L'outil doit permettre de créer un cocon dans un silo depuis l'accueil, puis d'y entrer aussitôt.
 - Chaque silo se termine par une carte « Nouveau cocon » : on tape le nom, Entrée (ou quitter le champ) crée le cocon, Échap annule.
 - Le cocon créé s'ouvre sur sa page.
@@ -220,7 +220,7 @@ La page d'un cocon doit ouvrir ses trois ateliers — Cerveau (stratégie), Mote
 Le Cerveau pose la stratégie d'un cocon (cible, douleur, angle, promesse, appel à l'action), puis construit le cocon article par article, à partir de son pilier (l'article principal, qui présente tout le sujet). Ce domaine couvre aussi la configuration du thème, et deux réglages d'article repris par la Rédaction : le micro-contexte et la longueur visée.
 
 ### FR-CER-STEPS-COCOON — Stratégie de cocon en six étapes
-**Statut :** active
+**Statut :** non tenue (à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît)
 L'outil doit permettre de poser une fois, pour tout le cocon, une stratégie commune (Cible, Douleur, Angle, Promesse, CTA), puis de préparer ses articles à l'étape « Articles ».
 - Six étapes dans l'ordre : Cible, Douleur, Angle, Promesse, CTA, Articles. On revient librement à une étape déjà atteinte ; les suivantes restent fermées.
 - Aux cinq premières étapes : une réponse libre, une suggestion de l'IA sur demande, et une validation au choix (« Mon texte », « La suggestion », « Fusionner les deux »). Le texte validé reste modifiable.
@@ -229,7 +229,7 @@ L'outil doit permettre de poser une fois, pour tout le cocon, une stratégie com
 - À l'étape Articles, l'IA propose une carte indicative du cocon (un pilier, des intermédiaires, des spécialisés), d'un coup ou un article à la fois ; la carte se retouche et ne crée aucun article (cf. FR-CER-COCOON-PROGRESSIVE).
 
 ### FR-CER-SAISIE-PRESERVEE — La saisie en cours survit au chargement
-**Statut :** active
+**Statut :** non tenue (une réponse tapée pendant un enregistrement reste affichée mais n'est plus dans la stratégie : le « Suivant » d'après enregistre un champ vide)
 L'outil ne doit jamais effacer une réponse que l'utilisateur est en train d'écrire quand la stratégie enregistrée arrive après lui.
 - Une réponse tapée avant la fin du chargement reste dans le champ si la valeur enregistrée est vide.
 - Une valeur enregistrée non vide s'affiche dans le champ.
@@ -243,7 +243,7 @@ L'outil doit permettre de poser, pour un article, sa stratégie en six étapes �
 - Quand elle existe, la stratégie de l'article l'emporte sur celle du cocon pour le premier jet.
 
 ### FR-CER-AIGUILLAGE — Le niveau d'un article découle de sa place dans le cocon
-**Statut :** active
+**Statut :** non tenue (« Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur)
 L'outil doit donner à chaque article un niveau parmi trois — Pilier (la tête du cocon), Intermédiaire (un sous-thème du pilier), Spécialisé (un sujet précis sous un intermédiaire) — et en tirer les règles de la suite.
 - Le niveau découle de l'endroit où l'article naît : pilier d'un cocon vide, intermédiaire depuis une section du pilier, spécialisé depuis une section d'un intermédiaire.
 - Un pilier n'a pas de parent ; un intermédiaire a pour parent le pilier ; un spécialisé, un intermédiaire du même cocon.
@@ -252,7 +252,7 @@ L'outil doit donner à chaque article un niveau parmi trois — Pilier (la tête
 - Sur la carte indicative, une carte sans pilier est signalée : « Aucun article Pilier dans la liste. »
 
 ### FR-CER-COCOON-PROGRESSIVE — Le cocon se construit article par article
-**Statut :** non tenue (« La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur)
+**Statut :** non tenue (« La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur ; « Régénérer › Titre » sur une ligne « Créé » ne change le titre que sur la carte, sans l'enregistrer : le Moteur montre alors un autre titre que l'arbre et la Rédaction)
 L'outil doit faire naître un cocon à partir de son pilier, un article à la fois, chaque enfant depuis une section de son parent. La proposition de plan de l'IA reste une carte qui guide, sans rien créer.
 - Dans un cocon vide, seul le pilier se crée ; un cocon n'a qu'un pilier ; un enfant naît d'une section libre d'un parent du niveau juste au-dessus, dans le même cocon. Ces règles ne se dérogent pas (⛔), et chaque refus dit ce qui manque.
 - Créer un article passe par le choix d'un mot-clé mesuré et d'un titre de 3 caractères au moins. L'article créé rejoint la carte du cocon, d'où le Moteur tire sa liste d'articles, avec la marque « Créé ».
@@ -304,7 +304,7 @@ L'outil doit comprendre le niveau d'un article dans tous ses formats d'écriture
 - Un niveau inconnu est refusé explicitement plutôt que remplacé.
 
 ### FR-CER-MICRO-CONTEXT — Micro-contexte éditorial par article
-**Statut :** non tenue (le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA)
+**Statut :** non tenue (le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA ; en mode simulé, « Suggerer par IA » remplit les consignes avec une liste, et le micro-contexte ne s'enregistre plus tant qu'on ne retouche pas les consignes ; un échec d'enregistrement n'est jamais signalé)
 L'outil doit permettre d'attacher à un article un micro-contexte — angle, ton, consignes, longueur visée — repris par les générations de la Rédaction.
 - Le micro-contexte se renseigne et se modifie dans la Rédaction, à l'étape « Brief & Structure » ; chaque champ s'enregistre quand on le quitte.
 - Il est optionnel : sans lui, l'article se génère avec les valeurs par défaut.
@@ -313,7 +313,7 @@ L'outil doit permettre d'attacher à un article un micro-contexte — angle, ton
 - Le modifier ne relance aucune génération.
 
 ### FR-CER-WORD-COUNT-RECOMMEND — Recommandation de longueur cible
-**Statut :** active
+**Statut :** non tenue (sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »))
 L'outil doit recommander une longueur d'article réaliste, tirée du niveau, de la moyenne des concurrents et d'un avis de l'IA, et la laisser modifier.
 - La base est la longueur visée du niveau (Pilier 2 500 mots, Intermédiaire 1 800, Spécialisé 1 200), bornée par sa fourchette (1 800–3 500, 1 200–2 500, 800–1 500).
 - Avec une moyenne des concurrents, la recommandation mêle 60 % de cette moyenne et 40 % de la base ; avec en plus une structure, l'IA donne l'avis. Le résultat reste dans les bornes du niveau.
@@ -321,7 +321,7 @@ L'outil doit recommander une longueur d'article réaliste, tirée du niveau, de 
 - Dans la Rédaction, la longueur visée s'ajuste par pas de 100 mots (de 500 à 10 000) et revient à la recommandation par « Reinitialiser ». La valeur retenue alimente le micro-contexte et le premier jet.
 
 ### FR-CER-THEME-CONFIG — Configuration du thème, saisie une fois
-**Statut :** non tenue (hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client)
+**Statut :** non tenue (hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client ; au Cerveau, la configuration n'est envoyée que si l'audience, la promesse, le secteur ou le style est rempli)
 L'outil doit garder une configuration unique du thème — client type, positionnement, offres, ton —, saisie une fois et reprise par les consignes de l'IA.
 - Une seule configuration existe pour tout l'outil ; elle se crée et se modifie depuis « Configuration du Thème », enregistrée d'elle-même après chaque saisie ou par « Sauvegarder ».
 - « Remplir les champs avec Claude » remplit les champs à partir d'une description libre, puis enregistre.
@@ -329,7 +329,7 @@ L'outil doit garder une configuration unique du thème — client type, position
 - Toutes les consignes de l'IA (Cerveau, Moteur, Rédaction) reçoivent la configuration.
 
 ### FR-CER-CONTEXT-FOR-MOTEUR — La stratégie du cocon suit l'utilisateur au Moteur et à la Rédaction
-**Statut :** active
+**Statut :** non tenue (une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide ; en passant d'un cocon à l'autre, la barre du cocon précédent reste affichée le temps du chargement)
 L'outil doit montrer, sans rien ressaisir, la stratégie validée du cocon dans le Moteur et la Rédaction, et la transmettre à leurs consignes de l'IA.
 - À l'ouverture du Moteur et de la Rédaction d'un cocon, une barre « Contexte stratégique » montre en lecture les valeurs validées du cocon : Cible, Douleur, Angle, Promesse, CTA.
 - Une valeur vide n'est pas affichée ; sans stratégie enregistrée, la barre n'apparaît pas.
@@ -344,7 +344,7 @@ L'outil doit faire proposer par l'IA l'intention éditoriale attendue de chaque 
 - L'article créé la reçoit : celle d'une proposition de même titre sur la carte, sinon celle du candidat choisi.
 
 ### FR-PIE-CERVEAU-OVERRIDE — L'utilisateur corrige l'intention éditoriale
-**Statut :** active
+**Statut :** non tenue (un clic sur le sélecteur « Intention éditoriale » d'une ligne de la carte replie la ligne et ferme le sélecteur avant le choix ; seul le clavier permet de choisir (à confirmer à l'écran))
 L'outil doit laisser l'utilisateur corriger à la main l'intention éditoriale d'un article de la carte.
 - Chaque article de la carte, déplié, porte un sélecteur « Intention éditoriale » : « Non défini » et les quatre intentions.
 - Le changement s'enregistre aussitôt, sans bouton ; pour un article déjà créé, il est aussi écrit sur l'article.
@@ -371,23 +371,23 @@ L'outil doit présenter les sept onglets du Moteur en trois groupes numérotés 
 - À l'ouverture d'un article, l'outil choisit l'onglet d'après les étapes franchies : Capitaine par défaut, Lieutenants si le Capitaine est verrouillé, Structure si les Lieutenants le sont, Lexique si la Structure est validée.
 - L'outil n'ouvre jamais d'office la Finalisation.
 
-### FR-MOT-FREE-NAV — Navigation libre, deux exceptions
+### FR-MOT-FREE-NAV — Navigation libre, une exception
 **Statut :** active
 L'outil doit laisser ouvrir n'importe quel onglet, dans n'importe quel ordre, dès qu'un article est choisi. Ce sont les écritures, pas la consultation, qui dépendent des étapes précédentes.
 - Un onglet « en avance » sur la progression s'ouvre normalement.
-- Un onglet n'est désactivé que dans deux cas : aucun article choisi ; Discovery et Radar quand le mot-clé de l'article n'est plus au stade « suggéré » dans le cocon.
-- Dans ce second cas, un bandeau explique le verrou et propose d'aller au Capitaine.
+- Un onglet n'est désactivé que dans un cas : aucun article choisi.
+- Discovery et Radar restent ouverts à tout moment : l'exploration ne fige rien. (Décision du 2026-09-29 : l'ancien verrou « mot-clé plus au stade suggéré » ne pouvait se déclencher depuis aucun écran.)
 
 ### FR-MOT-SOFT-GATING — Verrouillage doux des écritures
-**Statut :** active
+**Statut :** non tenue (à l'onglet Lexique, Capitaine non verrouillé, « Lancer l'analyse SERP » reste actif malgré le bandeau : l'analyse payante part, et ses termes peuvent ensuite être retenus)
 L'outil doit conditionner les gestes qui figent un choix, jamais l'ouverture d'un onglet, et dire pourquoi un geste est indisponible.
 - Tant que le Capitaine n'est pas verrouillé, l'onglet Lexique affiche un message qui demande de le verrouiller d'abord.
-- Tant qu'un des quatre verrous de la phase Valider (Capitaine, Lieutenants, Structure, Lexique) manque, tout chemin vers la Rédaction est désactivé et nomme les étapes restantes.
+- Tant qu'un des quatre verrous de la phase Valider (Capitaine, Lieutenants, Structure, Lexique) manque, les deux boutons du Moteur qui mènent à la Rédaction sont désactivés et nomment les étapes restantes ; la page du cocon garde son accès à la Rédaction, qui fonctionne sans ces verrous.
 - Un verrou posé débloque les boutons concernés sans rechargement de la page.
 - L'écran n'annonce jamais « Prêt pour la Rédaction » tant qu'un verrou manque.
 
 ### FR-MOT-ARTICLE-SELECTION — Un article choisi avant d'agir
-**Statut :** non tenue (les résultats et les cases cochées de Discovery survivent au changement d'article : seul le mot-clé racine change)
+**Statut :** non tenue (les résultats et les cases cochées de Discovery survivent au changement d'article : seul le mot-clé racine change ; sans article choisi, le bouton du bas « Continuer vers Lieutenants → » reste affiché et cliquable)
 L'outil doit faire travailler le Moteur sur un article précis, choisi dans la barre du haut.
 - Sans article choisi, les onglets sont désactivés avec l'infobulle « Sélectionnez un article ci-dessus » et un message invite à choisir.
 - Choisir un article active les onglets et replie la liste.
@@ -402,7 +402,7 @@ L'outil doit ranger chaque article du cocon dans une seule des deux listes du ha
 - La phase d'un article avance avec son travail réel : il entre en rédaction dès qu'un contenu non vide est enregistré, passe à « publié » à la publication, et ne recule jamais.
 
 ### FR-MOT-RECAP-LOCK-SYNC — Le mot-clé affiché en haut dit la vérité
-**Statut :** active
+**Statut :** non tenue (pour un article de « Articles publiés », l'aspect plein ou pointillé du mot-clé ne suit pas un verrouillage fait pendant la visite : il faut recharger la page)
 L'outil doit montrer, pour chaque article de la barre du haut, si son mot-clé principal est une simple suggestion ou un choix verrouillé, sans attendre un rechargement.
 - Verrouiller ou déverrouiller un Capitaine change l'aspect du mot-clé (pointillé estompé ↔ plein) dans la même seconde.
 - L'aspect suit ce qui est enregistré, relu après l'enregistrement.
@@ -439,7 +439,7 @@ L'outil doit proposer, en bas de chaque onglet, de passer à l'onglet suivant, s
 - Un lien « ← Retour au cocon » est toujours présent.
 
 ### FR-MOT-NO-AUTO-ACTION — Pas d'action coûteuse au changement d'onglet
-**Statut :** non tenue (ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google)
+**Statut :** non tenue (ouvrir l'onglet Lexique, Capitaine verrouillé, peut lancer seul l'analyse IA du lexique quand aucune recommandation n'est enregistrée ; ouvrir le Capitaine d'un article sans candidat étudie seul le premier mot-clé suggéré, avec de possibles appels DataForSEO et Google ; ouvrir le Capitaine, ou choisir un article dont l'onglet Capitaine a déjà été ouvert, redemande et fait payer l'avis expert IA de chaque candidat, même onglet caché)
 L'outil ne doit déclencher aucune action payante (appel d'IA, requête DataForSEO, lecture de pages web) au seul fait d'ouvrir un onglet ou de choisir un article, à une exception près, déclarée.
 - Ouvrir un onglet ne fait que relire ce qui est déjà enregistré.
 - Chaque action payante est derrière un bouton ou un geste explicite.
@@ -452,14 +452,14 @@ L'outil doit afficher les métriques de marché (volume, difficulté, coût par 
 - Une valeur présente s'affiche sans transformation cachée.
 
 ### FR-MOT-CACHE-CASCADE — Réutiliser avant de payer
-**Statut :** non tenue (les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans difficulté ni coût par clic est remesuré, et repayé, à chaque étude)
+**Statut :** non tenue (les appels d'IA de Discovery — génération, filtre de pertinence, analyse — ne consultent aucun cache ; seul le rechargement d'une découverte sauvegardée évite de les refaire ; un mot-clé sans volume, difficulté ou coût par clic est remesuré, et repayé, à chaque étude ; le scan Radar rachète volume, difficulté, coût par clic et intention de chaque mot-clé à chaque scan)
 L'outil doit consulter ses propres données avant tout appel externe payant, et ne payer qu'en cas d'absence.
 - Une mesure de marché récente d'un mot-clé, faite pour un article, sert aussi aux autres articles.
 - Les réponses brutes des services externes sont gardées pour une durée limitée et resservies pendant cette durée.
 - Aucun appel payant ne part sans ces consultations préalables.
 
 ### FR-MOT-PAINPOINT-INJECTION — La douleur de l'article nourrit l'IA du Moteur
-**Statut :** active
+**Statut :** non tenue (un article choisi dans « Articles publiés » arrive sans sa douleur : Discovery ne l'affiche ni ne l'utilise, et le Score Pertinence du Capitaine est calculé sans elle)
 L'outil doit transmettre la douleur de l'article (le problème vécu par le lecteur, posé dans le Cerveau) à chaque analyse IA du Capitaine, des Lieutenants, de la Structure et du Lexique.
 - La douleur est relue en base à chaque demande, sans geste de l'utilisateur.
 - Sans douleur, l'IA reçoit explicitement « (non défini) », jamais une chaîne vide.
@@ -474,7 +474,7 @@ L'outil doit transmettre la stratégie du cocon (cible, douleur, angle, promesse
 ### FR-MOT-CROSS-TAB-PAYLOAD — Continuité des données entre onglets
 **Statut :** active
 L'outil doit faire passer ce qui est retenu dans un onglet à l'onglet suivant, par un bouton explicite, sans ressaisie.
-- Discovery → Radar, Radar → Capitaine, Capitaine → Lieutenants passent par un bouton « Envoyer au… » qui ouvre l'onglet cible avec les données transmises.
+- Discovery → Radar et Radar → Capitaine passent par un bouton « Envoyer au… » qui ouvre l'onglet cible avec les données transmises ; les Lieutenants partent du Capitaine verrouillé et de ses racines, relus en base, sans bouton d'envoi.
 - Les Lieutenants retenus nourrissent la Structure et le Lexique.
 - Changer d'article vide les données en transit.
 
@@ -492,7 +492,7 @@ L'outil doit afficher en permanence, pour l'article choisi, combien de résultat
 - Les compteurs suivent l'article choisi et se mettent à jour après chaque étape enregistrée ou retirée.
 
 ### FR-MOT-CACHE-PANEL-COUNT — Le compteur dit « enregistré », pas « verrouillé »
-**Statut :** active
+**Statut :** non tenue (la puce Radar affiche « C 1 » dès qu'un scan est connu, même enregistré, et le bouton « C 1 » de l'invite ne recharge rien)
 L'outil doit compter tout ce qui est enregistré pour un onglet, verrouillé ou non, et proposer de le recharger.
 - 31 mots-clés testés au Capitaine sans verrou donnent 31, pas 0.
 - Le survol d'une puce détaille l'état (testés, verrouillé, en base, validés).
@@ -514,14 +514,14 @@ L'outil doit, à la première ouverture des onglets Capitaine, Lieutenants et Le
 - L'onglet Structure ne réconcilie pas : son étape ne bouge qu'à la validation ou à l'enregistrement d'une structure modifiée.
 
 ### FR-MOT-EXTERNAL-CACHE-CLEAR — Vider le cache externe d'un article
-**Statut :** non tenue (le bouton n'apparaît que si un scan Radar non sauvegardé est en mémoire, et la purge vise des types de cache que l'outil n'écrit plus : aucun nouvel appel n'est forcé)
+**Statut :** non tenue (le bouton n'apparaît que si l'article a déjà un scan Radar, et la purge vise des types de cache que l'outil n'écrit plus : aucun nouvel appel n'est forcé ; « Vider le cache » ne dit rien à l'écran, ni ce qui a été purgé, ni un échec)
 L'outil doit permettre de purger les réponses externes gardées pour le mot-clé Capitaine de l'article, sans toucher au travail de l'utilisateur.
 - Le bouton est visible dès qu'un article est choisi.
 - La purge laisse intactes les explorations, les verrous et les décisions.
 - Après purge, la recherche suivante interroge de nouveau le service externe.
 
 ### FR-MOT-BASKET-DEPRECATED — Pas de panier mémoire entre onglets
-**Statut :** active
+**Statut :** non tenue (un lieutenant ajouté depuis « 💡 Suggestions pour vos Lieutenants » porte la raison « Proposé depuis votre panier », un panier qui n'existe plus)
 L'outil ne doit pas transporter de mots-clés entre onglets par un panier en mémoire : tout passage s'appuie sur ce qui est enregistré en base.
 - Aucun panier ni pastille « mots-clés en attente » n'est affiché.
 - Les mots-clés envoyés au Radar sont enregistrés sur l'article et retrouvés au rechargement.
@@ -545,7 +545,7 @@ L'outil doit réserver la modification de la douleur d'un article au Cerveau.
 - Une douleur modifiée au Cerveau est reprise par les analyses suivantes.
 
 ### FR-API-VOCABULAIRE-SCAN — « Scanner » un mot-clé, « valider » une douleur
-**Statut :** active
+**Statut :** non tenue (l'étude d'un mot-clé s'appelle encore « validation » à l'écran : « Aucun mot-clé à valider pour cet article. », « Validation en cours... », « Validation Capitaine dans Ns », « KPIs insuffisants pour valider ce mot-clé. »)
 L'outil doit employer deux mots distincts pour deux gestes distincts : on « scanne » un mot-clé (on l'explore et on le mesure), on « valide » une douleur.
 - L'exploration d'un mot-clé candidat au Capitaine s'appelle un scan, partout (écran, échanges avec le serveur, journal).
 - Le mot « valider » n'est plus employé pour l'exploration d'un mot-clé ; il reste réservé à la validation d'une douleur.
@@ -571,9 +571,9 @@ L'outil doit mettre à jour, dans la même seconde, tout affichage d'une donnée
 - Après un changement d'article, aucun élément de l'article précédent ne reste affiché.
 
 ### FR-UI-VOCABULAIRE-VERROUILLER — « Verrouiller » pour figer un choix de mot-clé
-**Statut :** active
+**Statut :** non tenue (les cadenas des titres de la structure disent « Deverrouiller », sans accent)
 L'outil doit employer « Verrouiller » pour le geste qui fige un mot-clé, et « Déverrouiller » pour l'inverse.
-- Le bouton du Capitaine dit « Verrouiller ce mot-clé ».
+- Au Capitaine, le cadenas d'une carte porte l'infobulle « Verrouiller », puis « Déverrouiller » une fois le mot-clé figé.
 - Aucun bouton ne dit « Valider ce Capitaine », « Valider les Lieutenants » ni « Valider le Lexique ».
 
 ### Retirées (MOT)
@@ -600,7 +600,7 @@ L'outil doit produire, à partir d'un mot-clé racine, des listes de candidats v
 - Relancer la même recherche sur le même article ne refait aucun appel.
 
 ### FR-DIS-LONGTAIL-GENERATION — Courte-traîne IA à la demande
-**Statut :** active
+**Statut :** non tenue (la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite)
 L'outil doit générer, à la demande, une vingtaine de mots-clés courts adaptés aux questions PAA et à l'autocomplétion.
 - La génération part du bouton « Courte-traîne IA » ou du bouton « Générer » de la section vide.
 - Les mots-clés générés passent par le filtre de pertinence comme les autres.
@@ -625,7 +625,7 @@ L'outil doit proposer, sur demande, une sélection de 20 à 30 candidats pertine
 - L'analyse réussie est sauvegardée avec la découverte.
 
 ### FR-DIS-CACHE — Reprendre une découverte déjà faite
-**Statut :** non tenue (une sauvegarde n'expire jamais, et la section Courte-traîne n'est ni sauvegardée ni restaurée)
+**Statut :** non tenue (une sauvegarde n'expire jamais, et la section Courte-traîne n'est ni sauvegardée ni restaurée ; pendant le chargement d'une sauvegarde, « Charger » n'affiche pas « Chargement... » et reste cliquable)
 L'outil doit sauvegarder automatiquement chaque découverte par mot-clé racine et proposer de la recharger sans nouvel appel.
 - Moins d'une seconde après la saisie d'un mot-clé racine déjà exploré, un bandeau affiche la date, le nombre de mots-clés et la présence d'une analyse IA.
 - « Charger » restaure les sections, les jugements de pertinence, les groupes de mots et l'analyse IA sans appel externe.
@@ -734,7 +734,7 @@ L'outil doit dire si un texte (question PAA, suggestion, mot-clé) parle du mêm
 - L'accord distingue « exact » (mêmes mots) et « racine » (mêmes racines).
 
 ### FR-RAD-SCORE-RING-TOOLTIP — Anneau de score et explication au survol
-**Statut :** active
+**Statut :** non tenue (dans l'info-bulle, une composante sans donnée s'affiche « 50/100 » avec son poids, alors qu'elle n'entre pas dans le total)
 Chaque carte doit montrer son score dans un anneau coloré et expliquer ce score au survol.
 - L'anneau se remplit selon le score (0 à 100), du rouge au vert ; sans score, il affiche « — ».
 - Au survol, l'info-bulle détaille chaque composante : libellé, poids, valeur sur 100, puis le total.
@@ -750,7 +750,7 @@ Une carte dépliée doit montrer ses questions PAA en arbre à deux niveaux.
 - Une carte sans question affiche « Aucune PAA trouvee ».
 
 ### FR-RAD-LONGTAIL-GENERATE — Proposer des longues traînes à partir des mots-clés scannés
-**Statut :** active
+**Statut :** non tenue (en mode simulé, la réponse préparée ne trouve pas les mots-clés envoyés et renvoie toujours une liste vide ; une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer)
 Dès que le scan a produit au moins 2 cartes, l'utilisateur doit pouvoir demander à l'IA des longues traînes (requêtes plus longues et plus précises) dérivées de ces mots-clés.
 - La section « Suggestions longue-traine » apparaît à partir de 2 cartes scannées.
 - L'IA propose au plus 10 suggestions, chacune avec une note de préférence de 1 à 10, une justification et ses mots-clés sources.
@@ -782,7 +782,7 @@ L'utilisateur doit pouvoir envoyer au Capitaine toutes les cartes cochées et le
 - La provenance de chaque mot-clé (radar, longue traîne, saisie) est enregistrée.
 
 ### FR-RAD-PERSIST — Retrouver l'exploration Radar d'un article
-**Statut :** non tenue (les longues traînes ne sont pas réaffichées ; l'enregistrement qui suit un scan peut vider la liste d'attente et effacer les longues traînes en base)
+**Statut :** non tenue (les longues traînes ne sont pas réaffichées ; l'enregistrement qui suit un scan peut vider la liste d'attente et effacer les longues traînes en base ; sur un article jamais scanné, « Charger Radar » remplace l'invitation à scanner par un résultat vide)
 L'exploration Radar d'un article (liste d'attente, cartes scannées, longues traînes, cases cochées) doit être enregistrée et réaffichée à l'identique, sans nouvel appel externe.
 - Chaque ajout, retrait, scan et cochage est enregistré au moment où il est fait, sans effacer les autres parties de l'exploration.
 - Rouvrir le Radar réaffiche la liste d'attente d'office.
@@ -827,7 +827,7 @@ Au-dessus des cartes, l'outil doit résumer la chaleur du sujet par une note sur
 - La note globale agrège les notes que les cartes affichent.
 
 ### FR-RAD-AI-SUGGESTIONS — Panneau « Suggestions IA Radar »
-**Statut :** non tenue (le bouton « Marquer comme candidats Capitaine » n'a aucun effet)
+**Statut :** non tenue (le bouton « Marquer comme candidats Capitaine » n'a aucun effet ; la pastille « P » est toujours vide au Radar, et son infobulle en accuse à tort une douleur absente)
 Sous les cartes, l'outil doit proposer les 5 meilleurs candidats Capitaine, et permettre de les marquer.
 - Le panneau classe localement les cartes par la moyenne de leurs scores disponibles, sans appel d'IA.
 - Une carte dont les scores disponibles sont tous au verdict NOGO est écartée.
@@ -841,7 +841,7 @@ Sous les cartes, l'outil doit proposer les 5 meilleurs candidats Capitaine, et p
 Le Capitaine ouvre la phase « Valider » du Moteur. L'utilisateur y étudie des mots-clés candidats et en verrouille un seul : le Capitaine (le mot-clé principal de l'article), qui oriente Lieutenants, Structure, Lexique et Rédaction.
 
 ### FR-CAP-INPUT — Étudier un mot-clé saisi à la main
-**Statut :** active
+**Statut :** non tenue (ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête)
 L'utilisateur doit pouvoir taper un mot-clé pour l'étudier au Capitaine.
 - Le champ « Tester un mot-clé capitaine… » et le bouton « Analyser » sont en tête de l'onglet ; Entrée a le même effet.
 - Une saisie vide est refusée.
@@ -849,7 +849,7 @@ L'utilisateur doit pouvoir taper un mot-clé pour l'étudier au Capitaine.
 - Un mot-clé déjà présent (casse ignorée) est ré-étudié à sa place, sans doublon.
 
 ### FR-CAP-SCAN — Étudier les indicateurs marché d'un mot-clé
-**Statut :** non tenue (dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention)
+**Statut :** non tenue (dans le verdict, l'indicateur d'intention note la certitude de DataForSEO, pas le type d'intention ; un mot-clé dont le volume, la difficulté ou le CPC est absent est remesuré, et repayé, à chaque étude ; un échec d'étude s'affiche en anglais technique, sans cause (« Erreur : Keyword validation failed »))
 Pour chaque mot-clé étudié, l'outil doit obtenir six indicateurs marché et un verdict, en réutilisant les mesures récentes.
 - Six indicateurs : volume, difficulté, CPC, intention, PAA (points pondérés selon l'accord avec le sujet), position du mot-clé dans les suggestions Google.
 - Des mesures de moins de 7 jours en base sont réutilisées sans appel payant.
@@ -857,7 +857,7 @@ Pour chaque mot-clé étudié, l'outil doit obtenir six indicateurs marché et u
 - Une donnée absente reste absente (« — »), jamais 0 ; un échec s'affiche sur la carte (« Erreur : … »).
 
 ### FR-CAP-LIST-SIDEPANEL — Liste de candidats et panneau de détail
-**Statut :** active
+**Statut :** non tenue (après un envoi depuis le Radar, le Capitaine verrouillé n'est plus marqué ni en tête, et les candidats déjà étudiés quittent la liste ; sur un article qui avait déjà des candidats, les autres cartes envoyées n'apparaissent qu'à la réouverture)
 L'onglet doit présenter une liste verticale de candidats et, pour le candidat choisi, un panneau de détail.
 - Un clic sur une carte la sélectionne et ouvre le panneau « Capitaine » à droite de l'écran ; la largeur du panneau se règle.
 - Le panneau se ferme par « × » ou par un clic hors de lui.
@@ -865,7 +865,7 @@ L'onglet doit présenter une liste verticale de candidats et, pour le candidat c
 - Changer d'article vide la sélection.
 
 ### FR-CAP-KPIS-READONLY — Indicateurs marché en lecture seule
-**Statut :** non tenue (l'intention s'affiche « — » pour tout mot-clé étudié hors Radar ; la ligne « Autocomplete » montre tantôt un nombre de suggestions, tantôt une position)
+**Statut :** non tenue (l'intention s'affiche « — » pour tout mot-clé étudié hors Radar ; la ligne « Autocomplete » montre tantôt un nombre de suggestions, tantôt une position ; l'autocomplétion est toujours suivie de « matches » ; le CPC s'affiche avec un point (« 2.10 € ») ; pour une carte venue du Radar, l'intention s'affiche en code anglais)
 Le panneau de détail doit afficher les indicateurs marché du candidat, sans possibilité de les modifier.
 - La section « KPIs marché » montre Volume, Difficulté, CPC, Intent, PAA et Autocomplete.
 - Aucune valeur n'est éditable ; une valeur absente s'affiche « — ».
@@ -879,7 +879,7 @@ Au Capitaine, chaque carte doit afficher son Score Pertinence ; le Score Marché
 - L'intention de la SERP (la page de résultats Google) entre dans le Score Marché dès l'étude, mesurée ou relue en base.
 
 ### FR-CAP-AI-PANEL — Avis de l'IA sur un candidat
-**Statut :** non tenue (l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise)
+**Statut :** non tenue (l'avis n'est jamais enregistré et il est redemandé pour chaque candidat à chaque réouverture ; la stratégie du cocon n'est pas transmise ; la confirmation annonce « un appel Claude » même en mode simulé ou avec un autre fournisseur)
 Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé par l'IA.
 - L'avis compte trois parties : potentiel éditorial, opportunités et risques, recommandation.
 - Le texte s'affiche au fil de la génération.
@@ -888,7 +888,7 @@ Pour chaque candidat étudié, l'outil doit afficher un avis d'expert rédigé p
 - Un avis déjà obtenu est réaffiché à la réouverture de l'article, sans nouvel appel.
 
 ### FR-CAP-ROOTS — Racines d'un mot-clé long
-**Statut :** active
+**Statut :** non tenue (à la réouverture, les racines reviennent sans indicateurs ni Score Pertinence (« — » partout, plus de « Moyenne », verdict GRAY) ; juste après l'étude, elles s'affichent dans l'ordre où leurs études aboutissent, pas de la plus longue à la plus courte)
 L'outil doit décomposer un mot-clé d'au moins 3 mots en racines, par troncature depuis la fin, et permettre de les comparer.
 - Jusqu'à 5 racines, de la plus longue à la plus courte ; une racine garde au moins 2 mots significatifs (hors mots-outils).
 - Quand le volume du mot-clé n'est pas au vert, ses racines sont étudiées d'office.
@@ -912,7 +912,7 @@ Le verrouillage doit passer par une porte : un mot-clé risqué ouvre l'alarme g
 - Le serveur refuse l'étape « Capitaine verrouillé » tant que la porte ne passe pas ; explorer un autre candidat ne fait pas tomber une dérogation, changer de Capitaine si.
 
 ### FR-CAP-AUTO-NOGO — NO-GO quand aucun signal n'existe
-**Statut :** active
+**Statut :** non tenue (dans la bannière de l'avis, le libellé du NO-GO s'affiche deux fois de suite)
 Un mot-clé mesuré sans aucun signal de demande doit recevoir d'office le verdict NO-GO, distinct d'un verdict « données insuffisantes ».
 - Volume, PAA et position dans les suggestions mesurés tous à 0 donnent NO-GO, raison « Aucun signal détecté ».
 - Le libellé affiché est « Aucun signal détecté — ce mot-clé n'existe pas dans les données. ».
@@ -982,7 +982,7 @@ Le Score Pertinence doit croiser l'intention de la SERP d'un mot-clé avec l'int
 - L'étude et la réouverture lisent les mêmes intentions (SERP mesurée ou en base ; intention de l'article, qu'elle vienne de l'IA du Cerveau, de l'utilisateur ou du candidat d'origine).
 
 ### FR-CAP-PAA-JUDGE-HAIKU — L'IA juge les questions PAA face à la douleur
-**Statut :** non tenue (le jugement est calculé mais ni ses pastilles ni la note qu'il corrige n'atteignent la liste du Capitaine)
+**Statut :** non tenue (le jugement est calculé mais ni ses pastilles ni la note qu'il corrige n'atteignent la liste du Capitaine ; ce jugement est pourtant payé à chaque ouverture du Capitaine après un rechargement : il est à suspendre tant que son affichage n'est pas branché)
 À l'ouverture du Capitaine, une IA rapide doit juger chaque question PAA des candidats face au sujet et à la douleur de l'article, et ce jugement doit nourrir le Score Pertinence.
 - Un appel par candidat, à l'entrée dans l'onglet, une fois par article et par session.
 - Chaque question reçoit un verdict (pertinent, partiel, hors-sujet) et une justification courte.
@@ -1012,7 +1012,7 @@ Un changement du point de douleur pendant la visite de l'onglet ne doit pas rela
 - Le prochain chargement de l'onglet ou de l'article reflète le nouveau point de douleur.
 
 ### FR-CAP-LOCK-INTEGRITY — Verrou sans doublon, tri stable
-**Statut :** active
+**Statut :** non tenue (afficher une racine l'enregistre comme candidat et lance pour elle un avis IA payant ; la liste se reconstruit alors, et les notes des candidats étudiés pendant la session passent à « — » ; deux casses d'un même mot-clé comptent pour deux candidats)
 Le verrouillage doit viser le mot-clé d'origine d'une carte, sans créer de doublon ni déplacer la carte.
 - Ajouter, recharger ou verrouiller plusieurs fois un même mot-clé ne crée qu'une carte.
 - Le verrou porte sur le mot-clé d'origine, même quand une racine est affichée.
@@ -1038,7 +1038,7 @@ Le verrouillage doit viser le mot-clé d'origine d'une carte, sans créer de dou
 Les lieutenants sont les mots-clés secondaires d'un article : les recherches voisines de son mot-clé principal (le capitaine), qui nourriront ses chapitres. Ce domaine couvre l'analyse des pages concurrentes, la proposition de l'IA, le choix de l'utilisateur et la porte (un contrôle serveur qui accorde ou retient une étape) de l'étape « Lieutenants verrouillés ».
 
 ### FR-LIE-SERP-ANALYZE — Analyser les pages concurrentes du capitaine
-**Statut :** active
+**Statut :** non tenue (la pile d'activité annonce « Scraping ~N URLs via DataForSEO » même quand l'analyse est relue en base ; « Tout relancer (SERP + IA) » ne relance rien pendant 7 jours : il relit l'analyse et les propositions gardées, et doit s'appeler « Recharger l'analyse »)
 L'outil doit analyser les 10 premiers résultats Google (la SERP) du capitaine et de ses mots-clés racines, lire leurs pages et en restituer les titres, les questions « Autres questions posées » (PAA) et la liste des concurrents. Une analyse récente est relue au lieu d'être refaite.
 - L'analyse part d'un clic sur « Analyser SERP », seulement quand le capitaine est verrouillé ou que des propositions existent déjà pour l'article.
 - Chaque mot-clé analysé montre ses concurrents : rang, nature (« Blog » ou « Autre »), domaine, titre cliquable, et un « ! » pour une page qui n'a pas pu être lue.
@@ -1046,7 +1046,7 @@ L'outil doit analyser les 10 premiers résultats Google (la SERP) du capitaine e
 - Le nombre de résultats analysés est fixe : 10 par mot-clé.
 
 ### FR-LIE-SERP-ECHEC-EXPLIQUE — Un échec d'analyse se lit et se répare
-**Statut :** active
+**Statut :** non tenue (le serveur remplace toute cause (aucun résultat, source muette) par « SERP analysis failed », affiché entre parenthèses ; une coupure réseau n'est pas reconnue ; le plafond de dépense invite à changer de mot-clé, et un quota épuisé à attendre au lieu de recharger les crédits)
 Quand l'analyse des concurrents échoue, l'outil doit dire en français la cause probable et la marche à suivre, en nommant le mot-clé en cause.
 - Aucun résultat exploitable : le message dit que le mot-clé est sans doute trop étroit et invite à l'élargir au capitaine.
 - Budget d'appels atteint : le message invite à réessayer dans quelques minutes, sans accuser le mot-clé.
@@ -1093,7 +1093,7 @@ Chaque candidat doit montrer d'où il vient et sa force estimée, pour qu'on com
 - Les candidats se trient par ordre alphabétique ou par score ; un score absent reste en bas.
 
 ### FR-LIE-CHECKBOX-COUNT — Compteur de lieutenants retenus
-**Statut :** non tenue (le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée)
+**Statut :** non tenue (le compteur affiche les cases cochées sur le nombre de propositions générées ; aucune fourchette conseillée par type d'article n'est affichée ni signalée ; après un rechargement, le nombre de propositions retombe à 0 (« 1 / 0 sélectionnés »))
 L'utilisateur coche ses lieutenants ; un compteur doit lui dire combien il en a retenus et s'il est dans la fourchette conseillée pour le type d'article (le minimum et le maximum de lieutenants retenus des règles du type).
 - Chaque candidat a une case à cocher.
 - Chaque case est enregistrée aussitôt, sans bouton « Enregistrer ».
@@ -1138,7 +1138,7 @@ L'analyse des lieutenants doit fonctionner sans que le Lexique ait jamais été 
 - Un test d'architecture interdit tout import croisé entre les traitements Lieutenants et Lexique.
 
 ### FR-LIE-CHECKBOX-LOCK-IMMEDIATE — Cocher un lieutenant le verrouille aussitôt
-**Statut :** non tenue (relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération)
+**Statut :** non tenue (relancer la proposition de l'IA décoche à l'écran les lieutenants déjà retenus et retire l'étape, alors que la liste enregistrée les garde ; et le bouton de relance du panneau de l'IA disparaît tant que ce panneau affiche les failles de contenu de la dernière génération ; après un rechargement, le panneau de l'IA dit « Aucune génération IA pour ce Capitaine. » alors que des propositions sont affichées, et son bouton de relance ne fait rien tant que la SERP n'est pas réanalysée)
 Cocher la case d'un lieutenant doit le verrouiller en base ; la décocher le déverrouille. Aucune action de l'onglet ne doit défaire ces choix.
 - Cocher un lieutenant ne désactive jamais les autres cases ; il n'y a pas de bouton de verrouillage groupé.
 - « Tout relancer (SERP + IA) » et la relance de la proposition restent disponibles, quel que soit le nombre de lieutenants retenus.
@@ -1209,10 +1209,11 @@ Une case cochée doit valoir décision enregistrée, et aucune case ne doit arri
 - L'écran suit le lexique enregistré quel que soit le chemin (extraction, rechargement, onglet d'exploration) : cliquer un terme coché le décoche et le retire.
 
 ### FR-LEX-SORT — Trois tris des termes
-**Statut :** active
+**Statut :** non tenue (le premier clic sur « A-Z » range de Z à A)
 L'utilisateur doit pouvoir trier les termes par ordre alphabétique, par densité ou par proximité avec la douleur de l'article.
 - Une barre de tri en haut des listes : « A-Z », « Densité », et « Pertinence douleur » seulement si l'article a une douleur.
 - Sans tri choisi, les termes restent dans l'ordre de densité décroissante.
+- Un premier clic sur « A-Z » range de A à Z.
 - Le tri choisi s'applique aux trois listes et reste tant que la page du Moteur est ouverte ; il est perdu au rechargement.
 
 ### FR-LEX-SELECT — Une case par terme, enregistrée aussitôt
@@ -1223,7 +1224,7 @@ L'utilisateur doit retenir les termes qu'il veut dans son article en cochant une
 - Recharger la page retrouve exactement les choix.
 
 ### FR-LEX-AI-PANEL — Analyse du lexique par l'IA
-**Statut :** non tenue (l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles)
+**Statut :** non tenue (l'analyse part d'elle-même après chaque extraction, y compris l'extraction lancée seule à l'ouverture de l'onglet : un appel à l'IA part sans clic. Et le panneau lit deux listes de recommandations différentes : après une première analyse il reste « à lancer » ; après un rechargement il affiche « N analysés, 0 recommandés », sans pastilles ; le résumé et les termes manquants enregistrés ne s'affichent plus après un rechargement, et un changement d'onglet montre ceux de la dernière analyse, faite sur un autre mot-clé)
 L'IA doit analyser les termes extraits au regard de la douleur de l'article et de la stratégie du cocon, et dire lesquels recommander, lesquels écarter et quels termes manquent. Elle ne part que sur un clic.
 - Chaque terme analysé porte un badge « IA recommandé » ou « IA optionnel », avec la raison en info-bulle ; un terme sans décision lisible n'a pas de badge.
 - Un résumé et au plus 5 « Termes manquants » s'affichent au-dessus des listes ; le panneau « Analyse IA Lexique » compte les termes analysés, recommandés et écartés.
@@ -1254,7 +1255,7 @@ Le lexique doit pouvoir être extrait sans que l'onglet Lieutenants ait été la
 - Un test d'architecture interdit tout import croisé entre les traitements Lexique et Lieutenants.
 
 ### FR-LEX-PRECHECK-SERP — Pages concurrentes absentes : le dire avant de payer
-**Statut :** active
+**Statut :** non tenue (pendant l'analyse lancée, « Lancer l'analyse SERP » reste cliquable : un second clic confirmé relance une analyse payante)
 À l'ouverture de l'onglet, l'outil doit vérifier si les pages concurrentes du capitaine ont déjà été lues, et proposer une analyse payante explicite si ce n'est pas le cas.
 - La vérification se fait sans appel payant.
 - Pages présentes (ou vérification sans réponse) : le bouton « Extraire le Lexique » est proposé.
@@ -1262,7 +1263,7 @@ Le lexique doit pouvoir être extrait sans que l'onglet Lieutenants ait été la
 - Le bouton ouvre une confirmation qui rappelle le coût ; seule la confirmation lance l'analyse.
 
 ### FR-LEX-MULTI-KEYWORD-TABS — Un onglet par mot-clé exploré
-**Statut :** active
+**Statut :** non tenue (l'extraction du capitaine n'ajoute son onglet qu'au rechargement ; entre-temps, « Tester un mot-clé » paraît sélectionné au-dessus des listes du capitaine)
 Chaque mot-clé exploré dans le Lexique doit avoir son onglet, et passer d'un onglet à l'autre ne doit rien recharger.
 - Un onglet par exploration de l'article, libellé exactement comme le mot-clé saisi, plus l'onglet « Tester un mot-clé ».
 - Changer d'onglet affiche les termes et l'avis de l'IA enregistrés, sans nouvel appel.
@@ -1350,11 +1351,11 @@ L'outil doit produire, dans la rédaction guidée, une analyse stratégique du b
 L'outil doit héberger l'analyse du brief dans un panneau dédié de la rédaction guidée, utilisable avant que l'article existe.
 - Le bouton « IA Brief » n'existe que dans la rédaction guidée, pas dans l'éditeur.
 - Il reste actif même quand l'article n'a pas encore de texte.
-- Pendant l'analyse, le bouton affiche « Analyse en cours... » et reste grisé.
+- Pendant l'analyse, le bouton « Relancer l'analyse » du panneau affiche « Analyse en cours... » et reste grisé ; le bouton « IA Brief » ne change pas.
 - Sans analyse affichée, le panneau invite à cliquer sur « Relancer l'analyse ».
 
 ### FR-RED-OUTLINE — Le sommaire de l'article
-**Statut :** non tenue (les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique)
+**Statut :** non tenue (les boutons Annuler / Rétablir du sommaire ne s'activent jamais : les retouches ne sont pas enregistrées dans l'historique ; un article sans sommaire affiche, déjà validé, celui de l'article ouvert juste avant : « Générer l'article » rédige (et paie) sur ce sommaire ; un chapitre lâché sur la ligne du H1 passe au-dessus de lui ; Échap garde le titre tapé au lieu d'annuler)
 L'outil doit fournir à la rédaction un sommaire H1 / H2 / H3 tiré de la structure validée au Moteur, que l'utilisateur peut retoucher puis valider.
 - Le sommaire reprend le H1 de la structure (à défaut le titre de l'article), ajoute une « Introduction » et une « Conclusion » sauf si la structure en porte déjà une, et garde les chapitres et sous-parties dans l'ordre ; aucun niveau au-delà de H3.
 - Sans sommaire enregistré, l'écran le dit et renvoie au Moteur ; l'écran ne génère pas de sommaire par IA (seul le mode automatique le fait, quand l'article n'a pas de structure).
@@ -1371,7 +1372,7 @@ L'outil doit empêcher de passer à l'étape « Article » de la rédaction guid
 - L'éditeur libre n'est pas concerné.
 
 ### FR-RED-DRAFT-SINGLE-PASS — Le premier jet s'écrit d'un seul tenant
-**Statut :** non tenue (une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur)
+**Statut :** non tenue (une panne de rédaction n'affiche aucun message, ni dans la rédaction guidée ni dans l'éditeur ; l'échec de la méta, d'une réduction ou d'une humanisation n'en affiche pas non plus)
 L'outil doit rédiger l'article en un seul appel à l'IA qui voit tout le sommaire, puis juger ce premier jet par sa porte avant de l'accepter comme étape.
 - Un seul appel, sans recherche web, qui reçoit le sommaire (chapitres, sous-parties, intentions), la longueur visée et la part de chaque chapitre, la stratégie de l'article (à défaut celle du cocon), les mots-clés, les règles du type d'article et l'état du cocon.
 - La part de chaque chapitre : 15 % pour le premier, 10 % pour le dernier, le reste à parts égales ; deux chapitres se partagent 40 / 60 ; le chapeau compte dans le premier chapitre.
@@ -1413,7 +1414,7 @@ L'outil doit remplacer les passages « à sourcer » par des données citées av
 - Les sources trouvées sont listées sous la proposition et s'ouvrent dans un nouvel onglet.
 
 ### FR-RED-SECTION-REWRITE — Réécrire un chapitre en voyant tout l'article
-**Statut :** active
+**Statut :** non tenue (le champ « Consigne » accepte plus de 600 caractères ; au-delà, la carte affiche un message technique en anglais au lieu de dire la limite)
 L'outil doit réécrire un chapitre choisi selon une consigne libre, en voyant tout l'article, sous forme de proposition.
 - L'utilisateur choisit un chapitre (le chapeau compris) et écrit une consigne de 5 à 600 caractères.
 - La réécriture garde le titre du chapitre et, pour le chapeau, le H1 ; les sous-titres peuvent changer.
@@ -1428,7 +1429,7 @@ L'outil doit corriger la langue de l'article section par section : phrases angla
 - Le résultat s'applique directement et l'article est enregistré ; « Arrêter » rend l'article d'avant.
 
 ### FR-RED-HUMANIZE-SECTION — Atténuer les marqueurs d'écriture IA
-**Statut :** non tenue (aucune note ne signale les sections revenues à leur texte d'origine)
+**Statut :** non tenue (aucune note ne signale les sections revenues à leur texte d'origine ; le message « La structure de l'article a été altérée par l'humanisation. Retour à la version précédente. » ne s'affiche nulle part)
 L'outil doit reformuler l'article section par section pour retirer les tics d'écriture d'IA sans casser sa structure.
 - L'humanisation traite le chapeau puis chaque H2 l'un après l'autre, progression affichée.
 - Une section dont la structure n'est pas préservée après deux essais reste telle qu'elle était, et l'écran le signale.
@@ -1436,7 +1437,7 @@ L'outil doit reformuler l'article section par section pour retirer les tics d'é
 - Le résultat est enregistré aussitôt.
 
 ### FR-RED-REDUCE-SECTION — Réduire un article trop long
-**Statut :** active
+**Statut :** non tenue (en mode simulé, la réduction ne reconnaît pas sa consigne : chaque section devient un texte générique, sans ses titres, et l'article est enregistré ainsi)
 L'outil doit condenser un article qui dépasse sa longueur visée, section par section.
 - « Réduire » n'est actif que si l'article dépasse la longueur visée de plus de 15 %.
 - Chaque section (chapeau compris) reçoit une cible proportionnelle à son poids dans l'article ; la progression s'affiche.
@@ -1467,7 +1468,7 @@ L'outil doit utiliser une même longueur visée pour l'affichage, la rédaction,
 - La rédaction guidée affiche « N mots / cible » avec une jauge ; l'écart, quand l'article est trop long, apparaît sur le bouton « Réduire (-N mots) ».
 
 ### FR-RED-EDITOR-TIPTAP — L'éditeur de finalisation
-**Statut :** active
+**Statut :** non tenue (un article sans texte affiche le texte et la méta de l'article ouvert juste avant, et un enregistrement (Ctrl+S, une passe acceptée, ou l'enregistrement automatique) les copie en base dans ce nouvel article ; « Supprimer le contenu » vide l'écran et efface la méta, mais le texte reste en base et revient au rechargement)
 L'outil doit offrir un éditeur de texte enrichi, en trois zones (introduction, corps, conclusion), qui garde le travail de l'utilisateur.
 - Mise en forme : gras, italique, H2, H3, listes, citation, lien, annuler / rétablir ; les blocs spéciaux, liens internes, marqueurs « à sourcer », tableaux et images survivent à l'enregistrement et au rechargement.
 - Le bouton « Image » remplace l'image sélectionnée ou en insère une, par une adresse « https://… » ou « /… » et un texte alternatif obligatoires ; toute autre saisie est refusée avec un message.
@@ -1492,7 +1493,7 @@ L'outil doit calculer en continu un score GEO sur 100, qui mesure la facilité p
 - Tant que l'article n'a pas de texte, le bouton « GEO » est grisé.
 
 ### FR-RED-SEO-SCORE-PERSIST — Le score enregistré est celui affiché pour ce texte
-**Statut :** non tenue (un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique)
+**Statut :** non tenue (un premier jet interrompu enregistre le texte sans remettre les scores à « inconnu » : l'ancien score reste en base, à l'écran comme en mode automatique ; en passant d'un article à un autre dans la rédaction guidée, le score calculé sur le texte encore affiché de l'ancien, avec les mots-clés du nouveau, est enregistré dans l'ancien)
 L'outil doit enregistrer les scores SEO et GEO avec le texte qu'ils notent, et jamais un score d'une autre version.
 - Le score SEO note texte, meta title et meta description ; le score GEO, le texte seul.
 - Un score calculé sur une autre version du texte n'est jamais enregistré : la base porte « inconnu », affiché « — ».
@@ -1501,7 +1502,7 @@ L'outil doit enregistrer les scores SEO et GEO avec le texte qu'ils notent, et j
 - L'audit du projet affiche les scores enregistrés, « — » quand ils sont inconnus.
 
 ### FR-RED-CONTEXTUAL-ACTIONS — Actions IA sur une sélection
-**Statut :** non tenue (l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui)
+**Statut :** non tenue (l'éditeur n'envoie pas le mot-clé de l'article : « Optimiser mot-clé » et les autres actions travaillent sans lui ; les blocs « Sources chiffrées » et « Exemples réels » retirent les liens absents de la recherche sans dire combien ; l'échec d'une action s'affiche sous l'éditeur, caché par le voile ; « Convertir en liste » montre ses balises dans la fenêtre de résultat)
 L'outil doit proposer, sur une sélection de texte dans l'éditeur, des actions IA dont le résultat remplace la sélection seulement si l'utilisateur l'accepte.
 - La mini-barre de sélection ouvre un menu de huit actions IA (« Reformuler », « Simplifier », « Convertir en liste », « Exemple PME », « Optimiser mot-clé », « Statistique sourcée », « Answer Capsule », « Formuler en question ») et « Lien interne ».
 - Trois autres actions (« Sources chiffrées », « Exemples réels », « Ce qu'il faut retenir ») se posent comme blocs glissés depuis le panneau « Blocs ».
@@ -1510,7 +1511,7 @@ L'outil doit proposer, sur une sélection de texte dans l'éditeur, des actions 
 - Une réponse coupée avant la fin n'est pas proposée ; « Accepter » reste grisé sans résultat ; « Rejeter » garde la sélection intacte.
 
 ### FR-RED-LINKING-MANUAL — Le maillage interne se pose à la main
-**Statut :** non tenue (dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active, et la suggestion disparaît même si le lien n'a pas été posé)
+**Statut :** non tenue (dans la rédaction guidée, « Appliquer » une suggestion ne fait rien ; dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée)
 L'outil doit proposer des liens internes qui suivent l'arbre du cocon, que l'utilisateur applique ou rejette, et tenir le réseau de liens à jour avec le texte.
 - Le panneau « Maillage » propose d'abord la famille (enfants pour un parent, parent pour un enfant), même non publiée, en le disant ; puis les autres articles déjà rédigés dont le titre recoupe le texte, dans le respect de la hiérarchie ; dix suggestions au plus, sans reproposer un article déjà relié.
 - L'ancre proposée existe telle quelle dans le texte (deux mots au moins du titre de la cible, sans mot vide aux bords), à défaut le mot-clé de la cible.
@@ -1544,7 +1545,7 @@ L'outil doit faire passer toute publication par une porte qui rejoue les contrô
 - Refusée, la publication ne marque rien et ne télécharge rien, et l'écran le dit ; après dérogation, elle reprend d'elle-même. Les autres changements de statut ne sont pas contrôlés.
 
 ### FR-RED-EXPORT-HTML — Aperçu et fichier HTML de l'article
-**Statut :** non tenue (le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte)
+**Statut :** non tenue (le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte ; réexporter après une correction, sans recharger l'aperçu, télécharge la version chargée à l'ouverture de l'onglet, pas celle que la porte vient d'accepter)
 L'outil doit produire un aperçu fidèle de la page publiée et, une fois la porte passée, le fichier HTML à publier.
 - L'aperçu s'ouvre depuis l'éditeur (« Visualiser l'article ») dès que le texte, le meta title et la meta description existent.
 - Le fichier contient la méta, les données structurées de l'article, un sommaire, et un seul H1.
@@ -1605,7 +1606,7 @@ L'outil doit analyser les pages concurrentes d'un mot-clé et dire quels thèmes
 Ce domaine couvre les services tiers dont l'outil dépend : les données de marché Google (DataForSEO), l'autocomplétion Google, la recherche de pages concurrentes (Tavily), Google Search Console, les fournisseurs d'IA (Claude, Gemini, OpenRouter, simulation) et le modèle local de similarité de sens. Il fixe ce que l'utilisateur attend d'eux : un coût maîtrisé, un mode simulé gratuit, des pannes lisibles.
 
 ### FR-EXT-DATAFORSEO — Données de marché Google via DataForSEO
-**Statut :** non tenue (les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message)
+**Statut :** non tenue (les mesures demandées en groupe et la fiche SEO du brief taisent un échec du fournisseur, y compris un refus du plafond de dépense : les valeurs restent vides, sans message ; un « Rafraîchir » qui échoue tout à fait remplace toute la page de rédaction par le bloc d'erreur, au lieu du seul panneau « SERP Data »)
 L'outil doit fournir, pour un mot-clé, les données de marché de Google (volume mensuel, coût par clic, difficulté, concurrence, intention, dix premiers résultats, questions « Autres questions posées », dites PAA), en réutilisant une réponse déjà obtenue plutôt qu'en la repayant.
 - Un mot-clé mesuré depuis moins de 7 jours est resservi depuis la base, sans nouvel appel.
 - Le panneau SEO de la rédaction propose « Rafraîchir » (ou « Lancer l'analyse SERP » s'il est vide), qui ignore la base et relance la mesure.
@@ -1614,7 +1615,7 @@ L'outil doit fournir, pour un mot-clé, les données de marché de Google (volum
 - Une mesure absente d'un mot-clé reste absente (« — »), jamais 0.
 
 ### FR-EXT-DATAFORSEO-COSTGUARD — Plafond de dépense DataForSEO
-**Statut :** active
+**Statut :** non tenue (le plafond affiché est arrondi au centime, dans le refus comme dans la pile d'activité : un plafond de 0,025 $ s'écrit « $0.03 »)
 L'outil doit refuser, avant de l'émettre, tout appel DataForSEO payant qui ferait dépasser un plafond de dépense sur une fenêtre glissante, et dire pourquoi.
 - Par défaut : 0,50 $ sur 30 minutes ; plafond et fenêtre se règlent dans la configuration, sans toucher au code.
 - Le refus porte un code d'erreur dédié et le message « Plafond de dépense DataForSEO atteint (dépensé / plafond sur N min) ».
@@ -1623,7 +1624,7 @@ L'outil doit refuser, avant de l'émettre, tout appel DataForSEO payant qui fera
 - La fenêtre écoulée, les appels repassent sans intervention.
 
 ### FR-EXT-DATAFORSEO-SANDBOX — Bac à sable DataForSEO
-**Statut :** active
+**Statut :** non tenue (les réponses du bac à sable sont gardées comme de vraies réponses : en réel, un mot-clé mesuré en simulé depuis moins de 7 jours affiche des chiffres factices, et les questions PAA, longues traînes et mots-clés de Discovery obtenus en simulé sont resservis)
 L'outil doit pouvoir interroger le bac à sable gratuit de DataForSEO (données factices de même forme) au lieu de la production payante.
 - Le bac à sable n'est jamais déduit de l'environnement : il s'active explicitement, par la configuration ou par le mode simulé.
 - La pile d'activité indique « SANDBOX » ou « PROD » à côté de la dépense DataForSEO.
@@ -1631,7 +1632,7 @@ L'outil doit pouvoir interroger le bac à sable gratuit de DataForSEO (données 
 - Le bac à sable exige lui aussi de vrais identifiants DataForSEO.
 
 ### FR-EXT-GSC-OAUTH — Connexion à Google Search Console
-**Statut :** non tenue (un accès révoqué n'est pas détecté : le statut reste « connecté », et l'erreur affichée ne propose pas de refaire la connexion)
+**Statut :** non tenue (un accès révoqué n'est pas détecté : le statut reste « connecté », et l'erreur affichée ne propose pas de refaire la connexion ; sans identifiants Google dans la configuration, « Connecter Google Search Console » ouvre un onglet qui affiche une erreur technique brute en anglais)
 L'outil doit permettre de connecter un compte Google Search Console en lecture seule, garder l'accès entre les sessions et le renouveler seul.
 - « Connecter Google Search Console » ouvre la page d'autorisation Google dans un nouvel onglet ; l'accès demandé est en lecture seule.
 - L'accès est conservé entre deux démarrages et renouvelé automatiquement moins d'une minute avant son expiration.
@@ -1662,7 +1663,7 @@ L'outil doit faire passer toute demande d'IA par un point unique qui choisit le 
 - Chaque réponse porte le modèle qui a réellement répondu et son coût estimé, repris dans la pile d'activité.
 
 ### FR-EXT-AI-FALLBACK — Bascule entre fournisseurs d'IA
-**Statut :** non tenue (la bascule n'est écrite que dans le journal du serveur ; la pile d'activité montre seulement le modèle qui a répondu)
+**Statut :** non tenue (la bascule n'est écrite que dans le journal du serveur ; la pile d'activité montre seulement le modèle qui a répondu ; un fournisseur de secours sans clé configurée arrête la chaîne au lieu de passer au suivant, et l'utilisateur lit un message technique en anglais à la place de la vraie cause)
 L'outil doit, quand un fournisseur est saturé ou inutilisable, retenter puis passer au suivant, sans masquer les autres erreurs, et le faire savoir.
 - Une erreur de quota, de surcharge ou de serveur est retentée jusqu'à 2 fois (après 1 s puis 2 s).
 - Quota épuisé, surcharge ou fournisseur inutilisable (modèle retiré, clé refusée) font passer au suivant : le principal, puis Claude, Gemini, OpenRouter.
@@ -1738,7 +1739,7 @@ L'outil doit afficher les mots-clés du Radar et du Capitaine avec une seule et 
 - Une modification de la carte vaut pour tous les usages : la carte n'est copiée nulle part.
 
 ### FR-UI-AI-PANELS-PATTERN — Des panneaux d'IA qui se ressemblent et restent en place
-**Statut :** non tenue (le panneau du Lexique n'apparaît qu'après le calcul TF-IDF, celui des Lieutenants qu'après l'analyse des résultats Google, et le panneau « Analyse IA du Brief » de la rédaction n'a ni la structure commune ni d'état « erreur »)
+**Statut :** non tenue (le panneau du Lexique n'apparaît qu'après le calcul TF-IDF, celui des Lieutenants qu'après l'analyse des résultats Google, et le panneau « Analyse IA du Brief » de la rédaction n'a ni la structure commune ni d'état « erreur » ; le panneau « Suggestions IA Lieutenants » a sa propre structure, et « Régénérer les suggestions » relance l'appel payant sans confirmation)
 L'outil doit présenter chaque assistance IA dans un panneau de même structure (titre, sous-titre, état, bouton de lancement puis de régénération, zone de résultat), présent dès l'arrivée sur l'onglet.
 - Quatre états : au repos, en cours, résultat, erreur lisible.
 - Préalable manquant : bouton désactivé et phrase d'invitation, jamais de panneau qui disparaît.
@@ -1779,7 +1780,7 @@ Ce domaine regroupe les garanties que l'utilisateur ne voit pas directement mais
 Quand l'utilisateur déclenche une action qui interroge un service externe payant ou lent, l'outil doit garder la réponse pour une durée propre à chaque type d'appel et la resservir sans nouvel appel tant qu'elle est valide. Ce cache est partagé entre tous les articles.
 - Un même appel, sur le même mot-clé, dans la durée de validité, ne déclenche aucun nouvel appel externe.
 - Une réponse expirée n'est jamais resservie, même si elle est encore stockée.
-- Un geste « Rafraîchir » explicite (brief DataForSEO, audit du cocon, découverte) ignore le cache et refait l'appel.
+- Un geste « Rafraîchir » explicite (brief DataForSEO, découverte) ignore le cache et refait l'appel.
 - Une réponse obtenue pour l'article A sert à l'article B quand l'appel est le même.
 
 ### FR-INFRA-API-CACHE-PURGE — Nettoyage automatique du cache court
@@ -1789,7 +1790,7 @@ Le cache court ne doit pas grossir sans limite : les réponses expirées sont su
 - La purge ne bloque aucune action de l'utilisateur ; son échec est journalisé sans effet visible.
 
 ### FR-INFRA-KEYWORD-METRICS — Mémoire permanente des mesures d'un mot-clé
-**Statut :** non tenue (tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie)
+**Statut :** non tenue (tant que DataForSEO ne renvoie ni difficulté ni coût par clic pour un mot-clé, chaque étude le remesure, et le repaie ; le scan Radar ne relit ni n'enregistre les mesures gardées, et chaque test au Capitaine relance ce scan pour sa carte ; un « Rafraîchir » raté date quand même la mesure du jour, et pour un mot-clé sans volume connu la fiche vide remplace la réponse gardée)
 Les mesures de marché d'un mot-clé (volume, difficulté, CPC, concurrence, intention, suggestions Google, questions PAA) doivent être gardées de façon permanente et partagées entre tous les articles et cocons. Au-delà de 7 jours, elles sont considérées comme anciennes et remesurées au prochain besoin.
 - Un mot-clé mesuré il y a moins de 7 jours n'est pas remesuré.
 - Une nouvelle mesure partielle n'efface jamais une valeur connue par « absent ».
@@ -1839,7 +1840,7 @@ Les consignes envoyées à l'IA doivent rester des textes sans logique, complét
 - Le texte d'un article, d'une section, d'un chapitre, d'une sélection ou d'une consigne libre de l'utilisateur est neutralisé (séquences d'instruction, balises système, accolades) et encadré avant d'entrer dans la consigne.
 
 ### FR-INFRA-PROMPT-LAYERS — Consignes organisées en couches, sans rien d'écrit en dur
-**Statut :** non tenue (plusieurs consignes d'IA sont encore écrites dans le code et échappent aux couches, au contrôle des variables et à la référence des consignes : tri de pertinence et analyse stratégique de Discovery, classement du Radar, analyse d'écart de contenu, recommandation de longueur, consigne du juge des questions PAA)
+**Statut :** non tenue (plusieurs consignes d'IA sont encore écrites dans le code et échappent aux couches, au contrôle des variables et à la référence des consignes : tri de pertinence et analyse stratégique de Discovery, classement du Radar, analyse d'écart de contenu, recommandation de longueur, consigne du juge des questions PAA ; la régénération du titre et du mot-clé d'une ligne de la carte écrit ses règles par niveau dans le code, et ne les envoie jamais)
 Chaque consigne d'IA doit suivre les mêmes cinq couches (identité, contexte, règles du type d'article, tâche, contrat de sortie) et tirer du contexte tout ce qui dépend du client ou du moment.
 - Aucune année ni aucun lieu n'est écrit dans les consignes : la date du jour, l'année, la zone du client et ses repères locaux viennent du contexte.
 - Les repères locaux ne sont proposés que s'ils décrivent la zone du client ; sinon aucun repère. Les entreprises du référentiel ne sont jamais proposées.
@@ -1855,7 +1856,7 @@ Les consignes qui construisent un article (mots-clés candidats d'un nouvel arti
 - Un état illisible n'empêche ni la structure ni le premier jet ; il fait échouer la proposition de mots-clés candidats, avec un message.
 
 ### FR-INFRA-TYPE-RULES-SSOT — Une seule définition de ce qu'est un pilier, un intermédiaire, un spécialisé
-**Statut :** active
+**Statut :** non tenue (la fourchette « min – max mots » de la recommandation de contenu est calculée à ±20 % de la cible au lieu de reprendre celle du type : un pilier affiche « 2 000 – 3 000 » alors que la rédaction vise 1 800 à 3 500)
 Les règles de chaque type d'article (longueurs, nombre de chapitres, de sous-parties, de lieutenants, de questions de FAQ, de chapitres citant la ville) doivent être définies une seule fois, et lues par tous : consignes d'IA, calculs, écrans, vérificateurs et mode automatique.
 - Changer une valeur de la définition change l'écran, la rédaction et les consignes, sans autre retouche.
 - Le nombre de H2 visé compte les H2 de fond : l'introduction et la conclusion s'y ajoutent, et les consignes le disent.
@@ -1907,7 +1908,6 @@ Pour un indicateur donné, la valeur affichée et la valeur utilisée pour trier
 Les calculs qui combinent plusieurs indicateurs (score composite, verdicts, alertes) doivent traiter une composante absente comme manquante : son poids est reporté sur les composantes connues ; sans aucune donnée, le score est absent et le verdict neutre.
 - Un score composite avec un indicateur absent sur quatre est calculé sur les trois autres.
 - Sans aucune donnée, le score composite est absent et le verdict du Capitaine est « GRAY » (gris), pas « NO-GO ».
-- Un volume absent lève une alerte d'information « données indisponibles », pas l'alerte « aucun volume ».
 - Sans aucune source exploitable, la validation d'une douleur classe le mot-clé « incertaine », pas « froide ».
 
 ### FR-INFRA-CHECK-HEALTH — Audit complet du dépôt en une commande
@@ -1963,7 +1963,7 @@ Au démarrage, le serveur doit tester la connexion à la base et dire clairement
 - Service arrêté, mot de passe refusé ou base absente : le journal donne une piste de correction adaptée.
 
 ### FR-INFRA-COST-LOG-STORE — Pile d'activité de la session
-**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran)
+**Statut :** non tenue (seules les lectures et écritures des mots-clés d'article et des explorations Capitaine / Lieutenants remontent dans la pile ; les autres opérations en base n'y apparaissent pas. Et le coût de la génération des longues traînes et du jugement des questions PAA ne remonte pas à l'écran ; l'analyse IA de Discovery s'inscrit deux fois dans la pile, ce qui double son coût affiché)
 Une pile d'activité, visible dans l'interface, doit accumuler les appels IA (modèle, jetons, coût estimé), les opérations en base (type, table, lignes, durée) et les messages d'erreur connus ; l'utilisateur voit le coût total de sa session et peut vider la pile.
 - Chaque appel IA, diffusé ou non, ajoute sa ligne de coût.
 - Chaque écriture significative en base ajoute sa ligne.
@@ -1976,7 +1976,7 @@ Les questions PAA jugées pour le capitaine d'un article (réponse, correspondan
 - À la réouverture du Capitaine, les questions déjà jugées s'affichent annotées, sans nouvel appel.
 
 ### FR-INFRA-KEYWORDS-SEO — Pool de mots-clés du cocon
-**Statut :** non tenue (aucun écran affiché ne permet de remplacer, de changer le statut ni de supprimer un mot-clé du pool : l'écran qui le faisait n'est plus monté ; le pool ne s'alimente qu'à la création d'un article. Et le remplacement d'un mot-clé ne vérifie pas qu'un autre cocon l'utilise déjà ; seul l'ajout le refuse)
+**Statut :** non tenue (aucun écran affiché ne permet de remplacer, de changer le statut ni de supprimer un mot-clé du pool : l'écran qui le faisait n'est plus monté ; le pool ne s'alimente qu'à la création d'un article. Et le remplacement d'un mot-clé ne vérifie pas qu'un autre cocon l'utilise déjà ; seul l'ajout le refuse ; un mot-clé déjà présent dans le pool de son propre cocon est refusé comme s'il appartenait à un autre cocon)
 Chaque cocon doit disposer d'un pool de mots-clés que l'utilisateur alimente et trie depuis le Cerveau, identique d'un écran et d'une session à l'autre.
 - L'utilisateur peut ajouter, remplacer, changer le statut (suggéré, validé, écarté) et supprimer un mot-clé du pool.
 - Chaque mot-clé porte un type connu de tous les écrans (Pilier, Intermédiaire, Spécialisé, Moyenne traîne, Longue traîne) ; un type inconnu est refusé à l'écriture, un ancien format est compris à la lecture.
@@ -1989,7 +1989,7 @@ L'outil doit disposer d'un référentiel de lieux (régions et autres noms de la
 - Un lieu rattaché à une région n'est proposé que si la zone du client nomme cette région ; les lieux sans région forment le référentiel par défaut, proposé seulement si la zone nomme l'une de ses régions.
 
 ### FR-INFRA-LIEUTENANT-EXPLORATIONS — Les propositions de lieutenants sont gardées par article
-**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché)
+**Statut :** non tenue (« Tout réinitialiser » n'archive les lieutenants qu'à l'écran : l'archivage enregistré n'est jamais demandé. Après un rechargement, ils reviennent cochés, à l'écran comme dans la Finalisation, alors que la liste enregistrée est vide, et la porte refuse l'étape. Et un lieutenant ajouté depuis le panneau d'aide n'est enregistré qu'une fois coché ; le message annonce toujours « 0 lieutenant(s) archivé(s) »)
 Toutes les propositions de lieutenants d'un article (de l'IA ou ajoutées à la main) doivent être gardées avec leur contexte, leur niveau de titre suggéré, leur score, leurs indicateurs du moment et leur statut.
 - Une proposition est enregistrée dès qu'elle est générée ou ajoutée.
 - À la réouverture, la liste est triée par score décroissant, les scores absents en bas.
@@ -2040,7 +2040,7 @@ Une règle de qualité doit être écrite une seule fois et évaluée par le ser
 - L'audit du projet signale tout article rédigé que la porte de publication refuserait, avec le nombre de points par niveau.
 
 ### FR-INFRA-GATE-WAIVER — Passer outre en prenant sa responsabilité, par écrit
-**Statut :** active
+**Statut :** non tenue (le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis)
 Quand une porte signale un point, l'utilisateur doit pouvoir passer outre (déroger) point par point, par écrit, pour les seules données examinées : c'est l'alarme graduée, commune à toutes les portes.
 - 🟠 : cocher « J'ai lu » suffit. 🔴 : une catégorie (longue traîne assumée, donnée manquante dans l'outil, mot-clé de marque, autre) et une raison d'au moins 20 caractères. ⛔ : aucune dérogation possible.
 - Le serveur revérifie chaque dérogation et refuse, avec son motif, une raison trop courte ou une alerte qui n'existe plus.
@@ -2113,7 +2113,7 @@ Le score SEO de l'article en cours de rédaction doit se recalculer tout seul, s
 Ce domaine couvre les garde-fous de dépense : cache avant tout appel payant, persistance durable, plafond de dépense DataForSEO, mode simulé gratuit.
 
 ### NFR-COST-CACHE-FIRST — Aucun appel payant si la réponse est déjà en cache
-**Statut :** active
+**Statut :** non tenue (le scan Radar rachète les mesures de ses mots-clés à chaque fois, sans relire la base ; un mot-clé à qui il manque le volume, la difficulté ou le coût par clic est remesuré à chaque étude au Capitaine)
 Avant tout appel à un service payant, l'outil doit consulter ses données locales et ne pas appeler si une donnée fraîche existe.
 - Les mesures de mots-clés, les résultats Google et les questions « People Also Ask » (PAA : les questions associées affichées par Google) sont relus en base avant tout appel.
 - Il n'existe pas de « forcer l'appel » implicite : rafraîchir passe par un geste explicite (« Rafraîchir ») ou par l'expiration.
@@ -2150,7 +2150,7 @@ Avant chaque appel DataForSEO, l'outil doit estimer son coût et refuser l'appel
 - Les appels redeviennent possibles dès que la fenêtre glisse, sans intervention.
 
 ### NFR-COST-AI-MOCK — Mode simulé gratuit
-**Statut :** active
+**Statut :** non tenue (après un redémarrage du serveur en cours de session, le serveur revient à sa configuration, qui peut être payante, alors que le bouton affiche encore « MOCK » ; plusieurs réponses simulées n'ont pas le format attendu : avis du Capitaine (chiffres figés), avis du Lexique et proposition des Lieutenants (champs manquants), « Remplir les champs avec Claude » (échec), « Sujets suggérés » (liste vide), suggestions, fusions et régénérations du Cerveau (texte générique))
 L'outil doit offrir un mode simulé où ni l'IA ni DataForSEO ne coûtent rien, activable par configuration ou par un bouton toujours visible.
 - En mode simulé, les réponses d'IA viennent de réponses préparées, identiques d'un appel à l'autre, sans réseau.
 - Chaque réponse préparée reconnaît l'appel qu'elle sert d'après sa consigne réelle : le conseil IA du Capitaine reçoit un avis rédigé sur son mot-clé, jamais la réponse par défaut.
@@ -2215,7 +2215,7 @@ Chaque requête reçue par le serveur doit être vérifiée contre une forme att
 - Aucune requête mal formée n'atteint un appel payant.
 
 ### NFR-INT-DISPLAY-CONTRACTS — Ce qui s'affiche est vérifié avant d'arriver à l'écran
-**Statut :** active
+**Statut :** non tenue (le rechargement de l'exploration Radar, par « Charger Radar » ou au choix d'un article, n'est pas contrôlé à son arrivée à l'écran)
 Chaque résultat affiché par le Moteur doit être mis dans la forme attendue par l'écran, à la sortie du serveur, à la relecture en base et à l'arrivée à l'écran.
 - Un indicateur sans donnée s'affiche « — » partout (carte, verdict, moyenne, tri), au premier chargement comme au rechargement.
 - Un élément illisible d'une liste est écarté ; les autres restent affichés.
@@ -2293,7 +2293,7 @@ Une commande unique doit enchaîner linters, typage, cycles, code mort et archit
 - La sortie nomme le contrôle en échec.
 
 ### NFR-MAIN-NO-SCORE-FALLBACK — Pas de zéro silencieux sur un score ou un indicateur
-**Statut :** active
+**Statut :** non tenue (les jauges SEO et GEO affichent 0 avant le premier calcul : le contrôle ne lit pas les écrans)
 Le code ne doit jamais remplacer un score ou un indicateur de marché absent par 0 ; l'absence reste une absence.
 - Le linter refuse `x ?? 0` quand x est un score, un volume, une difficulté, un CPC, une concurrence ou une densité, y compris par chaînage optionnel.
 - Seul le module de calcul des scores est exempté.
@@ -2428,7 +2428,7 @@ Chaque réponse du serveur doit rapporter les opérations faites en base pour la
 - Un seuil signale une route trop gourmande.
 
 ### NFR-OBS-KNOWN-ERRORS — Erreurs connues lisibles à l'écran
-**Statut :** non tenue (le dépassement du budget DataForSEO n'est pas inscrit dans la pile d'activité ; une erreur inconnue affiche son message brut, pas un message générique)
+**Statut :** non tenue (le dépassement du budget DataForSEO n'est pas inscrit dans la pile d'activité ; une erreur inconnue affiche son message brut, pas un message générique ; au Cerveau, l'échec d'une suggestion, d'une fusion, d'une sous-question, d'un enrichissement, d'une régénération ou de l'enregistrement par « Suivant » n'affiche rien ; l'échec de « Remplir les champs avec Claude » et un aperçu refusé s'expliquent en anglais)
 Une erreur de cause connue doit s'afficher avec un message clair qui dit quoi faire ; une erreur inconnue doit renvoyer vers le journal.
 - Quota DataForSEO, quota d'IA et IA saturée apparaissent dans la pile d'activité avec leur conseil.
 - Le dépassement du budget DataForSEO y apparaît aussi.
@@ -2511,7 +2511,7 @@ Avant le démarrage, la construction ou les tests navigateur, l'outil doit libé
 ## 27. Expérience utilisateur (NFR-UX)
 
 ### NFR-UX-STABLE-SKELETON — Écran stable, états visuels plutôt qu'apparitions
-**Statut :** active
+**Statut :** non tenue (les panneaux d'IA du Lexique et des Lieutenants n'apparaissent qu'après leur analyse ; pendant un scan du Radar, « Mots-clés à scanner » et les résultats disparaissent ; à Discovery, le filtre de pertinence et « Groupes de mots » n'apparaissent qu'après la première découverte)
 Les zones d'action d'un écran du Moteur (panneaux d'IA, boutons principaux, sections de résultats) doivent être présentes dès l'ouverture ; leur état (inactif, en cours, erreur) se voit sur place.
 - Les panneaux d'IA de Discovery, Radar, Capitaine, Lieutenants et Lexique sont affichés dès l'ouverture, sans action préalable.
 - Aucun panneau n'apparaît ou ne disparaît selon un état passager de l'utilisateur.
@@ -2519,7 +2519,7 @@ Les zones d'action d'un écran du Moteur (panneaux d'IA, boutons principaux, sec
 - Une zone lourde repliée peut n'être construite qu'au dépli, avec une silhouette de même taille.
 
 ### NFR-UX-SCREEN-TEXT — Un texte d'écran s'affiche tel qu'il est écrit
-**Statut :** active
+**Statut :** non tenue (des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », niveaux affichés « INTERMEDIAIRE » ou « specifique », « (parentTitle manquant) », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »))
 Tout texte fixe de l'interface doit s'afficher en français lisible, accents compris : jamais un code technique à la place d'une lettre (« th\\u00e9matique » au lieu de « thématique »).
 - Aucun texte fixe d'un écran ne contient de séquence d'échappement : les accents sont écrits directement.
 - La vérification rapide du projet échoue sur un texte fautif, en nommant le fichier et la ligne.

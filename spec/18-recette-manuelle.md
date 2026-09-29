@@ -67,7 +67,7 @@ Plusieurs étapes passent par une **porte** : avant de valider, l'outil vérifie
 Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre. Elles laissent un cocon « Recette <date> » que tous les modules réutilisent.
 
 ### Étape 1 — Créer un cocon et son pilier (Cerveau)
-**Exigences :** FR-DASH-COCOON-CREATE, FR-CER-STEPS-COCOON, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-KEYWORD-REAL-DATA
+**Exigences :** FR-DASH-COCOON-CREATE ⚠, FR-CER-STEPS-COCOON ⚠, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-KEYWORD-REAL-DATA
 
 **Ce que ça protège :** un cocon se construit **à partir de son pilier**. Avant, on générait tous les articles d'un coup, sans mots-clés mesurés.
 
@@ -109,6 +109,10 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 
 **⚠ Défaut connu :** relancer « La carte complète du cocon » **après** avoir créé un article retire cet article de la carte, et donc de la liste du Moteur. Il reste dans « Construire le cocon ». Ne le fais pas pendant la recette : le module Cerveau le vérifie sur un cocon jetable.
 
+**⚠ Défaut connu :** FR-DASH-COCOON-CREATE — un nom qui ne diffère d'un cocon existant que par les majuscules ou les accents, ou le même nom dans un autre silo, est accepté ; les deux cocons partagent alors la même stratégie au Cerveau et au Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### Étape 2 — L'ordre des onglets du Moteur
 **Exigences :** FR-MOT-PHASES, FR-MOT-PHASE-TRANSITION, FR-HN-TAB ⚠
 
@@ -129,7 +133,7 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 **⚠ Défaut connu :** si l'enregistrement de la structure est refusé, la validation s'arrête sans aucun message à l'écran (seul le refus du sommaire est dit). Ce parcours ne le provoque pas.
 
 ### Étape 3 — Le Capitaine et l'alarme 🟠
-**Exigences :** FR-CAP-INPUT, FR-CAP-LOCK-GATE, FR-INFRA-VERIFIER-SHARED
+**Exigences :** FR-CAP-INPUT ⚠, FR-CAP-LOCK-GATE, FR-INFRA-VERIFIER-SHARED
 
 **Ce que ça protège :** on ne verrouille plus un mot-clé risqué sans le savoir.
 
@@ -151,8 +155,10 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 
 > **En MOCK, impossible d'obtenir l'alarme 🔴 « 0 recherche par mois » par l'écran.** Le bac à sable renvoie les mêmes volumes pour tous les mots-clés. Le 🔴 et la règle des 20 caractères se testent à l'étape 4.
 
+**⚠ Défaut connu :** FR-CAP-INPUT — ré-étudier un mot-clé déjà présent ne lève pas l'erreur précédente : la carte reste sur « Erreur : … » même si la nouvelle étude réussit ; la carte prend aussi la casse tapée, et un Capitaine verrouillé retapé dans une autre casse perd son cadenas vert et sa place en tête. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### Étape 4 — Lieutenants et Structure : l'alarme 🔴
-**Exigences :** FR-LIE-LOCK-GATE, FR-INFRA-GATE-WAIVER, FR-HN-LOCK-GATE, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-LIE-LOCK-GATE, FR-INFRA-GATE-WAIVER ⚠, FR-HN-LOCK-GATE, FR-CER-PARENT-WRITTEN-GATE
 
 **Ce que ça protège :** un pilier a besoin d'au moins 3 lieutenants, et une dérogation doit être **justifiée**.
 
@@ -177,6 +183,8 @@ Les étapes s'enchaînent : chacune prépare la suivante. Fais-les dans l'ordre.
 **C'est un bug si :**
 - on peut valider avec moins de 20 caractères ou sans catégorie ;
 - avec 3 lieutenants cochés, le bandeau reste affiché (essaie-le sur un autre article, si tu veux).
+
+**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### Étape 5 — Le Lexique
 **Exigences :** FR-LEX-METIER-ONLY, FR-LEX-PRECHECK-PERSISTE
@@ -278,10 +286,10 @@ En MOCK, « Sources » répond « Aucun passage à sourcer… : rien à chercher
 
 **C'est un bug si :** la case reste alors que le lien n'est plus dans le texte.
 
-**⚠ Défaut connu :** il touche les **suggestions** de liens, pas ce geste. Dans la rédaction guidée, « Appliquer » une suggestion ne fait rien. Dans l'éditeur, l'ancre n'est cherchée que dans la zone active, et la suggestion disparaît même si le lien n'a pas été posé. Le module Rédaction le vérifie.
+**⚠ Défaut connu :** il touche les **suggestions** de liens, pas ce geste. Dans la rédaction guidée, « Appliquer » une suggestion ne fait rien. Dans l'éditeur, l'ancre n'est cherchée que dans la zone active : ailleurs, « Appliquer » ne fait rien, sans message, et la suggestion reste affichée. Le module Rédaction le vérifie.
 
 ### Étape 10 — La publication et ses dérogations
-**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML ⚠, FR-INFRA-GATE-WAIVER
+**Exigences :** FR-RED-PUBLISH-GATE, FR-RED-EXPORT-HTML ⚠, FR-INFRA-GATE-WAIVER ⚠
 
 **Ce que ça protège :**
 - à la publication, tu revois toutes tes dérogations ;
@@ -313,6 +321,8 @@ En MOCK, « Sources » répond « Aucun passage à sourcer… : rien à chercher
 **⚠ Défaut connu :** le fichier téléchargé perd tous les liens internes posés dans l'éditeur, et son H1 est le titre de l'article, pas le H1 jugé par la porte.
 
 ---
+
+**⚠ Défaut connu :** FR-INFRA-GATE-WAIVER — le serveur accepte une dérogation sur le seul nom du point et l'enregistre pour les données du moment : une alarme restée ouverte peut déroger à des données que l'utilisateur n'a jamais vues, si elles ont changé depuis. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Les modules
 

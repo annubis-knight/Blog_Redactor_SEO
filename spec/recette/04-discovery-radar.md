@@ -17,7 +17,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 ## Vérifications
 
 ### DIS-1 — L'onglet Discovery avant tout lancement
-**Exigences :** FR-DIS-SOURCES, FR-DIS-AI-ANALYSIS, NFR-UX-STABLE-SKELETON
+**Exigences :** FR-DIS-SOURCES, FR-DIS-AI-ANALYSIS, NFR-UX-STABLE-SKELETON ⚠
 
 **Gestes :**
 1. Sur la page du cocon, clique la carte **« Moteur »**. Ouvre « Articles suggérés (N) » et clique le titre de l'article enfant. Le Moteur s'ouvre sur un autre onglet : clique **Discovery** dans le groupe « 1 Générer » de la barre du haut.
@@ -39,8 +39,10 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 - le bouton d'analyse est cliquable sans découverte ;
 - une recherche part avec un champ vide.
 
+**⚠ Défaut connu :** NFR-UX-STABLE-SKELETON — les panneaux d'IA du Lexique et des Lieutenants n'apparaissent qu'après leur analyse ; pendant un scan du Radar, « Mots-clés à scanner » et les résultats disparaissent ; à Discovery, le filtre de pertinence et « Groupes de mots » n'apparaissent qu'après la première découverte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DIS-2 — « Découvrir » remplit les six premières sources
-**Exigences :** FR-DIS-SOURCES, FR-DIS-LONGTAIL-GENERATION, FR-RAD-GENERATE
+**Exigences :** FR-DIS-SOURCES, FR-DIS-LONGTAIL-GENERATION ⚠, FR-RAD-GENERATE
 
 **Gestes :**
 1. En bas à gauche, repère la pastille des coûts (« … · N appels ») et note N.
@@ -63,6 +65,8 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 - « IA Claude » dépasse 25 mots-clés, montre un doublon ou un mot-clé sans raison ;
 - la section Courte-traîne se remplit toute seule ;
 - un mot-clé « ×N » reste sous des mots-clés à source unique.
+
+**⚠ Défaut connu :** FR-DIS-LONGTAIL-GENERATION — la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### DIS-3 — Replier, tout cocher, afficher la suite, filtrer par groupe de mots
 **Exigences :** FR-DIS-SOURCES
@@ -124,7 +128,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 > « X pertinents » compte des mots-clés uniques ; « hors-sujet masqués » compte chaque apparition dans une section. Les deux ne s'additionnent pas pour donner le total : limite connue, pas un bug. La règle de la douleur et le jugement des mots-clés arrivés en retard se voient en RÉEL (DIS-R1).
 
 ### DIS-6 — La courte-traîne IA, seulement à la demande
-**Exigences :** FR-DIS-LONGTAIL-GENERATION, FR-RAD-GENERATE
+**Exigences :** FR-DIS-LONGTAIL-GENERATION ⚠, FR-RAD-GENERATE
 
 **Gestes :**
 1. Dans l'en-tête de la section « Courte-traîne IA (PAA-friendly) », clique **« Générer »**.
@@ -142,6 +146,8 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **C'est un bug si :**
 - la génération modifie les autres sections ;
 - geste facultatif : la courte-traîne générée avant « Découvrir » n'a ni ligne « Filtre de pertinence » ni jugement (constat relevé à la lecture du code, à confirmer).
+
+**⚠ Défaut connu :** FR-DIS-LONGTAIL-GENERATION — la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### DIS-7 — L'analyse IA propose une sélection
 **Exigences :** FR-DIS-AI-ANALYSIS
@@ -290,7 +296,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **⚠ Défaut connu :** un mot-clé déjà présent vide le champ sans aucun message ; l'exigence attend « Ce mot-clé est déjà dans la liste ». Si tu vois ce message, le défaut a peut-être disparu : note-le.
 
 ### RAD-3 — Le Radar avant et pendant le scan, puis l'étape « Radar »
-**Exigences :** FR-RAD-SCAN-2PASS, FR-RAD-CHECK, NFR-UX-STABLE-SKELETON
+**Exigences :** FR-RAD-SCAN-2PASS, FR-RAD-CHECK, NFR-UX-STABLE-SKELETON ⚠
 
 **Gestes :**
 1. Avant de scanner, regarde toute la zone sous la liste d'attente.
@@ -308,6 +314,8 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 - un mot-clé de la liste n'a pas de carte, ou en a deux ;
 - le point « Radar » reste vide après un scan réussi ;
 - un échec n'affiche rien : il doit montrer le message d'erreur et un bouton **« Fermer »**, sans carte ni point rempli.
+
+**⚠ Défaut connu :** NFR-UX-STABLE-SKELETON — les panneaux d'IA du Lexique et des Lieutenants n'apparaissent qu'après leur analyse ; pendant un scan du Radar, « Mots-clés à scanner » et les résultats disparaissent ; à Discovery, le filtre de pertinence et « Groupes de mots » n'apparaissent qu'après la première découverte. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-4 — Une carte du Radar n'affiche que le Score Marché
 **Exigences :** FR-RAD-SCORING-BIMODAL ⚠, FR-RAD-NO-RELEVANCE-IN-SCAN
@@ -333,7 +341,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **⚠ Défaut connu :** une intention inconnue compte comme une composante rouge du Score Marché au lieu d'être écartée : une carte sans icône d'intention a « Intent (15%) … 0/100 » dans son info-bulle (voir RAD-5), ce qui baisse sa note. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-5 — L'anneau et son info-bulle expliquent la note
-**Exigences :** FR-RAD-SCORE-RING-TOOLTIP, FR-RAD-SCORING-BIMODAL ⚠, FR-RAD-AUTOCOMPLETE-PER-KEYWORD ⚠
+**Exigences :** FR-RAD-SCORE-RING-TOOLTIP ⚠, FR-RAD-SCORING-BIMODAL ⚠, FR-RAD-AUTOCOMPLETE-PER-KEYWORD ⚠
 
 **Gestes :**
 1. Compare les anneaux de deux cartes de notes différentes.
@@ -357,6 +365,8 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **⚠ Défaut connu :** une intention inconnue n'est pas écartée : une carte sans icône d'intention a « Intent (15%) … 0/100 ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** le nombre de suggestions Google est noté comme une position. Pour un article intermédiaire (badge « INTERMEDIAIRE »), un mot-clé que Google complète 8 fois ou plus reçoit « Autocomplete … 0/100 », un mot-clé qui en a 1 à 4 reçoit « 100/100 », et 0 suggestion vaut 0/100. Plus il y a de suggestions, meilleure devrait être la note. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RAD-SCORE-RING-TOOLTIP — dans l'info-bulle, une composante sans donnée s'affiche « 50/100 » avec son poids, alors qu'elle n'entre pas dans le total. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-6 — Seul le triangle déplie une carte
 **Exigences :** FR-RAD-CARD-CHEVRON-TOGGLE
@@ -491,7 +501,7 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **⚠ Défaut connu :** « Marquer comme candidats Capitaine » n'a aucun effet, à part décocher : rien n'arrive au Capitaine. Si tu y vois arriver les deux mots-clés, le défaut a peut-être disparu : note-le.
 
 ### RAD-12 — Les longues traînes en MOCK : la section et son message
-**Exigences :** FR-RAD-LONGTAIL-GENERATE
+**Exigences :** FR-RAD-LONGTAIL-GENERATE ⚠
 
 **Gestes :**
 1. Sous les cartes, repère la section « Suggestions longue-traine ».
@@ -507,6 +517,8 @@ Ce module suit le chemin d'un mot-clé dans la phase « 1 Générer » du Moteur
 **C'est un bug si :**
 - la section apparaît avec moins de 2 cartes ;
 - le bouton ne donne ni liste, ni message, ni « Erreur : … » avec **« Reessayer »**.
+
+**⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — en mode simulé, la réponse préparée ne trouve pas les mots-clés envoyés et renvoie toujours une liste vide ; une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-13 — Relancer le scan : questions relues, étape sans doublon
 **Exigences :** FR-RAD-SCAN-2PASS, FR-RAD-PAA-TREE, FR-RAD-CHECK
@@ -577,7 +589,7 @@ Passe le bouton en **RÉEL**. Trois précautions avant de commencer :
 Repasse en **MOCK** à la fin.
 
 ### DIS-R1 — Le vrai filtre de pertinence et la vraie courte-traîne
-**Exigences :** FR-DIS-RELEVANCE-FILTER, FR-DIS-LONGTAIL-GENERATION, FR-DIS-SEND-TO-RADAR ⚠, FR-RAD-GENERATE
+**Exigences :** FR-DIS-RELEVANCE-FILTER, FR-DIS-LONGTAIL-GENERATION ⚠, FR-DIS-SEND-TO-RADAR ⚠, FR-RAD-GENERATE
 **Mode :** RÉEL — le coût ne s'affiche pas avant l'appel : suis-le dans la pastille des coûts.
 
 **Gestes :**
@@ -598,6 +610,8 @@ Repasse en **MOCK** à la fin.
 - la courte-traîne fait rejuger toute la liste (« total » égal au nombre total de mots-clés).
 
 **⚠ Défaut connu :** un mot-clé coché seulement dans la section Courte-traîne n'est pas envoyé : la barre disait « 1 mot(s)-clé(s) sélectionné(s) », mais aucune puce n'arrive au Radar, et l'étape « Discovery » est quand même posée. L'outil ouvre aussi le Radar avant d'avoir enregistré la liste, sans vérifier l'enregistrement. Si la puce arrive, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-DIS-LONGTAIL-GENERATION — la courte-traîne générée avant « Découvrir » n'est pas filtrée et la ligne du filtre n'apparaît pas ; « Découvrir » l'efface ensuite. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-R1 — Les vraies questions PAA et leur écho avec le sujet
 **Exigences :** FR-RAD-RESONANCE, FR-RAD-PAA-TREE, FR-RAD-SCAN-2PASS
@@ -621,7 +635,7 @@ Repasse en **MOCK** à la fin.
 - un simple pluriel du titre donne « Hors sujet ».
 
 ### RAD-R2 — Les vraies longues traînes, du choix à l'envoi au Capitaine
-**Exigences :** FR-RAD-LONGTAIL-GENERATE, FR-RAD-LONGTAIL-UI ⚠, FR-RAD-LONGTAIL-REGENERATE ⚠, FR-RAD-SEND-CAPTAIN ⚠
+**Exigences :** FR-RAD-LONGTAIL-GENERATE ⚠, FR-RAD-LONGTAIL-UI ⚠, FR-RAD-LONGTAIL-REGENERATE ⚠, FR-RAD-SEND-CAPTAIN ⚠
 **Mode :** RÉEL — le coût ne s'affiche pas avant l'appel : suis-le dans la pastille des coûts.
 
 **Gestes :**
@@ -648,6 +662,8 @@ Repasse en **MOCK** à la fin.
 **⚠ Défaut connu :** les suggestions enregistrées ne sont pas réaffichées, et un nouveau scan les efface de la base. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** la provenance (Radar, longue traîne, saisie) n'est pas enregistrée ; elle n'est affichée nulle part. Si elle apparaît quelque part, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-RAD-LONGTAIL-GENERATE — en mode simulé, la réponse préparée ne trouve pas les mots-clés envoyés et renvoie toujours une liste vide ; une réponse vide est enregistrée et resservie pendant 7 jours, sans bouton pour réessayer. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### RAD-R3 — Le niveau de l'article change la note, pas les données
 **Exigences :** FR-RAD-MARKET-LEVEL-AWARE, FR-RAD-AUTOCOMPLETE-PER-KEYWORD ⚠

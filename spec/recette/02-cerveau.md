@@ -16,7 +16,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 ## Vérifications
 
 ### CER-1 — Un cocon neuf : pas de « Contexte stratégique », et des étapes fermées
-**Exigences :** FR-CER-CONTEXT-FOR-MOTEUR, FR-CER-STEPS-COCOON
+**Exigences :** FR-CER-CONTEXT-FOR-MOTEUR ⚠, FR-CER-STEPS-COCOON ⚠
 
 **Gestes :**
 1. Sur l'accueil, dans le silo de « Recette <date> », clique la carte **« Nouveau cocon »**. Tape `La recette <date>` : le nom de « Recette <date> », écrit exactement pareil, précédé de « La » (ce nom sert en CER-7). Appuie sur Entrée.
@@ -34,8 +34,12 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - une barre « Contexte stratégique » apparaît, même un instant (par exemple celle de « Recette <date> ») ;
 - une étape pas encore atteinte s'ouvre.
 
+**⚠ Défaut connu :** FR-CER-CONTEXT-FOR-MOTEUR — une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide ; en passant d'un cocon à l'autre, la barre du cocon précédent reste affichée le temps du chargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-2 — Répondre, demander une suggestion, valider de trois façons
-**Exigences :** FR-CER-STEPS-COCOON
+**Exigences :** FR-CER-STEPS-COCOON ⚠
 
 **Gestes :**
 1. À l'étape « Cible », sans rien écrire, regarde le bouton **« Valider ▾ »**.
@@ -57,8 +61,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - « Fusionner les deux » est proposé alors que le champ est vide ;
 - le texte validé ne change pas après un choix.
 
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-3 — Retoucher le texte validé, approfondir par des sous-questions
-**Exigences :** FR-CER-STEPS-COCOON
+**Exigences :** FR-CER-STEPS-COCOON ⚠
 
 **Gestes :**
 1. Toujours à « Cible », clique le crayon **« Modifier le texte validé »**, remplace le texte par `Artisans du bâtiment en Haute-Garonne, 1 à 10 salariés.`, puis clique la coche (« Sauvegarder »).
@@ -79,8 +85,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - la sous-réponse validée ne change pas le texte validé ;
 - une sous-question ne se supprime pas.
 
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-4 — Avancer, revenir : rien ne passe d'une étape à l'autre
-**Exigences :** FR-CER-STEPS-COCOON, FR-CER-SAISIE-PRESERVEE
+**Exigences :** FR-CER-STEPS-COCOON ⚠, FR-CER-SAISIE-PRESERVEE ⚠
 
 **Gestes :**
 1. Clique **« Suivant »** : étape « Douleur ».
@@ -100,8 +108,12 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - le Cerveau rouvre sur « Cible » ;
 - le texte validé de « Douleur » a disparu.
 
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-SAISIE-PRESERVEE — une réponse tapée pendant un enregistrement reste affichée mais n'est plus dans la stratégie : le « Suivant » d'après enregistre un champ vide. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-5 — Une saisie n'est pas effacée par un enregistrement qui arrive après elle
-**Exigences :** FR-CER-SAISIE-PRESERVEE
+**Exigences :** FR-CER-SAISIE-PRESERVEE ⚠
 
 **Gestes :**
 1. À l'étape « Angle », tape `Montrer des chantiers réels`, puis **« Valider ▾ »** › **« Mon texte »**.
@@ -119,8 +131,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - le champ se vide quand l'enregistrement se termine ;
 - à l'étape 5, le champ est vide : la saisie, restée affichée, a été perdue en silence.
 
+**⚠ Défaut connu :** FR-CER-SAISIE-PRESERVEE — une réponse tapée pendant un enregistrement reste affichée mais n'est plus dans la stratégie : le « Suivant » d'après enregistre un champ vide. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-6 — L'étape Articles d'un cocon vide : la carte grandit, rien n'est créé
-**Exigences :** FR-CER-STEPS-COCOON, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-STEPS-COCOON ⚠, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE ⚠
 
 **Gestes :**
 1. À l'étape « CTA », clique **« + »** (« Approfondir »), puis **« Suivant »** : étape « Articles ».
@@ -148,8 +162,12 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur (tu le constates en CER-9). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-7 — Le pilier du cocon neuf : adresse déjà prise, puis mot-clé déjà visé
-**Exigences :** FR-CER-CREATION-HONNETE, FR-CER-KEYWORD-REAL-DATA, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-CREATION-HONNETE, FR-CER-KEYWORD-REAL-DATA, FR-CER-AIGUILLAGE ⚠
 
 **Gestes :**
 1. Ouvre « Recette <date> » dans un nouvel onglet. Au Cerveau, note le titre de son pilier (dans l'arbre) et son mot-clé (déplie sa ligne « Créé » sur la carte : « Mot-clé suggéré »). Ferme cet onglet.
@@ -172,6 +190,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - l'avertissement ne nomme pas le cocon « Recette <date> » ;
 - un message technique ou en anglais remplace ces phrases.
 
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-8 — Deux onglets : un second pilier est refusé, et le refus dit pourquoi
 **Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-CREATION-HONNETE
 
@@ -192,7 +212,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-9 — La carte complète : niveaux compris, mais les articles créés remplacés
-**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-TYPE-TOLERANT ⚠, FR-PIE-AI-GENERATION, FR-CER-CONTEXT-FOR-MOTEUR
+**Exigences :** FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-TYPE-TOLERANT ⚠, FR-PIE-AI-GENERATION, FR-CER-CONTEXT-FOR-MOTEUR ⚠
 
 **Gestes :**
 1. Premier onglet, étape « Articles » : **« Générer avec Claude ▾ »** › **« La carte complète du cocon »** (« Tous les articles d'un coup, à la place de la carte actuelle. »).
@@ -217,8 +237,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **⚠ Défaut connu :** FR-CER-TYPE-TOLERANT — sur la carte, un niveau illisible rendu par l'IA devient « Spécialisé » (ou le niveau demandé, pour un ajout), sans message propre à la ligne. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CER-CONTEXT-FOR-MOTEUR — une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide ; en passant d'un cocon à l'autre, la barre du cocon précédent reste affichée le temps du chargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-10 — Ranger la carte : « Lien », alertes, ajouts à la main
-**Exigences :** FR-CER-STEPS-COCOON, FR-CER-TYPE-TOLERANT ⚠, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-STEPS-COCOON ⚠, FR-CER-TYPE-TOLERANT ⚠, FR-CER-AIGUILLAGE ⚠
 
 **Gestes :**
 1. Survole la pastille « ⚠ » d'un intermédiaire.
@@ -241,8 +263,12 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **⚠ Défaut connu :** sur la carte, un niveau illisible rendu par l'IA devient « Spécialisé » (ou le niveau demandé, pour un ajout), sans message propre à la ligne. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-11 — « Terminer le brainstorm » ouvre la génération des articles
-**Exigences :** FR-CER-STEPS-COCOON
+**Exigences :** FR-CER-STEPS-COCOON ⚠
 
 **Gestes :**
 1. Dans « Construire le cocon », clique « Le rédiger » sous le pilier « <titre> bis ». Survole l'étape « Article » dans la barre du haut.
@@ -258,8 +284,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 
 **C'est un bug si :** « Article » reste fermé après « Terminer le brainstorm », ou s'ouvre avant.
 
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-12 — L'arbre du cocon : niveaux, états, sections
-**Exigences :** FR-CER-AIGUILLAGE, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-PARENT-WRITTEN-GATE
+**Exigences :** FR-CER-AIGUILLAGE ⚠, FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-PARENT-WRITTEN-GATE
 
 **Gestes :**
 1. Page du cocon « Recette <date> » › **« Cerveau »**.
@@ -280,6 +308,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - une section « Introduction », « Conclusion » ou « Questions fréquentes » est proposée ;
 - A n'est pas rangé sous le pilier ;
 - « Articles du cocon » range les articles sous « Autre ».
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-13 — Les candidats d'une section : mesurés, variés, rien de choisi d'office
 **Exigences :** FR-CER-KEYWORD-REAL-DATA, FR-CER-CHILD-FROM-PILLAR-H2
@@ -309,7 +339,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - un candidat « Non mesuré » peut être coché.
 
 ### CER-14 — Créer l'enfant sur la proposition de même titre : l'intention de la carte l'emporte
-**Exigences :** FR-CER-CREATION-HONNETE, FR-PIE-AI-GENERATION, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-CREATION-HONNETE, FR-PIE-AI-GENERATION, FR-CER-COCOON-PROGRESSIVE ⚠, FR-CER-AIGUILLAGE ⚠
 
 **Gestes :**
 1. Sur la carte, **« + Ajouter un intermédiaire »** › **« Article complémentaire »**. Déplie la ligne ajoutée. Avec le crayon « Modifier le titre », remplace son titre par `Prix du site recette <date>`, puis Entrée. Dans « Intention éditoriale », choisis « Commerciale (comparatif, sélection) ».
@@ -330,6 +360,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - B est annoncé créé mais absent de l'arbre.
 
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-15 — Deux onglets : une section déjà prise est refusée
 **Exigences :** FR-CER-CHILD-FROM-PILLAR-H2, FR-CER-CREATION-HONNETE
@@ -388,7 +420,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **⚠ Défaut connu :** « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-18 — Retoucher une ligne de la carte : intention, titre, régénération
-**Exigences :** FR-PIE-CERVEAU-OVERRIDE, FR-CER-STEPS-COCOON
+**Exigences :** FR-PIE-CERVEAU-OVERRIDE ⚠, FR-CER-STEPS-COCOON ⚠
 
 **Gestes :**
 1. Clique la ligne « Créé » de A pour la déplier. Note son titre et son intention.
@@ -410,8 +442,12 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - l'intention revient à l'ancienne valeur après rechargement ;
 - le nouveau titre d'un article créé ne se voit pas dans l'arbre.
 
+**⚠ Défaut connu :** FR-PIE-CERVEAU-OVERRIDE — un clic sur le sélecteur « Intention éditoriale » d'une ligne de la carte replie la ligne et ferme le sélecteur avant le choix ; seul le clavier permet de choisir (à confirmer à l'écran). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### CER-19 — Préparer A au Moteur : la longueur conseillée
-**Exigences :** FR-CER-WORD-COUNT-RECOMMEND, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-WORD-COUNT-RECOMMEND ⚠, FR-CER-AIGUILLAGE ⚠
 
 **Gestes :**
 1. Page du cocon › **« Moteur »** › « Articles suggérés » › A.
@@ -427,6 +463,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - aucune ligne 💡 n'apparaît ;
 - N sort de 1 200 – 2 500 ;
 - la pile dit « Valeur choisie conservée » alors qu'aucune longueur n'a été choisie.
+
+**⚠ Défaut connu :** FR-CER-WORD-COUNT-RECOMMEND — sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-20 — Un parent pas encore rédigé ne donne pas d'enfant
 **Exigences :** FR-CER-PARENT-WRITTEN-GATE, FR-CER-CHILD-FROM-PILLAR-H2
@@ -468,7 +508,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **⚠ Défaut connu :** le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-22 — La longueur visée, dans la Rédaction
-**Exigences :** FR-CER-WORD-COUNT-RECOMMEND, FR-CER-AIGUILLAGE
+**Exigences :** FR-CER-WORD-COUNT-RECOMMEND ⚠, FR-CER-AIGUILLAGE ⚠
 
 **Gestes :**
 1. Même page, bloc « Recommandation de contenu ».
@@ -486,6 +526,10 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - la valeur ajustée est perdue au rechargement ;
 - « − » descend sous 500 ;
 - « Base » ne correspond pas à la longueur conseillée au Moteur.
+
+**⚠ Défaut connu :** FR-CER-WORD-COUNT-RECOMMEND — sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-23 — Le premier jet accepté fait de A un parent
 **Exigences :** FR-CER-PARENT-WRITTEN-GATE
@@ -508,7 +552,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - le bandeau manque dans l'éditeur.
 
 ### CER-24 — Un spécialisé naît d'une section de l'intermédiaire
-**Exigences :** FR-CER-AIGUILLAGE, FR-CER-CHILD-FROM-PILLAR-H2, FR-PIE-AI-GENERATION
+**Exigences :** FR-CER-AIGUILLAGE ⚠, FR-CER-CHILD-FROM-PILLAR-H2, FR-PIE-AI-GENERATION
 
 **Gestes :**
 1. Sous une section de A, **« Créer l'article de cette section »**. Coche le candidat qui finit par « prix » (en MOCK, son intention attendue est commerciale), puis **« Créer l'article »**. Appelons ce nouvel article C.
@@ -528,6 +572,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - C propose des sections, ou un bouton « Créer l'article de cette section » ;
 - C atterrit dans une autre colonne ;
 - au Moteur, un groupe s'intitule par un code (« SPECIFIQUE », « INTERMEDIAIRE ») au lieu du niveau (« Spécialisé », « Intermédiaire »).
+
+**⚠ Défaut connu :** FR-CER-AIGUILLAGE — « Articles du cocon (N) » range tous les articles sous « Autre » au lieu de leur niveau ; dans les listes du Moteur et de la Rédaction, le badge des spécialisés n'a pas de couleur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-25 — Le parent résume la section de son enfant
 **Exigences :** FR-CER-CHILD-FROM-PILLAR-H2
@@ -549,7 +595,7 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 - le 🔴 reste après le résumé accepté et enregistré.
 
 ### CER-26 — La stratégie du cocon suit l'utilisateur au Moteur et à la Rédaction
-**Exigences :** FR-CER-CONTEXT-FOR-MOTEUR
+**Exigences :** FR-CER-CONTEXT-FOR-MOTEUR ⚠
 
 **Gestes :**
 1. Page du cocon › **« Moteur »** : déplie « Contexte stratégique ». Même chose à la **« Rédaction »**.
@@ -564,6 +610,8 @@ Ce module vérifie tout le Cerveau : la stratégie du cocon en six étapes, la c
 **C'est un bug si :**
 - la barre montre une réponse non validée ;
 - « (v2) » n'apparaît pas à la réouverture.
+
+**⚠ Défaut connu :** FR-CER-CONTEXT-FOR-MOTEUR — une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide ; en passant d'un cocon à l'autre, la barre du cocon précédent reste affichée le temps du chargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-27 — Ce que l'écran ne propose pas : stratégie d'article, douleur modifiable
 **Exigences :** FR-CER-STEPS-ARTICLE ⚠, FR-PAIN-IMMUTABLE-AFTER-CEREVEAU ⚠
@@ -637,7 +685,7 @@ Passe le bouton en **RÉEL** pour ces vérifications seulement, puis repasse en 
 **⚠ Défaut connu :** hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-R2 — Suggestions, fusion, sous-questions et enrichissement réels
-**Exigences :** FR-CER-STEPS-COCOON
+**Exigences :** FR-CER-STEPS-COCOON ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Cocon « La recette <date> », étape « CTA » : tape une réponse courte, puis **« Demander une suggestion à Claude »**.
@@ -654,6 +702,8 @@ Passe le bouton en **RÉEL** pour ces vérifications seulement, puis repasse en 
 **C'est un bug si :**
 - la suggestion ignore l'étape ou les réponses validées ;
 - l'enrichissement remplace le texte validé au lieu de le compléter.
+
+**⚠ Défaut connu :** FR-CER-STEPS-COCOON — à l'étape CTA, « + » (approfondir) échoue sans rien afficher : aucune sous-question n'apparaît. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-R3 — Candidats réels : vraies mesures, valeurs absentes, mesures relues
 **Exigences :** FR-CER-KEYWORD-REAL-DATA, FR-PIE-AI-GENERATION, FR-CER-CHILD-FROM-PILLAR-H2
@@ -696,7 +746,7 @@ Passe le bouton en **RÉEL** pour ces vérifications seulement, puis repasse en 
 **⚠ Défaut connu :** FR-CER-COCOON-PROGRESSIVE — « La carte complète du cocon » remplace aussi les articles déjà créés inscrits sur la carte : une fois la carte enregistrée, ils sortent de la liste d'articles du Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### CER-R5 — Micro-contexte, longueur et stratégie dans les textes générés
-**Exigences :** FR-CER-MICRO-CONTEXT ⚠, FR-CER-WORD-COUNT-RECOMMEND, FR-CER-CONTEXT-FOR-MOTEUR, FR-CER-THEME-CONFIG ⚠
+**Exigences :** FR-CER-MICRO-CONTEXT ⚠, FR-CER-WORD-COUNT-RECOMMEND ⚠, FR-CER-CONTEXT-FOR-MOTEUR ⚠, FR-CER-THEME-CONFIG ⚠
 **Mode :** RÉEL (payant)
 **Gestes :**
 1. Cocon « Recette <date> » : au Moteur, prépare C comme A en CER-19 (Capitaine, Lieutenants, Structure). Regarde la pile « Coûts API ».
@@ -716,6 +766,10 @@ Passe le bouton en **RÉEL** pour ces vérifications seulement, puis repasse en 
 **⚠ Défaut connu :** FR-CER-MICRO-CONTEXT — le micro-contexte n'est transmis que si l'angle est rempli : un ton ou des consignes seuls sont ignorés ; et l'angle provisoire écrit d'office à la validation de la structure part tel quel à l'IA. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 **⚠ Défaut connu :** FR-CER-THEME-CONFIG — hors Discovery, qui reçoit le secteur, l'audience, les services et la promesse, les consignes du Moteur et de la Rédaction ne reçoivent ni le positionnement, ni les offres, ni le ton : seule la localisation y parvient, comme zone du client. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-WORD-COUNT-RECOMMEND — sans avis de l'IA, la raison de la longueur conseillée s'affiche en jargon technique (« Heuristique : 60% SERP avg … »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
+**⚠ Défaut connu :** FR-CER-CONTEXT-FOR-MOTEUR — une stratégie sans aucune valeur validée affiche une barre « Contexte stratégique » vide ; en passant d'un cocon à l'autre, la barre du cocon précédent reste affichée le temps du chargement. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ## Hors recette
 

@@ -126,7 +126,7 @@ montage seulement si la liste est vide. Le silo est trouvé par son rang (`s.id 
 
 | Section | Composant | Repères | Déclenché par | Appelle | États |
 |---|---|---|---|---|---|
-| Fil d'Ariane « Dashboard › silo » | `shared/Breadcrumb.vue` | — | Toujours | — | — |
+| Fil d'Ariane « Dashboard / silo » | `shared/Breadcrumb.vue` | — | Toujours | — | — |
 | Nom et description du silo | `SiloDetailView.vue` | — | Silo trouvé | — | « Silo introuvable. » + « ← Retour au dashboard » |
 | Statistiques : « Cocons », « Articles », « Par type » (Pilier, Inter., Spéc.), « Par statut » (À rédiger, Brouillon, Publié), « Progression » | `SiloDetailView.vue` | — | `silo.stats` | — | — |
 | « Cocons sémantiques » : une ligne par cocon, barre de progression | `SiloDetailView.vue`, `shared/ProgressBar.vue` | — | Silo trouvé | Ligne → `/cocoon/:id` | Chargement et erreur par `AsyncContent` |
@@ -403,15 +403,14 @@ parallèle `GET /cocoons/:id/articles`, `GET /keywords/:cocoonName`, `GET /strat
 
 | Section | Composant | Repères | Déclenché par | Appelle | États |
 |---|---|---|---|---|---|
-| Fil d'Ariane « Dashboard › silo › cocon › Rédaction » | `Breadcrumb.vue` | — | Toujours | — | — |
+| Fil d'Ariane « Dashboard / silo / cocon / Rédaction » | `Breadcrumb.vue` | — | Toujours | — | — |
 | « Contexte stratégique » | `moteur/MoteurStrategyContext.vue` | — | Contexte chargé | — | — |
 | « Articles suggérés », « Articles publiés », en lecture seule | `moteur/MoteurContextRecap.vue` (`readonly`) | — | Au moins un article du cocon | Progression par article (`GET /articles/:id/progress`) | — |
 | Trois colonnes « Pilier », « Intermédiaire », « Spécialisé » ; une carte par article (statut, lien) | `dashboard/ArticleList.vue` → `dashboard/ArticleCard.vue` | `article-card` | `AsyncContent` | Carte → `/cocoon/:id/article/:articleId` (sans cocon : `/article/:id/editor`) | Quatre cartes fantômes ; erreur + « Réessayer » ; colonne vide « Aucun article » |
 
 Ici, les articles « suggérés » viennent des articles du cocon en base (`cocoon.articles`, statut autre que
-« publié »), pas de la carte du Cerveau comme au Moteur. **Limite connue :** sans aucun article, le message
-s'affiche « Aucun article dans cette thématique. », avec la séquence d'échappement en toutes lettres
-(elle est écrite telle quelle dans le gabarit de `ArticleList.vue`).
+« publié »), pas de la carte du Cerveau comme au Moteur. Sans aucun article, `ArticleList.vue` affiche
+« Aucun article dans cette thématique. ».
 
 ## Article, rédaction guidée — `/cocoon/:cocoonId/article/:articleId`
 

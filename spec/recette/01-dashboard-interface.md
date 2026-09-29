@@ -17,7 +17,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 ## Vérifications
 
 ### DASH-1 — L'accueil montre le plan éditorial et son avancement
-**Exigences :** FR-DASH-NAV
+**Exigences :** FR-DASH-NAV ⚠
 
 **Gestes :**
 1. Ouvre l'accueil : clique le nom du site, à gauche de la barre du haut.
@@ -45,8 +45,10 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 
 > Si le parcours express ne s'est pas terminé par la publication, le pilier est encore « À rédiger » : la carte affiche alors « 0% complété ».
 
+**⚠ Défaut connu :** FR-DASH-NAV — à l'écran, rien ne met un article au statut « brouillon » : l'avancement ne compte que les articles publiés, seul le mode automatique pose « brouillon » ; sans silo ni thème nommé, le titre de l'accueil est vide au lieu de « Plan Éditorial » ; dans le fil d'Ariane, le silo n'est pas un lien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DASH-2 — Créer un cocon : Entrée crée, Échap et champ vide annulent
-**Exigences :** FR-DASH-COCOON-CREATE
+**Exigences :** FR-DASH-COCOON-CREATE ⚠
 
 **Gestes :**
 1. Dans le silo de « Recette <date> », fais défiler le carrousel jusqu'à la carte **« Nouveau cocon »**, puis clique-la.
@@ -71,8 +73,10 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 
 > Ce cocon vide reste après la recette : fais-le supprimer avec celui du parcours express (voir « Après la recette » dans la recette manuelle).
 
+**⚠ Défaut connu :** FR-DASH-COCOON-CREATE — un nom qui ne diffère d'un cocon existant que par les majuscules ou les accents, ou le même nom dans un autre silo, est accepté ; les deux cocons partagent alors la même stratégie au Cerveau et au Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DASH-3 — Un nom déjà pris dans le silo est refusé
-**Exigences :** FR-DASH-COCOON-CREATE
+**Exigences :** FR-DASH-COCOON-CREATE ⚠
 
 **Gestes :**
 1. Dans le même silo, clique **« Nouveau cocon »**, tape exactement `Recette vide <date du jour>`, le nom créé en DASH-2, puis appuie sur Entrée.
@@ -91,8 +95,10 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - l'outil t'emmène sur une page de cocon ;
 - « Réessayer » ne ramène pas la liste.
 
+**⚠ Défaut connu :** FR-DASH-COCOON-CREATE — un nom qui ne diffère d'un cocon existant que par les majuscules ou les accents, ou le même nom dans un autre silo, est accepté ; les deux cocons partagent alors la même stratégie au Cerveau et au Moteur. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DASH-4 — Un cocon vide ouvre ses trois ateliers
-**Exigences :** FR-DASH-WORKFLOW-CHOICE, NFR-UX-SCREEN-TEXT
+**Exigences :** FR-DASH-WORKFLOW-CHOICE, NFR-UX-SCREEN-TEXT ⚠
 
 **Gestes :**
 1. À l'accueil, clique la carte « Recette vide <date> ».
@@ -112,8 +118,10 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - un texte montre un code technique (une barre oblique inverse suivie de chiffres) à la place d'une lettre accentuée ;
 - une page reste bloquée sur une roue de chargement.
 
+**⚠ Défaut connu :** NFR-UX-SCREEN-TEXT — des textes fixes sont écrits sans accents (« Deverrouiller », « Rafraichir », « Reinitialiser », « Derniere analyse », « mots-cles », « Suggerer », « Regenerer », « Resultats SERP », « Angle differenciant », « Contexte strategique », « Differenciateur »…) et la vérification rapide ne les repère pas ; d'autres restent techniques ou en anglais : « Discovered via suggest-alphabet », niveaux affichés « INTERMEDIAIRE » ou « specifique », « (parentTitle manquant) », identifiant d'alerte « lieutenants-too-few » à la publication ; les compteurs ne s'accordent pas (« 1 articles »). Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DASH-5 — La page d'un silo : compteurs par niveau et par statut
-**Exigences :** FR-DASH-NAV
+**Exigences :** FR-DASH-NAV ⚠
 
 **Gestes :**
 1. À l'accueil, clique le nom du silo de « Recette <date> ».
@@ -136,8 +144,10 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 
 > « N Brouillon » reste à 0 : aucun écran ne met aujourd'hui un article au statut « brouillon ». Un article rédigé reste « À rédiger » jusqu'à sa publication, et ne compte pas dans l'avancement. Écart signalé.
 
+**⚠ Défaut connu :** FR-DASH-NAV — à l'écran, rien ne met un article au statut « brouillon » : l'avancement ne compte que les articles publiés, seul le mode automatique pose « brouillon » ; sans silo ni thème nommé, le titre de l'accueil est vide au lieu de « Plan Éditorial » ; dans le fil d'Ariane, le silo n'est pas un lien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DASH-6 — La page du cocon « Recette <date> » et ses repères
-**Exigences :** FR-DASH-WORKFLOW-CHOICE, FR-DASH-NAV
+**Exigences :** FR-DASH-WORKFLOW-CHOICE, FR-DASH-NAV ⚠
 
 **Gestes :**
 1. Ouvre la page du cocon « Recette <date> ».
@@ -156,8 +166,10 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - les chiffres de la carte « Rédaction » diffèrent de ceux de l'en-tête ;
 - une carte ouvre l'atelier d'un autre cocon.
 
+**⚠ Défaut connu :** FR-DASH-NAV — à l'écran, rien ne met un article au statut « brouillon » : l'avancement ne compte que les articles publiés, seul le mode automatique pose « brouillon » ; sans silo ni thème nommé, le titre de l'accueil est vide au lieu de « Plan Éditorial » ; dans le fil d'Ariane, le silo n'est pas un lien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
+
 ### DASH-7 — Ouvrir un article depuis la Rédaction et depuis l'arbre du Cerveau
-**Exigences :** FR-DASH-NAV
+**Exigences :** FR-DASH-NAV ⚠
 
 **Gestes :**
 1. Page du cocon « Recette <date> » : clique **« Rédaction »**.
@@ -174,6 +186,8 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **C'est un bug si :**
 - un clic ouvre un autre article, ou une page vide ;
 - un article manque dans sa colonne.
+
+**⚠ Défaut connu :** FR-DASH-NAV — à l'écran, rien ne met un article au statut « brouillon » : l'avancement ne compte que les articles publiés, seul le mode automatique pose « brouillon » ; sans silo ni thème nommé, le titre de l'accueil est vide au lieu de « Plan Éditorial » ; dans le fil d'Ariane, le silo n'est pas un lien. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### DASH-8 — Six points de progression par article, au Moteur et à la Rédaction
 **Exigences :** FR-DASH-PROGRESS, FR-UI-MOTEUR-SHARED
@@ -295,7 +309,7 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 **⚠ Défaut connu :** le panneau du Lexique n'apparaît qu'après le calcul TF-IDF, celui des Lieutenants qu'après l'analyse des résultats Google, et le panneau « Analyse IA du Brief » de la rédaction n'a ni la structure commune ni d'état « erreur ». Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### UI-4 — « Verrouiller » et « Déverrouiller », jamais « Valider » pour un mot-clé
-**Exigences :** FR-UI-VOCABULAIRE-VERROUILLER
+**Exigences :** FR-UI-VOCABULAIRE-VERROUILLER ⚠
 
 **Gestes :**
 1. Au Capitaine de l'enfant, survole le cadenas de la carte `plombier toulouse`. Clique-le (réponds à l'alarme comme en DASH-9), survole-le de nouveau, puis reclique pour déverrouiller.
@@ -313,6 +327,8 @@ Ce module vérifie l'accueil, la page d'un silo, la page d'un cocon, la créatio
 - l'infobulle d'un cadenas parle de « Valider ».
 
 > L'exigence cite un bouton « Verrouiller ce mot-clé » au Capitaine. L'écran ne l'a plus : le cadenas le remplace. Écart signalé, ce n'est pas un défaut de recette.
+
+**⚠ Défaut connu :** FR-UI-VOCABULAIRE-VERROUILLER — les cadenas des titres de la structure disent « Deverrouiller », sans accent. Si tu vois le comportement attendu, le défaut a peut-être disparu : note-le.
 
 ### UI-5 — Les panneaux d'IA de Discovery et du Radar, du repos au résultat
 **Exigences :** FR-UI-AI-PANELS-PATTERN ⚠

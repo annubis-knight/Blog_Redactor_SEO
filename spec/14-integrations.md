@@ -39,7 +39,7 @@ Règles :
 - Si le serveur redémarre pendant que la page reste ouverte, il reprend sa configuration jusqu'au prochain chargement de la page ; le bouton peut alors afficher un mode qui n'est plus le bon. La mention « SANDBOX » / « PROD » de la pile d'activité, relue toutes les 15 secondes, dit toujours l'état réel de DataForSEO.
 - Le fournisseur d'IA « de tous les jours » (Claude, Gemini, OpenRouter ou simulation) se choisit dans la configuration du serveur ; changer ce réglage exige que le serveur le relise.
 
-> **En situation.** Arnaud prépare une démo. Il clique sur « RÉEL » : le bouton passe à « MOCK ». Il lance un scan Radar : les cartes se remplissent de mesures factices et la pile d'activité affiche « DataForSEO SANDBOX $0.00 ». Tavily, lui, n'est jamais simulé : une analyse d'écart de contenu l'interrogerait avec sa clé (aucun écran ne la lance aujourd'hui, voir § 19).
+> **En situation.** Arnaud prépare une démo. Il clique sur « RÉEL » : le bouton passe à « MOCK ». Il lance un scan Radar : les cartes se remplissent de mesures factices et la pile d'activité, dépliée, affiche « DataForSEO SANDBOX » et une dépense « < $0.001 » : rien n'est compté. Tavily, lui, n'est jamais simulé : une analyse d'écart de contenu l'interrogerait avec sa clé (aucun écran ne la lance aujourd'hui, voir § 19).
 
 ## Qui paie quand les tests tournent
 *Exigences : FR-EXT-TESTS-NO-COST*
