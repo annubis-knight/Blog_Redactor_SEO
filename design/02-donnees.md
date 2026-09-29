@@ -32,7 +32,7 @@ erDiagram
 |---|---|---|---|
 | `silos` | `id` | Grands rayons du blog (`nom`, `description`) | `infra/data.service.ts` |
 | `cocoons` | `id` ; `silo_id` → `silos` (CASCADE) | Cocons (`nom`) | `infra/data.service.ts` |
-| `articles` | `id` (attribué `MAX(id)+1` par le service) ; `slug` unique ; `cocoon_id` → `cocoons` (SET NULL) ; `parent_id` → `articles` (RESTRICT) | Fiche de l'article : titre, niveau (`type`), statut, phase, méta, scores SEO/GEO, étapes (`completed_checks`), capitaine verrouillé, douleur, intention attendue, parent et section d'origine | `infra/data.service.ts` ; `article/article-content.service.ts` (méta, scores, phase) |
+| `articles` | `id` (séquence `articles_id_seq`, jamais redonné) ; `slug` unique ; `cocoon_id` → `cocoons` (SET NULL) ; `parent_id` → `articles` (RESTRICT) | Fiche de l'article : titre, niveau (`type`), statut, phase, méta, scores SEO/GEO, étapes (`completed_checks`), capitaine verrouillé, douleur, intention attendue, parent et section d'origine | `infra/data.service.ts` ; `article/article-content.service.ts` (méta, scores, phase) |
 | `article_content` | `article_id` (CASCADE) | Sommaire (JSONB) et texte HTML | `article/article-content.service.ts` |
 | `article_keywords` | `article_id` (CASCADE) | Capitaine, lieutenants, lexique, structure Hn (JSONB), racines | `infra/data.service.ts` |
 | `article_strategies` | `article_id` (CASCADE) | Stratégie d'article (JSONB, 6 étapes) | `strategy/strategy.service.ts` |
@@ -77,15 +77,24 @@ Hors base : le jeton OAuth de Search Console est un fichier JSON (`data/gsc-toke
 
 ## Identifiants
 
-*Exigences : `FR-CER-COCOON-PROGRESSIVE`, `FR-CER-CHILD-FROM-PILLAR-H2`, `FR-CER-CREATION-HONNETE`, `FR-RED-LINKING-MANUAL`, `FR-RED-EXPORT-HTML`*
+*Exigences : `FR-CER-COCOON-PROGRESSIVE`, `FR-CER-CHILD-FROM-PILLAR-H2`, `FR-CER-CREATION-HONNETE`, `FR-RED-LINKING-MANUAL`, `FR-RED-EXPORT-HTML`, `NFR-INT-ARTICLE-ID-NEVER-REUSED`*
 
 **Un article se désigne par son `id`**, et par lui seul.
 
-- `articles.id` est un entier sans séquence. `insertCocoonArticle`
-  ([`../server/services/infra/data.service.ts`](../server/services/infra/data.service.ts)) le calcule
-  (`MAX(id) + 1`) et retente jusqu'à cinq fois si deux créations simultanées prennent le même. C'est le
-  seul chemin d'insertion : `POST /api/cocoons/:cocoonId/articles` → `createCocoonArticle`
+- `articles.id` est un entier tiré de la séquence `articles_id_seq` (défaut de la colonne, changement
+  [`../server/db/changes/2026-09-29-articles-id-sequence.sql`](../server/db/changes/2026-09-29-articles-id-sequence.sql)).
+  Une séquence ne recule jamais : le numéro d'un article effacé n'est pas redonné, et une écriture en
+  retard pour lui (un scan du Capitaine fini après l'effacement) est refusée par la clé étrangère au lieu
+  de tomber sur un autre article (`NFR-INT-ARTICLE-ID-NEVER-REUSED`). Avant le 2026-09-29, le service
+  calculait « plus grand + 1 », ce qui rendait le numéro du dernier article effacé.
+- `insertCocoonArticle` ([`../server/services/infra/data.service.ts`](../server/services/infra/data.service.ts))
+  n'impose donc pas de numéro ; les aides de test non plus (`tests/helpers/db-fixtures.ts`,
+  `tests/browser-e2e/helpers/test-fixtures.ts`). C'est le seul chemin d'insertion du produit :
+  `POST /api/cocoons/:cocoonId/articles` → `createCocoonArticle`
   ([`../server/services/article/cocoon-article.service.ts`](../server/services/article/cocoon-article.service.ts)).
+  Garde : [`../tests/unit/architecture/article-id-sequence.test.ts`](../tests/unit/architecture/article-id-sequence.test.ts)
+  (schéma, schéma rejouable, aucun calcul de numéro dans le code) et
+  [`../tests/integration/data.service.test.ts`](../tests/integration/data.service.test.ts) (effacement puis création).
 - Toutes les tables d'un article s'y rattachent par `article_id`. Le texte vit dans `article_content`, pas
   dans un fichier.
 - Routes du serveur : `/api/articles/:id/…` ; l'`id` est lu par `parseInt`, un `id` non numérique rend

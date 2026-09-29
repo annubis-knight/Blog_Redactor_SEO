@@ -2,7 +2,7 @@
 title: 'Exigences — Blog Redactor SEO'
 status: référence
 version: 1.0.0
-last_updated: 2026-09-28
+last_updated: 2026-09-29
 code_ref: '60b9818 (branche feat/cerveau-generer-au-choix)'
 synced_with:
   - spec/ (chapitres de la spécification, sommaire spec/README.md)
@@ -2227,6 +2227,13 @@ Chaque résultat affiché par le Moteur doit être mis dans la forme attendue pa
 Tout échange entre l'écran et le serveur doit passer par un client unique, qui traite erreurs, coûts et contrats de la même façon.
 - Aucun écran n'appelle le serveur autrement que par ce client.
 - Les coûts d'IA renvoyés par le serveur arrivent dans la pile d'activité, quel que soit l'écran.
+
+### NFR-INT-ARTICLE-ID-NEVER-REUSED — Le numéro d'un article effacé n'est jamais redonné
+**Statut :** active
+Chaque article doit recevoir un numéro qu'aucun autre n'a jamais porté, même après l'effacement d'articles de la base (nettoyage, script), pour que rien de ce qui concernait un article effacé ne puisse réapparaître sur un autre.
+- Un article créé après l'effacement du dernier article reçoit un numéro neuf, pas celui de l'article effacé.
+- Une analyse terminée après l'effacement de son article ne s'enregistre sur aucun autre article.
+- Deux articles créés au même instant reçoivent deux numéros différents.
 
 ### NFR-OBS-EXTERNAL-API-OPT-OUT — Appels aux services tiers identifiés
 **Statut :** active

@@ -1,6 +1,7 @@
 // @vitest-environment node
 /**
- * data.service — lecture de l'arbre silos → cocons → articles, et des mots-clés.
+ * data.service — lecture de l'arbre silos → cocons → articles, et des mots-clés ;
+ * numéro d'un article créé (NFR-INT-ARTICLE-ID-NEVER-REUSED).
  *
  * Épopée qualité SEO, T9 : ce test lisait les DONNÉES de la base de
  * développement (« le premier cocon est Croissance digitale Toulouse ») — ni
@@ -18,6 +19,8 @@ import {
   getSilos,
   getSiloByName,
   getCocoonsBySilo,
+  insertCocoonArticle,
+  saveCaptainExploration,
   resetCache,
 } from '../../server/services/infra/data.service.js'
 import {
@@ -162,5 +165,63 @@ describe('data.service — silos', () => {
     expect(cocoons.map(c => c.id)).toEqual([cocoon.id])
     expect(cocoons[0]!.siloName).toBe(siloName)
     expect(await getCocoonsBySilo(`Silo inexistant ${runId}`)).toHaveLength(0)
+  })
+})
+
+// Placé après les silos : leurs totaux comptent les articles du cocon de test.
+describe('data.service — insertCocoonArticle (NFR-INT-ARTICLE-ID-NEVER-REUSED)', () => {
+  let seq = 0
+  /** Un article créé par le seul chemin d'écriture du produit. */
+  async function insert(base: string) {
+    seq += 1
+    const created = await insertCocoonArticle(cocoon.id, {
+      title: taggedName(base, runId),
+      type: 'pilier',
+      slug: `test-${runId}-numero-${seq}`,
+      parentId: null,
+      parentSection: null,
+      suggestedKeyword: null,
+      painPoint: null,
+      painIntentExpected: null,
+    })
+    if (created === 'slug-taken') throw new Error(`adresse de test déjà prise (${base})`)
+    return created
+  }
+  const remove = (ids: number[]) => query(`DELETE FROM articles WHERE id = ANY($1::int[])`, [ids])
+
+  it('un article créé après la suppression du dernier ne reprend pas son numéro', async () => {
+    const supprime = await insert('Numero supprime')
+    await remove([supprime.id])
+    const suivant = await insert('Numero suivant')
+    try {
+      expect(suivant.id, 'le numéro de l’article supprimé n’est pas redonné').toBeGreaterThan(supprime.id)
+    } finally {
+      await remove([suivant.id])
+    }
+  })
+
+  it('une analyse finie après la suppression de son article ne s’enregistre sur aucun autre', async () => {
+    const supprime = await insert('Analyse orpheline')
+    await remove([supprime.id])
+    const suivant = await insert('Analyse voisine')
+    try {
+      // Ce qu'écrit un scan du Capitaine lancé avant la suppression, à son retour.
+      await expect(saveCaptainExploration(supprime.id, {
+        keyword: `test-${runId}-analyse tardive`, kpis: [], articleLevel: 'pilier', rootKeywords: [],
+      }), 'l’écriture vers un article supprimé est refusée').rejects.toThrow()
+      const posees = await query(`SELECT keyword FROM captain_explorations WHERE article_id = $1`, [suivant.id])
+      expect(posees.rows, 'rien n’atterrit sur le nouvel article').toEqual([])
+    } finally {
+      await remove([suivant.id])
+    }
+  })
+
+  it('des créations simultanées reçoivent des numéros différents', async () => {
+    const crees = await Promise.all([1, 2, 3, 4].map(n => insert(`Simultane ${n}`)))
+    try {
+      expect(new Set(crees.map(a => a.id)).size).toBe(crees.length)
+    } finally {
+      await remove(crees.map(a => a.id))
+    }
   })
 })

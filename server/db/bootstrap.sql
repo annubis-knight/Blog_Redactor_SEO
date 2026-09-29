@@ -4,7 +4,7 @@
 -- ⚠️  Fichier généré par `npm run db:bootstrap` (ou db:snapshot).
 -- NE PAS éditer à la main. Sert à créer une base vide (CI).
 -- Usage : psql -v ON_ERROR_STOP=1 -d <base> -f server/db/bootstrap.sql
--- Empreinte schéma (schema.sql) : sha256:4b668dbfef95b1080f848179edfc67c396a21ed1882712ff7339fdaeab6a5ccf
+-- Empreinte schéma (schema.sql) : sha256:ba224fc27721f34088db4e759e1188ccec2f7a3f2dbfeb09586df0f7def52474
 -- ============================================================
 --
 -- PostgreSQL database dump
@@ -150,6 +150,24 @@ CREATE TABLE public.articles (
     CONSTRAINT articles_parent_not_self CHECK (((parent_id IS NULL) OR (parent_id <> id))),
     CONSTRAINT articles_type_check CHECK ((type = ANY (ARRAY['Pilier'::text, 'Intermédiaire'::text, 'Spécialisé'::text])))
 );
+
+--
+-- Name: articles_id_seq; Type: SEQUENCE; Schema: public; Owner: -
+--
+
+CREATE SEQUENCE public.articles_id_seq
+    AS integer
+    START WITH 1
+    INCREMENT BY 1
+    NO MINVALUE
+    NO MAXVALUE
+    CACHE 1;
+
+--
+-- Name: articles_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: -
+--
+
+ALTER SEQUENCE public.articles_id_seq OWNED BY public.articles.id;
 
 --
 -- Name: captain_explorations; Type: TABLE; Schema: public; Owner: -
@@ -658,6 +676,12 @@ CREATE SEQUENCE public.theme_config_id_seq
 --
 
 ALTER SEQUENCE public.theme_config_id_seq OWNED BY public.theme_config.id;
+
+--
+-- Name: articles id; Type: DEFAULT; Schema: public; Owner: -
+--
+
+ALTER TABLE ONLY public.articles ALTER COLUMN id SET DEFAULT nextval('public.articles_id_seq'::regclass);
 
 --
 -- Name: captain_explorations id; Type: DEFAULT; Schema: public; Owner: -

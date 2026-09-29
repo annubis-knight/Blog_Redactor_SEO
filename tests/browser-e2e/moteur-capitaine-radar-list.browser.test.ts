@@ -54,31 +54,17 @@ testWithCtx.describe('Capitaine — UI radar-list (mode workflow)', () => {
   })
 
   testWithCtx('un article sans mot-clé suggéré affiche l’état vide de la liste', async ({ page, ctx }) => {
-    // Assez de marge pour que le diagnostic d'échec ci-dessous s'écrive : avec les
-    // 30 s par défaut, il était coupé après l'attente de 20 s (CI du 2026-09-29).
-    testWithCtx.setTimeout(90_000)
+    // En CI, ce test échouait au premier essai en montrant le mot-clé du test
+    // précédent : le scan lancé par celui-ci finissait après sa fin et
+    // s'enregistrait sur ce nouvel article, qui avait repris le numéro de
+    // l'ancien. Les numéros ne sont plus redonnés (NFR-INT-ARTICLE-ID-NEVER-REUSED).
     const article = await ctx.createArticle('RadarList Empty Browser', 'Pilier', { withKeyword: false })
     await openMoteur(page, article.cocoonId)
     await selectArticleByTitle(page, article.titre)
     await dismissLoadPrompt(page)
 
-    try {
-      await expect(page.locator('[data-testid="radar-list-empty"]'), 'la liste vide s’explique')
-        .toContainText(/Aucun mot-clé/i, { timeout: 20000 })
-    } catch (err) {
-      // Échec intermittent en CI, jamais reproduit en local : on dit ce que
-      // l'écran montrait à la place, pour trancher entre une carte apparue
-      // toute seule et une liste absente de la page.
-      const list = page.locator('[data-testid="radar-list"]')
-      const cartes = await page.locator('[data-testid^="radar-list-item-"]').evaluateAll(
-        nodes => nodes.map(n => `${n.getAttribute('data-testid')} « ${(n.textContent ?? '').trim().slice(0, 60)} »`),
-      )
-      const onglet = await page.locator('[data-testid^="wf-item-"][aria-current="page"], [data-testid^="wf-item-"].active')
-        .first().getAttribute('data-testid').catch(() => null)
-      throw new Error(
-        `${(err as Error).message}\n— liste présente : ${await list.count() > 0} ; cartes : ${cartes.length ? cartes.join(' | ') : 'aucune'} ; onglet actif : ${onglet ?? 'inconnu'}`,
-      )
-    }
+    await expect(page.locator('[data-testid="radar-list-empty"]'), 'la liste vide s’explique')
+      .toContainText(/Aucun mot-clé/i, { timeout: 20000 })
   })
 
   testWithCtx('aucun reliquat de l’ancienne UI carrousel', async ({ page, ctx }) => {

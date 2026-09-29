@@ -1,12 +1,12 @@
 -- ============================================================
 -- SCHEMA SNAPSHOT — Blog Redactor SEO
 -- ============================================================
--- Généré le        : 2026-09-25T08:00:37.886Z
--- Commit git       : fbb7c43 (feat/cocon-progressif)
--- Sujet commit     : Merge branch 'feat/redaction-enrichissement' into feat/onglet-structure-hn
+-- Généré le        : 2026-09-29T02:22:41.208Z
+-- Commit git       : 1111a18 (fix/articles-id-sequence)
+-- Sujet commit     : test(capitaine): « le conseil n'est pas vide » attend un texte, pas un long mot
 -- Working tree     : ⚠️  NON (modifs non commitées)
 -- Tables           : 26
--- Empreinte schéma : sha256:4b668dbfef95b1080f848179edfc67c396a21ed1882712ff7339fdaeab6a5ccf
+-- Empreinte schéma : sha256:ba224fc27721f34088db4e759e1188ccec2f7a3f2dbfeb09586df0f7def52474
 -- ============================================================
 -- ⚠️  Fichier généré automatiquement. NE PAS éditer à la main.
 --
@@ -59,7 +59,7 @@ CREATE TABLE "article_strategies" (
 );
 
 CREATE TABLE "articles" (
-  "id" INTEGER NOT NULL,
+  "id" INTEGER NOT NULL DEFAULT nextval('articles_id_seq'::regclass),
   "cocoon_id" INTEGER,
   "titre" TEXT NOT NULL,
   "type" TEXT NOT NULL,
@@ -400,6 +400,8 @@ CREATE INDEX idx_radar_explorations_scanned ON public.radar_explorations USING b
 -- Sequences
 
 -- (auto-créée par SERIAL/IDENTITY) "api_cache_id_seq"
+
+-- (auto-créée par SERIAL/IDENTITY) "articles_id_seq"
 
 -- (auto-créée par SERIAL/IDENTITY) "cocoons_id_seq"
 

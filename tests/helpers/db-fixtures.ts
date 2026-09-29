@@ -98,26 +98,14 @@ export async function createTestArticle(
   const titre = taggedName(base, runId)
   const slug = `test-${runId}-${base.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`
 
-  // articles.id n'a pas de SERIAL — on calcule le prochain id manuellement.
-  // Race condition possible si plusieurs tests parallèles : on retry jusqu'à 5x
-  // sur conflit de clé primaire en incrémentant.
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const maxRes = await query<{ max: number | null }>(`SELECT COALESCE(MAX(id), 0) AS max FROM articles`)
-    const nextId = (maxRes.rows[0].max ?? 0) + 1 + attempt
-    try {
-      await query(
-        `INSERT INTO articles (id, titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps)
-         VALUES ($1, $2, $3, $4, $5, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb)`,
-        [nextId, titre, cocoonId, slug, type],
-      )
-      return { id: nextId, titre, cocoonId, slug, type }
-    } catch (err) {
-      const msg = (err as Error).message
-      if (!msg.includes('articles_pkey') && !msg.includes('articles_slug_key')) throw err
-      // Sinon on retry avec id+1
-    }
-  }
-  throw new Error(`createTestArticle: failed after 10 attempts (race conditions)`)
+  // Le numéro vient de la séquence de la base (NFR-INT-ARTICLE-ID-NEVER-REUSED).
+  const res = await query<{ id: number }>(
+    `INSERT INTO articles (titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps)
+     VALUES ($1, $2, $3, $4, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb)
+     RETURNING id`,
+    [titre, cocoonId, slug, type],
+  )
+  return { id: res.rows[0].id, titre, cocoonId, slug, type }
 }
 
 /**
@@ -141,23 +129,15 @@ export async function createTestCocoonArticle(
   },
 ): Promise<TestArticle> {
   const titre = taggedName(article.base, runId)
-  for (let attempt = 0; attempt < 10; attempt++) {
-    const maxRes = await query<{ max: number | null }>(`SELECT COALESCE(MAX(id), 0) AS max FROM articles`)
-    const nextId = (maxRes.rows[0].max ?? 0) + 1 + attempt
-    try {
-      await query(
-        `INSERT INTO articles (id, titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps,
-                               parent_id, parent_section, suggested_keyword, pain_point, pain_intent_expected)
-         VALUES ($1, $2, $3, $4, $5, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb, $6, $7, $8, $9, $10)`,
-        [nextId, titre, cocoonId, article.slug, article.type, article.parentId ?? null, article.parentSection ?? null,
-          article.suggestedKeyword ?? null, article.painPoint ?? null, article.painIntentExpected ?? null],
-      )
-      return { id: nextId, titre, cocoonId, slug: article.slug, type: article.type }
-    } catch (err) {
-      if (!(err as Error).message.includes('articles_pkey')) throw err
-    }
-  }
-  throw new Error('createTestCocoonArticle: failed after 10 attempts (race conditions)')
+  const res = await query<{ id: number }>(
+    `INSERT INTO articles (titre, cocoon_id, slug, type, status, phase, completed_checks, check_timestamps,
+                           parent_id, parent_section, suggested_keyword, pain_point, pain_intent_expected)
+     VALUES ($1, $2, $3, $4, 'à rédiger', 'proposed', ARRAY[]::TEXT[], '{}'::jsonb, $5, $6, $7, $8, $9)
+     RETURNING id`,
+    [titre, cocoonId, article.slug, article.type, article.parentId ?? null, article.parentSection ?? null,
+      article.suggestedKeyword ?? null, article.painPoint ?? null, article.painIntentExpected ?? null],
+  )
+  return { id: res.rows[0].id, titre, cocoonId, slug: article.slug, type: article.type }
 }
 
 // ---------------------------------------------------------------------------

@@ -1,3 +1,16 @@
+/**
+ * AUTHORITY: PostgreSQL `articles` (numéro tiré de la séquence `articles_id_seq`),
+ *            `silos`, `cocoons`, `article_keywords`, `article_micro_contexts`,
+ *            `captain_explorations`, `lieutenant_explorations`, `paa_explorations`,
+ *            `keywords_seo`
+ * READS FROM: ces tables, plus `keyword_metrics`, `radar_explorations`, `theme_config`
+ * WRITES TO: insertCocoonArticle (seul chemin de création d'un article), setArticleParent,
+ *            removeArticleFromCocoon, saveArticleKeywords, saveCaptainExploration,
+ *            saveLieutenantExplorations, mots-clés du cocon (`keywords_seo`)
+ * CONSUMERS: routes cocoons, silos, articles, keywords, keyword-scan, export, rédaction ;
+ *            cocoon-article.service, gate.service, linking.service, captain-kpis
+ * RELATED FR: NFR-INT-ARTICLE-ID-NEVER-REUSED, FR-CER-COCOON-PROGRESSIVE, FR-MOT-RECAP-PUBLISHED
+ */
 import { pool } from '../../db/client.js'
 import { log } from '../../utils/logger.js'
 import { measureDb } from '../../utils/db-telemetry.js'
@@ -518,46 +531,34 @@ export async function insertCocoonArticle(
     painIntentExpected: PainIntentExpected | null
   },
 ): Promise<Article | 'slug-taken'> {
-  // `articles.id` n'a pas de séquence : le numéro est calculé à la main
-  // (MAX(id)+1). Deux créations simultanées tombent alors sur le même, et
-  // l'insertion viole la clé primaire : on relit le maximum et on retente.
-  for (let essai = 0; essai < 5; essai++) {
-    const maxRes = await pool.query(`SELECT COALESCE(MAX(id), 0) as max_id FROM articles`)
-    const nextId = (maxRes.rows[0].max_id as number) + 1
-    try {
-      const res = await pool.query(`
-        INSERT INTO articles (id, cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps,
-                              suggested_keyword, pain_point, pain_intent_expected, parent_id, parent_section)
-        VALUES ($1, $2, $3, $4, $5, NULL, 'à rédiger', 'proposed', '{}', '{}', $6, $7, $8, $9, $10)
-        ON CONFLICT (slug) DO NOTHING
-        RETURNING *
-      `, [
-        nextId,
-        cocoonId,
-        article.title,
-        // Conversion canonical → DB : la colonne `articles.type` impose le
-        // format PascalCase français (CHECK constraint).
-        articleLevelToDbType(article.type),
-        article.slug,
-        article.suggestedKeyword,
-        article.painPoint,
-        article.painIntentExpected,
-        article.parentId,
-        article.parentSection,
-      ])
-      if (res.rows.length === 0) {
-        log.warn('insertCocoonArticle — slug déjà utilisé', { slug: article.slug })
-        return 'slug-taken'
-      }
-      log.info('insertCocoonArticle', { cocoonId, id: nextId, type: article.type, parentId: article.parentId })
-      return rowToArticle(res.rows[0])
-    } catch (err) {
-      const message = (err as Error).message
-      if (!/articles_pkey/i.test(message)) throw err
-      log.debug('insertCocoonArticle — identifiant repris', { slug: article.slug, essai: essai + 1 })
-    }
+  // Le numéro vient de la séquence `articles_id_seq` (NFR-INT-ARTICLE-ID-NEVER-REUSED) :
+  // jamais celui d'un article supprimé, et deux créations simultanées en ont deux.
+  const res = await pool.query(`
+    INSERT INTO articles (cocoon_id, titre, type, slug, topic, status, phase, completed_checks, check_timestamps,
+                          suggested_keyword, pain_point, pain_intent_expected, parent_id, parent_section)
+    VALUES ($1, $2, $3, $4, NULL, 'à rédiger', 'proposed', '{}', '{}', $5, $6, $7, $8, $9)
+    ON CONFLICT (slug) DO NOTHING
+    RETURNING *
+  `, [
+    cocoonId,
+    article.title,
+    // Conversion canonical → DB : la colonne `articles.type` impose le
+    // format PascalCase français (CHECK constraint).
+    articleLevelToDbType(article.type),
+    article.slug,
+    article.suggestedKeyword,
+    article.painPoint,
+    article.painIntentExpected,
+    article.parentId,
+    article.parentSection,
+  ])
+  if (res.rows.length === 0) {
+    log.warn('insertCocoonArticle — slug déjà utilisé', { slug: article.slug })
+    return 'slug-taken'
   }
-  throw new Error(`insertCocoonArticle — aucun identifiant libre après 5 essais (${article.slug})`)
+  const created = rowToArticle(res.rows[0])
+  log.info('insertCocoonArticle', { cocoonId, id: created.id, type: article.type, parentId: article.parentId })
+  return created
 }
 
 /**
